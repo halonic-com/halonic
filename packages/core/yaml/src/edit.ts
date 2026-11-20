@@ -8,6 +8,7 @@ import {
   isSeq,
   type Node,
   parseDocument,
+  type YAMLMap,
 } from "yaml";
 import { applyEditToData, checkValue, type YamlEdit } from "./edit-data.ts";
 import { lineEndingOf } from "./edit-text.ts";
@@ -60,6 +61,13 @@ export interface YamlEdited {
  *   { kind: "set", path: ["name"], value: "Invoices" },
  * ]);
  * // { ok: true, value: { text: "name: Invoices # shown in the list\n", layout: "kept" } }
+ *
+ * @example
+ * // A rename changes only the key; the value and the comments inside it stay.
+ * const renamed = editYaml("states:\n  write: # the first draft\n    agent: writer\n", [
+ *   { kind: "rename", path: ["states", "write"], to: "draft" },
+ * ]);
+ * // { ok: true, value: { text: "states:\n  draft: # the first draft\n    agent: writer\n", layout: "kept" } }
  */
 export function editYaml(
   text: string,
@@ -94,7 +102,10 @@ function worseLayout(first: YamlLayout, second: YamlLayout): YamlLayout {
 }
 
 function applyEdit(before: Step, edit: YamlEdit, limits: YamlLimits): Result<Step, string> {
-  const valueProblem = edit.kind === "delete" ? undefined : checkValue(edit.value, limits.maxDepth);
+  const valueProblem =
+    edit.kind === "set" || edit.kind === "insert"
+      ? checkValue(edit.value, limits.maxDepth)
+      : undefined;
   if (valueProblem !== undefined) {
     return err(valueProblem);
   }
@@ -142,12 +153,15 @@ function renderWithDocument(text: string, edit: YamlEdit, expected: unknown): st
   if (edit.kind === "insert") {
     return insertIntoDocument(document, edit) ? render(text, document) : undefined;
   }
+  if (edit.kind === "rename") {
+    return renameInDocument(document, edit) ? render(text, document) : undefined;
+  }
   return setInDocument(text, document, edit, expected);
 }
 
 function insertIntoDocument(
   document: ReturnType<typeof parseDocument>,
-  edit: Exclude<YamlEdit, { kind: "delete" }>,
+  edit: Extract<YamlEdit, { kind: "insert" }>,
 ): boolean {
   const { path } = edit;
   const list = document.getIn(path.slice(0, -1), true);
@@ -158,10 +172,28 @@ function insertIntoDocument(
   return true;
 }
 
+/**
+ * Changes the value of the key's scalar node rather than putting a new node in
+ * its place, so the comments the library hangs on the key stay with it.
+ */
+function renameInDocument(
+  document: ReturnType<typeof parseDocument>,
+  edit: Extract<YamlEdit, { kind: "rename" }>,
+): boolean {
+  const map = parentMap(document, edit.path);
+  const name = edit.path[edit.path.length - 1];
+  const key = map?.items.find((pair) => isScalar(pair.key) && String(pair.key.value) === name)?.key;
+  if (!isScalar(key)) {
+    return false;
+  }
+  key.value = edit.to;
+  return true;
+}
+
 function setInDocument(
   text: string,
   document: ReturnType<typeof parseDocument>,
-  edit: Exclude<YamlEdit, { kind: "delete" }>,
+  edit: Extract<YamlEdit, { kind: "set" }>,
   expected: unknown,
 ): string {
   const { path } = edit;
@@ -196,8 +228,8 @@ function moveNewPair(
   path: YamlPath,
   after: string | null,
 ): void {
-  const map = path.length === 1 ? document.contents : document.getIn(path.slice(0, -1), true);
-  if (!isMap(map)) {
+  const map = parentMap(document, path);
+  if (map === undefined) {
     return;
   }
   const added = map.items.pop();
@@ -216,6 +248,15 @@ function moveNewPair(
     return;
   }
   map.items.splice(previous + 1, 0, added);
+}
+
+/** The map that holds the last key of `path`, or `undefined` when that isn't a map. */
+function parentMap(
+  document: ReturnType<typeof parseDocument>,
+  path: YamlPath,
+): YAMLMap | undefined {
+  const map = path.length === 1 ? document.contents : document.getIn(path.slice(0, -1), true);
+  return isMap(map) ? map : undefined;
 }
 
 /** Replace the whole document, carrying over the comment at the top of the file. */

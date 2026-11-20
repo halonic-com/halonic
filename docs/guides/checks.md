@@ -61,7 +61,7 @@ queue.
 | `advisories` | `tooling/check/advisories-ignored.json` has an unknown field, a missing or thin reason, a bad advisory ID or date, a repeated advisory, an expired entry or one expiring more than 90 days out; or an advisory is ignored anywhere else (`auditConfig` and `ignoreGhsas` in the workspace file, an `--ignore` on an audit command in a workflow or `package.json`) |
 | `names` | a file or path contains a package name in the `@halonic` or `@studio` npm scope. Both scopes belong to someone else |
 | `features` | `apps/studio/package.json` doesn't list exactly the folders in `packages/studio/features/`. Fix with `pnpm discover --fix && pnpm install` |
-| `file-size` | a source file has more than 500 lines (a warning above 300; a warning for functions above 60). Generated files and fixtures are exempt |
+| `file-size` | a source file has more than 500 lines (a warning above 300; a warning for functions above 60). Generated files and fixtures are exempt, and so is a barrel whose statements are all re-exports (`export … from`, `export * from`, `export type … from`, each with a quoted path, with comments between them): it holds no code and grows a line with each feature. One statement of its own (a declaration, an import, a local `export { x }`) makes the whole file count |
 | `lockfile` | a `pnpm-lock.yaml` entry has no sha512 hash, or comes from a tarball URL, git, a local folder or another registry. The only exception is the Node runtime from `devEngines`, which must come from the Node.js release hosts with a hash per platform |
 | `absolute-paths` | docs, code or config hold an absolute path from one machine, such as a Windows user folder or a Linux home folder. Tests and fixtures are exempt |
 | `versions` | the Studio app's version in `apps/studio/src-tauri/tauri.conf.json`, the `[workspace.package]` table of its `Cargo.toml` or a workspace crate in `Cargo.lock` differs from `apps/studio/package.json`, or a crate sets its own version instead of `version.workspace = true`. Fix with `pnpm version:sync` |
@@ -223,8 +223,10 @@ covers it:
 | `tooling/check/policy.json` changed in `extraExports` only (a note of either kind is enough, so the CTO can sign it as `internal`) | `tooling/check/policy.json` |
 | the lines for `@typescript/typescript6` (the parser the guard runs) changed in `pnpm-workspace.yaml` or `pnpm-lock.yaml` (a note of either kind is enough) | that file |
 
-A package with tests but no readable result file on either side always
-fails: no note can stand in for a comparison the guard couldn't make.
+The guard compares only the packages the change affects, the ones whose
+tests ran (see the build job below). An affected package with tests but no
+readable result file on either side always fails: no note can stand in for
+a comparison the guard couldn't make.
 
 `vi.waitFor` runs its callback, `expect` calls included, again until it
 passes. `verifies()` counts only the calls of the attempt that passed, so a
@@ -845,7 +847,7 @@ passed, so they don't run again, and the guard sees the same counts. Use
 On a pull request, the `Changed areas` job decides which of those jobs run
 from the pull request's diff. In the merge queue it reads the group's diff
 against the commit the group is built on (`main`, or the entry ahead of it
-in the queue) and applies the same area rules, so a group that doesn't
+in the queue) and applies the same area rules to the Linux jobs, so a group that doesn't
 touch `apps/studio/src-tauri` skips Tauri and Android. Each entry ahead
 checks its own areas before it merges. An empty diff or a diff that can't
 be read runs every job. On `main` every job runs, so a gap in the area
@@ -853,21 +855,27 @@ rules still shows there ([broken-main.md](broken-main.md)).
 
 The merge queue reruns what a newer base can break: the fast gates, the
 leak guard and secret scan, the build with `trace` (from the queued
-change's own copy, as on `main`) and the area jobs. It leaves out what
+change's own copy, as on `main`) and the Linux area jobs. It leaves out what
 depends only on the pull request itself and already passed on it: the
 title and coverage-floor checks, the merge base's tests and the
 requirement guard, and the workflow lint unless the group changes
 `.github/`.
+While the Cloudflare runner trial is on (see
+[infra/cf-runner/README.md](../../infra/cf-runner/README.md) for its
+switch), Fast gates and Typecheck, lint, test, build run in the merge
+queue and on `main` on a one-job Cloudflare container (label
+`cf-linux`); every other job, and every pull request, runs on GitHub's
+runners.
 
 | Job | What |
 | --- | --- |
-| Fast gates | `halonic --help` on a fresh install, the pull request title (in the queue, the squash commit's subject), `pnpm check` (with the DCO sign-off), licences, the spend-guard and turbo-cache tests, formatting, the feature list, `pnpm audit` for shipped dependencies |
+| Fast gates | `halonic --help` on a fresh install, the pull request title (in the queue, the squash commit's subject), `pnpm check` (with the DCO sign-off), licences, the spend-guard, turbo-cache and cf-runner tests, formatting, the feature list, `pnpm audit` for shipped dependencies |
 | Leak guard | the leak guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code |
 | Secret scan | `gitleaks` over the pull request's commits, checksum-verified |
 | Workflow lint | `zizmor` over `.github/`, installed from `.github/zizmor-requirements.txt` by hash; in the merge queue only when `.github/` changes |
-| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits. On `main` and in the queue it then runs `trace`; on a pull request the guard job does |
+| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits. It runs as the four shards in `BUILD_SHARDS` at the top of `ci.yml`, split by folder: `adapters`, `studio-features`, `core-studio` and `apps-tooling`. Each runs typecheck, lint, test and build for its own packages. On a pull request, tests run only for the affected packages (`tooling/check`'s `affected-tests`: the changed packages, their dependants and the packages whose tests verify their requirements), and for every package when the change touches the files every test depends on (root files such as `package.json` and the lockfile, `.github/workflows/`, `.github/actions/`, `tooling/check/`, `tooling/config/`, `packages/testing/spec/` or `patches/`: `fullSuitePaths` in `tooling/check/src/lib/affected-tests.ts`). The queue and `main` test every package. The first shard's dry run proves every package is in exactly one shard. In the queue and on `main` the trace job then runs `trace` over every shard's test results; on a pull request the guard job does |
 | Policy rules (base's copy) | pull requests and the queue: `layers`, `dependencies`, `process-starts`, `lockfile`, `advisories` and `deny-toml`, run from the base commit's `tooling/check` with the base's allow-lists (`--lists-from`), so a change can't approve itself |
-| Merge base's tests | pull requests only: the merge base's tests, with no cache and no pull-request code, for the guard's baseline |
+| Merge base's tests | pull requests only: the merge base's tests, with no cache and no pull-request code, for the guard's baseline. They test the same affected packages, picked by the merge base's own copy of `affected-tests`, and every package when that copy fails or the job walks back to an older green commit |
 | Requirement guard | pull requests only: `trace` (blocking) and the requirement guard (both blocking), run from the merge base's copy with the merge base's dependencies, over both sides' test results |
 | Empty package and feature | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full` |
 | Tauri shell (Rust checks) | when `apps/studio/src-tauri` changes: `rustfmt`, `clippy` and `cargo test` for the shell and its crates on Linux, and `cargo-deny` |
@@ -875,9 +883,10 @@ requirement guard, and the workflow lint unless the group changes
 | Coverage floors | pull requests only: `pnpm check:coverage-floors`; the `coverage-floor-lowered` label allows a lower floor |
 | Sandbox fence | when `sandbox-srt`, the integration runner, the integration kit, the sandboxed stdio connector or the ports change: bubblewrap (Linux) and Seatbelt (macOS) fence tests for `sandbox-srt`, the integration runner and local tools through the stdio connector, and canary probes on Windows (required; it retries only when the probes didn't run) |
 | Sandbox packages | when sandbox adapters or the ports change: typecheck and test on macOS and Windows. The Windows leg also tests the changed packages (and their dependants) among those that touch paths, files and processes, such as the CLI, the agent host and the file and system adapters |
-| Agent host executable | when `apps/agent-host` changes: builds the executable on Linux, macOS and Windows, runs it and reports its size |
+| Agent host executable | when `apps/agent-host` changes: builds the executable on Linux, macOS and Windows (Linux only in the queue), runs it and reports its size |
 | Keychain contract on macOS | when `apps/studio/src-tauri` changes: the keychain crate's contract test against a real macOS Keychain |
 | Windows installer | when the Tauri shell or `apps/agent-host` changes: builds the installer from the custom NSIS template, installs it silently into a temporary folder and uninstalls it |
+| Windows update (0.1.0 to 0.1.1) | when the Tauri shell or `apps/agent-host` changes: updates an installed 0.1.0 to 0.1.1 and opens it again, refuses a bad signature and a failed download, and goes back to 0.1.1 from a 0.1.2 that doesn't start |
 | Android shell | when the Tauri shell or Studio's connect page changes: builds the debug APK |
 | End-to-end, docs | the Studio's Playwright tests when their area changes; the docs job is a stub until `apps/docs` exists |
 | Live cloud suites passed | pull requests and the queue, when the change touches a cloud path (`cloud-affected.ts`): a pull request gets only a notice; in the merge queue it waits for `live-cloud.yml`'s `live-cloud` job to have passed on the pull request's head. Only a notice while `LIVE_CLOUD_ENABLED` isn't `true` |
@@ -891,6 +900,14 @@ the `Cancel the run on the first failure` job cancels the run at the first
 failed job and `ci-ok` fails within a minute. Fix the pull request, wait for
 green and queue it again. Run `pnpm check:enqueue` first: it checks what the
 queue would break, on top of the latest `main`.
+
+The queue runs only the Linux jobs. The macOS and Windows jobs above
+(Tauri shell on Windows, Sandbox fence on macOS and Windows, Sandbox
+packages, the macOS and Windows legs of Agent host executable, Keychain
+contract on macOS, Windows installer and Windows update) are skipped in the
+queue, and a skipped job counts as passed for `ci-ok`. They run on the pull
+request and on every push to `main`. A failure there shows on `main`, and
+the area's owner gets the task ([area-owners.md](area-owners.md)).
 
 **The built-on label.** Every pull request needs a `built-on:paperclip` or `built-on:halonic` label,
 which says which tool built the change. The `Built-on label` workflow

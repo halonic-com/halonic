@@ -94,8 +94,10 @@ export {
   type ErrorAction,
   type ErrorContext,
   type ErrorMessage,
+  engineReasonFor,
   errorMessageFor,
   errorReasonFor,
+  isUnexplained,
   itemGoneWords,
   type RulePlace,
 } from "./errors/error-message.ts";
@@ -158,58 +160,8 @@ export {
   pageStoppedWords,
 } from "./page/page-error-boundary.tsx";
 export { unreachableWords } from "./page/page-unreachable.tsx";
-export { CommandPalette, type CommandPaletteProps } from "./palette/command-palette.tsx";
-export {
-  compareNameMatches,
-  findWords,
-  matchName,
-  type NameMatch,
-  type NameMatchRank,
-  nameMatchRanks,
-  type WordsFound,
-  type WordsOptions,
-} from "./palette/name-match.ts";
-export {
-  itemLocationKey,
-  type PaletteContent,
-  type PaletteGroup,
-  type PaletteGroupId,
-  type PaletteRow,
-  type PaletteSources,
-  type PaletteTarget,
-  paletteGroupRows,
-  paletteGroups,
-  paletteGroupTitles,
-} from "./palette/palette-groups.ts";
-export { type PaletteOpening, usePaletteOpening } from "./palette/palette-opening.ts";
-export {
-  type ActiveRowChange,
-  keptActive,
-  movedActive,
-  type PaletteKey,
-  type PaletteKindNames,
-  paletteKeyFor,
-  paletteOptionName,
-  paletteOptions,
-  resultCountDelayMs,
-  resultCountText,
-} from "./palette/palette-options.ts";
-export {
-  PhoneSearchSheet,
-  type PhoneSearchSheetProps,
-} from "./palette/phone-search-sheet.tsx";
-export { RecentPlaces, recentPlacesKept } from "./palette/recent-places.ts";
-export { type FoundItems, searchProviders } from "./palette/search-providers.ts";
-export {
-  ShellPalette,
-  type ShellPaletteProps,
-  usePaletteKey,
-} from "./palette/shell-palette.tsx";
-export {
-  ShellPhoneSearch,
-  type ShellPhoneSearchProps,
-} from "./palette/shell-phone-search.tsx";
-export { type PaletteSearch, usePaletteSearch } from "./palette/use-palette-search.ts";
+// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
+export * from "./palette-exports.ts";
 export {
   CHAT_MIN_WIDTH,
   clampPanelWidth,
@@ -227,118 +179,10 @@ export {
   PanelWidthProvider,
   type PanelWidthProviderProps,
 } from "./panels/panel-width-context.tsx";
-export {
-  BottomNavigation,
-  type BottomNavigationPlace,
-  type BottomNavigationProps,
-} from "./phone/bottom-navigation.tsx";
-export {
-  MorePage,
-  type MorePageProps,
-  type MorePageSwitcher,
-  moreRows,
-} from "./phone/more-page.tsx";
-export { type PhoneBackResult, pressPhoneBack, usePhoneBackButton } from "./phone/phone-back.ts";
-export {
-  PhoneSearchButton,
-  type PhoneSearchButtonProps,
-} from "./phone/phone-search-button.tsx";
-export { PhoneTopBar, type PhoneTopBarProps } from "./phone/phone-top-bar.tsx";
-export {
-  PhoneTopBarActions,
-  type PhoneTopBarActionsProps,
-  PhoneTopBarSlot,
-  useInPhoneTopBar,
-} from "./phone/phone-top-bar-actions.tsx";
-export {
-  currentPhonePage,
-  goBackOnPhone,
-  isAtPlaceTop,
-  openPhonePage,
-  openPhonePageIn,
-  type PhoneOpenOptions,
-  type PhonePage,
-  type PhonePlace,
-  type PlaceStacks,
-  phonePlaceOf,
-  phonePlaces,
-  phonePlaceTops,
-  settingsLocation,
-  showsBottomNavigation,
-  startPlaceStacks,
-  switchPhonePlace,
-} from "./phone/place-stacks.ts";
-export { type PhonePlaces, usePhonePlaces } from "./phone/use-phone-places.ts";
-export type {
-  CommandContributions,
-  CommandPoints,
-  ContextFor,
-} from "./points/command-points.ts";
-export type {
-  CommandContribution,
-  CommandSource,
-  KeybindingContribution,
-  PersistContribution,
-  PersistedSession,
-  SearchProviderContribution,
-  SearchResult,
-} from "./points/commands.ts";
-export {
-  type BarItemContribution,
-  type CardContribution,
-  type DialogHostContribution,
-  type PanelWindowContribution,
-  type PhoneBarContribution,
-  type PlaceContribution,
-  type PlaceName,
-  type PlaceSignal,
-  placeNames,
-  type SettingsScope,
-  type SettingsSectionContribution,
-  type ShownPlace,
-  type SidebarPlace,
-  type SidebarViewAction,
-  type SidebarViewContribution,
-  settingsScopes,
-  showPlace,
-  sidebarPlaces,
-} from "./points/frame.ts";
-export type { FrameContributions, FramePoints } from "./points/frame-points.ts";
-export {
-  type HomeCardContribution,
-  type HomePoint,
-  type HomeSection,
-  homeSections,
-  homeSectionTitles,
-} from "./points/home.ts";
-export type {
-  ItemAction,
-  ItemKindContribution,
-  ItemRef,
-  OpenItemOptions,
-  TabBehaviour,
-  TabDescription,
-} from "./points/item-kinds.ts";
-export { hintKeys } from "./points/key-hints.ts";
-export type { KeyboardPlatform } from "./points/keybindings.ts";
-export type {
-  ExplorerGroupContribution,
-  ExplorerItem,
-  ExplorerSectionContribution,
-  ItemPageSectionContribution,
-} from "./points/layout.ts";
-export type { LayoutContributions, LayoutPoints } from "./points/layout-points.ts";
-export type {
-  Contributed,
-  Ordered,
-  Point,
-  Registered,
-} from "./points/point-store.ts";
-export {
-  bySettingsGroup,
-  firstSettingsSection,
-  settingsSectionToOpen,
-} from "./points/settings-sections.ts";
+// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
+export * from "./phone-exports.ts";
+// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
+export * from "./points-exports.ts";
 export {
   type ChildProcessUsage,
   type EngineResourceReport,
@@ -495,4 +339,4 @@ export {
   type WindowActions,
 } from "./window/studio-window.tsx";
 export { StudioWorkspace, type StudioWorkspaceOptions } from "./window/studio-workspace.ts";
-export type { SettingsSectionName, WorkspaceContext } from "./workspace-context.ts";
+export type { SettingsSectionName, ShownPage, WorkspaceContext } from "./workspace-context.ts";

@@ -38,6 +38,10 @@ const timelineColumns: readonly ListColumn[] = [{ kind: "main" }, { kind: "time"
  * its entry, indented as child rows whose label names the step. They open
  * their step's panel.
  *
+ * After the swap either way the toggle, which keeps focus, scrolls into view
+ * at the nearest edge: it sits after what it shows, so a long run log would
+ * otherwise carry its focus ring out of the window (HAL-13822).
+ *
  * Under the timeline or the run log, the providers' notes on how they
  * changed the run's model calls, each once, quiet lines that need no action
  * (HAL-12317): what `halonic runs show` and `read_run` say after the steps.
@@ -60,6 +64,13 @@ export function EveryStep({
   const [showLog, setShowLog] = useState(false);
   const lines = useMemo(() => (showLog ? runLogLines(log) : []), [showLog, log]);
   const notes = useMemo(() => providerNotes(log).map(escapeHidden), [log]);
+  const toggle = useRef<HTMLButtonElement>(null);
+  const swapped = useRef(false);
+  useEffect(() => {
+    if (!swapped.current) return;
+    swapped.current = false;
+    toggle.current?.scrollIntoView?.({ block: "nearest" });
+  }, [showLog]);
   if (log.length === 0) {
     return null;
   }
@@ -79,7 +90,15 @@ export function EveryStep({
         )}
       </div>
       <NoteLines label={everyStepWords.notes} notes={notes} />
-      <Button variant="ghost" size="sm" onClick={() => setShowLog(!showLog)}>
+      <Button
+        ref={toggle}
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          swapped.current = true;
+          setShowLog(!showLog);
+        }}
+      >
         {showLog ? runLogWords.hide : runLogWords.show}
       </Button>
     </section>

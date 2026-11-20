@@ -307,6 +307,22 @@ verifies("studio.workspace-routines", () => {
     expect(await host.starterTarget("beta")).toBeUndefined();
   });
 
+  it("offers a workflow with the field its start block asks for, and an agent without one", async () => {
+    const { host } = setup({}, [], {
+      "hubs/acme/workflows/reply.workflow.yaml": `${replyFile}start:\n  label: Answer a customer's email\n  field: mail\n`,
+    });
+    expect(await host.targets(weekly)).toEqual([
+      {
+        kind: "workflow",
+        hubId: "acme",
+        id: "reply",
+        name: "Reply",
+        start: { label: "Answer a customer's email", field: "mail" },
+      },
+      { kind: "agent", hubId: "acme", id: "analyst", name: "Analyst" },
+    ]);
+  });
+
   it("refuses a hub with nothing to run, or a hub the workspace doesn't have, and writes nothing", async () => {
     const { host, changes } = setup();
     await expect(host.create({ name: "Check", hubId: "beta" })).rejects.toThrow(NothingToRun);
@@ -409,5 +425,27 @@ verifies("studio.workspace-routines", () => {
     expect(heard).toBe(2);
     stop();
     expect(fileListeners.size + runListeners.size).toBe(0);
+  });
+});
+
+verifies("studio.workspace-routines-make-live", () => {
+  it("opens Create version with only the routine's own file, and answers what it answered", async () => {
+    const opened: (readonly string[])[] = [];
+    const { host } = setup({
+      versionDialog: async (paths) => {
+        opened.push(paths);
+        return opened.length === 1 ? "made" : "cancelled";
+      },
+    });
+    expect(await host.makeLive?.(weekly)).toBe("made");
+    expect(await host.makeLive?.({ hubId: null, id: "daily" })).toBe("cancelled");
+    expect(opened).toEqual([
+      ["hubs/acme/workflows/routines/weekly-report.routine.yaml"],
+      ["workflows/routines/daily.routine.yaml"],
+    ]);
+  });
+
+  it("has no Make live where the app can't open Create version", () => {
+    expect(setup().host.makeLive).toBeUndefined();
   });
 });

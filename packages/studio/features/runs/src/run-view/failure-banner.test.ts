@@ -7,10 +7,13 @@ import { causeBanner } from "./failure-banner.ts";
 import { type RunPageContext, runBanner } from "./run-page-model.ts";
 
 const kinds: Record<string, ProviderKind> = { ollama: "local", claude: "cloud" };
+/** The `name` each provider's file gives; Ollama's file names none. */
+const names: Record<string, string> = { claude: "Claude" };
 const context: RunPageContext = {
   workflow: { name: "Support reply", stepDescription: () => undefined },
   workflowOfRun: () => undefined,
   providerKind: (id) => kinds[id],
+  providerName: (id) => names[id],
   currency: "EUR",
   now: mondayMorning,
 };
@@ -63,7 +66,7 @@ verifies("runs.run-view.failure-banners", () => {
       );
       const gone = [call("elsewhere", "m"), failedEvent()];
       expect(lines(causeBanner(failed("model-unreachable"), gone, context, false))).toEqual([
-        "Halonic couldn't reach Elsewhere for the model m. This computer may be offline. Check your internet connection, then run again.",
+        "Halonic couldn't reach elsewhere for the model m. This computer may be offline. Check your internet connection, then run again.",
       ]);
     });
 
@@ -344,5 +347,36 @@ verifies("runs.run-view.failure-banners", () => {
     expect(banner?.kind === "callout" && banner.lines[0]).toBe(
       "Support reply stopped in the step Draft.",
     );
+  });
+
+  describe("the provider's name (E6)", () => {
+    const unreachable = (provider: string, named?: (providerId: string) => string | undefined) =>
+      lines(
+        causeBanner(
+          failed("model-unreachable"),
+          [call(provider, "gpt-4o"), failedEvent("api.example.net")],
+          {
+            ...context,
+            providerKind: () => "cloud",
+            ...(named === undefined ? {} : { providerName: named }),
+          },
+          false,
+        ),
+      )?.[0];
+
+    it("names a provider by the name its file gives", () => {
+      expect(unreachable("work", (id) => (id === "work" ? "Work GPT" : undefined))).toMatch(
+        /^Halonic couldn't reach Work GPT at /,
+      );
+    });
+
+    it("names a provider without a name, or one that is gone, by its known name, never its id with a capital", () => {
+      expect(unreachable("openai", () => undefined)).toMatch(/^Halonic couldn't reach OpenAI at /);
+      expect(unreachable("lmstudio", undefined)).toMatch(/^Halonic couldn't reach LM Studio at /);
+    });
+
+    it("names any other provider by its id as written", () => {
+      expect(unreachable("my-server", undefined)).toMatch(/^Halonic couldn't reach my-server at /);
+    });
   });
 });

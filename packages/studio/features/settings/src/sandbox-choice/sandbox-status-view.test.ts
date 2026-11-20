@@ -104,6 +104,55 @@ verifies("settings.sandbox-status-view", () => {
     expect(sandboxStatusView({ kind: "checking" }).badge).toBeNull();
   });
 
+  it("offers a busy Check again while the host is still asking, like a saved backend with no proof", () => {
+    const asking = sandboxStatusView({ kind: "checking" }).row;
+    const unproven = sandboxStatusView(answered("srt-wsl", [backend("srt-wsl")])).row;
+    expect(asking).toEqual({
+      state: "Checking",
+      tone: "neutral",
+      line: null,
+      actions: ["check-again"],
+      checkBusy: true,
+    });
+    expect(unproven).toEqual(asking);
+  });
+
+  it("says why a saved backend can't run, with no badge", () => {
+    const view = sandboxStatusView(
+      answered("srt-wsl", [
+        backend("srt-wsl", { state: "not-available", reason: "virtualisation-off" }),
+      ]),
+    );
+    expect(view.badge).toBeNull();
+    expect(view.row).toMatchObject({
+      state: "Needs repair",
+      tone: "danger",
+      line: "The sandbox isn't ready: virtualisation is turned off on this computer.",
+      actions: ["check-again", "change"],
+    });
+  });
+
+  it("reads a plain sentence when the backend gives no reason", () => {
+    const view = sandboxStatusView(
+      answered("docker-sbx", [backend("docker-sbx", { offered: false, state: "not-available" })]),
+    );
+    expect(view.row.line).toBe("The sandbox isn't ready.");
+  });
+
+  it("offers Set up a sandbox and Change when the saved backend still needs setting up", () => {
+    const view = sandboxStatusView(
+      answered("srt", [backend("srt", { state: "setup-needed", reason: "bubblewrap-missing" })], {
+        platform: "linux",
+      }),
+    );
+    expect(view.badge).toBeNull();
+    expect(view.row).toMatchObject({
+      state: "Needs setting up",
+      line: null,
+      actions: ["set-up", "change"],
+    });
+  });
+
   it("says it couldn't check when the host can't answer", () => {
     const view = sandboxStatusView({ kind: "unreachable", reason: "Halonic isn't running." });
     expect(view.badge).toBeNull();

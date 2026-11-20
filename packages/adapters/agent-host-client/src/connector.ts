@@ -1,10 +1,11 @@
-import type {
-  ConnectorCallOptions,
-  ConnectorClient,
-  ConnectorConfig,
-  ConnectorFactory,
-  ConnectorFactoryContext,
-  ConnectorTool,
+import {
+  type ConnectorCallOptions,
+  type ConnectorClient,
+  type ConnectorConfig,
+  type ConnectorFactory,
+  type ConnectorFactoryContext,
+  type ConnectorTool,
+  ConnectorToolError,
 } from "@halonicjs/ports";
 import { s } from "@halonicjs/schema-kit";
 import { ConnectorFailedError, readConnectorAnswer } from "./connector-failure.ts";
@@ -24,7 +25,11 @@ const toolsSchema = s.array(
     .strict(),
 );
 
-const calledSchema = s.object({ text: s.string() }).strict();
+/** The tool's text, or what the tool said when it answered with an error of its own. */
+const calledSchema = s.union([
+  s.object({ text: s.string() }).strict(),
+  s.object({ toolError: s.string() }).strict(),
+]);
 
 const closedSchema = s.object({ closed: s.literal(true) }).strict();
 
@@ -84,6 +89,13 @@ class AgentHostConnector implements ConnectorClient {
     return readConnectorAnswer(route, answer, toolsSchema) as ConnectorTool[];
   }
 
+  /**
+   * Calls the tool in the host.
+   *
+   * @throws ConnectorToolError when the tool answered with an error of its own,
+   *   so the engine logs a failed call; any other error when the call got no
+   *   answer (the host or the program died, it ran out of time)
+   */
   async callTool(
     name: string,
     args: Record<string, unknown>,
@@ -99,7 +111,9 @@ class AgentHostConnector implements ConnectorClient {
       ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
     };
     const answer = await this.#transport.request(route, body);
-    return readConnectorAnswer(route, answer, calledSchema).text;
+    const called = readConnectorAnswer(route, answer, calledSchema);
+    if ("toolError" in called) throw new ConnectorToolError(this.id, name, called.toolError);
+    return called.text;
   }
 
   async close(): Promise<void> {

@@ -1,7 +1,14 @@
 import { Button, EmptyState, SkeletonBar, useToastStore } from "@halonicjs/studio-kit";
+import {
+  copyDetails,
+  copyDetailsWords,
+  detailsOf,
+  engineReasonFor,
+  engineWordsOf,
+  isUnexplained,
+} from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState } from "react";
 import type { WorkflowRef, WorkflowsHost, WorkflowTests } from "../api.ts";
-import { failureReason } from "../list/list-words.ts";
 import { useHostRead } from "../page/use-workflow.ts";
 import { CaseCard } from "./case-card.tsx";
 import { testRows, testSummary } from "./test-lines.ts";
@@ -106,10 +113,20 @@ export function TestsPage({
           : { tone: "danger", title: words.someFailed(failed, result.cases.length) },
       );
     } catch (error) {
+      // An internal error reads "Halonic ran into a problem it can't explain yet." with Copy
+      // details instead of Try again, which would hit the same bug (microcopy 22 F13, HAL-11626).
+      const title = words.cantRun(
+        endWithStop(engineReasonFor(error, notAnswering ?? engineWordsOf({}).notAnswering)),
+      );
       toasts?.show({
         tone: "danger",
-        title: words.cantRun(failureReason(error, notAnswering)),
-        action: { label: words.tryAgain, onClick: () => void start() },
+        title,
+        action: isUnexplained(error)
+          ? {
+              label: copyDetailsWords.label,
+              onClick: () => void copyDetails(detailsOf(title, error), toasts),
+            }
+          : { label: words.tryAgain, onClick: () => void start() },
       });
     } finally {
       setDone(undefined);
@@ -211,3 +228,7 @@ const stateWords = {
   "not-run": words.notRun,
   waiting: words.waiting,
 } as const;
+
+function endWithStop(sentence: string): string {
+  return sentence.endsWith(".") ? sentence : `${sentence}.`;
+}

@@ -5,8 +5,11 @@ import { secretHosts } from "../settings/plugin-settings-section.tsx";
 import { trustCheckContent } from "../trust/trust-check.ts";
 import { clientSecretHosts, clientSecretNames } from "./client-secret-hosts.ts";
 
-/** An integration whose sign-in sends its client secret to auth.example.com and revoke.example.com. */
-function acme(revokeUrl = "https://revoke.example.com/oauth/revoke"): Plugin {
+/**
+ * An integration whose sign-in sends its client secret to auth.example.com
+ * (token) and login.example.com (sign-in and revoke).
+ */
+function acme(revokeUrl = "https://login.example.com/oauth/revoke"): Plugin {
   const parsed = parseFile(
     "integration",
     `id: acme
@@ -20,7 +23,7 @@ signIns:
   account:
     purpose: Access to your Acme account.
     flow: oauth-code
-    authorizeUrl: "https://auth.example.com/oauth/authorize"
+    authorizeUrl: "https://login.example.com/oauth/authorize"
     tokenUrl: "https://auth.example.com/oauth/token"
     revokeUrl: "${revokeUrl}"
     clientId: abc123
@@ -36,7 +39,7 @@ verifies("plugins.plugin-client-secrets", () => {
     it("is the token and the revoke URL's hosts of the sign-in that names the secret", () => {
       expect(clientSecretHosts(acme(), "acme-client")).toEqual([
         "auth.example.com",
-        "revoke.example.com",
+        "login.example.com",
       ]);
     });
 
@@ -56,7 +59,7 @@ verifies("plugins.plugin-client-secrets", () => {
   });
 
   it("says in Settings where a client secret is sent", () => {
-    expect(secretHosts(acme(), "acme-client")).toBe("auth.example.com and revoke.example.com");
+    expect(secretHosts(acme(), "acme-client")).toBe("auth.example.com and login.example.com");
   });
 
   it("lists a client secret in the trust check with where it goes", () => {
@@ -65,7 +68,7 @@ verifies("plugins.plugin-client-secrets", () => {
     expect(content.secrets).toEqual([
       {
         name: "acme-client",
-        goesTo: ["auth.example.com", "revoke.example.com"],
+        goesTo: ["auth.example.com", "login.example.com"],
         how: undefined,
         givenTo: undefined,
         kind: "backend",

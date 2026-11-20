@@ -20,13 +20,17 @@
 use std::fs::File;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus, Stdio};
-use std::time::{Duration, Instant};
+use std::process::{Command, Stdio};
+use std::time::Duration;
 
 use sha2::{Digest, Sha256};
 
-use crate::stderr_log::log_stderr;
-use crate::without_console_window;
+use crate::console_window::new_command;
+
+mod run;
+
+pub(crate) use run::{Input, run_within_bytes};
+use run::{run, run_within};
 
 /// The name Halonic's distro is imported under.
 pub const DISTRO: &str = "halonic";
@@ -48,6 +52,11 @@ pub const RUNTIME_UPDATER: &str = "/usr/local/sbin/halonic-runtime";
 
 /// The longest runtime version the updater accepts.
 const VERSION_LIMIT: usize = 64;
+
+/// How long a copy of the sandbox choice may take. The first host command
+/// after a runtime update unpacks the host's files, and WSL may have to
+/// start the distro first.
+const SETTING_COPY_LIMIT: Duration = Duration::from_secs(120);
 
 /// Why a step in the distro couldn't be done.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -159,6 +168,50 @@ pub fn distro_host_command(wsl: &Path, relay_port: u16) -> Command {
     command
 }
 
+/// What the shell does to the copy of the person's sandbox choice in the
+/// distro (HAL-13319). The choice in the Windows profile is the real one;
+/// the distro's host reads only this copy, never the Windows profile.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SettingCopy<'a> {
+    /// Save this choice, the whole `sandbox-setting.json` as saved on Windows.
+    Save(&'a str),
+    /// Remove the copy, as the choice on Windows was removed.
+    Remove,
+}
+
+/// The command that saves or removes the copy of the sandbox choice: the
+/// distro's agent host, as the `halonic` user, with the distro's profile
+/// folder. The choice goes over standard input, never on the command line.
+pub fn setting_copy_command(wsl: &Path, copy: SettingCopy<'_>) -> Command {
+    let mut command = distro_command(wsl, DISTRO_USER, DISTRO_HOST);
+    command.args(["--profile-folder", DISTRO_PROFILE_FOLDER]);
+    command.arg(match copy {
+        SettingCopy::Save(_) => "--sandbox-setting-copy",
+        SettingCopy::Remove => "--sandbox-setting-remove",
+    });
+    command
+}
+
+/// Makes the copy of the sandbox choice in the distro match `copy`. The
+/// host there checks the choice again and writes a temporary file it
+/// renames, so its host never reads half a choice.
+///
+/// # Errors
+///
+/// When `wsl.exe` can't start, when the host refuses the choice or can't
+/// write it ([`WslError::Failed`]), or after [`SETTING_COPY_LIMIT`].
+pub fn copy_sandbox_setting(wsl: &Path, copy: SettingCopy<'_>) -> Result<(), WslError> {
+    send_setting(setting_copy_command(wsl, copy), copy)
+}
+
+fn send_setting(command: Command, copy: SettingCopy<'_>) -> Result<(), WslError> {
+    let input = match copy {
+        SettingCopy::Save(text) => Input::Bytes(text.as_bytes().to_vec()),
+        SettingCopy::Remove => Input::Given(Stdio::null()),
+    };
+    run_within(command, input, SETTING_COPY_LIMIT).map(drop)
+}
+
 /// Whether Halonic's distro is among the distros WSL lists. Answers
 /// nothing about WSL being enabled: a `wsl.exe` that ends with an error,
 /// such as one with no distro at all, is `Failed`, so the caller doesn't
@@ -168,13 +221,12 @@ pub fn distro_host_command(wsl: &Path, relay_port: u16) -> Command {
 ///
 /// When `wsl.exe` can't start, or ends with an error.
 pub fn distro_installed(wsl: &Path) -> Result<bool, WslError> {
-    let mut command = Command::new(wsl);
+    let mut command = new_command(wsl);
     command.env_remove("WSLENV").args(["--list", "--quiet"]);
     command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null());
-    without_console_window(&mut command);
     let output = command
         .output()
         .map_err(|error| WslError::Start(format!("wsl.exe could not start: {error}.")))?;
@@ -267,7 +319,7 @@ pub fn install_runtime(
 ///
 /// When `wsl.exe` can't start, or with the updater's reason when it fails.
 pub fn run_runtime_step(command: Command) -> Result<String, WslError> {
-    run(command, Stdio::null())
+    run(command, Input::Given(Stdio::null()))
 }
 
 /// [`run_runtime_step`] with a time limit: a step that hasn't ended after
@@ -277,7 +329,7 @@ pub fn run_runtime_step(command: Command) -> Result<String, WslError> {
 ///
 /// [`WslError::TimedOut`] after `limit`, otherwise as [`run_runtime_step`].
 pub fn run_runtime_step_within(command: Command, limit: Duration) -> Result<String, WslError> {
-    run_within(command, Stdio::null(), limit)
+    run_within(command, Input::Given(Stdio::null()), limit)
 }
 
 /// The SHA-256 of a file, as 64 lowercase hex digits.
@@ -300,7 +352,7 @@ fn send_archive(command: Command, archive: &Path, sha256: &str) -> Result<(), Ws
         return Err(WslError::ChecksumDiffers);
     }
     file.seek(SeekFrom::Start(0)).map_err(archive_error)?;
-    run(command, Stdio::from(file)).map(drop)
+    run(command, Input::Given(Stdio::from(file))).map(drop)
 }
 
 fn reader_sha256(file: &mut File) -> Result<String, WslError> {
@@ -321,80 +373,13 @@ fn reader_sha256(file: &mut File) -> Result<String, WslError> {
 }
 
 fn distro_command(wsl: &Path, user: &str, program: &str) -> Command {
-    let mut command = Command::new(wsl);
+    let mut command = new_command(wsl);
     // `WSLENV` names Windows variables that wsl.exe copies into the distro.
     command.env_remove("WSLENV");
     command.args(["-d", DISTRO, "-u", user]);
     // The Windows working folder has no path in the distro: no drive is mounted.
     command.args(["--cd", "/", "--exec", program]);
     command
-}
-
-fn run(command: Command, input: Stdio) -> Result<String, WslError> {
-    run_within(command, input, Duration::MAX)
-}
-
-fn run_within(command: Command, input: Stdio, limit: Duration) -> Result<String, WslError> {
-    run_within_bytes(command, input, limit)
-        .map(|printed| String::from_utf8_lossy(&printed).into_owned())
-}
-
-/// Runs `command` with `input` and answers the bytes it printed, stopping it
-/// after `limit`. A `wsl.exe` of its own prints UTF-16, so the caller decodes.
-pub(crate) fn run_within_bytes(
-    mut command: Command,
-    input: Stdio,
-    limit: Duration,
-) -> Result<Vec<u8>, WslError> {
-    command
-        .stdin(input)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    without_console_window(&mut command);
-    let mut child = command
-        .spawn()
-        .map_err(|error| WslError::Start(format!("wsl.exe could not start: {error}.")))?;
-    log_stderr(&mut child, "wsl");
-    let mut stdout = child.stdout.take().expect("stdout is piped");
-    // Read on another thread, so a step that fills the pipe can't stall the wait.
-    let reader = std::thread::spawn(move || {
-        let mut printed = Vec::new();
-        let _ = stdout.read_to_end(&mut printed);
-        printed
-    });
-    let deadline = Instant::now().checked_add(limit);
-    let status = loop {
-        match child.try_wait() {
-            Ok(Some(status)) => break status,
-            Ok(None) if deadline.is_some_and(|deadline| Instant::now() >= deadline) => {
-                let _ = child.kill();
-                // The reader is left to end on its own: a child of the step may still hold the pipe.
-                let _ = child.wait();
-                return Err(WslError::TimedOut);
-            }
-            Ok(None) => std::thread::sleep(Duration::from_millis(20)),
-            Err(error) => {
-                let _ = child.kill();
-                return Err(WslError::Start(format!(
-                    "wsl.exe could not be awaited: {error}."
-                )));
-            }
-        }
-    };
-    let printed = reader.join().unwrap_or_default();
-    ending(status, printed)
-}
-
-fn ending(status: ExitStatus, stdout: Vec<u8>) -> Result<Vec<u8>, WslError> {
-    match status.code() {
-        Some(0) => Ok(stdout),
-        Some(3) => Err(WslError::Busy),
-        Some(4) => Err(WslError::ChecksumDiffers),
-        Some(5) => Err(WslError::ArchiveRefused),
-        Some(6) => Err(WslError::NothingToRollBack),
-        Some(7) => Err(WslError::MountsLeft),
-        code => Err(WslError::Failed(code)),
-    }
 }
 
 fn check_version(version: &str) -> Result<(), WslError> {

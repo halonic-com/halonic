@@ -260,7 +260,9 @@ export function FilesTree({
               // The marks are not read along with the name field while it is edited.
               aria-description={descriptionOf(node, label, renaming?.path)}
               title={node.name.length > nameLimit ? node.name : undefined}
-              className={`group flex min-h-8 cursor-pointer items-center gap-1 rounded-sm pr-2 text-body text-fg outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-accent aria-selected:bg-accent-soft aria-selected:selected-forced`}
+              // In high contrast both marks are outlines: the open file's steps aside while the
+              // row has keyboard focus, so the focus outline shows.
+              className={`group flex min-h-8 cursor-pointer items-center gap-1 rounded-sm pr-2 text-body text-fg hover:bg-surface-muted focus-ring-inset aria-selected:bg-accent-soft aria-selected:not-focus-visible:selected-forced`}
               style={{ paddingLeft: `${row.depth * 16 + 4}px` }}
               onClick={(event) => {
                 event.stopPropagation();

@@ -72,13 +72,19 @@ interface ButtonWithLabel extends ButtonBase {
   /** What screen readers hear while `busy`, when it differs from `busyLabel`: "Checking for updates". */
   readonly busyName?: string | undefined;
   readonly label?: never;
+  readonly round?: never;
 }
 
-/** A square button with only an icon. */
+/** A square button with only an icon, or a round one at the end of a round chip. */
 interface IconButton extends ButtonBase {
   readonly icon: ReactNode;
   /** Its name, saying what and which: "Close Support reply", "More actions for Sorter". */
   readonly label: string;
+  /**
+   * Round instead of square, for the ✕ at the end of a round chip, so its edge in high contrast
+   * and its hover fill follow the chip's round end.
+   */
+  readonly round?: boolean;
   readonly children?: never;
   readonly busyLabel?: never;
   readonly busyName?: never;
@@ -93,7 +99,7 @@ export type ButtonProps = ButtonWithLabel | IconButton;
  * for, and `GrayText` at full strength in high contrast, its edge as well as its text.
  */
 const shared = [
-  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-sm border",
+  "inline-flex shrink-0 items-center justify-center gap-1.5 border",
   "transition-colors focus-ring",
   "aria-disabled:cursor-not-allowed aria-disabled:opacity-45 contrast-more:aria-disabled:opacity-60",
   "aria-disabled:text-forced-disabled aria-disabled:border-forced-disabled",
@@ -135,22 +141,31 @@ const asLargeOnTouch = "phone:min-h-control-lg phone:px-4 touch:min-h-control-lg
 const hitArea = "phone:hit-touch touch:hit-touch";
 
 /**
+ * A button with words is never wider than the box it's in. On one line it keeps its size; when
+ * its label doesn't fit (a narrow box, 400 % zoom), the label wraps between words, centred, and
+ * the button grows taller instead of pushing the page sideways (HAL-14010). `py-0.5` keeps the
+ * wrapped lines off its edges; on one line the minimum height wins.
+ */
+const wrapsWhenNarrow = "max-w-full py-0.5 text-center";
+
+/**
  * `xs` fits the 24px status bar with its 1px line and 1px to spare above and below, in the bar's
- * caption type, as high as a Status chip; the others use the body's
- * strong type. On a phone and a touch screen `xs` grows like `sm`.
+ * caption type, as high as a Status chip, and stays on one line so the bar keeps its height; the
+ * others use the body's strong type. On a phone and a touch screen `xs` grows like `sm`.
  */
 const sizeClasses: Record<ButtonSize, string> = {
   xs: `min-h-5 px-2 text-caption whitespace-nowrap ${asLargeOnTouch} ${hitArea}`,
-  sm: `min-h-control-sm px-2.5 text-body-strong whitespace-nowrap ${asLargeOnTouch} ${hitArea}`,
-  md: `min-h-control-md px-3 text-body-strong whitespace-nowrap ${asLargeOnTouch} ${hitArea}`,
-  lg: `min-h-control-lg px-4 text-body-strong whitespace-nowrap ${hitArea}`,
+  sm: `min-h-control-sm px-2.5 text-body-strong ${wrapsWhenNarrow} ${asLargeOnTouch} ${hitArea}`,
+  md: `min-h-control-md px-3 text-body-strong ${wrapsWhenNarrow} ${asLargeOnTouch} ${hitArea}`,
+  lg: `min-h-control-lg px-4 text-body-strong ${wrapsWhenNarrow} ${hitArea}`,
   // A touch label wraps between words, so at large text the button grows taller, not wider.
   touch: "min-h-touch px-4 py-2 text-center text-body-strong",
 };
 
 /**
- * Icon buttons are squares. On a touch screen they're 40px, like the text buttons beside them,
- * with the 48px hit area; on a phone 48px with a 20px icon. phone: wins where both apply.
+ * Icon buttons are squares, or circles when `round`. On a touch screen they're 40px, like the
+ * text buttons beside them, with the 48px hit area; on a phone 48px with a 20px icon. phone: wins
+ * where both apply.
  */
 const iconButtonClasses: Record<ButtonSize, string> = {
   xs: "size-5 touch:size-control-lg touch:hit-touch phone:size-touch",
@@ -217,6 +232,7 @@ export function Button(props: ButtonProps) {
 
   const classes = [
     shared,
+    isIconButton && props.round === true ? "rounded-full" : "rounded-sm",
     onTint ? ghostOnTint : variantClasses[variant],
     buttonSizeClasses(size, isIconButton, inFieldBox),
     block ? "w-full" : "",

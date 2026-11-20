@@ -27,7 +27,7 @@ is open and fails when the code closes it, so whoever closes it changes the test
 | T14 | a placement the sheet doesn't say | `testing/sign-in/src/kit-attacks.test.ts`, `adapters/integration-runner/src/halonic/sign-in-attacks.test.ts`; `adapters/integration-kit/src/sign-in-placement.test.ts` |  |
 | T15 | forced refreshes with repeated 401s | `testing/sign-in/src/token-attacks.test.ts`; `adapters/integration-kit/src/sign-in-rejected.test.ts` |  |
 | T16 | a client secret with hosts, or sent off the token and revoke hosts | `testing/sign-in/src/sheet-attacks.test.ts`, `kit-attacks.test.ts` | the trust check's warning: Studio, not built yet |
-| T17 | an update that changes the revoke URL or client authentication | `testing/sign-in/src/token-attacks.test.ts` |  |
+| T17 | an update that changes the revoke URL or client authentication | `testing/sign-in/src/token-attacks.test.ts`; a revoke URL off the token and authorize hosts: `core/format/src/kinds/integration/sign-ins.test.ts` |  |
 | T18 | a sheet edited without an update | `testing/sign-in/src/token-attacks.test.ts` |  |
 | T19 | a token of one character, with spaces or line breaks | `testing/sign-in/src/flow-attacks.test.ts` |  |
 | T20 | a callback after the sheet changed or the sign-in expired | `testing/sign-in/src/flow-attacks.test.ts` |  |

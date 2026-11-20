@@ -78,7 +78,7 @@ const sections: Registered<SettingsSectionContribution>[] = [
     icon: "trusted-sources",
     scope: "host",
     order: 40,
-    description: "Workspaces, hubs and skills you've trusted on this computer.",
+    description: "Workspaces and plugins you've trusted on this computer.",
     view: "TrustedSourcesSection",
     load: loadTrustedSourcesSection,
     featureId: "workspace",

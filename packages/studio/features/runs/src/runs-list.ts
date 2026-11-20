@@ -1,6 +1,6 @@
 import { runStanding } from "@halonicjs/app";
 import { type PlaceSignal, type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
-import type { RunsSource, SourcedRun } from "./api.ts";
+import type { RunnableWorkflow, RunsSource, SourcedRun } from "./api.ts";
 import type { WorkflowRef } from "./list/runs-filter.ts";
 import { pageWords } from "./run-words.ts";
 
@@ -13,10 +13,10 @@ export interface RunsListState {
   /** Why the last load failed, until one succeeds; the runs stay as they were. */
   readonly error: unknown;
   /**
-   * The names `halonic run` takes for the workspace's workflows, in the Workflows list's order;
-   * `undefined` until they are read and when reading them failed, so the empty lines then name none.
+   * The workspace's workflows, in the Workflows list's order; `undefined` until they are read and
+   * when reading them failed, so the empty lines then name none.
    */
-  readonly workflows: readonly string[] | undefined;
+  readonly workflows: readonly RunnableWorkflow[] | undefined;
 }
 
 /**
@@ -35,6 +35,8 @@ export class RunsList {
   readonly #listeners = new Set<() => void>();
   readonly #stopWatching: () => void;
   #loads = 0;
+  /** The last load started, which the earlier ones wait for. */
+  #latest: Promise<void> = Promise.resolve();
   #requested: WorkflowRef | undefined;
   #toReview: string | undefined;
   readonly #opened = new Set<string>();
@@ -120,22 +122,30 @@ export class RunsList {
 
   /**
    * Loads the runs again. When loads overlap, only the last one started
-   * counts, so an older answer never overwrites a newer one. Once the
-   * workspace has closed it does nothing.
+   * counts, so an older answer never overwrites a newer one, and each call
+   * resolves once that last one has: the list is then at least as new as the
+   * call. Once the workspace has closed it does nothing.
    */
-  async refresh(): Promise<void> {
-    if (this.#disposed) return;
-    const load = ++this.#loads;
+  refresh(): Promise<void> {
+    if (this.#disposed) return Promise.resolve();
+    const load = this.#load(++this.#loads);
+    this.#latest = load;
+    return load;
+  }
+
+  async #load(load: number): Promise<void> {
     try {
       const [runs, workflows] = await Promise.all([
         this.source.list(),
         // A failed read only leaves the lines without a name; it isn't the list's error.
         this.source.runnableWorkflows().catch(() => undefined),
       ]);
-      if (load !== this.#loads || this.#disposed) return;
+      if (this.#disposed) return;
+      if (load !== this.#loads) return this.#latest;
       this.#set({ runs, loaded: true, error: undefined, workflows });
     } catch (error) {
-      if (load !== this.#loads || this.#disposed) return;
+      if (this.#disposed) return;
+      if (load !== this.#loads) return this.#latest;
       this.#set({ ...this.#state, error });
     }
   }

@@ -46,12 +46,30 @@ export const fullSuitePaths: readonly string[] = [
 const noTestPattern =
   /^(docs\/|decisions\/|\.changeset\/.*\.md$|\.github\/(ISSUE_TEMPLATE\/|CODEOWNERS$|pull_request_template\.md$))|(^|\/)(README|AGENTS|CHANGELOG)\.md$/;
 
+/**
+ * Docs a package's tests read, by path, with the packages whose tests read
+ * them. Every other doc is read by no test.
+ */
+export const docsReaders: Readonly<Record<string, readonly string[]>> = {
+  "docs/guides/area-owners.md": ["@halonicjs/tooling-check"],
+  "docs/guides/integrations.md": ["@halonicjs/format"],
+  "docs/legal/dco-standing-statement.md": ["@halonicjs/tooling-check"],
+};
+
 /** The packages whose tests read `examples/` (see AGENTS.md, Commands). */
 export const examplesReaders: readonly string[] = [
   "halonic",
   "@halonicjs/workspace",
   "@halonicjs/test-runner",
 ];
+
+/** The packages whose tests read a file outside every package, if any do. */
+function readersOf(file: string): readonly string[] | undefined {
+  if (file.startsWith("examples/")) {
+    return examplesReaders;
+  }
+  return Object.hasOwn(docsReaders, file) ? docsReaders[file] : undefined;
+}
 
 function matchesPath(file: string, path: string): boolean {
   return path.endsWith("/") ? file.startsWith(path) : file === path;
@@ -101,11 +119,19 @@ function withDependents(
  * For each package, by name, the packages whose tests `verifies()` one of its
  * requirements. A few test a requirement of a package they don't depend on,
  * and the trace check needs those tests to prove the requirement.
+ *
+ * Pass the changed files as `changed` to get the links of both sides of the
+ * change, whichever side is checked out. A requirement's package comes from
+ * its file's path, so the changed paths add the requirements the other side
+ * has and this one doesn't, a deleted one included. A test file that names
+ * a requirement differently on the other side has changed, and its package
+ * is selected anyway.
  */
 export function verifierPackages(
   context: Pick<CheckContext, "files" | "packages" | "read">,
+  changed: readonly string[] = [],
 ): Map<string, string[]> {
-  const ownerOf = requirementOwners(context);
+  const ownerOf = requirementOwners([...context.files, ...changed], context.packages);
   const verifiers = new Map<string, string[]>();
   for (const file of context.files) {
     const tester = owningPackage(file, context.packages);
@@ -137,10 +163,13 @@ function isNamedPackage(
 }
 
 /** Each requirement ID's package, by name. */
-function requirementOwners(context: Pick<CheckContext, "files" | "packages">): Map<string, string> {
+function requirementOwners(
+  files: readonly string[],
+  packages: readonly WorkspacePackage[],
+): Map<string, string> {
   const ownerOf = new Map<string, string>();
-  for (const file of context.files) {
-    const pkg = owningPackage(file, context.packages);
+  for (const file of files) {
+    const pkg = owningPackage(file, packages);
     if (isRequirementFile(file) && isNamedPackage(pkg)) {
       ownerOf.set(expectedRequirementId(file, pkg.directory), pkg.manifest.name);
     }
@@ -151,7 +180,8 @@ function requirementOwners(context: Pick<CheckContext, "files" | "packages">): M
 /**
  * The packages whose tests a change needs: every package with a changed file
  * and every package that depends on one or verifies one's requirements
- * (`verifiers`), or "all" when a changed file is one of `fullSuitePaths`,
+ * (`verifiers`), the readers of a changed file in `examples/` or
+ * `docsReaders`, or "all" when a changed file is one of `fullSuitePaths`,
  * lies outside every package and isn't docs, or when the list of changed
  * files is empty (it couldn't be read).
  */
@@ -171,8 +201,8 @@ export function testSelection(
     const owner = owningPackage(file, packages);
     if (owner !== undefined && owner.directory !== "." && owner.manifest.name !== undefined) {
       touched.add(owner.manifest.name);
-    } else if (file.startsWith("examples/")) {
-      for (const reader of examplesReaders) {
+    } else if (readersOf(file) !== undefined) {
+      for (const reader of readersOf(file) ?? []) {
         touched.add(reader);
       }
     } else if (!noTestPattern.test(file)) {
@@ -206,7 +236,7 @@ export function selectTests(context: CheckContext, base: string, head = "HEAD"):
     return { kind: "all", reason: `git couldn't list the changes (${(error as Error).message})` };
   }
   const files = changed.split("\n").filter((file) => file !== "");
-  return testSelection(files, context.packages, verifierPackages(context));
+  return testSelection(files, context.packages, verifierPackages(context, files));
 }
 
 /** The folders of the selected packages, or `undefined` when every package is selected. */

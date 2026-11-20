@@ -3,6 +3,7 @@ import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { PluginRefusal } from "./plugin-refusal.ts";
 import { pluginRoutes } from "./plugin-routes.ts";
+import { PluginSecretValues } from "./plugin-secret-values.ts";
 import { type PluginBackends, PluginTable } from "./plugin-table.ts";
 
 const token = randomLaunchToken();
@@ -43,6 +44,15 @@ export class FakeBackends implements PluginBackends {
     return fingerprint;
   }
 
+  /** The secrets each plugin declares; `acme` declares `acme-key`. */
+  readonly declared = new Map<string, readonly string[]>([["acme", ["acme-key"]]]);
+
+  async trustedSecretNames(plugin: string): Promise<Readonly<Record<string, string>>> {
+    await this.trustedFingerprint(plugin);
+    const declared = this.declared.get(plugin) ?? [];
+    return Object.fromEntries(declared.map((secret) => [secret, `plugin__${plugin}__${secret}`]));
+  }
+
   async open(plugin: string, fingerprint: string): Promise<ConnectorClient> {
     if (this.trusted.get(plugin) !== fingerprint) throw new PluginRefusal("plugin_not_trusted");
     if (this.refuseStart !== undefined) throw new PluginRefusal(this.refuseStart);
@@ -60,6 +70,7 @@ export interface Setup {
   url: string;
   backends: FakeBackends;
   table: PluginTable;
+  secretValues: PluginSecretValues;
   logged: string[];
   close(): Promise<void>;
 }
@@ -67,16 +78,18 @@ export interface Setup {
 /** Starts the plugin routes over fake backends. */
 export async function startRoutes(options: { maxPlugins?: number } = {}): Promise<Setup> {
   const backends = new FakeBackends();
-  const table = new PluginTable(backends, options);
+  const secretValues = new PluginSecretValues();
+  const table = new PluginTable(backends, { ...options, secretValues });
   const logged: string[] = [];
   const server: HostServer = await startHostServer(
     token,
-    pluginRoutes({ plugins: table, log: (text) => logged.push(text) }),
+    pluginRoutes({ plugins: table, secretValues, log: (text) => logged.push(text) }),
   );
   return {
     url: server.url,
     backends,
     table,
+    secretValues,
     logged,
     close: async () => {
       await table.closeAll();
@@ -90,6 +103,24 @@ export function post(url: string, body: unknown): Promise<Response> {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify(body),
+  });
+}
+
+/** Hands over `secrets` for `plugin`, with the page's `Sec-Fetch-Site` when one is given. */
+export function handOver(
+  url: string,
+  plugin: string,
+  secrets: unknown,
+  site?: string,
+): Promise<Response> {
+  return fetch(`${url}/v1/plugins/secrets`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+      ...(site === undefined ? {} : { "sec-fetch-site": site }),
+    },
+    body: JSON.stringify({ plugin, secrets }),
   });
 }
 

@@ -100,6 +100,18 @@ verifies("kit.button", () => {
     expect(className).not.toContain("whitespace-nowrap");
   });
 
+  it("lets a sm, md or lg label wrap when its box is too narrow, and keeps xs on one line", () => {
+    for (const size of ["sm", "md", "lg"] as const) {
+      const { className } = renderButton({ size, children: "Check for updates" });
+      expect(className).toContain("max-w-full");
+      expect(className).toContain("text-center");
+      expect(className).not.toContain("whitespace-nowrap");
+    }
+    const { className } = renderButton({ size: "xs", children: "Try again" });
+    expect(className).toContain("whitespace-nowrap");
+    expect(className).not.toContain("max-w-full");
+  });
+
   it("shows the keyboard focus ring", () => {
     expect(renderButton({ children: "Save" }).className).toContain("focus-ring");
   });

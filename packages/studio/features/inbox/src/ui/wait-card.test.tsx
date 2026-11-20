@@ -51,6 +51,20 @@ verifies("inbox.wait-card", () => {
       expect(root.textContent).toContain("Waiting since 10:40 (3 min)");
     });
 
+    // jsdom lays nothing out, so this holds the classes that do it: the header wraps, its text
+    // asks for 10rem, and Open run sits after it on the right (HAL-14006).
+    it("puts Open run on a line under the title when the card is too narrow", () => {
+      const { root } = openCard();
+      const header = root.querySelector("header");
+      const text = root.querySelector("h2")?.parentElement;
+      expect(header?.className).toContain("flex-wrap");
+      expect(text?.parentElement).toBe(header);
+      expect(text?.className).toContain("basis-40");
+      const openRun = button(root, "Open run").parentElement;
+      expect(openRun?.parentElement).toBe(header);
+      expect(openRun?.className).toContain("ml-auto");
+    });
+
     it("shows the body as plain text: no link, no image, no HTML", () => {
       const { root } = openCard();
       const body = root.querySelector("bdi");
@@ -135,6 +149,40 @@ verifies("inbox.wait-card", () => {
       expect(root.textContent).toContain("Nothing else is waiting for you.");
       expect(root.textContent).not.toContain("Waiting since");
       expect(button(root, "Open run")).toBeDefined();
+    });
+
+    it("says the run finished when the approve finished it (HAL-13919)", async () => {
+      const { root, later } = openCard({
+        decisions: { answer: async () => waitingRun("r43", { status: "completed" }) },
+      });
+      later(61);
+      await press(button(root, "Approve"));
+      expect(root.querySelector("[role='group']")?.textContent).toContain(
+        "Approved by you at 10:44. The run finished.",
+      );
+      expect(root.textContent).not.toContain("continues");
+    });
+
+    it("says neither continues nor finished when the approve ended the run another way", async () => {
+      const { root, later } = openCard({
+        decisions: { answer: async () => waitingRun("r43", { status: "failed" }) },
+      });
+      later(61);
+      await press(button(root, "Approve"));
+      const decided = root.querySelector("[role='group']")?.textContent ?? "";
+      expect(decided).toContain("Approved by you at 10:44.");
+      expect(decided).not.toMatch(/continues|finished/);
+    });
+
+    it("says only who rejected and when, also when the reject finished the run", async () => {
+      const { root, later } = openCard({
+        decisions: { answer: async () => waitingRun("r43", { status: "completed" }) },
+      });
+      later(61);
+      await press(button(root, "Reject"));
+      const decided = root.querySelector("[role='group']")?.textContent ?? "";
+      expect(decided).toContain("Rejected by you at 10:44.");
+      expect(decided).not.toMatch(/continues|finished/);
     });
 
     it("says only who rejected and when, for the step's own reject", async () => {

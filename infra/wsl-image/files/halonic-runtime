@@ -171,9 +171,7 @@ do_security_update() {
   # finish what was cut off first; with nothing pending this does nothing. Its
   # package scripts may set a bit or a capability, and the apt-get update below
   # can fail offline, so drop those right away, not only after the upgrade.
-  dpkg --force-confold --configure -a
-  drop_setuid
-  drop_capabilities
+  with_drops dpkg --force-confold --configure -a
   lists="$(mktemp -d "$state/apt.XXXXXX")"
   trap 'rm -rf "$lists"' EXIT
   mkdir "$lists/partial"
@@ -189,12 +187,21 @@ SRC
   set -- -o Dir::Etc::SourceList=/dev/null -o "Dir::Etc::SourceParts=$lists" \
     -o "Dir::State::Lists=$lists" -o Dpkg::Options::=--force-confold
   apt-get "$@" -q update
-  apt-get "$@" -q -y upgrade
+  with_drops apt-get "$@" -q -y upgrade
   apt-get clean
-  drop_setuid
-  drop_capabilities
   touch "$stamp"
   echo "security updates installed"
+}
+
+# Runs a command that may run package scripts, then drops setuid bits and file
+# capabilities even when it failed (a script may run setcap and then exit 1,
+# HAL-12766), and returns the command's exit code, so set -e still stops.
+with_drops() {
+  rc=0
+  "$@" || rc=$?
+  drop_setuid
+  drop_capabilities
+  return "$rc"
 }
 
 # The image has no setuid or setgid programs (HAL-5845), and dpkg-statoverride

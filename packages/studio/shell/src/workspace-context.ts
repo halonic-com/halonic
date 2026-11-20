@@ -1,5 +1,6 @@
 import type { Announcer } from "./announcer/announcer.ts";
 import type { BadgeRegistry } from "./badges/badge-registry.ts";
+import type { CloseStack } from "./close-stack/close-stack.ts";
 import type { EngineWords, StudioHost } from "./engine/engine-words.ts";
 import type { SidebarPlace } from "./points/frame.ts";
 import type { ItemRef, OpenItemOptions } from "./points/item-kinds.ts";
@@ -95,12 +96,26 @@ export interface WorkspaceContext {
    */
   readonly activeItem?: ActiveItemSource;
   /**
+   * The page the window shows now: the active tab's on the desktop, the phone's own page on a
+   * phone. A feature reads it to leave out what that page says already, such as the Inbox's
+   * "Waiting for you" while the Inbox shows. The window gives it to the views it draws; a context
+   * built without a window has none.
+   */
+  readonly shown?: () => ShownPage;
+  /**
    * The window's save state, so a page that saves an item itself shows "Saving…" and a failed
    * write's "Couldn't save · Try again" in the status bar, and its toast, as files do, and a page
    * that saves by itself field by field reports "1 field not saved" with `setFieldsNotSaved`. The
    * window gives it to the views it draws; a context built without a window has none.
    */
   readonly saving?: Pick<SaveState, "save" | "setFieldsNotSaved">;
+  /**
+   * The window's close stack, so a page that draws its own layer, such as an item page's
+   * `StackedCards`, closes it with Esc and the phone's Back in rank order with the shell's own
+   * layers (`shell.close-stack`). The window gives it to the views it draws; a context built
+   * without a window has none.
+   */
+  readonly closeStack?: CloseStack;
 }
 
 /** The item the active window tab shows, and a way to hear it change. */
@@ -112,6 +127,15 @@ export interface ActiveItemSource {
    * that stops it.
    */
   subscribe(listener: () => void): () => void;
+}
+
+/**
+ * A page a window shows: a sidebar place's own page, such as the Inbox, or an item's page. Home's
+ * place is `home`; a search, Settings or a phone's list under a place has neither.
+ */
+export interface ShownPage {
+  readonly place?: SidebarPlace;
+  readonly item?: ItemRef;
 }
 
 /** A Settings section as Ctrl K names it: its id and the title its row shows. */

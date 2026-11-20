@@ -1,4 +1,4 @@
-import { newLibraryFile } from "@halonicjs/app";
+import { type NewLibraryItemError, newLibraryFile } from "@halonicjs/app";
 import { KindedError } from "@halonicjs/std";
 import type {
   LibraryItemPlace,
@@ -11,13 +11,15 @@ import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspa
 import { unsavedSource } from "./workspace-library-items.ts";
 import type { WorkspaceSkillsParts } from "./workspace-skills.ts";
 
-/** The words of each reason core gives for making no file; a sentence, as the dialog shows it. */
-const refusals = {
+/**
+ * The words of each reason core gives a skill for making no file; a sentence, as the dialog shows
+ * it. A connector's reasons never come for a skill, so they fall back to {@link cantMake}.
+ */
+const refusals: Partial<Record<NewLibraryItemError, string>> = {
   name_missing: "Give it a name.",
   description_missing: "Say when an agent should use this skill.",
-  connection_missing: "Give it a connection.",
-  secret_invalid: "Use a secret's name, not its value.",
-} as const;
+};
+const cantMake = "Check the fields, then try again.";
 
 /**
  * Makes skills for the New skill dialog (`studio.workspace-new-skill`). Core's `newLibraryFile`
@@ -64,7 +66,7 @@ export class WorkspaceNewSkill implements NewSkillHost {
 
   async create(draft: NewSkillDraft): Promise<SkillRef> {
     const made = newLibraryFile(await this.#load(), { kind: "skill", ...draft });
-    if (!made.ok) throw new KindedError("invalid_input", refusals[made.error]);
+    if (!made.ok) throw new KindedError("invalid_input", refusals[made.error] ?? cantMake);
     const { id, path, text } = made.value;
     this.#parts.files.change(`Added skill ${id}`, { [path]: text });
     this.#made?.({ hub: draft.hub, id }, draft.name.trim());

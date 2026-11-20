@@ -1,3 +1,8 @@
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+
 use halonic_process_probe::{host_name, process_alive};
 use std::process::Command;
 

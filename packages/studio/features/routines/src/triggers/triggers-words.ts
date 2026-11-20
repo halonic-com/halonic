@@ -2,6 +2,7 @@ import type { TriggerOwner } from "../api.ts";
 
 /** The Triggers section's words (flow-routines 2.3). */
 export const triggersWords = {
+  /** Names the Triggers page under an agent's or workflow's Configuration: its tab and tab panel. */
   heading: "Triggers",
   loading: "Loading triggers",
   loadFailedTitle: "Couldn't load triggers",

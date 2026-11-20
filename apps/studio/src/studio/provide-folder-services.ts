@@ -49,11 +49,15 @@ import {
   RunsSourceService,
 } from "@halonicjs/studio-feature-runs/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
-import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/api";
+import {
+  ChangesSourceService,
+  VersionDialogService,
+} from "@halonicjs/studio-feature-source-control/api";
 import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
 import {
   ShellHttpClient,
   shellKeychain,
+  shellKeyOrigins,
   type TauriIpc,
   tauriAgentHostTransport,
 } from "@halonicjs/studio-services";
@@ -96,6 +100,8 @@ export interface FolderServiceParts {
   readonly window: object;
   readonly trust: WorkspaceTrust;
   readonly location: string;
+  /** The workspace's name, as the window shows it. */
+  readonly name: string;
   /** The open workspace, whose files and events the Models feature reads. */
   readonly scope: WorkspaceScope;
   /**
@@ -103,12 +109,24 @@ export interface FolderServiceParts {
    * failure has its toast; rejects when the save fails. Absent: Run starts without waiting.
    */
   readonly settle?: () => Promise<void>;
+  /** Hears when another process took the workspace's engine lock over (`studio.engine-lock-lost-toast`). */
+  readonly onEngineLockLost?: () => void;
 }
 
 /** Gives the folder in `location` the services its features read through the shell. */
 export function provideFolderServices(
   services: ServiceRegistry,
-  { ipc, files, window, trust, location, scope, settle }: FolderServiceParts,
+  {
+    ipc,
+    files,
+    window,
+    trust,
+    location,
+    name,
+    scope,
+    settle,
+    onEngineLockLost,
+  }: FolderServiceParts,
 ): void {
   services.provide(
     ModelsFilesService,
@@ -167,8 +185,10 @@ export function provideFolderServices(
       ipc,
       lock: new TauriEngineLock(files, location),
       location,
+      name,
       definitions: new TauriDefinitionStore(files, location),
       secrets: shellKeychain(ipc),
+      keyOrigins: shellKeyOrigins(ipc),
       http: new ShellHttpClient(ipc),
       clock: systemClock,
       isTrusted: async (workspace) => (await trust.checkLoaded(workspace)).status === "trusted",
@@ -182,6 +202,7 @@ export function provideFolderServices(
       },
       newToken: () => crypto.randomUUID(),
       reportError: (error) => console.error("The engine", error),
+      ...(onEngineLockLost === undefined ? {} : { onLockLost: onEngineLockLost }),
       ...(transport === undefined
         ? {}
         : {
@@ -242,6 +263,9 @@ export function provideFolderServices(
       // Run now refuses with the routine's own words; the engine checks again before it starts.
       trusted: async () => trust.mayStartNow(),
       engine: { start: (start, trigger) => engine.startRoutine(start, trigger) },
+      // The source control feature gives the dialog once the shell instantiates its services,
+      // which is after this, so it is looked up when Make live is pressed.
+      versionDialog: (paths) => services.get(VersionDialogService).open(paths),
     }),
   );
   // Run again on the run page starts a run the way the workflow page's Run does.

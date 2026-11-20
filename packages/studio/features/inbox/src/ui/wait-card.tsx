@@ -1,7 +1,7 @@
 import { markHiddenName } from "@halonicjs/std";
 import { Button, type ButtonUnavailable, type CalloutHandle, Tooltip } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
-import type { InboxDecisions } from "../decide.ts";
+import { type AfterAnswer, afterAnswer, type InboxDecisions } from "../decide.ts";
 import type { WaitItem } from "../inbox-items.ts";
 import { decidedAt, movesOnLine, waitingSince } from "../plain/waiting-time.ts";
 import {
@@ -53,7 +53,12 @@ type CardState =
       readonly manual: ManualAnswer | null;
     }
   | { readonly kind: "answering"; readonly event: string }
-  | { readonly kind: "answered"; readonly event: string; readonly at: Date };
+  | {
+      readonly kind: "answered";
+      readonly event: string;
+      readonly at: Date;
+      readonly after: AfterAnswer;
+    };
 
 /**
  * An answer's label, on its button and in the decided line alike: the step's own label when it
@@ -87,12 +92,15 @@ function busyLabel(event: string, own?: string): string {
 }
 
 /**
- * What the decided line says happens next: "The run continues." after an approve, whatever the
- * step calls it. A reject is the step's own answer, so it says nothing about a tool call or the
- * agent, and neither does any other answer.
+ * What the decided line says happens next, after an approve, whatever the step calls it: "The run
+ * continues." while it goes on, "The run finished." when the answer finished it, and nothing when
+ * it ended another way (HAL-13919). A reject is the step's own answer, so it says nothing about a
+ * tool call or the agent, and neither does any other answer.
  */
-function whatNext(event: string): string {
-  return event === "approve" ? " The run continues." : "";
+function whatNext(event: string, after: AfterAnswer): string {
+  if (event !== "approve") return "";
+  if (after === "continues") return " The run continues.";
+  return after === "finished" ? " The run finished." : "";
 }
 
 /**
@@ -100,14 +108,15 @@ function whatNext(event: string): string {
  * other than approve and reject, names the button you pressed with the same word (HAL-4008),
  * followed by what happens next as the built-in line says it (HAL-4050).
  */
-export function answeredText(event: string, at: Date, own?: string): string {
+export function answeredText(event: string, at: Date, after: AfterAnswer, own?: string): string {
   const time = decidedAt(at);
   const label = answerLabel(event, own);
+  const next = whatNext(event, after);
   if (label === answerLabel(event)) {
-    if (event === "approve") return `Approved by you at ${time}.${whatNext(event)}`;
-    if (event === "reject") return `Rejected by you at ${time}.${whatNext(event)}`;
+    if (event === "approve") return `Approved by you at ${time}.${next}`;
+    if (event === "reject") return `Rejected by you at ${time}.${next}`;
   }
-  return `You chose ${label} at ${time}.${whatNext(event)}`;
+  return `You chose ${label} at ${time}.${next}`;
 }
 
 /**
@@ -146,8 +155,8 @@ export function WaitCard(props: WaitCardProps) {
     if (!guard.allows() || state.kind !== "open") return;
     setState({ kind: "answering", event });
     try {
-      await decisions.answer(item, event);
-      setState({ kind: "answered", event, at: now() });
+      const run = await decisions.answer(item, event);
+      setState({ kind: "answered", event, at: now(), after: afterAnswer(run) });
     } catch (error) {
       setState({
         kind: "open",
@@ -186,7 +195,12 @@ export function WaitCard(props: WaitCardProps) {
       {stale ? <StaleBar card={section} openRun={openRun} /> : null}
       {!stale && state.kind === "answered" ? (
         <DecidedBar
-          text={answeredText(state.event, state.at, ownLabel(item.answerLabels, state.event))}
+          text={answeredText(
+            state.event,
+            state.at,
+            state.after,
+            ownLabel(item.answerLabels, state.event),
+          )}
           next={next}
           back={back}
           callout={answered}

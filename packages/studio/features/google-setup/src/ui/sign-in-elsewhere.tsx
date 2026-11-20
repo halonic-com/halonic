@@ -26,7 +26,7 @@ export function SignInElsewhere({ accountRef, commandExists, copyable }: SignInE
         <>
           <p>
             {`${sentence}there, or run `}
-            <code className="min-w-0 break-all text-fg">{command}</code> on it.
+            <code className="min-w-0 wrap-anywhere text-fg">{command}</code> on it.
           </p>
           {copyable ? <CopyButton text={command} label="Copy the command" /> : null}
         </>

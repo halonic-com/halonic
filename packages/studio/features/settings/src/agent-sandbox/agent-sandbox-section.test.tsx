@@ -279,6 +279,41 @@ verifies("settings.agent-sandbox-section", () => {
     expect(view.textContent).not.toMatch(/vulnerable|unsafe|insecure/i);
   });
 
+  it("warns about the default distro, then Docker Desktop, without stopping anything else", async () => {
+    const { host } = fakeHost({ ...ready, dockerDesktopVisible: true });
+    const { view } = await show({
+      ...host,
+      securityUpdates: async () => ({ overdue: false, last: null, isDefaultDistro: true }),
+    });
+    const words = view.textContent ?? "";
+    expect(words).toContain(
+      "The agent sandbox is your default WSL distribution, so typing wsl in a terminal opens it.",
+    );
+    expect(words).toContain("Docker Desktop is running next to the agent sandbox.");
+    expect(words.indexOf("default WSL distribution")).toBeLessThan(words.indexOf("Docker Desktop"));
+    expect(words).toContain("Ready");
+    expect(words).not.toContain("Security updates");
+    expect(words).not.toMatch(/vulnerable|unsafe|insecure/i);
+  });
+
+  it("shows neither warning when the host doesn't say so or can't say", async () => {
+    for (const securityUpdates of [
+      async () => ({ overdue: false, last: null, isDefaultDistro: false }),
+      async () => ({ overdue: true, last: null }),
+      async () => null,
+      async () => {
+        throw new Error("no host");
+      },
+    ]) {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { host } = fakeHost(ready);
+      const { view } = await show({ ...host, securityUpdates });
+      expect(view.textContent).not.toMatch(/default WSL distribution|Docker Desktop/);
+      unmountAll();
+      error.mockRestore();
+    }
+  });
+
   it("logs it when the host can't say about updates or a running setup", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const { host } = fakeHost(ready);
@@ -320,14 +355,18 @@ it("shows no path or stack when the check, a setup or a removal throws", async (
   const { host } = fakeHost(needsSetup);
   host.check.mockRejectedValueOnce(leak);
   const { view } = await show(host);
-  expect(view.textContent).toContain("Couldn't check the sandbox: The engine isn't answering.");
+  expect(view.textContent).toContain(
+    "Couldn't check the sandbox: Halonic ran into a problem it can't explain yet.",
+  );
   expect(view.textContent).not.toMatch(/srv|ENOENT|host\.ts/);
 
   host.check.mockResolvedValue(needsSetup);
   await click(button(view, "Check again"));
   host.setUp.mockRejectedValueOnce(leak);
   await click(button(view, "Set up the sandbox"));
-  expect(view.textContent).toContain("The sandbox isn't set up: The engine isn't answering.");
+  expect(view.textContent).toContain(
+    "The sandbox isn't set up: Halonic ran into a problem it can't explain yet.",
+  );
   expect(view.textContent).not.toMatch(/srv|ENOENT|host\.ts/);
 });
 

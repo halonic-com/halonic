@@ -2,7 +2,13 @@
 export const configurationWords = {
   tab: "Configuration",
   pages: "Configuration pages",
-  pageNames: { behaviour: "Behaviour", model: "Model", harness: "Harness", tools: "Tools" },
+  pageNames: {
+    behaviour: "Behaviour",
+    model: "Model",
+    harness: "Harness",
+    tools: "Tools",
+    subagents: "Subagents",
+  },
   description: "Description",
   instructions: "Instructions",
   /** Shown only while Instructions is empty (microcopy 8.5). */
@@ -10,6 +16,23 @@ export const configurationWords = {
     "What it should do and how, in plain words. It follows this every time it runs.",
   /** Save model 8.4: a key pasted into Description or Instructions is not saved. */
   looksLikeKey: "This looks like a key. Keep it as a secret instead?",
+  /** Flow-agents 5.2: the shape of the replies, as Tabs. */
+  output: "Output",
+  outputKinds: { text: "Text", choice: "One of a list", json: "JSON" },
+  /** The chip list's Add chip and its box (checklist 2.4 and 2.9). */
+  addOption: "Add",
+  /** The Add chip's name for screen readers, which starts with what it shows. */
+  addOptionName: "Add option",
+  newOption: "New option",
+  removeOption: (option: string) => `Remove ${option}`,
+  /** A list of options needs one: the file can't hold an empty one (save model 1.2). */
+  noOptions: "Add at least one option.",
+  /** Microcopy 8.5. */
+  schema: "Schema (JSON)",
+  schemaHint: "Each reply is checked against this schema.",
+  schemaInvalid: "This isn't valid JSON.",
+  /** Valid JSON that a schema can't be, such as a list or a number. */
+  schemaNotObject: "A schema is a JSON object, between { and }.",
   model: "Model",
   /** Shown in the picker while the file names no model, or one that no longer exists. */
   chooseModel: "Choose a model",
@@ -81,6 +104,19 @@ export const configurationWords = {
   },
   removeTool: (name: string) => `Remove ${name}`,
   toolsLoadFailedTitle: "Couldn't load the Library",
+  /** The Subagents page (flow-agents 5.4, microcopy 8.5). */
+  subagentsIntro: (agent: string) => `The agents ${agent} hands work to.`,
+  addSubagent: "Add subagent",
+  addSubagentTitle: (agent: string) => `Add a subagent to ${agent}`,
+  pickAnAgent: "Pick an agent",
+  orCreate: "Or create a new agent",
+  /** The create box's heading when there is no agent to pick (parity). */
+  newAgent: "New agent",
+  newAgentName: "New agent's name",
+  newAgentPlaceholder: "Name",
+  teamLoadFailedTitle: "Couldn't load the hub's agents",
+  /** The toast when a change of the subagents wasn't saved for another reason than a loop. */
+  subagentsNotSaved: (agent: string) => `Couldn't save ${agent}'s subagents`,
   loading: (name: string) => `Loading ${name}'s settings`,
   loadFailedTitle: (name: string) => `Couldn't load ${name}'s settings`,
   modelsLoadFailedTitle: "Couldn't load the models",

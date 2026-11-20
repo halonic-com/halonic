@@ -4,10 +4,10 @@ import { createShell } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, Component, type ReactNode, Suspense, useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { type RunsSource, RunsSourceService } from "../api.ts";
+import { type RunnableWorkflow, type RunsSource, RunsSourceService } from "../api.ts";
 import { runsFeature } from "../feature.ts";
 import { RunsList, RunsListService } from "../runs-list.ts";
-import { fakeSource } from "../source.test-helper.ts";
+import { fakeSource, runnable } from "../source.test-helper.ts";
 import { approvalAt, mondayMorning, summaryWith } from "../summary.test-helper.ts";
 import { renderSuspending, unmountAll } from "../test-support/render.tsx";
 import { RecentRunsView } from "./recent-runs-card.tsx";
@@ -53,6 +53,8 @@ function OnHome(props: {
   readonly openRun?: (run: { id: string }) => void;
   readonly phone?: boolean;
   readonly isSample?: boolean;
+  readonly canRun?: boolean;
+  readonly openWorkflow?: (workflow: RunnableWorkflow) => void;
 }) {
   const [attempt, setAttempt] = useState(0);
   const view = (
@@ -62,6 +64,8 @@ function OnHome(props: {
         now={() => mondayMorning}
         attempt={attempt}
         {...(props.isSample === undefined ? {} : { isSample: props.isSample })}
+        {...(props.canRun === undefined ? {} : { canRun: props.canRun })}
+        {...(props.openWorkflow === undefined ? {} : { openWorkflow: props.openWorkflow })}
         {...(props.openRuns === undefined ? {} : { openRuns: props.openRuns })}
         {...(props.openRun === undefined ? {} : { openRun: props.openRun })}
       />
@@ -156,15 +160,58 @@ verifies("runs.home", () => {
   });
 
   it("says to start a run from the Inbox in the Acme sample, with no command line note", async () => {
-    const { root } = await show(fakeSource([]).source, { isSample: true });
-    expect(root.textContent).toContain(
-      "No runs yet. Start one from the Inbox, and it shows up here.",
-    );
-    expect(root.textContent).not.toContain("halonic run");
-    expect(root.querySelector("code")).toBeNull();
+    for (const canRun of [false, true]) {
+      const { root } = await show(fakeSource([]).source, { isSample: true, canRun });
+      expect(root.textContent).toContain(
+        "No runs yet. Start one from the Inbox, and it shows up here.",
+      );
+      expect(root.textContent).not.toContain("halonic run");
+      expect(root.textContent).not.toContain("press Run");
+      expect(root.querySelector("code")).toBeNull();
+    }
   });
 
-  it("names the first workflow to run in the command line note", async () => {
+  it("says to open the first workflow and press Run, where its page has Run", async () => {
+    const fake = fakeSource([]);
+    fake.workflows([runnable("weekly-report", "Weekly report"), runnable("welcome", "Welcome")]);
+    const openWorkflow = vi.fn();
+    const { root } = await show(fake.source, { canRun: true, openWorkflow });
+    expect(root.textContent).toContain(
+      "Studio shows what your agents are doing and lets you read each run. To start one, open Weekly report in Workflows and press Run.",
+    );
+    expect(root.querySelector("code")).toBeNull();
+    expect(root.querySelector("strong")?.textContent).toBe("Run");
+    const link = [...root.querySelectorAll("button")].find(
+      (b) => b.textContent === "Weekly report",
+    );
+    await act(async () => link?.click());
+    expect(openWorkflow).toHaveBeenCalledWith(runnable("weekly-report", "Weekly report"));
+  });
+
+  it("names the workflow as plain text where nothing can open it", async () => {
+    const { root } = await show(fakeSource([]).source, { canRun: true });
+    expect(root.textContent).toContain("open Support reply in Workflows and press Run.");
+    expect(root.querySelector("button")).toBeNull();
+  });
+
+  it("with Run, tells a workspace with no workflow to add one and press Run on it", async () => {
+    const fake = fakeSource([]);
+    fake.workflows([]);
+    const { root } = await show(fake.source, { canRun: true });
+    expect(root.textContent).toContain(
+      "This workspace has no workflows yet. Add one in Workflows, then press Run on it.",
+    );
+    expect(root.textContent).not.toContain("command line");
+  });
+
+  it("with Run, says a workflow while the workflows can't be read", async () => {
+    const fake = fakeSource([]);
+    fake.workflows(new Error("unreadable"));
+    const { root } = await show(fake.source, { canRun: true });
+    expect(root.textContent).toContain("To start one, open a workflow in Workflows and press Run.");
+  });
+
+  it("without Run, as in a served Studio, names the first workflow in the command line note", async () => {
     const { root } = await show(fakeSource([]).source);
     expect(root.textContent).toContain(
       "Studio shows what your agents are doing and lets you read each run. To start one, use the command line: halonic run support-reply.",
@@ -172,7 +219,7 @@ verifies("runs.home", () => {
     expect(root.querySelector("code")?.textContent).toBe("halonic run support-reply");
   });
 
-  it("says a workspace with no workflow has none, and sends it to Workflows", async () => {
+  it("without Run, says a workspace with no workflow has none, and sends it to Workflows", async () => {
     const fake = fakeSource([]);
     fake.workflows([]);
     const { root } = await show(fake.source);
@@ -182,7 +229,7 @@ verifies("runs.home", () => {
     expect(root.querySelector("code")).toBeNull();
   });
 
-  it("keeps the note without a name when the workflows can't be read", async () => {
+  it("without Run, keeps the note without a name when the workflows can't be read", async () => {
     const fake = fakeSource([]);
     fake.workflows(new Error("unreadable"));
     const { root } = await show(fake.source);
@@ -200,9 +247,11 @@ verifies("runs.home", () => {
     }
   });
 
-  it("leaves the command line note out once there are runs", async () => {
-    const { root } = await show(fakeSource([done]).source);
-    expect(root.textContent).not.toContain("use the command line");
+  it("leaves the note out once there are runs", async () => {
+    for (const canRun of [false, true]) {
+      const { root } = await show(fakeSource([done]).source, { canRun });
+      expect(root.textContent).not.toContain("To start one");
+    }
   });
 
   it("shows its skeleton until the first list loads, then its error with Try again", async () => {
@@ -241,5 +290,19 @@ verifies("runs.home", () => {
     );
     await act(async () => seeAll?.click());
     expect(openRuns).toHaveBeenCalledTimes(1);
+  });
+});
+
+verifies("runs.home-title-wraps", () => {
+  it("wraps a row's title so the short id shows whole, and keeps its line cut and its chip right", async () => {
+    const waiting = summaryWith({ id: "run_f_2ff090", approvals: [approvalAt(1)] });
+    const { root } = await show(fakeSource([waiting]).source, { phone: true });
+    const title = [...root.querySelectorAll('[role="gridcell"] span')].find(
+      (span) => span.textContent === "Support reply · run 2ff090",
+    );
+    // jsdom lays nothing out, so the classes stand in for the 320px check (C163 H2b).
+    expect(title?.className).toContain("wrap-break-word");
+    expect(title?.className).not.toContain("truncate");
+    expect(title?.nextElementSibling?.className).toContain("truncate");
   });
 });

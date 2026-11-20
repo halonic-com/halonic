@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { mondayMorning } from "../summary.test-helper.ts";
 import { everyStep } from "./every-step-model.ts";
 import { entered, logOf } from "./run-log.test-helper.ts";
-import { slowStepDueAt, slowStepLine } from "./slow-step.ts";
+import { slowStepDueAt, slowStepLine, stepWait } from "./slow-step.ts";
 
 const at = new Date("2026-11-16T08:00:00Z");
 const later = (seconds: number) => new Date(at.getTime() + seconds * 1000);
@@ -24,17 +24,17 @@ const call = event({
 verifies("runs.run-view.slow-step-line", () => {
   describe("what the step waits for", () => {
     const waits: [string, RunEvent][] = [
-      ["Waiting for Claude to answer.", call],
+      ["Waiting for Claude", call],
       [
-        "Waiting for Ollama. The first answer can take a minute while it loads the model.",
+        "Waiting for Ollama on this computer",
         { ...call, provider: "ollama", model: "llama3.2" } as RunEvent,
       ],
       [
-        "Waiting for the tool search_pages.",
+        "Waiting for the tool search_pages",
         event({ type: "tool.called", agent: "reporter", tool: "search_pages", args: {} }),
       ],
       [
-        "Starting the connector notes-mcp.",
+        "Starting the connector notes-mcp",
         event({
           type: "connector.started",
           state: "draft",
@@ -44,7 +44,7 @@ verifies("runs.run-view.slow-step-line", () => {
         }),
       ],
       [
-        "Waiting for Claude Code.",
+        "Waiting for Claude Code",
         event({
           type: "harness.started",
           state: "draft",
@@ -54,33 +54,41 @@ verifies("runs.run-view.slow-step-line", () => {
         }),
       ],
       [
-        "Starting the sandbox.",
+        "Starting the sandbox",
         event({ type: "sandbox.started", state: "draft", agent: "reporter", timeoutMs: 30_000 }),
       ],
     ];
     it.each(waits)("says %s", (line, last) => {
-      expect(slowStepLine([last], later(10))).toBe(line);
+      expect(slowStepLine([last], later(2))).toBe(line);
     });
   });
 
   it("says Ollama runs on the computer on a phone, and names LM Studio as people do", () => {
     const ollama = { ...call, provider: "ollama", model: "llama3.2" } as RunEvent;
-    expect(slowStepLine([ollama], later(10), true)).toBe(
-      "Waiting for Ollama on your computer. The first answer can take a minute while it loads the model.",
-    );
+    expect(slowStepLine([ollama], later(2), true)).toBe("Waiting for Ollama on your computer");
     const lmStudio = { ...call, provider: "lmstudio", model: "qwen" } as RunEvent;
-    expect(slowStepLine([lmStudio], later(10))).toBe("Waiting for LM Studio to answer.");
+    expect(slowStepLine([lmStudio], later(2))).toBe("Waiting for LM Studio");
   });
 
-  it("stays quiet before 10 seconds, and when the last event names no wait", () => {
-    expect(slowStepLine([call], later(9.9))).toBeUndefined();
+  it("gives a reason only for a model on this computer", () => {
+    const local = { ...call, provider: "ollama", model: "llama3.2" } as RunEvent;
+    expect(stepWait([local])).toEqual({
+      what: "Waiting for Ollama on this computer",
+      reason: "It loads the model first, so the start is slow.",
+      since: at,
+    });
+    expect(stepWait([call])).toEqual({ what: "Waiting for Claude", since: at });
+  });
+
+  it("stays quiet before 2 seconds, and when the last event names no wait", () => {
+    expect(slowStepLine([call], later(1.9))).toBeUndefined();
     const answered = event({ type: "agent.completed", state: "draft", agent: "reporter" }, 2);
     expect(slowStepLine([call, answered], later(60))).toBeUndefined();
     expect(slowStepLine([], later(60))).toBeUndefined();
   });
 
-  it("is due 10 seconds after the last event", () => {
-    expect(slowStepDueAt([call])).toEqual(later(10));
+  it("is due 2 seconds after the last event", () => {
+    expect(slowStepDueAt([call])).toEqual(later(2));
     expect(slowStepDueAt([])).toBeUndefined();
   });
 
@@ -104,11 +112,11 @@ verifies("runs.run-view.slow-step-line", () => {
       );
     };
 
-    it("replaces Running once the step has been quiet for 10 seconds", () => {
-      expect(stepsAt(3).map((entry) => entry.line)).toEqual(["Running"]);
-      const [slow] = stepsAt(12);
-      expect(slow?.line).toBe("Waiting for Claude to answer.");
-      expect(slow?.label).toBe("Draft, running, 10:40, Waiting for Claude to answer.");
+    it("replaces Running once the step has been quiet for 2 seconds", () => {
+      expect(stepsAt(1).map((entry) => entry.line)).toEqual(["Running"]);
+      const [slow] = stepsAt(3);
+      expect(slow?.line).toBe("Waiting for Claude");
+      expect(slow?.label).toBe("Draft, running, 10:40, Waiting for Claude");
     });
 
     it("never shows on a run that has ended", () => {

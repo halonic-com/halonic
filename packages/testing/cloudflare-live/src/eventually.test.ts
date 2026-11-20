@@ -1,7 +1,8 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { eventually } from "./eventually.ts";
-import { UnexpectedStatus, type WorkerTarget, workerChecks } from "./transfer-checks.ts";
+import { UnexpectedStatus, workerChecks } from "./transfer-checks.ts";
+import type { WorkerTarget } from "./worker-call.ts";
 
 const key = "Kq3-this-key-was-made-up-for-the-test";
 

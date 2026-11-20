@@ -285,6 +285,24 @@ verifies("app.run-failure", () => {
       expect(isSetupCause(withoutFacts)).toBe(false);
     });
 
+    it("names a secrets file other users can read, as this computer's setup (HAL-12569)", () => {
+      const cause = {
+        kind: "denied" as const,
+        code: "secrets.file-readable",
+        detail: { file: "/profile/secrets/secrets.json" },
+      };
+      expect(runFailureOf(failedWith("error", { cause }), undefined)).toEqual({
+        reason: "secrets-file-readable",
+        file: "/profile/secrets/secrets.json",
+      });
+      expect(isSetupCause(cause)).toBe(true);
+      const { detail: _, ...withoutFacts } = cause;
+      expect(runFailureOf(failedWith("error", { cause: withoutFacts }), undefined)).toEqual(
+        general,
+      );
+      expect(isSetupCause(withoutFacts)).toBe(false);
+    });
+
     it("gives a cancelled run no facts", () => {
       expect(runFailureOf(failedWith("cancelled"), calledModel())).toBeUndefined();
     });

@@ -59,6 +59,12 @@ export const inboxFeature = defineFeature({
       subscribeSignal: (context, listener) =>
         context.services.get(InboxService).subscribe(listener),
     });
+    studio.dialogs.add({
+      id: "inbox.needs-you-news",
+      order: 10,
+      view: "NeedsYouNews",
+      load: () => import("./ui/needs-you-news.tsx"),
+    });
     studio.home.addCard({
       id: "needs-you",
       view: "NeedsYouCard",

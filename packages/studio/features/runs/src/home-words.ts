@@ -13,15 +13,16 @@ export const homeWords = {
   rowTitle: (workflow: string, shortId: string) => `${workflow} · run ${shortId}`,
   empty: "No runs yet. When an agent or workflow runs, you'll see it here.",
   seeAll: "See all runs",
-  /** Under the empty line, so Home never ends on nothing (empty-home-checklist 1, scope b); `halonic run` is shown as code. */
-  startNote: [
-    "Studio shows what your agents are doing and lets you read each run. To start one, use the command line: ",
-    "halonic run",
-    ".",
-  ],
+  /**
+   * Under the empty line, so Home never ends on nothing (empty-home-checklist 1, scope b). Where a
+   * workflow's page has **Run**, the rest says to press it (HAL-12371).
+   */
+  about: "Studio shows what your agents are doing and lets you read each run. ",
+  /** The rest of the note without **Run**, as in a served Studio; `halonic run` is shown as code. */
+  startNote: ["To start one, use the command line: ", "halonic run", "."],
   /** The empty line in the Acme sample, where a run starts from the Inbox, not the command line. */
   sampleEmpty: "No runs yet. Start one from the Inbox, and it shows up here.",
-  /** The same note when the workspace has no workflow yet (HAL-10128). */
+  /** The note without **Run** when the workspace has no workflow yet (HAL-10128). */
   noWorkflowNote:
     "This workspace has no workflows yet. Add one in Workflows, then start it from the command line.",
 };

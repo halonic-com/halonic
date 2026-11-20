@@ -8,6 +8,7 @@ export const sectionIconNames = [
   "agent-sandbox",
   "trusted-sources",
   "plugins",
+  "remote",
   "about",
 ] as const;
 
@@ -43,6 +44,8 @@ const drawings: Readonly<Record<SectionIconName, SectionDrawing>> = {
   "trusted-sources": { outline: "M4 7h6l2 2h8v10H4zM9 14l2 2 4-4" },
   // A plug: two prongs, a round body and a short cord.
   plugins: { outline: "M9 3v4M15 3v4M6 7h12v4a6 6 0 01-12 0zM12 17v4" },
+  // A phone: a rounded outline with a short bar at its foot.
+  remote: { outline: "M9 3h6a2 2 0 012 2v14a2 2 0 01-2 2H9a2 2 0 01-2-2V5a2 2 0 012-2zM11 18h2" },
   // The info mark.
   about: { outline: "M12 4a8 8 0 110 16 8 8 0 010-16zM12 11v5M12 8v.01" },
 };

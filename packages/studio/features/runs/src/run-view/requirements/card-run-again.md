@@ -16,4 +16,4 @@ Where the run card is given a way to start runs, the failed banner of its receip
   then its banner has neither **Run again** nor **Open Models**.
 - Given a card that can start runs, whose start fails with "The workflow changed.",
   when **Run again** is pressed,
-  then the card shows "Couldn't start the run: The workflow changed." above the banner and says it once.
+  then the card shows "Couldn't start the run: the workflow changed." above the banner and says it once.

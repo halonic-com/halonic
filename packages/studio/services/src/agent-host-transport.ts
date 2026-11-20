@@ -51,15 +51,24 @@ export class TauriAgentHostTransport implements AgentHostTransport {
   }
 
   /**
-   * Whether the distro's security updates are overdue, as the shell reads them when it starts the
-   * host (`agent_host_security_updates`); null for a host beside the shell.
+   * Whether the distro's security updates are overdue and whether it is WSL's default distro, as
+   * the shell reads them when it starts the host (`agent_host_security_updates`); null for a host
+   * beside the shell. A default the shell didn't say counts as false.
    */
-  async securityUpdates(): Promise<{ overdue: boolean; last: string | null } | null> {
+  async securityUpdates(): Promise<{
+    overdue: boolean;
+    last: string | null;
+    isDefaultDistro: boolean;
+  } | null> {
     const answer = await this.#invoke("agent_host_security_updates", {});
     if (answer === null) return null;
     if (isRecord(answer) && typeof answer["overdue"] === "boolean") {
       const last = answer["last"];
-      return { overdue: answer["overdue"], last: typeof last === "string" ? last : null };
+      return {
+        overdue: answer["overdue"],
+        last: typeof last === "string" ? last : null,
+        isDefaultDistro: answer["isDefaultDistro"] === true,
+      };
     }
     throw invalid("agent_host_security_updates");
   }

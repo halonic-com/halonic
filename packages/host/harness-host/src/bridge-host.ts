@@ -4,7 +4,12 @@
 // that agent. Same shape as the Studio's `AgentHostBridges`, so one
 // `servicesFor` serves either.
 
-import type { HarnessAgent, HarnessBridgeHost, HostedHarnessBridge } from "@halonicjs/engine";
+import type {
+  HarnessAgent,
+  HarnessBridgeHost,
+  HostedHarnessBridge,
+  ProgramHarness,
+} from "@halonicjs/engine";
 import type {
   BridgeApprovals,
   BridgeProvider,
@@ -19,6 +24,11 @@ import type {
 export interface BridgeAgent {
   readonly runId: string;
   readonly agentId: string;
+  /**
+   * The harness the agent's call runs in, so a host that resolves its model
+   * gives only a provider that harness's program can speak.
+   */
+  readonly harness: ProgramHarness;
   /** The hub whose workspace the agent's file is in, where the host resolves its model. */
   readonly hubId?: string;
   /**
@@ -82,6 +92,7 @@ export class LocalBridgeHost implements HarnessBridgeHost {
     const services = await this.#services.servicesFor({
       runId: agent.runId,
       agentId: agent.agentId,
+      harness: agent.harness,
       hubId: agent.hubId,
       ...(agent.file.model === undefined ? {} : { model: agent.file.model }),
     });

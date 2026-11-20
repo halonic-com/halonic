@@ -1,6 +1,11 @@
 //! Requirement `plugin-source`: the folder a person picks to add a plugin
 //! from, and what the shell reads of it for the page, whatever the page asks.
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+
 use std::path::{Path, PathBuf};
 
 use halonic_git_guard::plain_path;
@@ -226,7 +231,7 @@ fn plugin_source_test_stops_one_entry_past_the_limit_and_skips_git_for_it() {
 }
 
 #[test]
-fn plugin_source_test_accepts_a_pick_and_refuses_the_profile_and_the_plugins_folder() {
+fn plugin_source_test_accepts_a_pick_and_refuses_one_that_overlaps_the_profile() {
     let scratch = Scratch::new("pick");
     let profile = scratch.profile();
     let plugins = PathBuf::from(profile.plugins_folder());
@@ -243,14 +248,33 @@ fn plugin_source_test_accepts_a_pick_and_refuses_the_profile_and_the_plugins_fol
         scratch.0.join("profile"),
         plugins.clone(),
         plugins.join("acme-weather"),
+        // A folder that holds the profile, which a copy would take along.
+        scratch.0.clone(),
     ] {
         let refusal = check_source(&refused, &profile).expect_err("a private folder");
         assert_eq!(refusal.kind(), "source_not_allowed", "{refused:?}");
     }
-    // The folder that holds the profile is allowed; the reader fences the profile off.
-    let (held, _) = check_source(&scratch.0, &profile).expect("a folder that holds the profile");
-    assert_eq!(held, scratch.0);
-    let reader = super::source_reader(&profile, held);
+}
+
+#[cfg(unix)]
+#[test]
+fn plugin_source_test_refuses_a_link_into_the_profile() {
+    let scratch = Scratch::new("pick-link");
+    let profile = scratch.profile();
+    let inside = PathBuf::from(&profile.root).join("stash");
+    std::fs::create_dir_all(&inside).expect("a folder in the profile");
+    let at = scratch.0.join("weather");
+    link(&inside, &at);
+
+    let refusal = check_source(&at, &profile).expect_err("a link into the profile");
+    assert_eq!(refusal.kind(), "source_not_allowed");
+}
+
+#[test]
+fn plugin_source_test_still_leaves_the_profile_out_of_a_folder_that_holds_it() {
+    let scratch = Scratch::new("hold");
+    let profile = scratch.profile();
+    let reader = super::source_reader(&profile, scratch.0.clone());
     let listed = source_entries(&reader, None, None, true).expect("the entries");
     assert!(listed.iter().any(|entry| entry.path == "source"));
     assert!(!listed.iter().any(|entry| entry.path.starts_with("profile")));

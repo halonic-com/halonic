@@ -62,6 +62,8 @@ export function useRestoreItem(list: ChangesList): RestoreItem {
       }
       const title = restoreWords.restored(item.name, version.name);
       if (outcome.kind === "unchanged") {
+        // Meant: the files already were as the version has them, so nothing changed and there is
+        // nothing for Undo to put back.
         toasts?.show({ tone: "success", title });
         return;
       }

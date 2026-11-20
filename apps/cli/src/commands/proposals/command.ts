@@ -26,6 +26,7 @@ export function proposalsCommandWith(setup: ProposalsSetup): CliCommand {
       {
         name: "show",
         usage: "<run-id> [--dir <folder>]",
+        takesArguments: true,
         summary: proposalsMessages.showSummary(),
         action: (input) => proposalsMessages.showAction(printable(input.positionals[0] ?? "")),
         options: { dir: dirOption },
@@ -34,6 +35,7 @@ export function proposalsCommandWith(setup: ProposalsSetup): CliCommand {
       {
         name: "accept",
         usage: "<run-id> [<file>] [--dir <folder>]",
+        takesArguments: true,
         summary: proposalsMessages.acceptSummary(),
         action: (input) => proposalsMessages.acceptAction(printable(input.positionals[0] ?? "")),
         options: { dir: dirOption },
@@ -42,6 +44,7 @@ export function proposalsCommandWith(setup: ProposalsSetup): CliCommand {
       {
         name: "discard",
         usage: "<run-id> [<file>] [--dir <folder>]",
+        takesArguments: true,
         summary: proposalsMessages.discardSummary(),
         action: (input) => proposalsMessages.discardAction(printable(input.positionals[0] ?? "")),
         options: { dir: dirOption },

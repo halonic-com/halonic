@@ -29,6 +29,7 @@ const nothing: CommandResult = { exitCode: exitCode.ok, lines: [], json: {} };
 const showCommand: CliCommand = {
   name: "show",
   usage: "<run-id>",
+  takesArguments: true,
   summary: runsMessages.showSummary(),
   options: { events: { type: "boolean", description: runsMessages.showEvents() } },
   async run(input) {
@@ -45,6 +46,7 @@ const showCommand: CliCommand = {
 const sendCommand: CliCommand = {
   name: "send",
   usage: "<run-id> <event>",
+  takesArguments: true,
   summary: runsMessages.sendSummary(),
   options: {},
   run: async () => nothing,

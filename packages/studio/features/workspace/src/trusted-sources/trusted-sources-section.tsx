@@ -1,8 +1,8 @@
 import { Button, Dialog, EmptyState, SkeletonBar, ViewOnlyLine } from "@halonicjs/studio-kit";
 import {
   type EngineWords,
+  engineReasonFor,
   engineWordsOf,
-  errorReasonFor,
   focusSectionHeading,
   type SettingsSectionProps,
   sectionHeading,
@@ -227,5 +227,5 @@ export function TrustedSourcesView({ host, readOnly, announce, engine }: Trusted
 
 /** Why a read or a removal failed, without its closing full stop; the raw error never shows. */
 function reasonOf(error: unknown, notAnswering: string): string {
-  return errorReasonFor(error, notAnswering).replace(/\.+$/u, "");
+  return engineReasonFor(error, notAnswering).replace(/\.+$/u, "");
 }

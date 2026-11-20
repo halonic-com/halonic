@@ -4,68 +4,8 @@ import type { AgentPlacementStore, Digest } from "@halonicjs/ports";
 import { encodeUtf8 } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { type NewAgentsParts, WorkspaceAgents } from "./workspace-agents.ts";
-
-const writerFile = "id: writer\nname: Writer\ndescription: Drafts replies.\nmodel: fast\n";
-const replyFile =
-  "id: reply\nname: Reply\ninitial: first\nstates:\n  first:\n    agent: writer\n    on:\n      - to: done\n  done:\n    type: final\n";
-
-function setup(newAgents?: NewAgentsParts) {
-  const store: Record<string, string> = {
-    "models.yaml":
-      "aliases:\n  fast:\n    provider: anthropic\n    model: claude-haiku\n  smart:\n    provider: anthropic\n    model: claude-sonnet\n",
-    "hubs/acme/hub.yaml": "id: acme\nname: Acme\n",
-    "hubs/beta/hub.yaml": "id: beta\nname: Beta\n",
-    "hubs/acme/agents/writer.agent.yaml": writerFile,
-    "hubs/acme/workflows/reply.workflow.yaml": replyFile,
-  };
-  const changes: { label: string; changes: Record<string, string | null> }[] = [];
-  const listeners = new Set<() => void>();
-  // What each step replaced, so `undo` can put it back, as the kernel's files do.
-  const undoable: Record<string, string | null>[] = [];
-  let step = 0;
-  const host = new WorkspaceAgents({
-    files: {
-      read: async (path) => store[path] ?? null,
-      list: async (dir) =>
-        Object.keys(store)
-          .filter((path) => path.startsWith(`${dir}/`))
-          .sort(),
-      change: (label, made) => {
-        changes.push({ label, changes: made });
-        undoable.push(
-          Object.fromEntries(Object.keys(made).map((path) => [path, store[path] ?? null])),
-        );
-        step += 1;
-        for (const [path, text] of Object.entries(made)) {
-          if (text === null) delete store[path];
-          else store[path] = text;
-        }
-        for (const listener of listeners) listener();
-      },
-      undo: () => {
-        const before = undoable.pop();
-        if (before === undefined) return false;
-        for (const [path, text] of Object.entries(before)) {
-          if (text === null) delete store[path];
-          else store[path] = text;
-        }
-        step += 1;
-        for (const listener of listeners) listener();
-        return true;
-      },
-      get step() {
-        return step;
-      },
-    },
-    onChange: (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-    ...(newAgents === undefined ? {} : { newAgents }),
-  });
-  return { host, store, changes };
-}
+import { setup, writerFile } from "./workspace-agents.test-helper.ts";
+import type { NewAgentsParts } from "./workspace-agents.ts";
 
 const digest: Digest = {
   async sha256(data) {
@@ -332,6 +272,43 @@ verifies("studio.workspace-agents", () => {
       await expect(host.team({ hubId: "acme", id: "gone" })).rejects.toMatchObject({
         kind: "not_found",
       });
+    });
+
+    it("reads the agent steps in the file's order and adds one in place with an id from its name", async () => {
+      const { host, store, changes } = setup();
+      const ref = { hubId: "acme", id: "writer" };
+      store["hubs/acme/agents/writer.agent.yaml"] =
+        "id: writer\nname: Writer\n# Steps\nmethods:\n  draft-reply:\n    description: Drafts a reply.\n    instructions: Write it.\n    model: smart\n    maxSteps: 3\n";
+      expect((await host.settings(ref)).agentSteps).toEqual([
+        {
+          id: "draft-reply",
+          description: "Drafts a reply.",
+          instructions: "Write it.",
+          model: "smart",
+          maxSteps: 3,
+        },
+      ]);
+
+      expect(
+        await host.addAgentStep(ref, { name: "Draft reply", instructions: " Shorter. " }),
+      ).toBe("draft-reply-2");
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toContain("# Steps");
+      expect((await host.settings(ref)).agentSteps.map((step) => step.id)).toEqual([
+        "draft-reply",
+        "draft-reply-2",
+      ]);
+      expect((await host.settings(ref)).agentSteps[1]?.instructions).toBe("Shorter.");
+      expect(changes).toHaveLength(1);
+
+      await expect(
+        host.addAgentStep(ref, { name: "Check", instructions: " " }),
+      ).rejects.toMatchObject({
+        kind: "invalid_input",
+      });
+      await expect(
+        host.addAgentStep({ hubId: "acme", id: "gone" }, { name: "Check", instructions: "Go." }),
+      ).rejects.toMatchObject({ kind: "not_found" });
+      expect(changes).toHaveLength(1);
     });
 
     it("answers whether a harness can run: Halonic always, the others as the host finds, a failed check as failed", async () => {

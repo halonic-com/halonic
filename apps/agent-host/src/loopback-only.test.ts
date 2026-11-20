@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { connect } from "node:net";
 import { networkInterfaces } from "node:os";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { startGatewayListener } from "@halonicjs/adapter-remote-gateway";
 import { verifies } from "@halonicjs/testing-spec";
@@ -48,11 +48,23 @@ export function isLoopbackListen(call: string): boolean {
   return onPort.test(call) || onSocketPath.test(call);
 }
 
+/**
+ * The one file of the sealed packages that may open a datagram socket: the
+ * pairing advertisement's multicast DNS socket, open only while a pairing is
+ * (decision note `decisions/owen/HAL-12237-06-pair-mdns.md`).
+ */
+const datagramExceptions = ["apps/agent-host/src/remote/mdns-socket.ts"];
+
+/** Whether source text uses Node's datagram sockets, in any form of import. */
+export function usesDatagrams(text: string): boolean {
+  return /["'`](?:node:)?dgram["'`]/.test(text);
+}
+
 function sourceFiles(folder: string): string[] {
   return readdirSync(join(repoRoot, folder), { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile() && /\.tsx?$/.test(entry.name))
+    .filter((entry) => entry.isFile() && /\.[cm]?[jt]sx?$/.test(entry.name))
     .map((entry) => join(entry.parentPath, entry.name))
-    .filter((file) => !/\.test(-helper)?\.tsx?$/.test(file));
+    .filter((file) => !/\.test(-helper)?\.[cm]?[jt]sx?$/.test(file));
 }
 
 function listenCalls(file: string): string[] {
@@ -96,6 +108,14 @@ verifies("agent-host.loopback-only", () => {
       expect(offenders).toEqual([]);
     });
 
+    it("has no datagram socket in the sealed packages but the pairing advertisement's", () => {
+      const withDatagrams = sealedFolders
+        .flatMap(sourceFiles)
+        .filter((file) => usesDatagrams(readFileSync(file, "utf8")))
+        .map((file) => relative(repoRoot, file).split(sep).join("/"));
+      expect(withDatagrams).toEqual(datagramExceptions);
+    });
+
     it("still finds the listeners it guards", () => {
       const withListeners = sealedFolders.filter((folder) =>
         sourceFiles(folder).some((file) => listenCalls(file).length > 0),
@@ -109,6 +129,19 @@ verifies("agent-host.loopback-only", () => {
   });
 
   describe("the check on what is written", () => {
+    it("sees every form of a datagram import, so a new one is seen", () => {
+      const imports = [
+        'import { createSocket } from "node:dgram";',
+        "import dgram from 'dgram';",
+        'const { createSocket } = require("dgram");',
+        'const dgram = await import("node:dgram");',
+        "const dgram = await import(`node:dgram`);",
+        "const { createSocket } = require(`dgram`);",
+      ];
+      expect(imports.filter((text) => !usesDatagrams(text))).toEqual([]);
+      expect(usesDatagrams('import { createServer } from "node:net";')).toBe(false);
+    });
+
     it("accepts a loopback host after a port, and a socket's path", () => {
       const good = [
         "server.listen(0, loopbackHost, done)",

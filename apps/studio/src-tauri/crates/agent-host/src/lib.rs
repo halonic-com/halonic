@@ -8,6 +8,7 @@
 //! and output instead (`relay.rs`). Nothing here knows Tauri, so it builds
 //! and tests anywhere.
 
+mod console_window;
 mod default_distro;
 mod handshake;
 mod relay;
@@ -22,6 +23,7 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
+use console_window::{new_command, without_console_window};
 pub use default_distro::halonic_is_default;
 pub use handshake::{Handshake, read_handshake};
 use relay::Relay;
@@ -30,8 +32,9 @@ pub use security_updates::{OVERDUE_AFTER_DAYS, SecurityUpdates, security_updates
 use stderr_log::log_stderr;
 pub use wsl::{
     DISTRO, DISTRO_HOST, DISTRO_PROFILE_FOLDER, DISTRO_USER, RUNTIME_UPDATER, RuntimeStep,
-    WslError, distro_host_command, distro_installed, file_sha256, install_runtime,
-    run_runtime_step, run_runtime_step_within, runtime_command, wsl_exe,
+    SettingCopy, WslError, copy_sandbox_setting, distro_host_command, distro_installed,
+    file_sha256, install_runtime, run_runtime_step, run_runtime_step_within, runtime_command,
+    setting_copy_command, wsl_exe,
 };
 
 /// The host's executable name, without the `.exe` Windows adds.
@@ -50,12 +53,6 @@ const EXIT_POLL: Duration = Duration::from_millis(25);
 
 /// How long dropping an [`AgentHost`] waits for it to exit on its own.
 const DROP_GRACE: Duration = Duration::from_secs(5);
-
-/// Windows' `CREATE_NO_WINDOW` process flag. The release shell is a GUI
-/// program, so a console program it starts would otherwise open a console
-/// window of its own for as long as it runs.
-#[cfg(windows)]
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 /// Why the host couldn't be started. No message contains the token.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -111,7 +108,7 @@ pub fn executable_beside(program: &Path) -> Result<PathBuf, AgentHostError> {
 /// the profile's lock, the host forgets the kept Windows grants inside each
 /// of `sweep_roots` that crashed sessions left (HAL-6256).
 pub fn host_command(executable: &Path, profile_folder: &Path, sweep_roots: &[PathBuf]) -> Command {
-    let mut command = Command::new(executable);
+    let mut command = new_command(executable);
     command.arg("--profile-folder").arg(profile_folder);
     for root in sweep_roots {
         command.arg("--sweep-root").arg(root);
@@ -366,17 +363,6 @@ fn read_relayed_handshake_line(
     receiver
 }
 
-/// On Windows, starts `command` without a console window of its own.
-fn without_console_window(command: &mut Command) {
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        command.creation_flags(CREATE_NO_WINDOW);
-    }
-    #[cfg(not(windows))]
-    let _ = command;
-}
-
 fn kill(child: &mut Child) {
     // It may have exited already; either way it is waited for, so it
     // leaves no zombie behind.
@@ -385,6 +371,10 @@ fn kill(child: &mut Child) {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
 mod tests {
     use std::io::Cursor;
     use std::process::{Command, Stdio};

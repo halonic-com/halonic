@@ -11,10 +11,11 @@ function focusOnMount(button: HTMLButtonElement | null): void {
 /** The ghost action, busy while a returned promise runs, so it keeps focus (17.5). */
 export function CalloutButton({
   action,
-  textId,
+  describedBy,
 }: {
   readonly action: CalloutAction;
-  readonly textId: string;
+  /** The ids of the Callout's title and text, which a focused action is described by. */
+  readonly describedBy: string | undefined;
 }) {
   const focused = action.focus === true;
   const [busy, setBusy] = useState(false);
@@ -36,7 +37,8 @@ export function CalloutButton({
       busy={busy}
       busyLabel={action.busyLabel}
       onClick={run}
-      {...(focused ? { ref: focusOnMount, "aria-describedby": textId } : {})}
+      {...(focused ? { ref: focusOnMount } : {})}
+      {...(focused && describedBy !== undefined ? { "aria-describedby": describedBy } : {})}
       {...trigger}
     >
       {action.label}

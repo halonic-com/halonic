@@ -114,6 +114,30 @@ verifies("source-control.whats-changed-page", () => {
       expect(skipsALevel(several)).toBe(false);
     });
 
+    it("puts the line headings of Advanced a level under the heading above them", async () => {
+      const { root } = await openPage();
+      const lineHeadings = (page: ParentNode) =>
+        [...page.querySelectorAll("h2, h3")]
+          .filter((element) => element.textContent?.startsWith("Line"))
+          .map((element) => element.tagName);
+      // One file: straight under the page's h1.
+      const one = openItem(root, "Triage");
+      await act(async () => buttons(one, "Advanced")[0]?.click());
+      expect(lineHeadings(one).length).toBeGreaterThan(0);
+      expect(new Set(lineHeadings(one))).toEqual(new Set(["H2"]));
+      // Several files: under each file's path, an h2.
+      await act(async () => buttons(root, "Back to Changes")[0]?.click());
+      const several = openItem(root, "tone");
+      // Advanced starts open on a file Halonic can't put in words; open the others.
+      for (const advanced of buttons(several, "Advanced")) {
+        if (advanced.getAttribute("aria-expanded") === "false") {
+          await act(async () => advanced.click());
+        }
+      }
+      expect(lineHeadings(several).length).toBeGreaterThan(0);
+      expect(new Set(lineHeadings(several))).toEqual(new Set(["H3"]));
+    });
+
     it("opens the item itself with Open agent, from its hub", async () => {
       const opened = vi.fn();
       const { root } = await openPage(opened);

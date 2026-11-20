@@ -211,6 +211,10 @@ impl Machine for Windows {
         file.is_file()
     }
 
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "sets CREATE_NO_WINDOW itself, below"
+    )]
     fn run(
         &self,
         program: &Path,

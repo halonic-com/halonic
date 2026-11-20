@@ -1,3 +1,4 @@
+import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import {
   RunsListService,
   type RunsSource,
@@ -35,14 +36,18 @@ import { TestsPage } from "../tests/tests-page.tsx";
 import { pageWords } from "./page-words.ts";
 import { type Dock, dockHasCard, RunDock, useShownRun } from "./run-dock.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
+import { useCanvasEdit } from "./use-canvas-edit.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
-import { WorkflowCanvas } from "./workflow-canvas.tsx";
+import { type CanvasEdit, WorkflowCanvas } from "./workflow-canvas.tsx";
 import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
 
 type WorkflowView = "flow" | "configuration" | "runs";
 
 /** The command that opens the workspace page at Models (`features/workspace`), as the run page runs it. */
 const openModelsCommand = "workspace.open-models";
+
+/** The command that opens the workspace page at its Budget block (`features/workspace`). */
+const openBudgetCommand = "workspace.open-budget";
 
 /** The tab a page opens on: Configuration when asked for its Tests, else Flow. */
 function firstView(startOnTests: boolean | undefined): WorkflowView {
@@ -70,7 +75,9 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       announce={(line) => context.announcer.announce(line)}
       {...(context.runCommand && {
         openModels: () => void context.runCommand?.(openModelsCommand),
+        openBudget: () => void context.runCommand?.(openBudgetCommand),
       })}
+      shownRuns={context.services.find(InboxService)?.shownRuns}
       {...(openItem && {
         openRun: (runId: string, step?: string) =>
           openItem({ kind: "run", hub: item.hub, id: runId }, step === undefined ? {} : { step }),
@@ -103,9 +110,11 @@ export function WorkflowScreen({
   notAnswering = engineWordsOf({}).notAnswering,
   openRun,
   openModels,
+  openBudget,
   seeAllRuns,
   goToWorkflows,
   reviewInInbox,
+  shownRuns,
   startOnTests,
   testsAsked = 0,
   announceState,
@@ -182,6 +191,7 @@ export function WorkflowScreen({
     setDock(undefined);
     showView("configuration");
   });
+  const canvasEdit = useCanvasEdit(host, { hubId, id }, name, phone);
   const gone = goneState(load, goToWorkflows);
   if (gone !== undefined) return gone;
   return (
@@ -308,6 +318,7 @@ export function WorkflowScreen({
                 setDock((now) => (typeof now === "object" ? undefined : now));
               }}
               onSelectStep={setPickedStep}
+              edit={canvasEdit}
               kept={kept}
               onView={keep}
             />
@@ -320,6 +331,7 @@ export function WorkflowScreen({
           workflowName={name}
           notAnswering={notAnswering}
           shown={shown}
+          shownRuns={shownRuns}
           onDock={setDock}
           onStarted={(runId) => {
             setShownId(runId);
@@ -328,6 +340,7 @@ export function WorkflowScreen({
           }}
           openRun={openRun}
           openModels={openModels}
+          openBudget={openBudget}
           announce={announce}
           saveAsTest={saveAsTest}
           pickedStep={dockStep}
@@ -381,6 +394,8 @@ interface FlowViewProps {
   readonly strip: ShownRun | undefined;
   readonly onClearStrip: () => void;
   readonly onSelectStep: (stepId: string) => void;
+  /** How the canvas's toolbar changes the workflow; absent where it can't. */
+  readonly edit: CanvasEdit | undefined;
   readonly kept: { readonly of: string; readonly view: View } | undefined;
   readonly onView: (next: View) => void;
 }
@@ -396,6 +411,7 @@ function FlowView({
   strip,
   onClearStrip,
   onSelectStep,
+  edit,
   kept,
   onView,
 }: FlowViewProps) {
@@ -426,6 +442,7 @@ function FlowView({
           saved={kept?.of === workflowKey ? kept.view : undefined}
           onView={onView}
           onSelectStep={onSelectStep}
+          edit={edit}
         />
       )}
       {load.kind === "failed" && (

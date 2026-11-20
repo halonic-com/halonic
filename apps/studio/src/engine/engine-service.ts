@@ -53,7 +53,7 @@ import {
   type HttpClient,
   type IdGenerator,
   isAgentRunsNotAvailable,
-  noKeyOrigins,
+  type KeyOrigins,
   type RunExecutor,
   type Secrets,
 } from "@halonicjs/ports";
@@ -99,17 +99,24 @@ export interface EngineServiceOptions {
   readonly lock: PageEngineLock;
   /** The workspace folder, as the person opened it in the shell. */
   readonly location: string;
+  /** The workspace's name, as the window shows it, for the refusal when another process holds the lock. */
+  readonly name: string;
   /** The workspace's files, read when the engine opens. */
   readonly definitions: DefinitionStore;
   /** The keychain, as `Secrets`. */
   readonly secrets: Secrets;
+  /**
+   * The origins each key in the keychain may be sent to (HAL-11887). Asked on every model call
+   * with a key; a key with a list goes only to those origins, a key without one keeps the trust rule.
+   */
+  readonly keyOrigins: KeyOrigins;
   /** What the model providers call their servers with. */
   readonly http: HttpClient;
   readonly clock: Clock;
   /**
    * Whether the workspace, as the engine loaded it, is trusted on this computer. Asked on every
    * model call, so a provider's stored key goes to a non-default address only after a person
-   * trusted exactly these files (HAL-11342).
+   * trusted exactly these files (HAL-11342), and right before each harness step (HAL-12811).
    */
   readonly isTrusted: (workspace: LoadedWorkspace) => Promise<boolean>;
   /**
@@ -131,6 +138,8 @@ export interface EngineServiceOptions {
   readonly newToken: () => string;
   /** Hears each error the engine handles itself, such as a timer that will be retried. */
   reportError(error: unknown): void;
+  /** Hears once when another process took the lock over, so the window can say this one stopped. */
+  onLockLost?(): void;
   /**
    * Builds the harness host on the agent host, when one runs (`openStudioHarnessHost`).
    * `decisions` gives one run's bridge approvals and its phone's decisions,
@@ -240,8 +249,10 @@ export class EngineService {
   /**
    * Starts a run of the workflow with `input`, on the workspace's files as they are saved: refuses
    * what the page can't run ({@link EngineService.check}), opens the engine, and returns once the
-   * run has started, not when it ends. The run records a manual trigger.
+   * run has started, not when it ends. The run records a manual trigger, or an `inbox` one for a
+   * request from the Inbox's form.
    *
+   * @param from where the person started it: with Run (`manual`, the default) or from the Inbox
    * @returns the new run's id
    * @throws what {@link EngineService.check} and {@link EngineService.open} throw, or the
    *   executor's refusal of the input
@@ -249,12 +260,13 @@ export class EngineService {
   async startRun(
     run: WorkflowRef,
     input: Record<string, unknown>,
+    from: "manual" | "inbox" = "manual",
   ): Promise<{ readonly id: string }> {
     await this.check(run);
     const engine = await this.#forStart();
-    // A run started from the window is the person's own, so it names a manual trigger: with none,
-    // the Runs list says it was started in the terminal.
-    const trigger = { type: "manual" as const, at: this.#options.clock.now().toISOString() };
+    // A run started from the window is the person's own, so it names a trigger: with none, the
+    // Runs list says it was started in the terminal.
+    const trigger = { type: from, at: this.#options.clock.now().toISOString() };
     const { id } = await engine.executor.start({ ...run, input, trigger });
     return { id };
   }
@@ -364,14 +376,15 @@ export class EngineService {
    * @throws KindedError `conflict` naming the other process, or the lock's other refusals
    */
   async #holdLock(): Promise<TauriHeldEngineLock> {
-    const { lock, reportError } = this.#options;
+    const { lock, name, reportError } = this.#options;
     try {
       return await lock.hold((lost) => {
         reportError(lost);
         this.close().catch(reportError);
+        this.#options.onLockLost?.();
       });
     } catch (refusal) {
-      throw lockRefusal(refusal);
+      throw lockRefusal(refusal, name);
     }
   }
 
@@ -406,8 +419,7 @@ export class EngineService {
             http: this.#options.http,
             clock,
             isTrusted: () => this.#options.isTrusted(workspace),
-            // The desktop keychain keeps no origin list yet, so its keys stay on the trust rule.
-            keyOrigins: noKeyOrigins,
+            keyOrigins: this.#options.keyOrigins,
             // Until Studio has its approval store (HAL-850 step 6), no listed tool is offered.
             listedToolApproval: noListedToolApproval,
           }),
@@ -418,6 +430,11 @@ export class EngineService {
             definitionsOf: async (hubId, workflowId) =>
               runDefinitionsOf(workspace, hubId, workflowId),
             budget: workspaceBudget(() => workspace),
+            // Each harness step asks again, so trust removed where this window doesn't hear it
+            // (`halonic trust revoke`) still starts no harness program (HAL-12811). The trust
+            // itself, not `mayStart`: a resumed run's step runs from its kept definitions, which
+            // can have a harness agent the loaded workspace no longer has.
+            mayStartHarness: () => this.#options.isTrusted(workspace).catch(() => false),
             ...(harnessHost === undefined
               ? {}
               : {
@@ -454,15 +471,19 @@ async function openRunsOf(runs: TauriRunStore): Promise<ReadonlySet<string>> {
   return new Set(open.map((run) => run.id));
 }
 
-/** The lock's refusal as the page says it: a `conflict` names the other process, others stay as they are. */
-function lockRefusal(refusal: unknown): unknown {
+/**
+ * The lock's refusal as the page says it (HAL-13758): a `conflict` names the workspace and the
+ * other process, which can be a terminal's `halonic serve` or another window; others stay as they are.
+ */
+function lockRefusal(refusal: unknown, name: string): unknown {
   if (!(refusal instanceof KindedError) || refusal.kind !== "conflict") return refusal;
   const pid = pidOf(refusal.cause);
-  const holder = pid === undefined ? "another engine" : `another engine (process ${pid})`;
-  return new KindedError("conflict", `This workspace is open in ${holder}.`, {
-    fix: "Close it, then try again.",
-    cause: refusal,
-  });
+  const holder = pid === undefined ? "" : ` (process ${pid})`;
+  return new KindedError(
+    "conflict",
+    `${name} is already running in another Halonic on this computer${holder}.`,
+    { fix: "Stop that one, then try again.", cause: refusal },
+  );
 }
 
 function pidOf(refusal: unknown): number | undefined {

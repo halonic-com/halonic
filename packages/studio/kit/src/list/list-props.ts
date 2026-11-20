@@ -56,6 +56,11 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
    */
   readonly muted?: boolean;
   /**
+   * The title wraps onto more lines instead of being cut, as Home's Recent runs' "Support reply ·
+   * run 2ff090", whose end is what tells two rows apart (HAL-13305). The meta line stays cut.
+   */
+  readonly wrapTitle?: boolean;
+  /**
    * A click, Enter or Space on the row does nothing, as a done setup step's: no hover or press tint
    * and the default cursor. It still takes focus with the arrows and is read as usual, but Tab
    * enters the List at the first row that isn't inert.
@@ -86,6 +91,7 @@ interface ListColumnsRowBase<Id extends string> extends ListRowBase<Id> {
   /** A chip goes in a `status` column instead. */
   readonly trailing?: never;
   readonly muted?: never;
+  readonly wrapTitle?: never;
   readonly inert?: never;
   readonly wrap?: never;
   readonly metaDescribes?: never;
@@ -172,8 +178,15 @@ export interface ListGroup<Id extends string = string, Row extends AnyListRow<Id
    * next to the rows' ids, so no row's id may start with `group-heading:`.
    */
   readonly id: string;
-  /** Drawn with ListHeading, between the boxes. ↑ ↓ pass over it. */
-  readonly heading: { readonly name: string; readonly detail?: ReactNode };
+  /**
+   * Drawn with ListHeading, between the boxes. ↑ ↓ pass over it. Its level is the List's
+   * `groupHeadingLevel` unless it names its own, as a group that sits inside the one above it.
+   */
+  readonly heading: {
+    readonly name: string;
+    readonly detail?: ReactNode;
+    readonly headingLevel?: 2 | 3 | 4;
+  };
   /** A group with no rows isn't drawn, heading and all. */
   readonly rows: readonly Row[];
 }

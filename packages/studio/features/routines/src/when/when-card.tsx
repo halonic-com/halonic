@@ -80,23 +80,27 @@ export function WhenCard({
   };
 
   // Turning a routine that was never live on needs a version first; until that step exists, the
-  // switch says so rather than doing nothing.
-  const blocked = neverLive && !routine.enabled;
+  // switch says so rather than doing nothing. A manual routine has no switch, so nothing to say.
+  const blocked = neverLive && !routine.enabled && !manual;
+  // A manual routine never runs on its own, so the switch would say nothing true; the card says
+  // "Starts only with Run now." instead and the switch comes back with another trigger.
   return (
     <Card
       label={words.label}
       actions={
-        <>
-          <span aria-hidden="true" className="text-small text-fg-muted">
-            {routine.enabled ? words.on : words.off}
-          </span>
-          <Switch
-            label={words.switchName}
-            checked={routine.enabled}
-            onChange={(enabled) => void turn(enabled)}
-            {...(blocked && { unavailable: { reason: reasonId } })}
-          />
-        </>
+        !manual && (
+          <>
+            <span aria-hidden="true" className="text-small text-fg-muted">
+              {routine.enabled ? words.on : words.off}
+            </span>
+            <Switch
+              label={words.switchName}
+              checked={routine.enabled}
+              onChange={(enabled) => void turn(enabled)}
+              {...(blocked && { unavailable: { reason: reasonId } })}
+            />
+          </>
+        )
       }
     >
       <div className="flex flex-col gap-3">

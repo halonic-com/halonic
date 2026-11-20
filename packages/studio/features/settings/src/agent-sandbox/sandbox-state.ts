@@ -21,7 +21,12 @@ export function checkedAtLabel(iso: string, now: Date): string {
 
 /** What the host's check says, in the words the section needs. */
 export type SandboxCheckFacts =
-  | { readonly state: "ready"; readonly checkedAt: string }
+  | {
+      readonly state: "ready";
+      readonly checkedAt: string;
+      /** The check saw Docker Desktop next to the sandbox (W6, HAL-12445): a warning, not a failure. */
+      readonly dockerDesktopVisible?: boolean;
+    }
   | { readonly state: "needs-setup" }
   | { readonly state: "needs-repair"; readonly reason: string }
   /**
@@ -66,6 +71,8 @@ export interface SandboxFacts {
   readonly rechecking?: boolean;
   /** The host says the sandbox's security updates are overdue: one warning line, not blocking. */
   readonly securityUpdatesOverdue?: boolean;
+  /** The host says the sandbox is the person's default WSL distro: one warning line, not blocking. */
+  readonly defaultDistro?: boolean;
 }
 
 export type ChipTone = "attention" | "neutral" | "success" | "warning";

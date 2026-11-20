@@ -88,7 +88,7 @@ const withPdfAndImage = {
 
 verifies("harness-bridge.anthropic", () => {
   describe("passing a request on", () => {
-    it("sends it to api.anthropic.com with the agent's key, the allowed headers and the same bytes", async () => {
+    it("sends it to api.anthropic.com with the agent's key, the allowed headers and the request it checked", async () => {
       const anthropic = fakeProvider(
         () =>
           new Response('{"type":"message"}', {
@@ -109,7 +109,7 @@ verifies("harness-bridge.anthropic", () => {
       expect(reply.headers.get("x-internal")).toBeNull();
       const [call] = anthropic.calls;
       expect(call?.url).toBe("https://api.anthropic.com/v1/messages?beta=true");
-      expect(call?.body).toBe(sent);
+      expect(call?.body).toBe(JSON.stringify(withPdfAndImage));
       expect(Object.fromEntries(call?.headers ?? [])).toEqual({
         accept: "*/*",
         "anthropic-beta": "files-api-2025-04-14",
@@ -257,6 +257,36 @@ verifies("harness-bridge.anthropic", () => {
     await programRequest(await open(anthropic.fetch), { ...withPdfAndImage, mcp_servers });
 
     expect(JSON.parse(anthropic.calls[0]?.body ?? "")).toEqual(withPdfAndImage);
+  });
+
+  it("passes on only the value it checked when a key comes twice", async () => {
+    const anthropic = fakeProvider(() => new Response("{}"));
+    const readFile = { name: "read_file", description: "The program's own tool", input_schema: {} };
+    const image =
+      '{"type":"image","source":{"type":"url","url":"https://example.test/a.png"},"source":{"type":"base64","media_type":"image/png","data":"iVBORw0K"}}';
+    const sent = `{"model":"claude-sonnet-5-5","max_tokens":1024,"messages":[{"role":"user","content":[${image}]}],"tools":[{"type":"web_search_20250305","name":"web_search"}],"tools":${JSON.stringify([readFile])}}`;
+    const reply = await programRequest(await open(anthropic.fetch), sent);
+
+    expect(reply.status).toBe(200);
+    const forwarded = anthropic.calls[0]?.body ?? "";
+    expect(forwarded).not.toContain("example.test");
+    expect(forwarded).not.toContain("web_search");
+    expect(JSON.parse(forwarded)).toEqual({
+      model: "claude-sonnet-5-5",
+      max_tokens: 1024,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: { type: "base64", media_type: "image/png", data: "iVBORw0K" },
+            },
+          ],
+        },
+      ],
+      tools: [readFile],
+    });
   });
 
   describe("refusing", () => {

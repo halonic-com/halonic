@@ -2,7 +2,7 @@
 
 import { TauriEngineLock } from "@halonicjs/adapter-fs-tauri";
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
-import type { Clock, IdGenerator, Secrets } from "@halonicjs/ports";
+import { type Clock, type IdGenerator, noKeyOrigins, type Secrets } from "@halonicjs/ports";
 import { EngineService, type EngineServiceOptions } from "./engine-service.ts";
 
 export const location = "/acme";
@@ -88,10 +88,10 @@ function shellStores(): Record<string, Handler> {
 }
 
 /**
- * A shell that holds the engine lock for this window, or refuses it when `holder` holds it, and
- * records each call. `loseLock` plays another process taking the lock over.
+ * A shell that holds the engine lock for this window, or refuses it when `holder` holds it (with
+ * its `pid`, when the shell names one), and records each call. `loseLock` plays another process taking the lock over.
  */
-export function fakeShell(holder?: { pid: number }) {
+export function fakeShell(holder?: { pid?: number }) {
   const calls: string[] = [];
   const stores = shellStores();
   let onLost: ((message: unknown) => void) | undefined;
@@ -99,7 +99,7 @@ export function fakeShell(holder?: { pid: number }) {
     invoke: async (command: string, args?: Record<string, unknown>) => {
       calls.push(command);
       if (command === "engine_lock_hold" && holder !== undefined) {
-        throw { kind: "conflict", message: "held", pid: holder.pid };
+        throw { kind: "conflict", message: "held", ...holder };
       }
       return stores[command]?.(args ?? {});
     },
@@ -140,8 +140,10 @@ export function serviceOn(
     ipc: shell.ipc,
     lock: shell.lock,
     location,
+    name: "Acme",
     definitions,
     secrets,
+    keyOrigins: noKeyOrigins,
     http: { fetch },
     clock,
     isTrusted: async () => true,

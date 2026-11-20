@@ -3,8 +3,10 @@ import type {
   AgentHarnessId,
   AgentHub,
   AgentListing,
+  AgentOutput,
   AgentRef,
   AgentSettings,
+  AgentStep,
   AgentsHost,
   AgentTeamMember,
   AgentToolList,
@@ -20,12 +22,14 @@ export interface MemoryAgentsHostOptions {
   readonly agents?:
     | readonly (AgentListing & {
         readonly instructions?: string;
+        readonly output?: AgentOutput;
         readonly maxSteps?: number;
         readonly harness?: AgentHarnessId;
         readonly skills?: readonly string[];
         readonly knowledge?: readonly string[];
         readonly connectors?: readonly string[];
         readonly subagents?: readonly string[];
+        readonly agentSteps?: readonly AgentStep[];
       })[]
     | undefined;
   /** What `harnessReadiness` answers for Claude Code and Codex; ready when left out. */
@@ -50,12 +54,14 @@ function keyOf(ref: AgentRef): string {
 /** What a row shows of an agent: its settings without the instructions. */
 function listingOf({
   instructions: _instructions,
+  output: _output,
   maxSteps: _maxSteps,
   harness: _harness,
   skills: _skills,
   knowledge: _knowledge,
   connectors: _connectors,
   subagents: _subagents,
+  agentSteps: _agentSteps,
   ...listing
 }: AgentSettings): AgentListing {
   return listing;
@@ -64,12 +70,14 @@ function listingOf({
 /** The settings an agent has before anyone changes them. */
 const fresh = {
   instructions: "",
+  output: { type: "text" },
   maxSteps: 6,
   harness: "halonic",
   skills: [],
   knowledge: [],
   connectors: [],
   subagents: [],
+  agentSteps: [],
 } as const;
 
 /**
@@ -93,6 +101,18 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       .map((each) => ({ ...listingOf(each), subagents: each.subagents }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
+  /** Rejects a new subagent that already hands work back to this agent, as the app's host does. */
+  const refuseLoops = (ref: AgentRef, before: readonly string[], after: readonly string[]) => {
+    const team = teamOf(ref.hubId);
+    for (const id of after.filter((each) => !before.includes(each))) {
+      const path = handOffPath(team, id, ref.id);
+      if (path !== undefined) {
+        const names = path.map((each) => team.find((member) => member.id === each)?.name ?? each);
+        throw new KindedError("conflict", `${alreadyHandsWork(names)}; that would be a loop.`);
+      }
+    }
+  };
+
   return {
     hubs: () => options.hubs,
     list: async () => [...agents.values()].map(listingOf),
@@ -103,17 +123,9 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       if (change.name !== undefined && change.name.trim() === "") {
         throw new KindedError("invalid_input", "An agent needs a name.");
       }
-      if (change.subagents !== undefined) {
-        const team = teamOf(ref.hubId);
-        for (const id of change.subagents.filter((each) => !agent.subagents.includes(each))) {
-          const path = handOffPath(team, id, ref.id);
-          if (path !== undefined) {
-            const names = path.map(
-              (each) => team.find((member) => member.id === each)?.name ?? each,
-            );
-            throw new KindedError("conflict", `${alreadyHandsWork(names)}; that would be a loop.`);
-          }
-        }
+      if (change.subagents !== undefined) refuseLoops(ref, agent.subagents, change.subagents);
+      if (change.output?.type === "choice" && change.output.options.length === 0) {
+        throw new KindedError("invalid_input", "A list of options needs at least one.");
       }
       const definite = Object.entries(change).filter(([, value]) => value !== undefined);
       agents.set(keyOf(ref), { ...agent, ...Object.fromEntries(definite) });
@@ -128,6 +140,19 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       found(ref);
       const { skills = [], knowledge = [], connectors = [] } = options.toolOptions ?? {};
       return { skills, knowledge, connectors };
+    },
+    addAgentStep: async (ref, { name, instructions }) => {
+      const agent = found(ref);
+      if (name.trim() === "" || instructions.trim() === "") {
+        throw new KindedError("invalid_input", "An agent step needs a name and instructions.");
+      }
+      const id = uniqueName(
+        slugify(name),
+        agent.agentSteps.map((step) => step.id),
+      );
+      agents.set(keyOf(ref), { ...agent, agentSteps: [...agent.agentSteps, { id, instructions }] });
+      for (const listener of listeners) listener();
+      return id;
     },
     team: async (ref) => {
       found(ref);

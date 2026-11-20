@@ -14,6 +14,7 @@ export const defaultSchemaFolder = "schemas";
 export const schemaCommand: CliCommand = {
   name: "schema",
   usage: "[outDir]",
+  takesArguments: true,
   summary: schemaMessages.summary(),
   action: () => schemaMessages.action(),
   options: {},

@@ -5,8 +5,9 @@ import { DESCRIPTION, summary } from "./settings/remote-text.ts";
 
 /**
  * Remote: Settings › Remote, where a person lets phones reach this computer, pairs them and
- * revokes them, and the status bar item that says how remote is doing. Both show only while the host's `RemoteControl` says remote is available, which
- * stays false until the gateway passes its attack suite (build plan decision 19).
+ * revokes them, and the status bar item that says how remote is doing. Both show only while
+ * the host's `RemoteControl` says remote is available, which stays false until the gateway
+ * passes its attack suite (build plan decision 19).
  */
 export const remoteFeature = defineFeature({
   id: "remote",
@@ -18,6 +19,7 @@ export const remoteFeature = defineFeature({
       title: "Remote",
       scope: "host",
       order: 35,
+      icon: "remote",
       description: DESCRIPTION,
       summary: remoteSummary,
       available: remoteAvailable,

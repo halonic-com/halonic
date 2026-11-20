@@ -129,6 +129,15 @@ verifies("kit.checkbox", () => {
     expect(box.checked).toBe(true);
   });
 
+  it("is described by the text it names, before an unavailable reason", () => {
+    const { container } = render(
+      <Checkbox checked onChange={vi.fn()} describedBy="state" unavailable={{ reason: "why" }}>
+        refund-question.json
+      </Checkbox>,
+    );
+    expect(boxIn(container).getAttribute("aria-describedby")).toBe("state why");
+  });
+
   it("keeps a mixed box mixed and as it was on a click or Space while unavailable", async () => {
     const onChange = vi.fn();
     const { container } = render(

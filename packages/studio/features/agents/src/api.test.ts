@@ -117,6 +117,25 @@ verifies("agents.host", () => {
 });
 
 verifies("agents.host", () => {
+  it("adds an agent step with an id from its name, and refuses one without instructions", async () => {
+    const host = memoryAgentsHost({ hubs: [acme], agents: [refundChecker] });
+    expect(
+      await host.addAgentStep(refundChecker, { name: "Check refund", instructions: "Look." }),
+    ).toBe("check-refund");
+    expect(
+      await host.addAgentStep(refundChecker, { name: "Check refund", instructions: "Again." }),
+    ).toBe("check-refund-2");
+    expect((await host.settings(refundChecker)).agentSteps.map((step) => step.id)).toEqual([
+      "check-refund",
+      "check-refund-2",
+    ]);
+    await expect(
+      host.addAgentStep(refundChecker, { name: "Empty", instructions: "" }),
+    ).rejects.toMatchObject({ kind: "invalid_input" });
+  });
+});
+
+verifies("agents.host", () => {
   const member = (id: string, subagents: string[] = []) => ({
     hubId: "acme",
     id,

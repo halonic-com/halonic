@@ -45,7 +45,7 @@ describe("the sandbox sentences", () => {
       "bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.",
       "socat or ripgrep isn't installed. Install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep, then run it again.",
       "ripgrep isn't installed. Install it, for example on macOS with brew install ripgrep, then run it again.",
-      "The sandbox needs you to sign in to its service first. Sign in, for example with docker login for Docker Sandboxes, then run it again.",
+      "The sandbox needs you to sign in to its service first. Sign in, then run it again.",
       "Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer, then run it again.",
     ]);
   });
@@ -124,7 +124,7 @@ describe("the sandbox sentences", () => {
       ],
       [
         "The sandbox needs you to sign in to its service first.",
-        "Fix: sign in, for example with docker login for Docker Sandboxes. Then run halonic doctor again.",
+        "Fix: sign in to the sandbox's service. Then run halonic doctor again.",
       ],
       [
         "Halonic can't tell what the sandbox is missing.",

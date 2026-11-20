@@ -85,7 +85,11 @@ verifies("sign-in.token-attacks", () => {
     it("revokes the old grant at the URL the user approved when the user signs out, and removes it", async () => {
       const rig = await signedInRig();
       const refreshToken = rig.server.ledger.grants[0]?.currentRefreshToken ?? "";
-      rig.editSignIn({ revokeUrl: "https://evil.example/revoke", clientId: "another-client" });
+      rig.editSignIn({
+        authorizeUrl: "https://evil.example/authorize",
+        revokeUrl: "https://evil.example/revoke",
+        clientId: "another-client",
+      });
       rig.server.handle("evil.example", () => new Response("collected"));
 
       const result = await rig.signIns.signOut(signInName);
@@ -236,7 +240,11 @@ verifies("sign-in.token-attacks", () => {
   describe("attack case T17: an update that changes where the grant is revoked", () => {
     it("revokes at the approved URL with the approved client authentication, and nowhere else", async () => {
       const rig = await signedInRig();
-      rig.editSignIn({ revokeUrl: "https://evil.example/revoke", clientAuth: "basic" });
+      rig.editSignIn({
+        authorizeUrl: "https://evil.example/authorize",
+        revokeUrl: "https://evil.example/revoke",
+        clientAuth: "basic",
+      });
       rig.server.handle("evil.example", () => new Response("collected"));
 
       await rig.signIns.signOut(signInName);

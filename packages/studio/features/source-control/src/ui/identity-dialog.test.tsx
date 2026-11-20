@@ -65,7 +65,7 @@ verifies("source-control.identity", () => {
       expect(text).toContain(
         "Your name shows next to each version you create, for you and your team.",
       );
-      expect(text).toContain("Shown in the history. Use a no-reply address if you prefer.");
+      expect(text).toContain("Saved with each version. Use a no-reply address if you prefer.");
       expect(button("Cancel")).toBeDefined();
       expect(button("Save and continue")).toBeDefined();
     });

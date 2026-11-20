@@ -40,6 +40,28 @@ verifies("studio.agent-sandbox-host", () => {
     expect(await facts.check()).toEqual({ state: "ready", checkedAt: "1970-01-01T00:00:00.000Z" });
   });
 
+  it("says Docker Desktop shows when a passing check names it, and only then", async () => {
+    const passing = (residuals: string[]) =>
+      host({
+        "GET /v1/sandbox/capabilities": capabilities,
+        "GET /v1/sandbox/check": {
+          status: 200,
+          body: { ok: true, reason: null, missing: [], residuals },
+        },
+      }).transport;
+    const now = () => new Date(0);
+    expect(
+      await new AgentHostSandboxFacts(passing(["docker-desktop-visible"]), undefined, now).check(),
+    ).toEqual({
+      state: "ready",
+      checkedAt: "1970-01-01T00:00:00.000Z",
+      dockerDesktopVisible: true,
+    });
+    expect(
+      await new AgentHostSandboxFacts(passing(["kept-roots-readable"]), undefined, now).check(),
+    ).toEqual({ state: "ready", checkedAt: "1970-01-01T00:00:00.000Z" });
+  });
+
   it.each([
     ["setup-needed", "needs-setup"],
     ["setup-conflict", "needs-repair"],

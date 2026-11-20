@@ -1,4 +1,4 @@
-import { engineWordsOf, errorReasonFor } from "@halonicjs/studio-shell";
+import { engineReasonFor, engineWordsOf } from "@halonicjs/studio-shell";
 import type { AgentSandboxHost } from "../api.ts";
 import type { SandboxOutcome } from "./sandbox-state.ts";
 import * as text from "./sandbox-text.ts";
@@ -17,7 +17,7 @@ export async function setUpForToast(host: AgentSandboxHost): Promise<{ cause: st
     return { cause: "reason" in check ? check.reason : text.STILL_NEEDS_SETUP };
   } catch (error) {
     // Only a kinded error's sentence shows; a system message never does (microcopy F13).
-    const reason = errorReasonFor(error, engineWordsOf({}).notAnswering);
+    const reason = engineReasonFor(error, engineWordsOf({}).notAnswering);
     return { cause: `${reason.replace(/\.+$/, "")}.` };
   }
 }

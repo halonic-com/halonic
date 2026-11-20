@@ -26,8 +26,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { hostPluginBackends, unavailablePluginBackends } from "./host-plugin-backends.ts";
 import { PluginRefusal } from "./plugin-refusal.ts";
 
-/** These tests never take a yes back in another process, so the saved yes is never read again. */
-const noSavedYesChecks = { set: () => undefined, clear: () => undefined };
+/** These tests never take a yes back in another process and no start hangs, so no timer goes off. */
+const idleTimers = { set: () => undefined, clear: () => undefined };
 
 const clock = fixedClock(Date.UTC(2026, 10, 14, 9));
 const passes: SandboxCheck = { ok: true, reason: null, missing: [] };
@@ -39,6 +39,8 @@ sdk: 1
 name: Acme
 backend:
   hosts: [api.acme.example]
+  secrets:
+    acme-key: { purpose: Reads your Acme account, hosts: [api.acme.example], as: bearer }
   tools:
     - { name: echo, description: Echoes., risk: read, untrusted: true }
 `;
@@ -121,8 +123,9 @@ async function setup(
       runs: new UnfencedRuns({
         store: new MemoryUnfencedRunConsentStore(),
         clock,
-        timers: noSavedYesChecks,
+        timers: idleTimers,
       }),
+      timers: idleTimers,
     }),
     runtime: { node: "/host/halonic-agent-host", nodeFolder: "/host", runnerFile: "/r/runner.mjs" },
     transport: { fetch: async () => new Response("{}") } as never,
@@ -185,6 +188,9 @@ verifies("agent-host.plugin-routes", () => {
     it("refuse every call as not in this build and start nothing", async () => {
       const backends = unavailablePluginBackends();
       await expect(backends.trustedFingerprint("acme")).rejects.toMatchObject({
+        code: "not_in_this_build",
+      });
+      await expect(backends.trustedSecretNames("acme")).rejects.toMatchObject({
         code: "not_in_this_build",
       });
       await expect(backends.open("acme", "f")).rejects.toBeInstanceOf(PluginRefusal);
@@ -274,6 +280,27 @@ verifies("agent-host.plugin-routes", () => {
       const { backends } = await setup();
       expect(backends.runnerSurvives(new RunnerToolError("bad input"))).toBe(true);
       expect(backends.runnerSurvives(new Error("the runner stopped"))).toBe(false);
+    });
+  });
+});
+
+verifies("agent-host.plugin-secrets", () => {
+  describe("the names of a plugin's secrets", () => {
+    it("names each secret a trusted plugin declares by the plugin's own name for it", async () => {
+      const { backends } = await setup();
+      expect(await backends.trustedSecretNames("acme")).toEqual({
+        "acme-key": "plugin__acme__acme-key",
+      });
+    });
+
+    it("names no secret of a plugin nobody trusted, or one that changed since", async () => {
+      const untrusted = await setup({ trusted: false });
+      expect(await refusedWith(untrusted.backends.trustedSecretNames("acme"))).toBe(
+        "plugin_not_trusted",
+      );
+      const { backends } = await setup();
+      await put({ "acme/backend/index.js": "export default { changed: true };\n" });
+      expect(await refusedWith(backends.trustedSecretNames("acme"))).toBe("plugin_not_trusted");
     });
   });
 });

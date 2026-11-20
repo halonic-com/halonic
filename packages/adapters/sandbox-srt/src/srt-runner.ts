@@ -7,6 +7,13 @@ import { dirname, resolve } from "node:path";
 import { Readable, Writable } from "node:stream";
 import { promisify } from "node:util";
 import { type PathLookup, skillScriptsRefusal, touchesSkillScripts } from "@halonicjs/format";
+import {
+  maxReportLineBytes,
+  type NetworkBlock,
+  parseNetworkReport,
+  reportFd,
+} from "./network-reports.ts";
+import { ReportLines } from "./report-lines.ts";
 
 /** A program running inside the fence, as the session sees it. */
 export interface RunningProgram {
@@ -46,6 +53,11 @@ export interface RunRequest {
    * environment, {@link srtNetworkVariables} are removed.
    */
   withoutSrtEnv: boolean;
+  /**
+   * Hears each network request srt's proxy refused the program, read outside
+   * the fence from srt's report fd. Without it srt reports nothing.
+   */
+  onNetworkBlock?: (block: NetworkBlock) => void;
 }
 
 /**
@@ -202,19 +214,23 @@ export const srtRunner: Runner = {
           request.program,
           ...request.args,
         ];
+    const { onNetworkBlock } = request;
+    const reports = onNetworkBlock === undefined ? [] : ["--report-fd", String(reportFd)];
     const child = spawn(
       process.execPath,
-      [srtCliPath(), "--settings", request.settingsPath, ...command],
+      [srtCliPath(), "--settings", request.settingsPath, ...reports, ...command],
       {
         cwd: request.cwd,
         env: request.launcherEnv,
-        stdio: ["pipe", "pipe", "pipe"],
+        // The report fd is the fourth pipe, so its number is `reportFd` in srt.
+        stdio: ["pipe", "pipe", "pipe", ...(onNetworkBlock === undefined ? [] : ["pipe" as const])],
         // Its own process group, so one signal reaches srt and everything under it. Windows has none.
         detached: !windows,
         windowsHide: true,
       },
     );
     await launched(child);
+    if (onNetworkBlock !== undefined) readNetworkReports(child, onNetworkBlock);
     const pid = child.pid;
     let forceTimer: NodeJS.Timeout | undefined;
     let gone = false;
@@ -240,6 +256,24 @@ export const srtRunner: Runner = {
     };
   },
 };
+
+/**
+ * Hands each block srt writes to its report fd to `onNetworkBlock`. The lines
+ * come in before the child's `close`, which waits for every pipe to end. On
+ * Windows the program can write to the pipe too, so the lines are bounded
+ * (see {@link ReportLines}) and each is parsed as untrusted.
+ */
+function readNetworkReports(child: ChildProcess, onNetworkBlock: (block: NetworkBlock) => void) {
+  const input = child.stdio[reportFd] as Readable;
+  const lines = new ReportLines(maxReportLineBytes, (line) => {
+    const block = parseNetworkReport(line);
+    if (block !== null) onNetworkBlock(block);
+  });
+  input.on("data", (chunk: Buffer) => lines.push(chunk));
+  input.on("end", () => lines.end());
+  // A broken report pipe loses reports, never the run: the proxy has refused the request either way.
+  input.on("error", () => {});
+}
 
 /** How long a program gets to end after SIGTERM before it is killed. */
 export const terminationGraceMs = 2000;

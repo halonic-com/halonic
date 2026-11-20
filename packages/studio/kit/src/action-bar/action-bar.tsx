@@ -26,6 +26,11 @@ export interface ActionBarButton {
    * stays focusable and ignores presses (component specs 23 A1).
    */
   readonly unavailable?: ButtonUnavailable | undefined;
+  /**
+   * The `id` of the visible text that describes it, read after its label: a line shown before
+   * the button.
+   */
+  readonly "aria-describedby"?: string | undefined;
   /** Its `id`, for a control elsewhere that points at it: a form sheet's Close while it's busy. */
   readonly id?: string;
   readonly onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -129,6 +134,7 @@ export function ActionBar({ lead, rows, note, whileTyping = "ride" }: ActionBarP
                     ? { reason: busyId }
                     : button.unavailable
                 }
+                {...describedByOf(button)}
                 type={button.type ?? "button"}
                 onClick={button.onClick}
               >
@@ -156,6 +162,12 @@ function idOf(button: ActionBarButton, busyButton: ActionBarButton | undefined, 
     return { id: busyId };
   }
   return button.id === undefined ? {} : { id: button.id };
+}
+
+/** The button's description, when it has one. */
+function describedByOf(button: ActionBarButton) {
+  const id = button["aria-describedby"];
+  return id === undefined ? {} : { "aria-describedby": id };
 }
 
 /**

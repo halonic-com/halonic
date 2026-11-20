@@ -238,6 +238,17 @@ export function replaceScalar(parsed: Parsed, node: Node, value: unknown): strin
 }
 
 /**
+ * Renames the map key at `path` by replacing its scalar's characters only, so
+ * its value, the comments around it and its place in the map stay. A quoted
+ * key stays quoted the same way; a plain one gets quotes when `to` needs them.
+ */
+export function renameKey(parsed: Parsed, path: YamlPath, to: string): string | undefined {
+  const map = nodeAt(parsed, path.slice(0, -1));
+  const key = isMap(map) ? pairOf(map, path[path.length - 1] as string)?.key : undefined;
+  return isScalar(key) ? replaceScalar(parsed, key, to) : undefined;
+}
+
+/**
  * Adds `key: value` to the block map at `mapPath`: after its last entry, or
  * right after the entry `after` names, or first (above the comments over the
  * first entry) when `after` is `null`.

@@ -118,7 +118,7 @@ workspace you didn't write is like running its code.
 | A listed tool of an untrusted workspace lowers its risk | Without a trust grant every listed tool counts as `write`; `readToolListing` ignores the workspace's lower risks (`packages/core/app/src/tool-listing.ts`) | **On `main`** |
 | Secrets committed to the repository | The leak guard blocks private keys, Google client secrets, OAuth tokens, protected personal terms and absolute local paths (`tooling/check/src/leaks`, [leak guard](../guides/leak-guard.md)) | **On `main`** |
 | A sandbox limits what a trusted workspace's program can do | Harness agents: see [4.6](#46-agents-in-a-sandbox-b8). Stdio connectors a workspace starts get their own sandbox (D45): see [the workspace connector's sandbox](#workspace-connector-sandbox) | The start in a sandbox **On `main`** (`connector-stdio-sandbox.workspace-connector-start`, `.workspace-connector-profile`); the agent host's routes that start a connector in its own session **On `main`** (`agent-host.connector-routes`), which check the request's trust grant against the host's own trust record before any start, fenced or not (HAL-8674); Studio calling them **On `main`** (`apps/studio`, `src/connect/agent-host-tool-lister.ts`, `src/library/workspace-listed-tools.ts`) |
-| The Studio window can't call a model (its policy allows no other address), so a compromised window could ask the host to send workspace text to a remote model | The host's model route (`POST /v1/models/chat`) loads the workspace itself, takes the provider's address and key from its files, refuses any provider that fails `isOnThisMachine` and any request with tools, an address or a key, caps the messages and `maxTokens`, and calls through a client that reaches loopback addresses only, checked after the name resolves. Keys stay in the host | **On `main`** (`agent-host.model-routes`) |
+| The Studio window can't call a model (its policy allows no other address), so a compromised window could ask the host to send workspace text to a remote model | The host's model route (`POST /v1/models/chat`) loads the workspace itself, takes the provider's address and key from its files, refuses any provider that fails `isOnThisMachine` and any request with tools, an address or a key, caps the messages and `maxTokens`, and calls through a client that reaches loopback addresses only, checked after the name resolves. Keys stay in the host. Right before the call it checks the user's trust record lists the provider it loaded, so a provider file saved after Studio's own trust check isn't called (only the test model needs no trust) | **On `main`** (`agent-host.model-routes`, `agent-host.model-trust`) |
 
 #### Workspace connector sandbox
 
@@ -210,10 +210,11 @@ Its text is attacker text. The rules are the requirement
 | Requests go to hosts nobody declared, or redirect there | Exact, case-insensitive host match over `https`; every redirect hop is checked like the first request | **On `main`** (`declared-hosts-only`, `redirects-checked`) |
 | A company proxy hides where a request really goes | With `HTTPS_PROXY` set, public `https` hosts go through a CONNECT tunnel to the host's name, and Halonic runs TLS itself over it, so the proxy sees no content and the certificate is checked against the name. The proxy setting is read once by the app, outside the sandbox, never reaches the sandbox launcher or the program, and its user name and password never appear in a message, a log or a redirect. A bad setting fails every request that needs it and never goes direct; `loopback`, `private` and `NO_PROXY` hosts always go direct with the full address check; a public host over plain `http` is refused; the CONNECT reply is size-limited, timed and must leave no stray bytes | **On `main`** (`http-node.proxy-config`, `http-node.proxy-tunnel`, `http-node.proxy-guard`, `sandbox-srt.session`) |
 | Plain `http` leaks a secret | `http` only to this machine or a private address, and a secret only to this machine | **On `main`** (`local-http-hosts`) |
-| A workspace sends a stored model key to an address of its choice | A provider's key goes to an address other than its type's own (such as `https://api.anthropic.com`) only when the workspace is trusted here, and the trust check shows such a provider with "Sends its key to" and the address; otherwise the call fails with `untrusted-provider-address`. A key with a list of allowed addresses goes only to an address on it (`key-origin-not-allowed`). `halonic models allow-address`, which adds to that list, refuses to run inside a run (`HALONIC_RUN_TOKEN`). The Anthropic and OpenAI providers follow no redirect. Errors name the provider and the address, never the key | **On `main`** for the CLI (`cli.workspace-provider-key-trust`, `cli.commands.models.allow-address`, `model-anthropic.endpoint`, `model-openai.endpoint`); Studio's keychain keeps no address list yet |
+| A workspace sends a stored model key to an address of its choice | A provider's key goes to an address other than its type's own (such as `https://api.anthropic.com`) only when the workspace is trusted here, and the trust check shows such a provider with "Sends its key to" and the address; otherwise the call fails with `untrusted-provider-address`. A key with a list of allowed addresses goes only to an address on it (`key-origin-not-allowed`). `halonic models allow-address`, which adds to that list, refuses to run inside a run (`HALONIC_RUN_TOKEN`). The Anthropic and OpenAI providers follow no redirect. Errors name the provider and the address, never the key | **On `main`** (`cli.workspace-provider-key-trust`, `cli.commands.models.allow-address`, `model-anthropic.endpoint`, `model-openai.endpoint`, `studio.src-tauri.crates.secrets.key-origins`, `studio.src-tauri.key-origin-commands`, `secrets-tauri.key-origins`); Studio checks a key's list in the desktop keychain, but nothing in Studio writes one yet (HAL-11872) |
 | One integration reads another's tokens | Names are `i<n>_<integration>_<token>`; a policy declares what each may read | **On `main`** (`scoped-tokens`) |
 | A slow or huge response ties up the host | Header, idle and overall timeouts and a size limit on every request | **On `main`** (`request-limits`) |
 | Logs leak secrets | The request log holds method, host, path, status, time and outcome; no query, headers or bodies | **On `main`** (`request-log`) |
+| A plugin's backend in the agent host reads a secret that isn't its own, or the page plants one for another plugin | Studio hands the host one trusted plugin's declared secrets by their short names; the host checks its own trust record, builds `plugin__<id>__<secret>` itself, keeps the values in memory only and answers only `plugin__` names; the kit reads them only through `pluginSecrets(id)` | **Planned** (HAL-13652) |
 | A stored token is read from disk or a copy | AES-256-GCM, a new random nonce per write, bound to the token's name so a value can't be moved to another name; the key is the secret `token-key` (32 bytes) | **On `main`** (`packages/adapters/token-store`) |
 | A wrong key looks like "not signed in" | A value that won't open throws `UnreadableTokenError`, never `null`; the error names the token, not its value | **On `main`** |
 | Token names fold into each other | Case and `-` versus `_` are treated as the same name; bad names are refused before anything is read | **On `main`** |
@@ -335,16 +336,20 @@ Studio, the card's path, where the first answer wins: **On `main`**
 HAL-10849). Its events are the narrow ones (prompt, answers,
 approvals, result), kept in memory only.
 
-**The phone's pairing scanner** (Android, **Lands with #3585**) reads the pairing
-code with Google's ML Kit (`play-services-mlkit-barcode-scanning`), which runs
-on the phone inside Google Play services. The camera image and the code it reads
-stay on the phone. ML Kit does send Google diagnostics and usage data about the
-API: device details (maker, model, OS version), the app's package name and
-version, speed, and settings such as image format and resolution
+**The phone's pairing scanner** (Android, **On `main`**:
+`studio.connect.pair-scan`, `studio.src-tauri.crates.connect.pair-scan`) reads
+the pairing code with Google's ML Kit (`play-services-mlkit-barcode-scanning`),
+which runs on the phone inside Google Play services. The camera image and the
+code it reads stay on the phone. ML Kit does send Google diagnostics and usage
+data about the API: device details (maker, model, OS version and build), the
+app's package name and version, a device identifier and per-installation
+identifiers (Google says the per-installation ones aren't meant to identify a
+user or a physical device), speed, settings such as image format and
+resolution, and the event type
 ([Google's disclosure](https://developers.google.com/ml-kit/android-data-disclosure)).
-Halonic can't turn that off, so Google Play services is trusted on Android, the
-README says so under "Models and privacy", and the Play Data safety form
-declares it.
+Halonic can't turn that off, so Google Play services is trusted on Android, and
+the README says so under "Models and privacy". The Play Data safety form must
+declare it before the first Play upload with the scanner (HAL-12612).
 
 The **Halonic** harness, the default, starts no program for the agent, so this
 boundary doesn't apply to it. Stdio connectors a workspace starts are
@@ -451,7 +456,11 @@ until HAL-3403) answers `403 not_fenced` and starts nothing. The `halonic`
 command holds none either (`noUnfencedRunConsent`, HAL-12639): nothing offers
 that yes yet, so a file placed in the profile's `unfenced-runs` folder by hand
 starts no plugin backend or local integration. A plugin's
-backend gets no secret and no sign-in token through the host yet. The shipped
+backend gets no secret and no sign-in token through the host yet. Its
+secrets are to come from Studio, which hands a trusted plugin's declared
+secrets to the host before each use; the host builds their names itself and
+keeps the values in memory only (**Planned**, HAL-13652; ADR
+[Studio hands a plugin its secrets](../adr/2026-11-19-studio-hands-a-plugin-its-secrets.md)). The shipped
 single executable has no runner mode of its own (its `process.execPath` is the
 host, not Node), so there the route answers `403 not_in_this_build` and starts
 nothing, rather than start a second host without Node's permission layer.
@@ -643,6 +652,7 @@ like Studio.
 | Threat | Mitigation | Mark |
 | --- | --- | --- |
 | Another program or a web page on your machine uses the host | The host listens only on `127.0.0.1`, with a new 32-byte random token per launch that it prints only to Studio, on standard output, and compares in constant time. A `Host` other than loopback gets a 421 (DNS rebinding), any `Origin` header a 403, a wrong or missing token a 401, all before the path is looked at. In WSL (`--stdio`) the host has no port: Studio's relay listens on Windows' loopback and passes each connection as frames over `wsl.exe`'s standard input and output, and the `Host` must name the relay's port. The host drops a frame stream that breaks the format, and stops | **On `main`** (`apps/agent-host`, `src/server/host-server.ts`) |
+| Someone on your Wi-Fi sends crafted packets to the pairing advertisement | While Pair a phone is open, and only then, the host's multicast DNS socket (the one socket of the host that receives from the LAN) reads queries with strict limits: at most 9000 bytes and 16 questions, class IN, names of at most 255 bytes, UTF-8 labels with no dot, compression pointers that must point further back and at most 16 of them; anything else is dropped whole. It answers only a PTR question for `_halonic-pair._tcp`, with the computer's name, the gateway's LAN port and addresses: no key and no code. The reply is fixed bytes built before the socket opens, so nothing of a query reaches it, and goes out at most once a second however many queries arrive. The loopback guard fails on any other `node:dgram` use in the host | **Lands with #4139** (`apps/agent-host`, `src/remote/dns-message.ts`, `pair-advert.ts`) |
 | The profile Studio sends loosens the fence | The host checks every profile before `SrtSandbox` sees it: every field present, nothing extra, every path absolute | **On `main`** (`apps/agent-host`, `src/sandbox/profile-schema.ts`) |
 | Studio's profile request widens the fence or names a folder the person didn't open | `POST /v1/harnesses/profile` takes only the agent's working folder, sites and proposal folder, and the bridge by id. The workspace must be one the launcher named (by real path), the data folder, the home folder and the program's variables are the host's own, the body takes no other field, and the builder refuses a working folder outside the workspace, in a protected folder or in a denied one. The answer never holds the bridge's token | **On `main`** (`apps/agent-host`, `src/harness/host-profiles.ts`, `profile-route.ts`) |
 | Studio's proposal request opens a folder for a workspace the person didn't open | `POST /v1/proposals/{open,folder-of,end,start}` take the workspace and the run, and nothing else. The workspace must be one the launcher named (by real path); any other is a 404 and nothing is made. Worktrees, copies and records go in Halonic's data folder, never in the workspace, and git starts only when a run first needs a worktree | **On `main`** (`apps/agent-host`, `src/harness/host-proposals.ts`, `proposal-routes.ts`) |

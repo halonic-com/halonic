@@ -48,12 +48,14 @@ const host: AgentsHost = {
     if (found === undefined) throw new Error("not found");
     return {
       instructions: "",
+      output: { type: "text" },
       maxSteps: 6,
       harness: "halonic",
       skills: [],
       knowledge: [],
       connectors: [],
       subagents: [],
+      agentSteps: [],
       ...found,
     };
   },
@@ -62,6 +64,7 @@ const host: AgentsHost = {
   modelAliases: async () => ["fast", "smart"],
   defaultModel: async () => "fast",
   toolOptions: async () => ({ skills: [], knowledge: [], connectors: [] }),
+  addAgentStep: async (_ref, { name }) => name.toLowerCase(),
   team: async (ref) =>
     agents
       .filter((agent) => agent.hubId === ref.hubId)

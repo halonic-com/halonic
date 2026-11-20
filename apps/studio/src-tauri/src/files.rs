@@ -445,7 +445,7 @@ pub async fn fs_watch<R: Runtime>(
         let profile = cli_profile(&app).map_err(FileRefusal::io)?;
         let fence = profile_fence(&profile, &root);
         // The page's watches of one folder share one look at it.
-        let folder = root.to_string_lossy().into_owned();
+        let folder = root.clone();
         let scan = move || look_while_open(&opened, &root, &fence);
         let send = move |message: WatchMessage| channel.send(WatchEvent::from(message)).is_ok();
         let state = app.state::<FileState>();

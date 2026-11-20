@@ -49,6 +49,8 @@ code is built the way it is, before you change something they describe.
 | [Google sign-in and the setup record](2026-11-14-google-sign-in-and-the-setup-record.md) | The callback sits outside the session with `state` as proof, on loopback only; the setup record holds no secret and points at its connector |
 | [Only the remote gateway is reachable by a tunnel](2026-11-16-only-the-remote-gateway-is-reachable-by-a-tunnel.md) | `TunnelProvider` points only at the loopback remote gateway, which speaks a narrow, versioned protocol; resumable, foreground-only, no plain http |
 | [Pairing and the end-to-end session](2026-11-18-pairing-and-the-end-to-end-session.md) | Gateway protocol v2 runs inside Noise: XXpsk3 to pair (the code is the psk, the check code comes from the handshake hash), IK to reconnect; `not-paired` only after the host proved itself |
+| [Studio hands a plugin its secrets](2026-11-19-studio-hands-a-plugin-its-secrets.md) | The keychain stays the only store; before each use Studio hands a trusted plugin's declared secrets to the agent host, which keeps them in memory only (proposed) |
+| [Desktop engine in its own process](2026-11-20-desktop-engine-runs-in-its-own-process.md) | One engine process per workspace, owned by the shell; the page reaches it only through the shell, and it gets secrets over a private pipe |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).

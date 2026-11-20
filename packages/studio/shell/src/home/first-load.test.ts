@@ -67,4 +67,22 @@ describe("firstLoad", () => {
     await expect(firstLoad(loadable, 0)).resolves.toBeUndefined();
     expect(loadable.refresh).not.toHaveBeenCalled();
   });
+
+  it("loads again for a second section's Try again after the first section's failed (HAL-13446)", async () => {
+    // Recent runs and Spend share one runs list; Home gives each Try again an attempt of its own.
+    const { loadable, fail } = source();
+    const first = firstLoad(loadable, 0);
+    expect(firstLoad(loadable, 0)).toBe(first);
+    await fail();
+    await expect(first).rejects.toBe("401");
+
+    const recentRuns = firstLoad(loadable, 1);
+    await expect(recentRuns).rejects.toBe("401");
+    loadable.refresh.mockClear();
+
+    const spend = firstLoad(loadable, 2);
+    expect(spend).not.toBe(recentRuns);
+    await expect(spend).rejects.toBe("401");
+    expect(loadable.refresh).toHaveBeenCalledTimes(1);
+  });
 });

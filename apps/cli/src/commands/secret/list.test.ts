@@ -45,6 +45,6 @@ verifies("cli.commands.secret.list", () => {
     const { code, io } = await secret(fixture.folder, fixture.setup, ["list", "openai-key"]);
 
     expect(code).toBe(exitCode.usage);
-    expect(io.stderr[0]).toBe("✕ halonic secret list takes no arguments.");
+    expect(io.stderr[0]).toBe("✕ halonic secret list takes no arguments, and you gave openai-key.");
   });
 });

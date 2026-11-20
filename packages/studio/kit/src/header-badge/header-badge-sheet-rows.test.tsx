@@ -62,6 +62,42 @@ verifies("kit.header-badge-sheet-rows", () => {
     expect(beta?.hasAttribute("aria-label")).toBe(false);
   });
 
+  it("keeps the menu's heading as a section label and its dividers as gaps", () => {
+    const menu: readonly MenuEntry[] = [
+      { heading: "Recent" },
+      { id: "acme", label: "Acme", onSelect: vi.fn() },
+      { id: "beta", label: "Beta", onSelect: vi.fn() },
+      "divider",
+      { id: "new", label: "New workspace…", onSelect: vi.fn() },
+      { id: "open", label: "Open a folder…", onSelect: vi.fn() },
+      "divider",
+      { id: "settings", label: "Workspace settings…", onSelect: vi.fn() },
+      { id: "close", label: "Close workspace", onSelect: vi.fn() },
+    ];
+    const { container } = render(
+      <PresentationProvider presentation="phone">
+        <HeaderBadgeSheet title="Workspace" entries={menu} onClose={vi.fn()} />
+      </PresentationProvider>,
+    );
+    const lists = [...container.querySelectorAll("ul")];
+    const labels = lists.map((list) => [...list.querySelectorAll("button")].map(spoken));
+    expect(labels).toEqual([
+      ["Acme", "Beta"],
+      ["New workspace…", "Open a folder…"],
+      ["Workspace settings…", "Close workspace"],
+    ]);
+
+    const heading = container.querySelector("h3");
+    expect(heading?.textContent).toBe("Recent");
+    expect(heading?.className).toContain("text-label uppercase text-fg-muted");
+    expect(lists[0]?.getAttribute("aria-labelledby")).toBe(heading?.id);
+    expect(lists[1]?.hasAttribute("aria-labelledby")).toBe(false);
+
+    const gaps = lists.map((list) => list.parentElement?.classList.contains("mt-2"));
+    expect(gaps).toEqual([false, true, true]);
+    expect(container.querySelector("hr")).toBeNull();
+  });
+
   it("gives a row with no tag and not checked neither", () => {
     const [, beta] = rows();
     const row = beta as HTMLButtonElement;

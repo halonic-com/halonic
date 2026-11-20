@@ -134,16 +134,15 @@ verifies("library.knowledge-page", () => {
       expect(root.textContent).not.toContain("Remove summary");
     });
 
-    it("says agents keep notes in a writable source", async () => {
+    it("shows no note under Source for a writable source", async () => {
       const { props } = setup({
         text: "id: handbook\nprovider: files\nwritable: true\n",
         source: "Folder docs",
       });
       const root = render(<KnowledgePage {...props} />);
       await settled();
-      expect(root.textContent).toContain(
-        "Agents keep notes here. They show on each agent's Memory page.",
-      );
+      expect(root.textContent).toContain("Folder docs");
+      expect(root.textContent).not.toContain("agents' notes");
     });
 
     it("writes mode: auto at once when the second option is picked", async () => {

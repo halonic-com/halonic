@@ -4,6 +4,7 @@
 mod support;
 
 use std::fs;
+use std::path::Path;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -63,7 +64,7 @@ fn folder_poll_sends_each_change_as_a_batch_until_stopped() {
     let id = watches
         .start(
             "main",
-            "acme",
+            Path::new("acme"),
             INTERVAL,
             scan_from(&looks),
             move |message| sent.send(message).is_ok(),
@@ -98,7 +99,7 @@ fn folder_poll_fails_once_when_a_look_fails() {
     watches
         .start(
             "main",
-            "acme",
+            Path::new("acme"),
             INTERVAL,
             move || {
                 looks
@@ -128,7 +129,7 @@ fn folder_poll_refuses_a_folder_it_cannot_look_at_and_stops_a_pages_watches() {
     let watches = Watches::default();
     let refused = watches.start(
         "main",
-        "acme",
+        Path::new("acme"),
         INTERVAL,
         || {
             Err(FileError::Io {
@@ -142,13 +143,13 @@ fn folder_poll_refuses_a_folder_it_cannot_look_at_and_stops_a_pages_watches() {
 
     let quiet = || Ok::<_, FileError>(FolderSnapshot::default());
     watches
-        .start("main", "acme", INTERVAL, quiet, |_| true)
+        .start("main", Path::new("acme"), INTERVAL, quiet, |_| true)
         .expect("a watch");
     watches
-        .start("main", "acme", INTERVAL, quiet, |_| true)
+        .start("main", Path::new("acme"), INTERVAL, quiet, |_| true)
         .expect("a watch");
     watches
-        .start("other", "acme", INTERVAL, quiet, |_| true)
+        .start("other", Path::new("acme"), INTERVAL, quiet, |_| true)
         .expect("a watch");
     watches.stop_owner("main");
     assert_eq!(watches.count(), 1);
@@ -181,7 +182,7 @@ fn folder_poll_shares_one_look_among_the_watches_of_a_folder() {
                 })
             };
         watches
-            .start(page, "acme", INTERVAL, scan, move |message| {
+            .start(page, Path::new("acme"), INTERVAL, scan, move |message| {
                 sent.send(message).is_ok()
             })
             .expect("the watch starts");
@@ -218,6 +219,30 @@ fn folder_poll_looks_at_each_folder_on_its_own() {
     let quiet = || Ok::<_, FileError>(FolderSnapshot::default());
     for folder in ["acme", "other"] {
         watches
+            .start("main", Path::new(folder), INTERVAL, quiet, |_| true)
+            .expect("a watch");
+    }
+    assert_eq!(watches.folder_count(), 2);
+    watches.stop_owner("main");
+    assert_eq!(watches.folder_count(), 0);
+}
+
+/// Two folder names that aren't UTF-8 read the same as text (`acme\u{FFFD}`),
+/// but are two folders, so each gets its own look.
+#[cfg(unix)]
+#[test]
+fn folder_poll_looks_at_each_folder_whose_name_is_not_utf8_on_its_own() {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+
+    let first = Path::new(OsStr::from_bytes(b"acme\xfe"));
+    let second = Path::new(OsStr::from_bytes(b"acme\xff"));
+    assert_eq!(first.to_string_lossy(), second.to_string_lossy());
+
+    let watches = Watches::default();
+    let quiet = || Ok::<_, FileError>(FolderSnapshot::default());
+    for folder in [first, second] {
+        watches
             .start("main", folder, INTERVAL, quiet, |_| true)
             .expect("a watch");
     }
@@ -244,7 +269,7 @@ fn folder_poll_fails_a_folder_with_too_many_files_with_what_to_do() {
     let watches = Watches::default();
     let id = watches.start(
         "main",
-        "acme",
+        Path::new("acme"),
         INTERVAL,
         || {
             Err(FileError::TooManyFiles {

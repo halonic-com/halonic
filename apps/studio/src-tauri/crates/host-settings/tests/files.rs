@@ -2,6 +2,11 @@
 //! keeps them, and what a link or a hand edit can do to them. Requirement
 //! `host-settings-file`; these tests' names start with `host_settings_file_`.
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+
 mod support;
 
 use std::fs;

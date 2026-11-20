@@ -5,6 +5,11 @@
 //! an ssh that runs `git-upload-pack` here instead of on a server. All the
 //! rest, config, environment and flags, is the runner's.
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 

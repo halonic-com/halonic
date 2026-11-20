@@ -7,6 +7,10 @@ export const startsWords = {
   agentOption: (name: string) => `${name} (agent)`,
   input: "Input",
   inputHint: "The workflow's input, as a JSON object.",
+  /** Under the workflow's own start field while it is empty: a run then has nothing to work on. */
+  startEmpty: (name: string) =>
+    `${name} needs this. Left empty, it starts with nothing to work on.`,
+  advanced: "Advanced",
   notObject: "The input has to be a JSON object, such as {}.",
   prompt: "Prompt",
   promptPlaceholder: "Describe what to do.",

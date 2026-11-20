@@ -85,6 +85,34 @@ verifies("remote.settings-section", () => {
   });
 });
 
+verifies("remote.settings-switch-pending", () => {
+  it("sends one call per switch while the host hasn't answered", async () => {
+    const remote = new FakeRemoteControl();
+    const turnedOn: boolean[] = [];
+    let answer: () => void = () => undefined;
+    remote.setRemote = (on) => {
+      turnedOn.push(on);
+      return new Promise<void>((resolve) => {
+        answer = resolve;
+      });
+    };
+    const { switchNamed, press } = await renderSection(remote);
+
+    await press(switchNamed("Let phones reach this computer"));
+    await press(switchNamed("Let phones reach this computer"));
+    await press(switchNamed("Let phones answer risky approvals"));
+
+    expect(turnedOn).toEqual([true]);
+    expect(remote.snapshot.allowRiskyRemotely).toBe(true);
+
+    answer();
+    await settle();
+    await press(switchNamed("Let phones reach this computer"));
+
+    expect(turnedOn).toEqual([true, true]);
+  });
+});
+
 verifies("remote.tunnel-reasons", () => {
   it("shows the tunnel's reason, and Check again turns remote off and on", async () => {
     const remote = new FakeRemoteControl({ tunnelProviderId: "tailscale" });

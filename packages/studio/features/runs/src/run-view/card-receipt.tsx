@@ -22,7 +22,10 @@ import { DamagedLogBanner } from "./run-page.tsx";
 
 /** The props of `RunCardReceipt`. */
 export interface RunCardReceiptProps {
-  readonly source: Pick<RunsSource, "workflow" | "currency" | "providerKind" | "agentName">;
+  readonly source: Pick<
+    RunsSource,
+    "workflow" | "currency" | "providerKind" | "providerName" | "agentName"
+  >;
   readonly run: SourcedRun;
   /** What `useRunLog` read of the run's log; the card reads it too, to know when to show its chip. */
   readonly read: RunLogRead;
@@ -47,6 +50,8 @@ export interface RunCardReceiptProps {
   readonly openStartedRun?: ((runId: string) => void) | undefined;
   /** Opens the workspace page at Models, for **Open Models** on a failed banner; without it the button isn't there. */
   readonly openModels?: (() => void) | undefined;
+  /** Opens the workspace page at its Budget block, for **Change budget** on a budget banner; without it the button isn't there. */
+  readonly openBudget?: (() => void) | undefined;
   /** Says a line to a screen reader, for why **Run again** didn't start; absent in tests that don't listen. */
   readonly announce?: ((line: string) => void) | undefined;
 }
@@ -74,6 +79,7 @@ export function RunCardReceipt({
   runStart,
   openStartedRun,
   openModels,
+  openBudget,
   announce,
 }: RunCardReceiptProps) {
   const log = read.events;
@@ -114,6 +120,9 @@ export function RunCardReceipt({
       return source.workflow(other.hubId, other.workflowId)?.name ?? other.workflowId;
     },
     providerKind: (id: string) => source.providerKind(id),
+    ...(source.providerName === undefined
+      ? {}
+      : { providerName: (id: string) => source.providerName?.(id) }),
     ...(source.agentName === undefined
       ? {}
       : { agentName: (id: string) => source.agentName?.(id) }),
@@ -133,6 +142,7 @@ export function RunCardReceipt({
         openRun={openRun}
         runAgain={runAgain}
         openModels={openModels}
+        openBudget={openBudget}
         onSeeStep={() => onOpenStep?.()}
       />
       <DamagedLogBanner line={read.damagedLine} />

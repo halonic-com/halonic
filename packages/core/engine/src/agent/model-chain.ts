@@ -35,6 +35,12 @@ export interface ResolvedModel {
   /** The alias it came from, such as "smart"; `<provider>/<model>` names it when left out. */
   readonly alias?: string;
   /**
+   * The `host:port` the provider calls, such as `localhost:11434`, only when
+   * it is on this computer; never a URL, path or user name (requirement
+   * `engine.llm-event-address`). Left out for any other provider.
+   */
+  readonly address?: string;
+  /**
    * The **name** of the secret that holds the provider's key, never the key.
    * Left out when the provider needs none, such as a local model.
    */
@@ -232,6 +238,10 @@ export class ModelChain {
       agent: this.agent,
       from: nameOf(from),
       to: nameOf(to),
+      provider: to.provider.id,
+      model: to.model,
+      ...(to.alias === undefined ? {} : { alias: to.alias }),
+      ...(to.address === undefined ? {} : { address: to.address }),
       error: `${error.reason}: ${error.message}`,
       ...(providerText === undefined ? {} : { providerText }),
     });

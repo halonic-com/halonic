@@ -19,6 +19,8 @@ export const secretMessages = defineMessages("secret", {
   listAction: () => phrase`list the secrets`,
 
   saved: (name: string) => phrase`${markPart("done")} Saved ${name}.`,
+  /** After a new sign-in password: saving it ended every open sign-in. */
+  signedOut: () => phrase`  Every browser and phone that was signed in has to sign in again.`,
   removed: (name: string) => phrase`${markPart("done")} Removed ${name}.`,
   noSecrets: () => phrase`No secrets are saved.`,
 
@@ -30,9 +32,6 @@ export const secretMessages = defineMessages("secret", {
   valueAsArgument: () => phrase`A secret's value can't be given as an argument.`,
   valueAsArgumentFix: (name: string) =>
     phrase`Type it at the prompt, or pipe it in: halonic secret set ${name} < file`,
-  /** `list` takes no arguments. */
-  listTakesNone: () => phrase`halonic secret list takes no arguments.`,
-  listUsage: () => phrase`halonic secret list`,
 
   /** The service's own refusal, such as a name that isn't allowed; nothing was saved or removed. */
   refused: (reason: string) => phrase`${reason}`,

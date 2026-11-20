@@ -45,6 +45,7 @@ async function openOn(
     refuseCopy?: boolean;
     toasts?: ToastStore;
     openModels?: () => void;
+    openBudget?: () => void;
   } = {},
 ) {
   const log = logOf(run.id, [
@@ -66,6 +67,7 @@ async function openOn(
             runId={run.id}
             now={() => mondayMorning}
             {...(hooks.openModels === undefined ? {} : { openModels: hooks.openModels })}
+            {...(hooks.openBudget === undefined ? {} : { openBudget: hooks.openBudget })}
           />
         </PresentationProvider>
       </ToastStoreProvider>
@@ -156,41 +158,81 @@ verifies("runs.run-view.failure-banners", () => {
   const button = (root: HTMLElement, name: string) =>
     [...root.querySelectorAll("button")].find((candidate) => candidate.textContent === name);
 
-  it("opens the budget from a budget stop's banner", async () => {
-    let opened = 0;
-    const root = await openOn("desktop", stopped, { openModels: () => opened++ });
+  it("opens the Budget block, not Models, from a budget stop's banner", async () => {
+    const openBudget = vi.fn();
+    const openModels = vi.fn();
+    const root = await openOn("desktop", stopped, { openBudget, openModels });
     expect(root.textContent).toContain("Change the budget, then run again.");
     await act(async () => button(root, "Change budget")?.click());
-    expect(opened).toBe(1);
+    expect(openBudget).toHaveBeenCalledOnce();
+    expect(openModels).not.toHaveBeenCalled();
   });
 
-  it("leaves out Change budget where the page can't open Models", async () => {
-    const root = await openOn("desktop", stopped);
+  it("leaves out Change budget where the page can't open the budget", async () => {
+    const root = await openOn("desktop", stopped, { openModels: vi.fn() });
     expect(button(root, "Change budget")).toBeUndefined();
   });
 });
 
 verifies("runs.run-view.slow-step-line", () => {
-  it("draws the line when the step turns 10 seconds quiet, without a new event", async () => {
+  const waiting = "Waiting for Ollama on this computer";
+  const reason = "It loads the model first, so the start is slow.";
+
+  /** The run page on a step that has waited on Ollama since `mondayMorning`, at `clock` ms in. */
+  async function openWaiting(start: number, checkThisComputer?: () => void) {
     const run = summaryWith({ id: "run_b_01jd8q", state: "draft", statesVisited: ["draft"] });
     const log = logOf(run.id, [
       [0, entered("draft")],
       [0, modelCall],
     ]);
     const list = new RunsList(fakeSource([run], { [run.id]: log }).source);
-    let clock = mondayMorning.getTime() + 9_950;
+    const time = { clock: mondayMorning.getTime() + start };
     // Fake timers: the page's 50 ms redraw timer must not fire before the test moves its clock,
     // which a real timer on a loaded runner can (HAL-12925).
     vi.useFakeTimers();
-    const root = render(<RunView list={list} runId={run.id} now={() => new Date(clock)} />);
+    const root = render(
+      <RunView
+        list={list}
+        runId={run.id}
+        now={() => new Date(time.clock)}
+        {...(checkThisComputer === undefined ? {} : { checkThisComputer })}
+      />,
+    );
     await act(async () => vi.advanceTimersByTimeAsync(0));
-    expect(root.textContent).not.toContain(
-      "Waiting for Ollama. The first answer can take a minute while it loads the model.",
-    );
-    clock = mondayMorning.getTime() + 10_000;
+    return { root, time };
+  }
+
+  const button = (root: HTMLElement, name: string) =>
+    [...root.querySelectorAll("button")].find((candidate) => candidate.textContent === name);
+  const statusOf = (root: HTMLElement) =>
+    [...root.querySelectorAll('[role="status"]')].map((status) => status.textContent).join("|");
+
+  it("draws the waiting line when the step turns 2 seconds quiet, without a new event", async () => {
+    const { root, time } = await openWaiting(1_950);
+    expect(root.textContent).not.toContain(waiting);
+    time.clock = mondayMorning.getTime() + 2_000;
     await act(async () => vi.advanceTimersByTimeAsync(50));
-    expect(root.textContent).toContain(
-      "Waiting for Ollama. The first answer can take a minute while it loads the model.",
-    );
+    expect(statusOf(root)).toContain(waiting);
+    expect(root.textContent).toContain("2 s");
+    expect(root.textContent).not.toContain(reason);
+  });
+
+  it("adds the reason for a model on this computer at 10 seconds", async () => {
+    const { root, time } = await openWaiting(9_000);
+    expect(root.textContent).not.toContain(reason);
+    time.clock = mondayMorning.getTime() + 10_000;
+    await act(async () => vi.advanceTimersByTimeAsync(1_000));
+    expect(statusOf(root)).toContain(`${waiting}${reason}`);
+    expect(root.textContent).toContain("10 s");
+  });
+
+  it("offers Something wrong? after 10 seconds only where Check this computer can open", async () => {
+    const without = await openWaiting(12_000);
+    expect(button(without.root, "Something wrong?")).toBeUndefined();
+    unmountAll();
+    let opened = 0;
+    const withCheck = await openWaiting(12_000, () => opened++);
+    await act(async () => button(withCheck.root, "Something wrong?")?.click());
+    expect(opened).toBe(1);
   });
 });

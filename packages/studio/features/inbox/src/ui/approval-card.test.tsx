@@ -191,6 +191,37 @@ verifies("inbox.approval-card", () => {
       expect(button(root, "Open run")).toBeDefined();
     });
 
+    it("says the run finished when the approve finished it (HAL-13919)", async () => {
+      const { root, later } = openCard({
+        decisions: {
+          approve: async () => waitingRun("r47", { status: "completed" }),
+          reject: async () => waitingRun("r47"),
+          askForChanges: async () => waitingRun("r47"),
+        },
+      });
+      later(61);
+      await press(button(root, "Approve"));
+      expect(root.querySelector("[role='group']")?.textContent).toContain(
+        "Approved by you at 10:44. The run finished.",
+      );
+      expect(root.textContent).not.toContain("continues");
+    });
+
+    it("doesn't say the agent is told when the reject ended the run", async () => {
+      const { root, later } = openCard({
+        decisions: {
+          approve: async () => waitingRun("r47"),
+          reject: async () => waitingRun("r47", { status: "failed" }),
+          askForChanges: async () => waitingRun("r47"),
+        },
+      });
+      later(61);
+      await press(button(root, "Reject"));
+      const decided = root.querySelector("[role='group']")?.textContent ?? "";
+      expect(decided).toContain("Rejected by you at 10:44. This tool call didn't run.");
+      expect(decided).not.toMatch(/agent is told|continues|finished/);
+    });
+
     it("says the agent is told when you reject, and offers Next", async () => {
       const open = vi.fn();
       const { root, sent, later } = openCard({
@@ -332,6 +363,20 @@ verifies("inbox.approval-card", () => {
       const { root } = openCard({ onOpenRun });
       await press(button(root, "Open run"));
       expect(onOpenRun).toHaveBeenCalledWith("r47");
+    });
+
+    // jsdom lays nothing out, so this holds the classes that do it: the header wraps, its text
+    // asks for 10rem, and Open run sits after it on the right (HAL-14006).
+    it("puts Open run on a line under the title when the card is too narrow", () => {
+      const { root } = openCard({ onOpenRun: vi.fn() });
+      const header = root.querySelector("header");
+      const text = root.querySelector("h2")?.parentElement;
+      expect(header?.className).toContain("flex-wrap");
+      expect(text?.parentElement).toBe(header);
+      expect(text?.className).toContain("basis-40");
+      const openRun = button(root, "Open run").parentElement;
+      expect(openRun?.parentElement).toBe(header);
+      expect(openRun?.className).toContain("ml-auto");
     });
   });
 

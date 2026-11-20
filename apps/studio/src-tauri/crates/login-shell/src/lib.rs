@@ -64,6 +64,10 @@ impl std::error::Error for LoginShellError {}
 ///
 /// `csh` and `tcsh` take `-l` only as their sole flag, so they are started
 /// with `-i` alone, as VS Code does; they still read `.cshrc`.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the shell asks a login shell only on macOS and Linux, where no console window opens"
+)]
 pub fn login_variables(
     shell: &Path,
     names: &[&str],
@@ -183,6 +187,10 @@ fn own_session(command: &mut Command) {
 /// group is signalled through `/bin/sh`'s own `kill`, which keeps the
 /// crate's unsafe code to the one `setsid` call.
 #[cfg(unix)]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the shell asks a login shell only on macOS and Linux, where no console window opens"
+)]
 fn stop_group(child: &Child) {
     let _ = Command::new("/bin/sh")
         .args([

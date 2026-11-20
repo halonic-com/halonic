@@ -59,6 +59,10 @@ function useFocusHeadingWhenFocusGoes(page: RefObject<HTMLElement | null>, statu
   // The element in the page that last had focus; `null` once focus went outside the page.
   const lastFocused = useRef<Element | null>(null);
   useEffect(() => {
+    // The shell may have put focus on the page's `h1` before this listens.
+    const focused = document.activeElement;
+    lastFocused.current =
+      focused !== null && page.current?.contains(focused) === true ? focused : null;
     const note = (event: FocusEvent) => {
       const { target } = event;
       lastFocused.current =

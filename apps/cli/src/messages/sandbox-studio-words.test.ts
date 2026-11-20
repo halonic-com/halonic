@@ -18,9 +18,22 @@ const fixDiffersOnPurpose: readonly string[] = [
   "setup-needed",
 ];
 
+/**
+ * The codes whose reason Studio words differently on purpose: in the CLI,
+ * `runnerFence` gives `windows` on every plain Windows, so no Windows version
+ * works; in Studio only MXC gives it, on a Windows it can't start on (HAL-12642).
+ */
+const reasonDiffersOnPurpose: readonly string[] = ["windows"];
+
 verifies("cli.messages", () => {
-  it("words every reason the same in Studio and the CLI: same code, same sentence", () => {
+  it("words every reason the same in Studio and the CLI, except the ones listed as different on purpose", () => {
     for (const code of sandboxUnavailableReasons) {
+      if (reasonDiffersOnPurpose.includes(code)) {
+        expect(sandboxStartWords(code).reason, code).not.toBe(
+          plainText(sandboxMessages.reason(code).phrase),
+        );
+        continue;
+      }
       expect(sandboxStartWords(code).reason, code).toBe(
         plainText(sandboxMessages.reason(code).phrase),
       );

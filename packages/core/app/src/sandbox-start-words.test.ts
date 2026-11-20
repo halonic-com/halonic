@@ -45,13 +45,26 @@ verifies("app.sandbox-start-words", () => {
   });
 
   it("points the fixes the CLI words as WSL 2 to Settings", () => {
-    for (const code of ["windows", "distro-missing", "setup-conflict", "setup-needed"]) {
+    for (const code of ["distro-missing", "setup-conflict", "setup-needed"]) {
       const words = sandboxStartWords(code);
       expect(words.fix).toBe("open Settings and set up the sandbox there.");
       expect(words.calloutFix).toBe("Open Settings and set up the sandbox there.");
       expect(words.fix).not.toContain("WSL 2");
       expect(words.settingsFix).toBeNull();
     }
+  });
+
+  it("says the sandbox can't start on this version of Windows, names no version, and points to another sandbox in Settings", () => {
+    const words = sandboxStartWords("windows");
+    expect(words.reason).toBe("The sandbox can't start on this version of Windows.");
+    expect(words.calloutFix).toBe("Pick another sandbox in Settings.");
+    expect(words.fix).not.toContain("WSL 2");
+  });
+
+  it("names no sandbox service that Halonic doesn't have", () => {
+    expect(sandboxStartWords("sign-in-needed").calloutFix).toBe(
+      "Sign in to the sandbox's service.",
+    );
   });
 
   it("links the docs page itself for a reason with no section of its own", () => {

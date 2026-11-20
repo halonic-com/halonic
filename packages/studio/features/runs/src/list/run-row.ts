@@ -157,6 +157,8 @@ export function startedBy(
       return words(startedByWords.terminal, spoken.terminal);
     case "manual":
       return words(startedByWords.run, spoken.run);
+    case "inbox":
+      return words(startedByWords.inbox, spoken.inbox);
     case "mail":
       return words(startedByWords.mail, spoken.mail);
     case "signal":
@@ -174,6 +176,10 @@ export function startedBy(
           }
         : { words: startedByWords.catchUp, spoken: spoken.catchUp, tooltip };
     }
+    default:
+      // A run log from a newer Halonic can name a trigger this Studio doesn't know yet: the row
+      // still shows, read as the person's own run rather than failing.
+      return words(startedByWords.run, spoken.run);
   }
 }
 

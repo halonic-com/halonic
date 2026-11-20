@@ -1,6 +1,6 @@
 import { Button, EmptyState, StatusChip, usePresentation } from "@halonicjs/studio-kit";
 import type { ItemPageSectionViewProps } from "@halonicjs/studio-shell";
-import { useId, useState } from "react";
+import { useState } from "react";
 import {
   type RoutinesHost,
   RoutinesHostService,
@@ -48,7 +48,6 @@ export interface TriggersViewProps {
  */
 export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
   const { load, retry } = useTriggerRows(host, owner);
-  const headingId = useId();
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string>();
 
@@ -65,11 +64,10 @@ export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
     }
   };
 
+  // A plain wrapper with no heading or name of its own: the section is a Configuration page, and
+  // the page's tab panel already names it "Triggers", like the built pages.
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-2">
-      <h2 id={headingId} className="text-heading">
-        {triggersWords.heading}
-      </h2>
+    <div className="flex flex-col gap-2">
       <Rows load={load} owner={owner} retry={retry} openRoutine={openRoutine} />
       {addError !== undefined && (
         <p role="alert" className="text-small text-danger">
@@ -81,7 +79,7 @@ export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
           {triggersWords.addTrigger}
         </Button>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -102,7 +100,6 @@ function Rows({
       <EmptyState
         tone="error"
         align="start"
-        headingLevel={3}
         title={triggersWords.loadFailedTitle}
         description={load.reason}
         action={{ label: triggersWords.tryAgain, onClick: retry, busy: load.retrying }}

@@ -15,7 +15,7 @@ import {
   type SecretStore,
   secretKey,
 } from "@halonicjs/ports";
-import { KindedError } from "@halonicjs/std";
+import { ReadableSecretsFileError } from "./readable-file-error.ts";
 import {
   type AddressProblem,
   originOf,
@@ -179,13 +179,7 @@ export class FileSecretStore implements SecretStore, KeyOrigins {
     }
     // A link has the mode of the link, not of its target; `readUnlinkedFile` refuses it below.
     if (process.platform !== "win32" && !stats.isSymbolicLink() && (stats.mode & 0o077) !== 0) {
-      throw new KindedError(
-        "denied",
-        `The secrets file ${this.#file} can be read by other users.`,
-        {
-          fix: `Run chmod 600 ${this.#file}, then run again.`,
-        },
-      );
+      throw new ReadableSecretsFileError(this.#file);
     }
     return parseSecretsFile(await readUnlinkedFile(this.#file), this.#file);
   }

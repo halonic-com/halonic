@@ -123,6 +123,8 @@ export interface RunsSetup {
   readonly blobs?: KernelBlobs;
   /** The workspace's budget; none when left out. */
   readonly budget?: Budget;
+  /** Whether a harness step may start now; every one may when left out. */
+  readonly mayStartHarness?: () => Promise<boolean>;
   /** The scripted model's price per million tokens; unpriced when left out. */
   readonly price?: ModelPrice;
   /** The connected servers; none when left out. */
@@ -220,6 +222,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
       ids: fixedIds(),
       ...(harnesses === undefined ? {} : { harnesses }),
       ...(setup.budget === undefined ? {} : { budget: async () => setup.budget }),
+      ...(setup.mayStartHarness === undefined ? {} : { mayStartHarness: setup.mayStartHarness }),
       ...(setup.connectorCalls === undefined ? {} : { connectorCalls: setup.connectorCalls }),
       ...(setup.proposalFolders === undefined ? {} : { proposalFolders: setup.proposalFolders }),
       ...(setup.runConnectors === undefined ? {} : { runConnectors: setup.runConnectors }),

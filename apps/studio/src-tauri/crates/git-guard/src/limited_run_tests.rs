@@ -1,3 +1,8 @@
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 

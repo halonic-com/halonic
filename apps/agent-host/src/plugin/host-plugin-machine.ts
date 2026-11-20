@@ -40,8 +40,8 @@ import { proxySetting } from "../proxy-setting.ts";
 /** How long one runner may live, in milliseconds; a start after it asks the trust check and the gate again. */
 const runnerTimeLimitMs = 10 * 60 * 1000;
 
-/** Node's timers for reading the saved yes again; with {@link noUnfencedRunConsent} no run ever needs them. */
-const unfencedRunTimers: SaveTimers = {
+/** Node's timers for a start's time limit; with {@link noUnfencedRunConsent} no run ever reads the saved yes again. */
+const nodeTimers: SaveTimers = {
   set: (callback, delayMs) => setTimeout(callback, delayMs).unref(),
   clear: (handle) => clearTimeout(handle as NodeJS.Timeout),
 };
@@ -106,8 +106,9 @@ export function hostPluginMachine(options: HostPluginMachineOptions): HostPlugin
       runs: new UnfencedRuns({
         store: noUnfencedRunConsent,
         clock: systemClock,
-        timers: unfencedRunTimers,
+        timers: nodeTimers,
       }),
+      timers: nodeTimers,
     }),
     runtime: {
       node: process.execPath,

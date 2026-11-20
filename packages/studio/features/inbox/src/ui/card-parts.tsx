@@ -5,6 +5,7 @@ import {
   Callout,
   type CalloutHandle,
   CommandBox,
+  usePresentation,
 } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import { type RefObject, useEffect, useRef, useState } from "react";
@@ -100,9 +101,11 @@ export function CardHeader({
   startedBy,
   onOpenRun,
 }: CardHeaderProps) {
+  // The title asks for 10rem next to **Open run**. In a narrower card (a phone, or 400 % zoom)
+  // the button goes on a line under it, on the right, so the title keeps the whole width.
   return (
-    <header className="flex items-start gap-3">
-      <div className="min-w-0 flex-1">
+    <header className="flex flex-wrap items-start gap-x-3 gap-y-2">
+      <div className="min-w-0 flex-1 basis-40">
         <h2
           id={titleId}
           ref={heading}
@@ -117,9 +120,11 @@ export function CardHeader({
         )}
       </div>
       {onOpenRun === undefined ? null : (
-        <Button size="sm" onClick={onOpenRun}>
-          Open run
-        </Button>
+        <div className="ml-auto">
+          <Button size="sm" onClick={onOpenRun}>
+            Open run
+          </Button>
+        </div>
       )}
     </header>
   );
@@ -140,6 +145,9 @@ interface DecidedBarProps {
  * left without one.
  */
 export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps) {
+  // On a phone Next takes the card's width and its label wraps, so a long title grows it taller,
+  // never past the screen's edge (HAL-13801 IN1).
+  const phone = usePresentation() === "phone";
   return (
     <div className="flex flex-col gap-3 border-t border-border p-4">
       <Callout tone="info" announce="focus" ref={callout}>
@@ -156,7 +164,7 @@ export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps)
         {next === null ? (
           <p className="text-small text-fg-muted">Nothing else is waiting for you.</p>
         ) : (
-          <Button variant="primary" onClick={next.open}>
+          <Button variant="primary" size={phone ? "touch" : "md"} block={phone} onClick={next.open}>
             {`Next: ${next.title}`}
             <span aria-hidden="true">{` · ${next.left} left`}</span>
             <span className="sr-only">{`, ${next.left} left`}</span>
@@ -260,27 +268,37 @@ export function StaleBar({
   );
 }
 
+/** The line over a card's bar when the served Studio's sign-in ended, as the computer's refusal words it. */
+export const signedOutText = "Sign in again to send your answer.";
+
 /** What a card's bar takes to know the engine isn't answering (UX check item 9). */
 export interface EngineState {
   /** `false` while the engine isn't answering: the buttons stay, but don't act. */
   readonly answering?: boolean;
+  /**
+   * Whether the list stopped loading because the sign-in ended (a served Studio): the engine
+   * still answers, so the line says to sign in again rather than that it isn't answering.
+   */
+  readonly signedOut?: boolean;
   /** The host's words for it; the desktop app's when left out. */
   readonly words?: EngineWords;
 }
 
 /**
- * The line over a card's bar while the engine isn't answering, "showing what it said last",
- * which the decision buttons point at as their reason. Nothing while it answers.
+ * The line over a card's bar while the engine isn't answering, "showing what it said last", or,
+ * signed out, "Sign in again to send your answer.", which the decision buttons point at as their
+ * reason. Nothing while it answers.
  */
 export function NotAnsweringLine({
   id,
   answering = true,
+  signedOut = false,
   words = engineWords["desktop-app"],
 }: EngineState & { readonly id: string }) {
   if (answering) return null;
   return (
     <p id={id} className="text-small text-fg-muted">
-      {words.showingLast}
+      {signedOut ? signedOutText : words.showingLast}
     </p>
   );
 }

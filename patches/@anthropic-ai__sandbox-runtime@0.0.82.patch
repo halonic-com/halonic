@@ -1,5 +1,138 @@
+diff --git a/dist/cli.js b/dist/cli.js
+index b6833932f6e30b4377c52a74ecd9b768354234d0..af3e3422f283cb97997a7cc0666a1a8f936e689d 100644
+--- a/dist/cli.js
++++ b/dist/cli.js
+@@ -120,6 +120,40 @@ function parseControlFd(value) {
+     }
+     return Number(value);
+ }
++/**
++ * Halonic patch: --report-fd. The violation line of every network request
++ * the proxy refuses ("deny network-outbound host:port (reason)"), one per
++ * line, to an inherited descriptor the caller reads outside the sandbox.
++ * srt keeps these lines in its violation store, which the command line
++ * otherwise never shows. A reader that goes away loses the reports, never
++ * the run: the proxy refuses the request either way.
++ */
++function openReportFd(fd) {
++    const stat = fs.fstatSync(fd);
++    const stream = !process.versions.bun && (stat.isFIFO() || stat.isSocket())
++        ? new net.Socket({ fd, readable: false, writable: true }).unref()
++        : fs.createWriteStream('', { fd });
++    stream.on('error', err => {
++        logForDebugging(`Report fd ${fd} closed: ${err.message}`);
++    });
++    return stream;
++}
++function reportNetworkDenials(stream) {
++    const store = SandboxManager.getSandboxViolationStore();
++    let reported = store.getTotalCount();
++    store.subscribe(violations => {
++        // The store hands over its whole (bounded) tail each time, and calls
++        // back on every single add: the new ones are the last few.
++        const total = store.getTotalCount();
++        const fresh = violations.slice(Math.max(0, violations.length - (total - reported)));
++        reported = total;
++        for (const { line } of fresh) {
++            if (line.startsWith('deny network-outbound ')) {
++                stream.write(`${line}\n`);
++            }
++        }
++    });
++}
+ /**
+  * stdio for the sandboxed command: the three standard streams, plus
+  * /dev/null over the control fd's slot, so nothing inside the sandbox can
+@@ -129,18 +163,20 @@ function parseControlFd(value) {
+  * posix_spawn with POSIX_SPAWN_CLOEXEC_DEFAULT, which already keeps every
+  * descriptor the caller did not list out of the child.
+  */
+-function sandboxedStdio(controlFd) {
++function sandboxedStdio(controlFd, reportFd) {
+     const stdio = [
+         'inherit',
+         'inherit',
+         'inherit',
+     ];
+-    if (controlFd === undefined) {
++    // Halonic patch: the report fd's slot is displaced as the control fd's is.
++    const channels = [controlFd, reportFd].filter(fd => fd !== undefined);
++    if (channels.length === 0) {
+         return stdio;
+     }
+     // 'ignore' past fd 2 leaves a slot as it is rather than closing it, so the
+     // control fd's slot needs a descriptor of its own to displace it with.
+-    while (stdio.length < controlFd) {
++    while (stdio.length <= Math.max(...channels)) {
+         stdio.push('ignore');
+     }
+     // Only close-on-exec keeps an inherited descriptor out of an exec'd
+@@ -149,7 +185,9 @@ function sandboxedStdio(controlFd) {
+     // channel live in the sandbox. Displacing the slot covers every kind of
+     // descriptor, which re-opening the fd privately does not: a unix socket
+     // cannot be re-opened through /proc/self/fd at all (ENXIO).
+-    stdio.push(fs.openSync('/dev/null', 'r'));
++    for (const fd of channels) {
++        stdio[fd] = fs.openSync('/dev/null', 'r');
++    }
+     return stdio;
+ }
+ async function main() {
+@@ -278,6 +316,8 @@ async function main() {
+         .option('-c <command>', 'run command string directly (like sh -c), no escaping applied')
+         .option('--control-fd <fd>', 'read config updates from an inherited file descriptor >= 3 (JSON lines ' +
+         'protocol; give srt a dedicated read-only end — see the README)', parseControlFd)
++        .option('--report-fd <fd>', 'Halonic patch: write the violation line of each refused network ' +
++        'request to an inherited file descriptor >= 3', parseControlFd)
+         .allowUnknownOption()
+         .action(async (commandArgs, options) => {
+         try {
+@@ -386,6 +426,23 @@ async function main() {
+                 }
+                 controlStream.on('error', onControlError);
+             }
++            // Halonic patch: opened before anything is built, like the control fd.
++            const reportFd = options.reportFd;
++            let reportStream;
++            if (reportFd !== undefined) {
++                try {
++                    if (reportFd === controlFd) {
++                        throw new Error('it is the control fd');
++                    }
++                    reportStream = openReportFd(reportFd);
++                }
++                catch (err) {
++                    console.error(`Error: --report-fd ${reportFd} is not usable: ` +
++                        `${err instanceof Error ? err.message : String(err)}. ` +
++                        'Refusing to run the command without the reports it asks for.');
++                    process.exit(1);
++                }
++            }
+             // Until there is a child to pass an interrupt on to, it stops the
+             // run. The library's own handlers, which initialize() installs, only
+             // clean up: left to them the command would be run all the same.
+@@ -409,6 +466,10 @@ async function main() {
+                 interrupted.signal.throwIfAborted();
+                 throw err;
+             }
++            // Halonic patch: the proxies run from here, so do their refusals.
++            if (reportStream !== undefined) {
++                reportNetworkDenials(reportStream);
++            }
+             // Read config updates only now. The stream has been waiting
+             // unread, so nothing the caller wrote meanwhile is lost, and an
+             // update applied before initialize() would have been overwritten
+@@ -562,7 +623,7 @@ async function main() {
+                 aboutToSpawn();
+                 const spawned = spawn(sandboxedCommand, {
+                     shell: true,
+-                    stdio: sandboxedStdio(controlFd),
++                    stdio: sandboxedStdio(controlFd, reportFd),
+                 });
+                 child = spawned;
+                 spawned.on('exit', onCommandExit);
 diff --git a/dist/sandbox/macos-sandbox-utils.d.ts b/dist/sandbox/macos-sandbox-utils.d.ts
-index 8af5e03..b2a73f1 100644
+index 8af5e03041b27d060b0027278fb0567745b06f2f..b2a73f173f72df93d39d66568f549c9e8b61dc8a 100644
 --- a/dist/sandbox/macos-sandbox-utils.d.ts
 +++ b/dist/sandbox/macos-sandbox-utils.d.ts
 @@ -24,6 +24,7 @@ export interface MacOSSandboxParams {
@@ -11,7 +144,7 @@ index 8af5e03..b2a73f1 100644
      writeConfig: FsWriteRestrictionConfig | undefined;
      /** Environment variable names to unset for the sandboxed child (env -u) */
 diff --git a/dist/sandbox/macos-sandbox-utils.js b/dist/sandbox/macos-sandbox-utils.js
-index 0e598b6..cacf8e7 100644
+index 0e598b612d84d24b09ec2ab0d7ccc9b009c9457b..cacf8e7aaae30320cd3159d8c3fc9d8f8e7f8f5f 100644
 --- a/dist/sandbox/macos-sandbox-utils.js
 +++ b/dist/sandbox/macos-sandbox-utils.js
 @@ -750,7 +750,7 @@ function generateWriteRules(config, logTag, allowGitConfig, writeRoots) {
@@ -55,7 +188,7 @@ index 0e598b6..cacf8e7 100644
          allowGitConfig,
          enableWeakerNetworkIsolation,
 diff --git a/dist/sandbox/sandbox-config.js b/dist/sandbox/sandbox-config.js
-index 921c980..20be562 100644
+index 921c9801378a2c7ea99dae582a7f4298826748fb..20be56213702c50285b5ce53817f16c7d752bd3d 100644
 --- a/dist/sandbox/sandbox-config.js
 +++ b/dist/sandbox/sandbox-config.js
 @@ -640,6 +640,10 @@ export const NetworkConfigSchema = z.object({
@@ -70,7 +203,7 @@ index 921c980..20be562 100644
          .number()
          .int()
 diff --git a/dist/sandbox/sandbox-manager.js b/dist/sandbox/sandbox-manager.js
-index 7e35496..7c74f6d 100644
+index 7e35496950fc3f49fa8efd6cc25208389b9e9369..7c74f6d466686716a8b30debe44802bee0fe2d0a 100644
 --- a/dist/sandbox/sandbox-manager.js
 +++ b/dist/sandbox/sandbox-manager.js
 @@ -1872,6 +1872,9 @@ function getAllowLocalBinding() {
@@ -92,7 +225,7 @@ index 7e35496..7c74f6d 100644
                  allowPty,
                  allowGitConfig: getAllowGitConfig(),
 diff --git a/dist/sandbox/windows-sandbox-utils.js b/dist/sandbox/windows-sandbox-utils.js
-index ae7c417..0d086d5 100644
+index ae7c41778fa16bf864d0b4a14053a255bac75322..0d086d5b09d9738ecc83c7cdfabdf6151fc32ba5 100644
 --- a/dist/sandbox/windows-sandbox-utils.js
 +++ b/dist/sandbox/windows-sandbox-utils.js
 @@ -835,24 +835,38 @@ export async function verifyWindowsWfpEgress(opts = {}) {

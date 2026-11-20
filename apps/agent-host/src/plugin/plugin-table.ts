@@ -1,5 +1,6 @@
 import type { ConnectorClient } from "@halonicjs/ports";
 import { PluginRefusal } from "./plugin-refusal.ts";
+import type { PluginSecretValues } from "./plugin-secret-values.ts";
 
 /** How many plugins' backends the host keeps running at once. Each one is a sandboxed runner. */
 export const defaultMaxPlugins = 8;
@@ -14,6 +15,15 @@ export interface PluginBackends {
    * @throws PluginRefusal `plugin_not_trusted` when it doesn't cover the plugin
    */
   trustedFingerprint(plugin: string): Promise<string>;
+  /**
+   * Reads the plugin's folder now, checks the trust as
+   * {@link PluginBackends.trustedFingerprint} does, and gives the name each
+   * secret the plugin declares is kept under: `plugin__<id>__<secret>` by
+   * the declared name.
+   *
+   * @throws PluginRefusal `plugin_not_trusted` when the trust doesn't cover the plugin
+   */
+  trustedSecretNames(plugin: string): Promise<Readonly<Record<string, string>>>;
   /**
    * Starts the plugin's backend in the sandbox, checking trust again at the
    * start. It refuses the start when the folder no longer has `fingerprint`,
@@ -48,11 +58,19 @@ export class PluginTable {
   readonly #running = new Map<string, RunningPlugin>();
   readonly #backends: PluginBackends;
   readonly #maxPlugins: number;
+  readonly #secretValues: PluginSecretValues | undefined;
   #stopping = false;
 
-  constructor(backends: PluginBackends, options: { maxPlugins?: number } = {}) {
+  /**
+   * @param options.secretValues - the secrets Studio handed over; a plugin the trust no longer covers loses its own
+   */
+  constructor(
+    backends: PluginBackends,
+    options: { maxPlugins?: number; secretValues?: PluginSecretValues } = {},
+  ) {
     this.#backends = backends;
     this.#maxPlugins = options.maxPlugins ?? defaultMaxPlugins;
+    this.#secretValues = options.secretValues;
   }
 
   /** True once {@link PluginTable.closeAll} has started. */
@@ -68,7 +86,9 @@ export class PluginTable {
    */
   async call(plugin: string, tool: string, args: Record<string, unknown>): Promise<string> {
     if (this.#stopping) throw new PluginRefusal("host_stopping");
-    const fingerprint = await this.#fingerprintOrStop(plugin);
+    const fingerprint = await this.#trustedOrStop(plugin, () =>
+      this.#backends.trustedFingerprint(plugin),
+    );
     const running = await this.#runningFor(plugin, fingerprint);
     try {
       return await (await running.client).callTool(tool, args);
@@ -78,19 +98,38 @@ export class PluginTable {
     }
   }
 
-  /** Stops every runner, when the host stops. One that fails to stop doesn't hold the others. */
+  /** Stops every runner and drops the handed-over secrets, when the host stops. A runner that fails to stop doesn't hold the others. */
   async closeAll(): Promise<void> {
     this.#stopping = true;
+    this.#secretValues?.clear();
     const all = [...this.#running.entries()];
     this.#running.clear();
     await Promise.allSettled(all.map(([, running]) => closeRunning(running)));
   }
 
-  /** The current fingerprint; a plugin that isn't trusted loses its runner before the refusal. */
-  async #fingerprintOrStop(plugin: string): Promise<string> {
+  /**
+   * The name each secret the plugin declares is kept under, after the trust
+   * check of a call: a plugin that isn't trusted loses its runner before the
+   * refusal.
+   *
+   * @throws PluginRefusal `plugin_not_trusted`, or `host_stopping` once the host is stopping
+   */
+  async trustedSecretNames(plugin: string): Promise<Readonly<Record<string, string>>> {
+    if (this.#stopping) throw new PluginRefusal("host_stopping");
+    return await this.#trustedOrStop(plugin, () => this.#backends.trustedSecretNames(plugin));
+  }
+
+  /**
+   * What `check` gives; a plugin it refuses loses its runner before the
+   * refusal, and one the trust doesn't cover also its handed-over secrets.
+   */
+  async #trustedOrStop<T>(plugin: string, check: () => Promise<T>): Promise<T> {
     try {
-      return await this.#backends.trustedFingerprint(plugin);
+      return await check();
     } catch (error) {
+      if (error instanceof PluginRefusal && error.code === "plugin_not_trusted") {
+        this.#secretValues?.forget(plugin);
+      }
       const running = this.#running.get(plugin);
       if (running !== undefined) await this.#stop(plugin, running);
       throw error;

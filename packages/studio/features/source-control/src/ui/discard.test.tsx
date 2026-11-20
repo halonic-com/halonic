@@ -209,7 +209,9 @@ verifies("source-control.discard", () => {
       const { fake, root, toasts } = await openPage({ staged: true });
       await press(buttons(section(root, hub), "Undo these changes")[0]);
       expect(fake.replaced).toHaveLength(0);
-      expect(toasts.list()[0]?.text).toContain("Another program added this file to a version.");
+      expect(toasts.list()[0]?.text).toContain(
+        "Another program got this file ready for a version.",
+      );
     });
 
     it("shows why the toast's Undo didn't work when the file changed in the meantime", async () => {

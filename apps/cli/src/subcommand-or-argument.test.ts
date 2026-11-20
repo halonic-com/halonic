@@ -32,6 +32,7 @@ const deployCommand: CliCommand = {
     {
       name: "status",
       usage: "<deployment>",
+      takesArguments: true,
       summary: testMessages.statusSummary(),
       options: {},
       run: async (input) => echo("status", input),
@@ -50,6 +51,7 @@ const runsCommand: CliCommand = {
     {
       name: "show",
       usage: "<run-id>",
+      takesArguments: true,
       summary: testMessages.runsSummary(),
       options: {},
       run: async (input) => echo("show", input),

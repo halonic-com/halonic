@@ -230,6 +230,7 @@ verifies("ports.harness-environment", () => {
       [
         bridge: HarnessBridge,
         folders: Pick<SandboxProfile, "workingFolder" | "tempFolder" | "settingsFolder">,
+        model?: Pick<HarnessTask, "model" | "modelForEveryCall"> | undefined,
       ]
     >();
   });

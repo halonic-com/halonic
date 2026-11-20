@@ -48,7 +48,7 @@ export interface RoutineListing extends RoutineRef {
   readonly targetName: string;
   /** ISO time it next starts on its own; absent when it is off or its trigger isn't a clock. */
   readonly nextRun?: string | undefined;
-  /** Held for a Google sign-in, which the row shows as "Needs sign-in". */
+  /** Held for a Google sign-in, which the row shows as "Needs sign-in again". */
   readonly needsSignIn: boolean;
   /** Runs of this routine that wait for a person, which the row shows as "Needs you". */
   readonly needsYou: number;
@@ -210,6 +210,17 @@ export interface RoutineTargetChoice {
   readonly hubId: string;
   readonly id: string;
   readonly name: string;
+  /**
+   * The workflow's `start:` block: the one input field it asks for and what it calls it, such as
+   * `mail` with "Answer a customer's email". Absent for an agent and a workflow without one.
+   */
+  readonly start?: RoutineStartField | undefined;
+}
+
+/** The one input field a workflow asks for when it is started, as its `start:` block names it. */
+export interface RoutineStartField {
+  readonly label: string;
+  readonly field: string;
 }
 
 /** The workflow or agent a Triggers section is on, which is what its routines start. */

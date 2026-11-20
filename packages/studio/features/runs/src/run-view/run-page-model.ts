@@ -56,13 +56,13 @@ export type BannerAction =
   | { readonly kind: "open-run"; readonly runId: string; readonly label: string };
 
 /**
- * A button that mends a failed run's cause: copy the command that does it, go to Models, or open
- * a page outside Studio (`address` is already checked: see `googleConsoleAddress`).
+ * A button that mends a failed run's cause: copy the command that does it, go to Models or the
+ * budget, or open a page outside Studio (`address` is already checked: see `googleConsoleAddress`).
  */
 export type BannerFix =
   | { readonly kind: "copy-command"; readonly command: string }
   | { readonly kind: "open-models" }
-  /** **Change budget**: Settings › Models › Budget, which is where Models opens. */
+  /** **Change budget**: Workspace settings at its Budget block (`workspace.open-budget`). */
   | { readonly kind: "change-budget" }
   | {
       readonly kind: "open-external";
@@ -78,6 +78,8 @@ export interface RunPageContext {
   readonly workflowOfRun: (runId: string) => string | undefined;
   /** Whether a model provider runs on this computer or elsewhere; `undefined` when it isn't in the workspace. */
   readonly providerKind: (providerId: string) => ProviderKind | undefined;
+  /** A provider's `name` as its file gives it; `undefined` when the file names none or it isn't in the workspace. */
+  readonly providerName?: (providerId: string) => string | undefined;
   /** An agent's name as its file says; `undefined` when the workspace has no such agent. */
   readonly agentName?: (agentId: string) => string | undefined;
   readonly currency: string;

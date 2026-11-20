@@ -71,6 +71,7 @@ verifies("studio.inbox-requests", () => {
     expect(startRun).toHaveBeenCalledWith(
       { hubId: "support", workflowId: "support-reply" },
       { mail: "Hi, Sam here." },
+      "inbox",
     );
     expect(run).toEqual({ runId: "r9", hubId: "support" });
   });
@@ -141,5 +142,15 @@ verifies("studio.inbox-requests", () => {
       const { read } = setup();
       expect(read).not.toHaveBeenCalled();
     });
+  });
+});
+
+verifies("studio.inbox-request-trigger", () => {
+  it("asks the engine for an inbox trigger, so the run says it was started in the Inbox", async () => {
+    const { requests, startRun } = setup();
+
+    await requests.start("support/support-reply", "Hi, my order arrived damaged.");
+
+    expect(startRun).toHaveBeenCalledWith(expect.anything(), expect.anything(), "inbox");
   });
 });

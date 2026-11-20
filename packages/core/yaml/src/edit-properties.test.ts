@@ -56,7 +56,7 @@ function valuesOf(data: unknown, path: YamlPath = []): Located[] {
   return [here];
 }
 
-/** An edit that fits `data`: set, add, delete or insert somewhere in it. */
+/** An edit that fits `data`: set, add, delete, insert or rename somewhere in it. */
 function editFor(data: unknown): fc.Arbitrary<YamlEdit> {
   const located = valuesOf(data);
   const maps = located.filter((at) => isRecord(at.value));
@@ -87,6 +87,19 @@ function editFor(data: unknown): fc.Arbitrary<YamlEdit> {
           value: plainData,
         }),
       ),
+    );
+  }
+  const filledMaps = maps.filter((at) => Object.keys(at.value as object).length > 0);
+  if (filledMaps.length > 0) {
+    options.push(
+      fc.constantFrom(...filledMaps).chain((map) => {
+        const keys = Object.keys(map.value as object);
+        return fc.record({
+          kind: fc.constant("rename"),
+          path: fc.constantFrom(...keys).map((key) => [...map.path, key]),
+          to: fc.string({ maxLength: 8 }).filter((to) => !keys.includes(to)),
+        });
+      }),
     );
   }
   return fc.oneof(...options);
@@ -155,17 +168,19 @@ function countLines(text: string, comments: boolean): number {
 verifies("yaml.edit-line-endings", () => {
   it("splices any fitting edit into a \\r\\n text with \\r\\n line breaks only", () => {
     const fileAndEdit = fileData.chain((data) => fc.tuple(fc.constant(data), editFor(data)));
+    // Every run checks the text both without and with comments, so the number of checks
+    // doesn't depend on which edits fast-check happens to draw.
     fc.assert(
-      fc.property(fileAndEdit, fc.boolean(), ([data, edit], comments) => {
-        const plain = writeYamlFile(data);
-        const text = comments ? commentEveryLine(plain) : plain;
-        const spliced = spliceEdit(text.replaceAll("\n", "\r\n"), edit);
+      fc.property(fileAndEdit, ([data, edit]) => {
+        const plain = writeYamlFile(data).replaceAll("\n", "\r\n");
+        const spliced = spliceEdit(plain, edit);
         expect(spliced ?? "").not.toMatch(/(^|[^\r])\n/);
-        if (!comments) {
-          // Without comments every fitting edit splices, as on `\n` text.
-          expect(spliced).toBeDefined();
-          expect(unwrap(readYaml(spliced ?? "")).data).toEqual(unwrap(applyEditToData(data, edit)));
-        }
+        // Without comments every fitting edit splices, as on `\n` text.
+        expect(spliced).toBeDefined();
+        expect(unwrap(readYaml(spliced ?? "")).data).toEqual(unwrap(applyEditToData(data, edit)));
+
+        const commented = commentEveryLine(writeYamlFile(data)).replaceAll("\n", "\r\n");
+        expect(spliceEdit(commented, edit) ?? "").not.toMatch(/(^|[^\r])\n/);
       }),
       { numRuns: 200 },
     );

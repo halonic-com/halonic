@@ -12,6 +12,7 @@ import {
   addHarnessEnvironment,
   type BridgeProvider,
   type Harness,
+  type HarnessTask,
   type Sandbox,
   type SandboxSession,
 } from "@halonicjs/ports";
@@ -60,7 +61,8 @@ export function startTimeoutOf(options: HarnessRunsOptions, phase: StartPhase): 
  * Builds the profile, logs `sandbox.started`, opens the sandbox within its
  * time limit and logs `sandbox.opened`, or `sandbox.off` when a person chose
  * this computer for the agent. A session that opens after the time was up is
- * closed as soon as it arrives.
+ * closed as soon as it arrives. `model` is the task's, so the harness's
+ * environment can point its program's background models at it.
  */
 export async function openSandbox(
   { options, call, agent: subject, harness, log, limits, stop }: StartedCall,
@@ -68,6 +70,7 @@ export async function openSandbox(
   sandbox: Sandbox,
   bridge: HostedHarnessBridge,
   instructionsFolder: string | null,
+  model: Pick<HarnessTask, "model" | "modelForEveryCall">,
 ): Promise<SandboxSession> {
   stop.throwIfStopped();
   const { state, agent } = call.effect;
@@ -76,7 +79,10 @@ export async function openSandbox(
     bridge,
     instructionsFolder,
   );
-  const env = addHarnessEnvironment(profile.env, harness.environment?.(bridge, profile) ?? {});
+  const env = addHarnessEnvironment(
+    profile.env,
+    harness.environment?.(bridge, profile, model) ?? {},
+  );
   const timeoutMs = startTimeoutOf(options, "sandbox");
   await log.append({ type: "sandbox.started", state, agent, timeoutMs });
   const open = () => unlessStopped(stop, sandbox.open({ ...profile, env }), (late) => late.close());

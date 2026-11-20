@@ -22,6 +22,7 @@ pub trait KeyWrapper: Send + Sync {
 
     /// Decrypts bytes that [`Self::seal`] made for the same `context`.
     /// [`DeviceKeyError::Unreadable`] when they were changed, were sealed
-    /// for another context, or the platform key that sealed them is gone.
+    /// for another context, or the platform key that sealed them is gone or
+    /// can't be used.
     fn open(&self, sealed: &[u8], context: &[u8]) -> Result<Vec<u8>, DeviceKeyError>;
 }

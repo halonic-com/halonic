@@ -14,6 +14,7 @@ import { BehaviourPage } from "./behaviour-page.tsx";
 import { configurationWords as words } from "./configuration-words.ts";
 import { HarnessPage } from "./harness-page.tsx";
 import { ModelPage } from "./model-page.tsx";
+import { SubagentsPage } from "./subagents-page.tsx";
 import { ToolsPage } from "./tools-page.tsx";
 
 /** Props for {@link Configuration}. */
@@ -38,12 +39,12 @@ export interface ConfigurationProps {
   readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
 }
 
-type PageId = "behaviour" | "model" | "harness" | "tools";
+type PageId = "behaviour" | "model" | "harness" | "tools" | "subagents";
 
 /** The pages that are built, in the order of flow-agents 5.1. */
-const pages: readonly Tab<PageId>[] = (["behaviour", "model", "harness", "tools"] as const).map(
-  (id) => ({ id, label: words.pageNames[id] }),
-);
+const pages: readonly Tab<PageId>[] = (
+  ["behaviour", "model", "harness", "tools", "subagents"] as const
+).map((id) => ({ id, label: words.pageNames[id] }));
 
 /**
  * The agent's Configuration (`agents.configuration.pages`): a list of pages on the left and the
@@ -132,6 +133,7 @@ export function Configuration({
             {page === "tools" && (
               <ToolsPage host={host} settings={load.value} save={save} openLibrary={openLibrary} />
             )}
+            {page === "subagents" && <SubagentsPage host={host} settings={load.value} />}
           </div>
         ) : (
           <div role="status" className="flex flex-col gap-4">

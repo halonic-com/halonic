@@ -14,7 +14,10 @@ import { SaveAsTest, type SaveAsTestProps } from "./save-as-test.tsx";
 /** Props for {@link RunCard}. */
 export interface RunCardProps {
   /** The runs feature's source, which the receipt reads the run's log from. */
-  readonly source: Pick<RunsSource, "log" | "workflow" | "currency" | "providerKind">;
+  readonly source: Pick<
+    RunsSource,
+    "log" | "workflow" | "currency" | "providerKind" | "providerName"
+  >;
   /** The workspace's runs, to name a child run's workflow. */
   readonly runs: readonly SourcedRun[];
   readonly row: RunRow;
@@ -42,6 +45,8 @@ export interface RunCardProps {
     | undefined;
   /** Opens the workspace page at Models, for the banner's **Open Models**; absent where it can't. */
   readonly openModels?: (() => void) | undefined;
+  /** Opens the workspace page at its Budget block, for the banner's **Change budget**; absent where it can't. */
+  readonly openBudget?: (() => void) | undefined;
 }
 
 /**
@@ -62,6 +67,7 @@ export function RunCard({
   saveAsTest,
   runAgain,
   openModels,
+  openBudget,
 }: RunCardProps) {
   const read = useRunLog(source, run.summary.id, run.summary.lastSeq, run);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -114,6 +120,7 @@ export function RunCard({
         openStartedRun={runAgain?.onStarted}
         announce={runAgain?.announce}
         openModels={openModels}
+        openBudget={openBudget}
       />
       {(onOpenLog || saveAsTest) && (
         <div className="flex flex-wrap gap-2">

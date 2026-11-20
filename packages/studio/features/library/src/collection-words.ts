@@ -34,6 +34,5 @@ export const collectionWords = {
   noRecords: "No records yet.",
   addRecord: "Add record",
   noneInView: "No records match this view.",
-  usedBy: "Used by",
   notUsed: "No agent uses this collection yet.",
 } as const;

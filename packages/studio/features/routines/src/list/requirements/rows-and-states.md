@@ -2,16 +2,16 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-1306 (T12 PR 3), HAL-12323; flow-routines 2.1; microcopy 12.1; states RT
+- Source: HAL-1306 (T12 PR 3), HAL-12323, HAL-13843; flow-routines 2.1; microcopy 12.1; states RT
 
-The Routines place shall list the workspace's routines under "Routines" and the sentence "A routine starts a workflow or an agent on its own: on a schedule or every so often. Routines start on time only while `halonic routines watch` is running in a terminal." (the app has no scheduler of its own in 0.1 and `routines watch` checks no mail, HAL-12323) in one section per hub, each row with the routine's letter avatar, its name, the routine as one line, its next start time when it is on and runs on a clock, and one state chip (**Off**, else **Paused until trusted**, else **Needs sign-in**, else **Needs you**), open a routine in its tab when a row is chosen, and show the loading, empty, no-match and can't-load states in the approved words.
+The Routines place shall list the workspace's routines under "Routines" and the sentence "A routine starts a workflow or an agent on its own: on a schedule or every so often. Routines start on time only while `halonic routines watch` is running in a terminal." (the app has no scheduler of its own in 0.1 and `routines watch` checks no mail, HAL-12323) in one section per hub, each row with the routine's letter avatar, its name, the routine as one line, its next start time when it is on and runs on a clock, and one state chip (**Off**, else **Paused until trusted**, else **Needs sign-in again**, else **Needs you**), open a routine in its tab when a row is chosen, and show the loading, empty, no-match and can't-load states in the approved words.
 
 ## Examples
 
 - Given hubs "acme" and "beta" and the routines "Weekly report" and "Daily" in acme, then acme lists "Daily" and "Weekly report" with their one-line summaries, and beta says "No routines in beta yet.".
 - Given the routine "Daily" is on and next starts tomorrow at 07:30, then its row shows "next tomorrow 07:30"; a routine that is off shows the chip "Off" and no time.
-- Given a routine is on in an untrusted workspace, then its chip reads "Paused until trusted" and takes the place of "Needs sign-in" and "Needs you".
-- Given a routine is held for a Google sign-in, then its chip reads "Needs sign-in"; given runs wait for a person, then "Needs you".
+- Given a routine is on in an untrusted workspace, then its chip reads "Paused until trusted" and takes the place of "Needs sign-in again" and "Needs you".
+- Given a routine is held for a Google sign-in, then its chip reads "Needs sign-in again"; given runs wait for a person, then "Needs you".
 - Given the user chooses the row "Daily" in acme, then its tab opens; Ctrl-click, middle click and Ctrl Enter open it in a new tab.
 - Given no routine in any hub, then the page shows "No routines yet", the sentence "A routine starts a workflow or an agent on its own, for example every weekday at 8." and no search field and no hub chips.
 - Given the user searches for "zzz", then the page says `No routines match "zzz".` with **Clear search**.

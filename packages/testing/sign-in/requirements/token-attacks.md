@@ -11,7 +11,7 @@ The sign-in tokens shall use a saved grant only for the sign-in the user approve
 - Given a saved grant and a sheet whose token URL, authorize URL, revoke URL, scopes, client ID, client authentication, access hosts or placement changed, a setting that changed the client ID, or a sheet that no longer has the sign-in,
   when a token is asked for,
   then the request is refused as needing a sign-in and the provider is sent nothing.
-- Given a saved grant whose sheet has since changed its revoke URL and client authentication,
+- Given a saved grant whose sheet has since moved its authorize and revoke URLs to another host and changed its client authentication,
   when the user signs out,
   then the revoke goes to the approved URL with the approved client authentication, nothing goes to the new URL, and the grant is removed.
 - Given a grant that was edited in the store or is not a grant,

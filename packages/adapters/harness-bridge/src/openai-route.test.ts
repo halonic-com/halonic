@@ -17,7 +17,7 @@ afterEach(closeOpenedBridges);
 
 verifies("harness-bridge.openai", () => {
   describe("passing a request on", () => {
-    it("sends it to api.openai.com with the agent's key, the allowed headers and the same bytes", async () => {
+    it("sends it to api.openai.com with the agent's key, the allowed headers and the request it checked", async () => {
       const openai = fakeProvider(
         () =>
           new Response('{"object":"response"}', {
@@ -40,7 +40,7 @@ verifies("harness-bridge.openai", () => {
       expect(reply.headers.get("openai-organization")).toBeNull();
       const [call] = openai.calls;
       expect(call?.url).toBe("https://api.openai.com/v1/responses");
-      expect(call?.body).toBe(sent);
+      expect(call?.body).toBe(JSON.stringify(codexRequest));
       expect(Object.fromEntries(call?.headers ?? [])).toEqual({
         accept: "text/event-stream",
         authorization: `Bearer ${agentKey}`,
@@ -246,6 +246,31 @@ verifies("harness-bridge.openai", () => {
       expect(reply.status).toBe(200);
       expect(openai.calls).toHaveLength(1);
       expect(openai.calls[0]?.body).toBe(sent);
+    });
+
+    it("passes on only the value it checked when a key comes twice", async () => {
+      const openai = fakeProvider(() => new Response("{}"));
+      const { bridge } = await open(openai.fetch);
+      const shell = { type: "function", name: "shell", parameters: { type: "object" } };
+      const image =
+        '{"type":"input_image","image_url":"https://example.test/a.png","image_url":"data:image/png;base64,iVBORw0K"}';
+      const sent = `{"model":"gpt-5.5","input":[{"role":"user","content":[${image}]}],"tools":[{"type":"web_search"}],"tools":${JSON.stringify([shell])}}`;
+      const reply = await programRequest(bridge, sent);
+
+      expect(reply.status).toBe(200);
+      const forwarded = openai.calls[0]?.body ?? "";
+      expect(forwarded).not.toContain("example.test");
+      expect(forwarded).not.toContain("web_search");
+      expect(JSON.parse(forwarded)).toEqual({
+        model: "gpt-5.5",
+        input: [
+          {
+            role: "user",
+            content: [{ type: "input_image", image_url: "data:image/png;base64,iVBORw0K" }],
+          },
+        ],
+        tools: [shell],
+      });
     });
 
     it("answers 404 for any other OpenAI path", async () => {

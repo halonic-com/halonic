@@ -25,12 +25,12 @@ export function sayText(key: SandboxKey, values: Readonly<Record<string, string 
 
 /**
  * The one line under a sandboxed step (sandbox-screens 1.2), in this order and only the parts
- * that apply: "In a sandbox · writes only in its working folder · reaches only Halonic". The link
+ * that apply: "In a sandbox · writes only in its working folder and its own temp and settings folders · reaches only Halonic". The link
  * "What it can do" is the row that carries this line, so it isn't part of the text.
  *
  * @example
  * sandboxLineText({ strength: "os", allowedSites: ["a.example"], … });
- * // "In a sandbox · writes only in its working folder · reaches Halonic and 1 site"
+ * // "In a sandbox · writes only in its working folder and its own temp and settings folders · reaches Halonic and 1 site"
  */
 export function sandboxLineText(view: SandboxOpenedView): string {
   const reaches = reachesText(view.allowedSites.length);
@@ -157,7 +157,7 @@ function Path({ children }: { readonly children: string }) {
   return <span className="font-mono wrap-anywhere">{children}</span>;
 }
 
-/** Reads only: the first {@link readsShown} paths, then "and 2 more", which opens the rest in place. */
+/** Can't change: the first {@link readsShown} paths, then "and 2 more", which opens the rest in place. */
 function ReadsRow({ paths }: { readonly paths: readonly string[] }) {
   const [all, setAll] = useState(false);
   if (paths.length === 0) return null;

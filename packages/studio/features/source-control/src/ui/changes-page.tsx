@@ -190,7 +190,8 @@ function pushedPage({
   }
   if (phone && versionNav.open !== undefined) {
     return (
-      <div className={pageClass}>
+      // The page draws its own inset, so its bottom bar can run edge to edge.
+      <div className="flex min-h-full w-full flex-col">
         <VersionPage version={versionNav.open} list={list} onBack={versionNav.back} />
       </div>
     );

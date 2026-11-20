@@ -4,12 +4,12 @@
 - Since: unreleased
 - Source: component specs 15.3 and 20.2, WCAG 2.4.11; HAL-12879, HAL-13147
 
-The kit's `HeaderBadgeSheetDialog` shall show the `HeaderBadgeSheet` it is given in a full-screen `<dialog>` named by the sheet's title (`aria-labelledby`, with no region inside it, so the name is read once) and opened with `showModal()`, so that while it is open nothing outside it can take focus. When it opens, focus shall move to the sheet's title. When the user presses Escape, it shall call `onClose`. When it closes, focus shall go back to the element that had it before.
+The kit's `HeaderBadgeSheetDialog` shall show the `HeaderBadgeSheet` it is given in a full-screen `<dialog>` named by the sheet's title (`aria-labelledby`, with no region or other landmark inside it, so the name is read once) and opened with `showModal()`, so that while it is open nothing outside it can take focus. When it opens, focus shall move to the sheet's title. When the user presses Escape, it shall call `onClose`. When it closes, focus shall go back to the element that had it before.
 
 ## Examples
 
 - Given a button "Workspace: Acme" with focus,
   when its sheet "Workspace" opens,
-  then the sheet is in a dialog named "Workspace" by its title and opened with `showModal()`, there is no region inside it, and the title "Workspace" has focus.
+  then the sheet is in a dialog named "Workspace" by its title and opened with `showModal()`, there is no landmark inside it, and the title "Workspace" has focus.
 - Given that, when the user presses Escape, then `onClose` is called.
 - Given that, when the sheet closes, then "Workspace: Acme" has focus again.

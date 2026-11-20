@@ -227,6 +227,7 @@ The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 | `block` | Full width |
 | `icon` | A 16px icon before the label. With `label` and no children, the button is a square icon button |
 | `label` | An icon button's name, saying what and which: "Close Support reply", never just "Close" |
+| `round` | An icon button only: a circle instead of a square, for the ✕ at the end of a round chip (a Tools chip), so its high-contrast edge and hover fill follow the chip's round end |
 | `busy` | While its request runs: the spinner takes the icon's place, `aria-busy`, clicks ignored |
 | `busyLabel` | The label while busy ("Creating…"). Both labels share one cell, so the width never changes |
 | `unavailable` | `{ reason }`: the `id` of the visible text that says why the button can't be used now |
@@ -263,6 +264,10 @@ and every size gets a 48px hit area (`hit-touch`), drawn round the button so its
 change. Icon buttons become 40px squares on a touch screen, beside the 40px text buttons, and
 48px squares with a 20px icon on a phone. A `touch` button's label wraps between
 words, so at large text it grows taller, never wider than its column.
+
+**In a narrow box** (a status box at 400 % zoom), a `sm`, `md` or `lg` button is never wider than
+the box: its label wraps between words, centred, and the button grows taller. On one line nothing
+changes. An `xs` button stays on one line, so the status bar keeps its height.
 
 ## Card
 
@@ -537,6 +542,53 @@ which has to be there before the words arrive for them to be read.
 
 **On a phone** it sits inside the 16px page inset, never flush. Its action's `sm` button draws at
 `lg` with a 48px hit area, as every `sm` button does there, and stays under the text.
+
+## Chat parts
+
+The parts both chats draw with: an agent's Try it chat and the Assistant. They take props only and
+hold no chat logic: each feature turns its `ChatService` answer into these rows itself.
+
+```tsx
+<ChatTranscript label="Chat with Sorter" notice={engineDown ? engineLine : undefined}>
+  <ChatMessage from="you">Sort this mail</ChatMessage>
+  <ChatMessage from="reply" heading="Sorter said">
+    <ChatToolLine state="done">Read the mail</ChatToolLine>
+    <ChatText>It's about a refund.</ChatText>
+    <ChatEndLine tone="danger" actions={[{ label: "Try again", onClick: sendAgain }]}>
+      Sorter's reply failed: Anthropic was busy.
+    </ChatEndLine>
+  </ChatMessage>
+</ChatTranscript>;
+<ChatComposer
+  label="Message Sorter"
+  placeholder="Message Sorter…"
+  value={draft}
+  onChange={setDraft}
+  onSend={send}
+  onStop={stop}
+  answering={answering}
+  line={
+    noKey ? (
+      <ChatBoxLine tone="warning" actions={[{ label: "Set the key ›", onClick: openKey, look: "link" }]}>
+        Sorter has no model it can use: <code>smart</code> needs an API key for Anthropic.
+      </ChatBoxLine>
+    ) : undefined
+  }
+/>;
+```
+
+| Part | What it is |
+| --- | --- |
+| `ChatTranscript` | The scrolling column, reading width, newest at the bottom. It stays at the end while a reply grows, unless the reader scrolled up. `notice` is a line at the top, such as "The engine isn't answering. Showing what it said last." |
+| `ChatMessage` | One row: `from="you"` on the right in a tinted box, or `from="reply"` across the column under a hidden heading ("Sorter said") |
+| `ChatText` | A text step of a reply, in `text-reading`, keeping its line breaks |
+| `ChatToolLine` | One quiet line per tool call: spinner while `running`, tick when `done`, alert mark in `danger` when `failed` |
+| `ChatEndLine` | The line that ends a reply: `danger` for a failure, `plain` for "Stopped by you." and the like, with its actions (a `button`, or a `link` for a way to another place) |
+| `ChatComposer` | The message box and its button. Enter sends, Shift Enter adds a line; while `answering` the button is **Stop**, the same button, so focus stays. `sendUnavailable` makes Send wait with a visible reason. `line` goes under the box |
+| `ChatBoxLine` | The line under the box: `warning` (triangle) for what stops a message, such as no key or a key in the message, `muted` for a calm fact; its actions follow the sentence |
+
+Nothing in the transcript is a live region: a reply isn't read while it streams in. The composer's line under the box sits in a status region, so it's read once when it appears. The feature announces the
+end of a reply ("Sorter replied.") through the shell's announcer, once.
 
 ## StatusChip
 
@@ -878,7 +930,8 @@ A row has a `title`, an optional `meta` line (cut with an ellipsis), a 20px `ico
 32px `dense` row, as in a Menu item) or a 28px `avatar` (both hidden from screen readers), a
 `trailing` chip or value, a `more` button (`{ label, onClick }`, its label naming the row),
 `unavailable` (`{ reason }`), `error` (`{ reason, chip }`), `muted`, a title in `fg-muted`
-for a finished step, and `inert`: a click, Enter or Space does nothing and the row has no hover or
+for a finished step, `wrapTitle`, a title that wraps onto more lines instead of being cut, for
+one whose end tells rows apart, as Home's "Support reply · run 2ff090", and `inert`: a click, Enter or Space does nothing and the row has no hover or
 press tint, but the arrows still reach it, and Tab enters the List at the first row that isn't
 inert. Unlike the Button's, an unavailable row's `reason` is the text itself: the
 List draws it in place of the meta line and points `aria-describedby` at it.
@@ -1373,6 +1426,45 @@ An `action` (`{ label, onClick }`) is a text button at the right of the line: `a
 weight 500, no padding, underlined on hover, with a 48px hit area on touch. The text and the action wrap as
 one group, so at 200% text the action goes under the text, starting where the text starts. The
 line keeps its frame.
+
+## WaitingLine
+
+`WaitingLine` is the one line Studio shows wherever it waits: a still dot in `running`, what it
+waits for, the time waited, the reason when Studio knows it, and its ways out. Mount it when the
+wait starts and keep it until the wait ends; it draws nothing before 2 seconds, so a quick wait
+never flashes, and the reason joins at 10 seconds. The time reads "14 s", and "2:10" from a minute.
+It's never a bar: Studio doesn't know how long the wait will be.
+
+```tsx
+function ModelWait({ since }: { since: Date }) {
+  const waitedMs = useWaitedMs(since); // draws this component again every second
+  return (
+    <WaitingLine
+      placement="banner"
+      waitedMs={waitedMs}
+      what="Waiting for Ollama on this computer"
+      reason="It loads the model first, so the start is slow."
+    />
+  );
+}
+```
+
+- **Say what, not "please wait".** `what` names the thing: the provider for a cloud key ("Waiting
+  for Anthropic"), the model and "on this computer" for a local one, the harness for an agent that
+  runs one. An address only for a server on this computer, as code (`localhost:11434`).
+- **One line per wait.** An escalation (20 s, 60 s) changes `what`, `reason` and `actions` on the
+  same line; it never adds a second notice.
+- **Placement**: `inline` stands on its own in a page's flow (Welcome); `row` sits in a row's text
+  column, 4px under its hint (a setup row); `banner` is a box on `surface-muted` above a page's
+  content (the run page).
+- **Actions** are text buttons under the text, as on the LineFrame: **Something wrong?** after 10
+  seconds, **Pick another model** at the last escalation. Cancel or Stop stays where the user
+  started the wait.
+- **Screen readers** hear what it waits for and the reason when the line appears and when they
+  change, never the counting time: the time sits outside its status region. Call `useWaitedMs` in a
+  small component of its own, as above, so only the line draws again each second.
+- The dot never pulses: nothing in the Studio moves on its own but the busy spinner, so reduced
+  motion has nothing to stop.
 
 ## NoteLines
 
@@ -2190,6 +2282,7 @@ The promise `openExternal` returns rejects only when a pending address fails; th
 | Default | `accent-text`, like every inline link, underlined in a softer line (`accent-text` at 50%) |
 | Hover | The underline in full `accent-text` |
 | Focus | The standard focus ring |
+| High contrast | The system's link colour (`LinkText`), still underlined |
 | Phone | At least 48px high (`min-h-touch`), so the whole line is the target |
 
 ## WindowBar and Window
@@ -2305,7 +2398,8 @@ A problem with what you're doing in the dialog goes in the dialog (a Field error
 never in a toast.
 
 **When the focused toast closes,** focus goes to the newest toast left, else back to where it was
-before F6.
+before F6 while that place is still in the page, else (focus came by Tab or a click, or that place
+is gone) to the shown page's `h1`, never the body.
 
 **On a phone** the region spans the width less 16px each side, 8px above the bar at the bottom,
 with nothing measured. One toast shows at a time and the rest wait in order. The close button is
@@ -2321,7 +2415,7 @@ the place icons) and `WarningIcon` are outline icons in `currentColor`, hidden f
 they sit in gives them their size.
 `useOpenExternal()` reads the `openExternal` service in force, and `placeIconNames` lists the
 names a `PlaceIcon` knows. `inlineLinkClasses` is the inline link style (accent text, underlined: a
-softer line at rest so a link in a sentence isn't told by colour alone, a full one on hover), for a button that must look like a link, such as Welcome's **Copy details**. `packageName` is `"@halonicjs/studio-kit"`. The timings and counts the
+softer line at rest so a link in a sentence isn't told by colour alone, a full one on hover, and the link colour in high contrast, also on a button), for a button that must look like a link, such as Welcome's **Copy details**. `packageName` is `"@halonicjs/studio-kit"`. The timings and counts the
 components share are exported, so a test reads them instead of copying the number:
 
 | Export | Value | What it is |

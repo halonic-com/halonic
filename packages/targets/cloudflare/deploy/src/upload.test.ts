@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { type DeployError, SmokeTestFailedError } from "./errors.ts";
 import { fakeCloudflareApi } from "./fake-api.ts";
 import { type UploadProgress, uploadAndSwitch } from "./upload.ts";
@@ -179,6 +179,57 @@ verifies("deploy.upload", () => {
     expect(requests).toHaveLength(16);
   });
 
+  it("reports each retry while it waits for the address (HAL-13837)", async () => {
+    const { api, options, events } = setup(
+      { accounts: [], deployment: live, workersDevOn: false },
+      {},
+      404,
+    );
+    const { attempts: _attempts, ...defaults } = options;
+    await expect(uploadAndSwitch(api, defaults)).rejects.toBeInstanceOf(SmokeTestFailedError);
+    const retries = events.filter((e) => e.step === "self-test-retry");
+    expect(retries).toHaveLength(15);
+    expect(retries[0]).toEqual({ step: "self-test-retry", attempt: 2, attempts: 16 });
+    expect(retries.at(-1)).toEqual({ step: "self-test-retry", attempt: 16, attempts: 16 });
+    expect(events.findIndex((e) => e.step === "self-test-retry")).toBeGreaterThan(
+      events.findIndex((e) => e.step === "uploaded"),
+    );
+  });
+
+  it("gives up after two and a half minutes when the address never answers (HAL-13837)", async () => {
+    vi.useFakeTimers();
+    try {
+      const { api, options } = setup({ accounts: [] }, passing);
+      const { attempts: _attempts, sleep: _sleep, ...defaults } = options;
+      let calls = 0;
+      let settled = false;
+      // The edge takes the connection and never answers: only the abort ends the call.
+      const silent = (_url: string, init?: RequestInit) => {
+        calls += 1;
+        return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+        });
+      };
+      const done = uploadAndSwitch(api, {
+        ...defaults,
+        fetch: silent as unknown as typeof fetch,
+      }).finally(() => {
+        settled = true;
+      });
+      const outcome = expect(done).rejects.toBeInstanceOf(SmokeTestFailedError);
+      await vi.advanceTimersByTimeAsync(149_999);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(settled).toBe(true);
+      await outcome;
+      // 30 s per try and waits of 2, 4, 6 and 8 s: the fifth try gets the last 10 s.
+      expect(calls).toBe(5);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("uploads a never-deployed Worker live and tests it", async () => {
     const { api, options, requests } = setup({ accounts: [] }, passing);
     await uploadAndSwitch(api, {
@@ -276,8 +327,8 @@ verifies("deploy.upload", () => {
     expect((error as Error).message).toContain("no previous version");
   });
 
-  it("fails clearly when the upload leaves no deployment to read back", async () => {
-    const { api, options } = setup({ accounts: [] }, passing);
+  it("says a live upload passed its test when Cloudflare never lists its deployment", async () => {
+    const { api, options, requests } = setup({ accounts: [] }, passing);
     let lookups = 0;
     const emptied = Object.assign(Object.create(api), {
       currentDeployment: async () => {
@@ -287,12 +338,14 @@ verifies("deploy.upload", () => {
     });
     const error = await uploadAndSwitch(emptied, options).catch((e: unknown) => e);
     expect((error as DeployError).code).toBe("cloudflare-request-failed");
-    // One lookup before the upload, five after it.
-    expect(lookups).toBe(6);
+    expect((error as Error).message).toContain("passed its self-test");
+    expect(requests).toHaveLength(1);
+    // One lookup before the upload, nine after the self-test.
+    expect(lookups).toBe(10);
   });
 
-  it("asks again while Cloudflare doesn't list the new deployment yet", async () => {
-    const { api, options } = setup({ accounts: [] }, passing);
+  it("tests a live upload before Cloudflare lists it, then asks for its id again", async () => {
+    const { api, options, requests, events } = setup({ accounts: [] }, passing);
     let lookups = 0;
     const sleeps: number[] = [];
     // The first lookup is before the upload; the next two answer as if Cloudflare still lags.
@@ -310,7 +363,29 @@ verifies("deploy.upload", () => {
     });
     expect(done.versionId).toBe("v1");
     expect(lookups).toBe(4);
-    expect(sleeps.slice(0, 2)).toEqual([1000, 2000]);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.headers["Cloudflare-Workers-Version-Overrides"]).toBeUndefined();
+    expect(sleeps).toEqual([2000, 4000]);
+    expect(events.map((e) => e.step)).toEqual(["bundle-checked", "uploaded", "smoke-test"]);
+    expect(events[1]).toEqual({ step: "uploaded", live: true });
+  });
+
+  it("doesn't take the old version for a migration's new one while the listing lags", async () => {
+    const { api, options } = setup({ accounts: [], deployment: live }, passing);
+    let lookups = 0;
+    // Before the upload and once after it, Cloudflare still lists the old deployment.
+    const lagging = Object.assign(Object.create(api), {
+      currentDeployment: async () => {
+        lookups += 1;
+        return lookups <= 2 ? live : [{ id: "v2", percentage: 100 }];
+      },
+    });
+    const done = await uploadAndSwitch(lagging, {
+      ...options,
+      durableObjectMigrations: [{ tag: "v2", new_sqlite_classes: ["B"] }],
+    });
+    expect(done.versionId).toBe("v2");
+    expect(lookups).toBe(3);
   });
 
   it("still reports the failed self-test when putting the old version back fails", async () => {

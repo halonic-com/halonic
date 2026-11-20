@@ -1,11 +1,24 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
-import { selectedFolders, selectTests, testSelection, verifierPackages } from "./affected-tests.ts";
+import {
+  docsReaders,
+  selectedFolders,
+  selectTests,
+  testSelection,
+  verifierPackages,
+} from "./affected-tests.ts";
 import type { CheckContext } from "./context.ts";
-import type { WorkspacePackage } from "./workspace.ts";
+import { isTestFile } from "./source-files.ts";
+import {
+  findRepoRoot,
+  listRepoFiles,
+  listWorkspacePackages,
+  owningPackage,
+  type WorkspacePackage,
+} from "./workspace.ts";
 
 function workspacePackage(
   directory: string,
@@ -32,6 +45,20 @@ const packages = [
   workspacePackage("apps/cli", "halonic", { "@halonicjs/test-runner": "workspace:*" }),
   workspacePackage("packages/core/format", "@halonicjs/format"),
 ];
+
+/** Each doc a test reads by a path out of its package, with the readers' packages. */
+function docsReadByTests(root: string): Map<string, Set<string>> {
+  const repoPackages = listWorkspacePackages(root);
+  const reads = /(?:(?:\.\.\/)+|findRepoRoot\(\),\s*["'`])(docs\/[\w./-]+\.md)/g;
+  const found = new Map<string, Set<string>>();
+  for (const file of listRepoFiles(root).filter(isTestFile)) {
+    const reader = owningPackage(file, repoPackages)?.manifest.name ?? file;
+    for (const [, doc = ""] of readFileSync(join(root, file), "utf8").matchAll(reads)) {
+      found.set(doc, new Set([...(found.get(doc) ?? []), reader]));
+    }
+  }
+  return found;
+}
 
 verifies("check.affected-tests", () => {
   describe("testSelection", () => {
@@ -108,6 +135,13 @@ verifies("check.affected-tests", () => {
       });
     });
 
+    test("selects the packages whose tests read a changed doc", () => {
+      expect(testSelection(["docs/guides/integrations.md"], packages)).toEqual({
+        kind: "some",
+        packages: ["@halonicjs/format"],
+      });
+    });
+
     test("counts a README inside a package as a change to that package", () => {
       expect(testSelection(["packages/core/format/README.md"], packages)).toEqual({
         kind: "some",
@@ -134,6 +168,36 @@ verifies("check.affected-tests", () => {
         new Map([["@halonicjs/format", ["halonic", "@halonicjs/workspace"]]]),
       );
     });
+
+    test("keeps the links of a requirement the change deletes", () => {
+      const files: Record<string, string> = {
+        "apps/cli/src/format.test.ts": `import { verifies } from "@halonicjs/testing-spec";\nverifies("format.round-trip", () => {});\n`,
+      };
+      const context = {
+        files: Object.keys(files),
+        packages,
+        read: (file: string) => files[file] ?? "",
+      };
+      expect(verifierPackages(context)).toEqual(new Map());
+      const changed = ["packages/core/format/requirements/round-trip.md"];
+      expect(verifierPackages(context, changed)).toEqual(
+        new Map([["@halonicjs/format", ["halonic"]]]),
+      );
+    });
+  });
+
+  // Reads the real repo: a test that reads a doc outside its own package
+  // must be listed in docsReaders, or a change to that doc tests nothing.
+  test("docsReaders lists every doc a test reads, with that test's package", () => {
+    const root = findRepoRoot();
+    const found = docsReadByTests(root);
+    expect(found.size).toBeGreaterThan(0);
+    for (const [doc, readers] of found) {
+      expect(new Set(docsReaders[doc] ?? []), doc).toEqual(readers);
+    }
+    for (const doc of Object.keys(docsReaders)) {
+      expect(existsSync(join(root, doc)), doc).toBe(true);
+    }
   });
 
   describe("selectTests", () => {

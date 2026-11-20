@@ -5,10 +5,11 @@
 //! it each time it starts the host there.
 
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::time::Duration;
 
-use crate::wsl::{DISTRO, WslError, listing_text, run_within_bytes};
+use crate::console_window::new_command;
+use crate::wsl::{DISTRO, Input, WslError, listing_text, run_within_bytes};
 
 /// Whether [`DISTRO`] is WSL's default distro, read from `wsl.exe --list
 /// --verbose` within `limit`. `None` when the list marks no default.
@@ -18,10 +19,10 @@ use crate::wsl::{DISTRO, WslError, listing_text, run_within_bytes};
 /// When `wsl.exe` can't start, ends with an error, or takes longer than
 /// `limit` ([`WslError::TimedOut`]).
 pub fn halonic_is_default(wsl: &Path, limit: Duration) -> Result<Option<bool>, WslError> {
-    let mut command = Command::new(wsl);
+    let mut command = new_command(wsl);
     // `WSLENV` names Windows variables that wsl.exe copies into the distro.
     command.env_remove("WSLENV").args(["--list", "--verbose"]);
-    let printed = run_within_bytes(command, Stdio::null(), limit)?;
+    let printed = run_within_bytes(command, Input::Given(Stdio::null()), limit)?;
     Ok(default_in_listing(&listing_text(&printed)))
 }
 

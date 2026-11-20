@@ -1,5 +1,6 @@
 import { defineMessages } from "./define.ts";
 import { dim, type Phrase, type PhraseValue, phrase } from "./phrase.ts";
+import { suggestedCommand } from "./suggested-command.ts";
 
 /** Where a bug is reported; the `internal` fix line links to it. */
 export const issuesLink = "https://github.com/halonic-com/halonic/issues";
@@ -52,6 +53,15 @@ export const usageMessages = defineMessages("usage", {
   seeCommandOptions: (command: string) => phrase`Run halonic ${command} --help to see its options.`,
   missingValue: (option: string, valueName: string) =>
     phrase`${option} needs a value: ${option} <${valueName}>.`,
+  /**
+   * An argument given to a command that takes none, in the shape of
+   * {@link noValueWanted}: "halonic validate takes no arguments, and you gave ./lt." (HAL-12639).
+   */
+  takesNoArguments: (command: string, given: readonly string[]) =>
+    phrase`halonic ${command} takes no arguments, and you gave ${given.join(" ")}.`,
+  /** The fix for a folder given to a command with `--dir`: "To use the workspace in ./lt, run halonic doctor --dir ./lt." */
+  useDirOption: (command: string, folder: string) =>
+    phrase`To use the workspace in ${folder}, run ${suggestedCommand(command, folder)}.`,
   /** "--json doesn't take a value, and you gave one: --json=yes.", the shape of L6. */
   noValueWanted: (option: string, given: string) =>
     phrase`${option} doesn't take a value, and you gave one: ${given}.`,

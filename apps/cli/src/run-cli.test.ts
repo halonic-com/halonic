@@ -32,6 +32,7 @@ const greetMessages = defineMessages("greet", {
 const greetCommand: CliCommand = {
   name: "greet",
   usage: "<name> [--loud]",
+  takesArguments: true,
   summary: greetMessages.summary(),
   action: (input) => greetMessages.action(input.positionals[0] ?? ""),
   options: {

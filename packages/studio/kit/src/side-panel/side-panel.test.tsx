@@ -70,6 +70,20 @@ verifies("kit.side-panel", () => {
     expect(container.querySelector("h2")?.id).toBe("sheet-title");
   });
 
+  it("draws its header and footer as plain blocks inside a dialog, so they aren't landmarks", () => {
+    const { container } = render(
+      panel({ dialogTitleId: "sheet-title", footer: <button type="button">Run step</button> }),
+    );
+    const [header, , footer] = [...(container.firstElementChild?.children ?? [])];
+    expect(container.querySelector("header, footer")).toBeNull();
+    expect(header?.tagName).toBe("DIV");
+    expect(header?.className).toContain("border-b border-border");
+    expect(header?.contains(container.querySelector("h2"))).toBe(true);
+    expect(footer?.tagName).toBe("DIV");
+    expect(footer?.className).toContain("border-t border-border");
+    expect(footer?.textContent).toBe("Run step");
+  });
+
   it("puts the shell's actions right of the title and the footer under a divider", () => {
     const { container } = render(
       panel({

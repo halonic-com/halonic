@@ -112,12 +112,16 @@ verifies("shell.window-title", () => {
 
   it("names the phone's page on a phone, and the active tab's again on the desktop", () => {
     const { tabs, tapPlace } = renderWindow("Acme");
-    act(() => tabs.openHere(supportReply));
     act(() => media.resize(PHONE_WIDTH));
     expect(document.title).toBe("Home · Acme · Halonic");
     tapPlace("More");
     expect(document.title).toBe("More · Acme · Halonic");
+    // More has no desktop page (the sidebar does its job), so the desktop keeps its tab.
     act(() => media.resize(DESKTOP_WIDTH));
+    expect(document.title).toBe("Home · Acme · Halonic");
+    act(() => tabs.openHere(supportReply));
+    // The open page stays open when the window narrows (HAL-13726).
+    act(() => media.resize(PHONE_WIDTH));
     expect(document.title).toBe("Support reply · Acme · Halonic");
   });
 });

@@ -10,6 +10,7 @@ import { reportedShellError } from "../test-support/console-errors.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { HomePage } from "./home-page.tsx";
+import type { HomeCardProps } from "./home-section.tsx";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -296,6 +297,35 @@ verifies("shell.home-states", () => {
     await arrive(runs, "6 runs");
     expect(section.querySelector("p")?.textContent).toBe("6 runs");
     expect(document.activeElement).toBe(elsewhere);
+  });
+
+  it("gives each Try again an attempt no other section has had, and the first load attempt 0", async () => {
+    // Recent runs and Spend share one runs list, so an attempt both had would share a failed load.
+    const attempts: Record<"recent-runs" | "spend", number[]> = { "recent-runs": [], spend: [] };
+    const failing = (id: "recent-runs" | "spend"): Registered<HomeCardContribution> => {
+      const Card = ({ attempt }: HomeCardProps) => {
+        attempts[id].push(attempt);
+        throw new Error("engine down");
+      };
+      return { id, view: "Card", load: async () => ({ Card }), featureId: "runs" };
+    };
+    const container = renderHome([failing("recent-runs"), failing("spend")]);
+    await settle();
+    expect(new Set(attempts["recent-runs"])).toEqual(new Set([0]));
+    expect(new Set(attempts.spend)).toEqual(new Set([0]));
+
+    const tryAgain = (name: string) =>
+      act(() => sectionNamed(container, name).querySelector("button")?.click());
+    tryAgain("Recent runs");
+    await settle();
+    tryAgain("Spend");
+    await settle();
+
+    const recentRuns = new Set(attempts["recent-runs"]);
+    const spend = new Set(attempts.spend);
+    expect(recentRuns.size).toBe(2);
+    expect(spend.size).toBe(2);
+    expect([...spend].filter((attempt) => attempt !== 0 && recentRuns.has(attempt))).toEqual([]);
   });
 
   it("imports a card's view again on Try again after the import failed", async () => {

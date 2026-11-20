@@ -108,7 +108,7 @@ verifies("studio.workspace-runs", () => {
     expect(runs.hubName("gone")).toBeUndefined();
   });
 
-  it("names the workflows as `halonic run` takes them, in the Workflows list's order", async () => {
+  it("names the workflows, with the name `halonic run` takes, in the Workflows list's order", async () => {
     const { engine } = await waitingRun();
     const workflow = (id: string, name: string) =>
       `id: ${id}\nname: ${name}\ninitial: done\nstates:\n  done:\n    type: final\n`;
@@ -126,7 +126,11 @@ verifies("studio.workspace-runs", () => {
       definitions: new MemoryDefinitionStore({ "workspace.yaml": "id: new\nname: New\n" }),
     });
 
-    expect(await runs.runnableWorkflows()).toEqual(["acme/reply", "welcome", "sales/reply"]);
+    expect(await runs.runnableWorkflows()).toEqual([
+      { hubId: "acme", id: "reply", name: "Support reply", command: "acme/reply" },
+      { hubId: "acme", id: "welcome", name: "Welcome", command: "welcome" },
+      { hubId: "sales", id: "reply", name: "Sales reply", command: "sales/reply" },
+    ]);
     expect(await empty.runnableWorkflows()).toEqual([]);
   });
 
@@ -146,6 +150,22 @@ verifies("studio.workspace-runs", () => {
     expect(runs.providerKind("ollama")).toBe("local");
     expect(runs.providerKind("claude")).toBe("cloud");
     expect(runs.providerKind("gone")).toBeUndefined();
+  });
+
+  it("names a provider as its file does, and nothing for one without a name or the workspace lacks", async () => {
+    const { engine } = await waitingRun();
+    const definitions = new MemoryDefinitionStore({
+      "workspace.yaml": "id: acme\nname: Acme\n",
+      "providers/openai.yaml": "id: openai\nname: OpenAI\ntype: openai\nsecret: openai-key\n",
+      "providers/studio.yaml": "id: studio\ntype: lmstudio\n",
+    });
+    const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions });
+
+    await runs.list();
+
+    expect(runs.providerName("openai")).toBe("OpenAI");
+    expect(runs.providerName("studio")).toBeUndefined();
+    expect(runs.providerName("gone")).toBeUndefined();
   });
 
   it("reads the workspace's monthly budget, and none when it sets none", async () => {

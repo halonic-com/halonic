@@ -48,7 +48,12 @@ export const agentHostRequestRoutes = [
   "POST /v1/google/secret/replace",
   "POST /v1/google/sign-in",
   "POST /v1/google/sign-in/cancel",
+  "POST /v1/integrations/sign-in/status",
+  "POST /v1/integrations/sign-in/start",
+  "POST /v1/integrations/sign-in/cancel",
+  "POST /v1/integrations/sign-in/sign-out",
   "POST /v1/plugins/call",
+  "POST /v1/plugins/secrets",
 ] as const;
 
 /** The agent host's routes that answer with an NDJSON stream. */

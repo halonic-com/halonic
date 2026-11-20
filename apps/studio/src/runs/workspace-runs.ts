@@ -13,6 +13,7 @@ import { KindedError } from "@halonicjs/std";
 import type { InboxRuns } from "@halonicjs/studio-feature-inbox/api";
 import type {
   ProviderKind,
+  RunnableWorkflow,
   RunRoutine,
   RunsSource,
   RunWorkflow,
@@ -51,6 +52,8 @@ interface WorkspaceFacts {
   readonly routines: ReadonlyMap<string, RoutineClock>;
   /** By id, where each provider the workspace has runs. */
   readonly providers: ReadonlyMap<string, ProviderKind>;
+  /** By id, the `name` of each provider whose file gives one. */
+  readonly providerNames: ReadonlyMap<string, string>;
   /** By id, each agent's name as its file says. */
   readonly agentNames: ReadonlyMap<string, string>;
   /** By id, each hub's name as its file says. */
@@ -132,7 +135,7 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     return this.#facts?.routines.get(key);
   }
 
-  async runnableWorkflows(): Promise<readonly string[]> {
+  async runnableWorkflows(): Promise<readonly RunnableWorkflow[]> {
     await this.#readFacts();
     const workflows = this.#facts?.workflows ?? [];
     // The Workflows list's order: the hubs as the workspace has them, each hub's workflows by name.
@@ -146,12 +149,17 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
       .map(({ hubId, workflow }) => {
         // The name `halonic run` takes: the id, or `hub/id` when another hub has the same id.
         const lookup = lookUpWorkflow(workflows, workflow.id);
-        return lookup.found === "several" ? `${hubId}/${workflow.id}` : workflow.id;
+        const command = lookup.found === "several" ? `${hubId}/${workflow.id}` : workflow.id;
+        return { hubId, id: workflow.id, name: workflow.name, command };
       });
   }
 
   providerKind(providerId: string): ProviderKind | undefined {
     return this.#facts?.providers.get(providerId);
+  }
+
+  providerName(providerId: string): string | undefined {
+    return this.#facts?.providerNames.get(providerId);
   }
 
   currency(): string {
@@ -207,6 +215,11 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
           value.id,
           providerIsLocal(value) ? "local" : "cloud",
         ]),
+      ),
+      providerNames: new Map(
+        filesOf(workspace, "provider").flatMap(({ value }) =>
+          value.name === undefined ? [] : [[value.id, value.name] as const],
+        ),
       ),
       agentNames: new Map(
         filesOf(workspace, "agent")

@@ -6,10 +6,10 @@ import type {
   WorkerUpload,
 } from "./api.ts";
 import { DeployError, type LiveReason, redact, SmokeTestFailedError } from "./errors.ts";
+import { selfTest } from "./self-test.ts";
 
 /** The variable that opens the Worker's `/self-test` route; the same name the runtime reads. */
 const selfTestTokenVariable = "HALONIC_SELFTEST_TOKEN";
-const overrideHeader = "Cloudflare-Workers-Version-Overrides";
 /** Self-test tries on an address that was already on: about 20 s. */
 const attemptsWhenOpen = 5;
 /**
@@ -17,15 +17,22 @@ const attemptsWhenOpen = 5;
  * edge answers 404 for a new address until it reaches the Worker, longer than 20 s (HAL-13834).
  */
 const attemptsWhenNew = 16;
-/** How often a live deploy reads the deployment back: waits of 1, 2, 3 and 4 s, about 10 s. */
-const deploymentLookups = 5;
+/**
+ * How often a live deploy reads its version id back after the self-test: waits of 2, 4, 6, 8 and
+ * then 10 s, about a minute. Cloudflare can take longer than 10 s to list the deployment of an
+ * upload it took, more so while several deploys run at once (HAL-13838, HAL-14021).
+ */
+const deploymentLookups = 9;
 /** The longest wait between two tries. */
 const longestWaitMs = 10_000;
 
 /** What one upload step reports. The CLI formats these later. */
 export type UploadProgress =
   | { readonly step: "bundle-checked"; readonly hash: string }
-  | { readonly step: "uploaded"; readonly versionId: string; readonly live: boolean }
+  /** A live upload has no id yet: it is read back after the self-test, and `switched` never comes. */
+  | { readonly step: "uploaded"; readonly versionId?: string; readonly live: boolean }
+  /** The address didn't answer yet, so the self-test tries again: try `attempt` of `attempts` at most. */
+  | { readonly step: "self-test-retry"; readonly attempt: number; readonly attempts: number }
   | { readonly step: "smoke-test"; readonly passed: boolean }
   | { readonly step: "switched"; readonly versionId: string }
   | { readonly step: "kept-previous"; readonly versionId: string }
@@ -57,7 +64,8 @@ export interface UploadAndSwitchOptions {
   readonly randomToken?: () => string;
   /**
    * How often the self-test is tried while the address starts answering. Defaults to 5 (about
-   * 20 s), or 16 (about two minutes) when the deploy turned workers.dev on.
+   * 20 s), or 16 (about two minutes) when the deploy turned workers.dev on. Either way the
+   * self-test stops after two and a half minutes.
    */
   readonly attempts?: number;
 }
@@ -125,13 +133,15 @@ export async function uploadAndSwitch(
   const serving = servingVersions(previous, goesLive);
 
   if (goesLive) await options.beforeTraffic?.();
-  const versionId = goesLive
-    ? await deployLive(api, options, upload, migrations)
+  // A live upload serves all traffic and only it holds this upload's token, so its self-test
+  // needs no version id.
+  const darkId = goesLive
+    ? await api.uploadWorkerLive(accountId, worker, upload, migrations).then(() => undefined)
     : await uploadDark(api, options, upload, serving);
-  report({ step: "uploaded", versionId, live: goesLive });
+  report({ step: "uploaded", ...(darkId ? { versionId: darkId } : {}), live: goesLive });
 
   const result = await selfTestOpen(api, options, {
-    versionId: goesLive ? undefined : versionId,
+    versionId: darkId,
     token,
     keepOpen: liveReason === "first-deploy",
     goesLive,
@@ -150,12 +160,11 @@ export async function uploadAndSwitch(
       report,
     );
   }
-  if (!goesLive) {
-    await options.beforeTraffic?.();
-    await api.deployVersions(accountId, worker, [{ id: versionId, percentage: 100 }]);
-    report({ step: "switched", versionId });
-  }
-  return { versionId };
+  if (darkId === undefined) return { versionId: await liveVersionId(api, options, previous) };
+  await options.beforeTraffic?.();
+  await api.deployVersions(accountId, worker, [{ id: darkId, percentage: 100 }]);
+  report({ step: "switched", versionId: darkId });
+  return { versionId: darkId };
 }
 
 /**
@@ -268,26 +277,26 @@ function servingVersions(
   return serving;
 }
 
-/** Uploads with the migrations and deploys at once; returns the id of the version now live. */
-async function deployLive(
+/**
+ * The id of the version a live upload deployed, once Cloudflare lists it. A listing that still
+ * names a version from before the upload is as stale as an empty one.
+ */
+async function liveVersionId(
   api: CloudflareApi,
   options: UploadAndSwitchOptions,
-  upload: WorkerUpload,
-  migrations: readonly DurableObjectMigration[],
+  previous: readonly DeployedVersion[] | undefined,
 ): Promise<string> {
-  await api.uploadWorkerLive(options.accountId, options.worker, upload, migrations);
   const sleep = options.sleep ?? realSleep;
-  // Cloudflare can take a few seconds to list a deployment it just took, more so when several
-  // deploys run at once (HAL-13838): ask again for about 10 s before giving up.
+  const before = new Set((previous ?? []).map((v) => v.id));
   for (let lookup = 1; lookup <= deploymentLookups; lookup += 1) {
     const now = await api.currentDeployment(options.accountId, options.worker);
     const id = now?.[0]?.id;
-    if (id) return id;
-    if (lookup < deploymentLookups) await sleep(1000 * lookup);
+    if (id && !before.has(id)) return id;
+    if (lookup < deploymentLookups) await sleep(Math.min(2000 * lookup, longestWaitMs));
   }
   throw new DeployError(
     "cloudflare-request-failed",
-    "Cloudflare took the upload but lists no deployment for the Worker, so the new version can't be tested.",
+    "The new version is deployed and passed its self-test, but Cloudflare lists no deployment for the Worker, so its version id is unknown. The Worker's deployments in the Cloudflare dashboard show it.",
   );
 }
 
@@ -312,44 +321,4 @@ async function restore(
 ) {
   await api.deployVersions(accountId, worker, previous);
   report({ step: "kept-previous", versionId: previous[0]?.id ?? "" });
-}
-
-/** Calls `POST /self-test` until it answers or the attempts run out. */
-async function selfTest(
-  baseUrl: string,
-  worker: string,
-  versionId: string | undefined,
-  token: string,
-  options: UploadAndSwitchOptions,
-): Promise<{ ok: boolean; failed: string[] }> {
-  const doFetch = options.fetch ?? fetch;
-  const sleep = options.sleep ?? realSleep;
-  const attempts = options.attempts ?? attemptsWhenOpen;
-  let failed: string[] = [];
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    try {
-      const response = await doFetch(`${baseUrl}/self-test`, {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${token}`,
-          ...(versionId ? { [overrideHeader]: `${worker}="${versionId}"` } : {}),
-        },
-        signal: AbortSignal.timeout(30_000),
-      });
-      if (response.ok) {
-        const report = (await response.json()) as {
-          ok?: boolean;
-          checks?: { name?: string; ok?: boolean }[];
-        };
-        failed = (report.checks ?? []).filter((c) => !c.ok).map((c) => String(c.name));
-        // A report that says "not ok" is an answer, not a Worker still starting: don't retry it.
-        return { ok: report.ok === true, failed };
-      }
-      failed = [`HTTP ${response.status}`];
-    } catch {
-      failed = ["no answer"];
-    }
-    if (attempt < attempts) await sleep(Math.min(2000 * attempt, longestWaitMs));
-  }
-  return { ok: false, failed };
 }

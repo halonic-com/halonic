@@ -318,6 +318,15 @@ verifies("runs.run-view.receipt-models-cost", () => {
     );
   });
 
+  it("escapes a model name's hidden characters, so the line keeps its order (HAL-13822)", () => {
+    expect(
+      lines([modelCall("claude-next\u202e-5", { cost: 0.0083 })], {
+        cost: 0.0083,
+        unpricedCalls: 0,
+      })[0],
+    ).toBe("claude-next\\u202e-5 · 1 call · 1,000 in · 300 out · €0.008");
+  });
+
   it("says a subscription paid for a call", () => {
     expect(
       lines([modelCall("sonnet", { paidBy: "subscription", cost: 0 })], {
