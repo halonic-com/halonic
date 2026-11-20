@@ -248,7 +248,9 @@ fn updates_proxy_test_updater_asks_the_proxy_and_keeps_the_callers_settings() {
     .expect("an https endpoint")
     .build()
     .expect("an updater");
-    tauri::async_runtime::block_on(updater.check()).expect_err("the proxy refused the tunnel");
+    // `Update` isn't `Debug`, so `expect_err` doesn't compile here.
+    let checked = tauri::async_runtime::block_on(updater.check());
+    assert!(checked.is_err(), "the proxy refused the tunnel");
     let connect = proxy.request();
     assert!(
         connect.starts_with("CONNECT updates.test:443 "),
