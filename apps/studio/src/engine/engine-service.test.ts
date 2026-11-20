@@ -5,6 +5,7 @@ import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { acmeFiles, fakeShell, lockCalls, serviceOn } from "./engine-service.testing.ts";
+import { WindowCantStart } from "./page-refusal.ts";
 
 verifies("studio.engine-service", () => {
   describe("the engine's lock", () => {
@@ -325,6 +326,7 @@ verifies("studio.engine-service", () => {
         )
         .catch((error: unknown) => error);
 
+      expect(refusal).toBeInstanceOf(WindowCantStart);
       expect(refusal).toMatchObject({ kind: "unavailable" });
       expect((refusal as Error).message).toContain("writer");
       expect(refusal).not.toHaveProperty("command");

@@ -67,6 +67,7 @@ import {
   type PageRefusal,
   runCommandOf,
   startRefusal,
+  WindowCantStart,
   whyThePageCantStart,
 } from "./page-refusal.ts";
 import type { EngineDecisions, StudioHarnessHost } from "./studio-harness-host.ts";
@@ -251,7 +252,7 @@ export class EngineService {
       throw new RangeError(`The hub "${hubId}" has no agent "${agentId}".`);
     }
     const refusal = this.#whyThePageCantStart(file.value);
-    if (refusal !== undefined) throw new KindedError("unavailable", refusal.reason);
+    if (refusal !== undefined) throw new WindowCantStart(refusal.reason);
   }
 
   /**

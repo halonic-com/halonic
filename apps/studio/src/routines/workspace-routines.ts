@@ -33,9 +33,11 @@ import {
   type TriggerOwner,
   type TriggerRow,
 } from "@halonicjs/studio-feature-routines/api";
+import { StartInTerminal } from "@halonicjs/studio-feature-workflows/api";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { editYaml } from "@halonicjs/yaml";
 import type { RoutineRunStart } from "../engine/engine-service.ts";
+import { WindowCantStart } from "../engine/page-refusal.ts";
 import {
   editsOf,
   newRoutineText,
@@ -113,7 +115,9 @@ export interface WorkspaceRoutinesParts {
   readonly versionDialog?: (paths: readonly string[]) => Promise<"made" | "cancelled">;
   /**
    * Starts what a routine runs, as the scheduler would start it. Absent where the app has no
-   * engine, so there is no `runNow`.
+   * engine, so there is no `runNow`. Rejects with {@link WindowCantStart} or
+   * {@link StartInTerminal} for what the window can't start, and with an `unavailable`
+   * `KindedError` when the engine can't be reached.
    */
   readonly engine?: {
     start(
@@ -428,6 +432,9 @@ export class WorkspaceRoutines implements RoutinesHost {
       const { id } = await engine.start(start, { routineKey: key, at: at.toISOString() });
       return { started: true, runId: id, shortId: shortRunId(id) };
     } catch (error) {
+      // Only an engine that can't be reached is "not answering": the window's refusal of what this
+      // routine starts keeps its own words.
+      if (error instanceof WindowCantStart || error instanceof StartInTerminal) throw error;
       if (error instanceof KindedError && error.kind === "unavailable")
         throw new EngineNotAnswering();
       throw error;

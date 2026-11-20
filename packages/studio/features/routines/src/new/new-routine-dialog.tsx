@@ -143,7 +143,12 @@ export function NewRoutineDialog({
           ) : undefined
         }
       />
-      {target && <NewItemNote id={noteId}>{words.runs(target.name)}</NewItemNote>}
+      {target && (
+        <NewItemNote id={noteId}>
+          {/* The engine can't run an agent from a routine yet (C52 claim 1.6), so that line says so. */}
+          {target.kind === "agent" ? words.agentCantRun(target.name) : words.runs(target.name)}
+        </NewItemNote>
+      )}
     </div>
   );
 

@@ -1,8 +1,10 @@
 import type { RunSummary } from "@halonicjs/events";
 import { KindedError } from "@halonicjs/std";
 import { EngineNotAnswering, NothingToRun } from "@halonicjs/studio-feature-routines/api";
+import { StartInTerminal } from "@halonicjs/studio-feature-workflows/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import { WindowCantStart } from "../engine/page-refusal.ts";
 import { WorkspaceRoutines, type WorkspaceRoutinesParts } from "./workspace-routines.ts";
 
 const analystFile = "id: analyst\nname: Analyst\nmodel: fast\ninstructions: Report.\n";
@@ -415,6 +417,35 @@ verifies("studio.workspace-routines", () => {
     });
     await expect(down.host.runNow?.(weekly)).rejects.toThrow(EngineNotAnswering);
     expect(setup().host.runNow).toBeUndefined();
+  });
+
+  it.each([
+    [
+      "with a step in Studio",
+      new WindowCantStart(
+        "Analyst runs in Claude Code, which Halonic can't start yet.",
+        "Set Analyst to Halonic on its Harness page to run it now.",
+      ),
+    ],
+    [
+      "with a terminal command",
+      new StartInTerminal({
+        reason: "Analyst uses a connector, which Studio can't start yet.",
+        lead: "To start it, run this in a terminal:",
+        command: "halonic run reply",
+      }),
+    ],
+  ])("keeps the window's own reason for an agent it can't start, %s", async (_, windowRefusal) => {
+    const refused = setup({
+      engine: {
+        start: async () => {
+          throw windowRefusal;
+        },
+      },
+    });
+    const refusal = await refused.host.runNow?.(weekly).catch((error: unknown) => error);
+    expect(refusal).toBe(windowRefusal);
+    expect(refusal).not.toBeInstanceOf(EngineNotAnswering);
   });
 
   it("tells a subscriber when a file changed or a run started, and not after it stopped", () => {

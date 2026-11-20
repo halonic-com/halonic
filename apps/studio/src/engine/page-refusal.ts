@@ -20,6 +20,18 @@ export interface PageRefusal {
 }
 
 /**
+ * The page's refusal of an agent it can't start: `unavailable`, like an engine that can't be
+ * reached, but its own class, so a caller tells "this window can't start it" from "the engine
+ * isn't answering" and shows its words (HAL-12649). A refusal with a terminal command is
+ * {@link StartInTerminal} instead.
+ */
+export class WindowCantStart extends KindedError {
+  constructor(reason: string, fix?: string) {
+    super("unavailable", reason, fix === undefined ? {} : { fix });
+  }
+}
+
+/**
  * Why the page can't start an agent in a harness program, when it runs no agent host, or one
  * that lists a connector; `undefined` when it can.
  */
@@ -44,7 +56,7 @@ export function whyThePageCantStart(agent: Agent, runsHarnesses: boolean): PageR
  * the command that starts the run in a terminal (rule N2).
  */
 export function startRefusal({ reason, studioStep }: PageRefusal, runCommand: string): KindedError {
-  if (studioStep !== undefined) return new KindedError("unavailable", reason, { fix: studioStep });
+  if (studioStep !== undefined) return new WindowCantStart(reason, studioStep);
   return new StartInTerminal({
     reason,
     lead: "To start it, run this in a terminal:",

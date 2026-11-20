@@ -95,7 +95,7 @@ verifies("routines.new.create", () => {
     expect(description()).toContain("It runs Briefing when you press Run now.");
   });
 
-  it("names the hub's first agent when the host starts the routine with one", async () => {
+  it("names the hub's first agent and says Halonic can't run an agent on its own yet", async () => {
     const analyst: RoutineTargetChoice = {
       kind: "agent",
       hubId: "acme",
@@ -104,7 +104,10 @@ verifies("routines.new.create", () => {
     };
     await show(dialog({ starterTarget: async () => analyst }).node);
 
-    expect(body()).toContain("It runs Analyst when you press Run now.");
+    expect(body()).toContain(
+      "This routine starts Analyst, but Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow, then pick it under Starts on the routine's page.",
+    );
+    expect(body()).not.toContain("when you press Run now");
   });
 
   it("shows the file the name makes, with -2 when the id is taken, and follows the hub", async () => {
