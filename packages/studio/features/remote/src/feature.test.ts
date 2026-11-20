@@ -1,6 +1,8 @@
+import { createShell } from "@halonicjs/studio-shell";
 import { FakeRemoteControl } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { RemoteControlService } from "./api.ts";
 import { remoteAvailable, remoteFeature, remoteSummary } from "./feature.ts";
 import { remoteContext } from "./test-support/context.ts";
 
@@ -10,6 +12,12 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 describe("remoteFeature", () => {
   it("is registered under its folder name", () => {
     expect(remoteFeature.id).toBe("remote");
+  });
+
+  it("gives its Settings section the remote icon", () => {
+    const shell = createShell({ features: [remoteFeature], hostServices: [RemoteControlService] });
+    const section = shell.contributions.settings.list().find(({ id }) => id === "remote");
+    expect(section?.icon).toBe("remote");
   });
 });
 
