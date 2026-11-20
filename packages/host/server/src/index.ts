@@ -33,6 +33,12 @@ export type {
   WorkspaceInfo,
 } from "./api.ts";
 export { createServer } from "./create-server.ts";
+export type {
+  EngineRoutines,
+  RoutineListBody,
+  RoutineListEntry,
+  RoutineRunBody,
+} from "./engine-api.ts";
 export { createGoogleRoutes, type GoogleRoutes } from "./google-routes.ts";
 export { MemoryRequestCountStore } from "./memory-request-count-store.ts";
 export { ProviderKeysReadOnlyError, providerKeysOf } from "./provider-key-routes.ts";
