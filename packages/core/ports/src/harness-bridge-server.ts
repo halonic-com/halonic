@@ -31,8 +31,22 @@ export type BridgeProviderAccess =
    * as `zai`. The bridge names it as the call's `provider` in `llm.request`
    * and `llm.response`, so the run log shows where the call went; without
    * it, the API's own name (`anthropic`, `openai`).
+   *
+   * `models` are the models the host resolved for this agent at this
+   * provider: its alias's model, and the models of its fallbacks that use
+   * the same provider file. With a `baseUrl`, the bridge refuses a call that
+   * names any other model, exactly as written, and every call when the list
+   * is missing or empty, since a compatible provider can serve models that
+   * reach the network from its own side. Without a `baseUrl`, the bridge
+   * ignores it: it is no allow-list for the APIs' own hosts.
    */
-  | { kind: "key"; secret: string; baseUrl?: string; providerId?: string }
+  | {
+      kind: "key";
+      secret: string;
+      baseUrl?: string;
+      providerId?: string;
+      models?: readonly string[];
+    }
   /**
    * With the person's own subscription: the bridge passes the program's own
    * sign-in to the provider unchanged and never reads, logs or stores it.

@@ -33,6 +33,7 @@ const atCompatible: BridgeProviderAccess = {
   kind: "key",
   secret: "openai-key",
   baseUrl: "https://compatible.example/api/v1",
+  models: ["glm-5.2", "gpt-5.5", "openai/gpt-5.5"],
 };
 
 /** Opens a bridge that serves only the Anthropic route, for an agent with `access`. */
@@ -60,6 +61,14 @@ async function openAnthropic(access: BridgeProviderAccess, fetch: Fetch, compati
 
 /** Claude Code's request, with `extra` added to a plain one. */
 function claudeCodeSends(bridge: { url: string; token: string }, extra: object) {
+  return claudeCodeSendsText(
+    bridge,
+    JSON.stringify({ model: "glm-5.2", max_tokens: 64, messages: [], ...extra }),
+  );
+}
+
+/** Claude Code's request as written, such as JSON that repeats a key. */
+function claudeCodeSendsText(bridge: { url: string; token: string }, body: string) {
   return fetch(`${bridge.url}/v1/messages`, {
     method: "POST",
     headers: {
@@ -67,7 +76,7 @@ function claudeCodeSends(bridge: { url: string; token: string }, extra: object) 
       "anthropic-version": "2023-06-01",
       "content-type": "application/json",
     },
-    body: JSON.stringify({ model: "glm-5.2", max_tokens: 64, messages: [], ...extra }),
+    body,
   });
 }
 
@@ -113,6 +122,7 @@ verifies("harness-bridge.compatible-request", () => {
       ["OpenRouter's web plugin", { plugins: [{ id: "web" }] }, '"plugins"'],
       ["a provider's own routing field", { provider: { order: ["x"] } }, '"provider"'],
       ["a server-side container", { container: "container-placeholder" }, '"container"'],
+      ["fallback models", { fallbacks: [{ model: "sonar-pro" }] }, '"fallbacks"'],
       ["a web search tool", { tools: [{ type: "web_search_20260209" }] }, '"web_search_20260209"'],
       [
         "a code execution tool",
@@ -123,6 +133,12 @@ verifies("harness-bridge.compatible-request", () => {
         "a provider's own tool type",
         { tools: [{ type: "web_browse", name: "b" }] },
         '"web_browse"',
+      ],
+      ["a made-up type named like a client tool", { tools: [{ type: "bash_web" }] }, '"bash_web"'],
+      [
+        "a client tool type with more after the date",
+        { tools: [{ type: "computer_20250124_remote" }] },
+        '"computer_20250124_remote"',
       ],
       ["a tool choice of a server tool", { tool_choice: { type: "web_search" } }, "tool_choice"],
       ["the :online model suffix", { model: "glm-5.2:online" }, ":online"],
@@ -137,6 +153,48 @@ verifies("harness-bridge.compatible-request", () => {
       expect(reply.status).toBe(403);
       expect(await refusal(reply)).toContain(says);
       expect([...ownHosts.calls, ...compatible.calls]).toEqual([]);
+    });
+
+    it.each<[string, string]>([
+      ["a repeated model", '{"model":"glm-5.2:online","model":"glm-5.2","max_tokens":64}'],
+      [
+        "a repeated tool type",
+        '{"model":"glm-5.2","tools":[{"type":"web_search_20260209","type":"custom","name":"x"}]}',
+      ],
+    ])("sends %s only as the bridge read it", async (_case, body) => {
+      const ownHosts = fakeProvider(answered);
+      const compatible = fakeProvider(answered);
+      const bridge = await openAnthropic(atCompatible, ownHosts.fetch, compatible.fetch);
+
+      expect((await claudeCodeSendsText(bridge, body)).status).toBe(200);
+
+      expect(compatible.calls[0]?.body).toBe(JSON.stringify(JSON.parse(body)));
+    });
+
+    it("cuts a long field name to 64 characters in its error", async () => {
+      const ownHosts = fakeProvider(answered);
+      const compatible = fakeProvider(answered);
+      const bridge = await openAnthropic(atCompatible, ownHosts.fetch, compatible.fetch);
+      const longName = `${"a".repeat(64)}${"b".repeat(36)}`;
+
+      const message = await refusal(await claudeCodeSends(bridge, { [longName]: 1 }));
+
+      expect(message).toContain(`"${"a".repeat(64)}…"`);
+      expect(message).not.toContain(longName.slice(0, 65));
+    });
+
+    it.each<[string, object]>([
+      ["an unknown field", { plugins: [{ id: "value-marker" }] }],
+      ["the :online suffix", { model: "value-marker:online" }],
+    ])("names no value of the request when it refuses %s", async (_case, extra) => {
+      const ownHosts = fakeProvider(answered);
+      const compatible = fakeProvider(answered);
+      const bridge = await openAnthropic(atCompatible, ownHosts.fetch, compatible.fetch);
+
+      const reply = await claudeCodeSends(bridge, extra);
+
+      expect(reply.status).toBe(403);
+      expect(await refusal(reply)).not.toContain("value-marker");
     });
 
     it("leaves a call to Anthropic's own host to the rules there", async () => {
@@ -177,6 +235,17 @@ verifies("harness-bridge.compatible-request", () => {
       expect((await codexSends(bridge, request)).status).toBe(200);
 
       expect(JSON.parse(compatible.calls[0]?.body ?? "")).toEqual(request);
+    });
+
+    it("sends a repeated model only as the bridge read it", async () => {
+      const ownHosts = fakeProvider(answered);
+      const compatible = fakeProvider(answered);
+      const { bridge } = await openOpenAi(ownHosts.fetch, atCompatible, compatible.fetch);
+      const body = '{"model":"openai/gpt-5.5:online","model":"openai/gpt-5.5","input":[]}';
+
+      expect((await codexSends(bridge, body)).status).toBe(200);
+
+      expect(compatible.calls[0]?.body).toBe(JSON.stringify(JSON.parse(body)));
     });
 
     it.each<[string, object, string]>([
