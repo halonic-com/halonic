@@ -244,7 +244,7 @@ export {
   type ServiceTarget,
 } from "./service-catalog.ts";
 export { type ServiceKey, serviceKey } from "./service-key.ts";
-export { focusSectionHeading, sectionHeading } from "./settings/section-heading.ts";
+export { focusSectionHeading, sectionHeading, sectionHeadingLevel } from "./settings/headings.ts";
 export {
   SettingsDialog,
   type SettingsDialogProps,
@@ -255,7 +255,6 @@ export {
   type SettingsGroupsInput,
   type SettingsPlace,
   type SettingsSurface,
-  sectionHeadingLevel,
   settingsGroups,
 } from "./settings/settings-groups.ts";
 export { createShell, type Shell, type ShellOptions } from "./shell.ts";

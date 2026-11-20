@@ -2,12 +2,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { SettingsScope, SettingsSectionContribution } from "../points/frame.ts";
 import type { Registered } from "../points/point-store.ts";
-import {
-  listedSections,
-  type SettingsGroup,
-  sectionHeadingLevel,
-  settingsGroups,
-} from "./settings-groups.ts";
+import { sectionHeadingLevel } from "./headings.ts";
+import { listedSections, type SettingsGroup, settingsGroups } from "./settings-groups.ts";
 import { rowAfterKey } from "./settings-nav.tsx";
 
 const load = async () => ({ View: () => "view" });
