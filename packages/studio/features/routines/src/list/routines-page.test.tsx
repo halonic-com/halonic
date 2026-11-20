@@ -57,7 +57,7 @@ verifies("routines.list.rows-and-states", () => {
     expect(rowOf(page, "Weekly report").textContent).not.toContain("next ");
   });
 
-  it("shows one chip: Off, else Paused until trusted, else Needs sign-in, else Needs you", async () => {
+  it("shows one chip: Off, else Paused until trusted, else Needs sign-in again, else Needs you", async () => {
     const rows = [
       listing("acme", "a", "A", { enabled: false, needsSignIn: true, pausedUntilTrusted: true }),
       listing("acme", "b", "B", { needsSignIn: true, needsYou: 2, pausedUntilTrusted: true }),
@@ -72,7 +72,7 @@ verifies("routines.list.rows-and-states", () => {
     expect(chips("A")).not.toContain("Needs sign-in");
     expect(chips("B")).toContain("Paused until trusted");
     expect(chips("B")).not.toContain("Needs");
-    expect(chips("C")).toContain("Needs sign-in");
+    expect(chips("C")).toContain("Needs sign-in again");
     expect(chips("C")).not.toContain("Needs you");
     expect(chips("D")).toContain("Needs you");
     expect(chips("E")).not.toMatch(/Off|Needs|Paused/);
