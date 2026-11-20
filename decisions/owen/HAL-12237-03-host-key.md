@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14072 (Liam, CTO; the B2 plan for HAL-12237)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:pcddEeymNtU2WchHtIa4fXIvLcTFLHHDALQ582PV4lfQvyAxN6iSK5hSg/HydjCCpbmkBeJCA72lIzJ/eMDhCg==
 
 Tunnel phase B, build plan decisions 10 and 12 (HAL-12232). Two active requirements change, both to add, nothing is loosened, and two draft ones of the native shell with them:
 
