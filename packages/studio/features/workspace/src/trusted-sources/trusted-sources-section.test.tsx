@@ -62,11 +62,10 @@ async function show(
   root = createRoot(element);
   await act(async () => {
     root?.render(
-      createElement(
-        ClipboardProvider,
-        { writeClipboard },
-        createElement(TrustedSourcesView, { host, readOnly, announce, surface }),
-      ),
+      createElement(ClipboardProvider, {
+        writeClipboard,
+        children: createElement(TrustedSourcesView, { host, readOnly, announce, surface }),
+      }),
     );
   });
   return announce;
