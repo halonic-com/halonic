@@ -289,7 +289,7 @@ function EveryFields({
   const changeUnit = (next: string) =>
     onChange(intervalText({ count: parsed?.count ?? 1, unit: next as EveryUnit }));
   return (
-    <div className="flex gap-3">
+    <div className="flex gap-3 phone:flex-wrap">
       <div className={COUNT_ON_A_PHONE}>
         <Field label={words.everyCount}>
           <Input
@@ -318,8 +318,10 @@ function EveryFields({
  * On a phone, Count and Unit share one row and both may shrink, so both end inside the card at
  * 320px; a number input won't go below its own width otherwise (HAL-13527). Unit keeps the width
  * of its word while there's room and Count takes the rest: half each cuts off "minutes" at 320px.
+ * Count keeps a floor so its number still shows; below that the row wraps and Unit goes under
+ * Count, as at 195px (400% zoom in a narrow window, HAL-14104).
  */
-const COUNT_ON_A_PHONE = "phone:min-w-0 phone:flex-1";
+const COUNT_ON_A_PHONE = "phone:min-w-16 phone:flex-1";
 const UNIT_ON_A_PHONE = "phone:min-w-0";
 
 /** What a New mail pick runs into: nothing to watch yet, or the list still being read. */
