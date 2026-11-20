@@ -8,6 +8,7 @@ import {
   stagedChanges,
   treeChanges,
 } from "../leaks/git-changes.ts";
+import { loadAgentNames, MentionMatcher } from "../leaks/mentions.ts";
 import { pushedRefNames, pushedRevisions } from "../leaks/push.ts";
 import type { Change, ChangeText, Finding } from "../leaks/scan.ts";
 import { scanChanges } from "../leaks/scan.ts";
@@ -26,7 +27,8 @@ import { readPullRequestText } from "../lib/pull-request.ts";
 
 /**
  * The leak guard: secrets and keys, private key blocks, `.env` and key
- * files, absolute local paths and personal terms. The git
+ * files, absolute local paths and personal terms. For a push or a pull
+ * request also `@<agent name>` in a commit message, title or body. The git
  * hooks, `pnpm verify` and CI all run these same rules.
  *
  *   pnpm check:leaks                    every tracked file in the working tree
@@ -258,9 +260,13 @@ function scan(argv: readonly string[]): number {
   if (matcher === undefined) {
     return 1;
   }
+  // New work only: --all also reads old commits and closed pull requests.
+  const [mode] = options.rest;
+  const checksMentions = mode === "--push" || mode === "--range";
   const findings = scanChanges(changes, {
     terms: matcher,
     allowList: loadAllowList(root, options),
+    ...(checksMentions ? { mentions: new MentionMatcher(loadAgentNames()) } : {}),
   });
   if (source === "none") {
     const notice = termsNotice(inCi);

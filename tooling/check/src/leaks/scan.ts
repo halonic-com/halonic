@@ -1,5 +1,6 @@
 import { type AllowList, allowFilePath, hasInlineAllow } from "./allow.ts";
 import { fileNameOf, fileRules } from "./files.ts";
+import { agentMentionRule, type MentionMatcher, mentionLabels } from "./mentions.ts";
 import { absolutePathRule, findAbsolutePaths } from "./paths.ts";
 import { findRuleMatches, fingerprint, isPlaceholder, maskSecret, secretRules } from "./secrets.ts";
 import { personalTermRule, type TermMatcher } from "./terms.ts";
@@ -56,6 +57,12 @@ export interface Finding extends Location {
 export interface ScanSettings {
   readonly terms: TermMatcher;
   readonly allowList: AllowList;
+  /**
+   * Checks commit messages and the pull request's title and body for
+   * `@<agent name>`. Only for new work (a pull request, a push): older
+   * commits and the heads of closed pull requests are left as they are.
+   */
+  readonly mentions?: MentionMatcher;
 }
 
 const termMessage = "Contains a personal term. Remove or reword it; the term is never shown.";
@@ -120,6 +127,14 @@ function scanLine(
   return findings;
 }
 
+function findMentions(text: string, at: Location, mentions: MentionMatcher): Finding[] {
+  return mentions.find(text).map((mention) => ({
+    ...at,
+    rule: agentMentionRule,
+    message: `Contains ${mention}, which notifies the GitHub user of that name, not our agent. Write the name without the @.`,
+  }));
+}
+
 /** Runs one changed file through the file-name rules and each added line. */
 function scanFile(
   file: ChangedFile,
@@ -166,8 +181,12 @@ export function scanChanges(changes: readonly Change[], settings: ScanSettings):
     }
     for (const { label, text, termsOnly } of change.texts) {
       const at: Location = { commit: change.commit, file: label, line: undefined };
+      const { mentions } = settings;
       for (const line of text.split("\n")) {
         findings.push(...scanLine(line, at, settings, termsOnly));
+        if (mentions !== undefined && mentionLabels.has(label)) {
+          findings.push(...findMentions(line, at, mentions));
+        }
       }
     }
   }

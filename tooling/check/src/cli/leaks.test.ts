@@ -115,4 +115,44 @@ describe("leak guard command", () => {
     writeFileSync(trusted, "# nothing is allowed\n");
     expect(run({}, "--allow-file", trusted).code).toBe(1);
   });
+
+  it("fails @<agent name> in a pull request's commits and body, but not in --all", () => {
+    execFileSync(
+      "git",
+      [
+        "-c",
+        "user.name=t",
+        "-c",
+        "user.email=t@example.com",
+        "commit",
+        "--quiet",
+        "-m",
+        "chore: start",
+      ],
+      { cwd: repo },
+    );
+    writeAndStage("notes.md", "A second note.\n");
+    const message = "docs: a second note\n\nThanks @Julian";
+    execFileSync(
+      "git",
+      ["-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", message],
+      { cwd: repo },
+    );
+    const event = join(repo, "event.json");
+    writeFileSync(
+      event,
+      JSON.stringify({ pull_request: { title: "docs: a note", body: "Ask @liam." } }),
+    );
+
+    const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).trim();
+    const base = execFileSync("git", ["rev-parse", "HEAD^"], {
+      cwd: repo,
+      encoding: "utf8",
+    }).trim();
+    const result = run({ GITHUB_EVENT_PATH: event }, "--range", `${base}..${head}`);
+    expect(result.code).toBe(1);
+    expect(result.output).toContain("commit message [agent-mention] Contains @Julian");
+    expect(result.output).toContain("pull request body [agent-mention] Contains @liam");
+    expect(run({}, "--all").code).toBe(0);
+  });
 });
