@@ -63,9 +63,9 @@ for (const state of states) {
 /**
  * The docked run card in a window as narrow as a phone (HAL-13162, WCAG 1.4.10): it takes the
  * window's width instead of its 480 px, so nothing scrolls sideways and every button, Close run
- * included, is on the screen.
+ * included, is on the screen. 195 px is a 390 px phone at 200 %, where the header wraps (HAL-13679).
  */
-for (const width of [390, 320] as const) {
+for (const width of [390, 320, 195] as const) {
   test(`run card, failed, ${width} px wide`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 });
     await page.goto("/run-card.html?state=failed");
@@ -80,6 +80,8 @@ for (const width of [390, 320] as const) {
     );
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth, "the page doesn't scroll sideways").toBeLessThanOrEqual(width);
+    const inside = await card.evaluate((node) => node.scrollWidth - node.clientWidth);
+    expect(inside, "the card doesn't scroll sideways inside").toBeLessThanOrEqual(0);
     for (const button of await card.getByRole("button").all()) {
       const name = (await button.getAttribute("aria-label")) ?? (await button.textContent());
       const at = await button.boundingBox();

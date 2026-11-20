@@ -149,10 +149,11 @@ export function StartRunCard({
       onKeyDown={onKeyDown}
       className="flex w-120 max-w-full shrink-0 flex-col gap-4 overflow-auto border-s border-border bg-surface-raised p-6 shadow-2"
     >
-      <div className="flex items-center justify-between gap-3">
-        <div>
+      {/* A long name wraps, so Close stays inside a narrow window. */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-caption text-fg-muted">{words.cardKind}</p>
-          <h2 ref={heading} tabIndex={-1} className="text-title">
+          <h2 ref={heading} tabIndex={-1} className="text-title wrap-anywhere">
             {words.runNamed(workflowName)}
           </h2>
         </div>

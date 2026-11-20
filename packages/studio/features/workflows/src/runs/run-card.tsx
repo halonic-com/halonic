@@ -82,18 +82,21 @@ export function RunCard({
       onKeyDown={onKeyDown}
       className="flex w-120 max-w-full shrink-0 flex-col gap-4 overflow-auto border-s border-border bg-surface-raised p-6 shadow-2"
     >
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-caption text-fg-muted">{words.cardKind}</p>
-          <h2 ref={heading} tabIndex={-1} className="text-title">
-            {row.shortId}
-          </h2>
+      {/* In a narrow window the chip goes under the id, and Close stays at the top end. */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <div className="min-w-0">
+            <p className="text-caption text-fg-muted">{words.cardKind}</p>
+            <h2 ref={heading} tabIndex={-1} className="text-title wrap-anywhere">
+              {row.shortId}
+            </h2>
+          </div>
+          {loading ? null : (
+            <StatusChip tone={row.chip.tone} dot={row.chip.dot}>
+              {row.chip.word}
+            </StatusChip>
+          )}
         </div>
-        {loading ? null : (
-          <StatusChip tone={row.chip.tone} dot={row.chip.dot}>
-            {row.chip.word}
-          </StatusChip>
-        )}
         <Button
           variant="ghost"
           size="sm"
