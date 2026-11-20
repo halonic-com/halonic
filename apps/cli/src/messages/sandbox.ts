@@ -65,6 +65,8 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
     "ripgrep isn't installed. Install it, for example on macOS with brew install ripgrep, then run it again.",
   "sign-in-needed":
     "The sandbox needs you to sign in to its service first. Sign in, then run it again.",
+  "not-offered":
+    "Halonic can't run Claude Code or Codex agents outside the sandbox yet. Save a change to this agent's file, which puts it back in the sandbox, then run it again.",
   other:
     "Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer, then run it again.",
 };
@@ -88,6 +90,7 @@ const reasons: Readonly<Record<WordedReason, string>> = {
   "linux-tools-missing": "socat or ripgrep isn't installed, and the sandbox needs both.",
   "ripgrep-missing": "ripgrep isn't installed, and the sandbox needs it.",
   "sign-in-needed": "The sandbox needs you to sign in to its service first.",
+  "not-offered": "Halonic can't run Claude Code or Codex agents outside the sandbox yet.",
   other: "Halonic can't tell what the sandbox is missing.",
 };
 
@@ -118,6 +121,7 @@ const fixes: Readonly<Record<WordedReason, string>> = {
     "install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep.",
   "ripgrep-missing": "install it, for example on macOS with brew install ripgrep.",
   "sign-in-needed": "sign in to the sandbox's service.",
+  "not-offered": "save a change to this agent's file, which puts it back in the sandbox.",
   other: "see what the sandbox needs on this computer.",
 };
 

@@ -72,6 +72,7 @@ const reasonSentences: Record<SandboxUnavailableReason, string> = {
   "linux-tools-missing": "A tool it needs (socat or ripgrep) isn't installed.",
   "ripgrep-missing": "ripgrep isn't installed.",
   "sign-in-needed": "It needs you to sign in first.",
+  "not-offered": "Not available in Studio yet.",
   other: "It can't run on this computer.",
 };
 

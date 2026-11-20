@@ -140,6 +140,10 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
     reason: "The sandbox needs you to sign in to its service first.",
     fix: "sign in to the sandbox's service.",
   },
+  "not-offered": {
+    reason: "Halonic can't run Claude Code or Codex agents outside the sandbox yet.",
+    fix: "save a change to this agent's file, which puts it back in the sandbox.",
+  },
   other: {
     reason: "Halonic can't tell what the sandbox is missing.",
     fix: "see what the sandbox needs on this computer.",

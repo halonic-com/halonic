@@ -95,6 +95,17 @@ verifies("app.sandbox-start-words", () => {
     expect(sandboxStartWords("not-supported").docsKey).toBe("security/sandbox/#wsl1");
   });
 
+  it("says Halonic can't run an agent set to this computer yet, not that something is missing", () => {
+    const words = sandboxStartWords("not-offered");
+    expect(words.key).toBe("sandbox-start.not-offered");
+    expect(words.reason).toBe(
+      "Halonic can't run Claude Code or Codex agents outside the sandbox yet.",
+    );
+    expect(words.calloutFix).toBe(
+      "Save a change to this agent's file, which puts it back in the sandbox.",
+    );
+  });
+
   it("names the docs link after where it goes, and the general page for a reason without a guide", () => {
     expect(sandboxStartWords("not-supported").docsName).toBe("How to switch to WSL 2");
     expect(sandboxStartWords("other").docsName).toBe("What the sandbox needs");

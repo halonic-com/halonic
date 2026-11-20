@@ -46,6 +46,7 @@ describe("the sandbox sentences", () => {
       "socat or ripgrep isn't installed. Install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep, then run it again.",
       "ripgrep isn't installed. Install it, for example on macOS with brew install ripgrep, then run it again.",
       "The sandbox needs you to sign in to its service first. Sign in, then run it again.",
+      "Halonic can't run Claude Code or Codex agents outside the sandbox yet. Save a change to this agent's file, which puts it back in the sandbox, then run it again.",
       "Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer, then run it again.",
     ]);
   });
@@ -125,6 +126,10 @@ describe("the sandbox sentences", () => {
       [
         "The sandbox needs you to sign in to its service first.",
         "Fix: sign in to the sandbox's service. Then run halonic doctor again.",
+      ],
+      [
+        "Halonic can't run Claude Code or Codex agents outside the sandbox yet.",
+        "Fix: save a change to this agent's file, which puts it back in the sandbox. Then run halonic doctor again.",
       ],
       [
         "Halonic can't tell what the sandbox is missing.",
@@ -207,6 +212,7 @@ describe("the sandbox sentences", () => {
       "linux-tools-missing": section("#linux-tools"),
       "ripgrep-missing": section(""),
       "sign-in-needed": section(""),
+      "not-offered": section(""),
       other: section("#other"),
     });
     expect(sandboxDocsLink("seccomp-missing")).toBe(section("#other"));
