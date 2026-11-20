@@ -71,6 +71,26 @@ verifies("studio.try-sample", () => {
     watch.dispose();
   });
 
+  it("reads nothing while the folder isn't the demo, and starts once it is", async () => {
+    const { modelsFiles } = filesOf(onMock);
+    let reads = 0;
+    const readModels = modelsFiles.readModels;
+    modelsFiles.readModels = () => {
+      reads += 1;
+      return readModels();
+    };
+    let isDemo = false;
+    const watch = new DefaultModelWatch(modelsFiles, () => isDemo);
+    const stop = watch.subscribe(() => {});
+    expect(reads).toBe(0);
+
+    isDemo = true;
+    await nextChange(watch);
+    expect(watch.onTestModel).toBe(true);
+    stop();
+    watch.dispose();
+  });
+
   it("says no once models.yaml can't be read", async () => {
     const { modelsFiles, change } = filesOf(onMock);
     const watch = new DefaultModelWatch(modelsFiles);

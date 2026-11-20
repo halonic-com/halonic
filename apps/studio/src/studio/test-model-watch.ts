@@ -38,24 +38,28 @@ export function isTestModelProvider(providerText: string | null): boolean {
 /**
  * Whether the open workspace's `default` model is the test model (`studio.try-sample`), read
  * again each time `models.yaml` or a provider file changes, with unsaved changes applied. Until
- * the first read it says no, so the chip never shows for a workspace on a real model.
+ * the first read it says no, so the chip never shows for a workspace on a real model. It starts
+ * reading at the first subscribe that finds `isDemo` true, not when it is made: Open demo opens
+ * the folder first and only then remembers it as the demo.
  *
  * @example
- * const testModel = new DefaultModelWatch(services.get(ModelsFilesService));
+ * const testModel = new DefaultModelWatch(services.get(ModelsFilesService), () => isDemo);
  * testModel.subscribe(() => draw(testModel.onTestModel));
  */
 export class DefaultModelWatch implements TestModelWatch {
   readonly #files: ModelsFiles;
+  readonly #isDemo: () => boolean;
   readonly #listeners = new Set<() => void>();
-  readonly #stop: () => void;
+  /** Stops watching the files; `undefined` until the first read starts. */
+  #stop: (() => void) | undefined;
+  #disposed = false;
   #onTestModel = false;
   /** Counts the reads, so an older read that ends last doesn't win. */
   #reads = 0;
 
-  constructor(files: ModelsFiles) {
+  constructor(files: ModelsFiles, isDemo: () => boolean = () => true) {
     this.#files = files;
-    this.#stop = files.subscribe(() => void this.#read());
-    void this.#read();
+    this.#isDemo = isDemo;
   }
 
   get onTestModel(): boolean {
@@ -64,13 +68,21 @@ export class DefaultModelWatch implements TestModelWatch {
 
   subscribe(listener: () => void): () => void {
     this.#listeners.add(listener);
+    this.#start();
     return () => this.#listeners.delete(listener);
   }
 
   /** Stops reading; called once, when the workspace closes. */
   dispose(): void {
-    this.#stop();
+    this.#disposed = true;
+    this.#stop?.();
     this.#listeners.clear();
+  }
+
+  #start(): void {
+    if (this.#stop !== undefined || this.#disposed || !this.#isDemo()) return;
+    this.#stop = this.#files.subscribe(() => void this.#read());
+    void this.#read();
   }
 
   async #read(): Promise<void> {
@@ -95,15 +107,16 @@ export class DefaultModelWatch implements TestModelWatch {
 }
 
 /**
- * The watch of a folder's `default` model, for the demo only: no other workspace has the Sample
- * answers chip, so no other workspace's models are read for it. `undefined` without the folder's
- * Models files (outside the shell).
+ * The watch of a folder's `default` model, read for the demo only: no other workspace has the
+ * Sample answers chip, so no other workspace's models are read for it. `isDemo` is asked when the
+ * chip subscribes, since a demo just made is remembered as one only after it opens. `undefined`
+ * without the folder's Models files (outside the shell).
  */
 export function demoModelWatch(
   services: ServiceRegistry,
-  isDemo: boolean,
+  isDemo: () => boolean,
 ): DefaultModelWatch | undefined {
-  return isDemo && services.has(ModelsFilesService)
-    ? new DefaultModelWatch(services.get(ModelsFilesService))
+  return services.has(ModelsFilesService)
+    ? new DefaultModelWatch(services.get(ModelsFilesService), isDemo)
     : undefined;
 }

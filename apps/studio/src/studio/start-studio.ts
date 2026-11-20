@@ -347,7 +347,7 @@ export async function openFolder(
     });
   }
   shell.services.instantiate(services);
-  const testModel = demoModelWatch(services, device.recent.isSample(location));
+  const testModel = demoModelWatch(services, () => device.recent.isSample(location));
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name });
   const outside = showFilesOutside(services, shell.toasts, workspace);
   const saving = scope === undefined ? undefined : savingOf(scope, workspace, name, outside.onHeld);
