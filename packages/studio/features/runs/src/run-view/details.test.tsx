@@ -67,6 +67,7 @@ verifies("runs.run-view.details", () => {
         rows={rows}
         version={undefined}
         logRead={false}
+        hasVersions
         runId="run_a"
         now={mondayMorning}
       />,
