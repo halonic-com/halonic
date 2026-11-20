@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
 import { type HarnessBridgeServer, harnessBridgeTokenHeader, type Secrets } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
+import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ChannelCallLine } from "../server/call-channel.ts";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
@@ -41,6 +43,8 @@ function signal(): { promise: Promise<void>; settle: () => void } {
 /** How the bridge servers the tests make open. */
 const opening = {
   refuse: false,
+  /** What `open` throws when it refuses. */
+  refusal: new Error("no free port") as Error,
   /** When set, `open` waits for it before it listens: a bridge still opening. */
   hold: undefined as Promise<void> | undefined,
   /** Settles when `open` is called. */
@@ -53,6 +57,7 @@ afterEach(async () => {
   server = undefined;
   providerKeys.length = 0;
   opening.refuse = false;
+  opening.refusal = new Error("no free port");
   opening.hold = undefined;
   opening.called = signal();
 });
@@ -78,7 +83,7 @@ async function started(table = new BridgeTable(), socketFolder?: string): Promis
     return {
       open: async (options) => {
         opening.called.settle();
-        if (opening.refuse) throw new Error("no free port");
+        if (opening.refuse) throw opening.refusal;
         await opening.hold;
         return real.open(options);
       },
@@ -344,5 +349,35 @@ describe("bridgeRoutes", () => {
     opening.refuse = false;
     const open = await FakeStudio.open(url, {});
     expect(open.bridge).toMatchObject({ type: "opened" });
+  });
+});
+
+verifies("agent-host.bridge-failure-cause", () => {
+  it("sends the kind and cause of a bridge that failed to open", async () => {
+    const url = await started();
+    opening.refuse = true;
+    opening.refusal = Object.assign(new KindedError("invalid_input", "The path is too long."), {
+      failureCause: {
+        code: "harness-bridge.socket-path-too-long",
+        detail: { bytes: "120", limit: "104", system: "macOS" },
+      },
+    });
+    const failed = await FakeStudio.open(url, {});
+    expect(failed.bridge).toEqual({
+      type: "failed",
+      message: "The path is too long.",
+      kind: "invalid_input",
+      failureCause: {
+        code: "harness-bridge.socket-path-too-long",
+        detail: { bytes: "120", limit: "104", system: "macOS" },
+      },
+    });
+  });
+
+  it("sends only the message for an error without a kind", async () => {
+    const url = await started();
+    opening.refuse = true;
+    const failed = await FakeStudio.open(url, {});
+    expect(failed.bridge).toEqual({ type: "failed", message: "no free port" });
   });
 });
