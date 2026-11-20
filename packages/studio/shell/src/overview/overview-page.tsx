@@ -144,7 +144,8 @@ function DetailThenUsedBy({
     <span className="flex min-w-0 flex-wrap-reverse overflow-hidden">
       {/* In a reversed wrap `self-end` is the line's top, so the 0px box's text hangs into the line. */}
       <span className="flex h-0 min-w-20 flex-1 self-end">
-        <span className="min-w-0 truncate">{detail}</span>
+        {/* `h-lh`: stretched to the 0px box, `truncate`'s overflow would clip the detail to nothing. */}
+        <span className="h-lh min-w-0 truncate">{detail}</span>
         {/* `whitespace-pre` keeps the spaces round the dot: a flex item would drop them. */}
         <span className="shrink-0 whitespace-pre"> · </span>
       </span>

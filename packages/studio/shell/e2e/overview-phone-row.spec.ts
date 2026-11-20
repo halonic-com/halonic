@@ -83,6 +83,12 @@ test("at 390px the line reads the cut detail, the dot and the whole used-by text
   expect(boxes.usedByCut).toBe(false);
   expect(boxes.detail.right).toBeLessThanOrEqual(boxes.dot.left + 0.5);
   expect(boxes.dot.top).toBeCloseTo(boxes.usedBy.top, 0);
+  // The cut detail shows: its box is a line high and on the line, not clipped to nothing.
+  expect(boxes.detail.bottom - boxes.detail.top).toBeGreaterThan(0);
+  expect(boxes.detail.right - boxes.detail.left).toBeGreaterThan(0);
+  expect(inside(boxes.detail, boxes.line)).toBe(true);
+  expect(boxes.detail.top).toBeCloseTo(boxes.usedBy.top, 0);
+  await expect(page.getByText("When an email asks for a refund", { exact: true })).toBeVisible();
 });
 
 test("at 195px the used-by text has the line alone and whole, with no stray dot", async ({
