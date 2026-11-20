@@ -2,8 +2,8 @@
 
 - Approval: decided by Liam on HAL-13777 (from HAL-13752); Liam signs this note in review
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:l4kErYdF+mipXJqmyMtTmZaTK4pqOHvaH+REUU+nV4wwqXSCSALYgnNgyIQNT6eyrJHewLA8G1lMNdOIeCUrCg==
-- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:v/BQJNLqNZb5QEOM9/I4qHs0/nCOiAHvk5FZ899qS6fiMjK8Fo6WieF39cOyCLEPcN++9CILk0NAoMh2mr9uAQ==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2tCrUYmuicgZq3mCQKbfJyZbXmnOPLyS6QNQ4QHsUOzv9YWLnMIgrVImdp3F9WyFkn6dgifbZJ/esomBxfTpBw==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:1BZQ2MHW+6JGzmYgc9YevaZhzHQQWJ5MVdc01+zbEZoYxPMt8J5mC0bg+UplwYqNhCKiTiTMB66Fu1eHXX7mDQ==
 
 Trace now checks that `Since: <version>` is true. `Since: unreleased`
 always passes. A version needs the tag `v<version>`, and that tag has to
