@@ -193,13 +193,6 @@ export const trustMessages = defineMessages("trust", {
     phrase`--yes needs --fingerprint, so you trust exactly what you reviewed.`,
   yesNeedsFingerprintFix: (dir?: string) =>
     phrase`Run ${suggestedCommand("trust", dir)} to see it; the fingerprint is in the check, above the question.`,
-  /**
-   * A word after `trust`, which takes only options, such as `halonic trust
-   * revoke`: wrong usage, so a word that reads like "remove" never trusts
-   * instead (HAL-14124).
-   */
-  takesOnlyOptions: (words: readonly string[]) =>
-    phrase`halonic trust takes only options, and you gave ${words.join(", ")}.`,
   /** The option the word means, as the fix: "Did you mean --remove?". */
   optionNear: (option: string) => phrase`Did you mean ${option}?`,
   /**

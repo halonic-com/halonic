@@ -79,12 +79,12 @@ verifies("cli.commands.trust.review-and-trust", () => {
     expect([code, otherCode]).toEqual([exitCode.usage, exitCode.usage]);
     expect(revoke.stdout).toEqual([]);
     expect(revoke.stderr).toEqual([
-      "✕ halonic trust takes only options, and you gave revoke.",
+      "✕ halonic trust takes no arguments, and you gave revoke.",
       "  Did you mean --remove?",
     ]);
     expect(other.stderr).toEqual([
-      "✕ halonic trust takes only options, and you gave acme.",
-      "  Run halonic trust --help to see its options.",
+      "✕ halonic trust takes no arguments, and you gave acme.",
+      "  To use the workspace in acme, run halonic trust --dir acme.",
     ]);
     expect(await store.list()).toHaveLength(1);
   });

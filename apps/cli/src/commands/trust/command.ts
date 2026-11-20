@@ -77,6 +77,7 @@ export function createTrustCommand(
     name: "trust",
     usage:
       "[--dir <folder> | --plugin <id>] [--yes --fingerprint <fingerprint>] [--list] [--remove]",
+    strayArgumentFix: optionForWord,
     summary: trustMessages.summary(),
     action: (input) => trustMessages.action(givenPlugin(input) ?? givenDir(input)),
     options: {
@@ -96,7 +97,6 @@ export function createTrustCommand(
       },
     },
     async run(input, context) {
-      refuseWords(input);
       const plugin = input.options["plugin"];
       if (typeof plugin === "string") {
         return await trustPlugin(plugin, input, context, plugins);
@@ -358,24 +358,18 @@ const optionWords: Readonly<Record<string, string>> = {
 };
 
 /**
- * `trust` takes only options. A word such as `revoke` would otherwise be
- * dropped and the workspace trusted, the opposite of what was meant.
- *
- * @throws UsageError when given a word, with the option it likely means
+ * The fix line when `trust`, which takes only options, gets a word: `revoke`
+ * gets the option it likely means, "Did you mean --remove?" (HAL-14124), and
+ * any other word `--dir` with it, as for other commands (HAL-12639).
  */
-function refuseWords(input: CommandInput): void {
-  const [word] = input.positionals;
-  if (word === undefined) {
-    return;
-  }
+function optionForWord(word: string): Message {
   const typed = word.toLowerCase();
   const near = Object.hasOwn(optionWords, typed)
     ? optionWords[typed]
     : nearMatch(`--${typed}`, ["--list", "--remove"]);
-  throw new UsageError(
-    trustMessages.takesOnlyOptions(input.positionals.map(printable)),
-    near === undefined ? usageMessages.seeCommandOptions("trust") : trustMessages.optionNear(near),
-  );
+  return near === undefined
+    ? usageMessages.useDirOption("trust", word)
+    : trustMessages.optionNear(near);
 }
 
 /** The `--plugin` id, made safe to print, for "✕ Couldn't trust weather: …". */

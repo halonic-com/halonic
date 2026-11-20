@@ -31,4 +31,4 @@ The `halonic trust [--dir <folder>]` command shall show the trust check of the w
   then it prints "✓ Acme needs no trust: it reaches only the test model and starts nothing.", shows no check and no fingerprint, asks nothing, saves no trust and exits with 0.
 - Given Acme, trusted,
   when `halonic trust revoke --dir acme` runs,
-  then it prints "✕ halonic trust takes only options, and you gave revoke." and "Did you mean --remove?", exits with 2, and Acme stays trusted.
+  then it prints "✕ halonic trust takes no arguments, and you gave revoke." and "Did you mean --remove?", exits with 2, and Acme stays trusted.
