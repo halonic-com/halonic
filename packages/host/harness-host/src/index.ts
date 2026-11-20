@@ -1,5 +1,6 @@
 export {
   type BridgeAgent,
+  type BridgeServers,
   type BridgeServices,
   type BridgeServicesSource,
   LocalBridgeHost,

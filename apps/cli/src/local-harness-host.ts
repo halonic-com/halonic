@@ -35,6 +35,7 @@ import { InstructionTrustService } from "@halonicjs/app";
 import type { HarnessAgent, HarnessRunsOptions } from "@halonicjs/engine";
 import {
   type AgentFiles,
+  type BridgeServers,
   type BridgeServices,
   type HarnessHost,
   harnessHostOf,
@@ -92,7 +93,7 @@ export interface LocalHarnessParts {
   readonly launcher?: HarnessRunsOptions["sandboxes"]["this-computer"];
   /** The harnesses, by their `id`. */
   readonly harnesses?: HarnessRunsOptions["harnesses"];
-  /** Opens each run's bridge; Node's, which reads no secret, by default. */
+  /** Opens every run's bridge, whatever its placement; Node's, which reads no secret, by default. */
   readonly bridgeServer?: HarnessBridgeServer;
   /** The system the CLI runs on; `process.platform` by default. */
   readonly platform?: NodeJS.Platform;
@@ -194,7 +195,7 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
       "this-computer": host.removingTempFolders(parts.launcher ?? createHostSandbox()),
     },
     harnesses,
-    bridgeServer: parts.bridgeServer ?? (await nodeBridgeServer(input)),
+    bridgeServers: await bridgeServersOf(input),
     services: { servicesFor: () => bridgeServices },
     reportError: input.reportBridgeError,
     profiles,
@@ -300,22 +301,39 @@ async function installOf(harness: string, platform: NodeJS.Platform): Promise<Ha
   return { program: harness, packageFolder: null };
 }
 
+/** The test's one bridge server for both placements, else {@link nodeBridgeServers}. */
+async function bridgeServersOf(input: LocalHarnessInput): Promise<BridgeServers> {
+  const given = input.parts?.bridgeServer;
+  if (given !== undefined) return { sandbox: given, "this-computer": given };
+  return await nodeBridgeServers(input);
+}
+
 /**
- * The bridge server, serving each run's bridge on a Unix socket in the
- * profile where the platform lets a sandboxed program reach one, as the
- * agent host does, else on a loopback port.
+ * The bridge servers by placement (HAL-13090). A fenced run's bridge serves
+ * a Unix socket in the profile where the platform lets a sandboxed program
+ * reach one through its sandbox's proxy, as the agent host does (W9,
+ * HAL-6316), else a loopback port. A run on this computer has no sandbox and
+ * so no proxy, and the launcher refuses a socket bridge: its bridge always
+ * serves a loopback port, still guarded by the run's own token. That program
+ * already runs with the person's full rights, so loopback opens nothing it
+ * couldn't reach anyway.
  */
-async function nodeBridgeServer(input: LocalHarnessInput): Promise<HarnessBridgeServer> {
+async function nodeBridgeServers(input: LocalHarnessInput): Promise<BridgeServers> {
   const platform = input.parts?.platform ?? process.platform;
   const sockets = platform === "linux" || platform === "darwin";
   const socketFolder = join(input.profile.root, bridgeSocketsFolder);
   if (sockets) await makePrivateFolder(socketFolder);
   const providers = createNodeHttpClient({ hostClass: providerHostClass, proxy: proxySetting });
-  return new NodeHarnessBridgeServer({
-    secrets: noSecrets,
-    fetch: (url, init) => providers.fetch(url, init),
-    ...(sockets ? { socketFolder } : {}),
-  });
+  const serverOn = (where: { socketFolder?: string }) =>
+    new NodeHarnessBridgeServer({
+      secrets: noSecrets,
+      fetch: (url, init) => providers.fetch(url, init),
+      ...where,
+    });
+  return {
+    sandbox: serverOn(sockets ? { socketFolder } : {}),
+    "this-computer": serverOn({}),
+  };
 }
 
 /**
