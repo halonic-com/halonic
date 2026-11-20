@@ -136,6 +136,31 @@ verifies("fs-node.held-lock", () => {
     expect(planned.at(-1)?.cancelled).toBe(true);
   });
 
+  it("writes its holder into the record, keeps it when renewed, and names it when refused", async () => {
+    const file = await lockFile();
+    const lock = await holdLock(file, {
+      holder: "routines watch",
+      onLost: (error) => lost.push(error),
+      onRenewError: (error) => renewErrors.push(error),
+      setTimer: handTimer,
+    });
+    expect((await heldRecord(file)).holder).toBe("routines watch");
+
+    await renewNow();
+
+    expect((await heldRecord(file)).holder).toBe("routines watch");
+    await expect(hold(file)).rejects.toMatchObject({ holder: { holder: "routines watch" } });
+    await lock.release();
+  });
+
+  it("reads a record whose holder isn't text as a record without one", async () => {
+    const holder = record(process.pid);
+    const file = await lockFile(JSON.stringify({ ...holder, holder: 7 }));
+
+    await expect(hold(file)).rejects.toMatchObject({ holder });
+    await expect(hold(file)).rejects.not.toHaveProperty("holder.holder");
+  });
+
   // The record names this computer and process; another account has no use for it (HAL-5215).
   it("keeps the lock private to the user, when taken and when renewed", async () => {
     // Windows has no file modes: Node reports `666` there for a file that isn't read-only.

@@ -70,6 +70,11 @@ export interface HoldLockOptions {
   setTimer?: RenewTimer;
   /** The platform and clock the busy retries use; tests play Windows with it. */
   system?: BusySystem;
+  /**
+   * What holds the lock, written into its record (`RunLockRecord.holder`),
+   * such as the CLI's `routines watch`, so a process it refuses can name it.
+   */
+  holder?: string;
 }
 
 /**
@@ -88,7 +93,8 @@ export interface HoldLockOptions {
 export async function holdLock(file: string, options: HoldLockOptions): Promise<HeldLock> {
   const system = options.system ?? nodeBusySystem;
   const setTimer = options.setTimer ?? systemRenewTimer;
-  let ownText = await takeOrRefuse(file, system);
+  const { holder } = options;
+  let ownText = await takeOrRefuse(file, holder, system);
   let released = false;
   let renewing: Promise<void> = Promise.resolve();
   let cancel: () => void = () => {};
@@ -101,7 +107,7 @@ export async function holdLock(file: string, options: HoldLockOptions): Promise<
   };
   const renewOnce = async () => {
     try {
-      const renewal = await renew(file, ownText, system);
+      const renewal = await renew(file, ownText, holder, system);
       if ("lostBecause" in renewal) {
         released = true;
         options.onLost(new Error(`The lock ${file} ${renewal.lostBecause}.`));
@@ -131,9 +137,13 @@ export async function holdLock(file: string, options: HoldLockOptions): Promise<
 }
 
 /** Takes the lock, removing a stale one, and gives the text written into it. */
-async function takeOrRefuse(file: string, system: BusySystem): Promise<string> {
+async function takeOrRefuse(
+  file: string,
+  holder: string | undefined,
+  system: BusySystem,
+): Promise<string> {
   while (true) {
-    const ownText = JSON.stringify(ownRecord());
+    const ownText = JSON.stringify(ownRecord(holder));
     if (await retryWhileBusy(() => createExclusive(file, ownText), system)) {
       return ownText;
     }
@@ -165,7 +175,12 @@ type Renewal = { renewedText: string } | { lostBecause: string };
  * fresh lock, so it is given up instead, and removed while it is still
  * this process's.
  */
-async function renew(file: string, ownText: string, system: BusySystem): Promise<Renewal> {
+async function renew(
+  file: string,
+  ownText: string,
+  holder: string | undefined,
+  system: BusySystem,
+): Promise<Renewal> {
   const found = await retryWhileBusy(() => readLock(file), system);
   if (found?.text !== ownText) {
     return { lostBecause: "was taken over by another process" };
@@ -174,7 +189,7 @@ async function renew(file: string, ownText: string, system: BusySystem): Promise
     await retryWhileBusy(() => releaseLock(file, ownText), system);
     return { lostBecause: "wasn't renewed within the stale limit, so it was given up" };
   }
-  const renewedText = JSON.stringify(ownRecord());
+  const renewedText = JSON.stringify(ownRecord(holder));
   const next = `${file}.${randomUUID()}.renew`;
   try {
     // Private, as when it was taken. Not flushed: a lock from before a power

@@ -144,6 +144,12 @@ export interface RunLockRecord {
   host: string;
   /** When the lock was taken, as an ISO 8601 time in UTC. */
   takenAt: string;
+  /**
+   * What holds the lock, in the holder's own words, such as the CLI's
+   * `routines watch`, so a refused writer can name it (HAL-14299). Writers
+   * that don't say leave it out, and readers ignore it when it isn't text.
+   */
+  holder?: string;
 }
 
 /** The format version of {@link RunLockRecord} that adapters write today. */

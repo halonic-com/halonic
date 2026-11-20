@@ -174,6 +174,7 @@ async function runReport(): Promise<RunOutcome> {
       }),
     },
     {
+      holder: "run",
       dir,
       workspace,
       trust: grant,

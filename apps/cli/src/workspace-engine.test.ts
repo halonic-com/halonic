@@ -61,6 +61,7 @@ async function open(signal: AbortSignal) {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
   const workspace = await loadWorkspace(dir.store);
   return openWorkspaceEngine(context(signal), setup(), {
+    holder: "run",
     dir,
     workspace,
     trust: null,
@@ -154,6 +155,7 @@ async function openWithTicks(
       },
     },
     {
+      holder: "routines watch",
       dir,
       workspace,
       trust: null,

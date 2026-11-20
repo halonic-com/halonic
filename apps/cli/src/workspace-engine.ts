@@ -19,6 +19,7 @@ import { recordingSrtSandbox } from "./fenced-sandbox.ts";
 import { checkHarnessOverride } from "./harness-override.ts";
 import {
   type EngineErrorSource,
+  type EngineHolder,
   type LocalEngine,
   type LocalEngineInput,
   openLocalEngine,
@@ -84,6 +85,8 @@ export interface WorkspaceEngineSetup {
 
 /** The workspace the engine is opened for, and the runs it starts or moves on. */
 export interface WorkspaceEngineTarget {
+  /** The command that opens the engine, which its lock names to a command it refuses. */
+  readonly holder: EngineHolder;
   readonly dir: OpenWorkspaceDir;
   /** The loaded workspace, checked and trusted by the command. */
   readonly workspace: LoadedWorkspace;
@@ -189,6 +192,7 @@ export async function openWorkspaceEngine(
   );
   const engine = await openLocalEngine({
     workspace: target.workspace,
+    holder: target.holder,
     ...(target.versions === undefined ? {} : { versions: target.versions }),
     workspaceRoot: target.dir.root,
     runConnectors: (

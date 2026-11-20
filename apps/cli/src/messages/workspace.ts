@@ -39,5 +39,14 @@ export const workspaceMessages = defineMessages("workspace", {
     pid === undefined
       ? phrase`Another Halonic engine is open on this workspace.`
       : phrase`Another Halonic engine is open on this workspace (process ${String(pid)}).`,
+  /**
+   * The reason when a CLI command holds the engine, as its lock names it
+   * (HAL-14299): "halonic routines watch is running for this workspace
+   * (process 4242)."
+   */
+  engineOpenBy: (command: string, pid: number) =>
+    phrase`halonic ${command} is running for this workspace (process ${String(pid)}).`,
   engineOpenFix: () => phrase`Wait until it has finished or stop it, then run again.`,
+  /** The fix when the command that holds the engine runs until it is stopped, as `routines watch` and `serve` do. */
+  engineOpenStopFix: () => phrase`Stop it with Ctrl C there, then run again.`,
 });
