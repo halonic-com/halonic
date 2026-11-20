@@ -179,6 +179,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
               surface="window"
               regionFormat={regionFormat}
               workspaceName={workspaceName}
+              announce={(words) => announcer.announce(words)}
             />
           )}
         </div>
@@ -265,6 +266,11 @@ export interface SectionViewProps extends SettingsSectionProps {
   readonly page?: boolean;
   /** The open workspace's name: a workspace section then shows `workspaceSectionLine` under its name. */
   readonly workspaceName?: string | undefined;
+  /**
+   * Reads a state's title politely, in the dialog, when the section's view can't load: the focus
+   * stays in the list there, so nothing else reads it. The phone page's focus reads it already.
+   */
+  readonly announce?: ((words: string) => void) | undefined;
 }
 
 /**
@@ -313,16 +319,33 @@ export function SectionView({
   page,
   regionFormat,
   workspaceName,
+  announce,
 }: SectionViewProps) {
   const description = useDescription(section, context, place);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const retried = useRef(false);
+  // After Reload page or Try again, which goes away, the section's name takes the focus once the
+  // view draws, unless the user put the focus somewhere else meanwhile (a11y 2.4.3).
+  const onDrawn = () => {
+    const active = document.activeElement;
+    if (retried.current && (active === null || active === document.body)) {
+      heading.current?.focus();
+    }
+    retried.current = false;
+  };
   return (
     <section aria-labelledby={`settings-section-${section.id}`}>
       {page === true ? (
-        <h1 id={`settings-section-${section.id}`} tabIndex={-1} className="sr-only">
+        <h1 ref={heading} id={`settings-section-${section.id}`} tabIndex={-1} className="sr-only">
           {section.title}
         </h1>
       ) : (
-        <h3 id={`settings-section-${section.id}`} tabIndex={-1} className="text-section text-fg">
+        <h3
+          ref={heading}
+          id={`settings-section-${section.id}`}
+          tabIndex={-1}
+          className="text-section text-fg"
+        >
           {section.title}
         </h3>
       )}
@@ -347,11 +370,16 @@ export function SectionView({
           name={`${section.title} settings`}
           title={unreachableWords.settingsTitle}
           headingLevel={page === true ? 2 : 4}
+          announce={announce}
+          onRetry={() => {
+            retried.current = true;
+          }}
         >
           <LoadedView<SettingsSectionProps>
             view={section}
             name={section.title}
             props={{ context, closeSettings, place, surface, regionFormat }}
+            onDrawn={onDrawn}
           />
         </PartErrorBoundary>
       </div>

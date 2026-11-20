@@ -1,12 +1,12 @@
 import { KindedError } from "@halonicjs/std";
 import { EmptyState } from "@halonicjs/studio-kit";
-import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { StudioHost } from "../engine/engine-words.ts";
 import { useStudioHost } from "../engine/studio-host-context.ts";
 import { isCodeLoadFailure } from "../errors/code-load-failure.ts";
 import { pageStandInTitle } from "../tabs/history-moves.ts";
 import { ViewErrorBoundary } from "../view-error-boundary.tsx";
-import { PageStopped } from "./page-stopped.tsx";
+import { PageStopped, pageStoppedWords } from "./page-stopped.tsx";
 
 /** The words of a view whose code couldn't load because the computer can't be reached. */
 export const unreachableWords = {
@@ -86,33 +86,68 @@ export function PageUnreachable({
  * A `ViewErrorBoundary` for a part of a page, such as a Settings section: when its code can't load
  * because the computer can't be reached, it shows {@link PageUnreachable} for `name`, whose
  * **Try again** imports it again. In the desktop app any failure shows {@link PageStopped} for
- * `name`, whose **Reload page** draws it again; elsewhere another failure shows nothing.
+ * `name`, whose **Reload page** draws it again; elsewhere another failure shows nothing. As a state
+ * shows, `announce` gets its title once, for a part that doesn't take focus, such as a section in
+ * the Settings dialog, whose focus stays in the list. `onRetry` hears each Try again or Reload page.
  */
 export function PartErrorBoundary({
   name,
   children,
+  announce,
+  onRetry,
   ...title
 }: UnreachableTitle & {
   readonly name: string;
   readonly children: ReactNode;
+  readonly announce?: ((title: string) => void) | undefined;
+  readonly onRetry?: (() => void) | undefined;
 }) {
   const host = useStudioHost();
   const [attempt, setAttempt] = useState(0);
-  const retry = () => setAttempt((count) => count + 1);
+  const retry = () => {
+    onRetry?.();
+    setAttempt((count) => count + 1);
+  };
   return (
     <ViewErrorBoundary
       // A new attempt starts a new boundary, which forgets the error and imports the view again.
       key={attempt}
       fallback={(error) => {
         if (isUnreachable(host, error)) {
-          return <PageUnreachable {...title} pageName={name} onRetry={retry} />;
+          return (
+            <>
+              <AnnounceOnShow words={title.title ?? unreachableWords.title} announce={announce} />
+              <PageUnreachable {...title} pageName={name} onRetry={retry} />
+            </>
+          );
         }
         return host === "desktop-app" ? (
-          <PageStopped {...title} pageName={`the ${name}`} error={error} onReload={retry} />
+          <>
+            <AnnounceOnShow words={title.title ?? pageStoppedWords.title} announce={announce} />
+            <PageStopped {...title} pageName={`the ${name}`} error={error} onReload={retry} />
+          </>
         ) : null;
       }}
     >
       {children}
     </ViewErrorBoundary>
   );
+}
+
+/** Gives `words` to `announce` once, as the state it stands next to shows. */
+function AnnounceOnShow({
+  words,
+  announce,
+}: {
+  readonly words: string;
+  readonly announce: ((words: string) => void) | undefined;
+}): null {
+  const said = useRef(false);
+  useEffect(() => {
+    if (!said.current && announce !== undefined) {
+      said.current = true;
+      announce(words);
+    }
+  }, [words, announce]);
+  return null;
 }

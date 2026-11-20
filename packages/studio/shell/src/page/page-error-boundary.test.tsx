@@ -27,6 +27,7 @@ beforeEach(() => {
 
 afterEach(() => {
   unmountAll();
+  document.body.replaceChildren();
   vi.restoreAllMocks();
 });
 
@@ -79,6 +80,67 @@ async function press(target: HTMLButtonElement): Promise<void> {
     target.focus();
     target.click();
   });
+}
+
+/** A Settings section whose view throws as it loads until `state.drawable`. */
+function settingsSection(id: string, title: string, state: { readonly drawable: boolean }) {
+  return {
+    id,
+    title,
+    scope: "display" as const,
+    order: 10,
+    featureId: id,
+    view: "Section",
+    load: async () => {
+      if (!state.drawable) throw new TypeError("theme is undefined");
+      return { Section: () => <p>{title} works</p> };
+    },
+  };
+}
+
+/**
+ * The Appearance and Models sections in the desktop app, in the dialog or on the phone page, after
+ * a list row that has the focus, as in the dialog.
+ */
+async function renderSections({
+  page,
+  appearance,
+  announce,
+}: {
+  readonly page: boolean;
+  readonly appearance: { readonly drawable: boolean };
+  readonly announce?: (words: string) => void;
+}): Promise<HTMLElement> {
+  const sectionView = (registered: ReturnType<typeof settingsSection>) => (
+    <SectionView
+      section={registered}
+      context={{} as WorkspaceContext}
+      closeSettings={() => undefined}
+      place="app"
+      surface={page ? "phone" : "window"}
+      page={page}
+      announce={announce}
+    />
+  );
+  if (!page) {
+    // The dialog's list row, which has the focus as the section opens.
+    const row = document.createElement("button");
+    row.textContent = "Appearance row";
+    document.body.append(row);
+    row.focus();
+  }
+  let container = document.body;
+  await act(async () => {
+    container = render(
+      <ClipboardProvider writeClipboard={writeClipboard}>
+        <ToastStoreProvider store={toasts}>
+          {sectionView(settingsSection("appearance", "Appearance", appearance))}
+          {sectionView(settingsSection("models", "Models", { drawable: true }))}
+        </ToastStoreProvider>
+      </ClipboardProvider>,
+    );
+  });
+  return container;
 }
 
 verifies("shell.page-stopped", () => {
@@ -213,56 +275,56 @@ verifies("shell.page-stopped", () => {
   ])(
     "says Couldn't load these settings with Reload page in the desktop app, page $page",
     async ({ page, name, level }) => {
-      let drawable = false;
-      const section = (id: string, title: string, view: () => boolean) => ({
-        id,
-        title,
-        scope: "display" as const,
-        order: 10,
-        featureId: id,
-        view: "Section",
-        load: async () => {
-          if (!view()) throw new TypeError("theme is undefined");
-          return { Section: () => <p>{title} works</p> };
-        },
-      });
-      const sectionView = (registered: ReturnType<typeof section>) => (
-        <SectionView
-          section={registered}
-          context={{} as WorkspaceContext}
-          closeSettings={() => undefined}
-          place="app"
-          surface={page ? "phone" : "window"}
-          page={page}
-        />
-      );
-      let container = document.body;
-      await act(async () => {
-        container = render(
-          <ClipboardProvider writeClipboard={writeClipboard}>
-            <ToastStoreProvider store={toasts}>
-              {sectionView(section("appearance", "Appearance", () => drawable))}
-              {sectionView(section("models", "Models", () => true))}
-            </ToastStoreProvider>
-          </ClipboardProvider>,
-        );
-      });
-      const appearance = container.querySelector("section") as HTMLElement;
-      const headings = [...appearance.querySelectorAll("h1, h2, h3, h4")];
+      const appearance = { drawable: false };
+      const container = await renderSections({ page, appearance });
+      const section = container.querySelector("section") as HTMLElement;
+      const headings = [...section.querySelectorAll("h1, h2, h3, h4")];
       expect(headings.map((heading) => [heading.tagName, heading.textContent])).toEqual([
         [name, "Appearance"],
         [level, "Couldn't load these settings"],
       ]);
-      expect(appearance.textContent).toContain(
+      expect(section.textContent).toContain(
         "Halonic ran into a problem showing the Appearance settings. Nothing in your workspace changed.",
       );
-      expect(appearance.textContent).not.toContain("theme is undefined");
-      expect(button(appearance, "Copy details")).toBeDefined();
+      expect(section.textContent).not.toContain("theme is undefined");
+      expect(button(section, "Copy details")).toBeDefined();
       expect(container.textContent).toContain("Models works");
 
-      drawable = true;
-      await press(button(appearance, "Reload page"));
-      expect(appearance.textContent).toContain("Appearance works");
+      appearance.drawable = true;
+      await press(button(section, "Reload page"));
+      expect(section.textContent).toContain("Appearance works");
+    },
+  );
+
+  it("reads Couldn't load these settings once in the dialog, with the focus left in the list", async () => {
+    const said: string[] = [];
+    const container = await renderSections({
+      page: false,
+      appearance: { drawable: false },
+      announce: (words) => said.push(words),
+    });
+    expect(said).toEqual(["Couldn't load these settings"]);
+    expect(document.activeElement?.textContent).toBe("Appearance row");
+
+    // A Reload page that fails again reads it again, once.
+    await press(button(container.querySelector("section") as HTMLElement, "Reload page"));
+    expect(said).toEqual(["Couldn't load these settings", "Couldn't load these settings"]);
+  });
+
+  it.each([
+    { page: false, name: "H3" },
+    { page: true, name: "H1" },
+  ])(
+    "moves focus to the section's name once Reload page draws it, page $page",
+    async ({ page, name }) => {
+      const appearance = { drawable: false };
+      const container = await renderSections({ page, appearance });
+      const section = container.querySelector("section") as HTMLElement;
+      appearance.drawable = true;
+      await press(button(section, "Reload page"));
+      expect(section.textContent).toContain("Appearance works");
+      expect(document.activeElement?.tagName).toBe(name);
+      expect(document.activeElement?.textContent).toBe("Appearance");
     },
   );
 });
