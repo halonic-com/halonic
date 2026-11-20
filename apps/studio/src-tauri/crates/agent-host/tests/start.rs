@@ -12,7 +12,8 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::{Duration, Instant};
 
 use halonic_agent_host::{
-    AgentHost, AgentHostError, EXECUTABLE_NAME, Stopped, executable_beside, host_command,
+    AgentHost, AgentHostError, EXECUTABLE_NAME, StartCause, Stopped, executable_beside,
+    host_command,
 };
 
 /// A made-up token of the right form, 43 base64url characters.
@@ -117,9 +118,10 @@ fn lifetime_refuses_a_host_that_prints_nothing_in_time() {
 }
 
 #[test]
-fn lifetime_refuses_a_host_that_exits_before_it_serves() {
+fn lifetime_refuses_a_host_that_exits_before_it_serves_and_keeps_its_exit_code() {
     let error = AgentHost::start(stand_in(&Script::Exit), WAIT).expect_err("no handshake");
-    assert_eq!(error, AgentHostError::Exited);
+    assert_eq!(error, AgentHostError::Exited(Some(3)));
+    assert!(error.to_string().contains("exit code 3"), "{error}");
 }
 
 #[test]
@@ -140,7 +142,55 @@ fn lifetime_refuses_a_host_whose_line_isnt_a_handshake() {
 fn lifetime_says_why_a_host_can_not_start() {
     let missing = std::env::temp_dir().join("halonic-agent-host-test-missing-program");
     let error = AgentHost::start(Command::new(missing), WAIT).expect_err("can't start");
-    assert!(matches!(error, AgentHostError::Start(_)), "{error:?}");
+    assert!(
+        matches!(error, AgentHostError::Start(StartCause::Missing, _)),
+        "{error:?}"
+    );
+}
+
+/// A file the system refuses to run, as a permission or an antivirus
+/// program would, is `Blocked`, not `Missing`.
+#[cfg(unix)]
+#[test]
+fn lifetime_tells_a_blocked_host_from_a_missing_one() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let number = NEXT_SCRIPT.fetch_add(1, Ordering::Relaxed);
+    let path = std::env::temp_dir().join(format!(
+        "halonic-agent-host-test-blocked-{}-{number}",
+        std::process::id()
+    ));
+    std::fs::write(&path, "exit 0\n").expect("write the file");
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644))
+        .expect("take away its execute permission");
+    let error = AgentHost::start(Command::new(&path), WAIT).expect_err("can't start");
+    assert!(
+        matches!(error, AgentHostError::Start(StartCause::Blocked, _)),
+        "{error:?}"
+    );
+}
+
+#[test]
+fn lifetime_reads_the_start_cause_from_the_systems_error() {
+    use std::io::{Error, ErrorKind};
+
+    assert_eq!(
+        StartCause::of(&Error::from(ErrorKind::NotFound)),
+        StartCause::Missing
+    );
+    assert_eq!(
+        StartCause::of(&Error::from(ErrorKind::PermissionDenied)),
+        StartCause::Blocked
+    );
+    assert_eq!(
+        StartCause::of(&Error::from(ErrorKind::OutOfMemory)),
+        StartCause::Other
+    );
+    #[cfg(windows)]
+    assert_eq!(
+        StartCause::of(&Error::from_raw_os_error(225)),
+        StartCause::Blocked
+    );
 }
 
 #[test]

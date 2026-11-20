@@ -10,6 +10,7 @@
 
 mod console_window;
 mod default_distro;
+mod error;
 mod handshake;
 mod relay;
 mod routes;
@@ -25,6 +26,7 @@ use std::time::{Duration, Instant};
 
 use console_window::{new_command, without_console_window};
 pub use default_distro::halonic_is_default;
+pub use error::{AgentHostError, StartCause};
 pub use handshake::{Handshake, read_handshake};
 use relay::Relay;
 pub use routes::{Answer, LineSplitter, LineTooLong, Method, Route, find_route};
@@ -54,34 +56,9 @@ const EXIT_POLL: Duration = Duration::from_millis(25);
 /// How long dropping an [`AgentHost`] waits for it to exit on its own.
 const DROP_GRACE: Duration = Duration::from_secs(5);
 
-/// Why the host couldn't be started. No message contains the token.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AgentHostError {
-    /// The program couldn't be started at all.
-    Start(String),
-    /// It ended, or closed its output, before printing a handshake.
-    Exited,
-    /// It printed nothing within the time allowed.
-    TimedOut(Duration),
-    /// It printed a line that isn't a valid handshake.
-    Handshake(String),
-}
-
-impl std::fmt::Display for AgentHostError {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Start(message) | Self::Handshake(message) => formatter.write_str(message),
-            Self::Exited => formatter.write_str("The agent host stopped before it served."),
-            Self::TimedOut(wait) => write!(
-                formatter,
-                "The agent host didn't serve within {} s.",
-                wait.as_secs_f32()
-            ),
-        }
-    }
-}
-
-impl std::error::Error for AgentHostError {}
+/// How long a host that closed its output before its handshake is given to
+/// exit, so its exit code can be read.
+const EXIT_CODE_WAIT: Duration = Duration::from_secs(2);
 
 /// How [`AgentHost::stop`] ended the host.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -99,7 +76,10 @@ pub enum Stopped {
 /// [`AgentHostError::Start`] when `program` has no folder.
 pub fn executable_beside(program: &Path) -> Result<PathBuf, AgentHostError> {
     let folder = program.parent().ok_or_else(|| {
-        AgentHostError::Start("The agent host can't be found: the app has no folder.".to_owned())
+        AgentHostError::Start(
+            StartCause::Missing,
+            "The agent host can't be found: the app has no folder.".to_owned(),
+        )
     })?;
     Ok(folder.join(format!("{EXECUTABLE_NAME}{}", std::env::consts::EXE_SUFFIX)))
 }
@@ -147,7 +127,10 @@ impl AgentHost {
             .stderr(Stdio::piped());
         without_console_window(&mut command);
         let mut child = command.spawn().map_err(|error| {
-            AgentHostError::Start(format!("The agent host could not start: {error}."))
+            AgentHostError::Start(
+                StartCause::of(&error),
+                format!("The agent host could not start: {error}."),
+            )
         })?;
         log_stderr(&mut child, "agent host");
         let stdin = child.stdin.take();
@@ -159,7 +142,7 @@ impl AgentHost {
         let handshake = match answer {
             Ok(FirstLine::Text(line)) => read_handshake(&line),
             Ok(FirstLine::NotText) => Err(handshake::refused("it isn't UTF-8 text")),
-            Ok(FirstLine::Ended) => Err(AgentHostError::Exited),
+            Ok(FirstLine::Ended) => Err(AgentHostError::Exited(exit_code(&mut child))),
             Err(_) => Err(AgentHostError::TimedOut(wait)),
         };
         match handshake {
@@ -193,7 +176,10 @@ impl AgentHost {
         wait: Duration,
     ) -> Result<Self, AgentHostError> {
         let mut relay = Relay::bind().map_err(|error| {
-            AgentHostError::Start(format!("The agent host's relay could not listen: {error}."))
+            AgentHostError::Start(
+                StartCause::of(&error),
+                format!("The agent host's relay could not listen: {error}."),
+            )
         })?;
         let mut command = command(relay.port());
         command
@@ -202,14 +188,20 @@ impl AgentHost {
             .stderr(Stdio::piped());
         without_console_window(&mut command);
         let mut child = command.spawn().map_err(|error| {
-            AgentHostError::Start(format!("The agent host could not start: {error}."))
+            AgentHostError::Start(
+                StartCause::of(&error),
+                format!("The agent host could not start: {error}."),
+            )
         })?;
         log_stderr(&mut child, "agent host");
         let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
             kill(&mut child);
-            return Err(AgentHostError::Exited);
+            return Err(AgentHostError::Exited(None));
         };
         let answer = match read_relayed_handshake_line(stdout, relay.port()).recv_timeout(wait) {
+            Ok(Err(AgentHostError::Exited(_))) => {
+                Err(AgentHostError::Exited(exit_code(&mut child)))
+            }
             Ok(answer) => answer,
             Err(_) => Err(AgentHostError::TimedOut(wait)),
         };
@@ -342,7 +334,8 @@ fn read_relayed_handshake_line(
             let mut line = Vec::new();
             let read = reader.by_ref().take(left).read_until(b'\n', &mut line);
             let length = match read {
-                Ok(0) | Err(_) => break Err(AgentHostError::Exited),
+                // The shell reads the exit code once the host has ended.
+                Ok(0) | Err(_) => break Err(AgentHostError::Exited(None)),
                 Ok(length) => length,
             };
             left -= length as u64;
@@ -363,6 +356,20 @@ fn read_relayed_handshake_line(
     receiver
 }
 
+/// The exit code of a host that closed its output before its handshake,
+/// once it has exited: `None` when a signal stopped it, or it still runs
+/// after [`EXIT_CODE_WAIT`]. The caller kills it then.
+fn exit_code(child: &mut Child) -> Option<i32> {
+    let deadline = Instant::now() + EXIT_CODE_WAIT;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return status.code(),
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(EXIT_POLL),
+            _ => return None,
+        }
+    }
+}
+
 fn kill(child: &mut Child) {
     // It may have exited already; either way it is waited for, so it
     // leaves no zombie behind.
@@ -375,108 +382,4 @@ fn kill(child: &mut Child) {
     clippy::disallowed_methods,
     reason = "a test's programs share its console"
 )]
-mod tests {
-    use std::io::Cursor;
-    use std::process::{Command, Stdio};
-    use std::time::Duration;
-
-    use super::handshake::read_relayed_handshake;
-    use super::relay::Relay;
-    use super::{AgentHost, FirstLine, read_first_line};
-
-    const TOKEN: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJ-_01234";
-
-    fn first_line_of(output: &[u8]) -> FirstLine {
-        read_first_line(Cursor::new(output.to_vec()))
-            .recv()
-            .expect("the reader answers")
-    }
-
-    #[test]
-    fn handshake_first_line_is_read_up_to_its_newline() {
-        assert_eq!(
-            first_line_of(b"{}\nmore\n"),
-            FirstLine::Text("{}\n".to_owned())
-        );
-    }
-
-    #[test]
-    fn handshake_first_line_that_isnt_utf8_is_told_apart_from_an_ended_output() {
-        assert_eq!(first_line_of(b"\xff\xfe\n"), FirstLine::NotText);
-        assert_eq!(first_line_of(b""), FirstLine::Ended);
-    }
-
-    #[test]
-    fn relay_handshake_is_the_token_with_the_relays_address() {
-        let line = format!("{{\"token\":\"{TOKEN}\"}}\r\n");
-        let handshake = read_relayed_handshake(line.as_bytes(), 49152)
-            .expect("a handshake")
-            .expect("not skipped");
-        assert_eq!(handshake.url(), "http://127.0.0.1:49152");
-        assert_eq!(handshake.token(), TOKEN);
-    }
-
-    #[test]
-    fn relay_handshake_skips_wsl_messages_but_not_after_a_utf16_newline() {
-        // "Hi" and a newline in UTF-16, as wsl.exe prints them.
-        assert_eq!(read_relayed_handshake(b"H\0i\0\r\0\n", 1), Ok(None));
-        assert_eq!(read_relayed_handshake(b"\xff\xfe\n", 1), Ok(None));
-        assert_eq!(read_relayed_handshake(b"[1,2]\n", 1), Ok(None));
-        // The NUL a UTF-16 newline leaves before the host's own line.
-        let line = format!("\0{{\"token\":\"{TOKEN}\"}}\n");
-        assert!(matches!(
-            read_relayed_handshake(line.as_bytes(), 1),
-            Ok(Some(_))
-        ));
-    }
-
-    #[test]
-    fn relay_handshake_refuses_an_object_that_isnt_a_token_without_repeating_it() {
-        let with_url = format!("{{\"url\":\"http://127.0.0.1:1\",\"token\":\"{TOKEN}\"}}\n");
-        for line in [with_url.as_str(), "{\"token\":\"short\"}\n", "{}\n"] {
-            let error = read_relayed_handshake(line.as_bytes(), 1).expect_err(line);
-            assert!(!error.to_string().contains(TOKEN), "{error}");
-        }
-    }
-
-    #[test]
-    fn relay_stopped_counts_as_an_exited_host() {
-        // Runs until its input closes, so only the relay's state tells.
-        #[cfg(unix)]
-        let mut command = {
-            let mut command = Command::new("/bin/sh");
-            command.args(["-c", "cat > /dev/null"]);
-            command
-        };
-        #[cfg(windows)]
-        let mut command = {
-            let mut command = Command::new("findstr");
-            command.arg("^");
-            command
-        };
-        let child = command
-            .stdin(Stdio::piped())
-            .stdout(Stdio::null())
-            .spawn()
-            .expect("start the stand-in");
-        let mut relay = Relay::bind().expect("bind the relay");
-        let (_input, relay_input) = std::io::pipe().expect("a pipe");
-        let (relay_output, _output) = std::io::pipe().expect("a pipe");
-        relay.serve(relay_input, relay_output, TOKEN);
-        let line = format!("{{\"token\":\"{TOKEN}\"}}\n");
-        let handshake = read_relayed_handshake(line.as_bytes(), relay.port())
-            .expect("a handshake")
-            .expect("not skipped");
-        let mut host = AgentHost {
-            child,
-            stdin: None,
-            relay: Some(relay),
-            handshake,
-        };
-
-        assert!(!host.has_exited(), "the relay serves and the host runs");
-        host.relay.as_ref().expect("the relay").stop();
-        assert!(host.has_exited(), "a stopped relay reaches no host");
-        host.stop(Duration::from_secs(5));
-    }
-}
+mod tests;

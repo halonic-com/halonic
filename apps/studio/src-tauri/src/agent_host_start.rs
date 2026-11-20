@@ -1,19 +1,20 @@
 //! Starting the host: which one the sandbox choice asks for, and the command
-//! that runs it.
+//! that runs it. Each start's outcome is kept for `start_status`.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use halonic_agent_host::{
-    AgentHost, Handshake, SettingCopy, copy_sandbox_setting, distro_host_command, distro_installed,
-    executable_beside, host_command, wsl_exe,
+    AgentHost, AgentHostError, Handshake, SettingCopy, WslError, copy_sandbox_setting,
+    distro_host_command, distro_installed, executable_beside, host_command, wsl_exe,
 };
 use halonic_git_guard::plain_path;
 use halonic_host_settings::SandboxSetting;
 use tauri::{AppHandle, Manager, Runtime};
 
 use super::choice::{HostKind, host_for, saved_setting};
-use super::updates::{clean_import_mounts, read_in_distro, run_security_update};
+use super::progress::{FailureCause, StartFailure};
+use super::updates::{DistroStartChecks, clean_import_mounts, read_in_distro, run_security_update};
 use super::{
     AgentHostState, DistroCommand, HostRefusal, Launch, START_WAIT, poisoned, unavailable,
 };
@@ -31,24 +32,18 @@ pub(super) async fn running_host<R: Runtime>(app: &AppHandle<R>) -> Result<Hands
         if let Some(running) = host.as_mut()
             && !running.has_exited()
         {
+            state.progress.host_started();
             return Ok(running.handshake().clone());
         }
-        let (started, updates) = match &state.launch {
-            #[cfg(test)]
-            Launch::Local(command) => (start_local(command())?, None),
-            #[cfg(test)]
-            Launch::Distro(command) => (start_in_distro(command)?, None),
-            Launch::Real => match chosen_host(&app)? {
-                (HostKind::Local, _) => (start_local(real_host_command(&app)?)?, None),
-                (HostKind::Distro, setting) => {
-                    let (wsl, command) = distro_host_command_for_real_wsl()?;
-                    clean_import_mounts(&wsl);
-                    copy_into_distro(&wsl, setting.as_ref())?;
-                    run_security_update(&wsl);
-                    let started = start_in_distro(&command)?;
-                    (started, Some(read_in_distro(&wsl)))
-                }
-            },
+        let (started, updates) = match start_host(&app, &state) {
+            Ok(started) => {
+                state.progress.host_started();
+                started
+            }
+            Err(refusal) => {
+                state.progress.host_failed(refusal.failure);
+                return Err(refusal);
+            }
         };
         *state.start_checks.lock().map_err(|_| poisoned())? = updates;
         let handshake = started.handshake().clone();
@@ -59,13 +54,49 @@ pub(super) async fn running_host<R: Runtime>(app: &AppHandle<R>) -> Result<Hands
     .map_err(|error| HostRefusal::new("io", error))?
 }
 
+/// Starts the host the launch asks for, and for the host in the distro reads
+/// its start checks. Notes when WSL is ready, before the host starts in it.
+fn start_host<R: Runtime>(
+    app: &AppHandle<R>,
+    state: &AgentHostState,
+) -> Result<(AgentHost, Option<DistroStartChecks>), HostRefusal> {
+    match &state.launch {
+        #[cfg(test)]
+        Launch::Local(command) => Ok((start_local(command())?, None)),
+        #[cfg(test)]
+        Launch::Distro(command) => {
+            state.progress.wsl_ready();
+            Ok((start_in_distro(command)?, None))
+        }
+        Launch::Real => match chosen_host(app)? {
+            (HostKind::Local, _) => Ok((start_local(real_host_command(app)?)?, None)),
+            (HostKind::Distro, setting) => {
+                let (wsl, command) = distro_host_command_for_real_wsl()?;
+                state.progress.wsl_ready();
+                clean_import_mounts(&wsl);
+                copy_into_distro(&wsl, setting.as_ref())?;
+                run_security_update(&wsl);
+                let started = start_in_distro(&command)?;
+                Ok((started, Some(read_in_distro(&wsl))))
+            }
+        },
+    }
+}
+
 fn start_local(command: Command) -> Result<AgentHost, HostRefusal> {
-    AgentHost::start(command, START_WAIT).map_err(unavailable)
+    AgentHost::start(command, START_WAIT).map_err(host_failed)
 }
 
 /// Starts the host in the distro with a relay in front of it.
 fn start_in_distro(command: &DistroCommand) -> Result<AgentHost, HostRefusal> {
-    AgentHost::start_relayed(command, START_WAIT).map_err(unavailable)
+    AgentHost::start_relayed(command, START_WAIT).map_err(host_failed)
+}
+
+/// The refusal for a host that didn't start, with the cause and exit code
+/// `start_status` reports.
+fn host_failed(error: AgentHostError) -> HostRefusal {
+    let failure = StartFailure::from(&error);
+    unavailable(error).with_failure(failure)
 }
 
 /// Which host the person's sandbox choice asks for, and the choice. Without
@@ -104,22 +135,39 @@ pub(super) fn copy_into_distro(
 /// missing distro never falls back to the local host.
 pub(super) fn distro_host_command_for_real_wsl() -> Result<(PathBuf, DistroCommand), HostRefusal> {
     let system_root = std::env::var("SystemRoot").ok();
-    let wsl = wsl_exe(system_root.as_deref())
-        .map_err(|error| unavailable(error).with_reason("wsl-missing"))?;
+    let wsl = wsl_exe(system_root.as_deref()).map_err(|error| {
+        unavailable(error)
+            .with_reason("wsl-missing")
+            .with_failure(StartFailure::of(FailureCause::WslMissing))
+    })?;
     match distro_installed(&wsl) {
         Ok(true) => {}
         Ok(false) => {
-            return Err(
-                unavailable("Halonic's WSL distro isn't installed").with_reason("distro-missing")
-            );
+            return Err(unavailable("Halonic's WSL distro isn't installed")
+                .with_reason("distro-missing")
+                .with_failure(StartFailure::of(FailureCause::DistroMissing)));
         }
-        Err(error) => return Err(unavailable(error)),
+        Err(error) => {
+            let failure = wsl_failure(&error);
+            return Err(unavailable(error).with_failure(failure));
+        }
     }
     let command_wsl = wsl.clone();
     Ok((
         wsl,
         Box::new(move |port| distro_host_command(&command_wsl, port)),
     ))
+}
+
+/// Why `wsl.exe` couldn't list the distros, with its exit code when it ran.
+fn wsl_failure(error: &WslError) -> StartFailure {
+    StartFailure {
+        cause: FailureCause::WslFailed,
+        exit_code: match error {
+            WslError::Failed(code) => *code,
+            _ => None,
+        },
+    }
 }
 
 /// Starts the host beside the shell and drops it again: the proof that this

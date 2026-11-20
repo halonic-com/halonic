@@ -50,6 +50,8 @@ fn main() {
         "agent_host_stream_end",
         "agent_host_security_updates",
         "agent_host_sandbox_choice_save",
+        "engine_ready",
+        "start_status",
         "http_fetch",
         "http_fetch_abort",
         "fs_list",
