@@ -23,11 +23,13 @@ function deskOnManualTime() {
   const ended: DeskEndReason[] = [];
   const paired: PairingPhone[] = [];
   let failPaired = false;
+  let saved: Promise<void> = Promise.resolve();
   const watcher = {
     check: (check: { checkCode: string; phone: PairingPhone; allowBy: Date }) => {
       heard.push(`check ${check.checkCode} ${check.phone.name} ${check.allowBy.toISOString()}`);
     },
     paired: async (phone: PairingPhone) => {
+      await saved;
       if (failPaired) throw new Error("the phone list couldn't be saved");
       paired.push(phone);
     },
@@ -48,7 +50,15 @@ function deskOnManualTime() {
   const failSaving = () => {
     failPaired = true;
   };
-  return { time, desk, heard, ended, paired, open, ticket, failSaving };
+  /** Holds the next keep of a phone until the returned call. */
+  const holdSaving = (): (() => void) => {
+    let release = () => {};
+    saved = new Promise((resolve) => {
+      release = resolve;
+    });
+    return release;
+  };
+  return { time, desk, heard, ended, paired, open, ticket, failSaving, holdSaving };
 }
 
 /** Uses the code with the given ticket and gives the phone's verdict. */
@@ -158,6 +168,24 @@ verifies("agent-host.remote-pairing-rules", () => {
       phone.close();
       expect(ended).toEqual(["phone-left"]);
       await expect(verdict).resolves.toEqual({ allowed: false, reason: "timed-out" });
+    });
+
+    it("keeps Allow's outcome when the dialog closes or the phone leaves while the phone is kept", async () => {
+      const { desk, ended, paired, open, ticket, holdSaving } = deskOnManualTime();
+      const pairing = open();
+      const phone = ticket();
+      const verdict = useCode(phone);
+      const release = holdSaving();
+      const allowed = pairing.allow();
+      pairing.close();
+      phone.close();
+      expect(desk.busy).toBe(true);
+      release();
+      await allowed;
+      expect(paired).toEqual([pixel]);
+      expect(ended).toEqual([]);
+      await expect(verdict).resolves.toEqual({ allowed: true });
+      expect(desk.busy).toBe(false);
     });
 
     it("ends the pairing as closed when the phone can't be kept, and Allow says why", async () => {

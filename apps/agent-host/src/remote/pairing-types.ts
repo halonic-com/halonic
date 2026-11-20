@@ -56,6 +56,9 @@ export interface OpenPairing {
   allow(): Promise<void>;
   /** Ends the pairing with `denied`. Throws unless a phone used the code and Allow is awaited. */
   deny(): void;
-  /** Ends the pairing with `closed`. Does nothing once it has ended. */
+  /**
+   * Ends the pairing with `closed`. Does nothing once it has ended, nor once
+   * Allow was pressed: the phone is then being kept, and Allow's outcome stands.
+   */
   close(): void;
 }

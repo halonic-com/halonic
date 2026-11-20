@@ -80,6 +80,10 @@ class Pairing implements OpenPairing {
   }
 
   close(): void {
+    // Allow was pressed and the phone is being kept: Allow's outcome stands,
+    // so the dialog and the phone hear the same thing. Undoing the keep would
+    // need a second write, which could fail and leave them disagreeing again.
+    if (this.stage.kind === "allowing") return;
     this.end("closed");
   }
 
