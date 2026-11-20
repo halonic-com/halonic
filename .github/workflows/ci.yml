@@ -16,6 +16,13 @@
 # merge group runs on that runner instead of `ubuntu-24.04` (board decision on
 # HAL-14115, 20 Nov). Pull requests and pushes keep the standard runners.
 # Unset, everything runs on `ubuntu-24.04` as before.
+#
+# The jobs that need Docker (gitleaks), rustup (tauri, android), sudo and
+# apt (sandbox-fence, e2e, tauri), Python's venv (zizmor) or the hosted
+# image's Java and Android SDK (android) always take `large-runner` in a merge
+# group when MERGE_QUEUE_RUNNER is set. The PC runners (`halonic-local`) don't
+# have those tools, and one failing job cancels every group behind it
+# (HAL-14246).
 
 name: CI
 
@@ -371,7 +378,9 @@ jobs:
 
   gitleaks:
     name: Secret scan (gitleaks)
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    # Needs Docker, rustup, sudo or the hosted image's tools: see the top of
+    # this file (HAL-14246).
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER && 'large-runner' || 'ubuntu-24.04' }}
     timeout-minutes: 5
     permissions:
       contents: read
@@ -397,7 +406,9 @@ jobs:
     name: Workflow lint (zizmor)
     needs: changes
     if: github.event_name != 'merge_group' || needs.changes.outputs.workflows == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    # Needs Docker, rustup, sudo or the hosted image's tools: see the top of
+    # this file (HAL-14246).
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER && 'large-runner' || 'ubuntu-24.04' }}
     timeout-minutes: 5
     permissions:
       contents: read
@@ -1061,7 +1072,9 @@ jobs:
     name: Tauri shell (Rust checks)
     needs: changes
     if: needs.changes.outputs.tauri == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    # Needs Docker, rustup, sudo or the hosted image's tools: see the top of
+    # this file (HAL-14246).
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER && 'large-runner' || 'ubuntu-24.04' }}
     timeout-minutes: 20
     permissions:
       contents: read
@@ -1610,7 +1623,9 @@ jobs:
     name: Sandbox fence (bubblewrap)
     needs: changes
     if: needs.changes.outputs.sandbox-fence == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    # Needs Docker, rustup, sudo or the hosted image's tools: see the top of
+    # this file (HAL-14246).
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER && 'large-runner' || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -2301,7 +2316,9 @@ jobs:
     name: Android shell (debug APK)
     needs: changes
     if: needs.changes.outputs.android == 'true' && needs.changes.outputs.full == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    # Needs Docker, rustup, sudo or the hosted image's tools: see the top of
+    # this file (HAL-14246).
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER && 'large-runner' || 'ubuntu-24.04' }}
     timeout-minutes: 40
     permissions:
       contents: read
@@ -2417,7 +2434,9 @@ jobs:
     name: Studio end-to-end (Playwright)
     needs: changes
     if: needs.changes.outputs.studio == 'true' && needs.changes.outputs.full == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    # Needs Docker, rustup, sudo or the hosted image's tools: see the top of
+    # this file (HAL-14246).
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER && 'large-runner' || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
       contents: read
