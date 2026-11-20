@@ -54,10 +54,14 @@ function hostOf(read: FilesHost["read"], more: Partial<FilesHost> = {}): FilesHo
   };
 }
 
-function show(host: FilesHost, path: string): HTMLElement {
+function show(
+  host: FilesHost,
+  path: string,
+  announce: (text: string) => void = () => {},
+): HTMLElement {
   const context = {
     services: limitedLookup(filesFeature, { get: () => host }),
-    announcer: { announce: () => {} },
+    announcer: { announce },
     openItem: () => {},
   } as unknown as WorkspaceContext;
   return render(<FileView item={fileItem(path)} context={context} Sections={() => null} />);
@@ -115,6 +119,55 @@ verifies("files.ui.unreadable-strip", () => {
     await act(async () => vi.advanceTimersByTime(300));
 
     expect(page.textContent).not.toContain("can't be read");
+  });
+
+  it("says the strip once when typing makes the file unreadable, not again while it stays so", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    let line: number | null = null;
+    const listeners = new Set<() => void>();
+    const announce = vi.fn();
+    show(
+      hostOf(async () => "name: a\n", {
+        yamlSyntaxLine: async () => line,
+        subscribe: (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+      }),
+      "a.agent.yaml",
+      announce,
+    );
+    const check = async (next: number | null) => {
+      line = next;
+      for (const listener of listeners) listener();
+      await act(async () => vi.advanceTimersByTime(300));
+    };
+    await act(async () => {});
+
+    await check(15);
+    await check(16);
+    expect(announce.mock.calls).toEqual([
+      ["a.agent.yaml can't be read: line 15 isn't valid YAML."],
+    ]);
+
+    await check(null);
+    await check(2);
+    expect(announce).toHaveBeenCalledTimes(2);
+    expect(announce).toHaveBeenLastCalledWith(
+      "a.agent.yaml can't be read: line 2 isn't valid YAML.",
+    );
+  });
+
+  it("says nothing for a file that opens unreadable: the strip is there as it opens", async () => {
+    const announce = vi.fn();
+    show(
+      hostOf(async () => "name: [unclosed\n", { yamlSyntaxLine: async () => 1 }),
+      "a.agent.yaml",
+      announce,
+    );
+    await settle();
+
+    expect(announce).not.toHaveBeenCalled();
   });
 
   it("keeps the problems when the syntax check fails", async () => {
