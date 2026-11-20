@@ -1,3 +1,4 @@
+import { type RunsList, useRunEnd } from "@halonicjs/studio-feature-runs/api";
 import { Button, PlusIcon, useToastStore } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
 import {
@@ -74,6 +75,8 @@ export function useRequestPane(options: {
   readonly cardOpen?: boolean | undefined;
   /** Focuses the open card's title, once the sheet that covered it has closed. */
   readonly focusCard?: (() => void) | undefined;
+  /** The workspace's runs: a phone's sheet also stops waiting when the run it started ends. */
+  readonly runs?: RunsList | undefined;
 }): RequestPane {
   const {
     inbox,
@@ -88,6 +91,7 @@ export function useRequestPane(options: {
     sheetOpen: shared,
     cardOpen,
     focusCard,
+    runs,
   } = options;
   const { list: offered, failed, retry } = useOffered(requests);
   const [draft, setDraft] = useState(emptyDraft);
@@ -95,10 +99,15 @@ export function useRequestPane(options: {
   // A phone's sheet sent its request and waits for the card, which closes it (first-run 7.2).
   const [waiting, setWaiting] = useState(false);
   const [notStarted, setNotStarted] = useState("");
+  // The run the waiting sheet started, and what it said when it failed before its card arrived.
+  const [sentRun, setSentRun] = useState<string>();
+  const [runFailed, setRunFailed] = useState<{ line: string; hubId: string; runId: string }>();
+  const runEnd = useRunEnd(runs, waiting ? sentRun : undefined);
   const [budgetStop, setBudgetStop] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const toasts = useToastStore();
   const message = useRef<HTMLTextAreaElement>(null);
+  const newRequestRow = useRef<HTMLButtonElement>(null);
   const formAsked = useRef(false);
   const [asks, setAsks] = useState(0);
   if (shared !== undefined) shared.current = phone && sheetOpen;
@@ -110,11 +119,29 @@ export function useRequestPane(options: {
     setWaiting(false);
     setDraft((d) => ({ ...d, message: "" }));
   }, [cardOpen, waiting]);
+  // The run ended before a card came (RS1, HAL-13723). Failed: the sheet stays with the run
+  // page's failure line and the message, to send again. Finished: it closes as for a card.
+  const finished = useRef(false);
+  useEffect(() => {
+    if (!waiting || sentRun === undefined || runEnd === undefined) return;
+    setWaiting(false);
+    if (runEnd.kind === "failed") {
+      setRunFailed({ line: runEnd.line, hubId: runEnd.hubId, runId: sentRun });
+      return;
+    }
+    finished.current = true;
+    setSheetOpen(false);
+    setDraft((d) => ({ ...d, message: "" }));
+  }, [waiting, sentRun, runEnd]);
   // The sheet gives focus back to New request, which the card hides on a phone: the card's title
-  // takes it instead (flow-first-run 4.3). This runs after the sheet's own clean-up has.
+  // takes it instead (flow-first-run 4.3). A run that finished without a card gives it to New
+  // request itself, as the sheet's opener may have been elsewhere. This runs after the sheet's own
+  // clean-up has.
   const sheetWasOpen = useRef(false);
   useEffect(() => {
     if (sheetWasOpen.current && !sheetOpen && cardOpen) focusCard?.();
+    else if (sheetWasOpen.current && !sheetOpen && finished.current) newRequestRow.current?.focus();
+    if (!sheetOpen) finished.current = false;
     sheetWasOpen.current = sheetOpen;
   }, [sheetOpen, cardOpen, focusCard]);
   const closeLatest = useRef(closeItem);
@@ -150,13 +177,16 @@ export function useRequestPane(options: {
   const send = async (workflow: RequestWorkflow, text: string) => {
     if (busy) return;
     setNotStarted("");
+    setRunFailed(undefined);
     setBudgetStop(false);
     setBusy(true);
     try {
       const started = await requests.start(workflow.key, text);
       // The sheet keeps the sent text under "Working…" until its card arrives.
-      if (phone && sheetOpen) setWaiting(true);
-      else setDraft((d) => ({ ...d, message: "" }));
+      if (phone && sheetOpen) {
+        setSentRun(started.runId);
+        setWaiting(true);
+      } else setDraft((d) => ({ ...d, message: "" }));
       onStarted?.(started.runId);
       toasts?.show({
         tone: "success",
@@ -192,7 +222,7 @@ export function useRequestPane(options: {
   const onEscape = () => list.current?.querySelector<HTMLElement>('[role="gridcell"]')?.focus();
   return {
     newRequest: phone ? (
-      <button type="button" className={newRequestRowClasses} onClick={showForm}>
+      <button ref={newRequestRow} type="button" className={newRequestRowClasses} onClick={showForm}>
         <span className="size-icon-md shrink-0 *:size-full" aria-hidden="true">
           <PlusIcon />
         </span>
@@ -225,6 +255,12 @@ export function useRequestPane(options: {
           busy={busy}
           waiting={waiting}
           notStarted={notStarted}
+          {...(runFailed !== undefined && {
+            runFailed: {
+              line: runFailed.line,
+              ...(openRun && { openRun: () => openRun(runFailed.hubId, runFailed.runId) }),
+            },
+          })}
           {...(budgetStop && openBudget !== undefined && { onChangeBudget: openBudget })}
           onSend={send}
           onClose={closeSheet}

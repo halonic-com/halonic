@@ -360,6 +360,8 @@ screen unmounts it to close it.
 | `closeWhileBusy` | A phone's form sheet only: Close works while busy, for a wait that closing doesn't stop |
 | `busy` | The request runs: the confirming button is busy and the rest of the Dialog waits |
 | `error` | A failed request's message, read through the alert slot at the end of the body |
+| `retryLabel` | With `error`: a ghost **Try again** in the failure's Callout that confirms again |
+| `errorAction` | With `error`: the Callout's action in place of `retryLabel`, for a way on other than sending again: **Open run** |
 | `footnote` | One short line above the buttons, outside the body's scroll area: the trust check's last line |
 | `returnFocus` | Where focus goes on close when the opener has gone or is inert (23 A2) |
 

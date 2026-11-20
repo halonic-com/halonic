@@ -1,4 +1,4 @@
-import { RunsListService } from "@halonicjs/studio-feature-runs/api";
+import { type RunsList, RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { Button, EmptyState, List, usePresentation } from "@halonicjs/studio-kit";
 import {
   type EngineWords,
@@ -69,6 +69,7 @@ export function InboxPage({ context }: PlaceViewProps) {
   return (
     <InboxView
       inbox={inbox}
+      runs={runs}
       runFacts={runFacts}
       words={engineWordsOf(context)}
       announce={(line) => context.announcer.announce(line)}
@@ -112,6 +113,8 @@ export interface InboxViewProps {
    * the run and has **Open run** (with `openRun`). Without it the Inbox says neither.
    */
   readonly runFacts?: RunFactsOf | undefined;
+  /** The workspace's runs: a phone's request sheet stops waiting when the run it started ends. */
+  readonly runs?: RunsList | undefined;
   /** Says a line where a screen reader hears it: "New in Needs you: …" for a sent request's card that didn't open. */
   readonly announce?: ((line: string) => void) | undefined;
 }
@@ -147,6 +150,7 @@ export function InboxView({
   openBudget,
   openRun,
   runFacts,
+  runs,
   announce,
 }: InboxViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
@@ -193,6 +197,7 @@ export function InboxView({
     sheetOpen: requestSheetOpen,
     cardOpen: open !== null,
     focusCard: () => itemPane.current?.querySelector<HTMLElement>("section h2[tabindex]")?.focus(),
+    runs,
   });
 
   return (
