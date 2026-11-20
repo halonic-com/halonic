@@ -92,6 +92,7 @@ jobs:
       version: ${{ steps.plan.outputs.version }}
       installer: ${{ steps.plan.outputs.installer }}
       apk: ${{ steps.plan.outputs.apk }}
+      android_notices: ${{ steps.plan.outputs.android_notices }}
       publisher: ${{ steps.plan.outputs.publisher }}
       signed: ${{ steps.plan.outputs.signed }}
     steps:
@@ -149,6 +150,7 @@ jobs:
             echo "dry_run=$dry_run"
             echo "installer=Halonic-$version-windows-x64-setup.exe"
             echo "apk=Halonic-$version-android.apk"
+            echo "android_notices=THIRD-PARTY-NOTICES-android.txt"
             echo "cli_tarball=halonic-cli-$version.tgz"
             echo "publisher=$publisher"
             echo "signed=$signed"
@@ -563,26 +565,35 @@ jobs:
           name: release-files-signed
           path: dist
       # Real runs: the APK exactly as Play signed it, under its release
-      # name. Dry runs: a placeholder. Either way it gets its line in
-      # SHA256SUMS, after the Windows signing has rewritten the file.
+      # name, and the third-party notices taken out of it (HAL-12585). Dry
+      # runs: placeholders. Either way each gets its line in SHA256SUMS,
+      # after the Windows signing has rewritten the file.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         if: needs.build.outputs.dry_run != 'true'
         with:
           name: android-apk-play-signed
           path: android
-      - name: Add the APK and its checksum
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: needs.build.outputs.dry_run != 'true'
+        with:
+          name: android-third-party-notices
+          path: android-notices
+      - name: Add the APK, its notices and their checksums
         env:
           APK: ${{ needs.build.outputs.apk }}
+          NOTICES: ${{ needs.build.outputs.android_notices }}
           VERSION: ${{ needs.build.outputs.version }}
           DRY_RUN: ${{ needs.build.outputs.dry_run }}
         run: |
           if [ "$DRY_RUN" = "true" ]; then
             printf 'Placeholder APK for release dry run %s. Not an APK.\n' "$VERSION" > "dist/$APK"
+            printf 'Placeholder for release dry run %s. Not the notices.\n' "$VERSION" > "dist/$NOTICES"
           else
             test "$(ls android | wc -l)" = 1 || { echo "::error::Expected exactly one APK"; exit 1; }
             mv android/* "dist/$APK"
+            mv android-notices/THIRD-PARTY-NOTICES-android.txt "dist/$NOTICES"
           fi
-          (cd dist && sha256sum -- "$APK" >> SHA256SUMS)
+          (cd dist && sha256sum -- "$APK" "$NOTICES" >> SHA256SUMS)
       - name: Check the files
         env:
           INSTALLER: ${{ needs.build.outputs.installer }}
