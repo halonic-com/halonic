@@ -219,7 +219,7 @@ verifies("cli.commands.plugin.add", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr[0]).toBe(
-      "✕ Couldn't add the plugin: name: don't use control characters or text-direction marks",
+      "✕ Couldn't add the plugin: plugin.yaml 4:7 name: don't use control characters or text-direction marks",
     );
     await expect(readdir(pluginsFolder())).rejects.toThrow();
     expect([...io.stdout, ...io.stderr].join("\n")).not.toContain("\u001b");
@@ -237,7 +237,7 @@ verifies("cli.commands.plugin.add", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr[0]).toBe(
-      "✕ Couldn't add the plugin: ui.settings.units.choices[1]: don't use control characters or text-direction marks",
+      "✕ Couldn't add the plugin: plugin.yaml 20:60 ui.settings.units.choices[1]: don't use control characters or text-direction marks",
     );
     await expect(readdir(pluginsFolder())).rejects.toThrow();
   });
@@ -345,7 +345,9 @@ verifies("cli.commands.plugin.add", () => {
     const { code, io } = await add([source]);
 
     expect(code).toBe(exitCode.usage);
-    expect(io.stderr[0]).toMatch(/^✕ Couldn't add the plugin: backend\.tools\[0\]\.risk: /u);
+    expect(io.stderr[0]).toMatch(
+      /^✕ Couldn't add the plugin: plugin\.yaml 14:63 backend\.tools\[0\]\.risk: /u,
+    );
     await expect(readdir(pluginsFolder())).rejects.toThrow();
   });
 
@@ -415,5 +417,67 @@ verifies("cli.commands.plugin.add", () => {
 
     expect(code).toBe(exitCode.usage);
     await expect(readdir(pluginsFolder())).rejects.toThrow();
+  });
+
+  it("points at a plugin.yaml one folder down", async () => {
+    const outer = join(folder, "sources", "outer");
+    await mkdir(outer, { recursive: true });
+    await writeSource("weather", join("outer", "weather"));
+
+    const { code, io } = await add([outer]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr).toEqual([
+      "✕ Couldn't add the plugin: the plugin folder has no plugin.yaml (or integration.yaml), so it isn't a plugin.",
+      "  There's a plugin.yaml in weather/. Did you mean that folder?",
+    ]);
+    await expect(readdir(pluginsFolder())).rejects.toThrow();
+  });
+
+  it("says where in plugin.yaml a value is wrong, and that plugin.yaml is the fix", async () => {
+    const source = await writeSource("weather");
+    const text = await readFile(join(source, "plugin.yaml"), "utf8");
+    await writeFile(join(source, "plugin.yaml"), text.replace("version: 1.2.0", "version: 1.2"));
+
+    const { code, io } = await add([source]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr).toEqual([
+      `✕ Couldn't add the plugin: plugin.yaml 2:10 version is a number here; write it in quotes, with three numbers, such as "1.0.0".`,
+      "  Fix plugin.yaml, then run halonic plugin add again.",
+    ]);
+    await expect(readdir(pluginsFolder())).rejects.toThrow();
+  });
+
+  it("points at a tool name with a space, not at the command that uses it", async () => {
+    const source = await writeSource("weather");
+    const text = await readFile(join(source, "plugin.yaml"), "utf8");
+    await writeFile(
+      join(source, "plugin.yaml"),
+      text.replace("{ name: get_forecast,", "{ name: get forecast,"),
+    );
+
+    const { code, io } = await add([source]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr[0]).toBe(
+      `✕ Couldn't add the plugin: plugin.yaml 14:15 backend.tools[0].name: the tool name "get forecast" has a space; use one word, such as get-forecast`,
+    );
+  });
+
+  it("refuses a plugin for a newer SDK, saying what to do, and adds one for this SDK", async () => {
+    const source = await writeSource("weather");
+    const text = await readFile(join(source, "plugin.yaml"), "utf8");
+    await writeFile(join(source, "plugin.yaml"), text.replace("sdk: 1", "sdk: 3"));
+
+    const { code, io } = await add([source]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr).toEqual([
+      "✕ Couldn't add the plugin: plugin.yaml sdk: This plugin needs a newer version of Halonic: it is built for plugin SDK 3, and this Halonic runs SDK 2. Update Halonic, or get a version of the plugin built for SDK 2 or older.",
+    ]);
+    await writeFile(join(source, "plugin.yaml"), text.replace("sdk: 1", "sdk: 2"));
+    expect((await add([source])).code).toBe(exitCode.notTrusted);
+    expect(await plugins()).toEqual(["new"]);
   });
 });
