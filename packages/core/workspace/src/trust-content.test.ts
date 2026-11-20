@@ -269,6 +269,48 @@ verifies("workspace.trust-content", () => {
       });
     });
 
+    it("names an integration's settings as written and its secret picks by name only", () => {
+      const issues = local({
+        integration: {
+          folder: "tool-paperclip-issues",
+          settings: { url: "http://localhost:3100" },
+          secrets: { "paperclip-key": "paperclip-agent-key" },
+        },
+      });
+      expect(trustContent({ connectors: [issues] }).connectors[0]?.settings).toEqual({
+        folder: "tool-paperclip-issues",
+        settings: { url: "http://localhost:3100" },
+        secrets: { "paperclip-key": "‹secret paperclip-agent-key›" },
+      });
+    });
+
+    it("changes when an integration's settings or a secret pick changes", () => {
+      const content = (connector: Connector) => trustContent({ connectors: [connector] });
+      const integration = (
+        settings: Record<string, string>,
+        secrets: Record<string, string>,
+      ): Connector => local({ integration: { folder: "issues", settings, secrets } });
+      const trusted = integration({ url: "http://localhost:3100" }, { key: "agent-key" });
+      expect(
+        deepEqual(
+          content(trusted),
+          content(integration({ url: "http://localhost:3100" }, { key: "agent-key" })),
+        ),
+      ).toBe(true);
+      expect(
+        deepEqual(
+          content(trusted),
+          content(integration({ url: "http://localhost:3200" }, { key: "agent-key" })),
+        ),
+      ).toBe(false);
+      expect(
+        deepEqual(
+          content(trusted),
+          content(integration({ url: "http://localhost:3100" }, { key: "board-key" })),
+        ),
+      ).toBe(false);
+    });
+
     it("changes when the folder, the plugin id or `local` changes", () => {
       const content = (connector: Connector) => trustContent({ connectors: [connector] });
       const folder = local({ integration: { folder: "home-station" } });

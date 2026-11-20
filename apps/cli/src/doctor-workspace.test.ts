@@ -64,7 +64,7 @@ verifies("cli.doctor-workspace", () => {
     expect(doctor.name).toBe("Acme");
     expect(doctor.trust.location).toBe("/work/acme");
     expect(doctor.trust.commandPaths).toBe(commandPaths);
-    expect(doctor.trust.integrations).toBe(integrations);
+    expect(doctor.trust.integrations).toEqual(integrations);
     expect(doctor.trust.connectors.map((connector) => connector.id)).toEqual(["files"]);
     expect(doctor.trust.agents.map((agent) => [agent.id, agent.harness])).toEqual([
       ["writer", "claude-code"],

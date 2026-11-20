@@ -3,6 +3,7 @@ import { checkAgents } from "./agent-references.ts";
 import { CheckContext, type ReadFile } from "./check-context.ts";
 import { checkDelegationLoops } from "./delegation-loops.ts";
 import { checkHubUses } from "./hub-uses.ts";
+import { checkIntegrationSettings } from "./integration-settings.ts";
 import { checkLocalOnly } from "./local-only.ts";
 import { checkModelsFile, checkSessionModel } from "./model-aliases.ts";
 import { checkRoutines } from "./routines.ts";
@@ -30,6 +31,7 @@ const checks: readonly WorkspaceCheck[] = [
   checkSubflowLoops,
   checkRoutines,
   checkLocalOnly,
+  checkIntegrationSettings,
 ];
 
 /**
