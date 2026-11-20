@@ -2,6 +2,7 @@
 
 - Approval: the board approved the first-run flow on 19 Nov (HAL-7993; first-run-flow revision 7, sections 3.1 and 3.2 on HAL-7985). The time line's place and the Demo tag are the team's decision in the screen check of first-run build 1 (HAL-13571), recorded in first-run-flow revision 9, sections 3.1 and 10.2 R11 on HAL-7985, and built on HAL-13575. Liam approves this note on HAL-13429
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iVeMJQYZyN+dEvpjIG+sEycaaOT/4ytScemqPu9kSFE1GiZh90uzcsy4uEjZPo6U0//k2NliBnxLTb2vvxwiDQ==
 
 While Recent is empty, Welcome's primary button is **Open demo**, with **Open folder** beside it as a secondary button.
 "New here? The demo takes about 4 minutes." sits right under them as Open demo's description, in place of the cost
