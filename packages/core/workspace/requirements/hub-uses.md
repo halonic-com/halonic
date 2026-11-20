@@ -1,7 +1,7 @@
 # workspace.hub-uses
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: Nina's config-mistakes check on HAL-14257 (C337 row 11, code row C16), HAL-14270
 
 When `loadWorkspace` has parsed a workspace's files, the workspace package shall report as an error each skill, knowledge, collection and connector a hub's `uses` names that isn't shared at the workspace root, with the code an agent gets for the same item (`unknown-skill`, `unknown-knowledge`, `unknown-collection` or `unknown-connector`), the message `Hub "<hub>" uses unknown <kind> "<name>"`, and the key path and line of the name. An item whose shared file was read but failed its own checks shall not be reported, since that file's own errors are the cause.

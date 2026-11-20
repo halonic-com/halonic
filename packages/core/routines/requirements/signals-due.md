@@ -1,7 +1,7 @@
 # routines.signals-due
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: new (HAL-14305); before it, nothing started a routine on a signal
 
 When asked which routines a tick's signals start, the routines package shall return, for each enabled routine with a `signal` trigger, every signal of the same name that a run sent after the last tick less two minutes, up to and including now, and that passes the trigger's `when`. `when` reads the signal's data as `trigger.signal` and the time it was sent as `trigger.at`, as the routine's input and prompt do. The signals of every run count, a `workflow` step's child run included: a signal belongs to the step that sent it, whichever run the step ran in. A signal older than the catch-up window (7 days by default, `maxCatchUpAgeMs`) is dropped, as a missed time is. `catchUp` doesn't apply to signals. Each start names the signal and the run that sent it, so the caller can give it a run id of its own and follow it back. With no last tick, or when now is not after it, nothing is due. Starts come oldest first, ties by key, then by signal id.

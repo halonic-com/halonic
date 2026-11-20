@@ -1,7 +1,7 @@
 # spec.verifies-counts-retries-once
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6369
 
 When a test inside `verifies(id, body)` checks inside `vi.waitFor` or `expect.poll`, the spec package shall count only the `expect` calls of the attempt that passed, of both the global `expect` and the test's own `({ expect })`, so the recorded count doesn't depend on how often it retried.

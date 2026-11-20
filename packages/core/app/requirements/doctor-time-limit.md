@@ -1,7 +1,7 @@
 # app.doctor-time-limit
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-13405; first-run-progress 7 (each check has its own 5-second limit), sized on HAL-8005
 
 While `halonic doctor` runs, the doctor service shall give each check 5 seconds, and when a check hasn't answered by then, its line shall be a warning that it didn't answer in time, and the other lines shall still be returned. A check that runs over shall never make `doctor` exit 1. When the resource report runs over, the Disk line shall time out, and the Models line only when a provider runs on this computer. The 5 seconds are a target until they have been measured on a slow computer.

@@ -1,7 +1,7 @@
 # recording.svg
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6422; the look and format of the README recording's storyboard on HAL-6395 (sections 4 and 5)
 
 When a paced session is drawn, the renderer shall write an animated SVG that plays once and then rests on the session's last frame, and a still SVG of only that last frame, both in the website's dark code window with our status colours, and the animated SVG shall show only the last frame when the viewer has reduced motion on. A `{version}` in the recording's title shall be filled from the `<name>.version` the capture saved, never typed by hand.

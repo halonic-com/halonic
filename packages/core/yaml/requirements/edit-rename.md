@@ -1,7 +1,7 @@
 # yaml.edit-rename
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-13915, so renaming a step in the Studio's step card keeps the comments a person wrote inside that step
 
 When `editYaml` applies a `rename` with a `path` that ends in a map key and a new name `to`, the layer shall give that key the name `to` in the same place in its map, with the same value. When the splice can do it, only the key's characters shall change, so its value, the comments inside and around it and every other line stay byte for byte, and the layout shall be `kept`. A quoted key shall keep its quote style; a plain key shall get quotes when `to` needs them to read back as the same text. When the splice can't do it, the edit shall fall back to the `reformatted` and then the `rewritten` layout like any other edit, keeping the key's place. A `rename` with `to` equal to the old key shall change no character. If the `path` doesn't end in a map key, or no key is at `path`, or `to` is already a key of that map, then `editYaml` shall return a `bad-edit` problem.

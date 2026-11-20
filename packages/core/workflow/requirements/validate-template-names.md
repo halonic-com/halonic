@@ -1,7 +1,7 @@
 # workflow.validate-template-names
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-14268, from Nina's check of config mistakes (C337 C10, HAL-14257)
 
 If a step's `input`, `description`, `with` or `items`, a branch's `input` or `with`, or a transition's `when` (its placeholders and its `exists` paths) reads a `context.<key>` path, and `<key>` isn't one the step can read (see `workflow.context-before`; a `when` can also read what its own step writes), then the workflow rules shall report the error `unknown-template-name` at that key, with the message `"<step>" uses {{context.<key>}}, but no earlier step writes context.<key>.` followed by what to do: `Did you mean context.<near>?` when exactly one key the step can read is at most two edits away, else `Use one an earlier step writes: context.<a>, context.<b>.`, or `Write it in an earlier step first, with output.` when there is none. Only the first part after `context.` is checked; `input` paths are not checked here.

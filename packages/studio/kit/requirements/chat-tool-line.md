@@ -1,7 +1,7 @@
 # kit.chat-tool-line
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-13177; flow-agents 4.4 (tool use shows as one quiet line); HAL-11705
 
 The kit's `ChatToolLine` shall show one tool call of a reply as one quiet line: a 16px mark hidden from screen readers, then the feature's words in `text-small` `fg-muted`. The mark shall be the busy spinner while the call runs, a tick when it's done, and the alert mark in `danger` when it failed. It shall not be a live region.
