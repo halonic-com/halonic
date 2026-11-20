@@ -3,6 +3,7 @@
 - Task: HAL-14021 (follows HAL-13834, #4096)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14021 (CTO decision on the failing `live-cloud` gate; the security reviewer approves this note in review)
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:SZxDP79SUV9//lKeYxh0vNjWqzE64aAerzlqfFhSOyQ3+61QTpcjDv35WZhH8ash5i+1vH1sdg/0cHyY6peeCA==
 
 ## What changes
 
