@@ -38,7 +38,8 @@ A check that doesn't apply has no line. For example, there are no
 **Workspace** and **Models** lines outside a workspace.
 
 Under the lines, a summary counts the problems (✕ lines) and the warnings
-(! lines), and says what each problem stops.
+(! lines), and says what a sandbox that can't start or a model server that
+isn't answering stops.
 
 ### Exit codes
 
