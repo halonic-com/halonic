@@ -2,6 +2,7 @@ import type { LoadedFile, WorkspaceIssue } from "../load-workspace.ts";
 import { checkAgents } from "./agent-references.ts";
 import { CheckContext, type ReadFile } from "./check-context.ts";
 import { checkDelegationLoops } from "./delegation-loops.ts";
+import { checkHubUses } from "./hub-uses.ts";
 import { checkLocalOnly } from "./local-only.ts";
 import { checkModelsFile, checkSessionModel } from "./model-aliases.ts";
 import { checkRoutines } from "./routines.ts";
@@ -18,6 +19,7 @@ const checks: readonly WorkspaceCheck[] = [
   checkDuplicateIds,
   checkModelsFile,
   checkSessionModel,
+  checkHubUses,
   checkAgents,
   checkDelegationLoops,
   checkWorkingFolders,
@@ -30,10 +32,10 @@ const checks: readonly WorkspaceCheck[] = [
 
 /**
  * The checks across files: what one file names in another (an agent's
- * model alias, a test's workflow) and rules over several files (agents that
- * delegate in a loop, two files with one id, a harness agent's working
- * folder that holds what a local connector runs), what a workflow runs and
- * calls, and what a routine runs and when it starts.
+ * model alias, a test's workflow, a hub's shared items) and rules over
+ * several files (agents that delegate in a loop, two files with one id, a
+ * harness agent's working folder that holds what a local connector runs),
+ * what a workflow runs and calls, and what a routine runs and when it starts.
  *
  * @param files - the files that parsed
  * @param read - every file the loader read, with its kind and text, also
