@@ -8,6 +8,7 @@ import { defineMessages, type Message } from "./define.ts";
 import { errorMessages, issuesLink } from "./general.ts";
 import { harnessNames } from "./harness-names.ts";
 import { type Phrase, phrase } from "./phrase.ts";
+import { proxyFixInWords, proxyProblemInWords } from "./proxy-failures.ts";
 import { sandboxMessages } from "./sandbox.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
@@ -66,6 +67,7 @@ const lineOne = {
       run,
       phrase`Halonic couldn't reach ${failure.provider} at ${failure.address} for the model alias ${failure.alias}.`,
     ),
+  "proxy-failed": (run, failure) => failedIn(run, proxyProblemInWords(failure)),
   "model-missing": (run, failure) =>
     failedIn(
       run,
@@ -194,6 +196,7 @@ const lineTwo = {
     failure.local
       ? phrase`Start ${failure.provider}, then run again.`
       : phrase`Check your internet connection, then run again.`,
+  "proxy-failed": (_run, failure) => proxyFixInWords(failure),
   "model-missing": (_run, failure) =>
     phrase`${
       failure.server === "ollama"
