@@ -3,6 +3,11 @@
 //! a fake host served on loopback by the test itself, which records each
 //! request and when the shell hangs up.
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};

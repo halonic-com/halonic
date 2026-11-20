@@ -3,6 +3,11 @@
 //! for their input to close. The frames themselves are tested beside the
 //! relay, in `src/relay/tests.rs`.
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::{AtomicU32, Ordering};
