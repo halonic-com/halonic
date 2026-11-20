@@ -143,11 +143,15 @@ interface DecidedBarProps {
  * in a short window, where the whole column scrolls, the shorter bar would otherwise leave the
  * line below the window (HAL-13918). It scrolls whichever element scrolls the card, only as far
  * as it must: the whole bar when it fits, else from its top, so the line shows whole. It does so
- * before the bar is drawn, so the window never shows it out of view first.
+ * before the bar is drawn, so the window never shows it out of view first. The effect returns
+ * nothing: Chromium's `scrollIntoView` returns a promise, which React would take for a clean-up
+ * and fail on when the bar goes away.
  */
 export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps) {
   const bar = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => bar.current?.scrollIntoView?.({ block: "nearest" }), []);
+  useLayoutEffect(() => {
+    bar.current?.scrollIntoView?.({ block: "nearest" });
+  }, []);
   return (
     <div ref={bar} className="flex flex-col gap-3 border-t border-border p-4">
       <Callout tone="info" announce="focus" ref={callout}>
