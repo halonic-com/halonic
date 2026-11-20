@@ -3,7 +3,6 @@
 - Task: HAL-14133
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14133 (phone check 19 on HAL-1375; a small layout detail of the approved connect screen, decided by the team with Sofia on HAL-14141; Liam reviews)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:OxYdxcneGoL/tZGDi3W53R+NV1Fa3JUOtNyQlvPO+QMJaEixJnKDQMlgcwKzPUCUcTR/DjbyJN+2zfMfQ+e/AA==
 
 ## What changes
 
@@ -24,8 +23,11 @@ In the board's phone check of Play 0.1.0 (464296), with the keyboard open and th
 Connect was under the keyboard. The WebView keeps only the focused field in view, and the error
 makes the form taller. The screen's order and wording stay as approved.
 
-No test was weakened or removed.
+No test was weakened or removed. The six version-screen tests (`studio.connect.version-screens`)
+moved unchanged from `connect-page.test.ts` into `connect-version-screens.test.ts`, to keep the
+first file under the 500-line limit, so `connect-page.test.ts` runs fewer tests than before.
 
 ## Covers
 
 - studio.connect.field-errors
+- apps/studio/src/connect/connect-page.test.ts
