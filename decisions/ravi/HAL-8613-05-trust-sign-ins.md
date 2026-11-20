@@ -2,6 +2,7 @@
 
 - Approval: the Sign-ins section is the team's decision with the designer on HAL-13419 (HAL-2282 rule), with the words the board approved on HAL-8619; the build is HAL-8613; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:sMbL3OlLmwTg+DThHqXI7gseoCFDQLytsvviasBf346zE+NM+SOBYV56sszT/Is4HfJ7ROaMtPZYM7+PBgDOAQ==
 
 ## What changes
 
