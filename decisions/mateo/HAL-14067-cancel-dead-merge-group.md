@@ -3,6 +3,7 @@
 - Task: HAL-14067
 - Approval: the task asks for this change (HAL-14067, from the team check HAL-14061); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zyUYQ9LM1R2891qVcQHRO38rX3Vdc980ub7aOVv2mIC1sfvfkRA4s9ltVCVFvNEjZKQ8pTqrUJiVyR4KHP0bCw==
 
 ## What changes
 
