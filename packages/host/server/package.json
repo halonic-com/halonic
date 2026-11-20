@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@halonicjs/app": "workspace:*",
+    "@halonicjs/events": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/google-setup": "workspace:*",
     "@halonicjs/ports": "workspace:*",
