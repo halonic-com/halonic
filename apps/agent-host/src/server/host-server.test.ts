@@ -1,5 +1,6 @@
 import { request } from "node:http";
 import { connect, type Socket } from "node:net";
+import { bearerMatches } from "@halonicjs/host-server";
 import { afterEach, describe, expect, it } from "vitest";
 import { healthRoute } from "./health-route.ts";
 import {
@@ -340,5 +341,12 @@ describe("launch token", () => {
   it("is 32 random bytes in base64url, new each time", () => {
     expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(randomLaunchToken()).not.toBe(token);
+  });
+
+  it("matches only the exact bearer header", () => {
+    expect(bearerMatches(`Bearer ${token}`, token)).toBe(true);
+    expect(bearerMatches(token, token)).toBe(false);
+    expect(bearerMatches(`bearer ${token}`, token)).toBe(false);
+    expect(bearerMatches(undefined, token)).toBe(false);
   });
 });
