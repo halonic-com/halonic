@@ -66,6 +66,20 @@ Variables). New runs use GitHub's runners at once. A job already queued for `cf-
 needs a container: leave the Worker running until those are done, or take the pull request
 out of the queue and queue it again.
 
+Then cancel every run still queued for `cf-linux`, also pushes to `main`. A queued `main` run
+holds main's concurrency group, so every later push to `main` is cancelled while it waits: on
+19 Nov one such run stopped main's CI, and every write to the Turbo remote cache, for nine
+hours (HAL-14115). To find them:
+
+```sh
+for id in $(gh api --paginate 'repos/halonic-com/halonic/actions/runs?status=queued&per_page=100' -q '.workflow_runs[].id'); do
+  gh api "repos/halonic-com/halonic/actions/runs/$id/jobs" \
+    -q '.jobs[] | select(.status == "queued" and (.labels | index("cf-linux"))) | .run_id'
+done | sort -u
+```
+
+Cancel each with `gh run cancel <id>`.
+
 ## If the trial stays
 
 - Put `GET /status` behind auth or drop it: today anyone can read the spend and job counts.
