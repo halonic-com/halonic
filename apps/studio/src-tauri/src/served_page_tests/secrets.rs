@@ -39,6 +39,7 @@ fn served_page_test_sees_the_secret_commands_refuse_halonic_names_over_ipc() {
         "halonic_token_google_refresh_acme",
         "token-key",
         "serve-password",
+        "remote-host-key",
     ] {
         for (command, body) in [
             ("secret_get", json!({"name": name})),

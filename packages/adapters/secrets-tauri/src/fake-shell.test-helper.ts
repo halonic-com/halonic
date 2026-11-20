@@ -13,7 +13,7 @@ export interface ShellCall {
 }
 
 /** Halonic's own secrets, in canonical form, which the `secret_*` commands refuse. */
-const halonicNames = ["token_key", "serve_password"];
+const halonicNames = ["token_key", "serve_password", "remote_host_key"];
 
 /** The canonical prefix the shell keeps every token under. */
 const tokenPrefix = "halonic_token_";

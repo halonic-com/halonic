@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-192, HAL-229 (interface agreed with Priya), HAL-1508, HAL-11253
 
-When the page calls `secret_get`, `secret_has`, `secret_set` or `secret_delete`, the shell shall check the name, and for `secret_set` the value (not empty, at most 16 KiB, and no longer than the backend's store holds: 1,280 bytes in the Windows Credential Manager), before the backend runs, shall refuse a name that belongs to Halonic (`token-key`, `serve-password`, or any name that starts with `halonic_token_`, in canonical form) with `reserved_name` before the backend runs, and shall return the value or nothing for `secret_get`, return only yes or no for `secret_has` (the value never reaches the page), replace any stored value for `secret_set`, and succeed for `secret_delete` even when nothing is stored, removing the key's allowed origins (`key-origins`) before its value. If a call fails, then the shell shall return one of the kinds `invalid_name`, `reserved_name`, `invalid_value`, `unavailable`, `denied`, `unreadable` or `backend`, with a message that never contains the value. The shell shall record a failed call in its log by the command, the kind and that message, never the value. Every backend shall pass the same contract check.
+When the page calls `secret_get`, `secret_has`, `secret_set` or `secret_delete`, the shell shall check the name, and for `secret_set` the value (not empty, at most 16 KiB, and no longer than the backend's store holds: 1,280 bytes in the Windows Credential Manager), before the backend runs, shall refuse a name that belongs to Halonic (`token-key`, `serve-password`, `remote-host-key`, or any name that starts with `halonic_token_`, in canonical form) with `reserved_name` before the backend runs, and shall return the value or nothing for `secret_get`, return only yes or no for `secret_has` (the value never reaches the page), replace any stored value for `secret_set`, and succeed for `secret_delete` even when nothing is stored, removing the key's allowed origins (`key-origins`) before its value. If a call fails, then the shell shall return one of the kinds `invalid_name`, `reserved_name`, `invalid_value`, `unavailable`, `denied`, `unreadable` or `backend`, with a message that never contains the value. The shell shall record a failed call in its log by the command, the kind and that message, never the value. Every backend shall pass the same contract check.
 
 ## Examples
 
@@ -24,8 +24,8 @@ When the page calls `secret_get`, `secret_has`, `secret_set` or `secret_delete`,
 - Given a name that holds nothing,
   when `secret_delete` runs,
   then it succeeds.
-- Given a stored token under `halonic_token_google_refresh_acme`, and stored `token_key` and `serve_password`,
-  when the page calls `secret_get`, `secret_has`, `secret_set` or `secret_delete` with `Halonic-Token-Google-Refresh-Acme`, `token-key` or `serve-password`,
+- Given a stored token under `halonic_token_google_refresh_acme`, and stored `token_key`, `serve_password` and `remote_host_key`,
+  when the page calls `secret_get`, `secret_has`, `secret_set` or `secret_delete` with `Halonic-Token-Google-Refresh-Acme`, `token-key`, `serve-password` or `remote-host-key`,
   then each call is refused with `reserved_name` and the stored values are unchanged.
 - Given the name `my-serve-password` or `token-key-2`,
   when the page stores and reads it,

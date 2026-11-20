@@ -21,7 +21,7 @@ The shell shall refuse every app and plugin command to a request from any addres
   when it invokes `secret_get` with the name `not a name`,
   then the call reaches the command and is refused as `invalid_name`.
 - Given a request from the connect page on desktop,
-  when it invokes `secret_get` with the name `token-key`, `serve-password` or one that starts with `halonic_token_`,
+  when it invokes `secret_get` with the name `token-key`, `serve-password`, `remote-host-key` or one that starts with `halonic_token_`,
   then the call reaches the command and is refused as `reserved_name`.
 - Given a request from the connect page on desktop,
   when it invokes `trust_grant` for a folder that doesn't exist,

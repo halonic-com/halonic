@@ -33,6 +33,8 @@ verifies("ports.workspace-secrets", () => {
       "serve-password",
       "Serve_Password",
       "SERVE-PASSWORD",
+      "remote-host-key",
+      "Remote_Host_Key",
       "halonic_token_google_refresh",
       "Halonic-Token-google_refresh",
       "HALONIC_TOKEN_x",
@@ -100,6 +102,7 @@ verifies("ports.workspace-secrets", () => {
     it("matches by the secretKey form", () => {
       expect(isHalonicSecretName("Serve_Password")).toBe(true);
       expect(isHalonicSecretName("halonic-token-a")).toBe(true);
+      expect(isHalonicSecretName("REMOTE-HOST-KEY")).toBe(true);
       expect(isHalonicSecretName("openai-key")).toBe(false);
     });
 

@@ -57,5 +57,8 @@ impl SecretName {
 pub const TOKEN_PREFIX: &str = "halonic_token_";
 
 /// Halonic's own secrets, in canonical form: the key the CLI seals its
-/// tokens with and the hash of the served Studio's sign-in password.
-pub const HALONIC_NAMES: [&str; 2] = ["token_key", "serve_password"];
+/// tokens with, the hash of the served Studio's sign-in password and the
+/// agent host's static key that paired phones pin. The same names as
+/// `halonicSecretNames` and `hostSecretNames` in `@halonicjs/ports`; both
+/// sides check their list against `tests/fixtures/reserved-names.txt`.
+pub const HALONIC_NAMES: [&str; 3] = ["token_key", "serve_password", "remote_host_key"];

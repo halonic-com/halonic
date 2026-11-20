@@ -112,7 +112,7 @@ next to the ports:
 | Export | What it does | Requirement |
 | --- | --- | --- |
 | `isSecretName`, `secretKey`, `isQuotableSecretName`, `describeSecretName` | the `Secrets` name rule: a letter, then letters, digits, `-` or `_`, at most 128 characters; `secretKey` gives the matching form (upper case, `-` as `_`) and throws a `RangeError` for a bad name | `secret-name-rule` |
-| `workspaceSecrets`, `halonicSecretNames`, `isHalonicSecretName`, `tokenNamePrefix`, `isPluginSecretName`, `pluginSecretNamePrefix` | a view of `Secrets` for the names a workspace picks; it refuses Halonic's own secrets, token names and plugin secrets | `workspace-secrets` |
+| `workspaceSecrets`, `halonicSecretNames`, `hostSecretNames`, `isHalonicSecretName`, `tokenNamePrefix`, `isPluginSecretName`, `pluginSecretNamePrefix` | a view of `Secrets` for the names a workspace picks; it refuses Halonic's own secrets (the agent host's too), token names and plugin secrets | `workspace-secrets` |
 | `pluginSecrets`, `pluginSecretSeparator` | a view of `Secrets` for one plugin's backend; it reads only the names stored for that plugin and refuses every other | `plugin-secrets` |
 | `checkWorkspacePath`, `checkPublicWorkspacePath`, `isPrivateWorkspacePath` | the path rules of `DefinitionSource`: refuse unsafe paths, and private ones for the public check | `workspace-path-checks` |
 | `checkLeaveOut`, `isLeftOut` | the opt-in `leaveOut` of `list()` and `version()`: refuse an unsafe folder or name, and tell whether a path is in a left-out folder or under a left-out name | `definition-store-left-out` |

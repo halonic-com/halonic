@@ -39,6 +39,7 @@ fn key_origins_refuse_bad_and_halonic_names_before_the_backend() {
         ("api key", SecretError::InvalidName),
         ("token-key", SecretError::ReservedName),
         ("serve-password", SecretError::ReservedName),
+        ("remote-host-key", SecretError::ReservedName),
         (
             "halonic_token_google_refresh_acme",
             SecretError::ReservedName,

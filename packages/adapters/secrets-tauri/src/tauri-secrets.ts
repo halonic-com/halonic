@@ -22,7 +22,7 @@ export interface SecretPresence {
  * {@link KeychainError}.
  *
  * The shell refuses Halonic's own names here (`reserved_name`, a
- * `RangeError`): `token-key`, `serve-password` and every name under the
+ * `RangeError`): `token-key`, `serve-password`, `remote-host-key` and every name under the
  * token prefix. Sign-in tokens go through `TauriTokens` instead.
  *
  * It writes and removes as a `SecretStore` does, but it isn't one: the

@@ -168,18 +168,25 @@ export function describeSecretName(name: string): string {
 export const halonicSecretNames: readonly string[] = ["token-key", "serve-password"];
 
 /**
+ * The secrets only the agent host keeps, for itself: the remote host's static
+ * key (tunnel phase B). Like {@link halonicSecretNames}, no workspace may pick
+ * them, but no deployment needs them, so they aren't in that list.
+ */
+export const hostSecretNames: readonly string[] = ["remote-host-key"];
+
+/**
  * The prefix of a token's name in a store that also holds secrets, such as
  * the desktop keychain. A secret name with this prefix is a token, so no
  * workspace may pick it.
  */
 export const tokenNamePrefix = "halonic_token_";
 
-const halonicSecretKeys = new Set(halonicSecretNames.map(secretKey));
+const halonicSecretKeys = new Set([...halonicSecretNames, ...hostSecretNames].map(secretKey));
 const tokenKeyPrefix = secretKey(tokenNamePrefix);
 
 /**
  * Whether a secret name belongs to Halonic: one of {@link halonicSecretNames}
- * or a token name under {@link tokenNamePrefix}. Names are compared in their
+ * or {@link hostSecretNames}, or a token name under {@link tokenNamePrefix}. Names are compared in their
  * `secretKey` form, so `Token_Key` is `token-key`.
  *
  * @throws RangeError when the name breaks the rule of the `Secrets` port

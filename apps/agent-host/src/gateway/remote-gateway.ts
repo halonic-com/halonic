@@ -1,8 +1,28 @@
-import { type GatewayListener, startGatewayListener } from "@halonicjs/adapter-remote-gateway";
+import {
+  type GatewayListener,
+  type GatewayPolicy,
+  startGatewayListener,
+} from "@halonicjs/adapter-remote-gateway";
 import type { RunTable } from "../harness/run-table.ts";
 import type { GatewaySettings } from "./gateway-settings.ts";
 import { hostGatewaySource } from "./host-gateway-source.ts";
 import type { RunLedger } from "./run-ledger.ts";
+
+/**
+ * The person's "Let phones answer risky approvals" switch, read again for
+ * every answer a phone sends, so turning it off takes effect at once.
+ */
+export interface RiskySwitch {
+  allowRiskyRemotely(): boolean;
+}
+
+/** The switch while nothing sets it: off, as the setting is by default. */
+export const riskyOff: RiskySwitch = { allowRiskyRemotely: () => false };
+
+/** The gateway's policy, which asks the switch again for every answer. */
+export function gatewayPolicy(risky: RiskySwitch): GatewayPolicy {
+  return { allowRiskyRemotely: () => risky.allowRiskyRemotely() };
+}
 
 /**
  * The host's remote gateway: starts the listener when the setting turns it on
@@ -15,11 +35,18 @@ export class RemoteGateway {
   readonly #settings: GatewaySettings;
   readonly #ledger: RunLedger | undefined;
   readonly #runs: RunTable;
+  readonly #risky: RiskySwitch;
 
-  constructor(settings: GatewaySettings, ledger: RunLedger | undefined, runs: RunTable) {
+  constructor(
+    settings: GatewaySettings,
+    ledger: RunLedger | undefined,
+    runs: RunTable,
+    risky: RiskySwitch = riskyOff,
+  ) {
     this.#settings = settings;
     this.#ledger = ledger;
     this.#runs = runs;
+    this.#risky = risky;
   }
 
   /**
@@ -33,8 +60,7 @@ export class RemoteGateway {
     try {
       this.#listener = await startGatewayListener({
         source: hostGatewaySource(this.#ledger, this.#runs),
-        // A phone may not answer a risky approval until the person allows it on this desktop; nothing sets that yet.
-        policy: { allowRiskyRemotely: () => false },
+        policy: gatewayPolicy(this.#risky),
         ...(this.#settings.port === undefined ? {} : { port: this.#settings.port }),
       });
       return this.#listener.port;
