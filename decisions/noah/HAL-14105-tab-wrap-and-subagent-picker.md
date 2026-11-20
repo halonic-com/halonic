@@ -3,6 +3,7 @@
 - Task: HAL-14105
 - Approval: team decision on the approved Tabs and Subagents page under the HAL-2282 rule (Noah, kit owner, on HAL-14105, from Sofia's C313 notes SG1a and SG1b); the reviewer of the pull request on HAL-14105 signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2ufbpJY40mI2Zji70jy0jhvHEvndtsWZaQE1/YPsIfXqqS3DdwbB3YYkw9IIIY0IDOawes2mAyeF0XYQhbM4BQ==
 
 ## What changes
 
