@@ -63,6 +63,27 @@ verifies("source-control.history-go-back", () => {
       expect(await fake.source.readFile(sorter)).toBe("model: a\n");
     });
 
+    it('keeps no "Before going back" when every file already is as the version has it', async () => {
+      const fake = changedSince();
+      const sorterChanged = () =>
+        fake.answer({
+          kind: "ready",
+          changes: [{ path: sorter, status: "modified", staged: false }],
+        });
+      sorterChanged();
+      expect((await goBack(fake.source, version)).kind).toBe("restored");
+      expect(fake.versions).toHaveLength(1);
+
+      // A second press: Sorter shows as a change again, as the files that went back do, but every
+      // file is the version's now, so nothing is kept or written.
+      sorterChanged();
+      const outcome = await goBack(fake.source, version);
+      expect(outcome.kind).toBe("unchanged");
+      expect(fake.versions).toHaveLength(1);
+      expect(fake.replaced).toHaveLength(1);
+      expect(fake.removed).toHaveLength(1);
+    });
+
     it('changes no file when "Before going back" can\'t be kept', async () => {
       const fake = changedSince();
       fake.answer({

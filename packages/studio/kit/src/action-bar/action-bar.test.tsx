@@ -168,6 +168,15 @@ verifies("kit.action-bar", () => {
     expect((buttons(container)[0] as HTMLButtonElement).id).toBe("create");
   });
 
+  it("describes a button by the text it's given", () => {
+    const { container } = render(
+      <ActionBar rows={[[{ label: "Go back", "aria-describedby": "shared-line" }]]} />,
+    );
+    expect((buttons(container)[0] as HTMLButtonElement).getAttribute("aria-describedby")).toBe(
+      "shared-line",
+    );
+  });
+
   it("rides the keyboard by default and marks a bar that steps aside while you type", () => {
     const ride = render(<ActionBar rows={[[{ label: "Create", variant: "primary" }]]} />);
     expect(

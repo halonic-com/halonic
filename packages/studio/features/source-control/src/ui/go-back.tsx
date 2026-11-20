@@ -1,4 +1,10 @@
-import { ActionBar, Button, Callout, type CalloutHandle } from "@halonicjs/studio-kit";
+import {
+  ActionBar,
+  Button,
+  type ButtonUnavailable,
+  Callout,
+  type CalloutHandle,
+} from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef } from "react";
 import type { Version } from "../api.ts";
 import type { ChangesList } from "../changes-list.ts";
@@ -22,6 +28,21 @@ function goBackLine(list: ChangesList, version: Version): string | undefined {
   return sharedAfter(list.state, version.id) ? goBackWords.sharedAfter : undefined;
 }
 
+/** How the button points at its line: the reason it waits, or else its description. */
+interface LineLink {
+  readonly unavailable?: ButtonUnavailable;
+  readonly "aria-describedby"?: string;
+}
+
+/**
+ * Links the button to the line said before it (C289 GB2), so someone who Tabs to it hears the line:
+ * while a merge is started, as the reason it's unavailable; else as its description.
+ */
+function lineLink(list: ChangesList, line: string | undefined, lineId: string): LineLink {
+  if (line === undefined) return {};
+  return list.merging ? { unavailable: { reason: lineId } } : { "aria-describedby": lineId };
+}
+
 /** **Go back to this version** in the desktop's details, under the line said before it. */
 export function GoBackButton({ version, list, going }: GoBackProps) {
   const lineId = useId();
@@ -38,7 +59,7 @@ export function GoBackButton({ version, list, going }: GoBackProps) {
         size="sm"
         busy={going.busy}
         busyLabel={goBackWords.goingBack}
-        unavailable={list.merging ? { reason: lineId } : undefined}
+        {...lineLink(list, line, lineId)}
         onClick={() => void going.goBack(version)}
       >
         {goBackWords.goBack}
@@ -67,7 +88,7 @@ export function GoBackBar({ version, list, going }: GoBackProps) {
             label: goBackWords.goBack,
             busy: going.busy,
             busyLabel: goBackWords.goingBack,
-            unavailable: list.merging ? { reason: lineId } : undefined,
+            ...lineLink(list, line, lineId),
             onClick: () => void going.goBack(version),
           },
         ],

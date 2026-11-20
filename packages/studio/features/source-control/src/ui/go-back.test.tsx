@@ -52,6 +52,14 @@ async function show(source: ChangesSource, phone = false) {
 }
 
 const goBackButton = (root: HTMLElement) => buttonsNamed(root, "Go back to this version")[0];
+const sharedLine =
+  "Your team keeps the versions you shared after this one. Going back makes a new change you can share.";
+
+/** The text Go back is described by, as a screen reader reads it after the label. */
+function described(root: HTMLElement): string | null | undefined {
+  const id = goBackButton(root)?.getAttribute("aria-describedby") ?? "";
+  return document.getElementById(id)?.textContent;
+}
 
 async function goBack(root: HTMLElement) {
   await act(async () => {
@@ -108,13 +116,13 @@ verifies("source-control.history-go-back", () => {
       expect(toasts.list()).toEqual([]);
     });
 
-    it("says the team keeps the versions shared after this one", async () => {
+    it("says the team keeps the versions shared after this one, as Go back's description", async () => {
       const fake = changedSorter();
       fake.setRemote(true);
       const { root } = await show(fake.source);
-      expect(root.textContent).toContain(
-        "Your team keeps the versions you shared after this one. Going back makes a new change you can share.",
-      );
+      expect(root.textContent).toContain(sharedLine);
+      expect(described(root)).toBe(sharedLine);
+      expect(goBackButton(root)?.hasAttribute("aria-disabled")).toBe(false);
     });
 
     it("says nothing of sharing when the newer versions aren't shared yet", async () => {
@@ -123,6 +131,7 @@ verifies("source-control.history-go-back", () => {
       fake.setUnshared(1, [newer.id]);
       const { root } = await show(fake.source);
       expect(root.textContent).not.toContain("Your team keeps");
+      expect(goBackButton(root)?.hasAttribute("aria-describedby")).toBe(false);
     });
 
     it("waits while a merge of updates is started", async () => {
@@ -131,8 +140,7 @@ verifies("source-control.history-go-back", () => {
       const { root } = await show(fake.source);
       const button = goBackButton(root);
       expect(button?.getAttribute("aria-disabled")).toBe("true");
-      const reason = document.getElementById(button?.getAttribute("aria-describedby") ?? "");
-      expect(reason?.textContent).toBe("Finish getting updates first.");
+      expect(described(root)).toBe("Finish getting updates first.");
       await goBack(root);
       expect(fake.replaced).toEqual([]);
     });
@@ -144,6 +152,7 @@ verifies("source-control.history-go-back", () => {
       const button = goBackButton(root);
       expect(button).toBeDefined();
       expect(root.querySelector("h1")?.textContent).toBe(dutch.name);
+      expect(described(root)).toBe(sharedLine);
       await goBack(root);
       expect(await fake.source.readFile(sorter)).toBe("model: a\n");
     });

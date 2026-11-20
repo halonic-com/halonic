@@ -15,14 +15,21 @@ import { versionMessage, versionPaths } from "./version-name.ts";
  * The files are written as Restore just this writes them, so the outcome is the same: a copy is
  * kept first, a file that fails puts the others back, and Undo puts every file back as it was
  * after "Before going back". Undo leaves that version in History.
+ *
+ * When every file already is as the version has it, nothing is kept and nothing is written: a
+ * second press records no second "Before going back" (C289 GB1).
  */
 export async function goBack(source: ChangesSource, versionId: string): Promise<RestoreOutcome> {
+  let paths: readonly string[];
   try {
+    paths = await source.listChangedSince(versionId);
+    if (paths.length === 0) return { kind: "unchanged" };
     await keepBeforeGoingBack(source);
   } catch (error) {
     return { kind: "failed", reason: loadFailureReason(error) };
   }
-  return putAsVersion(source, versionId);
+  // Keeping a version writes no file, so the files that differ are still these.
+  return restoreItem(source, versionId, paths);
 }
 
 /**
