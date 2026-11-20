@@ -21,6 +21,7 @@ import {
   type ToolsMachine,
 } from "../commands/tools/source.ts";
 import { cliConnectorFactories } from "../connector-machine.ts";
+import type { AddedPlugin } from "../connector-plugin.ts";
 import { noSecrets } from "../remembered-secrets.ts";
 import { runCli } from "../run-cli.ts";
 import { openWorkspaceDir } from "../workspace-dir.ts";
@@ -94,6 +95,8 @@ export interface AcmeNotes {
   check(): Promise<ListedToolApprovalCheck | NoToolsToApprove>;
   /** Writes the connector file again, such as with other arguments, and trusts the workspace as it is then. */
   rewriteConnector(text: string): Promise<void>;
+  /** Sets the plugins added on this computer; none until a test sets them. */
+  setPlugins(plugins: readonly AddedPlugin[]): void;
   /** Damages every approval file, as a disk error or a hand edit would, so none can be read. */
   damageApprovals(): Promise<void>;
   /** Removes the temporary folder. */
@@ -112,6 +115,7 @@ export async function acmeNotes(): Promise<AcmeNotes> {
   const servers = new FakeMcpServers([]);
   const trustStore = new FileTrustStore(join(folder, "trust"));
   const seed = join(folder, "approvals");
+  let plugins: readonly AddedPlugin[] = [];
 
   const machineWith = (approvals: string): ToolsMachine => ({
     factories: cliConnectorFactories(servers, { PATH: "/usr/bin" }),
@@ -122,6 +126,7 @@ export async function acmeNotes(): Promise<AcmeNotes> {
     commandSearch: noCommands,
     approvals: new FileToolApprovalStore(approvals),
     digest: webCryptoDigest,
+    plugins: async () => plugins,
   });
   const trust = async () => {
     const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
@@ -155,6 +160,9 @@ export async function acmeNotes(): Promise<AcmeNotes> {
     async rewriteConnector(text) {
       await writeFile(connectorFile, text);
       await trust();
+    },
+    setPlugins(added) {
+      plugins = added;
     },
     async damageApprovals() {
       const files = await readdir(seed, { recursive: true, withFileTypes: true });

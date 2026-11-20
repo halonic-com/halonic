@@ -53,8 +53,8 @@ export async function reviewTools(
   const source = await openToolSource(input, context, "review");
   const check = await checkToolSource(source, machine, context);
   if (typeof check === "string") {
-    const { line, json } = noToolsToApprove(check, source);
-    return done([line], { source: source.connector.id, ...json });
+    const { line, warnings, json } = await noToolsToApprove(check, source, machine);
+    return { ...done([line], { source: source.connector.id, ...json }), warnings };
   }
   const review = offeredOnly(reviewListedTools(check), source);
   const json = reviewDocument(review);

@@ -115,6 +115,21 @@ export const pluginMessages = defineMessages("plugin", {
   broken: () => phrase`can't be read or checked`,
   noPlugins: () => phrase`No plugins yet. Add one with halonic plugin add <folder or git address>.`,
 
+  // HAL-14296 (C40, C41 on HAL-14271): the plugin a plugin connector uses,
+  // as `tools review`, `tools approve` and `doctor` name it.
+  /** A plugin connector whose plugin was never added, so it gives no tools at all. */
+  connectorPluginNotAdded: (connector: string, plugin: string) =>
+    phrase`${connector} uses the plugin ${plugin}, which isn't added.`,
+  addThePlugin: () => phrase`Add it with halonic plugin add <folder>.`,
+  /** The fix when an added plugin's id is close to the one the connector names. */
+  didYouMean: (plugin: string) => phrase`Did you mean ${plugin}?`,
+  /** With a !: the plugin is off, so an agent gets none of its tools yet. */
+  pluginOff: (state: Exclude<PluginState, "on">, id: string) =>
+    phrase`${id} is off: ${stateWords[state]} ${markPart("separator")} halonic trust --plugin ${id}`,
+  /** With a !: the plugin's folder can't be read or checked, so it's off. */
+  pluginBroken: (id: string) =>
+    phrase`${id} can't be read or checked, so it's off. See halonic plugin list.`,
+
   /**
    * `remove`'s question, framed with [y/N]. The API key is named only when one
    * is stored on this computer; on 0.1's command line none is, because it
