@@ -30,6 +30,13 @@ export interface SourceFacts {
   readonly imports: readonly ImportReference[];
   readonly hiddenLoads: readonly HiddenLoad[];
   readonly functions: readonly FunctionSpan[];
+  /**
+   * True when every statement re-exports from another module
+   * (`export … from "…"`, `export * from "…"`, `export type … from "…"`),
+   * so the file holds no code of its own. The module path must be a quoted
+   * string: the parser accepts any expression there. Comments don't count.
+   */
+  readonly reExportsOnly: boolean;
 }
 
 /** True when the file is code, docs or config that people read and review as text. */
@@ -97,7 +104,16 @@ export function readSourceFacts(fileName: string, text: string): SourceFacts {
     ts.forEachChild(node, visit);
   };
   visit(source);
-  return { imports, hiddenLoads, functions };
+  const reExportsOnly =
+    source.statements.length > 0 &&
+    source.statements.every(
+      (statement) =>
+        ts.isExportDeclaration(statement) &&
+        statement.moduleSpecifier !== undefined &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        statement.attributes === undefined,
+    );
+  return { imports, hiddenLoads, functions, reExportsOnly };
 }
 
 function scriptKind(fileName: string): ts.ScriptKind {

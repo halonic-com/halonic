@@ -22,7 +22,11 @@ export function checkFileSize(context: CheckContext): Report {
     if (!measured.test(file) || isExemptFromSize(file)) {
       continue;
     }
-    checkFileLines(context, file, report);
+    // A barrel that only re-exports grows a line with each feature and
+    // holds no code, so it has no line limit (HAL-14368).
+    if (!context.sourceFacts(file).reExportsOnly) {
+      checkFileLines(context, file, report);
+    }
     // describe() blocks make test functions long by nature.
     if (isSourceFile(file) && !isTestFile(file)) {
       checkFunctionLines(context, file, report);
