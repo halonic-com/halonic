@@ -2,7 +2,6 @@
 
 - Approval: the words are microcopy 11.4 B5 (approved on HAL-11629) and the UX check rows L7 and L8 (HAL-12363), a team decision with no new board card (HAL-2282 rule); Liam signs this note
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:o6fSfOikyTFjrTUx22GMYrsx+0KDT+EhZJoRk0iQl4kHhqPaJh5P4shEpTISh4wSEBLVAIAVLT8KHbCQ9yBZCQ==
 - Task: HAL-12369
 
 ## What changes
@@ -18,7 +17,8 @@
 - Requirements `studio.workspace-google-setup-accounts` and `studio.served-google-setup-accounts`:
   each host says so through a new `checkAgainEntry`. The desktop refusal for the checks becomes
   "Studio can't save this change yet.", still of kind `unavailable` as HAL-12413 (halonic#3604)
-  made it, so the page shows it after its colon. Both requirements also keep HAL-12413's
+  made it, so the page shows it after its colon. The desktop requirement also keeps HAL-12413's
+  engine-not-answering wording for a missing agent host (halonic#3952, UX check G2). Both requirements also keep HAL-12413's
   untrusted-workspace **Review** line and the host's own refusal words. The served host's
   `checkAgainEntry` sits next to HAL-10697's `readOnly` (halonic#3085): a served window shows the
   read-only layout, so it never reaches **Check again**, and the entry stays on the safe side.
