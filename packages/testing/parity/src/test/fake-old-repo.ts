@@ -282,6 +282,9 @@ function buildOldRepo(omit: readonly string[]): FakeOldRepo {
       process.platform === "win32" ? tsxBatch : tsxScript,
   });
   chmodSync(oldTsx(clone), 0o755);
+  // Without the two auto settings, the commit starts git's maintenance in the
+  // background. It holds a lock file in .git/objects, which a copy of the
+  // template can find and then lose.
   const git = (...args: string[]): string =>
     execFileSync(
       "git",
@@ -292,6 +295,10 @@ function buildOldRepo(omit: readonly string[]): FakeOldRepo {
         "user.email=test@example.com",
         "-c",
         "commit.gpgsign=false",
+        "-c",
+        "maintenance.auto=false",
+        "-c",
+        "gc.auto=0",
         "-C",
         clone,
         ...args,
