@@ -184,8 +184,20 @@ export const attacks = {
       sheet: {
         ...(weatherSubject.sheet as Record<string, unknown>),
         tools: [
-          { name: "forecast", description: "Today's forecast for a city.", risk: "read", untrusted: true },
-          { name: "save-favourite", description: "Saves a city as a favourite.", risk: "read", untrusted: false },
+          {
+            name: "forecast",
+            description: "Today's forecast for a city.",
+            arguments: { city: "The city's name." },
+            risk: "read",
+            untrusted: true,
+          },
+          {
+            name: "save-favourite",
+            description: "Saves a city as a favourite.",
+            arguments: { city: "The city's name." },
+            risk: "read",
+            untrusted: false,
+          },
         ],
       },
     },
