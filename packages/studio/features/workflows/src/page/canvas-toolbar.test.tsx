@@ -38,7 +38,7 @@ async function showPage(edits: Partial<Edits>, view: WorkflowView = reply, phone
 const toolbar = (page: HTMLElement) => page.querySelector("[role=group][aria-label='Flow tools']");
 
 const editsThatWork = (): Required<Edits> => ({
-  addStep: vi.fn(async () => "step"),
+  addStep: vi.fn(async () => "step-1"),
   resetLayout: vi.fn(async () => {}),
 });
 
@@ -61,9 +61,9 @@ verifies("workflows.canvas.toolbar", () => {
       expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
     );
 
-    await replace({ ...reply, steps: [...reply.steps, { id: "step", type: "task" }] });
+    await replace({ ...reply, steps: [...reply.steps, { id: "step-1", type: "task" }] });
     const added = [...page.querySelectorAll("button[aria-pressed]")].find(
-      (card) => card.querySelector("[title]")?.textContent === "step",
+      (card) => card.querySelector("[title]")?.textContent === "step-1",
     );
     expect(added?.getAttribute("aria-pressed")).toBe("true");
   });

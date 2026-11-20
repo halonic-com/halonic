@@ -28,10 +28,10 @@ function setup(more = "") {
 }
 
 verifies("studio.workspace-workflow-layout", () => {
-  it("adds an agent step `step` at its place, as one change that keeps the comments", async () => {
+  it("adds an agent step `step-1` at its place, as one change that keeps the comments", async () => {
     const { host, store, changes } = setup();
 
-    expect(await host.addStep(reply, "task", { x: 240, y: 0 })).toBe("step");
+    expect(await host.addStep(reply, "task", { x: 240, y: 0 })).toBe("step-1");
 
     expect(changes).toHaveLength(1);
     expect(store[path]).toContain("  # The first step.\n  start:");
@@ -39,25 +39,25 @@ verifies("studio.workspace-workflow-layout", () => {
     expect(view.steps.map((step) => [step.id, step.type])).toEqual([
       ["start", "task"],
       ["done", "final"],
-      ["step", "task"],
+      ["step-1", "task"],
     ]);
-    expect(view.layout["step"]).toEqual({ x: 240, y: 0 });
+    expect(view.layout["step-1"]).toEqual({ x: 240, y: 0 });
   });
 
-  it("adds a wait step `wait`, and -2 when the name is taken", async () => {
+  it("numbers wait steps from `wait-1`, the next free number each time", async () => {
     const { host } = setup("layout:\n  done: { x: 0, y: 140 }\n");
 
-    expect(await host.addStep(reply, "wait", { x: 0, y: 0 })).toBe("wait");
+    expect(await host.addStep(reply, "wait", { x: 0, y: 0 })).toBe("wait-1");
     expect(await host.addStep(reply, "wait", { x: 20, y: 0 })).toBe("wait-2");
 
     const view = await host.read(reply);
     expect(view.steps.filter((step) => step.type === "wait").map((step) => step.id)).toEqual([
-      "wait",
+      "wait-1",
       "wait-2",
     ]);
     expect(view.layout).toEqual({
       done: { x: 0, y: 140 },
-      wait: { x: 0, y: 0 },
+      "wait-1": { x: 0, y: 0 },
       "wait-2": { x: 20, y: 0 },
     });
   });

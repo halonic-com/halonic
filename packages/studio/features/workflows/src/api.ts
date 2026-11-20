@@ -213,8 +213,8 @@ export interface WorkflowsHost {
    */
   subscribe(listener: () => void): () => void;
   /**
-   * Adds an agent step `step` (`task`) or a wait step `wait` to the workflow, `-2` when the name is
-   * taken, placed at `at` on the canvas, as one undoable change that saves itself; resolves to the
+   * Adds an agent step `step-1` (`task`) or a wait step `wait-1` to the workflow, the next free
+   * number when that one is taken, placed at `at` on the canvas, as one undoable change that saves itself; resolves to the
    * new step's id. It has no arrows yet. Absent while the app can't change the workflow's file, so
    * the canvas shows no toolbar. Rejects with the reason the file couldn't be changed.
    */

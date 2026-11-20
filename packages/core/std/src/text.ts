@@ -32,23 +32,39 @@ export function slugify(name: string): string {
   return slug;
 }
 
+/** How {@link uniqueName} makes a name. */
+export interface UniqueNameOptions {
+  /**
+   * Numbers every name, from `base-1`, so the bare `base` is never used.
+   * For names that only tell things of one kind apart, like a new step `step-1`.
+   */
+  readonly numbered?: boolean;
+}
+
 /**
  * Returns `base` when no existing name uses it, otherwise the first free
- * `base-2`, `base-3` and so on.
+ * `base-2`, `base-3` and so on. With `numbered`, returns the first free
+ * `base-1`, `base-2` and so on.
  *
  * @param base - the name to start from, usually a slug
  * @param taken - the names already in use
+ * @param options - whether every name gets a number
  * @returns a name that isn't in `taken`
  *
  * @example
  * uniqueName("report", ["report", "report-2"]); // "report-3"
+ * uniqueName("step", [], { numbered: true }); // "step-1"
  */
-export function uniqueName(base: string, taken: Iterable<string>): string {
+export function uniqueName(
+  base: string,
+  taken: Iterable<string>,
+  options: UniqueNameOptions = {},
+): string {
   const used = new Set(taken);
-  if (!used.has(base)) {
+  if (!options.numbered && !used.has(base)) {
     return base;
   }
-  let suffix = 2;
+  let suffix = options.numbered ? 1 : 2;
   while (used.has(`${base}-${suffix}`)) {
     suffix++;
   }
