@@ -67,6 +67,12 @@ verifies("routines.triggers.lists-routines-that-start-it", () => {
     );
     expect(page.querySelector("li button")?.className).toContain("min-h-control-md");
   });
+
+  it("is named Triggers without a heading of its own, since its page's tab says so", async () => {
+    const page = await show(<TriggersView host={hostWith([])} owner={agent} />);
+    expect(page.querySelector("section")?.getAttribute("aria-label")).toBe("Triggers");
+    expect(page.querySelector("h1, h2, h3")).toBeNull();
+  });
 });
 
 verifies("routines.triggers.lists-routines-that-start-it", () => {

@@ -1,6 +1,6 @@
 import { Button, EmptyState, StatusChip, usePresentation } from "@halonicjs/studio-kit";
 import type { ItemPageSectionViewProps } from "@halonicjs/studio-shell";
-import { useId, useState } from "react";
+import { useState } from "react";
 import {
   type RoutinesHost,
   RoutinesHostService,
@@ -48,7 +48,6 @@ export interface TriggersViewProps {
  */
 export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
   const { load, retry } = useTriggerRows(host, owner);
-  const headingId = useId();
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string>();
 
@@ -65,11 +64,10 @@ export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
     }
   };
 
+  // No heading of its own: the section is a Configuration page, and the page's tab already says
+  // "Triggers", like the built pages.
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-2">
-      <h2 id={headingId} className="text-heading">
-        {triggersWords.heading}
-      </h2>
+    <section aria-label={triggersWords.heading} className="flex flex-col gap-2">
       <Rows load={load} owner={owner} retry={retry} openRoutine={openRoutine} />
       {addError !== undefined && (
         <p role="alert" className="text-small text-danger">
