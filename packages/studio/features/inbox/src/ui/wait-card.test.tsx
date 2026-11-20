@@ -51,6 +51,20 @@ verifies("inbox.wait-card", () => {
       expect(root.textContent).toContain("Waiting since 10:40 (3 min)");
     });
 
+    // jsdom lays nothing out, so this holds the classes that do it: the header wraps, its text
+    // asks for 10rem, and Open run sits after it on the right (HAL-14006).
+    it("puts Open run on a line under the title when the card is too narrow", () => {
+      const { root } = openCard();
+      const header = root.querySelector("header");
+      const text = root.querySelector("h2")?.parentElement;
+      expect(header?.className).toContain("flex-wrap");
+      expect(text?.parentElement).toBe(header);
+      expect(text?.className).toContain("basis-40");
+      const openRun = button(root, "Open run").parentElement;
+      expect(openRun?.parentElement).toBe(header);
+      expect(openRun?.className).toContain("ml-auto");
+    });
+
     it("shows the body as plain text: no link, no image, no HTML", () => {
       const { root } = openCard();
       const body = root.querySelector("bdi");
