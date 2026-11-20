@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1291 (T3 part 3), HAL-8714, flow-workspace 2.3; shell commands HAL-8745
+- Source: HAL-1291 (T3 part 3), HAL-8714, flow-workspace 2.3; shell commands HAL-8745; the Default hub and the test model from the board's answer on HAL-12723 (HAL-14118)
 
 The desktop app shall give the workspace window a New workspace host (`workspace.new-workspace-dialog`). Its default parent shall be the folder the shell's `documents_folder` answers, and **Change…** shall show the shell's `pick_parent_folder`. **Create** shall make the folder through the shell's `create_workspace_folder`, lay the workspace out in it with `createWorkspace`, the template `halonic init` uses, and, when the template wrote every file, save the person's trust in exactly what the folder holds. If the shell refuses, or writing fails, it shall reject with the reason so the dialog can show it. If saving the trust fails, the workspace shall still be created and open untrusted, and the result shall say why.
 
@@ -12,9 +12,12 @@ A folder that is already there is read by name only and opened only after the sh
 
 - Given the parent is Documents and the name is `Acme Support`,
   when **Create** is pressed,
-  then `Acme Support` is made in Documents, holds a `workspace.yaml` and a `.gitignore`, and counts as trusted.
+  then `Acme Support` is made in Documents, holds a `workspace.yaml`, a `.gitignore`, the Default hub and the test model, and counts as trusted.
 - Given a folder named `Acme Support` is already in Documents,
   when **Create** is pressed,
   then nothing is written and the dialog says "Can't write to this folder: a folder with that name is already there."
+- Given a folder `Acme` with `providers/ollama.yaml` in it,
+  when **Create here** is pressed and the person says yes,
+  then the workspace is laid out without `models.yaml` and `providers/mock.yaml`, so the test model is never added to a folder with its own models.
 - Given the folder was made but the trust record can't be saved,
   then the workspace opens untrusted and the toast says why.

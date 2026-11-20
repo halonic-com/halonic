@@ -53,7 +53,13 @@ verifies("studio.new-workspace", () => {
       "create_workspace_folder",
       { parent: "/work", name: "Acme Support" },
     ]);
-    expect((await store.list()).sort()).toEqual([".gitignore", "workspace.yaml"]);
+    expect((await store.list()).sort()).toEqual([
+      ".gitignore",
+      "hubs/default/hub.yaml",
+      "models.yaml",
+      "providers/mock.yaml",
+      "workspace.yaml",
+    ]);
     expect(trust).toHaveBeenCalledWith("/work/Acme Support");
   });
 
@@ -143,6 +149,17 @@ verifies("studio.new-workspace", () => {
     ]);
     expect(await store.list()).toContain("workspace.yaml");
     expect(trust).not.toHaveBeenCalled();
+  });
+
+  it("never adds the test model to a folder that has its own models", async () => {
+    const { host, store } = hostOf({
+      probe_workspace_folder: "files",
+      open_workspace_folder: "/work/Acme",
+    });
+    await store.write("providers/ollama.yaml", "id: ollama\n");
+    expect(await host.create("/work/Acme", "Acme")).toEqual({ kind: "untrusted" });
+    expect(await store.list()).not.toContain("models.yaml");
+    expect(await store.list()).not.toContain("providers/mock.yaml");
   });
 
   it("trusts an empty folder at once, since the template wrote everything in it", async () => {

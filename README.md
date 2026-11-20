@@ -223,8 +223,8 @@ your provider too.
    instead of the built-in test model.
 
 Run `halonic validate` after each change to check your files. `halonic init` on
-its own makes an empty workspace with no agents yet; the examples above show how
-to add the first one.
+its own makes a workspace with a Default hub and the test model but no agents
+yet; the examples above show how to add the first one.
 
 ## Something failed?
 

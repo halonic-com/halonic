@@ -3,6 +3,7 @@ import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { KindedError } from "@halonicjs/std";
 import {
   copyWorkspace,
+  defaultHubName,
   filesOf,
   type InitializedWorkspace,
   initWorkspace,
@@ -36,8 +37,8 @@ interface InitFolder {
 }
 
 /**
- * `halonic init [folder] [--example acme]`: lays out a new, empty workspace
- * in a new folder, or in the current one when it's empty; with `--example`,
+ * `halonic init [folder] [--example acme]`: lays out a new workspace, with
+ * the Default hub and the test model but no agents or workflows, in a new folder, or in the current one when it's empty; with `--example`,
  * a copy of that example instead, in `./acme` when no folder is named
  * (cli-output 3.1). It never writes into a folder that has files in it.
  */
@@ -68,7 +69,7 @@ export const initCommand: CliCommand = {
   },
 };
 
-/** `halonic init [folder]`: a new, empty workspace named after its folder. */
+/** `halonic init [folder]`: a new workspace named after its folder, with the Default hub and the test model. */
 async function createEmpty(folder: InitFolder, cwd: string): Promise<CommandResult> {
   const store = new FolderDefinitionStore(folder.root, folder.shown);
   const result = await initWorkspace(store, { name: folder.name }).catch((error: unknown) => {
@@ -89,8 +90,8 @@ async function createEmpty(folder: InitFolder, cwd: string): Promise<CommandResu
       workspace: { name: result.value.name, folder: folder.shown },
       example: null,
       created: result.value.files,
-      // A new, empty workspace has none of these yet; an example's copy counts its own.
-      counts: { hubs: 0, agents: 0, workflows: 0, routines: 0 },
+      // A new workspace starts with the Default hub and nothing in it; an example's copy counts its own.
+      counts: { hubs: 1, agents: 0, workflows: 0, routines: 0 },
     },
   };
 }
@@ -183,7 +184,10 @@ function initFolder(input: CommandInput, cwd: string, fallback: string): InitFol
   return { root, shown: shownPath(cwd, root), name: basename(root) || "workspace" };
 }
 
-/** The ✓ line, then the `Next:` block: `cd` when the workspace is elsewhere, `validate`, `test`, the first-agent guide. */
+/**
+ * The ✓ line and what the workspace starts with under it, then the `Next:` block: `cd` when the
+ * workspace is elsewhere, `validate`, `test`, the first-agent guide.
+ */
 function createdLines(workspace: InitializedWorkspace, folder: InitFolder, cwd: string): Phrase[] {
   const name = printable(workspace.name);
   const here = isHere(folder, cwd);
@@ -197,6 +201,7 @@ function createdLines(workspace: InitializedWorkspace, folder: InitFolder, cwd: 
   const test = { command: initMessages.nextTest().phrase, why: initMessages.nextTestWhy().phrase };
   return [
     phrase`${markPart("done")} ${created.phrase}`,
+    phrase`  ${initMessages.starterContents(defaultHubName).phrase}`,
     ...nextSteps(
       [...changeFolder(folder, cwd), validate, test],
       initMessages.nextFirstAgent().phrase,

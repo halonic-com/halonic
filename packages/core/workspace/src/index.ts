@@ -114,3 +114,4 @@ export { secretReference } from "./trust-secret.ts";
 export { reachesOnlyTheTestModel, type TrustSkipInput } from "./trust-skip.ts";
 export { type TrustUrl, trustUrl } from "./trust-url.ts";
 export { type VersionReader, VersionSource } from "./version-source.ts";
+export { defaultHubId, defaultHubName } from "./workspace-template.ts";

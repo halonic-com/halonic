@@ -40,12 +40,13 @@ async function initIn(cwd: string, ...args: string[]): Promise<{ code: number; i
 
 verifies("cli.commands.init.create-workspace", () => {
   describe("a new workspace", () => {
-    it("lays out the workspace in a new folder and says what to do next", async () => {
+    it("lays out the workspace in a new folder, says what it starts with and what to do next", async () => {
       const { code, io } = await initIn(folder, "acme");
 
       expect(code).toBe(exitCode.ok);
       expect(io.stdout).toEqual([
         `✓ Created the workspace acme in .${sep}acme.`,
+        "  Default hub · test model, no key needed",
         "",
         "Next:",
         "  cd acme",
@@ -55,6 +56,10 @@ verifies("cli.commands.init.create-workspace", () => {
       ]);
       expect(io.stderr).toEqual([]);
       expect(readFileSync(join(folder, "acme", "workspace.yaml"), "utf8")).toContain("id: acme");
+      expect(readFileSync(join(folder, "acme", "hubs", "default", "hub.yaml"), "utf8")).toBe(
+        "id: default\nname: Default\n",
+      );
+      expect(existsSync(join(folder, "acme", "providers", "mock.yaml"))).toBe(true);
     });
 
     it("uses the current folder when it's empty, with no cd", async () => {
@@ -78,7 +83,7 @@ verifies("cli.commands.init.create-workspace", () => {
 
       expect(code).toBe(exitCode.ok);
       expect(io.stdout[0]).toBe(`✓ Created the workspace acme in ${acme}.`);
-      expect(io.stdout[3]).toBe(`  cd ${shellWord(acme)}`);
+      expect(io.stdout[4]).toBe(`  cd ${shellWord(acme)}`);
     });
 
     it("shows a folder up to two folders up the way it's typed from here", async () => {
@@ -88,13 +93,13 @@ verifies("cli.commands.init.create-workspace", () => {
       const { io } = await initIn(deep, join(folder, "acme"));
 
       expect(io.stdout[0]).toBe(`✓ Created the workspace acme in ${join("..", "..", "acme")}.`);
-      expect(io.stdout[3]).toBe(`  cd ${join("..", "..", "acme")}`);
+      expect(io.stdout[4]).toBe(`  cd ${join("..", "..", "acme")}`);
     });
 
     it("puts a folder name with a space in quotes after cd, so it can be copied", async () => {
       const { io } = await initIn(folder, "my agents");
 
-      expect(io.stdout[3]).toBe('  cd "my agents"');
+      expect(io.stdout[4]).toBe('  cd "my agents"');
       expect(io.stdout[0]).toBe(`✓ Created the workspace my agents in .${sep}my agents.`);
     });
 
@@ -107,8 +112,14 @@ verifies("cli.commands.init.create-workspace", () => {
         ok: true,
         workspace: { name: "acme", folder: `.${sep}acme` },
         example: null,
-        created: [".gitignore", "workspace.yaml"],
-        counts: { hubs: 0, agents: 0, workflows: 0, routines: 0 },
+        created: [
+          ".gitignore",
+          "hubs/default/hub.yaml",
+          "models.yaml",
+          "providers/mock.yaml",
+          "workspace.yaml",
+        ],
+        counts: { hubs: 1, agents: 0, workflows: 0, routines: 0 },
       });
     });
   });
