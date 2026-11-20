@@ -74,6 +74,20 @@ export async function refuseUnlessTrusted(trust: TrustGate): Promise<Response | 
   return decision.state === "trusted" ? null : errorResponse(serverErrors.workspaceNotTrusted);
 }
 
+/**
+ * The answer to a start that failed because a hub, workflow or agent it names
+ * doesn't exist (404), or because agent runs aren't built yet (501).
+ *
+ * @throws the error itself for any other failure, which stays an internal error
+ */
+export function startFailureResponse(error: unknown): Response {
+  // A wrong name is the caller's mistake; the body doesn't say which hub, workflow or agent, or what exists.
+  if (isRunTargetNotFound(error)) return errorResponse(notFoundErrors[error.kind]);
+  // Not built yet, not broken: 501 instead of 500. TODO(engine step 4): remove when the agent loop lands.
+  if (isAgentRunsNotAvailable(error)) return errorResponse(serverErrors.notImplemented);
+  throw error;
+}
+
 export function createTrustRoutes({ trust, runs }: TrustRoutePorts): TrustRoutes {
   /**
    * Asks the gate again for every start, never from memory, so a workspace
@@ -90,11 +104,7 @@ export function createTrustRoutes({ trust, runs }: TrustRoutePorts): TrustRoutes
     try {
       return await start();
     } catch (error) {
-      // A wrong name is the caller's mistake; the body doesn't say which hub, workflow or agent, or what exists.
-      if (isRunTargetNotFound(error)) return errorResponse(notFoundErrors[error.kind]);
-      // Not built yet, not broken: 501 instead of 500. TODO(engine step 4): remove when the agent loop lands.
-      if (isAgentRunsNotAvailable(error)) return errorResponse(serverErrors.notImplemented);
-      throw error;
+      return startFailureResponse(error);
     }
   }
 

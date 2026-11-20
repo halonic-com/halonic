@@ -34,6 +34,12 @@ A deployment can cap how many requests its server answers per UTC day. Set `limi
 - A request refused by the `Host` or `Origin` check doesn't count.
 - A request past the ceiling gets status 429 with the code `daily_limit_reached` and a `Retry-After` header: the whole seconds until the next UTC midnight. It never reaches a route, so it never starts a run.
 
+## The engine role's server
+
+`createEngineServer` is a second, smaller server, for the background engine that the desktop shell launches (B1). Only that shell may call it, so there is no sign-in and no password. Before it looks at the path, it refuses a `Host` other than `127.0.0.1:<port>` or `localhost:<port>` (421), any `Origin` header (403), and a request without `Authorization: Bearer <launch token>` (401 `launch_token_required`). So a caller without the token gets 401 on every path and can't tell which ones exist. The agent host's server uses the same checks (`launchRequestRefusal`), and one suite in `@halonicjs/testing-contracts` runs against both.
+
+It never uses `createServer`'s routes. It serves its own `GET /api/hello` (only `{ runExecutorVersion }`), the run routes (`POST /api/runs`, `POST /api/agent-runs`, `GET /api/waiting-runs`, `GET /api/runs/<runId>`, `GET` and `POST /api/runs/<runId>/events`, `POST /api/runs/<runId>/cancel`), `GET /api/run-updates` (a server-sent event per run change, with only `runId`, `status` and `seq`, and no replay), and two routine routes: `GET /api/routines` lists every routine with its next start, and `POST /api/routines/<hub or @workspace>/<routine>/run` starts one that is on now, after the trust check, as a manual trigger. The shapes are in `src/engine-api.ts`. Every other path answers 404 to a caller with the token. The rules are the requirements `server.engine-server`, `server.engine-run-updates` and `server.engine-routines`.
+
 ## `GET /api/hello`
 
 Answers 200 without a sign-in, with exactly three keys:

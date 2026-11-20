@@ -1,5 +1,6 @@
 import { request } from "node:http";
 import { connect, type Socket } from "node:net";
+import { bearerMatches } from "@halonicjs/host-server";
 import { afterEach, describe, expect, it } from "vitest";
 import { healthRoute } from "./health-route.ts";
 import {
@@ -8,7 +9,7 @@ import {
   type HostServerLimits,
   startHostServer,
 } from "./host-server.ts";
-import { bearerMatches, randomLaunchToken } from "./launch-token.ts";
+import { randomLaunchToken } from "./launch-token.ts";
 import { startNdjsonStream } from "./ndjson-stream.ts";
 
 const token = randomLaunchToken();

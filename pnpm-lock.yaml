@@ -407,6 +407,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core/workspace
     devDependencies:
+      '@halonicjs/testing-contracts':
+        specifier: workspace:*
+        version: link:../../packages/testing/contracts
       '@halonicjs/testing-sign-in':
         specifier: workspace:*
         version: link:../../packages/testing/sign-in
