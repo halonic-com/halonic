@@ -15,11 +15,11 @@ Through a tunnel, the remote gateway shall let no client past its end-to-end ses
   when they are sent again on a new connection,
   then the host answers message 2, closes on the `hello`, and is asked for nothing.
 - Given a paired phone in its session,
-  when two messages arrive in the wrong order,
-  then the host closes.
+  when two messages arrive in the wrong order, or one sealed message arrives twice,
+  then the host closes, and acts on a repeated message at most once.
 - Given a `hello` in a text frame, in a bare binary frame or under the message kind without a session, or in a text frame after the handshake,
   when it is sent,
-  then the host closes and sends no cleartext frame and no message.
+  then the host closes and sends no cleartext frame and no message; before the handshake it sends no binary frame at all.
 - Given a phone that pinned another host key,
   when it reconnects,
   then the host sends one cleartext `handshake-failed` and closes.

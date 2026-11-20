@@ -39,6 +39,12 @@ export interface GatewayListenerOptions {
   helloTimeoutMs?: number;
   /** How long a connection's handshake may take; the ADR's 10 seconds by default. Tests shorten it. */
   handshakeTimeoutMs?: number;
+  /**
+   * A connection's session threw, because the pairing service or the phone
+   * store failed. The listener has already ended that connection; the others
+   * and the host carry on.
+   */
+  onError(error: unknown): void;
 }
 
 /** A running gateway listener. */
@@ -190,22 +196,42 @@ function serveSocket(socket: Duplex, options: GatewayListenerOptions, head: Buff
     else send(frameType.ping, Buffer.alloc(0));
   }, heartbeatMs);
   heartbeat.unref();
+  // A throw here would be uncaught in a socket handler and stop the whole host.
+  const failed = (error: unknown) => {
+    socket.destroy();
+    options.onError(error);
+  };
+  const closeSession = () => {
+    try {
+      session.close();
+    } catch (error) {
+      failed(error);
+    }
+  };
+  const receive = (bytes: Uint8Array) => {
+    try {
+      session.receive(bytes);
+    } catch (error) {
+      closeSession();
+      failed(error);
+    }
+  };
   const onBytes = (chunk: Buffer) => {
     heardAt = Date.now();
     for (const event of reader.push(chunk)) {
-      if (event.kind === "message" && event.binary) session.receive(event.bytes);
+      if (event.kind === "message" && event.binary) receive(event.bytes);
       else if (event.kind === "ping") send(frameType.pong, event.bytes);
-      else if (event.kind !== "pong") session.close();
+      else if (event.kind !== "pong") closeSession();
     }
   };
   socket.on("data", onBytes);
   // Bytes that came in the same packet as the handshake.
   if (head.length > 0) onBytes(head);
   // An HTTP server's sockets stay half open when the peer ends its side, so end ours too.
-  socket.once("end", () => session.close());
+  socket.once("end", closeSession);
   socket.once("close", () => {
     clearInterval(heartbeat);
-    session.close();
+    closeSession();
   });
   socket.on("error", () => socket.destroy());
 }
