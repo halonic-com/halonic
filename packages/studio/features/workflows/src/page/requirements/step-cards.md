@@ -6,7 +6,7 @@
 
 When the page shows a workflow, the workflows feature shall draw a card for each step with its kind, its id and, for an agent step, its agent or "No agent", mark the first step "Start", draw an arrow for each way a step leads on, let the person select a step, and fit the steps in the view on opening and on **Fit to screen**.
 
-The workflows feature shall name each card for a screen reader title first, then its kind, its Start chip and its agent, and describe where it leads from its arrows in the order their cards are drawn (left to right, then top to bottom, not the file's order), since the arrows are only drawn. The canvas shall be a group named "Workflow canvas", not an application, as it has no keys of its own.
+The workflows feature shall name each card for a screen reader title first, then its kind, its Start chip and its agent, and describe where it leads from its arrows in the order their cards are drawn (left to right, then top to bottom, not the file's order), since the arrows are only drawn. The canvas shall be a group named "Workflow canvas", not an application, as it has no keys of its own. A card with keyboard focus shall show Studio's focus ring, with its gap, outside the card's selected or failed border.
 
 ## Examples
 
@@ -18,4 +18,5 @@ The workflows feature shall name each card for a screen reader title first, then
 - Given "Approve this reply?" has an "Approve" arrow to "Finished with the reply approved" and a "Reject" arrow to "Finished without the reply", then its card is described "Approve: Finished with the reply approved. Reject: Finished without the reply."
 - Given an end step, then its card has no description.
 - Given the first step "Read the email" run by `writer`, then a screen reader names its card "Read the email AGENT STEP Start writer", and the card still shows the kind above the title.
+- Given the person tabs to a card, then it shows Studio's focus ring, not the browser's outline, and a selected card keeps its accent border inside the ring.
 - Given the person zooms in with the button and presses **Fit to screen**, then all steps show again.
