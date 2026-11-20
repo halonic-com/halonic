@@ -175,6 +175,8 @@ function serveSocket(socket: Duplex, options: GatewayListenerOptions, head: Buff
     pairing: options.pairing,
     helloTimeoutMs: options.helloTimeoutMs ?? defaultHelloTimeoutMs,
     handshakeTimeoutMs: options.handshakeTimeoutMs ?? gatewaySessionLimits.handshakeTimeoutMs,
+    // The session has closed its wire by then; the error only needs reporting.
+    onError: (error) => options.onError(error),
     openConnection: (transport) =>
       new GatewayConnection({ source: options.source, policy: options.policy, transport }),
     wire: {
