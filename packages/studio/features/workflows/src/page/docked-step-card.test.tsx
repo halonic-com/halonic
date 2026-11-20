@@ -64,7 +64,7 @@ async function showPage(
   const { host } = memoryHost([], [], [reply], [], {
     ...(changeStep === null ? {} : { changeStep }),
     // A host that can add steps gives the canvas its toolbar.
-    ...(toolbar ? { addStep: async () => "step", resetLayout: async () => {} } : {}),
+    ...(toolbar ? { addStep: async () => "step-1", resetLayout: async () => {} } : {}),
   });
   const toasts = createToastStore();
   const setFieldsNotSaved = vi.fn();

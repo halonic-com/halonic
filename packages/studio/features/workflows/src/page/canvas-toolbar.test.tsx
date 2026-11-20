@@ -45,7 +45,7 @@ function textOf(button: HTMLElement, leaveOut: string): string {
 }
 
 const editsThatWork = (): Required<Omit<Edits, "changeStep">> => ({
-  addStep: vi.fn(async () => "step"),
+  addStep: vi.fn(async () => "step-1"),
   resetLayout: vi.fn(async () => {}),
 });
 
@@ -83,9 +83,9 @@ verifies("workflows.canvas.toolbar", () => {
       expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
     );
 
-    await replace({ ...reply, steps: [...reply.steps, { id: "step", type: "task" }] });
+    await replace({ ...reply, steps: [...reply.steps, { id: "step-1", type: "task" }] });
     const added = [...page.querySelectorAll("button[aria-pressed]")].find(
-      (card) => card.querySelector("[title]")?.textContent === "step",
+      (card) => card.querySelector("[title]")?.textContent === "step-1",
     );
     expect(added?.getAttribute("aria-pressed")).toBe("true");
   });

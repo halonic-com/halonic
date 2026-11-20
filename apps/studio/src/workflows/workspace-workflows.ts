@@ -314,7 +314,9 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     at: { readonly x: number; readonly y: number },
   ): Promise<string> {
     const { file, text } = await this.#fileOf(ref);
-    const id = uniqueName(type === "wait" ? "wait" : "step", Object.keys(file.value.states));
+    const id = uniqueName(type === "wait" ? "wait" : "step", Object.keys(file.value.states), {
+      numbered: true,
+    });
     const edited = editYaml(text, [
       { kind: "set", path: ["states", id], value: type === "wait" ? { type: "wait" } : {} },
       { kind: "set", path: ["layout", id], value: { x: at.x, y: at.y } },
