@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
-import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
+import {
+  createToastStore,
+  FieldAnnounceProvider,
+  PresentationProvider,
+  ToastStoreProvider,
+} from "@halonicjs/studio-kit";
 import { SAVE_PAUSE_MS } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -46,7 +51,11 @@ type ChangeStep = NonNullable<WorkflowsHost["changeStep"]>;
 async function showPage(
   /** `null` for a host that can't change steps. */
   changeStep: ChangeStep | null = vi.fn<ChangeStep>(async () => {}),
-  { phone = false, toolbar = false } = {},
+  {
+    phone = false,
+    toolbar = false,
+    announced,
+  }: { phone?: boolean; toolbar?: boolean; announced?: string[] } = {},
 ) {
   const { host } = memoryHost([], [], [reply], [], {
     ...(changeStep === null ? {} : { changeStep }),
@@ -66,8 +75,17 @@ async function showPage(
       />
     </ToastStoreProvider>
   );
+  const announcing = (
+    <FieldAnnounceProvider announce={(text) => announced?.push(text)}>
+      {screen}
+    </FieldAnnounceProvider>
+  );
   const page = await show(
-    phone ? <PresentationProvider presentation="phone">{screen}</PresentationProvider> : screen,
+    phone ? (
+      <PresentationProvider presentation="phone">{announcing}</PresentationProvider>
+    ) : (
+      announcing
+    ),
   );
   return { page, toasts, setFieldsNotSaved };
 }
@@ -177,6 +195,29 @@ verifies("workflows.page.step-card", () => {
       { key: "workflow/acme/reply/step", title: "Support reply" },
       1,
     );
+  });
+
+  it("reads out a key's message once when it shows after a pause, with focus still in the field", async () => {
+    const changeStep = vi.fn<ChangeStep>(async () => {});
+    const announced: string[] = [];
+    const { page } = await showPage(changeStep, { announced });
+    await pick(page, "write");
+
+    const prompt = field(page, "Prompt") as HTMLTextAreaElement;
+    await act(async () => prompt.focus());
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(
+        prompt,
+        `use sk-${"a1B2".repeat(6)}`,
+      );
+      prompt.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => vi.advanceTimersByTime(SAVE_PAUSE_MS));
+    await act(async () => vi.advanceTimersToNextFrame());
+
+    expect(document.activeElement).toBe(prompt);
+    expect(changeStep).not.toHaveBeenCalled();
+    expect(announced).toEqual(["Prompt: This looks like a key. Keep it as a secret instead?"]);
   });
 
   it("says why on a toast when the host can't change the step", async () => {

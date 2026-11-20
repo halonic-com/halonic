@@ -103,6 +103,7 @@ export function DockedStepCard({
               label={words.prompt}
               hint={prompt.value === "" ? words.promptEmpty : undefined}
               error={prompt.error}
+              announceWhileFocused
             >
               <TextArea
                 minRows={3}
@@ -118,6 +119,7 @@ export function DockedStepCard({
               label={words.output}
               hint={output.value.trim() === "" ? undefined : words.outputHint(output.value.trim())}
               error={output.error}
+              announceWhileFocused
             >
               <Input
                 value={output.value}
@@ -126,7 +128,7 @@ export function DockedStepCard({
               />
             </Field>
           )}
-          <Field label={words.description} error={description.error}>
+          <Field label={words.description} error={description.error} announceWhileFocused>
             <TextArea
               minRows={2}
               maxRows={8}
