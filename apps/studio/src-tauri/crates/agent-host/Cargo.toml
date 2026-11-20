@@ -8,6 +8,8 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+# Answers the host's requests for its own secrets (`host_secrets.rs`).
+halonic-secrets = { path = "../secrets" }
 # Writes the host's stderr into the shell's log.
 halonic-shell-log = { path = "../shell-log" }
 # Reads the host's handshake line, `{"url","token"}`.

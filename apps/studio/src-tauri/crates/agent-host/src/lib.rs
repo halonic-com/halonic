@@ -12,6 +12,7 @@ mod console_window;
 mod default_distro;
 mod error;
 mod handshake;
+mod host_secrets;
 mod relay;
 mod routes;
 mod runtime_status;
@@ -22,12 +23,13 @@ mod wsl;
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
-use std::sync::mpsc;
+use std::sync::{Arc, mpsc};
 use std::time::{Duration, Instant};
 
 use console_window::{new_command, without_console_window};
 pub use default_distro::halonic_is_default;
 pub use error::{AgentHostError, StartCause};
+use halonic_secrets::SecretBackend;
 pub use handshake::{Handshake, read_handshake};
 use relay::Relay;
 pub use routes::{Answer, LineSplitter, LineTooLong, Method, Route, find_route};
@@ -177,12 +179,30 @@ impl AgentHost {
         command: impl FnOnce(u16) -> Command,
         wait: Duration,
     ) -> Result<Self, AgentHostError> {
+        Self::start_relayed_answering_secrets(command, wait, None)
+    }
+
+    /// As [`AgentHost::start_relayed`]; with `secrets`, the relay also
+    /// answers the host's requests for its own secrets, from the keychain on
+    /// desktop (requirement `host-secrets-channel`).
+    ///
+    /// # Errors
+    ///
+    /// As [`AgentHost::start_relayed`].
+    pub fn start_relayed_answering_secrets(
+        command: impl FnOnce(u16) -> Command,
+        wait: Duration,
+        secrets: Option<Arc<dyn SecretBackend>>,
+    ) -> Result<Self, AgentHostError> {
         let mut relay = Relay::bind().map_err(|error| {
             AgentHostError::Start(
                 StartCause::of(&error),
                 format!("The agent host's relay could not listen: {error}."),
             )
         })?;
+        if let Some(secrets) = secrets {
+            relay.answer_host_secrets(secrets);
+        }
         let mut command = command(relay.port());
         command
             .stdin(Stdio::piped())

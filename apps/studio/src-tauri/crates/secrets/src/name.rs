@@ -47,6 +47,12 @@ impl SecretName {
         HALONIC_NAMES.contains(&self.0.as_str()) || self.0.starts_with(TOKEN_PREFIX)
     }
 
+    /// Whether the agent host may reach the name through its secrets
+    /// channel: one of [`HOST_NAMES`].
+    pub fn is_host(&self) -> bool {
+        HOST_NAMES.contains(&self.0.as_str())
+    }
+
     /// The canonical name, which is what the keychain stores.
     pub fn as_str(&self) -> &str {
         &self.0
@@ -62,3 +68,10 @@ pub const TOKEN_PREFIX: &str = "halonic_token_";
 /// `halonicSecretNames` and `hostSecretNames` in `@halonicjs/ports`; both
 /// sides check their list against `tests/fixtures/reserved-names.txt`.
 pub const HALONIC_NAMES: [&str; 3] = ["token_key", "serve_password", "remote_host_key"];
+
+/// The names of [`HALONIC_NAMES`] the agent host may get, set and delete
+/// through its secrets channel to the shell (requirement `host-secrets`).
+/// Only the ones it keeps in the keychain today: `token_key` joins once the
+/// CLI can reach the keychain too (HAL-14148), and `serve_password` and the
+/// tokens never do.
+pub const HOST_NAMES: [&str; 1] = ["remote_host_key"];
