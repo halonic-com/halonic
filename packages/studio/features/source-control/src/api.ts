@@ -144,6 +144,12 @@ export interface ChangesSource {
    * that version has no such file. Throws when the version can't be read.
    */
   readonly readAtVersion: (versionId: string, path: string) => Promise<string | null>;
+  /**
+   * The files of the workspace folder that differ between the version `versionId` and how they
+   * are now, a renamed file with both its paths; files not in any version yet are left out.
+   * Throws when the version can't be read.
+   */
+  readonly listChangedSince: (versionId: string) => Promise<readonly string[]>;
   /** Records a version of exactly `paths`; other files stay as changes. Throws when git refuses. */
   readonly createVersion: (input: VersionInput) => Promise<void>;
   /**

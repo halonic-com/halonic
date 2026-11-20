@@ -353,6 +353,23 @@ export const restoreWords = {
   tryAgainBusy: "Restoring…",
 };
 
+/** Go back, on a version (checklist part 2, 2.9 and 2.14; 552 5.5). */
+export const goBackWords = {
+  goBack: "Go back to this version",
+  goingBack: "Going back…",
+  /** The version that first keeps the changes not in a version yet. */
+  beforeGoingBack: "Before going back",
+  /** The toast, with Undo: "Went back to "Sorter replies in Dutch"." */
+  wentBack: (version: string) => `Went back to "${version}".`,
+  /** The danger toast when nothing went back. */
+  failed: (version: string) => `Couldn't go back to "${version}"`,
+  /** The Callout when a file failed and putting the others back failed too. */
+  partialTitle: (version: string) => `Went back only partly to "${version}".`,
+  /** Before Go back, when versions after this one are shared already. */
+  sharedAfter:
+    "Your team keeps the versions you shared after this one. Going back makes a new change you can share.",
+};
+
 /** The sharing strip and Add where to share (checklist part 2, 2.3; microcopy 16, HAL-1566). */
 export const shareWords = {
   onlyHere: "Only on this computer",

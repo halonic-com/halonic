@@ -1,3 +1,4 @@
+import type { VcsChange } from "@halonicjs/ports";
 import { type ChangeItem, groupIntoItems } from "./change-items.ts";
 import type { ChangedFile } from "./changes-list-state.ts";
 import { versionWords } from "./changes-words.ts";
@@ -41,4 +42,15 @@ export function versionMessage(name: string, notes: string): string {
   const title = name.replace(/\s+/g, " ").trim();
   const body = notes.trim();
   return body === "" ? title : `${title}\n\n${body}`;
+}
+
+/**
+ * The paths git records for `changes`, each once. A renamed file is two paths to git: the old one
+ * goes away, the new one comes in.
+ */
+export function versionPaths(changes: readonly VcsChange[]): string[] {
+  const paths = changes.flatMap((change) =>
+    change.from === undefined ? [change.path] : [change.path, change.from],
+  );
+  return [...new Set(paths)];
 }
