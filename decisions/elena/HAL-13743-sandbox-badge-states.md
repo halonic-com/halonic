@@ -2,9 +2,10 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13743 (decided by the team on an approved component, HAL-2282: Sofia's C226 check of #3423; the badge itself is HAL-3777's)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7XIZ/iw9037stvZuqj5BXrFXwCaoZnQDktUI0yVeUhfa1gFOTc31SF3ZBoLRs5d8HSaCKJwAzjPEaRYkuGEWAw==
 
-Nothing here is mounted yet (W3, HAL-13321), so no person has seen the old words. Four points from the check:
+The view was not mounted when the check ran. #3911 (HAL-13321) has since drawn the badge and the row on
+`main`, so this also updates `settings.sandbox-status-ui`, its test and its doc comment, which quoted the
+old name. Four points from the check:
 
 **SB1.** The badge showed **Sandbox: on** but its screen-reader name was "Sandbox status: ready. Opens
 sandbox settings.", so voice control couldn't find it by what it shows (WCAG 2.5.3 Label in Name). The
@@ -34,3 +35,4 @@ quote the new ones, and new tests cover each point. No test was skipped or remov
 ## Covers
 
 - settings.sandbox-status-view
+- settings.sandbox-status-ui
