@@ -49,6 +49,8 @@ export interface PluginPageProps {
    * signs in (HAL-8613). Without it, the page shows no sign-ins.
    */
   readonly signIns?: PluginSignIns | undefined;
+  /** Reads a sign-in's new line through the window's announcer (`announcer.announceState`). */
+  readonly announceState?: ((key: string, text: string) => void) | undefined;
   /** **Open panel**: opens the plugin's panel in its tab. */
   readonly onOpenPanel: () => void;
   /** Remove trust, Remove plugin…, Check again and Open folder, through the app. */
@@ -90,6 +92,7 @@ export function PluginPage({
   settings,
   secrets,
   signIns,
+  announceState,
   onOpenPanel,
   actions,
   place = "app",
@@ -221,6 +224,7 @@ export function PluginPage({
             settings={settings}
             secrets={secrets}
             signIns={signIns}
+            announceState={announceState}
             off={off}
             viewOnly={viewOnly}
             onSaveState={setSaveState}
@@ -239,6 +243,7 @@ interface PluginSectionsProps {
   readonly settings: PluginSettingsReader;
   readonly secrets: PluginSecretStore;
   readonly signIns: PluginSignIns | undefined;
+  readonly announceState: ((key: string, text: string) => void) | undefined;
   readonly off: { readonly reason: string } | undefined;
   readonly viewOnly: boolean;
   readonly onSaveState: (state: SettingsSaveState | undefined) => void;
@@ -250,6 +255,7 @@ function PluginSections({
   settings,
   secrets,
   signIns,
+  announceState,
   off,
   viewOnly,
   onSaveState,
@@ -270,6 +276,7 @@ function PluginSections({
           signIns={signIns}
           off={off}
           viewOnly={viewOnly}
+          announceState={announceState}
         />
       )}
       <WhatItAdds manifest={manifest} />

@@ -10,6 +10,8 @@ The requirement `plugins.plugin-sign-ins` takes Sofia's wording from HAL-13419. 
 
 In the same change, without a requirement edit: the unusable answer line becomes "Halonic couldn't use *service*'s answer". The line for a setup where the callback can't arrive now says why. The status error becomes a Callout with the title "Couldn't load *name*'s sign-ins" and the reason under it, as the settings section does.
 
+The line under a sign-in is no longer a `role="status"` paragraph made together with its text, which NVDA and VoiceOver often skip (Sofia's C422 check on HAL-14560, row SN1, decided by the team). It is plain text, and the window's announcer reads a new line once (`plugins.plugin-sign-in-announced`). The tests that found the line by its `status` role now find it by its text.
+
 ## Why
 
 The board's approval on HAL-8619 didn't word these lines, so the team decided them with the designer. "Fill in" was wrong for an invalid setting, "Set … Set" read like a stutter, and the block said "This integration's sign-in changed since you approved it." twice.
@@ -17,3 +19,4 @@ The board's approval on HAL-8619 didn't word these lines, so the team decided th
 ## Covers
 
 - plugins.plugin-sign-ins
+- plugins.plugin-sign-in-announced

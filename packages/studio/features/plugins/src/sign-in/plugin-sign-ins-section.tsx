@@ -1,6 +1,6 @@
 import type { Plugin } from "@halonicjs/format";
 import { Button, Callout, StatusChip, useOpenExternal } from "@halonicjs/studio-kit";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { messageOf } from "../message-of.ts";
 import type { PluginSettingsReader } from "../settings/plugin-settings-section.tsx";
 import {
@@ -74,6 +74,11 @@ export interface PluginSignInsSectionProps {
   readonly off?: { readonly reason: string } | undefined;
   /** On a phone or a served browser: no buttons, as for the rest of the page. */
   readonly viewOnly?: boolean;
+  /**
+   * Reads a sign-in's new line once through the window's announcer
+   * (`announcer.announceState`). Without it nothing is read.
+   */
+  readonly announceState?: ((key: string, text: string) => void) | undefined;
 }
 
 /**
@@ -93,6 +98,7 @@ export function PluginSignInsSection({
   signIns,
   off,
   viewOnly = false,
+  announceState,
 }: PluginSignInsSectionProps) {
   const headingId = useId();
   const { facts, statuses, problem, reload } = useSignIns(plugin, settings, signIns, off);
@@ -125,6 +131,7 @@ export function PluginSignInsSection({
             signIns={signIns}
             actions={actions}
             onChanged={reload}
+            announceState={announceState}
           />
         ))}
       </ul>
@@ -181,6 +188,7 @@ interface SignInBlockProps {
   readonly signIns: PluginSignIns;
   readonly actions: boolean;
   readonly onChanged: () => Promise<void>;
+  readonly announceState: ((key: string, text: string) => void) | undefined;
 }
 
 /** One sign-in: what it does, where it stands, its one button and the line under it. */
@@ -194,6 +202,7 @@ function SignInBlock({
   signIns,
   actions,
   onChanged,
+  announceState,
 }: SignInBlockProps) {
   const openExternal = useOpenExternal();
   const [busy, setBusy] = useState(false);
@@ -235,6 +244,9 @@ function SignInBlock({
 
   const outcome = outcomeShown(service, status);
   const shown = line ?? outcome;
+  // Until the host answered where the sign-in stands, the line isn't known yet.
+  const known = line !== undefined || status !== undefined;
+  useAnnounceLineChanges(`sign-in:${plugin}:${name}`, known, shown, announceState);
 
   return (
     <li className="flex flex-col gap-2">
@@ -249,12 +261,31 @@ function SignInBlock({
       )}
       <StateRow state={state} busy={busy} actions={actions} onSignIn={signIn} onSignOut={signOut} />
       {shown === undefined ? null : (
-        <p role="status" className="text-small text-fg-muted wrap-anywhere">
-          {shown}
-        </p>
+        // Plain text: a status region made together with its text is often skipped, so the
+        // announcer reads a new line (SN1).
+        <p className="text-small text-fg-muted wrap-anywhere">{shown}</p>
       )}
     </li>
   );
+}
+
+/**
+ * Reads the line under a sign-in once when it changes. The first line known,
+ * when the page opens, is not a change.
+ */
+function useAnnounceLineChanges(
+  key: string,
+  known: boolean,
+  shown: string | undefined,
+  announceState: ((key: string, text: string) => void) | undefined,
+): void {
+  const previous = useRef<{ readonly shown: string | undefined } | undefined>(undefined);
+  useEffect(() => {
+    if (!known) return;
+    const changed = previous.current !== undefined && previous.current.shown !== shown;
+    if (changed && shown !== undefined) announceState?.(key, shown);
+    previous.current = { shown };
+  }, [key, known, shown, announceState]);
 }
 
 interface StateRowProps {

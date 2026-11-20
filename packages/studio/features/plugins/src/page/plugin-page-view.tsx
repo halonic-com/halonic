@@ -22,6 +22,7 @@ export function pageView(
         settings={options.settings}
         secrets={options.secrets}
         signIns={options.signIns}
+        announceState={(key, text) => context.announcer.announceState(key, text)}
         actions={options.actions}
         {...(options.place === undefined ? {} : { place: options.place })}
         onOpenPanel={() => options.openPanel(plugin.plugin)}
