@@ -2,6 +2,7 @@
 
 - Approval: the wording is the team's decision with the designer on HAL-13419 (HAL-2282 rule); the build is HAL-8613; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HPoQHU6iRW9+tG4aT3G7FTEiaKCIjKY1ym34udqzNd1t6uIagQzN9q2dDbafF9468SbczvNJBTZtmymO6iRTAw==
 - Task: HAL-8613
 
 ## What changes
