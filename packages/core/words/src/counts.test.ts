@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupedDigits, listInWords } from "./counts.ts";
+import { countInWords, groupedDigits, listInWords, timesInWords } from "./counts.ts";
 
 describe("listInWords", () => {
   it.each([
@@ -25,5 +25,12 @@ describe("groupedDigits", () => {
     [1_234_567, "1,234,567"],
   ])("writes %d as %j", (count, written) => {
     expect(groupedDigits(count)).toBe(written);
+  });
+});
+
+describe("countInWords and timesInWords", () => {
+  it("writes small counts as words and larger ones in digits", () => {
+    expect([0, 2, 9, 12].map(countInWords)).toEqual(["zero", "two", "nine", "12"]);
+    expect([1, 2, 3].map(timesInWords)).toEqual(["once", "twice", "3 times"]);
   });
 });

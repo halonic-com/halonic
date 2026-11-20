@@ -1,11 +1,10 @@
+import { type Mark, markGlyph } from "@halonicjs/words";
 import type { OutputStyle } from "./style.ts";
 
-/** The marks a line can start with or use inside it (cli-output 1.4). */
-export type Mark = "done" | "failed" | "needsYou" | "working" | "separator" | "studioPath";
+export type { Mark } from "@halonicjs/words";
 
+/** How a mark looks in a terminal; its Unicode text is the phrase's own (`markGlyph`). */
 interface MarkLook {
-  /** The mark in a UTF-8 stream. */
-  readonly unicode: string;
   /** The stand-in when the stream isn't UTF-8: `ok`, `x` and `!` from the design, plain ASCII for the rest. */
   readonly ascii: string;
   /** The colour the mark gets when colour is on. */
@@ -15,12 +14,12 @@ interface MarkLook {
 type Colour = "green" | "red" | "yellow";
 
 const marks: Readonly<Record<Mark, MarkLook>> = {
-  done: { unicode: "✓", ascii: "ok", colour: "green" },
-  failed: { unicode: "✕", ascii: "x", colour: "red" },
-  needsYou: { unicode: "!", ascii: "!", colour: "yellow" },
-  working: { unicode: "◌", ascii: "..", colour: "default" },
-  separator: { unicode: "·", ascii: "-", colour: "dim" },
-  studioPath: { unicode: "›", ascii: ">", colour: "default" },
+  done: { ascii: "ok", colour: "green" },
+  failed: { ascii: "x", colour: "red" },
+  needsYou: { ascii: "!", colour: "yellow" },
+  working: { ascii: "..", colour: "default" },
+  separator: { ascii: "-", colour: "dim" },
+  studioPath: { ascii: ">", colour: "default" },
 };
 
 // SGR codes, each with the code that ends it. A colour's 39 leaves bold and dim alone, but bold
@@ -52,7 +51,7 @@ export interface Paint {
 
 /** The mark's own text, without colour: the Unicode mark, or its stand-in for a stream that isn't UTF-8. */
 export function markText(mark: Mark, unicode: boolean): string {
-  return unicode ? marks[mark].unicode : marks[mark].ascii;
+  return unicode ? markGlyph(mark) : marks[mark].ascii;
 }
 
 /** The {@link Paint} for a stream with `style`. */

@@ -1,14 +1,13 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { paintFor } from "../output/paint.ts";
 import type { Message } from "./define.ts";
 import { doctorMessages } from "./doctor.ts";
-import { plainText, renderPhrase } from "./phrase.ts";
+import { plainText } from "./phrase.ts";
 
 const words = (message: Message) => plainText(message.phrase);
 const use = { total: "1.4 GB", runLogs: "1.1 GB" };
 
-verifies("cli.messages", () => {
+verifies("words.doctor", () => {
   it("has doctor's lines word for word, from cli-output 3.7", () => {
     const loaded = doctorMessages.loaded([{ name: "llama3.2", size: "2.0 GB" }]).phrase;
     expect(doctorMessages.heading("0.1.0", "Linux x64").key).toBe("doctor.heading");
@@ -30,6 +29,28 @@ verifies("cli.messages", () => {
       "1 problem. Agents set to run in a sandbox won't start until it's fixed.",
     ]);
   });
+
+  it("keys each sentence by its area and name, with the Unicode marks in its plain text", () => {
+    const free = doctorMessages.diskFree("48 GB", { total: "1.4 GB", runLogs: "1.1 GB" });
+    expect(free.key).toBe("doctor.diskFree");
+    expect(plainText(free.phrase)).toBe("48 GB free · Halonic uses 1.4 GB (run logs 1.1 GB)");
+  });
+
+  it("takes a command as given and draws the separator as a mark", () => {
+    const changed = doctorMessages.changedSinceTrusted('halonic trust --dir "./my agents"');
+    expect(changed.phrase).toEqual([
+      "changed since you trusted it ",
+      { mark: "separator" },
+      ' halonic trust --dir "./my agents"',
+    ]);
+    expect(plainText(doctorMessages.fileProblems("acme", 1, "halonic validate").phrase)).toBe(
+      "acme · 1 problem in its files · halonic validate",
+    );
+  });
+
+  it("says a check didn't answer in its limit", () => {
+    expect(plainText(doctorMessages.didntAnswer(5).phrase)).toBe("didn't answer in 5 seconds");
+  });
 });
 
 describe("doctor's sentences", () => {
@@ -45,17 +66,15 @@ describe("doctor's sentences", () => {
     ]).toEqual(["Workspace", "Models", "Sandbox", "Disk"]);
   });
 
-  it("has the workspace's warnings, with the user's --dir and - for · without UTF-8", () => {
-    expect(words(doctorMessages.notTrusted())).toBe("not trusted yet · halonic trust");
-    expect(words(doctorMessages.changedSinceTrusted("./acme"))).toBe(
+  it("has the workspace's warnings, with the command as given", () => {
+    expect(words(doctorMessages.notTrusted("halonic trust"))).toBe(
+      "not trusted yet · halonic trust",
+    );
+    expect(words(doctorMessages.changedSinceTrusted("halonic trust --dir ./acme"))).toBe(
       "changed since you trusted it · halonic trust --dir ./acme",
     );
-    expect(words(doctorMessages.refused("./acme"))).toBe(
+    expect(words(doctorMessages.refused("halonic trust --dir ./acme"))).toBe(
       "can't be trusted · halonic trust --dir ./acme",
-    );
-    const oldConsole = paintFor({ colour: false, live: false, unicode: false });
-    expect(renderPhrase(doctorMessages.notTrusted().phrase, oldConsole)).toBe(
-      "not trusted yet - halonic trust",
     );
   });
 
@@ -150,6 +169,44 @@ describe("doctor's sentences", () => {
       "2 problems. Agents that use Ollama won't run until it answers. Agents set to run in a sandbox won't start until it's fixed.",
       "1 problem. Agents set to run in a sandbox won't start until it's fixed. 1 warning.",
       "No problems. 1 warning.",
+    ]);
+  });
+
+  it("has the Workspace line's other sentences", () => {
+    expect(words(doctorMessages.action())).toBe("check this computer");
+    expect(words(doctorMessages.action("./downloads"))).toBe("check ./downloads");
+    expect(words(doctorMessages.nodeLabel())).toBe("Node.js");
+    expect(words(doctorMessages.testModelOnly("acme"))).toBe(
+      "acme · test model only, no trust needed",
+    );
+    expect(words(doctorMessages.onWindowsDrive("/mnt/c"))).toBe(
+      "The workspace is on the Windows drive /mnt/c, so runs are slower. If Studio on Windows opens this folder, keep it there.",
+    );
+    expect(words(doctorMessages.moveToLinuxHome())).toBe(
+      "Fix: if you use it only from the command line, move it into your Linux home folder (~), then run halonic doctor again.",
+    );
+    expect(words(doctorMessages.tooManyFilesToWatch(50_000))).toBe(
+      "The workspace has more than 50,000 files, too many for Studio to watch for changes made outside Halonic.",
+    );
+    expect(words(doctorMessages.openSmallerFolder())).toBe(
+      "Fix: to see them in Studio as they happen, open a smaller folder, or move files the workspace doesn't use out of this one.",
+    );
+  });
+
+  it("has the Node.js line's sentences and fixes", () => {
+    const pnpm = "/mnt/c/nodejs/pnpm"; // leak-guard: allow absolute-path an example WSL drive
+    expect(
+      [
+        doctorMessages.windowsNodeInWsl(),
+        doctorMessages.installNodeInWsl(),
+        doctorMessages.windowsPnpm(pnpm),
+        doctorMessages.installPnpmInWsl(),
+      ].map(words),
+    ).toEqual([
+      "This is Windows' Node.js, running in a WSL folder.",
+      "Fix: install Node.js inside WSL, then run halonic doctor again from a WSL terminal.",
+      `pnpm on the PATH is Windows' one: ${pnpm}`,
+      "Fix: install pnpm inside WSL, for example with npm install -g pnpm, then run halonic doctor again.",
     ]);
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { bold, dim, fitPhrase, markPart, phrase, plainText } from "./phrase.ts";
+import { paintFor } from "../output/paint.ts";
+import { bold, dim, fitPhrase, markPart, phrase, plainText, renderPhrase } from "./phrase.ts";
 
 describe("fitPhrase", () => {
   const line = phrase`${markPart("working")} Draft ${bold("reply")} ${dim("(12 s)")}`;
@@ -21,5 +22,13 @@ describe("fitPhrase", () => {
 
   it("never cuts a mark in half", () => {
     expect(fitPhrase(line, 4, false)).toEqual(["..."]);
+  });
+});
+
+describe("renderPhrase", () => {
+  it("draws the separator as - in a stream that isn't UTF-8", () => {
+    const oldConsole = paintFor({ colour: false, live: false, unicode: false });
+    const line = phrase`not trusted yet ${markPart("separator")} halonic trust`;
+    expect(renderPhrase(line, oldConsole)).toBe("not trusted yet - halonic trust");
   });
 });
