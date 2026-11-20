@@ -146,6 +146,8 @@ interface DecidedBarProps {
  * before the bar is drawn, so the window never shows it out of view first. The effect returns
  * nothing: Chromium's `scrollIntoView` returns a promise, which React would take for a clean-up
  * and fail on when the bar goes away.
+ *
+ * **Next** opens the next card at its top (`openAtTop`).
  */
 export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps) {
   const bar = useRef<HTMLDivElement>(null);
@@ -168,7 +170,7 @@ export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps)
         {next === null ? (
           <p className="text-small text-fg-muted">Nothing else is waiting for you.</p>
         ) : (
-          <Button variant="primary" onClick={next.open}>
+          <Button variant="primary" onClick={() => openAtTop(bar.current, next.open)}>
             {`Next: ${next.title}`}
             <span aria-hidden="true">{` · ${next.left} left`}</span>
             <span className="sr-only">{`, ${next.left} left`}</span>
@@ -177,6 +179,23 @@ export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps)
       </div>
     </div>
   );
+}
+
+/**
+ * Opens another card from the decided bar at its top (HAL-13975). The new card takes this one's
+ * place and its title takes focus without scrolling, so every element around the bar that may
+ * scroll goes back to its top first. In a short window the one that scrolls is the whole phone
+ * column, which would otherwise keep the scroll it had for this bar and leave the new title above
+ * the window. It isn't the nearest that may scroll: the Inbox's item pane may, but there it grows
+ * with the card. On a desktop the card's own body scrolls, which the new card starts afresh, so
+ * nothing moves.
+ */
+function openAtTop(bar: HTMLElement | null, open: () => void) {
+  for (let parent = bar?.parentElement ?? null; parent !== null; parent = parent.parentElement) {
+    const overflow = getComputedStyle(parent).overflowY;
+    if (overflow === "auto" || overflow === "scroll") parent.scrollTop = 0;
+  }
+  open();
 }
 
 /**

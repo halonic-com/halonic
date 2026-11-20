@@ -167,6 +167,22 @@ verifies("inbox.wait-card", () => {
       }
     });
 
+    it("opens the next card at its top, whichever element scrolls (HAL-13975)", async () => {
+      // A short window: the column around the card scrolls, down to where the decided bar was.
+      let scrollWhenOpened: number | undefined;
+      const open = vi.fn(() => {
+        scrollWhenOpened = root.scrollTop;
+      });
+      const { root, later } = openCard({ next: { title: "Approve this reply?", left: 2, open } });
+      root.style.overflowY = "auto";
+      later(2);
+      await press(button(root, "Approve"));
+      root.scrollTop = 337;
+      await press(button(root, "Next"));
+      expect(open).toHaveBeenCalledOnce();
+      expect(scrollWhenOpened).toBe(0);
+    });
+
     it("says only who rejected and when, for the step's own reject", async () => {
       const { root, later } = openCard();
       later(181);
