@@ -1104,7 +1104,8 @@ jobs:
         working-directory: apps/studio
         run: pnpm exec vite build --mode studio
       # Tauri builds against the system web view: WebKitGTK on Linux. The
-      # keychain crate links libdbus for the Secret Service.
+      # keychain crate links libdbus for the Secret Service. The tray icon
+      # (Tauri's tray-icon feature, HAL-14220) needs the app-indicator library.
       # Every install step has its own time limit, so a hung mirror fails the
       # step in minutes instead of holding the job, and the merge queue, until
       # the job's limit (HAL-5958). 8 minutes covers one full apt attempt (3 +
@@ -1113,7 +1114,7 @@ jobs:
         timeout-minutes: 8
         uses: $/.github/actions/apt-install
         with:
-          packages: libwebkit2gtk-4.1-dev libxdo-dev libdbus-1-dev gnome-keyring dbus-daemon
+          packages: libwebkit2gtk-4.1-dev libxdo-dev libdbus-1-dev libayatana-appindicator3-dev gnome-keyring dbus-daemon
       - name: Formatting (rustfmt)
         run: cargo fmt --all --check
       # --workspace: the shell is the root package, so without it Cargo
