@@ -254,11 +254,16 @@ function stepRow(step: RunStep, definitions: RunDefinitions, clock: RunClock): P
   }
 }
 
-/** ✓ done, ✕ failed, ! for every step that asked the user, ◌ for one still going. */
+/**
+ * ✓ done, ✕ failed, ! for every step that asked the user, ◌ for one still
+ * going. A step that ended while a connector of its agent hadn't started
+ * gets ! too, not ✓: the agent did its work without that connector's tools
+ * (requirement `cli.run-step-connector-mark`).
+ */
 function markOf(step: RunStep): Mark {
   switch (step.end.kind) {
     case "done":
-      return "done";
+      return step.connectorsNotStarted === undefined ? "done" : "needsYou";
     case "failed":
       return "failed";
     case "answered":
