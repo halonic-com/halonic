@@ -191,6 +191,37 @@ verifies("inbox.approval-card", () => {
       expect(button(root, "Open run")).toBeDefined();
     });
 
+    it("says the run finished when the approve finished it (HAL-13919)", async () => {
+      const { root, later } = openCard({
+        decisions: {
+          approve: async () => waitingRun("r47", { status: "completed" }),
+          reject: async () => waitingRun("r47"),
+          askForChanges: async () => waitingRun("r47"),
+        },
+      });
+      later(61);
+      await press(button(root, "Approve"));
+      expect(root.querySelector("[role='group']")?.textContent).toContain(
+        "Approved by you at 10:44. The run finished.",
+      );
+      expect(root.textContent).not.toContain("continues");
+    });
+
+    it("doesn't say the agent is told when the reject ended the run", async () => {
+      const { root, later } = openCard({
+        decisions: {
+          approve: async () => waitingRun("r47"),
+          reject: async () => waitingRun("r47", { status: "failed" }),
+          askForChanges: async () => waitingRun("r47"),
+        },
+      });
+      later(61);
+      await press(button(root, "Reject"));
+      const decided = root.querySelector("[role='group']")?.textContent ?? "";
+      expect(decided).toContain("Rejected by you at 10:44. This tool call didn't run.");
+      expect(decided).not.toMatch(/agent is told|continues|finished/);
+    });
+
     it("says the agent is told when you reject, and offers Next", async () => {
       const open = vi.fn();
       const { root, sent, later } = openCard({
