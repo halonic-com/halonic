@@ -2,6 +2,7 @@
 
 - Approval: HAL-14299; freeze exception HAL-14550 on HAL-14331; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BXd+C4O+fcz/OyYxNSDSd4F2HWpmZbhm9VuQpOp4r9DuphebqUe77oS6KncHUjLQpT43RpKSPCN4EdsBXaGYCA==
 
 ## What changes
 
