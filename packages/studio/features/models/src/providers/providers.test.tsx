@@ -142,6 +142,12 @@ verifies("models.providers.list-and-show", () => {
     expect(opened).toEqual([{ kind: "model-provider", hub: "local", id: "ollama" }]);
   });
 
+  it("draws a provider's row as a link with the focus ring (HAL-14204)", async () => {
+    const view = await section(filesWith({ ollama }));
+
+    expect(view.querySelector("li button")?.className).toContain("focus-ring");
+  });
+
   it("says so when there are no providers", async () => {
     const view = await section(filesWith({}));
 

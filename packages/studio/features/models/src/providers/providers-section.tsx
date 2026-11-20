@@ -1,4 +1,4 @@
-import { Callout, EmptyState } from "@halonicjs/studio-kit";
+import { Callout, EmptyState, inlineLinkClasses } from "@halonicjs/studio-kit";
 import type { ItemPageSectionViewProps } from "@halonicjs/studio-shell";
 import { useId } from "react";
 import { useModels } from "../aliases/use-models.ts";
@@ -62,7 +62,7 @@ export function ProvidersSection({ context }: ItemPageSectionViewProps) {
             <li key={row.id}>
               <button
                 type="button"
-                className="text-left"
+                className={`text-left ${inlineLinkClasses}`}
                 onClick={() =>
                   context.openItem?.({ kind: PROVIDER_KIND, hub: "local", id: row.id })
                 }

@@ -1,4 +1,4 @@
-import { EmptyState } from "@halonicjs/studio-kit";
+import { EmptyState, inlineLinkClasses } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { useEffect, useState } from "react";
 import { ModelsFilesService } from "../api.ts";
@@ -84,6 +84,7 @@ function LoadingLine({ name, retry }: { readonly name: string; readonly retry: (
       {slow ? (
         <button
           type="button"
+          className={inlineLinkClasses}
           onClick={() => {
             setSlow(false);
             setAttempt((n) => n + 1);

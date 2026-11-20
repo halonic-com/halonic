@@ -1,4 +1,4 @@
-import { Button, EmptyState } from "@halonicjs/studio-kit";
+import { Button, EmptyState, inlineLinkClasses } from "@halonicjs/studio-kit";
 import type { ItemPageSectionViewProps } from "@halonicjs/studio-shell";
 import { useId, useRef, useState } from "react";
 import { ModelsFilesService } from "../api.ts";
@@ -27,7 +27,9 @@ import { useModels } from "./use-models.ts";
 
 /**
  * The **Models** section of the workspace page (`models.aliases.list`): the aliases of
- * `models.yaml` by name, each with "provider / model", each opening its alias tab.
+ * `models.yaml` by name, each with "provider / model", each opening its alias tab. The list sits
+ * right under the heading, before the Budget, so no alias reads as part of the budget (HAL-14204).
+ * Each row is drawn as an inline link, so it shows it can be pressed and gets Studio's focus ring.
  *
  * @example
  * <ModelsSection item={WORKSPACE_PAGE_ITEM} context={context} />
@@ -54,7 +56,6 @@ export function ModelsSection({ context }: ItemPageSectionViewProps) {
           {NEW_ALIAS}
         </Button>
       </div>
-      <BudgetBlock files={files} state={state} />
       <AliasList
         state={state}
         retry={retry}
@@ -62,6 +63,7 @@ export function ModelsSection({ context }: ItemPageSectionViewProps) {
         open={open}
         create={() => setCreating(true)}
       />
+      <BudgetBlock files={files} state={state} />
       {creating ? (
         <NewAliasDialog
           files={files}
@@ -134,7 +136,11 @@ function AliasList({
     <ul className="flex flex-col">
       {rows.map((row) => (
         <li key={row.name} className="flex flex-wrap items-center gap-x-2">
-          <button type="button" className="text-left" onClick={() => open(row.name)}>
+          <button
+            type="button"
+            className={`text-left ${inlineLinkClasses}`}
+            onClick={() => open(row.name)}
+          >
             {row.label}
           </button>
           <RowPrice row={row} open={open} />
@@ -156,7 +162,12 @@ function RowPrice({
   return (
     <>
       <span>· {NO_PRICE_LINE} ·</span>
-      <button type="button" aria-label={addPriceLabel(row.name)} onClick={() => open(row.name)}>
+      <button
+        type="button"
+        className={inlineLinkClasses}
+        aria-label={addPriceLabel(row.name)}
+        onClick={() => open(row.name)}
+      >
         {ADD_A_PRICE}
       </button>
     </>
