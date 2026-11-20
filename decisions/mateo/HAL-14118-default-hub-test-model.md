@@ -2,6 +2,7 @@
 
 - Approval: the board's answer on HAL-12723, 20 Nov: "Can we not make a \"Default\" hub? And use test model indeed"; the work is on HAL-14118, following Liam's fit check on HAL-12380
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3G0osO2uq37fmrJj+yJy0cFEPqchUZ5ohSBCyQafx62nOImJmtQZgZpDmZtp4iBPRvXW8FZ7PQiwy08gSEEQBg==
 - Task: HAL-14118
 
 ## What changes
