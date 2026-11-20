@@ -4,7 +4,9 @@ import type { Connector } from "./schema.ts";
 /**
  * Whether a connector counts as local for `privacy.localOnly`: its own
  * `local` setting when it has one, otherwise true for a program on this
- * machine (stdio) and for an HTTP server on a loopback address.
+ * machine (stdio) and for an HTTP server at `localhost` or a loopback address
+ * written as numbers. Any other name counts as outside, as the transport
+ * treats it (`connectorHostClass`): a name can resolve anywhere.
  *
  * A plugin's backend or a local integration runs code whose sheet says
  * which hosts it may reach. Give those `hosts` for such a connector: when
@@ -36,7 +38,10 @@ export function connectorIsLocal(
     return false;
   }
   const host = hostOf(transport.http.url);
-  return host !== undefined && isLoopbackHost(host);
+  if (host === undefined) {
+    return false;
+  }
+  return host === "localhost" || host === "::1" || isLoopbackIpv4(host);
 }
 
 /**
@@ -56,11 +61,13 @@ export function outsideHosts(hosts: readonly IntegrationHost[]): IntegrationHost
   return hosts.filter((host) => typeof host === "string" || host.class === "public");
 }
 
-/** Whether a lowercased host without port or brackets is this computer. */
-function isLoopbackHost(host: string): boolean {
-  return (
-    host === "localhost" || host.endsWith(".localhost") || host === "::1" || /^127\./.test(host)
-  );
+/**
+ * Whether `host` is an IPv4 address in 127.0.0.0/8 written as four decimal
+ * numbers. Other spellings count as not local, which is the safe side.
+ */
+function isLoopbackIpv4(host: string): boolean {
+  const parts = /^127\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  return parts?.slice(1).every((part) => Number(part) <= 255) ?? false;
 }
 
 /**
