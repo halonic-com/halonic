@@ -8,7 +8,7 @@
 
 `studio.workspace-knowledge`: right before Summarize sends the documents to the local model through the agent host, the desktop app checks the saved workspace by the rule the engine starts by (`studio.untrusted-starts-nothing`): trusted on this computer, or reaching only the test model. Otherwise, or when the check fails, it sends no request and answers `untrusted`. It checks the saved files because the agent host reads the saved provider files; it gets only the folder and the provider's id. When the agent host itself refuses the chat as `workspace_not_trusted` (its own check, HAL-13943, which also sees a provider file saved after the app's check), Summarize answers `untrusted` too (HAL-13950).
 
-`library.knowledge-summarize`: the page shows that answer under the Summary row as "Couldn't summarize Handbook: this workspace isn't trusted yet, so nothing was sent.", with no **Try again**, since trying again can't help until the workspace is trusted. On a phone, which has no header badge, the line gets **Review**, which opens Workspace settings › Trust (`workspace.open-trust`), as TU2 does for the Inbox on #4101 (C296 SU1 on HAL-14044).
+`library.knowledge-summarize`: the page shows that answer under the Summary row as "Couldn't summarize Handbook: this workspace isn't trusted yet, so nothing was sent.", with no **Try again**, since trying again can't help until the workspace is trusted. In the phone layout (a phone, or a narrow desktop window), where the header badge isn't on screen, the line gets **Review**, which opens Workspace settings › Trust (`workspace.open-trust`), as TU2 does for the Inbox on #4101 (C296 SU1 on HAL-14044; gated on the layout, not the host, C306 SU1b on HAL-14075).
 
 No test was weakened. `SummarizeOutcome` gains the kind `untrusted`; the desktop app is its only host.
 
@@ -19,8 +19,8 @@ Settings › Trust says "Halonic won't start programs or call real models from t
 ## Decided by the team
 
 - The line reuses the Studio's existing refusal for an untrusted start ("this workspace isn't trusted yet, so nothing was started"), with "sent" for "started", because Summarize sends a request rather than starting a run. It sits in the page's existing "Couldn't summarize *name*: *reason*." shape.
-- No Review action on the line on the desktop: the header badge's Review stays the way in, as for Routines › Run now on HAL-12409.
-- On a phone, which has no header badge, the line gets **Review**, opening Workspace settings › Trust, as TU2 on #4101 (C296 SU1, decided by the team on HAL-14044 under HAL-2282: approved words and an approved pattern).
+- No Review action on the line at desktop width: the header badge's Review stays the way in, as for Routines › Run now on HAL-12409.
+- In the phone layout, where the header badge isn't on screen, the line gets **Review**, opening Workspace settings › Trust, as TU2 on #4101 (C296 SU1, decided by the team on HAL-14044 under HAL-2282: approved words and an approved pattern). It follows the layout (`usePresentation()`), not the host, because the served Studio shows no Knowledge page and a narrow desktop window is still the desktop app (C306 SU1b, HAL-14075).
 
 ## Covers
 

@@ -1,5 +1,5 @@
 import type { KnowledgeLookupMode } from "@halonicjs/app";
-import { EmptyState, Field, FormRows, RadioGroup } from "@halonicjs/studio-kit";
+import { EmptyState, Field, FormRows, RadioGroup, usePresentation } from "@halonicjs/studio-kit";
 import {
   engineWordsOf,
   ItemGone,
@@ -23,16 +23,15 @@ const openModelsCommand = "workspace.open-models";
 const openTrustCommand = "workspace.open-trust";
 
 /**
- * **Review** for Summarize's untrusted line: on a phone only, which has no header badge
- * "Not trusted yet · Review", it opens Workspace settings › Trust (HAL-14044 SU1).
+ * **Review** for Summarize's untrusted line, in the phone layout only (a phone or a narrow desktop
+ * window): the header badge "Not trusted yet · Review" isn't on screen there. It follows the
+ * layout, not the host (HAL-14044 SU1, HAL-14075 SU1b).
  */
-function phoneTrustReviewOf({
-  host,
-  runCommand,
-}: Pick<ItemViewProps["context"], "host" | "runCommand">): (() => void) | undefined {
-  return runCommand === undefined || host !== "phone"
-    ? undefined
-    : () => void runCommand(openTrustCommand);
+function usePhoneTrustReview(
+  runCommand: ItemViewProps["context"]["runCommand"],
+): (() => void) | undefined {
+  const phone = usePresentation() === "phone";
+  return runCommand === undefined || !phone ? undefined : () => void runCommand(openTrustCommand);
 }
 
 function refOf(hub: string, id: string): KnowledgeRef {
@@ -103,6 +102,7 @@ function LoadedKnowledgePage({
   const runCommand = context.runCommand;
   const openModels =
     runCommand === undefined ? undefined : () => void runCommand(openModelsCommand);
+  const reviewTrust = usePhoneTrustReview(runCommand);
 
   if (gone) {
     return trash.strip ?? <Gone context={context} />;
@@ -149,7 +149,7 @@ function LoadedKnowledgePage({
           summarize={summarize}
           announce={announce}
           openModels={openModels}
-          reviewTrust={phoneTrustReviewOf(context)}
+          reviewTrust={reviewTrust}
           notAnswering={engineWordsOf(context).notAnswering}
         />
         <Field label={knowledgeWords.lookup}>

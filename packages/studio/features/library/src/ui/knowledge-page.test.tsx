@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { ItemUsage } from "@halonicjs/app";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { type ItemViewProps, limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -328,13 +329,18 @@ verifies("library.knowledge-summarize", () => {
     });
 
     it.each([
-      ["desktop-app", false],
-      ["phone", true],
+      ["desktop-app", "desktop", false],
+      ["desktop-app", "phone", true],
+      ["phone", "phone", true],
     ] as const)(
-      "offers Review for an untrusted workspace only where there is no header badge, %s",
-      async (host, offered) => {
+      "offers Review for an untrusted workspace only in the phone layout, which has no header badge, %s %s",
+      async (host, presentation, offered) => {
         const { props, runCommand } = setup(undefined, nobody, { kind: "untrusted" }, host);
-        const root = render(<KnowledgePage {...props} />);
+        const root = render(
+          <PresentationProvider presentation={presentation}>
+            <KnowledgePage {...props} />
+          </PresentationProvider>,
+        );
         await settled();
         await act(async () => button(root, "Summarize").click());
         await settled();

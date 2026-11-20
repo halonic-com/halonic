@@ -13,8 +13,8 @@ interface SummaryFieldProps {
   /** Opens Models, where a local model is set up; absent when the window has no way to. */
   readonly openModels: (() => void) | undefined;
   /**
-   * Opens Workspace settings › Trust, for **Review** after the untrusted line; set on a phone only,
-   * which has no header badge to review trust from.
+   * Opens Workspace settings › Trust, for **Review** after the untrusted line; set in the phone
+   * layout only, where the header badge to review trust from isn't on screen.
    */
   readonly reviewTrust?: (() => void) | undefined;
   /** The words for "the engine isn't answering" in this window (desktop app, served browser or phone). */
@@ -145,7 +145,7 @@ function problemLine(reason: SummarizeFailure, name: string, notAnswering: strin
 
 /**
  * The failed line, with **Models** when a local model is missing, **Review** for an untrusted
- * workspace on a phone and **Try again** when a retry may help.
+ * workspace in the phone layout and **Try again** when a retry may help.
  */
 function Problem({
   reason,
