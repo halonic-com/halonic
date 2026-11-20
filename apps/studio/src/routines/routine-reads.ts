@@ -84,6 +84,7 @@ export function targetsOf(workspace: LoadedWorkspace, hubId: string | null): Rou
         hubId: file.hub as string,
         id: file.value.id,
         name: file.value.name,
+        start: file.value.start && { label: file.value.start.label, field: file.value.start.field },
       })),
     ...filesOf(workspace, "agent")
       .filter(inHub)
