@@ -10,6 +10,7 @@ import {
   StatusChip,
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useState } from "react";
+import { MiddleCut } from "../cut-text/middle-cut.tsx";
 import type { ShownPlace, SidebarPlace } from "../points/frame.ts";
 import {
   letterMark,
@@ -246,7 +247,7 @@ function WorkspaceRow({ workspace, onChange }: MorePageSwitcher) {
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-body-strong text-fg">{workspace.name}</span>
-        <span className="truncate text-small text-fg-muted">{workspace.folder}</span>
+        <MiddleCut text={workspace.folder} textClassName="text-small text-fg-muted" />
       </span>
       <span aria-hidden="true" className="size-icon-md shrink-0 text-fg-subtle *:size-full">
         <ChevronDownIcon />

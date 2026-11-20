@@ -82,6 +82,22 @@ verifies("shell.more-page", () => {
     expect(workspacePicks()).toBe(1);
   });
 
+  it("cuts a long folder in the middle, so the row ends in the folder's own name", () => {
+    const folder = "C:\\Users\\Sam Jansen\\OneDrive - Acme BV\\Documents\\Acme sample"; // leak-guard: allow absolute-path made-up Windows paths for the test
+    const container = render(
+      <MorePage
+        switcher={{ workspace: { name: "Acme", folder }, onChange: () => undefined }}
+        places={places}
+        onOpen={() => undefined}
+      />,
+    );
+    const switcher = container.querySelector("button") as HTMLButtonElement;
+
+    expect(switcher.textContent).toBe(`AAcme${folder}`);
+    const end = switcher.querySelector(".shrink-0.whitespace-pre-wrap");
+    expect(end?.textContent).toBe("\\Documents\\Acme sample");
+  });
+
   it("lists only the places under More that were added, in the sidebar's order", () => {
     const { rows, container } = renderMore();
 
