@@ -3,6 +3,7 @@
 - Task: HAL-13197
 - Approval: Liam approves this note in his security review of the srt patch change on HAL-13197 (https://paperclip.halonic.com/HAL/issues/HAL-13197). The patch change itself is pull request 3895.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ap7uh+qHeORys0Dey4DijiuqMnQf+XUA2fw33JHLT36zmB+PML7dcliLbeTRRXlenSoSatkmvJ2dxwOWebH5DQ==
 
 ## What changes
 
