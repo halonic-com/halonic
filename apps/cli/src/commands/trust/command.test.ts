@@ -198,6 +198,31 @@ verifies("cli.commands.trust.review-and-trust", () => {
     ]);
   });
 
+  it("refuses a word such as revoke as wrong usage, keeping the trust (HAL-14124)", async () => {
+    writeAcme();
+    const { terminal } = terminalTyping("y", "y");
+    expect(
+      await runCli(["trust", "--dir", "acme"], captureIo(folder), commands(), { terminal }),
+    ).toBe(exitCode.ok);
+    const revoke = captureIo(folder);
+    const other = captureIo(folder);
+
+    const code = await runCli(["trust", "revoke", "--dir", "acme"], revoke, commands());
+    const otherCode = await runCli(["trust", "acme"], other, commands());
+
+    expect([code, otherCode]).toEqual([exitCode.usage, exitCode.usage]);
+    expect(revoke.stdout).toEqual([]);
+    expect(revoke.stderr).toEqual([
+      "✕ halonic trust takes only options, and you gave revoke.",
+      "  Did you mean --remove?",
+    ]);
+    expect(other.stderr).toEqual([
+      "✕ halonic trust takes only options, and you gave acme.",
+      "  Run halonic trust --help to see its options.",
+    ]);
+    expect(await store.list()).toHaveLength(1);
+  });
+
   it("names the file of a connector whose URL has user info, without its address, and saves nothing (HAL-5421)", async () => {
     writeAcme({ "library/connectors/web.connector.yaml": userInfoConnectorYaml });
     const io = captureIo(folder);
