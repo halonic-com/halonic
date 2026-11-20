@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for this rule in his review of halonic#4066 on HAL-8613, before plugin sign-ins load; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ScvfTsIZOFLi7JsADUf2WrAgA2AdrL6QGaeArYN1z+KjvoX65awuLotwOcCnjm3FjpB83lKnL/FIRgvVu2FsAw==
 
 ## What changes
 
