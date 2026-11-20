@@ -23,6 +23,7 @@ import { HarnessPage } from "./harness-page.tsx";
 import { ModelPage } from "./model-page.tsx";
 import { SubagentsPage } from "./subagents-page.tsx";
 import { ToolsPage } from "./tools-page.tsx";
+import { useNarrowPanel } from "./use-narrow-panel.ts";
 
 /** Props for {@link Configuration}. */
 export interface ConfigurationProps {
@@ -63,8 +64,8 @@ const pages: readonly Tab<PageId>[] = (
 /**
  * The agent's Configuration (`agents.configuration.pages`): a list of pages on the left and the
  * picked page beside it. A page that isn't built is absent, not empty (flow-agents 5.1). On a
- * phone the list goes across the top instead, so the page keeps the full width
- * (`agents.configuration.pages-phone`).
+ * phone, and in a panel too narrow for the column, the list goes across the top instead, so the
+ * page keeps the full width (`agents.configuration.pages-phone`, `agents.configuration.pages-narrow`).
  */
 export function Configuration({
   host,
@@ -84,6 +85,9 @@ export function Configuration({
   const [page, setPage] = useState<PageId>("behaviour");
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
+  const panel = useNarrowPanel();
+  // One rule for the layout: a card's Select, a phone and a narrow panel all stack the list on top.
+  const across = narrow || phone || panel.narrow;
   // Instructions takes the focus once; going to another page and back leaves it alone.
   const [focusInstructions, setFocusInstructions] = useState(startOnInstructions === true);
   const pickPage = (id: PageId) => {
@@ -101,8 +105,11 @@ export function Configuration({
     );
   }
   return (
-    <div className={narrow || phone ? "flex min-h-0 flex-1 flex-col" : "flex min-h-0 flex-1"}>
-      <PageList narrow={narrow} phone={phone} ids={ids} page={page} onPick={pickPage} />
+    <div
+      ref={panel.ref}
+      className={across ? "flex min-h-0 flex-1 flex-col" : "flex min-h-0 flex-1"}
+    >
+      <PageList narrow={narrow} across={across} ids={ids} page={page} onPick={pickPage} />
       <PagePanel narrow={narrow} ids={ids} page={page}>
         {load.kind === "ready" ? (
           <div className="max-w-column">
@@ -152,18 +159,18 @@ export function Configuration({
 }
 
 /**
- * The list of pages: a Select at the top of a narrow panel, tabs across the top on a phone, and
- * tabs at the side elsewhere.
+ * The list of pages: a Select at the top of a subagent's card, tabs across the top on a phone or
+ * in a panel too narrow for the column, and tabs at the side elsewhere.
  */
 function PageList({
   narrow,
-  phone,
+  across,
   ids,
   page,
   onPick,
 }: {
   readonly narrow: boolean;
-  readonly phone: boolean;
+  readonly across: boolean;
   readonly ids: ReturnType<typeof useTabIds>;
   readonly page: PageId;
   readonly onPick: (page: PageId) => void;
@@ -183,14 +190,14 @@ function PageList({
   return (
     <div
       className={
-        phone
+        across
           ? "border-b border-border px-4 py-3"
           : "w-52 shrink-0 border-e border-border px-2 py-4"
       }
     >
       <TabList
         label={words.pages}
-        orientation={phone ? "horizontal" : "vertical"}
+        orientation={across ? "horizontal" : "vertical"}
         tabs={pages}
         selected={page}
         onSelect={onPick}
