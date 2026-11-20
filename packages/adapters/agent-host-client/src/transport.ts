@@ -53,6 +53,7 @@ export const agentHostRequestRoutes = [
   "POST /v1/integrations/sign-in/cancel",
   "POST /v1/integrations/sign-in/sign-out",
   "POST /v1/plugins/call",
+  "POST /v1/plugins/secrets",
 ] as const;
 
 /** The agent host's routes that answer with an NDJSON stream. */
