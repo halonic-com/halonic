@@ -1,17 +1,5 @@
 import { writeYamlFile } from "@halonicjs/yaml";
-
-/**
- * The id of the hub a new workspace starts with. Studio's New agent and New
- * workflow write the same hub in a workspace that has none (HAL-14119), so
- * both paths give the same folder.
- */
-export const defaultHubId = "default";
-
-/** The name of the hub a new workspace starts with. */
-export const defaultHubName = "Default";
-
-/** Where the hub a new workspace starts with lives. */
-export const defaultHubPath = `hubs/${defaultHubId}/hub.yaml`;
+import { defaultHubPath, defaultHubText } from "./default-hub.ts";
 
 /** The workspace's model aliases. */
 export const modelsPath = "models.yaml";
@@ -73,9 +61,7 @@ export function starterFiles(existing: ReadonlySet<string>): {
   const paths = [...existing];
   const hasHubs = paths.some((path) => path.startsWith("hubs/"));
   const hasModels = existing.has(modelsPath) || paths.some((path) => path.startsWith("providers/"));
-  const hub: TemplateFile[] = [
-    [defaultHubPath, writeYamlFile({ id: defaultHubId, name: defaultHubName })],
-  ];
+  const hub: TemplateFile[] = [[defaultHubPath, defaultHubText()]];
   const testModel: TemplateFile[] = [
     [modelsPath, modelsYaml],
     [testProviderPath, testProviderYaml],

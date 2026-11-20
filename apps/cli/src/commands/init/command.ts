@@ -3,7 +3,7 @@ import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { KindedError } from "@halonicjs/std";
 import {
   copyWorkspace,
-  defaultHubName,
+  defaultHub,
   filesOf,
   type InitializedWorkspace,
   initWorkspace,
@@ -201,7 +201,7 @@ function createdLines(workspace: InitializedWorkspace, folder: InitFolder, cwd: 
   const test = { command: initMessages.nextTest().phrase, why: initMessages.nextTestWhy().phrase };
   return [
     phrase`${markPart("done")} ${created.phrase}`,
-    phrase`  ${initMessages.starterContents(defaultHubName).phrase}`,
+    phrase`  ${initMessages.starterContents(defaultHub.name).phrase}`,
     ...nextSteps(
       [...changeFolder(folder, cwd), validate, test],
       initMessages.nextFirstAgent().phrase,
