@@ -94,15 +94,21 @@ const WebhookTrigger = s
   })
   .strict();
 
-/** When a routine starts. */
-export const RoutineTrigger = s.union([
-  ScheduleTrigger,
-  EveryTrigger,
-  ManualTrigger,
-  SignalTrigger,
-  MailTrigger,
-  WebhookTrigger,
-]);
+/**
+ * When a routine starts. A trigger that matches none of the kinds, such as
+ * two at once or `manual: false`, gets one message that names them all
+ * (HAL-14299), instead of Zod's "Invalid input". A mistake inside one kind,
+ * such as `every: 15`, still gets that kind's own message.
+ */
+export const RoutineTrigger = s.union(
+  [ScheduleTrigger, EveryTrigger, ManualTrigger, SignalTrigger, MailTrigger, WebhookTrigger],
+  {
+    error: (issue) =>
+      issue.code === "invalid_union"
+        ? "trigger needs exactly one of: schedule, every, manual: true, signal, mail or webhook."
+        : undefined,
+  },
+);
 
 /** What a routine runs: a workflow with input, or one agent with a prompt. */
 export const RoutineTarget = s.union([

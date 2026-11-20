@@ -25,6 +25,8 @@ import { routinesCommandWith } from "./command.ts";
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
 const hint = "Routines start on time only while `halonic routines watch` is running.";
 const golden = (name: string) => join(import.meta.dirname, "golden", name);
+const problemsLine = (count: number) =>
+  `! ${count} ${count === 1 ? "routine has" : "routines have"} problems · halonic validate`;
 
 let acmeRuns: AcmeRuns;
 
@@ -143,9 +145,53 @@ verifies("cli.commands.routines.list", () => {
 
       const { code, io } = await routinesIn();
 
+      expect(code).toBe(exitCode.failed);
+      expect(io.stdout).toEqual([
+        problemsLine(1),
+        'broken   Invalid file, line 3: use a number and a unit, e.g. "15m", "1h", "1d" (runs are placed from midnight UTC)   ✕ Won\'t start   Never ran',
+        hint,
+      ]);
+    });
+
+    it("says Won't start for a routine whose file has errors, counts them above the list, and exits 1", async () => {
+      await addRoutines({
+        digest: [
+          "id: digest",
+          "name: Friday digest",
+          'trigger: { schedule: "0 16 * * 5" }',
+          "run: { workflow: weekly-digest }",
+          "",
+        ].join("\n"),
+        morning: routine("morning", "Morning check", '{ schedule: "0 8 * * *" }'),
+      });
+
+      const { code, io } = await routinesIn("--dir", ".");
+
+      // The support hub has no workflow weekly-digest, so the routine's start would fail.
+      expect(code).toBe(exitCode.failed);
+      expect(io.stdout).toEqual([
+        "! 1 routine has problems · halonic validate --dir .",
+        "Friday digest   Fridays at 16:00   ✕ Won't start         Never ran",
+        "Morning check   Daily at 08:00     Next tomorrow 08:00   Never ran",
+        hint,
+      ]);
+    });
+
+    it("writes the next run of a schedule in its own time zone, and names the zone", async () => {
+      await addRoutines({
+        digest: routine(
+          "digest",
+          "Friday digest",
+          '{ schedule: "0 16 * * 5", timezone: Europe/Amsterdam }',
+        ),
+      });
+
+      const { code, io } = await routinesIn();
+
+      // The test clock is in UTC: 16:00 in Amsterdam is 15:00 UTC, which the list doesn't show.
       expect(code).toBe(exitCode.ok);
       expect(io.stdout).toEqual([
-        'broken   Invalid file, line 3: use a number and a unit, e.g. "15m", "1h", "1d" (runs are placed from midnight UTC)   Off   Never ran',
+        "Friday digest   Fridays at 16:00 (Europe/Amsterdam)   Next 13 Nov 16:00 (Europe/Amsterdam)   Never ran",
         hint,
       ]);
     });
@@ -197,11 +243,23 @@ verifies("cli.commands.routines.list", () => {
         morning: routine("morning", "Morning check", '{ schedule: "0 8 * * *" }'),
       });
       await writeFiles(acmeRuns.acme, {
-        "hubs/reports/workflows/routines/morning.routine.yaml": routine(
-          "morning",
-          "Morning check",
-          "{ manual: true }",
-        ),
+        "hubs/reports/hub.yaml": "id: reports\nname: Reports\n",
+        "hubs/reports/workflows/weekly-report.workflow.yaml": [
+          "id: weekly-report",
+          "name: Weekly report",
+          "initial: done",
+          "states:",
+          "  done:",
+          "    type: final",
+          "",
+        ].join("\n"),
+        "hubs/reports/workflows/routines/morning.routine.yaml": [
+          "id: morning",
+          "name: Morning check",
+          "trigger: { manual: true }",
+          "run: { workflow: weekly-report }",
+          "",
+        ].join("\n"),
       });
 
       const { code, io } = await routinesIn();
@@ -217,7 +275,13 @@ verifies("cli.commands.routines.list", () => {
     it("names no hub for a routine at the workspace's root", async () => {
       await addRoutines({ manual: routine("manual", "By hand", "{ manual: true }") });
       await writeFiles(acmeRuns.acme, {
-        "workflows/routines/manual.routine.yaml": routine("manual", "By hand", "{ manual: true }"),
+        "workflows/routines/manual.routine.yaml": [
+          "id: manual",
+          "name: By hand",
+          "trigger: { manual: true }",
+          "run: { hub: support, workflow: support-reply }",
+          "",
+        ].join("\n"),
       });
 
       const { io } = await routinesIn();
@@ -260,6 +324,8 @@ verifies("cli.commands.routines.list", () => {
           enabled: true,
           trigger: "Daily at 08:00",
           nextRun: "2026-11-11T08:00:00.000Z",
+          timeZone: null,
+          problems: 0,
           lastRun: { runId: done.id, status: "completed", startedAt: done.start },
         },
       ],

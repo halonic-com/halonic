@@ -53,6 +53,7 @@ import { workspaceGoogleRead } from "./google-read.ts";
 import { startsOnLiveVersion } from "./live-version-runs.ts";
 import { workspaceModelSettings } from "./model-settings-gate.ts";
 import { studioPageIsOutdated } from "./studio-page-age.ts";
+import { webhookRoutineLines } from "./webhook-routines.ts";
 
 /** What `serve` uses on this computer, so tests can fix the password hasher and the network. */
 export interface ServeSetup extends RunSetup {
@@ -177,12 +178,18 @@ async function serveVersions(
     const server = await listenOnComputer(context, setup, dir, versions, engine, listen);
     try {
       const name = printable(workspaceNameOf(workspace, dir));
-      context.printAhead(serveMessages.serving(name, `http://localhost:${server.port}`).phrase);
+      const address = `http://localhost:${server.port}`;
+      context.printAhead(serveMessages.serving(name, address).phrase);
       if (!(await passwordIsSet(context))) context.printAhead(serveMessages.noPassword().phrase);
       if (!(await isBuilt(studioFolderOf(setup)))) {
         context.printAhead(serveMessages.studioNotBuilt().phrase);
       } else if (await isOutdated(setup)) {
         context.printAhead(serveMessages.studioOutdated().phrase);
+      }
+      // Each webhook routine's address, so a routine that never starts says why (HAL-14299).
+      const routines = await versions.routines.listLoaded();
+      for (const line of await webhookRoutineLines(routines, context.secrets, address)) {
+        context.printAhead(line);
       }
       await stopped(engine.signal);
     } finally {

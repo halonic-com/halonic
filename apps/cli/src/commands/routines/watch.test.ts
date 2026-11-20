@@ -180,6 +180,29 @@ verifies("cli.commands.routines.watch", () => {
     expect(await watching).toBe(130);
   });
 
+  it("says a webhook routine starts on a web request, which halonic serve receives", {
+    timeout: watchTestTimeout,
+  }, async () => {
+    await writeFiles(acmeRuns.acme, {
+      "hubs/support/workflows/routines/friday-digest.routine.yaml": [
+        "id: friday-digest",
+        "name: Friday digest",
+        "trigger: { webhook: { secret: friday-hook } }",
+        "run: { workflow: follow-up }",
+        "",
+      ].join("\n"),
+    });
+    const { io, signals, watching } = startWatch(fakeTime(engineStart));
+    await waitUntil("the watch's first lines", () => io.stdout.length === 2, slowWatch);
+
+    expect(io.stdout).toEqual([
+      "Watching 1 routine in Acme. Stop with Ctrl C.",
+      "Friday digest starts on a web request: run halonic serve for it.",
+    ]);
+    signals.send("SIGINT");
+    expect(await watching).toBe(130);
+  });
+
   it("ends with 143 at SIGTERM", { timeout: watchTestTimeout }, async () => {
     const { io, signals, watching } = startWatch(fakeTime(engineStart));
     await waitUntil("the first watch line", () => io.stdout.length === 1, slowWatch);

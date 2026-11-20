@@ -47,4 +47,4 @@ export { MemoryRequestCountStore } from "./memory-request-count-store.ts";
 export { ProviderKeysReadOnlyError, providerKeysOf } from "./provider-key-routes.ts";
 export { passwordSecretName } from "./sign-in.ts";
 export { type SignInPlace, signInPlace } from "./sign-in-place.ts";
-export { WEBHOOK_TOLERANCE_SECONDS } from "./webhooks.ts";
+export { WEBHOOK_TOLERANCE_SECONDS, webhookPathPrefix } from "./webhooks.ts";
