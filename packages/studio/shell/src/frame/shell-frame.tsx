@@ -74,6 +74,11 @@ export interface ShellFrameProps {
    * drawer to give focus back to.
    */
   readonly placesButton?: RefObject<HTMLButtonElement | null>;
+  /**
+   * Names the page shown, such as the active tab's place. When it changes while the Places drawer
+   * is open, something in it opened that page, so the drawer closes and the page keeps the focus.
+   */
+  readonly shownPage?: string;
   /** The page. */
   readonly children: ReactNode;
 }
@@ -148,7 +153,7 @@ const phonePage = "short:overflow-visible";
  */
 function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentation }) {
   const desktop = props.presentation === "desktop";
-  const drawer = usePlacesDrawer(props.sidebar !== undefined, props.placesButton);
+  const drawer = usePlacesDrawer(props.sidebar !== undefined, props.placesButton, props.shownPage);
   return (
     <div
       data-layout={props.presentation}
@@ -182,6 +187,7 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
               onClose={drawer.close}
               button={drawer.button}
               id={drawer.drawerId}
+              shownPage={props.shownPage}
             >
               {props.sidebar}
             </SidebarSlot>

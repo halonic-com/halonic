@@ -49,7 +49,7 @@ import { StudioPage } from "./studio-page.tsx";
 import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
 import { StudioSidebar } from "./studio-sidebar.tsx";
 import type { StudioWorkspace } from "./studio-workspace.ts";
-import { useActiveTabTitle, useWindowTitle } from "./window-title.ts";
+import { useActiveTabPage, useActiveTabTitle, useWindowTitle } from "./window-title.ts";
 import { withActions } from "./with-actions.ts";
 
 /** What the window lets its workspace menu do. */
@@ -320,6 +320,8 @@ function StudioWindowBody(props: StudioWindowProps) {
   const placesButton = useRef<HTMLButtonElement>(null);
   // A phone shows its own place's page, not the active tab's, so the title names that page.
   const tabTitle = useActiveTabTitle(tabs);
+  // Picking a place or a file in the narrow window's Places drawer opens another page and closes it.
+  const activeTabPage = useActiveTabPage(tabs);
   useWindowTitle(desktop ? tabTitle : phone.topBar.title, workspace.name);
   // The features' badges first, as the status bar shows them; a window as narrow as a phone
   // shows the same ones on More, as it has no status bar (WCAG 1.4.10).
@@ -334,6 +336,7 @@ function StudioWindowBody(props: StudioWindowProps) {
     <ShellFrame
       announcer={announcer}
       placesButton={placesButton}
+      shownPage={activeTabPage}
       closeStack={shell.closeStack}
       engine={shell.engine}
       toasts={shell.toasts}
