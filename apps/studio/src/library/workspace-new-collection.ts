@@ -2,6 +2,7 @@ import { newLibraryFile } from "@halonicjs/app";
 import { KindedError } from "@halonicjs/std";
 import type {
   CollectionRef,
+  LibraryItemPlace,
   NewCollectionDraft,
   NewCollectionHost,
 } from "@halonicjs/studio-feature-library/api";
@@ -26,8 +27,12 @@ export class WorkspaceNewCollection implements NewCollectionHost {
   readonly #parts: WorkspaceSkillsParts;
   #snapshot: LoadedWorkspace | undefined;
 
-  constructor(parts: WorkspaceSkillsParts) {
+  /** Told the name of each collection made, so its tab can show it before the Library reads it again. */
+  readonly #made: ((place: LibraryItemPlace, name: string) => void) | undefined;
+
+  constructor(parts: WorkspaceSkillsParts, made?: (place: LibraryItemPlace, name: string) => void) {
     this.#parts = parts;
+    this.#made = made;
   }
 
   async prepare(): Promise<void> {
@@ -47,6 +52,7 @@ export class WorkspaceNewCollection implements NewCollectionHost {
     if (!made.ok) throw new KindedError("invalid_input", "Give it a name.");
     const { id, path, text } = made.value;
     this.#parts.files.change(`Added collection ${id}`, { [path]: text });
+    this.#made?.({ hub: null, id }, name.trim());
     return { hub: null, id };
   }
 

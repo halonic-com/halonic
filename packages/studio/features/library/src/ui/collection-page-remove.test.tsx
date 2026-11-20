@@ -19,7 +19,7 @@ verifies("library.collection-page", () => {
       const remove = vi.fn(async () => {});
       const { root } = await opened(sourceOf([swim]), undefined, { remove });
       await pressButton(root, "Remove");
-      expect(root.ownerDocument.body.textContent).toContain("Remove swim-oct?");
+      expect(root.ownerDocument.body.textContent).toContain("Remove Swim lesson?");
       expect(remove).not.toHaveBeenCalled();
       // The menu's Remove comes first; the dialog's is the last one.
       const confirm = [...root.ownerDocument.querySelectorAll("button")]
@@ -43,7 +43,7 @@ verifies("library.collection-page", () => {
         await new Promise((resolve) => setTimeout(resolve, 50));
       });
       expect(root.ownerDocument.body.textContent).toContain("Couldn't remove the record.");
-      expect(root.ownerDocument.body.textContent).toContain("Remove swim-oct?");
+      expect(root.ownerDocument.body.textContent).toContain("Remove Swim lesson?");
     });
 
     it("closes Remove's dialog on Cancel without removing", async () => {
@@ -52,7 +52,26 @@ verifies("library.collection-page", () => {
       await pressButton(root, "Remove");
       await pressButton(root, "Cancel");
       expect(remove).not.toHaveBeenCalled();
-      expect(root.ownerDocument.body.textContent).not.toContain("Remove swim-oct?");
+      expect(root.ownerDocument.body.textContent).not.toContain("Remove Swim lesson?");
+    });
+
+    it("names a record by its first field, and one whose first field is empty as this record", async () => {
+      const blank = { id: "claims-mwonmx0w-1", values: { what: null, amount: 5, share: null } };
+      const { root } = await opened(sourceOf([swim, blank]));
+      const menus = [...root.querySelectorAll('button[aria-label^="More actions"]')].map((button) =>
+        button.getAttribute("aria-label"),
+      );
+      expect(menus).toEqual(["More actions for Swim lesson", "More actions for this record"]);
+      // The second row's menu's Remove.
+      const removes = [...root.ownerDocument.querySelectorAll("button")].filter(
+        (each) => each.textContent === "Remove",
+      );
+      await act(async () => {
+        removes[1]?.click();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(root.ownerDocument.body.textContent).toContain("Remove this record?");
+      expect(root.ownerDocument.body.textContent).not.toContain("claims-mwonmx0w-1");
     });
 
     it("shows Removing… and sends one remove however often Remove is pressed", async () => {

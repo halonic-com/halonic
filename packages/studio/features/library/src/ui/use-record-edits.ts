@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { recordName } from "../collection-format.ts";
 import type { CollectionColumn } from "../collection-host.ts";
 import type { CollectionModel } from "../collection-model.ts";
 import { collectionWords } from "../collection-words.ts";
@@ -17,12 +18,18 @@ export interface OpenCell extends CellRef {
   readonly seed?: string;
 }
 
+/** The record the Remove dialog asks about, named when it opened, as the name goes with the row. */
+export interface RecordToRemove {
+  readonly id: string;
+  readonly name: string | undefined;
+}
+
 /** What the grid's cells and Remove dialog read and call. */
 export interface RecordEdits {
   readonly editing: OpenCell | undefined;
   readonly saveFailed: CellRef | undefined;
   readonly addFailed: boolean;
-  readonly removing: string | undefined;
+  readonly removing: RecordToRemove | undefined;
   readonly removeFailed: boolean;
   readonly removeBusy: boolean;
   /** What a screen reader hears after a record was added or removed. */
@@ -38,7 +45,7 @@ export interface RecordEdits {
   readonly commit: (row: string, field: CollectionColumn, text: string) => Promise<void>;
   readonly askRemove: (row: string) => void;
   readonly cancelRemove: () => void;
-  readonly confirmRemove: (row: string) => Promise<void>;
+  readonly confirmRemove: (record: RecordToRemove) => Promise<void>;
 }
 
 /** What the grid does after the edits it can't see: where focus goes once a record is added. */
@@ -51,6 +58,16 @@ function rowIds(model: CollectionModel): string[] {
   return model.state.grid?.rows.map((row) => row.id) ?? [];
 }
 
+/** The name of the record with this id in the grid as it is now; `undefined` when it has none. */
+export function nameOfRecord(model: CollectionModel, id: string | undefined): string | undefined {
+  const grid = model.state.grid;
+  if (grid === undefined || id === undefined) return undefined;
+  return recordName(
+    grid.fields,
+    grid.rows.find((row) => row.id === id),
+  );
+}
+
 /** The grid's edit state: which cell is open, what failed, and the Remove dialog's. */
 export function useRecordEdits(
   model: CollectionModel,
@@ -60,7 +77,7 @@ export function useRecordEdits(
   const [announcement, setAnnouncement] = useState("");
   const [saveFailed, setSaveFailed] = useState<CellRef | undefined>(undefined);
   const [addFailed, setAddFailed] = useState(false);
-  const [removing, setRemoving] = useState<string | undefined>(undefined);
+  const [removing, setRemoving] = useState<RecordToRemove | undefined>(undefined);
   const [removeFailed, setRemoveFailed] = useState(false);
   const [removeBusy, setRemoveBusy] = useState(false);
 
@@ -73,9 +90,7 @@ export function useRecordEdits(
     if (outcome === "failed") setAddFailed(true);
     if (outcome !== "added") return;
     const added = rowIds(model).find((id) => !before.includes(id));
-    setAnnouncement(
-      added === undefined ? collectionWords.addedRecord : collectionWords.added(added),
-    );
+    setAnnouncement(collectionWords.added(nameOfRecord(model, added)));
     onAdded();
   }
 
@@ -113,14 +128,14 @@ export function useRecordEdits(
     await commit(row, field, "");
   }
 
-  async function confirmRemove(row: string): Promise<void> {
+  async function confirmRemove({ id, name }: RecordToRemove): Promise<void> {
     if (removeBusy) return;
     setRemoveBusy(true);
     setRemoveFailed(false);
-    const removed = await model.remove(row);
+    const removed = await model.remove(id);
     setRemoveBusy(false);
     if (removed) {
-      setAnnouncement(collectionWords.removed(row));
+      setAnnouncement(collectionWords.removed(name));
       setRemoving(undefined);
     } else setRemoveFailed(true);
   }
@@ -139,7 +154,7 @@ export function useRecordEdits(
     commit,
     askRemove: (row) => {
       setRemoveFailed(false);
-      setRemoving(row);
+      setRemoving({ id: row, name: nameOfRecord(model, row) });
     },
     cancelRemove: () => setRemoving(undefined),
     confirmRemove,

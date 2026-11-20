@@ -329,10 +329,13 @@ export function provideFolderServices(
   );
   services.provide(
     NewCollectionHostService,
-    new WorkspaceNewCollection({
-      files: services.get(workspaceFilesKey),
-      onChange: (listener) => scope.events.on("files.changed", listener),
-    }),
+    new WorkspaceNewCollection(
+      {
+        files: services.get(workspaceFilesKey),
+        onChange: (listener) => scope.events.on("files.changed", listener),
+      },
+      (place, name) => libraryItems.remember("collection", place, name),
+    ),
   );
   services.provide(
     NewConnectorHostService,

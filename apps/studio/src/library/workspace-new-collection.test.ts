@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { WorkspaceNewCollection } from "./workspace-new-collection.ts";
 
 function setup() {
@@ -9,18 +9,22 @@ function setup() {
       "version: 1\nid: claims\nname: Claims\nfields:\n  name:\n    type: text\n    required: true\n",
   };
   const changes: Array<[string, Record<string, string | null>]> = [];
-  const host = new WorkspaceNewCollection({
-    files: {
-      read: async (path) => store[path] ?? null,
-      list: async (dir) =>
-        Object.keys(store)
-          .filter((path) => path.startsWith(`${dir}/`))
-          .sort(),
-      change: (label, made) => changes.push([label, made]),
+  const made = vi.fn();
+  const host = new WorkspaceNewCollection(
+    {
+      files: {
+        read: async (path) => store[path] ?? null,
+        list: async (dir) =>
+          Object.keys(store)
+            .filter((path) => path.startsWith(`${dir}/`))
+            .sort(),
+        change: (label, written) => changes.push([label, written]),
+      },
+      onChange: () => () => undefined,
     },
-    onChange: () => () => undefined,
-  });
-  return { host, changes };
+    made,
+  );
+  return { host, changes, made };
 }
 
 verifies("library.new-collection", () => {
@@ -47,6 +51,12 @@ verifies("library.new-collection", () => {
     expect(changes[0]?.[1]["library/collections/invoices.collection.yaml"]).toContain(
       "id: invoices",
     );
+  });
+
+  it("tells the Library the new collection's name, so its tab shows it before the list is read", async () => {
+    const { host, made } = setup();
+    await host.create({ name: " Invoices " });
+    expect(made).toHaveBeenCalledExactlyOnceWith({ hub: null, id: "invoices" }, "Invoices");
   });
 
   it("refuses an empty name in a sentence and writes nothing", async () => {

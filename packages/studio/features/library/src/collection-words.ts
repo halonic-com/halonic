@@ -18,19 +18,24 @@ export const collectionWords = {
   volatileLine: "Records are kept only while this Studio is open.",
   defaultTag: "default",
   newRowLabel: "New record",
+  nameLabel: "Name",
   newRowHint: (needed: readonly string[]) =>
     `Fill the last row to add a record: still needed ${needed.join(", ")}.`,
   rowRemoved: "Row removed by another change.",
   saveFailed: "Couldn't save the change.",
   addFailed: "Couldn't add the record.",
-  rowMenuLabel: (row: string) => `More actions for ${row}`,
+  // A record is named by its first field's text; one whose first field is empty, by these fallbacks.
+  rowMenuLabel: (record: string | undefined) => `More actions for ${record ?? "this record"}`,
+  cellLabel: (field: string, record: string | undefined) =>
+    record === undefined ? field : `${field}, ${record}`,
   remove: "Remove",
   removing: "Removing…",
-  removeTitle: (row: string) => `Remove ${row}?`,
+  removeTitle: (record: string | undefined) => `Remove ${record ?? "this record"}?`,
   removeFailed: "Couldn't remove the record.",
-  added: (row: string) => `Added ${row}.`,
-  addedRecord: "Added a record.",
-  removed: (row: string) => `Removed ${row}.`,
+  added: (record: string | undefined) =>
+    record === undefined ? "Added a record." : `Added ${record}.`,
+  removed: (record: string | undefined) =>
+    record === undefined ? "Removed a record." : `Removed ${record}.`,
   noRecords: "No records yet.",
   addRecord: "Add record",
   noneInView: "No records match this view.",
