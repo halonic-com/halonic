@@ -57,7 +57,7 @@ impl HttpFetchState {
         Self::with_proxy(ProxySetting::from_env(|name| std::env::var(name).ok()))
     }
 
-    fn with_proxy(proxy: ProxySetting) -> Self {
+    pub(crate) fn with_proxy(proxy: ProxySetting) -> Self {
         Self {
             calls: Mutex::default(),
             proxy: Arc::new(proxy),

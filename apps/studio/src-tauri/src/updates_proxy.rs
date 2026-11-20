@@ -19,8 +19,16 @@ use tauri_plugin_updater::{Error as UpdaterError, UpdaterBuilder, UpdaterExt};
 
 use crate::http_fetch::HttpFetchState;
 
-/// As many redirects as reqwest follows by default.
-const MAX_REDIRECTS: usize = 10;
+/// As many redirects as reqwest follows by default. More than the guard's
+/// `MAX_REDIRECTS` for `http_fetch` (5): update servers and their download
+/// mirrors redirect more, and every hop here is still decided by `route_for`.
+const UPDATER_MAX_REDIRECTS: usize = 10;
+
+/// Where a request `route_for` refuses is sent instead: port 0 on this
+/// computer, which nothing can listen on, so the connection fails before
+/// anything is sent. reqwest's custom proxy can only name a proxy or none,
+/// and none would mean direct.
+const REFUSED_PROXY: &str = "http://127.0.0.1:0";
 
 /// The app's updater, its client on Halonic's proxy rules. `configure` adds
 /// the caller's own client settings, as the updater keeps only one.
@@ -66,13 +74,15 @@ fn on_proxy_rules(client: ClientBuilder, setting: &Arc<ProxySetting>) -> ClientB
 }
 
 /// The proxy for the requests `route_for` tunnels, with the proxy's user
-/// name and password on the CONNECT line only. A plain `http` request is
-/// never tunnelled; the updater refuses one for its endpoints and download,
-/// and the redirect policy refuses one on a public hop.
+/// name and password on the CONNECT line only. A request `route_for`
+/// refuses (plain `http` to a public host) fails at [`REFUSED_PROXY`] and
+/// never goes direct, whatever the updater allows for its endpoints and
+/// download; the redirect policy refuses such a hop before that.
 fn tunnel_proxy(endpoint: &ProxyEndpoint, setting: Arc<ProxySetting>) -> Proxy {
     let proxy = Proxy::custom(move |url| match route_for(url, &setting) {
         Ok(Route::Tunnel(endpoint)) => Some(endpoint.url()),
-        Ok(Route::Direct) | Err(_) => None,
+        Ok(Route::Direct) => None,
+        Err(_) => Some(REFUSED_PROXY.to_owned()),
     });
     match endpoint.credentials() {
         Some((username, password)) => proxy.basic_auth(username, password),
@@ -80,12 +90,12 @@ fn tunnel_proxy(endpoint: &ProxyEndpoint, setting: Arc<ProxySetting>) -> Proxy {
     }
 }
 
-/// Follows up to [`MAX_REDIRECTS`] hops, each only where `route_for` allows
+/// Follows up to [`UPDATER_MAX_REDIRECTS`] hops, each only where `route_for` allows
 /// it: a plain `http` hop to a public host while a proxy is set is refused.
 fn redirect_policy(setting: Arc<ProxySetting>) -> Policy {
     Policy::custom(move |attempt| {
         // The first URL in `previous` is the request's own, not a redirect.
-        if attempt.previous().len() > MAX_REDIRECTS {
+        if attempt.previous().len() > UPDATER_MAX_REDIRECTS {
             return attempt.error("too many redirects");
         }
         match route_for(attempt.url(), &setting) {
