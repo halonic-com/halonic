@@ -1,5 +1,10 @@
 //! Requirement `default-distro`: the default read from the `*` marker only.
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+
 use std::path::Path;
 use std::time::Duration;
 
