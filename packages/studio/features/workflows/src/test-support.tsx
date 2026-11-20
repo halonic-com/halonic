@@ -201,3 +201,33 @@ export function memoryRuns(summaries: readonly RunSummary[] = []) {
     },
   };
 }
+
+/** A field of the docked card, by its label. */
+export function field(page: HTMLElement, label: string) {
+  const labelElement = [...page.querySelectorAll("aside label")].find(
+    (one) => one.textContent?.trim() === label,
+  );
+  const id = labelElement?.getAttribute("for");
+  return (id === null || id === undefined ? undefined : document.getElementById(id)) as
+    | HTMLInputElement
+    | HTMLTextAreaElement
+    | HTMLSelectElement
+    | undefined;
+}
+
+export async function choose(select: HTMLSelectElement, value: string) {
+  await act(async () => {
+    select.value = value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
+export async function typeAndLeave(element: HTMLInputElement | HTMLTextAreaElement, text: string) {
+  await act(async () => element.focus());
+  await act(async () => {
+    const proto = Object.getPrototypeOf(element) as object;
+    Object.getOwnPropertyDescriptor(proto, "value")?.set?.call(element, text);
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => element.blur());
+}

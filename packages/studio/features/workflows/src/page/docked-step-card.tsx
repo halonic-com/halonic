@@ -1,4 +1,3 @@
-import { findSecretShape } from "@halonicjs/std";
 import {
   Button,
   CloseIcon,
@@ -11,13 +10,12 @@ import {
   useToastStore,
 } from "@halonicjs/studio-kit";
 import {
-  type AutoSaved,
   errorReasonFor,
   type SaveState,
   useAutoSaved,
   useReportNotSaved,
 } from "@halonicjs/studio-shell";
-import { type KeyboardEvent, useCallback } from "react";
+import { type KeyboardEvent, useCallback, useState } from "react";
 import type {
   WorkflowAgentChoice,
   WorkflowArrow,
@@ -27,6 +25,7 @@ import type {
   WorkflowStepType,
   WorkflowsHost,
 } from "../api.ts";
+import { keyCheck, noCheck, pickNow } from "./field-saving.ts";
 import { pageWords } from "./page-words.ts";
 import type { Dock } from "./run-dock.tsx";
 import { ArrowsIn, StepArrows } from "./step-arrows.tsx";
@@ -47,7 +46,7 @@ export interface DockedStepCardProps {
   readonly stepIds: readonly string[];
   /** The workflow's arrows: the step's own, and those into it for **Arrows in**. */
   readonly arrows: readonly WorkflowArrow[];
-  /** Adds or moves one of the step's arrows; resolves to whether it was written. Absent: no arrows section. */
+  /** Adds, moves or changes one of the step's arrows; resolves to whether it was written. Absent: no arrows section. */
   readonly changeArrows?: ((change: WorkflowArrowChange) => Promise<boolean>) | undefined;
   /** Opens another step's card, from **Arrows in**. */
   readonly onOpenStep: (stepId: string) => void;
@@ -99,20 +98,6 @@ function stepsInto(stepId: string, arrows: readonly WorkflowArrow[]): readonly s
   return [...new Set(from.map((arrow) => arrow.from))];
 }
 
-/** A picker's change: the pick is a finished edit, so it is saved at once. */
-const pickNow =
-  (field: AutoSaved) =>
-  (next: string): void => {
-    field.onChange(next);
-    field.flush();
-  };
-
-/** Save model 8.4: a key pasted into a field is not saved. */
-const keyCheck = (text: string): string | null =>
-  findSecretShape(text) === undefined ? null : words.looksLikeKey;
-
-const noCheck = (): null => null;
-
 /**
  * The card docked at the right that edits a picked step (`workflows.page.step-card`, flow-workflows
  * 5.1 and 5.2): the breadcrumb, "Step triage" as its title, then the fields the step's kind has.
@@ -150,7 +135,13 @@ export function DockedStepCard({
   // the file, as with a change of kind, so picking an agent again brings it back.
   const hasPrompt = kind === "task" && agent.value !== "" && step.promptIsData !== true;
   const hasOutput = writesOutput.has(kind);
-  useReportNotSaved(reportNotSaved, [
+  // The expanded arrow's fields count with the card's own.
+  const [arrowFieldsNotSaved, setArrowFieldsNotSaved] = useState(0);
+  const reportCard = useCallback(
+    (count: number) => reportNotSaved?.(count + arrowFieldsNotSaved),
+    [reportNotSaved, arrowFieldsNotSaved],
+  );
+  useReportNotSaved(reportCard, [
     type,
     ...(hasAgent ? [agent] : []),
     description,
@@ -235,8 +226,10 @@ export function DockedStepCard({
               stepId={step.id}
               arrows={arrows.filter((arrow) => arrow.from === step.id)}
               stepIds={stepIds}
+              isWait={kind === "wait"}
               change={changeArrows}
               announce={announce}
+              reportNotSaved={setArrowFieldsNotSaved}
             />
           )}
           <ArrowsIn from={stepsInto(step.id, arrows)} onOpen={onOpenStep} />

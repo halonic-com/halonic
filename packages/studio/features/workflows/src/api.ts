@@ -153,11 +153,25 @@ export interface WorkflowArrow {
  * - `add`: a new arrow to the step `to`, on done, after the step's other arrows;
  * - `move`: the step's arrow at `index` (in file order, from 0) one place up (`-1`) or down (`1`),
  *   which changes which arrow wins when several fit. `to` is where that arrow goes as the card
- *   showed it, so a card that is out of date can't move another arrow.
+ *   showed it, so a card that is out of date can't move another arrow;
+ * - `set`: one field of the step's arrow at `index`, from its expanded row (see
+ *   {@link WorkflowArrowFieldChange}).
  */
 export type WorkflowArrowChange =
   | { readonly kind: "add"; readonly to: string }
-  | { readonly kind: "move"; readonly index: number; readonly by: -1 | 1; readonly to: string };
+  | { readonly kind: "move"; readonly index: number; readonly by: -1 | 1; readonly to: string }
+  | ({ readonly kind: "set"; readonly index: number } & WorkflowArrowFieldChange);
+
+/**
+ * One field of an arrow, as its expanded row edits it. `undefined` takes the field out of the file:
+ * the arrow then fires on done, has no timer, no condition or no label. A timer (`after`) replaces
+ * the arrow's event, as a wait step's arrow fires either on an event or after a time.
+ */
+export type WorkflowArrowFieldChange =
+  | { readonly field: "to"; readonly value: string }
+  | { readonly field: "event" | "after" | "label"; readonly value: string | undefined }
+  /** The condition as data (the file's `when`), parsed from the row's JSON. */
+  | { readonly field: "condition"; readonly value: unknown };
 
 /** One workflow as its page draws it. */
 export interface WorkflowView extends WorkflowRef {

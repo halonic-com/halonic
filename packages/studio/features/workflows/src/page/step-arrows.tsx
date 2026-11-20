@@ -1,6 +1,14 @@
-import { Button, Menu, MoreIcon, Select, type SelectOption } from "@halonicjs/studio-kit";
+import {
+  Button,
+  ChevronDownIcon,
+  Menu,
+  MoreIcon,
+  Select,
+  type SelectOption,
+} from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
-import type { WorkflowArrow, WorkflowArrowChange } from "../api.ts";
+import type { WorkflowArrow, WorkflowArrowChange, WorkflowArrowFieldChange } from "../api.ts";
+import { ArrowFields } from "./arrow-fields.tsx";
 import { conditionWords } from "./condition-words.ts";
 import { pageWords } from "./page-words.ts";
 
@@ -11,11 +19,15 @@ export interface StepArrowsProps {
   readonly stepId: string;
   /** The step's arrows, in the order its file lists them. */
   readonly arrows: readonly WorkflowArrow[];
-  /** Every step of the workflow, which **Go to…** offers. */
+  /** Every step of the workflow, which **Go to…** and an arrow's **To** offer. */
   readonly stepIds: readonly string[];
+  /** The step is a wait, so its arrows can fire after a time. */
+  readonly isWait: boolean;
   /** Makes one change of the step's arrows; resolves to whether it was written. */
   readonly change: (change: WorkflowArrowChange) => Promise<boolean>;
   readonly announce?: ((line: string) => void) | undefined;
+  /** Hears how many fields of the expanded arrow aren't saved. */
+  readonly reportNotSaved?: ((count: number) => void) | undefined;
 }
 
 /** What an arrow's row says after its target: "on done if category = refund", "after 2d". */
@@ -31,10 +43,20 @@ function whenItFires(arrow: WorkflowArrow): string {
  * The step card's "Arrows (first match wins)" (`workflows.page.step-arrows`, flow-workflows 5.3):
  * the step's arrows numbered in file order, as "1 → draft on done", each with ⋮ › **Move up** and
  * **Move down**, then **Go to…** and **Add**, which adds an arrow on done to the step picked there.
- * A moved arrow keeps focus on its row's ⋮, now in its new place.
+ * A moved arrow keeps focus on its row's ⋮, now in its new place. Pressing a row expands it to
+ * the arrow's fields (see {@link ArrowFields}); one row is expanded at a time.
  */
-export function StepArrows({ stepId, arrows, stepIds, change, announce }: StepArrowsProps) {
+export function StepArrows({
+  stepId,
+  arrows,
+  stepIds,
+  isWait,
+  change,
+  announce,
+  reportNotSaved,
+}: StepArrowsProps) {
   const headingId = useId();
+  const fieldsId = useId();
   const list = useRef<HTMLOListElement>(null);
   const goToPicker = useRef<HTMLElement>(null);
   const [target, setTarget] = useState("");
@@ -43,6 +65,8 @@ export function StepArrows({ stepId, arrows, stepIds, change, announce }: StepAr
   // Set while a move is written: the rows still show the old order, so a second move would pick
   // the arrow by its old place.
   const moving = useRef(false);
+  // The expanded row, by its place in the list.
+  const [expanded, setExpanded] = useState<number | undefined>();
 
   useEffect(() => {
     if (focusRow === undefined) return;
@@ -61,6 +85,9 @@ export function StepArrows({ stepId, arrows, stepIds, change, announce }: StepAr
       moving.current = false;
     }
     setFocusRow(index + by);
+    // An expanded row stays expanded on the arrow it shows, which changed places.
+    if (expanded === index) setExpanded(index + by);
+    else if (expanded === index + by) setExpanded(index);
     announce?.(words.moved(index + 1, index + by + 1));
   };
   const add = async () => {
@@ -84,38 +111,61 @@ export function StepArrows({ stepId, arrows, stepIds, change, announce }: StepAr
         <ol ref={list} className="flex flex-col gap-1">
           {arrows.map((arrow, index) => (
             // An arrow has no name of its own: its place in the list is what the file knows it by.
-            <li key={index} className="flex items-center gap-2 text-body">
-              <span className="w-4 shrink-0 text-fg-muted tabular-nums">{index + 1}</span>
-              <span className="min-w-0 flex-1">
-                <span className="font-medium">{words.to(arrow.to)}</span>{" "}
-                <span className="text-fg-muted">{whenItFires(arrow)}</span>
-              </span>
-              <Menu
-                align="end"
-                trigger={(props) => (
+            <li key={index} className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-body">
+                <span className="w-4 shrink-0 text-fg-muted tabular-nums">{index + 1}</span>
+                <span className="min-w-0 flex-1">
                   <Button
-                    {...props}
                     variant="ghost"
                     size="sm"
-                    icon={<MoreIcon />}
-                    label={words.more(index + 1)}
-                  />
-                )}
-                entries={[
-                  {
-                    id: "up",
-                    label: words.moveUp,
-                    disabled: index === 0,
-                    onSelect: () => void move(index, -1),
-                  },
-                  {
-                    id: "down",
-                    label: words.moveDown,
-                    disabled: index === arrows.length - 1,
-                    onSelect: () => void move(index, 1),
-                  },
-                ]}
-              />
+                    aria-expanded={expanded === index}
+                    {...(expanded === index ? { "aria-controls": fieldsId } : {})}
+                    icon={<ChevronDownIcon />}
+                    onClick={() => setExpanded(expanded === index ? undefined : index)}
+                  >
+                    <span className="font-medium">{words.to(arrow.to)}</span>{" "}
+                    <span className="text-fg-muted">{whenItFires(arrow)}</span>
+                  </Button>
+                </span>
+                <Menu
+                  align="end"
+                  trigger={(props) => (
+                    <Button
+                      {...props}
+                      variant="ghost"
+                      size="sm"
+                      icon={<MoreIcon />}
+                      label={words.more(index + 1)}
+                    />
+                  )}
+                  entries={[
+                    {
+                      id: "up",
+                      label: words.moveUp,
+                      disabled: index === 0,
+                      onSelect: () => void move(index, -1),
+                    },
+                    {
+                      id: "down",
+                      label: words.moveDown,
+                      disabled: index === arrows.length - 1,
+                      onSelect: () => void move(index, 1),
+                    },
+                  ]}
+                />
+              </div>
+              {expanded === index && (
+                <ArrowFields
+                  arrow={arrow}
+                  id={fieldsId}
+                  stepIds={stepIds}
+                  fromWait={isWait}
+                  set={(field: WorkflowArrowFieldChange) =>
+                    change({ kind: "set", index, ...field })
+                  }
+                  reportNotSaved={reportNotSaved}
+                />
+              )}
             </li>
           ))}
         </ol>
