@@ -4,6 +4,8 @@
 
 const secondInMs = 1000;
 const minuteInSeconds = 60;
+const hourInMinutes = 60;
+const dayInHours = 24;
 const shortDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const shortMonths = [
   "Jan",
@@ -22,13 +24,18 @@ const shortMonths = [
 
 /**
  * How long something took: whole seconds under a minute, then minutes and
- * seconds, or whole minutes when the seconds are 0. Rounded down, and never
- * under "1 s"; no hours, so a long run reads "75 min".
+ * seconds, from an hour on hours and minutes, and from 24 hours days and
+ * hours, as the Inbox counts days, leaving out a smaller unit that is 0. Rounded down, and never under
+ * "1 s" (HAL-13919: a run answered from the Inbox a day later read "2158 min
+ * 32 s").
  *
  * @example
  * tookWords(18_900); // "18 s"
  * tookWords(347_000); // "5 min 47 s"
  * tookWords(360_000); // "6 min"
+ * tookWords(8_100_000); // "2 h 15 min"
+ * tookWords(129_512_000); // "1 day 11 h"
+ * tookWords(187_200_000); // "2 days 4 h"
  */
 export function tookWords(ms: number): string {
   const seconds = Math.max(1, Math.floor(ms / secondInMs));
@@ -36,8 +43,20 @@ export function tookWords(ms: number): string {
     return `${seconds} s`;
   }
   const minutes = Math.floor(seconds / minuteInSeconds);
-  const rest = seconds % minuteInSeconds;
-  return rest === 0 ? `${minutes} min` : `${minutes} min ${rest} s`;
+  if (minutes < hourInMinutes) {
+    return withRest(`${minutes} min`, seconds % minuteInSeconds, "s");
+  }
+  const hours = Math.floor(minutes / hourInMinutes);
+  if (hours < dayInHours) {
+    return withRest(`${hours} h`, minutes % hourInMinutes, "min");
+  }
+  const days = Math.floor(hours / dayInHours);
+  return withRest(days === 1 ? "1 day" : `${days} days`, hours % dayInHours, "h");
+}
+
+/** The larger unit, then the rest in the smaller one unless it is 0. */
+function withRest(larger: string, rest: number, unit: string): string {
+  return rest === 0 ? larger : `${larger} ${rest} ${unit}`;
 }
 
 /**
