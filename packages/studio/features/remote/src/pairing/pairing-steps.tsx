@@ -46,17 +46,24 @@ export function CodeStep({
   const typedId = useId();
   const newCodeButton = useRef<HTMLButtonElement>(null);
   const refusal = useRef<CalloutHandle>(null);
+  const refusalTop = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (refused) refusal.current?.focus();
+    if (refused) {
+      // At 195 px the group is taller than the dialog's scroller: show its title first (C306 PP2).
+      refusalTop.current?.scrollIntoView?.({ block: "start" });
+      refusal.current?.focus();
+    }
     else if (focusLost()) newCodeButton.current?.focus();
   }, [refused]);
   const left = Date.parse(code.expiresAt) - now();
   return (
     <div className="flex flex-col gap-4">
       {refused ? (
-        <Callout tone="attention" title={words.NOT_ALLOWED_TITLE} announce="focus" ref={refusal}>
-          {words.NOT_ALLOWED_LINE}
-        </Callout>
+        <div ref={refusalTop}>
+          <Callout tone="attention" title={words.NOT_ALLOWED_TITLE} announce="focus" ref={refusal}>
+            {words.NOT_ALLOWED_LINE}
+          </Callout>
+        </div>
       ) : null}
       <div className="flex items-center gap-6">
         <QrTile value={code.qr} label={words.QR_LABEL} />

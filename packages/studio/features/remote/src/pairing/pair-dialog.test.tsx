@@ -237,10 +237,15 @@ verifies("remote.pair-a-phone-problems", () => {
     remote.phoneUsesCode({ name: "Pixel 8" });
     await settle();
 
+    const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
     await press(buttonIn(dialog(), "Don't allow"));
 
     expect(remote.snapshot.phones).toHaveLength(0);
     expect(focused()).toContain("Pairing was not allowed");
+    // Its title shows first, even where the group is taller than the dialog (C306 PP2).
+    const top = scrolled.mock.contexts.at(-1) as Element | undefined;
+    expect(top?.textContent).toMatch(/^Pairing was not allowed/);
+    expect(scrolled).toHaveBeenLastCalledWith({ block: "start" });
     expect(typedCode()).toBeDefined();
   });
 
