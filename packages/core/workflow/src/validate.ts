@@ -1,4 +1,5 @@
 import type { Workflow } from "@halonicjs/format";
+import { inputIssues } from "./input-checks.ts";
 import { hasState } from "./machine.ts";
 import { STATE_CHECKS } from "./state-checks.ts";
 import { issue, stateKey, type ValidateOptions, type WorkflowIssue } from "./workflow-issue.ts";
@@ -8,7 +9,8 @@ import { issue, stateKey, type ValidateOptions, type WorkflowIssue } from "./wor
  * canvas shows them: states it names but doesn't have, dead ends,
  * unreachable states, steps missing what their type needs, unknown agents
  * and workflows, timers outside wait states, transitions that can never
- * fire, and picked data no earlier step writes.
+ * fire, picked data no earlier step writes, input fields the workflow's
+ * input doesn't have and a `start.field` no step reads.
  */
 export function validateWorkflow(
   workflow: Workflow,
@@ -24,6 +26,7 @@ export function validateWorkflow(
       issues.push(...check({ workflow, id, state, options }));
     }
   }
+  issues.push(...inputIssues(workflow, options));
   issues.push(...unreachableStates(workflow));
   if (!Object.values(workflow.states).some((state) => state.type === "final")) {
     issues.push(issue("warning", "no-final", "Workflow has no final state", []));

@@ -1,6 +1,15 @@
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
@@ -426,6 +435,44 @@ verifies("workflow.validate-wait-signal", () => {
     expect(code).toBe(exitCode.failed);
     expect(io.stdout.slice(1, 2)).toEqual([
       `  10:13  ✕ Wait step "check" can't send a signal. Put signal: on the step after it.  (wait-with-signal)`,
+    ]);
+  });
+});
+
+verifies("workflow.validate-input", () => {
+  /** The Acme example's Support reply, with `change` made to its file. */
+  function acmeWith(change: (text: string) => string): string {
+    const copy = join(folder, "acme-example");
+    cpSync(fileURLToPath(new URL("../../../../../examples/acme", import.meta.url)), copy, {
+      recursive: true,
+    });
+    const file = join(copy, "hubs/support/workflows/support-reply.workflow.yaml");
+    writeFileSync(file, change(readFileSync(file, "utf8")));
+    return copy;
+  }
+
+  // C337 row 1 (HAL-14267): the run gave the agent "(not set)" while validate said "No problems".
+  it("stops a gets of an input field the start form doesn't write, with exit 1", async () => {
+    const { code, io } = await validateIn(
+      acmeWith((text) => text.replace("gets: [input.mail]", "gets: [input.email]")),
+    );
+
+    expect(code).toBe(exitCode.failed);
+    expect(io.stdout.slice(1, 2)).toEqual([
+      '  11:12  ✕ "read" gets input.email, but the workflow\'s input has no field email. Did you mean input.mail?  (unknown-gets)',
+    ]);
+  });
+
+  // C337 row 3: the start form (Studio, phone) would write a field no step reads.
+  it("stops a start.field no step reads, once, with exit 1", async () => {
+    const { code, io } = await validateIn(
+      acmeWith((text) => text.replace("field: mail", "field: email")),
+    );
+
+    expect(code).toBe(exitCode.failed);
+    expect(io.stdout.slice(1, 3)).toEqual([
+      "  5:51  ✕ start.field is email, but no step reads input.email. The steps read input.mail: use one of those names as field, or add input.email to a step's gets.  (unread-start-field)",
+      "",
     ]);
   });
 });

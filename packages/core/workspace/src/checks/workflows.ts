@@ -35,6 +35,7 @@ function staticIssues(context: CheckContext, workflow: Workflow): WorkspaceIssue
     agents: [...context.idsOf("agent", workflow.hub)],
     workflows: [...context.idsOf("workflow", workflow.hub)],
     choices: choiceOptions(context, workflow.hub),
+    inputFields: inputFieldsOf(context, workflow),
   };
   return validateWorkflow(workflow.value, options).map((found) =>
     context.issue(found.severity, workflow.path, found.path, found.code, found.message),
@@ -50,6 +51,20 @@ function choiceOptions(context: CheckContext, hub: string | null): Record<string
         value.output.type === "choice" ? [[value.id, value.output.options]] : [],
       ),
   );
+}
+
+/** The input fields a workflow is started with by its tests and by the routines that run it. */
+function inputFieldsOf(context: CheckContext, workflow: Workflow): string[] {
+  const id = workflow.value.id;
+  const tests = context
+    .filesOf("workflowTest", workflow.hub)
+    .filter((test) => test.value.workflow === id)
+    .flatMap((test) => test.value.cases.map((testCase) => testCase.input));
+  const routines = context
+    .filesOf("routine")
+    .filter((routine) => (routine.hub ?? routine.value.run.hub) === workflow.hub)
+    .flatMap(({ value: { run } }) => ("workflow" in run && run.workflow === id ? [run.input] : []));
+  return [...new Set([...tests, ...routines].flatMap((input) => Object.keys(input)))];
 }
 
 /** One call of an agent's method: a state's own, or one branch of a parallel state. */
