@@ -3,6 +3,7 @@
 - Task: HAL-12406
 - Approval: the Started by column and the Details row are in the approved T8 checklist (1.2, 1.11) and microcopy (15.1, 19.3); the words for a routine's Run now are small wording on those approved screens, the team's call under HAL-2282 (Elena with Sofia, who agreed both on HAL-12440). Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KLqR01hNQgerlwnPskToBipoHzmT1XP00jFfoQTZFn41m/senr1dmDjp+Q7mQKYPgRHpyxxcn5xIVw0ghw6VBA==
 
 ## What changes
 
