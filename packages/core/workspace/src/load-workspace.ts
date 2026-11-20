@@ -1,3 +1,4 @@
+import type { SheetHosts } from "@halonicjs/format";
 import {
   type FileProblem,
   isReservedPath,
@@ -81,6 +82,8 @@ type FileOutcome =
  * delegate in a loop. A file that didn't parse counts as missing there.
  *
  * @param source - where the workspace files live
+ * @param options - `sheetHosts`: the hosts of the installed plugins' and the
+ *   local integrations' sheets, which `privacy.localOnly` counts
  * @returns the parsed files, every issue with its file, key path and line,
  *   and the files no kind places
  * @throws KindedError `invalid_input` naming the file or folder when the
@@ -91,7 +94,10 @@ type FileOutcome =
  * for (const issue of workspace.issues) report(issue.file, issue.line, issue.message);
  * const agents = filesOf(workspace, "agent");
  */
-export async function loadWorkspace(source: DefinitionSource): Promise<LoadedWorkspace> {
+export async function loadWorkspace(
+  source: DefinitionSource,
+  options: { readonly sheetHosts?: SheetHosts } = {},
+): Promise<LoadedWorkspace> {
   const version = await versionOf(source);
   const paths = (await listPaths(source)).filter((path) => !isReservedPath(path));
   const outcomes = await Promise.all(paths.map((path) => loadFile(source, path)));
@@ -116,7 +122,7 @@ export async function loadWorkspace(source: DefinitionSource): Promise<LoadedWor
     }
     issues.push(...outcome.issues);
   }
-  issues.push(...checkWorkspace(files, read, paths));
+  issues.push(...checkWorkspace(files, read, paths, options.sheetHosts));
   return { location: source.location, version, files, issues: byFile(issues), ignored };
 }
 

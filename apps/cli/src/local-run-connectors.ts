@@ -6,6 +6,7 @@
 
 import type { ConnectorFactories, SendingSettings } from "@halonicjs/app";
 import { FolderRunConnectors, type VersionedRun } from "@halonicjs/engine";
+import type { SheetHosts } from "@halonicjs/format";
 import {
   type ConnectorFactoryContext,
   type Secrets,
@@ -29,6 +30,11 @@ export interface LocalRunConnectorsInput {
    * version it read instead.
    */
   readonly trust: TrustGrant | null;
+  /**
+   * The hosts the installed plugins' backends and the local integrations
+   * under `folder`, a run's program folder, may reach (`computerSheetHosts`).
+   */
+  sheetHostsOf(folder: string): Promise<SheetHosts>;
   /** Frees what the factories made on this computer, such as the runners' temp folders; called once the connectors have closed. */
   dispose?(): Promise<void>;
 }
@@ -108,6 +114,7 @@ export function localRunConnectors(
         trust: read.trust,
         workingFoldersOf: (folder) =>
           programWorkingFolders(folder, engine.location, read.workspace),
+        sheetHostsOf: given.sheetHostsOf,
       };
     },
     runEnded: (runId) => engine.versions?.forget(runId),

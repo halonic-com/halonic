@@ -10,7 +10,7 @@
 
 import { type ConnectorFactories, connectorConfigOf, type ProgramCopyLease } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
-import { type Connector, connectorIsLocal } from "@halonicjs/format";
+import { type Connector, connectorIsLocalWith, type SheetHosts } from "@halonicjs/format";
 import type { ConnectorClient, ConnectorFactoryContext, TrustGrant } from "@halonicjs/ports";
 import type { ConnectorsRun, RunConnectors } from "./run-connectors.ts";
 
@@ -70,6 +70,12 @@ export interface RunConnectorsVersion {
    * (`format.working-folder-start`).
    */
   workingFoldersOf(folder: string): Promise<readonly string[]>;
+  /**
+   * The hosts the installed plugins' backends and the local integrations
+   * under `folder` may reach, so a local-only run counts them as `validate`
+   * does (`workspace.local-only-sheet-hosts`).
+   */
+  sheetHostsOf(folder: string): Promise<SheetHosts>;
 }
 
 /** A run's started connectors, and the hold on the folder they started in. */
@@ -159,8 +165,10 @@ export class FolderRunConnectors implements RunConnectors {
         workspaceRoot: folder.path,
         workingFolders: await read.workingFoldersOf(folder.path),
       };
+      // Read only for a local-only run, the one that leaves out what isn't local.
+      const sheets = run.localOnly ? await read.sheetHostsOf(folder.path) : undefined;
       for (const file of read.connectors) {
-        const local = connectorIsLocal(file);
+        const local = connectorIsLocalWith(file, sheets);
         // The engine would drop it anyway (`engine.local-only`): don't start it.
         if (run.localOnly && !local) continue;
         const config = connectorConfigOf(file);
@@ -181,8 +189,9 @@ export class FolderRunConnectors implements RunConnectors {
 
 /**
  * `client`, saying whether its connector runs on this computer, as
- * `connectorIsLocal` reads its file. In a local-only workspace the engine
- * calls only the connectors marked `local` (`engine.local-only`).
+ * `connectorIsLocalWith` reads its file and its sheet's hosts. In a
+ * local-only workspace the engine calls only the connectors marked `local`
+ * (`engine.local-only`).
  */
 function markedLocal(client: ConnectorClient, local: boolean): ConnectorClient {
   return {

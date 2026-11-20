@@ -40,6 +40,7 @@ import {
   sandboxGateMachine,
 } from "./sandbox-gate-machine.ts";
 import { profileKeyOrigins } from "./secret-host.ts";
+import { computerSheetHosts } from "./sheet-hosts.ts";
 import {
   type GaveUpRun,
   retriedLine,
@@ -281,6 +282,7 @@ function computerRunConnectors(
   const plugins = computerPluginMachine(integrations, { trust: machine, environment });
   return {
     trust,
+    sheetHostsOf: (folder) => computerSheetHosts(folder, folder, environment),
     // Workspace programs start in a sandbox session where the sandbox works (D45).
     factories: cliConnectorFactories(
       nodeProgramStarter,

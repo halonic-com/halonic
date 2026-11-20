@@ -113,7 +113,7 @@ export async function runWorkflow(
   const typed = oneWorkflow(input);
   const dir = await openWorkspaceDir(input, context);
   const typedDir = givenDir(input, dir);
-  const { workspace, version, changesNotLive } = await liveWorkspace(dir, setup.history);
+  const { workspace, version, changesNotLive } = await liveWorkspace(dir, setup);
   const workspaceName = printable(workspaceNameOf(workspace, dir));
   // Before the lookup: a file with an error is left out, so its workflow
   // would look missing (HAL-12978). The trust check below refuses it too.
@@ -392,13 +392,13 @@ function noWorkflowFix(workspace: LoadedWorkspace, typed: string, shown: ShownWo
  */
 async function liveWorkspace(
   dir: OpenWorkspaceDir,
-  history: OpenWorkspaceHistory | undefined,
+  setup: Pick<RunSetup, "history" | "profile">,
 ): Promise<{
   readonly workspace: LoadedWorkspace;
   readonly version: RunVersion;
   readonly changesNotLive: boolean;
 }> {
-  const run = await loadRunWorkspace(dir, history);
+  const run = await loadRunWorkspace(dir, setup.history, runMessages.nothingRan(), setup.profile);
   if (run.found === "nothing-live") {
     throw new OwnLineError("conflict", runMessages.nothingLive(), runMessages.nothingLiveFix());
   }

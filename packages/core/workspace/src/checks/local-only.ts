@@ -1,4 +1,13 @@
-import { connectorIsLocal, type ModelAlias, type Provider } from "@halonicjs/format";
+import {
+  type Connector,
+  connectorIsLocalWith,
+  type IntegrationHost,
+  type ModelAlias,
+  outsideHosts,
+  type Provider,
+  runsInRunner,
+  sheetHostsOf,
+} from "@halonicjs/format";
 import type { WorkspaceIssue } from "../load-workspace.ts";
 import type { CheckContext } from "./check-context.ts";
 import { isAliasName } from "./model-aliases.ts";
@@ -24,8 +33,8 @@ const turnOff = "or set privacy.localOnly: false in workspace.yaml";
  * program (Claude Code or Codex), because such a program sends the work to
  * its own cloud model. A provider is local when its file says `local: true`,
  * or when it is the mock model, as the engine counts it; a connector as
- * `connectorIsLocal` says. A provider no file has is left to the reference
- * checks.
+ * `connectorIsLocalWith` says, with the sheets' hosts the loader was given.
+ * A provider no file has is left to the reference checks.
  */
 export function checkLocalOnly(context: CheckContext): WorkspaceIssue[] {
   const workspace = context.filesOf("workspace")[0];
@@ -77,16 +86,48 @@ function modelSettingIssues(
   });
 }
 
-/** The connectors that aren't local, pointing at `local` when the file sets it. */
+/**
+ * The connectors that aren't local, pointing at `local` when the file sets
+ * it. Only a program or an address gets the `local: true` hint: a plugin's
+ * or an integration's code goes where its sheet says, so the message names
+ * the hosts that aren't local when the sheet lists any.
+ */
 function connectorIssues(context: CheckContext): WorkspaceIssue[] {
   return context
     .filesOf("connector")
-    .filter((connector) => !connectorIsLocal(connector.value))
+    .filter((connector) => !connectorIsLocalWith(connector.value, context.sheetHosts))
     .map((connector) => {
       const path = connector.value.local === undefined ? ["transport"] : ["local"];
-      const message = `Connector "${connector.value.id}" isn't local, and the workspace is local only: set local: true if it runs on this computer, ${turnOff}`;
+      const message = connectorMessage(connector.value, context);
       return context.error(connector.path, path, "local-only-connector", message);
     });
+}
+
+/** Why a connector isn't local, and the way out: `local: true` only for a program or an address. */
+function connectorMessage(connector: Connector, context: CheckContext): string {
+  if (!runsInRunner(connector)) {
+    return `Connector "${connector.id}" isn't local, and the workspace is local only: set local: true if it runs on this computer, ${turnOff}`;
+  }
+  const { sheetHosts } = context;
+  const hosts = sheetHosts === undefined ? [] : (sheetHostsOf(connector, sheetHosts) ?? []);
+  const outside = outsideHosts(hosts);
+  if (outside.length === 0) {
+    return `Connector "${connector.id}" isn't local, and the workspace is local only: set privacy.localOnly: false in workspace.yaml to use it`;
+  }
+  return `${codeOf(connector)} reaches ${outside.map(shownHost).join(", ")}, so it isn't local: set privacy.localOnly: false in workspace.yaml to use it`;
+}
+
+/** Whose code a runner connector runs: "The plugin acme-orders" or "The integration in integrations/notes". */
+function codeOf({ transport }: Connector): string {
+  if ("plugin" in transport) return `The plugin ${transport.plugin.id}`;
+  return "integration" in transport
+    ? `The integration in integrations/${transport.integration.folder}`
+    : "Its code";
+}
+
+/** A sheet's host as written, or the setting that holds it. */
+function shownHost(host: IntegrationHost): string {
+  return typeof host === "string" ? host : `the address in its ${host.fromSetting} setting`;
 }
 
 /** The agents that run in a harness program, which calls its own model, not the workspace's. */

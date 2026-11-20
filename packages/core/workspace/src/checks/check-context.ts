@@ -1,3 +1,4 @@
+import type { SheetHosts } from "@halonicjs/format";
 import { type FileProblem, fileKinds, type KindName, type KindValues } from "@halonicjs/format";
 import { readYaml, type SourcePosition } from "@halonicjs/yaml";
 import type { LoadedFile, LoadedFileOf, WorkspaceIssue } from "../load-workspace.ts";
@@ -52,12 +53,20 @@ function failedFileId(file: ReadFile): string | undefined {
  */
 export class CheckContext {
   readonly files: readonly LoadedFile[];
+  /** The hosts of the plugins' and local integrations' sheets, when the loader was given them. */
+  readonly sheetHosts: SheetHosts | undefined;
   private readonly read: ReadonlyMap<string, ReadFile>;
   private readonly listed: ReadonlySet<string>;
   private readonly positions = new Map<string, (path: Path) => SourcePosition>();
 
-  constructor(files: readonly LoadedFile[], read: readonly ReadFile[], listed: readonly string[]) {
+  constructor(
+    files: readonly LoadedFile[],
+    read: readonly ReadFile[],
+    listed: readonly string[],
+    sheetHosts?: SheetHosts,
+  ) {
     this.files = files;
+    this.sheetHosts = sheetHosts;
     this.read = new Map(read.map((file) => [file.path, file]));
     this.listed = new Set(listed);
   }

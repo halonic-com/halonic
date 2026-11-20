@@ -1,3 +1,4 @@
+import type { SheetHosts } from "@halonicjs/format";
 import type { LoadedFile, WorkspaceIssue } from "../load-workspace.ts";
 import { checkAgents } from "./agent-references.ts";
 import { CheckContext, type ReadFile } from "./check-context.ts";
@@ -49,13 +50,15 @@ const checks: readonly WorkspaceCheck[] = [
  * @param read - every file the loader read, with its kind and text, also
  *   those that failed: a check's line comes from the text
  * @param listed - every path of the workspace, also of files no kind reads
+ * @param sheetHosts - the hosts of the plugins' and local integrations' sheets, when known
  * @returns the errors and warnings, each with its file, key path and line
  */
 export function checkWorkspace(
   files: readonly LoadedFile[],
   read: readonly ReadFile[],
   listed: readonly string[],
+  sheetHosts?: SheetHosts,
 ): WorkspaceIssue[] {
-  const context = new CheckContext(files, read, listed);
+  const context = new CheckContext(files, read, listed, sheetHosts);
   return checks.flatMap((check) => check(context));
 }

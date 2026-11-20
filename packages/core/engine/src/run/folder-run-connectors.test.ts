@@ -1,6 +1,6 @@
 import { ConnectorFactories } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
-import type { Connector } from "@halonicjs/format";
+import type { Connector, IntegrationHost } from "@halonicjs/format";
 import type {
   ConnectorClient,
   ConnectorConfig,
@@ -37,7 +37,14 @@ interface Fixture {
   readonly contexts: ConnectorFactoryContext[];
 }
 
-function fixture(options: { closeFails?: boolean; files?: readonly Connector[] } = {}): Fixture {
+interface FixtureOptions {
+  readonly closeFails?: boolean;
+  readonly files?: readonly Connector[];
+  /** The `backend.hosts` of the installed plugins, by id. */
+  readonly plugins?: ReadonlyMap<string, readonly IntegrationHost[]>;
+}
+
+function fixture(options: FixtureOptions = {}): Fixture {
   const log: string[] = [];
   const reported: unknown[] = [];
   const contexts: ConnectorFactoryContext[] = [];
@@ -60,7 +67,7 @@ function fixture(options: { closeFails?: boolean; files?: readonly Connector[] }
     },
   };
   const connectors = new FolderRunConnectors({
-    factories: new ConnectorFactories([stdio]),
+    factories: new ConnectorFactories([stdio, { ...stdio, transport: "plugin" }]),
     programFolders: {
       folderFor: async (version) => {
         copies += 1;
@@ -78,6 +85,10 @@ function fixture(options: { closeFails?: boolean; files?: readonly Connector[] }
       connectors: options.files ?? [notes],
       trust: null,
       workingFoldersOf: async (folder) => [`${folder}/files/agents/coder`],
+      sheetHostsOf: async () => ({
+        plugins: options.plugins ?? new Map(),
+        integrations: new Map(),
+      }),
     }),
     runEnded: (runId) => void log.push(`ended ${runId}`),
     reportError: (error) => reported.push(error),
@@ -118,6 +129,25 @@ verifies("engine.run-connectors", () => {
       "create notes in /copies/2",
       "create remote in /copies/2",
     ]);
+  });
+
+  it("doesn't count local: true for a plugin whose backend reaches an outside host in a local-only run", async () => {
+    const plugin = (id: string, plugin: string) =>
+      ({ id, local: true, transport: { plugin: { id: plugin } } }) as Connector;
+    const plugins = new Map([
+      ["acme-orders", ["api.acme.example"]],
+      ["acme-ledger", ["ledger.localhost"]],
+    ]);
+    const files = [notes, plugin("orders", "acme-orders"), plugin("ledger", "acme-ledger")];
+    const { connectors, log } = fixture({ files, plugins });
+
+    const opened = await connectors.open(runOf("run_1", live, true));
+
+    expect(opened.map(({ id, local }) => ({ id, local }))).toEqual([
+      { id: "notes", local: true },
+      { id: "ledger", local: true },
+    ]);
+    expect(log).not.toContain("create orders in /copies/1");
   });
 
   it("gives each top-level run its own copy", async () => {

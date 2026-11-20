@@ -16,12 +16,14 @@ import {
 import { type LiveVersionReader, liveVersionOf, runSourceFor, runVersionOf } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
 import type { Vcs } from "@halonicjs/ports";
+import type { ProfileEnvironment } from "@halonicjs/profile";
 import { KindedError } from "@halonicjs/std";
 import { type LoadedWorkspace, loadWorkspace, placeOf } from "@halonicjs/workspace";
 import type { Message } from "./messages/define.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { sandboxMessages } from "./messages/sandbox.ts";
+import { computerSheetHosts } from "./sheet-hosts.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 
 /** What a run's workspace needs of version control: which version is live, and its files. */
@@ -97,6 +99,7 @@ function historyRefusalOf(
  * records the version it read: the live version's commit and date, or the
  * saved files.
  * `nothingDone` ends line 1 of a refusal: "Nothing ran." by default.
+ * `profile` holds the installed plugins, whose hosts `privacy.localOnly` counts.
  *
  * @throws HistoryUnavailableError when the workspace has history but it can't be opened
  */
@@ -104,6 +107,7 @@ export async function loadRunWorkspace(
   dir: OpenWorkspaceDir,
   openHistory: OpenWorkspaceHistory = openGitHistory,
   nothingDone: Message = runMessages.nothingRan(),
+  profile?: ProfileEnvironment,
 ): Promise<RunWorkspace> {
   const history = await openOrRefuse(dir.root, openHistory, nothingDone);
   try {
@@ -115,7 +119,9 @@ export async function loadRunWorkspace(
       return { found: "nothing-live" };
     }
     // Loaded before the history closes: a loaded workspace holds its files' contents.
-    const workspace = await loadWorkspace(picked.source);
+    // With the sheets' hosts, so `privacy.localOnly` refuses what `validate` does.
+    const sheetHosts = await computerSheetHosts(dir.root, dir.shown, profile);
+    const workspace = await loadWorkspace(picked.source, { sheetHosts });
     const changesNotLive =
       vcs !== null && picked.reads === "live-version" && (await definitionsChanged(vcs));
     return { found: "loaded", workspace, version: runVersionOf(picked), changesNotLive };
