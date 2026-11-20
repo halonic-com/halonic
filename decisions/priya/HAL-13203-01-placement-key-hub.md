@@ -2,7 +2,6 @@
 
 - Approval: decided by Liam on HAL-13203; the package owner (Liam) approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ByPQCe3L7dzW92u6CpsR9fP0Nl76PUZSMyhTREzqN7oYPiLmdHCJDj0c7LAxsSuUuC6L+5jpTTwVOrSbIX9QAQ==
 
 ## What changes
 
@@ -41,6 +40,7 @@ the agent goes back to its sandbox and the person confirms again.
 - agent-host.placement-routes
 - agent-host-client.placement-store
 - studio.new-agents-run
+- apps/studio/src/agents/workspace-agents-new-agents-run.test.ts
 - apps/studio/src/agents/workspace-agents.test.ts
 - packages/adapters/agent-host-client/src/placement-store.test.ts
 - packages/adapters/fs-node/src/agent-placement-store.test.ts
