@@ -3,6 +3,7 @@
 - Task: HAL-13318 (continues HAL-8792, item 3)
 - Approval: Liam, in review of HAL-13318
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:PG11uTU9wxgtqTRM5JNwt2rX6/4X6T3KHU1iC057/OZkN5isL8f0XHoVvwuIdjYK1vM0zL9a39p9N1CnTVpOAQ==
 
 ## What changes
 
