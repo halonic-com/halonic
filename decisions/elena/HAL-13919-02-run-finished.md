@@ -3,6 +3,7 @@
 - Task: HAL-13919
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13919 ("The run finished." decided by the team under HAL-2282 in the task's description, a detail of the approved card; Liam signed the two wording details for a run that ended another way and for a rejected tool call that ends the run in his review on the task)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:t/EdGBFopJVnhl/EvvORBbhcPXXDrR7q0+gQIhG2yJeYNM8WMBesLDDdlDsVs2GyIzUfoUQViMzNB87aF/NbDg==
 
 ## What changes
 
