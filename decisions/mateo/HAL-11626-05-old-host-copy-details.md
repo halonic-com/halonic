@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11626 (row R15 of the UX check on HAL-11613; the sentence is a team wording decision on HAL-11626, after the approved connect-screen pattern; Liam approves this note in review)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:j6xo83utEv8KsILzgdoeR8yZJBQjO57pcz5DTKXGElQHRd04rnktkEhzZHnQ5xyXeyHCH/fqOQ3EWMkG3u8aCg==
 
 Two requirements change, and one is new:
 
