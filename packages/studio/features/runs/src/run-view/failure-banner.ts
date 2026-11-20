@@ -16,6 +16,7 @@ import { capitalised } from "../run-words.ts";
 import { accountBanner } from "./account-banners.ts";
 import { apiOffOf } from "./api-off.ts";
 import { danger } from "./danger-banner.ts";
+import { proxyFailureOf } from "./proxy-failure.ts";
 import type { BannerFix, RunBanner, RunPageContext } from "./run-page-model.ts";
 
 /** The cause code the Studio gives a run it stopped because the workspace's trust was removed (`trustRemovedCause`). */
@@ -176,27 +177,26 @@ function apiOffBanner(summary: RunSummary, phone: boolean): RunBanner | undefine
 }
 
 /**
- * F7 for a call that failed at the proxy (a `proxy.*` cause, from the CLI's HTTP client or the
- * desktop shell's): the proxy, not the internet, with the shell's sentence when the cause gives
- * one, and **Model calls through a proxy ↗**. It reads the typed cause only, never the error.
+ * F7 for a call that failed at the proxy (a `proxy.*` cause): the proxy, not the internet, and
+ * **Model calls through a proxy ↗**. The desktop shell's cause brings its own sentence; the CLI's
+ * HTTP client's brings the facts for the CLI's two lines, what the proxy did and its one fix
+ * (`cli.run-failed-proxy`). It reads the typed cause only, never the error.
  */
 function proxyBanner(
   summary: RunSummary,
   facts: FailureFacts,
   context: RunPageContext,
 ): RunBanner | undefined {
-  const { cause } = summary;
-  if (facts.provider === undefined || cause?.code?.startsWith("proxy.") !== true) {
+  const failure = proxyFailureOf(summary);
+  if (facts.provider === undefined || failure === undefined) {
     return undefined;
   }
+  const name = providerNameOf(facts.provider, context.providerName);
+  const shellSentence = summary.cause?.detail?.["message"];
   return danger(
-    [
-      failureWords.modelUnreachableThroughProxy(
-        providerNameOf(facts.provider, context.providerName),
-        facts.host,
-        cause.detail?.["message"],
-      ),
-    ],
+    shellSentence === undefined
+      ? [failureWords.proxyProblem(name, failure), failureWords.proxyFix(name, failure)]
+      : [failureWords.modelUnreachableThroughProxy(name, facts.host, shellSentence)],
     {
       fixes: [
         {

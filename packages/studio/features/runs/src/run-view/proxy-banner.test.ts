@@ -1,14 +1,16 @@
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import type { ProviderKind } from "../api.ts";
 import { mondayMorning, summaryWith } from "../summary.test-helper.ts";
 import { causeBanner } from "./failure-banner.ts";
 import type { RunPageContext } from "./run-page-model.ts";
 
+const kinds: Record<string, ProviderKind> = { ollama: "local", claude: "cloud" };
 const context: RunPageContext = {
   workflow: { name: "Support reply", stepDescription: () => undefined },
   workflowOfRun: () => undefined,
-  providerKind: (id) => (id === "claude" ? "cloud" : undefined),
+  providerKind: (id) => kinds[id],
   providerName: (id) => (id === "claude" ? "Claude" : undefined),
   currency: "EUR",
   now: mondayMorning,
@@ -32,6 +34,15 @@ function failed(reason: RunSummary["reason"], changes: Partial<RunSummary> = {})
     ...changes,
   });
 }
+
+/** The button every proxy banner has: the how-to, on GitHub until docs.halonic.dev has it. */
+const proxyHowTo = {
+  kind: "open-external",
+  label: "Model calls through a proxy",
+  address:
+    "https://github.com/halonic-com/halonic/blob/main/docs/how-to/model-calls-through-a-proxy.md",
+  opens: "Opens GitHub",
+};
 
 const lines = (banner: ReturnType<typeof causeBanner>) =>
   banner?.kind === "callout" ? banner.lines : undefined;
@@ -72,15 +83,7 @@ verifies("runs.run-view.failure-banners", () => {
     ])("says it was the proxy for %s, with the shell's sentence", (code, message, line) => {
       const banner = causeBanner(proxied(code, message), log, context, false);
       expect(lines(banner)).toEqual([line]);
-      expect(banner?.kind === "callout" ? banner.fixes : undefined).toEqual([
-        {
-          kind: "open-external",
-          label: "Model calls through a proxy",
-          address:
-            "https://github.com/halonic-com/halonic/blob/main/docs/how-to/model-calls-through-a-proxy.md",
-          opens: "Opens GitHub",
-        },
-      ]);
+      expect(banner?.kind === "callout" ? banner.fixes : undefined).toEqual([proxyHowTo]);
     });
 
     it("says an unreachable proxy once, even when the shell's sentence gives nothing more", () => {
@@ -96,9 +99,10 @@ verifies("runs.run-view.failure-banners", () => {
       ).toEqual(["Halonic couldn't reach Claude at api.anthropic.com through your proxy."]);
     });
 
-    it("ends at the proxy for a cause without a sentence, and never says offline", () => {
+    it("gives the CLI's lines for a cause without a sentence, and never says offline", () => {
       expect(lines(causeBanner(proxied("proxy.refused"), log, context, false))).toEqual([
-        "Halonic couldn't reach Claude at api.anthropic.com through your proxy.",
+        "Halonic couldn't use your proxy from HTTPS_PROXY to reach Claude.",
+        "Check HTTPS_PROXY, then run again.",
       ]);
     });
 
@@ -106,6 +110,110 @@ verifies("runs.run-view.failure-banners", () => {
       expect(
         lines(causeBanner(proxied("network.dns", "no such host"), log, context, false))?.[0],
       ).toContain("This computer may be offline.");
+    });
+  });
+
+  describe("a model the proxy kept out of reach", () => {
+    // The same lines as the CLI's (requirement `cli.run-failed-proxy`), as sentences of their own.
+    const proxy = "http://127.0.0.1:3128";
+    const log = [call("claude", "claude-sonnet"), failedEvent("api.anthropic.com")];
+    const throughProxy = (problem: string, detail: Record<string, string>) =>
+      lines(
+        causeBanner(
+          failed("model-unreachable", {
+            cause: { kind: "unavailable", code: `proxy.${problem}`, detail },
+          }),
+          log,
+          context,
+          false,
+        ),
+      );
+
+    it("says the setting isn't one Halonic can use, in the variable it came from", () => {
+      expect(throughProxy("setting", { variable: "https_proxy" })).toEqual([
+        "The proxy setting in https_proxy isn't one Halonic can use, so nothing was sent to Claude.",
+        "Set https_proxy to http://host:port, then run again.",
+      ]);
+    });
+
+    it("names the proxy it couldn't reach", () => {
+      expect(throughProxy("unreachable", { variable: "HTTPS_PROXY", proxy })).toEqual([
+        "Halonic couldn't reach your proxy http://127.0.0.1:3128 from HTTPS_PROXY, so nothing was sent to Claude.",
+        "Start your proxy, or set HTTPS_PROXY to one that runs, then run again.",
+      ]);
+    });
+
+    it("names the proxy that didn't answer in time", () => {
+      expect(throughProxy("timeout", { variable: "HTTPS_PROXY", proxy })).toEqual([
+        "Your proxy http://127.0.0.1:3128 from HTTPS_PROXY didn't answer in time, so nothing was sent to Claude.",
+        "Start your proxy, or set HTTPS_PROXY to one that runs, then run again.",
+      ]);
+    });
+
+    it("names the host the proxy refused", () => {
+      const detail = { variable: "HTTPS_PROXY", proxy, host: "api.anthropic.com", status: "403" };
+      expect(throughProxy("refused", detail)).toEqual([
+        "Your proxy http://127.0.0.1:3128 from HTTPS_PROXY refused to connect to api.anthropic.com.",
+        "Ask whoever runs your proxy to allow api.anthropic.com, then run again.",
+      ]);
+    });
+
+    it("says the proxy refused the user name and password, never showing them", () => {
+      expect(throughProxy("credentials", { variable: "HTTPS_PROXY", proxy })).toEqual([
+        "Your proxy http://127.0.0.1:3128 from HTTPS_PROXY refused the user name and password.",
+        "Fix the user name and password in HTTPS_PROXY, then run again.",
+      ]);
+    });
+
+    it("offers https or NO_PROXY for a plain http host", () => {
+      expect(throughProxy("plain-http", { variable: "HTTPS_PROXY", host: "model.test" })).toEqual([
+        "Claude is at model.test over plain http, which Halonic never sends through the proxy in HTTPS_PROXY.",
+        "Give Claude an https:// baseUrl, or add model.test to NO_PROXY, then run again.",
+      ]);
+    });
+
+    it("offers the company's certificate for a failed security check", () => {
+      const detail = { variable: "HTTPS_PROXY", proxy, host: "api.anthropic.com" };
+      expect(throughProxy("insecure", detail)).toEqual([
+        "The connection to api.anthropic.com through your proxy http://127.0.0.1:3128 failed its security check.",
+        "If your proxy re-signs https, set NODE_EXTRA_CA_CERTS to your company's certificate, then run again.",
+      ]);
+    });
+
+    it("says to check the variable for a code it doesn't know, or one missing a fact its lines need", () => {
+      const other = [
+        "Halonic couldn't use your proxy from HTTPS_PROXY to reach Claude.",
+        "Check HTTPS_PROXY, then run again.",
+      ];
+      expect(throughProxy("bad-host", { variable: "HTTPS_PROXY" })).toEqual(other);
+      expect(throughProxy("refused", { variable: "HTTPS_PROXY", proxy })).toEqual(other);
+      expect(throughProxy("timeout", {})).toEqual(other);
+    });
+
+    it("says the same on a phone, with the how-to", () => {
+      const banner = causeBanner(
+        failed("model-unreachable", {
+          cause: { kind: "unavailable", code: "proxy.timeout", detail: { proxy } },
+        }),
+        [call("ollama", "llama3.2"), failedEvent("localhost:11434")],
+        context,
+        true,
+      );
+      expect(lines(banner)).toEqual([
+        "Your proxy http://127.0.0.1:3128 from HTTPS_PROXY didn't answer in time, so nothing was sent to Ollama.",
+        "Start your proxy, or set HTTPS_PROXY to one that runs, then run again.",
+      ]);
+      expect(banner?.kind === "callout" ? banner.fixes : undefined).toEqual([proxyHowTo]);
+    });
+
+    it("keeps the internet sentence for any other cause", () => {
+      const banner = causeBanner(
+        failed("model-unreachable", { cause: { kind: "unavailable", code: "network.offline" } }),
+        log,
+        context,
+        false,
+      );
+      expect(lines(banner)?.[0]).toContain("Check your internet connection");
     });
   });
 });

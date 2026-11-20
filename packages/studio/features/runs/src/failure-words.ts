@@ -1,4 +1,53 @@
+import type { ProxyFailure } from "./run-view/proxy-failure.ts";
 import { capitalised } from "./run-words.ts";
+
+/**
+ * What the proxy did, naming it and the variable it came from: the words of the CLI's line 1
+ * (`apps/cli/src/messages/proxy-failures.ts`), as a sentence of its own.
+ */
+function proxyProblemInWords(provider: string, failure: ProxyFailure): string {
+  const { variable } = failure;
+  switch (failure.problem) {
+    case "setting":
+      return `The proxy setting in ${variable} isn't one Halonic can use, so nothing was sent to ${provider}.`;
+    case "unreachable":
+      return `Halonic couldn't reach your proxy ${failure.proxy} from ${variable}, so nothing was sent to ${provider}.`;
+    case "timeout":
+      return `Your proxy ${failure.proxy} from ${variable} didn't answer in time, so nothing was sent to ${provider}.`;
+    case "refused":
+      return `Your proxy ${failure.proxy} from ${variable} refused to connect to ${failure.host}.`;
+    case "credentials":
+      return `Your proxy ${failure.proxy} from ${variable} refused the user name and password.`;
+    case "plain-http":
+      return `${capitalised(provider)} is at ${failure.host} over plain http, which Halonic never sends through the proxy in ${variable}.`;
+    case "insecure":
+      return `The connection to ${failure.host} through your proxy ${failure.proxy} failed its security check.`;
+    case "other":
+      return `Halonic couldn't use your proxy from ${variable} to reach ${provider}.`;
+  }
+}
+
+/** The one fix for what the proxy did: the words of the CLI's line 2. */
+function proxyFixInWords(provider: string, failure: ProxyFailure): string {
+  const { variable } = failure;
+  switch (failure.problem) {
+    case "setting":
+      return `Set ${variable} to http://host:port, then run again.`;
+    case "unreachable":
+    case "timeout":
+      return `Start your proxy, or set ${variable} to one that runs, then run again.`;
+    case "refused":
+      return `Ask whoever runs your proxy to allow ${failure.host}, then run again.`;
+    case "credentials":
+      return `Fix the user name and password in ${variable}, then run again.`;
+    case "plain-http":
+      return `Give ${provider} an https:// baseUrl, or add ${failure.host} to NO_PROXY, then run again.`;
+    case "insecure":
+      return `If your proxy re-signs https, set NODE_EXTRA_CA_CERTS to your company's certificate, then run again.`;
+    case "other":
+      return `Check ${variable}, then run again.`;
+  }
+}
 
 /** F7's "the model alias `smart`", or "the model gpt-4o" when the log doesn't give the alias. */
 function modelOrAlias(model: string, alias: string | undefined): string {
@@ -88,6 +137,10 @@ export const failureWords = {
   /** `run.failed` named an empty host: the address in the provider's file has none, such as one without `http://`. */
   modelAddressWithoutHost: (provider: string, model: string, alias: string | undefined) =>
     `Halonic couldn't reach ${provider} for ${modelOrAlias(model, alias)}: its address has no host. Check ${provider}'s address in Models. It starts with http:// or https://, such as http://localhost:11434.`,
+  /** `model-unreachable` because of the proxy: the CLI's line 1 (`cli.run-failed-proxy`). */
+  proxyProblem: proxyProblemInWords,
+  /** `model-unreachable` because of the proxy: the CLI's line 2, the one fix. */
+  proxyFix: proxyFixInWords,
   /** On a phone, "localhost" is the computer: the sentence says so (microcopy 15.3, revision 96). */
   localModelUnreachableOnPhone: (
     provider: string,
