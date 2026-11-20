@@ -1,0 +1,23 @@
+[package]
+name = "halonic-secret-broker"
+description = "The shell's answers to the background engine's secret requests: the keychain read by rule, only for a trusted workspace, one call at a time and with a time limit."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# The answers are frames on the engine's control pipe, so they serialize as
+# JSON; the frame reader that parses the engine's requests is the shell's
+# (B1 step 5).
+[dependencies]
+halonic-secrets = { path = "../secrets" }
+halonic-shell-log = { path = "../shell-log" }
+halonic-trust-store = { path = "../trust-store" }
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1"
