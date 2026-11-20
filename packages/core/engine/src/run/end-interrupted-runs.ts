@@ -1,4 +1,9 @@
-import { type RunEvent, type RunFailureReason, summarize } from "@halonicjs/events";
+import {
+  type RunEvent,
+  type RunFailureCause,
+  type RunFailureReason,
+  summarize,
+} from "@halonicjs/events";
 import type { Clock, RunStore } from "@halonicjs/ports";
 import { hasEnded } from "../kernel/run-state.ts";
 
@@ -64,6 +69,53 @@ export async function endLostRuns(store: RunStore, clock: Clock): Promise<EndedL
 }
 
 /**
+ * Ends the runs an engine stopped on purpose, right after it closed, as {@link endLostRuns} would
+ * end them on its next start, with `cause` saying why it stopped (requirement
+ * `engine.end-stopped-runs`): each `running` run gets `run.failed` with `reason: "interrupted"`
+ * and `cause`, and so does each parent `waiting` on it, up to the top-level run, since nothing will
+ * wake it. Then each waiting child of an ended run is cancelled. Call it only after the engine has
+ * closed, so no run it lists is still going.
+ *
+ * @returns the runs it ended, by the reason it gave
+ */
+export async function endStoppedRuns(
+  store: RunStore,
+  clock: Clock,
+  cause: RunFailureCause,
+): Promise<EndedLostRuns> {
+  const listed = await store.list({ status: "running" });
+  const interrupted: string[] = [];
+  for (const run of listed) {
+    if (await endRun(store, clock, run.id, "running", interruptedError, "interrupted", cause)) {
+      interrupted.push(run.id, ...(await endWaitingParents(store, clock, run.parentRunId, cause)));
+    }
+  }
+  return { interrupted, cancelled: await endOrphanedChildren(store, clock) };
+}
+
+/** Ends the run `runId` and each run above it while it waits, as {@link endStoppedRuns} does. */
+async function endWaitingParents(
+  store: RunStore,
+  clock: Clock,
+  runId: string | null,
+  cause: RunFailureCause,
+): Promise<string[]> {
+  const ended: string[] = [];
+  for (let parent = runId; parent !== null; ) {
+    const summary = summarize(await store.events(parent));
+    if (
+      summary === null ||
+      !(await endRun(store, clock, parent, "waiting", interruptedError, "interrupted", cause))
+    ) {
+      break;
+    }
+    ended.push(parent);
+    parent = summary.parentRunId;
+  }
+  return ended;
+}
+
+/**
  * Ends each child run left `waiting` under a parent that has ended, as when
  * the engine stopped after the parent's end was written and before its
  * children were cancelled: no one would ever answer it. A child ended here
@@ -110,6 +162,7 @@ async function endRun(
   status: "running" | "waiting",
   error: string,
   reason: RunFailureReason,
+  cause?: RunFailureCause,
 ): Promise<boolean> {
   // One read gives both the status and the last seq: with two reads, an end
   // event written between them would count in the seq, and the append would
@@ -125,6 +178,7 @@ async function endRun(
     state: summary.state,
     error,
     reason,
+    ...(cause === undefined ? {} : { cause }),
   };
   const result = await store.append(runId, summary.lastSeq, [failed]);
   return result.ok;

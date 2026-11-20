@@ -20,15 +20,11 @@
 // Nothing starts from a workspace that isn't trusted, unless it reaches only
 // the test model, the CLI's rule (HAL-1984, HAL-12409): the engine checks it
 // on the workspace it loaded, when it opens and before each start, and it
-// closes when the trust is removed while it is open (HAL-12799).
+// closes when the trust is removed while it is open (HAL-12799), ending the runs it stopped
+// right then, so no page keeps saying they're going (HAL-13678).
 
 import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
-import {
-  TauriBlobStore,
-  type TauriHeldEngineLock,
-  TauriRecordStore,
-  TauriRunStore,
-} from "@halonicjs/adapter-fs-tauri";
+import { TauriBlobStore, TauriRecordStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
 import { nodeSchedulerFactory, type SetTimer } from "@halonicjs/adapter-scheduler-node";
 import {
   routineStateCollection,
@@ -42,6 +38,7 @@ import type { startOfDueRun } from "@halonicjs/app";
 import {
   type AssembledEngine,
   assembleEngine,
+  endStoppedRuns,
   type LocalExecutor,
   noListedToolApproval,
 } from "@halonicjs/engine";
@@ -65,6 +62,7 @@ import {
   loadWorkspace,
   runDefinitionsOf,
 } from "@halonicjs/workspace";
+import { type EngineLockHold, holdEngineLock, type PageEngineLock } from "./engine-lock.ts";
 import {
   type PageRefusal,
   runCommandOf,
@@ -73,8 +71,16 @@ import {
 } from "./page-refusal.ts";
 import type { EngineDecisions, StudioHarnessHost } from "./studio-harness-host.ts";
 
+export type { PageEngineLock } from "./engine-lock.ts";
+
 /** What a routine starts, with its placeholders filled in: what the routine scheduler would start. */
 export type RoutineRunStart = ReturnType<typeof startOfDueRun>;
+
+/**
+ * The typed cause of a run the engine stopped because the workspace's trust was removed; the run
+ * page's banner says so by this code (`runs.run-view.trust-removed`).
+ */
+export const trustRemovedCause = { kind: "denied", code: "workspace.trust-removed" } as const;
 
 /** The hub's agent a routine starts. */
 export interface AgentRef {
@@ -85,16 +91,6 @@ export interface AgentRef {
 /** The open workspace's engine service, provided by the app. */
 export const engineServiceKey: ServiceKey<EngineService> =
   serviceKey<EngineService>("studio.engine");
-
-/** The workspace's engine lock, as the shell holds it for the page (`TauriEngineLock`). */
-export interface PageEngineLock {
-  /**
-   * Holds the lock until it is released; `onLost` hears once if another process takes it over.
-   *
-   * @throws KindedError `conflict` whose `cause` is the shell's refusal, with the other process's `pid`
-   */
-  hold(onLost: (error: Error) => void): Promise<TauriHeldEngineLock>;
-}
 
 /** What an {@link EngineService} is built from. */
 export interface EngineServiceOptions {
@@ -158,12 +154,15 @@ export interface EngineServiceOptions {
 interface OpenEngine {
   readonly engine: AssembledEngine;
   readonly workspace: LoadedWorkspace;
+  readonly lock: EngineLockHold;
 }
 
 /** The engine of one workspace in the page, opened on first use. */
 export class EngineService {
   readonly #options: EngineServiceOptions;
   #opening: Promise<OpenEngine> | undefined;
+  /** Ending the runs an engine closed for a removed trust stopped; the next engine opens after it. */
+  #ending: Promise<void> = Promise.resolve();
   readonly #stopHearingTrust: (() => void) | undefined;
 
   constructor(options: EngineServiceOptions) {
@@ -321,9 +320,9 @@ export class EngineService {
   async close(): Promise<void> {
     const opening = this.#opening;
     this.#opening = undefined;
-    if (opening === undefined) return;
-    const open = await opening.catch(() => undefined);
+    const open = await opening?.catch(() => undefined);
     await open?.engine.close();
+    await this.#ending.catch(() => undefined);
   }
 
   /** Lets the workspace's service registry close the engine with the workspace. */
@@ -335,7 +334,9 @@ export class EngineService {
   /**
    * Closes the open engine, as {@link EngineService.close} does, when the workspace it loaded may
    * start nothing now: its runs in progress stop, and no timer of theirs, harness step included,
-   * runs again in this window. A check that rejects is a no.
+   * runs again in this window. Then it ends those runs at once, as failed with the trust's cause,
+   * rather than when an engine next opens, which an untrusted workspace never does (HAL-13678).
+   * A check that rejects is a no.
    */
   async #closeIfUntrusted(): Promise<void> {
     const opening = this.#opening;
@@ -344,7 +345,28 @@ export class EngineService {
     if (open === undefined) return;
     const may = await this.#options.mayStart(open.workspace).catch(() => false);
     // Not when the engine was closed or opened afresh meanwhile: that one was checked as it opened.
-    if (!may && this.#opening === opening) await this.close();
+    if (may || this.#opening !== opening) return;
+    this.#opening = undefined;
+    this.#ending = this.#closeAndEndStoppedRuns(open);
+    await this.#ending;
+  }
+
+  /**
+   * Closes `open`'s engine and ends the runs it stopped, holding the workspace's lock until they
+   * are ended: an engine that took the lock in between, the CLI's or another window's, could have
+   * started a run this would end while it is going (`end-interrupted-runs.ts`). For the same
+   * reason it ends nothing once another process took the lock over.
+   */
+  async #closeAndEndStoppedRuns({ engine, lock }: OpenEngine): Promise<void> {
+    const { ipc, location, clock } = this.#options;
+    lock.kept = true;
+    try {
+      await engine.close();
+      if (lock.lost) return;
+      await endStoppedRuns(new TauriRunStore(ipc, location), clock, trustRemovedCause);
+    } finally {
+      await lock.held.release();
+    }
   }
 
   /**
@@ -369,28 +391,17 @@ export class EngineService {
     }
   }
 
-  /**
-   * Takes the shell's engine lock; when the shell later loses it, closes the engine, so the
-   * other process's engine is the only one left on the workspace.
-   *
-   * @throws KindedError `conflict` naming the other process, or the lock's other refusals
-   */
-  async #holdLock(): Promise<TauriHeldEngineLock> {
-    const { lock, name, reportError } = this.#options;
-    try {
-      return await lock.hold((lost) => {
-        reportError(lost);
-        this.close().catch(reportError);
-        this.#options.onLockLost?.();
-      });
-    } catch (refusal) {
-      throw lockRefusal(refusal, name);
-    }
-  }
-
   async #openOnce(): Promise<OpenEngine> {
-    const { ipc, location, clock, reportError } = this.#options;
-    const held = await this.#holdLock();
+    const { ipc, location, name, clock, reportError } = this.#options;
+    // After the runs a removed trust stopped are ended, whose closer gives the lock back then.
+    await this.#ending.catch(() => undefined);
+    // When the shell later loses the lock, the engine closes, so the other process's engine is
+    // the only one left on the workspace.
+    const lock = await holdEngineLock(this.#options.lock, name, (lost) => {
+      reportError(lost);
+      this.close().catch(reportError);
+      this.#options.onLockLost?.();
+    });
     try {
       const workspace = await loadWorkspace(this.#options.definitions);
       // Before the scheduler and the harness host start, so an untrusted workspace's
@@ -450,12 +461,14 @@ export class EngineService {
           newToken: this.#options.newToken,
         }),
         // Last, so no other engine starts while this one still delivers a timer.
-        release: () => held.release(),
+        release: async () => {
+          if (!lock.kept) await lock.held.release();
+        },
       });
       executor = engine.executor;
-      return { engine, workspace };
+      return { engine, workspace, lock };
     } catch (error) {
-      await held.release();
+      await lock.held.release();
       throw error;
     }
   }
@@ -469,25 +482,4 @@ export class EngineService {
 async function openRunsOf(runs: TauriRunStore): Promise<ReadonlySet<string>> {
   const open = await runs.list({ status: ["running", "waiting"] });
   return new Set(open.map((run) => run.id));
-}
-
-/**
- * The lock's refusal as the page says it (HAL-13758): a `conflict` names the workspace and the
- * other process, which can be a terminal's `halonic serve` or another window; others stay as they are.
- */
-function lockRefusal(refusal: unknown, name: string): unknown {
-  if (!(refusal instanceof KindedError) || refusal.kind !== "conflict") return refusal;
-  const pid = pidOf(refusal.cause);
-  const holder = pid === undefined ? "" : ` (process ${pid})`;
-  return new KindedError(
-    "conflict",
-    `${name} is already running in another Halonic on this computer${holder}.`,
-    { fix: "Stop that one, then try again.", cause: refusal },
-  );
-}
-
-function pidOf(refusal: unknown): number | undefined {
-  if (typeof refusal !== "object" || refusal === null) return undefined;
-  const { pid } = refusal as Record<string, unknown>;
-  return typeof pid === "number" ? pid : undefined;
 }

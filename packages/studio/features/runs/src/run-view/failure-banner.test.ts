@@ -439,3 +439,29 @@ verifies("runs.run-view.failure-banners", () => {
     });
   });
 });
+
+verifies("runs.run-view.trust-removed", () => {
+  const cause = { kind: "denied", code: "workspace.trust-removed" } as const;
+
+  it("says the trust was removed, during a step or before the first", () => {
+    const during = failed("interrupted", { statesVisited: ["draft"], cause });
+    expect(lines(causeBanner(during, undefined, context, false))).toEqual([
+      "Support reply stopped because this workspace's trust was removed during the step Draft. Nothing after that step ran.",
+    ]);
+    const before = failed("interrupted", { statesVisited: [], state: null, cause });
+    expect(lines(causeBanner(before, undefined, context, false))).toEqual([
+      "Support reply stopped because this workspace's trust was removed before the first step. Nothing ran.",
+    ]);
+    expect(causeBanner(during, undefined, context, false)).toMatchObject({ tone: "danger" });
+  });
+
+  it("keeps the engine's sentence for an interrupted run with another cause or none", () => {
+    const other = failed("interrupted", {
+      statesVisited: ["draft"],
+      cause: { kind: "unavailable", code: "something-else" },
+    });
+    expect(lines(causeBanner(other, undefined, context, false))).toEqual([
+      "Support reply stopped because Halonic's engine stopped during the step Draft. Nothing after that step ran.",
+    ]);
+  });
+});

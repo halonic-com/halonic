@@ -123,6 +123,7 @@ export {
   type EndedLostRuns,
   endInterruptedRuns,
   endLostRuns,
+  endStoppedRuns,
   interruptedError,
 } from "./run/end-interrupted-runs.ts";
 export type { ProposalRun, RunProposalFolders } from "./run/proposal-folders.ts";

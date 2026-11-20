@@ -12,6 +12,9 @@ import { capitalised, runPageWords } from "../run-words.ts";
 import { apiOffOf } from "./api-off.ts";
 import type { BannerFix, RunBanner, RunPageContext } from "./run-page-model.ts";
 
+/** The cause code the Studio gives a run it stopped because the workspace's trust was removed (`trustRemovedCause`). */
+const trustRemovedCode = "workspace.trust-removed";
+
 /** What a failure banner may need from the log. */
 interface FailureFacts {
   readonly provider: string | undefined;
@@ -56,11 +59,7 @@ export function causeBanner(
     case "disk-full":
       return danger([failureWords.diskFull(workflow, step)]);
     case "interrupted":
-      return danger([
-        summary.statesVisited.length === 0
-          ? failureWords.engineStoppedBeforeFirstStep(workflow)
-          : failureWords.engineStopped(workflow, step),
-      ]);
+      return interrupted(summary, workflow, step);
     case "model-unreachable":
       return proxyBanner(summary, facts, context) ?? modelUnreachable(facts, context, phone);
     case "model-out-of-memory":
@@ -76,6 +75,26 @@ export function causeBanner(
     default:
       return undefined;
   }
+}
+
+/**
+ * The engine stopped while the run was going: on its own, or because the workspace's trust was
+ * removed, which the run's typed cause says (`runs.run-view.trust-removed`).
+ */
+function interrupted(summary: RunSummary, workflow: string, step: string): RunBanner {
+  const beforeFirstStep = summary.statesVisited.length === 0;
+  if (summary.cause?.code === trustRemovedCode) {
+    return danger([
+      beforeFirstStep
+        ? failureWords.trustRemovedBeforeFirstStep(workflow)
+        : failureWords.trustRemoved(workflow, step),
+    ]);
+  }
+  return danger([
+    beforeFirstStep
+      ? failureWords.engineStoppedBeforeFirstStep(workflow)
+      : failureWords.engineStopped(workflow, step),
+  ]);
 }
 
 /**

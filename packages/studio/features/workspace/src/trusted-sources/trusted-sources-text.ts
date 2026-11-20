@@ -13,8 +13,9 @@ export const LOADING = "Loading trusted sources";
 export const REMOVE = "Remove";
 export const REMOVE_TRUST = "Remove trust";
 export const REMOVING = "Removing…";
-/** What removing trust stops, for a workspace and for a plugin (C52 7.2). */
-export const REMOVE_BODY = "Its routines and connectors won't start until you trust it again.";
+/** What removing trust stops, for a workspace and for a plugin (C52 7.2, HAL-13678). */
+export const REMOVE_BODY =
+  "Its routines and connectors won't start until you trust it again, and runs in progress stop.";
 export const REMOVE_PLUGIN_BODY = "Its tools won't run until you trust it again.";
 export const FOLDER_NOT_FOUND = "Folder not found";
 export const LOAD_FAILED = "Couldn't load trusted sources";
