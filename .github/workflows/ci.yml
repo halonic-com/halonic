@@ -2278,8 +2278,8 @@ jobs:
       # not by the generated Gradle files. Without Cargo.lock in the key, a new
       # plugin keeps an exact hit on the old cache, so every run downloads the
       # plugin's packages from Maven Central and nothing saves them (HAL-13164).
-      # Restore and save are separate so the save can run after a failed
-      # build: what was downloaded before the failure is kept.
+      # Restore and save are separate so the save can check how the build
+      # went (see the save step).
       - name: Restore the Gradle cache
         id: gradle-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -2338,12 +2338,15 @@ jobs:
           path: apps/studio/src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
           if-no-files-found: error
           retention-days: 7
-      # Even when the build failed, but not on an exact key hit (nothing new).
+      # Only after a good build, and not on an exact key hit (nothing new).
+      # A failed build can leave Gradle's record that a module was not found
+      # (a passing 404 from Maven Central), which Gradle trusts for 24 hours:
+      # saved, it would fail every run that restores it (HAL-13594).
       # Reuses the restore step's key: the build generates more *.gradle* files,
       # so hashing again here would give a different key. Only main saves:
       # every branch and queue entry reads main's copy.
       - name: Save the Gradle cache
-        if: ${{ always() && github.ref == 'refs/heads/main' && steps.gradle-cache.outputs.cache-hit != 'true' }}
+        if: ${{ success() && github.ref == 'refs/heads/main' && steps.gradle-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
