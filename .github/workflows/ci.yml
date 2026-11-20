@@ -31,8 +31,11 @@ on:
 
 permissions: {}
 
+# A merge group's run is keyed on its own commit, never its branch: when the
+# queue rebuilds a group on the same main commit, the branch name repeats, and
+# the new run sat "pending" behind the old one (20 Nov, HAL-14115).
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -433,7 +436,8 @@ jobs:
     # queue and pushes to main run this job on a one-job Cloudflare container
     # (infra/cf-runner). Unset, everything runs on GitHub's runners as before.
     runs-on: ${{ vars.CF_RUNNER_TRIAL == 'merge-queue' && (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'cf-linux' || github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
-    timeout-minutes: 25
+    # The longest shard since the split took 7.3 minutes (20 Nov, 244 runs).
+    timeout-minutes: 15
     # One job took 14-17 minutes in the merge queue and up to 24 on a cold
     # pull request (HAL-9808, HAL-14115), so every event spreads the work over
     # the shards in BUILD_SHARDS. On a pull request the guard job reads every

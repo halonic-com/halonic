@@ -23,7 +23,8 @@ on:
 permissions: {}
 
 concurrency:
-  group: guard-notes-${{ github.event.pull_request.number || github.event.merge_group.head_ref }}
+  # A merge group by its commit, as in ci.yml: a rebuilt group reuses its branch name.
+  group: guard-notes-${{ github.event.pull_request.number || github.event.merge_group.head_sha }}
   cancel-in-progress: true
 
 jobs:
