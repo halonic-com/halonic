@@ -2,6 +2,8 @@
 
 - Approval: the board's decision on HAL-14115 (20 Nov 17:20, "1, 3 and 4 yes", step 3, a queue fix under the HAL-14331 freeze); it changes `guard-notes.yml`, a trust root of the guard, so Liam and Julian both sign it as guardians
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zAfI2zIUH0/0iJEC7zNNmnko+iq91nVZk9asT4g0EAxWa2Y+3p2SInCXHGo/jO4g6SQFJPZ7URjHPX64Ae2tAQ==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:ISxP9NAPGT1Elbjyaz4SzEZ9njQQQEpgtkqsCc6p9IcX/H7HvV1OCxFItY/7HvLYkphxSpC+aBfuw8O94F8pCg==
 
 ## What changes
 
