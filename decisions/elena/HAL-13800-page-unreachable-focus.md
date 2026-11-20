@@ -2,6 +2,7 @@
 
 - Approval: the a11y check C238 on HAL-13787 (PU1, PU2), which asks for these examples, and the team's wording decision on HAL-13800 (PU3, Sofia, under HAL-2282); Liam approves this note in review on HAL-13800
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:sR+kudcRL9hjyfe9gvUkswAWDKP+1qegOkI1siJaj6YOtQqLXhYK7ZLDzIz9LKuFEsWXglqVf5AYkQpzcsndCA==
 - Task: HAL-13800
 
 ## What changes
