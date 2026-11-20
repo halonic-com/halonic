@@ -33,7 +33,8 @@ const modelFirstAnswerMs = 5 * 60_000;
  * "OpenAI", or else by its id. Not every engine reason has its own facts:
  *
  * - `disk-full`, `interrupted` and `answer-not-an-option` are `error` with
- *   `causeKnown`, and `harness-unavailable` is `error` (HAL-6451);
+ *   `causeKnown`, as is an answer that isn't the JSON its step asks for
+ *   (HAL-14301), and `harness-unavailable` is `error` (HAL-6451);
  * - `cancelled` isn't a failure, so {@link runFailureOf} gives it none.
  */
 export type RunFailure =
@@ -152,6 +153,30 @@ export type RunFailure =
       /** The id of the run's hub, such as "notes". */
       readonly hub: string;
     }
+  | ({
+      readonly reason: "unknown-provider";
+      /** The provider id the model names, which has no file in `providers/`, such as "anthropic". */
+      readonly provider: string;
+    } & (
+      | { readonly alias: string }
+      /** An agent's `provider/model` shorthand, such as "mok/echo", which names no alias. */
+      | { readonly model: string }
+    ))
+  | {
+      readonly reason: "items-not-a-list";
+      /** The for-each step's `items`, as the workflow file writes it, such as "{{input.topics}}". */
+      readonly items: string;
+      /** What it gave instead: "nothing", "text", "object", "number" or "boolean". */
+      readonly gives: string;
+    }
+  | {
+      readonly reason: "no-transition";
+      /** The event the step ended with, such as "done". */
+      readonly event: string;
+      /** The events the step's transitions do take, in file order; empty when it has none. */
+      readonly takes: readonly string[];
+    }
+  | { readonly reason: "task-without-agent" }
   | {
       readonly reason: "model-no-tools";
       /** The model the alias points at, such as "llama3.2". */
@@ -250,7 +275,7 @@ export function runFailureOf(
     case "budget":
       return budgetFailure(failed);
     case "error":
-      return setupFailureOf(failed.cause) ?? generalFailure(failed);
+      return setupFailureOf(failed.cause) ?? knownCauseFailure(failed) ?? generalFailure(failed);
     case "harness-unavailable":
     case "instructions-not-trusted":
       return generalFailure(failed);
@@ -358,8 +383,10 @@ function timeoutFailure(failed: RunFailedEvent, model: FailedModel | undefined):
  * its own. These are the workspace's own setup, not a bug: a provider file
  * whose type Halonic can't call (HAL-12342), and a model alias the hub
  * doesn't have, such as `default` in a workspace made with plain
- * `halonic init` (HAL-12377). A cause without the names its facts need is
- * `error`.
+ * `halonic init` (HAL-12377), a provider a model names that the workspace
+ * doesn't have, and a workflow step the run can't go on from: for-each items
+ * that aren't a list, an event with no transition, a task with no agent
+ * (HAL-14301). A cause without the names its facts need is `error`.
  */
 function setupFailureOf(cause: RunFailureCause | undefined): RunFailure | undefined {
   const { code, detail = {} } = cause ?? {};
@@ -376,9 +403,59 @@ function setupFailureOf(cause: RunFailureCause | undefined): RunFailure | undefi
         ? undefined
         : { reason: "unknown-model-alias", alias, hub };
     }
+    case "models.no-provider":
+      return noProviderFailure(detail);
+    default:
+      return workflowFailureOf(code, detail);
+  }
+}
+
+/** `unknown-provider` for the alias, or else the agent's `provider/model` shorthand, that names it. */
+function noProviderFailure(detail: Readonly<Record<string, string>>): RunFailure | undefined {
+  const { provider, alias, model } = detail;
+  if (provider === undefined) return undefined;
+  if (alias !== undefined) return { reason: "unknown-provider", provider, alias };
+  return model === undefined ? undefined : { reason: "unknown-provider", provider, model };
+}
+
+/** A workflow step the run can't go on from, by its cause's code. */
+function workflowFailureOf(
+  code: string | undefined,
+  detail: Readonly<Record<string, string>>,
+): RunFailure | undefined {
+  switch (code) {
+    case "workflow.items-not-a-list": {
+      const { items, gives } = detail;
+      return items === undefined || gives === undefined
+        ? undefined
+        : { reason: "items-not-a-list", items, gives };
+    }
+    case "workflow.no-transition": {
+      const { event, takes } = detail;
+      return event === undefined
+        ? undefined
+        : { reason: "no-transition", event, takes: takes === undefined ? [] : takes.split(",") };
+    }
+    case "workflow.task-without-agent":
+      return { reason: "task-without-agent" };
     default:
       return undefined;
   }
+}
+
+/**
+ * The cause codes of an `error` whose message already says what went wrong
+ * and how to fix it, so a bug report wouldn't help: an answer that isn't the
+ * JSON its step asks for (HAL-14301).
+ */
+const knownCauseCodes: ReadonlySet<string> = new Set(["answer.not-json"]);
+
+/** The general facts with `causeKnown`, for an `error` whose code is in {@link knownCauseCodes}. */
+function knownCauseFailure(failed: RunFailedEvent): RunFailure | undefined {
+  const code = failed.cause?.code;
+  return code !== undefined && knownCauseCodes.has(code)
+    ? { ...generalFailure(failed), causeKnown: true }
+    : undefined;
 }
 
 /**

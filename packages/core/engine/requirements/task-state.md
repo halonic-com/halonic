@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1526, step 3(a) of the HAL-186 plan
+- Source: HAL-14301 (the causes, so a host can word them, decided by the team on the task); HAL-1526, step 3(a) of the HAL-186 plan
 
-When a run enters a plain `task` state, the engine shall record `agent.started` with the state's prompt and ask for one model call under a new call id. When the answer to that call comes back, the engine shall record `agent.finished`, write the answer to the state's `output` key in the context when it has one, and take the state's first `done` transition whose guard passes. When no `done` transition matches, the engine shall fail the run. An answer to any other call shall change nothing.
+When a run enters a plain `task` state, the engine shall record `agent.started` with the state's prompt and ask for one model call under a new call id. When the answer to that call comes back, the engine shall record `agent.finished`, write the answer to the state's `output` key in the context when it has one, and take the state's first `done` transition whose guard passes. When no `done` transition matches, the engine shall fail the run, with the cause `workflow.no-transition` (kind `invalid_input`) naming the state, the event, and in `takes` the events its transitions do take, comma-separated, when it has any. A task state that names no agent shall fail the run when entered, with the cause `workflow.task-without-agent` naming the state. An answer to any other call shall change nothing.
 
 ## Examples
 

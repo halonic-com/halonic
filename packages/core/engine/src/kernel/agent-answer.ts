@@ -1,10 +1,14 @@
-import type { RunFailureReason } from "@halonicjs/events";
+import type { RunFailureCause, RunFailureReason } from "@halonicjs/events";
 import type { Agent, AgentOutput } from "@halonicjs/format";
 
 /** An agent's answer, checked against its output: the output to keep, or why it can't be kept. */
 export type CheckedAnswer =
   | { readonly output: unknown }
-  | { readonly error: string; readonly reason: RunFailureReason };
+  | {
+      readonly error: string;
+      readonly reason: RunFailureReason;
+      readonly cause?: RunFailureCause;
+    };
 
 /**
  * Checks an agent's answer against the agent's output. When the output is a
@@ -67,7 +71,12 @@ function checkJson(agentId: string, answer: unknown): CheckedAnswer {
   try {
     return { output: JSON.parse(json) as unknown };
   } catch {
-    return { error: notJsonError(agentId, answer), reason: "error" };
+    // The error already says the fix, so a host knows the cause (HAL-14301).
+    return {
+      error: notJsonError(agentId, answer),
+      reason: "error",
+      cause: { kind: "invalid_input", code: "answer.not-json", detail: { agent: agentId } },
+    };
   }
 }
 

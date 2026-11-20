@@ -142,8 +142,15 @@ export function workspaceModelResolver(
     if (file === undefined) {
       throw new WorkspaceModelError(
         "no-provider",
-        modelTexts.noProvider(target.provider, target.alias ?? target.model),
+        modelTexts.noProvider(
+          target.provider,
+          target.alias ?? `${target.provider}/${target.model}`,
+        ),
         modelTexts.noProviderFix(target.provider),
+        // An alias names itself; an agent's `provider/model` shorthand has no alias (HAL-14301).
+        target.alias === undefined
+          ? { provider: target.provider, model: `${target.provider}/${target.model}` }
+          : { provider: target.provider, alias: target.alias },
       );
     }
     await requireMayCall(file, { trusted, keyOrigins: input.keyOrigins });

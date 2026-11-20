@@ -234,6 +234,68 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
     ]);
   });
 
+  it("names a provider a model names that the workspace doesn't have, by alias or shorthand (HAL-14301)", () => {
+    expect(lines({ reason: "unknown-provider", provider: "anthropic", alias: "claude" })).toEqual([
+      "Support reply failed in the step Draft a reply: the model alias claude names the provider anthropic, which the workspace doesn't have.",
+      "Add providers/anthropic.yaml, or point the model alias claude at a provider the workspace has.",
+    ]);
+    expect(lines({ reason: "unknown-provider", provider: "mok", model: "mok/echo" })).toEqual([
+      "Support reply failed in the step Draft a reply: the model mok/echo names the provider mok, which the workspace doesn't have.",
+      "Add providers/mok.yaml, or change mok/echo to a provider the workspace has.",
+    ]);
+  });
+
+  it("says what for-each items are instead of a list, and how to pass one (HAL-14301)", () => {
+    const items = "{{input.topics}}";
+    expect(lines({ reason: "items-not-a-list", items, gives: "text" }, "Each")).toEqual([
+      "Support reply failed in the step Each: its items ({{input.topics}}) are a text, not a list.",
+      'Pass a JSON list, such as ["Monday", "Tuesday"].',
+    ]);
+    expect(lines({ reason: "items-not-a-list", items, gives: "object" }, "Each")[0]).toBe(
+      "Support reply failed in the step Each: its items ({{input.topics}}) are an object, not a list.",
+    );
+    expect(lines({ reason: "items-not-a-list", items, gives: "nothing" }, "Each")).toEqual([
+      "Support reply failed in the step Each: its items ({{input.topics}}) give nothing.",
+      'Check the name in {{input.topics}}, and pass a JSON list there, such as ["Monday", "Tuesday"].',
+    ]);
+  });
+
+  it("gives validate's fixes for items that can never be a list (HAL-14313)", () => {
+    expect(
+      lines(
+        { reason: "items-not-a-list", items: "Topics: {{context.topics}}", gives: "text" },
+        "Each",
+      )[1],
+    ).toBe('Write one placeholder, such as "{{context.topics}}".');
+    expect(
+      lines({ reason: "items-not-a-list", items: "{{topics}}", gives: "nothing" }, "Each")[1],
+    ).toBe('Read the list from input or context, such as "{{context.topics}}".');
+  });
+
+  it("names a step's event without a transition, and a task step without an agent (HAL-14301)", () => {
+    expect(lines({ reason: "no-transition", event: "done", takes: ["finished"] })).toEqual([
+      "Support reply failed in the step Draft a reply: it ended with the event done, but its transitions only take finished.",
+      "Remove event: finished, or add a transition without event.",
+    ]);
+    expect(lines({ reason: "no-transition", event: "done", takes: ["approve", "reject"] })).toEqual(
+      [
+        "Support reply failed in the step Draft a reply: it ended with the event done, but its transitions only take approve or reject.",
+        "Remove their event, or add a transition without event.",
+      ],
+    );
+    expect(lines({ reason: "no-transition", event: "done", takes: [] })).toEqual([
+      "Support reply failed in the step Draft a reply: it ended with the event done, and it has no transition.",
+      "Add a transition without event.",
+    ]);
+    expect(lines({ reason: "no-transition", event: "approve", takes: ["reject"] })[1]).toBe(
+      "Add a transition with event: approve.",
+    );
+    expect(lines({ reason: "task-without-agent" })).toEqual([
+      "Support reply failed in the step Draft a reply: the step names no agent.",
+      "Give it an agent (agent: <id>), or make it a wait step.",
+    ]);
+  });
+
   it("keeps the fail-closed promise for a local-only workspace and a blocked site", () => {
     const localOnly: RunFailure = {
       reason: "local-only",
@@ -283,11 +345,11 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
     ]);
   });
 
-  it("leaves out the report line for a cause the engine knows (HAL-6451)", () => {
+  it("leaves out the report line, and doesn't say it can't tell, for a cause the engine knows (HAL-6451, HAL-14301)", () => {
     const failure: RunFailure = { reason: "error", message: "The disk is full.", causeKnown: true };
     const { message, fix } = runFailedLines(draftReply, failure);
     expect(plainText(message.phrase)).toBe(
-      "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet: The disk is full.",
+      "Support reply failed in the step Draft a reply. The disk is full.",
     );
     expect(fix).toBeUndefined();
   });

@@ -61,7 +61,19 @@ function startAgent(context: StateContext): StateStep {
   const { run, stateId, state, agents } = context;
   const agent = state.agent;
   if (agent === undefined) {
-    return failWith(`Task state "${stateId}" names no agent.`);
+    return {
+      ...nothing,
+      outcome: {
+        type: "fail",
+        error: `Task state "${stateId}" names no agent.`,
+        // The workflow file's own mistake, so a host can say so (HAL-14301).
+        cause: {
+          kind: "invalid_input",
+          code: "workflow.task-without-agent",
+          detail: { state: stateId },
+        },
+      },
+    };
   }
   const prompt = promptOf(context, agent);
   if (typeof prompt !== "string") {

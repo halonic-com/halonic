@@ -1,3 +1,4 @@
+import type { RunFailureCause } from "@halonicjs/events";
 import { render } from "@halonicjs/workflow";
 import { checkAnswer } from "../../kernel/agent-answer.ts";
 import type {
@@ -43,7 +44,9 @@ export const foreachState: StateHandler<"foreach"> = {
 };
 
 /** The list the state goes through, or why it has none. */
-type ItemList = { readonly items: readonly unknown[] } | { readonly error: string };
+type ItemList =
+  | { readonly items: readonly unknown[] }
+  | { readonly error: string; readonly cause?: RunFailureCause };
 
 function startItems(context: StateContext): StateStep {
   const work = itemWorkOf(context);
@@ -52,7 +55,7 @@ function startItems(context: StateContext): StateStep {
   }
   const list = itemsOf(context);
   if ("error" in list) {
-    return failed(list.error);
+    return failed(list.error, list.cause);
   }
   if (list.items.length === 0) {
     return finishState(context, 0, null, null, []);
@@ -90,7 +93,11 @@ function takeCallResult(context: StateContext, input: EffectDoneInput): StateSte
   const checked = checkAnswer(context.agents, agent, result.output, stepOutput);
   if ("error" in checked) {
     const error = `Item ${running.item} of for-each state "${context.stateId}" failed: ${checked.error}`;
-    return { ...nothing, outcome: { type: "fail", error, reason: checked.reason } };
+    const { reason, cause } = checked;
+    return {
+      ...nothing,
+      outcome: { type: "fail", error, reason, ...(cause === undefined ? {} : { cause }) },
+    };
   }
   const output = checked.output;
   const finished: DecidedEvent = {
@@ -242,19 +249,36 @@ function itemsOf({ stateId, state, scope }: StateContext): ItemList {
   }
   const items = render(state.items, scope);
   if (!Array.isArray(items)) {
+    const gives = kindOf(items);
     return {
-      error: `The items of for-each state "${stateId}" ("${state.items}") give ${kindOf(items)}, not a list.`,
+      error: `The items of for-each state "${stateId}" ("${state.items}") give ${kindInWords(gives)}, not a list.`,
+      // The run's input or an earlier step gave the wrong value, so a host can say which (HAL-14301).
+      cause: {
+        kind: "invalid_input",
+        code: "workflow.items-not-a-list",
+        detail: { state: stateId, items: state.items, gives },
+      },
     };
   }
   return { items };
 }
 
+/** What a value is instead of a list: "nothing", "text", "object", "number" or "boolean". */
 function kindOf(value: unknown): string {
   if (value === undefined || value === null) return "nothing";
-  if (typeof value === "string") return "a text";
-  return typeof value === "object" ? "an object" : `a ${typeof value}`;
+  if (typeof value === "string") return "text";
+  return typeof value;
 }
 
-function failed(error: string): StateStep {
-  return { ...nothing, outcome: { type: "fail", error } };
+/** "nothing", "a text", "an object". */
+function kindInWords(kind: string): string {
+  if (kind === "nothing") return kind;
+  return kind === "object" ? "an object" : `a ${kind}`;
+}
+
+function failed(error: string, cause?: RunFailureCause): StateStep {
+  return {
+    ...nothing,
+    outcome: { type: "fail", error, ...(cause === undefined ? {} : { cause }) },
+  };
 }

@@ -133,8 +133,24 @@ verifies("engine.task-state", () => {
       state: "draft",
       error: 'State "draft" has no transition for "done".',
       reason: "error",
+      cause: {
+        kind: "invalid_input",
+        code: "workflow.no-transition",
+        detail: { state: "draft", event: "done" },
+      },
     });
     expect(run?.status).toBe("failed");
+  });
+
+  it("names the events a step does take when none takes its event (HAL-14301)", () => {
+    const on = [
+      { to: "sent", event: "approve" },
+      { to: "sent", event: "reject" },
+    ];
+    const named: Workflow = { ...reply, states: { ...reply.states, draft: task({ on }) } };
+    const { log } = play(named, [startInput, answer("call-1", "ok")]);
+    const detail = { state: "draft", event: "done", takes: "approve,reject" };
+    expect(log.at(-1)).toMatchObject({ type: "run.failed", cause: { detail } });
   });
 
   it("fails the run when the task names no agent", () => {
@@ -146,6 +162,11 @@ verifies("engine.task-state", () => {
     expect(log.at(-1)).toMatchObject({
       type: "run.failed",
       error: 'Task state "draft" names no agent.',
+      cause: {
+        kind: "invalid_input",
+        code: "workflow.task-without-agent",
+        detail: { state: "draft" },
+      },
     });
   });
 });
