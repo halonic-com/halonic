@@ -3,6 +3,7 @@
 - Task: HAL-13651
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13651 (decided by the team under HAL-2282, Sofia as designer; follows the approved phone layout 1.1 and the routine page's phone rename)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:EFR6Cd53qjcLr1z0pFIQ+vwq4yrBij+B5rl6hjsLW/9wkZrXyDEskM/FkxkK08XfzWsS4kuiRw7ftF4eHK3MBQ==
 
 Under a phone's top bar, which already names the collection, the collection page now does what the
 skill, knowledge and connector pages do: its `h1` holds the plain name, is `sr-only` and keeps
