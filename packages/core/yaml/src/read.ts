@@ -6,6 +6,7 @@ import {
   LineCounter,
   type Node,
   parseDocument,
+  visit,
   type YAMLError,
 } from "yaml";
 import { findDepthOffset } from "./depth.ts";
@@ -44,6 +45,12 @@ export interface YamlFile {
    * file with no data at all.
    */
   positionOf(path: YamlPath): SourcePosition | undefined;
+  /**
+   * Where the key that names the value at `path` starts, such as `modle` in
+   * `modle: smart`. Without such a key (a list item, a missing key) it
+   * answers as {@link YamlFile.positionOf}.
+   */
+  positionOfKey(path: YamlPath): SourcePosition | undefined;
 }
 
 /**
@@ -88,7 +95,10 @@ export function readYaml(
 
   const parseError = document.errors[0];
   if (parseError !== undefined) {
-    return err({ ...describeParseError(parseError, limits), ...lines.linePos(parseError.pos[0]) });
+    return err({
+      ...describeParseError(parseError, text, limits),
+      ...parseErrorPosition(document, parseError, lines),
+    });
   }
 
   const unsupported = findUnsupported(document.contents, limits.maxDepth);
@@ -105,17 +115,42 @@ export function readYaml(
     // expanding one if that ever changes.
     data: document.toJS({ maxAliasCount: 0 }),
     positionOf: (path) => positionOf(document, lines, path),
+    positionOfKey: (path) => {
+      const key = path.length > 0 ? keyOf(document, path, path.length) : undefined;
+      return key === undefined ? positionOf(document, lines, path) : startOf(key, lines);
+    },
   });
 }
+
+/**
+ * Plain words for the parser errors a new user meets most (HAL-14261). The
+ * parser's own text follows the hint, so nothing is lost.
+ */
+const syntaxHints: Partial<Record<YAMLError["code"], string>> = {
+  TAB_AS_INDENT: "Indent with spaces, not tabs.",
+};
+
+/**
+ * The hint for a colon and a space inside a plain value, such as
+ * `name: Writer: the one who writes`. The parser gives the same error for a
+ * line indented too far under a value, so the hint only comes when the value
+ * the error points at really has a `: ` in it.
+ */
+const colonInValueHint = 'A value has ": " in it. Put the value in quotes.';
+
+/** The hint for a quote that never closes, which the parser reports as a missing character. */
+const unclosedQuoteHint =
+  "This quote is never closed. Add the closing quote at the end of the value.";
 
 /**
  * Turns an error from the `yaml` library into our problem kinds. Two of its
  * errors get our own wording: a second document, and the call stack running
  * out on deep nesting (it catches that itself and reports it as
- * `RESOURCE_EXHAUSTION`).
+ * `RESOURCE_EXHAUSTION`). The common syntax errors get a plain hint first.
  */
 function describeParseError(
   error: YAMLError,
+  text: string,
   limits: YamlLimits,
 ): Pick<YamlProblem, "kind" | "message"> {
   switch (error.code) {
@@ -123,10 +158,73 @@ function describeParseError(
       return { kind: "unsupported", message: unsupportedMessages.multipleDocuments };
     case "RESOURCE_EXHAUSTION":
       return { kind: "too-deep", message: tooDeepMessage(limits.maxDepth) };
-    default:
+    default: {
       // The old app showed only the first line of the message too.
-      return { kind: "syntax", message: firstLine(error.message) };
+      const parserText = firstLine(error.message);
+      const hint = syntaxHintFor(error, text);
+      return {
+        kind: "syntax",
+        message: hint === undefined ? parserText : `${hint} (YAML says: ${parserText})`,
+      };
+    }
   }
+}
+
+function syntaxHintFor(error: YAMLError, text: string): string | undefined {
+  if (isUnclosedQuote(error)) {
+    return unclosedQuoteHint;
+  }
+  if (error.code === "BLOCK_AS_IMPLICIT_KEY") {
+    return valueHasColon(text, error.pos[0]) ? colonInValueHint : undefined;
+  }
+  return syntaxHints[error.code];
+}
+
+/** Whether the rest of the line from `offset`, the value the error points at, has a `: ` in it. */
+function valueHasColon(text: string, offset: number): boolean {
+  const lineEnd = text.indexOf("\n", offset);
+  const rest = text.slice(offset, lineEnd === -1 ? undefined : lineEnd);
+  return rest.includes(": ");
+}
+
+function isUnclosedQuote(error: YAMLError): boolean {
+  return error.code === "MISSING_CHAR" && error.message.startsWith("Missing closing");
+}
+
+/**
+ * Where a parse error points. The parser reports a quote that never closes
+ * at the end of the file; the line the quote opens on is where to fix it.
+ */
+function parseErrorPosition(
+  document: Document,
+  error: YAMLError,
+  lines: LineCounter,
+): SourcePosition {
+  const at = error.pos[0];
+  if (isUnclosedQuote(error)) {
+    const quoted = quotedValueEndingAt(document, at);
+    if (quoted !== undefined) {
+      return startOf(quoted, lines);
+    }
+  }
+  const { line, col } = lines.linePos(at);
+  return { line, col };
+}
+
+/** The quoted value that runs up to `offset`: an unclosed quote takes in the rest of the file. */
+function quotedValueEndingAt(document: Document, offset: number): Node | undefined {
+  let found: Node | undefined;
+  visit(document, {
+    Scalar(_, scalar) {
+      const quoted = scalar.type === "QUOTE_SINGLE" || scalar.type === "QUOTE_DOUBLE";
+      if (quoted && scalar.range?.[1] === offset) {
+        found = scalar;
+        return visit.BREAK;
+      }
+      return undefined;
+    },
+  });
+  return found;
 }
 
 /**

@@ -24,11 +24,19 @@ verifies("format.parse-file-positions", () => {
     expect(summary(problemsOf("models", text))).toEqual(["aliases.fast.model invalid_type 2"]);
   });
 
-  it("points unknown keys at their map and names them", () => {
+  it("points each unknown key at its own line, with its map's path", () => {
     const text = yaml("# a comment", "id: mock", "type: mock", "colour: red", "size: 2");
-    const [problem] = problemsOf("provider", text);
-    expect(problem).toMatchObject({ code: "unrecognized_keys", path: [], line: 2, col: 1 });
-    expect(problem?.keys).toEqual(["colour", "size"]);
+    expect(problemsOf("provider", text)).toMatchObject([
+      { code: "unrecognized_keys", path: [], keys: ["colour"], line: 4, col: 1 },
+      { code: "unrecognized_keys", path: [], keys: ["size"], line: 5, col: 1 },
+    ]);
+  });
+
+  it("points an unknown key inside a map at that key", () => {
+    const text = yaml("id: clerk", "name: Clerk", "params:", "  temperature: 1", "  tempo: 2");
+    expect(problemsOf("agent", text)).toMatchObject([
+      { path: ["params"], keys: ["tempo"], line: 5, col: 3 },
+    ]);
   });
 
   it("reports YAML that doesn't parse at its line, with no path", () => {
@@ -154,18 +162,42 @@ verifies("format.missing-key-words", () => {
     );
     expect(messages("workflow", text)).toEqual([
       ["name", 'Missing required key "name"'],
-      ["", 'Unrecognized key: "nmae". Did you mean "name"?'],
+      ["", 'There\'s no field "nmae" in this file. Did you mean "name"?'],
     ]);
   });
 
-  it("makes no guess for an unrecognized key that is far from every missing key", () => {
+  it("guesses an optional field too, at the misspelled key's line", () => {
+    const text = yaml("id: writer", "name: Writer", "modle: smart");
+    expect(problemsOf("agent", text)).toMatchObject([
+      {
+        code: "unrecognized_keys",
+        message: 'There\'s no field "modle" in this file. Did you mean "model"?',
+        line: 3,
+        col: 1,
+      },
+    ]);
+  });
+
+  it("doesn't guess a field the map already has", () => {
+    const text = yaml("id: writer", "name: Writer", "model: smart", "modle: fast");
+    expect(messages("agent", text)).toEqual([["", 'There\'s no field "modle" in this file.']]);
+  });
+
+  it("names the map of an unknown key below the top", () => {
+    const text = yaml("id: clerk", "name: Clerk", "params:", "  temprature: 1");
+    expect(messages("agent", text)).toEqual([
+      ["params", 'There\'s no field "temprature" in "params". Did you mean "temperature"?'],
+    ]);
+  });
+
+  it("makes no guess for an unrecognized key that is far from every field", () => {
     expect(messages("provider", yaml("id: mock", "colour: red"))).toEqual([
       ["type", 'Missing required key "type"'],
-      ["", 'Unrecognized key: "colour"'],
+      ["", 'There\'s no field "colour" in this file.'],
     ]);
   });
 
-  it("names the key for each guess when several keys are unrecognized", () => {
+  it("gives each unrecognized key its own guess", () => {
     const text = yaml(
       "di: support-reply",
       "nmae: Support reply",
@@ -174,12 +206,11 @@ verifies("format.missing-key-words", () => {
       "states:",
       "  done: { type: final }",
     );
-    const unrecognized = messages("workflow", text).find(([, message]) =>
-      message?.startsWith("Unrecognized"),
-    );
-    expect(unrecognized?.[1]).toBe(
-      'Unrecognized keys: "di", "nmae", "colour". Did you mean "id" for "di", "name" for "nmae"?',
-    );
+    expect(messages("workflow", text).filter(([path]) => path === "")).toEqual([
+      ["", 'There\'s no field "di" in this file. Did you mean "id"?'],
+      ["", 'There\'s no field "nmae" in this file. Did you mean "name"?'],
+      ["", 'There\'s no field "colour" in this file.'],
+    ]);
   });
 
   it("keeps Zod's message for a key that is there with the wrong type", () => {

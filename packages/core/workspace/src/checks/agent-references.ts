@@ -1,7 +1,7 @@
 import type { HubUses } from "@halonicjs/format";
 import type { LoadedFileOf, WorkspaceIssue } from "../load-workspace.ts";
 import type { CheckContext } from "./check-context.ts";
-import { isAliasName, modelAliasesOf } from "./model-aliases.ts";
+import { isAliasName, modelAliasesOf, modelsFileFailed } from "./model-aliases.ts";
 
 type Agent = LoadedFileOf<"agent">;
 
@@ -43,6 +43,9 @@ export function checkAgents(context: CheckContext): WorkspaceIssue[] {
 }
 
 function modelIssues(context: CheckContext, agent: Agent): WorkspaceIssue[] {
+  if (modelsFileFailed(context)) {
+    return [];
+  }
   const aliases = modelAliasesOf(context, agent.hub);
   const issues: WorkspaceIssue[] = [];
   const name = agent.value.id;
@@ -66,8 +69,8 @@ function modelIssues(context: CheckContext, agent: Agent): WorkspaceIssue[] {
  * that lists `uses` may use only the shared items it lists there.
  */
 function libraryIssues(context: CheckContext, agent: Agent, list: LibraryList): WorkspaceIssue[] {
-  const own = agent.hub === null ? new Set<string>() : context.idsOf(list.kind, agent.hub);
-  const shared = context.idsOf(list.kind, null);
+  const own = agent.hub === null ? new Set<string>() : context.nameableIds(list.kind, agent.hub);
+  const shared = context.nameableIds(list.kind, null);
   const uses = usesOf(context, agent.hub);
   const name = agent.value.id;
   const issues: WorkspaceIssue[] = [];
@@ -98,7 +101,7 @@ function usesOf(context: CheckContext, hub: string | null): HubUses | undefined 
 }
 
 function subagentIssues(context: CheckContext, agent: Agent): WorkspaceIssue[] {
-  const agents = context.idsOf("agent", agent.hub);
+  const agents = context.nameableIds("agent", agent.hub);
   const name = agent.value.id;
   const issues: WorkspaceIssue[] = [];
   agent.value.subagents.forEach((subagent, index) => {

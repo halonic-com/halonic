@@ -835,118 +835,6 @@
             "message": "The assistant model (assistant.model) uses \"turbo\", which isn't an alias in models.yaml."
           }
         ]
-      },
-      {
-        "case": "models/bad-enum",
-        "file": "workspace.yaml",
-        "old": [
-          {
-            "severity": "error",
-            "message": "The session AI uses unknown model alias \"fast\""
-          }
-        ],
-        "new": [
-          {
-            "severity": "error",
-            "message": "The assistant model (assistant.model) uses \"fast\", which isn't an alias in models.yaml."
-          }
-        ]
-      },
-      {
-        "case": "models/deep-nesting",
-        "file": "workspace.yaml",
-        "old": [
-          {
-            "severity": "error",
-            "message": "The session AI uses unknown model alias \"fast\""
-          }
-        ],
-        "new": [
-          {
-            "severity": "error",
-            "message": "The assistant model (assistant.model) uses \"fast\", which isn't an alias in models.yaml."
-          }
-        ]
-      },
-      {
-        "case": "models/missing-required",
-        "file": "workspace.yaml",
-        "old": [
-          {
-            "severity": "error",
-            "message": "The session AI uses unknown model alias \"fast\""
-          }
-        ],
-        "new": [
-          {
-            "severity": "error",
-            "message": "The assistant model (assistant.model) uses \"fast\", which isn't an alias in models.yaml."
-          }
-        ]
-      },
-      {
-        "case": "models/not-a-map",
-        "file": "workspace.yaml",
-        "old": [
-          {
-            "severity": "error",
-            "message": "The session AI uses unknown model alias \"fast\""
-          }
-        ],
-        "new": [
-          {
-            "severity": "error",
-            "message": "The assistant model (assistant.model) uses \"fast\", which isn't an alias in models.yaml."
-          }
-        ]
-      },
-      {
-        "case": "models/out-of-range",
-        "file": "workspace.yaml",
-        "old": [
-          {
-            "severity": "error",
-            "message": "The session AI uses unknown model alias \"fast\""
-          }
-        ],
-        "new": [
-          {
-            "severity": "error",
-            "message": "The assistant model (assistant.model) uses \"fast\", which isn't an alias in models.yaml."
-          }
-        ]
-      },
-      {
-        "case": "models/unknown-key",
-        "file": "workspace.yaml",
-        "old": [
-          {
-            "severity": "error",
-            "message": "The session AI uses unknown model alias \"fast\""
-          }
-        ],
-        "new": [
-          {
-            "severity": "error",
-            "message": "The assistant model (assistant.model) uses \"fast\", which isn't an alias in models.yaml."
-          }
-        ]
-      },
-      {
-        "case": "models/wrong-type",
-        "file": "workspace.yaml",
-        "old": [
-          {
-            "severity": "error",
-            "message": "The session AI uses unknown model alias \"fast\""
-          }
-        ],
-        "new": [
-          {
-            "severity": "error",
-            "message": "The assistant model (assistant.model) uses \"fast\", which isn't an alias in models.yaml."
-          }
-        ]
       }
     ]
   },
@@ -1158,6 +1046,1360 @@
           {
             "severity": "error",
             "message": "Alias \"smart\" uses unknown provider \"local-llm\""
+          }
+        ],
+        "new": []
+      }
+    ]
+  },
+  {
+    "id": "unknown-key-at-its-own-line",
+    "requirement": "format.parse-file-positions",
+    "area": "every file kind: unknown keys",
+    "old": "784f78d: an unrecognized key was reported at the start of the map that holds it, which for the top of a file is line 1, column 1, with all of that map's unknown keys in one problem.",
+    "new": "Each unrecognized key is its own problem, at the line and column of the key itself. The path and code stay the map's, and the message names the field and guesses a near field the map allows.",
+    "why": "Line 1, column 1 sent a new user to the wrong line for the most common file mistake, a misspelled field (Kim's first-run check C336, C3). Decided by Liam on HAL-14261.",
+    "status": "proposed",
+    "fixtures": [
+      {
+        "case": "agent/unknown-key",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "methods",
+                "extract"
+              ],
+              "code": "unrecognized_keys",
+              "line": 13,
+              "col": 5
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "methods",
+                "extract"
+              ],
+              "code": "unrecognized_keys",
+              "line": 19,
+              "col": 5
+            }
+          ]
+        }
+      },
+      {
+        "case": "collection/deep-nesting",
+        "file": "library/collections/invoices.collection.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "views",
+                "open",
+                "where",
+                "due"
+              ],
+              "code": "unrecognized_keys",
+              "line": 18,
+              "col": 44
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "views",
+                "open",
+                "where",
+                "due"
+              ],
+              "code": "unrecognized_keys",
+              "line": 18,
+              "col": 46
+            }
+          ]
+        }
+      },
+      {
+        "case": "collection/unknown-key",
+        "file": "library/collections/invoices.collection.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "fields",
+                "vendor"
+              ],
+              "code": "unrecognized_keys",
+              "line": 6,
+              "col": 11
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "fields",
+                "vendor"
+              ],
+              "code": "unrecognized_keys",
+              "line": 6,
+              "col": 41
+            }
+          ]
+        }
+      },
+      {
+        "case": "connector/unknown-key",
+        "file": "library/connectors/files.connector.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "transport",
+                "stdio"
+              ],
+              "code": "unrecognized_keys",
+              "line": 5,
+              "col": 5
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "transport",
+                "stdio"
+              ],
+              "code": "unrecognized_keys",
+              "line": 10,
+              "col": 5
+            }
+          ]
+        }
+      },
+      {
+        "case": "deployments/unknown-key",
+        "file": "deployments.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "deployments",
+                "laptop"
+              ],
+              "code": "unrecognized_keys",
+              "line": 4,
+              "col": 5
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "deployments",
+                "laptop"
+              ],
+              "code": "unrecognized_keys",
+              "line": 8,
+              "col": 5
+            }
+          ]
+        }
+      },
+      {
+        "case": "hub/unknown-key",
+        "file": "hubs/billing/hub.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "unrecognized_keys",
+              "line": 1,
+              "col": 1
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "unrecognized_keys",
+              "line": 3,
+              "col": 1
+            }
+          ]
+        }
+      },
+      {
+        "case": "knowledge/hub-level-unknown-key",
+        "file": "hubs/billing/library/knowledge/ledger.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "unrecognized_keys",
+              "line": 1,
+              "col": 1
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "unrecognized_keys",
+              "line": 4,
+              "col": 1
+            }
+          ]
+        }
+      },
+      {
+        "case": "knowledge/unknown-key",
+        "file": "library/knowledge/handbook.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "unrecognized_keys",
+              "line": 1,
+              "col": 1
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "unrecognized_keys",
+              "line": 7,
+              "col": 1
+            }
+          ]
+        }
+      },
+      {
+        "case": "models/unknown-key",
+        "file": "models.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "aliases",
+                "fast"
+              ],
+              "code": "unrecognized_keys",
+              "line": 8,
+              "col": 5
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "aliases",
+                "fast"
+              ],
+              "code": "unrecognized_keys",
+              "line": 10,
+              "col": 5
+            }
+          ]
+        }
+      },
+      {
+        "case": "provider/unknown-key",
+        "file": "providers/local-llm.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "unrecognized_keys",
+              "line": 1,
+              "col": 1
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "unrecognized_keys",
+              "line": 4,
+              "col": 1
+            }
+          ]
+        }
+      },
+      {
+        "case": "routine/unknown-key",
+        "file": "workflows/routines/hourly-check.routine.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "unrecognized_keys",
+              "line": 1,
+              "col": 1
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "unrecognized_keys",
+              "line": 10,
+              "col": 1
+            }
+          ]
+        }
+      },
+      {
+        "case": "runtime/unknown-key",
+        "file": "runtimes/inprocess.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "unrecognized_keys",
+              "line": 1,
+              "col": 1
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "unrecognized_keys",
+              "line": 3,
+              "col": 1
+            }
+          ]
+        }
+      },
+      {
+        "case": "workflow/unknown-key",
+        "file": "hubs/billing/workflows/invoice.workflow.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "states",
+                "checks",
+                "branches",
+                "vendor"
+              ],
+              "code": "unrecognized_keys",
+              "line": 22,
+              "col": 9
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "states",
+                "checks",
+                "branches",
+                "vendor"
+              ],
+              "code": "unrecognized_keys",
+              "line": 24,
+              "col": 9
+            }
+          ]
+        }
+      },
+      {
+        "case": "workflowTest/unknown-key",
+        "file": "hubs/billing/workflows/approval.test.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "cases",
+                0,
+                "expect"
+              ],
+              "code": "unrecognized_keys",
+              "line": 5,
+              "col": 13
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "cases",
+                0,
+                "expect"
+              ],
+              "code": "unrecognized_keys",
+              "line": 5,
+              "col": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "workspace/unknown-key",
+        "file": "workspace.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "unrecognized_keys",
+              "line": 2,
+              "col": 1
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "unrecognized_keys",
+              "line": 5,
+              "col": 1
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "unclosed-quote-at-its-opening-line",
+    "requirement": "yaml.read-syntax-error",
+    "area": "every YAML file: an unclosed quote",
+    "old": "784f78d: a quote that never closes was reported at the end of the file, where the parser gave up, often many lines below the mistake.",
+    "new": "The problem points at the line and column where the unclosed quote opens; the message says the quote is never closed, then gives the parser's words.",
+    "why": "The line of the mistake is the one to fix; the case itself expects line 4 and the old app said 23 (Kim's first-run check C336, C2). Decided by Liam on HAL-14261.",
+    "status": "proposed",
+    "fixtures": [
+      {
+        "case": "workspace/yaml-syntax",
+        "file": "workspace.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "syntax",
+              "line": 23,
+              "col": 1
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "syntax",
+              "line": 4,
+              "col": 14
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "failed-file-not-unknown",
+    "requirement": "workspace.references",
+    "area": "workspace loader: a file naming an agent, workflow, library item or model alias whose file failed",
+    "old": "A file that failed its own checks counted as missing, so every file naming what it defines also got an \"unknown\" error: \"uses unknown agent\", \"unknown workflow\", \"uses unknown skill\" (and connector, knowledge, collection) or \"uses unknown model alias\" for every alias when models.yaml failed, although the file is there.",
+    "new": "A name whose file is there (where the name is looked up; by the file's own id, or its file name when it has none) but failed its own checks is not reported as unknown, and no alias is unknown while models.yaml has failed. A name that no file has still is. An alias's provider is alias-of-failed-provider-not-reported (HAL-14260).",
+    "why": "The follow-on error sends a new user to the wrong file; the broken file's own errors say what to fix (Kim's first-run check C336, C4, and Nina's C337, C4+). It follows test-of-failed-workflow-not-reported (HAL-12126). Decided by Liam on HAL-14261.",
+    "status": "proposed",
+    "checks": [
+      {
+        "case": "agent/bad-colour",
+        "file": "hubs/billing/workflows/invoice.workflow.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "\"extract\" uses unknown agent \"clerk\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "agent/bad-colour",
+        "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"month-end\": unknown agent \"clerk\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "agent/bad-enum",
+        "file": "hubs/billing/workflows/invoice.workflow.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Branch \"vendor\" of \"checks\" uses unknown agent \"reviewer\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "agent/bad-method-id",
+        "file": "hubs/billing/workflows/invoice.workflow.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "\"extract\" uses unknown agent \"clerk\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "agent/bad-method-id",
+        "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"month-end\": unknown agent \"clerk\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "agent/choice-without-options",
+        "file": "hubs/billing/workflows/invoice.workflow.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Branch \"vendor\" of \"checks\" uses unknown agent \"reviewer\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "agent/deep-nesting",
+        "file": "hubs/billing/workflows/invoice.workflow.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "\"extract\" uses unknown agent \"clerk\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "agent/deep-nesting",
+        "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"month-end\": unknown agent \"clerk\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "agent/missing-required",
+        "file": "hubs/billing/workflows/invoice.workflow.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "\"extract\" uses unknown agent \"clerk\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "agent/missing-required",
+        "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"month-end\": unknown agent \"clerk\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "agent/unknown-key",
+        "file": "hubs/billing/workflows/invoice.workflow.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "\"extract\" uses unknown agent \"clerk\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "agent/unknown-key",
+        "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"month-end\": unknown agent \"clerk\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "agent/wrong-type",
+        "file": "hubs/billing/workflows/invoice.workflow.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "\"extract\" uses unknown agent \"clerk\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "agent/wrong-type",
+        "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"month-end\": unknown agent \"clerk\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "collection/bad-enum",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown collection \"invoices\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "collection/bad-field-name",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown collection \"invoices\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "collection/choice-without-values",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown collection \"invoices\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "collection/deep-nesting",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown collection \"invoices\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "collection/missing-required",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown collection \"invoices\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "collection/ref-without-collection",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown collection \"invoices\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "collection/seed-without-id",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown collection \"invoices\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "collection/unknown-key",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown collection \"invoices\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "collection/wrong-type",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown collection \"invoices\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "connector/bad-email",
+        "file": "hubs/billing/agents/notifier.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"notifier\" uses unknown connector \"mailbox\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "connector/bad-url",
+        "file": "hubs/billing/agents/notifier.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"notifier\" uses unknown connector \"tracker\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "connector/deep-nesting",
+        "file": "hubs/billing/agents/notifier.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"notifier\" uses unknown connector \"tracker\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "connector/missing-required",
+        "file": "hubs/billing/agents/notifier.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"notifier\" uses unknown connector \"files\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "connector/two-transports",
+        "file": "hubs/billing/agents/notifier.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"notifier\" uses unknown connector \"tracker\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "connector/unknown-key",
+        "file": "hubs/billing/agents/notifier.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"notifier\" uses unknown connector \"files\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "connector/unknown-transport",
+        "file": "hubs/billing/agents/notifier.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"notifier\" uses unknown connector \"tracker\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "connector/wrong-type",
+        "file": "hubs/billing/agents/notifier.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"notifier\" uses unknown connector \"files\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "knowledge/bad-enum",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown knowledge \"handbook\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "knowledge/hub-level-unknown-key",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown knowledge \"ledger\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "knowledge/missing-required",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown knowledge \"handbook\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "knowledge/unknown-key",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown knowledge \"handbook\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "knowledge/wrong-type",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown knowledge \"handbook\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/bad-enum",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown model alias \"fast\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/bad-enum",
+        "file": "hubs/billing/agents/notifier.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"notifier\" uses unknown model alias \"default\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/bad-enum",
+        "file": "workspace.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "The session AI uses unknown model alias \"fast\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/deep-nesting",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown model alias \"fast\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/deep-nesting",
+        "file": "hubs/billing/agents/notifier.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"notifier\" uses unknown model alias \"default\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/deep-nesting",
+        "file": "workspace.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "The session AI uses unknown model alias \"fast\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/missing-required",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown model alias \"fast\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/missing-required",
+        "file": "hubs/billing/agents/notifier.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"notifier\" uses unknown model alias \"default\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/missing-required",
+        "file": "workspace.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "The session AI uses unknown model alias \"fast\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/not-a-map",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown model alias \"fast\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/not-a-map",
+        "file": "hubs/billing/agents/notifier.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"notifier\" uses unknown model alias \"default\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/not-a-map",
+        "file": "workspace.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "The session AI uses unknown model alias \"fast\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/out-of-range",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown model alias \"fast\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/out-of-range",
+        "file": "hubs/billing/agents/notifier.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"notifier\" uses unknown model alias \"default\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/out-of-range",
+        "file": "workspace.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "The session AI uses unknown model alias \"fast\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/unknown-key",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown model alias \"fast\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/unknown-key",
+        "file": "hubs/billing/agents/notifier.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"notifier\" uses unknown model alias \"default\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/unknown-key",
+        "file": "workspace.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "The session AI uses unknown model alias \"fast\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/wrong-type",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown model alias \"fast\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/wrong-type",
+        "file": "hubs/billing/agents/notifier.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"notifier\" uses unknown model alias \"default\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "models/wrong-type",
+        "file": "workspace.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "The session AI uses unknown model alias \"fast\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "skill/missing-description",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown skill \"plain-words\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "skill/no-front-matter",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown skill \"plain-words\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "skill/wrong-type",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown skill \"plain-words\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "skill/yaml-syntax",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Agent \"clerk\" uses unknown skill \"plain-words\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/bad-enum",
+        "file": "hubs/billing/workflows/invoice.workflow.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "\"approval\" runs unknown workflow \"approval\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/bad-gets",
+        "file": "hubs/billing/workflows/routines/inbox-mail.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"inbox-mail\": unknown workflow \"invoice\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/bad-gets",
+        "file": "workflows/routines/hourly-check.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"hourly-check\": unknown workflow \"invoice\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/bad-indent",
+        "file": "hubs/billing/workflows/invoice.workflow.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "\"approval\" runs unknown workflow \"approval\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/bad-join",
+        "file": "hubs/billing/workflows/routines/inbox-mail.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"inbox-mail\": unknown workflow \"invoice\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/bad-join",
+        "file": "workflows/routines/hourly-check.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"hourly-check\": unknown workflow \"invoice\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/bad-timer",
+        "file": "hubs/billing/workflows/invoice.workflow.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "\"approval\" runs unknown workflow \"approval\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/deep-guard",
+        "file": "hubs/billing/workflows/routines/inbox-mail.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"inbox-mail\": unknown workflow \"invoice\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/deep-guard",
+        "file": "workflows/routines/hourly-check.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"hourly-check\": unknown workflow \"invoice\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/duplicate-key",
+        "file": "hubs/billing/workflows/invoice.workflow.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "\"approval\" runs unknown workflow \"approval\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/foreach-concurrency",
+        "file": "hubs/billing/workflows/routines/by-hand.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"by-hand\": unknown workflow \"batch\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/missing-required",
+        "file": "hubs/billing/workflows/invoice.workflow.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "\"approval\" runs unknown workflow \"approval\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/unknown-key",
+        "file": "hubs/billing/workflows/routines/inbox-mail.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"inbox-mail\": unknown workflow \"invoice\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/unknown-key",
+        "file": "workflows/routines/hourly-check.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"hourly-check\": unknown workflow \"invoice\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/wrong-type",
+        "file": "hubs/billing/workflows/routines/inbox-mail.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"inbox-mail\": unknown workflow \"invoice\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/wrong-type",
+        "file": "workflows/routines/hourly-check.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"hourly-check\": unknown workflow \"invoice\""
           }
         ],
         "new": []

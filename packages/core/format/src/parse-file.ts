@@ -149,14 +149,20 @@ function syntaxProblem(problem: YamlProblem): FileProblem {
   };
 }
 
+/** A schema problem, placed at its value; an unrecognized key at the key's own line (HAL-14261). */
 function schemaProblem(issue: Issue, source: Source): FileProblem {
+  const [onlyKey, ...otherKeys] = issue.keys ?? [];
+  const position =
+    onlyKey !== undefined && otherKeys.length === 0
+      ? source.positionOfKey([...issue.path, onlyKey])
+      : source.positionOf(issue.path);
   const problem: FileProblem = {
     severity: "error",
     source: "schema",
     code: issue.code,
     path: issue.path,
     message: issue.message,
-    ...source.positionOf(issue.path),
+    ...position,
   };
   return issue.keys === undefined ? problem : { ...problem, keys: issue.keys };
 }

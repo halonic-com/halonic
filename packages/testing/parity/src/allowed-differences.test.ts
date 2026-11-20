@@ -215,6 +215,9 @@ verifies("parity.allowed-differences-checked", () => {
       "engine.llm-request-alias",
       "workspace.references",
       "workspace.references",
+      "format.parse-file-positions",
+      "yaml.read-syntax-error",
+      "workspace.references",
     ]);
   });
 

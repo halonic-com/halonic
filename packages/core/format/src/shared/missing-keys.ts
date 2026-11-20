@@ -11,28 +11,50 @@ const nearDistance = 2;
  * Words the schema's issues the way a person fixes them (HAL-12126). A
  * required key that isn't there says so by name, instead of Zod's "Invalid
  * input: expected string, received undefined", whose path the line doesn't
- * show. An unrecognized key next to it that is a near spelling of a missing
- * key asks "Did you mean …?". Codes and paths stay Zod's.
+ * show. Each unrecognized key gets an issue of its own, which names the field
+ * and asks "Did you mean …?" when one the map allows and doesn't have is a
+ * near spelling (HAL-14261). Codes and paths stay Zod's.
  *
  * @param issues - the schema's issues for one file
  * @param data - the data the schema got, to tell a missing key from a wrong value
  *
  * @example
- * // { nmae: "Acme" } for a kind that needs `name`:
+ * // { id: "clerk", modle: "smart" } for an agent:
  * wordIssues(issues, data).map((issue) => issue.message);
- * // ['Missing required key "name"', 'Unrecognized key: "nmae". Did you mean "name"?']
+ * // ['There's no field "modle" in this file. Did you mean "model"?']
  */
 export function wordIssues(issues: readonly Issue[], data: unknown): Issue[] {
   const missing = issues.filter((issue) => isMissingKey(issue, data));
-  return issues.map((issue) => {
+  return issues.flatMap((issue) => {
     if (missing.includes(issue)) {
-      return { ...issue, message: `Missing required key "${String(issue.path.at(-1))}"` };
+      return [{ ...issue, message: `Missing required key "${String(issue.path.at(-1))}"` }];
     }
     if (issue.code === "unrecognized_keys" && issue.keys !== undefined) {
-      const near = nearMissingKeys(issue.keys, missingKeysIn(missing, issue.path));
-      return near === "" ? issue : { ...issue, message: `${issue.message}. ${near}` };
+      return unknownFieldIssues(issue, issue.keys, missingKeysIn(missing, issue.path), data);
     }
-    return issue;
+    return [issue];
+  });
+}
+
+/**
+ * One issue per unrecognized key, still at its map's path, with `keys` naming
+ * only that key. The guesses are the keys the map allows and doesn't have;
+ * without the schema's keys, only the missing required ones.
+ */
+function unknownFieldIssues(
+  issue: Issue,
+  unrecognized: readonly string[],
+  missing: readonly string[],
+  data: unknown,
+): Issue[] {
+  const map = valueAt(data, issue.path);
+  const absent = (key: string) => !(isMap(map) && Object.hasOwn(map, key));
+  const candidates = issue.knownKeys?.filter(absent) ?? missing;
+  const where = issue.path.length === 0 ? "this file" : `"${formatPath(issue.path)}"`;
+  return unrecognized.map((key) => {
+    const near = nearestKey(key, candidates);
+    const guess = near === undefined ? "" : ` Did you mean "${near}"?`;
+    return { ...issue, keys: [key], message: `There's no field "${key}" in ${where}.${guess}` };
   });
 }
 
@@ -70,22 +92,17 @@ function missingKeysIn(missing: readonly Issue[], path: Path): string[] {
 }
 
 /**
- * "Did you mean "name"?" for one unrecognized key, or with the key named for
- * several: 'Did you mean "name" for "nmae"?'. A key with no missing key
- * near it, or with two equally likely, gets no guess.
+ * The candidate closest to a misspelled key, or `undefined` when none is near
+ * or two are equally near. A key must keep more than it changes, so a short
+ * key like `x` doesn't guess every two-letter field.
  */
-function nearMissingKeys(unrecognized: readonly string[], missing: readonly string[]): string {
-  const pairs = unrecognized.flatMap((key) => {
-    const near = missing.filter((candidate) => editDistance(key, candidate) <= nearDistance);
-    return near.length === 1 ? [{ key, near: near[0] }] : [];
-  });
-  if (pairs.length === 0) {
-    return "";
-  }
-  if (unrecognized.length === 1) {
-    return `Did you mean "${pairs[0]?.near}"?`;
-  }
-  return `Did you mean ${pairs.map(({ key, near }) => `"${near}" for "${key}"`).join(", ")}?`;
+function nearestKey(key: string, candidates: readonly string[]): string | undefined {
+  const near = candidates
+    .map((candidate) => ({ candidate, distance: editDistance(key, candidate) }))
+    .filter(({ distance }) => distance <= nearDistance && distance < key.length)
+    .sort((a, b) => a.distance - b.distance);
+  const [first, second] = near;
+  return first !== undefined && first.distance !== second?.distance ? first.candidate : undefined;
 }
 
 /**

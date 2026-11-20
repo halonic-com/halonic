@@ -57,7 +57,7 @@ export function runExample(): {
 
 A problem is `{ kind: "syntax" | "unsupported" | "too-deep" | "too-large", message, line, col }`.
 `positionOf` answers with the nearest parent when nothing sits at the path, and with `undefined`
-for a file with no data. Its line and column (`SourcePosition`) start at 1.
+for a file with no data. `positionOfKey` answers with the key that names the value instead. Its line and column (`SourcePosition`) start at 1.
 
 ## Reading
 

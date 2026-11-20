@@ -18,11 +18,11 @@ export function checkHubUses(context: CheckContext): WorkspaceIssue[] {
 }
 
 function usesIssues(context: CheckContext, hub: Hub, list: LibraryList): WorkspaceIssue[] {
-  const shared = context.idsOf(list.kind, null);
+  // A shared file that failed has its own errors; repeating them here would hide them (HAL-12126).
+  const shared = context.nameableIds(list.kind, null);
   const listed = hub.value.uses?.[list.key] ?? [];
   return listed.flatMap((item, index) => {
-    // A shared file that failed has its own errors; repeating them here would hide them (HAL-12126).
-    if (shared.has(item) || context.failedWithPlaceId(list.kind, null, item)) {
+    if (shared.has(item)) {
       return [];
     }
     const message = `Hub "${hub.value.id}" uses unknown ${list.noun} "${item}"`;

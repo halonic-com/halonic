@@ -152,7 +152,7 @@ verifies("format.integration-file", () => {
         "    as: bearer",
         "    header: x-key",
       ],
-      "secrets.weather-key unrecognized_keys 8",
+      "secrets.weather-key unrecognized_keys 11",
     ],
     [
       ["  weather-key:", "    purpose: key", "    hosts: [api.example.com]", "    as: form"],
@@ -440,7 +440,7 @@ verifies("format.integration-file", () => {
   it("refuses unknown keys, such as the knowledge section older sheets had", () => {
     const text = yaml(...base, "knowledge:", "  untrusted: true");
     const problems = problemsOf("integration", text);
-    expect(summary(problems)).toEqual([" unrecognized_keys 1"]);
+    expect(summary(problems)).toEqual([" unrecognized_keys 6"]);
     expect(problems[0]?.keys).toEqual(["knowledge"]);
   });
 });

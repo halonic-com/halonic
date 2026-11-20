@@ -101,6 +101,56 @@ verifies("yaml.read-syntax-error", () => {
     });
   });
 
+  it("says to quote a value with a colon in it, then gives the parser's words", () => {
+    expect(readYaml("id: writer\nname: Writer: the one who writes\n")).toEqual({
+      ok: false,
+      error: {
+        kind: "syntax",
+        message:
+          'A value has ": " in it. Put the value in quotes. (YAML says: Nested mappings are not allowed in compact mappings)',
+        line: 2,
+        col: 7,
+      },
+    });
+  });
+
+  it("doesn't say to quote a value when the next line is indented too far", () => {
+    // The parser gives the same error as for `name: a: b`, but quotes wouldn't help here.
+    expect(readYaml("name: Writer\n  model: smart\n")).toEqual({
+      ok: false,
+      error: {
+        kind: "syntax",
+        message: "Nested mappings are not allowed in compact mappings",
+        line: 1,
+        col: 7,
+      },
+    });
+  });
+
+  it("says to indent with spaces when a line starts with a tab", () => {
+    expect(readYaml("id: writer\nmodels:\n\tsmart: x\n")).toEqual({
+      ok: false,
+      error: {
+        kind: "syntax",
+        message: "Indent with spaces, not tabs. (YAML says: Tabs are not allowed as indentation)",
+        line: 3,
+        col: 1,
+      },
+    });
+  });
+
+  it("points at the line where an unclosed quote opens, not the end of the file", () => {
+    const message =
+      "This quote is never closed. Add the closing quote at the end of the value. (YAML says: Missing closing 'quote)";
+    expect(readYaml("id: writer\nname: 'Writer\nmodel: smart\ntools: []\n")).toEqual({
+      ok: false,
+      error: { kind: "syntax", message, line: 2, col: 7 },
+    });
+    expect(readYaml('steps:\n  - "open\n  - closed\n')).toMatchObject({
+      error: { line: 2, col: 5 },
+    });
+  });
+
   it("reports only the first problem", () => {
     const read = readYaml("a: [1\nb: 'open\n");
     expect(read.ok).toBe(false);

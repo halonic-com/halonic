@@ -19,10 +19,7 @@ export function checkWorkspaceFile(context: CheckContext): WorkspaceIssue[] {
 export function checkTestTargets(context: CheckContext): WorkspaceIssue[] {
   return context.filesOf("workflowTest").flatMap((test) => {
     const target = test.value.workflow;
-    if (
-      context.idsOf("workflow", test.hub).has(target) ||
-      context.failedWithPlaceId("workflow", test.hub, target)
-    ) {
+    if (context.nameableIds("workflow", test.hub).has(target)) {
       return [];
     }
     const message = `Test targets unknown workflow "${target}"`;

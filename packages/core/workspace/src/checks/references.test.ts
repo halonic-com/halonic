@@ -49,23 +49,13 @@ verifies("workspace.references", () => {
   );
 
   it(
-    "counts a file that failed its own checks as missing",
+    "doesn't call an alias unknown when models.yaml failed its own checks",
     async () => {
-      // models.yaml has a wrong type, so none of its aliases exist.
+      // models.yaml has a wrong type, so its own error is the only one: the
+      // old loader also called every alias it has unknown (HAL-14261).
       const { source } = readParityCase("models/wrong-type");
       const workspace = await loadWorkspace(source);
-      const errors = workspace.issues.filter((issue) => issue.source === "check");
-      expect(errors.map((issue) => [issue.file, issue.message])).toEqual([
-        ["hubs/billing/agents/clerk.agent.yaml", 'Agent "clerk" uses unknown model alias "fast"'],
-        [
-          "hubs/billing/agents/notifier.agent.yaml",
-          'Agent "notifier" uses unknown model alias "default"',
-        ],
-        [
-          "workspace.yaml",
-          'The assistant model (assistant.model) uses "fast", which isn\'t an alias in models.yaml.',
-        ],
-      ]);
+      expect(workspace.issues.map((issue) => issue.file)).toEqual(["models.yaml"]);
     },
     parityLoadLimitMs,
   );
@@ -112,12 +102,99 @@ verifies("workspace.references", () => {
     ]);
   });
 
+  it.each(["agent/unknown-key", "agent/bad-enum"])(
+    "doesn't call an agent whose file failed unknown, in %s",
+    async (caseId) => {
+      // Only the agent file's own errors are left, so they say what to fix (HAL-14261).
+      const workspace = await loadWorkspace(readParityCase(caseId).source);
+      expect(workspace.issues.map((issue) => issue.file)).toSatisfy((files: string[]) =>
+        files.every((file) => file.endsWith(".agent.yaml")),
+      );
+      expect(workspace.issues.length).toBeGreaterThan(0);
+    },
+    parityLoadLimitMs,
+  );
+
   describe("in small workspaces", () => {
     const settings = { "workspace.yaml": "id: acme\nname: Acme\n" };
     const errorsIn = async (files: Record<string, string>): Promise<string[]> => {
       const workspace = await loadWorkspace(new MemorySource({ ...settings, ...files }));
       return workspace.issues.map((issue) => `${issue.file}: ${issue.message}`);
     };
+
+    it("still calls an agent unknown when no file is named after it", async () => {
+      const errors = await errorsIn({
+        "agents/writer.agent.yaml": "name: Writer\nmodle: smart\n",
+        "agents/editor.agent.yaml": "name: Editor\nsubagents: [writer, critic]\n",
+      });
+      expect(errors).toEqual([
+        'agents/editor.agent.yaml: Agent "editor" delegates to unknown agent "critic"',
+        'agents/writer.agent.yaml: There\'s no field "modle" in this file. Did you mean "model"?',
+      ]);
+    });
+
+    it("knows a failed agent by its own id, not by its file name", async () => {
+      // writer.agent.yaml is the agent "author": "author" isn't unknown, "writer" is.
+      const errors = await errorsIn({
+        "agents/writer.agent.yaml": "id: author\nname: Author\nmodle: smart\n",
+        "agents/editor.agent.yaml": "name: Editor\nsubagents: [author, writer]\n",
+      });
+      expect(errors).toEqual([
+        'agents/editor.agent.yaml: Agent "editor" delegates to unknown agent "writer"',
+        'agents/writer.agent.yaml: There\'s no field "modle" in this file. Did you mean "model"?',
+      ]);
+    });
+
+    // A file that is there but failed isn't unknown to what names it (C337 C4+, HAL-14261).
+    it("doesn't call an agent whose output failed unknown (C337 #18)", async () => {
+      const errors = await errorsIn({
+        "agents/sorter.agent.yaml": "name: Sorter\noutput:\n  type: choice\n  options: []\n",
+        "routines/sort.routine.yaml":
+          'name: Sort\ntrigger:\n  schedule: "0 9 * * 1"\nrun:\n  agent: sorter\n',
+      });
+      expect(errors).toEqual([
+        "agents/sorter.agent.yaml: Too small: expected array to have >=1 items",
+      ]);
+    });
+
+    it("doesn't call a workflow whose file failed unknown to a routine (C337 #22)", async () => {
+      const errors = await errorsIn({
+        "agents/reporter.agent.yaml": "name: Reporter\n",
+        "workflows/report.workflow.yaml": [
+          "name: Report",
+          "initial: write",
+          "states:",
+          "  write:",
+          "    agent: reporter",
+          "    artifact: { mediaType: text/markdown }",
+          "    on:",
+          "      - to: done",
+          "  done:",
+          "    type: final",
+          "",
+        ].join("\n"),
+        "routines/report.routine.yaml":
+          'name: Report\ntrigger:\n  schedule: "0 9 * * 1"\nrun:\n  workflow: report\n',
+      });
+      expect(errors).toEqual(['workflows/report.workflow.yaml: Missing required key "name"']);
+    });
+
+    it("doesn't call a provider whose file failed unknown to an alias (C337 #23)", async () => {
+      const errors = await errorsIn({
+        "providers/anthropic.yaml": "type: anthropic\nsecret: [anthropic-key]\n",
+        "models.yaml": "aliases:\n  smart:\n    provider: anthropic\n    model: claude\n",
+      });
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toMatch(/^providers\/anthropic\.yaml: /);
+    });
+
+    it("doesn't call an alias unknown when models.yaml failed (C337 #17)", async () => {
+      const errors = await errorsIn({
+        "models.yaml": 'aliases:\n  smart:\n    provider: mock\n    model: ""\n',
+        "agents/writer.agent.yaml": "name: Writer\nmodel: smart\n",
+      });
+      expect(errors).toEqual(["models.yaml: Too small: expected string to have >=1 characters"]);
+    });
 
     it("lets a hub without uses take every shared item, and prefers the hub's own", async () => {
       const errors = await errorsIn({

@@ -193,6 +193,19 @@ verifies("cli.commands.validate.check-workspace", () => {
       ]);
     });
 
+    it("doesn't warn about the default alias when models.yaml has errors of its own", async () => {
+      // The alias is there but broken; its own error says what to fix (C337 #17, HAL-14261).
+      writeFiles(acme, {
+        "models.yaml": 'aliases:\n  default:\n    provider: mock\n    model: ""\n',
+        "hubs/notes/hub.yaml": "id: notes\nname: Notes\n",
+        "hubs/notes/agents/clerk.agent.yaml": "id: clerk\nname: Clerk\ninstructions: Take notes.\n",
+      });
+
+      const { io } = await validateIn(acme);
+      expect(io.stdout[0]).toBe("models.yaml");
+      expect(io.stdout.at(-1)).toBe("✕ 1 error in 1 file. Checked 5 files.");
+    });
+
     it("shows at most 20 problems, errors first, and says how to see them all", async () => {
       for (let index = 1; index <= 25; index += 1) {
         writeFiles(acme, agent(`agent-${String(index).padStart(2, "0")}`, "missing"));
