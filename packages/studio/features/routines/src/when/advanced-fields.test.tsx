@@ -140,6 +140,17 @@ verifies("routines.when.advanced", () => {
     expect(closed.page.querySelector("details")?.open).toBe(false);
   });
 
+  it("drops its own inset on a phone, where the Disclosure's is enough", async () => {
+    const schedule = await card({ kind: "schedule", cron: "0 9 1 * *" });
+    expect(schedule.page.querySelector("details .pb-3")?.className).toContain("phone:px-0");
+    const onlyWhen = await card({
+      kind: "signal",
+      name: "mail.tagged",
+      when: { exists: "mail.id" },
+    });
+    expect(onlyWhen.page.querySelector("details .pb-3")?.className).toContain("phone:px-0");
+  });
+
   it("writes the schedule without a time zone for 'No time zone'", async () => {
     const { page, saved } = await card(weekdays);
     const zone = page.querySelectorAll("select")[1] as HTMLSelectElement;

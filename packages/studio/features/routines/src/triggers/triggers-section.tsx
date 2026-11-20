@@ -136,7 +136,7 @@ function RowButton({
   return (
     <button
       type="button"
-      className={`flex w-full justify-between gap-2 text-left ${
+      className={`flex w-full justify-between gap-2 rounded-sm px-2 text-left hover:bg-surface-muted focus-ring ${
         phone ? "min-h-control-md items-start py-2" : "items-center py-1"
       }`}
       onClick={() => openRoutine?.(row.hubId ?? owner.hubId, row.id)}

@@ -35,7 +35,7 @@ export function ScheduleAdvanced({
 }: ScheduleAdvancedProps) {
   return (
     <Disclosure summary={words.advanced} defaultOpen={defaultOpen}>
-      <div className="flex flex-col gap-3 px-4 pb-3">
+      <div className="flex flex-col gap-3 px-4 pb-3 phone:px-0">
         <CronField
           cron={trigger.cron}
           enabled={enabled}
@@ -180,7 +180,7 @@ export function SignalFields({ trigger, onChange }: SignalFieldsProps) {
         />
       </Field>
       <Disclosure summary={words.advanced} defaultOpen={trigger.when !== undefined}>
-        <div className="px-4 pb-3">
+        <div className="px-4 pb-3 phone:px-0">
           <Field
             label={words.onlyWhen}
             hint={words.onlyWhenHint}

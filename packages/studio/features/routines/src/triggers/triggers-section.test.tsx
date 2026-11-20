@@ -68,6 +68,15 @@ verifies("routines.triggers.lists-routines-that-start-it", () => {
     expect(page.querySelector("li button")?.className).toContain("min-h-control-md");
   });
 
+  it("shows a row's focus and hover as a routine's run row does, with its text inset", async () => {
+    const page = await show(
+      <TriggersView host={hostWith([row("daily", "Daily")])} owner={agent} />,
+    );
+    expect(page.querySelector("li button")?.className).toContain(
+      "rounded-sm px-2 text-left hover:bg-surface-muted focus-ring",
+    );
+  });
+
   it("has no heading or region of its own, since its page's tab panel names it", async () => {
     const page = await show(<TriggersView host={hostWith([])} owner={agent} />);
     expect(
