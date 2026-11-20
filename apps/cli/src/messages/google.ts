@@ -42,9 +42,11 @@ export const googleMessages = defineMessages("google", {
   unknownAccount: () => phrase`There's no Google account set up under that name.`,
   unknownAccountFix: () =>
     phrase`The command takes the setup's ref, not an e-mail address. Start the setup in the Studio, whose sign-in step shows the command with its ref.`,
-  secretNeedsTokenKey: () => phrase`The secret can't be saved: the token key isn't set.`,
-  secretNeedsTokenKeyFix: () =>
-    phrase`Set the secret token-key to 32 random bytes in base64url, then try again.`,
+  /** The profile's token key is gone while secrets it sealed remain, so a new one isn't made. */
+  tokenKeyMissing: () =>
+    phrase`The token key that sealed this profile's saved secrets is missing, so they can't be opened.`,
+  tokenKeyMissingFix: () =>
+    phrase`Set HALONIC_SECRET_TOKEN_KEY to the key you used before, then try again.`,
   /** The account has signed in, or shares its client: a new secret has to be checked first. */
   secretNeedsStaging: () =>
     phrase`This account has signed in, so its secret can't be replaced here.`,

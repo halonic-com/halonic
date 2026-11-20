@@ -5,6 +5,7 @@ import {
   makePrivateFolder,
   readUnlinkedFile,
   renameOver,
+  withRunLock,
   writeFlushedFile,
 } from "@halonicjs/adapter-fs-node";
 import {
@@ -25,6 +26,9 @@ import {
   secretsFileText,
 } from "./secrets-file-format.ts";
 
+/** The write lock, in the secrets file's folder. */
+const writeLockName = "write.lock";
+
 /**
  * The secrets a person sets with `halonic secret`, in one JSON file in their
  * profile, such as the `secretsFile` of `@halonicjs/profile`.
@@ -39,10 +43,10 @@ import {
  *   or the new, never half of them.
  * - **Not followed:** a file that is a link is refused, so the secrets can't
  *   be read from or written into a file elsewhere.
- * - **Shared by name only:** two programs that save at the same moment each
- *   read, change and write the whole file, so the later save wins and may
- *   drop the earlier one's change. There is no lock; `halonic secret` is run
- *   by hand, one command at a time.
+ * - **One save at a time:** every save holds the folder's write lock
+ *   (`write.lock`, with the `RunLockRecord` rules of the record store), so
+ *   two programs that save at the same moment, such as the CLI and the
+ *   Studio's host, never drop each other's change. Reads take no lock.
  *
  * A value never appears in an error: a damaged file is reported by its
  * location and fix, never by its content.
@@ -69,6 +73,31 @@ export class FileSecretStore implements SecretStore, KeyOrigins {
       // A new value keeps the key's allowed origins: changing a key must not unbind it.
       entries.set(key, { ...entries.get(key), name, value });
       await this.#save(entries);
+    });
+  }
+
+  /**
+   * Stores `value` under `name` only when nothing is stored there yet, in one
+   * step with the file's lock, so of two programs that call it at the same
+   * moment the first one's value is kept and both get it back. A stored
+   * value is never replaced.
+   *
+   * @returns the value stored under the name afterwards
+   * @throws RangeError when the name breaks the rule, or the value is empty
+   *   or too long; the message never repeats the value
+   */
+  async setIfMissing(name: string, value: string): Promise<string> {
+    const key = secretKey(name);
+    checkSecretValue(value);
+    return await this.#exclusively(async () => {
+      const entries = await this.#load();
+      const stored = entries.get(key);
+      if (stored !== undefined) {
+        return stored.value;
+      }
+      entries.set(key, { name, value });
+      await this.#save(entries);
+      return value;
     });
   }
 
@@ -162,9 +191,18 @@ export class FileSecretStore implements SecretStore, KeyOrigins {
     return [...entries.keys()].sort().map((key) => (entries.get(key) as SecretEntry).name);
   }
 
-  /** Runs saves one after another in this process, so two of them never read the same old file. */
+  /**
+   * Runs saves one after another: first in this process, then across
+   * processes with the folder's write lock, so two of them never read the
+   * same old file.
+   */
   #exclusively<T>(task: () => Promise<T>): Promise<T> {
-    const run = this.#queue.then(task, task);
+    const folder = dirname(this.#file);
+    const locked = async () => {
+      await makePrivateFolder(folder);
+      return await withRunLock(join(folder, writeLockName), task);
+    };
+    const run = this.#queue.then(locked, locked);
     this.#queue = run.catch(() => undefined);
     return run;
   }

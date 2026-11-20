@@ -48,6 +48,10 @@ const connectionSettingsFolderName = "connections";
 const secretsFolderName = "secrets";
 const secretsFileName = "secrets.json";
 
+/** The names of the profile's sealed token stores, each in a folder of its own. */
+const googleTokensFolderNames = ["google", "tokens"] as const;
+const signInTokensFolderNames = ["integration-sign-ins", "tokens"] as const;
+
 /** What {@link profileFolder} reads from the system; the adapter fills it in. */
 export interface ProfileEnvironment {
   /** The system Halonic runs on. */
@@ -259,6 +263,34 @@ export function connectionSettingsFolder(profile: ProfileFolder): string {
  */
 export function secretsFile(profile: ProfileFolder): string {
   return joinPath(profile.platform, profile.root, secretsFolderName, secretsFileName);
+}
+
+/** The folders of the profile's sealed token stores, from {@link tokenFolders}. */
+export interface TokenFolders {
+  /** Google's client secrets and refresh tokens. */
+  readonly google: string;
+  /** The grants of the integrations' own sign-ins. */
+  readonly integrationSignIns: string;
+}
+
+/**
+ * The folders of the token stores the profile's token key seals,
+ * `google/tokens` and `integration-sign-ins/tokens` in the profile folder.
+ * The CLI and the Studio's host keep the same tokens there, and a new token
+ * key is made only while none of them holds a token.
+ *
+ * @param profile - the profile folder, from {@link profileFolder}
+ * @returns each folder, joined the profile's way; nothing is created
+ *
+ * @example
+ * tokenFolders({ platform: "linux", root: "/srv/acme/.local/share/halonic" }).google;
+ * // "/srv/acme/.local/share/halonic/google/tokens"
+ */
+export function tokenFolders(profile: ProfileFolder): TokenFolders {
+  return {
+    google: joinPath(profile.platform, profile.root, ...googleTokensFolderNames),
+    integrationSignIns: joinPath(profile.platform, profile.root, ...signInTokensFolderNames),
+  };
 }
 
 /** The system's folder for a person's application data. */
