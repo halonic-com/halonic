@@ -122,7 +122,11 @@ export function NewRoutineDialog({
     setBusy(true);
     try {
       onCreated(
-        await create({ name: name.trim(), hubId, ...(agent === undefined ? {} : { prompt }) }),
+        await create({
+          name: name.trim(),
+          hubId,
+          ...(agent === undefined ? {} : { prompt: prompt.trim() }),
+        }),
       );
     } catch (error) {
       const reason = errorReasonFor(error);

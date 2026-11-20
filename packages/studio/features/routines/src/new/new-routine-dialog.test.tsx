@@ -119,7 +119,7 @@ verifies("routines.new.create", () => {
     expect(body()).toContain("Say what Analyst should do.");
   });
 
-  it("creates nothing for an agent until a prompt is typed, then hands the prompt over", async () => {
+  it("creates nothing for an agent until a prompt is typed, then hands the prompt over trimmed", async () => {
     const { node, create, onCreated } = dialog({ starterTarget: async () => analyst });
     await show(node);
     await typeInto(nameField(), "Morning digest");
@@ -131,7 +131,7 @@ verifies("routines.new.create", () => {
 
     const field = promptField();
     if (field === null) throw new Error("no prompt field");
-    await typeInto(field, "Sum up the inbox");
+    await typeInto(field, "  Sum up the inbox\n\n");
     expect(body()).not.toContain("Say what Analyst should do.");
     await act(async () => buttonNamed(document.body, "Create")?.click());
 
