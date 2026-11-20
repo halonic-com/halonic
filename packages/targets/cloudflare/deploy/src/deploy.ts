@@ -1,10 +1,17 @@
-import type { CloudflareApi, DurableObjectMigration, Migration, WorkerUpload } from "./api.ts";
+import type {
+  CloudflareApi,
+  DurableObjectMigration,
+  Migration,
+  WorkerBinding,
+  WorkerUpload,
+} from "./api.ts";
 import { DeployError } from "./errors.ts";
 import { withDeployLock } from "./lock.ts";
 import { migrate } from "./migrate.ts";
-import { type ProvisionStep, provision } from "./provision.ts";
+import { definitionsBucketFor, type ProvisionStep, provision } from "./provision.ts";
 import { type UploadProgress, uploadAndSwitch } from "./upload.ts";
 import { versionNote } from "./version-note.ts";
+import { writeWorkspaceSnapshot } from "./write-workspace-snapshot.ts";
 
 const LOST_AFTER_SWITCH =
   "The deploy is live, but its lock was lost after traffic switched (another deploy may have taken it over). Check the Worker before deploying again.";
@@ -15,12 +22,15 @@ export interface DeploySource {
   commit(): Promise<string>;
   /** Changed tracked files plus untracked files that aren't ignored. */
   changedFileCount(): Promise<number>;
+  /** The workspace's files at `commit`, read from git objects, by path relative to the workspace root. */
+  files(commit: string): Promise<Readonly<Record<string, string>>>;
 }
 
 /** What the caller builds from the snapshot at `commit`, once the missing secrets are known. */
 export interface DeployPayload {
   /** The Worker script built from the snapshot at `commit`, so what is uploaded is what the result names. */
   readonly bundle: { readonly script: string; readonly hash: string };
+  /** The Worker's bindings. The deploy adds `DEFINITIONS` itself, in place of any given here. */
   readonly bindings: WorkerUpload["bindings"];
   /** The Worker's own secrets. Sent in the upload; never logged. */
   readonly secrets: WorkerUpload["secrets"];
@@ -69,6 +79,8 @@ export type DeployProgress =
   | { readonly step: "uncommitted-files"; readonly count: number }
   | { readonly step: "provisioned"; readonly resources: readonly ProvisionStep[] }
   | { readonly step: "migrated"; readonly applied: readonly string[] }
+  /** The snapshot of `commit` is in the definitions bucket, and `current` names `version`. */
+  | { readonly step: "definitions-written"; readonly version: string }
   /** Said before the deploy that goes live without a trial, on a Worker that already has traffic. */
   | { readonly step: "live-migration-ahead"; readonly migrations: readonly string[] }
   | UploadProgress;
@@ -92,7 +104,8 @@ export interface DeployDone {
 
 /**
  * Runs ADR 5.6 steps 1–9 in order: validate, test (not for `plan`), snapshot from git, secrets, provision, migrate,
- * upload, smoke test, switch. The lock is taken before anything changes and freed at the end.
+ * upload, smoke test, switch. Before the upload it writes the snapshot's files into the definitions
+ * bucket and binds that bucket as `DEFINITIONS`. The lock is taken before anything changes and freed at the end.
  *
  * @throws DeployError `uncommitted-changes` for a production deploy with uncommitted files
  * @throws DeployError `deploy-aborted` when the signal aborts between steps
@@ -142,6 +155,7 @@ export async function deploy(
   }
 
   checkAborted();
+  const files = await options.source.files(commit);
   const payload = await options.prepare(commit);
   checkAborted();
 
@@ -166,6 +180,15 @@ export async function deploy(
 
       await lock.renew();
       checkAborted();
+      const definitions = definitionsBucketFor(worker);
+      const version = await writeWorkspaceSnapshot(
+        { put: (key, value) => api.putObject(accountId, definitions, key, value) },
+        files,
+      );
+      report({ step: "definitions-written", version });
+
+      await lock.renew();
+      checkAborted();
       const doMigrations = options.durableObjectMigrations ?? [];
       if (doMigrations.length > 0) {
         const current = await api.currentDeployment(accountId, worker);
@@ -177,7 +200,7 @@ export async function deploy(
         worker,
         bundle: payload.bundle,
         compatibilityDate: options.compatibilityDate,
-        bindings: payload.bindings,
+        bindings: withDefinitions(payload.bindings, definitions),
         secrets: payload.secrets,
         durableObjectMigrations: doMigrations,
         message: versionNote({
@@ -199,4 +222,15 @@ export async function deploy(
       };
     },
   );
+}
+
+/** The payload's bindings with `DEFINITIONS` bound to the bucket the snapshot went into. */
+function withDefinitions(
+  bindings: readonly WorkerBinding[],
+  bucket: string,
+): readonly WorkerBinding[] {
+  return [
+    ...bindings.filter((binding) => binding.name !== "DEFINITIONS"),
+    { type: "r2_bucket", name: "DEFINITIONS", bucket_name: bucket },
+  ];
 }

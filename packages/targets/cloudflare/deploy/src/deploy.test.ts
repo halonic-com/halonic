@@ -15,6 +15,7 @@ const ours = { marked: true };
 const owned = {
   "database w-data": ours,
   "bucket w-blobs": ours,
+  "bucket w-defs": ours,
   "worker w": ours,
 };
 
@@ -33,6 +34,7 @@ function setup(
     source: {
       commit: async () => commit,
       changedFileCount: async () => changed,
+      files: async () => ({}),
     },
     validate: async () => {
       log.push("validate");
@@ -78,6 +80,7 @@ verifies("deploy.orchestrate", () => {
       "snapshot",
       "provisioned",
       "migrated",
+      "definitions-written",
       "bundle-checked",
       "uploaded",
       "smoke-test",
@@ -148,7 +151,12 @@ verifies("deploy.orchestrate", () => {
     expect(result.mode).toBe("plan");
     if (result.mode === "plan") {
       expect(result.migrations).toEqual(["0001"]);
-      expect(result.resources.map((r) => r.action)).toEqual(["create", "create", "create"]);
+      expect(result.resources.map((r) => r.action)).toEqual([
+        "create",
+        "create",
+        "create",
+        "create",
+      ]);
     }
     expect(log).toEqual(["validate"]);
     expect(api.calls.some((c) => c.includes("DeployLock"))).toBe(false);

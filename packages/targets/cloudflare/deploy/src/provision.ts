@@ -28,18 +28,27 @@ export function databaseNameFor(worker: string): string {
   return `${worker}-data`;
 }
 
+/**
+ * The bucket the Worker reads its workflow definitions from (its `DEFINITIONS` binding). It holds
+ * only snapshots of git commits, so `destroy` may empty it; it never empties `<worker>-blobs`.
+ */
+export function definitionsBucketFor(worker: string): string {
+  return `${worker}-defs`;
+}
+
 /** The resources a deploy of `worker` needs, in the order they are made. */
 export function resourcesFor(worker: string): readonly ResourceRef[] {
   const database = databaseNameFor(worker);
   return [
     { kind: "database", name: database },
     { kind: "bucket", name: `${worker}-blobs`, markedIn: database },
+    { kind: "bucket", name: definitionsBucketFor(worker), markedIn: database },
     { kind: "worker", name: worker },
   ];
 }
 
 /**
- * Finds the Worker, database and bucket by name and makes the missing ones. Anything that
+ * Finds the Worker, database and buckets by name and makes the missing ones. Anything that
  * exists but isn't marked as ours stops the deploy, unless `adopt` is set. In `plan` mode it
  * only reads.
  */
