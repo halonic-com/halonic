@@ -140,6 +140,45 @@ verifies("deploy.upload", () => {
     expect(api.calls.at(-1)).toBe("deployVersions old:100");
   });
 
+  it("waits up to two minutes for a workers.dev address it just turned on (HAL-13834)", async () => {
+    const { api, options } = setup({ accounts: [] }, passing);
+    const { attempts: _attempts, ...defaults } = options;
+    const sleeps: number[] = [];
+    let calls = 0;
+    await uploadAndSwitch(api, {
+      ...defaults,
+      sleep: async (ms: number) => {
+        sleeps.push(ms);
+      },
+      // A brand-new address answers 404 from Cloudflare's edge until it reaches the Worker.
+      fetch: (async () => {
+        calls += 1;
+        return calls <= 12 ? new Response("", { status: 404 }) : Response.json(passing);
+      }) as unknown as typeof fetch,
+    });
+    expect(calls).toBe(13);
+    expect(Math.max(...sleeps)).toBe(10_000);
+    expect(sleeps.reduce((sum, ms) => sum + ms, 0)).toBeGreaterThanOrEqual(100_000);
+  });
+
+  it("keeps the short wait when workers.dev was already on", async () => {
+    const { api, options, requests } = setup({ accounts: [], deployment: live }, {}, 404);
+    const { attempts: _attempts, ...defaults } = options;
+    await expect(uploadAndSwitch(api, defaults)).rejects.toBeInstanceOf(SmokeTestFailedError);
+    expect(requests).toHaveLength(5);
+  });
+
+  it("waits longer when workers.dev was off before this deploy", async () => {
+    const { api, options, requests } = setup(
+      { accounts: [], deployment: live, workersDevOn: false },
+      {},
+      404,
+    );
+    const { attempts: _attempts, ...defaults } = options;
+    await expect(uploadAndSwitch(api, defaults)).rejects.toBeInstanceOf(SmokeTestFailedError);
+    expect(requests).toHaveLength(16);
+  });
+
   it("uploads a never-deployed Worker live and tests it", async () => {
     const { api, options, requests } = setup({ accounts: [] }, passing);
     await uploadAndSwitch(api, {
@@ -239,11 +278,39 @@ verifies("deploy.upload", () => {
 
   it("fails clearly when the upload leaves no deployment to read back", async () => {
     const { api, options } = setup({ accounts: [] }, passing);
+    let lookups = 0;
     const emptied = Object.assign(Object.create(api), {
-      currentDeployment: async () => undefined,
+      currentDeployment: async () => {
+        lookups += 1;
+        return undefined;
+      },
     });
     const error = await uploadAndSwitch(emptied, options).catch((e: unknown) => e);
     expect((error as DeployError).code).toBe("cloudflare-request-failed");
+    // One lookup before the upload, five after it.
+    expect(lookups).toBe(6);
+  });
+
+  it("asks again while Cloudflare doesn't list the new deployment yet", async () => {
+    const { api, options } = setup({ accounts: [] }, passing);
+    let lookups = 0;
+    const sleeps: number[] = [];
+    // The first lookup is before the upload; the next two answer as if Cloudflare still lags.
+    const lagging = Object.assign(Object.create(api), {
+      currentDeployment: async () => {
+        lookups += 1;
+        return lookups <= 3 ? undefined : [{ id: "v1", percentage: 100 }];
+      },
+    });
+    const done = await uploadAndSwitch(lagging, {
+      ...options,
+      sleep: async (ms: number) => {
+        sleeps.push(ms);
+      },
+    });
+    expect(done.versionId).toBe("v1");
+    expect(lookups).toBe(4);
+    expect(sleeps.slice(0, 2)).toEqual([1000, 2000]);
   });
 
   it("still reports the failed self-test when putting the old version back fails", async () => {

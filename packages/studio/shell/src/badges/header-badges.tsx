@@ -1,16 +1,36 @@
-import { HeaderBadge, StatusChip, Tooltip, type TooltipTriggerProps } from "@halonicjs/studio-kit";
+import {
+  HeaderBadge,
+  type HeaderBadgePhoneLine,
+  StatusChip,
+  Tooltip,
+  type TooltipTriggerProps,
+} from "@halonicjs/studio-kit";
 import { useRef, useSyncExternalStore } from "react";
-import type { BadgeRegistry, BadgeState } from "./badge-registry.ts";
+import { type BadgeRegistry, type BadgeState, trustBadgePriority } from "./badge-registry.ts";
+
+/** The props of {@link HeaderBadges}. */
+export interface HeaderBadgesProps {
+  readonly registry: BadgeRegistry;
+  /**
+   * `bar`, the default: one after another, for the desktop's status bar. `strip`: rows of the
+   * phone's notice strip, the trust badge on its own line, then the other states as chips in one
+   * row that wraps.
+   */
+  readonly layout?: "bar" | "strip";
+}
 
 /**
  * The header badges the features registered, in priority order; nothing when there are none. The
  * status bar shows them, and More in a desktop window as narrow as a phone.
  */
-export function HeaderBadges({ registry }: { readonly registry: BadgeRegistry }) {
+export function HeaderBadges({ registry, layout = "bar" }: HeaderBadgesProps) {
   const states = useSyncExternalStore(
     (onChange) => registry.subscribe(onChange),
     () => registry.list(),
   );
+  if (layout === "strip") {
+    return <StripRows states={states} />;
+  }
   return (
     <>
       {states.map((state) => (
@@ -20,7 +40,45 @@ export function HeaderBadges({ registry }: { readonly registry: BadgeRegistry })
   );
 }
 
-function RegisteredBadge({ state }: { readonly state: BadgeState }) {
+/**
+ * The strip's rows (HAL-12557): the trust badge on the kit's phone line, indented 16px, then the
+ * connector states in one row of chips, 8px apart, that wraps. Each row draws the line under it,
+ * so the last row's line is the strip's. In a short window the rows are left out, so the page
+ * keeps its room; the save problem's row stays.
+ */
+function StripRows({ states }: { readonly states: readonly BadgeState[] }) {
+  const lines = states.filter((state) => state.priority >= trustBadgePriority);
+  const chips = states.filter((state) => state.priority < trustBadgePriority);
+  return (
+    <>
+      {lines.map((state) => (
+        <div key={state.id} data-notice-row="" className={stripRow}>
+          <RegisteredBadge state={state} phoneLine="strip" />
+        </div>
+      ))}
+      {chips.length > 0 ? (
+        <div
+          data-notice-row=""
+          className={`${stripRow} flex min-h-11 flex-wrap items-center gap-2 px-4 py-2`}
+        >
+          {chips.map((state) => (
+            <RegisteredBadge key={state.id} state={state} phoneLine="none" />
+          ))}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+const stripRow = "border-b border-border bg-surface-subtle short:hidden";
+
+function RegisteredBadge({
+  state,
+  phoneLine,
+}: {
+  readonly state: BadgeState;
+  readonly phoneLine?: HeaderBadgePhoneLine;
+}) {
   const opener = useRef<HTMLElement | null>(null);
   const { action, onSelect, tooltip } = state;
   // The tooltip's trigger props go on the button, so a screen reader reads what it says too.
@@ -32,14 +90,18 @@ function RegisteredBadge({ state }: { readonly state: BadgeState }) {
         ref={(element) => {
           opener.current = element?.querySelector("button") ?? null;
         }}
-        // On a phone the badge has its own line on More, so its divider runs full width.
-        className="inline-flex phone:flex phone:grow phone:flex-col"
+        // On a phone a badge on its own line runs full width, so its divider does too; a chip in
+        // the strip's row stays its own size, so the row wraps.
+        className={
+          phoneLine === "none" ? "inline-flex" : "inline-flex phone:flex phone:grow phone:flex-col"
+        }
       >
         <HeaderBadge
           as="button"
           action={action}
           label={`${asSentence(state.label)} ${action}`}
           aria-describedby={trigger["aria-describedby"]}
+          phoneLine={phoneLine}
           onClick={() => onSelect(opener.current)}
         >
           {state.label}

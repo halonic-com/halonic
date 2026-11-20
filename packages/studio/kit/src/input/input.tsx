@@ -5,10 +5,12 @@ import { useFieldControl } from "../field/field.tsx";
 import { isComposing } from "../keyboard/is-composing.ts";
 import {
   type FieldSize,
+  type FieldWidth,
   fieldBoxClasses,
   fieldBoxState,
   fieldTextClasses,
   focusTextOnPress,
+  shortTextClasses,
 } from "./field-box.ts";
 import { type InputLeadingButton, LeadingButton } from "./leading-button.tsx";
 
@@ -22,9 +24,15 @@ type OwnedAttributes =
   | "aria-describedby"
   | "aria-required";
 
-interface InputBase extends Omit<InputHTMLAttributes<HTMLInputElement>, OwnedAttributes> {
+// The native `width` is an image button's; the kit's `width` is the box's width instead.
+interface InputBase extends Omit<InputHTMLAttributes<HTMLInputElement>, OwnedAttributes | "width"> {
   /** `md` 32px (the default) or `sm` 28px. Both are 48px on a phone. */
   readonly size?: FieldSize;
+  /**
+   * `full` (the default) fills the column; `short` fits about 6 characters, for a small number
+   * such as a turn limit, so the box doesn't suggest a long value. Never narrower than 48px.
+   */
+  readonly width?: FieldWidth;
   /**
    * A button at the end of the box (clear, show): a ghost icon `Button`. It keeps the `sm` look on
    * a phone, with a 48px hit area, so the box stays 48px.
@@ -67,6 +75,7 @@ export type InputProps = InputBase & InputLeading;
  */
 export function Input({
   size = "md",
+  width = "full",
   leadingIcon,
   leadingButton,
   trailing,
@@ -91,7 +100,7 @@ export function Input({
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: a mouse convenience only; the keyboard reaches the text itself.
-    <div className={fieldBoxClasses(state, size)} onMouseDown={focusTextOnPress}>
+    <div className={fieldBoxClasses(state, size, "center", width)} onMouseDown={focusTextOnPress}>
       {leadingButton === undefined ? null : (
         <LeadingButton
           button={leadingButton}
@@ -112,8 +121,7 @@ export function Input({
         id={field?.id}
         data-field-text=""
         data-text-entry=""
-        // As tall as the box, so a press above or below the line of text lands on it.
-        className={`${fieldTextClasses} self-stretch${mono ? " font-mono" : ""}`}
+        className={textClasses(width, mono)}
         aria-describedby={describedBy(field?.describedBy, extraDescription)}
         aria-invalid={invalid || undefined}
         aria-required={field?.required || undefined}
@@ -122,4 +130,15 @@ export function Input({
       <InFieldBoxContext value={true}>{trailing}</InFieldBoxContext>
     </div>
   );
+}
+
+/**
+ * The text's classes. It is as tall as the box, so a press above or below the line of text lands
+ * on it.
+ */
+function textClasses(width: FieldWidth, mono: boolean): string {
+  const classes = [fieldTextClasses, "self-stretch"];
+  if (width === "short") classes.push(shortTextClasses);
+  if (mono) classes.push("font-mono");
+  return classes.join(" ");
 }

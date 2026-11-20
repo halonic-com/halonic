@@ -1776,6 +1776,21 @@ at its root; without a provider, a Field says nothing:
 </FieldAnnounceProvider>;
 ```
 
+**An error that appears after a pause in typing** shows under a control that still has focus, and
+NVDA and JAWS don't re-read a description that changes under focus. A Field that checks its value
+on a pause sets `announceWhileFocused`: it then announces a new error once wherever focus is. The
+same error isn't read again when focus leaves, and clearing it says nothing:
+
+```tsx
+<Field label="Model call limit" error={limit.error} announceWhileFocused>
+  <Input
+    value={limit.value}
+    onChange={(event) => limit.onChange(event.target.value)}
+    onBlur={limit.flush}
+  />
+</Field>
+```
+
 A `prefix` puts its symbol in `text-body` `fg-muted` 8px before the box, centred on it, and
 tapping it focuses the control. Screen readers skip the symbol and hear its `name` after the
 label: "Per run, in euros". The hint and the error still start at the Field's left edge, under
@@ -1846,6 +1861,18 @@ A one-line text field.
 `sm` ghost icon `Button`, such as Clear). A button inside the box keeps the general focus ring, so
 you can tell it from the text. A press anywhere in the box, padding and icon included, puts the
 caret in the text; a press on the trailing button doesn't.
+
+**Width.** The box fills its column (`width="full"`, the default). For a small number, such as a
+turn limit or a count, use `width="short"`: the box fits about 6 characters of its text
+(`input-short`, 6ch, measured in the text's own 14px or 16px) plus its padding, and is never
+narrower than the 48px touch target. A wide box suggests a long value and leaves the hint and the
+error far from it.
+
+```tsx
+<Field label="Turn limit" hint="1 to 200" error={turnLimitError}>
+  <Input width="short" inputMode="numeric" value={turnLimit} onChange={…} />
+</Field>
+```
 
 **Keys.** Enter submits its form, **except while an input method is composing**: the Enter that
 picks a Japanese or Chinese word must never send. `Input` and `TextArea` don't pass a composing

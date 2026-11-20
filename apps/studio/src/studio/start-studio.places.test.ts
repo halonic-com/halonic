@@ -6,8 +6,17 @@ import { type StartedStudio, startStudio } from "./start-studio.ts";
 
 /** A desktop window: jsdom has no `matchMedia`, and the shell follows the phone width with it. */
 function desktopMediaQueries(query: string): MediaQueryList {
+  return mediaQueries(query, false);
+}
+
+/** A phone-wide window: the shell's phone-width query matches. */
+function phoneMediaQueries(query: string): MediaQueryList {
+  return mediaQueries(query, query.includes("600px"));
+}
+
+function mediaQueries(query: string, matches: boolean): MediaQueryList {
   return {
-    matches: false,
+    matches,
     media: query,
     onchange: null,
     addEventListener: () => undefined,
@@ -18,15 +27,20 @@ function desktopMediaQueries(query: string): MediaQueryList {
   };
 }
 
-/** The desktop app's webview: Tauri's IPC answering `pick_folder` with a folder, and no data. */
-function desktopWebview() {
-  const invoke = async (command: string) => {
+/**
+ * The desktop app's webview: Tauri's IPC answering `pick_folder` with a folder, and the folder's
+ * `files` (none unless given).
+ */
+function desktopWebview(files: Readonly<Record<string, string>> = {}) {
+  const invoke = async (command: string, args?: Record<string, unknown>) => {
     if (command === "pick_folder") return "/work/acme";
     if (command === "resource_report") {
       return { engineMemoryBytes: 0, childProcesses: [], dataBytes: 0, freeDiskBytes: 0 };
     }
     if (command === "fs_write") return { status: "written" };
-    if (command === "fs_list" || command === "run_logs") return [];
+    if (command === "fs_list") return Object.keys(files);
+    if (command === "fs_read") return files[String(args?.["path"])] ?? null;
+    if (command === "run_logs") return [];
     if (command === "host_settings_read") return {};
     return null;
   };
@@ -128,5 +142,44 @@ verifies("studio.entry", () => {
       expect(stopped(element), `the ${label} place stopped working`).toBe(false);
     }
     expect(labels).toEqual(expect.arrayContaining(["Inbox", "Library"]));
+  }, 30_000);
+});
+
+/** The innermost element in the page whose text starts with `text`; a click on it reaches its row. */
+const pageText = (root: HTMLElement, text: string) =>
+  [...root.querySelectorAll<HTMLElement>("main *")]
+    .filter((each) => each.textContent?.startsWith(text) === true)
+    .at(-1);
+
+verifies("shell.studio-phone", () => {
+  // Sofia saw a skill's folder name in the phone top bar (HAL-12278); HAL-11790 named the page.
+  it("names a Library item's page by the item's name in the phone top bar, not its folder", async () => {
+    window.matchMedia = phoneMediaQueries;
+    started = startStudio({
+      element,
+      window: desktopWebview({
+        "workspace.yaml": "id: acme\nname: Acme\n",
+        "library/skills/friendly-tone/SKILL.md":
+          "---\nname: Friendly tone\ndescription: Warm replies.\n---\nBe kind.\n",
+      }),
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      storage: memoryStorage(),
+    });
+    await vi.waitFor(() => expect(element.querySelector("button")).not.toBeNull());
+    element.querySelector("button")?.click();
+    for (const step of ["More", "Library", "Skills", "Friendly tone"]) {
+      const target = () =>
+        step === "More"
+          ? [...element.querySelectorAll("a")].find((each) => each.textContent === step)
+          : pageText(element, step);
+      await vi.waitFor(() => expect(target()).toBeDefined(), { timeout: 4_000 });
+      target()?.click();
+    }
+
+    await vi.waitFor(
+      () => expect(element.querySelector("header p")?.textContent).toBe("Friendly tone"),
+      { timeout: 4_000 },
+    );
+    expect(document.title).toMatch(/^Friendly tone · /);
   }, 30_000);
 });

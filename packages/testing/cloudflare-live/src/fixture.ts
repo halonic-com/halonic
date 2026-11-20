@@ -9,6 +9,7 @@ import {
 import type { CloudflareRest } from "./cloudflare-rest.ts";
 import type { targetVariables } from "./live-target.ts";
 import { teardownFor } from "./teardown.ts";
+import { workersDevUrlFor } from "./workers-dev.ts";
 
 /** The routine the fixture deploys: `acme/orders`, signed with the secret `live-hook`. */
 export const fixtureAddress = "acme/orders";
@@ -136,10 +137,9 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
       ...options.upload,
     });
 
-    const url = await api.workersDevUrl(accountId, worker);
-    if (url === undefined || new URL(url).host !== host) {
-      throw new Error("The Worker's workers.dev address is not the host the Worker answers to.");
-    }
+    const url = await workersDevUrlFor(api, accountId, worker, host, {
+      ...(options.upload?.sleep ? { sleep: options.upload.sleep } : {}),
+    });
     return {
       env: {
         HALONIC_LIVE_WORKER_URL: url,

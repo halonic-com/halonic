@@ -134,6 +134,7 @@ export {
   HeaderBadge,
   type HeaderBadgeButton,
   type HeaderBadgeMenu,
+  type HeaderBadgePhoneLine,
   type HeaderBadgeProps,
   type HeaderBadgeStatus,
   type HeaderBadgeStatusTone,
@@ -176,7 +177,7 @@ export { SettingsIcon } from "./icons/settings-icon.tsx";
 export { TickIcon } from "./icons/tick-icon.tsx";
 export { UpdateReadyIcon } from "./icons/update-ready-icon.tsx";
 export { WarningIcon } from "./icons/warning-icon.tsx";
-export type { FieldSize } from "./input/field-box.ts";
+export type { FieldSize, FieldWidth } from "./input/field-box.ts";
 export { Input, type InputProps } from "./input/input.tsx";
 export type { InputLeadingButton } from "./input/leading-button.tsx";
 export { TextArea, type TextAreaProps } from "./input/text-area.tsx";

@@ -3,6 +3,10 @@
 #![allow(dead_code)]
 
 use halonic_e2e_noise_wasm::RandomSource;
+use snow::Builder;
+use snow::params::{CipherChoice, DHChoice, HashChoice};
+use snow::resolvers::{CryptoResolver, DefaultResolver, FallbackResolver};
+use snow::types::{Cipher, Dh, Hash, Random};
 
 /// Bytes from a hex string, as the vectors write them.
 pub fn hex(text: &str) -> Vec<u8> {
@@ -66,9 +70,34 @@ impl RandomSource for SeededRandom {
     }
 }
 
-impl snow::types::Random for SeededRandom {
+impl Random for SeededRandom {
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), snow::Error> {
         RandomSource::fill(self, dest);
         Ok(())
     }
+}
+
+/// Gives plain `snow` a seeded random source and nothing else.
+struct SeededOnly(u64);
+
+impl CryptoResolver for SeededOnly {
+    fn resolve_rng(&self) -> Option<Box<dyn Random>> {
+        Some(Box::new(SeededRandom(self.0)))
+    }
+    fn resolve_dh(&self, _: &DHChoice) -> Option<Box<dyn Dh>> {
+        None
+    }
+    fn resolve_hash(&self, _: &HashChoice) -> Option<Box<dyn Hash>> {
+        None
+    }
+    fn resolve_cipher(&self, _: &CipherChoice) -> Option<Box<dyn Cipher>> {
+        None
+    }
+}
+
+/// Plain `snow` for a protocol, as the phone builds it, with a seeded
+/// random source: the crate has no `getrandom`, so `snow` has none of its own.
+pub fn snow_builder<'a>(protocol_name: &str, seed: u64) -> Builder<'a> {
+    let resolver = FallbackResolver::new(Box::new(SeededOnly(seed)), Box::new(DefaultResolver));
+    Builder::with_resolver(protocol_name.parse().expect("params"), Box::new(resolver))
 }

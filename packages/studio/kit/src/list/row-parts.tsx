@@ -69,11 +69,13 @@ export function MetaLine({ row, text, id, chip }: MetaLineProps) {
   if (row.error !== undefined && row.unavailable === undefined) {
     colour = "text-danger";
   }
+  // `relative`, so the cut also clips the text's screen-reader-only words (`sr-only` is absolute):
+  // otherwise they sit past the row's end and make the page scroll sideways.
   const line =
     text === undefined ? null : (
       <span
         id={describesRow(row) ? id : undefined}
-        className={`${lineFit(row)} text-small ${colour}`}
+        className={`relative ${lineFit(row)} text-small ${colour}`}
       >
         {text}
       </span>

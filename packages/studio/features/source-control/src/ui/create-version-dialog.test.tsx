@@ -256,7 +256,7 @@ verifies("source-control.create-version", () => {
     it("opens with one item when a screen asks for it", async () => {
       const { list } = await openPage();
       await act(async () => list.startVersion([agentPath]));
-      expect(nameField()?.value).toBe("Changes to Triage");
+      expect(nameField()?.value).toBe("Triage · Instructions edited: 1 sentence changed");
       expect(dialog()?.querySelector("section")?.textContent).not.toContain("README.md");
     });
 

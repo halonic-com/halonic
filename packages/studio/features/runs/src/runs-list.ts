@@ -36,6 +36,7 @@ export class RunsList {
   readonly #stopWatching: () => void;
   #loads = 0;
   #requested: WorkflowRef | undefined;
+  #toReview: string | undefined;
   readonly #opened = new Set<string>();
   #disposed = false;
 
@@ -70,6 +71,23 @@ export class RunsList {
   /** Forgets the request once the page has read it, so a later plain open shows every workflow. */
   clearRequest(): void {
     this.#requested = undefined;
+  }
+
+  /**
+   * Asks for the Inbox to open what this run waits on, as a run's **Review in Inbox** does. Call
+   * it, then open the Inbox place. An Inbox already open takes the request at once; otherwise the
+   * next one to open does ({@link takeReview}).
+   */
+  reviewInInbox(runId: string): void {
+    this.#toReview = runId;
+    for (const listener of [...this.#listeners]) listener();
+  }
+
+  /** The run {@link reviewInInbox} asked for, once: the request is cleared as it's taken. */
+  takeReview(): string | undefined {
+    const runId = this.#toReview;
+    this.#toReview = undefined;
+    return runId;
   }
 
   /**

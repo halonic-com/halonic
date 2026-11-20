@@ -52,6 +52,11 @@ export interface ShellFrameProps {
   readonly badges?: ReactNode;
   /** The workspace's save note ("✓ Saved") on the desktop, at the status bar's right end. */
   readonly saveNote?: ReactNode;
+  /**
+   * The header badges on a phone, as rows of the notice strip under the top bar
+   * (`HeaderBadges` with `layout="strip"`). Left out, the strip shows only a save problem.
+   */
+  readonly phoneBadges?: ReactNode;
   /** The top bar on a phone, `PhoneTopBar`: Back, the place or page title, its actions. */
   readonly phoneTopBar?: ReactNode;
   /**
@@ -161,7 +166,7 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
       <div className={`flex min-h-0 flex-1 flex-col bg-surface ${desktop ? panel : phoneColumn}`}>
         {desktop ? null : props.phoneTopBar}
         <EngineLine engine={props.engine} />
-        {desktop ? null : <PhoneNotices saveNote={props.saveNote} />}
+        {desktop ? null : <PhoneNotices saveNote={props.saveNote} badges={props.phoneBadges} />}
         <div className={`relative flex min-h-0 flex-1 ${desktop ? "" : phoneContent}`}>
           {desktop ? (
             <SidebarSlot
@@ -211,24 +216,36 @@ const statusBarClasses = [
 ].join(" ");
 
 /**
- * On a phone, which has no status bar, the save note shows in a strip under the top bar and the
- * engine line, only while it's a problem: full width, with the problem's soft fill edge to edge.
- * The strip is part of the frame, so it doesn't scroll away with the page. With no problem, no
- * strip shows at all, not an empty one; "Saved" and "Saving…" don't show on a phone.
+ * On a phone, which has no status bar, the save note and the header badges show in a strip under
+ * the top bar and the engine line: first the save note's row, only while it's a problem, full width
+ * with the problem's soft fill edge to edge, then the badges' rows (HAL-12557). Each row draws the
+ * line under it. The strip is part of the frame, so it doesn't scroll away with the page. With no
+ * problem and no badge, the strip takes no room; "Saved" and "Saving…" don't show on a phone.
  */
-function PhoneNotices({ saveNote }: Pick<ShellFrameProps, "saveNote">) {
-  if (!hasContent(saveNote)) {
+function PhoneNotices({
+  saveNote,
+  badges,
+}: {
+  readonly saveNote: ReactNode;
+  readonly badges: ReactNode;
+}) {
+  if (!hasContent(saveNote) && !hasContent(badges)) {
     return null;
   }
   return (
-    <div data-phone-notices="" className={phoneNoticesClasses}>
-      {saveNote}
+    <div data-phone-notices="" className="flex shrink-0 flex-col">
+      {hasContent(saveNote) ? (
+        <div data-notice-save="" className={saveRowClasses}>
+          {saveNote}
+        </div>
+      ) : null}
+      {badges}
     </div>
   );
 }
 
-const phoneNoticesClasses = [
-  "hidden min-h-touch shrink-0 items-center border-b border-border ps-4 pe-1 has-[[data-problem]]:flex",
+const saveRowClasses = [
+  "hidden min-h-touch items-center border-b border-border ps-4 pe-1 has-[[data-problem]]:flex",
   "has-[[data-problem=warning]]:bg-warning-soft has-[[data-problem=danger]]:bg-danger-soft",
 ].join(" ");
 

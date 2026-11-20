@@ -1,4 +1,4 @@
-import { cp, mkdtemp, readFile, realpath, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -173,29 +173,23 @@ verifies("cli.run-sandbox-gate", () => {
     expect(checks).toBe(0);
   });
 
-  it("refuses an agent in a harness once the sandbox is fine, since this engine has no harness adapter", async () => {
-    await writerWith("harness: claude-code\n");
-
-    const { code, io } = await run({ ok: true, reason: null, missing: [] });
-
-    expect(code).toBe(exitCode.unavailable);
-    expect(io.stderr[0]).toBe(
-      "✕ Couldn't run support-reply: Halonic can't run agents in Claude Code yet, and Writer is in Claude Code. Nothing ran.",
+  // An agent set to "On this computer" isn't fenced, so the sandbox isn't asked; the run then
+  // goes on to the trust check, which a workspace changed since it was trusted fails (HAL-6477).
+  it("doesn't check the sandbox for an agent set to On this computer, and goes on to the trust check", async () => {
+    // A harness agent sends its work to a cloud model, which a local-only workspace refuses.
+    const settings = join(acme, "workspace.yaml");
+    await writeFile(
+      settings,
+      (await readFile(settings, "utf8")).replace("localOnly: true", "localOnly: false"),
     );
-    expect(io.stderr[1]).toBe("  Run it with --harness halonic.");
-    expect(io.stdout).toEqual([]);
-    expect(await runsKept()).toBe(0);
-  });
-
-  it("refuses an agent set to On this computer the same way, and starts nothing", async () => {
     await writerWith("harness: claude-code\n");
     await chooseThisComputer();
+    await rm(join(folder, "trust"), { recursive: true });
 
-    const { code, io } = await run(bubblewrapMissing);
+    const { code } = await run(bubblewrapMissing);
 
-    expect(code).toBe(exitCode.unavailable);
+    expect(code).toBe(exitCode.notTrusted);
     expect(checks).toBe(0);
-    expect(io.stderr[0]).toContain("Halonic can't run agents in Claude Code yet");
     expect(await runsKept()).toBe(0);
   });
 

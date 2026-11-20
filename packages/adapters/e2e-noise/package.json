@@ -1,0 +1,33 @@
+{
+  "name": "@halonicjs/adapter-e2e-noise",
+  "private": true,
+  "type": "module",
+  "description": "The agent host's Noise session: snow built to WebAssembly, one instance per session, wiped when it ends.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "owen",
+    "coverage": {
+      "lines": 100,
+      "branches": 95
+    },
+    "runtime": "node"
+  }
+}

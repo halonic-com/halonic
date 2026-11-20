@@ -178,6 +178,7 @@ export function workspaceModelResolver(
         "unknown-model-alias",
         modelTexts.unknownAlias(name, request.hubId),
         modelTexts.unknownAliasFix(),
+        { alias: name, hub: request.hubId },
       );
     }
     const fallback: ResolvedModel[] = [];

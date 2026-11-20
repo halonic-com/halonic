@@ -39,7 +39,7 @@ export interface HistoryProps {
  * focus on its row, unfolding See all history if the row is past the newest 5. There (2.12) each
  * row ends in a chevron, and a version the shared copy lacks carries "Not shared yet".
  *
- * Not here yet: Restore just this and Go back.
+ * Each item of a version has Restore just this in its ⋮. Not here yet: Go back.
  */
 export function History({
   list,
@@ -88,6 +88,7 @@ export function History({
         {picked === undefined ? null : (
           <Details
             version={picked}
+            list={list}
             titleRef={detailsFocus.title}
             onEscape={detailsFocus.backToRow}
           />
@@ -296,10 +297,12 @@ function HistoryFooter({
  */
 function Details({
   version,
+  list,
   titleRef,
   onEscape,
 }: {
   readonly version: Version;
+  readonly list: ChangesList;
   readonly titleRef: RefObject<HTMLHeadingElement | null>;
   readonly onEscape: () => void;
 }) {
@@ -317,7 +320,7 @@ function Details({
       <h3 ref={titleRef} tabIndex={-1} className="text-heading">
         {version.name}
       </h3>
-      <VersionFacts version={version} level="details" />
+      <VersionFacts version={version} list={list} level="details" />
     </section>
   );
 }

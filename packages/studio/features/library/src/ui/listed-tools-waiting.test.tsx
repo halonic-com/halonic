@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import { type ItemViewProps, limitedLookup } from "@halonicjs/studio-shell";
+import { EngineNotAnswering, type ItemViewProps, limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type ConnectorStatusHost, ConnectorStatusHostService } from "../connector-status-host.ts";
 import { libraryFeature } from "../feature.ts";
 import {
+  ConnectorCouldntList,
   type ListedToolRow,
   type ListedToolsHost,
   ListedToolsHostService,
@@ -187,6 +188,62 @@ describe("the connector page's listed tools", () => {
       const review = [...root.querySelectorAll("button")].find((b) => b.textContent === "Review");
       act(() => review?.click());
       expect(runCommand).toHaveBeenCalledWith("workspace.open-trust");
+    });
+
+    it("says which secret isn't set, with the command that sets it and Try again", async () => {
+      const root = render(
+        <ConnectorPage
+          {...page(
+            toolsHost(async () => {
+              throw new ConnectorCouldntList({ reason: "secret-missing", secret: "NOTES_TOKEN" });
+            }),
+          )}
+        />,
+      );
+      await settled();
+      expect(root.textContent).toContain(
+        "Couldn't list the tools: Notes needs the secret NOTES_TOKEN, which isn't set on this computer. Set it in a terminal, then try again:",
+      );
+      expect(root.textContent).toContain("halonic secret set NOTES_TOKEN");
+      const buttons = [...root.querySelectorAll("button")].map((b) => b.textContent);
+      expect(buttons).toContain("Try again");
+      expect(buttons).not.toContain("Copy details");
+    });
+
+    it("says the program stopped, with Try again and Copy details", async () => {
+      const root = render(
+        <ConnectorPage
+          {...page(
+            toolsHost(async () => {
+              throw new ConnectorCouldntList({ reason: "stopped" });
+            }),
+          )}
+        />,
+      );
+      await settled();
+      expect(root.textContent).toContain(
+        "Couldn't list the tools: Notes stopped before it answered.",
+      );
+      const buttons = [...root.querySelectorAll("button")].map((b) => b.textContent);
+      expect(buttons).toEqual(expect.arrayContaining(["Try again", "Copy details"]));
+    });
+
+    it("says the engine isn't answering when the agent host isn't running", async () => {
+      const root = render(
+        <ConnectorPage
+          {...page(
+            toolsHost(async () => {
+              throw new EngineNotAnswering();
+            }),
+          )}
+        />,
+      );
+      await settled();
+      expect(root.textContent).toContain(
+        "Couldn't list the tools: the engine isn't answering. It may still be starting.",
+      );
+      const buttons = [...root.querySelectorAll("button")].map((b) => b.textContent);
+      expect(buttons).toContain("Try again");
     });
 
     it("says a refused list or an unreadable approval has no rows, with Review tools", async () => {

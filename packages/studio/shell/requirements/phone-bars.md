@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1290 (T2); component specs 0.2, 15.1 and 15.2 (HAL-175); phone layout (HAL-330); visual review kit T2-F11, F13 and F14 (HAL-1115)
 
-While the window is narrower than `PHONE_MAX_WIDTH`, the frame shall show the phone's top bar above the page and, while it is given one, the bottom navigation below the page, with the engine's line between the top bar and the page, then, while the save note is a problem, its strip (`shell.save-note`).
+While the window is narrower than `PHONE_MAX_WIDTH`, the frame shall show the phone's top bar above the page and, while it is given one, the bottom navigation below the page, with the engine's line between the top bar and the page, then, while the save note is a problem or a header badge shows, the notice strip (`shell.save-note`, `shell.phone-notice-badges`).
 
 The top bar, `PhoneTopBar`, shall be at least 56px high plus the top safe area, with a line below it. Where it is given a way back, it shall show a 48px icon button named "Back" at its left, and none at the top of a place. It shall show its title on one line after that, left aligned, ending in "…" when the title doesn't fit, and its actions at the right.
 

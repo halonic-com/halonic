@@ -126,6 +126,8 @@ export interface LocalHarnessInput {
   openRuns(): Promise<ReadonlySet<string>>;
   /** Hears the error of a folder's end that couldn't finish, and of a temp folder that couldn't be removed. */
   reportError(error: unknown): void;
+  /** Hears of a harness bridge failure the run log couldn't record (requirement `harness-host.bridge-failures`). */
+  reportBridgeError(error: unknown): void;
   readonly parts?: LocalHarnessParts;
 }
 
@@ -194,7 +196,7 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
     harnesses,
     bridgeServer: parts.bridgeServer ?? (await nodeBridgeServer(input)),
     services: { servicesFor: () => bridgeServices },
-    reportError: input.reportError,
+    reportError: input.reportBridgeError,
     profiles,
     home: input.environment.homeFolder,
     instructions: new RunInstructions({

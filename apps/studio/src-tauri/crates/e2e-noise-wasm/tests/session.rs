@@ -8,38 +8,13 @@ use common::{NoRandom, SeededRandom};
 use halonic_e2e_noise_wasm::{
     Failure, Handshake, MAX_MESSAGE_BYTES, Role, Session, SessionKeys, TAG_BYTES,
 };
-use snow::params::{CipherChoice, DHChoice, HashChoice};
-use snow::resolvers::{CryptoResolver, DefaultResolver, FallbackResolver};
-use snow::types::{Cipher, Dh, Hash, Random};
 use snow::{Builder, HandshakeState, TransportState};
 
 const PROLOGUE: &[u8] = b"halonic-gateway/2";
 const PSK: [u8; 32] = [7; 32];
 
-/// Gives plain `snow` a seeded random source and nothing else.
-struct SeededOnly(u64);
-
-impl CryptoResolver for SeededOnly {
-    fn resolve_rng(&self) -> Option<Box<dyn Random>> {
-        Some(Box::new(SeededRandom(self.0)))
-    }
-    fn resolve_dh(&self, _: &DHChoice) -> Option<Box<dyn Dh>> {
-        None
-    }
-    fn resolve_hash(&self, _: &HashChoice) -> Option<Box<dyn Hash>> {
-        None
-    }
-    fn resolve_cipher(&self, _: &CipherChoice) -> Option<Box<dyn Cipher>> {
-        None
-    }
-}
-
 fn snow_builder<'a>(handshake: Handshake, seed: u64) -> Builder<'a> {
-    let resolver = FallbackResolver::new(Box::new(SeededOnly(seed)), Box::new(DefaultResolver));
-    Builder::with_resolver(
-        handshake.protocol_name().parse().expect("params"),
-        Box::new(resolver),
-    )
+    common::snow_builder(handshake.protocol_name(), seed)
 }
 
 struct Keypair {

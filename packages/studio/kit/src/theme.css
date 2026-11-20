@@ -208,6 +208,7 @@
   --spacing-phone-bar: 56px; /* the phone's top bar and bottom navigation (h-phone-bar) */
   --spacing-nav-pill: 56px; /* width of the "where you are" pill in the bottom navigation */
   --spacing-qr-tile: 232px; /* the QR tile's smallest side, so a phone scans it from arm's length */
+  --spacing-input-short: 6ch; /* the text of a short Input, in its own font: a small number */
   --container-page: 1120px;
   --container-reading: 680px; /* long text */
   --container-column: 744px; /* a form or list column inside a page body */

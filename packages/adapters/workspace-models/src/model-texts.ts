@@ -11,9 +11,10 @@ export type ModelText = string;
 const knownTypes = `${providerTypes.slice(0, -1).join(", ")} or ${providerTypes.at(-1)}`;
 
 /**
- * `loadWorkspace` already reports a missing alias or provider before a run
- * starts, so these show only for what it can't see: a provider type with no
- * adapter, or a workspace changed while it ran.
+ * `loadWorkspace` already reports a missing provider before a run starts,
+ * so these show only for what it can't see: a provider type with no
+ * adapter, a default model alias it only warns about (HAL-12377), or a
+ * workspace changed while it ran.
  */
 export const modelTexts = {
   unknownType: (provider: string, type: string): ModelText =>

@@ -10,8 +10,8 @@
 // In 0.1 it has no Halonic tools. It has the harness host
 // (`openLocalHarnessHost`, HAL-7747): the engine can run an agent in a
 // harness, in a worktree of its own in the profile, and keeps what the run
-// changed as a proposal there. `halonic run` still refuses a harness agent
-// (`refuseHarnessAgents`) until HAL-6477 turns them on. Each top-level
+// changed as a proposal there, which `halonic proposals` reviews (HAL-6477).
+// `halonic routines watch` still refuses a harness agent. Each top-level
 // run starts its own connectors (`runConnectors`, HAL-6277) in the folder its
 // programs start in: `programFolders`, a copy at the run's commit for a live
 // run (HAL-4975). A chat turn calls the connectors it is given, none by
@@ -98,14 +98,16 @@ export { engineLockFile, routineStateCollection, runTimerCollection };
 
 /**
  * What an error the engine handles itself came from: the scheduler, the
- * engine's lock, or a leftover program copy it couldn't sweep.
+ * engine's lock, a leftover program copy it couldn't sweep, what a harness
+ * run left, or a harness bridge failure the run log couldn't record.
  */
 export type EngineErrorSource =
   | SchedulerErrorSource
   | "engine-lock"
   | "program-copies"
   | "run-connectors"
-  | "harness-host";
+  | "harness-host"
+  | "harness-bridge";
 
 export type { RoutineEngine, RoutineTicks };
 
@@ -273,6 +275,7 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
       clock: input.clock ?? systemClock,
       openRuns: () => openRunsOf(new FolderRunStore(folders.runsFolder())),
       reportError: (error) => input.reportError(error, "harness-host"),
+      reportBridgeError: (error) => input.reportError(error, "harness-bridge"),
       ...(input.git === undefined ? {} : { git: input.git }),
       ...(input.harnessParts === undefined ? {} : { parts: input.harnessParts }),
     });

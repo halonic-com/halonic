@@ -21,7 +21,7 @@ export const whenWords = {
     routine: "Starts on time only while",
     routines: "Routines start on time only while",
     command: "halonic routines watch",
-    end: "is running.",
+    end: "is running in a terminal.",
   },
   /** `routines watch` checks no mailbox in 0.1, so a mail routine starts only with Run now (HAL-12323). */
   mailNotChecked: "Halonic doesn't check mail yet, so this routine starts only with Run now.",

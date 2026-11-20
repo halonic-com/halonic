@@ -7,7 +7,8 @@ import { listing, memoryHost } from "./test-support.tsx";
 /** Registers the feature on a stand-in `studio` and returns what it added. */
 function registered() {
   const providers: SearchProviderContribution[] = [];
-  const commands: { id: string; title: string; run: (context: never) => void }[] = [];
+  const commands: { id: string; title: string; phone?: false; run: (context: never) => void }[] =
+    [];
   const kinds: {
     tab?: {
       describe: (item: never, context: never) => { label: string };
@@ -64,6 +65,8 @@ describe("workflowsFeature", () => {
 
     expect(command?.title).toBe("New workflow");
     expect(openPlace).toHaveBeenCalledWith("workflows");
+    // A phone's Search sheet leaves it out (UX 10.15).
+    expect(command?.phone).toBe(false);
   });
 
   it("names a tab by the workflow's name, else its id", () => {

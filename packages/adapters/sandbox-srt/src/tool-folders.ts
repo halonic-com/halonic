@@ -1,11 +1,5 @@
 import { win32 } from "node:path";
-
-/** `a` is `b`, or lies inside it, as Windows reads paths (without regard to case). */
-export function insideOrSame(parent: string, child: string): boolean {
-  const base = parent.toLowerCase();
-  const path = child.toLowerCase();
-  return path === base || path.startsWith(base.endsWith("\\") ? base : `${base}\\`);
-}
+import { insideOrSame, pathsOverlap } from "@halonicjs/adapter-system-node";
 
 /**
  * The folders of the host's `PATH` the program may read but not change on
@@ -33,7 +27,7 @@ export function toolFoldersInProfile(
 ): string[] {
   const root = win32.resolve(home);
   const appData = win32.join(root, "AppData");
-  const refused = [...denied, ...writable].map((path) => win32.resolve(path));
+  const refused = [...denied, ...writable];
   const found = new Map<string, string>();
   for (const entry of (hostPath ?? "").split(";")) {
     const raw = entry.trim().replace(/^"(.*)"$/, "$1");
@@ -41,7 +35,7 @@ export function toolFoldersInProfile(
     const folder = win32.resolve(raw);
     if (!insideOrSame(root, folder) || folder.toLowerCase() === root.toLowerCase()) continue;
     if (insideOrSame(appData, folder)) continue;
-    if (refused.some((path) => insideOrSame(path, folder) || insideOrSame(folder, path))) continue;
+    if (refused.some((path) => pathsOverlap(path, folder))) continue;
     if (!found.has(folder.toLowerCase())) found.set(folder.toLowerCase(), folder);
   }
   return [...found.values()];
@@ -55,9 +49,5 @@ export function toolFoldersInProfile(
  * and link-resolved).
  */
 export function clearOfPaths(folders: readonly string[], refused: readonly string[]): string[] {
-  const paths = refused.map((path) => win32.resolve(path));
-  return folders.filter((folder) => {
-    const resolved = win32.resolve(folder);
-    return !paths.some((path) => insideOrSame(path, resolved) || insideOrSame(resolved, path));
-  });
+  return folders.filter((folder) => !refused.some((path) => pathsOverlap(path, folder)));
 }

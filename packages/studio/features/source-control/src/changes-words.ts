@@ -201,7 +201,12 @@ export const versionWords = {
   addedByHistory: "Halonic added this when you turned on history.",
   /** The name offered for the first version of a workspace. */
   firstVersion: "First version",
-  /** The name offered for a version of one or more items. */
+  /**
+   * The name offered for a version of one item Halonic can describe, with its row's sentence:
+   * "Support reply · Step added: Page on-call".
+   */
+  nameFromSentence: (item: string, sentence: string) => `${item} · ${sentence}`,
+  /** The name offered for a version of one or more items, when no sentence says what changed. */
   suggestedName: (items: readonly string[]) => {
     const [first, second] = items;
     if (second === undefined) return `Changes to ${first ?? "the workspace"}`;
@@ -329,6 +334,28 @@ export const historyWords = {
   whatsInIt: "What's in it",
   noFiles: "No workspace files changed.",
   fileCount: (count: number) => (count === 1 ? "1 file" : `${count} files`),
+};
+
+/** Restore just this, on an item of a version (checklist part 2, 2.9; 552 5.5). */
+export const restoreWords = {
+  restoreJustThis: "Restore just this",
+  /** The toast, with Undo: "Restored Sorter from "Sorter replies in Dutch"." */
+  restored: (item: string, version: string) => `Restored ${item} from "${version}".`,
+  /** The danger toast when nothing was restored. */
+  failed: (item: string) => `Couldn't restore ${item}`,
+  undo: "Undo",
+  /** The toast's Undo, when putting the files back didn't work. */
+  undoFailed: "Couldn't put the files back",
+  /** The Callout when a file failed and putting the others back failed too. */
+  partialTitle: (item: string, version: string) => `Restored part of ${item} from "${version}".`,
+  partialBody: (count: number, reason: string) =>
+    `${count === 1 ? "Couldn't change 1 file" : `Couldn't change ${count} files`}: ${reason}`,
+  changedMeanwhile: "A file changed while Halonic was restoring it.",
+  changedSince: "A file changed after it was restored.",
+  noCopy: "Halonic couldn't keep a copy of your changes, so nothing was restored.",
+  cantRead: "Halonic couldn't read this version.",
+  tryAgain: "Try again",
+  tryAgainBusy: "Restoring…",
 };
 
 /** The sharing strip and Add where to share (checklist part 2, 2.3; microcopy 16, HAL-1566). */

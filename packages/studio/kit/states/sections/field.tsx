@@ -11,8 +11,8 @@ interface FieldsProps {
 }
 
 /**
- * The sheet's four fields: an empty Input with its placeholder, a filled one, a TextArea, and an
- * amount with its currency outside the box.
+ * The sheet's five fields: an empty Input with its placeholder, a filled one, a TextArea, an
+ * amount with its currency outside the box, and a short Input for a small number.
  */
 function Fields({ disabled = false, readOnly = false, errors = false }: FieldsProps) {
   const control = { disabled, readOnly };
@@ -50,6 +50,13 @@ function Fields({ disabled = false, readOnly = false, errors = false }: FieldsPr
       >
         <Input defaultValue="5,00" {...control} />
       </Field>
+      <Field
+        label="Turn limit"
+        hint="1 to 200"
+        error={errors ? "Enter a whole number from 1 to 200" : null}
+      >
+        <Input width="short" inputMode="numeric" defaultValue="40" {...control} />
+      </Field>
     </div>
   );
 }
@@ -59,7 +66,7 @@ export const fieldSection: PartSection = {
   number: "2, 3, 18.2",
   name: "Field and Input",
   order:
-    "kit 2, 3, 18.2 · top to bottom: an empty Input with its placeholder, a filled Input, a TextArea, an amount with its currency (prefix)",
+    "kit 2, 3, 18.2 · top to bottom: an empty Input with its placeholder, a filled Input, a TextArea, an amount with its currency (prefix), a short Input (width)",
   notApplicable: "busy (buttons only)",
   rows: [
     { name: "Default", copies: () => <Fields /> },

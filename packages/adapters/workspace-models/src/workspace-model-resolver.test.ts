@@ -255,6 +255,10 @@ verifies("cli.workspace-models", () => {
         code: "unknown-model-alias",
         kind: "not_found",
         message: "hub support has no model alias huge.",
+        failureCause: {
+          code: "models.unknown-model-alias",
+          detail: { alias: "huge", hub: "support" },
+        },
       });
     });
 

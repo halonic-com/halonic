@@ -9,8 +9,8 @@ output is never edited: only the typing speed and the pauses are set for reading
 
 ## How a recording is made
 
-The capture and the pacing are here. The drawing and the command line follow in later pull requests,
-and this README grows with them.
+The capture, the pacing and the terminal that replays a cast are here. The drawing and the command
+line follow in a later pull request, and this README grows with it.
 
 1. **Capture** runs `halonic --version` once, off camera, then the commands for real. It writes
    `<name>.cast` (asciicast v2): what the terminal showed, with the real time of every write, and a
@@ -19,6 +19,10 @@ and this README grows with them.
 2. **Pace** sets the typing speed and the pauses from the recording file and writes
    `<name>.paced.cast`, still asciicast v2. Output text and the gaps inside a command's output stay
    as captured; only a long wait before a command's first output (a program starting up) is cut.
+3. **Play** replays a paced cast through a small terminal and gives the screen after each write, as
+   a `Tape` of styled text. It knows only what our CLI prints (text, CR/LF, tab, backspace, the 16
+   colours, bold and dim, erase in line and cursor moves); any other escape code stops it with its
+   name, so a new one in the CLI can't be drawn wrong without anyone noticing.
 
 The recording file (`recordings/first-run.json`) holds the commands, the terminal size, the step
 labels in the window bar and the pacing of each command. A command can use a value from the session

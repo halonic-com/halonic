@@ -1,23 +1,26 @@
 import { Button } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef } from "react";
 import type { Version } from "../api.ts";
+import type { ChangesList } from "../changes-list.ts";
 import { historyWords } from "../changes-words.ts";
 import { fullDate } from "../history-days.ts";
+import { VersionItems } from "./version-items.tsx";
 
 /** Props for {@link VersionPage}. */
 export interface VersionPageProps {
   readonly version: Version;
+  readonly list: ChangesList;
   readonly onBack: () => void;
 }
 
 /**
  * A version on a phone, as its own page (checklist part 2, 2.14): Back to History, the version's
- * name as the `h1`, who and when, the notes and what's in it. Focus starts on the heading, so a
- * screen reader says where it is.
+ * name as the `h1`, who and when, the notes and what's in it, each item with Restore just this.
+ * Focus starts on the heading, so a screen reader says where it is.
  *
- * Not here yet: Restore just this, and the bottom bar's Go back to this version.
+ * Not here yet: the bottom bar's Go back to this version.
  */
-export function VersionPage({ version, onBack }: VersionPageProps) {
+export function VersionPage({ version, list, onBack }: VersionPageProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
   const headingId = useId();
@@ -31,7 +34,7 @@ export function VersionPage({ version, onBack }: VersionPageProps) {
       <h1 id={headingId} ref={heading} tabIndex={-1} className="text-title outline-none">
         {version.name}
       </h1>
-      <VersionFacts version={version} level="page" />
+      <VersionFacts version={version} list={list} level="page" />
     </section>
   );
 }
@@ -42,13 +45,14 @@ export function VersionPage({ version, onBack }: VersionPageProps) {
  */
 export function VersionFacts({
   version,
+  list,
   level,
 }: {
   readonly version: Version;
+  readonly list: ChangesList;
   /** "page" puts What's in it under an `h2`; "details" under an `h4`. */
   readonly level: "page" | "details";
 }) {
-  const WhatsInItHeading = level === "page" ? "h2" : "h4";
   return (
     <>
       <p className="text-small text-fg-muted">
@@ -57,20 +61,7 @@ export function VersionFacts({
       {version.notes === "" ? null : (
         <p className="text-body whitespace-pre-wrap">{version.notes}</p>
       )}
-      <WhatsInItHeading className="text-label text-fg-muted">
-        {historyWords.whatsInIt} · {historyWords.fileCount(version.files.length)}
-      </WhatsInItHeading>
-      {version.files.length === 0 ? (
-        <p className="text-body text-fg-muted">{historyWords.noFiles}</p>
-      ) : (
-        <ul className="flex flex-col gap-1">
-          {version.files.map((path) => (
-            <li key={path} className="text-body break-all">
-              {path}
-            </li>
-          ))}
-        </ul>
-      )}
+      <VersionItems version={version} list={list} headingLevel={level === "page" ? 2 : 4} />
     </>
   );
 }

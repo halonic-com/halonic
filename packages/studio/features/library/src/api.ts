@@ -49,9 +49,11 @@ export {
 export { type LibraryTabMemory, LibraryTabMemoryService } from "./library-tab-memory.ts";
 export { libraryKinds } from "./library-words.ts";
 export {
+  ConnectorCouldntList,
   type ListedToolsHost,
   ListedToolsHostService,
   type ListedToolsSnapshot,
+  type ListingFailure,
   WorkspaceNotTrusted,
 } from "./listed-tools-host.ts";
 export { listedToolsSnapshot } from "./listed-tools-snapshot.ts";

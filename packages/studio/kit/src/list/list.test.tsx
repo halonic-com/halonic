@@ -152,7 +152,7 @@ verifies("kit.list", () => {
     expect(icon?.getAttribute("aria-hidden")).toBe("true");
     expect(icon?.className).toContain("size-icon-md");
     expect(text?.children[0]?.className).toBe("truncate text-body-strong text-fg");
-    expect(text?.children[1]?.className).toBe("truncate text-small text-fg-muted");
+    expect(text?.children[1]?.className).toBe("relative truncate text-small text-fg-muted");
     expect(trailing?.textContent).toBe("Running");
   });
 
