@@ -74,12 +74,20 @@ verifies("kit.button", () => {
     expect(className).toContain("touch:hit-touch");
   });
 
-  it("renders xs, sm and md at lg on a phone and a touch screen", () => {
-    for (const size of ["xs", "sm", "md"] as const) {
+  it("renders sm and md at lg on a phone and a touch screen", () => {
+    for (const size of ["sm", "md"] as const) {
       const { className } = renderButton({ size, children: "Save" });
       expect(className).toContain("phone:min-h-control-lg");
       expect(className).toContain("touch:min-h-control-lg");
     }
+  });
+
+  it("renders xs at lg on a phone, but keeps it 20px on a touch screen so it stays in the status bar", () => {
+    const { className } = renderButton({ size: "xs", children: "Try again" });
+    expect(className).toContain("phone:min-h-control-lg");
+    expect(className).not.toContain("touch:min-h-control-lg");
+    expect(className).not.toContain("touch:px-4");
+    expect(className).toContain("touch:hit-touch");
   });
 
   it("writes xs in the status bar's caption type and the other sizes in the body's strong type", () => {

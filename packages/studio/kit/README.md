@@ -223,7 +223,7 @@ The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 | Prop | What it is |
 | --- | --- |
 | `variant` | `primary` once per view, `secondary` (the default), `ghost` for Cancel, `danger-outline` for a destructive action that opens a confirm, `danger` only to confirm it |
-| `size` | `xs` 20px in the caption type, only for the status bar; `sm` 28px, `md` 32px (the default), `lg` 40px, `touch` 48px for a phone's bottom bar or sheet |
+| `size` | `xs` 20px in the caption type, only for the status bar (on a touch screen it stays 20px with a 48px hit area; on a phone it grows to 40px); `sm` 28px, `md` 32px (the default), `lg` 40px, `touch` 48px for a phone's bottom bar or sheet |
 | `block` | Full width |
 | `icon` | A 16px icon before the label. With `label` and no children, the button is a square icon button |
 | `label` | An icon button's name, saying what and which: "Close Support reply", never just "Close" |
@@ -268,6 +268,10 @@ words, so at large text it grows taller, never wider than its column.
 **In a narrow box** (a status box at 400 % zoom), a `sm`, `md` or `lg` button is never wider than
 the box: its label wraps between words, centred, and the button grows taller. On one line nothing
 changes. An `xs` button stays on one line, so the status bar keeps its height.
+
+**On a tinted fill**, wrap a ghost button in `<OnTintContext value={true}>`: its label turns
+`accent-text` and its hover fill `surface`, so it stands out from the tint instead of greying it.
+The Callout does this for its actions, and the shell's save note on the status bar's problem fill.
 
 ## Card
 

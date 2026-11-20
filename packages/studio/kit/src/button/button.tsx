@@ -151,10 +151,12 @@ const wrapsWhenNarrow = "max-w-full py-0.5 text-center";
 /**
  * `xs` fits the 24px status bar with its 1px line and 1px to spare above and below, in the bar's
  * caption type, as high as a Status chip, and stays on one line so the bar keeps its height; the
- * others use the body's strong type. On a phone and a touch screen `xs` grows like `sm`.
+ * others use the body's strong type. On a phone `xs` grows like `sm`. On a touch screen it stays
+ * 20px, so it doesn't stick out of the status bar, and gets only the 48px hit area, as the bar's
+ * badges do.
  */
 const sizeClasses: Record<ButtonSize, string> = {
-  xs: `min-h-5 px-2 text-caption whitespace-nowrap ${asLargeOnTouch} ${hitArea}`,
+  xs: `min-h-5 px-2 text-caption whitespace-nowrap phone:min-h-control-lg phone:px-4 ${hitArea}`,
   sm: `min-h-control-sm px-2.5 text-body-strong ${wrapsWhenNarrow} ${asLargeOnTouch} ${hitArea}`,
   md: `min-h-control-md px-3 text-body-strong ${wrapsWhenNarrow} ${asLargeOnTouch} ${hitArea}`,
   lg: `min-h-control-lg px-4 text-body-strong ${wrapsWhenNarrow} ${hitArea}`,
