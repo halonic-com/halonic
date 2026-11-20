@@ -175,10 +175,7 @@ jobs:
 
   fast:
     name: Fast gates
-    # Trial (HAL-13578): with the repo variable CF_RUNNER_TRIAL set to `merge-queue`, the merge
-    # queue and pushes to main run this job on a one-job Cloudflare container
-    # (infra/cf-runner). Unset, everything runs on GitHub's runners as before.
-    runs-on: ${{ vars.CF_RUNNER_TRIAL == 'merge-queue' && (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'cf-linux' || github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
     permissions:
@@ -252,8 +249,8 @@ jobs:
           pnpm check
       - name: Licences
         run: pnpm check:licences
-      - name: Infra tests (spend guard, turbo-cache, cf-runner)
-        run: node --test infra/spend-guard/test/guard.test.mjs infra/turbo-cache/test.mjs infra/cf-runner/test.mjs
+      - name: Infra tests (spend guard, turbo-cache)
+        run: node --test infra/spend-guard/test/guard.test.mjs infra/turbo-cache/test.mjs
       - name: Formatting
         run: pnpm exec biome ci --linter-enabled=false .
       - name: Feature list and generated files
@@ -432,10 +429,7 @@ jobs:
 
   build:
     name: Typecheck, lint, test, build (${{ matrix.shard }})
-    # Trial (HAL-13578): with the repo variable CF_RUNNER_TRIAL set to `merge-queue`, the merge
-    # queue and pushes to main run this job on a one-job Cloudflare container
-    # (infra/cf-runner). Unset, everything runs on GitHub's runners as before.
-    runs-on: ${{ vars.CF_RUNNER_TRIAL == 'merge-queue' && (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'cf-linux' || github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
     # The longest shard since the split took 7.3 minutes (20 Nov, 244 runs).
     timeout-minutes: 15
     # One job took 14-17 minutes in the merge queue and up to 24 on a cold

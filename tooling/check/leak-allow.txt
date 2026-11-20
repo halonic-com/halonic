@@ -26,10 +26,6 @@ absolute-path packages/testing/parity/README.md commit:d5efbdb47 old example: a 
 absolute-path packages/testing/parity/README.md commit:6cb629818 old example: a /tmp path
 absolute-path packages/testing/parity/README.md commit:366a6d545 old example: a /tmp path
 url-password packages/core/format/src/kinds/connector/is-local.test.ts fp:2bb80d537b1da3e3 test data: a fake password in a URL
-absolute-path infra/cf-runner/bootstrap.sh root:/tmp/ paths inside the throwaway runner container
-absolute-path infra/cf-runner/bootstrap.sh root:/home/ paths inside the throwaway runner container
-absolute-path infra/cf-runner/worker.mjs root:/tmp/ paths inside the throwaway runner container
-absolute-path infra/cf-runner/worker.mjs root:/home/ paths inside the throwaway runner container
 
 # Old commits from before 15 Nov whose text held a personal term. Each
 # file's current version is reworded; the repo owners accepted these

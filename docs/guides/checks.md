@@ -860,16 +860,10 @@ depends only on the pull request itself and already passed on it: the
 title and coverage-floor checks, the merge base's tests and the
 requirement guard, and the workflow lint unless the group changes
 `.github/`.
-While the Cloudflare runner trial is on (see
-[infra/cf-runner/README.md](../../infra/cf-runner/README.md) for its
-switch), Fast gates and Typecheck, lint, test, build run in the merge
-queue and on `main` on a one-job Cloudflare container (label
-`cf-linux`); every other job, and every pull request, runs on GitHub's
-runners.
 
 | Job | What |
 | --- | --- |
-| Fast gates | `halonic --help` on a fresh install, the pull request title (in the queue, the squash commit's subject), `pnpm check` (with the DCO sign-off), licences, the spend-guard, turbo-cache and cf-runner tests, formatting, the feature list, `pnpm audit` for shipped dependencies |
+| Fast gates | `halonic --help` on a fresh install, the pull request title (in the queue, the squash commit's subject), `pnpm check` (with the DCO sign-off), licences, the spend-guard and turbo-cache tests, formatting, the feature list, `pnpm audit` for shipped dependencies |
 | Leak guard | the leak guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code |
 | Secret scan | `gitleaks` over the pull request's commits, checksum-verified |
 | Workflow lint | `zizmor` over `.github/`, installed from `.github/zizmor-requirements.txt` by hash; in the merge queue only when `.github/` changes |
