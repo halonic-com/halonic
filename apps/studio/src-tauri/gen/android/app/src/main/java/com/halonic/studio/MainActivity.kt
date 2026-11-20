@@ -7,9 +7,14 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
+
+/** The host of the app's own page. */
+internal const val APP_HOST = "tauri.localhost"
 
 /** The connect page, as tauri.android.conf.json loads it. */
-private const val CONNECT_PAGE = "http://tauri.localhost/connect.html"
+internal const val CONNECT_PAGE = "http://$APP_HOST/connect.html"
 
 class MainActivity : TauriActivity() {
   // Back is ours (see BackToConnectOrClose), not wry's plain goBack.
@@ -32,6 +37,24 @@ class MainActivity : TauriActivity() {
     val settings = webView.settings
     settings.userAgentString = "${settings.userAgentString} HalonicApp/${BuildConfig.VERSION_NAME}"
     onBackPressedDispatcher.addCallback(this, BackToConnectOrClose(webView))
+    // wry sets its own client only after this returns, in the same turn of
+    // the main thread (main_pipe.rs), so the wrapping waits for the next one.
+    webView.post { showNotAnsweringOnLoadFailure(webView) }
+  }
+
+  /**
+   * Wraps wry's client in [NotAnsweringClient]. A WebView too old to hand
+   * out its client (some on Android 7) keeps wry's, and a tap there does
+   * nothing while the computer is off, as before.
+   */
+  private fun showNotAnsweringOnLoadFailure(webView: WebView) {
+    if (!WebViewFeature.isFeatureSupported(WebViewFeature.GET_WEB_VIEW_CLIENT)) {
+      return
+    }
+    val wry = WebViewCompat.getWebViewClient(webView)
+    if (wry !is NotAnsweringClient) {
+      webView.webViewClient = NotAnsweringClient(wry)
+    }
   }
 
   /**
