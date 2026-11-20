@@ -62,6 +62,7 @@ function Switchable({ host }: { host: Parameters<typeof HarnessPage>[0]["host"] 
     instructions: "",
     output: { type: "text" },
     maxSteps: 6,
+    params: {},
     skills: [],
     knowledge: [],
     connectors: [],

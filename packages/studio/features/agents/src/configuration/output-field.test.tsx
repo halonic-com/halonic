@@ -6,7 +6,14 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { AgentOutput } from "../api.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { AgentScreen } from "../page/agent-page.tsx";
-import { buttonNamed, show, typeInto, typeIntoArea, unmount } from "../test-support.tsx";
+import {
+  buttonNamed,
+  notSavedCounts,
+  show,
+  typeInto,
+  typeIntoArea,
+  unmount,
+} from "../test-support.tsx";
 import { SAVE_PAUSE_MS } from "./use-auto-saved.ts";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -17,12 +24,15 @@ afterEach(() => {
 
 const sorter = { hubId: "acme", id: "sorter" };
 
-async function openBehaviour(output?: AgentOutput) {
+async function openBehaviour(
+  output?: AgentOutput,
+  saving?: ReturnType<typeof notSavedCounts>["saving"],
+) {
   const agents = memoryAgentsHost({
     hubs: [{ id: "acme", name: "acme" }],
     agents: [{ ...sorter, name: "Sorter", ...(output === undefined ? {} : { output }) }],
   });
-  const page = await show(<AgentScreen host={agents} hubId="acme" id="sorter" />);
+  const page = await show(<AgentScreen host={agents} saving={saving} hubId="acme" id="sorter" />);
   await act(async () => buttonNamed(page, "Configuration")?.click());
   const saved = async () => (await agents.settings(sorter)).output;
   return { page, saved };
@@ -129,5 +139,21 @@ verifies("agents.configuration.output", () => {
     await pick(page, "Text");
     await act(async () => vi.advanceTimersByTime(SAVE_PAUSE_MS));
     expect(await saved()).toEqual({ type: "text" });
+  });
+
+  it("counts Output as a field not saved while the picked tab has a mistake", async () => {
+    const { counts, saving } = notSavedCounts();
+    const { page } = await openBehaviour({ type: "choice", options: ["reply"] }, saving);
+    await act(async () => button(page, "Remove reply")?.click());
+    expect(counts.at(-1)).toBe(1);
+    await addOption(page, "archive");
+    expect(counts.at(-1)).toBe(0);
+
+    await pick(page, "JSON");
+    await typeIntoArea(schemaBox(page), "[1, 2]");
+    await act(async () => vi.advanceTimersByTime(SAVE_PAUSE_MS));
+    expect(counts.at(-1)).toBe(1);
+    await pick(page, "Text");
+    expect(counts.at(-1)).toBe(0);
   });
 });

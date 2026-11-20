@@ -1,5 +1,6 @@
 import { findSecretShape } from "@halonicjs/std";
 import { Field, Input, TextArea } from "@halonicjs/studio-kit";
+import { useState } from "react";
 import type { AgentChange, AgentSettings } from "../api.ts";
 import { configurationWords as words } from "./configuration-words.ts";
 import { OutputField } from "./output-field.tsx";
@@ -40,7 +41,8 @@ export function BehaviourPage({
     (next) => save({ instructions: next }),
     keyCheck,
   );
-  useReportNotSaved(reportNotSaved, [description, instructions]);
+  const [outputNotSaved, setOutputNotSaved] = useState(0);
+  useReportNotSaved(reportNotSaved, [description, instructions], outputNotSaved);
   return (
     <div className="flex flex-col gap-6">
       <Field label={words.description} error={description.error} announceWhileFocused>
@@ -65,7 +67,7 @@ export function BehaviourPage({
           onBlur={instructions.flush}
         />
       </Field>
-      <OutputField output={settings.output} save={save} />
+      <OutputField output={settings.output} save={save} reportNotSaved={setOutputNotSaved} />
     </div>
   );
 }

@@ -28,6 +28,7 @@ import {
   settingsPath,
 } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
+import { paramsEdits, paramsOf, paramsProblem } from "./agent-params.ts";
 
 /** What {@link WorkspaceAgents} needs of the workspace's files. */
 export interface WorkspaceAgentsParts {
@@ -149,6 +150,7 @@ export class WorkspaceAgents implements AgentsHost {
       instructions: agent.instructions,
       output: agent.output,
       maxSteps: agent.maxSteps,
+      params: paramsOf(agent.params),
       harness: agent.harness ?? "halonic",
       skills: agent.skills,
       knowledge: agent.knowledge,
@@ -281,6 +283,9 @@ export class WorkspaceAgents implements AgentsHost {
       const value = values[field];
       if (value !== undefined) edits.push({ kind: "set", path: [field], value });
     }
+    if (change.params !== undefined) edits.push(...paramsEdits(agent.params, change.params));
+    // Clearing a model setting the file doesn't have changes nothing, and makes no undo step.
+    if (edits.length === 0) return;
     const edited = editYaml(text, edits);
     if (!edited.ok) {
       throw new KindedError(
@@ -288,7 +293,8 @@ export class WorkspaceAgents implements AgentsHost {
         "This agent's file couldn't be changed as it is written.",
       );
     }
-    const fields = edits.map((edit) => edit.path[0]).join(",");
+    // Each model setting is its own field, so typing in one doesn't merge with another.
+    const fields = edits.map((edit) => edit.path.join(".")).join(",");
     this.#parts.files.change(
       `Changed agent ${change.name ?? ref.id}`,
       { [path]: edited.value.text },
@@ -470,7 +476,7 @@ function changeProblem(change: AgentChange): string | undefined {
   if (change.output?.type === "choice" && change.output.options.length === 0) {
     return "A list of options needs at least one.";
   }
-  return undefined;
+  return change.params === undefined ? undefined : paramsProblem(change.params);
 }
 
 /** What a row of the list shows of an agent's file. */
