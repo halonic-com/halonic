@@ -25,7 +25,26 @@ verifies("app.sandbox-start-words", () => {
       /^Allow user namespaces for bubblewrap/,
     );
     expect(sandboxStartWords("ripgrep-missing").cantRunFix).toBe(
-      sandboxStartWords("ripgrep-missing").calloutFix,
+      "Install ripgrep, for example on macOS with brew install ripgrep.",
+    );
+    expect(sandboxStartWords("restart-needed").cantRunFix).toBe(
+      sandboxStartWords("restart-needed").calloutFix,
+    );
+  });
+
+  it("never says it or them in the can't-run Callout's fix, on a computer or a phone", () => {
+    for (const code of sandboxUnavailableReasons) {
+      const { cantRunFix, cantRunPhoneFix } = sandboxStartWords(code);
+      expect(cantRunFix, code).not.toMatch(/\b(it|them)\b/i);
+      expect(cantRunPhoneFix, code).toBe(
+        `On the computer Halonic runs on: ${cantRunFix.charAt(0).toLowerCase()}${cantRunFix.slice(1)}`,
+      );
+    }
+  });
+
+  it("gives the can't-run Callout's own fix on a phone, after where to do it", () => {
+    expect(sandboxStartWords("bubblewrap-missing").cantRunPhoneFix).toBe(
+      "On the computer Halonic runs on: install bubblewrap, for example on Ubuntu or Debian with sudo apt install bubblewrap.",
     );
   });
 
@@ -39,6 +58,7 @@ verifies("app.sandbox-start-words", () => {
         words.calloutFix,
         words.cantRunFix,
         words.phoneFix,
+        words.cantRunPhoneFix,
         words.docsName,
       ]) {
         expect(part.length).toBeGreaterThan(0);
@@ -52,9 +72,11 @@ verifies("app.sandbox-start-words", () => {
 
   it("names the command each fix holds, word for word, so a screen can show it as code", () => {
     for (const code of sandboxUnavailableReasons) {
-      const { command, fix, cantRunFix, phoneFix } = sandboxStartWords(code);
+      const { command, fix, cantRunFix, phoneFix, cantRunPhoneFix } = sandboxStartWords(code);
       if (command === undefined) continue;
-      for (const part of [fix, cantRunFix, phoneFix]) expect(part).toContain(command);
+      for (const part of [fix, cantRunFix, phoneFix, cantRunPhoneFix]) {
+        expect(part).toContain(command);
+      }
     }
     expect(sandboxStartWords("bubblewrap-missing").command).toBe("sudo apt install bubblewrap");
     expect(sandboxStartWords("other").command).toBeUndefined();

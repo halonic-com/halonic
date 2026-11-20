@@ -10,7 +10,7 @@ While the check refuses, the Callout shall show, in the warning tone and in this
 
 - "*Support reply* can't run: the sandbox can't start on this computer.", which every control it disables names as its description;
 - for `other` (and a code Halonic doesn't know) only, the reason sentence;
-- the fix for the can't-run Callout from `sandboxStartWords`, with the command it names as code; on a phone, the phone fix;
+- the fix for the can't-run Callout from `sandboxStartWords`, with the command it names as code; on a phone, the can't-run Callout's fix for a phone;
 - **Check again** and a link, "Read the guide", to the docs section for the reason;
 - then the page's own last line, in muted text.
 

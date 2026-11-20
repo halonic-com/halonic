@@ -71,7 +71,7 @@ export function SandboxCantRunCallout({
       </span>
       {unknown ? <span className="block">{words.reason}</span> : null}
       <span className="block" data-part="fix">
-        <WithCommand text={phone ? words.phoneFix : words.cantRunFix} words={words} />
+        <WithCommand text={phone ? words.cantRunPhoneFix : words.cantRunFix} words={words} />
       </span>
       {start.checkFailed ? <span className="block">{cantRunWords.checkFailed}</span> : null}
       <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">

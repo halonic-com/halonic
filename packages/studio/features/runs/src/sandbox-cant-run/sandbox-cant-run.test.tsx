@@ -133,9 +133,11 @@ verifies("runs.sandbox-cant-run", () => {
     expect(reasonAt).toBeLessThan(text.indexOf(sandboxStartWords("other").cantRunFix));
   });
 
-  it("gives the phone fix on a phone", async () => {
+  it("gives its own fix on a phone, which names the thing", async () => {
     const root = await open(<Page check={checkSaying(refused("bubblewrap-missing"))} />, true);
-    expect(root.textContent).toContain(sandboxStartWords("bubblewrap-missing").phoneFix);
+    const words = sandboxStartWords("bubblewrap-missing");
+    expect(root.textContent).toContain(words.cantRunPhoneFix);
+    expect(root.textContent).not.toContain(words.phoneFix);
   });
 
   it("removes the Callout, says so and gives Run focus once Check again finds it ready", async () => {

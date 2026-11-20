@@ -18,6 +18,7 @@ import { type SandboxUnavailableReason, sandboxUnavailableReasons } from "@halon
  * - `cantRunFix`: the fix for the can't-run Callout, which shows no reason before it, so it names
  *   the thing where the fix says "it" (microcopy 23.3, "Fix in the can't-run Callout").
  * - `phoneFix`: the fix for someone on a phone, who has to do it on the computer.
+ * - `cantRunPhoneFix`: the can't-run Callout's fix for someone on a phone, so it names the thing too.
  * - `settingsFix`: the fix as Settings › Agent sandbox shows it, or `null` where the section's own
  *   set-up button is the fix (microcopy 23.3a).
  * - `command`: the command the fixes name, word for word as they write it, so a screen can show it
@@ -32,6 +33,7 @@ export interface SandboxStartWords {
   readonly calloutFix: string;
   readonly cantRunFix: string;
   readonly phoneFix: string;
+  readonly cantRunPhoneFix: string;
   readonly settingsFix: string | null;
   readonly command?: string;
   readonly docsKey: string;
@@ -74,6 +76,8 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   "not-supported": {
     reason: "This distro runs on WSL 1, and the sandbox needs WSL 2.",
     fix: "switch it to WSL 2 with wsl --set-version <distro> 2 in PowerShell on Windows.",
+    cantRunFix:
+      "Switch the distro to WSL 2 with wsl --set-version <distro> 2 in PowerShell on Windows.",
     command: "wsl --set-version <distro> 2",
     docsSection: "wsl1",
     docsName: "How to switch to WSL 2",
@@ -81,14 +85,19 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   "blocked-by-policy": {
     reason: "A company policy on this computer blocks the sandbox.",
     fix: "ask whoever manages this computer to allow it.",
+    cantRunFix: "Ask whoever manages this computer to allow the sandbox.",
   },
   "virtualisation-off": {
     reason: "Hardware virtualisation is turned off on this computer.",
     fix: "turn it on in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualisation.",
+    cantRunFix:
+      "Turn on hardware virtualisation in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualisation.",
   },
   "wsl-missing": {
     reason: "WSL isn't installed, and the sandbox needs it.",
     fix: "install it with wsl --install --no-distribution in a terminal run as administrator, then restart Windows.",
+    cantRunFix:
+      "Install WSL with wsl --install --no-distribution in a terminal run as administrator, then restart Windows.",
     command: "wsl --install --no-distribution",
   },
   "restart-needed": {
@@ -127,6 +136,8 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   "linux-tools-missing": {
     reason: "socat or ripgrep isn't installed, and the sandbox needs both.",
     fix: "install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep.",
+    cantRunFix:
+      "Install socat and ripgrep, for example on Ubuntu or Debian with sudo apt install socat ripgrep.",
     command: "sudo apt install socat ripgrep",
     docsSection: "linux-tools",
     docsName: "How to install the sandbox's tools",
@@ -134,6 +145,7 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   "ripgrep-missing": {
     reason: "ripgrep isn't installed, and the sandbox needs it.",
     fix: "install it, for example on macOS with brew install ripgrep.",
+    cantRunFix: "Install ripgrep, for example on macOS with brew install ripgrep.",
     command: "brew install ripgrep",
   },
   "sign-in-needed": {
@@ -143,6 +155,7 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   "not-offered": {
     reason: "Halonic can't run Claude Code or Codex agents outside the sandbox yet.",
     fix: "save a change to this agent's file, which puts it back in the sandbox.",
+    cantRunFix: "Save a change to this agent's file, which puts the agent back in the sandbox.",
   },
   other: {
     reason: "Halonic can't tell what the sandbox is missing.",
@@ -168,6 +181,14 @@ function capitalised(text: string): string {
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
 
+/** The first letter in lower case, so a sentence can follow "On the computer Halonic runs on: ". */
+function lowerFirst(text: string): string {
+  return `${text.charAt(0).toLowerCase()}${text.slice(1)}`;
+}
+
+/** What a fix for someone on a phone starts with: they have to do it on the computer. */
+const onTheComputer = "On the computer Halonic runs on: ";
+
 /**
  * The words for a sandbox that can't start, by reason code (requirement
  * `app.sandbox-start-words`). A code Halonic doesn't know reads as `other`,
@@ -183,13 +204,15 @@ function capitalised(text: string): string {
 export function sandboxStartWords(code: string): SandboxStartWords {
   const reason = isSandboxStartReason(code) ? code : "other";
   const { reason: sentence, fix, cantRunFix, command, docsSection, docsName } = words[reason];
+  const ownFix = cantRunFix ?? capitalised(fix);
   return {
     key: `sandbox-start.${reason}`,
     reason: sentence,
     fix,
     calloutFix: capitalised(fix),
-    cantRunFix: cantRunFix ?? capitalised(fix),
-    phoneFix: `On the computer Halonic runs on: ${fix}`,
+    cantRunFix: ownFix,
+    phoneFix: `${onTheComputer}${fix}`,
+    cantRunPhoneFix: `${onTheComputer}${lowerFirst(ownFix)}`,
     settingsFix: fix === inSettings ? null : capitalised(fix),
     ...(command === undefined ? {} : { command }),
     docsKey: docsSection === undefined ? "security/sandbox/" : `security/sandbox/#${docsSection}`,
