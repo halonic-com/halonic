@@ -11,7 +11,8 @@ import { Inbox, type InboxRuns } from "../inbox.ts";
 import { pendingApproval, waitingRun } from "../test-runs.test-helper.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { InboxView, trustReviewOf } from "./inbox-page.tsx";
+import { InboxView } from "./inbox-page.tsx";
+import { trustReviewOf } from "./workspace-trust.ts";
 
 beforeEach(fakeModal);
 afterEach(() => {

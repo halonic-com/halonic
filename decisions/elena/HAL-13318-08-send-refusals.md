@@ -1,6 +1,6 @@
 # Decision: the window refuses what its engine can't answer, and says so
 
-- Task: HAL-13318 (follow-up to #3913, from checks C267 AN3 and C270); HAL-13973 (check C275 SR1, SR2, TU1, CW1)
+- Task: HAL-13318 (follow-up to #3913, from checks C267 AN3 and C270); HAL-13973 (check C275 SR1, SR2, TU1, CW1); HAL-14007 (check C285 TU2)
 - Approval: Liam, in review of HAL-13318
 - Kind: user-visible
 
@@ -42,12 +42,15 @@
    send your answer." with **Review** and no **Try again**. **Review** opens
    the trust check of the header's "Not trusted yet · Review" (the badge's own
    `onSelect`, so focus comes back to **Review**), or Settings › Trust where
-   that badge isn't shown. After **Trust** the card's buttons work again.
+   that badge isn't shown. Once the workspace is trusted (the badge leaves
+   the header) the line goes, with no **Try again** in its place, and focus
+   goes to **Approve** (a wait card's first answer), after the trust check has
+   closed and given focus back; C285 TU2 found the line still there.
    Reject and the wait card's answers get the same line; the Ask for changes
    dialog says the same sentence in its alert and keeps the note (C275 TU1).
 
 Decided by the team (HAL-2282: an error state of the approved card), on the
-check's wording (C267, C270, C275).
+check's wording (C267, C270, C275, C285).
 
 ## Why
 

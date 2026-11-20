@@ -230,9 +230,9 @@ verifies("inbox.wait-card", () => {
     });
 
     it("says the workspace isn't trusted, with Review and no Try again, when the answer is denied", async () => {
-      const onReviewTrust = vi.fn();
+      const review = vi.fn();
       const { root, later } = openCard({
-        onReviewTrust,
+        trust: { review, granted: 0 },
         decisions: {
           answer: async () => {
             throw new KindedError(
@@ -248,9 +248,9 @@ verifies("inbox.wait-card", () => {
       expect(slot.textContent).toBe(
         "This workspace isn't trusted yet, so Studio can't send your answer.Review",
       );
-      const review = button(slot, "Review");
-      await act(async () => review.click());
-      expect(onReviewTrust).toHaveBeenCalledWith(review);
+      const reviewButton = button(slot, "Review");
+      await act(async () => reviewButton.click());
+      expect(review).toHaveBeenCalledWith(reviewButton);
     });
 
     it("offers the way back to the run you came from once answered", async () => {

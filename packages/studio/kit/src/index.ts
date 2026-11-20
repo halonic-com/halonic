@@ -74,6 +74,7 @@ export {
   type ModalRegionsProviderProps,
   type PushModalRegions,
 } from "./dialog/modal-regions.tsx";
+export { useModalOpen } from "./dialog/open-modals.ts";
 export { PaletteBox, type PaletteBoxProps } from "./dialog/palette-box.tsx";
 export {
   Disclosure,

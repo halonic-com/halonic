@@ -346,7 +346,7 @@ verifies("inbox.approval-card", () => {
     });
 
     it("says the workspace isn't trusted, with Review and no Try again, when the decision is denied", async () => {
-      const onReviewTrust = vi.fn();
+      const review = vi.fn();
       const untrusted = async (): Promise<never> => {
         throw new KindedError(
           "denied",
@@ -355,7 +355,7 @@ verifies("inbox.approval-card", () => {
       };
       const { root, later } = openCard({
         decisions: { approve: untrusted, reject: untrusted, askForChanges: untrusted },
-        onReviewTrust,
+        trust: { review, granted: 0 },
       });
       later(2);
       await press(button(root, "Approve"));
@@ -364,9 +364,9 @@ verifies("inbox.approval-card", () => {
         "This workspace isn't trusted yet, so Studio can't send your answer.Review",
       );
       expect(root.textContent).not.toContain("Try again");
-      const review = button(root, "Review");
-      await press(review);
-      expect(onReviewTrust).toHaveBeenCalledWith(review);
+      const reviewButton = button(root, "Review");
+      await press(reviewButton);
+      expect(review).toHaveBeenCalledWith(reviewButton);
       await press(button(root, "Reject"));
       expect(slot?.textContent).toBe(
         "This workspace isn't trusted yet, so Studio can't send your answer.Review",

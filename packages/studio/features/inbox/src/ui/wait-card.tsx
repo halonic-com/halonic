@@ -1,6 +1,6 @@
 import { markHiddenName } from "@halonicjs/std";
 import { Button, type ButtonUnavailable, type CalloutHandle, Tooltip } from "@halonicjs/studio-kit";
-import { useEffect, useId, useRef, useState } from "react";
+import { type RefObject, useEffect, useId, useRef, useState } from "react";
 import type { InboxDecisions } from "../decide.ts";
 import type { WaitItem } from "../inbox-items.ts";
 import { decidedAt, movesOnLine, waitingSince } from "../plain/waiting-time.ts";
@@ -25,6 +25,12 @@ import {
 } from "./card-parts.tsx";
 import { type DecisionGuard, useDecisionGuard } from "./decision-guard.ts";
 import { PlainValue } from "./plain-value.tsx";
+import {
+  showsUntrusted,
+  type TrustReview,
+  useClearedWhenTrusted,
+  withoutUntrusted,
+} from "./workspace-trust.ts";
 
 export interface WaitCardProps extends EngineState {
   readonly item: WaitItem;
@@ -45,10 +51,11 @@ export interface WaitCardProps extends EngineState {
    */
   readonly waiting?: boolean;
   /**
-   * Opens the workspace's trust check, for **Review** when an answer is refused because the
-   * workspace isn't trusted; without it that line has no button.
+   * The workspace's trust, for an answer refused because the workspace isn't trusted: **Review**,
+   * and when it becomes trusted the line goes and the first answer takes focus. Without it there's
+   * no **Review**.
    */
-  readonly onReviewTrust?: ((opener: HTMLElement | null) => void) | undefined;
+  readonly trust?: TrustReview | undefined;
 }
 
 type CardState =
@@ -143,7 +150,14 @@ export function WaitCard(props: WaitCardProps) {
   });
   const [usableAt] = useState(() => now().getTime());
   const guard = useDecisionGuard(usableAt, () => now().getTime());
+  const bar = useRef<HTMLDivElement>(null);
   useEveryMinute();
+  useClearedWhenTrusted(
+    props.trust,
+    showsUntrusted(state),
+    () => setState(withoutUntrusted),
+    () => bar.current?.querySelector<HTMLElement>(`[${firstAnswerAttribute}] button`) ?? null,
+  );
 
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   useEffect(() => {
@@ -216,7 +230,8 @@ export function WaitCard(props: WaitCardProps) {
           engine={props}
           onAnswer={answer}
           onOpenRun={openRun}
-          onReviewTrust={props.onReviewTrust}
+          onReviewTrust={props.trust?.review}
+          bar={bar}
         />
       ) : null}
     </section>
@@ -232,6 +247,7 @@ interface AnswerBarProps {
   readonly onAnswer: (event: string) => void;
   readonly onOpenRun: (() => void) | undefined;
   readonly onReviewTrust: ((opener: HTMLElement | null) => void) | undefined;
+  readonly bar: RefObject<HTMLDivElement | null>;
 }
 
 /**
@@ -253,6 +269,7 @@ function AnswerBar({
   onAnswer,
   onOpenRun,
   onReviewTrust,
+  bar,
 }: AnswerBarProps) {
   const reasonId = useId();
   const unavailable = unavailableWhile(engine.answering ?? true, reasonId);
@@ -271,6 +288,7 @@ function AnswerBar({
   );
   return (
     <div
+      ref={bar}
       className="flex flex-col gap-2 border-t border-border p-4"
       onPointerDownCapture={guard.onPointerDownCapture}
       onKeyDownCapture={guard.onKeyDownCapture}
@@ -300,6 +318,9 @@ interface AnswerButtonProps {
   readonly onClick: () => void;
 }
 
+/** Marks the first answer's box, which takes focus once the workspace is trusted. */
+const firstAnswerAttribute = "data-first-answer";
+
 /** One answer's button, whose tooltip shows the whole label only when the button cuts it off. */
 function AnswerButton({
   label,
@@ -312,7 +333,10 @@ function AnswerButton({
   const shown = useRef<HTMLSpanElement>(null);
   return (
     // `[&>span]:flex` makes the tooltip's wrapper as wide as the container, as is the button.
-    <div className="@container min-w-0 flex-1 [&>span]:flex">
+    <div
+      className="@container min-w-0 flex-1 [&>span]:flex"
+      {...(primary ? { [firstAnswerAttribute]: "" } : {})}
+    >
       <Tooltip
         text={label}
         isName

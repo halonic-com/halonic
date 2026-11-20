@@ -1,6 +1,6 @@
 import { markHiddenName } from "@halonicjs/std";
 import { Button, type CalloutHandle, StatusChip } from "@halonicjs/studio-kit";
-import { useEffect, useId, useRef, useState } from "react";
+import { type RefObject, useEffect, useId, useRef, useState } from "react";
 import type { InboxDecisions } from "../decide.ts";
 import type { ApprovalItem } from "../inbox-items.ts";
 import { actionSummary, approvalTitle } from "../plain/approval-text.ts";
@@ -28,6 +28,12 @@ import {
   wasRefusedUntrusted,
 } from "./card-parts.tsx";
 import { useDecisionGuard } from "./decision-guard.ts";
+import {
+  showsUntrusted,
+  type TrustReview,
+  useClearedWhenTrusted,
+  withoutUntrusted,
+} from "./workspace-trust.ts";
 
 export interface ApprovalCardProps extends EngineState {
   readonly item: ApprovalItem;
@@ -56,10 +62,10 @@ export interface ApprovalCardProps extends EngineState {
   /** Where that button goes; with no account waiting it is the Library's New connector. */
   readonly secretPlace?: "setup" | "connectors" | undefined;
   /**
-   * Opens the workspace's trust check, for **Review** when a decision is refused because the
-   * workspace isn't trusted; without it that line has no button.
+   * The workspace's trust, for a decision refused because the workspace isn't trusted: **Review**,
+   * and when it becomes trusted the line goes and Approve takes focus. Without it there's no **Review**.
    */
-  readonly onReviewTrust?: ((opener: HTMLElement | null) => void) | undefined;
+  readonly trust?: TrustReview | undefined;
 }
 
 type Decision = "approve" | "reject";
@@ -154,7 +160,14 @@ export function ApprovalCard(props: ApprovalCardProps) {
   });
   const [usableAt] = useState(() => now().getTime());
   const guard = useDecisionGuard(usableAt, () => now().getTime());
+  const approve = useRef<HTMLButtonElement>(null);
   useEveryMinute();
+  useClearedWhenTrusted(
+    props.trust,
+    showsUntrusted(state),
+    () => setState(withoutUntrusted),
+    () => approve.current,
+  );
 
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   useEffect(() => {
@@ -227,7 +240,8 @@ export function ApprovalCard(props: ApprovalCardProps) {
           guard={guard}
           engine={props}
           onDecide={decide}
-          onReviewTrust={props.onReviewTrust}
+          onReviewTrust={props.trust?.review}
+          approve={approve}
           onOpenRun={
             props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId)
           }
@@ -290,6 +304,7 @@ interface DecisionBarProps {
   readonly onAskForChanges: () => void;
   readonly onOpenRun: (() => void) | undefined;
   readonly onReviewTrust: ((opener: HTMLElement | null) => void) | undefined;
+  readonly approve: RefObject<HTMLButtonElement | null>;
 }
 
 /**
@@ -305,6 +320,7 @@ function DecisionBar({
   onAskForChanges,
   onOpenRun,
   onReviewTrust,
+  approve,
 }: DecisionBarProps) {
   const reasonId = useId();
   const unavailable = unavailableWhile(engine.answering ?? true, reasonId);
@@ -337,6 +353,7 @@ function DecisionBar({
           Ask for changes
         </Button>
         <Button
+          ref={approve}
           variant="primary"
           unavailable={unavailable}
           busy={busy("approve")}

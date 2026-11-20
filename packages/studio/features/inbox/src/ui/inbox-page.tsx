@@ -6,7 +6,6 @@ import {
   engineWordsOf,
   errorMessageFor,
   type PlaceViewProps,
-  type WorkspaceContext,
 } from "@halonicjs/studio-shell";
 import {
   type ReactNode,
@@ -37,13 +36,11 @@ import { useRequestPane } from "./use-request-pane.tsx";
 import { useRunFacts } from "./use-run-facts.ts";
 import { useSentRequestCard } from "./use-sent-request-card.ts";
 import { WaitCard } from "./wait-card.tsx";
+import { type TrustReview, useTrustReview } from "./workspace-trust.ts";
 
 /** The Library's command that opens New connector; the Inbox can't import the Library, so it runs it by id. */
 const newConnectorCommand = "library.new-connector";
 const openModelsCommand = "workspace.open-models";
-const openTrustCommand = "workspace.open-trust";
-/** The workspace feature's header badge, "Not trusted yet · Review", that opens the trust check. */
-const trustBadgeId = "workspace-trust";
 
 const loadFailed = "Couldn't load the Inbox";
 
@@ -68,7 +65,7 @@ export function InboxPage({ context }: PlaceViewProps) {
     [appNotices, inbox.extraNotices],
   );
   const runFacts = useRunFacts(context.services.find(RunsListService));
-  const reviewTrust = trustReviewOf(context);
+  const trust = useTrustReview(context);
   return (
     <InboxView
       inbox={inbox}
@@ -83,31 +80,12 @@ export function InboxPage({ context }: PlaceViewProps) {
             openNewConnector: () => context.runCommand?.(newConnectorCommand),
             openBudget: () => context.runCommand?.(openModelsCommand),
           })}
-      {...(reviewTrust === undefined ? {} : { reviewTrust })}
+      trust={trust}
       {...(openItem && {
         openRun: (hubId: string, runId: string) => openItem({ kind: "run", hub: hubId, id: runId }),
       })}
     />
   );
-}
-
-/**
- * **Review** on a card refused in a workspace that isn't trusted: the trust check that the header
- * badge "Not trusted yet · Review" opens, as on More, given the button to give focus back to.
- * Without the badge it opens Settings › Trust; `undefined` when the window can do neither.
- */
-export function trustReviewOf({
-  badges,
-  runCommand,
-}: Pick<WorkspaceContext, "badges" | "runCommand">):
-  | ((opener: HTMLElement | null) => void)
-  | undefined {
-  if (badges === undefined && runCommand === undefined) return undefined;
-  return (opener) => {
-    const badge = badges?.list().find((shown) => shown.id === trustBadgeId);
-    if (badge?.onSelect === undefined) runCommand?.(openTrustCommand);
-    else badge.onSelect(opener);
-  };
 }
 
 /** Props for {@link InboxView}. */
@@ -131,10 +109,10 @@ export interface InboxViewProps {
   /** Opens a run's page, for **Open run** on the toast that says a request started. */
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
   /**
-   * Opens the workspace's trust check, for **Review** on a card whose answer was refused because
-   * the workspace isn't trusted; without it that line has no button.
+   * The workspace's trust, for a card whose answer was refused because the workspace isn't
+   * trusted: **Review**, and the line goes once it is. Without it that line has no button.
    */
-  readonly reviewTrust?: ((opener: HTMLElement | null) => void) | undefined;
+  readonly trust?: TrustReview | undefined;
   /**
    * The workflow and starter of a run: the row says the workflow, and the card says what started
    * the run and has **Open run** (with `openRun`). Without it the Inbox says neither.
@@ -174,7 +152,7 @@ export function InboxView({
   openNewConnector,
   openBudget,
   openRun,
-  reviewTrust,
+  trust,
   runFacts,
   announce,
 }: InboxViewProps) {
@@ -296,7 +274,7 @@ export function InboxView({
               focus={focus}
               openNewConnector={openNewConnector}
               openRun={openRun}
-              reviewTrust={reviewTrust}
+              trust={trust}
               runFacts={runFacts}
               announce={announce}
               now={now}
@@ -364,7 +342,7 @@ function OpenCard({
   focus,
   openNewConnector,
   openRun,
-  reviewTrust,
+  trust,
   runFacts,
   announce,
 }: {
@@ -375,7 +353,7 @@ function OpenCard({
   readonly focus: SetupFocus | undefined;
   readonly openNewConnector: (() => void) | undefined;
   readonly openRun: ((hubId: string, runId: string) => void) | undefined;
-  readonly reviewTrust: ((opener: HTMLElement | null) => void) | undefined;
+  readonly trust: TrustReview | undefined;
   readonly runFacts: RunFactsOf | undefined;
   readonly announce: ((line: string) => void) | undefined;
   readonly next: NextItem | null;
@@ -439,7 +417,7 @@ function OpenCard({
         words={words}
         {...(somewhereToGo ? { onGoToSecret: goToSecret } : {})}
         secretPlace={target.kind}
-        onReviewTrust={reviewTrust}
+        trust={trust}
       />
     );
   }
@@ -455,7 +433,7 @@ function OpenCard({
       answering={answering}
       words={words}
       waiting={items.some((waiting) => waiting.key === item.key)}
-      onReviewTrust={reviewTrust}
+      trust={trust}
     />
   );
 }
