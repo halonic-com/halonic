@@ -160,7 +160,23 @@ verifies("workflows.page.step-card", () => {
 
     await pick(page, "start");
     expect(docked(page)?.querySelector("h2")?.textContent).toBe("Step start");
+    await choose(field(page, "Agent") as HTMLSelectElement, "sorter");
     expect(docked(page)?.textContent).toContain("The agent gets the run input.");
+  });
+
+  it("shows Prompt only once an agent is picked, and keeps its text for when one is", async () => {
+    const changeStep = vi.fn<ChangeStep>(async () => {});
+    const { page } = await showPage(changeStep);
+    await pick(page, "write");
+
+    await choose(field(page, "Agent") as HTMLSelectElement, "");
+    expect(field(page, "Prompt")).toBeUndefined();
+    expect(docked(page)?.textContent).not.toContain("The agent gets the run input.");
+    expect(changeStep).toHaveBeenLastCalledWith(expect.anything(), "write", { agent: "" });
+
+    await choose(field(page, "Agent") as HTMLSelectElement, "writer");
+    expect(field(page, "Prompt")?.value).toBe("Answer {{input.message}}");
+    expect(changeStep).toHaveBeenCalledTimes(2);
   });
 
   it("shows the step's Type and Agent, with the hub's agents and the no-agent line", async () => {

@@ -123,7 +123,9 @@ export function DockedStepCard({
   // The fields follow the kind picked, so they change with the pick and not after the save.
   const kind = type.value as WorkflowStepType;
   const hasAgent = runsAgent.has(kind);
-  const hasPrompt = kind === "task" && step.promptIsData !== true;
+  // A prompt does nothing without an agent, so it shows only once one is picked. Its text stays in
+  // the file, as with a change of kind, so picking an agent again brings it back.
+  const hasPrompt = kind === "task" && agent.value !== "" && step.promptIsData !== true;
   const hasOutput = writesOutput.has(kind);
   useReportNotSaved(reportNotSaved, [
     type,
