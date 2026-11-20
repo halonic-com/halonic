@@ -9,6 +9,7 @@ function waitingOn(connector?: string): RunSummary {
   const approval = { agent: "writer", tool: "create_issue", callId: "c1", args: {} };
   return {
     id: "run1",
+    hubId: "support",
     status: "waiting",
     approvals: [{ ...approval, ...(connector === undefined ? {} : { connector }) }],
   } as unknown as RunSummary;
@@ -48,9 +49,34 @@ verifies("studio.engine-service", () => {
 
       await expect(
         service.send("run1", "approve", undefined, { callId: "c1" }),
-      ).rejects.toMatchObject({ kind: "unavailable", fix: "halonic runs send run1 approve" });
+      ).rejects.toMatchObject({
+        kind: "unavailable",
+        message:
+          "This window can't run tools from github yet. To approve this one, run this in a terminal:",
+        fix: "halonic runs send run1 approve",
+      });
 
       expect(send).not.toHaveBeenCalled();
+      vi.restoreAllMocks();
+      await service.close();
+    });
+
+    it("names the connector as the Library does, by its name, in that refusal", async () => {
+      const notes = {
+        "hubs/support/library/connectors/notes.connector.yaml":
+          "id: notes\nname: Notes\ntransport:\n  stdio:\n    command: notes-mcp\n",
+      };
+      const service = serviceOn(fakeShell(), acmeFiles({}, notes));
+      await service.open();
+      vi.spyOn(TauriRunStore.prototype, "get").mockResolvedValue(waitingOn("notes"));
+
+      await expect(
+        service.send("run1", "approve", undefined, { callId: "c1" }),
+      ).rejects.toMatchObject({
+        message:
+          "This window can't run tools from Notes yet. To approve this one, run this in a terminal:",
+      });
+
       vi.restoreAllMocks();
       await service.close();
     });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { PresentationProvider } from "@halonicjs/studio-kit";
-import { createShell, engineWords } from "@halonicjs/studio-shell";
+import { createBadgeRegistry, createShell, engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,7 +11,7 @@ import { Inbox, type InboxRuns } from "../inbox.ts";
 import { pendingApproval, waitingRun } from "../test-runs.test-helper.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { InboxView } from "./inbox-page.tsx";
+import { InboxView, trustReviewOf } from "./inbox-page.tsx";
 
 beforeEach(fakeModal);
 afterEach(() => {
@@ -79,6 +79,37 @@ function nameOf(root: HTMLElement, element: Element | null): string {
 }
 
 verifies("inbox.page", () => {
+  describe("Review on a card refused in a workspace that isn't trusted", () => {
+    it("opens the trust check of the header badge, as More does, with the button as its opener", () => {
+      const badges = createBadgeRegistry();
+      const onSelect = vi.fn();
+      badges.add({
+        id: "workspace-trust",
+        label: "Not trusted yet",
+        tone: "neutral",
+        priority: 1,
+        action: "Review",
+        onSelect,
+      });
+      const runCommand = vi.fn(() => true);
+      const opener = document.createElement("button");
+
+      trustReviewOf({ badges, runCommand })?.(opener);
+
+      expect(onSelect).toHaveBeenCalledWith(opener);
+      expect(runCommand).not.toHaveBeenCalled();
+    });
+
+    it("opens Settings › Trust without the badge, and is left out when the window can do neither", () => {
+      const runCommand = vi.fn(() => true);
+
+      trustReviewOf({ badges: createBadgeRegistry(), runCommand })?.(null);
+
+      expect(runCommand).toHaveBeenCalledWith("workspace.open-trust");
+      expect(trustReviewOf({})).toBeUndefined();
+    });
+  });
+
   describe("the place", () => {
     it("adds the Inbox place, whose count is the workspace Inbox's and follows it", async () => {
       const shell = createShell({ features: [inboxFeature], hostServices: [InboxRunsService] });

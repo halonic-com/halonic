@@ -21,6 +21,7 @@ import {
   unavailableWhile,
   useEveryMinute,
   wasDecidedElsewhere,
+  wasRefusedUntrusted,
 } from "./card-parts.tsx";
 import { type DecisionGuard, useDecisionGuard } from "./decision-guard.ts";
 import { PlainValue } from "./plain-value.tsx";
@@ -43,6 +44,11 @@ export interface WaitCardProps extends EngineState {
    * window or a timer: a card not answered here turns stale (flow-inbox 5.4). `true` when left out.
    */
   readonly waiting?: boolean;
+  /**
+   * Opens the workspace's trust check, for **Review** when an answer is refused because the
+   * workspace isn't trusted; without it that line has no button.
+   */
+  readonly onReviewTrust?: ((opener: HTMLElement | null) => void) | undefined;
 }
 
 type CardState =
@@ -52,8 +58,10 @@ type CardState =
       /** The answer was refused because the run isn't waiting at this step any more. */
       readonly elsewhere: boolean;
       readonly manual: ManualAnswer | null;
-      /** The failure's own sentence, shown under "Couldn't record your decision.". */
+      /** The failure's own sentence, shown after "Couldn't record your decision.". */
       readonly detail: string | null;
+      /** The answer was refused because the workspace isn't trusted. */
+      readonly untrusted: boolean;
     }
   | { readonly kind: "answering"; readonly event: string }
   | { readonly kind: "answered"; readonly event: string; readonly at: Date };
@@ -131,6 +139,7 @@ export function WaitCard(props: WaitCardProps) {
     elsewhere: false,
     manual: null,
     detail: null,
+    untrusted: false,
   });
   const [usableAt] = useState(() => now().getTime());
   const guard = useDecisionGuard(usableAt, () => now().getTime());
@@ -159,6 +168,7 @@ export function WaitCard(props: WaitCardProps) {
         elsewhere: wasDecidedElsewhere(error),
         manual: manualAnswerOf(error),
         detail: failureDetailOf(error),
+        untrusted: wasRefusedUntrusted(error),
       });
     }
   }
@@ -206,6 +216,7 @@ export function WaitCard(props: WaitCardProps) {
           engine={props}
           onAnswer={answer}
           onOpenRun={openRun}
+          onReviewTrust={props.onReviewTrust}
         />
       ) : null}
     </section>
@@ -220,6 +231,7 @@ interface AnswerBarProps {
   readonly engine: EngineState;
   readonly onAnswer: (event: string) => void;
   readonly onOpenRun: (() => void) | undefined;
+  readonly onReviewTrust: ((opener: HTMLElement | null) => void) | undefined;
 }
 
 /**
@@ -232,7 +244,16 @@ interface AnswerBarProps {
  * (HAL-4050, HAL-12721 L15). Each button sits in a `@container` as wide as the button, so the label can be
  * capped at that width less the button's widest padding and edges.
  */
-function AnswerBar({ accepts, labels, state, guard, engine, onAnswer, onOpenRun }: AnswerBarProps) {
+function AnswerBar({
+  accepts,
+  labels,
+  state,
+  guard,
+  engine,
+  onAnswer,
+  onOpenRun,
+  onReviewTrust,
+}: AnswerBarProps) {
   const reasonId = useId();
   const unavailable = unavailableWhile(engine.answering ?? true, reasonId);
   const [first, ...others] = accepts;
@@ -260,6 +281,7 @@ function AnswerBar({ accepts, labels, state, guard, engine, onAnswer, onOpenRun 
         detail={state.kind === "open" ? state.detail : null}
         manual={state.kind === "open" ? state.manual : null}
         elsewhere={state.kind === "open" && state.elsewhere ? { openRun: onOpenRun } : null}
+        untrusted={state.kind === "open" && state.untrusted ? { review: onReviewTrust } : null}
       />
       {first === undefined ? null : answerButton(first, true)}
       {others.length === 0 ? null : (

@@ -229,6 +229,30 @@ verifies("inbox.wait-card", () => {
       expect(root.textContent).not.toContain("Try again");
     });
 
+    it("says the workspace isn't trusted, with Review and no Try again, when the answer is denied", async () => {
+      const onReviewTrust = vi.fn();
+      const { root, later } = openCard({
+        onReviewTrust,
+        decisions: {
+          answer: async () => {
+            throw new KindedError(
+              "denied",
+              "This workspace isn't trusted yet, so nothing was started.",
+            );
+          },
+        },
+      });
+      later(2);
+      await press(button(root, "Reject"));
+      const slot = root.querySelector("[role='alert']") as HTMLElement;
+      expect(slot.textContent).toBe(
+        "This workspace isn't trusted yet, so Studio can't send your answer.Review",
+      );
+      const review = button(slot, "Review");
+      await act(async () => review.click());
+      expect(onReviewTrust).toHaveBeenCalledWith(review);
+    });
+
     it("offers the way back to the run you came from once answered", async () => {
       const open = vi.fn();
       const { root, later } = openCard({ back: { kind: "run", runName: "01JD8Q", open } });

@@ -20,6 +20,9 @@ export const failedText = "Couldn't record your decision.";
 export const decidedElsewhereText =
   "This is no longer waiting for you. It was answered somewhere else or the run moved on.";
 
+/** The line when an answer was refused because the workspace isn't trusted (HAL-13973 TU1). */
+export const untrustedText = "This workspace isn't trusted yet, so Studio can't send your answer.";
+
 /**
  * A card fills the item pane: its body scrolls and its bar of answers stays in sight under it. In a
  * short window (400 % zoom, a phone held sideways) that bar would leave the request no room, so the
@@ -184,7 +187,7 @@ export function manualAnswerOf(error: unknown): ManualAnswer | null {
 }
 
 /**
- * The sentence under "Couldn't record your decision." for a failure **Try again** may fix: an
+ * The sentence after "Couldn't record your decision." for a failure **Try again** may fix: an
  * `unavailable` error without a command to run, such as another engine holding the workspace.
  */
 export function failureDetailOf(error: unknown): string | null {
@@ -193,59 +196,133 @@ export function failureDetailOf(error: unknown): string | null {
   return message === "" ? null : message;
 }
 
+/**
+ * True for an answer refused because the workspace isn't trusted: the window's engine refuses
+ * every answer of such a workspace as `denied`, the same way each time, so no retry can help.
+ */
+export function wasRefusedUntrusted(error: unknown): boolean {
+  return errorKindOf(error) === "denied";
+}
+
 /** What the bar shows for an answer that came too late: its sentence, and **Open run** when it can. */
 export interface DecidedElsewhere {
   readonly openRun: (() => void) | undefined;
 }
 
+/** What the bar shows for an answer refused in a workspace that isn't trusted. */
+export interface RefusedUntrusted {
+  /**
+   * Opens the workspace's trust check, with the button that opened it to give focus back to.
+   * Without it the line has no **Review**.
+   */
+  readonly review: ((opener: HTMLElement | null) => void) | undefined;
+}
+
 interface FailedLineProps {
   /** Shows "Couldn't record your decision." with **Try again** when set. */
   readonly onRetry: (() => void) | null;
-  /** The failure's own sentence, under "Couldn't record your decision.", when set. */
+  /** The failure's own sentence, after "Couldn't record your decision.", when set. */
   readonly detail?: string | null;
   /** Shows the executor's sentence and the command to copy, with no **Try again**, when set. */
   readonly manual?: ManualAnswer | null;
   /** Shows "This is no longer waiting for you." with **Open run**, in place of **Try again**, when set. */
   readonly elsewhere?: DecidedElsewhere | null;
+  /** Shows "This workspace isn't trusted yet, …" with **Review**, in place of **Try again**, when set. */
+  readonly untrusted?: RefusedUntrusted | null;
 }
 
-/** The bar's always-mounted alert slot, above its buttons (a11y 8.3). */
-export function FailedLine({
+/**
+ * The bar's always-mounted alert slot, above its buttons (a11y 8.3). Its sentences come before its
+ * button, on screen and in the DOM, so the alert reads them first (WCAG 1.3.2). When it fills, the
+ * bar's focused button is brought back into view, since the lines above it can push it out of a
+ * phone's window (WCAG 2.4.11).
+ */
+export function FailedLine(props: FailedLineProps) {
+  const slot = useRef<HTMLDivElement | null>(null);
+  const shown = shownLine(props);
+  const kind = shown?.kind ?? null;
+  useEffect(() => {
+    if (kind === null) return;
+    const focused = slot.current?.ownerDocument.activeElement;
+    if (focused instanceof HTMLElement && slot.current?.parentElement?.contains(focused)) {
+      focused.scrollIntoView({ block: "nearest" });
+    }
+  }, [kind]);
+  return (
+    <div ref={slot} role="alert" className="text-small text-fg">
+      {shown === null ? null : <ShownLine shown={shown} />}
+    </div>
+  );
+}
+
+/** The line the alert slot shows: the first of {@link FailedLineProps} that is set. */
+type Shown =
+  | { readonly kind: "manual"; readonly manual: ManualAnswer }
+  | { readonly kind: "elsewhere"; readonly elsewhere: DecidedElsewhere }
+  | { readonly kind: "untrusted"; readonly untrusted: RefusedUntrusted }
+  | { readonly kind: "failed"; readonly onRetry: () => void; readonly detail: string | null };
+
+function shownLine({
   onRetry,
   detail = null,
   manual = null,
   elsewhere = null,
-}: FailedLineProps) {
-  return (
-    <div role="alert" className="text-small text-fg">
-      {manual === null ? null : (
+  untrusted = null,
+}: FailedLineProps): Shown | null {
+  if (manual !== null) return { kind: "manual", manual };
+  if (elsewhere !== null) return { kind: "elsewhere", elsewhere };
+  if (untrusted !== null) return { kind: "untrusted", untrusted };
+  return onRetry === null ? null : { kind: "failed", onRetry, detail };
+}
+
+function ShownLine({ shown }: { readonly shown: Shown }) {
+  switch (shown.kind) {
+    case "manual":
+      return (
         <span className="flex flex-col gap-2">
-          {manual.message}
-          <CommandBox command={manual.command} />
+          {shown.manual.message}
+          <CommandBox command={shown.manual.command} />
         </span>
-      )}
-      {elsewhere === null ? null : (
+      );
+    case "elsewhere": {
+      const { openRun } = shown.elsewhere;
+      return (
         <Callout
           tone="info"
-          {...(elsewhere.openRun === undefined
-            ? {}
-            : { action: { label: "Open run", onClick: elsewhere.openRun } })}
+          {...(openRun === undefined ? {} : { action: { label: "Open run", onClick: openRun } })}
         >
           {decidedElsewhereText}
         </Callout>
-      )}
-      {manual !== null || elsewhere !== null || onRetry === null ? null : (
-        <span className="flex flex-col gap-1">
-          <span className="flex flex-wrap items-center gap-2">
-            {failedText}
-            <Button variant="ghost" size="sm" onClick={onRetry}>
-              Try again
-            </Button>
-          </span>
-          {detail === null ? null : <span className="text-fg-muted">{detail}</span>}
+      );
+    }
+    case "untrusted": {
+      const { review } = shown.untrusted;
+      return (
+        <span className="flex flex-wrap items-center gap-2">
+          {untrustedText}
+          {review === undefined ? null : <ReviewTrustButton review={review} />}
         </span>
-      )}
-    </div>
+      );
+    }
+    case "failed":
+      return (
+        <span className="flex flex-wrap items-center gap-2">
+          {shown.detail === null ? failedText : `${failedText} ${shown.detail}`}
+          <Button variant="ghost" size="sm" onClick={shown.onRetry}>
+            Try again
+          </Button>
+        </span>
+      );
+  }
+}
+
+/** **Review**: opens the trust check with itself as the opener, so focus comes back to it. */
+function ReviewTrustButton({ review }: { readonly review: (opener: HTMLElement | null) => void }) {
+  const button = useRef<HTMLButtonElement | null>(null);
+  return (
+    <Button ref={button} variant="ghost" size="sm" onClick={() => review(button.current)}>
+      Review
+    </Button>
   );
 }
 

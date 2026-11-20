@@ -15,7 +15,7 @@
 // through the webview's network layer (the page still reads it from `secrets`).
 // The page starts no connector: a workflow with an agent that lists one is
 // refused as `unavailable` before the engine opens, and so is an Approve of a
-// connector's tool call in a run the CLI started, with the CLI line that sends it. Agents in a harness run in
+// connector's tool call, with the CLI line that sends it. Agents in a harness run in
 // the agent host's sandbox (`openHarnessHost`, HAL-10849); where no agent host
 // runs, a workflow with one is refused the same way.
 // Nothing starts from a workspace that isn't trusted, unless it reaches only
@@ -40,7 +40,7 @@ import {
   workspaceBudget,
   workspaceExecutorOptions,
 } from "@halonicjs/adapter-workspace-models";
-import { shortRunId, type startOfDueRun } from "@halonicjs/app";
+import type { startOfDueRun } from "@halonicjs/app";
 import {
   type AssembledEngine,
   assembleEngine,
@@ -60,7 +60,7 @@ import {
   type Secrets,
   type SendOptions,
 } from "@halonicjs/ports";
-import { errorKindOf, KindedError } from "@halonicjs/std";
+import { KindedError } from "@halonicjs/std";
 import type { TauriIpc } from "@halonicjs/studio-services";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import {
@@ -69,6 +69,12 @@ import {
   loadWorkspace,
   runDefinitionsOf,
 } from "@halonicjs/workspace";
+import {
+  answerRefusalOf,
+  lockRefusal,
+  pageCantStart,
+  refuseConnectorApprove,
+} from "./engine-refusals.ts";
 import type { EngineDecisions, StudioHarnessHost } from "./studio-harness-host.ts";
 
 /** What a routine starts, with its placeholders filled in: what the routine scheduler would start. */
@@ -301,19 +307,12 @@ export class EngineService {
   /**
    * Sends `event` to a run waiting for a person, such as an Inbox card's Approve or Reject, as
    * `halonic runs send` does, with the executor's `payload` and `options` (the call or wait step it
-   * answers): opens the engine, with the checks of a start, since the run goes on
-   * from here, and returns once the event is recorded, not when the run ends.
-   *
-   * Another engine holding the workspace is a failure to try again, not a run that moved on, so
-   * that refusal is `unavailable` here, its sentence saying what to close. An Approve of a
-   * connector's tool call is refused before anything is recorded, since the page starts no
-   * connector: its `fix` is the CLI line that sends it. Reject and Ask for changes still go.
-   *
+   * answers): opens the engine, with the checks of a start, and returns once the event is recorded.
+   * Another engine holding the workspace fails as `unavailable`, a failure to try again, and an
+   * Approve of a connector's tool call is refused before anything is recorded (`engine-refusals`).
    * @returns the run as it is after the event
-   * @throws KindedError `unavailable` when another engine holds the workspace or for an Approve of
-   *   a connector's tool call, `denied` for a workspace that may start nothing, what
-   *   {@link EngineService.open} throws otherwise, or the executor's refusal when the run doesn't
-   *   take the event now
+   * @throws KindedError `unavailable` for those, `denied` for a workspace that may start nothing,
+   *   what {@link EngineService.open} throws otherwise, or the executor's refusal
    */
   async send(
     runId: string,
@@ -321,36 +320,16 @@ export class EngineService {
     payload?: unknown,
     options?: SendOptions,
   ): Promise<RunSummary> {
-    const { engine, runs } = await this.#forAnswer();
-    if (event === "approve" && options?.callId !== undefined) {
-      const run = await runs.get(runId);
-      const call = run?.approvals.find((approval) => approval.callId === options.callId);
-      if (call?.connector !== undefined) {
-        throw new KindedError(
-          "unavailable",
-          `This window can't run ${call.connector}'s tools yet. To approve this one, run this in a terminal:`,
-          { fix: `halonic runs send ${shortRunId(runId)} approve` },
-        );
-      }
-    }
+    const { engine, workspace, runs } = await this.#forAnswer();
+    await refuseConnectorApprove(runs, workspace, runId, event, options);
     return engine.executor.send(runId, event, payload, options);
   }
 
-  /**
-   * The open engine, for an answer: as for a start, with the lock's `conflict` as `unavailable`.
-   *
-   * @throws KindedError `unavailable` naming the other engine, or what {@link EngineService.open} throws
-   */
+  /** The open engine, for an answer: as for a start, with the lock's `conflict` as `unavailable`. */
   async #forAnswer(): Promise<OpenEngine> {
-    let open: OpenEngine;
-    try {
-      open = await this.#open();
-    } catch (error) {
-      if (!(error instanceof KindedError) || errorKindOf(error) !== "conflict") throw error;
-      throw new KindedError("unavailable", `${error.message} ${error.fix ?? ""}`.trim(), {
-        cause: error,
-      });
-    }
+    const open = await this.#open().catch((error: unknown) => {
+      throw answerRefusalOf(error);
+    });
     await this.#refuseUntrusted(open.workspace);
     return open;
   }
@@ -394,14 +373,18 @@ export class EngineService {
    */
   #refuseWhatThePageCantStart(agent: Agent): void {
     if (startsAProgram(agent.harness) && this.#options.openHarnessHost === undefined) {
-      throw unavailable(
+      throw pageCantStart(
         agent.name,
         "runs in a harness program",
         `Set ${agent.name} to Halonic on its Harness page to run it now.`,
       );
     }
     if (agent.connectors.length > 0) {
-      throw unavailable(agent.name, "uses a connector", "Run this workflow from the command line.");
+      throw pageCantStart(
+        agent.name,
+        "uses a connector",
+        "Run this workflow from the command line.",
+      );
     }
   }
 
@@ -514,27 +497,4 @@ export class EngineService {
 async function openRunsOf(runs: TauriRunStore): Promise<ReadonlySet<string>> {
   const open = await runs.list({ status: ["running", "waiting"] });
   return new Set(open.map((run) => run.id));
-}
-
-/** The lock's refusal as the page says it: a `conflict` names the other process, others stay as they are. */
-function lockRefusal(refusal: unknown): unknown {
-  if (!(refusal instanceof KindedError) || refusal.kind !== "conflict") return refusal;
-  const pid = pidOf(refusal.cause);
-  const holder = pid === undefined ? "another engine" : `another engine (process ${pid})`;
-  return new KindedError("conflict", `This workspace is open in ${holder}.`, {
-    fix: "Close it, then try again.",
-    cause: refusal,
-  });
-}
-
-function pidOf(refusal: unknown): number | undefined {
-  if (typeof refusal !== "object" || refusal === null) return undefined;
-  const { pid } = refusal as Record<string, unknown>;
-  return typeof pid === "number" ? pid : undefined;
-}
-
-function unavailable(agentName: string, why: string, fix: string): KindedError {
-  return new KindedError("unavailable", `${agentName} ${why}, which this window can't start yet.`, {
-    fix,
-  });
 }

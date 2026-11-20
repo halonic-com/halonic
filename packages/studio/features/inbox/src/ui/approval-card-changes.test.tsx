@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -130,6 +131,30 @@ verifies("inbox.approval-card", () => {
       expect(text).toContain("The command sends Reject without your note.");
       expect(text).toContain("halonic runs send 7k2m9p approve");
       expect(text).not.toContain("Try again");
+      expect(noteField().value).toBe("Use the shorter title");
+    });
+
+    it("says the workspace isn't trusted when the note is denied, and keeps it", async () => {
+      const { root, later } = openCard({
+        decisions: {
+          approve: async () => waitingRun("r47"),
+          reject: async () => waitingRun("r47"),
+          askForChanges: async () => {
+            throw new KindedError(
+              "denied",
+              "This workspace isn't trusted yet, so nothing was started.",
+            );
+          },
+        },
+      });
+      later(2);
+      await press(button(root, "Ask for changes"));
+      await type("Use the shorter title");
+      await press(dialogButton("Send note"));
+      await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+      const text = document.querySelector("dialog")?.textContent ?? "";
+      expect(text).toContain("This workspace isn't trusted yet, so Studio can't send your answer.");
+      expect(text).not.toContain("Couldn't record your decision.");
       expect(noteField().value).toBe("Use the shorter title");
     });
 

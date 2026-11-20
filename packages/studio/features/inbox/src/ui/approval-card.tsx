@@ -22,8 +22,10 @@ import {
   type NextItem,
   NotAnsweringLine,
   unavailableWhile,
+  untrustedText,
   useEveryMinute,
   wasDecidedElsewhere,
+  wasRefusedUntrusted,
 } from "./card-parts.tsx";
 import { useDecisionGuard } from "./decision-guard.ts";
 
@@ -53,6 +55,11 @@ export interface ApprovalCardProps extends EngineState {
   readonly onGoToSecret?: ((note: string) => void) | undefined;
   /** Where that button goes; with no account waiting it is the Library's New connector. */
   readonly secretPlace?: "setup" | "connectors" | undefined;
+  /**
+   * Opens the workspace's trust check, for **Review** when a decision is refused because the
+   * workspace isn't trusted; without it that line has no button.
+   */
+  readonly onReviewTrust?: ((opener: HTMLElement | null) => void) | undefined;
 }
 
 type Decision = "approve" | "reject";
@@ -67,8 +74,10 @@ type CardState =
       /** The decision was refused because the tool call isn't the one waiting any more. */
       readonly elsewhere: boolean;
       readonly manual: ManualAnswer | null;
-      /** The failure's own sentence, shown under "Couldn't record your decision.". */
+      /** The failure's own sentence, shown after "Couldn't record your decision.". */
       readonly detail: string | null;
+      /** The decision was refused because the workspace isn't trusted. */
+      readonly untrusted: boolean;
     }
   | { readonly kind: "deciding"; readonly decision: Decision }
   | { readonly kind: "decided"; readonly decided: Decided; readonly at: Date };
@@ -80,6 +89,8 @@ interface NoteForm {
   readonly failed: boolean;
   /** Set when the note can only go by the command line, which sends `reject` without it. */
   readonly manual: ManualAnswer | null;
+  /** The note was refused because the workspace isn't trusted. */
+  readonly untrusted: boolean;
 }
 
 /** What the command line does with a note: `runs send` takes no note, so only the reject goes. */
@@ -88,6 +99,7 @@ const rejectOnlyText = "The command sends Reject without your note.";
 /** The note dialog's alert text: the command-line sentence, the plain failure, or nothing. */
 function noteError(form: NoteForm): string | undefined {
   if (form.manual !== null) return `${form.manual.message} ${rejectOnlyText}`;
+  if (form.untrusted) return untrustedText;
   return form.failed ? failedText : undefined;
 }
 
@@ -130,6 +142,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
     elsewhere: false,
     manual: null,
     detail: null,
+    untrusted: false,
   });
   const [note, setNote] = useState(props.initialNote ?? "");
   const [form, setForm] = useState<NoteForm>({
@@ -137,6 +150,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
     busy: false,
     failed: false,
     manual: null,
+    untrusted: false,
   });
   const [usableAt] = useState(() => now().getTime());
   const guard = useDecisionGuard(usableAt, () => now().getTime());
@@ -160,20 +174,27 @@ export function ApprovalCard(props: ApprovalCardProps) {
         elsewhere: wasDecidedElsewhere(error),
         manual: manualAnswerOf(error),
         detail: failureDetailOf(error),
+        untrusted: wasRefusedUntrusted(error),
       });
     }
   }
 
   async function sendNote(text: string) {
     if (form.busy || state.kind !== "open") return;
-    setForm({ open: true, busy: true, failed: false, manual: null });
+    setForm({ open: true, busy: true, failed: false, manual: null, untrusted: false });
     try {
       await decisions.askForChanges(item, text);
-      setForm({ open: false, busy: false, failed: false, manual: null });
+      setForm({ open: false, busy: false, failed: false, manual: null, untrusted: false });
       setState({ kind: "decided", decided: { kind: "note", note: text }, at: now() });
     } catch (error) {
       // The dialog stays open with the note, and says so in its alert slot (flow-inbox 5.4).
-      setForm({ open: true, busy: false, failed: true, manual: manualAnswerOf(error) });
+      setForm({
+        open: true,
+        busy: false,
+        failed: true,
+        manual: manualAnswerOf(error),
+        untrusted: wasRefusedUntrusted(error),
+      });
     }
   }
 
@@ -206,6 +227,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
           guard={guard}
           engine={props}
           onDecide={decide}
+          onReviewTrust={props.onReviewTrust}
           onOpenRun={
             props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId)
           }
@@ -224,7 +246,9 @@ export function ApprovalCard(props: ApprovalCardProps) {
           onSend={sendNote}
           {...(props.onGoToSecret === undefined ? {} : { onGoToSecret: props.onGoToSecret })}
           {...(props.secretPlace === undefined ? {} : { secretPlace: props.secretPlace })}
-          onCancel={() => setForm({ open: false, busy: false, failed: false, manual: null })}
+          onCancel={() =>
+            setForm({ open: false, busy: false, failed: false, manual: null, untrusted: false })
+          }
         />
       ) : null}
     </section>
@@ -265,6 +289,7 @@ interface DecisionBarProps {
   readonly onDecide: (decision: Decision) => void;
   readonly onAskForChanges: () => void;
   readonly onOpenRun: (() => void) | undefined;
+  readonly onReviewTrust: ((opener: HTMLElement | null) => void) | undefined;
 }
 
 /**
@@ -279,6 +304,7 @@ function DecisionBar({
   onDecide,
   onAskForChanges,
   onOpenRun,
+  onReviewTrust,
 }: DecisionBarProps) {
   const reasonId = useId();
   const unavailable = unavailableWhile(engine.answering ?? true, reasonId);
@@ -296,6 +322,7 @@ function DecisionBar({
         detail={state.kind === "open" ? state.detail : null}
         manual={state.kind === "open" ? state.manual : null}
         elsewhere={state.kind === "open" && state.elsewhere ? { openRun: onOpenRun } : null}
+        untrusted={state.kind === "open" && state.untrusted ? { review: onReviewTrust } : null}
       />
       <div className="flex flex-wrap justify-end gap-2">
         <Button
