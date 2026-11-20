@@ -3,6 +3,7 @@
 - Task: HAL-14120 (trial: HAL-13578, stopped in HAL-13979)
 - Approval: the board stopped the trial (HAL-13979, option 1); Liam chose to remove the code on HAL-14120 and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:t0XH/+96oOz4lY5fO8VuV/eMUDhIdTnLqIOEtoYc4/qOmGs3SkdKPTrQo0eN/ttiOuoniPmLA5/+ON4wxYZjBA==
 
 ## What changes
 
