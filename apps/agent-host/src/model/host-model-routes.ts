@@ -3,7 +3,7 @@ import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { mockFactory } from "@halonicjs/adapter-model-mock";
 import { openAiFactories } from "@halonicjs/adapter-model-openai";
 import { FileSecretStore } from "@halonicjs/adapter-secrets-file";
-import { type Secrets, workspaceSecrets } from "@halonicjs/ports";
+import { type Secrets, type TrustStore, workspaceSecrets } from "@halonicjs/ports";
 import { type ProfileFolder, secretsFile } from "@halonicjs/profile";
 import type { ModelRouteDeps } from "./model-routes.ts";
 
@@ -13,6 +13,8 @@ export interface HostModelOptions {
   workspaceRoots: readonly string[];
   /** The profile folder, whose secrets file holds provider keys; `undefined` without one. */
   profile: ProfileFolder | undefined;
+  /** The trust records of the profile, which a provider must be in; `undefined` without one. */
+  trustStore: TrustStore | undefined;
   /** The host's own environment, where `HALONIC_SECRET_<NAME>` may hold a key. */
   env: Readonly<Record<string, string | undefined>>;
   /**
@@ -38,6 +40,7 @@ export function hostModelRoutes(options: HostModelOptions): ModelRouteDeps {
     workspaceRoots: options.workspaceRoots,
     factories: [...openAiFactories, mockFactory],
     secrets: workspaceSecrets(providerKeys(options)),
+    trustStore: options.trustStore,
     http: createNodeHttpClient({ hostClass: () => "loopback", ownPorts: options.ownPorts }),
     ...(options.log === undefined ? {} : { log: options.log }),
   };
