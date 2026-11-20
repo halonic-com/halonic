@@ -2413,7 +2413,7 @@
     "old": "784f78d skipped an agent file in a sub-folder of agents/, such as hubs/billing/agents/old/spare.agent.yaml, without a message.",
     "new": "The file is still not read, and the loader warns (misplaced-file) where it goes: \"Halonic reads <id>.agent.yaml files only in agents/: move it to hubs/billing/agents/spare.agent.yaml\". validate still passes.",
     "why": "A file named as a kind's that Halonic doesn't read made validate say \"No problems\" while the agent, workflow or routine never showed up (C340 rows 3-5 on HAL-14271, code row C25). Old layouts (projects/, flows/, org.yaml) use other names and stay quiet, as decided on HAL-2299 (HAL-14297).",
-    "status": "proposed",
+    "status": "signed-off",
     "checks": [
       {
         "case": "agent/not-read-nested",
