@@ -42,7 +42,9 @@ function fakeRunsSource() {
     log: async (runId) => [...(logs[runId] ?? [])],
     workflow: () => ({ name: "Support reply", stepDescription: () => undefined }),
     routine: () => undefined,
-    runnableWorkflows: async () => ["support-reply"],
+    runnableWorkflows: async () => [
+      { hubId: "support", id: "support-reply", name: "Support reply", command: "support-reply" },
+    ],
     providerKind: (id) => (id === "ollama" ? "local" : undefined),
     currency: () => "EUR",
     monthlyBudget: () => undefined,
