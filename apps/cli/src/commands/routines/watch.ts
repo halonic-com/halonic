@@ -252,9 +252,9 @@ function workflowsOf(routines: readonly PlacedRoutine[]): SandboxGateRun[] {
 
 /**
  * Refuses a watch whose enabled routine runs an agent in a harness, before
- * anything starts, as `run` refuses such a workflow: until HAL-6477 lets a
- * person review what a harness run changed, its changes would sit as a
- * proposal nobody can review from the CLI. A routine that runs a workflow is
+ * anything starts. `run` starts such agents and keeps what they change as a
+ * proposal for `halonic proposals` (HAL-6477); a routine runs unattended, so
+ * `watch` doesn't start them yet. A routine that runs a workflow is
  * checked for the sandbox first, so a computer that can't start it says so
  * first (HAL-5219). The engine isn't opened.
  *
@@ -289,13 +289,13 @@ async function refuseHarnessRoutines(
 }
 
 /**
- * Throws `run`'s line for an agent in a harness; nothing when there is none.
+ * Throws the refusal for an agent in a harness; nothing when there is none.
  *
  * @throws KindedError `unavailable` when `agent` is given
  */
 function refuseHarnessAgent(agent: LoadedFileOf<"agent"> | undefined): void {
   if (agent === undefined) return;
-  const reason = runMessages.harnessNotAvailable(
+  const reason = routinesMessages.harnessNotAvailable(
     printable(agent.value.name),
     printable(agent.value.harness ?? ""),
   );

@@ -16,9 +16,9 @@ Halonic 0.1.0 runs none. On `main`, which isn't released yet, `halonic serve`
 runs them (requirement `cli.commands.serve.harness`), and so does Studio, in
 the agent host's sandbox (#3518). Studio refuses such an agent as
 `unavailable` only when no agent host runs. `halonic run` checks the sandbox
-and then stops with exit 9, because it can't run those agents yet (requirement
-`cli.run-sandbox-gate`), and `halonic routines watch` refuses a routine whose
-agent runs in a harness.
+and then starts them, keeping what they change as a proposal for `halonic
+proposals` (requirement `cli.run-proposal`). `halonic routines watch` still
+refuses a routine whose agent runs in a harness.
 
 ## What it is
 
