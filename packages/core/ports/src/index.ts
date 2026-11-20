@@ -76,6 +76,13 @@ export {
   type WriteOptions,
   type WriteResult,
 } from "./definition-store.ts";
+export {
+  checkLeaveOut,
+  isLeftOut,
+  type LeaveOut,
+  type ListOptions,
+  type VersionOptions,
+} from "./definition-store-left-out.ts";
 // biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
 export * from "./deploy-target.ts";
 export { type Digest, digestVersion } from "./digest.ts";

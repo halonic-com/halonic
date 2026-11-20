@@ -39,6 +39,10 @@ export {
   type MakeCoordination,
 } from "./coordination-harness.ts";
 export {
+  type DefinitionSourceLeftOutOptions,
+  definitionSourceLeftOutContract,
+} from "./definition-source-left-out.ts";
+export {
   type DefinitionFiles,
   definitionSourceContract,
   definitionStoreContract,
