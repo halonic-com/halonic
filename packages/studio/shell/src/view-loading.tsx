@@ -6,7 +6,7 @@ import {
   STILL_LOADING_AFTER_MS,
   usePresentation,
 } from "@halonicjs/studio-kit";
-import { type ReactNode, Suspense, useEffect, useRef, useState } from "react";
+import { type ReactNode, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLazyView } from "./lazy-view.ts";
 import type { ViewRef } from "./view.ts";
 
@@ -25,6 +25,8 @@ export interface LoadedViewProps<Props extends object> {
   readonly name?: string | undefined;
   /** What the view gets. */
   readonly props: Props;
+  /** Called once the view first draws, after its code loaded: never while it loads or when it throws. */
+  readonly onDrawn?: (() => void) | undefined;
 }
 
 /**
@@ -35,15 +37,30 @@ export interface LoadedViewProps<Props extends object> {
  * @example
  * <LoadedView view={place} name="Agents" props={{ context }} />
  */
-export function LoadedView<Props extends object>({ view, name, props }: LoadedViewProps<Props>) {
+export function LoadedView<Props extends object>({
+  view,
+  name,
+  props,
+  onDrawn,
+}: LoadedViewProps<Props>) {
   const { View, retry } = useLazyView<Props>(view);
   // `lazy` widens the props with `ref`, which a view's props never have.
   const Loaded = View as unknown as (props: Props) => ReactNode;
   return (
     <Suspense fallback={<ViewLoading name={name} onRetry={retry} />}>
       <Loaded {...props} />
+      {/* In the same Suspense as the view, so it commits only once the view drew. */}
+      {onDrawn === undefined ? null : <OnDrawn onDrawn={onDrawn} />}
     </Suspense>
   );
+}
+
+function OnDrawn({ onDrawn }: { readonly onDrawn: () => void }): null {
+  // The caller's function is usually a new one each render; only the first draw counts.
+  const latest = useRef(onDrawn);
+  latest.current = onDrawn;
+  useLayoutEffect(() => latest.current(), []);
+  return null;
 }
 
 /** The title and meta bars' widths, a little different in each row, as in the kit's List. */

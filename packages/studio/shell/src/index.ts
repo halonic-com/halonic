@@ -154,11 +154,8 @@ export {
 export { PageBackLinkSlot } from "./page/back-link-slot.tsx";
 export { copyDetails, useCopyDetails } from "./page/copy-details.ts";
 export { ItemGone, type ItemGoneProps } from "./page/item-gone.tsx";
-export {
-  PageErrorBoundary,
-  type PageErrorBoundaryProps,
-  pageStoppedWords,
-} from "./page/page-error-boundary.tsx";
+export { PageErrorBoundary, type PageErrorBoundaryProps } from "./page/page-error-boundary.tsx";
+export { pageStoppedWords } from "./page/page-stopped.tsx";
 export { unreachableWords } from "./page/page-unreachable.tsx";
 // biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
 export * from "./palette-exports.ts";

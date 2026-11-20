@@ -1,7 +1,7 @@
 import { Dialog, isComposing } from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
-import { UnreachableViewBoundary, unreachableWords } from "../page/page-unreachable.tsx";
+import { PartErrorBoundary, unreachableWords } from "../page/page-unreachable.tsx";
 import type { SettingsSectionContribution } from "../points/frame.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { Registered } from "../points/point-store.ts";
@@ -179,6 +179,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
               surface="window"
               regionFormat={regionFormat}
               workspaceName={workspaceName}
+              announce={(words) => announcer.announce(words)}
             />
           )}
         </div>
@@ -265,6 +266,12 @@ export interface SectionViewProps extends SettingsSectionProps {
   readonly page?: boolean;
   /** The open workspace's name: a workspace section then shows `workspaceSectionLine` under its name. */
   readonly workspaceName?: string | undefined;
+  /**
+   * Reads a state's title politely when the section's view can't load: the focus stays in the
+   * dialog's list, or on the phone page's hidden name, so nothing else reads it. After Try again
+   * or Reload page the focus goes to the state's title, which reads it, so this stays quiet.
+   */
+  readonly announce?: ((words: string) => void) | undefined;
 }
 
 /**
@@ -313,16 +320,33 @@ export function SectionView({
   page,
   regionFormat,
   workspaceName,
+  announce,
 }: SectionViewProps) {
   const description = useDescription(section, context, place);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const retried = useRef(false);
+  // After Reload page or Try again, which goes away, the section's name takes the focus once the
+  // view draws, unless the user put the focus somewhere else meanwhile (a11y 2.4.3).
+  const onDrawn = () => {
+    const active = document.activeElement;
+    if (retried.current && (active === null || active === document.body)) {
+      heading.current?.focus();
+    }
+    retried.current = false;
+  };
   return (
     <section aria-labelledby={`settings-section-${section.id}`}>
       {page === true ? (
-        <h1 id={`settings-section-${section.id}`} tabIndex={-1} className="sr-only">
+        <h1 ref={heading} id={`settings-section-${section.id}`} tabIndex={-1} className="sr-only">
           {section.title}
         </h1>
       ) : (
-        <h3 id={`settings-section-${section.id}`} tabIndex={-1} className="text-section text-fg">
+        <h3
+          ref={heading}
+          id={`settings-section-${section.id}`}
+          tabIndex={-1}
+          className="text-section text-fg"
+        >
           {section.title}
         </h3>
       )}
@@ -339,21 +363,26 @@ export function SectionView({
       {description === undefined ? null : (
         <p className="mt-2 max-w-120 text-small text-fg-muted">{description}</p>
       )}
-      {/* A view that fails to load or draw shows nothing, or "Couldn't load these settings" when
-          the computer can't be reached, one level under the section's name; the list and the other
-          sections keep working. */}
+      {/* A view that fails to load or draw shows "Couldn't load these settings" one level under the
+          section's name: with Reload page in the desktop app, with Try again when the computer
+          can't be reached, else nothing. The list and the other sections keep working. */}
       <div className="mt-5">
-        <UnreachableViewBoundary
+        <PartErrorBoundary
           name={`${section.title} settings`}
           title={unreachableWords.settingsTitle}
           headingLevel={page === true ? 2 : 4}
+          announce={announce}
+          onRetry={() => {
+            retried.current = true;
+          }}
         >
           <LoadedView<SettingsSectionProps>
             view={section}
             name={section.title}
             props={{ context, closeSettings, place, surface, regionFormat }}
+            onDrawn={onDrawn}
           />
-        </UnreachableViewBoundary>
+        </PartErrorBoundary>
       </div>
     </section>
   );

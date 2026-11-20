@@ -9,8 +9,10 @@ import {
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { SectionView } from "../settings/settings-dialog.tsx";
 import { focusPageHeading } from "../tabs/history-moves.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
+import type { WorkspaceContext } from "../workspace-context.ts";
 import { PageErrorBoundary } from "./page-error-boundary.tsx";
 
 let toasts: ToastStore;
@@ -25,6 +27,7 @@ beforeEach(() => {
 
 afterEach(() => {
   unmountAll();
+  document.body.replaceChildren();
   vi.restoreAllMocks();
 });
 
@@ -77,6 +80,67 @@ async function press(target: HTMLButtonElement): Promise<void> {
     target.focus();
     target.click();
   });
+}
+
+/** A Settings section whose view throws as it loads until `state.drawable`. */
+function settingsSection(id: string, title: string, state: { readonly drawable: boolean }) {
+  return {
+    id,
+    title,
+    scope: "display" as const,
+    order: 10,
+    featureId: id,
+    view: "Section",
+    load: async () => {
+      if (!state.drawable) throw new TypeError("theme is undefined");
+      return { Section: () => <p>{title} works</p> };
+    },
+  };
+}
+
+/**
+ * The Appearance and Models sections in the desktop app, in the dialog or on the phone page, after
+ * a list row that has the focus, as in the dialog.
+ */
+async function renderSections({
+  page,
+  appearance,
+  announce,
+}: {
+  readonly page: boolean;
+  readonly appearance: { readonly drawable: boolean };
+  readonly announce?: (words: string) => void;
+}): Promise<HTMLElement> {
+  const sectionView = (registered: ReturnType<typeof settingsSection>) => (
+    <SectionView
+      section={registered}
+      context={{} as WorkspaceContext}
+      closeSettings={() => undefined}
+      place="app"
+      surface={page ? "phone" : "window"}
+      page={page}
+      announce={announce}
+    />
+  );
+  if (!page) {
+    // The dialog's list row, which has the focus as the section opens.
+    const row = document.createElement("button");
+    row.textContent = "Appearance row";
+    document.body.append(row);
+    row.focus();
+  }
+  let container = document.body;
+  await act(async () => {
+    container = render(
+      <ClipboardProvider writeClipboard={writeClipboard}>
+        <ToastStoreProvider store={toasts}>
+          {sectionView(settingsSection("appearance", "Appearance", appearance))}
+          {sectionView(settingsSection("models", "Models", { drawable: true }))}
+        </ToastStoreProvider>
+      </ClipboardProvider>,
+    );
+  });
+  return container;
 }
 
 verifies("shell.page-stopped", () => {
@@ -204,4 +268,80 @@ verifies("shell.page-stopped", () => {
       expect.objectContaining({ tone: "danger", title: "Couldn't copy." }),
     ]);
   });
+
+  it.each([
+    { page: false, name: "H3", level: "H4" },
+    { page: true, name: "H1", level: "H2" },
+  ])(
+    "says Couldn't load these settings with Reload page in the desktop app, page $page",
+    async ({ page, name, level }) => {
+      const appearance = { drawable: false };
+      const container = await renderSections({ page, appearance });
+      const section = container.querySelector("section") as HTMLElement;
+      const headings = [...section.querySelectorAll("h1, h2, h3, h4")];
+      expect(headings.map((heading) => [heading.tagName, heading.textContent])).toEqual([
+        [name, "Appearance"],
+        [level, "Couldn't load these settings"],
+      ]);
+      expect(section.textContent).toContain(
+        "Halonic ran into a problem showing the Appearance settings. Nothing in your workspace changed.",
+      );
+      expect(section.textContent).not.toContain("theme is undefined");
+      expect(button(section, "Copy details")).toBeDefined();
+      expect(container.textContent).toContain("Models works");
+
+      appearance.drawable = true;
+      await press(button(section, "Reload page"));
+      expect(section.textContent).toContain("Appearance works");
+    },
+  );
+
+  it("reads Couldn't load these settings once in the dialog, with the focus left in the list", async () => {
+    const said: string[] = [];
+    const container = await renderSections({
+      page: false,
+      appearance: { drawable: false },
+      announce: (words) => said.push(words),
+    });
+    expect(said).toEqual(["Couldn't load these settings"]);
+    expect(document.activeElement?.textContent).toBe("Appearance row");
+
+    // A Reload page that fails again moves the focus to the title, which reads it: nothing more.
+    await press(button(container.querySelector("section") as HTMLElement, "Reload page"));
+    expect(document.activeElement?.textContent).toBe("Couldn't load these settings");
+    expect(said).toEqual(["Couldn't load these settings"]);
+  });
+
+  it("reads Couldn't load these settings once on the phone page, with the focus left on its h1", async () => {
+    const said: string[] = [];
+    const heading = document.createElement("h1");
+    heading.tabIndex = -1;
+    heading.textContent = "Appearance";
+    document.body.append(heading);
+    heading.focus();
+    await renderSections({
+      page: true,
+      appearance: { drawable: false },
+      announce: (words) => said.push(words),
+    });
+    expect(said).toEqual(["Couldn't load these settings"]);
+    expect(document.activeElement).toBe(heading);
+  });
+
+  it.each([
+    { page: false, name: "H3" },
+    { page: true, name: "H1" },
+  ])(
+    "moves focus to the section's name once Reload page draws it, page $page",
+    async ({ page, name }) => {
+      const appearance = { drawable: false };
+      const container = await renderSections({ page, appearance });
+      const section = container.querySelector("section") as HTMLElement;
+      appearance.drawable = true;
+      await press(button(section, "Reload page"));
+      expect(section.textContent).toContain("Appearance works");
+      expect(document.activeElement?.tagName).toBe(name);
+      expect(document.activeElement?.textContent).toBe("Appearance");
+    },
+  );
 });

@@ -25,6 +25,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  appearanceThrows = false;
   unmountAll();
   restoreModal();
   restoreMedia();
@@ -36,6 +37,16 @@ function SectionView({ surface }: SettingsSectionProps) {
       drawn
     </p>
   );
+}
+
+/** Whether the Appearance section's view throws as it draws. */
+let appearanceThrows = false;
+
+function AppearanceView(props: SettingsSectionProps) {
+  if (appearanceThrows) {
+    throw new TypeError("theme is undefined");
+  }
+  return <SectionView {...props} />;
 }
 
 function section(
@@ -91,6 +102,8 @@ const sectionsFeature = defineFeature({
     studio.settings.add(
       section("appearance", "Appearance", "display", 10, {
         summary: () => "System theme · characters on",
+        view: "AppearanceView",
+        load: async () => ({ AppearanceView }),
       }),
     );
     studio.settings.add(
@@ -114,7 +127,8 @@ async function renderPhone(
   host: "desktop-app" | "served" = "served",
   withoutHostSettings = false,
 ) {
-  const shell = createShell({ features: [sectionsFeature], timers: new FakeTimers() });
+  const timers = new FakeTimers();
+  const shell = createShell({ features: [sectionsFeature], timers });
   const services = new MapTarget();
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({
@@ -156,7 +170,7 @@ async function renderPhone(
     );
   const groupHeadings = () =>
     [...container.querySelectorAll("main h2")].map((heading) => heading.textContent);
-  return { container, title, heading, back, rowNames, tapRow, tapMore, groupHeadings };
+  return { container, timers, title, heading, back, rowNames, tapRow, tapMore, groupHeadings };
 }
 
 async function settle() {
@@ -200,6 +214,43 @@ verifies("shell.settings-list-page", () => {
     expect(title()).toBe("Settings");
     back();
     expect(title()).toBe("More");
+  });
+
+  it("reads Couldn't load these settings once on a section's page, and not again after a failed Reload page", async () => {
+    appearanceThrows = true;
+    const { container, timers, tapRow, tapMore } = await renderPhone("Acme", "desktop-app");
+    tapMore();
+    await tapRow("Settings");
+    await tapRow("AppearanceSystem theme · characters on");
+    const polite = async () => {
+      act(() => timers.advance(0));
+      await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+      return container.querySelector('[aria-live="polite"]')?.textContent;
+    };
+
+    expect(container.querySelector("[data-testid=settings-section-page] h2")?.textContent).toBe(
+      "Couldn't load these settings",
+    );
+    expect(await polite()).toBe("Couldn't load these settings");
+    expect(document.activeElement?.tagName).not.toBe("H2");
+
+    act(() => timers.advance(60_000));
+    act(() => {
+      for (const region of container.querySelectorAll('[aria-live="polite"]')) {
+        region.textContent = "";
+      }
+    });
+    const reload = [...container.querySelectorAll<HTMLElement>("main button")].find(
+      (candidate) => candidate.textContent === "Reload page",
+    );
+    // A tap leaves the focus on Reload page, which goes as the state draws again.
+    act(() => {
+      reload?.focus();
+      reload?.click();
+    });
+    await settle();
+    expect(document.activeElement?.textContent).toBe("Couldn't load these settings");
+    expect(await polite()).toBe("");
   });
 
   it("tells a section it is on the phone's page, not in a window's dialog", async () => {

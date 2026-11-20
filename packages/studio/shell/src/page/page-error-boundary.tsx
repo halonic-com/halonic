@@ -1,19 +1,9 @@
-import { EmptyState } from "@halonicjs/studio-kit";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { useStudioHost } from "../engine/studio-host-context.ts";
-import { copyDetailsWords, detailsOf } from "../errors/copy-details-words.ts";
-import { focusPageHeading, pageStandInTitle } from "../tabs/history-moves.ts";
+import { focusPageHeading } from "../tabs/history-moves.ts";
 import { ViewErrorBoundary } from "../view-error-boundary.tsx";
-import { useCopyDetails } from "./copy-details.ts";
+import { PageStopped } from "./page-stopped.tsx";
 import { isUnreachable, PageUnreachable } from "./page-unreachable.tsx";
-
-/** The words of a page that stopped working (microcopy 22 F14). */
-export const pageStoppedWords = {
-  title: "This page stopped working",
-  reason: (pageName: string) =>
-    `Halonic ran into a problem showing ${pageName}. Nothing in your workspace changed.`,
-  reload: "Reload page",
-} as const;
 
 /** Props for {@link PageErrorBoundary}. */
 export interface PageErrorBoundaryProps {
@@ -91,49 +81,4 @@ function FocusPageHeadingOnMount({
     }
   }, [area]);
   return null;
-}
-
-function PageStopped({
-  pageName,
-  error,
-  onReload,
-}: {
-  readonly pageName: string;
-  readonly error: unknown;
-  readonly onReload: () => void;
-}) {
-  const titleRef = useRef<HTMLElement | null>(null);
-  const copyDetails = useCopyDetails();
-  useFocusWhenLost(titleRef);
-  return (
-    <EmptyState
-      tone="error"
-      // Stands in for the page's `h1`, so a page that stops as it opens takes focus here.
-      titleRef={(element) => {
-        titleRef.current = element;
-        element?.setAttribute(pageStandInTitle, "");
-      }}
-      title={pageStoppedWords.title}
-      description={pageStoppedWords.reason(pageName)}
-      action={{ label: pageStoppedWords.reload, onClick: onReload }}
-      link={{
-        label: copyDetailsWords.label,
-        onClick: () => void copyDetails(detailsOf(`${pageStoppedWords.title}: ${pageName}`, error)),
-      }}
-    />
-  );
-}
-
-/**
- * Moves focus to `target` when it shows, if focus was lost: it was inside the page that stopped,
- * or on Reload page, which has just gone (a11y 1.4). Focus somewhere else, such as the sidebar,
- * stays where the user put it.
- */
-function useFocusWhenLost(target: { readonly current: HTMLElement | null }): void {
-  useLayoutEffect(() => {
-    const active = document.activeElement;
-    if (active === null || active === document.body) {
-      target.current?.focus();
-    }
-  }, [target]);
 }
