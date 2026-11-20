@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-13713; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4q4Hrdb1q4BQOREcc5XQqLoVIsjQlfSSXb7sGB+zD2XQ1KmHgb+vM6I84k3XOuJ9KD8lR+p8Gu7NMQm3BcVaBg==
 
 `plugin add` copied any folder it was given. A folder that is, holds or is inside the profile folder or a workspace's `.studio` data would put Halonic's own records into a plugin's copy.
 
