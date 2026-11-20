@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { render, unmountAll } from "../test/render.tsx";
 import { ChatMessage, ChatText } from "./chat-message.tsx";
 import { ChatTranscript } from "./chat-transcript.tsx";
 
 afterEach(() => {
   unmountAll();
+  vi.restoreAllMocks();
 });
 
 /** jsdom lays nothing out, so the test says how tall the transcript and its content are. */
@@ -36,6 +37,13 @@ verifies("kit.chat-transcript", () => {
     expect(region.getAttribute("aria-label")).toBe("Chat with Sorter");
     expect(region.className).toContain("overflow-y-auto");
     expect(container.querySelector("[aria-live], [role=log], [role=status]")).toBeNull();
+  });
+
+  it("is one Tab stop with the focus ring, so it scrolls by keyboard in every engine", () => {
+    const { container } = render(transcript(["Reading it."]));
+    const region = container.querySelector("section") as HTMLElement;
+    expect(region.getAttribute("tabindex")).toBe("0");
+    expect(region.className).toContain("focus-ring-inset");
   });
 
   it("stays at the end while a reply grows", () => {
@@ -67,6 +75,16 @@ verifies("kit.chat-transcript", () => {
     expect(top.id).toBe("engine-line");
     expect(top.querySelector("[aria-hidden] svg path")).not.toBeNull();
     expect(region.querySelector("[data-chat-message=reply]")?.textContent).toContain("Reading it.");
+  });
+
+  it("pads its scroll by the notice's height, so a focused button isn't hidden under it", () => {
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(57);
+    const notice = "The engine isn't answering. Showing what it said last.";
+    const { container, rerender } = render(transcript(["Reading it."], notice));
+    const region = container.querySelector("section") as HTMLElement;
+    expect(region.style.scrollPaddingTop).toBe("57px");
+    rerender(transcript(["Reading it."]));
+    expect(region.style.scrollPaddingTop).toBe("");
   });
 
   it("shows no line at the top without a notice", () => {
