@@ -6,7 +6,7 @@ import {
   pluginTrustSections,
 } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
-import { Dialog, Disclosure, StatusChip } from "@halonicjs/studio-kit";
+import { Callout, Dialog, Disclosure, StatusChip } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import { originText, type PluginOrigin, RISK_WORDS } from "../page/page-text.ts";
 import { Quoted } from "../ui/quoted.tsx";
@@ -43,6 +43,7 @@ import {
   runsLine,
   SECRETS_SECTION,
   type SecretKind,
+  SIGN_INS_SECTION,
   secretValueLine,
   sectionRow,
   sourceLead,
@@ -267,7 +268,7 @@ function Section({
   readonly fence: TrustFence;
   readonly code: PluginCode;
 }) {
-  const { tools, programs, secrets, addresses, inStudio, counts } = content;
+  const { tools, programs, secrets, signIns, addresses, inStudio, counts } = content;
   switch (section) {
     case "tools":
       return (
@@ -334,9 +335,31 @@ function Section({
           </Items>
           {secretKinds(secrets).map((kind) => (
             <p key={kind} className="text-small text-fg-muted">
-              {secretValueLine(name, kind)}
+              {secretValueLine(kind)}
             </p>
           ))}
+        </Disclosure>
+      );
+    case "sign-ins":
+      // The words the plugin page shows before **Sign in**, without its buttons (HAL-13419).
+      // Opens by itself when a sign-in has the token host warning, so it can't be missed (HAL-14004).
+      return (
+        <Disclosure
+          summary={sectionRow(SIGN_INS_SECTION, signIns.length)}
+          defaultOpen={signIns.some((signIn) => signIn.warning !== undefined)}
+        >
+          <Items>
+            {signIns.map((signIn) => (
+              <li key={signIn.name} className="flex flex-col gap-1">
+                <code className="font-mono text-small wrap-anywhere">{signIn.name}</code>
+                <p className="text-small wrap-anywhere">{signIn.purpose}</p>
+                <p className="text-small text-fg-muted wrap-anywhere">{signIn.line}</p>
+                {signIn.warning === undefined ? null : (
+                  <Callout tone="attention">{signIn.warning}</Callout>
+                )}
+              </li>
+            ))}
+          </Items>
         </Disclosure>
       );
     case "addresses": {

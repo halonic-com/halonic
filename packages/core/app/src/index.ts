@@ -284,6 +284,17 @@ export {
   pluginSettingsCollection,
 } from "./plugin-settings.ts";
 export {
+  declaredSignInTrustFacts,
+  type PluginDeclaredHost,
+  pluginClientSecretHosts,
+  pluginClientSecretNames,
+  type SignInTrustFacts,
+  signInScopesLine,
+  signInTokenHostDiffers,
+  signInTokenHostWarning,
+  signInTrustLine,
+} from "./plugin-sign-in-trust.ts";
+export {
   checkPluginTrustNow,
   type PluginStartTrustOptions,
   type PluginStartTrustReason,
@@ -303,6 +314,7 @@ export {
   type PluginLocalToolContent,
   type PluginPart,
   type PluginSecretContent,
+  type PluginSignInContent,
   type PluginToolContent,
   type PluginTrustContent,
   type PluginTrustInput,

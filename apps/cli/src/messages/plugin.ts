@@ -57,6 +57,11 @@ export const pluginMessages = defineMessages("plugin", {
   secretsHeading: () => phrase`Secrets`,
   /** After a backend secret's name: "goes only to api.weather.example". A program's says more (HAL-12638). */
   secretGoesTo: (host: string) => phrase`goes only to ${host}`,
+  signInsHeading: () => phrase`Sign-ins`,
+  /** Under a sign-in's name and purpose: the approved trust check line, in core's words (HAL-8619). */
+  signInTrustLine: (line: string) => phrase`${line}`,
+  /** The ! line under the trust line, when the sign-in page and the token address are different services. */
+  signInTokenHostWarning: (warning: string) => phrase`${warning}`,
   addressesHeading: () => phrase`Addresses`,
   /** The heading of the plugin's folder line, as the shared model words it. */
   folderHeading: () => phrase`${pluginTrustLocationHeadings.folder}`,
