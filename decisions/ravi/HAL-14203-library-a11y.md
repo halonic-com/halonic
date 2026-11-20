@@ -2,6 +2,7 @@
 
 - Approval: Liam reviewed and approved this change on HAL-14203 (review of halonic#4170, 20 Nov, 13:12 UTC); the words follow how Studio already names things, so the team decides this and it doesn't go to the board; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5lKlwZAWU9AUHAPTAz3ILlpOtb44yNiotVSpQkKOaKGDyV8sYdyLdsPh2q1J56vNV9U8fnjhjp/8wTI+KNUVBg==
 - Task: HAL-14203
 
 ## What changes
