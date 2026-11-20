@@ -63,6 +63,17 @@ verifies("workflows.page.step-cards", () => {
     expect(card?.textContent).toBe("AGENT STEPStartRead the emailwriter");
   });
 
+  it("gives every card Studio's focus ring, selected or not (C332 SC1)", async () => {
+    const { host } = memoryHost([], [], [reply]);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
+    const cards = [...page.querySelectorAll("button[aria-pressed]")];
+
+    expect(cards.length).toBeGreaterThan(0);
+    for (const card of cards) expect(card.classList).toContain("focus-ring");
+  });
+
   it("makes the canvas a named group, not an application (a11y check E3)", async () => {
     const { host } = memoryHost([], [], [reply]);
     const page = await show(
