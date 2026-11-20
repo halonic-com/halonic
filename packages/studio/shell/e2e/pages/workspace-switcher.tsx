@@ -1,3 +1,4 @@
+import type { MenuEntry } from "@halonicjs/studio-kit";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { SIDEBAR_DEFAULT_WIDTH } from "../../src/sidebar/sidebar-width.ts";
@@ -10,10 +11,31 @@ import { WorkspaceSwitcher } from "../../src/sidebar/workspace-switcher.tsx";
  * depends on the font, and the runners have neither Inter nor Segoe UI: their fallback for the
  * kit's font stack may be a wide or monospace face. So the page sets Liberation Sans, which has
  * Arial's widths, close to Segoe UI's, and which Playwright's Linux packages install.
+ *
+ * The last switcher's menu lists a 101-character folder, the open workspace with its Ctrl 1 key
+ * and check, for the menu at 200% zoom (a 640px window).
  */
 const folders = [
   { name: "Acme", folder: "D:\\Sam Jansen\\OneDrive - Acme BV\\Documents\\Acme sample" }, // leak-guard: allow absolute-path made-up Windows path for the test
   { name: "Support", folder: "/work/projects/Customer Support/Halonic Workspaces/Q3 Renewals" },
+];
+
+const longFolder =
+  "/work/projects/Customer Support/Halonic Workspaces/Benelux regions/2026-7/Q3 Renewals and Escalations";
+
+const longMenu: readonly MenuEntry[] = [
+  { heading: "Recent" },
+  {
+    id: "renewals",
+    label: "Renewals",
+    detail: longFolder,
+    detailCut: "middle",
+    checked: true,
+    keys: ["Ctrl", "1"],
+    onSelect: () => undefined,
+  },
+  "divider",
+  { id: "open", label: "Open a folder…", onSelect: () => undefined },
 ];
 
 function Page() {
@@ -25,6 +47,7 @@ function Page() {
       {folders.map((workspace) => (
         <WorkspaceSwitcher key={workspace.name} workspace={workspace} menu={[]} />
       ))}
+      <WorkspaceSwitcher workspace={{ name: "Renewals", folder: longFolder }} menu={longMenu} />
     </div>
   );
 }

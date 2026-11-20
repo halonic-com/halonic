@@ -103,6 +103,26 @@ verifies("kit.menu-groups", () => {
     expect(items[2]?.hasAttribute("aria-describedby")).toBe(false);
   });
 
+  it("cuts a folder detail in the middle, so its end stays, and still describes the item", () => {
+    const folder = "/work/projects/Customer Support/Halonic Workspaces/Q3 Renewals";
+    const { items } = renderMenu([
+      { id: "q3", label: "Q3", detail: folder, detailCut: "middle", onSelect: vi.fn() },
+    ]);
+    const detail = document.getElementById(items[0]?.getAttribute("aria-describedby") ?? "");
+    expect(detail?.textContent).toBe(folder);
+    expect(detail?.getAttribute("aria-hidden")).toBe("true");
+    expect(detail?.className).not.toContain("truncate");
+    expect(detail?.querySelector(".truncate")?.textContent).toBe(
+      "/work/projects/Customer Support/Halonic Workspaces",
+    );
+    expect(detail?.querySelector(".shrink-0")?.textContent).toBe("/Q3 Renewals");
+  });
+
+  it("is never wider than the window less its 8px edge gap on each side", () => {
+    const { menu } = renderMenu();
+    expect(menu.className).toContain("max-w-[calc(100vw-1rem)]");
+  });
+
   it("draws no heading with nothing under it", () => {
     const { menu } = renderMenu([
       { heading: "Recent" },

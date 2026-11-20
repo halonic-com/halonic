@@ -75,6 +75,8 @@ function recentRow(workspace: RememberedWorkspace, options: WorkspaceMenuOptions
     id: `recent:${workspace.location}`,
     label: workspace.name,
     detail: workspace.location,
+    // Cut in the middle, as the switcher above it is, so its end tells the folders apart.
+    detailCut: "middle",
     // The same outline tag as Welcome's Recent row (flow-first-run 8).
     ...(workspace.sample === true ? { tag: sampleTag } : {}),
     checked: workspace.location === options.shown,

@@ -76,6 +76,8 @@ verifies("shell.more-page", () => {
     const switcher = container.querySelector("button") as HTMLButtonElement;
 
     expect(switcher.getAttribute("aria-label")).toBe("Workspace: Acme. Change workspace");
+    const folder = document.getElementById(switcher.getAttribute("aria-describedby") ?? "");
+    expect(folder?.textContent).toBe("~/Work/acme");
     expect(switcher.textContent).toContain("Acme");
     expect(switcher.textContent).toContain("~/Work/acme");
     tap(switcher);

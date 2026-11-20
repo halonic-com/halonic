@@ -8,12 +8,12 @@ import {
   type ListRow,
   type MenuEntry,
   type MenuItem,
+  MiddleCut,
   PlaceIcon,
   SettingsIcon,
   StatusChip,
 } from "@halonicjs/studio-kit";
-import { type ReactNode, useState } from "react";
-import { MiddleCut } from "../cut-text/middle-cut.tsx";
+import { type ReactNode, useId, useState } from "react";
 import type { ShownPlace, SidebarPlace } from "../points/frame.ts";
 import {
   letterMark,
@@ -278,12 +278,17 @@ function MenuSwitcherRow({ workspace, menu, busy = false }: WorkspaceSwitcherPro
   );
 }
 
-/** The switcher row: 56px, padding 0 16px, the same mark as the sidebar's switcher. */
+/**
+ * The switcher row: 56px, padding 0 16px, the same mark as the sidebar's switcher, and described
+ * by its whole folder as the sidebar's switcher is.
+ */
 function WorkspaceRow({ workspace, onChange }: MorePageSwitcher) {
+  const folderId = useId();
   return (
     <button
       type="button"
       aria-label={`Workspace: ${workspace.name}. Change workspace`}
+      aria-describedby={folderId}
       onClick={onChange}
       className="flex min-h-14 w-full min-w-0 items-center gap-3 border-b border-border px-4 py-2 text-start outline-none focus-ring-inset active:bg-surface-muted"
     >
@@ -295,7 +300,7 @@ function WorkspaceRow({ workspace, onChange }: MorePageSwitcher) {
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-body-strong text-fg">{workspace.name}</span>
-        <MiddleCut text={workspace.folder} textClassName="text-small text-fg-muted" />
+        <MiddleCut id={folderId} text={workspace.folder} textClassName="text-small text-fg-muted" />
       </span>
       <span aria-hidden="true" className="size-icon-md shrink-0 text-fg-subtle *:size-full">
         <ChevronDownIcon />

@@ -76,7 +76,11 @@ verifies("workspace.workspace-menu", () => {
       options({ recent: [acme, beta], open: [acme.location], shown: acme.location }),
     );
 
-    expect(item(menu, "Acme")).toMatchObject({ detail: "/work/acme", checked: true });
+    expect(item(menu, "Acme")).toMatchObject({
+      detail: "/work/acme",
+      detailCut: "middle",
+      checked: true,
+    });
     expect(item(menu, "Beta")).toMatchObject({ detail: "/work/beta", checked: false });
   });
 
