@@ -34,7 +34,7 @@ import type { ShownRun } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
 import { pageWords } from "./page-words.ts";
-import { type Dock, dockHasCard, RunDock, useShownRun } from "./run-dock.tsx";
+import { dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
@@ -140,19 +140,8 @@ export function WorkflowScreen({
   const workflowKey = `${hubId}/${id}`;
   const keep = useCallback((next: View) => setKept({ of: workflowKey, view: next }), [workflowKey]);
   const [openStep, setOpenStep] = useState<string | undefined>();
-  // The card docked at the right: the start form, then the run it started (C18, C25).
-  const [dock, setDock] = useState<Dock>();
-  // A docked card that closes gives focus back to the Run button that opened it, or to the
-  // workflow's name on a page without one, rather than dropping it to the body (DK1).
-  const runButton = useRef<HTMLButtonElement>(null);
-  const closeDock = () => {
-    setDock(undefined);
-    (runButton.current ?? title.current)?.focus();
-  };
+  const { dock, setDock, closeDock, runButton, rowCard, setRowCard } = useDock(title);
   const [shownId, setShownId] = useState<string | undefined>();
-  // The run whose card the Runs view docks. The page keeps it with the dock's, so only one card
-  // shows at a time: two side by side leave the list no room.
-  const [rowCard, setRowCard] = useState<string | undefined>();
   const showView = (next: WorkflowView) => {
     // The row's card goes with the Runs view, as it did when the view kept it.
     if (next !== view) setRowCard(undefined);

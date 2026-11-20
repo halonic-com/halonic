@@ -1,7 +1,7 @@
 import type { ShownRuns } from "@halonicjs/studio-feature-inbox/api";
 import type { RunRow, RunsSource } from "@halonicjs/studio-feature-runs/api";
 import { Button, CloseIcon } from "@halonicjs/studio-kit";
-import { useEffect, useMemo, useRef } from "react";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowRef, WorkflowsHost } from "../api.ts";
 import { RunCard } from "../runs/run-card.tsx";
 import { realRunsOf, runRowsOf } from "../runs/runs-model.ts";
@@ -50,6 +50,24 @@ async function firstTestInput(
 }
 
 export type Dock = "start" | { readonly runId: string } | undefined;
+
+/**
+ * The page's cards: the one docked at the right (the start form, then the run it started; C18,
+ * C25), and the run whose card the Runs view docks. The page keeps both, so only one card shows at
+ * a time: two side by side leave the list no room. A docked card that closes gives focus back to
+ * the Run button that opened it (`runButton`), or to the workflow's name (`title`) on a page
+ * without one, rather than dropping it to the body (DK1).
+ */
+export function useDock(title: RefObject<HTMLElement | null>) {
+  const [dock, setDock] = useState<Dock>();
+  const [rowCard, setRowCard] = useState<string | undefined>();
+  const runButton = useRef<HTMLButtonElement>(null);
+  const closeDock = () => {
+    setDock(undefined);
+    (runButton.current ?? title.current)?.focus();
+  };
+  return { dock, setDock, closeDock, runButton, rowCard, setRowCard };
+}
 
 interface RunDockProps {
   readonly dock: Dock;
