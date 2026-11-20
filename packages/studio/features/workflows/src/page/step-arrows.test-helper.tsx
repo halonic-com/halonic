@@ -31,17 +31,22 @@ export const reply: WorkflowView = {
 };
 
 type ChangeArrows = NonNullable<WorkflowsHost["changeArrows"]>;
+type RemoveStep = NonNullable<WorkflowsHost["removeStep"]>;
+type RemoveArrow = NonNullable<WorkflowsHost["removeArrow"]>;
 
 /**
  * The page over a host whose arrows change as the file would: an added arrow comes last, a moved
- * one swaps places. `fail` makes every change fail instead, `held` makes each change wait until
- * the returned `release` is called, and `canChangeArrows: false` leaves `changeArrows` out.
+ * one swaps places, a removed step takes its arrows and those into it along. `fail` makes every
+ * change fail instead, `held` makes each arrow change wait until the returned `release` is
+ * called, `canChangeArrows: false` leaves `changeArrows` out, and `undo` is what each removal's
+ * undo does.
  */
 export async function showPage({
   fail = false,
   held = false,
   canChangeArrows = true,
   workflow = reply,
+  undo = async () => {},
 } = {}) {
   let view = workflow;
   let release: () => void = () => {};
@@ -51,10 +56,30 @@ export async function showPage({
     view = { ...view, arrows: changedArrows(view.arrows, stepId, change) };
     notify([]);
   });
+  const removeStep = vi.fn<RemoveStep>(async (_ref, stepId) => {
+    if (fail) throw new KindedError("invalid_input", "The file can't be changed.");
+    const gone = view.arrows.filter((arrow) => arrow.from === stepId || arrow.to === stepId);
+    view = {
+      ...view,
+      steps: view.steps.filter((step) => step.id !== stepId),
+      arrows: view.arrows.filter((arrow) => !gone.includes(arrow)),
+    };
+    notify([]);
+    return { arrows: gone.length, undo };
+  });
+  const removeArrow = vi.fn<RemoveArrow>(async (_ref, stepId, index) => {
+    if (fail) throw new KindedError("invalid_input", "The file can't be changed.");
+    const arrow = view.arrows.filter((one) => one.from === stepId)[index];
+    view = { ...view, arrows: view.arrows.filter((one) => one !== arrow) };
+    notify([]);
+    return { undo };
+  });
   const { host, change: notify } = memoryHost([], [], [], [], {
     read: async () => view,
     changeStep: async () => {},
     ...(canChangeArrows ? { changeArrows } : {}),
+    removeStep,
+    removeArrow,
   });
   const announce = vi.fn();
   const toasts = createToastStore();
@@ -69,7 +94,15 @@ export async function showPage({
       />
     </ToastStoreProvider>,
   );
-  return { page, changeArrows, announce, toasts, release: () => release() };
+  return {
+    page,
+    changeArrows,
+    removeStep,
+    removeArrow,
+    announce,
+    toasts,
+    release: () => release(),
+  };
 }
 
 export function changedArrows(

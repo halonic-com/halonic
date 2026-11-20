@@ -81,6 +81,7 @@ export function StepCard({
         ref={button}
         type="button"
         aria-pressed={selected}
+        data-step={step.id}
         data-connect-target={connectTarget}
         aria-labelledby={nameParts.join(" ")}
         aria-describedby={waysOn === undefined ? undefined : part.waysOn}

@@ -43,6 +43,7 @@ import { useCanvasEdit } from "./use-canvas-edit.ts";
 import { useOpenProblems } from "./use-open-problems.ts";
 import { useRename } from "./use-rename.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
+import type { CanvasFocus } from "./workflow-canvas.tsx";
 import { WorkflowName } from "./workflow-name.tsx";
 import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
 import { type WorkflowView, workflowTabs } from "./workflow-tabs.ts";
@@ -150,6 +151,8 @@ export function WorkflowScreen({
   };
   // The step picked on the canvas, which says what happened to it while a run is shown (4.5).
   const [pickedStep, setPickedStep] = useState<string | undefined>();
+  // Where focus goes on the canvas once the picked step is removed; a new object asks again.
+  const [canvasFocus, setCanvasFocus] = useState<CanvasFocus>();
   // The test just made from a run: Configuration opens on Tests with it picked. A page opened on
   // its Tests (`startOnTests`) starts the same way, with no test picked.
   // `n` counts the tests made, so each one remounts Configuration and the Tests page reads again.
@@ -345,6 +348,7 @@ export function WorkflowScreen({
               pickedStep={pickedStep}
               docked={docked}
               onClearStep={() => setPickedStep(undefined)}
+              focus={canvasFocus}
               kept={kept}
               onView={keep}
             />
@@ -384,6 +388,10 @@ export function WorkflowScreen({
           phone={phone}
           saving={saving}
           onOpenStep={setPickedStep}
+          onRemoved={(next) => {
+            setPickedStep(undefined);
+            setCanvasFocus({ step: next });
+          }}
           announce={announce}
           onClose={() => setPickedStep(undefined)}
         />

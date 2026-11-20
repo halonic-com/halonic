@@ -59,6 +59,22 @@ export const pageWords = {
     /** Save model 8.4: a key pasted into a field is not saved. */
     looksLikeKey: "This looks like a key. Keep it as a secret instead?",
     couldntSave: (stepId: string) => `Couldn't change step ${stepId}`,
+    /** Removing a step (flow-workflows 4.6, UX checklist 10.10). */
+    remove: "Remove step",
+    firstStep:
+      "This is the first step. Pick another first step in Configuration › General before removing it.",
+  },
+  /** The toasts of a removed step or arrow (flow-workflows 4.6; microcopy 9.3). */
+  removed: {
+    step: (stepId: string, arrows: number) =>
+      arrows === 0
+        ? `Removed step ${stepId}`
+        : `Removed step ${stepId} and ${arrows} ${arrows === 1 ? "arrow" : "arrows"}`,
+    arrow: (from: string, to: string) => `Removed the arrow from ${from} to ${to}`,
+    undo: "Undo",
+    couldntPutBackStep: (stepId: string) => `Couldn't put back step ${stepId}`,
+    couldntPutBackArrow: (from: string, to: string) =>
+      `Couldn't put back the arrow from ${from} to ${to}`,
   },
   /** The step card's arrows (flow-workflows 5.3, UX checklist 10.8 and 10.9; microcopy 9.4, 19.7). */
   arrows: {
@@ -68,6 +84,7 @@ export const pageWords = {
     after: (time: string) => `after ${time}`,
     when: (condition: string) => `if ${condition}`,
     more: (number: number) => `More actions for arrow ${number}`,
+    remove: (number: number) => `Remove arrow ${number}`,
     moveUp: "Move up",
     moveDown: "Move down",
     goTo: "Go to…",

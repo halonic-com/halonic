@@ -53,6 +53,7 @@ export function WorkflowCanvas({
   picked,
   docked = false,
   onBackgroundClick,
+  focus,
 }: {
   readonly workflow: WorkflowView;
   /** The zoom and pan the canvas had when it was last shown; absent the first time. */
@@ -82,6 +83,8 @@ export function WorkflowCanvas({
   readonly docked?: boolean | undefined;
   /** A click on the background, not a drag: the page closes the picked step's card. */
   readonly onBackgroundClick?: (() => void) | undefined;
+  /** Where focus goes once the page asks: a step's card, or the canvas itself. */
+  readonly focus?: CanvasFocus | undefined;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number } | undefined>(undefined);
@@ -95,6 +98,12 @@ export function WorkflowCanvas({
     lastPicked.current = picked;
     setSelected(picked);
   }, [picked]);
+  useEffect(() => {
+    if (focus === undefined) return;
+    const cards = viewport.current?.querySelectorAll<HTMLElement>("[data-step]") ?? [];
+    const card = [...cards].find((one) => one.dataset["step"] === focus.step);
+    (card ?? viewport.current)?.focus();
+  }, [focus]);
   // Where a press on the background started, to tell a click from a pan.
   const pressedAt = useRef<{ x: number; y: number } | undefined>(undefined);
 
@@ -200,6 +209,8 @@ export function WorkflowCanvas({
       ref={viewport}
       role="group"
       aria-label={pageWords.canvas}
+      // Not in the tab order: it takes focus only when the step that had it is removed.
+      tabIndex={-1}
       // `overflow-clip`, not `overflow-hidden`: a box that hides its overflow still scrolls when
       // focus moves to a card outside it, and that shift is lost to the zoom and pan.
       className="relative min-h-80 flex-1 touch-none overflow-clip bg-canvas-grid"
@@ -308,6 +319,14 @@ export function WorkflowCanvas({
       </div>
     </div>
   );
+}
+
+/**
+ * Where the page asks focus to go on the canvas: the card of `step`, or the canvas itself when it
+ * is `undefined` or not there. Each new object asks again.
+ */
+export interface CanvasFocus {
+  readonly step: string | undefined;
 }
 
 /** What the canvas's toolbar asks of the page. */

@@ -4,7 +4,7 @@ import type { ShownRun } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import { pageWords } from "./page-words.ts";
 import type { useWorkflow } from "./use-workflow.ts";
-import { type CanvasEdit, WorkflowCanvas } from "./workflow-canvas.tsx";
+import { type CanvasEdit, type CanvasFocus, WorkflowCanvas } from "./workflow-canvas.tsx";
 
 /** Props for {@link FlowView}. */
 export interface FlowViewProps {
@@ -26,6 +26,8 @@ export interface FlowViewProps {
   readonly docked: boolean;
   /** A click on the canvas's background: the picked step's card closes. */
   readonly onClearStep: () => void;
+  /** Where focus goes on the canvas, once the picked step was removed. */
+  readonly focus: CanvasFocus | undefined;
   readonly kept: { readonly of: string; readonly view: View } | undefined;
   readonly onView: (next: View) => void;
 }
@@ -45,6 +47,7 @@ export function FlowView({
   pickedStep,
   docked,
   onClearStep,
+  focus,
   kept,
   onView,
 }: FlowViewProps) {
@@ -79,6 +82,7 @@ export function FlowView({
           picked={pickedStep}
           docked={docked}
           onBackgroundClick={onClearStep}
+          focus={focus}
         />
       )}
       {load.kind === "failed" && (

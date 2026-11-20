@@ -11,6 +11,7 @@ import type { WorkflowArrow, WorkflowArrowChange, WorkflowArrowFieldChange } fro
 import { ArrowFields } from "./arrow-fields.tsx";
 import { conditionWords } from "./condition-words.ts";
 import { pageWords } from "./page-words.ts";
+import { TrashIcon } from "./trash-icon.tsx";
 
 const words = pageWords.arrows;
 
@@ -25,6 +26,8 @@ export interface StepArrowsProps {
   readonly isWait: boolean;
   /** Makes one change of the step's arrows; resolves to whether it was written. */
   readonly change: (change: WorkflowArrowChange) => Promise<boolean>;
+  /** Removes the arrow at `index`, which is `arrow`; resolves to whether it went. Absent: no trash buttons. */
+  readonly remove?: ((index: number, arrow: WorkflowArrow) => Promise<boolean>) | undefined;
   readonly announce?: ((line: string) => void) | undefined;
   /** Hears how many fields of the expanded arrow aren't saved. */
   readonly reportNotSaved?: ((count: number) => void) | undefined;
@@ -44,7 +47,8 @@ function whenItFires(arrow: WorkflowArrow): string {
  * the step's arrows numbered in file order, as "1 → draft on done", each with ⋮ › **Move up** and
  * **Move down**, then **Go to…** and **Add**, which adds an arrow on done to the step picked there.
  * A moved arrow keeps focus on its row's ⋮, now in its new place. Pressing a row expands it to
- * the arrow's fields (see {@link ArrowFields}); one row is expanded at a time.
+ * the arrow's fields (see {@link ArrowFields}); one row is expanded at a time. A row's trash button
+ * removes its arrow at once; focus goes to the next row, else to **Add** (flow-workflows 4.6).
  */
 export function StepArrows({
   stepId,
@@ -52,6 +56,7 @@ export function StepArrows({
   stepIds,
   isWait,
   change,
+  remove,
   announce,
   reportNotSaved,
 }: StepArrowsProps) {
@@ -59,6 +64,7 @@ export function StepArrows({
   const fieldsId = useId();
   const list = useRef<HTMLOListElement>(null);
   const goToPicker = useRef<HTMLElement>(null);
+  const addButton = useRef<HTMLButtonElement>(null);
   const [target, setTarget] = useState("");
   // The row whose ⋮ takes focus once the moved arrow is drawn in its new place.
   const [focusRow, setFocusRow] = useState<number | undefined>();
@@ -89,6 +95,16 @@ export function StepArrows({
     if (expanded === index) setExpanded(index + by);
     else if (expanded === index + by) setExpanded(index);
     announce?.(words.moved(index + 1, index + by + 1));
+  };
+  const removeAt = async (index: number, arrow: WorkflowArrow) => {
+    if (remove === undefined || !(await remove(index, arrow))) return;
+    // The next arrow moves up into this row, which keeps its place in the list; the last has none.
+    const next = index < arrows.length - 1;
+    const row = list.current?.querySelectorAll("li")[index];
+    if (next) row?.querySelector<HTMLButtonElement>("button[aria-expanded]")?.focus();
+    else addButton.current?.focus();
+    if (expanded === index) setExpanded(undefined);
+    else if (expanded !== undefined && expanded > index) setExpanded(expanded - 1);
   };
   const add = async () => {
     // Add with no step picked goes to the picker, which says what it needs.
@@ -153,6 +169,15 @@ export function StepArrows({
                     },
                   ]}
                 />
+                {remove !== undefined && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={<TrashIcon />}
+                    label={words.remove(index + 1)}
+                    onClick={() => void removeAt(index, arrow)}
+                  />
+                )}
               </div>
               {expanded === index && (
                 <ArrowFields
@@ -182,7 +207,7 @@ export function StepArrows({
             size="sm"
           />
         </div>
-        <Button variant="secondary" size="sm" onClick={() => void add()}>
+        <Button ref={addButton} variant="secondary" size="sm" onClick={() => void add()}>
           {words.add}
         </Button>
       </div>
