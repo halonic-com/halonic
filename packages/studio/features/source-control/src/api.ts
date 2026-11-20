@@ -137,6 +137,13 @@ export interface ChangesSource {
    * without history or without a version gives none. Throws when git answers with an error.
    */
   readonly readHistory: (limit: number) => Promise<readonly Version[]>;
+  /** A file of the workspace folder as it is now; `null` where there is none. */
+  readonly readFile: (path: string) => Promise<string | null>;
+  /**
+   * A file as the version `versionId` (a full id from {@link readHistory}) has it; `null` where
+   * that version has no such file. Throws when the version can't be read.
+   */
+  readonly readAtVersion: (versionId: string, path: string) => Promise<string | null>;
   /** Records a version of exactly `paths`; other files stay as changes. Throws when git refuses. */
   readonly createVersion: (input: VersionInput) => Promise<void>;
   /**

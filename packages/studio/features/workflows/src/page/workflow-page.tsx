@@ -77,7 +77,10 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       })}
       {...(openPlace && {
         goToWorkflows: () => openPlace("workflows"),
-        reviewInInbox: () => openPlace("inbox"),
+        reviewInInbox: (runId: string) => {
+          runsList.reviewInInbox(runId);
+          openPlace("inbox");
+        },
         seeAllRuns: () => {
           runsList.showWorkflow({ hubId: item.hub, id: item.id });
           openPlace("runs");
@@ -131,6 +134,14 @@ export function WorkflowScreen({
   // The card docked at the right: the start form, then the run it started (C18, C25).
   const [dock, setDock] = useState<Dock>();
   const [shownId, setShownId] = useState<string | undefined>();
+  // The run whose card the Runs view docks. The page keeps it with the dock's, so only one card
+  // shows at a time: two side by side leave the list no room.
+  const [rowCard, setRowCard] = useState<string | undefined>();
+  const showView = (next: WorkflowView) => {
+    // The row's card goes with the Runs view, as it did when the view kept it.
+    if (next !== view) setRowCard(undefined);
+    setView(next);
+  };
   // The step picked on the canvas, which says what happened to it while a run is shown (4.5).
   const [pickedStep, setPickedStep] = useState<string | undefined>();
   // The test just made from a run: Configuration opens on Tests with it picked. A page opened on
@@ -144,7 +155,7 @@ export function WorkflowScreen({
   // `testsAsked` counts up while it is true) goes to Configuration on Tests, as if it had opened
   // there. It is counted like a made test, so Configuration remounts even if it is already open.
   useAskedForTests(startOnTests, testsAsked, () => {
-    setView("configuration");
+    showView("configuration");
     testsMade.current += 1;
     setMadeTest({ name: undefined, n: testsMade.current });
   });
@@ -169,7 +180,7 @@ export function WorkflowScreen({
     testsMade.current += 1;
     setMadeTest({ name: testName, n: testsMade.current });
     setDock(undefined);
-    setView("configuration");
+    showView("configuration");
   });
   const gone = goneState(load, goToWorkflows);
   if (gone !== undefined) return gone;
@@ -201,13 +212,20 @@ export function WorkflowScreen({
             setOpenStep(undefined);
             // The test just made was shown once; coming back opens Configuration on General.
             if (next !== view) setMadeTest(undefined);
-            setView(next);
+            showView(next);
           }}
           ids={ids}
         />
         {startRun && (
           <div className="ms-auto">
-            <Button variant="primary" size="sm" onClick={() => setDock("start")}>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setRowCard(undefined);
+                setDock("start");
+              }}
+            >
               {startWords.run}
             </Button>
           </div>
@@ -253,7 +271,7 @@ export function WorkflowScreen({
               onOpenStep={(stepId) => {
                 setOpenStep(stepId);
                 setMadeTest(undefined);
-                setView("flow");
+                showView("flow");
               }}
             />
           )}
@@ -263,6 +281,11 @@ export function WorkflowScreen({
               load={runsRead.load}
               retry={runsRead.retry}
               workflow={{ hubId, id }}
+              picked={rowCard}
+              onPick={(runId) => {
+                setRowCard(runId);
+                if (runId !== undefined) setDock(undefined);
+              }}
               openRun={openRun}
               reviewInInbox={reviewInInbox}
               seeAll={seeAllRuns}

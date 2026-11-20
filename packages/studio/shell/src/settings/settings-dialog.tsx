@@ -1,11 +1,11 @@
 import { Dialog, isComposing } from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
+import { UnreachableViewBoundary } from "../page/page-unreachable.tsx";
 import type { SettingsSectionContribution } from "../points/frame.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { Registered } from "../points/point-store.ts";
 import { settingsSectionToOpen } from "../points/settings-sections.ts";
-import { ViewErrorBoundary } from "../view-error-boundary.tsx";
 import { LoadedView } from "../view-loading.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import {
@@ -343,15 +343,16 @@ export function SectionView({
       {description === undefined ? null : (
         <p className="mt-2 max-w-120 text-small text-fg-muted">{description}</p>
       )}
-      {/* A view that fails to load or draw shows nothing; the list and the other sections keep working. */}
+      {/* A view that fails to load or draw shows nothing, or "Couldn't load this page" when the
+          computer can't be reached; the list and the other sections keep working. */}
       <div className="mt-5">
-        <ViewErrorBoundary>
+        <UnreachableViewBoundary name={`${section.title} settings`}>
           <LoadedView<SettingsSectionProps>
             view={section}
             name={section.title}
             props={{ context, closeSettings, place, surface, regionFormat }}
           />
-        </ViewErrorBoundary>
+        </UnreachableViewBoundary>
       </div>
     </section>
   );

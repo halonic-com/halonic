@@ -98,3 +98,45 @@ fn the_cleanup_log_says_what_was_cleaned_and_why_it_didnt_finish() {
         );
     }
 }
+
+/// A stand-in for `wsl.exe`: an executable shell script running `body`,
+/// removed when dropped.
+#[cfg(unix)]
+struct StandIn(std::path::PathBuf);
+
+#[cfg(unix)]
+impl StandIn {
+    fn new(body: &str) -> Self {
+        use std::os::unix::fs::PermissionsExt;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static NEXT: AtomicUsize = AtomicUsize::new(0);
+        let number = NEXT.fetch_add(1, Ordering::Relaxed);
+        let name = format!("halonic-updates-status-{}-{number}", std::process::id());
+        let path = std::env::temp_dir().join(name);
+        std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).expect("write the stand-in");
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700))
+            .expect("make it executable");
+        Self(path)
+    }
+}
+
+#[cfg(unix)]
+impl Drop for StandIn {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn a_status_that_hangs_is_stopped_and_counts_as_overdue_with_no_date() {
+    use std::time::{Duration, Instant};
+
+    use super::security_updates_in_distro;
+
+    let stuck = StandIn::new("sleep 30");
+    let started = Instant::now();
+    let checks = security_updates_in_distro(&stuck.0, Duration::from_millis(200));
+    assert_eq!(checks, overdue(None));
+    assert!(started.elapsed() < Duration::from_secs(10));
+}

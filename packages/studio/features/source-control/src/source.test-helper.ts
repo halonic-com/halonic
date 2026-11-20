@@ -54,6 +54,8 @@ export function fakeSource(initial: ChangesRead) {
   const putBack = new Set<string>();
   const kept: KeptFile[][] = [];
   let keepFailure: unknown;
+  const atVersion = new Map<string, string>();
+  let atVersionFailure: unknown;
   const versions: VersionInput[] = [];
   const listeners = new Set<() => void>();
   const source: ChangesSource = {
@@ -86,6 +88,11 @@ export function fakeSource(initial: ChangesRead) {
     keepCopy: async (files) => {
       if (keepFailure !== undefined) throw keepFailure;
       kept.push([...files]);
+    },
+    readFile: async (path) => texts.get(path)?.after ?? null,
+    readAtVersion: async (versionId, path) => {
+      if (atVersionFailure !== undefined) throw atVersionFailure;
+      return atVersion.get(`${versionId}:${path}`) ?? null;
     },
     readHistory: async (limit) => {
       historyLimits.push(limit);
@@ -196,6 +203,14 @@ export function fakeSource(initial: ChangesRead) {
     removed,
     /** The files each `keepCopy` call was given, in order. */
     kept,
+    /** What a file is in a version; a file never set isn't in it. */
+    setAtVersion: (versionId: string, path: string, text: string) => {
+      atVersion.set(`${versionId}:${path}`, text);
+    },
+    /** Makes reading a file in a version fail with `error`; `undefined` makes it work again. */
+    failAtVersion: (error: unknown) => {
+      atVersionFailure = error;
+    },
     /** Makes keeping a copy fail with `error`; `undefined` makes it work again. */
     failKeep: (error: unknown) => {
       keepFailure = error;

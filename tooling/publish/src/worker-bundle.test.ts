@@ -47,13 +47,17 @@ verifies("publish.worker-bundle", () => {
     it("exports the Worker and the three Durable Object classes, and leaves cloudflare:workers to workerd", async () => {
       const { script } = await buildWorkerBundle(entryPoint);
       const exported = /^export \{([^}]*)\};?$/m.exec(script)?.[1] ?? "";
+      // Cloudflare finds each class by the name it's exported under. esbuild renames a local binding
+      // when two bundled modules declare the same name (the Worker's `RunObject` extends the
+      // adapter's), so compare the exported names, not the local ones (`RunObject2 as RunObject`).
       expect(
         exported
           .split(",")
           .map((name) => name.trim())
           .filter((name) => name !== "")
+          .map((name) => name.split(" as ").at(-1))
           .sort(),
-      ).toEqual(["CoordinationObject", "RoutinesObject", "RunObject", "worker as default"]);
+      ).toEqual(["CoordinationObject", "RoutinesObject", "RunObject", "default"]);
       expect(script).toContain('from "cloudflare:workers"');
     });
 

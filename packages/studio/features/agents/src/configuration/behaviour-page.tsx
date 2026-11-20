@@ -7,6 +7,8 @@ import { useAutoSaved, useReportNotSaved } from "./use-auto-saved.ts";
 /** Props for {@link BehaviourPage}. */
 export interface BehaviourPageProps {
   readonly settings: AgentSettings;
+  /** Puts the cursor in Instructions when the page is drawn, for an agent that was just made. */
+  readonly focusInstructions?: boolean | undefined;
   /** Saves one change; resolves to whether it was written. */
   readonly save: (change: AgentChange) => Promise<boolean>;
   /** Hears how many fields aren't saved, for the toolbar's "1 field not saved". */
@@ -20,7 +22,12 @@ const keyCheck = (text: string): string | null =>
  * The Behaviour page (`agents.configuration.behaviour`): Description and Instructions. Each saves by
  * itself and there is no Save button. A key in either is caught before it's saved.
  */
-export function BehaviourPage({ settings, save, reportNotSaved }: BehaviourPageProps) {
+export function BehaviourPage({
+  settings,
+  focusInstructions,
+  save,
+  reportNotSaved,
+}: BehaviourPageProps) {
   const description = useAutoSaved(
     settings.description ?? "",
     (next) => save({ description: next }),
@@ -34,7 +41,7 @@ export function BehaviourPage({ settings, save, reportNotSaved }: BehaviourPageP
   useReportNotSaved(reportNotSaved, [description, instructions]);
   return (
     <div className="flex flex-col gap-6">
-      <Field label={words.description} error={description.error}>
+      <Field label={words.description} error={description.error} announceWhileFocused>
         <Input
           value={description.value}
           onChange={(event) => description.onChange(event.target.value)}
@@ -45,8 +52,10 @@ export function BehaviourPage({ settings, save, reportNotSaved }: BehaviourPageP
         label={words.instructions}
         hint={instructions.value === "" ? words.instructionsHint : undefined}
         error={instructions.error}
+        announceWhileFocused
       >
         <TextArea
+          autoFocus={focusInstructions === true}
           minRows={4}
           maxRows={12}
           value={instructions.value}

@@ -57,12 +57,18 @@ impl Gateway {
         }
     }
 
+    /// Accepts the next WebSocket connection. A TCP connection the phone
+    /// gave up on before the upgrade, a try cut short by a pause, is skipped.
     async fn accept(&self) -> Server {
-        let (stream, _) = timeout(WAIT, self.listener.accept())
-            .await
-            .unwrap()
-            .unwrap();
-        accept_async(stream).await.unwrap()
+        loop {
+            let (stream, _) = timeout(WAIT, self.listener.accept())
+                .await
+                .unwrap()
+                .unwrap();
+            if let Ok(server) = timeout(WAIT, accept_async(stream)).await.unwrap() {
+                return server;
+            }
+        }
     }
 
     /// The host's side of a reconnect: reads message 1, answers message 2.
@@ -191,6 +197,103 @@ async fn phone_states_handshake_failed_is_cant_confirm_until_a_handshake_succeed
         PhoneEvent::Status(PhoneStatus::Connecting)
     );
     assert_eq!(next(&mut events).await, PhoneEvent::SessionOpened);
+}
+
+#[tokio::test]
+async fn phone_states_cant_confirm_survives_a_pause() {
+    let gateway = Gateway::start().await;
+    let (phone, mut events, mut server) = connect(&gateway).await;
+    binary(&mut server).await;
+    server
+        .send(Message::Binary(vec![0x30].into()))
+        .await
+        .unwrap();
+    until(&mut events, PhoneEvent::Status(PhoneStatus::CantConfirm)).await;
+
+    phone.pause();
+    until(&mut events, PhoneEvent::Status(PhoneStatus::Paused)).await;
+    phone.resume();
+    assert_eq!(
+        next(&mut events).await,
+        PhoneEvent::Status(PhoneStatus::CantConfirm)
+    );
+    let mut again = gateway.accept().await;
+    gateway.handshake(&mut again).await;
+    assert_eq!(
+        next(&mut events).await,
+        PhoneEvent::Status(PhoneStatus::Connecting)
+    );
+    assert_eq!(next(&mut events).await, PhoneEvent::SessionOpened);
+}
+
+#[tokio::test]
+async fn phone_states_a_message_2_that_does_not_decrypt_is_cant_confirm() {
+    let gateway = Gateway::start().await;
+    let (_phone, mut events, mut server) = connect(&gateway).await;
+    let message1 = binary(&mut server).await;
+    let mut noise = gateway.host.reconnect();
+    read_handshake(&mut noise, FrameKind::Resume1, &message1).unwrap();
+    let mut message2 = write_handshake(&mut noise, FrameKind::Resume2, &[]);
+    let last = message2.len() - 1;
+    message2[last] ^= 1;
+    server.send(Message::Binary(message2.into())).await.unwrap();
+    until(&mut events, PhoneEvent::Status(PhoneStatus::CantConfirm)).await;
+    let _again = gateway.accept().await;
+}
+
+#[tokio::test]
+async fn phone_states_a_cleartext_not_paired_inside_the_session_only_drops_it() {
+    let gateway = Gateway::start().await;
+    let (_phone, mut events, mut server) = connect(&gateway).await;
+    gateway.handshake(&mut server).await;
+    until(&mut events, PhoneEvent::SessionOpened).await;
+    let forged = frame(FrameKind::Message, br#"{"type":"not-paired"}"#);
+    server.send(Message::Binary(forged.into())).await.unwrap();
+    until(
+        &mut events,
+        PhoneEvent::Status(PhoneStatus::Reconnecting { last_try: None }),
+    )
+    .await;
+    let mut again = gateway.accept().await;
+    gateway.handshake(&mut again).await;
+    until(&mut events, PhoneEvent::SessionOpened).await;
+}
+
+#[tokio::test]
+async fn phone_states_ignore_frames_from_a_connection_they_dropped() {
+    let gateway = Gateway::start().await;
+    let (_phone, mut events, mut server) = connect(&gateway).await;
+    let mut host = gateway.handshake(&mut server).await;
+    until(&mut events, PhoneEvent::SessionOpened).await;
+    // A frame that doesn't open drops the session; a genuine `not-paired`
+    // sent right behind it, on the same connection, must not count.
+    let garbage = frame(FrameKind::Message, b"not sealed");
+    let not_paired = seal(&mut host, FrameKind::Message, br#"{"type":"not-paired"}"#);
+    server.feed(Message::Binary(garbage.into())).await.unwrap();
+    server
+        .feed(Message::Binary(not_paired.into()))
+        .await
+        .unwrap();
+    server.flush().await.unwrap();
+    until(
+        &mut events,
+        PhoneEvent::Status(PhoneStatus::Reconnecting { last_try: None }),
+    )
+    .await;
+    let mut again = gateway.accept().await;
+    gateway.handshake(&mut again).await;
+    until(&mut events, PhoneEvent::SessionOpened).await;
+}
+
+#[tokio::test]
+async fn phone_states_close_when_the_handle_is_dropped() {
+    let gateway = Gateway::start().await;
+    let (phone, mut events, mut server) = connect(&gateway).await;
+    gateway.handshake(&mut server).await;
+    until(&mut events, PhoneEvent::SessionOpened).await;
+    drop(phone);
+    until(&mut events, PhoneEvent::Status(PhoneStatus::Closed)).await;
+    assert_eq!(timeout(WAIT, events.recv()).await.unwrap(), None);
 }
 
 #[tokio::test]

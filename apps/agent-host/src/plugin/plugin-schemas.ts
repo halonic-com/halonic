@@ -21,3 +21,22 @@ export const callPluginBody = s
     args: s.record(s.string(), s.unknown()),
   })
   .strict();
+
+/** The most secrets one hand-over may hold. */
+export const maxHandedSecrets = 32;
+
+/** The longest secret value the host takes, as the shell's keychain commands allow. */
+export const maxSecretValueLength = 16_384;
+
+/**
+ * What Studio hands the host for one plugin: each secret by the name the
+ * plugin declares, never the name it is kept under, which the host builds.
+ */
+export const handOverSecretsBody = s
+  .object({
+    plugin: pluginId,
+    secrets: s
+      .record(s.string().min(1).max(64), s.string().min(1).max(maxSecretValueLength))
+      .refine((secrets) => Object.keys(secrets).length <= maxHandedSecrets),
+  })
+  .strict();

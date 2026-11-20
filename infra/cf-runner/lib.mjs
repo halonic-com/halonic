@@ -86,3 +86,24 @@ export function pemToPkcs8(pem) {
   const inner = [0x02, 0x01, 0x00, ...rsaAlgorithm, ...octets];
   return Uint8Array.from([0x30, ...len(inner.length + der.length), ...inner, ...der]);
 }
+
+// Image B's snapshot is rebuilt after a day even when main's lockfile didn't change, so the
+// toolchain and runner stay current ("nightly"), and well before Cloudflare's 30-day expiry.
+export const SNAPSHOT_MAX_AGE_MS = 24 * 60 * 60_000;
+
+// "a" or "b" for a job, from the IMAGE_B setting ("off", "alternate", "all"). Alternating by run
+// keeps both jobs of one merge-queue run on the same image, so runs compare whole. Without a
+// snapshot every job gets A.
+export function imageFor(mode, runId, snapshot) {
+  if (!snapshot?.id) return "a";
+  if (mode === "all") return "b";
+  if (mode === "alternate") return Number(runId) % 2 === 1 ? "b" : "a";
+  return "a";
+}
+
+// Whether to build a new snapshot for main's lockfile (its SHA-256, hex) at time `now`.
+export function snapshotDue(snapshot, lock, now) {
+  if (!snapshot?.id) return true;
+  if (snapshot.lock !== lock) return true;
+  return now - snapshot.builtAt > SNAPSHOT_MAX_AGE_MS;
+}

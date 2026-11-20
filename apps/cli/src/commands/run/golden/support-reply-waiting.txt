@@ -42,8 +42,8 @@ stdout:
       "startedAt": "2026-11-10T14:01:00.000Z",
       "endedAt": null,
       "usage": {
-        "inputTokens": 231,
-        "outputTokens": 41
+        "inputTokens": 270,
+        "outputTokens": 45
       },
       "cost": 0,
       "unpricedCalls": 0,
@@ -57,11 +57,11 @@ stdout:
       "context": {
         "request": "Sam wants a refund for order 1042, which arrived damaged.",
         "kind": "refund",
-        "reply": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today."
+        "reply": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.\n\nAcme support"
       },
       "error": null,
       "reason": null,
-      "definitionsVersion": "87d82ee0c8b244411cfcbbe85442c46d63c5994774ae780592deee031858f3c7",
+      "definitionsVersion": "e5e95ac8966f902b123f4103ff477d8b4108b2b006ba7f072337a20320a3cd94",
       "trigger": null,
       "parentRunId": null,
       "waitingOn": null,
@@ -76,7 +76,7 @@ stdout:
       "nextTimer": null,
       "waitingFor": {
         "title": "Approve this reply?",
-        "body": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.\n\nSample: the test model writes this reply to any email. Approving finishes the run. Nothing is sent."
+        "body": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.\n\nAcme support\n\nSample: the test model writes this reply to any email. Approving finishes the run. Nothing is sent."
       },
       "lastWaitingAt": "2026-11-10T14:01:00.000Z",
       "approvals": [],
@@ -94,7 +94,7 @@ stdout:
           "mail": "Hi, my order #1042 arrived damaged. Can I get a refund? — Sam (invented)"
         },
         "kind": "run",
-        "definitionsVersion": "87d82ee0c8b244411cfcbbe85442c46d63c5994774ae780592deee031858f3c7",
+        "definitionsVersion": "e5e95ac8966f902b123f4103ff477d8b4108b2b006ba7f072337a20320a3cd94",
         "version": {
           "reads": "saved-files"
         },
@@ -251,7 +251,7 @@ stdout:
         "type": "agent.started",
         "state": "draft",
         "agent": "writer",
-        "prompt": "Draft a reply to the customer's email.\n\n## Data\n\n### input.mail\nHi, my order #1042 arrived damaged. Can I get a refund? — Sam (invented)\n\n### context.request\nSam wants a refund for order 1042, which arrived damaged.",
+        "prompt": "Draft a reply to the customer's email, ready to send as it is.\nWrite plain text: no subject line and no Markdown.\nEnd with \"Acme support\" on its own line, never a placeholder like [Your Name].\n\n## Data\n\n### input.mail\nHi, my order #1042 arrived damaged. Can I get a refund? — Sam (invented)\n\n### context.request\nSam wants a refund for order 1042, which arrived damaged.",
         "runId": "run_mfx3k2a0_01jd8q",
         "seq": 17,
         "at": "2026-11-10T14:01:00.000Z"
@@ -273,11 +273,11 @@ stdout:
         "provider": "mock",
         "model": "echo",
         "usage": {
-          "inputTokens": 83,
-          "outputTokens": 24
+          "inputTokens": 122,
+          "outputTokens": 28
         },
         "latencyMs": 0,
-        "text": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.",
+        "text": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.\n\nAcme support",
         "cost": 0,
         "runId": "run_mfx3k2a0_01jd8q",
         "seq": 19,
@@ -287,7 +287,7 @@ stdout:
         "type": "agent.finished",
         "state": "draft",
         "agent": "writer",
-        "output": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.",
+        "output": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.\n\nAcme support",
         "runId": "run_mfx3k2a0_01jd8q",
         "seq": 20,
         "at": "2026-11-10T14:01:00.000Z"
@@ -295,7 +295,7 @@ stdout:
       {
         "type": "context.updated",
         "key": "reply",
-        "value": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.",
+        "value": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.\n\nAcme support",
         "runId": "run_mfx3k2a0_01jd8q",
         "seq": 21,
         "at": "2026-11-10T14:01:00.000Z"
@@ -328,7 +328,7 @@ stdout:
           "reject": "Reject"
         },
         "title": "Approve this reply?",
-        "body": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.\n\nSample: the test model writes this reply to any email. Approving finishes the run. Nothing is sent.",
+        "body": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.\n\nAcme support\n\nSample: the test model writes this reply to any email. Approving finishes the run. Nothing is sent.",
         "runId": "run_mfx3k2a0_01jd8q",
         "seq": 24,
         "at": "2026-11-10T14:01:00.000Z"

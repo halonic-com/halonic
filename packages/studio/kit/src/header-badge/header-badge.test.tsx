@@ -135,6 +135,34 @@ verifies("kit.header-badge", () => {
     expect(badge.className).toContain("phone:whitespace-normal");
   });
 
+  it("in the phone's notice strip sits on a 48px line indented 16px, with no line of its own", () => {
+    const { container } = render(
+      onPhone(
+        <HeaderBadge as="button" action="Review" phoneLine="strip" onClick={vi.fn()}>
+          Not trusted yet
+        </HeaderBadge>,
+      ),
+    );
+    const line = container.firstElementChild as HTMLElement;
+    expect(badgeIn(container).parentElement).toBe(line);
+    expect(line.className.split(" ")).toEqual(expect.arrayContaining(["min-h-touch", "ps-4"]));
+    expect(line.className).not.toContain("ps-15");
+    expect(line.className).not.toContain("border-b");
+  });
+
+  it("among a row's chips on a phone has no line, but keeps its 48px hit area", () => {
+    const { container } = render(
+      onPhone(
+        <HeaderBadge as="button" action="Fix" phoneLine="none" onClick={vi.fn()}>
+          Needs sign-in again
+        </HeaderBadge>,
+      ),
+    );
+    const badge = badgeIn(container);
+    expect(container.firstElementChild).toBe(badge);
+    expect(badge.className).toContain("phone:hit-touch");
+  });
+
   it("on a phone takes the name the feature gives", () => {
     const badge = badgeIn(
       render(onPhone(trustBadge(vi.fn(), "Not trusted yet. Open trust settings"))).container,

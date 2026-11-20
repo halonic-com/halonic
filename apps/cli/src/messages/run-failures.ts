@@ -120,6 +120,8 @@ const lineOne = {
       run,
       phrase`provider ${failure.provider} has type ${failure.type}, which Halonic can't call.`,
     ),
+  "unknown-model-alias": (run, failure) =>
+    failedIn(run, phrase`hub ${failure.hub} has no model alias ${failure.alias}.`),
   "model-no-tools": (run, failure) =>
     failedIn(
       run,
@@ -213,6 +215,10 @@ const lineTwo = {
   // The types come from the list the engine builds providers from, so a new adapter is listed by itself.
   "unknown-provider-type": (_run, failure) =>
     phrase`Set type in providers/${failure.provider}.yaml to one of ${listInWords(providerTypes, "or")}, then run again.`,
+  // A workspace made with plain `halonic init` has no models.yaml yet, so it also
+  // says where a model that needs no key comes from (HAL-12377).
+  "unknown-model-alias": (_run, failure) =>
+    phrase`Add ${failure.alias} to models.yaml, or set a model on the agent. For a test model with no key, copy models.yaml and providers/mock.yaml from the Acme example.`,
   // "In models.yaml" first, so it can't read as where the tools are.
   "model-no-tools": (_run, failure) =>
     phrase`In models.yaml, point the model alias ${failure.alias} at a model that can use tools.`,

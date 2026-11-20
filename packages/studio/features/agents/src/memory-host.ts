@@ -5,6 +5,7 @@ import type {
   AgentListing,
   AgentRef,
   AgentSettings,
+  AgentStep,
   AgentsHost,
   AgentTeamMember,
   AgentToolList,
@@ -26,6 +27,7 @@ export interface MemoryAgentsHostOptions {
         readonly knowledge?: readonly string[];
         readonly connectors?: readonly string[];
         readonly subagents?: readonly string[];
+        readonly agentSteps?: readonly AgentStep[];
       })[]
     | undefined;
   /** What `harnessReadiness` answers for Claude Code and Codex; ready when left out. */
@@ -56,6 +58,7 @@ function listingOf({
   knowledge: _knowledge,
   connectors: _connectors,
   subagents: _subagents,
+  agentSteps: _agentSteps,
   ...listing
 }: AgentSettings): AgentListing {
   return listing;
@@ -70,6 +73,7 @@ const fresh = {
   knowledge: [],
   connectors: [],
   subagents: [],
+  agentSteps: [],
 } as const;
 
 /**
@@ -128,6 +132,19 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       found(ref);
       const { skills = [], knowledge = [], connectors = [] } = options.toolOptions ?? {};
       return { skills, knowledge, connectors };
+    },
+    addAgentStep: async (ref, { name, instructions }) => {
+      const agent = found(ref);
+      if (name.trim() === "" || instructions.trim() === "") {
+        throw new KindedError("invalid_input", "An agent step needs a name and instructions.");
+      }
+      const id = uniqueName(
+        slugify(name),
+        agent.agentSteps.map((step) => step.id),
+      );
+      agents.set(keyOf(ref), { ...agent, agentSteps: [...agent.agentSteps, { id, instructions }] });
+      for (const listener of listeners) listener();
+      return id;
     },
     team: async (ref) => {
       found(ref);

@@ -334,6 +334,43 @@ verifies("studio.workspace-agents", () => {
       });
     });
 
+    it("reads the agent steps in the file's order and adds one in place with an id from its name", async () => {
+      const { host, store, changes } = setup();
+      const ref = { hubId: "acme", id: "writer" };
+      store["hubs/acme/agents/writer.agent.yaml"] =
+        "id: writer\nname: Writer\n# Steps\nmethods:\n  draft-reply:\n    description: Drafts a reply.\n    instructions: Write it.\n    model: smart\n    maxSteps: 3\n";
+      expect((await host.settings(ref)).agentSteps).toEqual([
+        {
+          id: "draft-reply",
+          description: "Drafts a reply.",
+          instructions: "Write it.",
+          model: "smart",
+          maxSteps: 3,
+        },
+      ]);
+
+      expect(
+        await host.addAgentStep(ref, { name: "Draft reply", instructions: " Shorter. " }),
+      ).toBe("draft-reply-2");
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toContain("# Steps");
+      expect((await host.settings(ref)).agentSteps.map((step) => step.id)).toEqual([
+        "draft-reply",
+        "draft-reply-2",
+      ]);
+      expect((await host.settings(ref)).agentSteps[1]?.instructions).toBe("Shorter.");
+      expect(changes).toHaveLength(1);
+
+      await expect(
+        host.addAgentStep(ref, { name: "Check", instructions: " " }),
+      ).rejects.toMatchObject({
+        kind: "invalid_input",
+      });
+      await expect(
+        host.addAgentStep({ hubId: "acme", id: "gone" }, { name: "Check", instructions: "Go." }),
+      ).rejects.toMatchObject({ kind: "not_found" });
+      expect(changes).toHaveLength(1);
+    });
+
     it("answers whether a harness can run: Halonic always, the others as the host finds, a failed check as failed", async () => {
       const { host } = setup();
       const ref = { hubId: "acme", id: "writer" };

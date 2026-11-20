@@ -1,4 +1,5 @@
 import { assertNever, type ErrorKind, errorKindOf } from "@halonicjs/std";
+import { EngineNotAnswering } from "../engine/engine-not-answering.ts";
 import { copyDetailsWords } from "./copy-details-words.ts";
 
 /**
@@ -227,6 +228,25 @@ export function errorReasonFor(error: unknown, fallback: string = words.cantExpl
   if (errorKindOf(error) === "internal") return fallback;
   const reason = kindedMessageOf(error).trim();
   return reason === "" ? fallback : reason;
+}
+
+/**
+ * The reason a failed engine read or action gives. Only a host that says the engine can't be
+ * reached ({@link EngineNotAnswering}) gets `notAnswering`, the words for where Studio runs; any
+ * other failure gives {@link errorReasonFor}'s reason, so an internal error reads "Halonic ran
+ * into a problem it can't explain yet." and never blames the engine (microcopy 22 F13, HAL-11626).
+ *
+ * @example
+ * engineReasonFor(new EngineNotAnswering(), engine.notAnswering); // "The engine isn't answering. It may still be starting."
+ * engineReasonFor(new Error("ENOENT"), engine.notAnswering); // "Halonic ran into a problem it can't explain yet."
+ */
+export function engineReasonFor(error: unknown, notAnswering: string): string {
+  return error instanceof EngineNotAnswering ? notAnswering : errorReasonFor(error);
+}
+
+/** Whether a failure has no reason of its own to show, so the screen offers **Copy details** (F13). */
+export function isUnexplained(error: unknown): boolean {
+  return !(error instanceof EngineNotAnswering) && errorReasonFor(error, "") === "";
 }
 
 /** The message of a kinded error. `errorKindOf` only gives a kind to errors with a string message. */

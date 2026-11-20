@@ -13,6 +13,9 @@ pub enum HostSettingsError {
     Unreadable { file: PathBuf, reason: String },
     /// Creating the folder or writing the file failed.
     Io { message: String },
+    /// A sandbox choice that isn't one the port's `isSandboxSetting` accepts.
+    /// Nothing was saved.
+    InvalidChoice { reason: String },
 }
 
 impl HostSettingsError {
@@ -24,6 +27,7 @@ impl HostSettingsError {
             HostSettingsError::TooLarge { .. } => "too_large",
             HostSettingsError::Unreadable { .. } => "unreadable",
             HostSettingsError::Io { .. } => "io",
+            HostSettingsError::InvalidChoice { .. } => "invalid_choice",
         }
     }
 }
@@ -54,6 +58,9 @@ impl fmt::Display for HostSettingsError {
             ),
             HostSettingsError::Io { message } => {
                 write!(formatter, "the settings could not be saved: {message}")
+            }
+            HostSettingsError::InvalidChoice { reason } => {
+                write!(formatter, "the sandbox choice can't be saved: {reason}")
             }
         }
     }

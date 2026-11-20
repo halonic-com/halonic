@@ -19,6 +19,8 @@ export {
   type MxcFence,
   RunnerStartGate,
   type RunnerStartGateOptions,
+  RunnerStartTimeoutError,
+  runnerStartTimeoutMs,
   type StartInSandbox,
 } from "./runner-start-gate.ts";
 export {

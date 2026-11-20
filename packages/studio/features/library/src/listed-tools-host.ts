@@ -103,9 +103,48 @@ export class WorkspaceNotTrusted extends Error {
   }
 }
 
+/**
+ * Why a connector's program couldn't list its tools, as the agent host says it: the cause and the
+ * names the page needs to word it (UX check C2). The server doesn't say which secret it refused,
+ * so a refused secret carries every secret the connector declares, in the order it declares them.
+ */
+export type ListingFailure =
+  | { readonly reason: "program-missing"; readonly program: string }
+  | { readonly reason: "secret-missing"; readonly secret: string }
+  | { readonly reason: "secret-refused"; readonly secrets: readonly string[] }
+  | { readonly reason: "stopped" };
+
+/** How each cause reads to any error-aware code: the same kinds the agent host's client gives. */
+const listingFailureKinds = {
+  "program-missing": "unavailable",
+  "secret-missing": "invalid_input",
+  "secret-refused": "unauthenticated",
+  stopped: "unavailable",
+} as const;
+
+/**
+ * What {@link ListedToolsHost.review} rejects with when the connector's program couldn't list its
+ * tools for a cause the page words itself (UX check C2). Its message is a plain fallback.
+ */
+export class ConnectorCouldntList extends Error {
+  override readonly name = "ConnectorCouldntList";
+  readonly kind: (typeof listingFailureKinds)[ListingFailure["reason"]];
+  readonly failure: ListingFailure;
+
+  constructor(failure: ListingFailure, options: { readonly cause?: unknown } = {}) {
+    super(`the connector couldn't list its tools (${failure.reason})`, options);
+    this.kind = listingFailureKinds[failure.reason];
+    this.failure = failure;
+  }
+}
+
 /** The listed tools of the open workspace's connectors. The app provides it. */
 export interface ListedToolsHost {
-  /** Reads the connector's tools again from its server. Rejects with {@link WorkspaceNotTrusted} in a workspace that isn't trusted. */
+  /**
+   * Reads the connector's tools again from its server. Rejects with {@link WorkspaceNotTrusted} in
+   * a workspace that isn't trusted, with {@link ConnectorCouldntList} when the program couldn't
+   * list them for a known cause, and with `EngineNotAnswering` when the engine can't be reached.
+   */
   review(connectorId: string): Promise<ListedToolsSnapshot>;
   /** Approves each pick at the version given, as `halonic tools approve` does. A pick that waits at another version is returned in `changed`. */
   approve(connectorId: string, picks: readonly ListedToolPick[]): Promise<ListedToolsApproval>;

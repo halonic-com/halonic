@@ -19,6 +19,37 @@ export interface WorkerTarget {
   readonly baseUrl: string;
   /** Tests inject this; defaults to `fetch`. */
   readonly fetch?: typeof fetch;
+  /** Tests inject this; defaults to a timer. */
+  readonly sleep?: (ms: number) => Promise<void>;
+}
+
+/** Tries while Cloudflare's edge answers not found: waits of 1, 2, 4 and then 8 s, about 40 s. */
+const edgeAttempts = 8;
+const longestWaitMs = 8_000;
+
+/**
+ * Whether the answer is Cloudflare's own HTML "Page not found" rather than the Worker's: an edge
+ * server that doesn't route the new workers.dev address yet. The Worker's own 404 is JSON.
+ */
+function isEdgeNotFound(response: Response): boolean {
+  return (
+    response.status === 404 && (response.headers.get("content-type") ?? "").includes("text/html")
+  );
+}
+
+/**
+ * Right after a deploy, Cloudflare's edge servers learn a new workers.dev address one by one, so
+ * for a while some requests get the edge's not-found page while others reach the Worker
+ * (HAL-14022). Such a request never reached the Worker, so asking again changes nothing there.
+ */
+async function fetchPastEdge(target: WorkerTarget, url: URL, init: RequestInit): Promise<Response> {
+  const sleep = target.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+  for (let attempt = 1; ; attempt += 1) {
+    const response = await (target.fetch ?? fetch)(url, init);
+    if (!isEdgeNotFound(response) || attempt >= edgeAttempts) return response;
+    await response.body?.cancel();
+    await sleep(Math.min(1000 * 2 ** (attempt - 1), longestWaitMs));
+  }
 }
 
 async function call(
@@ -30,7 +61,7 @@ async function call(
   const url = new URL(path, target.baseUrl);
   // A key must not travel in the clear, and a redirect must not carry it somewhere else.
   if (url.protocol !== "https:") throw new Error(`The Worker address ${url.origin} is not HTTPS.`);
-  const response = await (target.fetch ?? fetch)(url, { method, headers, redirect: "error" });
+  const response = await fetchPastEdge(target, url, { method, headers, redirect: "error" });
   const text = await response.text();
   let code: string | undefined;
   try {
@@ -50,15 +81,24 @@ const adminRoutes = [
   ["POST", "/admin/import"],
 ] as const;
 
+/** A check got another status than it wanted; `status` is what it got. */
+export class UnexpectedStatus extends Error {
+  /** The status the Worker answered. */
+  readonly status: number;
+  constructor(what: string, got: { status: number; code: string | undefined }, want: number) {
+    const code = got.code === undefined ? "" : ` ${got.code}`;
+    super(`${what} was answered ${got.status}${code}, expected ${want}.`);
+    this.name = "UnexpectedStatus";
+    this.status = got.status;
+  }
+}
+
 function expectStatus(
   what: string,
   got: { status: number; code: string | undefined },
   want: number,
 ) {
-  if (got.status !== want) {
-    const code = got.code === undefined ? "" : ` ${got.code}`;
-    throw new Error(`${what} was answered ${got.status}${code}, expected ${want}.`);
-  }
+  if (got.status !== want) throw new UnexpectedStatus(what, got, want);
 }
 
 /** Checks of a deployed Worker that need no key. Each throws an `Error` naming what differed, never a key or a body. */
@@ -131,40 +171,6 @@ export const workerChecks = {
     }
   },
 };
-
-export interface EventuallyOptions {
-  /** How many times to try the check. Defaults to 12. */
-  readonly attempts?: number;
-  /** Milliseconds between tries. Defaults to 5000. */
-  readonly delayMs?: number;
-  /** Tests inject this; defaults to a timer. */
-  readonly sleep?: (ms: number) => Promise<void>;
-}
-
-/**
- * Runs `check` until it passes. Setting or removing a Workers secret makes a new Worker version,
- * which takes a few seconds to answer everywhere.
- *
- * @throws the last error of `check` when every try failed
- */
-export async function eventually(
-  check: () => Promise<void>,
-  options: EventuallyOptions = {},
-): Promise<void> {
-  const {
-    attempts = 12,
-    delayMs = 5_000,
-    sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
-  } = options;
-  for (let attempt = 1; ; attempt++) {
-    try {
-      return await check();
-    } catch (error) {
-      if (attempt >= attempts) throw error;
-      await sleep(delayMs);
-    }
-  }
-}
 
 export interface RoundTripOptions extends Pick<WorkerTransferOptions, "baseUrl" | "key" | "fetch"> {
   /** A complete export folder to put into the Worker. */

@@ -23,10 +23,10 @@ export interface StatusBarSaveNoteProps {
 }
 
 /**
- * The save note (save model 1.4), for the status bar's right end (`ShellFrame`'s `saveNote` slot): "✓ Saved",
- * "Saving…", "2 fields not saved", "1 item not saved · Compare" or "Couldn't save *Support reply*
- * · Try again". It's the only place saving shows. A write shorter than 300ms never shows
- * "Saving…", so the status bar doesn't blink while the user types.
+ * The save note (save model 1.4), for the status bar's right end (`ShellFrame`'s `saveNote` slot):
+ * "✓ Saved", "Saving…", "2 fields not saved", "1 item not saved · Compare" or "Couldn't save
+ * *Support reply* · Try again". It's the only place saving shows. A write shorter than 300ms
+ * never shows "Saving…", so the status bar doesn't blink while the user types.
  *
  * The note isn't a live region; `announceSaveNotes` reads out the states worth hearing, once.
  * While it's a problem it carries `data-problem="warning"` or `"danger"`, the tone of its mark, so
@@ -39,7 +39,8 @@ export function StatusBarSaveNote({ saving, timers = systemTimers }: StatusBarSa
   const note = useShownNote(saving, timers);
   const words = saveNoteWords(note);
   const action = words.action;
-  // "Compare" alone doesn't say which item, so its name does: "Compare Support triage" (microcopy 19.2).
+  // "Compare" alone doesn't say which item, so its name does: "Compare Support triage"
+  // (microcopy 19.2).
   const heldName =
     action === "compare" && note.kind === "items-not-saved" ? note.first.title : undefined;
   return (
@@ -87,9 +88,10 @@ const marks: Readonly<Record<SaveNoteMark, ReactNode>> = {
 };
 
 /**
- * A problem's words stop at 240px (on a phone, at the width the action leaves) and end in "…", so a long item title can't push the other status
- * items away or hide the button, which keeps its width. The whole title stays in the text, so a screen reader reads all of it, and
- * the failed-save toast shows it in full.
+ * A problem's words stop at 240px (on a phone, at the width the action leaves) and end in "…", so
+ * a long item title can't push the other status items away or hide the button, which keeps its
+ * width. The whole title stays in the text, so a screen reader reads all of it, and the
+ * failed-save toast shows it in full.
  */
 const longWords = "min-w-0 max-w-60 truncate phone:max-w-none phone:flex-1";
 

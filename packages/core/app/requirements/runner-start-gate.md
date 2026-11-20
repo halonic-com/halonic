@@ -6,6 +6,8 @@
 
 The app shall start plugin and integration code only through one gate, which at every start asks the fenced sandbox's check again and decides with `UnfencedRuns`, never from what a dialog showed. When the decision is `fenced`, the gate shall start the code in the fenced sandbox and stop it again, reporting `stopped`, if the session's fence proof isn't `fenced`; it never falls back to the launcher then. When the decision is `allowed`, it shall start the code in the launcher's sandbox, refuse a launcher whose fence proof isn't `off`, and register the run with the yes it started under (its reason and `allowedAt`), so Take back stops it, in this process or another. A start without the sandbox shall let Take back wait for it from before it reads the yes, and a run that started while Take back ran shall be stopped before Take back returns, also when the yes was given again during the start. When the decision is `needs-yes` or `stopped`, nothing shall start.
 
+Every start shall have a time limit, `runnerStartTimeoutMs` (30 s) unless the host sets its own, kept with the host's timers, since core has none. A start that doesn't settle in time shall fail closed with `RunnerStartTimeoutError`: it no longer holds up Take back, and a runner that arrives later is stopped at once and never registered (HAL-12494, a follow-up to finding M2 of the P10 security review on HAL-1743).
+
 On Windows 11, when the sandbox choice has MXC in use and `mxcFencesRunner` is on, the gate shall use `sandbox-mxc` as the fenced sandbox, ask its check, and tell the start which backend it is, so the start builds that backend's profile. `mxcFencesRunner` is on since the attack cases A1 to A40 each passed or were recorded as a gap on MXC on `windows-11-arm`, and Julian's review is on HAL-3307 (HAL-3403, HAL-9335). The recorded gaps are A36 with Node's permission layer off, A6 through the Windows DNS client, and A24 (memory on Windows). Where MXC is not chosen or not in use, Windows is `not-fenced` for `windows` as before.
 
 ## Examples
@@ -27,6 +29,12 @@ On Windows 11, when the sandbox choice has MXC in use and `mxcFencesRunner` is o
   then that run is stopped before Take back returns, and the result is `needs-yes`.
 - Given Take back and a new yes for the same reason while a run without the sandbox is starting,
   then that run is stopped, and the result is `needs-yes`.
+- Given a start that doesn't settle within its time limit,
+  then the start fails with `RunnerStartTimeoutError`, and its runner, when it arrives later, is stopped.
+- Given Take back while a start without the sandbox hangs,
+  then Take back returns once the start's time limit runs out, and the runner that arrives later is stopped.
+- Given a host limit that isn't a whole number of milliseconds of 1 or more,
+  then the gate refuses it with a `RangeError`.
 - Given a run without the sandbox,
   when the yes is taken back in another process,
   then the run is stopped at the next check of the saved yes.

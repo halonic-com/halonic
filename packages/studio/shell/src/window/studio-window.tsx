@@ -3,6 +3,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { HeaderBadges } from "../badges/header-badges.tsx";
 import { FeatureDialogs } from "../dialogs/feature-dialogs.tsx";
 import type { StudioHost } from "../engine/engine-words.ts";
+import { StudioHostContext } from "../engine/studio-host-context.ts";
 import { usePresentationFromWidth } from "../frame/frame-effects.ts";
 import { ShellFrame } from "../frame/shell-frame.tsx";
 import { StatusBarItems } from "../frame/status-bar.tsx";
@@ -41,7 +42,7 @@ import { TitleBarBrand } from "../title-bar/title-bar-brand.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { activeItemOf } from "./active-item.ts";
 import { useClosingGoneItemTabs } from "./gone-item-tabs.ts";
-import { shownPlaces } from "./shown-places.ts";
+import { useShownPlaces } from "./shown-places.ts";
 import { StudioPage } from "./studio-page.tsx";
 import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
 import { StudioSidebar } from "./studio-sidebar.tsx";
@@ -131,6 +132,15 @@ function DesktopResourceItem({
  * <StudioWindow shell={shell} workspace={workspace} host="desktop-app" platform="windows" language="en" />
  */
 export function StudioWindow(props: StudioWindowProps) {
+  // What the window draws deep down, such as a page that can't load its code, reads the host here.
+  return (
+    <StudioHostContext value={props.host}>
+      <StudioWindowBody {...props} />
+    </StudioHostContext>
+  );
+}
+
+function StudioWindowBody(props: StudioWindowProps) {
   const { shell, workspace, host, platform, withoutHostSettings } = props;
   const { tabs } = workspace;
   const { announcer, contributions } = shell;
@@ -232,6 +242,7 @@ export function StudioWindow(props: StudioWindowProps) {
       },
       badges: shell.badges,
       saving: workspace.saving,
+      closeStack: shell.closeStack,
       openItem: (item, options) => openHere.current(locationOfItem(item, options)),
       openItemInNewTab: (item) => openItemInNewTab.current(locationOfItem(item)),
       openSettings,
@@ -279,8 +290,9 @@ export function StudioWindow(props: StudioWindowProps) {
   const kinds = useMemo(() => contributions.itemKinds.list(), [contributions]);
   useClosingGoneItemTabs(tabs, kinds, contextFor);
   usePhoneBackButton(!desktop, shell.closeStack, phone);
-  // Read again on every phone move, so the bottom navigation's signals follow.
-  const shown = shownPlaces(contributions.places.list(), contextFor);
+  // Read again on every phone move and whenever a place's signal changes, so the bottom
+  // navigation's counts follow, such as the Inbox's right after an answer (HAL-13371).
+  const shown = useShownPlaces(places, contextFor);
   useWindowKeys({ host, platform, tabs, toasts: shell.toasts, onNewTab: palette.show });
   // Ctrl K's palette closes as it opens a page, and its focus return mustn't win over the `h1`.
   const focusPageOpenedFromPalette = usePageHeadingFocusAfterDialog();
@@ -326,6 +338,7 @@ export function StudioWindow(props: StudioWindowProps) {
       }
       badges={headerBadges}
       saveNote={<StatusBarSaveNote saving={workspace.saving} />}
+      phoneBadges={<HeaderBadges registry={shell.badges} layout="strip" />}
       sidebar={
         <StudioSidebar
           places={places}

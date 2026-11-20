@@ -13,23 +13,40 @@ import {
 import { WORKSPACE_PAGE_TITLE } from "./workspace-page-text.ts";
 
 const REVEAL_WAIT_MS = 5000;
+/** How long a section opened for a change keeps its highlight. */
+const HIGHLIGHT_MS = 1000;
+/** The sections a command opens to change something, highlighted once so the eye finds them. */
+const HIGHLIGHTED: ReadonlySet<WorkspacePageTarget> = new Set(["budget"]);
+/** The highlight's fill: a colour that changes at once, with no movement for reduced motion to stop. */
+const HIGHLIGHT_CLASS = "bg-accent-soft";
 
 /**
- * Scrolls to the section and focuses its heading. A section other features add loads late, so
- * until it is drawn the page waits for it, and gives up when the page goes, after a few seconds,
- * or at the person's first key press or click, so focus never jumps later.
+ * Scrolls to the section and focuses its first heading, an `h2` or an `h3` for a block inside a
+ * section. A section other features add loads late, so until it is drawn the page waits for it,
+ * and gives up when the page goes, after a few seconds, or at the person's first key press or
+ * click, so focus never jumps later. A highlighted section keeps its fill for a second; the stop
+ * this returns also takes it off, so a new request or the page going never leaves it on.
  */
 function reveal(page: HTMLElement, target: WorkspacePageTarget): () => void {
-  const find = () =>
-    page.querySelector<HTMLElement>(`[${WORKSPACE_SECTION_ATTRIBUTE}="${target}"] h2`);
+  const section = `[${WORKSPACE_SECTION_ATTRIBUTE}="${target}"]`;
+  const find = () => page.querySelector<HTMLElement>(`${section} :is(h2, h3)`);
+  let unmark: () => void = () => undefined;
   const go = (heading: HTMLElement) => {
     heading.scrollIntoView?.({ block: "start" });
     heading.focus({ preventScroll: true });
+    const marked = HIGHLIGHTED.has(target) ? heading.closest<HTMLElement>(section) : null;
+    if (marked === null) return;
+    marked.classList.add(HIGHLIGHT_CLASS);
+    const timer = window.setTimeout(() => marked.classList.remove(HIGHLIGHT_CLASS), HIGHLIGHT_MS);
+    unmark = () => {
+      window.clearTimeout(timer);
+      marked.classList.remove(HIGHLIGHT_CLASS);
+    };
   };
   const now = find();
   if (now !== null) {
     go(now);
-    return () => undefined;
+    return () => unmark();
   }
   const stop = () => {
     watch.disconnect();
@@ -47,7 +64,10 @@ function reveal(page: HTMLElement, target: WorkspacePageTarget): () => void {
   document.addEventListener("keydown", stop, true);
   document.addEventListener("pointerdown", stop, true);
   watch.observe(page, { childList: true, subtree: true });
-  return stop;
+  return () => {
+    stop();
+    unmark();
+  };
 }
 
 /**

@@ -1,5 +1,6 @@
 export { isAbsolutePath } from "./absolute-path.ts";
 export { type FindProgramOptions, findProgram, programCandidates } from "./find-program.ts";
+export { bothSpellings, insideOrSame, pathsOverlap, realSpelling } from "./path-overlap.ts";
 export type { ProcessTable, ReadProcessTable } from "./process-table.ts";
 export type { ProcessRow } from "./process-tree.ts";
 export {

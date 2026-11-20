@@ -1,22 +1,16 @@
-import {
-  checkPinnedLaunch,
-  findRunner,
-  type LaunchFolders,
-  type RunnerSearch,
-  runnerRefusedError,
-} from "@halonicjs/adapter-mcp";
+import type { LaunchFolders, RunnerSearch } from "@halonicjs/adapter-mcp";
 import type {
   ConnectorCallOptions,
   ConnectorClient,
   ConnectorConfig,
   ConnectorFactory,
   ConnectorFactoryContext,
-  ConnectorPin,
   ConnectorTool,
   Sandbox,
   SandboxSession,
 } from "@halonicjs/ports";
 import { localToolLaunch, type PinnedRunner, type StdioConfig } from "./local-tool-launch.ts";
+import { pinnedStart } from "./pinned-runner.ts";
 import { readSecretEnv } from "./plan-launch.ts";
 import type { WorkspaceConnectorSetup } from "./sandbox-connector.ts";
 import {
@@ -202,7 +196,13 @@ class SessionWorkspaceConnector implements ConnectorClient {
       };
     }
     // Before any folder is made, so a refused pin leaves nothing behind.
-    const { pin, runner } = await this.#pinned();
+    const { pin, runner } = await pinnedStart(
+      this.id,
+      this.#stdio,
+      this.#config.secretEnv,
+      this.#context.http,
+      this.#options.runners,
+    );
     const folders: string[] = [];
     try {
       const setting = await this.#setting(folders, runner);
@@ -251,22 +251,5 @@ class SessionWorkspaceConnector implements ConnectorClient {
       path: this.#options.path,
       ...(runner === undefined ? {} : { runner }),
     };
-  }
-
-  /** The pin and the runner found for it; both are absent for a program that isn't a pinned package. */
-  async #pinned(): Promise<{ pin: ConnectorPin | null; runner?: PinnedRunner }> {
-    const { runners } = this.#options;
-    const checked = await checkPinnedLaunch(
-      this.#stdio,
-      this.#config.secretEnv,
-      this.#context.http,
-    );
-    if (!checked.ok) {
-      throw new Error(`Halonic didn't start the connector "${this.id}": ${checked.error}.`);
-    }
-    if (checked.value === null) return { pin: null };
-    const found = await findRunner(this.#stdio.command, checked.value.registry, runners);
-    if ("refused" in found) throw runnerRefusedError(this.id, found);
-    return { pin: checked.value, runner: { found: found.found, platform: runners.platform } };
   }
 }

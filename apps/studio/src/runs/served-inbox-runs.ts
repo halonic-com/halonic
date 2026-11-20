@@ -1,6 +1,7 @@
 import type { RunSummary } from "@halonicjs/events";
 import { type ErrorKind, KindedError } from "@halonicjs/std";
 import type { InboxRuns } from "@halonicjs/studio-feature-inbox/api";
+import { unreachableWords } from "@halonicjs/studio-shell";
 import { type PollTimer, runsPollInterval, systemTimer } from "./workspace-runs.ts";
 
 /** The page's own `fetch`: same address, same session. */
@@ -55,7 +56,7 @@ function refusal(status: number, doing: string, listing: boolean): KindedError {
       : `That run is gone, so Halonic couldn't ${doing}.`,
     conflict: `The run doesn't take that answer now, so Halonic couldn't ${doing}. It may have moved on.`,
     limit_reached: `The computer has had too many requests just now, so Halonic couldn't ${doing}.`,
-    unavailable: `Halonic couldn't reach the computer to ${doing}.`,
+    unavailable: unreachableWords.reason(doing),
     internal: `Halonic couldn't ${doing}.`,
   };
   return new KindedError(kind, why[kind]);
@@ -86,7 +87,7 @@ async function ask(
   try {
     response = await options.fetch(path, { ...init, signal });
   } catch (cause) {
-    throw new KindedError("unavailable", `Halonic couldn't reach the computer to ${doing}.`, {
+    throw new KindedError("unavailable", unreachableWords.reason(doing), {
       cause,
     });
   }
@@ -111,7 +112,8 @@ async function ask(
  * `POST /api/runs/<id>/events`, both on the page's own address and session.
  *
  * While anyone listens, the list is read again every 10 s and when the window
- * comes to the front, and listeners hear only when the waiting runs changed.
+ * comes to the front, and listeners hear only when the waiting runs changed, or
+ * once when a list that worked starts to fail and again when it works.
  *
  * @example
  * services.provide(InboxRunsService, new ServedInboxRuns({ fetch: (path, init) => fetch(path, init) }));
@@ -122,7 +124,7 @@ export class ServedInboxRuns implements InboxRuns {
   #stopPolling: (() => void) | undefined;
   /** The waiting runs' ids and last events as the last poll saw them; `undefined` before the first. */
   #seen: string | undefined;
-  /** Whether a poll failed before any list was seen, so the next good one must tell the listeners. */
+  /** Whether the last poll failed, so the next good one must tell the listeners. */
   #missed = false;
   #polling = false;
   #disposed = false;
@@ -226,9 +228,12 @@ export class ServedInboxRuns implements InboxRuns {
       this.#missed = false;
       if (changed) for (const listener of [...this.#listeners]) listener();
     } catch {
-      // The next poll tries again; a list that fails shows where the Inbox loads.
-      // With no list seen yet, whatever changed meanwhile is told after the next good one.
-      if (this.#seen === undefined) this.#missed = true;
+      // The next poll tries again, and whatever changed meanwhile is told after the next good one.
+      // A list that worked before and fails now, such as after a sign-out, is told once, so the
+      // Inbox loads, fails and says why over the list it keeps (HAL-13371).
+      const told = this.#missed || this.#seen === undefined;
+      this.#missed = true;
+      if (!told) for (const listener of [...this.#listeners]) listener();
     } finally {
       this.#polling = false;
     }

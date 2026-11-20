@@ -4,7 +4,8 @@ import {
   PluginBackendNotFencedError,
   RunnerToolError,
 } from "@halonicjs/adapter-integration-runner";
-import { PluginBackendNotTrustedError, readPluginFolder } from "@halonicjs/app";
+import { PluginBackendNotTrustedError, pluginSecretNames, readPluginFolder } from "@halonicjs/app";
+import type { Plugin } from "@halonicjs/format";
 import type { ConnectorClient, ConnectorFactoryContext } from "@halonicjs/ports";
 import { PluginRefusal } from "./plugin-refusal.ts";
 import { pluginIdPattern } from "./plugin-schemas.ts";
@@ -27,7 +28,9 @@ export function hostPluginBackends(
 ): PluginBackends {
   const open = openPluginBackend(machine);
   return {
-    trustedFingerprint: async (plugin) => await trustedFingerprint(machine, plugin, log),
+    trustedFingerprint: async (plugin) => (await trustedPlugin(machine, plugin, log)).fingerprint,
+    trustedSecretNames: async (plugin) =>
+      pluginSecretNames((await trustedPlugin(machine, plugin, log)).plugin),
     open: async (plugin, fingerprint): Promise<ConnectorClient> => {
       try {
         return await open({ id: plugin, plugin, context, fingerprint });
@@ -42,12 +45,14 @@ export function hostPluginBackends(
 /**
  * Reads the plugin's folder and checks the trust record against it, now.
  * Only a plugin id of the allow-list reaches the disk.
+ *
+ * @returns the manifest as read, and the fingerprint the trust covers
  */
-async function trustedFingerprint(
+async function trustedPlugin(
   machine: PluginBackendMachine,
   plugin: string,
   log: (text: string) => void,
-): Promise<string> {
+): Promise<{ plugin: Plugin; fingerprint: string }> {
   if (!pluginIdPattern.test(plugin)) throw new PluginRefusal("plugin_not_trusted");
   const read = await readPluginFolder(machine.plugins, machine.digest, plugin).catch(
     (error: unknown) => {
@@ -62,7 +67,7 @@ async function trustedFingerprint(
   const check = await machine.trust.checkPlugin({ location, plugin: found, files });
   // Anything but `trusted` refuses, so a status added later fails closed.
   if (check.status !== "trusted") throw new PluginRefusal("plugin_not_trusted");
-  return check.fingerprint;
+  return { plugin: found, fingerprint: check.fingerprint };
 }
 
 /** The refusal an error from the start stands for, or `undefined` when it is a failure of the plugin or the runner. */
@@ -89,5 +94,10 @@ export function unavailablePluginBackends(): PluginBackends {
   const refuse = async (): Promise<never> => {
     throw new PluginRefusal("not_in_this_build");
   };
-  return { trustedFingerprint: refuse, open: refuse, runnerSurvives: () => false };
+  return {
+    trustedFingerprint: refuse,
+    trustedSecretNames: refuse,
+    open: refuse,
+    runnerSurvives: () => false,
+  };
 }

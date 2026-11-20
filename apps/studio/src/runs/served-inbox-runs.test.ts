@@ -253,7 +253,27 @@ verifies("studio.served-inbox-runs", () => {
       world.fail(false);
       world.set([]);
       await world.clock.tick();
+      // Once as it starts to fail, once as it works again with the run gone.
+      expect(heard).toHaveBeenCalledTimes(2);
+    });
+
+    it("tells its listeners once when a list that worked starts to fail, and again when it works", async () => {
+      // After a sign-out the Inbox has to load again to learn why, and again once you're back.
+      const world = polled([waitingRun("a")]);
+      const heard = vi.fn();
+      world.runs.subscribe(heard);
+      await world.settle();
+      world.fail(true);
+      await world.clock.tick();
       expect(heard).toHaveBeenCalledTimes(1);
+      await world.clock.tick();
+      await world.clock.tick();
+      expect(heard).toHaveBeenCalledTimes(1);
+      world.fail(false);
+      await world.clock.tick();
+      expect(heard).toHaveBeenCalledTimes(2);
+      await world.clock.tick();
+      expect(heard).toHaveBeenCalledTimes(2);
     });
 
     it("stops polling when the last listener leaves, and after dispose", async () => {

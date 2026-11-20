@@ -1,15 +1,16 @@
 # Cloudflare container runners (trial)
 
 A trial (HAL-13578): merge-queue Linux jobs run on one-job Cloudflare containers instead of
-waiting for one of GitHub's runners. Off unless the repository variable `CF_RUNNER` is
-`merge-queue`.
+waiting for one of GitHub's runners. Off unless the repository variable `CF_RUNNER_TRIAL` is
+`merge-queue`. (It was `CF_RUNNER` until HAL-13929 turned the trial off in code, because the
+runner stopped taking jobs and only a person can delete a repository variable.)
 
-Source: `worker.mjs` (Worker and Durable Objects), `lib.mjs` (checks), `bootstrap.sh` (container
-setup). Tests: `node --test infra/cf-runner/test.mjs` (no install, no network, no spend).
+Source: `worker.mjs` (Worker and the job Durable Objects), `ledger.mjs` (budget and parallel limit), `lib.mjs` (checks), `bootstrap.sh` (container
+setup), `prefill.sh` (image B's warm pnpm store). Tests: `node --test infra/cf-runner/test.mjs` (no install, no network, no spend).
 
 ## How a job gets here
 
-1. In `.github/workflows/ci.yml`, a job asks for the label `cf-linux` only when `CF_RUNNER` is
+1. In `.github/workflows/ci.yml`, a job asks for the label `cf-linux` only when `CF_RUNNER_TRIAL` is
    `merge-queue` **and** the run is the merge queue or a push to `main`. Otherwise it asks for
    `ubuntu-24.04`, as before. Today: `Fast gates` and `Typecheck, lint, test, build`.
 2. GitHub sends the GitHub App `halonic-cf-runner` a `workflow_job` webhook. The Worker checks
@@ -33,17 +34,34 @@ setup). Tests: `node --test infra/cf-runner/test.mjs` (no install, no network, n
 Nothing persists: no volume, no cache, a new container per job. The image holds no secret.
 Job secrets reach the container the same way they reach GitHub's runners, for that job only.
 
+## Two images
+
+The trial compares two ways to start a job's container (board, 19 Nov):
+
+- **A, plain:** `ubuntu:24.04`, set up per job by `bootstrap.sh` (about a minute).
+- **B, pre-filled:** a snapshot of a container that already ran `bootstrap.sh` and `prefill.sh`
+  on Cloudflare's managed `debian-trixie` image: the runner, Node, pnpm and a pnpm store filled
+  from `main`'s lockfile. Jobs start from the snapshot and only start the runner. Snapshots need
+  the `durable_object` scheduling policy, so B is a second container class, `RunnerJobB`.
+  A Worker cron checks every 30 minutes and builds a new snapshot when `main`'s lockfile changed
+  or the last one is a day old. The builder container never takes a job and holds no secret: it
+  clones the public repository and installs with `--ignore-scripts`.
+
+`IMAGE_B` in `wrangler.toml` picks which jobs get B: `off`, `alternate` (by run, so both jobs of
+a run use the same image) or `all`. Without a snapshot every job gets A. Each job's log ends with
+a `cf-runner image=… boot_to_job=… seconds=…` line with the measurements.
+
 ## Limits
 
 - `CAP_USD` (18): no new container once the used time, plus an hour for every running
   container, would pass it, priced at $0.40 a container-hour. `GET /status` shows the total.
-- `MAX_RUNNERS` (4): containers at the same time. A job beyond that waits, and is retried
-  every 20 seconds for up to 45 minutes.
+- `MAX_RUNNERS` (4): containers at the same time, snapshot builds included. A job beyond that
+  waits, and is retried every 20 seconds for up to 45 minutes.
 - The spend switch: `spend_ok` and `spend_ok:cf-runner` in the spend-guard KV must be `on`.
 
 ## Turning it off
 
-Delete the repository variable `CF_RUNNER` (Settings > Secrets and variables > Actions >
+Delete the repository variable `CF_RUNNER_TRIAL` (Settings > Secrets and variables > Actions >
 Variables). New runs use GitHub's runners at once. A job already queued for `cf-linux` still
 needs a container: leave the Worker running until those are done, or take the pull request
 out of the queue and queue it again.

@@ -60,6 +60,7 @@ function OnHome(props: {
       <RecentRunsView
         list={props.list}
         now={() => mondayMorning}
+        attempt={attempt}
         {...(props.isSample === undefined ? {} : { isSample: props.isSample })}
         {...(props.openRuns === undefined ? {} : { openRuns: props.openRuns })}
         {...(props.openRun === undefined ? {} : { openRun: props.openRun })}

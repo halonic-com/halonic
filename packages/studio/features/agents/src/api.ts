@@ -54,6 +54,32 @@ export interface AgentSettings extends AgentListing {
   readonly connectors: readonly string[];
   /** The ids of the agents of its hub it hands work to (its subagents), in the file's order. */
   readonly subagents: readonly string[];
+  /** Its agent steps (`methods` in its file), in the file's order. */
+  readonly agentSteps: readonly AgentStep[];
+}
+
+/**
+ * One of an agent's agent steps (`methods` in its file): a named piece of work inside the agent,
+ * with its own instructions, that a workflow step can call.
+ */
+export interface AgentStep {
+  /** Its name in the file, which a workflow step calls it by, such as `draft-reply`. */
+  readonly id: string;
+  /** What it is for, in one line; absent when the file says nothing. */
+  readonly description?: string | undefined;
+  readonly instructions: string;
+  /** Its own model alias; absent when it uses the agent's. */
+  readonly model?: string | undefined;
+  /** Its own model call limit; absent when it uses the agent's. */
+  readonly maxSteps?: number | undefined;
+}
+
+/** What the New agent step dialog hands over. */
+export interface NewAgentStep {
+  /** The name typed; the agent step's id is taken from it (`-2` when the agent has it). */
+  readonly name: string;
+  /** What it should do: its instructions, which can't be empty. */
+  readonly instructions: string;
 }
 
 /**
@@ -211,6 +237,13 @@ export interface AgentsHost {
    * Rejects with `not_found` when the agent isn't there, and with the reason it couldn't read them.
    */
   toolOptions(ref: AgentRef): Promise<Readonly<Record<AgentToolList, readonly AgentToolOption[]>>>;
+  /**
+   * Adds an agent step to the agent's file, with the id taken from its name (`-2` when the agent
+   * has it), as one change, and returns the id. Rejects with `not_found` when the agent isn't
+   * there, with `invalid_input` when the name or the instructions are empty, and with the reason
+   * it couldn't write.
+   */
+  addAgentStep(ref: AgentRef, step: NewAgentStep): Promise<string>;
   /**
    * Every agent of the agent's hub, itself included, with the agents each hands work to, sorted by
    * name, for the Subagents page. Rejects with `not_found` when the agent isn't there, and with the

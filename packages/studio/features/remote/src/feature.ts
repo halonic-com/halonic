@@ -5,7 +5,7 @@ import { DESCRIPTION, summary } from "./settings/remote-text.ts";
 
 /**
  * Remote: Settings › Remote, where a person lets phones reach this computer, pairs them and
- * revokes them. It shows only while the host's `RemoteControl` says remote is available, which
+ * revokes them, and the status bar item that says how remote is doing. Both show only while the host's `RemoteControl` says remote is available, which
  * stays false until the gateway passes its attack suite (build plan decision 19).
  */
 export const remoteFeature = defineFeature({
@@ -23,6 +23,12 @@ export const remoteFeature = defineFeature({
       available: remoteAvailable,
       view: "RemoteSection",
       load: () => import("./settings/remote-section.tsx"),
+    });
+    studio.statusBar.add({
+      id: "remote.status",
+      order: 200,
+      view: "RemoteStatusItem",
+      load: () => import("./status/remote-status-item.tsx"),
     });
   },
 });

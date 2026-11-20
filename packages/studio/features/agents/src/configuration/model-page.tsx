@@ -80,8 +80,14 @@ export function ModelPage({
           }}
         />
       </Field>
-      <Field label={words.turnLimit} hint={words.turnLimitHint} error={turnLimit.error}>
+      <Field
+        label={words.turnLimit}
+        hint={words.turnLimitHint}
+        error={turnLimit.error}
+        announceWhileFocused
+      >
         <Input
+          width="short"
           inputMode="numeric"
           value={turnLimit.value}
           onChange={(event) => turnLimit.onChange(event.target.value)}

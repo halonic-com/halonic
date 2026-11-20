@@ -10,11 +10,27 @@ import { DeployError, type LiveReason, redact, SmokeTestFailedError } from "./er
 /** The variable that opens the Worker's `/self-test` route; the same name the runtime reads. */
 const selfTestTokenVariable = "HALONIC_SELFTEST_TOKEN";
 const overrideHeader = "Cloudflare-Workers-Version-Overrides";
+/** Self-test tries on an address that was already on: about 20 s. */
+const attemptsWhenOpen = 5;
+/**
+ * Self-test tries on a workers.dev address this deploy turned on: about two minutes. Cloudflare's
+ * edge answers 404 for a new address until it reaches the Worker, longer than 20 s (HAL-13834).
+ */
+const attemptsWhenNew = 16;
+/**
+ * How often a live deploy reads its version id back after the self-test: waits of 2, 4, 6, 8 and
+ * then 10 s, about a minute. Cloudflare can take longer than 10 s to list the deployment of an
+ * upload it took, more so while several deploys run at once (HAL-13838, HAL-14021).
+ */
+const deploymentLookups = 9;
+/** The longest wait between two tries. */
+const longestWaitMs = 10_000;
 
 /** What one upload step reports. The CLI formats these later. */
 export type UploadProgress =
   | { readonly step: "bundle-checked"; readonly hash: string }
-  | { readonly step: "uploaded"; readonly versionId: string; readonly live: boolean }
+  /** A live upload has no id yet: it is read back after the self-test, and `switched` never comes. */
+  | { readonly step: "uploaded"; readonly versionId?: string; readonly live: boolean }
   | { readonly step: "smoke-test"; readonly passed: boolean }
   | { readonly step: "switched"; readonly versionId: string }
   | { readonly step: "kept-previous"; readonly versionId: string }
@@ -44,8 +60,16 @@ export interface UploadAndSwitchOptions {
   readonly fetch?: typeof fetch;
   readonly sleep?: (ms: number) => Promise<void>;
   readonly randomToken?: () => string;
-  /** How often the self-test is tried while the new address starts answering. Defaults to 5. */
+  /**
+   * How often the self-test is tried while the address starts answering. Defaults to 5 (about
+   * 20 s), or 16 (about two minutes) when the deploy turned workers.dev on.
+   */
   readonly attempts?: number;
+}
+
+/** Waits for real; tests inject `sleep` instead. */
+function realSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /** A 32-byte random token as hex, from the platform's CSPRNG. */
@@ -106,13 +130,15 @@ export async function uploadAndSwitch(
   const serving = servingVersions(previous, goesLive);
 
   if (goesLive) await options.beforeTraffic?.();
-  const versionId = goesLive
-    ? await deployLive(api, options, upload, migrations)
+  // A live upload serves all traffic and only it holds this upload's token, so its self-test
+  // needs no version id.
+  const darkId = goesLive
+    ? await api.uploadWorkerLive(accountId, worker, upload, migrations).then(() => undefined)
     : await uploadDark(api, options, upload, serving);
-  report({ step: "uploaded", versionId, live: goesLive });
+  report({ step: "uploaded", ...(darkId ? { versionId: darkId } : {}), live: goesLive });
 
   const result = await selfTestOpen(api, options, {
-    versionId: goesLive ? undefined : versionId,
+    versionId: darkId,
     token,
     keepOpen: liveReason === "first-deploy",
     goesLive,
@@ -131,12 +157,11 @@ export async function uploadAndSwitch(
       report,
     );
   }
-  if (!goesLive) {
-    await options.beforeTraffic?.();
-    await api.deployVersions(accountId, worker, [{ id: versionId, percentage: 100 }]);
-    report({ step: "switched", versionId });
-  }
-  return { versionId };
+  if (darkId === undefined) return { versionId: await liveVersionId(api, options, previous) };
+  await options.beforeTraffic?.();
+  await api.deployVersions(accountId, worker, [{ id: darkId, percentage: 100 }]);
+  report({ step: "switched", versionId: darkId });
+  return { versionId: darkId };
 }
 
 /**
@@ -161,7 +186,10 @@ async function selfTestOpen(
   const putBack = () => (closeAfter ? api.closeWorkersDev(accountId, worker) : Promise.resolve());
   let result: Awaited<ReturnType<typeof selfTest>>;
   try {
-    result = await selfTest(url, worker, run.versionId, run.token, options);
+    // A first deploy's address, or one that was off, is new: give Cloudflare's edge time to route it.
+    const attempts =
+      options.attempts ?? (run.keepOpen || closeAfter ? attemptsWhenNew : attemptsWhenOpen);
+    result = await selfTest(url, worker, run.versionId, run.token, { ...options, attempts });
   } catch (error) {
     await putBack().catch(() => run.report({ step: "workers-dev-left-open" }));
     throw error;
@@ -246,23 +274,27 @@ function servingVersions(
   return serving;
 }
 
-/** Uploads with the migrations and deploys at once; returns the id of the version now live. */
-async function deployLive(
+/**
+ * The id of the version a live upload deployed, once Cloudflare lists it. A listing that still
+ * names a version from before the upload is as stale as an empty one.
+ */
+async function liveVersionId(
   api: CloudflareApi,
   options: UploadAndSwitchOptions,
-  upload: WorkerUpload,
-  migrations: readonly DurableObjectMigration[],
+  previous: readonly DeployedVersion[] | undefined,
 ): Promise<string> {
-  await api.uploadWorkerLive(options.accountId, options.worker, upload, migrations);
-  const now = await api.currentDeployment(options.accountId, options.worker);
-  const id = now?.[0]?.id;
-  if (!id) {
-    throw new DeployError(
-      "cloudflare-request-failed",
-      "Cloudflare took the upload but lists no deployment for the Worker, so the new version can't be tested.",
-    );
+  const sleep = options.sleep ?? realSleep;
+  const before = new Set((previous ?? []).map((v) => v.id));
+  for (let lookup = 1; lookup <= deploymentLookups; lookup += 1) {
+    const now = await api.currentDeployment(options.accountId, options.worker);
+    const id = now?.[0]?.id;
+    if (id && !before.has(id)) return id;
+    if (lookup < deploymentLookups) await sleep(Math.min(2000 * lookup, longestWaitMs));
   }
-  return id;
+  throw new DeployError(
+    "cloudflare-request-failed",
+    "The new version is deployed and passed its self-test, but Cloudflare lists no deployment for the Worker, so its version id is unknown. The Worker's deployments in the Cloudflare dashboard show it.",
+  );
 }
 
 /** Uploads a version and gives it 0% next to the previous one, so only the override header reaches it. */
@@ -297,8 +329,8 @@ async function selfTest(
   options: UploadAndSwitchOptions,
 ): Promise<{ ok: boolean; failed: string[] }> {
   const doFetch = options.fetch ?? fetch;
-  const sleep = options.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
-  const attempts = options.attempts ?? 5;
+  const sleep = options.sleep ?? realSleep;
+  const attempts = options.attempts ?? attemptsWhenOpen;
   let failed: string[] = [];
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
@@ -323,7 +355,7 @@ async function selfTest(
     } catch {
       failed = ["no answer"];
     }
-    if (attempt < attempts) await sleep(2000 * attempt);
+    if (attempt < attempts) await sleep(Math.min(2000 * attempt, longestWaitMs));
   }
   return { ok: false, failed };
 }

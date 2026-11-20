@@ -112,6 +112,15 @@ verifies("harness-bridge.provider-base-url", () => {
       expect(ownHosts.calls).toEqual([]);
     });
 
+    it("drops /v1 from the baseUrl's path only, never from its host", async () => {
+      const { ownHosts, compatible } = twoProviders();
+      const { bridge } = await openAnthropic(zai("https://v1"), ownHosts.fetch, compatible.fetch);
+
+      await (await claudeCodeSends(bridge)).text();
+
+      expect(compatible.calls[0]?.url).toBe("https://v1/v1/messages?beta=true");
+    });
+
     it("doesn't add /v1 twice, nor keep a trailing slash", async () => {
       const { ownHosts, compatible } = twoProviders();
       const { bridge } = await openAnthropic(
@@ -142,6 +151,7 @@ verifies("harness-bridge.provider-base-url", () => {
       ["plain http to another computer", "http://compatible.example/anthropic"],
       ["plain http to a look-alike of this computer", "http://127.0.0.1.compatible.example/x"],
       ["a user name", "https://user-in-address@compatible.example/anthropic"],
+      ["a password without a user name", "https://:user-in-address@compatible.example/anthropic"],
       ["a query", "https://compatible.example/anthropic?to=elsewhere.example"],
       ["a fragment", "https://compatible.example/anthropic#x"],
       ["another scheme", "ftp://compatible.example/anthropic"],

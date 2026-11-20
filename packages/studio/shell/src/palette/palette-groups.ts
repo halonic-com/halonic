@@ -83,13 +83,14 @@ export interface PaletteSources {
  * The places that commands open, by command id: the key of the place the command shows. The
  * palette hides an open or recent place that one of these commands opens, because the command's
  * Action stands in for it. It matches by place, not by title, so a place a person names like a
- * command ("Workspace settings") stays when no command opens it. The three workspace commands all
- * open the workspace page, `workspace/local/settings`; keep this in step with that feature.
+ * command ("Workspace settings") stays when no command opens it. The workspace commands all open
+ * the workspace page, `workspace/local/settings`; keep this in step with that feature.
  */
 export const commandPlaceKeys: ReadonlyMap<string, string> = new Map([
   ["workspace.open", "workspace/local/settings"],
   ["workspace.open-trust", "workspace/local/settings"],
   ["workspace.open-models", "workspace/local/settings"],
+  ["workspace.open-budget", "workspace/local/settings"],
 ]);
 
 /**

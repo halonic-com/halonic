@@ -14,8 +14,8 @@ use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use halonic_agent_host::{
-    RuntimeStep, SecurityUpdates, WslError, halonic_is_default, run_runtime_step,
-    run_runtime_step_within, runtime_command, security_updates,
+    RuntimeStep, SecurityUpdates, WslError, halonic_is_default, run_runtime_step_within,
+    runtime_command, security_updates,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Manager, Runtime};
@@ -35,20 +35,32 @@ pub struct DistroStartChecks {
     is_default_distro: bool,
 }
 
+/// How long reading the updater's `status` may take. It runs while the host
+/// lock is held, so a hung `wsl.exe` must not hold up every `agent_host_*`
+/// call.
+const STATUS_LIMIT: Duration = Duration::from_secs(10);
+
 /// How long reading WSL's default distro may take. A hung `wsl.exe` must not
 /// hold up start-up.
 const DEFAULT_DISTRO_LIMIT: Duration = Duration::from_secs(10);
 
 /// The updater's `status` and WSL's default distro, read for the distro
-/// behind `wsl`. A status that can't be read counts as overdue with no date:
-/// a warning beats silence. A default that can't be read counts as not the
-/// distro, and is logged: telling the person to change their default would
-/// be wrong advice when we don't know it.
+/// behind `wsl`. A status that can't be read in time counts as overdue with
+/// no date: a warning beats silence. A default that can't be read counts as
+/// not the distro, and is logged: telling the person to change their default
+/// would be wrong advice when we don't know it.
 pub(super) fn read_in_distro(wsl: &Path) -> DistroStartChecks {
-    let status = runtime_command(wsl, RuntimeStep::Status).and_then(run_runtime_step);
-    let mut checks = answer(status, unix_now());
+    let mut checks = security_updates_in_distro(wsl, STATUS_LIMIT);
     checks.is_default_distro = default_distro(halonic_is_default(wsl, DEFAULT_DISTRO_LIMIT));
     checks
+}
+
+/// The security updates of the distro behind `wsl`, from the updater's
+/// `status`, which is stopped after `limit`.
+fn security_updates_in_distro(wsl: &Path, limit: Duration) -> DistroStartChecks {
+    let status = runtime_command(wsl, RuntimeStep::Status)
+        .and_then(|command| run_runtime_step_within(command, limit));
+    answer(status, unix_now())
 }
 
 /// Whether the page is told the distro is the default, logging why when it

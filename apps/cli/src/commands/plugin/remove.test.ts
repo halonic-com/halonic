@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rename, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -203,6 +203,24 @@ verifies("cli.commands.plugin.remove", () => {
     expect(code).toBe(exitCode.ok);
     expect(await readdir(pluginsFolder())).toEqual([]);
     expect(await readdir(outside)).toEqual(["keep.txt"]);
+  });
+
+  it("says why when the plugins folder is a link, and removes nothing through it", async () => {
+    await addTrusted("weather");
+    const outside = join(folder, "outside");
+    await rename(pluginsFolder(), outside);
+    await symlink(outside, pluginsFolder(), process.platform === "win32" ? "junction" : "dir");
+
+    const { code, io } = await plugin(["remove", "weather", "--yes"]);
+
+    expect(code).toBe(exitCode.conflict);
+    const stderr = io.stderr.join("\n");
+    expect(stderr).toContain("is a link; plugins are removed only from a plain folder.");
+    expect(stderr).toContain("Replace it with a plain folder, then try again.");
+    expect(io.stdout).toEqual([]);
+    expect(await readFile(join(outside, "weather", "plugin.yaml"), "utf8")).toContain(
+      "id: weather",
+    );
   });
 
   it("removes a plugin whose name has a control character by its id, and never writes that name", async () => {

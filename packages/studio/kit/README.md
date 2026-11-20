@@ -538,6 +538,35 @@ which has to be there before the words arrive for them to be read.
 **On a phone** it sits inside the 16px page inset, never flush. Its action's `sm` button draws at
 `lg` with a 48px hit area, as every `sm` button does there, and stays under the text.
 
+## Chat parts
+
+The parts both chats draw with: an agent's Try it chat and the Assistant. They take props only and
+hold no chat logic: each feature turns its `ChatService` answer into these rows itself.
+
+```tsx
+<ChatTranscript label="Chat with Sorter" notice={engineDown ? engineLine : undefined}>
+  <ChatMessage from="you">Sort this mail</ChatMessage>
+  <ChatMessage from="reply" heading="Sorter said">
+    <ChatToolLine state="done">Read the mail</ChatToolLine>
+    <ChatText>It's about a refund.</ChatText>
+    <ChatEndLine tone="danger" actions={[{ label: "Try again", onClick: sendAgain }]}>
+      Sorter's reply failed: Anthropic was busy.
+    </ChatEndLine>
+  </ChatMessage>
+</ChatTranscript>;
+```
+
+| Part | What it is |
+| --- | --- |
+| `ChatTranscript` | The scrolling column, reading width, newest at the bottom. It stays at the end while a reply grows, unless the reader scrolled up. `notice` is a line at the top, such as "The engine isn't answering. Showing what it said last." |
+| `ChatMessage` | One row: `from="you"` on the right in a tinted box, or `from="reply"` across the column under a hidden heading ("Sorter said") |
+| `ChatText` | A text step of a reply, in `text-reading`, keeping its line breaks |
+| `ChatToolLine` | One quiet line per tool call: spinner while `running`, tick when `done`, alert mark in `danger` when `failed` |
+| `ChatEndLine` | The line that ends a reply: `danger` for a failure, `plain` for "Stopped by you." and the like, with its actions (a `button`, or a `link` for a way to another place) |
+
+Nothing here is a live region: a reply isn't read while it streams in. The feature announces the
+end of a reply ("Sorter replied.") through the shell's announcer, once.
+
 ## StatusChip
 
 The state of an item, in a row, a card header or a panel. It isn't interactive: something you can
@@ -1776,6 +1805,21 @@ at its root; without a provider, a Field says nothing:
 </FieldAnnounceProvider>;
 ```
 
+**An error that appears after a pause in typing** shows under a control that still has focus, and
+NVDA and JAWS don't re-read a description that changes under focus. A Field that checks its value
+on a pause sets `announceWhileFocused`: it then announces a new error once wherever focus is. The
+same error isn't read again when focus leaves, and clearing it says nothing:
+
+```tsx
+<Field label="Model call limit" error={limit.error} announceWhileFocused>
+  <Input
+    value={limit.value}
+    onChange={(event) => limit.onChange(event.target.value)}
+    onBlur={limit.flush}
+  />
+</Field>
+```
+
 A `prefix` puts its symbol in `text-body` `fg-muted` 8px before the box, centred on it, and
 tapping it focuses the control. Screen readers skip the symbol and hear its `name` after the
 label: "Per run, in euros". The hint and the error still start at the Field's left edge, under
@@ -1846,6 +1890,18 @@ A one-line text field.
 `sm` ghost icon `Button`, such as Clear). A button inside the box keeps the general focus ring, so
 you can tell it from the text. A press anywhere in the box, padding and icon included, puts the
 caret in the text; a press on the trailing button doesn't.
+
+**Width.** The box fills its column (`width="full"`, the default). For a small number, such as a
+turn limit or a count, use `width="short"`: the box fits about 6 characters of its text
+(`input-short`, 6ch, measured in the text's own 14px or 16px) plus its padding, and is never
+narrower than the 48px touch target. A wide box suggests a long value and leaves the hint and the
+error far from it.
+
+```tsx
+<Field label="Turn limit" hint="1 to 200" error={turnLimitError}>
+  <Input width="short" inputMode="numeric" value={turnLimit} onChange={…} />
+</Field>
+```
 
 **Keys.** Enter submits its form, **except while an input method is composing**: the Enter that
 picks a Japanese or Chinese word must never send. `Input` and `TextArea` don't pass a composing

@@ -62,6 +62,8 @@ interface WorkspaceFacts {
   readonly routines: ReadonlyMap<string, RoutineClock>;
   /** By id, where each provider the workspace has runs. */
   readonly providers: ReadonlyMap<string, ProviderKind>;
+  /** By id, the `name` of each provider whose file gives one. */
+  readonly providerNames: ReadonlyMap<string, string>;
   /** By id, each agent's name as its file says. */
   readonly agentNames: ReadonlyMap<string, string>;
   /** By id, each hub's name as its file says. */
@@ -165,6 +167,10 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     return this.#facts?.providers.get(providerId);
   }
 
+  providerName(providerId: string): string | undefined {
+    return this.#facts?.providerNames.get(providerId);
+  }
+
   currency(): string {
     return this.#facts?.currency ?? defaultCurrency;
   }
@@ -233,6 +239,11 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
           value.id,
           providerIsLocal(value) ? "local" : "cloud",
         ]),
+      ),
+      providerNames: new Map(
+        filesOf(workspace, "provider").flatMap(({ value }) =>
+          value.name === undefined ? [] : [[value.id, value.name] as const],
+        ),
       ),
       agentNames: new Map(
         filesOf(workspace, "agent")

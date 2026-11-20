@@ -230,9 +230,19 @@ export interface CliCommand {
    * to `show` when the word comes right after `runs`, lists them in
    * `halonic runs --help`, and gives every command the same usage error for
    * a word that isn't one of them. A command with subcommands takes no
-   * arguments of its own, only options.
+   * arguments of its own, only options, unless it sets
+   * {@link CliCommand.argumentsBesideSubcommands}.
    */
   readonly subcommands?: readonly CliCommand[];
+  /**
+   * Whether a command with subcommands also takes arguments of its own, such
+   * as `deploy <deployment>` next to `deploy status <deployment>`. Then a
+   * first word that names none of its subcommands is the command's own
+   * argument, not an unknown command, so a subcommand's name always wins
+   * over an argument spelled the same (requirement
+   * `cli.subcommand-or-argument`).
+   */
+  readonly argumentsBesideSubcommands?: boolean;
   /**
    * Runs the command and returns what it did; `runCli` prints it. The
    * result is only the end: what happens while it runs, such as a live ◌

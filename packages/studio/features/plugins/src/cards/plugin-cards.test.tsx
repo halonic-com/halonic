@@ -295,7 +295,7 @@ verifies("plugins.plugin-cards", () => {
       const { caller, answer } = callerWithAnswers();
       const { feed, set } = feedOf([weather("on")]);
       const View = await homeCards(feed, caller);
-      const view = render(<View context={context} />);
+      const view = render(<View context={context} attempt={0} />);
       await answer("Sunny");
       expect(view.querySelectorAll("h3")).toHaveLength(1);
       expect(view.textContent).toContain("Sunny");
@@ -308,7 +308,7 @@ verifies("plugins.plugin-cards", () => {
       const { caller, calls, answer } = callerWithAnswers();
       const { feed, set } = feedOf([weather("on")]);
       const View = await homeCards(feed, caller);
-      const view = render(<View context={context} />);
+      const view = render(<View context={context} attempt={0} />);
       await answer("Sunny");
 
       set([weather("not-trusted")]);

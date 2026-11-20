@@ -49,4 +49,66 @@ describe("RemoteRunner", () => {
     expect((error as Error).message).toContain("401");
     expect((error as Error).message).not.toContain("s3cret");
   });
+
+  // HAL-14022: right after a deploy, some of Cloudflare's edge servers don't route the new
+  // workers.dev address yet and answer their own HTML "Page not found" instead of the Worker.
+  it("asks again while Cloudflare's edge answers its HTML not-found page", async () => {
+    const answers = [edgeNotFound(), edgeNotFound(), Response.json({ status: "passed" })];
+    const waits: number[] = [];
+    const runner = new RemoteRunner("https://w.example", "tok", queuedFetch(answers), {
+      sleep: async (ms) => {
+        waits.push(ms);
+      },
+    });
+    expect(await runner.run("c1")).toEqual({ status: "passed" });
+    expect(waits).toEqual([1000, 2000]);
+  });
+
+  it("gives up with the status once the edge keeps answering not found", async () => {
+    const answers = Array.from({ length: 20 }, () => edgeNotFound());
+    let tries = 0;
+    const runner = new RemoteRunner(
+      "https://w.example",
+      "tok",
+      (async () => {
+        tries += 1;
+        return answers.shift() ?? edgeNotFound();
+      }) as unknown as typeof fetch,
+      { sleep: async () => {} },
+    );
+    const error = await runner.cases().catch((e: unknown) => e as Error);
+    expect((error as Error).message).toContain("answered GET /cases with 404");
+    expect(tries).toBe(8);
+  });
+
+  it("never asks again when the Worker itself answers 404", async () => {
+    let tries = 0;
+    const runner = new RemoteRunner(
+      "https://w.example",
+      "tok",
+      (async () => {
+        tries += 1;
+        return new Response("The test Worker has no POST /run.", { status: 404 });
+      }) as unknown as typeof fetch,
+      { sleep: async () => {} },
+    );
+    const error = await runner.run("c1").catch((e: unknown) => e as Error);
+    expect((error as Error).message).toContain("The test Worker has no POST /run.");
+    expect(tries).toBe(1);
+  });
 });
+
+function edgeNotFound(): Response {
+  return new Response("<!DOCTYPE html><title>Page not found</title>", {
+    status: 404,
+    headers: { "content-type": "text/html; charset=UTF-8" },
+  });
+}
+
+function queuedFetch(answers: Response[]): typeof fetch {
+  return (async () => {
+    const answer = answers.shift();
+    if (answer === undefined) throw new Error("The test asked more often than it planned.");
+    return answer;
+  }) as unknown as typeof fetch;
+}

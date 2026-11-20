@@ -367,3 +367,40 @@ verifies("shell.studio-phone", () => {
     expect(container.querySelector('dialog[open][aria-label="Search"]')).toBeNull();
   });
 });
+
+verifies("shell.place-signal-changes", () => {
+  it("shows a new count in the bottom navigation as soon as the place says its signal changed", () => {
+    // An answer drops the Inbox's count at once; the phone's bar mustn't wait for a page move (HAL-13371).
+    let waiting = 1;
+    const listeners = new Set<() => void>();
+    const countingInbox = defineFeature({
+      id: "inbox",
+      title: "Inbox",
+      register(studio) {
+        studio.places.add({
+          id: "inbox",
+          view: "InboxView",
+          load: async () => ({ InboxView }),
+          signal: () => ({ mark: "count", value: waiting, spoken: `${waiting} waiting` }),
+          subscribeSignal: (_context, listener) => {
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+          },
+        });
+      },
+    });
+    const { container } = renderPhoneWindow([countingInbox, agentsFeature]);
+    const inbox = () =>
+      container
+        .querySelector('nav[aria-label="Places"] a[aria-label^="Inbox"]')
+        ?.getAttribute("aria-label");
+    expect(inbox()).toBe("Inbox, 1 waiting");
+
+    act(() => {
+      waiting = 0;
+      for (const listener of listeners) listener();
+    });
+
+    expect(inbox()).toBe("Inbox");
+  });
+});

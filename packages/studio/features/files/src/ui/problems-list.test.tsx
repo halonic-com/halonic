@@ -153,5 +153,41 @@ describe("problems list", () => {
       expect(page.querySelector("[hidden]")).toBeNull();
       expect(document.activeElement?.getAttribute("data-line")).toBe("5");
     });
+
+    // The kit's rings keep a transparent outline, which turns Highlight in high contrast, where
+    // the browser drops the ring's shadow.
+    describe("keyboard focus that shows in high contrast", () => {
+      function panel(): HTMLElement {
+        return render(
+          <ProblemsPanel
+            problems={three}
+            elsewhere={{ count: 1, firstFile: "b.yaml" }}
+            onGo={() => {}}
+            onOpenFile={() => {}}
+          />,
+        );
+      }
+
+      it("on the header", () => {
+        const header = panel().querySelector("section > button");
+
+        expect(header?.className).toContain("focus-ring-inset");
+        expect(header?.className).not.toContain("outline-none");
+      });
+
+      it("on a problem's row", () => {
+        const row = panel().querySelector("li button");
+
+        expect(row?.className).toContain("focus-ring-inset");
+        expect(row?.className).not.toContain("outline-none");
+      });
+
+      it("on the link to another file, drawn outside it", () => {
+        const link = panel().querySelector("p button");
+
+        expect(link?.className).toMatch(/(^|\s)focus-ring(\s|$)/);
+        expect(link?.className).not.toContain("outline-none");
+      });
+    });
   });
 });

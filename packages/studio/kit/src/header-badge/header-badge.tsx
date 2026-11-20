@@ -6,9 +6,19 @@ import { InfoIcon } from "../icons/info-icon.tsx";
 import { Menu, type MenuEntry, type MenuTriggerProps } from "../menu/menu.tsx";
 import { usePresentation } from "../presentation/presentation.tsx";
 
+/**
+ * Where a badge's phone line sits: `more`, under the workspace row in More, indented 60px to its
+ * name, with a 1px `border` under it; `strip`, a row of the phone's notice strip, indented 16px
+ * with no line of its own, since the strip draws the lines between its rows; `none`, no line, for
+ * a badge among the chips of a wrapping row.
+ */
+export type HeaderBadgePhoneLine = "more" | "strip" | "none";
+
 /** The sample chip: it opens a Menu, or on a phone the panel sheet with the same items. */
 export interface HeaderBadgeMenu {
   readonly as: "menu";
+  /** Its line on a phone; `more` when left out. */
+  readonly phoneLine?: HeaderBadgePhoneLine | undefined;
   /** The badge's words: "Sample · test model". */
   readonly children: string;
   /** The menu's first line: "Runs on the built-in test model, with scripted replies. No key, no cost." */
@@ -24,6 +34,8 @@ export interface HeaderBadgeMenu {
 /** The trust badge: it opens the trust check, not a menu. */
 export interface HeaderBadgeButton {
   readonly as: "button";
+  /** Its line on a phone; `more` when left out. */
+  readonly phoneLine?: HeaderBadgePhoneLine | undefined;
   /** The state, in `fg-muted`: "Not trusted yet". */
   readonly children: string;
   /** Where it leads, in `accent-text` after a middle dot: "Review". */
@@ -85,16 +97,23 @@ export const headerBadgeMenuClasses = `${badgeClasses} ${padding.menu}`;
 
 const iconSlot = "inline-grid size-3.5 shrink-0 place-items-center *:size-full";
 
-/** On a phone the badge has its own 48px line in More, under the workspace row and level with its name (20.1). */
-const phoneLine = "flex min-h-touch items-center border-b border-border pe-4 ps-15 py-1";
+/**
+ * On a phone the badge has its own 48px line in More, under the workspace row and level with its
+ * name (20.1). In the notice strip there's no name to line up with, so it takes the strip's 16px.
+ */
+const phoneLines = {
+  more: "flex min-h-touch items-center border-b border-border pe-4 ps-15 py-1",
+  strip: "flex min-h-touch items-center pe-4 ps-4 py-1",
+} as const;
 
 /**
  * The badge in the title bar's header slot: the sample chip (`as="menu"`) or the trust badge
  * (`as="button"`). A real button drawn as a neutral Status chip, so it reads as a state but can be
  * clicked. The slot holds one at a time; the trust badge wins (component specs 20.1).
  *
- * On a phone it sits on its own 48px line, which the shell puts under the workspace row in More.
- * There the sample chip calls `onOpenSheet` instead of opening a Menu.
+ * On a phone it sits on its own 48px line, which the shell puts under the workspace row in More,
+ * or with `phoneLine="strip"` in the notice strip under the top bar. There the sample chip calls
+ * `onOpenSheet` instead of opening a Menu.
  *
  * `as="status"` is the phone's connection label, which sits in the top bar itself: 32px high with
  * a 48px target, a dot and the state in words, and a chevron to its details. Colour never carries
@@ -105,6 +124,9 @@ const phoneLine = "flex min-h-touch items-center border-b border-border pe-4 ps-
  *   Sample · test model
  * </HeaderBadge>
  * <HeaderBadge as="button" action="Review" onClick={openTrustCheck}>Not trusted yet</HeaderBadge>
+ * <HeaderBadge as="button" action="Review" phoneLine="strip" onClick={openTrustCheck}>
+ *   Not trusted yet
+ * </HeaderBadge>
  * <HeaderBadge as="status" tone="attention" action="Details" onClick={openDetails}>
  *   Can't reach your computer
  * </HeaderBadge>
@@ -116,7 +138,11 @@ export function HeaderBadge(props: HeaderBadgeProps) {
   const phone = usePresentation() === "phone";
   const badge =
     phone || props.as === "button" ? <PlainBadge props={props} /> : <MenuBadge props={props} />;
-  return phone ? <div className={phoneLine}>{badge}</div> : badge;
+  const line = props.phoneLine ?? "more";
+  if (!phone || line === "none") {
+    return badge;
+  }
+  return <div className={phoneLines[line]}>{badge}</div>;
 }
 
 /** The trust badge, or the sample chip on a phone: a button that opens no menu. */

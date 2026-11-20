@@ -1,5 +1,6 @@
 import type { Secrets } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
+import { type KnownRequest, refuseUnknownAtCompatible } from "./compatible-request.ts";
 import { OpenAiReplyReader } from "./openai-reply.ts";
 import { refuseStoredPrompt, refuseUrlInputs } from "./openai-sources.ts";
 import { type Fetch, passThrough, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
@@ -28,8 +29,66 @@ const openAiApi: ProviderApi = {
   name: "OpenAI",
   ownOrigin: openAiOrigin,
   ownPath: "/v1/responses",
-  pathUnder: (baseUrl) => `${baseUrl}/responses`,
+  pathUnder: (basePath) => `${basePath}/responses`,
 };
+
+/** The Responses tool types the program runs itself; OpenAI runs every other one on its side. */
+const programToolTypes = ["custom", "function", "local_shell"];
+
+/**
+ * What a compatible provider is sent of a Responses request: the top-level
+ * fields OpenAI's reference names, and only the tools the program runs
+ * itself. A `tool_choice` is `auto`, `none` or `required`, one of those
+ * tools, or an `allowed_tools` list of them.
+ */
+const openAiKnown: KnownRequest = {
+  name: "OpenAI",
+  fields: new Set([
+    "background",
+    "conversation",
+    "include",
+    "input",
+    "instructions",
+    "max_output_tokens",
+    "max_tool_calls",
+    "metadata",
+    "model",
+    "parallel_tool_calls",
+    "previous_response_id",
+    "prompt",
+    "prompt_cache_key",
+    "prompt_cache_retention",
+    "reasoning",
+    "safety_identifier",
+    "service_tier",
+    "store",
+    "stream",
+    "stream_options",
+    "temperature",
+    "text",
+    "tool_choice",
+    "tools",
+    "top_logprobs",
+    "top_p",
+    "truncation",
+    "user",
+  ]),
+  isProgramTool: (type) => typeof type === "string" && programToolTypes.includes(type),
+  isKnownToolChoice: isKnownOpenAiToolChoice,
+};
+
+/** True for a Responses `tool_choice` that names no tool the provider runs itself. */
+function isKnownOpenAiToolChoice(choice: unknown): boolean {
+  if (typeof choice === "string") return ["auto", "none", "required"].includes(choice);
+  if (!isPlainObject(choice)) return false;
+  const type = choice["type"];
+  if (type !== "allowed_tools") return openAiKnown.isProgramTool(type);
+  const allowed = choice["tools"];
+  return (
+    Array.isArray(allowed) &&
+    allowed.every((tool) => isPlainObject(tool) && openAiKnown.isProgramTool(tool["type"]))
+  );
+}
 
 /**
  * The request headers that go on to OpenAI. The program's key, its
@@ -125,6 +184,7 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
       const request = parseModelRequest(sent);
       refuseStoredPrompt(request);
       refuseUrlInputs(request);
+      if (target.atCompatibleProvider) refuseUnknownAtCompatible(request, openAiKnown);
       const call = readModelCall("openai", request, "input");
       const body = withoutProviderReach(sent, request, openAiReach);
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);

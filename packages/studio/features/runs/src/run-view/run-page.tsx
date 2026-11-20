@@ -50,9 +50,10 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
   const instructionTrust = context.services.find(InstructionTrustHostService);
   const sandboxStartCheck = context.services.find(sandboxStartCheckKey);
   const runStart = context.services.find(RunStartHostService);
+  const list = context.services.get(RunsListService);
   return (
     <RunView
-      list={context.services.get(RunsListService)}
+      list={list}
       runId={item.id}
       engine={engineWordsOf(context)}
       {...(step === undefined ? {} : { step })}
@@ -67,7 +68,13 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
       {...(runStart === undefined ? {} : { runStart })}
       {...(openPlace === undefined
         ? {}
-        : { goToRuns: () => openPlace("runs"), reviewInInbox: () => openPlace("inbox") })}
+        : {
+            goToRuns: () => openPlace("runs"),
+            reviewInInbox: () => {
+              list.reviewInInbox(item.id);
+              openPlace("inbox");
+            },
+          })}
       {...(openItem === undefined
         ? {}
         : {
@@ -105,7 +112,7 @@ export interface RunViewProps {
   readonly openModels?: () => void;
   /** Opens the Runs list, for a run that isn't there any more. */
   readonly goToRuns?: () => void;
-  /** Opens the Inbox, for Review in Inbox; without it the button isn't there. */
+  /** Opens the Inbox on what the run waits on, for Review in Inbox; without it the button isn't there. */
   readonly reviewInInbox?: () => void;
   /** Opens another run's page, for a child run; without it the button isn't there. */
   readonly openRun?: (runId: string) => void;
@@ -428,6 +435,9 @@ function pageContext(
       return source.workflow(other.hubId, other.workflowId)?.name ?? other.workflowId;
     },
     providerKind: (id: string) => source.providerKind(id),
+    ...(source.providerName === undefined
+      ? {}
+      : { providerName: (id: string) => source.providerName?.(id) }),
     ...(source.agentName === undefined
       ? {}
       : { agentName: (id: string) => source.agentName?.(id) }),

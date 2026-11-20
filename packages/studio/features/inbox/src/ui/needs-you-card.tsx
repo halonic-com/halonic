@@ -1,6 +1,6 @@
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { Button, List, usePresentation } from "@halonicjs/studio-kit";
-import type { HomeCardProps } from "@halonicjs/studio-shell";
+import { firstLoad, type HomeCardProps } from "@halonicjs/studio-shell";
 import { use, useCallback, useSyncExternalStore } from "react";
 import { InboxService } from "../api.ts";
 import type { Inbox } from "../inbox.ts";
@@ -12,13 +12,14 @@ import { useRunFacts } from "./use-run-facts.ts";
 export const PHONE_ROWS = 3;
 
 /** Home's Needs you card: the open workspace's Inbox, from `InboxService`. */
-export function NeedsYouCard({ context }: HomeCardProps) {
+export function NeedsYouCard({ context, attempt }: HomeCardProps) {
   const { openPlace } = context;
   const runFacts = useRunFacts(context.services.find(RunsListService));
   return (
     <NeedsYouView
       inbox={context.services.get(InboxService)}
       runFacts={runFacts}
+      attempt={attempt}
       {...(openPlace === undefined ? {} : { openInbox: () => openPlace("inbox") })}
     />
   );
@@ -33,6 +34,8 @@ export interface NeedsYouViewProps {
   readonly openInbox?: () => void;
   /** The clock for the waiting times; tests pass a fixed one. */
   readonly now?: () => Date;
+  /** The section's Try again count from {@link HomeCardProps}; a new one loads again after a failed first load. */
+  readonly attempt?: number;
 }
 
 /**
@@ -49,12 +52,13 @@ export function NeedsYouView({
   runFacts,
   openInbox,
   now = () => new Date(),
+  attempt = 0,
 }: NeedsYouViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
   const state = useSyncExternalStore(subscribe, () => inbox.state);
   const phone = usePresentation() === "phone";
   // Called on every render, as React asks: the promise stays settled once the first list is in.
-  use(firstLoad(inbox));
+  use(firstLoad(inbox, attempt));
   // A fixed setup item stays in the Inbox while it is open, but nothing waits on it.
   const waiting = state.items.filter((item) => item.kind !== "setup" || item.fixed !== true);
   const shown = phone ? waiting.slice(0, PHONE_ROWS) : waiting;
@@ -78,41 +82,4 @@ export function NeedsYouView({
       ) : null}
     </>
   );
-}
-
-/** The first load of each Inbox: on its way, or done. */
-const firstLoads = new WeakMap<Inbox, Promise<void>>();
-
-/**
- * Settles when the Inbox's first list has loaded, or fails with the reason it couldn't, so the
- * section shows its skeleton, then its rows or its error. A failed load is forgotten, so the
- * section's **Try again**, which mounts the card again, loads the Inbox again.
- */
-function firstLoad(inbox: Inbox): Promise<void> {
-  const known = firstLoads.get(inbox);
-  if (known !== undefined) return known;
-  if (inbox.state.loaded) {
-    const done = Promise.resolve();
-    firstLoads.set(inbox, done);
-    return done;
-  }
-  const load = new Promise<void>((resolve, reject) => {
-    let stop = () => {};
-    const settle = () => {
-      const { loaded, error } = inbox.state;
-      if (!loaded && error === undefined) return;
-      stop();
-      if (loaded) {
-        resolve();
-      } else {
-        firstLoads.delete(inbox);
-        reject(error);
-      }
-    };
-    stop = inbox.subscribe(settle);
-  });
-  firstLoads.set(inbox, load);
-  // A load that failed before: this is Try again, so load again.
-  if (inbox.state.error !== undefined) void inbox.refresh();
-  return load;
 }

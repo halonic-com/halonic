@@ -11,6 +11,7 @@ import {
 } from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { clientSecretHosts } from "../sign-in/client-secret-hosts.ts";
 import {
   type PluginSecretWriter,
   type PluginSettingProblem,
@@ -385,9 +386,12 @@ export function secretHosts(plugin: Plugin, secret: string): string {
   for (const secrets of declared) {
     if (secrets === undefined || !Object.hasOwn(secrets, secret)) continue;
     const declaredSecret = secrets[secret];
-    // A client secret has no hosts of its own: Halonic's sign-in code sends it.
+    // A client secret has no hosts of its own: Halonic's sign-in code sends it
+    // to the token and revoke addresses of the sign-in that names it.
     const secretHostList =
-      declaredSecret !== undefined && "hosts" in declaredSecret ? declaredSecret.hosts : [];
+      declaredSecret !== undefined && "hosts" in declaredSecret
+        ? declaredSecret.hosts
+        : clientSecretHosts(plugin, secret);
     for (const host of secretHostList) {
       if (typeof host === "string") {
         hosts.add(host);

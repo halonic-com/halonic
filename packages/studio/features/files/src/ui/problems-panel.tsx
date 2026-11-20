@@ -56,7 +56,7 @@ export function ProblemsPanel({
         type="button"
         aria-expanded={open}
         aria-controls={id}
-        className="flex items-center gap-2 px-4 py-1 text-left text-small font-medium text-fg outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-accent"
+        className="flex items-center gap-2 px-4 py-1 text-left text-small font-medium text-fg hover:bg-surface-muted focus-ring-inset"
         onClick={() => setOpen(!open)}
       >
         <span aria-hidden="true">{open ? "▾" : "▸"}</span>
@@ -75,7 +75,7 @@ export function ProblemsPanel({
                   type="button"
                   data-line={issue.line}
                   aria-label={filesWords.problemRead(issue.severity, issue.line, issue.message)}
-                  className="flex w-full items-baseline gap-2 px-4 py-0.5 text-left text-small text-fg outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-accent"
+                  className="flex w-full items-baseline gap-2 px-4 py-0.5 text-left text-small text-fg hover:bg-surface-muted focus-ring-inset"
                   onClick={() => onGo(issue)}
                 >
                   <span
@@ -97,7 +97,7 @@ export function ProblemsPanel({
             {filesWords.problemsElsewhere(elsewhere.count)}{" "}
             <button
               type="button"
-              className="text-accent-text underline outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="text-accent-text underline focus-ring"
               onClick={() => onOpenFile(elsewhere.firstFile ?? "")}
             >
               {elsewhere.firstFile}

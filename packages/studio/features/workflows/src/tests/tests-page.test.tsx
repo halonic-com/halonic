@@ -64,14 +64,19 @@ verifies("workflows.tests.page", () => {
   });
 
   it("describes each row's button by its state, and a failed one's also by its sentence", async () => {
-    const { page } = await open({ tests: async () => afterRun });
+    const notRun = { name: "new customer", input: "{}" };
+    const { page } = await open({
+      tests: async () => ({ ...afterRun, cases: [...afterRun.cases, notRun] }),
+    });
     const description = (name: string) =>
       (buttonNamed(page, name)?.getAttribute("aria-describedby") ?? "")
         .split(" ")
         .map((id) => document.getElementById(id)?.textContent)
         .join(" ");
 
-    expect(description("invoice run")).toBe("Passed:");
+    // The colon leads into a failed test's sentence only; alone, a braille display shows it.
+    expect(description("invoice run")).toBe("Passed");
+    expect(description("new customer")).toBe("Not run yet");
     expect(description("personal mail")).toBe(
       'Failed: Expected to end in "archive", ended in "reply".',
     );
@@ -135,17 +140,18 @@ verifies("workflows.tests.page", () => {
     expect(runTests).toHaveBeenCalledTimes(2);
   });
 
-  it("shows no path or stack when the tests can't be run", async () => {
+  it("words an internal error as one, with Copy details and no path or stack", async () => {
     const leak = new Error("ENOENT: /srv/studio/.halonic/tests.json\n    at read (tests.ts:1:1)");
     const runTests = vi.fn().mockRejectedValue(leak);
     const { page, toasts } = await open({ tests: async () => afterRun, runTests });
     await act(async () => buttonNamed(page, "Run tests")?.click());
 
-    const title = toasts.list()[0]?.title ?? "";
-    expect(title).toBe(
-      "Couldn't run the tests: The engine isn't answering. It may still be starting.",
-    );
+    const toast = toasts.list()[0];
+    const title = toast?.title ?? "";
+    expect(title).toBe("Couldn't run the tests: Halonic ran into a problem it can't explain yet.");
     expect(title).not.toMatch(/srv|ENOENT| at /);
+    expect(toast?.action?.label).toBe("Copy details");
+    expect(runTests).toHaveBeenCalledTimes(1);
   });
 
   it("shows no path or stack when the tests can't be read", async () => {

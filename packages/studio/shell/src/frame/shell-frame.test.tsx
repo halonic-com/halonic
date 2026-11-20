@@ -124,14 +124,39 @@ verifies("shell.frame", () => {
     expect(strip.contains(main)).toBe(false);
 
     expect(strip.textContent).toBe("Couldn't save Support reply");
+    const row = strip.querySelector("[data-notice-save]") as HTMLElement;
     // Hidden unless the note inside is a problem, so "Saved" puts no bar on a phone.
-    expect(strip.className).toMatch(/(^| )hidden( |$)/);
-    expect(strip.className).toContain("has-[[data-problem]]:flex");
-    expect(strip.className).toContain("min-h-touch");
-    expect(strip.className).toContain("has-[[data-problem=danger]]:bg-danger-soft");
-    expect(strip.className).toContain("has-[[data-problem=warning]]:bg-warning-soft");
-    // The badges stay out of it for now.
+    expect(row.className).toMatch(/(^| )hidden( |$)/);
+    expect(row.className).toContain("has-[[data-problem]]:flex");
+    expect(row.className).toContain("min-h-touch");
+    expect(row.className).toContain("border-b border-border");
+    expect(row.className).toContain("has-[[data-problem=danger]]:bg-danger-soft");
+    expect(row.className).toContain("has-[[data-problem=warning]]:bg-warning-soft");
+    // The desktop's badges stay out of it: the phone gets its own rows through phoneBadges.
     expect(strip.textContent).not.toContain("Not trusted yet");
+  });
+
+  it("puts the phone's badge rows in the strip after the save problem's row", () => {
+    const { container } = renderFrame(undefined, {
+      saveNote: <span data-problem="danger">Couldn't save Support reply</span>,
+      phoneBadges: <div data-notice-row="">Needs sign-in again · Fix</div>,
+    });
+    act(() => media.resize(400));
+    const strip = container.querySelector("[data-phone-notices]") as HTMLElement;
+    expect([...strip.children].map((row) => row.textContent)).toEqual([
+      "Couldn't save Support reply",
+      "Needs sign-in again · Fix",
+    ]);
+  });
+
+  it("shows the badge rows on a phone without a save note, and none on the desktop", () => {
+    const badges = <div data-notice-row="">Not trusted yet · Review</div>;
+    const { container } = renderFrame(undefined, { saveNote: null, phoneBadges: badges });
+    expect(container.querySelector("[data-phone-notices]")).toBeNull();
+    act(() => media.resize(400));
+    expect(container.querySelector("[data-phone-notices]")?.textContent).toBe(
+      "Not trusted yet · Review",
+    );
   });
 
   it("puts no strip on a phone without a save note", () => {

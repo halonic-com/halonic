@@ -4,7 +4,7 @@ import { KindedError } from "@halonicjs/std";
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
 import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { buttonNamed, memoryRuns, runSummary, show, unmount } from "../test-support.tsx";
 import { RunsView } from "./runs-view.tsx";
@@ -24,10 +24,20 @@ function Connected(props: {
   source: RunsSource;
   openRun?: (id: string) => void;
   seeAll?: () => void;
-  reviewInInbox?: () => void;
+  reviewInInbox?: (runId: string) => void;
 }) {
   const { load, retry } = useRuns(props.source);
-  return <RunsView {...props} load={load} retry={retry} workflow={reply} />;
+  const [picked, setPicked] = useState<string | undefined>();
+  return (
+    <RunsView
+      {...props}
+      load={load}
+      retry={retry}
+      workflow={reply}
+      picked={picked}
+      onPick={setPicked}
+    />
+  );
 }
 
 const finished = runSummary({
@@ -222,7 +232,7 @@ verifies("workflows.runs.card-receipt", () => {
     expect(card.textContent).not.toContain("Done");
   });
 
-  it("shows the banner of a run that waits for you, and Review in Inbox opens the Inbox", async () => {
+  it("shows the banner of a run that waits for you, and Review in Inbox opens the Inbox on that run", async () => {
     const waiting = runSummary({
       id: "run_a_01wait1",
       approvals: [
@@ -248,7 +258,7 @@ verifies("workflows.runs.card-receipt", () => {
     const card = page.querySelector("aside") as HTMLElement;
     expect(card.querySelector('section[aria-label="Waiting for you"]')).not.toBeNull();
     await act(async () => buttonNamed(card, "Review in Inbox")?.click());
-    expect(reviewInInbox).toHaveBeenCalledOnce();
+    expect(reviewInInbox).toHaveBeenCalledExactlyOnceWith("run_a_01wait1");
   });
 
   it("shows Every step under the receipt, with Show the run log in it", async () => {

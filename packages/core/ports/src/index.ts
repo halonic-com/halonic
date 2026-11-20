@@ -45,6 +45,10 @@ export {
   type ToolRisk,
   type TrustGrant,
 } from "./connector-client.ts";
+export {
+  type ConnectorStartFailure,
+  connectorStartFailureOf,
+} from "./connector-start-failure.ts";
 export { ConnectorToolError, isConnectorToolError } from "./connector-tool-error.ts";
 export {
   type Coordination,

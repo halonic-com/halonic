@@ -1,4 +1,4 @@
-import type { RunEventBody } from "@halonicjs/events";
+import type { RunEventBody, ToolOutcome } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { entered, logOf } from "./run-log.test-helper.ts";
@@ -66,6 +66,93 @@ verifies("runs.run-view.step-events", () => {
     const [call] = stepEvents(sneaky, "step-0").toolCalls;
     expect(call?.tool).toBe("send\\u202eliame");
     expect(call?.args).toContain("Hi\\u200b");
+  });
+});
+
+const result = (tool: string, outcome?: ToolOutcome): RunEventBody => ({
+  type: "tool.result",
+  agent: "writer",
+  tool,
+  result: "The tool's own words, never shown.",
+  ...(outcome === undefined ? {} : { outcome }),
+});
+
+const unasked = (tool: string): RunEventBody => ({
+  type: "tool.unasked",
+  agent: "writer",
+  connector: "notion",
+  tool,
+  reason: "read-list",
+});
+
+const connectorStarted: RunEventBody = {
+  type: "connector.started",
+  state: "draft",
+  agent: "writer",
+  connector: "notes-mcp",
+  timeoutMs: 60_000,
+};
+
+verifies("runs.run-view.step-failed-call", () => {
+  it("marks a call that broke off without an answer, with its connector", () => {
+    const log = logOf("run_a_01jd8q", [
+      [0, entered("draft")],
+      [0, connectorStarted],
+      [0, called("create_note", { title: "Refund" })],
+      [0, result("create_note", "unknown")],
+    ]);
+
+    const [call] = stepEvents(log, "step-0").toolCalls;
+    expect(call?.failed).toEqual({ reason: "no-answer", connector: "notes-mcp" });
+  });
+
+  it("names the connector of a call its read list let through", () => {
+    const log = logOf("run_a_01jd8q", [
+      [0, entered("draft")],
+      [0, unasked("search_pages")],
+      [0, called("search_pages", { query: "refund" })],
+      [0, result("search_pages", "unknown")],
+    ]);
+
+    expect(stepEvents(log, "step-0").toolCalls[0]?.failed?.connector).toBe("notion");
+  });
+
+  it("gives no reason for a call that failed with an error, since only its text says why", () => {
+    const log = logOf("run_a_01jd8q", [
+      [0, entered("draft")],
+      [0, called("search_pages", { query: "refund" })],
+      [0, result("search_pages", "error")],
+    ]);
+
+    expect(stepEvents(log, "step-0").toolCalls[0]?.failed).toEqual({});
+  });
+
+  it("leaves a call that worked, an older log's call and a call still running as they are", () => {
+    const log = logOf("run_a_01jd8q", [
+      [0, entered("draft")],
+      [0, called("send_email", { to: "sam@acme.example" })],
+      [0, result("send_email", "ok")],
+      [0, called("search_pages", { query: "refund" })],
+      [0, result("search_pages")],
+      [0, called("create_note", { title: "Refund" })],
+    ]);
+
+    const calls = stepEvents(log, "step-0").toolCalls;
+    expect(calls).toHaveLength(3);
+    for (const call of calls) expect(call).not.toHaveProperty("failed");
+  });
+
+  it("finds the failed one of two calls to the same tool", () => {
+    const log = logOf("run_a_01jd8q", [
+      [0, entered("draft")],
+      [0, called("search_pages", { query: "refund" })],
+      [0, result("search_pages", "ok")],
+      [0, called("search_pages", { query: "invoice" })],
+      [0, result("search_pages", "unknown")],
+    ]);
+
+    const calls = stepEvents(log, "step-0").toolCalls;
+    expect(calls.map((call) => call.failed?.reason)).toEqual([undefined, "no-answer"]);
   });
 });
 

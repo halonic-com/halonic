@@ -53,7 +53,11 @@ export function BudgetBlock({ files, state }: BudgetBlockProps) {
   const currency = budget?.currency ?? defaultCurrency;
 
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-2">
+    <section
+      aria-labelledby={headingId}
+      data-workspace-section="budget"
+      className="flex flex-col gap-2"
+    >
       <div className="flex items-center justify-between gap-2">
         <h3 id={headingId} ref={heading} tabIndex={-1} className="text-heading">
           {BUDGET_HEADING}

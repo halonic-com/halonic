@@ -1,5 +1,6 @@
 import { symlink } from "node:fs/promises";
 import { join } from "node:path";
+import { ConnectorToolError } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
 import { openBody, post, type Setup, startRoutes } from "./connector-routes.test-helper.ts";
@@ -77,6 +78,36 @@ verifies("agent-host.connector-routes", () => {
       });
       expect(answer).not.toContain("/some/folder");
       expect(setup?.logged.join("")).toContain("The sandbox didn't start in /some/folder.");
+    });
+
+    it("answers a tool that answered with an error with its text, 200, and logs nothing", async () => {
+      const connector = await opened();
+      const failing = setup?.made[0];
+      if (failing) {
+        failing.failWith = new ConnectorToolError("notes", "echo", "ENOENT: no such file");
+      }
+      const response = await post(setup?.url ?? "", "/v1/connectors/call", {
+        connector,
+        tool: "echo",
+        args: {},
+      });
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ toolError: "ENOENT: no such file" });
+      expect(setup?.logged).toEqual([]);
+    });
+
+    it("answers a call that broke off with the fixed reason, 502", async () => {
+      const connector = await opened();
+      const failing = setup?.made[0];
+      if (failing) failing.failWith = new Error("The program exited with code 1.");
+      const response = await post(setup?.url ?? "", "/v1/connectors/call", {
+        connector,
+        tool: "echo",
+        args: {},
+      });
+      expect(response.status).toBe(502);
+      expect(await response.json()).toMatchObject({ error: { kind: "connector_failed" } });
+      expect(setup?.logged.join("")).toContain("The program exited with code 1.");
     });
 
     it("leaves the request's secret values out of the log when a start fails", async () => {

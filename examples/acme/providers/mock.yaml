@@ -10,6 +10,6 @@ options:
     sorter: [refund]
     writer:
       - Sam wants a refund for order 1042, which arrived damaged.
-      - Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.
+      - "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.\n\nAcme support"
     reporter:
       - "This week: 12 emails. Most asked about refunds for damaged orders. 2 replies are waiting for review."

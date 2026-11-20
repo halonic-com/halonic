@@ -17,34 +17,37 @@ export function useRunChanges(
   announceState: ((key: string, text: string) => void) | undefined,
 ): RefObject<HTMLDivElement | null> {
   const text = run === undefined ? undefined : runChangeText(run, log, contextFor(run));
-  useAnnounceRunChanges(run?.summary.id, text, announceState);
-  const page = useRef<HTMLDivElement>(null);
   const status = run === undefined ? "" : `${run.summary.status}:${runStanding(run.summary)}`;
+  useAnnounceRunChanges(run?.summary.id, status, text, announceState);
+  const page = useRef<HTMLDivElement>(null);
   useFocusHeadingWhenFocusGoes(page, status);
   return page;
 }
 
 /**
- * Reads the run's new state to a screen reader when it changes (a11y check A1): the first state
- * the page shows isn't a change, and neither is the page moving on to another run. A sentence that
- * can't be said yet (`undefined`) keeps the last one, so it is read once it can be.
+ * Reads the run's new state to a screen reader when its status changes (a11y check A1): the first
+ * state the page shows isn't a change, and neither is the page moving on to another run. Only the
+ * status counts, not the sentence, which also changes when nothing happened to the run ("until
+ * tomorrow 14:00" becomes "until 14:00" at midnight, HAL-12820). A sentence that can't be said yet
+ * (`undefined`) keeps the last status, so the change is read once it can be.
  */
 function useAnnounceRunChanges(
   runId: string | undefined,
+  status: string,
   text: string | undefined,
   announceState: ((key: string, text: string) => void) | undefined,
 ): void {
-  const said = useRef<{ readonly runId: string; readonly text: string } | undefined>(undefined);
+  const said = useRef<{ readonly runId: string; readonly status: string } | undefined>(undefined);
   useEffect(() => {
     if (runId === undefined || text === undefined) {
       return;
     }
     const before = said.current;
-    said.current = { runId, text };
-    if (before !== undefined && before.runId === runId && before.text !== text) {
+    said.current = { runId, status };
+    if (before !== undefined && before.runId === runId && before.status !== status) {
       announceState?.(runAnnouncementKey(runId), text);
     }
-  }, [runId, text, announceState]);
+  }, [runId, status, text, announceState]);
 }
 
 /**

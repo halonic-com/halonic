@@ -88,7 +88,7 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 wide:px-6">
       <PageBackLinkSlot />
       <div className="flex items-start justify-between gap-2">
-        <h1 ref={titleRef} tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
+        <h1 ref={titleRef} tabIndex={-1} className={trash.titleClassName}>
           {name}
         </h1>
         {trash.menu}
@@ -124,6 +124,7 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
         <ListedToolsWaiting
           model={toolsModel}
           sourceName={name}
+          engine={engineWordsOf(context)}
           {...(runCommand === undefined
             ? {}
             : { onReviewTrust: () => void runCommand(openTrustCommand) })}

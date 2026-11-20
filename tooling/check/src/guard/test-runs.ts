@@ -27,6 +27,10 @@ const ranStatuses = ["passed", "failed"];
  * When the base side's results come from an older green commit (`tested`),
  * the tests in files main changed since then are left out on both sides:
  * the pull request didn't make those changes (HAL-7660).
+ *
+ * When only the affected packages' tests ran (`affected`), the other
+ * packages are left out on both sides, result files or not. An affected
+ * package without a readable result file is still a finding (HAL-12539).
  */
 export function checkTestRuns(checkouts: Checkouts): GuardFinding[] {
   const { base, head } = checkouts;
@@ -37,8 +41,11 @@ export function checkTestRuns(checkouts: Checkouts): GuardFinding[] {
     }
   }
   const comparable = unchangedOnMain(checkouts);
-  const before = ranTests(checkouts.tested ?? base, "merge base", findings).filter(comparable);
-  const after = ranTests(head, "pull request", findings).filter(comparable);
+  const { affected } = checkouts;
+  const before = ranTests(checkouts.tested ?? base, "merge base", affected, findings).filter(
+    comparable,
+  );
+  const after = ranTests(head, "pull request", affected, findings).filter(comparable);
   // A deleted file has its own finding above.
   const fewerInFile = compareCounts(
     countBy(before, byFile),
@@ -79,14 +86,23 @@ function testFilesIn(context: CheckContext): string[] {
   });
 }
 
-/** The tests that ran in a checkout. A package with tests but no readable results is a finding. */
-function ranTests(context: CheckContext, side: string, findings: GuardFinding[]): TestOutcome[] {
+/**
+ * The tests that ran in a checkout, in the `affected` package folders (all
+ * when undefined). A package there with tests but no readable results is a
+ * finding.
+ */
+function ranTests(
+  context: CheckContext,
+  side: string,
+  affected: ReadonlySet<string> | undefined,
+  findings: GuardFinding[],
+): TestOutcome[] {
   const withTests = new Set(
     testFilesIn(context).map((file) => owningPackage(file, context.packages)?.directory),
   );
   const ran: TestOutcome[] = [];
   for (const pkg of context.packages) {
-    if (!withTests.has(pkg.directory)) {
+    if (!withTests.has(pkg.directory) || (affected !== undefined && !affected.has(pkg.directory))) {
       continue;
     }
     const results = readTestResults(context.root, pkg.directory);

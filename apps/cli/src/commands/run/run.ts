@@ -11,10 +11,11 @@ import {
   lookUpWorkflow,
   type RunDetail,
   RunEvents,
+  type RunProposal,
+  shortRunId,
   WorkflowRuns,
 } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
-import { KindedError } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import {
   type CommandContext,
@@ -27,7 +28,9 @@ import {
 import { followUntilStopped } from "../../follow-run.ts";
 import { type HarnessProgram, nodeHarnessPrograms } from "../../harness-programs.ts";
 import type { LocalEngine } from "../../local-engine-host.ts";
-import { type Phrase, plainText } from "../../messages/phrase.ts";
+import { openLocalProposals } from "../../local-proposals.ts";
+import type { Phrase } from "../../messages/phrase.ts";
+import { proposalsMessages } from "../../messages/proposals.ts";
 import { runMessages } from "../../messages/run.ts";
 import { workflowMessages } from "../../messages/workflow.ts";
 import { nearMatch } from "../../near-match.ts";
@@ -38,6 +41,7 @@ import {
   programAgentsOf,
   type SandboxGateRun,
   SandboxRefusedError,
+  type UnsandboxedAgent,
   unsandboxedWarning,
 } from "../../sandbox-gate.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
@@ -93,8 +97,6 @@ export interface RunSetup extends WorkspaceEngineSetup {
  * @throws OwnLineError when no hub, or more than one, has the workflow
  * @throws SandboxRefusedError when an agent needs the sandbox and it can't
  *   start here; nothing ran. No option skips this check
- * @throws KindedError `unavailable` when an agent is in a harness, which
- *   this computer's engine can't run yet; nothing ran
  * @throws OwnLineError when the run doesn't take an `--event` at its wait,
  *   or is gone when one is sent
  */
@@ -117,8 +119,8 @@ export async function runWorkflow(
   );
   const workflow = workflowToRun(workspace, typed, workspaceName, harness);
   const target = { dir, workspace, runs: [workflow], ending: runMessages.nothingRan() };
-  // Before trust: a run this engine can't start has nothing to trust (HAL-6580).
-  await refuseHarnessAgents(setup, target, workflow);
+  // Before trust: a run the sandbox can't start has nothing to trust (HAL-6580).
+  const sandboxChecked = await checkHarnessAgents(setup, target, workflow);
   const trust = await checkRunTrust(
     dir,
     workspace,
@@ -128,7 +130,11 @@ export async function runWorkflow(
     harness,
   );
   const runInput = await runInputOf(optionText(input, "input"), context.cwd);
-  const engine = await openWorkspaceEngine(context, setup, { ...target, trust });
+  const engine = await openWorkspaceEngine(context, setup, {
+    ...target,
+    trust,
+    ...(sandboxChecked === undefined ? {} : { sandboxChecked }),
+  });
   // Before the run's heading, and again first in the result, as print-ahead lines are.
   const warnings: Phrase[] = [
     ...(changesNotLive ? [runMessages.changesNotLive().phrase] : []),
@@ -140,10 +146,11 @@ export async function runWorkflow(
   const live = liveLines(context, { workspace, workspaceName, clock });
   // `--json --follow`: the events are printed as they happen, so the result holds only the run.
   const streaming = input.options["follow"] === true;
+  let followed: FollowedRun | StoppedResult;
   try {
     const events = eventsOf(input);
     const place = { workspace, name: workspaceName, dir: typedDir };
-    const followed = await followUntilStopped(
+    followed = await followUntilStopped(
       engine,
       workspace,
       (signal) =>
@@ -153,24 +160,30 @@ export async function runWorkflow(
         }),
       typedDir,
     );
-    if ("stopped" in followed) {
-      return followed;
-    }
-    const { run, unusedEvents } = followed;
-    const result = runResult(run, {
-      workspace,
-      workspaceName,
-      dir: typedDir,
-      clock,
-      unusedEvents,
-      debugging: context.debugging === true,
-    });
-    const json = streaming ? { run: run.summary } : result.json;
-    return { ...result, json, lines: [...warnings, ...result.lines] };
   } finally {
     live.end();
+    // Closing waits for the run's proposal folder to end, so its proposal is recorded after it.
     await engine.close();
   }
+  if ("stopped" in followed) {
+    return followed;
+  }
+  const { run, unusedEvents } = followed;
+  const result = runResult(run, {
+    workspace,
+    workspaceName,
+    dir: typedDir,
+    clock,
+    unusedEvents,
+    debugging: context.debugging === true,
+  });
+  const proposal = await waitingProposal(dir, run, setup, typedDir);
+  const json = {
+    ...(streaming ? { run: run.summary } : result.json),
+    ...(proposal === undefined ? {} : { proposal: proposal.json }),
+  };
+  const lines = [...warnings, ...result.lines, ...(proposal?.lines ?? [])];
+  return { ...result, json, lines };
 }
 
 /** What the command starts: the workflow, its input, and the version of the workspace it reads. */
@@ -260,45 +273,62 @@ function workflowToRun(
 }
 
 /**
- * Refuses a workflow with an agent in a harness before anything starts: the
- * engine `run` opens has no harness adapter, so the run would fail at that
- * agent's step. It comes before the trust check, which would only ask to
- * trust what this run can't start, and its fingerprint (HAL-6580). The
- * harness override and the sandbox are still checked first, so a computer
- * that can't start the sandbox says so first (HAL-5219); the engine isn't
- * opened.
+ * Checks the sandbox for a workflow with an agent in a harness before the
+ * trust check, so a computer whose sandbox can't start says so first and
+ * shows no trust check for a run that can't start (HAL-5219, HAL-6580).
+ * The engine then reuses the answer. A workflow with no such agent is
+ * checked where the engine opens, as before.
  *
+ * @returns the check's answer, or `undefined` when no agent is in a harness
  * @throws KindedError `invalid_input` when the run's harness would move an
  *   agent no check read into a program (exit 2)
  * @throws SandboxRefusedError when such an agent needs the sandbox and it
  *   can't start here (exit 9), with the hint that `--harness halonic` runs
  *   the workflow without it
- * @throws KindedError `unavailable` when an agent of the workflow, or of a
- *   workflow it starts, is in a harness; nothing ran
  */
-async function refuseHarnessAgents(
+async function checkHarnessAgents(
   setup: RunSetup,
   target: EngineRunsTarget,
   workflow: SandboxGateRun,
-): Promise<void> {
-  const [agent] = programAgentsOf(target.workspace, workflow);
-  if (agent === undefined) return;
+): Promise<UnsandboxedAgent[] | undefined> {
+  if (programAgentsOf(target.workspace, workflow).length === 0) return undefined;
   try {
-    await checkEngineRuns(setup, target);
+    return await checkEngineRuns(setup, target);
   } catch (error) {
     if (error instanceof SandboxRefusedError) {
       throw error.withHint(runMessages.sandboxRefusedHarnessHint());
     }
     throw error;
   }
-  const reason = runMessages.harnessNotAvailable(
-    printable(agent.value.name),
-    // The run's harness when `--harness` names one, as the run would use it.
-    printable(workflow.harness ?? agent.value.harness ?? ""),
-  );
-  throw new KindedError("unavailable", plainText(reason.phrase), {
-    fix: plainText(runMessages.harnessNotAvailableFix().phrase),
+}
+
+/**
+ * The line that says the run left a proposal and how to see it, after a
+ * run that ended with changes (HAL-6477): nothing in the person's files
+ * changed, so they decide with `halonic proposals`. Read once the engine
+ * has closed, since the run's folder ends just after its last event.
+ */
+async function waitingProposal(
+  dir: OpenWorkspaceDir,
+  run: RunDetail,
+  setup: RunSetup,
+  typedDir: string | undefined,
+): Promise<{ readonly lines: Phrase[]; readonly json: RunProposal } | undefined> {
+  const { status, id } = run.summary;
+  if (status !== "completed" && status !== "failed") return undefined;
+  const { proposals, close } = await openLocalProposals(dir.root, {
+    ...(setup.profile === undefined ? {} : { profile: setup.profile }),
+    ...(setup.engine?.git === undefined ? {} : { git: setup.engine.git }),
   });
+  try {
+    const record = await proposals.get(id);
+    if (record === null || record.settled !== undefined) return undefined;
+    const files = record.proposal.files.length;
+    const line = proposalsMessages.waiting(shortRunId(id), files, typedDir).phrase;
+    return { lines: [[], line], json: record.proposal };
+  } finally {
+    await close();
+  }
 }
 
 /** "✕ There's no workflow called "suport-reply" in Acme." with the near one when there is one. */

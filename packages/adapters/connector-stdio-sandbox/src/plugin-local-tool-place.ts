@@ -1,4 +1,4 @@
-import { isAbsolute, relative, sep } from "node:path";
+import { bothSpellings, isAbsolutePath, pathsOverlap } from "@halonicjs/adapter-system-node";
 import type { LocalToolPlace, PinnedRunner, StdioConfig } from "./local-tool-launch.ts";
 
 /**
@@ -13,8 +13,8 @@ export interface PluginLocalToolSetting {
   /**
    * The session's copy of the plugin's checked files (`copyCheckedPlugin`),
    * never the plugin's own folder: that is inside Halonic's data, which the
-   * session can't reach. It must lie outside the working folder and every
-   * denied path.
+   * session can't reach. It must lie outside the working and temp folders
+   * and every denied path, and hold none of them.
    */
   readonly pluginCopy: string;
   /**
@@ -48,12 +48,14 @@ export interface PluginLocalToolSetting {
  *
  * @throws a `RangeError` when a folder of the setting isn't an absolute
  *   path, which would be read from the host's own working folder
- * @throws a `RangeError` when the plugin's copy is inside the working
- *   folder or a denied path, where the session couldn't read it as it is
+ * @throws a `RangeError` when the plugin's copy is on, above or inside the
+ *   working folder, the temp folder or a denied path, as written or with
+ *   links resolved: the sandbox lets a read allowance win over a denial on
+ *   Windows, so a copy holding a denied path would reopen it there
  *
  * @example
- * pluginLocalToolPlace(stdio, { pluginCopy: "/halonic/launch-1/plugin", deniedPaths: ["/person/.ssh"], … });
- * // { readOnlyPaths: ["/halonic/launch-1/plugin"], deniedPaths: ["/person/.ssh"], sites: stdio.sites ?? [], … }
+ * pluginLocalToolPlace(stdio, { pluginCopy: "/halonic/launch-3/plugin", deniedPaths: ["/person/.ssh"], … });
+ * // { readOnlyPaths: ["/halonic/launch-3/plugin"], deniedPaths: ["/person/.ssh"], sites: stdio.sites ?? [], … }
  */
 export function pluginLocalToolPlace(
   stdio: StdioConfig,
@@ -61,18 +63,17 @@ export function pluginLocalToolPlace(
 ): LocalToolPlace {
   const { pluginCopy } = setting;
   const folders = [setting.workingFolder, setting.tempFolder, pluginCopy, ...setting.deniedPaths];
-  const relativeFolder = folders.find((folder) => !isAbsolute(folder));
+  const relativeFolder = folders.find((folder) => !isAbsolutePath(folder));
   if (relativeFolder !== undefined) {
     throw new RangeError(
       `The folder ${relativeFolder} isn't an absolute path, so the session's place can't be set up.`,
     );
   }
-  const holder = [setting.workingFolder, ...setting.deniedPaths].find((folder) =>
-    isInsideOrSame(pluginCopy, folder),
-  );
-  if (holder !== undefined) {
+  const kept = [setting.workingFolder, setting.tempFolder, ...setting.deniedPaths];
+  const overlapped = kept.find((folder) => overlapsAnySpelling(pluginCopy, folder));
+  if (overlapped !== undefined) {
     throw new RangeError(
-      `The plugin's copy ${pluginCopy} is inside ${holder}, so the session can't read it as it is.`,
+      `The plugin's copy ${pluginCopy} is on, above or inside ${overlapped}: it must be a folder of its own, apart from the session's folders and the denied paths.`,
     );
   }
   return {
@@ -88,9 +89,13 @@ export function pluginLocalToolPlace(
   };
 }
 
-/** Whether `path` is `folder` or inside it, comparing the paths as written. */
-function isInsideOrSame(path: string, folder: string): boolean {
-  const from = relative(folder, path);
-  const outside = from === ".." || from.startsWith(`..${sep}`) || isAbsolute(from);
-  return !outside;
+/**
+ * Whether `path` is on, above or inside `folder`, comparing each as written
+ * and with links resolved, the way the srt sandbox compares them.
+ */
+function overlapsAnySpelling(path: string, folder: string): boolean {
+  const folderSpellings = bothSpellings(folder);
+  return bothSpellings(path).some((spelling) =>
+    folderSpellings.some((other) => pathsOverlap(spelling, other)),
+  );
 }

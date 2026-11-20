@@ -185,6 +185,38 @@ verifies("cli.doctor-windows-drive", () => {
   });
 });
 
+verifies("cli.doctor-watch-limit", () => {
+  // Acme has three files, so a limit of 2 stands for a folder over Studio's 50,000.
+  it("warns when the workspace has more files than Studio watches, and still exits 0", async () => {
+    writeAcme();
+    const io = captureIo(folder);
+
+    const code = await runCli(["doctor", "--dir", "acme", "--json"], io, [
+      createDoctorCommand(() => machine(), { watchedFileLimit: 2 }),
+    ]);
+
+    expect(code).toBe(exitCode.ok);
+    expect(JSON.parse(io.stdout.join("\n")).checks[0]).toEqual({
+      check: "workspace",
+      status: "warning",
+      name: "Acme",
+      trust: "new",
+      tooManyFilesToWatch: 2,
+    });
+  });
+
+  it("says nothing about the watch for a workspace at the limit", async () => {
+    writeAcme();
+    const io = captureIo(folder);
+
+    await runCli(["doctor", "--dir", "acme", "--json"], io, [
+      createDoctorCommand(() => machine(), { watchedFileLimit: 3 }),
+    ]);
+
+    expect(JSON.parse(io.stdout.join("\n")).checks[0]).not.toHaveProperty("tooManyFilesToWatch");
+  });
+});
+
 verifies("cli.doctor-node", () => {
   it("adds the Node.js line the machine found, and still exits 0", async () => {
     const io = captureIo(folder);

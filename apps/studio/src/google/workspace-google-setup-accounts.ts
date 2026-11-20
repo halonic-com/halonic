@@ -12,6 +12,7 @@ import type {
   SignInEntry,
 } from "@halonicjs/studio-feature-google-setup/api";
 import type { SecretText } from "@halonicjs/studio-kit";
+import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { googleAccountOf } from "./google-account.ts";
 import { googleServices } from "./google-services.ts";
@@ -81,9 +82,6 @@ const disconnectFailed = "Halonic couldn't finish disconnecting this account.";
 function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : "The agent host didn't answer.";
 }
-
-/** Said when a change is tried in a window that has no agent host to make it. */
-const needsHost = "Halonic needs its agent host to save this, and it isn't running.";
 
 /** The client secret is typed in the app's own field; where it is kept is this computer. */
 const desktopEntry: SecretEntry = { kind: "field", keptOn: "this-computer", plainHttp: false };
@@ -189,6 +187,7 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
       answer = await host.disconnect(accountRef);
     } catch (error) {
       this.#tellListeners();
+      if (error instanceof EngineNotAnswering) throw error;
       throw new Error(`${disconnectFailed} ${reasonOf(error)}`, { cause: error });
     }
     this.#tellListeners();
@@ -237,10 +236,14 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
     return own === undefined ? [] : [own.email, ...own.clientSharedWith];
   }
 
-  /** The agent host that makes a change, or a refusal in plain words when the app has none. */
+  /**
+   * The agent host that makes a change. Without one, the engine isn't answering, which the page
+   * words as it does for a host that went: "Couldn't save this: the engine isn't answering. It
+   * may still be starting." (UX check G2).
+   */
   #host(): GoogleSetupHost {
     const { host } = this.#options;
-    if (host === undefined) throw new Error(needsHost);
+    if (host === undefined) throw new EngineNotAnswering();
     return host;
   }
 
@@ -249,12 +252,14 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
    * host may have finished before the answer was lost, so the page reads the accounts again.
    * A refusal the host words itself keeps its words and gets its kind, so the page shows it after
    * the colon ("Couldn't start the sign-in: there is no Google setup for this account.").
-   * Any other failure is one the page can't explain: its detail goes only to Copy details.
+   * An engine that isn't answering stays itself, so the page words it. Any other failure is one
+   * the page can't explain: its detail goes only to Copy details.
    */
   async #asked<T>(what: string, change: () => Promise<T>): Promise<T> {
     try {
       return await change();
     } catch (error) {
+      if (error instanceof EngineNotAnswering) throw error;
       const kind = refusalKindOf(error);
       if (kind !== undefined && error instanceof Error) {
         throw new KindedError(kind, error.message, { cause: error });

@@ -1,13 +1,20 @@
-import { Button, Callout, SkeletonBar } from "@halonicjs/studio-kit";
+import { Button, Callout, CommandBox, SkeletonBar } from "@halonicjs/studio-kit";
+import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import { useEffect, useId, useState } from "react";
+import { type LoadFailureLine, loadFailureLine } from "../listed-tools-load-failure.ts";
 import type { ListedToolsReviewState } from "../listed-tools-review-model.ts";
 import { listedToolsWords } from "../listed-tools-words.ts";
+import {
+  type LoadFailedHandlers,
+  LoadFailedText,
+  useLoadFailedActions,
+} from "./listed-tools-load-failed.tsx";
 import { PlainList } from "./plain-list.tsx";
 
 /** What the review shows instead of its rows and its button bar, or `null` when it shows them. */
 export type ReviewFallback =
   | { readonly kind: "loading" }
-  | { readonly kind: "load-failed"; readonly reason: string; readonly needsTrust: boolean }
+  | { readonly kind: "load-failed"; readonly error: unknown }
   | { readonly kind: "listing-refused"; readonly reason: string }
   | { readonly kind: "unreadable"; readonly toolName: string | undefined }
   | { readonly kind: "nothing-waiting" };
@@ -20,11 +27,7 @@ export function reviewFallback(state: ListedToolsReviewState): ReviewFallback | 
   const { snapshot } = state;
   if (snapshot === undefined) {
     return state.phase === "failed"
-      ? {
-          kind: "load-failed",
-          reason: state.loadError ?? "",
-          needsTrust: state.loadNeedsTrust === true,
-        }
+      ? { kind: "load-failed", error: state.loadError }
       : { kind: "loading" };
   }
   if (snapshot.listingRefused !== null) {
@@ -77,6 +80,29 @@ export interface ListedToolsFallbackBodyProps {
   readonly onRemoveApproval: (toolName: string) => Promise<void>;
   /** Why removing an approval failed, shown under the screen's text. */
   readonly error?: string | undefined;
+  /** The words for an engine that isn't answering, for where Studio runs; the desktop app's by default. */
+  readonly engine?: EngineWords;
+}
+
+/**
+ * Why the tools couldn't be listed, with a command to run when one helps. The review has no way to
+ * the trust check, so in a workspace that isn't trusted it offers no button; the connector page
+ * offers **Review**.
+ */
+function LoadFailedCallout({
+  line,
+  ...handlers
+}: LoadFailedHandlers & { readonly line: LoadFailureLine }) {
+  return (
+    <Callout tone="danger" action={useLoadFailedActions(line, handlers)}>
+      <LoadFailedText line={line} />
+      {line.command === undefined ? null : (
+        <div className="mt-2">
+          <CommandBox command={line.command} />
+        </div>
+      )}
+    </Callout>
+  );
 }
 
 /** The unreadable approval: removing it is the way out, once the service says which tool it is. */
@@ -129,21 +155,18 @@ export function ListedToolsFallbackBody({
   onTryAgain,
   onRemoveApproval,
   error,
+  engine = engineWords["desktop-app"],
 }: ListedToolsFallbackBodyProps) {
   switch (fallback.kind) {
     case "loading":
       return <LoadingRows />;
     case "load-failed":
-      // In a workspace that isn't trusted, trying again can't help; the connector page offers Review.
       return (
-        <Callout
-          tone="danger"
-          {...(fallback.needsTrust
-            ? {}
-            : { action: { label: listedToolsWords.tryAgain, onClick: onTryAgain } })}
-        >
-          {listedToolsWords.loadFailed(fallback.reason)}
-        </Callout>
+        <LoadFailedCallout
+          line={loadFailureLine(fallback.error, sourceName, engine)}
+          error={fallback.error}
+          onTryAgain={() => void onTryAgain()}
+        />
       );
     case "listing-refused":
       return (

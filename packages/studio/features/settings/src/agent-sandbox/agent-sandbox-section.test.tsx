@@ -320,14 +320,18 @@ it("shows no path or stack when the check, a setup or a removal throws", async (
   const { host } = fakeHost(needsSetup);
   host.check.mockRejectedValueOnce(leak);
   const { view } = await show(host);
-  expect(view.textContent).toContain("Couldn't check the sandbox: The engine isn't answering.");
+  expect(view.textContent).toContain(
+    "Couldn't check the sandbox: Halonic ran into a problem it can't explain yet.",
+  );
   expect(view.textContent).not.toMatch(/srv|ENOENT|host\.ts/);
 
   host.check.mockResolvedValue(needsSetup);
   await click(button(view, "Check again"));
   host.setUp.mockRejectedValueOnce(leak);
   await click(button(view, "Set up the sandbox"));
-  expect(view.textContent).toContain("The sandbox isn't set up: The engine isn't answering.");
+  expect(view.textContent).toContain(
+    "The sandbox isn't set up: Halonic ran into a problem it can't explain yet.",
+  );
   expect(view.textContent).not.toMatch(/srv|ENOENT|host\.ts/);
 });
 

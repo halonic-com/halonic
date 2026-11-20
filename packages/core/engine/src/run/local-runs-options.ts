@@ -59,6 +59,14 @@ export interface LocalRunsOptions {
    */
   budget?(): Promise<Budget | undefined>;
   /**
+   * Whether a harness step may start now, asked before each one starts, so a
+   * host that hears trust removed late still starts no harness program
+   * (HAL-12811). A no, or a check that rejects, fails the step before
+   * anything starts, as the model resolver refuses a model call in a
+   * workspace that isn't trusted. Without it, every harness step may start.
+   */
+  mayStartHarness?(): Promise<boolean>;
+  /**
    * What runs need to reach connectors. Without it, a run's model call
    * offers no connector's tools, and a `call-tool` effect fails the run.
    */

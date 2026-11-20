@@ -35,6 +35,8 @@ export interface GuardCase {
   readonly approvals?: ApprovalLookup;
   /** The checks to run; every check when left out. */
   readonly checks?: readonly GuardCheck[];
+  /** The package folders whose tests ran, when not every package's (HAL-12539). */
+  readonly affected?: ReadonlySet<string>;
 }
 
 /** What the guard reported, as `file: message` lines. */
@@ -75,6 +77,7 @@ export async function runGuard(guardCase: GuardCase): Promise<GuardOutcome> {
       base: loadContext(baseRoot),
       head: loadContext(headRoot),
       ...(testedRoot === undefined ? {} : { tested: loadContext(testedRoot) }),
+      ...(guardCase.affected === undefined ? {} : { affected: guardCase.affected }),
       branch,
       approvals,
       ...(guardCase.checks === undefined ? {} : { checks: guardCase.checks }),

@@ -26,6 +26,7 @@ import { Configuration } from "../configuration/configuration.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
 import { fileItemOf } from "../trash/file-item.ts";
 import { useAgentTrash } from "../trash/use-agent-trash.tsx";
+import { forgetFreshAgent, isFreshAgent } from "./fresh-agents.ts";
 import { pageWords } from "./page-words.ts";
 import { RenameField } from "./rename-field.tsx";
 import { type Load, useLoad } from "./use-load.ts";
@@ -154,8 +155,7 @@ export function AgentScreen({
     [host, hubId, id],
   );
   const users = useLoad<readonly AgentUser[]>(usersSource);
-  // Runs can't list anything in 0.1 (R9), so the page opens where the agent is finished (HAL-12399).
-  const [view, setView] = useState<AgentView>("configuration");
+  const { view, selectView, fresh } = useAgentView(hubId, id);
   const [saveFailed, setSaveFailed] = useState<string>();
   const ids = useTabIds();
   // Resolves to whether the change was written, so a page can put its control back when it wasn't.
@@ -226,7 +226,7 @@ export function AgentScreen({
           label={pageWords.views}
           tabs={agentTabs}
           selected={view}
-          onSelect={setView}
+          onSelect={selectView}
           ids={ids}
         />
       </header>
@@ -250,6 +250,7 @@ export function AgentScreen({
             defaultModel={defaultModel.load.kind === "ready" ? defaultModel.load.value : undefined}
             retryAliases={aliases.retry}
             retry={settings.retry}
+            startOnInstructions={fresh}
             save={save}
             openLibrary={openLibrary}
             reportNotSaved={reportNotSaved}
@@ -339,6 +340,23 @@ function runsLines(name: string, users: Load<readonly AgentUser[]>): readonly st
 }
 
 type AgentView = "configuration" | "runs";
+
+/**
+ * The view the page shows. Runs can't list anything in 0.1 (R9), so the page opens where the agent
+ * is finished, on Configuration (HAL-12399). An agent just made with nothing written opens there
+ * on Behaviour with Instructions focused (`agents.page.new-agent`); once the person picks a view,
+ * it is a page like any other, so coming back to Behaviour doesn't take the focus again.
+ */
+function useAgentView(hubId: string, id: string) {
+  const [fresh, setFresh] = useState(() => isFreshAgent(hubId, id));
+  useEffect(() => forgetFreshAgent(hubId, id), [hubId, id]);
+  const [view, setView] = useState<AgentView>("configuration");
+  const selectView = (next: AgentView) => {
+    setView(next);
+    setFresh(false);
+  };
+  return { view, selectView, fresh };
+}
 
 /** The page's views, as far as they are built: Flow and the Try it chat join them later. */
 const agentTabs: readonly Tab<AgentView>[] = [

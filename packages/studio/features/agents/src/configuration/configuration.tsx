@@ -14,6 +14,7 @@ import { BehaviourPage } from "./behaviour-page.tsx";
 import { configurationWords as words } from "./configuration-words.ts";
 import { HarnessPage } from "./harness-page.tsx";
 import { ModelPage } from "./model-page.tsx";
+import { SubagentsPage } from "./subagents-page.tsx";
 import { ToolsPage } from "./tools-page.tsx";
 
 /** Props for {@link Configuration}. */
@@ -32,16 +33,18 @@ export interface ConfigurationProps {
   readonly save: (change: AgentChange) => Promise<boolean>;
   /** Hears how many fields of the open page aren't saved, for the toolbar's "1 field not saved". */
   readonly reportNotSaved?: ((count: number) => void) | undefined;
+  /** Opens Behaviour with Instructions focused, for an agent that was just made. */
+  readonly startOnInstructions?: boolean | undefined;
   /** Opens Library on a Tools list's tab, for **Open Library ›**; absent where the app can't. */
   readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
 }
 
-type PageId = "behaviour" | "model" | "harness" | "tools";
+type PageId = "behaviour" | "model" | "harness" | "tools" | "subagents";
 
 /** The pages that are built, in the order of flow-agents 5.1. */
-const pages: readonly Tab<PageId>[] = (["behaviour", "model", "harness", "tools"] as const).map(
-  (id) => ({ id, label: words.pageNames[id] }),
-);
+const pages: readonly Tab<PageId>[] = (
+  ["behaviour", "model", "harness", "tools", "subagents"] as const
+).map((id) => ({ id, label: words.pageNames[id] }));
 
 /**
  * The agent's Configuration (`agents.configuration.pages`): a list of pages on the left and the
@@ -57,6 +60,7 @@ export function Configuration({
   defaultModel,
   retryAliases,
   retry,
+  startOnInstructions,
   save,
   openLibrary,
   reportNotSaved,
@@ -64,6 +68,8 @@ export function Configuration({
   const [page, setPage] = useState<PageId>("behaviour");
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
+  // Instructions takes the focus once; going to another page and back leaves it alone.
+  const [focusInstructions, setFocusInstructions] = useState(startOnInstructions === true);
   if (load.kind === "failed") {
     return (
       <EmptyState
@@ -88,7 +94,10 @@ export function Configuration({
           orientation={phone ? "horizontal" : "vertical"}
           tabs={pages}
           selected={page}
-          onSelect={setPage}
+          onSelect={(id) => {
+            setPage(id);
+            setFocusInstructions(false);
+          }}
           ids={ids}
         />
       </div>
@@ -96,7 +105,12 @@ export function Configuration({
         {load.kind === "ready" ? (
           <div className="max-w-column">
             {page === "behaviour" && (
-              <BehaviourPage settings={load.value} save={save} reportNotSaved={reportNotSaved} />
+              <BehaviourPage
+                settings={load.value}
+                focusInstructions={focusInstructions}
+                save={save}
+                reportNotSaved={reportNotSaved}
+              />
             )}
             {page === "model" &&
               (aliases.kind === "failed" ? (
@@ -119,6 +133,7 @@ export function Configuration({
             {page === "tools" && (
               <ToolsPage host={host} settings={load.value} save={save} openLibrary={openLibrary} />
             )}
+            {page === "subagents" && <SubagentsPage host={host} settings={load.value} />}
           </div>
         ) : (
           <div role="status" className="flex flex-col gap-4">

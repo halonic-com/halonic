@@ -72,3 +72,20 @@ export function listInWords(names: readonly string[], last: "and" | "or" = "and"
 export function counted(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
+
+/**
+ * A whole number with a comma between each group of three digits, as a
+ * limit reads best: the same on every computer, whatever its language.
+ *
+ * @example
+ * groupedDigits(50_000); // "50,000"
+ * groupedDigits(999); // "999"
+ */
+export function groupedDigits(count: number): string {
+  const digits = String(count);
+  const groups: string[] = [];
+  for (let end = digits.length; end > 0; end -= 3) {
+    groups.unshift(digits.slice(Math.max(0, end - 3), end));
+  }
+  return groups.join(",");
+}

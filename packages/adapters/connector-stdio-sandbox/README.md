@@ -39,6 +39,12 @@ The `stdio` connector for a plugin's local tool: it starts the tool's MCP progra
   tool's place from what the host set up: new working and temp folders, the session's copy of the
   plugin read-only (a script only), the host's denied paths, which cover all of Halonic's data, and
   only the tool's own sites. It refuses a plugin copy inside the working folder or a denied path.
+- **Each session gets its own setup.** `PluginLocalToolSessions` gives `PluginLocalTools` its
+  `prepare` and `SandboxStdioConnectorFactory` its `localTools` lookup, from one place. For each
+  session it makes new copy, working and temp folders, copies the checked files, and builds the
+  config, the place and the profile with the plugin's own secrets; its `release` removes the
+  folders. A changed file, a required setting with no value (`LocalToolSettingsNotSetError`), a
+  refused pin or a missing secret starts nothing and leaves no folder.
 - **Halonic builds the profile, never the plugin.** `localToolLaunch` builds the session's profile
   (working folder, environment, network, time limit) and the command from the place the host set
   up, the stdio config, the pin and the secrets. The host opens the session with it. Before each
@@ -65,12 +71,18 @@ The `stdio` connector for a plugin's local tool: it starts the tool's MCP progra
   sites.
 - `readSecretEnv(connectorId, secretEnv, secrets)`: a connector's secret values by variable name,
   for the host to build the profile; it throws naming the first secret that isn't set.
+- `PluginLocalToolSessions`: one plugin connector's local tool sessions. `prepare(set, trusted)`
+  for `PluginLocalTools` and `localTools(connectorId)` for `SandboxStdioConnectorFactory`, with
+  `PluginLocalToolSessionsOptions` (folders, runners, denied paths, bridge, `PATH`, time limit,
+  `http`, every secret and the plugin's settings). `LocalToolSettingsNotSetError` names the
+  required settings that have no value.
 - `SandboxNotFencedError` (with its `reason`) and `SandboxSessionEndedError`: the two typed
   refusals the host checks for.
 - `sandboxProgram(process)`: a session's `SandboxProcess` as the MCP stdio transport's
   `RunningProgram`. `terminate` and `kill` both call the sandbox's one `kill`.
 
-Requirements: `session-start`, `session-ended`, `blocked-events` and `local-tool-profile`.
+Requirements: `session-start`, `session-ended`, `blocked-events`, `local-tool-profile` and
+`plugin-local-tool-sessions`.
 
 ## Example
 

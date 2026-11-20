@@ -270,5 +270,24 @@ verifies("source-control.get-updates-per-item", () => {
         rmSync(s.root, { recursive: true, force: true });
       }
     });
+
+    it("doesn't read what only the shared copy changed as changes since the last version", async () => {
+      const s = shared();
+      try {
+        diverge(s);
+        writeFileSync(join(s.mine, "local.md"), "local\n");
+        const changes = s.open();
+        await changes.startMerge();
+        const paths = async () => {
+          const read = await changes.read();
+          return read.kind === "ready" ? read.changes.map((change) => change.path).sort() : [];
+        };
+        expect(await paths()).toEqual(["local.md"]);
+        writeFileSync(join(s.mine, "b.md"), "two, edited\n");
+        expect(await paths()).toEqual(["b.md", "b.md", "local.md"]);
+      } finally {
+        rmSync(s.root, { recursive: true, force: true });
+      }
+    });
   });
 });

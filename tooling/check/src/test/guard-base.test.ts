@@ -66,7 +66,10 @@ function pullRequest() {
   const run = (base: string): string => {
     const output = join(root, "..", `${root.split("/").pop()}-out`);
     const script = `BASE=${base}\n${switchStep()}\necho "$sha" > ${output}\n`;
-    execFileSync("bash", ["-e", "-c", script], { cwd: root });
+    execFileSync("bash", ["-e", "-c", script], {
+      cwd: root,
+      env: { ...process.env, GITHUB_OUTPUT: "/dev/null" },
+    });
     const sha = readFileSync(output, "utf8").trim();
     rmSync(output);
     return sha;
