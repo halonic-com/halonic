@@ -3,6 +3,7 @@
 - Task: HAL-4291 (the Callout and its check, PR 1 of 4)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-4291 (the CTO's scope for this task: checklist Part 3 of HAL-1833 and microcopy 23.3; the words stay placeholders by key until HAL-1784)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:eZhXBl8gy2Fw/HHHnfYlSgfb9NZ6TpzdPq9go/GPRZVRSJ9Zi9LSqqM4IvNGjU/zDRpPbqZ9nF0XSMqqZPoaDQ==
 
 ## What changes
 
