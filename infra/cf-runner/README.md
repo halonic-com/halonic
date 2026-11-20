@@ -1,15 +1,16 @@
 # Cloudflare container runners (trial)
 
 A trial (HAL-13578): merge-queue Linux jobs run on one-job Cloudflare containers instead of
-waiting for one of GitHub's runners. Off unless the repository variable `CF_RUNNER` is
-`merge-queue`.
+waiting for one of GitHub's runners. Off unless the repository variable `CF_RUNNER_TRIAL` is
+`merge-queue`. (It was `CF_RUNNER` until HAL-13929 turned the trial off in code, because the
+runner stopped taking jobs and only a person can delete a repository variable.)
 
 Source: `worker.mjs` (Worker and the job Durable Objects), `ledger.mjs` (budget and parallel limit), `lib.mjs` (checks), `bootstrap.sh` (container
 setup), `prefill.sh` (image B's warm pnpm store). Tests: `node --test infra/cf-runner/test.mjs` (no install, no network, no spend).
 
 ## How a job gets here
 
-1. In `.github/workflows/ci.yml`, a job asks for the label `cf-linux` only when `CF_RUNNER` is
+1. In `.github/workflows/ci.yml`, a job asks for the label `cf-linux` only when `CF_RUNNER_TRIAL` is
    `merge-queue` **and** the run is the merge queue or a push to `main`. Otherwise it asks for
    `ubuntu-24.04`, as before. Today: `Fast gates` and `Typecheck, lint, test, build`.
 2. GitHub sends the GitHub App `halonic-cf-runner` a `workflow_job` webhook. The Worker checks
@@ -60,7 +61,7 @@ a `cf-runner image=… boot_to_job=… seconds=…` line with the measurements.
 
 ## Turning it off
 
-Delete the repository variable `CF_RUNNER` (Settings > Secrets and variables > Actions >
+Delete the repository variable `CF_RUNNER_TRIAL` (Settings > Secrets and variables > Actions >
 Variables). New runs use GitHub's runners at once. A job already queued for `cf-linux` still
 needs a container: leave the Worker running until those are done, or take the pull request
 out of the queue and queue it again.

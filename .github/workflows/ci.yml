@@ -152,10 +152,10 @@ jobs:
 
   fast:
     name: Fast gates
-    # Trial (HAL-13578): with the repository variable CF_RUNNER set to `merge-queue`, the merge
+    # Trial (HAL-13578): with the repo variable CF_RUNNER_TRIAL set to `merge-queue`, the merge
     # queue and pushes to main run this job on a one-job Cloudflare container
     # (infra/cf-runner). Unset, everything runs on GitHub's runners as before.
-    runs-on: ${{ vars.CF_RUNNER == 'merge-queue' && (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'cf-linux' || 'ubuntu-24.04' }}
+    runs-on: ${{ vars.CF_RUNNER_TRIAL == 'merge-queue' && (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'cf-linux' || 'ubuntu-24.04' }}
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
     permissions:
@@ -409,10 +409,10 @@ jobs:
 
   build:
     name: Typecheck, lint, test, build
-    # Trial (HAL-13578): with the repository variable CF_RUNNER set to `merge-queue`, the merge
+    # Trial (HAL-13578): with the repo variable CF_RUNNER_TRIAL set to `merge-queue`, the merge
     # queue and pushes to main run this job on a one-job Cloudflare container
     # (infra/cf-runner). Unset, everything runs on GitHub's runners as before.
-    runs-on: ${{ vars.CF_RUNNER == 'merge-queue' && (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'cf-linux' || 'ubuntu-24.04' }}
+    runs-on: ${{ vars.CF_RUNNER_TRIAL == 'merge-queue' && (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'cf-linux' || 'ubuntu-24.04' }}
     timeout-minutes: 25
     # The key that signs the remote cache's entries lives in the environment
     # `turbo-cache-write`, which only `main` and the merge queue may use
