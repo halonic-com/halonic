@@ -106,7 +106,8 @@ export const pluginMessages = defineMessages("plugin", {
   /** After the refusal's reason from the attack-test list; never more detail than the reason. */
   refusedSourceFix: () => phrase`Check the folder or git address.`,
   /** The refusal for a source that is, holds or is inside the profile folder or a workspace's data (HAL-13713). */
-  halonicData: () => phrase`a plugin can't be added from Halonic's own data, or from a folder that holds it.`,
+  halonicData: () =>
+    phrase`a plugin can't be added from Halonic's own data, or from a folder that holds it.`,
 
   /** A plugin's state on its `list` line. */
   state: (state: PluginState) => phrase`${stateWords[state]}`,
