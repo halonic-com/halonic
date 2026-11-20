@@ -130,6 +130,19 @@ verifies("check.main-failures", () => {
       expect(failingAreas([build], logs)).toEqual({ Studio: ["Typecheck, lint, test, build"] });
     });
 
+    test("routes a shard of the build job by the failing package too", () => {
+      const shard = job("Typecheck, lint, test, build (adapters)");
+      const logs = new Map([
+        [
+          shard.id,
+          "command (/runner/work/halonic/halonic/packages/studio/features/source-control) pnpm run test exited (1)",
+        ],
+      ]);
+      expect(failingAreas([shard], logs)).toEqual({
+        Studio: ["Typecheck, lint, test, build (adapters)"],
+      });
+    });
+
     test("sends a job whose log names no package, or that isn't in the table, to the shared-code area", () => {
       expect(failingAreas([job("Typecheck, lint, test, build"), job("Something new")])).toEqual({
         [fallbackArea]: ["Typecheck, lint, test, build", "Something new"],

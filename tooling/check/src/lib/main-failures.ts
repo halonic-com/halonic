@@ -25,6 +25,11 @@ export const everyPackageJobs: readonly string[] = [
   "Merge base's tests (no cache)",
 ];
 
+/** Whether a job tests every package: one of `everyPackageJobs`, or a matrix shard of one. */
+export function testsEveryPackage(name: string): boolean {
+  return everyPackageJobs.some((job) => name === job || name.startsWith(`${job} (`));
+}
+
 /** The area for anything no other row covers. */
 export const fallbackArea = "Shared code and everything else";
 
@@ -168,7 +173,7 @@ function areasOfFailedJob(job: Job, table: AreaTable, logs: ReadonlyMap<number, 
   if (job.name === "ci-ok") {
     return [];
   }
-  if (!everyPackageJobs.includes(job.name)) {
+  if (!testsEveryPackage(job.name)) {
     // A job the table doesn't name goes to the shared-code area.
     return [areaOfJob(job.name, table) ?? fallbackArea];
   }

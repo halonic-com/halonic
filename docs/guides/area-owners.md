@@ -44,7 +44,8 @@ Most CI jobs check one area. A failing job goes to its area's owner.
 | Tooling and CI | Changed areas, Fast gates, Leak guard, Coverage floors don't go down, Secret scan (gitleaks), Workflow lint (zizmor), Requirements and the requirement guard, Empty package and feature pass every check, Policy rules, Windows installer, Windows update, ci-ok | the jobs in `scheduled.yml` |
 | Docs | Docs build and link check |  |
 
-Two jobs test every package: "Typecheck, lint, test, build" and "Merge base's
+Two jobs test every package: "Typecheck, lint, test, build" (one job per
+shard, such as "Typecheck, lint, test, build (adapters)") and "Merge base's
 tests (no cache)". When one of them fails, the task goes to the area of the
 package that failed, using the paths above. If the log doesn't name a package,
 it goes to Liam.
