@@ -13,36 +13,42 @@ import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 export { EngineNotAnswering } from "@halonicjs/studio-shell";
 
 /**
- * A run Studio can't start but a terminal can (rules N1 and N2 of the UX check, HAL-12363): why,
- * the sentence that leads to the command, and the whole command, filled in, to copy.
+ * Why Studio can't start a run, and the next step (rules N1 to N3 of the UX check, HAL-12363): a
+ * step in Studio, such as "Set Reporter to Halonic on its Harness page to run it now.", or the
+ * sentence that leads to the whole command, filled in, to copy.
  */
-export interface TerminalStart {
+export interface StartRefusal {
   /** Why Studio doesn't start it, such as "Reporter uses a connector, which Studio can't start yet." */
   readonly reason: string;
-  /** The sentence before the command, such as "To start it, run this in a terminal:". */
-  readonly lead: string;
-  readonly command: string;
+  /** The next step, or the sentence before the command, such as "To start it, run this in a terminal:". */
+  readonly fix: string;
+  /** The command that starts the run in a terminal; absent when the next step is in Studio. */
+  readonly command?: string | undefined;
 }
 
 /**
- * What {@link WorkflowsHost.startRun} rejects with when only a terminal can start the run: an
- * `unavailable` error whose `fix` is the lead sentence and whose `command` is the command to copy,
- * so the page can put the command in a CommandBox. Starting again can't help.
+ * What {@link WorkflowsHost.startRun} rejects with when Studio can't start the run: an
+ * `unavailable` error whose `fix` is the next step and whose `command`, when there is one, is the
+ * command to copy, so the page can put it in a CommandBox. Starting again can't help.
  */
-export class StartInTerminal extends KindedError {
-  readonly command: string;
-  constructor({ reason, lead, command }: TerminalStart) {
-    super("unavailable", reason, { fix: lead });
+export class StartRefused extends KindedError {
+  readonly command: string | undefined;
+  constructor({ reason, fix, command }: StartRefusal) {
+    super("unavailable", reason, { fix });
     this.command = command;
   }
 }
 
-/** The terminal start a refusal holds: an `unavailable` error with a `fix` and a `command`. */
-export function terminalStartOf(error: unknown): TerminalStart | undefined {
+/** The refusal an error holds: an `unavailable` error with a `fix`, and maybe a `command`. */
+export function startRefusalOf(error: unknown): StartRefusal | undefined {
   if (errorKindOf(error) !== "unavailable") return undefined;
   const { message, fix, command } = error as { message: string; fix?: unknown; command?: unknown };
-  if (typeof fix !== "string" || typeof command !== "string" || command === "") return undefined;
-  return { reason: message, lead: fix, command };
+  if (typeof fix !== "string") return undefined;
+  return {
+    reason: message,
+    fix,
+    command: typeof command === "string" && command !== "" ? command : undefined,
+  };
 }
 
 /** Names one workflow the way a deep link does: its hub and its id. */
@@ -253,7 +259,7 @@ export interface WorkflowsHost {
    * pending or a field has a mistake; the host saves what is waiting at once and then starts the run,
    * and never saves a field that has a mistake (HAL-10348). Absent while the app has no engine
    * to start it, so the page shows no **Run**. Rejects with {@link EngineNotAnswering} when the
-   * engine can't be reached, with {@link StartInTerminal} when only a terminal can start it, or
+   * engine can't be reached, with {@link StartRefused} when Studio can't start it but a person can, or
    * with the reason it didn't start, which includes a save that failed.
    */
   startRun?(ref: WorkflowRef, input: Record<string, unknown>): Promise<{ readonly runId: string }>;
@@ -263,6 +269,13 @@ export interface WorkflowsHost {
    * now. Absent where there is no folder to trust, so the Run panel offers **Try again**.
    */
   askTrust?(): Promise<"trusted" | "declined">;
+  /**
+   * Why {@link WorkflowsHost.startRun} would refuse the workflow, as far as its files say before
+   * **Run** is pressed, with the unsaved changes applied: what {@link StartRefused} carries, or
+   * `undefined` when nothing in the files stops it. The page then shows **Run** unavailable with
+   * these lines under it (rule N5 of the UX check, HAL-12363). Absent with `startRun`.
+   */
+  startRefusal?(ref: WorkflowRef): Promise<StartRefusal | undefined>;
   /**
    * Saves the real run `runId` as a test case called `name` in the workflow's test file: the run's
    * input, and the step it ended in as the step the case expects. Absent while the app can't write

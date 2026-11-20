@@ -1,19 +1,22 @@
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { DefinitionSource } from "@halonicjs/ports";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
-import type {
-  NewWorkflow,
-  WorkflowConfiguration,
-  WorkflowHub,
-  WorkflowListing,
-  WorkflowRef,
-  WorkflowStepChange,
-  WorkflowsHost,
-  WorkflowTests,
-  WorkflowView,
+import {
+  type NewWorkflow,
+  type StartRefusal,
+  startRefusalOf,
+  type WorkflowConfiguration,
+  type WorkflowHub,
+  type WorkflowListing,
+  type WorkflowRef,
+  type WorkflowStepChange,
+  type WorkflowsHost,
+  type WorkflowTests,
+  type WorkflowView,
 } from "@halonicjs/studio-feature-workflows/api";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
+import { type PageRuns, workflowRefusalOf } from "../engine/page-refusal.ts";
 import {
   endedIn,
   newWorkflowText,
@@ -62,6 +65,8 @@ export interface WorkspaceWorkflowsParts {
       run: { readonly hubId: string; readonly workflowId: string },
       input: Record<string, unknown>,
     ): Promise<{ readonly id: string }>;
+    /** What it can start: an agent in a harness program, and a run's `stdio` connectors. */
+    readonly pageRuns: PageRuns;
   };
 }
 
@@ -88,6 +93,8 @@ export class WorkspaceWorkflows implements WorkflowsHost {
   startRun?: NonNullable<WorkflowsHost["startRun"]>;
   /** Present only when the app can show the trust check; see {@link WorkflowsHost.askTrust}. */
   askTrust?: NonNullable<WorkflowsHost["askTrust"]>;
+  /** Present with `startRun`; see {@link WorkflowsHost.startRefusal}. */
+  startRefusal?: (ref: WorkflowRef) => Promise<StartRefusal | undefined>;
 
   constructor(parts: WorkspaceWorkflowsParts) {
     this.#parts = parts;
@@ -102,6 +109,15 @@ export class WorkspaceWorkflows implements WorkflowsHost {
         await this.#saved();
         const { id: runId } = await engine.startRun({ hubId, workflowId: id }, input);
         return { runId };
+      };
+      // The engine's own check, on the files as the page shows them.
+      this.startRefusal = async ({ hubId, id }) => {
+        const refusal = workflowRefusalOf(
+          await this.#load(),
+          { hubId, workflowId: id },
+          engine.pageRuns,
+        );
+        return refusal === undefined ? undefined : startRefusalOf(refusal);
       };
     }
   }

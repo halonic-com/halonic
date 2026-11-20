@@ -8,6 +8,7 @@ import {
 } from "@halonicjs/studio-feature-runs/api";
 import {
   Button,
+  CommandBox,
   LetterTile,
   TabList,
   TabPanel,
@@ -15,8 +16,13 @@ import {
   useTabIds,
 } from "@halonicjs/studio-kit";
 import { engineWordsOf, type ItemViewProps } from "@halonicjs/studio-shell";
-import { useCallback, useRef, useState } from "react";
-import { type WorkflowsHost, WorkflowsHostService } from "../api.ts";
+import { useCallback, useId, useRef, useState } from "react";
+import {
+  type StartRefusal,
+  type WorkflowRef,
+  type WorkflowsHost,
+  WorkflowsHostService,
+} from "../api.ts";
 import type { View } from "../canvas/geometry.ts";
 import { Configuration } from "../configuration/configuration-page.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
@@ -122,6 +128,7 @@ export function WorkflowScreen({
     focusTitle,
   );
   const everyWorkflow = useHostRead(host, { hubId, id }, (one) => one.list(), focusTitle);
+  const cantStart = useStartRefusal(host, { hubId, id });
   const runsRead = useRuns(runs, focusTitle);
   const [view, setView] = useState<WorkflowView>(firstView(startOnTests));
   // The canvas unmounts on Configuration, so the page keeps its zoom and pan (D9). They belong to
@@ -229,6 +236,7 @@ export function WorkflowScreen({
               ref={runButton}
               variant="primary"
               size="sm"
+              unavailable={cantStart.unavailable}
               onClick={() => {
                 setRowCard(undefined);
                 setDock("start");
@@ -240,9 +248,12 @@ export function WorkflowScreen({
         )}
       </header>
       {/* With a Run button, the page starts it itself, so the terminal line would only repeat it. */}
-      {!startRun && settings.load.kind === "ready" && errors === 0 && (
-        <StartCommand command={startCommand} />
-      )}
+      <StartRow
+        refusal={cantStart}
+        startCommand={
+          !startRun && settings.load.kind === "ready" && errors === 0 ? startCommand : undefined
+        }
+      />
       <div className="flex min-h-0 flex-1">
         <TabPanel
           ids={ids}
@@ -360,4 +371,46 @@ function hasDockedCard(
   step: Parameters<typeof stepCardDocks>[0],
 ): boolean {
   return dockHasCard(run) || stepCardDocks(step);
+}
+
+/**
+ * What the files already say stops a run (rule N5, HAL-12363): **Run** is then unavailable,
+ * described by the row that says why. A read that fails leaves **Run** as it is; pressing it says why.
+ */
+function useStartRefusal(host: WorkflowsHost, ref: WorkflowRef) {
+  const id = useId();
+  const { load } = useHostRead(host, ref, (one, workflow) =>
+    one.startRefusal === undefined ? Promise.resolve(undefined) : one.startRefusal(workflow),
+  );
+  const refusal = load.kind === "ready" ? load.value : undefined;
+  return {
+    id,
+    refusal,
+    unavailable: refusal === undefined ? undefined : { reason: id },
+  };
+}
+
+/**
+ * The row under the header: the command that starts the workflow in a terminal, or, while **Run**
+ * is unavailable, why and the next step, with its command when it has one. Nothing while there is
+ * neither.
+ */
+function StartRow({
+  refusal: { id, refusal },
+  startCommand,
+}: {
+  readonly refusal: { readonly id: string; readonly refusal: StartRefusal | undefined };
+  readonly startCommand: string | undefined;
+}) {
+  const className =
+    "flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-6 py-2 text-small text-fg-muted";
+  if (refusal !== undefined) {
+    return (
+      <div id={id} data-testid="start-refusal" className={className}>
+        <p>{`${refusal.reason} ${refusal.fix}`}</p>
+        {refusal.command === undefined ? null : <CommandBox command={refusal.command} />}
+      </div>
+    );
+  }
+  return <StartCommand command={startCommand} />;
 }

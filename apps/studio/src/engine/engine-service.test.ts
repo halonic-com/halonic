@@ -125,8 +125,8 @@ verifies("studio.engine-service", () => {
         kind: "unavailable",
         message: "writer runs in Claude Code, which Halonic can't start yet.",
         fix: "Set writer to Halonic on its Harness page to run it now.",
+        command: undefined,
       });
-      expect(refusal).not.toHaveProperty("command");
       expect(shell.calls).toEqual([]);
     });
 
@@ -313,9 +313,21 @@ verifies("studio.engine-service", () => {
     });
 
     it.each([
-      ["in a harness", "harness: claude-code\n"],
-      ["that lists a connector", "connectors: [mail]\n"],
-    ])("refuses a routine's agent %s before the lock is taken", async (_, writer) => {
+      [
+        "in a harness, with its Harness page step,",
+        "harness: claude-code\n",
+        {
+          message: "writer runs in Claude Code, which Halonic can't start yet.",
+          fix: "Set writer to Halonic on its Harness page to run it now.",
+        },
+      ],
+      [
+        // `halonic run` starts no single agent, so there is no command to give.
+        "that lists a connector, with no next step,",
+        "connectors: [mail]\n",
+        { message: "writer uses a connector, which Studio can't start yet.", fix: undefined },
+      ],
+    ])("refuses a routine's agent %s before the lock is taken", async (_, writer, words) => {
       const shell = fakeShell();
       const service = serviceOn(shell, acmeFiles({ writer }));
 
@@ -327,8 +339,7 @@ verifies("studio.engine-service", () => {
         .catch((error: unknown) => error);
 
       expect(refusal).toBeInstanceOf(WindowCantStart);
-      expect(refusal).toMatchObject({ kind: "unavailable" });
-      expect((refusal as Error).message).toContain("writer");
+      expect(refusal).toMatchObject({ kind: "unavailable", ...words });
       expect(refusal).not.toHaveProperty("command");
       expect(lockCalls(shell)).toEqual([]);
     });

@@ -1,7 +1,7 @@
 import type { RunSummary } from "@halonicjs/events";
 import { KindedError } from "@halonicjs/std";
 import { EngineNotAnswering, NothingToRun } from "@halonicjs/studio-feature-routines/api";
-import { StartInTerminal } from "@halonicjs/studio-feature-workflows/api";
+import { StartRefused } from "@halonicjs/studio-feature-workflows/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { WindowCantStart } from "../engine/page-refusal.ts";
@@ -429,9 +429,9 @@ verifies("studio.workspace-routines", () => {
     ],
     [
       "with a terminal command",
-      new StartInTerminal({
+      new StartRefused({
         reason: "Analyst uses a connector, which Studio can't start yet.",
-        lead: "To start it, run this in a terminal:",
+        fix: "To start it, run this in a terminal:",
         command: "halonic run reply",
       }),
     ],
