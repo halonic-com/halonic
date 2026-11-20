@@ -123,3 +123,39 @@ fn default_distro_fails_when_wsl_exe_cant_start() {
     let answer = halonic_is_default(missing, Duration::from_secs(5));
     assert!(matches!(answer, Err(WslError::Start(_))));
 }
+
+/// HAL-14102: a stand-in written while another thread starts processes
+/// still runs. A process started in that moment used to inherit the
+/// stand-in open for writing, and running it then failed with "Text file
+/// busy".
+#[cfg(unix)]
+#[test]
+fn default_distro_stand_in_runs_while_other_threads_start_processes() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let done = AtomicBool::new(false);
+    std::thread::scope(|scope| {
+        for _ in 0..4 {
+            scope.spawn(|| {
+                while !done.load(Ordering::Relaxed) {
+                    let started = std::process::Command::new("/bin/sh")
+                        .args(["-c", ":"])
+                        .status();
+                    started.expect("start a process alongside");
+                }
+            });
+        }
+        // Stop the threads above even when an answer is wrong, so the
+        // scope can end and the test reports the failure.
+        let outcome = std::panic::catch_unwind(|| {
+            for _ in 0..200 {
+                let failing = StandIn::new("exit 1");
+                let answer = halonic_is_default(&failing.0, Duration::from_secs(30));
+                assert_eq!(answer, Err(WslError::Failed(Some(1))));
+            }
+        });
+        done.store(true, Ordering::Relaxed);
+        if let Err(panic) = outcome {
+            std::panic::resume_unwind(panic);
+        }
+    });
+}
