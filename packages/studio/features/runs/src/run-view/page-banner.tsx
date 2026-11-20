@@ -46,6 +46,7 @@ export function PageBanner({
   announce,
   runAgain,
   openModels,
+  openBudget,
   phone = false,
   onSeeStep,
 }: {
@@ -69,6 +70,8 @@ export function PageBanner({
   readonly runAgain?: RunAgain | undefined;
   /** Opens the workspace page at Models, for a failed banner that offers **Open Models**; absent where it can't. */
   readonly openModels?: (() => void) | undefined;
+  /** Opens the workspace page at its Budget block, for **Change budget** on a budget banner; absent where it can't. */
+  readonly openBudget?: (() => void) | undefined;
   /** Whether the page is a phone's: a fix it can't do is said as a line (microcopy 15.3). */
   readonly phone?: boolean;
   readonly onSeeStep: (entryId: string) => void;
@@ -111,6 +114,7 @@ export function PageBanner({
         openRun={openRun}
         runAgain={runAgain}
         openModels={openModels}
+        openBudget={openBudget}
       />
     );
   }
@@ -125,6 +129,7 @@ export function PageBanner({
       openRun={openRun}
       runAgain={runAgain}
       openModels={openModels}
+      openBudget={openBudget}
     />
   );
 }
@@ -139,12 +144,14 @@ function Banner({
   openRun,
   runAgain,
   openModels,
+  openBudget,
 }: {
   readonly banner: RunBanner | undefined;
   readonly reviewInInbox: (() => void) | undefined;
   readonly openRun: ((runId: string) => void) | undefined;
   readonly runAgain: RunAgain | undefined;
   readonly openModels?: (() => void) | undefined;
+  readonly openBudget?: (() => void) | undefined;
 }) {
   const writeClipboard = useWriteClipboard();
   const toasts = useToastStore();
@@ -158,7 +165,7 @@ function Banner({
   }
   const own = bannerAction(banner.action, reviewInInbox, openRun);
   const fixes = (banner.fixes ?? []).flatMap((fix) =>
-    fixAction(fix, writeClipboard, toasts, openModels, openExternal),
+    fixAction(fix, writeClipboard, toasts, { openModels, openBudget }, openExternal),
   );
   const again =
     own === undefined && banner.tone === "danger" && runAgain !== undefined
@@ -203,12 +210,15 @@ function bannerAction(
   return undefined;
 }
 
-/** A fix's button, or nothing when the page can't do it: Models can't be opened on every page. A page outside Studio opens through the host. */
+/** A fix's button, or nothing when the page can't do it: Models and Budget can't be opened on every page. A page outside Studio opens through the host. */
 function fixAction(
   fix: BannerFix,
   writeClipboard: (text: string) => Promise<boolean>,
   toasts: ToastStore | null,
-  openModels: (() => void) | undefined,
+  open: {
+    readonly openModels: (() => void) | undefined;
+    readonly openBudget: (() => void) | undefined;
+  },
   openExternal: (address: string) => Promise<void>,
 ): CalloutAction[] {
   if (fix.kind === "open-external") {
@@ -235,13 +245,14 @@ function fixAction(
     };
     return [{ label: failureWords.copyCommand, onClick: copy }];
   }
-  return openModels === undefined
+  const opens = fix.kind === "change-budget" ? open.openBudget : open.openModels;
+  return opens === undefined
     ? []
     : [
         {
           label: fix.kind === "change-budget" ? runPageWords.changeBudget : failureWords.openModels,
           onClick: () => {
-            openModels();
+            opens();
           },
         },
       ];

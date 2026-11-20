@@ -45,6 +45,7 @@ async function openOn(
     refuseCopy?: boolean;
     toasts?: ToastStore;
     openModels?: () => void;
+    openBudget?: () => void;
   } = {},
 ) {
   const log = logOf(run.id, [
@@ -66,6 +67,7 @@ async function openOn(
             runId={run.id}
             now={() => mondayMorning}
             {...(hooks.openModels === undefined ? {} : { openModels: hooks.openModels })}
+            {...(hooks.openBudget === undefined ? {} : { openBudget: hooks.openBudget })}
           />
         </PresentationProvider>
       </ToastStoreProvider>
@@ -156,16 +158,18 @@ verifies("runs.run-view.failure-banners", () => {
   const button = (root: HTMLElement, name: string) =>
     [...root.querySelectorAll("button")].find((candidate) => candidate.textContent === name);
 
-  it("opens the budget from a budget stop's banner", async () => {
-    let opened = 0;
-    const root = await openOn("desktop", stopped, { openModels: () => opened++ });
+  it("opens the Budget block, not Models, from a budget stop's banner", async () => {
+    const openBudget = vi.fn();
+    const openModels = vi.fn();
+    const root = await openOn("desktop", stopped, { openBudget, openModels });
     expect(root.textContent).toContain("Change the budget, then run again.");
     await act(async () => button(root, "Change budget")?.click());
-    expect(opened).toBe(1);
+    expect(openBudget).toHaveBeenCalledOnce();
+    expect(openModels).not.toHaveBeenCalled();
   });
 
-  it("leaves out Change budget where the page can't open Models", async () => {
-    const root = await openOn("desktop", stopped);
+  it("leaves out Change budget where the page can't open the budget", async () => {
+    const root = await openOn("desktop", stopped, { openModels: vi.fn() });
     expect(button(root, "Change budget")).toBeUndefined();
   });
 });

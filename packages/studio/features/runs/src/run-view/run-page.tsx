@@ -39,6 +39,9 @@ import { useRunChanges } from "./use-run-changes.ts";
 /** The command that opens the workspace page at Models (`features/workspace`). */
 const openModelsCommand = "workspace.open-models";
 
+/** The command that opens the workspace page at its Budget block (`features/workspace`). */
+const openBudgetCommand = "workspace.open-budget";
+
 /** The `run` item kind's page: one run of the open workspace, from `RunsListService`. */
 export function RunPage({ item, context, step, asked }: ItemViewProps) {
   const { openPlace, openItem } = context;
@@ -59,7 +62,10 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
       announceState={(key, text) => context.announcer.announceState(key, text)}
       {...(context.runCommand === undefined
         ? {}
-        : { openModels: () => void context.runCommand?.(openModelsCommand) })}
+        : {
+            openModels: () => void context.runCommand?.(openModelsCommand),
+            openBudget: () => void context.runCommand?.(openBudgetCommand),
+          })}
       {...(runStart === undefined ? {} : { runStart })}
       {...(openPlace === undefined
         ? {}
@@ -105,6 +111,8 @@ export interface RunViewProps {
   readonly runStart?: RunStartHost;
   /** Opens the workspace page at Models, for **Open Models** on a failed banner; without it the button isn't there. */
   readonly openModels?: () => void;
+  /** Opens the workspace page at its Budget block, for **Change budget** on a budget banner; without it the button isn't there. */
+  readonly openBudget?: () => void;
   /** Opens the Runs list, for a run that isn't there any more. */
   readonly goToRuns?: () => void;
   /** Opens the Inbox on what the run waits on, for Review in Inbox; without it the button isn't there. */
@@ -153,6 +161,7 @@ export function RunView({
   announceState,
   runStart,
   openModels,
+  openBudget,
   goToRuns,
   reviewInInbox,
   openRun,
@@ -209,6 +218,7 @@ export function RunView({
             announce={announce}
             runAgain={runAgain}
             openModels={openModels}
+            openBudget={openBudget}
             phone={phone}
             onSeeStep={setOpenEntry}
           />
