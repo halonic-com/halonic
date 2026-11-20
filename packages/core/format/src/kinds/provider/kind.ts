@@ -18,14 +18,15 @@ export const providerKind: FileKind<Provider> = {
 /**
  * The secret is named in the file, so a bad name or a pasted key is caught
  * here, not at run time. A key pasted into `options` is caught too, and so
- * is a type Halonic can't call, which would only fail once a run reached
- * the model (HAL-14260).
+ * is a type Halonic can't call, or a `baseUrl` it can't reach, which would
+ * only fail once a run reached the model (HAL-14260).
  */
 function checkProvider(provider: Provider): KindCheckProblem[] {
   const problem =
     provider.secret === undefined ? undefined : checkSecretName(provider.secret, ["secret"]);
   return [
     ...checkType(provider),
+    ...checkBaseUrl(provider),
     ...(problem === undefined ? [] : [problem]),
     ...checkKeysIn(provider.options, ["options"], "provider-option"),
   ];
@@ -44,6 +45,23 @@ function checkType(provider: Provider): KindCheckProblem[] {
       code: "provider-type",
       path: ["type"],
       message: `Halonic can't call provider type ${provider.type}: set type in providers/${provider.id}.yaml to one of ${providerTypesInWords}`,
+    },
+  ];
+}
+
+/**
+ * `provider-base-url` on the `baseUrl:` line when it doesn't start with
+ * http:// or https://. `localhost:11434` passes as a URL, but its scheme is
+ * "localhost:", so the run would try to reach an empty address.
+ */
+function checkBaseUrl(provider: Provider): KindCheckProblem[] {
+  if (provider.baseUrl === undefined || /^https?:\/\//iu.test(provider.baseUrl)) return [];
+  return [
+    {
+      severity: "error",
+      code: "provider-base-url",
+      path: ["baseUrl"],
+      message: "baseUrl needs http:// or https://, such as http://localhost:11434",
     },
   ];
 }

@@ -216,6 +216,11 @@ verifies("cli.doctor-workspace", () => {
     });
   });
 
+  it("shows a baseUrl without http:// as written, never an empty address", () => {
+    const provider = { ...base, type: "ollama", local: true, baseUrl: "localhost:11434" };
+    expect(doctorProvider(provider)).toMatchObject({ address: "localhost:11434" });
+  });
+
   it("uses the server's default address when the file gives none", () => {
     expect(doctorProvider({ ...base, type: "ollama", local: true })).toMatchObject({
       address: "localhost:11434",

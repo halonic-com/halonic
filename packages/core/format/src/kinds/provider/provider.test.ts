@@ -19,6 +19,23 @@ verifies("format.provider-file", () => {
     expect(summary(problemsOf("provider", text))).toEqual(["baseUrl invalid_format 3"]);
   });
 
+  it("refuses a base URL without http:// or https://, on its line", () => {
+    const text = yaml("id: ollama", "type: ollama", "baseUrl: localhost:11434");
+    const [problem, ...others] = problemsOf("provider", text);
+    expect(others).toEqual([]);
+    expect(problem).toMatchObject({ code: "provider-base-url", path: ["baseUrl"], line: 3 });
+    expect(problem?.message).toBe(
+      "baseUrl needs http:// or https://, such as http://localhost:11434",
+    );
+  });
+
+  it("accepts a base URL with http:// or https://", () => {
+    for (const baseUrl of ["http://localhost:11434", "https://llm.example.com/v1"]) {
+      const text = yaml("id: local", "type: openai-compatible", `baseUrl: ${baseUrl}`);
+      expect(parsedValue("provider", text).baseUrl).toBe(baseUrl);
+    }
+  });
+
   it("refuses a provider without a type", () => {
     expect(summary(problemsOf("provider", yaml("id: mock")))).toEqual(["type invalid_type 1"]);
   });
