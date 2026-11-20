@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-8973; HAL-8970 review of PR #2578; `shell.layout-points`, `shell.feature-isolation`
+- Source: HAL-8973; HAL-8970 review of PR #2578; HAL-14029; `shell.layout-points`, `shell.feature-isolation`
 
-The shell shall give the `open` view of every item kind a `Sections` component, which draws the sections that features added to that kind's page through `itemPage.addSection`, in order. The page that owns the kind shall decide where `<Sections />` goes; a page that doesn't place it shows none. The shell shall import each section's view the first time a page shows it, and give it the item and the context of the feature that added the section, not the page owner's. The shell shall put each section in its own error boundary, so a section that fails to load or draw leaves the page and the other sections as they are.
+The shell shall give the `open` view of every item kind a `Sections` component, which draws the sections that features added to that kind's page through `itemPage.addSection`, in order. The page that owns the kind shall decide where `<Sections />` goes; a page that doesn't place it shows none. The shell shall also tell the page each section's id and title, in order, and `<Sections only={id} />` shall draw that one section alone, so a page that lists its parts as pages, like the agent's Configuration, can list each section as a page. The shell shall import each section's view the first time a page shows it, and give it the item and the context of the feature that added the section, not the page owner's. The shell shall put each section in its own error boundary, so a section that fails to load or draw leaves the page and the other sections as they are.
 
 ## Examples
 
@@ -14,3 +14,6 @@ The shell shall give the `open` view of every item kind a `Sections` component, 
 - Given the section `usage` throws while it draws,
   when the page renders,
   then Models still shows, and so does the rest of the page.
+- Given the same sections,
+  when the page lists its sections and places `<Sections only="usage" />`,
+  then the list reads Usage, then Models, and only Usage is drawn there.

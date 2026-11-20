@@ -102,6 +102,7 @@ verifies("shell.layout-points", () => {
           studio.itemPage.addSection({
             on: "agent",
             id: "triggers",
+            title: "Triggers",
             order: 30,
             view: "View",
             load,
@@ -109,6 +110,7 @@ verifies("shell.layout-points", () => {
           studio.itemPage.addSection({
             on: "workflow",
             id: "triggers",
+            title: "Triggers",
             order: 30,
             view: "View",
             load,
@@ -128,6 +130,7 @@ verifies("shell.layout-points", () => {
             studio.itemPage.addSection({
               on: "robot",
               id: "triggers",
+              title: "Triggers",
               order: 1,
               view: "View",
               load,
@@ -158,7 +161,14 @@ verifies("shell.layout-points", () => {
   });
 
   it("refuses ids and kinds that aren't valid names, so keys can't collide", () => {
-    const section = (on: string, id: string) => ({ on, id, order: 1, view: "View", load });
+    const section = (on: string, id: string) => ({
+      on,
+      id,
+      title: "Triggers",
+      order: 1,
+      view: "View",
+      load,
+    });
     const create = (register: (studio: Studio) => void) => () =>
       createShell({
         features: [

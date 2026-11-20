@@ -8,7 +8,8 @@ import {
   usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
-import { type ReactNode, useState } from "react";
+import type { ItemPageSectionListing, SectionsProps } from "@halonicjs/studio-shell";
+import { type ComponentType, type ReactNode, useState } from "react";
 import type {
   AgentChange,
   AgentListing,
@@ -58,20 +59,58 @@ export interface ConfigurationProps {
   readonly narrow?: boolean | undefined;
   /** Reads text to screen readers, politely, for the Subagents page's changes. */
   readonly announce?: ((text: string) => void) | undefined;
+  /** The sections other features add to the agent's page, such as Routines' Triggers; each is a page. */
+  readonly sections?: readonly ItemPageSectionListing[] | undefined;
+  /** Draws a section of {@link sections}; the shell's, absent where there's no window. */
+  readonly Sections?: ComponentType<SectionsProps> | undefined;
 }
 
-type PageId = "behaviour" | "model" | "harness" | "tools" | "subagents" | "agentSteps";
+type BuiltPageId = "behaviour" | "model" | "harness" | "tools" | "subagents" | "agentSteps";
+
+/** A page: one of the agents feature's own, or a section another feature adds, by its id. */
+type PageId = BuiltPageId | `section:${string}`;
 
 /** The pages that are built, in the order of flow-agents 5.1. */
-const pages: readonly Tab<PageId>[] = (
+const builtPages: readonly Tab<PageId>[] = (
   ["behaviour", "model", "harness", "tools", "subagents", "agentSteps"] as const
 ).map((id) => ({ id, label: words.pageNames[id] }));
 
+/** The list's pages: the built ones, then a page per section, when the sections can be drawn. */
+function pageTabs(
+  sections: readonly ItemPageSectionListing[],
+  Sections: ComponentType<SectionsProps> | undefined,
+): readonly Tab<PageId>[] {
+  if (Sections === undefined) return builtPages;
+  return [
+    ...builtPages,
+    ...sections.map((section) => ({ id: `section:${section.id}` as const, label: section.title })),
+  ];
+}
+
+/** The picked page, or Behaviour when it's a section's page that is gone because its feature went. */
+function shownPage(pages: readonly Tab<PageId>[], picked: PageId): PageId {
+  return pages.some((one) => one.id === picked) ? picked : "behaviour";
+}
+
+/** The page of a section another feature adds; nothing for one of the agents feature's own pages. */
+function SectionPage({
+  page,
+  Sections,
+}: {
+  readonly page: PageId;
+  readonly Sections: ComponentType<SectionsProps> | undefined;
+}) {
+  if (Sections === undefined || !page.startsWith("section:")) return null;
+  return <Sections only={page.slice("section:".length)} />;
+}
+
 /**
  * The agent's Configuration (`agents.configuration.pages`): a list of pages on the left and the
- * picked page beside it. A page that isn't built is absent, not empty (flow-agents 5.1). On a
- * phone, and in a panel too narrow for the column, the list goes across the top instead, so the
- * page keeps the full width (`agents.configuration.pages-phone`, `agents.configuration.pages-narrow`).
+ * picked page beside it. A page that isn't built is absent, not empty (flow-agents 5.1). The
+ * sections other features add, such as Triggers, follow the agents feature's own pages
+ * (`agents.configuration.section-pages`). On a phone, and in a panel too narrow for the column,
+ * the list goes across the top instead, so the page keeps the full width
+ * (`agents.configuration.pages-phone`, `agents.configuration.pages-narrow`).
  */
 export function Configuration({
   host,
@@ -89,8 +128,12 @@ export function Configuration({
   openAgentStep,
   narrow = false,
   announce,
+  sections = [],
+  Sections,
 }: ConfigurationProps) {
-  const [page, setPage] = useState<PageId>("behaviour");
+  const [picked, setPage] = useState<PageId>("behaviour");
+  const pages = pageTabs(sections, Sections);
+  const page = shownPage(pages, picked);
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
   const panel = useNarrowPanel();
@@ -117,8 +160,15 @@ export function Configuration({
       ref={panel.ref}
       className={across ? "flex min-h-0 flex-1 flex-col" : "flex min-h-0 flex-1"}
     >
-      <PageList narrow={narrow} across={across} ids={ids} page={page} onPick={pickPage} />
-      <PagePanel narrow={narrow} ids={ids} page={page}>
+      <PageList
+        narrow={narrow}
+        across={across}
+        ids={ids}
+        pages={pages}
+        page={page}
+        onPick={pickPage}
+      />
+      <PagePanel narrow={narrow} ids={ids} pages={pages} page={page}>
         {load.kind === "ready" ? (
           <div className="max-w-column">
             {page === "behaviour" && (
@@ -161,6 +211,7 @@ export function Configuration({
             {page === "agentSteps" && (
               <AgentStepsPage host={host} settings={load.value} openAgentStep={openAgentStep} />
             )}
+            <SectionPage page={page} Sections={Sections} />
           </div>
         ) : (
           <div role="status" className="flex flex-col gap-4">
@@ -182,12 +233,14 @@ function PageList({
   narrow,
   across,
   ids,
+  pages,
   page,
   onPick,
 }: {
   readonly narrow: boolean;
   readonly across: boolean;
   readonly ids: ReturnType<typeof useTabIds>;
+  readonly pages: readonly Tab<PageId>[];
   readonly page: PageId;
   readonly onPick: (page: PageId) => void;
 }) {
@@ -230,17 +283,20 @@ function PageList({
 function PagePanel({
   narrow,
   ids,
+  pages,
   page,
   children,
 }: {
   readonly narrow: boolean;
   readonly ids: ReturnType<typeof useTabIds>;
+  readonly pages: readonly Tab<PageId>[];
   readonly page: PageId;
   readonly children: ReactNode;
 }) {
   if (narrow) {
+    const label = pages.find((each) => each.id === page)?.label;
     return (
-      <section aria-label={words.pageNames[page]} className="min-w-0 flex-1 overflow-auto p-4">
+      <section aria-label={label} className="min-w-0 flex-1 overflow-auto p-4">
         {children}
       </section>
     );

@@ -4,18 +4,28 @@ import type { ItemPageSectionContribution } from "../points/layout.ts";
 import type { Registered } from "../points/point-store.ts";
 import { LoadedView } from "../view-loading.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
-import { useSectionsComponent } from "./item-page-sections.tsx";
+import { type SectionsProps, useSectionsComponent } from "./item-page-sections.tsx";
+
+/** A section another feature adds to an item's page, as the page that lists them sees it. */
+export interface ItemPageSectionListing {
+  readonly id: string;
+  /** The section's name, such as "Triggers". */
+  readonly title: string;
+}
 
 /**
  * What an item kind's `open` view gets: the item its tab shows and the context of the feature
  * that added the kind, and `Sections`, which draws the sections other features add to the kind's
  * page (`shell.item-page-sections`). The page decides where `<Sections />` goes; a page without
- * it shows none.
+ * it shows none. A page that lists its parts as pages reads the sections from `sections` and
+ * draws each one with `<Sections only={id} />`.
  */
 export interface ItemViewProps {
   readonly item: ItemRef;
   readonly context: WorkspaceContext;
-  readonly Sections: ComponentType;
+  readonly Sections: ComponentType<SectionsProps>;
+  /** The sections other features add to the page, in order; absent reads as none. */
+  readonly sections?: readonly ItemPageSectionListing[];
   /** The part of the page the item was opened on (`openItem`'s `step`), if it was asked for one. */
   readonly step?: string;
   /** How many times the page was asked for a `step`, so a page that is open can tell it was asked again. */
@@ -72,6 +82,7 @@ export function ItemView({
         item,
         context,
         Sections,
+        sections: sections.map(({ id, title }) => ({ id, title })),
         ...(step === undefined ? {} : { step }),
         ...(asked === undefined ? {} : { asked }),
       }}

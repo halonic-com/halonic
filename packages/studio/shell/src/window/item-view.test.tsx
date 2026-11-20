@@ -36,14 +36,28 @@ const PanelHeading = serviceKey<string>("plugins.panel-heading");
 /** How many times the panel view's module was imported. */
 let imports = 0;
 
-/** The panel's view: its `h1` names the item, worded by a service from its feature's context. */
-function PanelView({ item, context, Sections }: ItemViewProps) {
+/**
+ * The panel's view: its `h1` names the item, worded by a service from its feature's context. It
+ * places every section, then lists them by name and draws Usage alone, as a page with a list of
+ * pages does.
+ */
+function PanelView({ item, context, Sections, sections = [] }: ItemViewProps) {
   return (
     <>
       <h1 tabIndex={-1} className="panel-view">
         {`${context.services.get(PanelHeading)} ${item.hub} ${item.id}`}
       </h1>
-      <Sections />
+      <div className="all">
+        <Sections />
+      </div>
+      <ul className="titles">
+        {sections.map((section) => (
+          <li key={section.id}>{section.title}</li>
+        ))}
+      </ul>
+      <div className="only">
+        <Sections only="usage" />
+      </div>
     </>
   );
 }
@@ -92,14 +106,15 @@ const modelsFeature = defineFeature({
   needs: [PanelHeading],
   register(studio) {
     studio.services.provide(ModelsHeading, () => "models");
-    for (const [id, order, view] of [
-      ["models", 30, "ModelsSection"],
-      ["broken", 20, "BrokenSection"],
-      ["usage", 10, "UsageSection"],
+    for (const [id, title, order, view] of [
+      ["models", "Models", 30, "ModelsSection"],
+      ["broken", "Broken", 20, "BrokenSection"],
+      ["usage", "Usage", 10, "UsageSection"],
     ] as const) {
       studio.itemPage.addSection({
         on: "plugin-panel",
         id,
+        title,
         order,
         view,
         load: async () => ({ ModelsSection, UsageSection, BrokenSection }),
@@ -151,7 +166,7 @@ verifies("shell.item-page-sections", () => {
   it("draws the sections other features add where the page places them, in order, with their own feature's context", async () => {
     const container = await openPanel([pluginsFeature, modelsFeature]);
 
-    const sections = [...container.querySelectorAll("main p.section")];
+    const sections = [...container.querySelectorAll("main .all p.section")];
     expect(sections.map((section) => section.textContent)).toEqual([
       "Usage weather models",
       "Models weather models",
@@ -163,7 +178,16 @@ verifies("shell.item-page-sections", () => {
 
     expect(console.error).toHaveBeenCalled();
     expect(container.querySelector("main h1.panel-view")).not.toBeNull();
-    expect(container.querySelectorAll("main p.section")).toHaveLength(2);
+    expect(container.querySelectorAll("main .all p.section")).toHaveLength(2);
+  });
+
+  it("tells the page its sections' names, in order, and draws one alone when asked", async () => {
+    const container = await openPanel([pluginsFeature, modelsFeature]);
+
+    const titles = [...container.querySelectorAll("main ul.titles li")];
+    expect(titles.map((title) => title.textContent)).toEqual(["Usage", "Broken", "Models"]);
+    const alone = [...container.querySelectorAll("main .only p.section")];
+    expect(alone.map((section) => section.textContent)).toEqual(["Usage weather models"]);
   });
 });
 
