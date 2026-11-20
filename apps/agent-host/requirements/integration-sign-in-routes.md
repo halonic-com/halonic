@@ -1,7 +1,7 @@
 # agent-host.integration-sign-in-routes
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-12191 (HAL-8613, app side); the prefix route follows the Google callback of HAL-9409
 
 The agent host shall give Studio the start, status, cancel and sign-out of an integration's sign-ins over its loopback routes, and shall serve the provider's callback itself. A start shall answer the authorize URL, whose redirect names the host's own port and a new random path under `/sign-in/`, and Studio opens that URL; the host shall never put a code, a token or a client secret in an answer. The callback route shall be served without the launch token, as a prefix route, because a browser that follows a redirect can't send the token and the path is new for each sign-in: the sign-in's own `state` is the proof, the `Host` and `Origin` checks still apply, and a path nobody waits on shall get a plain 400 page. An integration the host runs no sign-ins for, a sign-in the sheet doesn't have, a setting that is missing or wrong, and a missing client secret shall each get their own refusal, and any other failure shall answer a fixed message with only the error's name in the log. When the host serves over frames, a start shall be refused, because the relay passes only one fixed callback path without the token.

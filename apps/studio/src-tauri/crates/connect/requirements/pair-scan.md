@@ -1,7 +1,7 @@
 # studio.src-tauri.crates.connect.pair-scan
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-12246 (tunnel phase B build plan on HAL-12232, decisions 14 and 16); HAL-12577 (early cancels)
 
 When the connect page opens the pairing scanner, the shell shall open the back camera for QR codes only, and only once Android has granted the camera; if the camera is turned down, then the shell shall answer "no camera" with whether Android will ask again, and open nothing. The shell shall hand the page a scanned value only when it is a QR code whose text starts with `halonic-pair:` and is at most 150 bytes long; anything else shall be "not a pairing code". The shell shall never open, call or look up anything from a scanned value. The camera shall be on only while the scanner is open: it shall close once a code is read, when the page cancels, and when the window starts loading a page or closes. A cancel shall hold however early it comes: one during the camera permission question shall keep the camera from opening, and one that reaches the plugin before the camera is on shall still turn it off. Only the phone's own page shall reach the scanner, never the served Studio, and no page shall reach the barcode-scanner plugin's own commands.
