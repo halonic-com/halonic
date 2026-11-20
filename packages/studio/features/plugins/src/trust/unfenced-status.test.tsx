@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { RunnerUnfencedReason } from "@halonicjs/app";
+import { type RunnerUnfencedReason, runnerUnfencedWords } from "@halonicjs/app";
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -105,12 +105,22 @@ async function press(start: string) {
   await act(async () => found.click());
 }
 
-/** The dialog's alert; the kit fills it a frame after the error arrives. */
-async function alertText(): Promise<string> {
+async function nextFrame() {
   await act(async () => {
     await new Promise((resolve) => requestAnimationFrame(resolve));
   });
+}
+
+/** The dialog's alert; the kit fills it a frame after the error arrives. */
+async function alertText(): Promise<string> {
+  await nextFrame();
   return dialog().querySelector('[role="alert"]')?.textContent ?? "";
+}
+
+/** The dialog's polite live region; it's filled a frame after `say`. */
+async function politeText(): Promise<string> {
+  await nextFrame();
+  return dialog().querySelector('[aria-live="polite"]')?.textContent ?? "";
 }
 
 const windows = { run: "needs-yes", reason: "windows" } as const;
@@ -220,6 +230,24 @@ verifies("plugins.plugin-trust-yes", () => {
     expect(button("Trust").getAttribute("aria-disabled")).toBe("true");
   });
 
+  it("moves focus to the unticked box and reads the new reason once when the reason changed", async () => {
+    const { unfencedRuns, answerAllow } = host(windows, { run: "needs-yes", reason: "container" });
+    answerAllow(null);
+    await review(unfencedRuns, []);
+
+    await tick();
+    await press("Trust");
+
+    expect(document.activeElement).toBe(box());
+    const reason = runnerUnfencedWords("container", "plugin").reason;
+    expect(await politeText()).toBe(reason);
+
+    const region = dialog().querySelector('[aria-live="polite"]');
+    if (region !== null) region.textContent = "";
+    await tick();
+    expect(await politeText()).toBe("");
+  });
+
   it("trusts nothing when the yes can't be saved, and says why", async () => {
     const { unfencedRuns, answerAllow } = host(windows);
     answerAllow(new KindedError("unavailable", "The agent host isn't answering."));
@@ -233,6 +261,23 @@ verifies("plugins.plugin-trust-yes", () => {
     expect(closed).toEqual([]);
     expect(await alertText()).toContain(
       "Couldn't save trust: The agent host isn't answering. Nothing was started.",
+    );
+  });
+
+  it("says the yes couldn't be saved when the host answers allow_failed", async () => {
+    const { unfencedRuns, answerAllow } = host(windows);
+    answerAllow(
+      Object.assign(new Error("The yes couldn't be saved."), { kind: "allow_failed", status: 500 }),
+    );
+    const trusted: string[] = [];
+    await review(unfencedRuns, trusted);
+
+    await tick();
+    await press("Trust");
+
+    expect(trusted).toEqual([]);
+    expect(await alertText()).toBe(
+      "Couldn't save trust: Halonic couldn't save your yes to run plugins without the sandbox. Nothing was started.",
     );
   });
 

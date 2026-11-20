@@ -397,6 +397,9 @@ the one below it takes over again. The shell connects them once, at its root:
 </ModalRegionsProvider>;
 ```
 
+A part inside the Dialog reaches its polite region with `useModalPolite()` (`null` outside a
+Dialog), for a change it makes in place, such as a line the Dialog redraws: `polite?.say(text)`.
+
 These regions are separate from the alert slot, which carries only the Dialog's own `error`.
 
 **When the browser closes it anyway** (Chrome lets a second Escape through while busy),

@@ -1,9 +1,15 @@
 // The parts of the plugin trust check that follow this computer's sandbox status: the checkbox
 // and its saved yes, the Checking line and the last line (the "Runs" line design, HAL-1873).
 
-import type { RunnerUnfencedReason } from "@halonicjs/app";
-import { Checkbox, ExternalLink, Spinner, WarningIcon } from "@halonicjs/studio-kit";
-import { useId, useState } from "react";
+import { type RunnerUnfencedReason, runnerUnfencedWords } from "@halonicjs/app";
+import {
+  Checkbox,
+  ExternalLink,
+  Spinner,
+  useModalPolite,
+  WarningIcon,
+} from "@halonicjs/studio-kit";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   CHECKING_SANDBOX,
   needsUnfencedYes,
@@ -22,6 +28,13 @@ export interface UnfencedYesState {
   readonly asking: RunnerUnfencedReason | undefined;
   readonly ticked: boolean;
   readonly tick: (checked: boolean) => void;
+  /**
+   * The box was ticked for another reason, and the host's status now names this one (the host's
+   * `reason_changed`): the box is unticked, and the change not yet said.
+   */
+  readonly changed: boolean;
+  /** Once the change is said: it isn't said again. */
+  readonly said: () => void;
   /** The day of the saved yes for this reason, for R6 in place of the checkbox. */
   readonly allowedOn: string | undefined;
   /** Why **Trust** can't be pressed yet: the id of the line that says so. */
@@ -55,6 +68,8 @@ export function useUnfencedYes(
     asking,
     ticked,
     tick: (checked) => setTickedFor(checked ? asking : undefined),
+    changed: asking !== undefined && tickedFor !== undefined && tickedFor !== asking,
+    said: () => setTickedFor(undefined),
     allowedOn: reason !== undefined && code.backend && asking === undefined ? saved?.on : undefined,
     unavailable,
     allow: ticked ? asking : undefined,
@@ -81,7 +96,9 @@ export function Checking({ id }: { readonly id: string }) {
  * the docs link follow in muted text, then the saved yes (R6), the sentence that's always true and
  * the checkbox (R5) right above the buttons (design section 3, frames rl-plugin-windows and
  * rl-plugin-windows-allowed). The checkbox comes after the words it confirms, on screen, in the
- * DOM and for Tab, and scrolls with them on a short window (WCAG 1.3.2).
+ * DOM and for Tab, and scrolls with them on a short window (WCAG 1.3.2). When the reason changed
+ * under a ticked box, focus goes to the unticked box and the dialog's polite region reads the new
+ * reason once (R3's words; UY1, HAL-14003), since **Trust** can't be pressed now.
  */
 export function LastLine({
   line,
@@ -90,6 +107,15 @@ export function LastLine({
   readonly line: TrustLastLine;
   readonly yes: UnfencedYesState;
 }) {
+  const box = useRef<HTMLInputElement>(null);
+  const polite = useModalPolite();
+  const { asking, changed, said } = yes;
+  useEffect(() => {
+    if (!changed || asking === undefined) return;
+    box.current?.focus();
+    polite?.say(runnerUnfencedWords(asking, "plugin").reason);
+    said();
+  }, [asking, changed, said, polite]);
   if (line.kind === "plain") return line.text;
   return (
     <>
@@ -111,7 +137,7 @@ export function LastLine({
       <span className="mt-1 block">{line.end}</span>
       {yes.asking === undefined ? null : (
         <span className="mt-3 block">
-          <Checkbox checked={yes.ticked} onChange={yes.tick}>
+          <Checkbox ref={box} checked={yes.ticked} onChange={yes.tick}>
             <span id={yes.checkboxId}>{UNFENCED_CHECKBOX}</span>
           </Checkbox>
         </span>

@@ -5,6 +5,7 @@
 
 import { isRunnerUnfencedReason, type RunnerUnfencedReason } from "@halonicjs/app";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { messageOf } from "../message-of.ts";
 import { trustedDay } from "../page/page-text.ts";
 import type { TrustFence, UnfencedYes } from "./runs-line.ts";
 
@@ -122,9 +123,38 @@ export function useTrustStatus(unfencedRuns: PluginUnfencedRuns | undefined): Tr
 }
 
 /**
+ * Why trust wasn't saved when the host couldn't save the yes (its `allow_failed`), after
+ * "Couldn't save trust:" (UY2, HAL-14003).
+ */
+export const YES_NOT_SAVED = "Halonic couldn't save your yes to run plugins without the sandbox";
+
+/** The host answered that it couldn't save the yes: nothing was trusted. */
+export class YesNotSaved extends Error {
+  override readonly name = "YesNotSaved";
+  constructor() {
+    super(YES_NOT_SAVED);
+  }
+}
+
+/**
+ * Why trust wasn't saved, for the dialog's error slot: the yes that couldn't be saved, or the
+ * failure's own reason.
+ */
+export function trustFailureOf(error: unknown): string {
+  return error instanceof YesNotSaved ? YES_NOT_SAVED : messageOf(error);
+}
+
+/** A host refusal's `kind` (the agent host client's `AgentHostError`), if it has one. */
+function kindOf(error: unknown): unknown {
+  return typeof error === "object" && error !== null && "kind" in error ? error.kind : undefined;
+}
+
+/**
  * **Trust** with the person's yes (design section 7): saves the yes first, through the host, and
  * trusts only once it's saved. When the reason changed in between, nothing is trusted: the check
  * reads the status again and shows the reason that holds now, with the box to tick again.
+ *
+ * @throws {@link YesNotSaved} when the host couldn't save the yes
  *
  * @returns whether the plugin was trusted
  */
@@ -135,7 +165,9 @@ export async function trustWithYes(
   trust: () => Promise<void>,
 ): Promise<boolean> {
   if (allow !== undefined && unfencedRuns !== undefined) {
-    const yes = await unfencedRuns.allow(allow);
+    const yes = await unfencedRuns.allow(allow).catch((error: unknown) => {
+      throw kindOf(error) === "allow_failed" ? new YesNotSaved() : error;
+    });
     if (yes === null) {
       status.read();
       return false;
