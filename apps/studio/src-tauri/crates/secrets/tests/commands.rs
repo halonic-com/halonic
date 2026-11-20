@@ -44,6 +44,7 @@ fn secret_commands_refuse_halonic_names_before_the_backend() {
     for stored in [
         "token_key",
         "serve_password",
+        "remote_host_key",
         "halonic_token_google_refresh_acme",
     ] {
         let name = SecretName::parse(stored).expect("a valid name");
@@ -54,6 +55,8 @@ fn secret_commands_refuse_halonic_names_before_the_backend() {
         "Token_Key",
         "serve-password",
         "SERVE_PASSWORD",
+        "remote-host-key",
+        "Remote_Host_Key",
         "halonic_token_google_refresh_acme",
         "Halonic-Token-Google-Refresh-Acme",
         "halonic_token_",
@@ -89,6 +92,7 @@ fn secret_commands_still_reach_names_that_only_look_like_halonic_ones() {
     for name in [
         "token-key-2",
         "my-serve-password",
+        "remote-host-key-2",
         "halonic-tokens",
         "google_token",
     ] {

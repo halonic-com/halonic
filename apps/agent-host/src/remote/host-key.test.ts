@@ -2,7 +2,7 @@ import { MemorySecretStore } from "@halonicjs/adapter-memory";
 import { hostSecretNames, isHalonicSecretName, workspaceSecrets } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { loadHostKey, remoteHostKeyName } from "./host-key.ts";
+import { loadHostKey, remoteHostKeyName, sharedHostKey } from "./host-key.ts";
 
 // RFC 7748 section 6.1, Alice's key pair: a published vector, not a key anyone uses.
 const rfcPrivate = "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a";
@@ -53,6 +53,29 @@ verifies("agent-host.remote-host-key", () => {
         await expect(loading).rejects.not.toThrow(value);
         expect(await store.get(remoteHostKeyName)).toBe(value);
       }
+    });
+
+    it("makes one key when two first uses come at the same time, through one shared loader", async () => {
+      const store = new MemorySecretStore();
+      let saves = 0;
+      const set = store.set.bind(store);
+      store.set = async (name, value) => {
+        saves += 1;
+        await set(name, value);
+      };
+      const hostKey = sharedHostKey(store);
+      const [first, second] = await Promise.all([hostKey(), hostKey()]);
+      expect(saves).toBe(1);
+      expect(second.publicKey).toEqual(first.publicKey);
+    });
+
+    it("tries again after a shared load failed", async () => {
+      const store = new MemorySecretStore();
+      await store.set(remoteHostKeyName, "too-short");
+      const hostKey = sharedHostKey(store);
+      await expect(hostKey()).rejects.toThrow("isn't a 32-byte key");
+      await store.set(remoteHostKeyName, base64url(rfcPrivate));
+      expect(Buffer.from((await hostKey()).publicKey).toString("hex")).toBe(rfcPublic);
     });
 
     it("keeps the key under a name no workspace may read", async () => {

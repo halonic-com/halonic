@@ -36,6 +36,27 @@ export async function loadHostKey(store: SecretStore): Promise<HostKey> {
   return hostKeyOf(made);
 }
 
+/**
+ * Loads the host's key once for everyone who asks, so the host holds one
+ * loader for its store. Two first uses at the same time would otherwise each
+ * make and save a key, and one would show a QR code with a key no longer
+ * saved. A load that fails is forgotten, so the next ask tries again.
+ *
+ * @example
+ * const hostKey = sharedHostKey(store);
+ * const [forQr, forSession] = await Promise.all([hostKey(), hostKey()]); // one key
+ */
+export function sharedHostKey(store: SecretStore): () => Promise<HostKey> {
+  let loading: Promise<HostKey> | undefined;
+  return () => {
+    loading ??= loadHostKey(store).catch((error: unknown) => {
+      loading = undefined;
+      throw error;
+    });
+    return loading;
+  };
+}
+
 function readPrivateKey(saved: string): Uint8Array {
   const bytes = Buffer.from(saved, "base64url");
   // Node's decoder skips characters it doesn't know, so the value must also read back as written.
