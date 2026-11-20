@@ -190,6 +190,41 @@ export function nodeLine(problem: NodeProblem | null): NodeLine | undefined {
   return { check: "node", status: "warning", ...problem };
 }
 
+/**
+ * What is wrong with the network settings, as the host read them without
+ * any network call (HAL-14262), with the variable the setting came from,
+ * such as `HTTPS_PROXY`:
+ *
+ * - `proxy-not-http`: the proxy is another kind, such as `https` or
+ *   `socks5`, and Halonic only uses `http` proxies.
+ * - `proxy-unusable`: the proxy setting can't be used, for `reason`, the
+ *   host's own sentence.
+ */
+export type NetworkProblem =
+  | { problem: "proxy-not-http"; variable: string; scheme: string }
+  | { problem: "proxy-unusable"; variable: string; reason: string };
+
+/** The Network line: shown only when the host found a {@link NetworkProblem}. */
+export type NetworkLine = DoctorLine & {
+  check: "network";
+  /** A warning: Halonic still starts, only its calls to model providers fail. */
+  status: "warning";
+} & NetworkProblem;
+
+/**
+ * The Network line of `halonic doctor` (requirement `app.doctor-network`): a
+ * warning with the problem the host found, or no line without one.
+ *
+ * @example
+ * networkLine({ problem: "proxy-not-http", variable: "HTTPS_PROXY", scheme: "https" });
+ * // { check: "network", status: "warning", problem: "proxy-not-http", variable: "HTTPS_PROXY", scheme: "https" }
+ * networkLine(null); // undefined
+ */
+export function networkLine(problem: NetworkProblem | null): NetworkLine | undefined {
+  if (problem === null) return undefined;
+  return { check: "network", status: "warning", ...problem };
+}
+
 /** What Halonic's own data takes on the disk. */
 export interface DataSpace {
   /** All of Halonic's data folders together. */

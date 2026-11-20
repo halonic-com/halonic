@@ -299,3 +299,22 @@ verifies("app.doctor-node", () => {
     expect((await doctor().service.check(null)).node).toBeUndefined();
   });
 });
+
+verifies("app.doctor-network", () => {
+  it("warns on a Network line when the proxy isn't an http:// one, naming its variable", async () => {
+    const network = {
+      problem: "proxy-not-http",
+      variable: "HTTPS_PROXY",
+      scheme: "https",
+    } as const;
+    const report = await doctor({ network }).service.check(null);
+
+    expect(report.network).toEqual({ check: "network", status: "warning", ...network });
+    expect(report.summary).toEqual({ problems: 0, warnings: 1, needsFixing: false });
+  });
+
+  it("has no Network line when the host found nothing, or checks nothing", async () => {
+    expect((await doctor({ network: null }).service.check(null)).network).toBeUndefined();
+    expect((await doctor().service.check(null)).network).toBeUndefined();
+  });
+});

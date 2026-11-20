@@ -23,6 +23,12 @@ export const serveMessages = defineMessages("serve", {
   noLiveVersion: () => phrase`No version of the workspace is live yet.`,
   /** `--port` is not a port number. */
   portInvalid: () => phrase`--port needs a whole number from 0 to 65535.`,
+  /**
+   * After "✕ Couldn't serve Acme: ", when another program listens on the
+   * port; `other` is a free-looking port next to it to try (HAL-14262).
+   */
+  portInUse: (port: number, other: number) =>
+    phrase`port ${String(port)} is in use by another program. Stop it, or pick another port with --port ${String(other)}.`,
   /** The first line once it is listening, with how to stop. */
   serving: (workspace: string, address: string) =>
     phrase`Serving ${workspace} at ${address}. Stop with Ctrl C.`,

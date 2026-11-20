@@ -158,12 +158,13 @@ verifies("cli.commands.trust.review-and-trust", () => {
 
     expect(code).toBe(exitCode.notTrusted);
     expect(io.stderr[0]).toBe(`Trust check for Acme (.${sep}acme)`);
-    expect(io.stderr.slice(-2)).toEqual([
-      "✕ Acme isn't trusted on this computer yet, and there's no terminal to ask you.",
-      "  Review it with halonic trust --dir acme, then pass --yes --fingerprint <fingerprint>.",
-    ]);
     expect(io.stdout).toHaveLength(1);
     expect(io.stdout[0]).toMatch(fullFingerprint);
+    // The fix is the command that trusts what the check showed, ready to copy (HAL-14262).
+    expect(io.stderr.slice(-2)).toEqual([
+      "✕ Acme isn't trusted on this computer yet, and there's no terminal to ask you.",
+      `  Read the list above, then run: halonic trust --dir acme --yes --fingerprint ${io.stdout[0]}`,
+    ]);
     expect([...io.stdout, ...io.stderr].join("\n")).not.toContain("…");
     expect(await store.list()).toEqual([]);
   });

@@ -51,6 +51,9 @@ export const usageMessages = defineMessages("usage", {
   unknownOptionNear: (option: string, near: string) =>
     phrase`There's no option ${option}. Did you mean ${near}?`,
   seeCommandOptions: (command: string) => phrase`Run halonic ${command} --help to see its options.`,
+  /** The fix for `--dir` to a command that takes its folder first, such as `init` (HAL-14262). */
+  folderFirst: (commandLine: string) =>
+    phrase`Give the folder as the first argument: ${commandLine}.`,
   missingValue: (option: string, valueName: string) =>
     phrase`${option} needs a value: ${option} <${valueName}>.`,
   /**

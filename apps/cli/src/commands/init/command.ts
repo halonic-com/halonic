@@ -45,6 +45,7 @@ export const initCommand: CliCommand = {
   name: "init",
   usage: `[folder] [--example ${Object.keys(initExamples).join("|")}]`,
   takesArguments: true,
+  folderArgument: true,
   summary: initMessages.summary(),
   action: (input, context) => {
     const folder = initFolder(input, context.cwd, defaultFolder(input));

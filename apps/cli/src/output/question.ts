@@ -61,8 +61,8 @@ export interface Question {
   /**
    * The error for when no question may be asked. It says what the answer
    * would have been for and names the flags that give it, such as
-   * "… there's no terminal to ask you. Review it with halonic trust --dir
-   * ./acme, then pass --yes --fingerprint <fingerprint>."
+   * "… there's no terminal to ask you. Read the list above, then run:
+   * halonic trust --dir ./acme --yes --fingerprint hfp1:…"
    */
   readonly refusal: () => Error;
 }

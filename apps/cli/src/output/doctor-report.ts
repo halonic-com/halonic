@@ -13,6 +13,7 @@ import {
   type LimitedCheck,
   type ModelProblem,
   type ModelsLine,
+  type NetworkLine,
   type NodeLine,
   type ProviderReport,
   type SandboxLine,
@@ -77,7 +78,7 @@ interface CheckLines {
 
 /**
  * The lines of `halonic doctor`, in the order of cli-output 3.7: Workspace,
- * Models, Sandbox, Harnesses, Node.js (HAL-6517) and Disk, each only when
+ * Models, Sandbox, Harnesses, Node.js (HAL-6517), Network (HAL-14262) and Disk, each only when
  * the report has it, with an empty line after the heading and before the
  * summary.
  *
@@ -95,6 +96,7 @@ export function doctorReportLines(report: DoctorReport, facts: DoctorFacts): Phr
     report.harnesses &&
       orTimedOut(report.harnesses, (line) => harnessesCheck(line, facts.signInShell)),
     report.node && orTimedOut(report.node, nodeCheck),
+    report.network && networkCheck(report.network),
     orTimedOut(report.disk, diskCheck),
   ].filter((check) => check !== undefined);
   return [
@@ -361,6 +363,19 @@ function nodeCheck(line: NodeLine): CheckLines {
           doctorMessages.installPnpmInWsl().phrase,
         ];
   return { status: line.status, label: doctorMessages.nodeLabel(), lines };
+}
+
+/** What is wrong with the proxy setting; the setting's own reason under it when it isn't the scheme. */
+function networkCheck(line: NetworkLine): CheckLines {
+  // The variable's name comes from the environment, but only as one of the names Halonic reads.
+  const lines =
+    line.problem === "proxy-not-http"
+      ? [doctorMessages.proxyNotHttp(line.variable, printable(line.scheme)).phrase]
+      : [
+          doctorMessages.proxyUnusable(line.variable).phrase,
+          doctorMessages.proxyReason(printable(line.reason)).phrase,
+        ];
+  return { status: line.status, label: doctorMessages.networkLabel(), lines };
 }
 
 function diskCheck(line: DiskLine): CheckLines {

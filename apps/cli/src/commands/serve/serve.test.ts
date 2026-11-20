@@ -1,4 +1,5 @@
 import { rm, utimes } from "node:fs/promises";
+import { createServer } from "node:net";
 import { join } from "node:path";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -250,6 +251,26 @@ verifies("cli.commands.serve.serve", () => {
     expect(await serving).toBe(2);
     running = undefined;
     expect(io.stderr.join("\n")).toContain("halonic secret set serve-password");
+  });
+
+  it("says when another program has the port, names the next one, and exits 5 (HAL-14262)", async () => {
+    await trustAcme();
+    const other = createServer();
+    await new Promise<void>((resolve) => other.listen(0, "127.0.0.1", resolve));
+    try {
+      const address = other.address();
+      if (address === null || typeof address === "string") throw new Error("No port.");
+      const { io, serving } = startServe("--port", String(address.port));
+
+      expect(await serving).toBe(5);
+      running = undefined;
+      expect(io.stderr[0]).toBe(
+        `✕ Couldn't serve acme: port ${address.port} is in use by another program. ` +
+          `Stop it, or pick another port with --port ${address.port + 1}.`,
+      );
+    } finally {
+      await new Promise((resolve) => other.close(resolve));
+    }
   });
 });
 

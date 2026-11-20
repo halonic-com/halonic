@@ -60,8 +60,8 @@ const diskFree: DiskLine = {
 
 /** A report from its lines, with the summary `DoctorService` would add. */
 function reportOf(lines: Omit<DoctorReport, "summary">): DoctorReport {
-  const { workspace, models, sandbox, harnesses, node, disk } = lines;
-  const all = [workspace, models, sandbox, harnesses, node, disk].filter(
+  const { workspace, models, sandbox, harnesses, node, network, disk } = lines;
+  const all = [workspace, models, sandbox, harnesses, node, network, disk].filter(
     (line) => line !== undefined,
   );
   return { ...lines, summary: doctorSummary(all) };

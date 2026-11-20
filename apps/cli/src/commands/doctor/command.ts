@@ -144,9 +144,9 @@ function withWindowsDrive(
  * with its `check` and `status` (`ok`, `warning` or `failed`), and the counts.
  */
 function doctorJson(report: DoctorReport) {
-  const { workspace, models, sandbox, harnesses, node, disk, summary } = report;
+  const { workspace, models, sandbox, harnesses, node, network, disk, summary } = report;
   return {
-    checks: [workspace, models, sandbox, harnesses, node, disk].filter(
+    checks: [workspace, models, sandbox, harnesses, node, network, disk].filter(
       (line) => line !== undefined,
     ),
     problems: summary.problems,
