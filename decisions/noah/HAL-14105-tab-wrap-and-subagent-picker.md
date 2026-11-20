@@ -11,13 +11,18 @@
 
 **Add a subagent (SG1b).** The agents to pick were borderless buttons, so they read as a plain list next to the bordered Name box, and in high contrast they had no edge at all. They are now the rows of a kit `List` named "Pick an agent": a bordered box with a line between rows, a fill on hover and press and the List's focus ring, with each agent's whole description under its name. The box stays on a phone too (`flush={false}`), where a List is flush by default, so high contrast keeps its edge. A click, Enter or Space adds the agent, as before.
 
-The `kit.tabs` requirement says so and gains one example; `agents.configuration.subagents` says the agents are the rows of a List. The tab fill test now expects `basis-[var(--tab-basis,0)]` for `basis-0`, and two new tests check the balanced rows and the fallback. The subagents test finds the agents as grid cells instead of `li button`. No test was skipped.
+**Focus and spoken lines (a11y SA1 and SA2, from Sofia's C375 check).** On the desktop, "Add a subagent" now opens with focus on the first agent to pick, and in the name box when there is nothing to pick; before, the kit's `Dialog` put it in the name box below the list. A form `Dialog` couldn't choose where focus starts, so it now takes `initialFocus` for a `form` too, and falls back to the first field when that returns `null`; the phone form sheet still focuses its title. Once a change is saved, the page reads politely "*Writer* added.", "*Sorter 2* created and added." or "*Writer* removed." through the shell's announcer, and focus stays where it lands today. A change the host refuses reads nothing, because its toast says why.
+
+The `kit.tabs` requirement says so and gains one example; `agents.configuration.subagents` says the agents are the rows of a List, where focus starts and what is read; `kit.dialog` says a `form`'s `initialFocus` comes first and gains one example. The tab fill test now expects `basis-[var(--tab-basis,0)]` for `basis-0`, and two new tests check the balanced rows and the fallback. The subagents test finds the agents as grid cells instead of `li button`. No test was skipped.
 
 ## Why
 
 Found by Sofia's C313 check of #3869 (HAL-14097). A tab alone across a row looks unbalanced and draws the eye to the last page for no reason. Agents that don't look pressable make a person look for another way to pick one. The List is the kit's one look for a choice among items, so the dialog now uses it instead of its own buttons.
 
+SA1 and SA2 come from Sofia's C375 check (HAL-14418), which decided them on HAL-14105. Starting in the name box skipped the list a keyboard user opened the dialog for, and a change that saved without a word left a screen reader user guessing. Focus doesn't move to the new chip's Remove, because the next Enter would then undo the add.
+
 ## Covers
 
 - kit.tabs
+- kit.dialog
 - agents.configuration.subagents
