@@ -186,6 +186,22 @@ verifies("app.routine-list", () => {
     });
   });
 
+  it("counts the errors on each routine's file, and gives the zone its schedule names", async () => {
+    const routines = await listed({
+      [routinePath("broken")]: routineFile("broken", "{ every: 0m }"),
+      [routinePath("weekly")]: routineFile(
+        "weekly",
+        '{ schedule: "0 9 * * 1", timezone: America/New_York }',
+      ),
+    });
+
+    // The hub has no workflow `report`, so the loaded routine has an error of its own too.
+    expect(routines.map((each) => [each.routineId, each.problems, each.timeZone])).toEqual([
+      ["broken", 1, null],
+      ["weekly", 1, "America/New_York"],
+    ]);
+  });
+
   it("keys a routine file at the workspace root that doesn't load by @workspace", async () => {
     const [routine] = await listed({
       "workflows/routines/backup.routine.yaml": "id: backup\ntrigger: { manual: true }",

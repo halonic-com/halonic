@@ -27,6 +27,8 @@ stdout:
         "enabled": true,
         "trigger": "Mondays at 09:00",
         "nextRun": "2026-11-16T09:00:00.000Z",
+        "timeZone": null,
+        "problems": 0,
         "lastRun": null
       }
     ]

@@ -1,7 +1,9 @@
 // `halonic routines`: the workspace's routines, one row each (HAL-4844). A
 // thin command over `RoutineList`: this file opens the workspace and its
 // runs, asks the service, and turns its answer into rows. Listing starts
-// nothing and writes nothing, so it needs no trust, as `halonic runs`.
+// nothing and writes nothing, so it needs no trust, as `halonic runs`. A
+// routine whose file has errors shows "Won't start", and the list exits 1,
+// so "will it run?" is answered where people look for it (HAL-14299).
 
 import { type ListedRoutine, RoutineList } from "@halonicjs/app/routines";
 import { loadWorkspace } from "@halonicjs/workspace";
@@ -12,7 +14,7 @@ import { dim, dimmed, type Phrase, phrase } from "../../messages/phrase.ts";
 import { routinesMessages } from "../../messages/routines.ts";
 import { printable } from "../../output/printable.ts";
 import { dueAt, type RunClock, startedAt } from "../../run-times.ts";
-import { openWorkspaceDir } from "../../workspace-dir.ts";
+import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
 import type { RunListSetup } from "../runs/list.ts";
@@ -21,6 +23,8 @@ import { listedStatus } from "../runs/listed-run.ts";
 /**
  * Lists the workspace's routines, one lined-up row each: the name, what
  * starts it, its next run and its last run. No routines says so, and exits 0.
+ * Routines whose files have errors are counted above the list, which then
+ * exits 1.
  *
  * @throws NoWorkspaceError when the folder holds no workspace
  */
@@ -44,9 +48,15 @@ export async function listRoutines(
     };
   }
   const withHub = spansHubs(routines);
+  const withProblems = routines.filter((each) => each.problems > 0).length;
+  const problemsLine =
+    withProblems === 0
+      ? []
+      : [routinesMessages.routinesWithProblems(withProblems, givenDir(input, workspace)).phrase];
   return {
-    exitCode: exitCode.ok,
+    exitCode: withProblems === 0 ? exitCode.ok : exitCode.failed,
     lines: [
+      ...problemsLine,
       ...columns(routines.map((each) => routineRow(each, clock, withHub))),
       routinesMessages.watchHint().phrase,
     ],
@@ -84,14 +94,27 @@ function spansHubs(routines: readonly ListedRoutine[]): boolean {
   return new Set(routines.map((each) => each.hubId)).size > 1;
 }
 
+/**
+ * The Next column. A routine with errors won't start, even when it is on
+ * or has a next time. A schedule in a zone other than this computer's is
+ * written in its own zone, and says which, so its time matches its file.
+ */
 function nextCell(routine: ListedRoutine, clock: RunClock): Phrase {
+  if (routine.problems > 0) {
+    return routinesMessages.wontStart().phrase;
+  }
   if (!routine.enabled) {
     return routinesMessages.off().phrase;
   }
   if (routine.nextRun === null) {
     return routinesMessages.noSetTime().phrase;
   }
-  return routinesMessages.next(dueAt(new Date(routine.nextRun), clock)).phrase;
+  const due = new Date(routine.nextRun);
+  const zone = routine.timeZone;
+  if (zone === null || zone === (clock.timeZone ?? computerTimeZone())) {
+    return routinesMessages.next(dueAt(due, clock)).phrase;
+  }
+  return routinesMessages.nextIn(dueAt(due, { ...clock, timeZone: zone }), printable(zone)).phrase;
 }
 
 function lastCell(routine: ListedRoutine, clock: RunClock): Phrase {

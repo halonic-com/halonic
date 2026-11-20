@@ -9,6 +9,7 @@ import {
   type StartedAt,
   startedInWords,
 } from "./runs-list.ts";
+import { suggestedCommand } from "./suggested-command.ts";
 
 /**
  * The sentences of `halonic routines` and `halonic routines watch` (HAL-4844). cli-output has no section
@@ -24,6 +25,21 @@ export const routinesMessages = defineMessages("routines", {
 
   /** The Next column: "Next 16 Nov 09:00", "Next tomorrow 08:00", "Next 14:00". */
   next: (due: DueAt) => phrase`Next ${dueInWords(due)}`,
+  /**
+   * The Next column of a schedule in its own time zone, other than this
+   * computer's, so the time reads as the routine's file has it (HAL-14299):
+   * "Next 16:00 (Europe/Amsterdam)".
+   */
+  nextIn: (due: DueAt, timeZone: string) => phrase`Next ${dueInWords(due)} ${dim(`(${timeZone})`)}`,
+  /** The Next column of a routine whose file has errors: it won't start until they are fixed (HAL-14299). */
+  wontStart: () => phrase`${markPart("failed")} Won't start`,
+  /**
+   * The line above the list when routines have errors, which exits 1
+   * (HAL-14299): "! 1 routine has problems · halonic validate". `dir` is
+   * the user's own `--dir`.
+   */
+  routinesWithProblems: (count: number, dir?: string) =>
+    phrase`${markPart("needsYou")} ${counted(count, "routine has", "routines have")} problems ${markPart("separator")} ${suggestedCommand("validate", dir)}`,
   /** The Next column of a routine that is off. */
   off: () => phrase`Off`,
   /** The Next column of a routine no clock starts: manual, a signal, mail, or a schedule that doesn't parse. */
@@ -54,6 +70,12 @@ export const routinesMessages = defineMessages("routines", {
    */
   watching: (onAClock: number, workspace: string) =>
     phrase`Watching ${counted(onAClock, "routine", "routines")} in ${workspace}. Stop with Ctrl C.`,
+  /**
+   * The line under {@link watching} for each webhook routine that is on: the
+   * watch never starts it, `halonic serve` does (HAL-14299).
+   */
+  startsOnWebRequest: (name: string) =>
+    phrase`${name} starts on a web request: run halonic serve for it.`,
   /** A routine run that started: "✓ Started Weekly report · run 01jd8q · due 09:00". */
   started: (name: string, runId: string, due: StartedAt) =>
     phrase`${markPart("done")} Started ${name} ${markPart("separator")} run ${runId} ${markPart("separator")} due ${startedInWords(due)}`,

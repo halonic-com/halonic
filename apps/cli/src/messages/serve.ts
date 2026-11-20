@@ -1,5 +1,5 @@
 import { defineMessages } from "./define.ts";
-import { phrase } from "./phrase.ts";
+import { markPart, phrase } from "./phrase.ts";
 
 /**
  * The sentences `halonic serve` gives a caller of the served workspace. They
@@ -26,6 +26,15 @@ export const serveMessages = defineMessages("serve", {
   /** The first line once it is listening, with how to stop. */
   serving: (workspace: string, address: string) =>
     phrase`Serving ${workspace} at ${address}. Stop with Ctrl C.`,
+  /**
+   * The line under {@link serving} for each webhook routine that is on, with
+   * the address a web request starts it at (HAL-14299).
+   */
+  webhookRoutine: (name: string, address: string) =>
+    phrase`${name} starts on a web request at ${address}`,
+  /** The line under {@link webhookRoutine} when its secret isn't set, so every request is refused. */
+  webhookSecretNotSet: (name: string, secret: string) =>
+    phrase`${markPart("failed")} ${name} won't start: its secret ${secret} isn't set. Set it with: halonic secret set ${secret}`,
   /** The runtime's own line with the address for the phone, as it words it. */
   address: (line: string) => phrase`${line}`,
   /** The line under {@link serving} when the sign-in password is not set, so only this computer can open it. */

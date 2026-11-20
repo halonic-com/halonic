@@ -49,6 +49,17 @@ verifies("format.routine-file", () => {
     );
   });
 
+  it.each([
+    ["two triggers", "trigger: { schedule: '0 9 * * 1', every: 1h }"],
+    ["a manual trigger that is false", "trigger: { manual: false }"],
+  ])("refuses %s at the trigger, naming the kinds it may be", (_case, trigger) => {
+    const problems = problemsOf("routine", routine(trigger, "run: { workflow: invoice }"));
+    expect(summary(problems)).toEqual(["trigger invalid_union 3"]);
+    expect(problems[0]?.message).toBe(
+      "trigger needs exactly one of: schedule, every, manual: true, signal, mail or webhook.",
+    );
+  });
+
   it("refuses a run with neither a workflow nor an agent, and an unknown overlap", () => {
     const text = routine("trigger: { manual: true }", "run: { hub: billing }", "overlap: wait");
     expect(summary(problemsOf("routine", text))).toEqual([

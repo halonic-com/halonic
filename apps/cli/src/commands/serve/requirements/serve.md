@@ -2,13 +2,15 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-195 (9b-2); phase 4 plan on HAL-9 (secure serve); the trust gate of `cli.serve-trust-gate` (9b-1); the Node runtime of `halonic serve` (`target-node-runtime`)
+- Source: HAL-195 (9b-2); phase 4 plan on HAL-9 (secure serve); the trust gate of `cli.serve-trust-gate` (9b-1); the Node runtime of `halonic serve` (`target-node-runtime`); the webhook routines' lines, HAL-14299
 
 The `halonic serve` command shall serve the workspace through the secure server (`@halonicjs/host-server`) on the Node listener (`@halonicjs/target-node-runtime`), in the foreground, until Ctrl C or SIGTERM. It shall first refuse, with nothing served, a workspace that needs trust and isn't trusted on this computer, or changed since (exit 3; a workspace that reaches only the test model needs none, as for `halonic run`), a workspace whose history git can't open (exit 9) and a workspace with history but nothing live yet. It shall listen on this computer only, on `--port` (4747 when left out; `--port 0` lets the system choose, for tests), unless `--network` is given, which also needs a sign-in password and a network address. It shall give the server the local engine's executor and run store, the profile's secrets, the scrypt password hasher, the engine's coordination, the read-only trust gate for the served workspace, the routines of the live version for webhooks, and a request count kept on disk in the workspace's folder in the profile. Its first line shall name the workspace and the address and how to stop; when no sign-in password is set, a second line shall say that only this computer can open it and name `halonic secret set serve-password`. It shall close the listener, then the engine, at Ctrl C or SIGTERM.
 
 It shall also tell the server which workspace it shows, for `GET /api/workspace` (`server.workspace`): the name read again at every request, the folder as the server shortens it against the home folder of this computer's profile, and `sample` false, because no workspace is marked as the sample until Welcome has one (HAL-9089).
 
 It shall also serve the built Studio page at `/`, through the server's page route (`server.studio-page`), read from `apps/studio/dist/studio` where `pnpm --filter @halonicjs/app-studio build` leaves it. The command keeps no copy and has no build step of its own. When the page isn't built it shall still serve the API, answer 404 at `/`, and print the line "The Studio page isn't built, so the address shows no page yet. Build it with: pnpm --filter @halonicjs/app-studio build" under the "Serving" line.
+
+After those lines, it shall print one line for each webhook routine that is on, with the address a web request starts it at: "Friday digest starts on a web request at http://localhost:4747/api/webhooks/notes/friday-digest". When the routine's secret has no value, the line under it shall say "✕ Friday digest won't start: its secret friday-hook isn't set. Set it with: halonic secret set friday-hook", because the server refuses every request for it.
 
 Rationale: the server asks the trust gate again before every request that starts a run, so a workspace edited behind a running server stops starting runs until a person trusts it again with `halonic trust`. `--network` without a password would leave the workspace open to the home network, so the runtime refuses it.
 
@@ -27,3 +29,4 @@ Rationale: the server asks the trust gate again before every request that starts
 - Given `--network` and no sign-in password, then it exits 2, refuses and names `halonic secret set serve-password`.
 - Given a served workspace edited after trust, then `GET /api/trust` no longer answers `trusted`, and `POST /api/runs` is refused with 403 `workspace_not_trusted`.
 - Given a run whose agent needs the sandbox when it can't start, while the server is serving, then that run is refused with "That run didn't start. The server is still running." and the server keeps serving.
+- Given a webhook routine Friday digest in the notes hub whose secret friday-hook isn't set, when `halonic serve --port 4747` starts, then it prints "Friday digest starts on a web request at http://localhost:4747/api/webhooks/notes/friday-digest" and the ✕ line that names `halonic secret set friday-hook`; with the secret set, only the first.

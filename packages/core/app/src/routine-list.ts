@@ -2,7 +2,9 @@
 // starts each one in words, when it runs next on its own, and the last run it
 // started. The words and times come from `@halonicjs/routines`, so the list
 // says what the routine scheduler does. A routine file that doesn't load is
-// listed too, with its error, so a typing mistake doesn't hide it (HAL-12607).
+// listed too, with its error, so a typing mistake doesn't hide it (HAL-12607),
+// and each routine counts the errors on its file, so the list can say which
+// routines won't start (HAL-14299).
 
 import type { RunSummary } from "@halonicjs/events";
 import type { RunStore } from "@halonicjs/ports";
@@ -40,6 +42,18 @@ export interface ListedRoutine {
    * doesn't parse, which `trigger` then says.
    */
   nextRun: string | null;
+  /**
+   * The time zone its schedule names, or `null` when it names none and runs
+   * in the zone given, or isn't a schedule.
+   */
+  timeZone: string | null;
+  /**
+   * How many errors its file has, as `halonic validate` finds them. A
+   * routine with any won't start: a file that doesn't load never reaches the
+   * routine scheduler, and the start of one that names a missing hub,
+   * workflow or agent, or a time zone that doesn't exist, fails.
+   */
+  problems: number;
   /** The newest real run it started, or `null` if it never started one. */
   lastRun: RunSummary | null;
 }
@@ -71,13 +85,17 @@ export class RoutineList {
     timeZone: string,
   ): Promise<ListedRoutine[]> {
     const lastRuns = newestPerRoutine(await this.#runs.list({ kind: "run" }));
+    const problems = errorsPerFile(workspace);
     const loaded = filesOf(workspace, "routine").map((file) => ({
       path: file.path,
-      listed: loadedRoutine({ hub: file.hub, routine: file.value }, now, timeZone),
+      listed: {
+        ...loadedRoutine({ hub: file.hub, routine: file.value }, now, timeZone),
+        problems: problems.get(file.path) ?? 0,
+      },
     }));
     const unloaded = unloadedRoutineFiles(workspace).map((file) => ({
       path: file.path,
-      listed: unloadedRoutine(file),
+      listed: { ...unloadedRoutine(file), problems: problems.get(file.path) ?? 0 },
     }));
     // Paths compare by code unit, as the workspace sorts its files; no two are the same.
     return [...loaded, ...unloaded]
@@ -86,10 +104,10 @@ export class RoutineList {
   }
 }
 
-/** A routine as the list gives it, before its last run is looked up. */
-type ListedWithoutRun = Omit<ListedRoutine, "lastRun">;
+/** A routine as the list gives it, before its problems and last run are looked up. */
+type ListedOwnFields = Omit<ListedRoutine, "problems" | "lastRun">;
 
-function loadedRoutine(placed: PlacedRoutine, now: Date, timeZone: string): ListedWithoutRun {
+function loadedRoutine(placed: PlacedRoutine, now: Date, timeZone: string): ListedOwnFields {
   const { routine } = placed;
   return {
     key: routineKey(placed),
@@ -99,7 +117,19 @@ function loadedRoutine(placed: PlacedRoutine, now: Date, timeZone: string): List
     enabled: routine.enabled,
     trigger: describeTrigger(routine.trigger),
     nextRun: routine.enabled ? nextRunOf(routine.trigger, now, timeZone) : null,
+    timeZone: "schedule" in routine.trigger ? (routine.trigger.timezone ?? null) : null,
   };
+}
+
+/** How many errors each file has, by its path. */
+function errorsPerFile(workspace: LoadedWorkspace): Map<string, number> {
+  const errors = new Map<string, number>();
+  for (const issue of workspace.issues) {
+    if (issue.severity === "error") {
+      errors.set(issue.file, (errors.get(issue.file) ?? 0) + 1);
+    }
+  }
+  return errors;
 }
 
 /** A routine file that didn't load, with where it sits and its first error. */
@@ -142,7 +172,7 @@ function unloadedRoutineFiles(workspace: LoadedWorkspace): UnloadedRoutineFile[]
  * where the trigger goes, such as `Invalid file, line 4: use a number and a
  * unit, e.g. "15m", …`. `halonic validate` gives every error of the file.
  */
-function unloadedRoutine(file: UnloadedRoutineFile): ListedWithoutRun {
+function unloadedRoutine(file: UnloadedRoutineFile): ListedOwnFields {
   return {
     key: routineKey({ hub: file.hub, routine: { id: file.id } }),
     hubId: file.hub,
@@ -151,6 +181,7 @@ function unloadedRoutine(file: UnloadedRoutineFile): ListedWithoutRun {
     enabled: false,
     trigger: `Invalid file, line ${file.error.line}: ${file.error.message}`,
     nextRun: null,
+    timeZone: null,
   };
 }
 

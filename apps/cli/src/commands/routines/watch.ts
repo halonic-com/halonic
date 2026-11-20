@@ -128,6 +128,10 @@ async function watchVersions(
     context.printAhead(
       routinesMessages.watching(onAClock.length, printable(workspaceNameOf(workspace, dir))).phrase,
     );
+    // A webhook routine never starts here, so the watch says what does start it (HAL-14299).
+    for (const { routine } of routines.filter(startsOnWebRequest)) {
+      context.printAhead(routinesMessages.startsOnWebRequest(printable(routine.name)).phrase);
+    }
     // The runs held so far: the catch-up tick's, and any a scheduled tick started while it ran.
     report.open();
     await stopped(engine.signal);
@@ -306,6 +310,11 @@ function refuseHarnessAgent(agent: LoadedFileOf<"agent"> | undefined): void {
 
 function isOnAClock(routine: PlacedRoutine["routine"]): boolean {
   return "schedule" in routine.trigger || "every" in routine.trigger;
+}
+
+/** Whether the routine is on and a web request starts it, which only `halonic serve` receives. */
+function startsOnWebRequest({ routine }: PlacedRoutine): boolean {
+  return routine.enabled && "webhook" in routine.trigger;
 }
 
 /**

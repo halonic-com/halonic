@@ -110,6 +110,31 @@ verifies("cli.commands.serve.serve", () => {
     await expect(fetch(`${address}/api/hello`)).rejects.toThrow();
   });
 
+  it("gives each webhook routine's address, and a ✕ line when its secret isn't set", async () => {
+    await writeFiles(acmeRuns.acme, {
+      "hubs/support/workflows/routines/friday-digest.routine.yaml": [
+        "id: friday-digest",
+        "name: Friday digest",
+        "trigger: { webhook: { secret: friday-hook } }",
+        "run: { workflow: support-reply }",
+        "",
+      ].join("\n"),
+    });
+    await trustAcme();
+    const { io } = startServe("--port", "0");
+    await waitUntil(
+      "the server to print the routine's lines",
+      () => io.stdout.some((line) => line.startsWith("✕ Friday digest")),
+      slowStart,
+    );
+    const address = addressOf(io.stdout[0]);
+
+    expect(io.stdout.slice(-2)).toEqual([
+      `Friday digest starts on a web request at ${address}/api/webhooks/support/friday-digest`,
+      "✕ Friday digest won't start: its secret friday-hook isn't set. Set it with: halonic secret set friday-hook",
+    ]);
+  });
+
   it("tells a workspace under the home folder by its path from home, with a ~", async () => {
     await trustAcme();
     const { io } = startServeHomedAt(acmeRuns.folder, "--port", "0");
