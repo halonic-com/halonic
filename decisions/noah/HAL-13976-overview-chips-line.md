@@ -15,7 +15,16 @@ The UX check C275 (HAL-13936, row NY1 on the a11y status sheet) found that on a 
 
 Measured with the real Workflows rows after the change: at 195 px every name box is 123 px wide (Support reply's was 8 px, Invoice intake's, with two chips, 0 px), at 320 px every Last run reads whole in a 248 px line, and nothing scrolls sideways at 195, 320 or 390 px (at 195 px it did before).
 
+## A chip wider than its column wraps inside its edge
+
+The re-check C285 (HAL-14005, row NY2) found that at 195 px the chip itself could still be cut: with Arial's widths "2 needs you" is 89 px on its own line, in a 75 px text column, so it read "2 needs yo" with its right edge gone. The team decided on HAL-14005 (under HAL-2282: a detail of NY1's decided fix, no new words) that a chip wider than its column wraps its words inside its edge, never cut.
+
+The kit's `StatusChip` now keeps its words on one line, as before, but is never wider than the column it sits in; when it would be, it wraps its words inside its edge. That holds in a line that cuts its own text too, such as a list row's line under the name. `kit.status-chip` says so and gains one example; no example is removed and no test is dropped or skipped. Where a chip fits, nothing changes: at 320 and 1280 px every chip has the same size as before. At 195 px "2 needs you", "△ 2 warnings" and "✕ 2 problems" are 91 px wide on two lines, whole, in a 91 px column, and nothing scrolls sideways.
+
+To stay under the 500-line limit, the overview page's phone tests moved to their own file, `overview-page-phone.test.tsx`, unchanged.
+
 ## Covers
 
 - shell.overview.row-parts-and-quiet-head
 - shell.overview.used-by
+- kit.status-chip
