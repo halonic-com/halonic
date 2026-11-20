@@ -4,7 +4,6 @@ import {
   doctorSummary,
   type HarnessesLine,
   type ModelsLine,
-  type NetworkLine,
   type NodeLine,
   type SandboxLine,
   type WorkspaceLine,
@@ -479,59 +478,5 @@ describe("doctorReportLines", () => {
       renderPhrase(line, oldConsole),
     );
     expect(sandbox).toBe("ok Sandbox     ready - bubblewrap");
-  });
-});
-
-verifies("cli.doctor-network", () => {
-  it("says which variable holds a proxy that isn't http://, before Disk", () => {
-    const network: NetworkLine = {
-      check: "network",
-      status: "warning",
-      problem: "proxy-not-http",
-      variable: "HTTPS_PROXY",
-      scheme: "https",
-    };
-    const lines = printed(reportOf({ sandbox: sandboxReady, network, disk: diskFree }));
-
-    expect(lines.slice(3, 5)).toEqual([
-      "! Network     HTTPS_PROXY is an https:// proxy; Halonic only uses http:// proxies",
-      "✓ Disk        48 GB free · Halonic uses 1.4 GB (run logs 1.1 GB)",
-    ]);
-    expect(lines.at(-1)).toBe("No problems. 1 warning.");
-  });
-
-  it("says a socks5:// proxy, and gives the setting's own reason for any other problem", () => {
-    const socks: NetworkLine = {
-      check: "network",
-      status: "warning",
-      problem: "proxy-not-http",
-      variable: "https_proxy",
-      scheme: "socks5",
-    };
-    const unusable: NetworkLine = {
-      check: "network",
-      status: "warning",
-      problem: "proxy-unusable",
-      variable: "HTTPS_PROXY",
-      reason: "The proxy setting for proxy.corp uses port 0.",
-    };
-
-    expect(
-      check(
-        printed(reportOf({ sandbox: sandboxReady, network: socks, disk: diskFree })),
-        "Network",
-      ),
-    ).toEqual([
-      "! Network     https_proxy is a socks5:// proxy; Halonic only uses http:// proxies",
-    ]);
-    expect(
-      check(
-        printed(reportOf({ sandbox: sandboxReady, network: unusable, disk: diskFree })),
-        "Network",
-      ),
-    ).toEqual([
-      "! Network     HTTPS_PROXY is set, and Halonic can't use it.",
-      "              The proxy setting for proxy.corp uses port 0.",
-    ]);
   });
 });

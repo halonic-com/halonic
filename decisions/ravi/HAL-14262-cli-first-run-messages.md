@@ -4,7 +4,6 @@
 - Task: HAL-14262
 - Approval: HAL-14262, Liam's approval of Kim's wording from the first-run error check on HAL-14245 (C5, C7, C8)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:tlDv+tm5WXSsJkXYmk4fHWXSSiXvuCn/KWI1ZmhBq8tD3BGAGexIk0PKGYVjSd+vOlvamBIdN1GvyHBcj+vVAA==
 
 ## What changes
 
