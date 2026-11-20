@@ -8,7 +8,7 @@ export interface WelcomeRecentWorkspace {
   readonly location: string;
   /** Its name, such as "Acme Support". */
   readonly name: string;
-  /** True when it was created as the Acme sample on this device: its row ends in a Sample tag. */
+  /** True when it was created as the Acme sample on this device: its row ends in a Demo tag. */
   readonly sample?: boolean | undefined;
 }
 
@@ -16,7 +16,7 @@ export interface WelcomeRecentWorkspace {
 export const openingStatus = "Opening…";
 
 /** The tag at the end of a sample's row: a fact, so an outline tag and not a tone chip (flow-first-run 2.1). */
-export const sampleTag = "Sample";
+export const sampleTag = "Demo";
 
 const tagClasses =
   "shrink-0 rounded-xs border border-border px-1.5 text-caption text-fg-muted contrast-more:border-border-control";

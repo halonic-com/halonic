@@ -16,7 +16,7 @@ const entries: readonly MenuEntry[] = [
     id: "sample",
     label: "Acme sample",
     detail: "~/Documents/Acme sample",
-    tag: "Sample",
+    tag: "Demo",
     checked: true,
     onSelect: vi.fn(),
   },
@@ -48,16 +48,16 @@ verifies("kit.header-badge-sheet-rows", () => {
     const detail = document.getElementById(row.getAttribute("aria-describedby") ?? "");
     expect(detail?.textContent).toBe("~/Documents/Acme sample");
     expect(row.contains(detail)).toBe(true);
-    expect(row.querySelector(".border-border-strong")?.textContent).toBe("Sample");
-    expect(spoken(row)).toBe("Acme sample, Sample");
+    expect(row.querySelector(".border-border-strong")?.textContent).toBe("Demo");
+    expect(spoken(row)).toBe("Acme sample, Demo");
     expect(row.getAttribute("aria-current")).toBe("true");
     expect(row.querySelector(".text-accent svg")).not.toBeNull();
   });
 
-  it('names the item "Acme sample, Sample" itself, so no browser adds a space before the comma', () => {
+  it('names the item "Acme sample, Demo" itself, so no browser adds a space before the comma', () => {
     // Chromium puts a space around a hidden, positioned span when it builds a name from content.
     const [sample, beta] = rows();
-    expect(sample?.getAttribute("aria-label")).toBe("Acme sample, Sample");
+    expect(sample?.getAttribute("aria-label")).toBe("Acme sample, Demo");
     expect(sample?.querySelector(".sr-only")).toBeNull();
     expect(beta?.hasAttribute("aria-label")).toBe(false);
   });

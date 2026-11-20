@@ -1,5 +1,5 @@
 import { Button, inlineLinkClasses } from "@halonicjs/studio-kit";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { type Ref, useCallback, useEffect, useId, useRef, useState } from "react";
 import { copyDetailsWords } from "../errors/copy-details-words.ts";
 import { useCopyDetails } from "../page/copy-details.ts";
 import { engineWaitMs, type WelcomeOpenProblem } from "./cant-open.ts";
@@ -8,7 +8,12 @@ import {
   WelcomeRecent,
   type WelcomeRecentWorkspace,
 } from "./welcome-recent.tsx";
-import { cantCreateSampleLine, TrySample, type WelcomeSampleProblem } from "./welcome-sample.tsx";
+import {
+  cantCreateSampleLine,
+  TrySample,
+  trySampleWords,
+  type WelcomeSampleProblem,
+} from "./welcome-sample.tsx";
 
 /** The Welcome screen's Recent list and what its rows do. */
 export interface WelcomeRecentList {
@@ -28,7 +33,7 @@ export interface WelcomeProps {
    */
   readonly onOpenFolder: () => Promise<WelcomeOpenProblem | undefined>;
   /**
-   * Opens the New workspace dialog; without it Welcome has no **New workspace…** button.
+   * Opens the New workspace dialog; without it Welcome has no **New workspace…** link.
    */
   readonly onNewWorkspace?: (() => void) | undefined;
   /**
@@ -74,14 +79,16 @@ type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly
 
 /**
  * The window while no workspace is open (`shell.welcome.open-action`, microcopy 3.2): "Halonic
- * Studio", what a workspace is, and **Open folder**, the one primary button, centred with no
- * sidebar and no tabs. With the app's New workspace dialog, **New workspace…** sits under it as
- * a secondary button. The column hangs a fixed 18% of the window height from the top rather than
+ * Studio", what a workspace is, and **Open folder**, centred with no sidebar and no tabs. With the
+ * app's demo and an empty Recent, **Open demo** is the primary button beside it and "New here? The
+ * demo takes about 4 minutes." sits right under the buttons (`shell.welcome-sample`); else **Open
+ * folder** is the primary button. With the app's New workspace dialog, **New workspace…** comes
+ * last as a quiet link. The column hangs a fixed 18% of the window height from the top rather than
  * centring, so nothing above a new line (Recent, an error) moves under the pointer. While the
  * folder opens the button reads "Opening…" and is busy: it keeps focus and ignores presses. A
  * folder that fails to open says why under the text in the danger colour, and the button works
  * again (`shell.welcome.cant-open`); a reason Halonic can't explain comes with **Copy details**.
- * Cancelling the picker changes nothing. Focus starts on **Open folder** (accessibility pass 1.3).
+ * Cancelling the picker changes nothing. Focus starts on the primary button (accessibility pass 1.3).
  *
  * Under the button, **Recent** lists up to five remembered workspaces, and one press opens one
  * (states-flow-map W2). A row whose folder is gone says so on the same line with
@@ -100,11 +107,12 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
   /** Where focus goes once a removed row is gone: a row's location, or `null` for Open folder. */
   const [focusAfterRemove, setFocusAfterRemove] = useState<string | null | undefined>(undefined);
   const openButton = useRef<HTMLButtonElement>(null);
+  const demoButton = useRef<HTMLButtonElement>(null);
   const rows = useRef(new Map<string, HTMLButtonElement>());
   const copyDetails = useCopyDetails();
   const alertId = useId();
   useEffect(() => {
-    openButton.current?.focus();
+    (demoButton.current ?? openButton.current)?.focus();
   }, []);
   useEffect(() => {
     if (focusAfterRemove === undefined) {
@@ -186,10 +194,7 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
 
   const problem = shownProblem?.problem;
   const hasRecent = recent !== undefined && recent.workspaces.length > 0;
-  const sample =
-    onTrySample === undefined ? null : (
-      <TrySample quiet={hasRecent} busy={creatingSample} onPress={trySample} />
-    );
+  const demoLeads = onTrySample !== undefined && !hasRecent;
   const offersRemove =
     shownProblem?.fromRecent === true && problem?.kind === "not_found" && recent !== undefined;
 
@@ -204,21 +209,16 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
             Local first, private, and yours.
           </p>
         </div>
-        <Button
-          ref={openButton}
-          variant="primary"
-          busy={opening?.from === "picker"}
-          busyLabel="Opening…"
-          onClick={() => run({ from: "picker" }, onOpenFolder)}
-        >
-          Open folder
-        </Button>
-        {onNewWorkspace === undefined ? null : (
-          <Button variant="secondary" onClick={() => opening === undefined && onNewWorkspace()}>
-            New workspace…
-          </Button>
-        )}
-        {hasRecent ? null : sample}
+        <WelcomeActions
+          demo={
+            demoLeads ? { busy: creatingSample, onPress: trySample, ref: demoButton } : undefined
+          }
+          openButton={openButton}
+          openingFolder={opening?.from === "picker"}
+          onOpenFolder={() => run({ from: "picker" }, onOpenFolder)}
+          onNewWorkspace={onNewWorkspace}
+          opening={opening !== undefined}
+        />
         <p id={alertId} role="alert" className="text-body text-danger break-words empty:hidden">
           {problem === undefined ? null : `Can't open ${problem.folder}: ${problem.reason}`}
           {sampleProblem === undefined ? null : cantCreateSampleLine(sampleProblem)}
@@ -254,9 +254,82 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
             }
           />
         )}
-        {hasRecent ? sample : null}
+        {hasRecent && onTrySample !== undefined ? (
+          <TrySample quiet busy={creatingSample} onPress={trySample} />
+        ) : null}
       </div>
     </div>
+  );
+}
+
+/** Props for {@link WelcomeActions}. */
+interface WelcomeActionsProps {
+  /** The leading **Open demo**, focused first, or `undefined` when **Open folder** leads. */
+  readonly demo:
+    | {
+        readonly busy: boolean;
+        readonly onPress: () => void;
+        readonly ref: Ref<HTMLButtonElement>;
+      }
+    | undefined;
+  readonly openButton: Ref<HTMLButtonElement>;
+  /** True while the picked folder opens. */
+  readonly openingFolder: boolean;
+  readonly onOpenFolder: () => void;
+  /** Opens the New workspace dialog; without it there is no **New workspace…** link. */
+  readonly onNewWorkspace: (() => void) | undefined;
+  /** True while a folder opens: **New workspace…** then does nothing. */
+  readonly opening: boolean;
+}
+
+/**
+ * Welcome's buttons: **Open demo** and **Open folder** side by side when the demo leads, else
+ * **Open folder** alone as the primary button; then the time line while the demo leads, right under
+ * the button it describes, and last the **New workspace…** link (`shell.welcome-sample`).
+ */
+function WelcomeActions({
+  demo,
+  openButton,
+  openingFolder,
+  onOpenFolder,
+  onNewWorkspace,
+  opening,
+}: WelcomeActionsProps) {
+  const timeId = useId();
+  const demoLeads = demo !== undefined;
+  return (
+    <>
+      <div className="flex flex-wrap justify-center gap-3">
+        {demo === undefined ? null : (
+          <TrySample
+            quiet={false}
+            busy={demo.busy}
+            onPress={demo.onPress}
+            buttonRef={demo.ref}
+            timeId={timeId}
+          />
+        )}
+        <Button
+          ref={openButton}
+          variant={demoLeads ? "secondary" : "primary"}
+          busy={openingFolder}
+          busyLabel="Opening…"
+          onClick={onOpenFolder}
+        >
+          Open folder
+        </Button>
+      </div>
+      {demoLeads ? (
+        <p id={timeId} className="text-small text-fg-muted">
+          {trySampleWords.time}
+        </p>
+      ) : null}
+      {onNewWorkspace === undefined ? null : (
+        <Button variant="ghost" onClick={() => opening || onNewWorkspace()}>
+          New workspace…
+        </Button>
+      )}
+    </>
   );
 }
 

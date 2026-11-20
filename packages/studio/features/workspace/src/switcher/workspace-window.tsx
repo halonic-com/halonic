@@ -97,7 +97,10 @@ export function WorkspaceWindow({
     toastOf: (name: string, trustFailure?: string) => string,
   ): Promise<void> => {
     if (made.kind === "existing") {
-      await showByPerson(() => switcher.fromMenu(() => switcher.openLocation(made.folder)));
+      // Already the sample; marked again only so a copy that wasn't open yet opens on Support reply.
+      await showByPerson(() =>
+        switcher.fromMenu(() => switcher.openLocation(made.folder, undefined, true)),
+      );
       return;
     }
     const toast = toastOf(
