@@ -122,6 +122,14 @@ git pull
 pnpm install
 ```
 
+If you built the Studio page for `halonic serve`, build it again after an
+update, or the address shows the older page. `halonic serve` tells you when
+the page is older than the code:
+
+```sh
+pnpm --filter @halonicjs/app-studio build
+```
+
 To remove the command, run `pnpm remove -g halonic`. Then you can delete the
 clone.
 
