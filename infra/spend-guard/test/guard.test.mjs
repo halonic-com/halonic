@@ -210,3 +210,59 @@ test("containers reader converts real row units (bytes x s) to GiB-s and GB-s", 
     globalThis.fetch = realFetch;
   }
 });
+
+test("a second container application doesn't count against the render budget", async () => {
+  const { SERVICES, splitByService } = await import("../src/usage.mjs");
+  const u = (n) => ({ containerVcpuSeconds: n });
+  const d = (n) => ({ doRequests: n });
+  const shares = splitByService(SERVICES, {
+    apps: {
+      "a030d9d6-1e18-466f-a60c-37eb567297a2": u(1), // render's application
+      "a0303a67-73f2-4ed0-93e9-8ac6fdd67e35": u(2), // halonic-code-runner's application
+    },
+    namespaces: {
+      nsR: { script: "halonic-render", usage: d(10) },
+      nsC: { script: "halonic-code-runner", usage: d(20) },
+    },
+  });
+  assert.deepEqual(shares.render, [d(10), u(1)]);
+  assert.deepEqual(shares["turbo-cache"], []);
+});
+
+test("containerParts groups rows by application and namespace", async () => {
+  const { READERS } = await import("../src/usage.mjs");
+  const realFetch = globalThis.fetch;
+  const account = {
+    c: [
+      {
+        sum: { cpuTimeSec: 2, allocatedMemory: 2 ** 31, allocatedDisk: 1e9 },
+        dimensions: { applicationId: "a" },
+      },
+      {
+        sum: { cpuTimeSec: 3, allocatedMemory: 2 ** 30, allocatedDisk: 0 },
+        dimensions: { applicationId: "a" },
+      },
+    ],
+    inv: [{ sum: { requests: 5 }, dimensions: { namespaceId: "n", scriptName: "halonic-render" } }],
+    dur: [{ sum: { activeTime: 8e6 }, dimensions: { namespaceId: "n" } }],
+  };
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ data: { viewer: { accounts: [account] } } }));
+  try {
+    const p = await READERS.containerParts(
+      { CLOUDFLARE_SPEND_GUARD_TOKEN: "x", ACCOUNT_ID: "a" },
+      { since: "s", until: "u" },
+    );
+    assert.deepEqual(p.apps.a, {
+      containerVcpuSeconds: 5,
+      containerMemGibSeconds: 3,
+      containerDiskGbSeconds: 1,
+    });
+    assert.deepEqual(p.namespaces.n, {
+      script: "halonic-render",
+      usage: { doRequests: 5, doGbSeconds: 1 },
+    });
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
