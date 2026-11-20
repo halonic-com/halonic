@@ -50,7 +50,7 @@ export type AgentOutput =
   | { readonly type: "choice"; readonly options: readonly string[] }
   | {
       readonly type: "json";
-      /** The JSON Schema each reply must satisfy; absent when the file gives none. */
+      /** The JSON Schema the agent is asked to reply in; absent when the file gives none. The engine doesn't check replies against it. */
       readonly schema?: Readonly<Record<string, unknown>> | undefined;
     };
 

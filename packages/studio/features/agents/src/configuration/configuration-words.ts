@@ -30,7 +30,7 @@ export const configurationWords = {
   noOptions: "Add at least one option.",
   /** Microcopy 8.5. */
   schema: "Schema (JSON)",
-  schemaHint: "Each reply is checked against this schema.",
+  schemaHint: "The agent is asked to reply in this shape.",
   schemaInvalid: "This isn't valid JSON.",
   /** Valid JSON that a schema can't be, such as a list or a number. */
   schemaNotObject: "A schema is a JSON object, between { and }.",
