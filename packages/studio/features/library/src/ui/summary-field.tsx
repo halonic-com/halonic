@@ -12,6 +12,11 @@ interface SummaryFieldProps {
   readonly announce: (text: string) => void;
   /** Opens Models, where a local model is set up; absent when the window has no way to. */
   readonly openModels: (() => void) | undefined;
+  /**
+   * Opens Workspace settings › Trust, for **Review** after the untrusted line; set on a phone only,
+   * which has no header badge to review trust from.
+   */
+  readonly reviewTrust?: (() => void) | undefined;
   /** The words for "the engine isn't answering" in this window (desktop app, served browser or phone). */
   readonly notAnswering: string;
 }
@@ -28,6 +33,7 @@ export function SummaryField({
   summarize,
   announce,
   openModels,
+  reviewTrust,
   notAnswering,
 }: SummaryFieldProps) {
   const ask = useRef<HTMLButtonElement>(null);
@@ -80,6 +86,7 @@ export function SummaryField({
           reason={summarize.reason}
           line={problem ?? ""}
           openModels={openModels}
+          reviewTrust={reviewTrust}
           tryAgain={() => {
             backToAsk();
             void model.summarize();
@@ -136,18 +143,30 @@ function problemLine(reason: SummarizeFailure, name: string, notAnswering: strin
   }
 }
 
-/** The failed line, with **Models** when a local model is missing and **Try again** when a retry may help. */
+/**
+ * The failed line, with **Models** when a local model is missing, **Review** for an untrusted
+ * workspace on a phone and **Try again** when a retry may help.
+ */
 function Problem({
   reason,
   line,
   openModels,
+  reviewTrust,
   tryAgain,
 }: {
   readonly reason: SummarizeFailure;
   readonly line: string;
   readonly openModels: (() => void) | undefined;
+  readonly reviewTrust: (() => void) | undefined;
   readonly tryAgain: () => void;
 }) {
+  if (reason === "untrusted" && reviewTrust !== undefined) {
+    return (
+      <Callout tone="danger" action={{ label: knowledgeWords.review, onClick: reviewTrust }}>
+        {line}
+      </Callout>
+    );
+  }
   if (reason === "no-local-model") {
     return (
       <Callout

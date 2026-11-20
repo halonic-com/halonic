@@ -14,6 +14,8 @@ export const knowledgeWords = {
   discard: "Discard",
   needsLocalModel: "Summarize uses a local model, and the default model alias has none.",
   models: "Models ›",
+  /** On a phone, after the untrusted line: opens Workspace settings › Trust (HAL-14044 SU1). */
+  review: "Review",
   noDocuments: (name: string) =>
     `${name} has no documents to summarize, or Halonic can't list them.`,
   summarizeFailed: (name: string, reason: string) => `Couldn't summarize ${name}: ${reason}.`,

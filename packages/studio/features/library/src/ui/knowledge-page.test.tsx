@@ -40,6 +40,7 @@ function setup(
   source: KnowledgeSource | undefined = { text, source: "Folder docs · 14 documents" },
   usage: ItemUsage = nobody,
   outcome: SummarizeOutcome | Error = { kind: "drafted", text: "Draft of the handbook." },
+  host: "desktop-app" | "phone" = "desktop-app",
 ) {
   let current = source;
   const write = vi.fn(async (_ref: unknown, next: string) => {
@@ -47,7 +48,7 @@ function setup(
   });
   const openItem = vi.fn();
   const openPlace = vi.fn();
-  const host: KnowledgeHost = {
+  const knowledgeHost: KnowledgeHost = {
     read: async () => current,
     write,
     usage: async () => usage,
@@ -64,9 +65,10 @@ function setup(
     item: { kind: "knowledge", hub: "~workspace", id: "handbook" },
     context: {
       services: limitedLookup(libraryFeature, {
-        get: (key: unknown) => (key === KnowledgeHostService ? host : undefined),
-        find: (key: unknown) => (key === KnowledgeHostService ? host : undefined),
+        get: (key: unknown) => (key === KnowledgeHostService ? knowledgeHost : undefined),
+        find: (key: unknown) => (key === KnowledgeHostService ? knowledgeHost : undefined),
       }),
+      host,
       announcer: { announceState },
       openItem,
       openPlace,
@@ -324,6 +326,30 @@ verifies("library.knowledge-summarize", () => {
       await act(async () => button(root, "Models ›").click());
       expect(runCommand).toHaveBeenCalledWith("workspace.open-models");
     });
+
+    it.each([
+      ["desktop-app", false],
+      ["phone", true],
+    ] as const)(
+      "offers Review for an untrusted workspace only where there is no header badge, %s",
+      async (host, offered) => {
+        const { props, runCommand } = setup(undefined, nobody, { kind: "untrusted" }, host);
+        const root = render(<KnowledgePage {...props} />);
+        await settled();
+        await act(async () => button(root, "Summarize").click());
+        await settled();
+        expect(root.textContent).toContain(
+          "Couldn't summarize Handbook: this workspace isn't trusted yet, so nothing was sent.",
+        );
+        expect(() => button(root, "Try again")).toThrow();
+        if (!offered) {
+          expect(() => button(root, "Review")).toThrow();
+          return;
+        }
+        await act(async () => button(root, "Review").click());
+        expect(runCommand).toHaveBeenCalledWith("workspace.open-trust");
+      },
+    );
 
     it("says there is nothing to summarize, or that it failed, under the row", async () => {
       const none = setup(undefined, nobody, { kind: "no-documents" });

@@ -19,6 +19,21 @@ import { UsedByField } from "./used-by-field.tsx";
 
 /** The command that opens Models (`workspace.open-models`); the library only runs it by id. */
 const openModelsCommand = "workspace.open-models";
+/** The command that opens the workspace page at Trust (`workspace.open-trust`). */
+const openTrustCommand = "workspace.open-trust";
+
+/**
+ * **Review** for Summarize's untrusted line: on a phone only, which has no header badge
+ * "Not trusted yet · Review", it opens Workspace settings › Trust (HAL-14044 SU1).
+ */
+function phoneTrustReviewOf({
+  host,
+  runCommand,
+}: Pick<ItemViewProps["context"], "host" | "runCommand">): (() => void) | undefined {
+  return runCommand === undefined || host !== "phone"
+    ? undefined
+    : () => void runCommand(openTrustCommand);
+}
 
 function refOf(hub: string, id: string): KnowledgeRef {
   return { hub: hub === sharedHubKey ? null : hub, id };
@@ -134,6 +149,7 @@ function LoadedKnowledgePage({
           summarize={summarize}
           announce={announce}
           openModels={openModels}
+          reviewTrust={phoneTrustReviewOf(context)}
           notAnswering={engineWordsOf(context).notAnswering}
         />
         <Field label={knowledgeWords.lookup}>
