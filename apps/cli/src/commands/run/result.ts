@@ -41,8 +41,8 @@ export interface RunResultFacts {
 
 /**
  * The run's lines and exit code: 0 for a finished run and for one that waits
- * for the user, 8 for one its budget stopped, the cause's kind for one the
- * workspace's setup stopped, 1 for any other failed one. `--json` gets the run's summary and its
+ * for the user, 8 for one its budget stopped, the cause's kind for one its
+ * setup stopped, 1 for any other failed one. `--json` gets the run's summary and its
  * events, oldest first, with full ids.
  *
  * @example
@@ -83,9 +83,10 @@ export function runProgress(run: RunDetail, facts: RunResultFacts): CommandResul
 
 /**
  * 8 (`limitReached`) for a run its budget stopped, so a script can tell a
- * spent budget from a broken run (HAL-12007). A run the workspace's setup
- * stopped, such as a model alias the hub doesn't have, exits with its
- * cause's kind, 4 for `not_found` (HAL-12377); 1 for any other failed run.
+ * spent budget from a broken run (HAL-12007). A run its setup stopped exits
+ * with its cause's kind: 4 for a model alias the hub doesn't have
+ * (HAL-12377), 7 for a secrets file other users can read, as `halonic secret
+ * list` exits for it (HAL-12569); 1 for any other failed run.
  * A run that couldn't try every step didn't pass, so a script must not take
  * it as done.
  */

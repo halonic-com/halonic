@@ -153,6 +153,11 @@ export type RunFailure =
       readonly hub: string;
     }
   | {
+      readonly reason: "secrets-file-readable";
+      /** The secrets file group or others can read, as the run log names it. */
+      readonly file: string;
+    }
+  | {
       readonly reason: "model-no-tools";
       /** The model the alias points at, such as "llama3.2". */
       readonly model: string;
@@ -355,11 +360,11 @@ function timeoutFailure(failed: RunFailedEvent, model: FailedModel | undefined):
 
 /**
  * The failure an `error` names by its cause's code, when it has facts of
- * its own. These are the workspace's own setup, not a bug: a provider file
- * whose type Halonic can't call (HAL-12342), and a model alias the hub
- * doesn't have, such as `default` in a workspace made with plain
- * `halonic init` (HAL-12377). A cause without the names its facts need is
- * `error`.
+ * its own. These are the setup of the workspace or of this computer, not a
+ * bug: a provider file whose type Halonic can't call (HAL-12342), a model
+ * alias the hub doesn't have, such as `default` in a workspace made with
+ * plain `halonic init` (HAL-12377), and a secrets file other users can read
+ * (HAL-12569). A cause without the names its facts need is `error`.
  */
 function setupFailureOf(cause: RunFailureCause | undefined): RunFailure | undefined {
   const { code, detail = {} } = cause ?? {};
@@ -376,16 +381,21 @@ function setupFailureOf(cause: RunFailureCause | undefined): RunFailure | undefi
         ? undefined
         : { reason: "unknown-model-alias", alias, hub };
     }
+    case "secrets.file-readable": {
+      const { file } = detail;
+      return file === undefined ? undefined : { reason: "secrets-file-readable", file };
+    }
     default:
       return undefined;
   }
 }
 
 /**
- * Whether a failed run's cause is one of the workspace's setup problems with
- * facts of its own, so a client can treat the run by the cause's own kind,
- * the kind `--json` shows in the run's `cause`, rather than as a broken run
- * (HAL-12377).
+ * Whether a failed run's cause is one of the setup problems with facts of
+ * its own, so a client can treat the run by the cause's own kind, the kind
+ * `--json` shows in the run's `cause`, rather than as a broken run
+ * (HAL-12377): `not_found` for a missing model alias, `denied` for a secrets
+ * file other users can read (HAL-12569).
  */
 export function isSetupCause(cause: RunFailureCause | undefined): cause is RunFailureCause {
   return setupFailureOf(cause) !== undefined;
