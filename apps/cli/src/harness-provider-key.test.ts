@@ -83,6 +83,10 @@ async function workspaceWith(files: Record<string, string>): Promise<RunVersion>
 
 const claudeProvider = `id: claude\ntype: anthropic\nsecret: anthropic-key\nbaseUrl: ${providerAddress}\n`;
 
+/** The coder, with its model at `claude`: the bridge sends calls to a provider's own address only for the agent's model. */
+const coderOnClaude =
+  "id: coder\nname: Coder\nharness: claude-code\nmodel: claude/claude-sonnet-5-5\ninstructions: Write the change.\n";
+
 /** What the program got back from the bridge. */
 interface Reply {
   status: number;
@@ -186,7 +190,10 @@ verifies("cli.harness-provider-key", () => {
   it.skipIf(noUnixSockets)(
     "[platform:win32] no Unix socket for the bridge: calls a sandboxed agent's model with the key Halonic keeps, which the program never sees",
     async () => {
-      const version = await workspaceWith({ "providers/claude.yaml": claudeProvider });
+      const version = await workspaceWith({
+        "providers/claude.yaml": claudeProvider,
+        "hubs/lab/agents/coder.agent.yaml": coderOnClaude,
+      });
       const provider = fakeProvider();
       const told: ProviderAccessChoice[] = [];
 
@@ -233,8 +240,7 @@ verifies("cli.harness-provider-key", () => {
       const version = await workspaceWith({
         "providers/claude.yaml": claudeProvider,
         "providers/other.yaml": `id: other\ntype: anthropic\nsecret: other-key\nbaseUrl: ${otherAddress}\n`,
-        "hubs/lab/agents/coder.agent.yaml":
-          "id: coder\nname: Coder\nharness: claude-code\nmodel: claude/claude-sonnet-5-5\ninstructions: Write the change.\n",
+        "hubs/lab/agents/coder.agent.yaml": coderOnClaude,
       });
       const provider = fakeProvider();
       const secrets = { get: async (name: string) => (name === "other-key" ? "other" : key) };
@@ -275,7 +281,10 @@ verifies("cli.harness-provider-key", () => {
   it(
     "keeps the program's own sign-in for an agent set to On this computer",
     async () => {
-      const version = await workspaceWith({ "providers/claude.yaml": claudeProvider });
+      const version = await workspaceWith({
+        "providers/claude.yaml": claudeProvider,
+        "hubs/lab/agents/coder.agent.yaml": coderOnClaude,
+      });
       await chooseThisComputer();
       const told: ProviderAccessChoice[] = [];
 
@@ -292,7 +301,10 @@ verifies("cli.harness-provider-key", () => {
   it(
     "stops before the program starts when the key's secret holds no value, naming the command that saves it",
     async () => {
-      const version = await workspaceWith({ "providers/claude.yaml": claudeProvider });
+      const version = await workspaceWith({
+        "providers/claude.yaml": claudeProvider,
+        "hubs/lab/agents/coder.agent.yaml": coderOnClaude,
+      });
       const provider = fakeProvider();
 
       const { fakes, summary } = await runWithModelCall(version, { http: provider.http });
@@ -308,7 +320,10 @@ verifies("cli.harness-provider-key", () => {
   it(
     "stops before the program starts when an untrusted workspace would send the key to an address other than the type's own",
     async () => {
-      const version = await workspaceWith({ "providers/claude.yaml": claudeProvider });
+      const version = await workspaceWith({
+        "providers/claude.yaml": claudeProvider,
+        "hubs/lab/agents/coder.agent.yaml": coderOnClaude,
+      });
       const provider = fakeProvider();
 
       const { fakes, summary } = await runWithModelCall(version, {
@@ -328,7 +343,10 @@ verifies("cli.harness-provider-key", () => {
   it(
     "stops before the program starts when the key's allowed addresses leave out the provider's address",
     async () => {
-      const version = await workspaceWith({ "providers/claude.yaml": claudeProvider });
+      const version = await workspaceWith({
+        "providers/claude.yaml": claudeProvider,
+        "hubs/lab/agents/coder.agent.yaml": coderOnClaude,
+      });
       const provider = fakeProvider();
       const keyOrigins = {
         allowedOrigins: async () => [new URL(otherAddress).origin],
@@ -352,10 +370,34 @@ verifies("cli.harness-provider-key", () => {
     gitTimeout,
   );
 
+  it(
+    "stops before the program starts when the provider has its own address and the agent's model isn't one of its models",
+    async () => {
+      const version = await workspaceWith({ "providers/claude.yaml": claudeProvider });
+      const provider = fakeProvider();
+
+      const { fakes, summary } = await runWithModelCall(version, {
+        secrets: savedKey,
+        http: provider.http,
+      });
+
+      expect(summary).toMatchObject({
+        status: "failed",
+        error: expect.stringContaining('Set the agent\'s model to "claude/<model>"'),
+      });
+      expect(fakes.programStarts).toBe(0);
+      expect(provider.calls).toEqual([]);
+    },
+    gitTimeout,
+  );
+
   it.skipIf(noUnixSockets)(
     "[platform:win32] no Unix socket for the bridge: scrubs the key out of a failed provider call before the run log records it",
     async () => {
-      const version = await workspaceWith({ "providers/claude.yaml": claudeProvider });
+      const version = await workspaceWith({
+        "providers/claude.yaml": claudeProvider,
+        "hubs/lab/agents/coder.agent.yaml": coderOnClaude,
+      });
       // The reply starts, then breaks with an error that quotes the key, as a broken proxy might.
       const provider = fakeProvider(
         () =>

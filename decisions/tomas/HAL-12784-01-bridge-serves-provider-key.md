@@ -21,6 +21,12 @@ decides. Nothing else in that requirement changes.
   (`harness-host.provider-access` rule 4, with a test). `cli.harness-provider-key` now says the
   trust and allowed-address checks run when the bridge opens, not on every call, and its test also
   checks that no file the program may read holds the key.
+- After #3966 and #3975 (HAL-13479, HAL-12488): at a provider's `baseUrl` the bridge sends calls
+  only for the models the host gives it. The CLI gives it the agent's model there, and the run
+  stops before the program starts when the agent's model isn't one of that provider's
+  (`cli.harness-provider-key`, with an example and a test). At the type's own host it gives no
+  list, so Claude Code's background calls on its other models still go through. The key tests'
+  coder now names its model (`claude/claude-sonnet-5-5`).
 - In the new `harness-provider-key.test.ts`, the three tests that call the CLI's bridge on its Unix
   socket skip on Windows (`it.skipIf(noUnixSockets)`, named `[platform:win32] …` as the skip
   reporter asks). Windows has no Unix socket, and the CLI stops before the bridge there anyway;

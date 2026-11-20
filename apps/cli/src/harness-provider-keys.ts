@@ -94,20 +94,29 @@ export class HarnessProviderKeys {
    */
   async servicesFor(agent: BridgeAgent): Promise<BridgeServices> {
     const workspace = this.#input.workspace();
-    const modelProvider =
+    const target =
       agent.model === undefined
         ? undefined
-        : resolveModel(workspace, agent.hubId ?? null, agent.model)?.provider;
+        : resolveModel(workspace, agent.hubId ?? null, agent.model);
     const choice = providerAccessOf({
       harness: agent.harness,
       runsOn: agent.runsOn,
       providers: filesOf(workspace, "provider").map((file) => file.value),
-      ...(modelProvider === undefined ? {} : { modelProvider }),
+      ...(target === undefined ? {} : { modelProvider: target.provider }),
     });
-    if (choice.kind === "key") await this.#requireKeyMayGo(choice);
+    const models =
+      choice.kind === "key" && target?.provider === choice.providerId ? [target.model] : [];
+    if (choice.kind === "key") {
+      await this.#requireKeyMayGo(choice);
+      requireModelAtAddress(choice, models);
+    }
     this.#input.reportAccess?.(agent, choice);
     return {
-      providers: { anthropic: signIn, openai: signIn, [choice.provider]: accessOf(choice) },
+      providers: {
+        anthropic: signIn,
+        openai: signIn,
+        [choice.provider]: accessOf(choice, models),
+      },
       prices: choice.kind === "key" ? pricesOf(workspace, agent.hubId, choice) : {},
       tools: {
         list: async () => [],
@@ -165,14 +174,36 @@ export class HarnessProviderKeys {
   }
 }
 
-/** The bridge's access for the choice. */
-function accessOf(choice: ProviderAccessChoice): BridgeProviderAccess {
+/**
+ * Fails when the key goes to a provider's own address (`baseUrl`) and the
+ * agent's model isn't one of that provider's: the bridge sends calls there
+ * only for the models the host gives it (`harness-bridge.compatible-request`),
+ * so the program would start and every call would be refused.
+ */
+function requireModelAtAddress(
+  choice: ProviderAccessChoice & { kind: "key" },
+  models: readonly string[],
+): void {
+  if (choice.baseUrl === undefined || models.length > 0) return;
+  throw new KindedError(
+    "invalid_input",
+    `Provider ${choice.providerId} has its own address, and the bridge sends calls there only for the agent's own model, but the agent's model isn't one of ${choice.providerId}'s. Set the agent's model to "${choice.providerId}/<model>" or to an alias of one of its models.`,
+  );
+}
+
+/**
+ * The bridge's access for the choice. At a provider's own address it names
+ * the agent's model, the only one the bridge sends there. At the type's own
+ * host it names none, so the program's background calls on its other models
+ * still go through (`harness-bridge.keyed-model`).
+ */
+function accessOf(choice: ProviderAccessChoice, models: readonly string[]): BridgeProviderAccess {
   if (choice.kind === "sign-in") return signIn;
   return {
     kind: "key",
     secret: choice.secret,
     providerId: choice.providerId,
-    ...(choice.baseUrl === undefined ? {} : { baseUrl: choice.baseUrl }),
+    ...(choice.baseUrl === undefined ? {} : { baseUrl: choice.baseUrl, models }),
   };
 }
 
