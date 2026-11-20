@@ -114,6 +114,10 @@ export const configurationWords = {
   newAgent: "New agent",
   newAgentName: "New agent's name",
   newAgentPlaceholder: "Name",
+  /** Read politely once a change of the subagents is saved (a11y SA2). */
+  subagentAdded: (agent: string) => `${agent} added.`,
+  subagentCreated: (agent: string) => `${agent} created and added.`,
+  subagentRemoved: (agent: string) => `${agent} removed.`,
   teamLoadFailedTitle: "Couldn't load the hub's agents",
   /** The toast when a change of the subagents wasn't saved for another reason than a loop. */
   subagentsNotSaved: (agent: string) => `Couldn't save ${agent}'s subagents`,

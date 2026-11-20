@@ -26,6 +26,8 @@ export interface SubagentCardProps {
   readonly openSubagent: (agent: AgentListing) => void;
   /** Opens another agent's page, from the team chart; absent where the app can't. */
   readonly openAgent?: ((agent: AgentRef) => void) | undefined;
+  /** Reads text to screen readers, politely, for its Subagents page's changes; absent says nothing. */
+  readonly announce?: ((text: string) => void) | undefined;
 }
 
 /**
@@ -33,7 +35,14 @@ export interface SubagentCardProps {
  * own Configuration in the narrow panel, so its settings can be read and changed without leaving
  * the agent it works for. Its subagents open as cards on top of it.
  */
-export function SubagentCard({ host, agent, name, openSubagent, openAgent }: SubagentCardProps) {
+export function SubagentCard({
+  host,
+  agent,
+  name,
+  openSubagent,
+  openAgent,
+  announce,
+}: SubagentCardProps) {
   const { settings, aliases, defaultModel } = useConfigurationLoads(host, agent);
   const { hubId, id } = agent;
   const teamSource = useMemo(
@@ -68,6 +77,7 @@ export function SubagentCard({ host, agent, name, openSubagent, openAgent }: Sub
         retry={settings.retry}
         save={save}
         openSubagent={openSubagent}
+        announce={announce}
         narrow
       />
     </div>

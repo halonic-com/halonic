@@ -34,6 +34,8 @@ export interface SubagentsPageProps {
   readonly settings: AgentSettings;
   /** Opens a subagent as a card on top of the panel; absent where there are no cards. */
   readonly openSubagent?: ((agent: AgentListing) => void) | undefined;
+  /** Reads text to screen readers, politely; absent says nothing. */
+  readonly announce?: ((text: string) => void) | undefined;
 }
 
 /** An agent of the hub that can't be a subagent, and why. */
@@ -46,10 +48,10 @@ interface LoopingAgent {
  * The Subagents page (`agents.configuration.subagents`): the agents this one hands work to, as
  * chips with ✕; the agents that would close a loop as disabled chips with their reason; and **Add
  * subagent**, whose dialog lists the agents that wouldn't loop, or creates a new one. Each change
- * saves the whole list at once. A change the host refuses shows its reason in a toast and changes
- * nothing (flow-agents 5.4).
+ * saves the whole list at once, and a saved change is read politely: "Writer added." A change the
+ * host refuses shows its reason in a toast and changes nothing (flow-agents 5.4, a11y SA2).
  */
-export function SubagentsPage({ host, settings, openSubagent }: SubagentsPageProps) {
+export function SubagentsPage({ host, settings, openSubagent, announce }: SubagentsPageProps) {
   const { hubId, id, name } = settings;
   const source = useMemo(
     () => ({
@@ -97,12 +99,16 @@ export function SubagentsPage({ host, settings, openSubagent }: SubagentsPagePro
     else looping.push({ member, reason: alreadyHandsWork(way.map(nameOf)) });
   }
 
-  /** Saves the list; when the host refuses, the chips go back and a toast says why. */
-  const change = async (next: readonly string[]) => {
+  /**
+   * Saves the list and then reads `saved`; when the host refuses, the chips go back and a toast
+   * says why. Focus stays where it lands: on a new chip's ✕, the next Enter would undo the add.
+   */
+  const change = async (next: readonly string[], saved: string) => {
     const before = ids;
     setIds(next);
     try {
       await host.update({ hubId, id }, { subagents: next });
+      announce?.(saved);
     } catch (error) {
       setIds(before);
       const loop = error instanceof KindedError && error.kind === "conflict";
@@ -113,8 +119,11 @@ export function SubagentsPage({ host, settings, openSubagent }: SubagentsPagePro
       );
     }
   };
-  const remove = (index: number) => {
-    void change(ids.filter((_, at) => at !== index));
+  const remove = (each: string, index: number) => {
+    void change(
+      ids.filter((_, at) => at !== index),
+      words.subagentRemoved(nameOf(each)),
+    );
     // The ✕ that was pressed is gone: focus goes to the next chip's ✕, else Add subagent.
     queueMicrotask(() => {
       const next = list.current?.querySelectorAll<HTMLButtonElement>("button[aria-label]")[index];
@@ -145,7 +154,7 @@ export function SubagentsPage({ host, settings, openSubagent }: SubagentsPagePro
                       size="sm"
                       icon={<CloseIcon />}
                       label={words.removeTool(nameOf(each))}
-                      onClick={() => remove(index)}
+                      onClick={() => remove(each, index)}
                     />
                   </li>
                 ))}
@@ -182,12 +191,12 @@ export function SubagentsPage({ host, settings, openSubagent }: SubagentsPagePro
           pickable={pickable}
           add={(each) => {
             setAdding(false);
-            void change([...ids, each]);
+            void change([...ids, each], words.subagentAdded(nameOf(each)));
           }}
           create={async (newName) => {
             const made = await host.create({ name: newName, hubId });
             setAdding(false);
-            await change([...ids, made.id]);
+            await change([...ids, made.id], words.subagentCreated(newName));
           }}
           onCancel={() => setAdding(false)}
           returnFocus={() => addButton.current}
@@ -233,7 +242,8 @@ interface AddSubagentDialogProps {
 /**
  * "Add a subagent to *Mail triage*": **Pick an agent**, where a click adds it and closes, then
  * **Or create a new agent** with a name box and **Create**, which stays pressable while the box is
- * empty and then says "Give it a name." (flow-agents 5.4, accessibility A1).
+ * empty and then says "Give it a name." On the desktop focus starts on the first agent to pick,
+ * else in the name box (flow-agents 5.4, accessibility A1 and SA1).
  */
 function AddSubagentDialog({
   agent,
@@ -248,6 +258,7 @@ function AddSubagentDialog({
   const [failure, setFailure] = useState<string>();
   const [busy, setBusy] = useState(false);
   const nameField = useRef<HTMLInputElement>(null);
+  const pickSection = useRef<HTMLElement>(null);
   const pickId = useId();
   const createId = useId();
 
@@ -279,10 +290,15 @@ function AddSubagentDialog({
       onConfirm={() => void submit()}
       onCancel={onCancel}
       returnFocus={returnFocus}
+      // Picking comes first on the screen, so focus starts on the first agent to pick, not in
+      // the name box under it; with nothing to pick, the name box (a11y SA1).
+      initialFocus={() =>
+        pickSection.current?.querySelector<HTMLElement>("[role=gridcell]") ?? null
+      }
     >
       <div className="flex flex-col gap-4">
         {pickable.length > 0 && (
-          <section aria-labelledby={pickId} className="flex flex-col gap-1">
+          <section ref={pickSection} aria-labelledby={pickId} className="flex flex-col gap-1">
             <h3 id={pickId} className="text-body-strong text-fg">
               {words.pickAnAgent}
             </h3>

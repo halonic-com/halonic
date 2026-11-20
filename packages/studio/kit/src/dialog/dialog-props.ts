@@ -115,7 +115,12 @@ export interface ConfirmingDialogProps extends DialogCommonProps {
    * the trust check's amber line with its reason and docs link, because it sits in a `<p>`.
    */
   readonly footnote?: ReactNode;
-  readonly initialFocus?: undefined;
+  /**
+   * A `form` only, on the desktop: where focus starts when the first field isn't the first
+   * thing to do, such as Add a subagent's agents to pick above its name box. `null` falls back
+   * to the first field. A phone's form sheet keeps focus on its title.
+   */
+  readonly initialFocus?: () => HTMLElement | null;
 }
 
 /**

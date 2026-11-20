@@ -51,6 +51,8 @@ export interface ConfigurationProps {
    * a list at the side (flow-agents 5.1).
    */
   readonly narrow?: boolean | undefined;
+  /** Reads text to screen readers, politely, for the Subagents page's changes. */
+  readonly announce?: ((text: string) => void) | undefined;
 }
 
 type PageId = "behaviour" | "model" | "harness" | "tools" | "subagents";
@@ -80,6 +82,7 @@ export function Configuration({
   reportNotSaved,
   openSubagent,
   narrow = false,
+  announce,
 }: ConfigurationProps) {
   const [page, setPage] = useState<PageId>("behaviour");
   const ids = useTabIds();
@@ -136,7 +139,12 @@ export function Configuration({
               <ToolsPage host={host} settings={load.value} save={save} openLibrary={openLibrary} />
             )}
             {page === "subagents" && (
-              <SubagentsPage host={host} settings={load.value} openSubagent={openSubagent} />
+              <SubagentsPage
+                host={host}
+                settings={load.value}
+                openSubagent={openSubagent}
+                announce={announce}
+              />
             )}
           </div>
         ) : (
