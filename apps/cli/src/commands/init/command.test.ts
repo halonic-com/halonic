@@ -150,6 +150,30 @@ verifies("cli.commands.init.create-workspace", () => {
         "  Usage: halonic init [folder] [--example acme]",
       ]);
     });
+
+    it("answers --dir with the command line that gives the folder first, keeping the other options", async () => {
+      for (const args of [
+        ["--dir", "x", "--example", "acme"],
+        ["--example", "acme", "--dir=x"],
+      ]) {
+        const { code, io } = await initIn(folder, ...args);
+
+        expect(code).toBe(exitCode.usage);
+        expect(io.stderr).toEqual([
+          "✕ There's no option --dir.",
+          "  Give the folder as the first argument: halonic init x --example acme.",
+        ]);
+      }
+      expect(readdirSync(folder)).toEqual([]);
+    });
+
+    it("answers --dir next to a folder argument with the usual unknown option", async () => {
+      const { code, io } = await initIn(folder, "acme", "--dir", "x");
+
+      expect(code).toBe(exitCode.usage);
+      expect(io.stderr[0]).toBe("✕ There's no option --dir.");
+      expect(io.stderr[1]).toContain("halonic init --help");
+    });
   });
 
   describe("golden output", () => {

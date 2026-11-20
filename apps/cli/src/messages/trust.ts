@@ -207,8 +207,12 @@ export const trustMessages = defineMessages("trust", {
   /** No terminal, or `CI` set, and no flags that answer: exit 3 (F6), in F16's two lines (D4). */
   noTerminal: (name: string) =>
     phrase`${name} isn't trusted on this computer yet, and there's no terminal to ask you.`,
-  noTerminalFix: (dir?: string) =>
-    phrase`Review it with ${suggestedCommand("trust", dir)}, then pass --yes --fingerprint <fingerprint>.`,
+  /**
+   * Under {@link noTerminal}: the command that trusts what the check above
+   * showed, with its fingerprint filled in, ready to copy (HAL-14262).
+   */
+  noTerminalFix: (fingerprint: string, dir?: string) =>
+    phrase`Read the list above, then run: ${suggestedCommand("trust", dir, `--yes --fingerprint ${fingerprint}`)}`,
 
   /** Why another command didn't start: "Acme isn't trusted on this computer yet." (section 4). */
   notTrustedYet: (name: string) => phrase`${name} isn't trusted on this computer yet.`,

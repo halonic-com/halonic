@@ -34,10 +34,13 @@ export class ProxyEndpoint {
       return refusal("The proxy setting is not a URL. Halonic needs it as http://host:port.");
     }
     if (url.protocol !== "http:") {
-      return refusal(
-        `Halonic supports an http:// proxy; yours is ${url.protocol}//${url.host}. ` +
-          "Use http://host:port.",
-      );
+      return {
+        ...refusal(
+          `Halonic supports an http:// proxy; yours is ${url.protocol}//${url.host}. ` +
+            "Use http://host:port.",
+        ),
+        scheme: url.protocol.slice(0, -1),
+      };
     }
     if (url.hostname === "") {
       return refusal("The proxy setting has no host. Halonic needs it as http://host:port.");
@@ -79,9 +82,14 @@ export class ProxyEndpoint {
 
 export type ProxyEndpointResult =
   | { readonly kind: "proxy"; readonly endpoint: ProxyEndpoint }
-  | { readonly kind: "refused"; readonly message: string };
+  | {
+      readonly kind: "refused";
+      readonly message: string;
+      /** The scheme of a proxy that isn't `http`, such as `https` or `socks5`, for `halonic doctor` to name. */
+      readonly scheme?: string;
+    };
 
-function refusal(message: string): ProxyEndpointResult {
+function refusal(message: string): ProxyEndpointResult & { kind: "refused" } {
   return { kind: "refused", message };
 }
 

@@ -36,8 +36,8 @@ verifies("cli.messages", () => {
     expect(words(trustMessages.noTerminal("Acme"))).toBe(
       "Acme isn't trusted on this computer yet, and there's no terminal to ask you.",
     );
-    expect(words(trustMessages.noTerminalFix("./acme"))).toBe(
-      "Review it with halonic trust --dir ./acme, then pass --yes --fingerprint <fingerprint>.",
+    expect(words(trustMessages.noTerminalFix("hfp1:ab12", "./acme"))).toBe(
+      "Read the list above, then run: halonic trust --dir ./acme --yes --fingerprint hfp1:ab12",
     );
   });
 });
@@ -123,8 +123,8 @@ describe("trust's sentences", () => {
     expect(words(trustMessages.fingerprintNotCurrentFix("./acme"))).toBe(
       "Run halonic trust --dir ./acme again to review it as it is now.",
     );
-    expect(words(trustMessages.noTerminalFix())).toBe(
-      "Review it with halonic trust, then pass --yes --fingerprint <fingerprint>.",
+    expect(words(trustMessages.noTerminalFix("hfp1:ab12"))).toBe(
+      "Read the list above, then run: halonic trust --yes --fingerprint hfp1:ab12",
     );
   });
 

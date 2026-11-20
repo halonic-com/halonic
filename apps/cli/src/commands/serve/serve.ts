@@ -38,6 +38,7 @@ import {
 } from "../../command.ts";
 import { openGoogleHost } from "../../google-host.ts";
 import type { RoutineEngine } from "../../local-engine-host.ts";
+import { plainText } from "../../messages/phrase.ts";
 import { serveMessages } from "../../messages/serve.ts";
 import { printable } from "../../output/printable.ts";
 import { unsandboxedWarning } from "../../sandbox-gate.ts";
@@ -100,7 +101,8 @@ const maxBodyBytes = 1024 * 1024;
  *   since; nothing was served (exit 3)
  * @throws NetworkNeedsPasswordError when `--network` is given and no sign-in password is set
  * @throws NoNetworkAddressError when `--network` is given and the computer has no network address
- * @throws KindedError `conflict` when another engine is open on the workspace
+ * @throws KindedError `conflict` when another engine is open on the workspace,
+ *   or another program listens on the port
  */
 export async function serveWorkspace(
   input: CommandInput,
@@ -308,6 +310,11 @@ async function listenOnComputer(
     }
     if (error instanceof NoNetworkAddressError) {
       throw new KindedError("unavailable", error.message, { cause: error });
+    }
+    if ((error as NodeJS.ErrnoException).code === "EADDRINUSE") {
+      const other = listen.port === 65535 ? listen.port - 1 : listen.port + 1;
+      const message = serveMessages.portInUse(listen.port, other);
+      throw new KindedError("conflict", plainText(message.phrase), { cause: error });
     }
     throw error;
   });

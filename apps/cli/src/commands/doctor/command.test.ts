@@ -238,6 +238,23 @@ verifies("cli.doctor-node", () => {
   });
 });
 
+verifies("cli.doctor-network", () => {
+  it("adds the Network line the machine found, and still exits 0", async () => {
+    const io = captureIo(folder);
+    const behindHttpsProxy: DoctorMachine = {
+      ...machine(),
+      network: () => ({ problem: "proxy-not-http", variable: "HTTPS_PROXY", scheme: "https" }),
+    };
+
+    const code = await runCli(["doctor"], io, [createDoctorCommand(() => behindHttpsProxy)]);
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout).toContain(
+      "! Network     HTTPS_PROXY is an https:// proxy; Halonic only uses http:// proxies",
+    );
+  });
+});
+
 verifies("cli.workspace-file-problems", () => {
   it("shows the Workspace line as a problem when a provider file has a pasted key, never the key", async () => {
     const files: Record<string, string> = {

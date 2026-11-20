@@ -36,6 +36,7 @@ export const doctorMessages = defineMessages("doctor", {
   sandboxLabel: () => phrase`Sandbox`,
   harnessesLabel: () => phrase`Harnesses`,
   nodeLabel: () => phrase`Node.js`,
+  networkLabel: () => phrase`Network`,
   diskLabel: () => phrase`Disk`,
   /**
    * Any line whose check ran over its limit (HAL-13405): "didn't answer in 5 seconds".
@@ -165,6 +166,15 @@ export const doctorMessages = defineMessages("doctor", {
   installPnpmInWsl: () =>
     phrase`Fix: install pnpm inside WSL, for example with npm install -g pnpm, then run halonic doctor again.`,
 
+  // The Network line (HAL-14262, Kim's wording on HAL-14245): shown only with one of these problems.
+  /** Network ! when the proxy is another kind: "HTTPS_PROXY is an https:// proxy; Halonic only uses http:// proxies". */
+  proxyNotHttp: (variable: string, scheme: string) =>
+    phrase`${variable} is ${withArticle(`${scheme}://`)} proxy; Halonic only uses http:// proxies`,
+  /** Network ! when the proxy setting can't be used for another reason, with that reason under it. */
+  proxyUnusable: (variable: string) => phrase`${variable} is set, and Halonic can't use it.`,
+  /** Under {@link proxyUnusable}: the proxy setting's own reason, as it words it. */
+  proxyReason: (reason: string) => phrase`${reason}`,
+
   noProblems: () => phrase`No problems.`,
   problems: (count: number) => phrase`${counted(count, "problem", "problems")}.`,
   warnings: (count: number) => phrase`${counted(count, "warning", "warnings")}.`,
@@ -180,6 +190,11 @@ export const doctorMessages = defineMessages("doctor", {
   /** After the count, when the sandbox can't start: what that stops. */
   sandboxStops: () => phrase`Agents set to run in a sandbox won't start until it's fixed.`,
 });
+
+/** "an https://", "a socks5://": "an" before a vowel, or an "h" read as "aitch". */
+function withArticle(scheme: string): string {
+  return /^[aeiouh]/iu.test(scheme) ? `an ${scheme}` : `a ${scheme}`;
+}
 
 function loadedModel({ name, size }: LoadedModelSize): string {
   return size === undefined ? `${name} loaded` : `${name} loaded (${size})`;

@@ -33,7 +33,7 @@ function typing(...answers: string[]): QuestionTerminal & { readonly written: st
 const noTerminal = () =>
   new NotTrustedError({
     problem: trustMessages.noTerminal("Acme"),
-    fix: trustMessages.noTerminalFix("./acme"),
+    fix: trustMessages.noTerminalFix(`hfp1:${"0".repeat(64)}`, "./acme"),
     fingerprint: `hfp1:${"0".repeat(64)}`,
     check: [],
   });

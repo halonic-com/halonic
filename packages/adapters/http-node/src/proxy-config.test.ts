@@ -63,7 +63,10 @@ verifies("http-node.proxy-config", () => {
       ["socks5://proxy.corp:1080", "socks5"],
       ["https://proxy.corp:3129", "https"],
     ])("refuses %s and names the scheme", (value, shown) => {
-      expect(refusalOf(proxyFromEnv({ HTTPS_PROXY: value }))).toContain(shown);
+      const setting = proxyFromEnv({ HTTPS_PROXY: value });
+      expect(refusalOf(setting)).toContain(shown);
+      // As a fact too, for `halonic doctor`'s Network line (HAL-14262).
+      expect(setting).toMatchObject({ kind: "refused", variable: "HTTPS_PROXY", scheme: shown });
     });
 
     it.each([

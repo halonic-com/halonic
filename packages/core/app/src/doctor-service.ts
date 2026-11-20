@@ -17,8 +17,11 @@ import {
 import {
   type DiskLine,
   diskLine,
+  type NetworkLine,
+  type NetworkProblem,
   type NodeLine,
   type NodeProblem,
+  networkLine,
   nodeLine,
   type SandboxLine,
   sandboxLine,
@@ -139,6 +142,12 @@ export interface DoctorServiceOptions {
    */
   node?: () => Promise<NodeProblem | null>;
   /**
+   * What is wrong with the network settings, such as the proxy, for the
+   * Network line. Read without any network call, so it has no time limit.
+   * Left out where the host checks nothing: then there is no such line.
+   */
+  network?: () => NetworkProblem | null;
+  /**
    * The clock each check's 5-second limit runs on: `setTimeout` and
    * `clearTimeout`, or a test's own.
    */
@@ -163,6 +172,8 @@ export interface DoctorReport {
   harnesses?: HarnessesLine | TimedOutLine<"harnesses">;
   /** Only when the host found a problem with the Node.js that runs Halonic, or its check ran over. */
   node?: NodeLine | TimedOutLine<"node">;
+  /** Only when the host found a problem with the network settings. */
+  network?: NetworkLine;
   disk: DiskLine | TimedOutLine<"disk">;
   /** The counts under the lines, and whether `doctor` exits 1. */
   summary: DoctorSummary;
@@ -228,10 +239,9 @@ export class DoctorService {
       harnessesLine(found.detected, harnessAgents(workspace), found.signedOut),
     );
     if (harnessLine !== undefined) report.harnesses = harnessLine;
-    const runtime = lineOf(node, "node", nodeLine);
-    if (runtime !== undefined) report.node = runtime;
+    const found = { ...report, ...hostFoundLines(node, this.options.network) };
 
-    return { ...report, summary: doctorSummary(linesOf(report)) };
+    return { ...found, summary: doctorSummary(linesOf(found)) };
   }
 
   /** The trust check's status, or `null` when it isn't read: outside a workspace, or on the test model only. */
@@ -359,9 +369,22 @@ function agentSettingsFolders(workspace: DoctorWorkspace | null): AgentSettingsF
   });
 }
 
+/** The Node.js and Network lines, each only when the host found a problem. */
+function hostFoundLines(
+  node: NodeProblem | null | typeof timedOut,
+  network: DoctorServiceOptions["network"],
+): Pick<DoctorReport, "node" | "network"> {
+  const nodeFound = lineOf(node, "node", nodeLine);
+  const networkFound = networkLine(network?.() ?? null);
+  return {
+    ...(nodeFound === undefined ? {} : { node: nodeFound }),
+    ...(networkFound === undefined ? {} : { network: networkFound }),
+  };
+}
+
 function linesOf(report: Omit<DoctorReport, "summary">): DoctorLine[] {
-  const { workspace, models, sandbox, mxc, noSandbox, harnesses, node, disk } = report;
-  return [workspace, models, sandbox, mxc, noSandbox, harnesses, node, disk].filter(
+  const { workspace, models, sandbox, mxc, noSandbox, harnesses, node, network, disk } = report;
+  return [workspace, models, sandbox, mxc, noSandbox, harnesses, node, network, disk].filter(
     (line) => line !== undefined,
   );
 }

@@ -14,6 +14,7 @@ import {
   type DoctorServiceOptions,
   type DoctorWorkspace,
   type LoadedModelSource,
+  type NetworkProblem,
   type NodeProblem,
   ResourceReport,
   type SaveTimers,
@@ -37,6 +38,7 @@ import {
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { findCommand, nodeCommandSearch } from "./command-paths.ts";
+import { networkProblemOf } from "./doctor-network.ts";
 import { engineHttp } from "./engine-http.ts";
 import { nodeHarnessPrograms } from "./harness-programs.ts";
 import {
@@ -44,6 +46,7 @@ import {
   type LocalModelServer,
   localLoadedModels,
 } from "./local-model-servers.ts";
+import { proxySetting } from "./proxy-setting.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import { cliTrustService } from "./workspace-trust.ts";
@@ -70,6 +73,8 @@ export interface DoctorMachine {
   readonly windowsDrive?: (folder: string) => string | null;
   /** What is wrong with the Node.js that runs Halonic, for the Node.js line; left out, no line. */
   readonly node?: () => Promise<NodeProblem | null>;
+  /** What is wrong with the proxy setting, for the Network line; left out, no line. */
+  readonly network?: () => NetworkProblem | null;
   /** The WSL distro `doctor` runs in, from `WSL_DISTRO_NAME`, for the WSL 1 fix's command. */
   readonly wslDistro?: string | undefined;
   /** The terminal a person types a harness's sign-in into: PowerShell on Windows, `sh` elsewhere. */
@@ -111,8 +116,8 @@ const runFolderNames = ["runs", "deployments", "blobs"];
 /**
  * This computer: the profile from `HALONIC_HOME` or the system's data
  * folder, the srt sandbox, Node's resource probe, Claude Code and Codex as
- * `PATH` finds them, `fetch`, under WSL the Windows drives, and what is
- * wrong with the Node.js that runs it.
+ * `PATH` finds them, `fetch`, under WSL the Windows drives, what is wrong
+ * with the Node.js that runs it, and with the proxy setting it started with.
  *
  * @throws RangeError when `HALONIC_HOME` or the home folder isn't absolute
  */
@@ -136,6 +141,7 @@ export function nodeDoctorMachine(): DoctorMachine {
         wsl: nodeIsWsl,
         findPnpm: () => findCommand("pnpm", nodeCommandSearch()),
       }),
+    network: () => networkProblemOf(proxySetting),
     wslDistro: process.env["WSL_DISTRO_NAME"],
     signInShell: system === "win32" ? "powershell" : "sh",
   };
@@ -172,6 +178,7 @@ export async function doctorService(
     harnesses: machine.harnesses,
     secrets,
     ...(machine.node === undefined ? {} : { node: machine.node }),
+    ...(machine.network === undefined ? {} : { network: machine.network }),
     timers: checkTimers,
   });
 }

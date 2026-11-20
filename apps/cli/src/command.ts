@@ -259,6 +259,13 @@ export interface CliCommand {
    */
   readonly argumentsBesideSubcommands?: boolean;
   /**
+   * Whether the command takes its folder as its first argument, as `init
+   * [folder]` does, instead of the `--dir <folder>` most commands take. Then
+   * `--dir` is answered with the same command line, the folder moved to the
+   * front (HAL-14262).
+   */
+  readonly folderArgument?: boolean;
+  /**
    * Runs the command and returns what it did; `runCli` prints it. The
    * result is only the end: what happens while it runs, such as a live ◌
    * line or a yes-or-no question, goes through the context, whose functions

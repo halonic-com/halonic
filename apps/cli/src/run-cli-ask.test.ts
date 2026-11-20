@@ -30,7 +30,7 @@ const testMessages = defineMessages("test", {
 const notTrusted = () =>
   new NotTrustedError({
     problem: trustMessages.noTerminal("Acme"),
-    fix: trustMessages.noTerminalFix("./acme"),
+    fix: trustMessages.noTerminalFix(`hfp1:${"0".repeat(64)}`, "./acme"),
     fingerprint: `hfp1:${"0".repeat(64)}`,
     check: [],
   });
@@ -112,7 +112,7 @@ verifies("cli.questions", () => {
     expect(await runCli(["trust"], io, [trustCommand])).toBe(exitCode.notTrusted);
     expect(io.stderr.slice(0, 2)).toEqual([
       "✕ Acme isn't trusted on this computer yet, and there's no terminal to ask you.",
-      "  Review it with halonic trust --dir ./acme, then pass --yes --fingerprint <fingerprint>.",
+      `  Read the list above, then run: halonic trust --dir ./acme --yes --fingerprint hfp1:${"0".repeat(64)}`,
     ]);
   });
 

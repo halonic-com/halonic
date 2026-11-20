@@ -17,7 +17,13 @@ export interface ProxyConfig {
 export type ProxyFromEnv =
   | { readonly kind: "none" }
   | { readonly kind: "proxy"; readonly proxy: ProxyConfig }
-  | { readonly kind: "refused"; readonly message: string; readonly variable: string };
+  | {
+      readonly kind: "refused";
+      readonly message: string;
+      readonly variable: string;
+      /** The scheme of a proxy that isn't `http`, such as `https`; left out for other refusals. */
+      readonly scheme?: string;
+    };
 
 /**
  * Reads `HTTPS_PROXY` and `NO_PROXY` once, for the app to pass to the
