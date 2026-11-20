@@ -1,6 +1,4 @@
 ---
-"halonic": minor
-"@halonicjs/workspace": minor
 "@halonicjs/app-studio": patch
 ---
 
