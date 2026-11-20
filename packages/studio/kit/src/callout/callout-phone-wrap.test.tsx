@@ -25,7 +25,12 @@ verifies("kit.callout-phone-wrap", () => {
     const { container } = render(proxyCallout);
     const button = container.querySelector("button") as HTMLButtonElement;
     const label = button.firstElementChild as HTMLElement;
-    expect(label.className.split(" ")).toEqual(["phone:whitespace-normal", "phone:text-start"]);
+    expect(label.className.split(" ")).toEqual([
+      "phone:whitespace-normal",
+      "phone:text-start",
+      // 8px above and below, so a wrapped first line doesn't sit on the border.
+      "phone:py-2",
+    ]);
     expect(label.textContent).toBe("Model calls through a proxy ↗. Opens GitHub");
     // The button's height is a minimum, so a second line makes it taller.
     expect(button.className).toContain("min-h-control-sm");

@@ -7,8 +7,10 @@ import type { CalloutAction } from "./callout.tsx";
  * On a phone the label wraps between words and the button grows in height, so at 200 % a long
  * label isn't cut by the Callout (WCAG 1.4.10, HAL-13770). The kit's buttons never wrap
  * elsewhere, and the desktop keeps one line. The button's own height is a minimum already.
+ * The 8px above and below keep a wrapped first line off the border (C275 PX4); one line with
+ * them is 38px with the border, under the phone's 40px minimum, so it doesn't change.
  */
-const labelClasses = "phone:whitespace-normal phone:text-start";
+const labelClasses = "phone:whitespace-normal phone:text-start phone:py-2";
 
 /** Puts focus on an action that asks for it when it is drawn. */
 function focusOnMount(button: HTMLButtonElement | null): void {
