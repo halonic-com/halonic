@@ -286,7 +286,7 @@ verifies("cli.workspace-file-problems", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr.slice(0, 2)).toEqual([
-      "✕ Couldn't send approve to run 01jd8q: Acme has 2 problems in its files. Nothing was sent.",
+      "✕ Couldn't send approve to run 01jd8q: Acme has 1 problem in its files. Nothing was sent.",
       "  See them with: halonic validate",
     ]);
     expect([...io.stdout, ...io.stderr].join("\n")).not.toContain(pastedKey);

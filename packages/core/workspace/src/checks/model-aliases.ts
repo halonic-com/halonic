@@ -33,7 +33,9 @@ export function modelAliasesOf(context: CheckContext, hub: string | null): Set<s
 
 /**
  * The aliases in `models.yaml`: each one's provider must exist, and each
- * alias it falls back to too. The messages are the old loader's.
+ * alias it falls back to too. The messages are the old loader's. A provider
+ * whose file failed its own checks isn't unknown: that file's error says
+ * what to fix (HAL-14260).
  */
 export function checkModelsFile(context: CheckContext): WorkspaceIssue[] {
   const providers = context.idsOf("provider", null);
@@ -41,8 +43,9 @@ export function checkModelsFile(context: CheckContext): WorkspaceIssue[] {
   for (const models of context.filesOf("models")) {
     const aliases = models.value.aliases;
     for (const [alias, target] of Object.entries(aliases)) {
-      if (!providers.has(target.provider)) {
-        const message = `Alias "${alias}" uses unknown provider "${target.provider}"`;
+      const provider = target.provider;
+      if (!providers.has(provider) && !context.failedWithPlaceId("provider", null, provider)) {
+        const message = `Alias "${alias}" uses unknown provider "${provider}"`;
         const path = ["aliases", alias, "provider"];
         issues.push(context.error(models.path, path, "unknown-provider", message));
       }

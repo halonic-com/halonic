@@ -103,6 +103,27 @@ verifies("cli.doctor-workspace", () => {
     expect(doctor.name).toBe("acme");
   });
 
+  // HAL-14260: both passed `doctor` with ✓ and then stopped the run.
+  it("counts a provider type Halonic can't call and a default alias a workflow's agent would miss", async () => {
+    const workspace = await workspaceOf({
+      "workspace.yaml": acmeSettings,
+      "providers/mock.yaml": "id: mock\ntype: antropic\n",
+      "hubs/notes/hub.yaml": "id: notes\nname: Notes\n",
+      "hubs/notes/agents/clerk.agent.yaml": "id: clerk\nname: Clerk\ninstructions: Take notes.\n",
+      "hubs/notes/workflows/take-notes.workflow.yaml":
+        "id: take-notes\nname: Take notes\ninitial: write\nstates:\n  write:\n    agent: clerk\n    on:\n      - to: done\n  done:\n    type: final\n",
+    });
+    const doctor = doctorWorkspace({
+      workspace,
+      integrations: [],
+      location: root,
+      fallbackName: "acme",
+      commandPaths: new Map(),
+    });
+    expect(doctor.fileProblems).toBe(2);
+    expect(doctor.testModelOnly).toBe(false);
+  });
+
   it("lists the aliases of models.yaml in order, then a hub's that point somewhere new", async () => {
     const workspace = await workspaceOf({
       "workspace.yaml": acmeSettings,
@@ -193,6 +214,11 @@ verifies("cli.doctor-workspace", () => {
       runs: "on-this-computer",
       address: "127.0.0.1:8080",
     });
+  });
+
+  it("shows a baseUrl without http:// as written, never an empty address", () => {
+    const provider = { ...base, type: "ollama", local: true, baseUrl: "localhost:11434" };
+    expect(doctorProvider(provider)).toMatchObject({ address: "localhost:11434" });
   });
 
   it("uses the server's default address when the file gives none", () => {

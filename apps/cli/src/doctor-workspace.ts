@@ -108,11 +108,13 @@ export function doctorProvider(provider: Provider): DoctorProvider | undefined {
 
 /**
  * "localhost:11434": the host and port of `baseUrl`, never its path, or else
- * the default address of the provider's type.
+ * the default address of the provider's type. A `baseUrl` without a host
+ * (`localhost:11434` reads as a scheme) is shown as written, never as an
+ * empty address (HAL-14260).
  */
 export function providerAddress(provider: Provider): string | undefined {
   if (provider.baseUrl !== undefined) {
-    return new URL(provider.baseUrl).host;
+    return new URL(provider.baseUrl).host || provider.baseUrl;
   }
   return defaultLocalAddress(provider.type);
 }

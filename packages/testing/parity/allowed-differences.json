@@ -1108,5 +1108,60 @@
         "new": []
       }
     ]
+  },
+  {
+    "id": "alias-of-failed-provider-not-reported",
+    "requirement": "workspace.references",
+    "area": "workspace loader: a model alias whose provider file failed",
+    "old": "A provider file that failed its own checks counted as missing, so each alias in models.yaml on that provider also got Alias \"<alias>\" uses unknown provider \"<id>\".",
+    "new": "An alias is not reported when a provider file named after its provider failed its own checks. An alias whose provider no file names still gets Alias \"<alias>\" uses unknown provider \"<id>\".",
+    "why": "The second error only repeats the provider file failing, and says the provider doesn't exist while its file is right there. With a misspelled type now a provider file error (HAL-14260), it would point a new user at models.yaml instead of the type: line. It follows the failed workflow file rule (test-of-failed-workflow-not-reported).",
+    "status": "signed-off",
+    "checks": [
+      {
+        "case": "provider/bad-format",
+        "file": "models.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Alias \"smart\" uses unknown provider \"local-llm\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "provider/missing-required",
+        "file": "models.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Alias \"smart\" uses unknown provider \"local-llm\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "provider/unknown-key",
+        "file": "models.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Alias \"smart\" uses unknown provider \"local-llm\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "provider/wrong-type",
+        "file": "models.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Alias \"smart\" uses unknown provider \"local-llm\""
+          }
+        ],
+        "new": []
+      }
+    ]
   }
 ]

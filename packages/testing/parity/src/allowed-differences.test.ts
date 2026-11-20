@@ -214,6 +214,7 @@ verifies("parity.allowed-differences-checked", () => {
       "events.run-started-version",
       "engine.llm-request-alias",
       "workspace.references",
+      "workspace.references",
     ]);
   });
 

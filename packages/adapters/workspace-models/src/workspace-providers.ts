@@ -8,7 +8,7 @@
 import { AnthropicProvider } from "@halonicjs/adapter-model-anthropic";
 import { mockFactory } from "@halonicjs/adapter-model-mock";
 import { OpenAiCompatibleProvider } from "@halonicjs/adapter-model-openai";
-import type { Provider } from "@halonicjs/format";
+import { openAiCompatibleTypes, type Provider } from "@halonicjs/format";
 import {
   type LlmProvider,
   ModelCallError,
@@ -19,7 +19,6 @@ import {
 import { KindedError } from "@halonicjs/std";
 import { defaultLocalBaseUrl } from "./default-addresses.ts";
 import { type ModelText, modelTexts } from "./model-texts.ts";
-import { openAiCompatibleTypes } from "./provider-types.ts";
 
 /** OpenAI's own API address, for a provider of type `openai` without a `baseUrl`. */
 export const openAiBaseUrl = "https://api.openai.com/v1";
