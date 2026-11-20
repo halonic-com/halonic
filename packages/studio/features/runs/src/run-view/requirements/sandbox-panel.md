@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1707 (board, HAL-1601 proposal 1); sandbox-screens (HAL-1747) 1; microcopy 23.1; ux-checklists-sandbox (HAL-1833) Part 1; Julian's conditions (HAL-1673); `events.sandbox-opened`, `events.sandbox-off`
+- Source: HAL-1707 (board, HAL-1601 proposal 1); HAL-10728 (Your sign-in); sandbox-screens (HAL-1747) 1; microcopy 23.1; ux-checklists-sandbox (HAL-1833) Part 1; Julian's conditions (HAL-1673); `events.sandbox-opened`, `events.sandbox-off`
 
 The run view shall show what each sandboxed step could do, read only from the step's `sandbox.opened` event, never from the agent's current settings:
 
@@ -16,12 +16,13 @@ The run view shall show what each sandboxed step could do, read only from the st
   - **Can't open**: the names of the groups, never their paths, then "Also: …" with the denied paths that are in no group;
   - **Reaches**: Halonic, then up to 10 allowed sites as plain text with the registrable domain in bold, then "and 3 more";
   - **Time limit**: "Stops after 30 minutes", in minutes under an hour, otherwise "2 hours" or "1 hour 30 minutes";
+  - **Your sign-in**, only when the event says how the agent signs in: with a key, "*Writer* never sees your API key. Halonic adds it to requests on their way to *Anthropic*." (*OpenAI*, or the id of another provider file, escaped); with a subscription, "With a *Claude* subscription: saved in *Writer*'s own settings folder on this computer. *Writer* can read it while it runs." (*ChatGPT* for OpenAI);
 - under the rows, the kind of sandbox ("A process sandbox on this computer, not a virtual machine.") and the line on what isn't covered, which always shows and names the working folder;
 - on a phone the entry fills the screen, rows have their label above the value, "your computer" replaces "this computer", and the action is the line "To change its folder or sites, edit workingFolder or allowedSites in *Writer*'s file on your computer.", with no link. On the desktop the action "Change in *Writer*'s settings" shows only where the page can open the agent's sandbox settings.
 
-No path from a denied group and no value of the step's environment shall appear on the page: the event never holds them (Julian, HAL-1673). Every value from the log is escaped for hidden and direction-changing characters. Every sentence comes from the sandbox words table by key; the words are placeholders until the board approves the sandbox screens (HAL-1784).
+No path from a denied group and no value of the step's environment shall appear on the page: the event never holds them (Julian, HAL-1673). Every value from the log is escaped for hidden and direction-changing characters. Every sentence comes from the sandbox words table by key. The Your sign-in sentences are the ones the board approved (HAL-1784, after the checks on HAL-1710).
 
-Not in this requirement: **Your sign-in** (waits for HAL-1710), the workflow's run card, and the agent page the action opens. Not here yet: the desktop action, because the agent's Harness page has no sandbox settings to open (HAL-12658).
+Not in this requirement: the workflow's run card, and the agent page the action opens. Not here yet: the desktop action, because the agent's Harness page has no sandbox settings to open (HAL-12658).
 
 ## Examples
 
@@ -31,6 +32,9 @@ Not in this requirement: **Your sign-in** (waits for HAL-1710), the workflow's r
 - Given a step whose sandbox denied the groups `ssh-keys` and `browser-data` and the path `~/finance`,
   when its entry is open,
   then Can't open reads "Your SSH keys · Browser data" and "Also: ~/finance", and no path of either group is on the page.
+- Given a step whose `sandbox.opened` has the sign-in `{ kind: "subscription", provider: "anthropic" }` and whose agent is Writer,
+  when its entry is open,
+  then the last row is Your sign-in, reading "With a Claude subscription: saved in Writer's own settings folder on this computer. Writer can read it while it runs."; for an event without a sign-in, the row isn't there.
 - Given a step whose time limit is 5 400 000 ms,
   then Time limit reads "Stops after 1 hour 30 minutes".
 - Given a finished run whose agent's allowed sites have changed since,

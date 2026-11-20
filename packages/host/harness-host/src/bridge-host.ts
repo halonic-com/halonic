@@ -4,7 +4,13 @@
 // that agent. Same shape as the Studio's `AgentHostBridges`, so one
 // `servicesFor` serves either.
 
-import type { HarnessAgent, HarnessBridgeHost, Placement, ProgramHarness } from "@halonicjs/engine";
+import type {
+  HarnessAgent,
+  HarnessBridgeHost,
+  HostedHarnessBridge,
+  Placement,
+  ProgramHarness,
+} from "@halonicjs/engine";
 import type {
   BridgeApprovals,
   BridgeProvider,
@@ -13,7 +19,6 @@ import type {
   BridgeTools,
   HarnessBridgeServer,
   ModelPrice,
-  OpenHarnessBridge,
 } from "@halonicjs/ports";
 
 /** The agent a bridge serves; the engine's `HarnessAgent` has these and more. */
@@ -100,7 +105,7 @@ export class LocalBridgeHost implements HarnessBridgeHost {
     agent: HarnessAgent,
     recorder: BridgeRecorder,
     runsOn: Placement,
-  ): Promise<OpenHarnessBridge> {
+  ): Promise<HostedHarnessBridge> {
     const services = await this.#services.servicesFor({
       runId: agent.runId,
       agentId: agent.agentId,
@@ -108,7 +113,7 @@ export class LocalBridgeHost implements HarnessBridgeHost {
       hubId: agent.hubId,
       ...(agent.file.model === undefined ? {} : { model: agent.file.model }),
     });
-    return await this.#servers[runsOn].open({
+    const bridge = await this.#servers[runsOn].open({
       runId: agent.runId,
       agentId: agent.agentId,
       providers: services.providers,
@@ -118,6 +123,14 @@ export class LocalBridgeHost implements HarnessBridgeHost {
       approvals: services.approvals,
       reportError: (failure) => this.#recordFailure(recorder, agent.agentId, failure),
     });
+    const { url, token, socketPath } = bridge;
+    return {
+      url,
+      token,
+      ...(socketPath === undefined ? {} : { socketPath }),
+      close: () => bridge.close(),
+      providers: services.providers,
+    };
   }
 
   /**

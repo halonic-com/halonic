@@ -4,6 +4,7 @@ import type { RunEvent } from "./run-event.ts";
 import {
   deniedPathGroupCodes,
   type SandboxOpenedOptions,
+  type SandboxSignIn,
   sandboxOpenedView,
 } from "./sandbox-opened.ts";
 
@@ -73,6 +74,23 @@ verifies("events.sandbox-opened", () => {
     expect(logged).not.toContain("secret");
     expect(logged).not.toContain("proxy");
     expect(logged).not.toContain("4100");
+  });
+
+  it("copies only the kind and the provider of the sign-in", () => {
+    const signIn = { kind: "key", provider: "zai", secret: "ZAI_API_KEY", baseUrl: "https://x" };
+    const view = sandboxOpenedView(profile, { ...options, signIn: signIn as SandboxSignIn });
+    expect(view.signIn).toEqual({ kind: "key", provider: "zai" });
+    const subscription = { kind: "subscription", provider: "anthropic", folder: `${home}/.claude` };
+    expect(
+      sandboxOpenedView(profile, { ...options, signIn: subscription as SandboxSignIn }).signIn,
+    ).toEqual({ kind: "subscription", provider: "anthropic" });
+    const logged = JSON.stringify(view);
+    expect(logged).not.toContain("ZAI_API_KEY");
+    expect(logged).not.toContain("https://x");
+  });
+
+  it("has no sign-in when the host gave none", () => {
+    expect(sandboxOpenedView(profile, options)).not.toHaveProperty("signIn");
   });
 
   it("logs denied paths as group codes plus the paths the person added", () => {

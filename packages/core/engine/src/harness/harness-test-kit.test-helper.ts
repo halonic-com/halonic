@@ -24,6 +24,7 @@ import { StartDeadlines } from "../run/start-deadlines.ts";
 import type {
   HarnessAgent,
   HarnessRunsOptions,
+  HostedHarnessBridge,
   Placement,
   PlacementAnswer,
 } from "./harness-host.ts";
@@ -225,6 +226,7 @@ export function harnessPorts() {
   const thisComputer = new FakeSandbox("this-computer", steps);
   const harness = new FakeHarness(steps);
   let placement: PlacementAnswer = { runsOn: "sandbox" };
+  let providers: HostedHarnessBridge["providers"];
   const bridge: OpenHarnessBridge = {
     url: "http://127.0.0.1:41817",
     token: "not-a-real-token",
@@ -241,7 +243,7 @@ export function harnessPorts() {
         steps.push("bridge.open");
         recorders.push(recorder);
         bridgePlacements.push(runsOn);
-        return bridge;
+        return providers === undefined ? bridge : { ...bridge, providers };
       },
     },
     profiles: {
@@ -273,6 +275,10 @@ export function harnessPorts() {
     sandbox,
     thisComputer,
     harness,
+    /** Has the bridge say how it reaches each provider, as a host does. */
+    serveProviders: (served: NonNullable<HostedHarnessBridge["providers"]>) => {
+      providers = served;
+    },
     placeOnThisComputer: (chosenAt = "2026-11-09T10:00:00.000Z") => {
       placement = { runsOn: "this-computer", chosenAt };
     },

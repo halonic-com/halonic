@@ -1,4 +1,4 @@
-import type { SandboxOpenedView } from "@halonicjs/events";
+import type { SandboxOpenedView, SandboxSignIn } from "@halonicjs/events";
 import { escapeHidden } from "@halonicjs/std";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -76,8 +76,6 @@ export interface SandboxPanelProps {
  *
  * It shows only what the event holds. A denied path group is a name, never its paths, and the
  * event never held the step's environment, so none can show here (Julian, HAL-1673).
- *
- * Not here yet: Your sign-in, which waits for HAL-1710.
  */
 export function SandboxPanel({ view, agent, live, place, onOpenHarness }: SandboxPanelProps) {
   const folder = escapeHidden(view.workingFolder);
@@ -99,6 +97,11 @@ export function SandboxPanel({ view, agent, live, place, onOpenHarness }: Sandbo
         <Row label={sayText("sandbox.panel.time")}>
           {sayText("sandbox.panel.time.value", { time: timeLimitText(view.timeLimitMs) })}
         </Row>
+        {view.signIn === undefined ? null : (
+          <Row label={sayText("sandbox.panel.sign-in")}>
+            {signInText(view.signIn, agent, place)}
+          </Row>
+        )}
       </dl>
       <p className="text-small text-fg-muted">{kindText(view.strength, place)}</p>
       <p className="text-small text-fg-muted">
@@ -107,6 +110,30 @@ export function SandboxPanel({ view, agent, live, place, onOpenHarness }: Sandbo
       <Action agent={agent} place={place} onOpenHarness={onOpenHarness} />
     </section>
   );
+}
+
+/**
+ * The Your sign-in sentence (mc 23.1): with a key, that the agent never sees it; with a
+ * subscription, where it is saved. A key from another provider file is named by its id.
+ *
+ * @example
+ * signInText({ kind: "subscription", provider: "openai" }, "Writer", "desktop");
+ * // "With a ChatGPT subscription: saved in Writer's own settings folder on this computer. …"
+ */
+export function signInText(
+  signIn: SandboxSignIn,
+  agent: string,
+  place: "desktop" | "phone",
+): string {
+  if (signIn.kind === "subscription") {
+    const plan = sayText(`sandbox.sign-in.plan.${signIn.provider}`);
+    return sayText(`sandbox.panel.sign-in.subscription.${place}`, { plan, agent });
+  }
+  const provider =
+    signIn.provider === "anthropic" || signIn.provider === "openai"
+      ? sayText(`sandbox.sign-in.provider.${signIn.provider}`)
+      : escapeHidden(signIn.provider);
+  return sayText("sandbox.panel.sign-in.key", { agent, provider });
 }
 
 function kindText(strength: SandboxOpenedView["strength"], place: "desktop" | "phone") {

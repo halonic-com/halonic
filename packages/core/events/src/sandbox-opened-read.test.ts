@@ -18,6 +18,29 @@ verifies("events.sandbox-opened", () => {
     expect(readSandboxOpened(JSON.parse(JSON.stringify(view)))).toEqual(view);
   });
 
+  it("reads the sign-in, and a view logged before it was recorded", () => {
+    const keyed = { ...view, signIn: { kind: "key", provider: "zai" } } as const;
+    expect(readSandboxOpened(keyed)).toEqual(keyed);
+    const subscription = { ...view, signIn: { kind: "subscription", provider: "openai" } } as const;
+    expect(readSandboxOpened(subscription)).toEqual(subscription);
+    expect(readSandboxOpened(view)).not.toHaveProperty("signIn");
+  });
+
+  it("gives null for a damaged sign-in, and copies only its kind and provider", () => {
+    for (const signIn of [
+      null,
+      "key",
+      { kind: "password", provider: "anthropic" },
+      { kind: "key", provider: "" },
+      { kind: "key" },
+      { kind: "subscription", provider: "zai" },
+    ]) {
+      expect(readSandboxOpened({ ...view, signIn })).toBeNull();
+    }
+    const withSecret = { ...view, signIn: { kind: "key", provider: "zai", secret: "ZAI_API_KEY" } };
+    expect(readSandboxOpened(withSecret)?.signIn).toEqual({ kind: "key", provider: "zai" });
+  });
+
   it("gives null for a value that isn't a view, without throwing", () => {
     for (const damaged of [undefined, null, "damaged", 7, [], [view]]) {
       expect(readSandboxOpened(damaged)).toBeNull();

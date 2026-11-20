@@ -2,8 +2,8 @@ import type { DeniedPathGroupCode } from "@halonicjs/events";
 
 /**
  * The words for what a step could do (microcopy 23.1), by a stable key, so the wording can change
- * without touching a component. `{name}` marks a value filled in at run time. Placeholder text
- * until the board approves the sandbox screens (HAL-1784); the keys stay.
+ * without touching a component. `{name}` marks a value filled in at run time. The Your sign-in
+ * rows have the words the board approved (HAL-1784, after the checks on HAL-1710).
  *
  * Never "safe", "secure" or "protected" (microcopy 1.4). The phone line names the agent's file,
  * not "Harness": the agent's Harness page has no sandbox setting yet (HAL-12658).
@@ -39,6 +39,17 @@ export const sandboxWords = {
   "sandbox.panel.reaches.more": "and {count} more",
   "sandbox.panel.time": "Time limit",
   "sandbox.panel.time.value": "Stops after {time}",
+  "sandbox.panel.sign-in": "Your sign-in",
+  "sandbox.panel.sign-in.key":
+    "{agent} never sees your API key. Halonic adds it to requests on their way to {provider}.",
+  "sandbox.panel.sign-in.subscription.desktop":
+    "With a {plan} subscription: saved in {agent}'s own settings folder on this computer. {agent} can read it while it runs.",
+  "sandbox.panel.sign-in.subscription.phone":
+    "With a {plan} subscription: saved in {agent}'s own settings folder on your computer. {agent} can read it while it runs.",
+  "sandbox.sign-in.provider.anthropic": "Anthropic",
+  "sandbox.sign-in.provider.openai": "OpenAI",
+  "sandbox.sign-in.plan.anthropic": "Claude",
+  "sandbox.sign-in.plan.openai": "ChatGPT",
   "sandbox.panel.kind.os.desktop": "A process sandbox on this computer, not a virtual machine.",
   "sandbox.panel.kind.os.phone": "A process sandbox on your computer, not a virtual machine.",
   "sandbox.panel.kind.vm.desktop": "A virtual machine on this computer.",

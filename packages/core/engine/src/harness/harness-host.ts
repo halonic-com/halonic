@@ -7,6 +7,8 @@ import type { InstructionTrustService } from "@halonicjs/app";
 import type { DeniedPathGroup, RunVersion } from "@halonicjs/events";
 import type { Agent } from "@halonicjs/format";
 import type {
+  BridgeProvider,
+  BridgeProviderAccess,
   BridgeRecorder,
   Harness,
   HarnessBridge,
@@ -72,6 +74,16 @@ export interface PlacementPolicy {
   where(agent: HarnessAgent): Promise<PlacementAnswer>;
 }
 
+/** A bridge the host opened, with how it reaches each provider. */
+export interface HostedHarnessBridge extends OpenHarnessBridge {
+  /**
+   * The providers the bridge serves the agent and how it signs in to each,
+   * as the host gave them to the bridge, so `sandbox.opened` can say how the
+   * agent signs in. Absent when the host doesn't say.
+   */
+  readonly providers?: Partial<Record<BridgeProvider, BridgeProviderAccess>>;
+}
+
 /**
  * Opens the Halonic bridge of one harness run. The host fills in what the
  * bridge serves (the providers, prices, tools and approvals); the engine
@@ -90,7 +102,7 @@ export interface HarnessBridgeHost {
     agent: HarnessAgent,
     recorder: BridgeRecorder,
     runsOn: Placement,
-  ): Promise<OpenHarnessBridge>;
+  ): Promise<HostedHarnessBridge>;
 }
 
 /** A sandbox profile for one harness run, with what its `sandbox.opened` event shows. */

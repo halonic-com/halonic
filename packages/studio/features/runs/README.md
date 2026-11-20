@@ -72,9 +72,9 @@ const [step] = stepSandboxes(events, "step-1");
 <SandboxPanel view={step.view} agent={step.agent} live={run.summary.endedAt === null} place="desktop" />;
 ```
 
-A step with neither event (an old run, or a step with no program) has no line; a damaged `sandbox.opened` says it couldn't be read. Every sentence comes from `sandbox-words.ts` by key; the words are placeholders until the board approves the sandbox screens (HAL-1784).
+A step with neither event (an old run, or a step with no program) has no line; a damaged `sandbox.opened` says it couldn't be read. The **Your sign-in** row shows only when the event says how the agent signs in (`signIn`, a key or a subscription). Every sentence comes from `sandbox-words.ts` by key.
 
-Not built yet: **Your sign-in** (HAL-1710), the workflow run card's line, and the desktop action "Change in *Writer*'s settings" (`onOpenHarness`), which needs sandbox settings on the agent's Harness page to open (HAL-12658). Until then a phone says to change it in the agent's file.
+Not built yet: the workflow run card's line, and the desktop action "Change in *Writer*'s settings" (`onOpenHarness`), which needs sandbox settings on the agent's Harness page to open (HAL-12658). Until then a phone says to change it in the agent's file.
 
 ## Blocked sites
 

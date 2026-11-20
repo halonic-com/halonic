@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: board approval of proposal 1 ("What this run can do") in the `proposals` document on HAL-1601, with Julian's conditions on HAL-1673; task HAL-1707; the facts for the sandbox screens on HAL-1782 and the UX checklist on HAL-1833
+- Source: board approval of proposal 1 ("What this run can do") in the `proposals` document on HAL-1601, with Julian's conditions on HAL-1673; task HAL-1707; the facts for the sandbox screens on HAL-1782 and the UX checklist on HAL-1833; the sign-in (P3) on HAL-10728, after the sign-in checks on HAL-1710
 
-The run log shall have a `sandbox.opened` event, written when a sandboxed step starts, with the step's `state`, its `agent` and a display copy of its sandbox profile in `sandbox`, so a finished run still shows what the step could do. The events package shall make that copy with `sandboxOpenedView(profile, options)` from a fixed list of fields: the sandbox's strength, the working folder, the read-only paths, the denied paths, the allowed sites and the time limit. It shall never copy the profile's `env`, its temp folder, its settings folder or any field not on that list: the screens show none of them. The groups of denied paths shall be the eight in `deniedPathGroupCodes`: `ssh-keys`, `cloud-sign-ins`, `browser-data`, `password-stores`, `registry-tokens`, `shell-history`, `halonic-data` and `agent-settings`. Denied paths shall be logged as the codes of the groups that have paths and whose paths are all denied, plus the other denied paths one by one: the ones the person added. Paths in the person's home folder shall start with `~`. The event holds codes and paths, never sentences; screens word them through the message catalogue. `readSandboxOpened(value)` shall read a stored `sandbox` without throwing: it gives the view with only the listed fields, or `null` when the value is damaged or a field is missing, so a screen can say it couldn't read it.
+The run log shall have a `sandbox.opened` event, written when a sandboxed step starts, with the step's `state`, its `agent` and a display copy of its sandbox profile in `sandbox`, so a finished run still shows what the step could do. The events package shall make that copy with `sandboxOpenedView(profile, options)` from a fixed list of fields: the sandbox's strength, the working folder, the read-only paths, the denied paths, the allowed sites, the time limit and, when the host gives it, how the agent signs in to its model (`signIn`). Of the sign-in it shall copy only its kind, `key` (a key Halonic keeps and adds on the way to the provider) or `subscription` (the person's own subscription with `anthropic` or `openai`), and the provider's id: never the name of the secret, an address or a path. It shall never copy the profile's `env`, its temp folder, its settings folder or any field not on that list: the screens show none of them. The groups of denied paths shall be the eight in `deniedPathGroupCodes`: `ssh-keys`, `cloud-sign-ins`, `browser-data`, `password-stores`, `registry-tokens`, `shell-history`, `halonic-data` and `agent-settings`. Denied paths shall be logged as the codes of the groups that have paths and whose paths are all denied, plus the other denied paths one by one: the ones the person added. Paths in the person's home folder shall start with `~`. The event holds codes and paths, never sentences; screens word them through the message catalogue. `readSandboxOpened(value)` shall read a stored `sandbox` without throwing: it gives the view with only the listed fields, or `null` when the value is damaged or a field is missing, so a screen can say it couldn't read it. A stored view without `signIn` reads fine; one with a damaged `signIn` gives `null`.
 
 ## Examples
 
@@ -17,6 +17,12 @@ The run log shall have a `sandbox.opened` event, written when a sandboxed step s
 - Given a profile whose denied paths are the SSH keys group, the cloud sign-ins group and one path the person added,
   when its view is made,
   then `deniedGroups` is the two group codes and `deniedPaths` is the person's path.
+- Given a sign-in with a key from the provider `zai` held in the secret `ZAI_API_KEY`,
+  when the view is made,
+  then its `signIn` is `{ kind: "key", provider: "zai" }`, and the secret's name is not in the view.
+- Given a stored `sandbox` without `signIn`,
+  when it is read with `readSandboxOpened`,
+  then the view is read without one; with a `signIn` of another kind or a subscription provider other than `anthropic` or `openai`, the result is `null`.
 - Given a group of which only some paths are denied,
   when the view is made,
   then the group is not named and its denied paths are listed one by one.

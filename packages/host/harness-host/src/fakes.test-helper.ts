@@ -82,10 +82,18 @@ export class MemoryDefinitionStore implements DefinitionStore {
 /** A bridge server that records what each `open` was given. */
 export class RecordingBridgeServer implements HarnessBridgeServer {
   readonly opened: HarnessBridgeOptions[] = [];
+  /** How many times a bridge it opened was closed. */
+  closed = 0;
 
   async open(options: HarnessBridgeOptions): Promise<OpenHarnessBridge> {
     this.opened.push(options);
-    return { url: "http://127.0.0.1:4100", token: "test-token", close: async () => {} };
+    return {
+      url: "http://127.0.0.1:4100",
+      token: "test-token",
+      close: async () => {
+        this.closed += 1;
+      },
+    };
   }
 }
 

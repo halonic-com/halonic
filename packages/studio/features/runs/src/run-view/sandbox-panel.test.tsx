@@ -10,6 +10,7 @@ import {
   SandboxPanel,
   sandboxLineText,
   sayText,
+  signInText,
   timeLimitText,
 } from "./sandbox-panel.tsx";
 import { type SandboxKey, sandboxWords } from "./sandbox-words.ts";
@@ -43,6 +44,8 @@ describe("sandbox words", () => {
       folder: "~/w",
       time: "1 hour",
       paths: "p",
+      provider: "Anthropic",
+      plan: "Claude",
     };
     for (const key of Object.keys(sandboxWords) as SandboxKey[]) {
       const text = sayText(key, values);
@@ -111,6 +114,36 @@ verifies("runs.run-view.sandbox-panel", () => {
     expect(text).toContain("Stops after 30 minutes");
     expect(text).toContain("A process sandbox on this computer, not a virtual machine.");
     expect(text).toContain("Not covered: if Writer changes a build script in ~/work/acme");
+  });
+
+  it("shows Your sign-in after the time limit, as the agent signs in", () => {
+    const subscription = render(
+      <SandboxPanel
+        view={{ ...view, signIn: { kind: "subscription", provider: "anthropic" } }}
+        agent="Writer"
+        live={false}
+        place="desktop"
+      />,
+    );
+    const labels = [...subscription.querySelectorAll("dt")].map((el) => el.textContent);
+    expect(labels.slice(-2)).toEqual(["Time limit", "Your sign-in"]);
+    expect(subscription.querySelector("dt:last-of-type + dd")?.textContent).toBe(
+      "With a Claude subscription: saved in Writer's own settings folder on this computer. Writer can read it while it runs.",
+    );
+    expect(signInText({ kind: "subscription", provider: "openai" }, "Writer", "phone")).toBe(
+      "With a ChatGPT subscription: saved in Writer's own settings folder on your computer. Writer can read it while it runs.",
+    );
+    expect(signInText({ kind: "key", provider: "anthropic" }, "Writer", "desktop")).toBe(
+      "Writer never sees your API key. Halonic adds it to requests on their way to Anthropic.",
+    );
+    expect(signInText({ kind: "key", provider: "z\u202eai" }, "Writer", "desktop")).toContain(
+      "on their way to z\\u202eai.",
+    );
+  });
+
+  it("leaves Your sign-in out when the event doesn't say how the agent signs in", () => {
+    const container = render(<SandboxPanel view={view} agent="Writer" live place="desktop" />);
+    expect(container.textContent).not.toContain("Your sign-in");
   });
 
   it("says can while the run is live", () => {

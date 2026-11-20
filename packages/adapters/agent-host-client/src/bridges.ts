@@ -128,7 +128,10 @@ export class AgentHostBridges {
    *   or the bridge can't listen (`bridge_failed`, or the kind of the host's
    *   error with its `failureCause`; see {@link BridgeFailedError})
    */
-  async open(agent: OpeningAgent, recorder: BridgeRecorder): Promise<OpenHarnessBridge> {
+  async open(
+    agent: OpeningAgent,
+    recorder: BridgeRecorder,
+  ): Promise<OpenHarnessBridge & Pick<BridgeServices, "providers">> {
     const services = await this.#servicesFor(bridgeAgentOf(agent));
     const hangUp = new AbortController();
     const body = {
@@ -168,6 +171,8 @@ export class AgentHostBridges {
       token,
       ...(socketPath === undefined ? {} : { socketPath }),
       close: () => this.#close(opened.bridge, opened.token, serving, hangUp),
+      // So the run log can say how the agent signs in: the kind and provider, never a key.
+      providers: services.providers,
     };
   }
 
