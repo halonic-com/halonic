@@ -3,6 +3,7 @@
 - Task: HAL-13919
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13919 (hours and days decided by the team under HAL-2282 in the task's description; Liam's review on the task set days from 24 hours, as the Inbox counts them; cli-output 1.5 revision 53 on HAL-1981)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:sWa89mWor5qE2xp5gteVqodQYo+ic5DwGll7VEOxOUw299+RPZLxu4QbUqk6x2/3y/zIpHMmTdbLaEEhlpY5Dg==
 
 ## What changes
 
