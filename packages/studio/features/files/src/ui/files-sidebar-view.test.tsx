@@ -83,7 +83,34 @@ verifies("files.ui.tree-view", () => {
     );
     expect(rowNamed(page, "hubs").getAttribute("aria-label")).toBe("hubs, folder, 2 errors");
     expect(rowNamed(page, long).textContent).toContain("…");
-    expect(rowNamed(page, long).title).toBe(long);
+    expect(rowNamed(page, long).querySelector(`[title="${long}"]`)?.textContent).toContain("…");
+  });
+
+  it("reads a long file name once: the full name is the cut name's title, not the row's (HAL-13017)", async () => {
+    const long = `${"a".repeat(30)}.agent.yaml`;
+    const page = await show(hostOf(listing([...files, long], new Map([[long, { errors: 1 }]]))));
+    expect(rowNamed(page, long).getAttribute("aria-label")).toBe(long);
+    expect(rowNamed(page, long).hasAttribute("title")).toBe(false);
+    expect(rowNamed(page, long).getAttribute("aria-description")).toBe("1 error");
+    const short = await show(hostOf(listing([long])));
+    expect(rowNamed(short, long).hasAttribute("aria-description")).toBe(false);
+  });
+
+  it("keeps a deep row inside the tree: the name gives way, the marks and ⋮ don't (HAL-13017)", async () => {
+    const deep = "hubs/reports/agents/broken.agent.yaml";
+    const page = await show(hostOf(listing([deep], new Map([[deep, { errors: 1 }]]))));
+    for (const folder of ["hubs", "hubs/reports", "hubs/reports/agents"]) {
+      act(() => rowNamed(page, folder).click());
+    }
+    const row = rowNamed(page, deep);
+    expect(row.getAttribute("aria-level")).toBe("4");
+    expect(row.className).toContain("min-w-0");
+    expect(row.className).toContain("focus-ring-inset");
+    const [, name, marks, menu] = Array.from(row.children);
+    expect(name?.className).toContain("min-w-0");
+    expect(name?.className).toContain("truncate");
+    expect(marks?.className).toContain("shrink-0");
+    expect(menu?.className).toContain("shrink-0");
   });
 
   it("names a file row by its full name, not with its ⋮ button, and leaves a folder row as it is", async () => {
