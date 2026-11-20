@@ -80,18 +80,6 @@ export const runMessages = defineMessages("run", {
   gitNotItselfFix: () =>
     phrase`It may be a wrapper script, a version manager's shim or git older than 2.31. Put git 2.31 or later itself first on your PATH, then try again.`,
   /**
-   * The reason after "Couldn't run support-reply:" when an agent of the
-   * workflow is in a harness (Claude Code or Codex), which this computer's
-   * engine has no adapter for yet: `unavailable`, exit 9. `harness` is the
-   * id an agent file writes; the line shows its name, as doctor does.
-   */
-  harnessNotAvailable: (agent: string, harness: string) => {
-    const name = trustMessages.harnessName(harness).phrase;
-    return phrase`Halonic can't run agents in ${name} yet, and ${agent} is in ${name}. ${nothingRan}`;
-  },
-  /** Its fix: `--harness halonic` runs every agent in Halonic's own loop (Liam, HAL-5367). */
-  harnessNotAvailableFix: () => phrase`Run it with --harness halonic.`,
-  /**
    * After the sandbox's fix when it can't start for an agent in a harness:
    * Halonic's own loop starts no program, so it needs no sandbox. Only `run`
    * has the option, and "On this computer" is never the way out (HAL-12597).
@@ -108,7 +96,7 @@ export const runMessages = defineMessages("run", {
     phrase`With --json, print one line for each event as it happens, then the result.`,
   /** `--harness`'s line in the help. */
   harnessOption: () =>
-    phrase`The harness every agent of the run runs in, in place of its own. For now only halonic works.`,
+    phrase`The harness every agent of the run runs in, in place of its own: halonic, claude-code or codex.`,
   /**
    * The reason after "Couldn't run support-reply:" when `--harness` names
    * no harness (exit 2). Words for HAL-189 6b, placeholders like doctor's

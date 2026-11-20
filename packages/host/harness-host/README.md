@@ -33,8 +33,8 @@ prices' own entries, so a model named `toString` has none.
   CLI's Node parts: the srt sandbox, the host sandbox, the Node bridge server,
   the harness profiles, git with worktrees in the profile and the folder's
   files, and `apps/cli/src/local-engine-host.ts` gives the engine its
-  `harnesses` and `proposalFolders`. `halonic run` still refuses a harness
-  agent until HAL-6477 turns them on, so only a test starts such a run today.
+  `harnesses` and `proposalFolders`. `halonic run` runs them (HAL-6477);
+  `halonic routines watch` still refuses them.
 - **Studio:** `packages/studio/*` may not import host packages. When the
   Studio runs harness agents, `apps/studio` or `apps/agent-host` wires this
   with the agent host's stand-ins.

@@ -1,6 +1,7 @@
 import { counted } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { dim, markPart, phrase } from "./phrase.ts";
+import { runMessages } from "./run.ts";
 import {
   type DueAt,
   dueInWords,
@@ -9,6 +10,7 @@ import {
   type StartedAt,
   startedInWords,
 } from "./runs-list.ts";
+import { trustMessages } from "./trust.ts";
 
 /**
  * The sentences of `halonic routines` and `halonic routines watch` (HAL-4844). cli-output has no section
@@ -81,6 +83,17 @@ export const routinesMessages = defineMessages("routines", {
    */
   noAgentFileInVersion: (hubId: string, agentId: string) =>
     phrase`The version this run reads has no agent ${agentId} in hub ${hubId}.`,
+  /**
+   * The reason when an enabled routine's agent, or an agent of its workflow,
+   * is in a harness (Claude Code or Codex): `unavailable`, exit 9. `run`
+   * starts such agents (HAL-6477), but `watch` doesn't yet, so the line names
+   * routines rather than Halonic (HAL-13857). `harness` is the id an agent
+   * file writes; the line shows its name, as doctor does.
+   */
+  harnessNotAvailable: (agent: string, harness: string) => {
+    const name = trustMessages.harnessName(harness).phrase;
+    return phrase`Routines can't run agents in ${name} yet, and ${agent} is in ${name}. ${runMessages.nothingRan().phrase}`;
+  },
   /**
    * The fix when a routine's agent is in a harness: `watch` has no `--harness`
    * to move it, as `run` does, so the agent or the routine changes (HAL-11908).
