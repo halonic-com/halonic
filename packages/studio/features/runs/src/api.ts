@@ -183,3 +183,16 @@ export interface RunStartHost {
 /** The open workspace's way to start a run. Absent where there is no engine to start it. */
 export const RunStartHostService: ServiceKey<RunStartHost> =
   serviceKey<RunStartHost>("runs.start-host");
+
+/**
+ * Whether the open workspace keeps versions, for the run page's Ran on row: a workspace with no
+ * version history leaves it out rather than say "Version not recorded." on every run (HAL-12727).
+ */
+export interface VersionHistoryHost {
+  /** Whether the workspace has at least one version. Rejects when its history can't be read. */
+  readonly hasVersions: () => Promise<boolean>;
+}
+
+/** The open workspace's version history. Absent where the app can't read it; Ran on then shows. */
+export const VersionHistoryHostService: ServiceKey<VersionHistoryHost> =
+  serviceKey<VersionHistoryHost>("runs.version-history-host");

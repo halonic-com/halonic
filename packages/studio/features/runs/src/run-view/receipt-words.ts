@@ -18,8 +18,9 @@ export const receiptWords = {
   modelCached: "cached, no model call",
   /** A mix of cached and fresh calls: "2 cached calls". */
   modelCachedCalls: (calls: number) => `${calls} cached ${calls === 1 ? "call" : "calls"}`,
+  /** The line of the calls the built-in test model answered, in place of its model id (HAL-12727). */
+  testModel: "Built-in test model",
   /** A call priced 0: never an amount (mc 15.2). */
-  modelTestNoCost: "built-in test model, no cost",
   modelNoCost: "no cost",
   modelNoPrice: "No price",
   modelSubscription: "on your subscription",
@@ -33,6 +34,12 @@ export const receiptWords = {
   /** One approval the run asked for: what was decided, by whom (RCPT-2.4), and when. */
   approvalLine: (action: string, decision: "approved" | "rejected", by: string, time: string) =>
     `${capitalised(action)}: ${decision}${by === "" ? "" : ` by ${by}`} at ${time}`,
+  /** A wait step's answer (HAL-12727): "approve" and "reject" read as the tool approvals' words. */
+  waitAnswerLine: (step: string, event: string, time: string) => {
+    if (event === "approve") return `${capitalised(step)}: approved by you at ${time}`;
+    if (event === "reject") return `${capitalised(step)}: rejected by you at ${time}`;
+    return `${capitalised(step)}: answered ${event} by you at ${time}`;
+  },
   approvalWaiting: (action: string) => `${capitalised(action)}: waiting for your answer`,
   /** An approval left open when the run ended: nobody can answer it any more. */
   approvalNotAnswered: (action: string) => `${capitalised(action)}: not answered`,
