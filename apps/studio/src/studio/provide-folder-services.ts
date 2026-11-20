@@ -3,9 +3,11 @@ import {
   TauriDefinitionStore,
   TauriEngineLock,
   type TauriFileShell,
+  TauriFolderReader,
   TauriInstructionTrustStore,
   TauriRecordStore,
   TauriRunStore,
+  TauriToolApprovalStore,
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
 import { workspaceProvider } from "@halonicjs/adapter-workspace-models";
@@ -64,6 +66,7 @@ import {
   shellKeyOrigins,
   type TauriIpc,
   tauriAgentHostTransport,
+  tokenStoreKey,
 } from "@halonicjs/studio-services";
 import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
@@ -71,6 +74,12 @@ import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { versionHistoryOf } from "../changes/version-history.ts";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
+import { noHttpInStudio } from "../connect/agent-host-tool-lister.ts";
+import {
+  libraryWaitingReporter,
+  studioListedToolApproval,
+  studioRunConnectors,
+} from "../connect/studio-run-connectors.ts";
 import { answerChatOn, EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import { openStudioHarnessHost } from "../engine/studio-harness-host.ts";
 import { WorkspaceFilesHost } from "../files/workspace-files-host.ts";
@@ -188,6 +197,7 @@ export function provideFolderServices(
   services.provide(ChangesSourceService, changes);
   services.provide(VersionHistoryHostService, versionHistoryOf(changes));
   const transport = tauriAgentHostTransport(window);
+  const keychain = shellKeychain(ipc);
   const engine = services.provide(
     engineServiceKey,
     new EngineService({
@@ -196,7 +206,7 @@ export function provideFolderServices(
       location,
       name,
       definitions: new TauriDefinitionStore(files, location),
-      secrets: shellKeychain(ipc),
+      secrets: keychain,
       keyOrigins: shellKeyOrigins(ipc),
       http: new ShellHttpClient(ipc),
       clock: systemClock,
@@ -226,6 +236,28 @@ export function provideFolderServices(
                 ...decisions,
                 reportError: (error) => console.error("The harness host", error),
               }),
+            // Started as the Library's listing starts them, with the grant the person saved, and
+            // their tools offered once approved there.
+            openRunConnectors: async () => ({
+              connectors: studioRunConnectors({
+                transport,
+                definitions: new TauriDefinitionStore(files, location),
+                folder: new TauriFolderReader(ipc, location),
+                trust,
+                secrets: keychain,
+                tokens: services.get(tokenStoreKey),
+                http: noHttpInStudio,
+                reportError: (error) => console.error("A run's connector", error),
+              }),
+              listedToolApproval: await studioListedToolApproval({
+                definitions: new TauriDefinitionStore(files, location),
+                folder: new TauriFolderReader(ipc, location),
+                approvals: new TauriToolApprovalStore(ipc),
+                digest: webCryptoDigest,
+                clock: systemClock,
+                reportWaiting: libraryWaitingReporter((line) => console.warn(line)),
+              }),
+            }),
           }),
     }),
   );

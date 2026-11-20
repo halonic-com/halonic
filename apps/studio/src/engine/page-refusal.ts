@@ -1,5 +1,6 @@
 // What the page can't start, known from the workspace's files: an agent that lists a connector
-// (HAL-10236), or one in a harness program where no agent host runs (HAL-10849). The engine
+// the agent host can't start, every one where none runs (HAL-10236) and any but a `stdio` one
+// where it does (HAL-13344), or one in a harness program where no agent host runs (HAL-10849). The engine
 // refuses it with the next step (rules N1, N2 and N3 of the UX check, HAL-12363).
 
 import { startsAProgram, type WorkflowRef } from "@halonicjs/adapter-workspace-models";
@@ -19,6 +20,17 @@ export interface PageRefusal {
   readonly studioStep?: string;
 }
 
+/** What the page can start, besides the engine's own steps. */
+export interface PageRuns {
+  /** Whether an agent host runs the agents in a harness program. */
+  readonly runsHarnesses: boolean;
+  /**
+   * Whether the agent host can start the agent's connector of this id, or `undefined` when no
+   * agent host starts connectors.
+   */
+  readonly startsConnector: ((id: string) => boolean) | undefined;
+}
+
 /**
  * The page's refusal of an agent it can't start: `unavailable`, like an engine that can't be
  * reached, but its own class, so a caller tells "this window can't start it" from "the engine
@@ -33,9 +45,12 @@ export class WindowCantStart extends KindedError {
 
 /**
  * Why the page can't start an agent in a harness program, when it runs no agent host, or one
- * that lists a connector; `undefined` when it can.
+ * that lists a connector it can't start; `undefined` when it can.
  */
-export function whyThePageCantStart(agent: Agent, runsHarnesses: boolean): PageRefusal | undefined {
+export function whyThePageCantStart(
+  agent: Agent,
+  { runsHarnesses, startsConnector }: PageRuns,
+): PageRefusal | undefined {
   if (agent.harness !== undefined && startsAProgram(agent.harness) && !runsHarnesses) {
     const program = harnessName(agent.harness);
     return {
@@ -43,9 +58,16 @@ export function whyThePageCantStart(agent: Agent, runsHarnesses: boolean): PageR
       studioStep: `Set ${agent.name} to Halonic on its Harness page to run it now.`,
     };
   }
-  if (agent.connectors.length > 0) {
+  if (startsConnector === undefined) {
+    if (agent.connectors.length > 0) {
+      return { reason: `${agent.name} uses a connector, which Studio can't start yet.` };
+    }
+    return undefined;
+  }
+  const unstartable = agent.connectors.find((id) => !startsConnector(id));
+  if (unstartable !== undefined) {
     return {
-      reason: `${agent.name} uses a connector, which Studio can't start yet.`,
+      reason: `${agent.name} uses the connector "${unstartable}", which Studio can't start yet.`,
     };
   }
   return undefined;
