@@ -15,7 +15,8 @@
 # the org's 8-core runner in group merge-queue-large), every Linux job of a
 # merge group runs on that runner instead of `ubuntu-24.04` (board decision on
 # HAL-14115, 20 Nov). Pull requests and pushes keep the standard runners.
-# Unset, everything runs on `ubuntu-24.04` as before.
+# Unset, everything runs on `ubuntu-24.04` as before. The one exception is
+# fail-fast, which reads FAIL_FAST_RUNNER (HAL-14239).
 
 name: CI
 
@@ -2589,7 +2590,11 @@ jobs:
   fail-fast:
     name: Cancel the run on the first failure
     if: github.event_name == 'merge_group'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    # Not MERGE_QUEUE_RUNNER: this job only watches, for up to 90 minutes, and
+    # on a few self-hosted runners it would hold one per merge group
+    # (HAL-14239). FAIL_FAST_RUNNER picks another runner if the standard pool
+    # stalls; while it waits, only the early cancel is lost.
+    runs-on: ${{ vars.FAIL_FAST_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 90 # costs nothing when the run ends early; ci-ok doesn't wait for it
     permissions:
       actions: write # to list the run's jobs and cancel the run
