@@ -81,6 +81,21 @@ section[data-screen="connect"] {
   padding-top: max(15vh, 2rem);
 }
 
+/*
+ * With the keyboard open the window is short, and an error makes the form
+ * taller. Less space above the logo and the heading leaves room for the
+ * field, the error and Connect (phone check 19, HAL-14133).
+ */
+@media (max-height: 32rem) {
+  section[data-screen="connect"] {
+    padding-top: 1rem;
+  }
+
+  section[data-screen="connect"] h1 {
+    margin: 0 0 0.5rem;
+  }
+}
+
 /* `display: flex` above would otherwise show hidden screens. */
 section[hidden] {
   display: none;

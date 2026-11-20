@@ -1,13 +1,28 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { localAddressStore } from "./bridge.ts";
-import { ConnectPageView, FakeShell, MemoryStore, openPage } from "./test/connect-page-harness.ts";
+import {
+  ConnectPageView,
+  FakeShell,
+  MemoryStore,
+  openPage,
+  recordScrolls,
+  type Scroll,
+} from "./test/connect-page-harness.ts";
 
 const connected = { kind: "connected", url: "http://192.168.1.20:4280" } as const;
 const notAnswering = { kind: "notAnswering", address: "192.168.1.20:4280" } as const;
 
+let scrolls: Scroll[] = [];
+let restoreScrolling = (): void => undefined;
+
+beforeEach(() => {
+  ({ scrolls, restore: restoreScrolling } = recordScrolls());
+});
+
 afterEach(() => {
+  restoreScrolling();
   vi.useRealTimers();
   document.body.replaceChildren();
   localStorage.clear();
@@ -196,6 +211,41 @@ verifies("studio.connect.field-errors", () => {
     expect(page.fieldError.textContent).toBe(
       "Use an address on your home network, like 192.168.1.20:4280.",
     );
+  });
+
+  // Phone check 19 (HAL-14133): with the keyboard open, the error pushed Connect under it.
+  it("brings Connect into view when the error shows, scrolling no further than needed", async () => {
+    const page = await openPage(
+      new FakeShell().answer({ kind: "notAnAddress" }),
+      new MemoryStore(),
+    );
+    expect(scrolls).toEqual([]);
+
+    await page.press(page.connectButton);
+
+    expect(scrolls).toEqual([{ element: page.connectButton, options: { block: "nearest" } }]);
+  });
+
+  it("brings Connect back into view when the keyboard opens while the error shows", async () => {
+    const page = await openPage(
+      new FakeShell().answer({ kind: "notAnAddress" }),
+      new MemoryStore(),
+    );
+    // Earlier tests' pages still listen on the shared window, so count only this one's.
+    const connectScrolls = (): number =>
+      scrolls.filter((scroll) => scroll.element === page.connectButton).length;
+    const keyboardOpens = (): void => void window.dispatchEvent(new Event("resize"));
+
+    keyboardOpens();
+    expect(connectScrolls()).toBe(0);
+
+    await page.press(page.connectButton);
+    keyboardOpens();
+    expect(connectScrolls()).toBe(2);
+
+    await page.type("192.168.1.20:4280");
+    keyboardOpens();
+    expect(connectScrolls()).toBe(2);
   });
 
   it("shows Can't reach, and no raw error, when the call into the shell fails", async () => {

@@ -80,6 +80,35 @@ export function settled(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+/** An element the page scrolled into view, and how. */
+export interface Scroll {
+  readonly element: Element;
+  readonly options: boolean | ScrollIntoViewOptions | undefined;
+}
+
+/**
+ * Records `scrollIntoView` calls. jsdom has no layout, so it has no
+ * `scrollIntoView` either; this stands in for it until `restore` puts the
+ * original (if any) back.
+ */
+export function recordScrolls(): { scrolls: Scroll[]; restore: () => void } {
+  const scrolls: Scroll[] = [];
+  const original = Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView");
+  Element.prototype.scrollIntoView = function (options) {
+    scrolls.push({ element: this, options });
+  };
+  return {
+    scrolls,
+    restore: () => {
+      if (original === undefined) {
+        Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+      } else {
+        Object.defineProperty(Element.prototype, "scrollIntoView", original);
+      }
+    },
+  };
+}
+
 /** Puts `connect.html`'s body in the test document and starts the page on it. */
 export async function openPage(
   shell: FakeShell,
