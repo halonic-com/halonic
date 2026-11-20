@@ -23,6 +23,11 @@ optional and come with a requirement.
   that failed for a reason the bridge didn't name to the program, with the
   error `kind` and its `message`, never the run token. It has no cost and
   never counts towards a budget (requirement `bridge-failed`).
+- Connectors: `connector.listing-failed` records a connector the agent lists
+  that couldn't list its tools when a model turn started, with a
+  `connector-not-started` cause (`program-missing` or `secret-not-set` and
+  the name, else `other`), never the error's text (requirement
+  `connector-listing-failed`).
 - `run.failed` and `RunFailureReason`: `reason` says why a run failed
   (requirement `run-failed-reason`), for example `model-missing`,
   `model-no-tools`, `harness-unavailable` or `sandbox-start-failed`.
