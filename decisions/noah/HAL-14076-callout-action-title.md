@@ -3,6 +3,7 @@
 - Task: HAL-14076
 - Approval: a kit detail of the approved Callout (HAL-1289), decided by the team on HAL-14076 (HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6mQV8OHwaaB7FDooKP/S/1VK24aDiiQKQr7V0Vca6PomlZBLrsxLr+Fe7Y3GsRCrcXItSuBaqvAHVegnP64lDg==
 
 The requirement widens one promise and narrows none: an action with `focus` was described by the
 Callout's text alone, so a screen that moved focus to "Try again" read the line but not the title
