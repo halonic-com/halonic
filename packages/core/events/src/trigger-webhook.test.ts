@@ -6,7 +6,7 @@ import { summarize } from "./summarize.ts";
 verifies("events.trigger-webhook", () => {
   typeTest("lets a trigger be a webhook with a delivery id", () => {
     expectTypeOf<RunTrigger["type"]>().toEqualTypeOf<
-      "manual" | "schedule" | "every" | "mail" | "signal" | "webhook"
+      "manual" | "inbox" | "schedule" | "every" | "mail" | "signal" | "webhook"
     >();
     expectTypeOf<RunTrigger["deliveryId"]>().toEqualTypeOf<string | undefined>();
   });

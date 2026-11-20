@@ -55,6 +55,8 @@ export const startedByWords = {
   run: "You, with Run",
   /** No trigger: `halonic run` in a terminal, the only way a run starts without one in v0.1. */
   terminal: "You, in the terminal",
+  /** A request from the Inbox's form. */
+  inbox: "You, in the Inbox",
   mail: "A message arrived",
   signal: "A signal arrived",
   webhook: "A web request arrived",
@@ -80,6 +82,7 @@ export const rowLabelWords = {
   startedBy: {
     run: "you, with Run",
     terminal: "you, in the terminal",
+    inbox: "you, in the Inbox",
     mail: "a message",
     signal: "a signal",
     webhook: "a web request",
