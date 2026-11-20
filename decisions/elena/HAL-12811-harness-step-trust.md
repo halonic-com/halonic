@@ -9,7 +9,7 @@
 
 `engine.harness-may-start` (new): the local executor takes an optional `mayStartHarness` check next to `budget`, and asks it right before each harness step starts, after everything else the step needs is ready. On a no, or a check that rejects, the step starts nothing (no sandbox, no harness, no bridge) and the run fails with a `denied` error whose cause is `engine.untrusted-workspace`, naming the agent and its harness. Without the check nothing changes, so the CLI and Cloudflare run as before.
 
-`studio.untrusted-starts-nothing`: the Studio's engine gives that check the answer of the workspace's trust (`isTrusted`, as the model resolver asks it) on the workspace it loaded, failing closed. So trust removed where the window doesn't hear it (`halonic trust --remove` in a terminal), or while the engine is still checking whether to close after a trust change, now stops the next harness step at once instead of at the window's next trust check. No assertion changed; the new tests are added next to #3761's.
+`studio.untrusted-starts-nothing`: the Studio's engine gives that check the answer of the workspace's trust (`isTrusted`, as the model resolver asks it) on the workspace it loaded, failing closed. So trust removed where the window doesn't hear it (`halonic trust revoke` in a terminal), or while the engine is still checking whether to close after a trust change, now stops the next harness step at once instead of at the window's next trust check. No assertion changed; the new tests are added next to #3761's.
 
 ## Why
 
@@ -23,8 +23,6 @@ After #3761 two Low gaps were left (Julian, HAL-12808): a harness step whose tim
 - The refusal has the resolver's shape (a `denied` error with a cause code, the run's reason `error`), so no new failure reason is added to the run log. Its text is new, in the words of the existing refusals: "Agent "{agent}" runs in {harness}, and this workspace isn't trusted on this computer, so Halonic didn't start it." with the fix "Check the workspace, then trust it."
 - The cost is one more trust check per harness step, a few IPC calls; a harness step runs for seconds to minutes, so it doesn't show.
 - The check covers the harness steps of runs only. A chat turn with an agent in a harness takes another path in the executor, and the Studio's engine never asks for one, so there is nothing there to check yet.
-
-Corrected on 20 Nov (HAL-14124): this note first named the command `halonic trust revoke`, which doesn't exist; it is `halonic trust --remove`.
 
 ## Covers
 

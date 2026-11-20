@@ -20,9 +20,7 @@ After #3756 every start checks trust again, and the model resolver refuses real 
 - The engine checks the content it loaded, not the page's latest check, so a save that changes the files doesn't close an engine whose content is still trusted.
 - A check that fails (for example, the trust record can't be read) closes the engine. That can stop a run on a passing read error; we accept it, because a failed check counts as no everywhere else in this rule.
 - No new wording: the engine closes without a message, the runs show as interrupted as for any engine that stopped, and the next start shows the existing refusal "This workspace isn't trusted yet, so nothing was started."
-- A trust removed outside the window (`halonic trust --remove` in a terminal) is seen at the window's next trust check, not at once. The resolver and the check before each start still hold in the meantime.
-
-Corrected on 20 Nov (HAL-14124): this note first named the command `halonic trust revoke`, which doesn't exist; it is `halonic trust --remove`.
+- A trust removed outside the window (`halonic trust revoke` in a terminal) is seen at the window's next trust check, not at once. The resolver and the check before each start still hold in the meantime.
 
 ## Covers
 
