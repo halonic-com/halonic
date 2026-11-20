@@ -306,9 +306,26 @@ verifies("shell.page-stopped", () => {
     expect(said).toEqual(["Couldn't load these settings"]);
     expect(document.activeElement?.textContent).toBe("Appearance row");
 
-    // A Reload page that fails again reads it again, once.
+    // A Reload page that fails again moves the focus to the title, which reads it: nothing more.
     await press(button(container.querySelector("section") as HTMLElement, "Reload page"));
-    expect(said).toEqual(["Couldn't load these settings", "Couldn't load these settings"]);
+    expect(document.activeElement?.textContent).toBe("Couldn't load these settings");
+    expect(said).toEqual(["Couldn't load these settings"]);
+  });
+
+  it("reads Couldn't load these settings once on the phone page, with the focus left on its h1", async () => {
+    const said: string[] = [];
+    const heading = document.createElement("h1");
+    heading.tabIndex = -1;
+    heading.textContent = "Appearance";
+    document.body.append(heading);
+    heading.focus();
+    await renderSections({
+      page: true,
+      appearance: { drawable: false },
+      announce: (words) => said.push(words),
+    });
+    expect(said).toEqual(["Couldn't load these settings"]);
+    expect(document.activeElement).toBe(heading);
   });
 
   it.each([

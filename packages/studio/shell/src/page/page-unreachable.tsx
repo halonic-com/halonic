@@ -88,7 +88,9 @@ export function PageUnreachable({
  * **Try again** imports it again. In the desktop app any failure shows {@link PageStopped} for
  * `name`, whose **Reload page** draws it again; elsewhere another failure shows nothing. As a state
  * shows, `announce` gets its title once, for a part that doesn't take focus, such as a section in
- * the Settings dialog, whose focus stays in the list. `onRetry` hears each Try again or Reload page.
+ * the Settings dialog, whose focus stays in the list. When the focus goes to the state's title,
+ * as after a Try again or Reload page that failed again, the focus reads it and `announce` stays
+ * quiet, so it isn't read twice. `onRetry` hears each Try again or Reload page.
  */
 export function PartErrorBoundary({
   name,
@@ -104,6 +106,7 @@ export function PartErrorBoundary({
 }) {
   const host = useStudioHost();
   const [attempt, setAttempt] = useState(0);
+  const state = useRef<HTMLDivElement>(null);
   const retry = () => {
     onRetry?.();
     setAttempt((count) => count + 1);
@@ -115,17 +118,25 @@ export function PartErrorBoundary({
       fallback={(error) => {
         if (isUnreachable(host, error)) {
           return (
-            <>
-              <AnnounceOnShow words={title.title ?? unreachableWords.title} announce={announce} />
+            <div ref={state} className="contents">
+              <AnnounceOnShow
+                words={title.title ?? unreachableWords.title}
+                state={state}
+                announce={announce}
+              />
               <PageUnreachable {...title} pageName={name} onRetry={retry} />
-            </>
+            </div>
           );
         }
         return host === "desktop-app" ? (
-          <>
-            <AnnounceOnShow words={title.title ?? pageStoppedWords.title} announce={announce} />
+          <div ref={state} className="contents">
+            <AnnounceOnShow
+              words={title.title ?? pageStoppedWords.title}
+              state={state}
+              announce={announce}
+            />
             <PageStopped {...title} pageName={`the ${name}`} error={error} onReload={retry} />
-          </>
+          </div>
         ) : null;
       }}
     >
@@ -134,20 +145,29 @@ export function PartErrorBoundary({
   );
 }
 
-/** Gives `words` to `announce` once, as the state it stands next to shows. */
+/**
+ * Gives `words` to `announce` once, as the state it stands next to shows, unless the focus is
+ * inside `state` by then: the state's title took it, and reading it there is enough.
+ */
 function AnnounceOnShow({
   words,
+  state,
   announce,
 }: {
   readonly words: string;
+  readonly state: { readonly current: HTMLElement | null };
   readonly announce: ((words: string) => void) | undefined;
 }): null {
   const said = useRef(false);
+  // After the state's own layout effect, which moves a lost focus to its title.
   useEffect(() => {
-    if (!said.current && announce !== undefined) {
-      said.current = true;
+    if (said.current || announce === undefined) {
+      return;
+    }
+    said.current = true;
+    if (!(state.current?.contains(document.activeElement) ?? false)) {
       announce(words);
     }
-  }, [words, announce]);
+  }, [words, state, announce]);
   return null;
 }

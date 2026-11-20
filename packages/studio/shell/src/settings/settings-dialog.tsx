@@ -267,8 +267,9 @@ export interface SectionViewProps extends SettingsSectionProps {
   /** The open workspace's name: a workspace section then shows `workspaceSectionLine` under its name. */
   readonly workspaceName?: string | undefined;
   /**
-   * Reads a state's title politely, in the dialog, when the section's view can't load: the focus
-   * stays in the list there, so nothing else reads it. The phone page's focus reads it already.
+   * Reads a state's title politely when the section's view can't load: the focus stays in the
+   * dialog's list, or on the phone page's hidden name, so nothing else reads it. After Try again
+   * or Reload page the focus goes to the state's title, which reads it, so this stays quiet.
    */
   readonly announce?: ((words: string) => void) | undefined;
 }

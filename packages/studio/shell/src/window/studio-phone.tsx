@@ -165,6 +165,7 @@ function PhonePageBody({
           surface="phone"
           regionFormat={regionFormat}
           workspaceName={workspaceName}
+          announce={(words) => page.announcer.announce(words)}
         />
       </div>
     );
