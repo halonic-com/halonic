@@ -1,8 +1,7 @@
 # Decision: a merge group's runs are keyed on its commit, and the build shards time out at 15 minutes
 
-- Approval: the board's decision on HAL-14115 (20 Nov 17:20, "1, 3 and 4 yes", step 3, a queue fix under the HAL-14331 freeze); Liam approves this note in review and signs it, Julian reviews the guard-notes part
-- Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DFunNXKaUsFF2TKpbNBYiiDa/F9LJ85ldhI8xkTTJPaFFh82oEtrirvAf15DA2qpqR5UB6TMuvqo6LkNHv+0DQ==
+- Approval: the board's decision on HAL-14115 (20 Nov 17:20, "1, 3 and 4 yes", step 3, a queue fix under the HAL-14331 freeze); it changes `guard-notes.yml`, a trust root of the guard, so Liam and Julian both sign it as guardians
+- Kind: user-visible
 
 ## What changes
 
