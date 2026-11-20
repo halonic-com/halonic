@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14263 (Sofia's decisions after the check of HAL-8421, building on Noah's HAL-8692 spec; a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jGWVjV7obW7h2IaEQ/2bRNlPJqZy3vDnV07/cF4WvmF1xeWJDjdkTc/wsaYSlRjDVeyF46wL0l8lq+J/KtLoCA==
 - Task: HAL-14263
 
 ## What changes
