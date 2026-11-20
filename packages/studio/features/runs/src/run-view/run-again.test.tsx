@@ -255,16 +255,29 @@ verifies("runs.run-view.run-again-review", () => {
   });
 
   it("takes the sentence away and gives Run again focus once the person trusts it", async () => {
-    const root = await open(failed, {
-      startRun: vi.fn(async () => untrusted()),
-      askTrust: async () => "trusted",
+    const budget = summaryWith({
+      id: "run_g",
+      status: "failed",
+      reason: "budget",
+      endedAt: mondayMorning.toISOString(),
     });
-    await act(async () => button(root, "Run again")?.click());
-    await act(async () => button(root, "Review")?.click());
+    // The failed banner's Run again, or the header's when the banner has none.
+    for (const [summary, inHeader] of [
+      [failed, false],
+      [budget, true],
+    ] as const) {
+      const root = await open(summary, {
+        startRun: vi.fn(async () => untrusted()),
+        askTrust: async () => "trusted",
+      });
+      await act(async () => button(root, "Run again")?.click());
+      await act(async () => button(root, "Review")?.click());
 
-    expect(root.textContent).not.toContain("Couldn't start the run");
-    expect(document.activeElement).toBe(root.querySelector("header button"));
-    expect(document.activeElement?.textContent).toBe("Run again");
+      expect(root.textContent).not.toContain("Couldn't start the run");
+      expect(document.activeElement?.textContent).toBe("Run again");
+      expect(root.querySelector("header")?.contains(document.activeElement)).toBe(inHeader);
+      unmountAll();
+    }
   });
 
   it("keeps Try again, not Review, for another refusal, or where the host can't ask", async () => {

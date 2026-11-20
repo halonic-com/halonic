@@ -93,11 +93,7 @@ export function RunLayout({
           <p className="text-small text-fg-muted">{header.catchUpLine}</p>
         )}
       </header>
-      <RunAgainFailed
-        runAgain={runAgain}
-        engine={engine}
-        onTrusted={focusRunAgain}
-      />
+      <RunAgainFailed runAgain={runAgain} engine={engine} onTrusted={focusRunAgain} />
       {refreshError === undefined ? null : (
         <RefreshFailedLine
           what={runPageWords.refreshFailed(shortRunId(run.summary.id))}
