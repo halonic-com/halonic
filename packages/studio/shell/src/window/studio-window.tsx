@@ -21,7 +21,6 @@ import { usePhonePlaces } from "../phone/use-phone-places.ts";
 import { placeNames, type SidebarPlace } from "../points/frame.ts";
 import type { ItemRef, OpenItemOptions } from "../points/item-kinds.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
-import { ResourceStatusItem } from "../resources/resource-status-item.tsx";
 import type { ResourceWatch } from "../resources/resource-watch.ts";
 import { announceSaveNotes } from "../save/save-note-words.ts";
 import { useAvailableSections } from "../settings/available-sections.ts";
@@ -41,6 +40,7 @@ import { HistoryButtons } from "../title-bar/history-buttons.tsx";
 import { TitleBarBrand } from "../title-bar/title-bar-brand.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { activeItemOf, shownPageOf } from "./active-item.ts";
+import { DesktopResourceItem } from "./desktop-resource-item.tsx";
 import { useClosingGoneItemTabs } from "./gone-item-tabs.ts";
 import { useOpenPageAcrossLayouts } from "./layout-crossing.ts";
 import { useShownPlaces } from "./shown-places.ts";
@@ -49,6 +49,7 @@ import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
 import { StudioSidebar } from "./studio-sidebar.tsx";
 import type { StudioWorkspace } from "./studio-workspace.ts";
 import { useActiveTabTitle, useWindowTitle } from "./window-title.ts";
+import { withActions } from "./with-actions.ts";
 
 /** What the window lets its workspace menu do. */
 export interface WindowActions {
@@ -105,20 +106,6 @@ export interface StudioWindowProps {
    * page the computer's settings (HAL-6159 design, section 5).
    */
   readonly withoutHostSettings?: boolean | undefined;
-}
-
-/** The memory and disk item: only the desktop app, and only when it passed the engine's report. */
-function DesktopResourceItem({
-  host,
-  resources,
-}: {
-  readonly host: StudioHost;
-  readonly resources: ResourceWatch | undefined;
-}) {
-  if (host !== "desktop-app" || resources === undefined) {
-    return null;
-  }
-  return <ResourceStatusItem watch={resources} />;
 }
 
 /**
@@ -484,16 +471,4 @@ function StudioWindowBody(props: StudioWindowProps) {
       <FeatureDialogs hosts={contributions.dialogs.list()} contextFor={contextFor} />
     </ShellFrame>
   );
-}
-
-/** The switcher the sidebar draws: a menu given as a function is made with the window's actions. */
-function withActions(
-  switcher: StudioSwitcher | undefined,
-  actions: WindowActions,
-): WorkspaceSwitcherProps | undefined {
-  if (switcher === undefined) {
-    return undefined;
-  }
-  const { menu } = switcher;
-  return { ...switcher, menu: typeof menu === "function" ? menu(actions) : menu };
 }
