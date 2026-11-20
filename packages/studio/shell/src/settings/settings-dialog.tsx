@@ -322,11 +322,7 @@ export function SectionView({
           {section.title}
         </h1>
       ) : (
-        <h3
-          id={`settings-section-${section.id}`}
-          tabIndex={-1}
-          className="text-section text-fg outline-none"
-        >
+        <h3 id={`settings-section-${section.id}`} tabIndex={-1} className="text-section text-fg">
           {section.title}
         </h3>
       )}

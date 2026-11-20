@@ -75,7 +75,7 @@ export function BlockedSitesPanel(props: BlockedSitesPanelProps) {
     .join(" ");
   return (
     <section className="flex flex-col gap-2 rounded-sm bg-surface-subtle p-3">
-      <h3 ref={props.headingRef} tabIndex={-1} className="text-body-strong outline-none">
+      <h3 ref={props.headingRef} tabIndex={-1} className="text-body-strong">
         {fill("sandbox.blocked-sites.title")}
       </h3>
       <ul className="divide-y divide-border">

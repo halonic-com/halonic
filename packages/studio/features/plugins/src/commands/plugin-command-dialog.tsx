@@ -178,7 +178,7 @@ export function PluginCommandDialog({
                 id={resultHeadingId}
                 ref={resultHeading}
                 tabIndex={-1}
-                className="text-body-strong text-fg outline-none"
+                className="text-body-strong text-fg"
               >
                 {RESULT}
               </h3>

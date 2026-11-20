@@ -167,6 +167,20 @@
   }
 }
 
+/*
+ * A heading only code can focus (`tabindex="-1"`) wears the same ring: a page's title when the
+ * page opens, a card's title, a list's heading after its last row goes. So a keyboard user sees
+ * where focus landed on every page, never the browser's outline or nothing. The shell gives a
+ * page's h1 its `tabindex="-1"` when it focuses it, so a page needs no class for it. In base, so a
+ * heading's own classes still win; `outline-none` would take the high-contrast ring away, so a
+ * focusable heading never carries it.
+ */
+@layer base {
+  :is(h1, h2, h3, h4, h5, h6)[tabindex="-1"] {
+    @apply focus-ring;
+  }
+}
+
 /* The same ring drawn inside the element, for rows in a scrolling list where an outer ring
    would be clipped: sidebar items, tree rows, list rows. */
 @utility focus-ring-inset {

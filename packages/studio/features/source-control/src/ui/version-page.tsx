@@ -35,7 +35,7 @@ export function VersionPage({ version, list, onBack }: VersionPageProps) {
           </Button>
         </span>
         <GoBackPartialCallout going={going} />
-        <h1 id={headingId} ref={heading} tabIndex={-1} className="text-title outline-none">
+        <h1 id={headingId} ref={heading} tabIndex={-1} className="text-title">
           {version.name}
         </h1>
         <VersionFacts version={version} list={list} level="page" />

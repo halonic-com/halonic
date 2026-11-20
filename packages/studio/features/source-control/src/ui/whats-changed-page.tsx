@@ -49,7 +49,7 @@ export function WhatChangedPage({
       ? () => openItem({ kind: item.kind ?? "", hub: item.hub, id: item.itemId })
       : undefined;
   const title = (
-    <h1 id={headingId} ref={heading} tabIndex={-1} className="text-title flex-1 outline-none">
+    <h1 id={headingId} ref={heading} tabIndex={-1} className="text-title flex-1">
       {item.name}
     </h1>
   );

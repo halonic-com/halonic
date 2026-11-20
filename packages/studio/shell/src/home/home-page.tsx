@@ -48,7 +48,7 @@ export function HomePage({ cards, contextFor }: HomePageProps) {
           : "mx-auto flex w-full max-w-page flex-col gap-2 px-6 py-6"
       }
     >
-      <h1 tabIndex={-1} className={phone ? "sr-only" : "text-title outline-none"}>
+      <h1 tabIndex={-1} className={phone ? "sr-only" : "text-title"}>
         Home
       </h1>
       <HomeStatus errors={errors} loadingSections={loadingSections} />

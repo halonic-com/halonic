@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { buildCss, ruleSelectors } from "./test/build-css.spec.ts";
 
@@ -304,6 +305,57 @@ function appSources(folder: string): string[] {
   });
 }
 
+/** Every `.tsx` file that draws the app, in the kit, the shell, the services and the features. */
+function studioSources(): string[] {
+  const studio = path.join(import.meta.dirname, "../..");
+  return ["kit", "features", "shell", "services"].flatMap((name) => {
+    try {
+      return appSources(path.join(studio, name));
+    } catch {
+      return [];
+    }
+  });
+}
+
+verifies("kit.focusable-heading", () => {
+  describe("theme.css built by Tailwind: a heading that takes focus from code", () => {
+    const head = ':is(h1, h2, h3, h4, h5, h6)[tabindex="-1"]:focus-visible';
+
+    it("wears the focus ring on keyboard focus, with no class of its own", async () => {
+      const css = await buildCss([]);
+      expect(css).toContain(`${head} {`);
+      const rule = css.slice(
+        css.indexOf(`${head} {`),
+        css.indexOf("\n  }", css.indexOf(`${head} {`)),
+      );
+      expect(rule).toContain("outline: 2px solid transparent;");
+      expect(rule).toContain("box-shadow: var(--focus-ring);");
+      expect(rule).toMatch(/@media \(forced-colors: active\) \{\s*outline-color: Highlight;/);
+    });
+
+    it("sits in base, so a heading's own classes still win over it", async () => {
+      const css = await buildCss([]);
+      expect(css).toMatch(
+        /@layer base \{\s*:is\(h1, h2, h3, h4, h5, h6\)\[tabindex="-1"\]:focus-visible \{/,
+      );
+    });
+
+    it("is never undone by outline-none on a focusable heading, which would hide it in high contrast", () => {
+      // A heading's opening tag; `=>` inside a ref callback doesn't end it.
+      const openingTags = /<h[1-6]\b(?:=>|[^>])*>/g;
+      const studio = path.join(import.meta.dirname, "../..");
+      const offending = studioSources()
+        .filter((file) =>
+          [...readFileSync(file, "utf8").matchAll(openingTags)].some(
+            ([tag]) => tag.includes("tabIndex={-1}") && tag.includes("outline-none"),
+          ),
+        )
+        .map((file) => path.relative(studio, file));
+      expect(offending).toEqual([]);
+    });
+  });
+});
+
 describe("theme.css built by Tailwind: breakpoints", () => {
   it("writes nothing for Tailwind's own sm:, md:, lg: and xl: (the theme clears them)", async () => {
     const css = await buildCss(["sm:flex", "md:flex", "lg:flex", "xl:flex", "2xl:flex"]);
@@ -312,14 +364,7 @@ describe("theme.css built by Tailwind: breakpoints", () => {
 
   it("uses no breakpoint variant the theme doesn't define, so no layout class compiles to nothing", () => {
     const studio = path.join(import.meta.dirname, "../..");
-    const used = ["kit", "features", "shell", "services"]
-      .flatMap((name) => {
-        try {
-          return appSources(path.join(studio, name));
-        } catch {
-          return [];
-        }
-      })
+    const used = studioSources()
       .filter((file) => /(?<![\w-])(?:sm|md|lg|xl|2xl):[\w[(-]/.test(readFileSync(file, "utf8")))
       .map((file) => path.relative(studio, file));
     expect(used).toEqual([]);

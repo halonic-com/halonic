@@ -141,7 +141,7 @@ function UnavailableKey({
   useFocusWhenAsked(focusRequest, heading);
   return (
     <section aria-labelledby="key-heading" className="flex flex-col gap-1">
-      <h2 ref={heading} id="key-heading" tabIndex={-1} className="text-heading outline-none">
+      <h2 ref={heading} id="key-heading" tabIndex={-1} className="text-heading">
         {KEY_HEADING}
       </h2>
       <HostCommandLine {...unavailableLine(reason)} secretName={secretName ?? "<name>"} />
@@ -237,7 +237,7 @@ function KeyField({
 
   return (
     <section aria-labelledby="key-heading" className="flex flex-col gap-2">
-      <h2 ref={heading} id="key-heading" tabIndex={-1} className="text-heading outline-none">
+      <h2 ref={heading} id="key-heading" tabIndex={-1} className="text-heading">
         {KEY_HEADING}
       </h2>
       {secretName === undefined ? (

@@ -130,10 +130,7 @@ export function PluginPage({
           or 400 % zoom) the actions go on a line under them, on the right, so the name keeps the
           whole width. */}
       <header className="sticky top-0 z-(--layer-sticky) flex min-h-13 flex-wrap items-center gap-x-4 gap-y-1 border-b border-border bg-surface px-4 py-px">
-        <h1
-          tabIndex={-1}
-          className="flex min-w-0 flex-1 basis-36 items-center gap-1.5 py-2 outline-none"
-        >
+        <h1 tabIndex={-1} className="flex min-w-0 flex-1 basis-36 items-center gap-1.5 py-2">
           <span className="shrink-0 text-label uppercase text-fg-subtle">{PLUGIN}</span>
           {/* A space for screen readers, so the heading reads "Plugin Weather". */}
           <span className="sr-only"> </span>
