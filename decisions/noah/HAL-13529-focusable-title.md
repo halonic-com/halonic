@@ -3,6 +3,7 @@
 - Task: HAL-13529
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13529 (team decision under the HAL-2282 rule, Sofia as designer, from the HAL-13469 check, PH1); Liam reviews the pull request on HAL-13529 and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:h6of3lsL9PPtZu0riuGlerKkkV864tq/LdU4Zq4mh2cZWit92soM6FUMdtdXjtyM5JRa5jl5wZdYAqpjc1S+AQ==
 
 ## What changes
 
