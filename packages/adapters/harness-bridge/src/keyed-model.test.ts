@@ -71,16 +71,18 @@ function requestFor(provider: "anthropic" | "openai", model: string): Record<str
     : { model, input: [], store: false };
 }
 
-/** The program's request `body` on the route of `provider`, with the run token. */
+/** The program's request `body` on the route of `provider`, with the run token and any `extraHeaders`. */
 function programSends(
   bridge: { url: string; token: string },
   provider: "anthropic" | "openai",
   body: Record<string, unknown>,
+  extraHeaders: Record<string, string> = {},
 ) {
   const path = provider === "anthropic" ? "/v1/messages" : "/v1/responses";
   return fetch(`${bridge.url}${path}`, {
     method: "POST",
     headers: {
+      ...extraHeaders,
       [harnessBridgeTokenHeader]: bridge.token,
       "content-type": "application/json",
     },
@@ -111,6 +113,27 @@ verifies("harness-bridge.keyed-model", () => {
 
       expect(reply.status).toBe(200);
       expect(keysRead).toEqual(["agent-key"]);
+      expect(upstream.calls).toHaveLength(1);
+    });
+
+    it("passes a call for another of the access's models, such as a fallback's", async () => {
+      const { bridge, upstream } = await open(provider, keyed(["glm-5.3", "glm-5.3-air"]));
+
+      const reply = await programSends(bridge, provider, requestFor(provider, "glm-5.3-air"));
+
+      expect(reply.status).toBe(200);
+      expect(upstream.calls).toHaveLength(1);
+    });
+
+    it("lets a sign-in access call any model, as before, without reading a key", async () => {
+      const { bridge, keysRead, upstream } = await open(provider, { kind: "sign-in" });
+
+      const reply = await programSends(bridge, provider, requestFor(provider, "anything-at-all"), {
+        authorization: "Bearer keyed-model-test-sign-in",
+      });
+
+      expect(reply.status).toBe(200);
+      expect(keysRead).toEqual([]);
       expect(upstream.calls).toHaveLength(1);
     });
 

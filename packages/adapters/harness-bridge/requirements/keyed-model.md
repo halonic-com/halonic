@@ -13,6 +13,12 @@ A keyed access to the API's own host without `models` shall go on as before, any
 - Given an agent whose keyed Anthropic access names the models `glm-5.3`,
   when Claude Code sends a request for `glm-5.3`,
   then the bridge passes it on with the agent's key.
+- Given an agent whose keyed Anthropic access names the models `glm-5.3` and `glm-5.3-air` (a fallback's),
+  when Claude Code sends a request for `glm-5.3-air`,
+  then the bridge passes it on with the agent's key.
+- Given an agent that reaches Anthropic with a sign-in,
+  when Claude Code sends a request for any model,
+  then the bridge passes it on with the program's sign-in, as before, and reads no key.
 - Given an agent whose keyed Anthropic access names the models `glm-5.3`,
   when the program sends a request for `claude-opus-4-7`, `GLM-5.3`, `glm-5.3 ` or `glm-5.3-x`,
   then it gets a 403 that names no model, the key isn't read, nothing is recorded, and no provider is called.
