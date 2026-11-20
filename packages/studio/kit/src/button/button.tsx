@@ -135,15 +135,23 @@ const asLargeOnTouch = "phone:min-h-control-lg phone:px-4 touch:min-h-control-lg
 const hitArea = "phone:hit-touch touch:hit-touch";
 
 /**
+ * A button with words is never wider than the box it's in. On one line it keeps its size; when
+ * its label doesn't fit (a narrow box, 400 % zoom), the label wraps between words, centred, and
+ * the button grows taller instead of pushing the page sideways (HAL-14010). `py-0.5` keeps the
+ * wrapped lines off its edges; on one line the minimum height wins.
+ */
+const wrapsWhenNarrow = "max-w-full py-0.5 text-center";
+
+/**
  * `xs` fits the 24px status bar with its 1px line and 1px to spare above and below, in the bar's
- * caption type, as high as a Status chip; the others use the body's
- * strong type. On a phone and a touch screen `xs` grows like `sm`.
+ * caption type, as high as a Status chip, and stays on one line so the bar keeps its height; the
+ * others use the body's strong type. On a phone and a touch screen `xs` grows like `sm`.
  */
 const sizeClasses: Record<ButtonSize, string> = {
   xs: `min-h-5 px-2 text-caption whitespace-nowrap ${asLargeOnTouch} ${hitArea}`,
-  sm: `min-h-control-sm px-2.5 text-body-strong whitespace-nowrap ${asLargeOnTouch} ${hitArea}`,
-  md: `min-h-control-md px-3 text-body-strong whitespace-nowrap ${asLargeOnTouch} ${hitArea}`,
-  lg: `min-h-control-lg px-4 text-body-strong whitespace-nowrap ${hitArea}`,
+  sm: `min-h-control-sm px-2.5 text-body-strong ${wrapsWhenNarrow} ${asLargeOnTouch} ${hitArea}`,
+  md: `min-h-control-md px-3 text-body-strong ${wrapsWhenNarrow} ${asLargeOnTouch} ${hitArea}`,
+  lg: `min-h-control-lg px-4 text-body-strong ${wrapsWhenNarrow} ${hitArea}`,
   // A touch label wraps between words, so at large text the button grows taller, not wider.
   touch: "min-h-touch px-4 py-2 text-center text-body-strong",
 };
