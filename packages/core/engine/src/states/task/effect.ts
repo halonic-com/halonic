@@ -31,7 +31,7 @@ export const connectorCallTimeoutMs = 60_000;
 
 /** Records the call under a new call id and its key, then asks for it to be made. */
 export function requestEffect(
-  { run, stateId }: StateContext,
+  { run, stateId }: StateContext<"task">,
   stopped: PendingCall,
   { connector, tool, args, resume }: EffectNeeded,
 ): StateStep {
@@ -57,7 +57,7 @@ export function requestEffect(
  * A result for any other call, such as one delivered twice, changes nothing.
  */
 export function takeToolResult(
-  { run, stateId }: StateContext,
+  { run, stateId }: StateContext<"task">,
   input: EffectDoneInput,
   { result, outcome, risk, noun, verb, cause }: ToolResult,
 ): StateStep {
@@ -87,7 +87,10 @@ export function takeToolResult(
 }
 
 /** Whether a send answers a call whose outcome is unknown in this state. */
-export function answersUnknownEffect({ run, stateId }: StateContext, input: SendInput): boolean {
+export function answersUnknownEffect(
+  { run, stateId }: StateContext<"task">,
+  input: SendInput,
+): boolean {
   const effect = run.effect;
   return effect !== null && effect.unknown && effect.state === stateId
     ? unknownOutcomeEvents.includes(input.event)
@@ -100,7 +103,7 @@ export function answersUnknownEffect({ run, stateId }: StateContext, input: Send
  * the work the first time can drop the duplicate. `skip` lets the agent go
  * on with a result that says the outcome is unknown.
  */
-export function answerUnknownEffect({ run }: StateContext, input: SendInput): StateStep {
+export function answerUnknownEffect({ run }: StateContext<"task">, input: SendInput): StateStep {
   const effect = run.effect as RequestedEffect;
   const { event, payload } = input;
   const received: DecidedEvent = {

@@ -27,6 +27,7 @@ const stepLines: Readonly<Record<string, string>> = {
   "wait-without-events": "Has no events to wait for",
   "unguarded-shadow": "Never fires",
   "not-a-choice": "Compares with a non-option",
+  "ignored-key": "Has a key it ignores",
   unreachable: "Can't be reached",
 };
 

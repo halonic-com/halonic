@@ -10,7 +10,8 @@ import { issue, stateKey, type ValidateOptions, type WorkflowIssue } from "./wor
  * unreachable states, steps missing what their type needs, unknown agents
  * and workflows, timers outside wait states, transitions that can never
  * fire, picked data no earlier step writes, input fields the workflow's
- * input doesn't have and a `start.field` no step reads.
+ * input doesn't have, a `start.field` no step reads and keys a step's type
+ * ignores.
  */
 export function validateWorkflow(
   workflow: Workflow,

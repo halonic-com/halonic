@@ -4,8 +4,8 @@ import type {
   RunFailureCause,
   RunFailureReason,
 } from "@halonicjs/events";
-import type { Agent, StateType, Workflow, WorkflowState } from "@halonicjs/format";
-import type { Scope } from "@halonicjs/workflow";
+import type { Agent, StateType, Workflow } from "@halonicjs/format";
+import type { Scope, StateOf } from "@halonicjs/workflow";
 import type { DecidedEvent, DecideInput, Effect } from "./decide-types.ts";
 import type { RunState } from "./run-state.ts";
 
@@ -19,11 +19,15 @@ export type BuiltStateType = Extract<
   "task" | "wait" | "final" | "workflow" | "parallel" | "foreach"
 >;
 
-/** What a state handler sees: the run as it is now, and the state it is in. */
-export interface StateContext {
+/**
+ * What a state handler sees: the run as it is now, and the state it is in,
+ * with only the keys its type uses (`STATE_KEYS` of the workflow rules,
+ * which validation warns about the other keys from).
+ */
+export interface StateContext<Type extends StateType = BuiltStateType> {
   readonly run: RunState;
   readonly stateId: string;
-  readonly state: WorkflowState;
+  readonly state: StateOf<Type>;
   readonly workflow: Workflow;
   /** The hub's agents by id, as the run started with them; empty for runs kept without agents. */
   readonly agents: Readonly<Record<string, Agent>>;
@@ -74,9 +78,9 @@ export interface StateStep {
 export interface StateHandler<Type extends StateType> {
   readonly type: Type;
   /** The run has just entered the state; `state.entered` is already decided. */
-  enter(context: StateContext): StateStep;
+  enter(context: StateContext<Type>): StateStep;
   /** An input arrived while the run is in the state. */
-  onInput(context: StateContext, input: DecideInput): StateStep;
+  onInput(context: StateContext<Type>, input: DecideInput): StateStep;
 }
 
 /**

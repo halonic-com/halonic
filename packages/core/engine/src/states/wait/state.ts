@@ -39,7 +39,7 @@ export const waitState: StateHandler<"wait"> = {
   },
 };
 
-function startWaiting({ run, stateId, state, workflow, scope }: StateContext): StateStep {
+function startWaiting({ run, stateId, state, workflow, scope }: StateContext<"wait">): StateStep {
   const timers = stateTimers(workflow, stateId, new Date(run.enteredAt as string));
   const waiting: DecidedEvent = {
     type: "run.waiting",
@@ -70,7 +70,7 @@ function startWaiting({ run, stateId, state, workflow, scope }: StateContext): S
  * @throws InputRefused when no transition for the event has a guard that passes
  */
 function receiveEvent(
-  { run, stateId, workflow, scope }: StateContext,
+  { run, stateId, workflow, scope }: StateContext<"wait">,
   input: SendInput,
 ): StateStep {
   const { event, payload } = input;
@@ -104,7 +104,7 @@ function receiveEvent(
  * a scheduler whose clock runs a little ahead can't leave the run stuck.
  */
 function fireTimer(
-  { run, stateId, workflow, scope, at }: StateContext,
+  { run, stateId, workflow, scope, at }: StateContext<"wait">,
   input: TimerInput,
 ): StateStep {
   const timer = parseTimerKey(input.key);

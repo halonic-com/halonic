@@ -1,5 +1,4 @@
-import type { WorkflowState } from "@halonicjs/format";
-import type { Scope } from "@halonicjs/workflow";
+import type { Scope, StateOf } from "@halonicjs/workflow";
 import type { DecidedEvent } from "../../kernel/decide-types.ts";
 import type { StateStep } from "../../kernel/registry.ts";
 import { type BranchEnd, branchesOf, type ParallelBranches } from "../../kernel/run-branches.ts";
@@ -31,7 +30,7 @@ interface EndedBranch {
  */
 export function joinBranches(
   stateId: string,
-  state: WorkflowState,
+  state: StateOf<"parallel">,
   parallel: ParallelBranches | null,
   scope: Scope,
 ): StateStep {
@@ -60,7 +59,7 @@ export function joinBranches(
 
 /** Every branch and how it ended, in name order, or `null` while any of them hasn't ended. */
 function endedInOrder(
-  state: WorkflowState,
+  state: StateOf<"parallel">,
   parallel: ParallelBranches | null,
 ): readonly EndedBranch[] | null {
   const ended: EndedBranch[] = [];
@@ -74,7 +73,7 @@ function endedInOrder(
   return ended;
 }
 
-function failedState(stateId: string, state: WorkflowState, first: EndedBranch): StateStep {
+function failedState(stateId: string, state: StateOf<"parallel">, first: EndedBranch): StateStep {
   const end = first.end;
   const error = "error" in end ? end.error : "";
   const reason = "reason" in end ? end.reason : "error";
@@ -97,7 +96,7 @@ function failedState(stateId: string, state: WorkflowState, first: EndedBranch):
   };
 }
 
-function resultEvents(state: WorkflowState, ended: readonly EndedBranch[]): DecidedEvent[] {
+function resultEvents(state: StateOf<"parallel">, ended: readonly EndedBranch[]): DecidedEvent[] {
   const results: Record<string, unknown> = {};
   const events: DecidedEvent[] = [];
   for (const { name, end } of ended) {

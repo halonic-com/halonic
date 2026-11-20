@@ -7,7 +7,7 @@ import type { PendingCall } from "./run-state.ts";
  * as canonical JSON, whose keys are sorted, so the file's order is gone by
  * the time a run reads them; name order is the same in every run.
  */
-export function branchesOf(state: WorkflowState): [string, Branch][] {
+export function branchesOf(state: Pick<WorkflowState, "branches">): [string, Branch][] {
   // Names are keys, so no two are equal; code-unit order doesn't depend on the locale.
   return Object.entries(state.branches ?? {}).sort(([a], [b]) => (a < b ? -1 : 1));
 }

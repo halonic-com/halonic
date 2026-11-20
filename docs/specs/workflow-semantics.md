@@ -231,5 +231,6 @@ workflows, for example) belong to the workspace loader.
 | `task-without-agent` | warning | a task has no agent, so it passes straight through |
 | `wait-without-events` | warning | a wait state only listens to `done` |
 | `unguarded-shadow` | warning | a transition comes after an unguarded one on the same event, so never fires |
+| `ignored-key` | warning | a state sets a key its type doesn't use (one warning per key), `with` has no `method`, or `continueOnError` has `join: any` |
 | `unreachable` | warning | no path leads from the initial state to a state |
 | `no-final` | warning | the workflow has no final state |

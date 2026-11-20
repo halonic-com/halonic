@@ -32,7 +32,13 @@ export const workflowState: StateHandler<"workflow"> = {
   },
 };
 
-function startChild({ run, stateId, state, workflows, scope }: StateContext): StateStep {
+function startChild({
+  run,
+  stateId,
+  state,
+  workflows,
+  scope,
+}: StateContext<"workflow">): StateStep {
   const workflowId = state.workflow;
   if (workflowId === undefined) {
     return failed(`Workflow state "${stateId}" names no workflow.`);
@@ -67,7 +73,10 @@ function startChild({ run, stateId, state, workflows, scope }: StateContext): St
 }
 
 /** Only the child the state waits on counts; news of any other run changes nothing. */
-function childMoved({ run, stateId, state, scope }: StateContext, input: ChildInput): StateStep {
+function childMoved(
+  { run, stateId, state, scope }: StateContext<"workflow">,
+  input: ChildInput,
+): StateStep {
   const child = run.child;
   if (child === null || child.state !== stateId || child.runId !== input.childRunId) {
     return nothing;
@@ -159,7 +168,7 @@ function sameEvents(left: readonly string[], right: readonly string[]): boolean 
  *
  * @throws InputRefused always
  */
-function refuseSend({ run, stateId }: StateContext, input: SendInput): never {
+function refuseSend({ run, stateId }: StateContext<"workflow">, input: SendInput): never {
   throw new InputRefused(
     "engine.input-not-accepted",
     `Run "${run.runId}" waits on child run "${run.child?.runId}" in state "${stateId}"; send "${input.event}" to that run.`,

@@ -354,6 +354,38 @@ verifies("workspace.misplaced-files", () => {
   });
 });
 
+verifies("workflow.validate-ignored-keys", () => {
+  it("warns about an agent on a wait step at its line, and passes", async () => {
+    writeFiles(acme, {
+      ...agent("sorter", "fast"),
+      "hubs/support/workflows/sort.workflow.yaml": [
+        "version: 1",
+        "id: sort",
+        "name: Sort",
+        "initial: review",
+        "states:",
+        "  review:",
+        "    type: wait",
+        "    agent: sorter",
+        "    on: [{ to: done, event: approve }]",
+        "  done:",
+        "    type: final",
+        "",
+      ].join("\n"),
+    });
+
+    const { code, io } = await validateIn(acme);
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout).toEqual([
+      ["hubs", "support", "workflows", "sort.workflow.yaml"].join(sep),
+      '  8:12  ! "review" is a wait step: agent is ignored. Put the agent on a task step before it.  (ignored-key)',
+      "",
+      "✓ Checked 6 files in acme. 1 warning.",
+    ]);
+  });
+});
+
 verifies("cli.workspace-dir", () => {
   // Windows has no read permission bits, and root reads any folder.
   it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(

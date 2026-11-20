@@ -17,7 +17,7 @@ import type { DecidedEvent } from "./decide-types.ts";
  */
 export function signalSent(
   stateId: string,
-  state: WorkflowState,
+  state: Pick<WorkflowState, "signal">,
   scope: Scope,
   written: readonly DecidedEvent[],
 ): DecidedEvent[] {
