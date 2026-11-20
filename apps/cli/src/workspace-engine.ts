@@ -8,7 +8,6 @@
 // it (Liam, HAL-4349).
 
 import { nodeProgramStarter } from "@halonicjs/adapter-mcp";
-import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import type { ChatTurnWaiting, HttpClient, TrustGrant } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
@@ -16,6 +15,7 @@ import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { closeAfterStop, stoppedCloseLimitMs } from "./close-after-stop.ts";
 import type { CommandContext } from "./command.ts";
 import { cliConnectorFactories, nodeConnectorMachine } from "./connector-machine.ts";
+import { recordingSrtSandbox } from "./fenced-sandbox.ts";
 import { checkHarnessOverride } from "./harness-override.ts";
 import {
   type EngineErrorSource,
@@ -39,7 +39,6 @@ import {
   type SandboxGateHost,
   sandboxGateMachine,
 } from "./sandbox-gate-machine.ts";
-import { privateJournalFolder } from "./sandbox-journals.ts";
 import { profileKeyOrigins } from "./secret-host.ts";
 import {
   type GaveUpRun,
@@ -286,7 +285,8 @@ function computerRunConnectors(
       nodeProgramStarter,
       process.env,
       {
-        sandbox: new SrtSandbox(undefined, undefined, privateJournalFolder(profile)),
+        // Records each session's folders, so a sweep on this profile never takes a live one's grant (HAL-6780).
+        sandbox: recordingSrtSandbox(profile),
         deniedPaths: [profile.root],
       },
       openLocalIntegration(integrations),

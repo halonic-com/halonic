@@ -1738,6 +1738,9 @@ importers:
       '@anthropic-ai/sandbox-runtime':
         specifier: 'catalog:'
         version: 0.0.82(patch_hash=f644cdac2fe8312bef2173b99fdebcc0c7fe31049c8d6e58c13616e7ea83e535)
+      '@halonicjs/adapter-fs-node':
+        specifier: workspace:*
+        version: link:../fs-node
       '@halonicjs/adapter-system-node':
         specifier: workspace:*
         version: link:../system-node

@@ -22,11 +22,7 @@ import {
   systemFiles,
 } from "@halonicjs/adapter-integration-runner";
 import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
-import {
-  makeRunnerTempFolder,
-  SrtSandbox,
-  sandboxRuntimeFolder,
-} from "@halonicjs/adapter-sandbox-srt";
+import { makeRunnerTempFolder, sandboxRuntimeFolder } from "@halonicjs/adapter-sandbox-srt";
 import {
   noUnfencedRunConsent,
   RunnerStartGate,
@@ -43,11 +39,11 @@ import {
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
+import { recordingSrtSandbox } from "./fenced-sandbox.ts";
 import type { LocalIntegrationMachine } from "./open-local-integration.ts";
 import type { PluginBackendMachine } from "./open-plugin-backend.ts";
 import { openPluginService } from "./plugin-host.ts";
 import { proxySetting } from "./proxy-setting.ts";
-import { privateJournalFolder } from "./sandbox-journals.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import {
@@ -97,7 +93,8 @@ export function computerIntegrationMachine(
   const profile = profileFolder(input.environment ?? nodeProfileEnvironment());
   const gate = new RunnerStartGate({
     platform: process.platform,
-    fenced: input.fenced ?? new SrtSandbox(undefined, undefined, privateJournalFolder(profile)),
+    // Records each session's folders, so a sweep on this profile never takes a live one's grant (HAL-6780).
+    fenced: input.fenced ?? recordingSrtSandbox(profile),
     launcher: createHostSandbox(),
     runs: new UnfencedRuns({
       store: noUnfencedRunConsent,
