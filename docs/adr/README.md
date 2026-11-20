@@ -51,6 +51,7 @@ code is built the way it is, before you change something they describe.
 | [Pairing and the end-to-end session](2026-11-18-pairing-and-the-end-to-end-session.md) | Gateway protocol v2 runs inside Noise: XXpsk3 to pair (the code is the psk, the check code comes from the handshake hash), IK to reconnect; `not-paired` only after the host proved itself |
 | [Studio hands a plugin its secrets](2026-11-19-studio-hands-a-plugin-its-secrets.md) | The keychain stays the only store; before each use Studio hands a trusted plugin's declared secrets to the agent host, which keeps them in memory only (proposed) |
 | [Desktop engine in its own process](2026-11-20-desktop-engine-runs-in-its-own-process.md) | One engine process per workspace, owned by the shell; the page reaches it only through the shell, and it gets secrets over a private pipe |
+| [The merge queue writes only its own cache area](2026-11-20-the-merge-queue-writes-only-its-own-cache-area.md) | The queue's cache token uploads only to `q/<hash>` and reads it before `main`'s entry; `main` never reads `q/`; only `ci.yml`'s `build` job uses the remote cache (proposed) |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).

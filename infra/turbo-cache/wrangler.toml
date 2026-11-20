@@ -13,7 +13,7 @@ binding = "TURBO_SIGNING_KEY"
 store_id = "3a2182643c7a4eea82e266e47d982d70"
 secret_name = "TURBO_SIGNING_KEY"
 
-# Read-only token, for pull requests. It can read and query, never upload.
+# Static read-only token (CI doesn't use it). It can read and query, never upload, and never sees the queue's q/ area.
 [[secrets_store_secrets]]
 binding = "TURBO_TOKEN_READ"
 store_id = "3a2182643c7a4eea82e266e47d982d70"
