@@ -47,6 +47,7 @@ import {
   InstructionTrustHostService,
   RunStartHostService,
   RunsSourceService,
+  VersionHistoryHostService,
 } from "@halonicjs/studio-feature-runs/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import {
@@ -64,6 +65,7 @@ import {
 import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import { agentHostHarnessDetect } from "../agents/agent-host-harness-detect.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
+import { versionHistoryOf } from "../changes/version-history.ts";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
@@ -164,20 +166,19 @@ export function provideFolderServices(
     InstructionTrustHostService,
     new WorkspaceInstructionTrust(instructionTrust, location),
   );
-  services.provide(
-    ChangesSourceService,
-    new WorkspaceChanges({
-      git: async (args) =>
-        (await ipc.invoke("git", { root: location, args: [...args] })) as GitAnswer,
-      files: new TauriDefinitionStore(files, location),
-      // `.studio/discarded`, which the folder's own store refuses as private.
-      copies: new TauriDefinitionStore(files, location, { folder: "discarded" }),
-      choices: choicesMemory(storageOf(window), location),
-      digest: webCryptoDigest,
-      onFocus: (listener) => focusOf(window, listener),
-      onFilesChanged: (listener) => scope.events.on("files.changed", listener),
-    }),
-  );
+  const changes = new WorkspaceChanges({
+    git: async (args) =>
+      (await ipc.invoke("git", { root: location, args: [...args] })) as GitAnswer,
+    files: new TauriDefinitionStore(files, location),
+    // `.studio/discarded`, which the folder's own store refuses as private.
+    copies: new TauriDefinitionStore(files, location, { folder: "discarded" }),
+    choices: choicesMemory(storageOf(window), location),
+    digest: webCryptoDigest,
+    onFocus: (listener) => focusOf(window, listener),
+    onFilesChanged: (listener) => scope.events.on("files.changed", listener),
+  });
+  services.provide(ChangesSourceService, changes);
+  services.provide(VersionHistoryHostService, versionHistoryOf(changes));
   const transport = tauriAgentHostTransport(window);
   const engine = services.provide(
     engineServiceKey,
