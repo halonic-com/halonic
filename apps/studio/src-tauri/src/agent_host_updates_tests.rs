@@ -2,7 +2,7 @@
 
 use halonic_agent_host::WslError;
 
-use super::{DistroStartChecks, answer, cleanup_log, default_distro};
+use super::{DistroStartChecks, answer, cleanup_log, default_distro, security_update_log};
 
 /// 2026-11-15T12:00:00Z.
 const NOW: i64 = 1_794_744_000;
@@ -139,4 +139,39 @@ fn a_status_that_hangs_is_stopped_and_counts_as_overdue_with_no_date() {
     let checks = security_updates_in_distro(&stuck.0, Duration::from_millis(200));
     assert_eq!(checks, overdue(None));
     assert!(started.elapsed() < Duration::from_secs(10));
+}
+
+#[test]
+fn the_security_update_log_says_what_the_updater_did_and_why_it_didnt_finish() {
+    assert_eq!(
+        security_update_log(Ok(
+            "Reading package lists...\nsecurity updates installed\n".to_owned()
+        )),
+        "security updates: security updates installed"
+    );
+    assert_eq!(
+        security_update_log(Ok(
+            "skipped: security updates ran in the last 24 hours\n".to_owned()
+        )),
+        "security updates: skipped: security updates ran in the last 24 hours"
+    );
+    for (error, reason) in [
+        (
+            WslError::Busy,
+            "A sandbox session is running in the distro.",
+        ),
+        (
+            WslError::TimedOut,
+            "The step took too long and was stopped.",
+        ),
+        (
+            WslError::Failed(Some(100)),
+            "The step ended with exit code 100.",
+        ),
+    ] {
+        assert_eq!(
+            security_update_log(Err(error)),
+            format!("security updates: they didn't finish, starting anyway: {reason}")
+        );
+    }
 }

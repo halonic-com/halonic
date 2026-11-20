@@ -9,6 +9,12 @@
 //! once before the host starts in the distro. Only the updater's fixed
 //! `cleanup-import-mounts` step runs, as root; its result is logged and the
 //! host starts whatever it says.
+//!
+//! And the security updates themselves (HAL-12444): the updater's fixed
+//! `security-update` step, run before the host starts in the distro, when
+//! no session can run yet, so a `bwrap` never holds them off. The updater
+//! runs them at most once a day; the result is logged and the host starts
+//! whatever it says.
 
 use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -81,6 +87,36 @@ fn default_distro(read: Result<Option<bool>, WslError>) -> bool {
                 format!("default distro: couldn't read WSL's list, so none is reported: {error}"),
             );
             false
+        }
+    }
+}
+
+/// How long the security updates may take before the host starts without
+/// waiting for them. Enough for a day's Debian security updates on a slow
+/// line; a stuck download must not hold up start-up for good.
+const SECURITY_UPDATE_LIMIT: Duration = Duration::from_secs(180);
+
+/// Runs the distro's security updates, which the updater skips when they
+/// ran in the last 24 hours, and logs what happened. Never fails: a step
+/// that can't start, fails or takes longer than [`SECURITY_UPDATE_LIMIT`]
+/// is logged, the host starts anyway, and `status` says how old the last
+/// updates are.
+pub(super) fn run_security_update(wsl: &Path) {
+    let result = runtime_command(wsl, RuntimeStep::SecurityUpdate)
+        .and_then(|command| run_runtime_step_within(command, SECURITY_UPDATE_LIMIT));
+    halonic_shell_log::record("wsl", security_update_log(result));
+}
+
+/// The log line for the security updates' ending: the updater's last line,
+/// which says whether they were installed or skipped, after apt's own.
+fn security_update_log(result: Result<String, WslError>) -> String {
+    match result {
+        Ok(printed) => {
+            let last = printed.lines().rev().find(|line| !line.trim().is_empty());
+            format!("security updates: {}", last.unwrap_or_default().trim())
+        }
+        Err(error) => {
+            format!("security updates: they didn't finish, starting anyway: {error}")
         }
     }
 }
