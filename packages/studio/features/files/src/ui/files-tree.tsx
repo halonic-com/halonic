@@ -16,15 +16,26 @@ import {
 import { fileName } from "../file-item.ts";
 import { fileMenuEntries } from "../file-menu.ts";
 import { filesWords } from "../files-words.ts";
-import { cutInMiddle } from "../tree/cut-name.ts";
+import { cutInMiddle, cutToWidth } from "../tree/cut-name.ts";
 import { pressKey, type TreeIntent, type TreeState } from "../tree/tree-keyboard.ts";
 import type { TreeNode } from "../tree/tree-model.ts";
 import { type TreeRow, visibleRows } from "../tree/visible-rows.ts";
+import { type NameRoom, useNameRoom } from "./name-room.tsx";
 import { RenameRow, type RenameRowProps } from "./rename-row.tsx";
 import { RowMenuButton } from "./row-menu-button.tsx";
 
-/** The most characters of a name a row shows before it cuts the middle. */
+/** The most characters of a name a row shows before it cuts the middle, until its room is measured. */
 const nameLimit = 32;
+
+/**
+ * The name a row shows: cut in the middle to the room its row has, so its start and its end stay in
+ * sight at any depth, or at `nameLimit` characters until the room is measured.
+ */
+function shownName(node: TreeNode, { room, widthOf }: NameRoom): string {
+  const width = room.get(node.path);
+  if (width === undefined || widthOf === undefined) return cutInMiddle(node.name, nameLimit);
+  return cutToWidth(node.name, width, widthOf);
+}
 
 /** The file a menu is open for, with where it opened. */
 interface RowMenu extends ContextMenuTarget {
@@ -124,7 +135,8 @@ function RowMarks({ node }: { node: TreeNode }) {
 /**
  * The file tree as an ARIA tree with one Tab stop: the focused row is the only one in the tab
  * order, arrow keys move inside it (requirement `files.tree.keyboard`). Names are plain text, and
- * a long one is cut in the middle; its full name is the title of the cut name.
+ * a long one is cut in the middle to the room its row has, so its start and its end stay in sight
+ * at any depth; its full name is the title of the cut name.
  */
 export function FilesTree({
   roots,
@@ -140,6 +152,7 @@ export function FilesTree({
 }: FilesTreeProps) {
   const rows = useMemo(() => visibleRows(roots, state.expanded), [roots, state.expanded]);
   const tree = useRef<HTMLDivElement>(null);
+  const nameRoom = useNameRoom(tree, rows);
   // The row that takes the Tab stop: the focused one, or the first while nothing is focused.
   const stop = rows.some((row) => row.node.path === state.focus) ? state.focus : rows[0]?.node.path;
   const focusing = useRef(false);
@@ -244,6 +257,7 @@ export function FilesTree({
         const { node } = row;
         const open = node.kind === "folder" && state.expanded.has(node.path);
         const label = marksLabel(node);
+        const shown = shownName(node, nameRoom);
         return (
           <Fragment key={node.path}>
             {/* biome-ignore lint/a11y/useKeyWithClickEvents: keys are handled by the tree */}
@@ -286,13 +300,16 @@ export function FilesTree({
                   onCancel={renaming.onCancel}
                 />
               ) : (
-                // The full name shows on hover over the cut one. On the row, a screen reader would
-                // read it again after the row's name, as its description.
+                // The name takes all the room the row leaves, which is what `useNameRoom` measures;
+                // `truncate` still cuts the end where text can't be measured. The full name shows
+                // on hover over the cut one. On the row, a screen reader would read it again after
+                // the row's name, as its description.
                 <span
-                  className="min-w-0 truncate"
-                  title={node.name.length > nameLimit ? node.name : undefined}
+                  data-name
+                  className="min-w-0 flex-1 truncate"
+                  title={shown === node.name ? undefined : node.name}
                 >
-                  {cutInMiddle(node.name, nameLimit)}
+                  {shown}
                 </span>
               )}
               <RowMarks node={node} />
