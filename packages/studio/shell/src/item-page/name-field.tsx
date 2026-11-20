@@ -1,5 +1,5 @@
-import { isComposing } from "@halonicjs/studio-kit";
-import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { AlertIcon, isComposing } from "@halonicjs/studio-kit";
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { useCutTextTooltip } from "../cut-text/cut-text-tooltip.ts";
 
 /** Props for {@link NameField}. */
@@ -10,16 +10,27 @@ export interface NameFieldProps {
   readonly label: string;
   /** Called with the new name, trimmed, when the user keeps one that differs. */
   readonly onRename: (name: string) => void;
+  /**
+   * Checks a new name, trimmed, as it is typed: the sentence for why it can't be kept ("A workflow
+   * called Mail triage already exists."), or `undefined` when it can. Without it every name that
+   * isn't empty is kept.
+   */
+  readonly check?: ((name: string) => string | undefined) | undefined;
 }
 
 /**
  * The item's name in its page header, as a rename field (req-shell `item-page.chat-and-panel`,
  * a11y 6.1). It reads as the title until it's hovered or focused. Enter or leaving the field keeps
  * the name; Esc puts the old one back, and that press does nothing else. An empty name isn't kept:
- * the old one comes back. A name cut with "…" shows in full as a tooltip.
+ * the old one comes back. A name cut with "…" shows in full as a tooltip. With `check`, a new name
+ * with a problem shows why under the field as it is typed; Enter doesn't keep it, and leaving the
+ * field puts the old name back.
  */
-export function NameField({ name, label, onRename }: NameFieldProps) {
+export function NameField({ name, label, onRename, check }: NameFieldProps) {
   const [draft, setDraft] = useState(name);
+  const problemId = useId();
+  const next = draft.trim();
+  const problem = next === "" || next === name ? undefined : check?.(next);
   // The name this edit last asked for. Enter and then leaving the field is one edit, and `name`
   // may not have changed in between (the rename is async, or was rejected), so it's asked for
   // once. Typing starts a new edit, which may ask for the same name again.
@@ -32,8 +43,7 @@ export function NameField({ name, label, onRename }: NameFieldProps) {
   }, [name]);
 
   const keep = () => {
-    const next = draft.trim();
-    if (next === "" || next === name) {
+    if (next === "" || next === name || problem !== undefined) {
       setDraft(name);
       return;
     }
@@ -64,7 +74,8 @@ export function NameField({ name, label, onRename }: NameFieldProps) {
     }
     if (event.key === "Enter") {
       event.preventDefault();
-      keep();
+      // The problem stays in view with the name that has it, so it can be fixed.
+      if (problem === undefined) keep();
     } else if (event.key === "Escape" && draft !== name) {
       // The press is used, so the close stack under the page doesn't act on it too.
       event.preventDefault();
@@ -80,7 +91,7 @@ export function NameField({ name, label, onRename }: NameFieldProps) {
     // browsers still give a one-character input a minimum of several characters; it stays for
     // browsers that ignore `w-0` here. A `size` of the name's length counts average characters, which
     // comes out too wide or too narrow in a proportional font.
-    <span className="inline-grid min-w-0 max-w-full grid-cols-[minmax(0,auto)]">
+    <span className="relative inline-grid min-w-0 max-w-full grid-cols-[minmax(0,auto)]">
       <span aria-hidden="true" data-name-sizer="" className={sizerClasses}>
         {draft === "" ? " " : draft}
       </span>
@@ -89,6 +100,8 @@ export function NameField({ name, label, onRename }: NameFieldProps) {
         type="text"
         size={1}
         aria-label={label}
+        aria-invalid={problem === undefined ? undefined : true}
+        aria-describedby={problem === undefined ? undefined : problemId}
         value={draft}
         spellCheck={false}
         data-text-entry=""
@@ -101,6 +114,17 @@ export function NameField({ name, label, onRename }: NameFieldProps) {
         }}
       />
       {tooltip.popover}
+      {problem !== undefined && (
+        // Under the field, over what follows, so the header doesn't grow. The field is in the page's
+        // `h1`: hidden, the line isn't read as part of the title, and the field's description still
+        // reads it.
+        <span id={problemId} aria-hidden="true" className={problemClasses}>
+          <span className="inline-grid size-icon-sm shrink-0 place-items-center *:size-full">
+            <AlertIcon />
+          </span>
+          {problem}
+        </span>
+      )}
     </span>
   );
 }
@@ -110,6 +134,12 @@ export function NameField({ name, label, onRename }: NameFieldProps) {
 const nameClasses = [
   "col-start-1 row-start-1 w-0 min-w-full truncate rounded-xs border-0 bg-transparent px-1",
   "text-section text-fg hover:bg-surface-subtle focus:bg-surface focus-ring",
+].join(" ");
+
+// The kit Field's error line, as one line under the field that doesn't move the header.
+const problemClasses = [
+  "absolute top-full left-0 z-10 mt-1 flex items-start gap-1 whitespace-nowrap rounded-xs",
+  "bg-surface px-1 text-caption font-normal text-danger",
 ].join(" ");
 
 // The same text, inset and type as the field, kept in the layout but never seen.

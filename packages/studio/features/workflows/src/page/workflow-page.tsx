@@ -12,7 +12,6 @@ import {
   EmptyState,
   LetterTile,
   SkeletonBar,
-  type Tab,
   TabList,
   TabPanel,
   usePresentation,
@@ -27,7 +26,6 @@ import { configurationWords } from "../configuration/configuration-words.ts";
 import { countProblems } from "../configuration/problem-lines.ts";
 import { runCount } from "../runs/runs-model.ts";
 import { RunsView } from "../runs/runs-view.tsx";
-import { runsWords } from "../runs/runs-words.ts";
 import { useRuns } from "../runs/use-runs.ts";
 import { useSaveAsTest } from "../runs/use-save-as-test.ts";
 import { useAnnounceDockedRun } from "../start/run-announcement.ts";
@@ -38,11 +36,12 @@ import { pageWords } from "./page-words.ts";
 import { dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
+import { useRename } from "./use-rename.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
 import { type CanvasEdit, WorkflowCanvas } from "./workflow-canvas.tsx";
+import { WorkflowName } from "./workflow-name.tsx";
 import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
-
-type WorkflowView = "flow" | "configuration" | "runs";
+import { type WorkflowView, workflowTabs } from "./workflow-tabs.ts";
 
 /** The command that opens the workspace page at its Budget block (`features/workspace`). */
 const openBudgetCommand = "workspace.open-budget";
@@ -187,6 +186,7 @@ export function WorkflowScreen({
     showView("configuration");
   });
   const canvasEdit = useCanvasEdit(host, { hubId, id }, name, phone);
+  const rename = useRename(host, { hubId, id }, name, everyWorkflow.load, announce);
   const gone = goneState(load, goToWorkflows);
   if (gone !== undefined) return gone;
   return (
@@ -204,7 +204,12 @@ export function WorkflowScreen({
           <div className="flex flex-col">
             <p className="text-caption text-fg-muted">{pageWords.kind}</p>
             <h1 ref={title} tabIndex={-1} className={phone ? "sr-only" : "text-title"}>
-              {name}
+              <WorkflowName
+                name={name}
+                rename={rename}
+                ready={load.kind === "ready"}
+                phone={phone}
+              />
             </h1>
           </div>
         </div>
@@ -469,29 +474,4 @@ function FlowView({
       )}
     </>
   );
-}
-
-/** The page's tabs: Flow, Configuration with its error count, and Runs with the count of runs that need you. */
-function workflowTabs(errors: number, needYou: number): readonly Tab<WorkflowView>[] {
-  return [
-    { id: "flow", label: configurationWords.flowTab },
-    {
-      id: "configuration",
-      label: configurationWords.tab,
-      ...(errors > 0 && {
-        count: {
-          value: errors,
-          tone: "danger" as const,
-          name: configurationWords.errors(errors),
-        },
-      }),
-    },
-    {
-      id: "runs",
-      label: runsWords.tab,
-      ...(needYou > 0 && {
-        count: { value: needYou, tone: "warning" as const, name: runsWords.needYou(needYou) },
-      }),
-    },
-  ];
 }
