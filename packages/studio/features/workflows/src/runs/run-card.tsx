@@ -8,6 +8,7 @@ import {
 } from "@halonicjs/studio-feature-runs/api";
 import { Button, CloseIcon, StatusChip } from "@halonicjs/studio-kit";
 import { type KeyboardEvent, useEffect, useRef } from "react";
+import { dockedCard } from "./docked-card.ts";
 import { runsWords as words } from "./runs-words.ts";
 import { SaveAsTest, type SaveAsTestProps } from "./save-as-test.tsx";
 
@@ -78,11 +79,7 @@ export function RunCard({
   };
   const loading = read.events === undefined && read.failure === undefined;
   return (
-    <aside
-      aria-label={words.card(row.shortId)}
-      onKeyDown={onKeyDown}
-      className="flex w-120 max-w-full shrink-0 flex-col gap-4 overflow-auto border-s border-border bg-surface-raised p-6 shadow-2"
-    >
+    <aside aria-label={words.card(row.shortId)} onKeyDown={onKeyDown} className={dockedCard}>
       {/* In a narrow window the chip goes under the id, and Close stays at the top end. */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-2">

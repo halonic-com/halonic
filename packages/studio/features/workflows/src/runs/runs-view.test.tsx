@@ -296,3 +296,18 @@ verifies("workflows.runs.card-receipt", () => {
     expect(buttonNamed(card, "Show the run log")?.closest("section")).toBe(section);
   });
 });
+
+verifies("workflows.page.docked-card-body", () => {
+  // jsdom lays nothing out, so this checks the container query's class (DW1, WCAG 1.4.10).
+  it("hides the list under 800 px beside a run's card on a desktop, and keeps it otherwise", async () => {
+    const page = await show(<Connected source={memoryRuns([finished]).source} />);
+    const list = () =>
+      page.querySelector<HTMLElement>("[data-testid=runs-inset]")?.className.split(" ") ?? [];
+    expect(list()).not.toContain("@max-[800px]:hidden");
+
+    await act(async () => page.querySelector<HTMLButtonElement>("li button")?.click());
+    expect(page.querySelector("aside")?.className.split(" ")).toContain("@max-[800px]:w-full");
+    expect(list()).toContain("@max-[800px]:hidden");
+    expect(list()).not.toContain("hidden");
+  });
+});
