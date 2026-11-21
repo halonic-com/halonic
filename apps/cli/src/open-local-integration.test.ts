@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
+import type { AddressCheckingHttpClient } from "@halonicjs/adapter-http-kit";
 import type { StartedRunner } from "@halonicjs/adapter-integration-runner";
 import {
   MemorySecrets,
@@ -19,6 +20,7 @@ import type { Connector } from "@halonicjs/format";
 import type {
   ConnectorFactoryContext,
   ConnectorTransport,
+  IntegrationHttpClient,
   IntegrationTool,
   Sandbox,
   SandboxCheck,
@@ -26,12 +28,32 @@ import type {
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { IntegrationConnectorFactory } from "./integration-connector-factory.ts";
+import { integrationTransport } from "./local-integration-machine.ts";
 import { type LocalIntegrationMachine, openLocalIntegration } from "./open-local-integration.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
 import { webCryptoDigest } from "./workspace-runs.ts";
 import { cliTrustService, workspaceIntegrations } from "./workspace-trust.ts";
+
+/** The addresses each `https` connection was handed, in order. */
+const connected = vi.hoisted(() => [] as string[][]);
+
+// No test may reach a real network, so an `https` connection only records the
+// addresses the transport's checked lookup hands it, then fails.
+vi.mock("node:https", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:https")>();
+  const { EventEmitter } = await import("node:events");
+  const request = (options: import("node:https").RequestOptions) => {
+    options.lookup?.(options.hostname ?? "", { all: true }, (_error, entries) => {
+      connected.push((entries as unknown as { address: string }[]).map((entry) => entry.address));
+    });
+    const outgoing = new EventEmitter();
+    const fail = () => outgoing.emit("error", new Error("this test has no network"));
+    return Object.assign(outgoing, { end: () => queueMicrotask(fail) });
+  };
+  return { ...actual, request };
+});
 
 /** These tests never take a yes back in another process and no start hangs, so no timer goes off. */
 const idleTimers = { set: () => undefined, clear: () => undefined };
@@ -66,6 +88,7 @@ const readNote: IntegrationTool = {
 let root: string;
 
 beforeEach(async () => {
+  connected.length = 0;
   root = await mkdtemp(join(tmpdir(), "halonic-cli-open-integration-"));
   await put({
     "integrations/notes/integration.yaml": sheet,
@@ -105,6 +128,10 @@ async function setup(
     trustedSettings?: Record<string, string>;
     /** The connector file's settings when the run opens it; the trusted ones unless a test says otherwise. */
     runSettings?: Record<string, string>;
+    /** What the integration's requests go out through; one that answers `{}` unless a test says otherwise. */
+    transport?: AddressCheckingHttpClient;
+    /** What the runner's tool does with the kit's client; it answers with the tool's name unless a test says otherwise. */
+    tool?: (http: IntegrationHttpClient) => Promise<string>;
   } = {},
 ) {
   const { check = passes, runnerBuilt = true, beforeTrustCheck, trustedSettings } = options;
@@ -162,7 +189,7 @@ async function setup(
       timers: idleTimers,
     }),
     runtime: { node: "/node/bin/node", nodeFolder: "/node", runnerFile: "/runner/runner.mjs" },
-    transport: { fetch: async () => new Response("{}") } as never,
+    transport: options.transport ?? ({ fetch: async () => new Response("{}") } as never),
     trustCheck: async (): Promise<TrustCheck> => {
       seen.checks += 1;
       await beforeTrustCheck?.();
@@ -185,7 +212,7 @@ async function setup(
         fence: { state: "fenced" },
         declaration: { name: "notes", version: "1.0.0", tools: [readNote] },
         stopped: new Promise(() => {}),
-        callTool: async (name) => `answer from ${name}`,
+        callTool: async (name) => (options.tool ? options.tool(start.http) : `answer from ${name}`),
         close: async () => {
           seen.stops += 1;
         },
@@ -287,6 +314,59 @@ verifies("cli.open-local-integration", () => {
       const { seen, client } = await setup({ runnerBuilt: false });
       await expect(client().callTool("read-note", {})).rejects.toThrow(
         "Connector \"notes\" didn't start: the integration runner isn't built",
+      );
+      expect(seen.starts).toBe(0);
+    });
+  });
+});
+
+verifies("format.integration-host-class", () => {
+  describe("a private setting that holds a host name", () => {
+    const name = "box.tail1234.ts.net";
+
+    /** Opens the integration with its `url` set to the name, over the CLI's own transport answering `answers`. */
+    async function privateName(answers: readonly string[]) {
+      await put({ "integrations/notes/integration.yaml": fromSettingSheet });
+      const lookups: string[] = [];
+      const transport = integrationTransport(async (hostname) => {
+        lookups.push(hostname);
+        return answers;
+      });
+      const { seen, client } = await setup({
+        trustedSettings: { url: `https://${name}` },
+        transport,
+        tool: async (http) => await (await http.fetch(`https://${name}/notes`)).text(),
+      });
+      return { seen, lookups, call: () => client().callTool("read-note", {}) };
+    }
+
+    it("connects only to the private addresses of a mixed answer", async () => {
+      const { lookups, call } = await privateName(["93.184.215.14", "100.116.12.34", "10.0.0.5"]);
+      await expect(call()).rejects.toThrow();
+      expect(lookups).toEqual([name]);
+      expect(connected).toEqual([["100.116.12.34", "10.0.0.5"]]);
+    });
+
+    it.each([
+      [["93.184.215.14"]],
+      [["100.100.100.100"]],
+      [["100.100.100.200", "169.254.169.254", "127.0.0.1"]],
+    ])("refuses a name whose answer is %j before any connection", async (answers) => {
+      const { seen, lookups, call } = await privateName(answers);
+      await expect(call()).rejects.toThrow(/no address a private host may reach/);
+      expect(seen.starts).toBe(1);
+      expect(lookups).toEqual([name]);
+      expect(connected).toEqual([]);
+    });
+
+    it("refuses it on a transport that can't check where a name points, and starts no runner", async () => {
+      await put({ "integrations/notes/integration.yaml": fromSettingSheet });
+      const { seen, client } = await setup({
+        trustedSettings: { url: `https://${name}` },
+        transport: { fetch: async () => new Response("{}") } as never,
+      });
+      await expect(client().callTool("read-note", {})).rejects.toThrow(
+        /can't check that box\.tail1234\.ts\.net points to a private address/,
       );
       expect(seen.starts).toBe(0);
     });

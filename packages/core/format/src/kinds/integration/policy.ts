@@ -10,6 +10,7 @@ import {
   isPlacedSecret,
 } from "./schema.ts";
 import { fixedSignInUrl } from "./sign-in-urls.ts";
+import { type FoundHost, ipv4, isLocalAddress, isLoopback, parseUrlHost } from "./url-host.ts";
 
 /**
  * What one integration may do, in the shape of the kit's `IntegrationPolicy`
@@ -22,6 +23,12 @@ export interface IntegrationPolicy {
   readonly hosts: readonly string[];
   /** Hosts the user chose that it may call over plain `http`: on this machine or a private network. */
   readonly localHosts?: readonly string[];
+  /**
+   * The host names the user set in a `private` setting. The text can't show
+   * where a name points, so the transport counts each as private and connects
+   * only to the private addresses it resolves to, on every request.
+   */
+  readonly privateNames?: readonly string[];
   /** Each secret, the hosts it may go to, whether a request may go without it, and where it goes. */
   readonly secrets: Readonly<Record<string, DeclaredSecret>>;
   /** Each sign-in, and where its access token may go and how it is put in. */
@@ -116,10 +123,14 @@ export function integrationPolicy(
   const classes = settingClasses(sheet);
   const hosts: string[] = [];
   const localHosts: string[] = [];
+  const privateNames: string[] = [];
   sheet.hosts.forEach((host, index) => {
     const found = resolveHost(sheet, host, classes, settings, ["hosts", index], problems);
     if (found !== undefined) {
       (found.plain ? localHosts : hosts).push(found.host);
+    }
+    if (found?.privateName) {
+      privateNames.push(found.hostname);
     }
   });
 
@@ -160,6 +171,7 @@ export function integrationPolicy(
     name: sheet.id,
     hosts: unique(hosts),
     ...(localHosts.length > 0 ? { localHosts: unique(localHosts) } : {}),
+    ...(privateNames.length > 0 ? { privateNames: unique(privateNames) } : {}),
     secrets,
     signIns,
     tokens: sheet.tokens.map((token) => token.name),
@@ -246,14 +258,6 @@ function placementOf(secret: IntegrationSecret): DeclaredPlacement {
   }
 }
 
-interface FoundHost {
-  /** As the kit matches it: `URL.host`, without the scheme's default port. */
-  readonly host: string;
-  readonly hostname: string;
-  /** Plain `http`, so only to a local address. */
-  readonly plain: boolean;
-}
-
 /** The class the sheet declares for each setting a `{ fromSetting }` host reads. */
 export function settingClasses(sheet: IntegrationSheet): ReadonlyMap<string, AddressClass> {
   const classes = new Map<string, AddressClass>();
@@ -306,7 +310,8 @@ export function resolveHost(
     });
     return undefined;
   }
-  if (declared === undefined || addressClassOf(found.hostname) !== declared) {
+  const written = addressClassOf(found.hostname, declared);
+  if (declared === undefined || written !== declared) {
     problems.push({
       code: "setting-outside-class",
       path,
@@ -314,28 +319,41 @@ export function resolveHost(
     });
     return undefined;
   }
-  return found;
+  return isName(found.hostname) && declared === "private" ? { ...found, privateName: true } : found;
 }
 
 /**
- * The class a URL's host is in, read from the literal text: a name can
- * resolve anywhere, so only `localhost` and IP addresses count as this
- * computer or the home network, and an IP address never counts as public.
- * Undefined for an address in no class, such as link-local `169.254.0.0/16`,
- * where cloud machines serve their credentials, or `[::]`.
+ * The class a URL's host is in. An IP address is read from its text, and
+ * never counts as public; `localhost` is this computer. Undefined for an
+ * address in no class, such as link-local `169.254.0.0/16`, where cloud
+ * machines serve their credentials, or `[::]`, and for `*.localhost`.
  *
- * Checking the addresses a public name resolves to is the Node transport's
- * job (I5 design 3.8), on every request.
+ * Any other name can resolve anywhere, so its text proves nothing: it is in
+ * the class the sheet declares, `private` or `public`, and the transport
+ * checks the addresses it resolves to against that class on every request
+ * (I5 design 3.8; HAL-15005). A name never counts as `loopback`, so only
+ * `localhost` reaches this computer.
  */
-function addressClassOf(hostname: string): AddressClass | undefined {
+function addressClassOf(
+  hostname: string,
+  declared: AddressClass | undefined,
+): AddressClass | undefined {
   if (isLoopback(hostname)) {
     return "loopback";
   }
   if (isLocalAddress(hostname)) {
     return "private";
   }
+  if (!isName(hostname)) {
+    return undefined;
+  }
+  return declared === "private" ? "private" : "public";
+}
+
+/** A host name other than `localhost` and `*.localhost`, rather than an IP address. */
+function isName(hostname: string): boolean {
   const literal = hostname.startsWith("[") || ipv4(hostname) !== undefined;
-  return literal || hostname.endsWith(".localhost") ? undefined : "public";
+  return !literal && hostname !== "localhost" && !hostname.endsWith(".localhost");
 }
 
 /** What a class allows, for a message. */
@@ -344,144 +362,12 @@ function classWords(declared: AddressClass | undefined): string {
     case "loopback":
       return "a URL on this machine (localhost, 127.0.0.0/8 or [::1])";
     case "private":
-      return "a URL with a private network address (10/8, 172.16/12, 192.168/16, 100.64/10 or fc00::/7)";
+      return "a URL with a private network address (10/8, 172.16/12, 192.168/16, 100.64/10 or fc00::/7) or an https URL with a host name that points to one";
     case "public":
       return "an https URL with a public host name";
     case undefined:
       return "a URL for a host in the sheet's hosts";
   }
-}
-
-/**
- * The scheme, host and port of an absolute `http` or `https` URL, as
- * `URL.host` gives them. The core has no `URL` class (plan 4.1), so this
- * reads it by hand and accepts only the plain forms `URL` leaves unchanged:
- * a name or dotted IPv4 address in lower case or a bracketed IPv6 address
- * as `URL` writes it. Anything else is refused, so the kit's own match never
- * sees a host spelled two ways.
- */
-function parseUrlHost(url: string): FoundHost | undefined {
-  const parts = /^(https?):\/\/([^/?#]*)(?:[/?#]|$)/i.exec(url);
-  const scheme = parts?.[1]?.toLowerCase();
-  const authority = parts?.[2]?.toLowerCase() ?? "";
-  const hostAndPort =
-    /^(\[[0-9a-f:]+\]|(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*)(?::(\d{1,5}))?$/.exec(
-      authority,
-    );
-  const hostname = hostAndPort?.[1];
-  if (scheme === undefined || hostname === undefined) {
-    return undefined;
-  }
-  if (hostname.startsWith("[") ? !canonicalIpv6(hostname) : !canonicalIpv4(hostname)) {
-    return undefined;
-  }
-  const port = hostAndPort?.[2];
-  if (port !== undefined && (Number(port) > 65535 || port !== String(Number(port)))) {
-    return undefined;
-  }
-  const defaultPort = scheme === "https" ? "443" : "80";
-  const host = port === undefined || port === defaultPort ? hostname : `${hostname}:${port}`;
-  return { host, hostname, plain: scheme === "http" };
-}
-
-/**
- * `URL` reads a name whose last part is a number as an IPv4 address, so such
- * a name must be four parts of 0 to 255 without leading zeros, as `URL`
- * writes it.
- */
-function canonicalIpv4(hostname: string): boolean {
-  if (!/(?:^|\.)\d+$/.test(hostname)) {
-    return true;
-  }
-  const parts = hostname.split(".");
-  return (
-    parts.length === 4 &&
-    parts.every((part) => /^(?:0|[1-9]\d{0,2})$/.test(part) && Number(part) <= 255)
-  );
-}
-
-/**
- * A bracketed IPv6 address as `URL` writes it: eight groups in lower-case hex
- * without leading zeros, the longest run of two or more zero groups (the
- * first, on a tie) written `::`, and no dotted IPv4 tail.
- */
-function canonicalIpv6(bracketed: string): boolean {
-  const address = bracketed.slice(1, -1);
-  const halves = address.split("::");
-  const groupsOf = (half: string) => (half === "" ? [] : half.split(":"));
-  const head = groupsOf(halves[0] ?? "");
-  const tail = groupsOf(halves[1] ?? "");
-  const zeros = 8 - head.length - tail.length;
-  if (halves.length > 2 || (halves.length === 2 ? zeros < 1 : zeros !== 0)) {
-    return false;
-  }
-  if (![...head, ...tail].every((group) => /^[0-9a-f]{1,4}$/.test(group))) {
-    return false;
-  }
-  const groups = [...head, ...Array<string>(zeros).fill("0"), ...tail].map((group) =>
-    Number.parseInt(group, 16).toString(16),
-  );
-  let start = -1;
-  let length = 0;
-  for (let i = 0; i < 8; i += 1) {
-    let end = i;
-    while (end < 8 && groups[end] === "0") {
-      end += 1;
-    }
-    if (end - i >= 2 && end - i > length) {
-      start = i;
-      length = end - i;
-    }
-  }
-  const written =
-    start === -1
-      ? groups.join(":")
-      : `${groups.slice(0, start).join(":")}::${groups.slice(start + length).join(":")}`;
-  return written === address;
-}
-
-// The same rules as the kit's `local-address.ts`, which checks again on every
-// request: only literal addresses and `localhost` count, since a name can
-// resolve anywhere. Link-local addresses (169.254/16) don't count.
-
-/** `localhost`, `127.0.0.0/8` or `::1`: this machine. */
-function isLoopback(hostname: string): boolean {
-  return hostname === "localhost" || hostname === "[::1]" || ipv4(hostname)?.[0] === 127;
-}
-
-/** Loopback, or `10/8`, `172.16/12`, `192.168/16`, `100.64/10` or IPv6 `fc00::/7`. */
-function isLocalAddress(hostname: string): boolean {
-  if (isLoopback(hostname)) {
-    return true;
-  }
-  const v4 = ipv4(hostname);
-  if (v4 !== undefined) {
-    const [a = 0, b = 0] = v4;
-    return (
-      a === 10 ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      isSharedAddress(v4)
-    );
-  }
-  return /^\[f[cd][0-9a-f]{2}:/.test(hostname);
-}
-
-/**
- * `100.64/10`, the shared range Tailscale's addresses sit in, apart from the
- * two service addresses in it: Tailscale's own `100.100.100.100` and
- * Alibaba's metadata service `100.100.100.200`.
- */
-function isSharedAddress(v4: readonly number[]): boolean {
-  const [a = 0, b = 0, c = 0, d = 0] = v4;
-  const service = a === 100 && b === 100 && c === 100 && (d === 100 || d === 200);
-  return a === 100 && b >= 64 && b <= 127 && !service;
-}
-
-/** The four numbers of a whole dotted IPv4 address, as the kit reads it. */
-function ipv4(hostname: string): readonly number[] | undefined {
-  const parts = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
-  return parts?.slice(1).map(Number);
 }
 
 function unique(values: readonly string[]): string[] {

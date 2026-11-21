@@ -22,6 +22,11 @@ For every request and every redirect hop, `createNodeHttpClient({ hostClass, own
 4. connects only to an address it checked: the lookup Node uses hands out those addresses and no
    others, so a second DNS answer can't change where the request goes.
 
+`client.withPrivateNames(names)` gives the same client with each of those host names counted as
+`private`, whatever `hostClass` says; an IP address keeps the class its text gives it. The
+integration kit asks for it when the user set a host name in a `private` setting (HAL-15005):
+the text can't show where the name points, so step 3 keeps only its private addresses.
+
 Only `http` and `https` URLs are sent; any other scheme throws a `TypeError`. A refusal throws `AddressRefusedError` with `code: "address-not-allowed"`.
 
 **The URL decides the host, never a header.** The transport drops a caller's `host` header and

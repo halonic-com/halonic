@@ -338,6 +338,31 @@ verifies("integration-kit.loader", () => {
     expect(codes(load({}, mcp).loaded)).toEqual([{ code: "setting-missing", path: ["hosts", 1] }]);
   });
 
+  it("hands a private setting's host name to the transport, and refuses a transport that can't check it", async () => {
+    const nas = {
+      ...sheet(),
+      hosts: ["api.example.com", { fromSetting: "url", class: "private" }],
+    };
+    const choices = {
+      settings: { url: "https://nas.example.com" },
+      secretNames: { "weather-key": "example-key" },
+    };
+    const { transport } = fakeTransport();
+    const given: (readonly string[])[] = [];
+    const checking = Object.assign(transport, {
+      withPrivateNames: (names: readonly string[]) => {
+        given.push(names);
+        return transport;
+      },
+    });
+    const { loaded } = load({ choices, transport: checking }, nas);
+    expect(codes(loaded)).toEqual([]);
+    expect(given).toEqual([["nas.example.com"]]);
+    expect(codes(load({ choices }, nas).loaded)).toEqual([
+      { code: "private-name-unchecked", path: ["hosts"] },
+    ]);
+  });
+
   it("gives the kit the sheet's limits", async () => {
     const { loaded } = load({}, { ...sheet(), limits: { maxResponseBytes: 1 } });
     if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
