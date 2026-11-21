@@ -4,11 +4,17 @@
 // or the branch whose answer wasn't an option, and the harness program and its limit from the last
 // `harness.started`. A setup cause the engine names, such as a provider type Halonic can't call, is
 // read from the summary's cause with the CLI's own facts (`setupFailureOf`). Run again is the
-// banner's button (`run-again.ts`); a banner adds the fixes that come before it (Copy command, or
-// Open Models where the cause is fixed in Models) and the links after it (Open Models, Copy details).
+// banner's button (`run-again.ts`); a banner adds the fixes that come before it (Copy command,
+// Open Models where the cause is fixed in Models, or See the step) and the links after it (Open
+// Models, Copy details).
 
 import { proxyFailureOf, setupFailureOf } from "@halonicjs/app/run-failure";
-import type { RunEvent, RunFailureCause, RunSummary } from "@halonicjs/events";
+import {
+  answerChoicesOf,
+  type RunEvent,
+  type RunFailureCause,
+  type RunSummary,
+} from "@halonicjs/events";
 import { failureWords } from "../failure-words.ts";
 import { currentStepName } from "../list/run-row.ts";
 import { providerNameOf } from "../provider-name.ts";
@@ -84,6 +90,14 @@ export function causeBanner(
     case "interrupted":
       return interrupted(summary, workflow, step);
     case "answer-not-an-option": {
+      const choices = answerChoicesOf(summary.cause);
+      if (choices !== undefined) {
+        const agent = agentNameOf(choices.agent, context);
+        return danger([failureWords.answerNotAChoice(workflow, step, agent, choices.options)], {
+          fixes: [{ kind: "see-step" }],
+        });
+      }
+      // An older log: its cause doesn't give the choices, so the agent comes from the log.
       const agent = facts.offOptionAgent ?? facts.agent;
       return agent === undefined
         ? undefined

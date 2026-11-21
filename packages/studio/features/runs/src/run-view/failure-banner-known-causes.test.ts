@@ -1,3 +1,4 @@
+import { answerNotAnOptionCause } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { context, event, failed, failedEvent, lines } from "./failure-banner.test-helper.ts";
@@ -21,7 +22,39 @@ verifies("runs.run-view.failure-banners", () => {
     ]);
   });
 
-  describe("an answer that isn't one of the agent's options", () => {
+  describe("an answer that isn't one of the step's choices (R7)", () => {
+    const offChoice = failed("answer-not-an-option", {
+      error:
+        'The agent sorter answered "maybe", which isn\'t one of its options (refund, question, spam).',
+      cause: answerNotAnOptionCause({ agent: "sorter", options: ["refund", "question", "spam"] }),
+    });
+
+    it("names the agent and the step's choices from the cause, before the log is read", () => {
+      const banner = causeBanner(offChoice, undefined, context, false);
+      expect(lines(banner)).toEqual([
+        "Support reply failed in the step Draft: Sorter's answer wasn't one of the step's choices (refund, question or spam).",
+      ]);
+      expect(banner?.kind === "callout" && banner.fixes).toEqual([{ kind: "see-step" }]);
+    });
+
+    it("never quotes the answer", () => {
+      expect(lines(causeBanner(offChoice, undefined, context, false))?.join(" ")).not.toContain(
+        "maybe",
+      );
+    });
+
+    it("names the agent as its file does, and two choices with or", () => {
+      const two = failed("answer-not-an-option", {
+        cause: answerNotAnOptionCause({ agent: "sorter", options: ["yes", "no"] }),
+      });
+      const named = { ...context, agentName: () => "Mail sorter" };
+      expect(lines(causeBanner(two, undefined, named, false))?.[0]).toContain(
+        ": Mail sorter's answer wasn't one of the step's choices (yes or no).",
+      );
+    });
+  });
+
+  describe("an answer that isn't one of the agent's options, in a log without the choices", () => {
     const started = (agent: string, seq: number) =>
       event({ type: "agent.started", state: "draft", agent }, seq);
 

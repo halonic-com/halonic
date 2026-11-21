@@ -1,3 +1,4 @@
+import { answerNotAnOptionCause } from "@halonicjs/events";
 import type { Agent, AgentMethod, Workflow } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -346,6 +347,8 @@ verifies("engine.task-choice-answer", () => {
     const error =
       'The agent searcher answered "medium", which isn\'t one of its options (low, high). ' +
       "Tighten the agent's instructions or use a larger model.";
+    // The branch's event keeps the choices, so the run.failed rebuilt from the log has them too.
+    const cause = answerNotAnOptionCause({ agent: "searcher", options: ["low", "high"] });
     expect(decisions[1]?.events).toEqual([
       {
         type: "agent.finished",
@@ -354,6 +357,7 @@ verifies("engine.task-choice-answer", () => {
         output: null,
         error,
         reason: "answer-not-an-option",
+        cause,
         branch: "web",
       },
     ]);
@@ -362,6 +366,7 @@ verifies("engine.task-choice-answer", () => {
       state: "research",
       error: `Branch "web" of parallel state "research" failed: ${error}`,
       reason: "answer-not-an-option",
+      cause,
     });
     expect(run?.status).toBe("failed");
   });

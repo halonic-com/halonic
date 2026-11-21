@@ -162,7 +162,15 @@ function branchFinished(
     return { ...base, output: null, error: end.error, cantTry: end.cantTry };
   }
   if ("error" in end) {
-    return { ...base, output: null, error: end.error, reason: end.reason, ...end.refusal };
+    const cause = end.cause === undefined ? {} : { cause: end.cause };
+    return {
+      ...base,
+      output: null,
+      error: end.error,
+      reason: end.reason,
+      ...cause,
+      ...end.refusal,
+    };
   }
   return { ...base, output: end.output };
 }

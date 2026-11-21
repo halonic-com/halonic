@@ -371,6 +371,8 @@ export type RunEventBody =
    * tried (requirement `events.run-cant-try`), as a parallel branch reports it.
    * `pin` and `changed`: with the reason `instructions-not-trusted` only, as `run.failed` gives them
    * (requirement `events.run-failed-instructions-not-trusted`); `agent` is the one that didn't start.
+   * `cause`: with `error`, the typed cause `run.failed` gives when the branch fails the run, such as
+   * the step's choices for `answer-not-an-option` (requirement `events.answer-choices`).
    */
   | {
       type: "agent.finished";
@@ -380,6 +382,7 @@ export type RunEventBody =
       parent?: string;
       error?: string;
       reason?: RunFailureReason;
+      cause?: RunFailureCause;
       pin?: LoggedInstructionPin;
       changed?: boolean;
       cantTry?: CantTryStep;

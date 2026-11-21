@@ -1,17 +1,29 @@
-import type { RunFailureReason } from "@halonicjs/events";
+import {
+  answerNotAnOptionCause,
+  type RunFailureCause,
+  type RunFailureReason,
+} from "@halonicjs/events";
 import type { Agent, AgentOutput } from "@halonicjs/format";
 
-/** An agent's answer, checked against its output: the output to keep, or why it can't be kept. */
+/**
+ * An agent's answer, checked against its output: the output to keep, or why it can't be kept.
+ * An answer that isn't one of the choices also has the typed cause with the agent and the choices.
+ */
 export type CheckedAnswer =
   | { readonly output: unknown }
-  | { readonly error: string; readonly reason: RunFailureReason };
+  | {
+      readonly error: string;
+      readonly reason: RunFailureReason;
+      readonly cause?: RunFailureCause;
+    };
 
 /**
  * Checks an agent's answer against the agent's output. When the output is a
  * `choice`, the answer, with the whitespace around it trimmed, must be one of
  * its options, exactly and case-sensitively, and the output is the option
- * itself; any other answer fails with `answer-not-an-option`. The engine
- * never guesses the closest option. When the output is `json`, a text answer
+ * itself; any other answer fails with `answer-not-an-option`, and with a
+ * cause that names the agent and the choices but not the answer
+ * (`events.answer-choices`). The engine never guesses the closest option. When the output is `json`, a text answer
  * must be JSON, alone or inside one Markdown code fence, and the output is
  * the parsed value; any other text fails with an error that says so. The
  * engine never keeps the text in its place. Any other answer is kept as it
@@ -47,7 +59,11 @@ function checkChoice(agentId: string, options: readonly string[], answer: unknow
   const trimmed = typeof answer === "string" ? answer.trim() : null;
   const option = options.find((candidate) => candidate === trimmed);
   return option === undefined
-    ? { error: notAnOptionError(agentId, options, answer), reason: "answer-not-an-option" }
+    ? {
+        error: notAnOptionError(agentId, options, answer),
+        reason: "answer-not-an-option",
+        cause: answerNotAnOptionCause({ agent: agentId, options }),
+      }
     : { output: option };
 }
 

@@ -55,7 +55,7 @@ export type StateOutcome =
       readonly type: "fail";
       readonly error: string;
       readonly reason?: RunFailureReason;
-      /** The typed cause of a budget stop that came up from a child run. */
+      /** The typed cause: a budget stop that came up from a child run, or an answer that isn't one of the choices. */
       readonly cause?: RunFailureCause;
       /** The agent whose instructions weren't trusted, with what the check saw in `refusal`. */
       readonly agent?: string;

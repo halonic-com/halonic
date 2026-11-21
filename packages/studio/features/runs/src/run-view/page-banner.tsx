@@ -15,6 +15,7 @@ import type { InstructionTrustHost, SourcedRun } from "../api.ts";
 import { failureWords } from "../failure-words.ts";
 import { runPageWords } from "../run-words.ts";
 import { BlockedFailureBanner, blockedFailure } from "./blocked-banner.tsx";
+import { seeTheStepText } from "./blocked-sites.tsx";
 import type { StepEntry } from "./every-step-model.ts";
 import { agentNameOf, causeBanner } from "./failure-banner.ts";
 import { refusedInstructions } from "./instructions-refusal.ts";
@@ -115,6 +116,7 @@ export function PageBanner({
       runAgain={runAgain}
       openModels={openModels}
       openBudget={openBudget}
+      seeStep={failedStepOpener(entries, onSeeStep)}
     />
   );
 }
@@ -190,6 +192,7 @@ function Banner({
   runAgain,
   openModels,
   openBudget,
+  seeStep,
 }: {
   readonly banner: RunBanner | undefined;
   readonly reviewInInbox: (() => void) | undefined;
@@ -197,6 +200,8 @@ function Banner({
   readonly runAgain: RunAgain | undefined;
   readonly openModels?: ((alias?: string) => void) | undefined;
   readonly openBudget?: (() => void) | undefined;
+  /** Opens the failed step's panel, for **See the step**; absent while no step is marked failed. */
+  readonly seeStep: (() => void) | undefined;
 }) {
   const writeClipboard = useWriteClipboard();
   const toasts = useToastStore();
@@ -211,7 +216,7 @@ function Banner({
   const own = bannerAction(banner.action, reviewInInbox, openRun);
   const buttonsOf = (list: readonly BannerFix[] | undefined) =>
     (list ?? []).flatMap((fix) =>
-      fixAction(fix, writeClipboard, toasts, { openModels, openBudget }, openExternal),
+      fixAction(fix, writeClipboard, toasts, { openModels, openBudget, seeStep }, openExternal),
     );
   const fixes = buttonsOf(banner.fixes);
   const links = buttonsOf(banner.links);
@@ -265,7 +270,7 @@ function bannerAction(
   return undefined;
 }
 
-/** A fix's button, or nothing when the page can't do it: Models and Budget can't be opened on every page. A page outside Studio opens through the host. */
+/** A fix's button, or nothing when the page can't do it: Models and Budget can't be opened on every page, and a step only once it is marked failed. A page outside Studio opens through the host. */
 function fixAction(
   fix: BannerFix,
   writeClipboard: (text: string) => Promise<boolean>,
@@ -273,6 +278,7 @@ function fixAction(
   open: {
     readonly openModels: ((alias?: string) => void) | undefined;
     readonly openBudget: (() => void) | undefined;
+    readonly seeStep: (() => void) | undefined;
   },
   openExternal: (address: string) => Promise<void>,
 ): CalloutAction[] {
@@ -306,6 +312,10 @@ function fixAction(
       ? []
       : [{ label: runPageWords.changeBudget, onClick: () => openBudget() }];
   }
+  if (fix.kind === "see-step") {
+    const seeStep = open.seeStep;
+    return seeStep === undefined ? [] : [{ label: seeTheStepText(), onClick: () => seeStep() }];
+  }
   const openModels = open.openModels;
   if (openModels === undefined) {
     return [];
@@ -319,6 +329,15 @@ function fixAction(
       },
     },
   ];
+}
+
+/** Opens the panel of the step the run failed in, or `undefined` while no step is marked failed. */
+function failedStepOpener(
+  entries: readonly StepEntry[],
+  onSeeStep: (entryId: string) => void,
+): (() => void) | undefined {
+  const failed = entries.findLast((entry) => entry.mark === "failed");
+  return failed === undefined ? undefined : () => onSeeStep(failed.id);
 }
 
 /** The agent the sandbox stopped, as its file names it (the log gives its id). */

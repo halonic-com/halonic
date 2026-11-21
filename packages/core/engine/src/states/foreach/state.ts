@@ -90,7 +90,11 @@ function takeCallResult(context: StateContext<"foreach">, input: EffectDoneInput
   const checked = checkAnswer(context.agents, agent, result.output, stepOutput);
   if ("error" in checked) {
     const error = `Item ${running.item} of for-each state "${context.stateId}" failed: ${checked.error}`;
-    return { ...nothing, outcome: { type: "fail", error, reason: checked.reason } };
+    const { reason, cause } = checked;
+    return {
+      ...nothing,
+      outcome: { type: "fail", error, reason, ...(cause === undefined ? {} : { cause }) },
+    };
   }
   const output = checked.output;
   const finished: DecidedEvent = {

@@ -61,8 +61,8 @@ export type BannerAction =
   | { readonly kind: "open-run"; readonly runId: string; readonly label: string };
 
 /**
- * A button that mends a failed run's cause: copy the command that does it, go to Models or the
- * budget, or open a page outside Studio (`address` is already checked: see `googleConsoleAddress`).
+ * A button that mends a failed run's cause: copy the command that does it, go to Models, the
+ * budget or the failed step, or open a page outside Studio (`address` is already checked: see `googleConsoleAddress`).
  */
 export type BannerFix =
   | { readonly kind: "copy-command"; readonly command: string }
@@ -73,6 +73,8 @@ export type BannerFix =
   | { readonly kind: "open-models"; readonly alias?: string; readonly label?: string }
   /** **Change budget**: Workspace settings at its Budget block (`workspace.open-budget`). */
   | { readonly kind: "change-budget" }
+  /** **See the step**: opens the panel of the step the run failed in, as a blocked run's banner does. */
+  | { readonly kind: "see-step" }
   | {
       readonly kind: "open-external";
       readonly label: string;
