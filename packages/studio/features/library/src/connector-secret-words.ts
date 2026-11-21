@@ -14,9 +14,12 @@ export const connectorSecretWords = {
     "not-set": "Not set",
     unknown: "Can't check",
   } satisfies Record<ConnectorSecretState, string>,
-  /** Under the name: where it's kept and who gets it. */
+  /**
+   * Under the name: where it's kept and where it goes. It doesn't say "only": another connector
+   * or a model may name the same secret.
+   */
   storedLine: (source: string) =>
-    `Stored in your secrets on this computer. Only the program ${source} starts gets it.`,
+    `Stored in your secrets on this computer. ${source} gives it to the program it starts.`,
   /** In the empty entry once a value is stored: typing one replaces it. */
   replacePlaceholder: "Type a new value to replace it",
   remove: "Remove",
