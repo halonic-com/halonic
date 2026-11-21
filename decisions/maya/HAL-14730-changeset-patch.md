@@ -3,6 +3,7 @@
 - Task: HAL-14730
 - Approval: Liam decided this on HAL-14730 (rebase #4241 after #4242, add the patch-only check to the `changesets` rule); he reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:rIDFs3myASkpmOpaxw97SuIVFEjz8ulg4wcdwDC9I6pwg7oLid+3OBgHoSYp6qsmAyM1qz1weGMsxVffzOrWAw==
 
 ## What changes
 
