@@ -14,7 +14,10 @@ import { gitHubGet, runJobs, turnReport, unfinishedLiveRuns } from "./live-turn.
 const step = (name: string, status: string) => ({ name, status });
 
 /** A live-cloud job at a point in its life. */
-function liveJob(stage: "waiting" | "suites" | "sweeping" | "finished"): JobState {
+function liveJob(stage: "queued" | "waiting" | "suites" | "sweeping" | "finished"): JobState {
+  if (stage === "queued") {
+    return { name: "live-cloud", status: "queued", steps: [] };
+  }
   const waitDone = stage === "waiting" ? "in_progress" : "completed";
   const suitesDone = stage === "sweeping" || stage === "finished" ? "completed" : "queued";
   return {
@@ -62,25 +65,46 @@ function fakeDeps(
 verifies("check.live-turn", () => {
   describe("runStanding", () => {
     test("reads where a run stands from its live job's steps", () => {
-      expect(runStanding(planning)).toBe("before");
-      expect(runStanding([liveJob("waiting")])).toBe("before");
+      expect(runStanding(planning)).toBe("unstarted");
+      expect(runStanding([liveJob("queued")])).toBe("unstarted");
+      expect(runStanding([liveJob("waiting")])).toBe("waiting");
       expect(runStanding([liveJob("suites")])).toBe("holding");
       expect(runStanding([liveJob("sweeping")])).toBe("done");
       expect(runStanding([liveJob("finished")])).toBe("done");
     });
+
+    test("counts a holder cancelled mid-suites as done", () => {
+      const cancelled: JobState = {
+        name: "live-cloud",
+        status: "completed",
+        steps: [
+          step("Wait for the account", "completed"),
+          step("Run the live suites", "in_progress"),
+        ],
+      };
+      expect(runStanding([cancelled])).toBe("done");
+    });
   });
 
   describe("runsAhead", () => {
-    test("waits for a holder and for lower IDs, never for itself or a done run", () => {
+    test("waits for a holder and for lower waiting IDs, never for itself or a done run", () => {
       const standings = new Map([
-        [3, "before" as const],
+        [3, "waiting" as const],
         [4, "done" as const],
-        [5, "before" as const],
+        [5, "waiting" as const],
         [7, "holding" as const],
-        [9, "before" as const],
+        [9, "waiting" as const],
       ]);
       expect(runsAhead(5, standings)).toEqual([3, 7]);
       expect(runsAhead(3, standings)).toEqual([7]);
+    });
+
+    test("doesn't wait for a lower run that has no runner yet", () => {
+      const standings = new Map([
+        [2, "unstarted" as const],
+        [3, "waiting" as const],
+      ]);
+      expect(runsAhead(5, standings)).toEqual([3]);
     });
   });
 
@@ -97,9 +121,9 @@ verifies("check.live-turn", () => {
       expect(lines).toEqual(["live-turn: waiting for run(s) 7 to finish their live suites."]);
     });
 
-    test("waits for a lower run still planning; that run doesn't wait for this one", async () => {
+    test("waits for a lower run waiting its turn; that run doesn't wait for this one", async () => {
       const { deps } = fakeDeps([
-        { 3: planning },
+        { 3: [liveJob("waiting")] },
         { 3: [liveJob("suites")] },
         { 3: [liveJob("finished")] },
       ]);
@@ -111,6 +135,18 @@ verifies("check.live-turn", () => {
       // Run 5 waits its turn; run 3 sees it, lower ID or not, and goes.
       const lower = fakeDeps([{ 5: [liveJob("waiting")] }]);
       expect((await waitForTurn(3, lower.deps)).outcome).toBe("turn");
+    });
+
+    test("goes ahead of a lower run still planning or queued for a runner", async () => {
+      const { deps } = fakeDeps([{ 2: planning, 3: [liveJob("queued")] }]);
+      expect(await waitForTurn(5, deps)).toEqual({ outcome: "turn", waitedMs: 0, ahead: [] });
+      // Once run 3 has a runner, it waits for run 5 holding the account.
+      const later = fakeDeps([{ 5: [liveJob("suites")] }, { 5: [liveJob("finished")] }]);
+      expect(await waitForTurn(3, later.deps)).toEqual({
+        outcome: "turn",
+        waitedMs: pollMs,
+        ahead: [],
+      });
     });
 
     test("doesn't ask again for the jobs of a run it saw done", async () => {

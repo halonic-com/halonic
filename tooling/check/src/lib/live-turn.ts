@@ -29,8 +29,12 @@ export interface JobState {
   readonly steps: readonly StepState[];
 }
 
-/** Where another run stands with the account. */
-export type RunStanding = "holding" | "before" | "done";
+/**
+ * Where another run stands with the account: `unstarted` until its live job
+ * has a runner, `waiting` while that job waits its turn, then `holding` and
+ * `done`.
+ */
+export type RunStanding = "unstarted" | "waiting" | "holding" | "done";
 
 const stepDone = (job: JobState, name: string): boolean =>
   job.steps.some((step) => step.name === name && step.status === "completed");
@@ -38,32 +42,38 @@ const stepDone = (job: JobState, name: string): boolean =>
 /**
  * Where an unfinished run stands, from its latest attempt's jobs: `holding`
  * while its live job is past the wait and its suites haven't finished,
- * `done` once that job finished or its suites did, and `before` otherwise
- * (still planning, queued, or waiting its own turn).
+ * `done` once that job finished (cancelled mid-suites included) or its suites
+ * did, `waiting` while that job runs but hasn't passed the wait, and
+ * `unstarted` while it has no runner yet (still planning, or queued).
  */
 export function runStanding(jobs: readonly JobState[]): RunStanding {
   const liveJob = jobs.find((job) => job.name === liveJobName);
   if (liveJob === undefined) {
-    return "before";
+    return "unstarted";
   }
   if (liveJob.status === "completed" || stepDone(liveJob, suitesStepName)) {
     return "done";
   }
-  return stepDone(liveJob, waitStepName) ? "holding" : "before";
+  if (stepDone(liveJob, waitStepName)) {
+    return "holding";
+  }
+  return liveJob.status === "in_progress" ? "waiting" : "unstarted";
 }
 
 /**
  * The runs this one waits for: any run holding the account, and any run with
- * a lower ID that hasn't had its turn yet. The lowest unfinished run waits
- * for nobody but a holder, so the queue always moves.
+ * a lower ID that is waiting its turn. A lower run that has no runner yet
+ * isn't ahead, so under a runner backlog the runs that have one don't sit
+ * idle (HAL-14523); it waits for them once it starts. The lowest waiting run
+ * waits for nobody but a holder, so the queue always moves.
  */
 export function runsAhead(ownRunId: number, standings: ReadonlyMap<number, RunStanding>): number[] {
   const ahead: number[] = [];
   for (const [runId, standing] of standings) {
-    if (runId === ownRunId || standing === "done") {
+    if (runId === ownRunId) {
       continue;
     }
-    if (standing === "holding" || runId < ownRunId) {
+    if (standing === "holding" || (standing === "waiting" && runId < ownRunId)) {
       ahead.push(runId);
     }
   }
