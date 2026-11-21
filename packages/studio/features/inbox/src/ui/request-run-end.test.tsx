@@ -73,8 +73,9 @@ async function openSheet() {
   };
   const runsSource = fakeRunsSource();
   const openRun = vi.fn();
+  const toasts = createToastStore();
   const root = render(
-    <ToastStoreProvider store={createToastStore()}>
+    <ToastStoreProvider store={toasts}>
       <PresentationProvider presentation="phone">
         <InboxView
           inbox={new Inbox(fakeRuns([]).runs)}
@@ -87,7 +88,7 @@ async function openSheet() {
   );
   await settled();
   await act(async () => button(root, "New request").click());
-  return { root, runs: runsSource, openRun };
+  return { root, runs: runsSource, openRun, toasts };
 }
 
 function button(root: HTMLElement, name: string): HTMLButtonElement {
@@ -190,6 +191,20 @@ verifies("inbox.request-run-end", () => {
     // The text was sent, so the next request starts empty.
     await act(async () => button(root, "New request").click());
     expect(message(root).value).toBe("");
+  });
+
+  it("swaps the started toast for a finished one when the run finishes without a card", async () => {
+    const { root, runs, openRun, toasts } = await openSheet();
+    await sendRequest(root);
+    expect(toasts.list().map((toast) => toast.title)).toEqual(["Support reply started"]);
+    await act(async () => runs.change([ended("completed")]));
+    await settled();
+    const [finished, ...others] = toasts.list();
+    expect(others).toEqual([]);
+    expect(finished).toMatchObject({ tone: "success", title: "Support reply finished" });
+    expect(finished?.action?.label).toBe("Open run");
+    finished?.action?.onClick();
+    expect(openRun).toHaveBeenCalledWith("acme", "r9");
   });
 
   it("keeps waiting while the run still runs", async () => {
