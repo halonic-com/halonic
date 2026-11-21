@@ -2651,7 +2651,7 @@
     "old": "\"<state>\" uses unknown agent \"<agent>\" (Branch \"<branch>\" of \"<state>\" uses unknown agent \"<agent>\" for a branch), and \"<state>\" goes to unknown state \"<target>\".",
     "new": "\"<state>\" uses the agent \"<agent>\", which its hub doesn't have (the same after Branch \"<branch>\" of \"<state>\"), and \"<state>\" goes to the step \"<target>\", which this workflow doesn't have.",
     "why": "Studio's step card calls these \"Uses a missing agent\" and \"Goes to a missing step\", and its tooltip shows the core's message, so \"unknown agent\" put two names for one problem side by side. A plain \"missing\" would be wrong for an agent that is in another hub, so the words say what holds in both cases, and halonic validate and Studio say the same (Priya's check C576, rows 16 and 17, HAL-15431).",
-    "status": "proposed",
+    "status": "signed-off",
     "checks": [
       {
         "case": "workflow/unknown-agent",
