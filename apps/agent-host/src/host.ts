@@ -42,10 +42,13 @@ import { SessionTable } from "./sandbox/session-table.ts";
 import { SetupJobs, setupRoutes } from "./sandbox/setup-routes.ts";
 import { sweepRoots, takeHostLock } from "./sandbox/sweep-lock.ts";
 import { hostWslRemover, type WslRemover } from "./sandbox/wsl-remove-host.ts";
+import { hostKeychainOf } from "./secrets/host-keychain.ts";
+import type { ShellSecretsChannel } from "./secrets/shell-secrets-channel.ts";
 import { healthRoute } from "./server/health-route.ts";
 import { type HostRoute, serveHostOverFrames, startHostServer } from "./server/host-server.ts";
 import { randomLaunchToken } from "./server/launch-token.ts";
 import { hostIntegrationSignIns } from "./sign-in/host-sign-ins.ts";
+import { carryHostConnection } from "./stdio/frame-stream.ts";
 import { takeStandardOutput } from "./stdio/standard-output.ts";
 import { openTerminal } from "./terminal/open-terminal.ts";
 
@@ -102,6 +105,7 @@ const relayHostPattern = /^127\.0\.0\.1:([1-9][0-9]{0,4})$/;
  * - `--sandbox-cleanup` removes what sessions added to the user's access lists, for the uninstaller (see {@link SrtSandbox.cleanUp}), and prints whether it worked, as JSON. It reads the profile folder from `--profile-folder`, which the executable passes on;
  * - `--sandbox-setting-copy` saves the sandbox choice on standard input in the profile, and `--sandbox-setting-remove` removes it: Studio's shell keeps the copy in Halonic's WSL distro equal to the choice on Windows (see {@link copySandboxSetting}). Both print whether it worked, as JSON;
  * - `--wsl-shared-folders` (with serving) is how Studio's launcher says the host runs in Halonic's WSL distro: every session then denies the distro's shared folders (see {@link WSL_SHARED_FOLDERS}, security review W1);
+ * - `--keychain-relay` (with serving) is how Studio says it keeps the host's own secrets in the OS keychain and answers for them on connection id 0 (see {@link hostKeychainOf});
  * - `--stdio --relay-host 127.0.0.1:<port>` serves over standard input and output (see {@link serveOverFrames});
  * - otherwise it serves on loopback (see {@link serve}).
  *
@@ -168,13 +172,15 @@ export async function run(
     await sweepLeftOverBridges(socketFolder, (text) => io.writeError(text));
   }
   const places = connectorPlaces(given.roots, profileFolder);
+  const profile = optionalProfileOf(profileFolder);
+  const keychain = hostKeychainOf(args, profile, (text) => io.writeError(text));
   const host = hostServices(
     version,
     sandbox,
     socketFolder,
     places,
     profileGoogleSetup(profileFolder, places.workspaceRoots),
-    optionalProfileOf(profileFolder),
+    profile,
     relayPortForServing(args),
     profileFolder === undefined
       ? undefined
@@ -185,10 +191,14 @@ export async function run(
     wslRemoverOf(profileFolder, sharedFolders),
     gatewayFor(gateway, args.includes("--stdio"), (text) => io.writeError(text)),
   );
+  // Waits for the frame stream to run; a move that fails has said why, and is tried again on use.
+  keychain?.secrets.moveOutOfFile().catch(() => undefined);
   try {
-    if (args.includes("--stdio")) return await serveOverFrames(args, io, host);
-    await serve(io, host);
-    return 0;
+    if (args.includes("--stdio")) return await serveOverFrames(args, io, host, keychain?.channel);
+    const ended = await serve(io, host, keychain?.channel);
+    if (ended === undefined) return 0;
+    io.writeError(`The agent host stopped: ${ended.message}\n`);
+    return 1;
   } finally {
     // After serving: its sessions are closed by then.
     await lock?.release().catch((error: unknown) => {
@@ -240,17 +250,31 @@ function argumentAfter(args: readonly string[], name: string): string | undefine
  * started the host, on standard output: never in arguments, the environment
  * or a file, where other programs could read it. The host stops when its
  * standard input closes, so it never outlives that program.
+ *
+ * With `keychain`, standard input and output carry the frames of the host's
+ * secrets channel after the handshake line, and nothing else: standard
+ * output is taken over, so a stray print goes to standard error.
+ *
+ * @returns `undefined` at the end of the input, or the error that broke the secrets channel's frames
  */
-async function serve(io: HostIo, host: HostServices): Promise<void> {
+async function serve(
+  io: HostIo,
+  host: HostServices,
+  keychain: ShellSecretsChannel | undefined,
+): Promise<Error | undefined> {
   const token = randomLaunchToken();
   const server = await startHostServer(token, host.routes);
   host.listeningOn(Number(new URL(server.url).port));
   await host.startGateway((text) => io.writeError(text));
   const handshake: Handshake = { url: server.url, token };
   io.write(`${JSON.stringify(handshake)}\n`);
-  await inputClosed(io.input);
+  const ended =
+    keychain === undefined
+      ? await inputClosed(io.input)
+      : await carryHostConnection({ input: io.input, output: io.takeOutput() }, keychain);
   await host.stop();
   await server.close();
+  return ended;
 }
 
 /**
@@ -264,7 +288,8 @@ async function serve(io: HostIo, host: HostServices): Promise<void> {
  * carries frames only. Requests must name the relay's address
  * (`--relay-host`) in their `Host` header. The host stops when the frame
  * stream ends: at the end of its input, as in the other mode, or when the
- * stream breaks the format.
+ * stream breaks the format. With `keychain`, frames on id 0 are its secrets
+ * channel's.
  *
  * @returns the exit code: 0 at the end of the input, 1 when the stream broke, 2 for a wrong `--relay-host`
  */
@@ -272,6 +297,7 @@ async function serveOverFrames(
   args: readonly string[],
   io: HostIo,
   host: HostServices,
+  keychain: ShellSecretsChannel | undefined,
 ): Promise<number> {
   const relayPort = relayPortOf(args);
   if (relayPort === undefined) {
@@ -284,7 +310,14 @@ async function serveOverFrames(
   output.write(`${JSON.stringify(handshake)}\n`);
   host.listeningOn(relayPort);
   await host.startGateway((text) => io.writeError(text));
-  const server = serveHostOverFrames(token, host.routes, { input: io.input, output }, relayPort);
+  const server = serveHostOverFrames(
+    token,
+    host.routes,
+    { input: io.input, output },
+    relayPort,
+    undefined,
+    keychain,
+  );
   const ended = await server.ended;
   await host.stop();
   await server.close();
@@ -459,11 +492,11 @@ function hostHarnesses(version: string): Harness[] {
   return [claudeCodeHarness({ probe }), codexHarness({ probe, halonicVersion: version })];
 }
 
-function inputClosed(input: Readable): Promise<void> {
+function inputClosed(input: Readable): Promise<undefined> {
   return new Promise((resolve) => {
-    input.once("end", resolve);
-    input.once("close", resolve);
-    input.once("error", () => resolve());
+    input.once("end", () => resolve(undefined));
+    input.once("close", () => resolve(undefined));
+    input.once("error", () => resolve(undefined));
     // Nothing is read from the input yet; reading it lets its end arrive.
     input.resume();
   });
