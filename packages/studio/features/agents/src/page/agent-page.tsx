@@ -1,5 +1,5 @@
 import { type SandboxStartCheck, sandboxStartCheckKey } from "@halonicjs/app";
-import { LetterTile, type Tab, usePresentation } from "@halonicjs/studio-kit";
+import { PlaceIcon, type Tab, usePresentation } from "@halonicjs/studio-kit";
 import {
   type CardStack,
   type CloseStack,
@@ -318,7 +318,7 @@ export function AgentScreen({
   }
   return (
     <ItemPage<AgentView>
-      icon={<LetterTile name={name} />}
+      icon={<PlaceIcon name="agents" />}
       kind={pageWords.kindWord}
       name={name}
       // Until the agent is read there's no name to change.
