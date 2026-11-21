@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this change (HAL-5404, condition S3 from the HAL-5407 review); refusing rather than running `windows-uninstall` is Owen's call on HAL-14806; Liam approved the plan (plan-s3) on HAL-5404 and approves this note in review there
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WPyUh3Pif0gu5mQj+Di+82W9joLc0pcxmhxEkxvO/Niz8CYXC+cLjA7MgMi+Er8Wd2EUQspO7obJe87m2V8EBw==
 
 ## What changes
 
