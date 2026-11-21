@@ -2,7 +2,6 @@
 
 - Approval: Liam decided this on HAL-14304: it builds on the approved C336/C337 wording, so it is a team decision with no board card; the package owner (Liam) signs this note in review
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:1KB4ixFzwj3qKQ8GBlRnUpxNbMttah5t/VE7KIrztTPoj6rDsnmqTtlcbdx2zi97mEXhcYx1v4s7sqGzfLL7Bw==
 - Task: HAL-14304
 
 ## What changes
@@ -34,8 +33,8 @@ was already refused; only its wrong fix line goes. A test now covers both.
 
 ## Tests
 
-No test was weakened or skipped. The control-character test now expects the place in front of
-the reason. New tests: one per case in `add.test.ts` (place and fix, nested folder, tool name,
+No test was weakened or skipped. The control-character test and the `risk` test now expect the
+place in front of the reason. New tests: one per case in `add.test.ts` (place and fix, nested folder, tool name,
 SDK 3 refused and SDK 2 added), the catalogue words in `plugin.test.ts`, and the format check in
 `checks.test.ts`.
 
