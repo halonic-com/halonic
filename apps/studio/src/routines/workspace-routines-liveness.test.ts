@@ -108,6 +108,7 @@ verifies("studio.workspace-routines-live-schedule", () => {
       expect.objectContaining({
         summary: "Mondays at 09:00 (Europe/Amsterdam) → Analyst",
         nextRun: "2026-11-23T08:00:00.000Z",
+        changesNotLive: true,
       }),
     ]);
     expect(await host.startingRoutines({ kind: "agent", hubId: "acme", id: "analyst" })).toEqual([
@@ -129,6 +130,9 @@ verifies("studio.workspace-routines-live-schedule", () => {
     expect((await host.read(weekly)).summary).toBe(
       "Mondays, Wednesdays at 09:00 (Europe/Amsterdam) → Analyst",
     );
-    expect((await host.list())[0]?.nextRun).toBe("2026-11-18T08:00:00.000Z");
+    expect((await host.list())[0]).toMatchObject({
+      nextRun: "2026-11-18T08:00:00.000Z",
+      changesNotLive: false,
+    });
   });
 });

@@ -73,6 +73,21 @@ verifies("routines.list.rows-and-states", () => {
     expect(rowOf(page, "Quiet").textContent).not.toContain("couldn't start");
   });
 
+  it("says Changes not live yet after the summary of a routine whose saved changes aren't live", async () => {
+    const notLive = listing("acme", "weekly", "Weekly report", {
+      summary: "Mondays at 09:00 → Analyst",
+      changesNotLive: true,
+    });
+    const page = await show(
+      <RoutinesView host={memoryHost(hubs, [notLive, ...routines.slice(1)]).host} />,
+    );
+
+    expect(rowOf(page, "Weekly report").textContent).toContain(
+      "Mondays at 09:00 → Analyst · Changes not live yet",
+    );
+    expect(rowOf(page, "Daily at 07:30").textContent).not.toContain("not live");
+  });
+
   it("shows one chip: Off, else Paused until trusted, else Needs sign-in again, else Needs you", async () => {
     const rows = [
       listing("acme", "a", "A", { enabled: false, needsSignIn: true, pausedUntilTrusted: true }),

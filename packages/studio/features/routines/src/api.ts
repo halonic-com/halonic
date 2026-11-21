@@ -51,6 +51,11 @@ export interface RoutineListing extends RoutineRef {
   /** Whether it starts a workflow or an agent, so the row can say which to pick instead. */
   readonly targetKind: RoutineTarget["kind"];
   /**
+   * True while the saved routine differs from its live version, so the row says "Changes not live
+   * yet" after its summary, which is the live one. Absent where the host can't say.
+   */
+  readonly changesNotLive?: boolean | undefined;
+  /**
    * Whether the workflow or agent it starts is in the workspace. When it isn't, the routine can't
    * start, so the row shows "Can't start", why, and no next time.
    */

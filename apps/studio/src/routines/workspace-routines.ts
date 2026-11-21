@@ -195,7 +195,8 @@ export class WorkspaceRoutines implements RoutinesHost {
     const listings = await Promise.all(
       routineFiles(workspace).map(async (file, index): Promise<RoutineListing> => {
         const own = runsOf(runs, routineKeyOf(file));
-        const routine = runningOf(file, await versionsAt(file.path));
+        const versions = await versionsAt(file.path);
+        const routine = runningOf(file, versions);
         const target = targetOfFile(file.value.run, file.hub);
         return {
           hubId: file.hub,
@@ -205,6 +206,7 @@ export class WorkspaceRoutines implements RoutinesHost {
           summary: summaryOf(workspace, routine, file.hub),
           targetName: targetName(workspace, file),
           nextRun: nextRunOf(routine, now, this.#parts.timeZone),
+          changesNotLive: versions?.liveState.state === "not-live",
           targetKind: target.kind,
           targetFound: targetFound(workspace, target),
           problems: errorsOf(workspace, file),

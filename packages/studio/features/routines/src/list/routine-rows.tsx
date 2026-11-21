@@ -48,6 +48,16 @@ function showsNextRun(listing: RoutineListing): listing is RoutineListing & { ne
 }
 
 /**
+ * The routine's line under its name: the summary, which follows the live version, then "Changes not
+ * live yet" while the saved changes aren't live, as the routine's page says it under its summary.
+ */
+function summaryLine(listing: RoutineListing): string {
+  return listing.changesNotLive === true
+    ? `${listing.summary} · ${listWords.changesNotLive}`
+    : listing.summary;
+}
+
+/**
  * The row's time: when its newest due time was refused, that time in place of the next one, which
  * would hide that the last start failed (C552-5); else when it next starts.
  */
@@ -67,7 +77,7 @@ function itemOf(listing: RoutineListing, now: Date): OverviewItem {
     id: rowId(listing),
     name: listing.name,
     description: listing.summary,
-    detail: cantStartReason(listing) ?? listing.summary,
+    detail: cantStartReason(listing) ?? summaryLine(listing),
     ...(time === undefined ? {} : { usedBy: time }),
     avatar: <LetterTile name={listing.name} />,
     ...(hasChip(listing) ? { chips: <Chip listing={listing} /> } : {}),
