@@ -18,11 +18,13 @@ function answering(status: number, message = reason): Server {
 async function printedFor(
   server: Server,
   path: string,
+  debugging = false,
 ): Promise<{ lines: string[]; response: Response }> {
   const printed: Phrase[] = [];
   const reported = reportWebhookRefusals(server, {
     routineName: async (key) => (key === "reports/weekly-report" ? "Weekly report" : null),
     print: (line) => printed.push(line),
+    debugging,
   });
   const response = await reported.handle(
     new Request(`http://localhost:4747${path}`, { method: "POST", body: "{}" }),
@@ -43,18 +45,54 @@ verifies("cli.commands.serve.webhook-refusals", () => {
       expect(((await response.json()) as { message: string }).message).toBe(reason);
     });
 
-    it("points to --debug for a 500", async () => {
+    it("gives a 500 F16's two lines, with serve started again with --debug", async () => {
       const { lines } = await printedFor(answering(500), "/api/webhooks/reports/weekly-report");
 
       expect(lines).toEqual([
-        "✕ Weekly report didn't start on a web request · see why with --debug",
+        "✕ Weekly report didn't start on a web request: Halonic ran into a problem it can't explain yet.",
+        "  Start halonic serve again with --debug to see the details, and report it: https://github.com/halonic-com/halonic/issues",
       ]);
+    });
+
+    it("asks only for the report of a 500 when --debug is on", async () => {
+      const { lines } = await printedFor(
+        answering(500),
+        "/api/webhooks/reports/weekly-report",
+        true,
+      );
+
+      expect(lines[1]).toBe(
+        "  Report it with the details above: https://github.com/halonic-com/halonic/issues",
+      );
     });
 
     it("names the address when no routine is there", async () => {
       const { lines } = await printedFor(answering(400), "/api/webhooks/reports/gone");
 
       expect(lines).toEqual([`✕ reports/gone didn't start on a web request: ${reason}`]);
+    });
+
+    it("names the address and passes the answer on when the routine lookup fails", async () => {
+      const printed: Phrase[] = [];
+      const reported = reportWebhookRefusals(answering(400), {
+        routineName: async () => {
+          throw new Error("routines folder unreadable");
+        },
+        print: (line) => printed.push(line),
+        debugging: false,
+      });
+
+      const response = await reported.handle(
+        new Request("http://localhost:4747/api/webhooks/reports/weekly-report", {
+          method: "POST",
+          body: "{}",
+        }),
+      );
+
+      expect(printed.map(plainText)).toEqual([
+        `✕ reports/weekly-report didn't start on a web request: ${reason}`,
+      ]);
+      expect(response.status).toBe(400);
     });
 
     it("prints nothing for an unsigned request, a start, or a refusal outside webhooks", async () => {

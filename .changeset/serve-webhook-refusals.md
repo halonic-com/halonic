@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-`halonic serve` now says when a webhook routine can't start because of a value its trigger doesn't have, prints a line with the reason for each web request it refuses, and a new how-to explains how to sign a webhook request.
+`halonic serve` now says when a webhook routine can't start because of a trigger value it doesn't have, prints a line when it refuses a signed webhook request (with the reason, or `--debug` for more), and a new how-to explains how to sign one.

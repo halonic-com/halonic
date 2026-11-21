@@ -13,6 +13,7 @@ function placed(
   trigger: object,
   enabled = true,
   input: Record<string, string> = {},
+  run: object = { workflow: "announce", input },
 ): PlacedRoutine {
   return {
     hub: "notes",
@@ -22,7 +23,7 @@ function placed(
       name: id === "friday-digest" ? "Friday digest" : id,
       enabled,
       trigger,
-      run: { workflow: "announce", input },
+      run,
       overlap: "skip",
       catchUp: "last",
     },
@@ -66,6 +67,15 @@ verifies("cli.commands.serve.serve", () => {
       ).toEqual([
         "Friday digest starts on a web request at http://localhost:4747/api/webhooks/notes/friday-digest",
         "✕ Friday digest won't start: its secret name serve-password belongs to Halonic or a plugin. Use a name of your own in its routine file.",
+      ]);
+    });
+
+    it("adds a ✕ line when the routine starts an agent, which the server answers with 501", async () => {
+      const routine = placed("friday-digest", webhook, true, {}, { agent: "helper", prompt: "Hi" });
+
+      expect(await lines([routine], secretsOf({ "friday-hook": "s" }))).toEqual([
+        "Friday digest starts on a web request at http://localhost:4747/api/webhooks/notes/friday-digest",
+        "✕ Friday digest won't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then start that.",
       ]);
     });
 

@@ -15,14 +15,17 @@ export interface WebhookRefusalReport {
   readonly routineName: (key: string) => Promise<string | null>;
   /** Prints one line ahead of the prompt. */
   readonly print: (line: Phrase) => void;
+  /** Whether serve was started with `--debug`, so a 500's cause is printed already. */
+  readonly debugging: boolean;
 }
 
 /**
  * `server`, with a line printed for each webhook delivery it answers with a
- * 400 (the server's reason) or a 500 (the cause goes to `--debug`).
+ * 400 (the server's reason) or a 500 (a bug: F16's two lines, with the
+ * cause under `--debug`).
  *
  * @example
- * reportWebhookRefusals(server, { routineName, print });
+ * reportWebhookRefusals(server, { routineName, print, debugging: false });
  * // "✕ Weekly report didn't start on a web request: {{trigger.date}} isn't a trigger value. …"
  */
 export function reportWebhookRefusals(server: Server, report: WebhookRefusalReport): Server {
@@ -33,9 +36,12 @@ export function reportWebhookRefusals(server: Server, report: WebhookRefusalRepo
       const path = new URL(request.url).pathname;
       if (!path.startsWith(webhookPathPrefix)) return response;
       const key = path.slice(webhookPathPrefix.length);
-      const name = printable((await report.routineName(key)) ?? key);
+      // A lookup that throws names the address instead: the line never stops the answer.
+      const found = await report.routineName(key).catch(() => null);
+      const name = printable(found ?? key);
       if (response.status === 500) {
         report.print(serveMessages.webhookFailed(name).phrase);
+        report.print(serveMessages.webhookFailedFix(report.debugging).phrase);
         return response;
       }
       const body = (await response.clone().json()) as ServerErrorBody;

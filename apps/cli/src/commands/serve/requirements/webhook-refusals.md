@@ -2,11 +2,11 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-15084 (C540 #5: a refused webhook delivery was silent in the terminal); `cli.commands.serve.serve`; `server.webhooks`
+- Source: HAL-15084 (C540 #5: a refused webhook delivery was silent in the terminal); HAL-15277 (C557 row 58: a 500 is a bug, so F16's two lines); `cli.commands.serve.serve`; `server.webhooks`
 
 When a webhook routine that is on has a trigger value `halonic validate` reports, such as `{{trigger.date}}`, the `halonic serve` command shall print, under that routine's "starts on a web request" line, a ✕ line with validate's reason: "✕ Weekly report won't start: {{trigger.date}} isn't a trigger value. Use …". When a routine has more than one, the line shall give the first, the one a start stops at.
 
-While it serves, when the server answers a web request to a webhook address with 400, the command shall print "✕ Weekly report didn't start on a web request: " and the reason the server gave the sender. When it answers 500, the line shall say "✕ Weekly report didn't start on a web request · see why with --debug", and the cause shall show with `--debug`, as for any failed request. The line shall name the routine by its name, or by its address when no routine is there. It shall print nothing for any other answer, such as 401 for a request that isn't signed with the routine's secret, which anyone who can reach the address may send.
+While it serves, when the server answers a web request to a webhook address with 400, the command shall print "✕ Weekly report didn't start on a web request: " and the reason the server gave the sender. When it answers 500, which is a bug, it shall print F16's two lines: "✕ Weekly report didn't start on a web request: Halonic ran into a problem it can't explain yet." and, indented, "Start halonic serve again with --debug to see the details, and report it: https://github.com/halonic-com/halonic/issues", since `--debug` is a flag serve starts with. The cause shall show with `--debug`, as for any failed request; when serve was started with `--debug`, the cause is printed already, so line 2 shall say only "Report it with the details above: https://github.com/halonic-com/halonic/issues". The line shall name the routine by its name, or by its address when no routine is there. It shall print nothing for any other answer, such as 401 for a request that isn't signed with the routine's secret, which anyone who can reach the address may send.
 
 Rationale: the server refuses such a delivery and tells only the sender. The person at the terminal saw the routine's address and then nothing, so a webhook that never started looked like one that was never sent.
 
@@ -14,5 +14,5 @@ Rationale: the server refuses such a delivery and tells only the sender. The per
 
 - Given a webhook routine Weekly report whose input has `{{trigger.date}}`, when `halonic serve` starts, then the line under its address says it won't start and why.
 - Given that routine and a signed delivery to it, then the server answers 400 `invalid_input` and the terminal prints "✕ Weekly report didn't start on a web request: {{trigger.date}} isn't a trigger value. …".
-- Given a delivery that fails inside the server, then the terminal prints the line that points to `--debug`.
+- Given a delivery that fails inside the server, then the terminal prints "✕ Weekly report didn't start on a web request: Halonic ran into a problem it can't explain yet." and the line under it says to start `halonic serve` again with `--debug` and report it; with `--debug` on, it says only to report it with the details above.
 - Given a delivery with a wrong signature, then the server answers 401 and the terminal prints nothing.
