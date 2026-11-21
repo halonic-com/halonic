@@ -101,22 +101,6 @@ verifies("remote.pair-a-phone", () => {
     expect(text).toContain("Reached through Tailscale");
   });
 
-  it("puts the steps below the QR code when the dialog is too narrow for both (C306 PP3)", async () => {
-    await openDialog();
-    const steps = dialog()?.querySelector("ol");
-    const row = steps?.parentElement;
-
-    expect(row?.querySelector('[role="img"]')).not.toBeNull();
-    expect(row?.className.split(" ")).toContain("flex-wrap");
-    // At least 12rem beside the code, or a line of its own that may shrink to the dialog.
-    expect(steps?.className.split(" ")).toEqual(
-      expect.arrayContaining(["flex-[1_1_12rem]", "min-w-0"]),
-    );
-    expect(buttonIn(dialog(), "New code")?.parentElement?.className.split(" ")).toContain(
-      "flex-wrap",
-    );
-  });
-
   it("counts the time down as text, once a second", async () => {
     vi.useFakeTimers();
     let now = Date.parse("2026-11-16T08:00:00.000Z");
@@ -202,11 +186,36 @@ verifies("remote.pair-a-phone", () => {
   });
 });
 
+verifies("remote.pair-a-phone-narrow", () => {
+  it("puts the steps below the QR code when the dialog is too narrow for both (C306 PP3)", async () => {
+    await openDialog();
+    const steps = dialog()?.querySelector("ol");
+    const row = steps?.parentElement;
+
+    expect(row?.querySelector('[role="img"]')).not.toBeNull();
+    expect(row?.className.split(" ")).toContain("flex-wrap");
+    // At least 12rem beside the code, or a line of its own that may shrink to the dialog.
+    expect(steps?.className.split(" ")).toEqual(
+      expect.arrayContaining(["flex-[1_1_12rem]", "min-w-0"]),
+    );
+    expect(buttonIn(dialog(), "New code")?.parentElement?.className.split(" ")).toContain(
+      "flex-wrap",
+    );
+  });
+});
+
 verifies("remote.pair-a-phone-problems", () => {
   const focused = () => document.activeElement?.textContent;
 
-  it("says the code ran out, and Make a new code shows a new one", async () => {
-    const { time } = await openDialog();
+  it("says the code ran out, and Make a new code shows a new one from the same pairing", async () => {
+    let started = 0;
+    const { remote, time } = await openDialog((fake) => {
+      const start = fake.startPairing.bind(fake);
+      vi.spyOn(fake, "startPairing").mockImplementation(() => {
+        started++;
+        return start();
+      });
+    });
     const first = typedCode();
 
     time.advance(5 * 60_000);
@@ -214,9 +223,13 @@ verifies("remote.pair-a-phone-problems", () => {
 
     expect(dialog()?.textContent).toContain("The code ran out");
     expect(focused()).toBe("Make a new code");
+    expect(remote.snapshot.on).toBe(true);
     await press(buttonIn(dialog(), "Make a new code"));
     expect(typedCode()).toBeDefined();
     expect(typedCode()).not.toBe(first);
+    // A new code on the open pairing, so remote stayed on throughout (HAL-14060).
+    expect(started).toBe(1);
+    expect(remote.snapshot.on).toBe(true);
   });
 
   it("says why else a pairing ended: too many tries, another pairing, remote off", async () => {
@@ -257,6 +270,7 @@ verifies("remote.pair-a-phone-problems", () => {
     await press(buttonIn(dialog(), "Don't allow"));
 
     expect(remote.snapshot.phones).toHaveLength(0);
+    expect(remote.snapshot.pairing).toBe(true);
     expect(focused()).toContain("Pairing was not allowed");
     // Its title shows first, even where the group is taller than the dialog (C306 PP2).
     const top = scrolled.mock.contexts.at(-1) as Element | undefined;

@@ -157,8 +157,9 @@ export function PairedStep({
 }
 
 /**
- * The words for a pairing that ended without a phone, other than by the tunnel. `closed` never
- * shows and `denied` goes straight on to a new code (see `usePairing`), so theirs are a fallback.
+ * The words for a code that stopped working or a pairing that ended without a phone, other than
+ * by the tunnel. `closed` never shows and `denied` goes straight on to a new code (see
+ * `usePairing`), so theirs are a fallback.
  */
 const endedWords: Record<Exclude<EndedEvent["reason"], "tunnel-down">, words.EndedWords> = {
   closed: words.RAN_OUT,

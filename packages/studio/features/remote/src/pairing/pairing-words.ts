@@ -79,7 +79,7 @@ export const CHECK_AGAIN = "Check again";
 export interface EndedWords {
   readonly title: string;
   readonly line: string;
-  /** The button that starts a new pairing. */
+  /** The button that makes a new code, on a new pairing if this one ended. */
   readonly action: string;
 }
 
