@@ -2404,8 +2404,15 @@ jobs:
         run: |
           $version = (Get-Content apps/studio/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
           $setup = Resolve-Path "dist/Halonic-$version-windows-x64-setup.exe"
+          # The page walk sets the sandbox up for real, and its silent
+          # uninstall can leave it. Take it away first, or this step proves
+          # nothing. Nothing of Halonic may still run: srt removes nothing
+          # while a sandboxed program holds its grants.
+          Get-Process Halonic, halonic-agent-host -ErrorAction SilentlyContinue | Stop-Process -Force
+          $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $env:HALONIC_TEST_DIR 'sandbox-remove.ps1') -HostExe (Join-Path $env:HALONIC_TEST_DIR 'halonic-agent-host.exe') -ProfileFolder (Join-Path $env:RUNNER_TEMP 'sandbox-install-profile')
+          if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 20) { throw "Removing the earlier steps' sandbox failed (exit $LASTEXITCODE): $out" }
           & net.exe user srt-sandbox *> $null
-          if ($LASTEXITCODE -eq 0) { throw 'The sandbox was set up before this step, so the step proves nothing' }
+          if ($LASTEXITCODE -eq 0) { throw 'The sandbox is still set up before this step, so the step proves nothing' }
           $p = Start-Process $setup -ArgumentList '/S', '/SANDBOX=1', "/D=$env:HALONIC_TEST_DIR" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "The installer exited with $($p.ExitCode)" }
           & net.exe user srt-sandbox *> $null

@@ -9,8 +9,8 @@ The installer now starts the signed helper itself with `ShellExecuteExW("runas")
 
 Before it starts the helper, the installer opens it shared for reading only and keeps it open until Windows has started it, so nothing can write, rename or delete it between the two; if it can't be opened, it isn't started (HAL-14958). It doesn't check the helper's publisher: it wrote the helper from its own signed payload a moment before, and a publisher check from the 32-bit NSIS installer isn't cheap. Studio checks it (#4388).
 
-The CI change follows the scripts: the stand-in host answers `--sandbox-check`, the `-CheckOnly` outcomes get their own cases, and a new step installs with `/S /SANDBOX=1` on the elevated runner, where Windows doesn't ask, and checks that the installer itself left the sandbox set up (the `srt-sandbox` account and its Installed apps entry). Nothing is skipped or weakened.
+The CI change follows the scripts: the stand-in host answers `--sandbox-check`, the `-CheckOnly` outcomes get their own cases, and a new step installs with `/S /SANDBOX=1` on the elevated runner, where Windows doesn't ask, and checks that the installer itself left the sandbox set up (the `srt-sandbox` account and its Installed apps entry). That step first removes a sandbox the earlier page walk left, with the installed `sandbox-remove.ps1`, so it starts from nothing. Nothing is skipped or weakened.
 
 ## Covers
 
-- .github/workflows/ci.yml
+- .github/
