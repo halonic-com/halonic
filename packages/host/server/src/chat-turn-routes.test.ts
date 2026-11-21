@@ -290,7 +290,28 @@ describe("chat turn route", () => {
 
 describe("chat turn model address", () => {
   verifies("server.chat-turn-model-address", () => {
-    it("refuses settings the gate doesn't allow, before the trust gate and the executor", async () => {
+    it("answers that the workspace needs trust, without asking the gate, when it isn't trusted", async () => {
+      const asked: unknown[] = [];
+      const { server, calls } = setup({
+        state: { state: "changed", message: "Changed since it was trusted." },
+        modelSettings: {
+          allows: async (...args) => {
+            asked.push(args);
+            return false;
+          },
+        },
+      });
+      const response = await turn(server, {
+        ...valid,
+        agent: { type: "anthropic", model: "m", secret: "anthropic-key", local: false },
+      });
+      expect(response.status).toBe(403);
+      expect(await codeOf(response)).toBe("workspace_not_trusted");
+      expect(asked).toEqual([]);
+      expect(calls.turns).toEqual([]);
+    });
+
+    it("refuses settings the gate doesn't allow, before the executor", async () => {
       const asked: unknown[] = [];
       const { server, calls } = setupWithGate(async (hubId, settings) => {
         asked.push([hubId, settings]);
