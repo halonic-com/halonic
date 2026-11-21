@@ -220,12 +220,12 @@ verifies("runs.run-page", () => {
     });
 
     it("says a child run was cancelled because its parent ended, and links to the parent", () => {
-      const withParent = {
+      const olderLog = {
         status: "failed" as const,
         reason: "cancelled" as const,
         parentRunId: "run_c_4f2a1b",
-        cause: parentEndedCause,
       };
+      const withParent = { ...olderLog, cause: parentEndedCause };
       const parent = { kind: "open-run", runId: "run_c_4f2a1b", label: "Open run 4f2a1b" };
       expect(page({ ...withParent, state: "draft" }).banner).toEqual({
         kind: "note",
@@ -238,7 +238,7 @@ verifies("runs.run-page", () => {
         parent,
       });
       // An older log has no cause: the plain note, as before.
-      expect(page({ ...withParent, cause: undefined, state: "draft" }).banner).toEqual({
+      expect(page({ ...olderLog, state: "draft" }).banner).toEqual({
         kind: "note",
         text: "Support reply was cancelled in the step Draft. Nothing after it ran.",
       });
