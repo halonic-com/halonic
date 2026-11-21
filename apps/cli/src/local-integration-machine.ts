@@ -78,8 +78,11 @@ export interface ComputerIntegrationInput {
   /** What the integration's own requests go out through; the sheet limits the hosts, and a host it lists under `localHosts` may be this computer or the home network. */
   readonly transport?: AddressCheckingHttpClient;
   readonly environment?: ProfileEnvironment;
-  /** The fenced sandbox the gate checks at every start; `srt` when left out. A test passes one whose check fails. */
-  readonly fenced?: Sandbox;
+  /**
+   * For tests only: the fenced sandbox the gate checks at every start, in place of `srt`.
+   * A test passes one whose check fails. The command never sets it.
+   */
+  readonly testFencedSandbox?: Sandbox;
 }
 
 /**
@@ -94,7 +97,7 @@ export function computerIntegrationMachine(
   const gate = new RunnerStartGate({
     platform: process.platform,
     // Records each session's folders, so a sweep on this profile never takes a live one's grant (HAL-6780).
-    fenced: input.fenced ?? recordingSrtSandbox(profile),
+    fenced: input.testFencedSandbox ?? recordingSrtSandbox(profile),
     launcher: createHostSandbox(),
     runs: new UnfencedRuns({
       store: noUnfencedRunConsent,

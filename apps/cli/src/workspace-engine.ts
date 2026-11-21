@@ -297,7 +297,14 @@ function computerRunConnectors(
 ): LocalRunConnectorsInput {
   const profile = profileFolder(environment);
   const machine = nodeConnectorMachine(environment);
-  const integrations = computerIntegrationMachine({ ...target, trust: machine, environment });
+  // Named fields only: `Pick` narrows the type, not the object, so a spread
+  // would pass on any field the target gains, such as one that replaces the fence.
+  const integrations = computerIntegrationMachine({
+    dir: target.dir,
+    workspace: target.workspace,
+    trust: machine,
+    environment,
+  });
   const plugins = computerPluginMachine(integrations, { trust: machine, environment });
   const fence = {
     // Records each session's folders, so a sweep on this profile never takes a live one's grant (HAL-6780).
