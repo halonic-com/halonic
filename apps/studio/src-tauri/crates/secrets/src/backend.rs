@@ -70,7 +70,10 @@ pub fn check_value(value: &str) -> Result<(), SecretError> {
 
 /// Checks a value for one backend: [`check_value`], and no longer than the
 /// backend can keep.
-fn check_value_fits(backend: &dyn SecretBackend, value: &str) -> Result<(), SecretError> {
+pub(crate) fn check_value_fits(
+    backend: &dyn SecretBackend,
+    value: &str,
+) -> Result<(), SecretError> {
     check_value(value)?;
     if value.len() > backend.max_value_bytes() {
         return Err(SecretError::InvalidValue);
