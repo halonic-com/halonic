@@ -3,6 +3,8 @@
 //! `tcp:` for WebSocket over a plain TCP stream that carries only the
 //! end-to-end session. Plain `ws:` and `http:` are never given.
 
+use std::fmt;
+
 /// The path the gateway takes a WebSocket on (`gatewayPath` on the host).
 pub const GATEWAY_PATH: &str = "/v1/gateway";
 
@@ -70,6 +72,25 @@ impl Endpoint {
             self.host.clone()
         };
         format!("{scheme}://{host}:{}{GATEWAY_PATH}", self.port)
+    }
+}
+
+/// The endpoint as a URL, as the phone keeps it with a paired computer:
+/// `tcp://` or `wss://`, the host (an IPv6 address in brackets), and the
+/// port unless it is a TLS endpoint's 443. [`Endpoint::parse`] reads it
+/// back to the same endpoint.
+impl fmt::Display for Endpoint {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let scheme = if self.secure { "wss" } else { "tcp" };
+        if self.host.contains(':') {
+            write!(formatter, "{scheme}://[{}]", self.host)?;
+        } else {
+            write!(formatter, "{scheme}://{}", self.host)?;
+        }
+        if self.secure && self.port == TLS_DEFAULT_PORT {
+            return Ok(());
+        }
+        write!(formatter, ":{}", self.port)
     }
 }
 

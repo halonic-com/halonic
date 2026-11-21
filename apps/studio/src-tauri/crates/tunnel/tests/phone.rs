@@ -381,3 +381,23 @@ async fn reconnect_next_try_phone_tries_now() {
     gateway.handshake(&mut again).await;
     until(&mut events, PhoneEvent::SessionOpened).await;
 }
+
+#[tokio::test]
+async fn reconnect_next_try_phone_try_now_does_nothing_while_paused() {
+    let gateway = Gateway::start().await;
+    let (phone, mut events, mut server) = connect(&gateway).await;
+    gateway.handshake(&mut server).await;
+    until(&mut events, PhoneEvent::SessionOpened).await;
+
+    phone.pause();
+    until(&mut events, PhoneEvent::Status(PhoneStatus::Paused)).await;
+    phone.try_now();
+    // FAST tries again within 100 ms, so a quiet half second means no try.
+    let quiet = timeout(Duration::from_millis(500), gateway.listener.accept()).await;
+    assert!(quiet.is_err(), "Try now connected while paused");
+
+    phone.resume();
+    let mut again = gateway.accept().await;
+    gateway.handshake(&mut again).await;
+    until(&mut events, PhoneEvent::SessionOpened).await;
+}

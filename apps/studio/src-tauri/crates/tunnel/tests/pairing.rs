@@ -52,7 +52,7 @@ impl Gateway {
 
     fn request(&self, route: PairingRoute) -> PairingRequest {
         PairingRequest {
-            endpoint: self.endpoint(),
+            endpoints: vec![self.endpoint()],
             code: PairingCode::parse(CODE).unwrap(),
             route,
             phone: PhoneDetails {
@@ -274,5 +274,78 @@ async fn phone_pairing_says_why_the_computer_could_not_be_reached() {
     assert_eq!(
         problem,
         Some(PairingProblem::CantReach(ConnectError::Refused))
+    );
+}
+
+#[tokio::test]
+async fn phone_pairing_endpoints_move_on_only_when_a_connection_does_not_open() {
+    let gone = Gateway::start().await;
+    let gone_endpoint = gone.endpoint();
+    drop(gone);
+    let gateway = Gateway::start().await;
+    let mut request = gateway.request(PairingRoute::Typed);
+    request.endpoints = vec![gone_endpoint, gateway.endpoint()];
+    let phone = tokio::spawn(start_pairing(request, Dialer::without_tls(), FAST));
+    let mut server = gateway.accept().await;
+    let mut noise = gateway.answer_message_1(&mut server, CODE).await;
+    let frame3 = binary(&mut server).await;
+    read_handshake(&mut noise, FrameKind::Pair3, &frame3).unwrap();
+    let check = phone.await.unwrap().expect("the second endpoint pairs");
+    assert_eq!(check.endpoint, gateway.endpoint());
+
+    answer(&mut server, noise, json!({ "type": "paired" })).await;
+    let paired = check.wait_for_allow().await.expect("paired");
+    assert_eq!(paired.endpoint, gateway.endpoint());
+}
+
+#[tokio::test]
+async fn phone_pairing_endpoints_give_the_last_reason_when_none_opens() {
+    let first = Gateway::start().await;
+    let second = Gateway::start().await;
+    let mut request = first.request(PairingRoute::Typed);
+    request.endpoints = vec![first.endpoint(), second.endpoint()];
+    drop((first, second));
+    let problem = start_pairing(request, Dialer::without_tls(), FAST)
+        .await
+        .err();
+    assert_eq!(
+        problem,
+        Some(PairingProblem::CantReach(ConnectError::Refused))
+    );
+
+    let mut request = Gateway::start().await.request(PairingRoute::Typed);
+    request.endpoints = Vec::new();
+    let problem = start_pairing(request, Dialer::without_tls(), FAST)
+        .await
+        .err();
+    assert_eq!(
+        problem,
+        Some(PairingProblem::CantReach(ConnectError::Unreachable))
+    );
+}
+
+#[tokio::test]
+async fn phone_pairing_endpoints_never_move_on_once_a_connection_opened() {
+    // The first computer takes the connection and message 1, then drops
+    // it: the pairing ran there, so the phone stops instead of starting
+    // another one elsewhere.
+    let first = Gateway::start().await;
+    let second = Gateway::start().await;
+    let mut request = first.request(PairingRoute::Typed);
+    request.endpoints = vec![first.endpoint(), second.endpoint()];
+    let phone = tokio::spawn(start_pairing(request, Dialer::without_tls(), FAST));
+    let mut server = first.accept().await;
+    binary(&mut server).await;
+    drop(server);
+    let problem = phone.await.unwrap().err();
+    assert!(
+        matches!(problem, Some(PairingProblem::CantReach(_))),
+        "{problem:?}"
+    );
+    assert!(
+        timeout(Duration::from_millis(300), second.listener.accept())
+            .await
+            .is_err(),
+        "the second endpoint is never tried"
     );
 }

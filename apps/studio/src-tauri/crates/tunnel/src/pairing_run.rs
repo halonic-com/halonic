@@ -1,5 +1,5 @@
 //! One pairing over the network (requirement `phone-pairing`): a single
-//! connection to the endpoint from the QR code or the typed address, the
+//! connection to an endpoint from the QR code or the typed address, the
 //! pairing handshake on it, the check code, and the computer's answer once
 //! the person has pressed Allow or not (ADR "Pairing and the end-to-end
 //! session", pairing rules).
@@ -30,7 +30,11 @@ pub const ALLOW_TIMEOUT: Duration = Duration::from_secs(130);
 
 /// What the phone needs to start a pairing.
 pub struct PairingRequest {
-    pub endpoint: Endpoint,
+    /// Where to reach the computer, the one to try first first. The pairing
+    /// moves on to the next only when a connection doesn't open, before
+    /// anything is sent, so a try at another endpoint never costs the code
+    /// a wrong try.
+    pub endpoints: Vec<Endpoint>,
     pub code: PairingCode,
     pub route: PairingRoute,
     pub phone: PhoneDetails,
@@ -81,6 +85,8 @@ impl PairingOptions {
 pub struct PairingAtCheck {
     pub host_name: String,
     pub check_code: CheckCode,
+    /// The endpoint the connection opened on.
+    pub endpoint: Endpoint,
     host_key: [u8; KEY_BYTES],
     keys: PhoneKeys,
     session: Session,
@@ -92,12 +98,14 @@ pub struct PairingAtCheck {
 /// for this computer, to keep.
 pub struct Paired {
     pub host_name: String,
+    /// The endpoint the pairing ran on, to reconnect through first.
+    pub endpoint: Endpoint,
     pub host_key: [u8; KEY_BYTES],
     pub keys: PhoneKeys,
 }
 
-/// Connects to the computer, runs pairing messages 1 to 3 with a new key
-/// pair, and stops at the check code.
+/// Connects to the computer at the first endpoint that opens, runs pairing
+/// messages 1 to 3 with a new key pair, and stops at the check code.
 pub async fn start_pairing(
     request: PairingRequest,
     dialer: Dialer,
@@ -105,7 +113,7 @@ pub async fn start_pairing(
 ) -> Result<PairingAtCheck, PairingProblem> {
     let keys = PhoneKeys::generate()?;
     let (pairing, frame1) = Pairing::start(&keys, &request.code, request.route, &request.phone)?;
-    let mut link = Link::open(request.endpoint, dialer, options.timeouts).await?;
+    let (mut link, endpoint) = Link::open(request.endpoints, dialer, options.timeouts).await?;
     link.send(frame1).await?;
     let deadline = tokio::time::Instant::now() + options.handshake_timeout;
     // A computer that doesn't answer message 1 is as good as unreachable.
@@ -116,6 +124,7 @@ pub async fn start_pairing(
     Ok(PairingAtCheck {
         host_name: check.host_name,
         check_code: check.check_code,
+        endpoint,
         host_key: check.host_key,
         keys,
         session: check.session,
@@ -142,6 +151,7 @@ impl PairingAtCheck {
             return match read_answer(&message) {
                 Answer::Paired => Ok(Paired {
                     host_name: self.host_name,
+                    endpoint: self.endpoint,
                     host_key: self.host_key,
                     keys: self.keys,
                 }),
@@ -190,16 +200,33 @@ struct Link {
 }
 
 impl Link {
+    /// Opens a connection at the first of `endpoints` that takes one, and
+    /// gives it with that endpoint. When none does, the last one's reason.
     async fn open(
-        endpoint: Endpoint,
+        endpoints: Vec<Endpoint>,
         dialer: Dialer,
         timeouts: Timeouts,
+    ) -> Result<(Self, Endpoint), PairingProblem> {
+        let mut reason = ConnectError::Unreachable;
+        for endpoint in endpoints {
+            let connecting =
+                Transport::connect(endpoint.clone(), dialer.clone(), Backoff::TUNNEL, timeouts);
+            match connecting.await {
+                Ok((transport, events)) => {
+                    return Ok((Self::opened(transport, events).await?, endpoint));
+                }
+                Err(error) => reason = error,
+            }
+        }
+        Err(PairingProblem::CantReach(reason))
+    }
+
+    async fn opened(
+        transport: Transport,
+        mut events: UnboundedReceiver<TransportEvent>,
     ) -> Result<Self, PairingProblem> {
-        let (transport, mut events) =
-            Transport::connect(endpoint, dialer, Backoff::TUNNEL, timeouts)
-                .await
-                .map_err(PairingProblem::CantReach)?;
         let Some(TransportEvent::Opened(connection)) = events.recv().await else {
+            transport.close();
             return Err(PairingProblem::CantReach(ConnectError::Unreachable));
         };
         Ok(Self {

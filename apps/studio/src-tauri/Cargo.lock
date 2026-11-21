@@ -1695,6 +1695,22 @@ name = "halonic-owner-check"
 version = "0.1.0"
 
 [[package]]
+name = "halonic-phone-tunnel"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "halonic-blob-store",
+ "halonic-connect",
+ "halonic-device-keys",
+ "halonic-tunnel",
+ "serde",
+ "serde_json",
+ "snow",
+ "tokio",
+ "tokio-tungstenite",
+]
+
+[[package]]
 name = "halonic-process-probe"
 version = "0.1.0"
 dependencies = [
