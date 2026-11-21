@@ -1,5 +1,5 @@
 import { type MenuItem, type Tab, TabPanel, useTabIds } from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, type Ref, useEffect, useId, useRef, useState } from "react";
 import type { CloseStack } from "../close-stack/close-stack.ts";
 import { useBackLinkSlot } from "../page/back-link-slot.tsx";
 import { panelEdgeLimits } from "../panels/panel-width.ts";
@@ -28,11 +28,24 @@ export interface ItemPageProps<Id extends string> {
   readonly kind: string;
   readonly name: string;
   readonly onRename: (name: string) => void;
+  /** Checks a new name as it is typed: why it can't be kept, or `undefined` when it can. */
+  readonly check?: ((name: string) => string | undefined) | undefined;
+  /** The page's `h1`, for a page that moves the focus to its title. */
+  readonly titleRef?: Ref<HTMLHeadingElement> | undefined;
   readonly actions?: readonly MenuItem[] | undefined;
   /** The page's views, the first one shown when the tab first opens the item. */
   readonly views: readonly [Tab<Id>, ...Tab<Id>[]];
+  /**
+   * The view shown, for a page that picks it itself, such as a chat's link to a view; with it the
+   * shell doesn't remember the view, and `onPickView` hears the user's picks.
+   */
+  readonly view?: Id | undefined;
+  /** Hears the view the user picks in the header. */
+  readonly onPickView?: ((view: Id) => void) | undefined;
   /** The item's own controls in the header's right end: ▶ Run. */
   readonly end?: ReactNode;
+  /** A line across the tab under the header, over the chat and the panel: "Changes not live yet". */
+  readonly notice?: ReactNode;
   /** The chat about the item, when a feature provides one for the kind. */
   readonly chat?: ItemPageChat | undefined;
   /** The window's close stack: Esc puts a maximised panel back beside the chat. */
@@ -84,14 +97,22 @@ export function ItemPage<Id extends string>({
   chat,
   closeStack,
   end,
+  notice,
+  view: pickedView,
+  onPickView,
   ...header
 }: ItemPageProps<Id>) {
   const tabIds = useTabIds();
   const backLink = useBackLinkSlot();
-  const [view, pick] = useRememberedView(
+  const [rememberedView, remember] = useRememberedView(
     views.map((candidate) => candidate.id),
     views[0].id,
   );
+  const view = pickedView ?? rememberedView;
+  const pick = (next: Id) => {
+    if (pickedView === undefined) remember(next);
+    onPickView?.(next);
+  };
   const page = useRef<HTMLDivElement>(null);
   const idBase = useId();
   const tabWidth = useElementWidth(page);
@@ -175,6 +196,7 @@ export function ItemPage<Id extends string>({
           </>
         }
       />
+      {notice}
       {/* The chat and the panel keep their places in every layout and are hidden rather than
           moved, so switching layouts keeps a half-typed message or the canvas's zoom. */}
       <div className={bodyClasses(layout)}>
