@@ -38,6 +38,12 @@ export interface BridgeAgent {
    * an alias to choose the provider's access; `undefined` when the file names none.
    */
   readonly model?: string;
+  /**
+   * Where the agent runs for this call, as the engine started it: an agent on
+   * this computer keeps the program's own sign-in, and one in the sandbox may
+   * get a key Halonic keeps (requirement `harness-host.provider-access`).
+   */
+  readonly runsOn: Placement;
 }
 
 /**
@@ -74,6 +80,9 @@ export type BridgeServers = Readonly<Record<Placement, HarnessBridgeServer>>;
  * to the run log as a `bridge.failed`, and to `reportError` when the run log
  * can't take it.
  *
+ * A failure's message goes through `scrub` first, so a key the host gave
+ * the bridge can't reach the run log even when a provider's error quotes it.
+ *
  * @example
  * const bridges = new LocalBridgeHost({
  *   servers: { sandbox: onSocket, "this-computer": onLoopback },
@@ -85,18 +94,22 @@ export type BridgeServers = Readonly<Record<Placement, HarnessBridgeServer>>;
 export class LocalBridgeHost implements HarnessBridgeHost {
   readonly #servers: BridgeServers;
   readonly #services: BridgeServicesSource;
+  readonly #scrub: (text: string) => string;
   readonly #reportError: (error: unknown) => void;
 
   /**
+   * @param options.scrub - removes the values of the secrets the bridge reads from a text; none by default
    * @param options.reportError - hears of a bridge failure the run log couldn't record; it must not throw
    */
   constructor(options: {
     servers: BridgeServers;
     services: BridgeServicesSource;
+    scrub?: (text: string) => string;
     reportError: (error: unknown) => void;
   }) {
     this.#servers = options.servers;
     this.#services = options.services;
+    this.#scrub = options.scrub ?? ((text) => text);
     this.#reportError = options.reportError;
   }
 
@@ -112,6 +125,7 @@ export class LocalBridgeHost implements HarnessBridgeHost {
       harness: agent.harness,
       hubId: agent.hubId,
       ...(agent.file.model === undefined ? {} : { model: agent.file.model }),
+      runsOn,
     });
     const bridge = await this.#servers[runsOn].open({
       runId: agent.runId,
@@ -121,7 +135,11 @@ export class LocalBridgeHost implements HarnessBridgeHost {
       recorder,
       tools: services.tools,
       approvals: services.approvals,
-      reportError: (failure) => this.#recordFailure(recorder, agent.agentId, failure),
+      reportError: (failure) =>
+        this.#recordFailure(recorder, agent.agentId, {
+          kind: failure.kind,
+          message: this.#scrub(failure.message),
+        }),
     });
     const { url, token, socketPath } = bridge;
     return {

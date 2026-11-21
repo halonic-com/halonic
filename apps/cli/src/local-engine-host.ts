@@ -84,6 +84,7 @@ import { approvedIntegrations } from "./approved-integrations.ts";
 import { cliListedToolApproval } from "./cli-listed-tool-approval.ts";
 import {
   type LocalHarnessHost,
+  type LocalHarnessInput,
   type LocalHarnessParts,
   openLocalHarnessHost,
 } from "./local-harness-host.ts";
@@ -158,6 +159,11 @@ export interface LocalEngineInput {
    * command to approve them is named.
    */
   reportWaiting?(connector: string, waiting: readonly ChatTurnWaiting[]): void;
+  /**
+   * Hears the access each harness agent's bridge got (HAL-12784): the
+   * provider and the secret's name, never a value.
+   */
+  readonly reportAccess?: LocalHarnessInput["reportAccess"];
   /** The connected servers a chat turn calls; none by default. */
   readonly connectors?: readonly ConnectorClient[];
   /**
@@ -276,6 +282,11 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
       openRuns: () => openRunsOf(new FolderRunStore(folders.runsFolder())),
       reportError: (error) => input.reportError(error, "harness-host"),
       reportBridgeError: (error) => input.reportError(error, "harness-bridge"),
+      secrets: input.secrets,
+      keyOrigins: input.keyOrigins,
+      trusted: input.trusted,
+      http: input.http,
+      ...(input.reportAccess === undefined ? {} : { reportAccess: input.reportAccess }),
       ...(input.git === undefined ? {} : { git: input.git }),
       ...(input.harnessParts === undefined ? {} : { parts: input.harnessParts }),
     });

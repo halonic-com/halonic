@@ -274,6 +274,18 @@ export const runMessages = defineMessages("run", {
    */
   toolsWaiting: (source: string, names: string, command: string) =>
     phrase`The tools ${names} of ${source} wait for your approval and stay off. To approve them, run ${command}`,
+  /**
+   * A `--debug` line naming the key a sandboxed harness agent spends, by its
+   * provider and its secret's name, never its value (HAL-12784).
+   */
+  harnessKey: (agent: string, providerId: string, secret: string) =>
+    phrase`${agent} calls its model with the key in secret ${secret}, from provider ${providerId}.`,
+  /**
+   * The warning for a sandboxed harness agent with no provider key: the
+   * program's own sign-in doesn't reach the sandbox, so it may run signed out.
+   */
+  harnessSignedOut: (agent: string, type: string) =>
+    phrase`${agent} runs in the sandbox, where its program can't use your own sign-in. If it fails as signed out, add a provider of type ${type} with a secret, and save the key with halonic secret set.`,
   /** The same when a stopped command gave up waiting for the engine to close (HAL-6677). */
   closeAbandoned: (seconds: number) =>
     phrase`the engine didn't close within ${seconds} s of the stop; released its lock and ending without it`,

@@ -1,4 +1,9 @@
-import type { BridgeRecorder, HarnessBridgeServer, ModelPrice } from "@halonicjs/ports";
+import type {
+  BridgeEvent,
+  BridgeRecorder,
+  HarnessBridgeServer,
+  ModelPrice,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { type BridgeAgent, type BridgeServices, LocalBridgeHost } from "./bridge-host.ts";
@@ -7,6 +12,8 @@ import { approveAll, harnessAgentOf, noTools, RecordingBridgeServer } from "./fa
 const writer = harnessAgentOf("writer", "/data/proposals/01JD8Q");
 const recorder: BridgeRecorder = { record: async () => {} };
 const sonnetPrice: ModelPrice = { input: 3, output: 15 };
+/** What `servicesFor` is told of the writer besides its run and hub: its harness, in the sandbox. */
+const asSandboxed = { harness: "claude-code", runsOn: "sandbox" } as const;
 
 const services: BridgeServices = {
   providers: { anthropic: { kind: "key", secret: "anthropic-key" } },
@@ -39,7 +46,7 @@ verifies("harness-host.bridge", () => {
 
     expect(bridge.url).toBe("http://127.0.0.1:4100");
     expect(asked).toEqual([
-      { runId: "01JD8Q", agentId: "writer", harness: "claude-code", hubId: "support" },
+      { runId: "01JD8Q", agentId: "writer", hubId: "support", ...asSandboxed },
     ]);
     const [options] = server.opened;
     expect(options).toMatchObject({
@@ -100,7 +107,7 @@ verifies("harness-host.bridge-agent-model", () => {
     await host.open(writer, recorder, "sandbox");
 
     expect(asked).toEqual([
-      { runId: "01JD8Q", agentId: "writer", harness: "claude-code", hubId: "support" },
+      { runId: "01JD8Q", agentId: "writer", hubId: "support", ...asSandboxed },
     ]);
   });
 
@@ -114,9 +121,9 @@ verifies("harness-host.bridge-agent-model", () => {
       {
         runId: "01JD8Q",
         agentId: "writer",
-        harness: "claude-code",
         hubId: "support",
         model: "open-coder-agent",
+        ...asSandboxed,
       },
     ]);
   });
@@ -148,5 +155,48 @@ verifies("harness-host.bridge-placement", () => {
 
     expect(unfenced.opened).toHaveLength(1);
     expect(fenced.opened).toHaveLength(1);
+  });
+});
+
+verifies("harness-host.provider-access", () => {
+  it("tells the host where the agent runs, as the engine started the call", async () => {
+    const asked: BridgeAgent[] = [];
+    const server = new RecordingBridgeServer();
+    const host = new LocalBridgeHost({
+      servers: { sandbox: server, "this-computer": server },
+      services: {
+        servicesFor: (agent) => {
+          asked.push(agent);
+          return services;
+        },
+      },
+      reportError: () => {},
+    });
+
+    await host.open(writer, recorder, "this-computer");
+
+    expect(asked[0]).toMatchObject({ harness: "claude-code", runsOn: "this-computer" });
+  });
+
+  it("scrubs a key out of a bridge failure before the run log gets it", async () => {
+    const key = "sk-ant-fake-not-real";
+    const server = new RecordingBridgeServer();
+    const recorded: BridgeEvent[] = [];
+    const host = new LocalBridgeHost({
+      servers: { sandbox: server, "this-computer": server },
+      services: { servicesFor: () => services },
+      scrub: (text) => text.replaceAll(key, "[secret removed]"),
+      reportError: () => {},
+    });
+    await host.open(writer, { record: async (event) => void recorded.push(event) }, "sandbox");
+
+    server.opened[0]?.reportError?.({ kind: "internal", message: `upstream refused ${key}` });
+
+    expect(recorded).toEqual([
+      expect.objectContaining({
+        type: "bridge.failed",
+        message: "upstream refused [secret removed]",
+      }),
+    ]);
   });
 });

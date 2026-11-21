@@ -12,16 +12,21 @@ import type { RunVersion } from "@halonicjs/events";
 import {
   type ConnectorFactory,
   type Harness,
+  type HarnessBridge,
   type HarnessBridgeServer,
+  type HttpClient,
+  harnessBridgeTokenHeader,
+  type KeyOrigins,
   noKeyOrigins,
   type Sandbox,
   type SandboxProfile,
+  type Secrets,
   type TrustGrant,
 } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { type LocalEngine, openLocalEngine } from "../local-engine-host.ts";
-import type { LocalHarnessParts } from "../local-harness-host.ts";
+import type { LocalHarnessInput, LocalHarnessParts } from "../local-harness-host.ts";
 import { nodeProfileEnvironment } from "../workspace-runs.ts";
 import { removeTestFolder } from "./remove-folder.ts";
 import { trustInstructions } from "./trust-instructions.ts";
@@ -127,8 +132,8 @@ export async function commitWorkspace(): Promise<RunVersion> {
 
 /** What the fake program does in its working folder, and what the fakes saw. */
 export interface Program {
-  /** Runs once the program has started, with its sandbox profile. */
-  readonly onStart: (profile: SandboxProfile) => Promise<void>;
+  /** Runs once the program has started, with its sandbox profile and, on the Node bridge, the bridge it was given. */
+  readonly onStart: (profile: SandboxProfile, bridge?: HarnessBridge) => Promise<void>;
   /** Holds the program until its call is cancelled, as a stuck one would. */
   readonly hangs?: boolean;
 }
@@ -144,9 +149,16 @@ export interface Fakes {
   programStarts: number;
   /** The instructions each started program was given. */
   readonly instructions: string[];
+  /** The bridge each program was given, on the Node bridge. */
+  readonly bridges: HarnessBridge[];
 }
 
-export function fakesFor(program: Program): Fakes {
+/**
+ * The fakes of a run's program. With `bridge: "node"`, the CLI's own Node
+ * bridge serves the run on its socket, and the fake program gets the
+ * bridge's address and run token in its environment, as Claude Code's are.
+ */
+export function fakesFor(program: Program, options: { bridge?: "fake" | "node" } = {}): Fakes {
   const profiles: SandboxProfile[] = [];
   const started = Promise.withResolvers<void>();
   // Starts no program, as the fake program is in this process; it only says it is fenced.
@@ -170,14 +182,21 @@ export function fakesFor(program: Program): Fakes {
     id: "claude-code",
     name: "Claude Code",
     detect: async () => ({ status: "ready", version: "1.0.0" }),
-    environment: () => ({}),
+    environment: (bridge) => {
+      if (options.bridge !== "node") return {};
+      fakes.bridges.push(bridge);
+      return {
+        ANTHROPIC_BASE_URL: bridge.url,
+        ANTHROPIC_CUSTOM_HEADERS: `${harnessBridgeTokenHeader}: ${bridge.token}`,
+      };
+    },
     start: (task, session) => {
       fakes.programStarts += 1;
       fakes.instructions.push(task.instructions);
       const cancelled = Promise.withResolvers<void>();
       return {
         async *[Symbol.asyncIterator]() {
-          await program.onStart(session.profile);
+          await program.onStart(session.profile, fakes.bridges.at(-1));
           started.resolve();
           if (program.hangs === true) {
             await cancelled.promise;
@@ -204,7 +223,7 @@ export function fakesFor(program: Program): Fakes {
       fenced: recording,
       launcher: recording,
       harnesses: { "claude-code": harness },
-      bridgeServer,
+      ...(options.bridge === "node" ? {} : { bridgeServer }),
       platform: "linux",
     },
     profiles,
@@ -213,8 +232,19 @@ export function fakesFor(program: Program): Fakes {
     started: started.promise,
     programStarts: 0,
     instructions: [],
+    bridges: [],
   };
   return fakes;
+}
+
+/** What a test that serves a key gives the engine instead of the kit's: no secrets, no network. */
+export interface EngineKeys {
+  readonly secrets?: Secrets;
+  readonly http?: HttpClient;
+  readonly keyOrigins?: KeyOrigins;
+  /** Whether the workspace is trusted on this computer; trusted unless a test says otherwise. */
+  readonly trusted?: boolean;
+  readonly reportAccess?: LocalHarnessInput["reportAccess"];
 }
 
 /** @param trust - the grant the connectors' programs run with; a test gives its own */
@@ -222,6 +252,7 @@ export async function openEngine(
   fakes: Fakes,
   trust: TrustGrant,
   git = true,
+  keys: EngineKeys = {},
 ): Promise<LocalEngine> {
   const notes: ConnectorFactory = {
     transport: "stdio",
@@ -241,10 +272,13 @@ export async function openEngine(
   const engine = await openLocalEngine({
     workspace,
     workspaceRoot: acme,
-    secrets: { get: async () => null },
-    keyOrigins: noKeyOrigins,
-    http: { fetch: () => Promise.reject(new TypeError("The test model calls no server.")) },
-    trusted: true,
+    secrets: keys.secrets ?? { get: async () => null },
+    keyOrigins: keys.keyOrigins ?? noKeyOrigins,
+    http: keys.http ?? {
+      fetch: () => Promise.reject(new TypeError("The test model calls no server.")),
+    },
+    trusted: keys.trusted ?? true,
+    ...(keys.reportAccess === undefined ? {} : { reportAccess: keys.reportAccess }),
     environment: profile,
     harnessParts: fakes.parts,
     ...(git ? { git: { git: await testGit() } } : {}),
