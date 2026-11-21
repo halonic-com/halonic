@@ -76,6 +76,7 @@ export function FormSheet(props: ConfirmingDialogProps) {
             attempt={attempt}
             waiting={busy}
             retry={retryAction(props, () => submit())}
+            details={props.errorDetails}
           />
         </div>
       </InFormSheetContext>

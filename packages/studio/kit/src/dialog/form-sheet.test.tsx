@@ -210,3 +210,34 @@ verifies("kit.dialog-form-sheet", () => {
     expect(desktop.container.querySelector(".action-bar")).toBeNull();
   });
 });
+
+verifies("kit.dialog-error-details", () => {
+  it("puts an error's details under its Callout, outside the alert, only with the error", async () => {
+    const details = <code>halonic run reply</code>;
+    expect(onPhone({ errorDetails: details }).container.querySelector("code")).toBeNull();
+    const { container } = onPhone({ error: "Not started. Run this:", errorDetails: details });
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+    const slot = container.querySelector('[role="alert"]') as HTMLElement;
+    const code = container.querySelector("code") as HTMLElement;
+    expect(slot.contains(code)).toBe(false);
+    expect(slot.compareDocumentPosition(code) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    expect(code.closest(".overflow-y-auto")?.lastElementChild?.contains(code)).toBe(true);
+  });
+
+  it("does the same in the desktop box", async () => {
+    const details = <code>halonic run reply</code>;
+    const { container } = render(
+      newAgentDialog({ error: "Not started. Run this:", errorDetails: details }),
+    );
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+    const slot = container.querySelector('[role="alert"]') as HTMLElement;
+    const code = container.querySelector("code") as HTMLElement;
+    expect(slot.textContent).toContain("Not started. Run this:");
+    expect(slot.contains(code)).toBe(false);
+    expect(slot.compareDocumentPosition(code) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+  });
+});

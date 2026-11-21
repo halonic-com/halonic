@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-12412 (UX check S6 of HAL-12390, rules E4 and E5); microcopy 10.3 and 22 F13; HAL-15067 (design check C533-2 and C533-3 of HAL-15056)
+- Source: HAL-12412 (UX check S6 of HAL-12390, rules E4 and E5); microcopy 10.3 and 22 F13; HAL-15067 (design check C533-2 and C533-3 of HAL-15056); HAL-15244 (design check C551 I5 of HAL-15217)
 
-When a request doesn't start, the Inbox shall word its reason as the Run panel and the run page's **Run again** do, after its own lead "Not started:", followed by the refusal's next step when it has one, and show the command that step leads to in a CommandBox under the line. The reason shall be lower case after the colon unless it starts with a name. There shall be no **Try again**: **Send** is there and the message is kept. A failure Halonic can't explain shall read "Not started: Halonic ran into a problem it can't explain yet." with **Copy details** after it, on the desktop form and in the phone's sheet, and never say the engine isn't answering, because the request never left the window. On the desktop form the alert shall hold only the "Not started: …" sentence; a "· Copy details" or "· Change budget" after it sits outside the alert and wraps as one piece.
+When a request doesn't start, the Inbox shall word its reason as the Run panel and the run page's **Run again** do, after its own lead "Not started:", followed by the refusal's next step when it has one, and show the command that step leads to in a CommandBox under the line. The reason shall be lower case after the colon unless it starts with a name. There shall be no **Try again**: **Send** is there and the message is kept. A failure Halonic can't explain shall read "Not started: Halonic ran into a problem it can't explain yet." with **Copy details** after it, on the desktop form and in the phone's sheet, and never say the engine isn't answering, because the request never left the window. On the desktop form the alert shall hold only the "Not started: …" sentence; a "· Copy details" or "· Change budget" after it sits outside the alert and wraps as one piece. The phone's sheet shall keep the same reading order: the "Not started: …" line in its alert slot, then the CommandBox, then **Change budget** or **Copy details**, all outside the alert.
 
 ## Examples
 
@@ -20,3 +20,6 @@ When a request doesn't start, the Inbox shall word its reason as the Run panel a
 - Given a request refused with the next step "To start it, run this in a terminal:" and the command `halonic run reply`,
   when the person presses **Send**,
   then `halonic run reply` shows in a CommandBox under the line.
+- Given the same refusal in the phone's sheet,
+  when the person presses **Send**,
+  then the line comes first and `halonic run reply` shows in a CommandBox under it, never above it.

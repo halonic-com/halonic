@@ -19,16 +19,16 @@ export interface RequestSheetProps {
   readonly waiting: boolean;
   /** The "Not started: …" line, or empty; shown in the sheet's alert slot. */
   readonly notStarted: string;
-  /** The command the line's next step leads to, in a CommandBox under the fields (C533-2). */
+  /** The command the line's next step leads to, in a CommandBox under the line (C533-2). */
   readonly notStartedCommand?: string | undefined;
   /**
    * The run started but failed before its card arrived: the run page's failure line, shown in the
    * alert slot with **Open run** (with `openRun`). The message stays, to send again.
    */
   readonly runFailed?: { readonly line: string; readonly openRun?: () => void } | undefined;
-  /** With a refusal for the month's budget: **Change budget**, under the fields. */
+  /** With a refusal for the month's budget: **Change budget**, under the line. */
   readonly onChangeBudget?: (() => void) | undefined;
-  /** With a failure Halonic can't explain: **Copy details**, under the fields (22 F13). */
+  /** With a failure Halonic can't explain: **Copy details**, under the line (22 F13). */
   readonly onCopyDetails?: (() => void) | undefined;
   /** Starts the run; clears the message once it has started. Never rejects. */
   readonly onSend: (workflow: RequestWorkflow, message: string) => Promise<void>;
@@ -91,6 +91,17 @@ export function RequestSheet({
       closeWhileBusy={waiting}
       {...(offered.length === 1 ? { describedBy: workflowLine } : {})}
       {...alertOf(notStarted, runFailed)}
+      {...(notStarted === ""
+        ? {}
+        : {
+            errorDetails: (
+              <NotStartedDetails
+                command={notStartedCommand}
+                onChangeBudget={onChangeBudget}
+                onCopyDetails={onCopyDetails}
+              />
+            ),
+          })}
     >
       {offered.length === 1 ? (
         <p id={workflowLine} className="text-section">
@@ -118,24 +129,42 @@ export function RequestSheet({
           }}
         />
       </Field>
-      {notStarted !== "" && notStartedCommand !== undefined ? (
-        <CommandBox command={notStartedCommand} />
-      ) : null}
-      {notStarted !== "" && onChangeBudget !== undefined ? (
+    </Dialog>
+  );
+}
+
+/**
+ * What follows the "Not started: …" line in the alert slot, in the desktop form's order: the
+ * command it says to run, then **Change budget** or **Copy details** (C551 I5). Outside the
+ * alert, so only the sentence is read (C533-3).
+ */
+function NotStartedDetails({
+  command,
+  onChangeBudget,
+  onCopyDetails,
+}: {
+  readonly command: string | undefined;
+  readonly onChangeBudget: (() => void) | undefined;
+  readonly onCopyDetails: (() => void) | undefined;
+}) {
+  return (
+    <>
+      {command === undefined ? null : <CommandBox command={command} />}
+      {onChangeBudget === undefined ? null : (
         <div>
           <Button variant="ghost" size="sm" onClick={onChangeBudget}>
             Change budget
           </Button>
         </div>
-      ) : null}
-      {notStarted !== "" && onCopyDetails !== undefined ? (
+      )}
+      {onCopyDetails === undefined ? null : (
         <div>
           <Button variant="ghost" size="sm" onClick={onCopyDetails}>
             {copyDetailsWords.label}
           </Button>
         </div>
-      ) : null}
-    </Dialog>
+      )}
+    </>
   );
 }
 
