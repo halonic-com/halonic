@@ -3,6 +3,7 @@
 - Task: HAL-14858
 - Approval: Liam approves this note in review on HAL-14858
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:m3x6v007Xj4lwtwgw4e0FP26woJD3VMD7WZFUwz4Ux7iTxpxoiu8TX+dOipfPYvIzOXq9fi0XFQ4Blq2/km6CQ==
 
 ## What changes
 
