@@ -33,6 +33,14 @@ export function buttonNamed(page: HTMLElement, text: string): HTMLButtonElement 
   );
 }
 
+/**
+ * The agent page's view, apart from its Try it chat: the first tab panel, which is the item page's
+ * panel beside the chat, or the phone's views.
+ */
+export function viewPanel(page: HTMLElement): HTMLElement {
+  return page.querySelector<HTMLElement>('[role="tabpanel"]') as HTMLElement;
+}
+
 /** Types into an input the way a person does, so React sees the change. */
 export async function typeInto(input: HTMLInputElement, value: string): Promise<void> {
   await act(async () => {
