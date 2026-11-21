@@ -101,8 +101,9 @@ Here `ORDERS_HOOK` holds the secret's value in the sender's environment.
 | 429 | A run of the routine is still going and its `overlap` is `queue`. Send it again after the time in `Retry-After`. |
 | 501 | The routine starts an agent. The answer says "Halonic can't run an agent on its own yet, only as a step in a workflow." Make a workflow with the agent as a step, then start that. |
 
-The terminal that runs `halonic serve` prints a line for each signed
-request, except a 401. A started run gets its short id:
+The terminal that runs `halonic serve` prints a line when a signed
+request starts a run, is skipped, gets a 400 or a 501, or fails. Other
+answers, such as a 401, print nothing. A started run gets its short id:
 
 ```text
 ✓ New order started on a web request · run 17c592
