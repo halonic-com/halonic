@@ -2,6 +2,7 @@
 
 - Approval: words check C553 rows 18, 22 and 23 (HAL-15219), small fixes on the approved R16 block decided by the team (HAL-2282) on HAL-15227; Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2atqVOh8xMEboJZLL0begtd9Ct2wNGLW7GDCBCj0tl1YlKa7oVxeBe8sLN3TzR93olPe4XB8f4yexObJ7vxiCQ==
 - Task: HAL-15227 (under HAL-1733)
 
 ## What changes
