@@ -17,12 +17,18 @@
 //! caller closes the channel: a host that sends one is broken or taken over,
 //! and nothing it sends after that is trusted. No value is ever logged; the
 //! request type has no `Debug`, so none can be printed by mistake.
+//!
+//! Every answer fits in one frame of [`FRAME_LIMIT`] bytes, the most the
+//! host's reader takes. A `set` whose value couldn't be read back in one
+//! answer is refused before the keychain runs, so what the host stores it
+//! can always read; a stored value too long to answer (one the host didn't
+//! store) is answered as `invalid_value`.
 
 use halonic_secrets::{
-    SecretBackend, SecretError, delete_host_secret, get_host_secret, set_host_secret,
+    SecretBackend, SecretError, SecretName, delete_host_secret, get_host_secret, set_host_secret,
 };
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::json;
 
 use crate::relay::FRAME_LIMIT;
 
@@ -55,26 +61,70 @@ enum Request {
 /// the host's own secrets. The backend doesn't run then.
 pub(crate) fn answer(backend: &dyn SecretBackend, request: &[u8]) -> Result<Vec<u8>, Refused> {
     let request: Request = serde_json::from_slice(request).map_err(|_| Refused::Malformed)?;
+    let backend = AnswerableValues(backend);
     let outcome = match request {
-        Request::Get { name } => get_host_secret(backend, &name),
-        Request::Set { name, value } => set_host_secret(backend, &name, &value).map(|()| None),
-        Request::Delete { name } => delete_host_secret(backend, &name).map(|()| None),
+        Request::Get { name } => get_host_secret(&backend, &name),
+        Request::Set { name, value } => set_host_secret(&backend, &name, &value).map(|()| None),
+        Request::Delete { name } => delete_host_secret(&backend, &name).map(|()| None),
     };
     let answer = match outcome {
-        // The host's reader takes no larger frame; a value the host stored
-        // through this channel is never that long, even escaped.
-        Ok(Some(value)) if value.len() * 6 > FRAME_LIMIT => failed(&SecretError::InvalidValue),
-        Ok(value) => json!({ "ok": true, "value": value }),
+        Ok(value) => succeeded(value.as_deref()),
         Err(SecretError::InvalidName | SecretError::ReservedName) => return Err(Refused::Name),
         Err(error) => failed(&error),
     };
-    Ok(answer.to_string().into_bytes())
+    if answer.len() > FRAME_LIMIT {
+        return Ok(failed(&SecretError::InvalidValue).into_bytes());
+    }
+    Ok(answer.into_bytes())
 }
 
-/// The answer to a request the keychain couldn't carry out. Its message
-/// never holds the value (`SecretError`'s rule).
-fn failed(error: &SecretError) -> Value {
-    json!({ "ok": false, "kind": error.kind(), "message": error.to_string() })
+/// The answer to a request the keychain carried out, as sent.
+fn succeeded(value: Option<&str>) -> String {
+    json!({ "ok": true, "value": value }).to_string()
+}
+
+/// The answer to a request the keychain couldn't carry out, as sent. Its
+/// message never holds the value (`SecretError`'s rule).
+fn failed(error: &SecretError) -> String {
+    json!({ "ok": false, "kind": error.kind(), "message": error.to_string() }).to_string()
+}
+
+/// The backend as the channel sees it: a value whose `get` answer wouldn't
+/// fit in one frame is refused as `invalid_value` before it reaches the
+/// keychain. JSON escaping can make a value up to six times longer, so the
+/// answer itself is measured rather than the value. Wrapping the backend
+/// keeps the order of `set_host_secret`: a name the host may not reach is
+/// refused first, whatever the value.
+struct AnswerableValues<'a>(&'a dyn SecretBackend);
+
+impl SecretBackend for AnswerableValues<'_> {
+    fn get(&self, name: &SecretName) -> Result<Option<String>, SecretError> {
+        self.0.get(name)
+    }
+    fn has(&self, name: &SecretName) -> Result<bool, SecretError> {
+        self.0.has(name)
+    }
+    fn set(&self, name: &SecretName, value: &str) -> Result<(), SecretError> {
+        if succeeded(Some(value)).len() > FRAME_LIMIT {
+            return Err(SecretError::InvalidValue);
+        }
+        self.0.set(name, value)
+    }
+    fn delete(&self, name: &SecretName) -> Result<(), SecretError> {
+        self.0.delete(name)
+    }
+    fn get_origins(&self, name: &SecretName) -> Result<Option<String>, SecretError> {
+        self.0.get_origins(name)
+    }
+    fn set_origins(&self, name: &SecretName, origins: &str) -> Result<(), SecretError> {
+        self.0.set_origins(name, origins)
+    }
+    fn delete_origins(&self, name: &SecretName) -> Result<(), SecretError> {
+        self.0.delete_origins(name)
+    }
+    fn max_value_bytes(&self) -> usize {
+        self.0.max_value_bytes()
+    }
 }
 
 #[cfg(test)]
