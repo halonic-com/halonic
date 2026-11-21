@@ -24,6 +24,7 @@ import { checkReadmeExamples } from "./readme-examples.ts";
 import { checkTrace } from "./trace.ts";
 import { checkTrackerLinks } from "./tracker-links.ts";
 import { checkVersions } from "./versions.ts";
+import { checkWebviewApis } from "./webview-apis.ts";
 
 /** Every rule `pnpm check` runs, by name. */
 export const rules: Readonly<Record<string, (context: CheckContext) => Report>> = {
@@ -40,6 +41,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   lockfile: checkLockfile,
   "absolute-paths": checkAbsolutePaths,
   "process-starts": checkProcessStarts,
+  "webview-apis": checkWebviewApis,
   "invisible-characters": checkInvisibleCharacters,
   "markdown-tables": checkMarkdownTables,
   "tracker-links": checkTrackerLinks,

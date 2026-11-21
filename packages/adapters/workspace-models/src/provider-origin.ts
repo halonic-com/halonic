@@ -35,11 +35,24 @@ function builtInAddress(type: string): string | undefined {
 
 /** The origin of an address, or `undefined` when it doesn't parse or holds user info. */
 function plainOrigin(address: string): string | undefined {
-  const url = URL.parse(address);
-  if (url === null || url.username !== "" || url.password !== "") {
+  const url = parsedUrl(address);
+  if (url === undefined || url.username !== "" || url.password !== "") {
     return undefined;
   }
   return url.origin === "null" ? undefined : url.origin;
+}
+
+/**
+ * The address as a URL, or `undefined` when it doesn't parse. Not `URL.parse()`: Studio's page
+ * calls this through the model resolver, and its oldest webviews don't have it (the `webview-apis`
+ * check in docs/guides/checks.md).
+ */
+function parsedUrl(address: string): URL | undefined {
+  try {
+    return new URL(address);
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -97,8 +110,8 @@ export function localAddress(
   if (file.type === "mock" || !isOnThisMachine(file)) {
     return undefined;
   }
-  const url = URL.parse(file.baseUrl ?? builtInAddress(file.type) ?? "");
-  if (url === null) {
+  const url = parsedUrl(file.baseUrl ?? builtInAddress(file.type) ?? "");
+  if (url === undefined) {
     return undefined;
   }
   const port = url.port === "" ? defaultPorts[url.protocol] : url.port;

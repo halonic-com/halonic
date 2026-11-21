@@ -42,4 +42,18 @@ verifies("engine.llm-event-address", () => {
     expect(localAddress(file("openai-compatible"))).toBeUndefined();
     expect(localAddress(file("mock"))).toBeUndefined();
   });
+
+  it("names it on a webview without URL.parse, as Studio's oldest", () => {
+    const parse = Object.getOwnPropertyDescriptor(URL, "parse");
+    Reflect.deleteProperty(URL, "parse");
+    try {
+      expect("parse" in URL).toBe(false);
+      expect(localAddress(file("ollama"))).toBe("localhost:11434");
+      expect(localAddress(file("openai-compatible", "http://localhost/v1"))).toBe("localhost:80");
+    } finally {
+      if (parse !== undefined) {
+        Object.defineProperty(URL, "parse", parse);
+      }
+    }
+  });
 });

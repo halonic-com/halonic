@@ -71,7 +71,7 @@ export function isDevFile(file: string, pkg: WorkspacePackage, layer: Layer | un
 }
 
 /** The path of `file` relative to its package's folder. */
-function inPackagePath(file: string, pkg: WorkspacePackage): string {
+export function inPackagePath(file: string, pkg: WorkspacePackage): string {
   return pkg.directory === "." ? file : file.slice(pkg.directory.length + 1);
 }
 

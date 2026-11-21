@@ -70,8 +70,20 @@ function isOriginList(answer: unknown): answer is string[] {
   );
 }
 
+/**
+ * Whether `origin` is an origin as `new URL(…).origin` writes it. Not `URL.parse()`: Studio's page
+ * reads the origins through the model resolver, and its oldest webviews don't have it (the
+ * `webview-apis` check in docs/guides/checks.md).
+ */
 function isOrigin(origin: unknown): origin is string {
-  return typeof origin === "string" && URL.parse(origin)?.origin === origin;
+  if (typeof origin !== "string") {
+    return false;
+  }
+  try {
+    return new URL(origin).origin === origin;
+  } catch {
+    return false;
+  }
 }
 
 function isAllowOriginResult(answer: unknown): answer is AllowOriginResult {
