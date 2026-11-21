@@ -11,7 +11,7 @@ When a run failed with the reason `instructions-not-trusted`, the run page shall
 
 The agent and the pin come from `run.failed`; for a parallel branch the check refused, from that branch's `agent.finished`. A log that carries no pin shows the usual banner.
 
-Where the open workspace provides `InstructionTrustHostService` (the desktop shell only), the banner shall have one action, **Review instructions**, which asks the host to trust that agent's instructions with that pin. The page never trusts by itself. After the answer the banner shall change to a calm tone and add one line, and never show the shell's own text:
+Where the open workspace provides `InstructionTrustHostService` (the desktop shell only), the banner shall have one action, **Review instructions**, which asks the host to trust that agent's instructions, the agent in the run's hub, with that pin. The page never trusts by itself. After the answer the banner shall change to a calm tone and add one line, and never show the shell's own text:
 
 - `trusted`: "Trusted. Run again to start it." and no button;
 - `declined`: "Nothing was trusted, so the run didn't start.";

@@ -9,6 +9,7 @@ import { realpath } from "node:fs/promises";
 import { FileInstructionTrustStore } from "@halonicjs/adapter-fs-node";
 import { InstructionTrustService } from "@halonicjs/app";
 import type { LoggedInstructionPin, RunEvent } from "@halonicjs/events";
+import { instructionTrustKey } from "@halonicjs/ports";
 import { profileFolder } from "@halonicjs/profile";
 import { filesOf } from "@halonicjs/workspace";
 import { instructionsAbout } from "../../agent-instructions.ts";
@@ -108,7 +109,9 @@ async function trustedOnAsking(
     ),
     clock: setup.trust().clock,
   });
-  const key = { location: await realpath(followed.workspaceRoot), agent: refused.agent };
+  // The refused agent runs in the workflow's hub, as the engine's check keyed it.
+  const location = await realpath(followed.workspaceRoot);
+  const key = instructionTrustKey(location, followed.hubId, refused.agent);
   const check = await service.check(key, refused.pin);
   // Trusted since the run was refused, say in another window: run it again without asking.
   if (check.kind === "trusted") return true;

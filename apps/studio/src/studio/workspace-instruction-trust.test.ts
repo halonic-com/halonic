@@ -29,14 +29,14 @@ function hostFor(store: InstructionTrustStore) {
 }
 
 verifies("studio.workspace-instruction-trust", () => {
-  it("saves the pin for the agent in the open workspace when the person says yes", async () => {
+  it("saves the pin for the agent in its hub in the open workspace when the person says yes", async () => {
     const saved: InstructionTrustRecord[] = [];
 
-    const answer = await hostFor(storeThatSaves(undefined, saved)).trust("coder", pin);
+    const answer = await hostFor(storeThatSaves(undefined, saved)).trust("support", "coder", pin);
 
     expect(answer).toBe("trusted");
     expect(saved).toHaveLength(1);
-    expect(saved[0]).toMatchObject({ location: "/work/acme", agent: "coder", pin });
+    expect(saved[0]).toMatchObject({ location: "/work/acme", agent: "support/coder", pin });
   });
 
   describe("when the shell refuses", () => {
@@ -50,7 +50,7 @@ verifies("studio.workspace-instruction-trust", () => {
       const saved: InstructionTrustRecord[] = [];
       const refusal = new KindedError(kind, "the shell said something private");
 
-      const answer = await hostFor(storeThatSaves(refusal, saved)).trust("coder", pin);
+      const answer = await hostFor(storeThatSaves(refusal, saved)).trust("support", "coder", pin);
 
       expect(answer).toBe(expected);
       expect(saved).toEqual([]);
@@ -58,14 +58,18 @@ verifies("studio.workspace-instruction-trust", () => {
   });
 
   it("answers unavailable for an error that isn't kinded", async () => {
-    const answer = await hostFor(storeThatSaves(new TypeError("boom"), [])).trust("coder", pin);
+    const answer = await hostFor(storeThatSaves(new TypeError("boom"), [])).trust(
+      "support",
+      "coder",
+      pin,
+    );
 
     expect(answer).toBe("unavailable");
   });
 
   it("answers unavailable, and saves nothing, for a pin that isn't valid", async () => {
     const saved: InstructionTrustRecord[] = [];
-    const answer = await hostFor(storeThatSaves(undefined, saved)).trust("coder", {
+    const answer = await hostFor(storeThatSaves(undefined, saved)).trust("support", "coder", {
       digest: "not-a-digest",
       files: {},
     });

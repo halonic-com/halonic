@@ -45,7 +45,13 @@ beforeEach(async () => {
   reported = [];
   await addLab();
   // A person trusted the coder's instructions, so the host lets its run start.
-  await trustInstructions({ profile, workspace: acme, agent: "coder", text: "Write the change." });
+  await trustInstructions({
+    profile,
+    workspace: acme,
+    hub: "lab",
+    agent: "coder",
+    text: "Write the change.",
+  });
 });
 
 afterEach(async () => {

@@ -180,10 +180,15 @@ export type InstructionTrustAnswer = "trusted" | "declined" | "busy" | "unavaila
  */
 export interface InstructionTrustHost {
   /**
-   * Asks about the instructions `pin` describes (the pin `run.failed` carried) for `agent`.
+   * Asks about the instructions `pin` describes (the pin `run.failed` carried) for `agent` in
+   * `hub`, the run's hub: two hubs may each have an agent of that id, and each has its own pin.
    * Never rejects: a failure is `unavailable`.
    */
-  readonly trust: (agent: string, pin: LoggedInstructionPin) => Promise<InstructionTrustAnswer>;
+  readonly trust: (
+    hub: string,
+    agent: string,
+    pin: LoggedInstructionPin,
+  ) => Promise<InstructionTrustAnswer>;
 }
 
 /** The open workspace's way to trust an agent's instructions. Absent where the shell can't ask. */

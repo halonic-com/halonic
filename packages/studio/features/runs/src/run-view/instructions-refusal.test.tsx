@@ -42,7 +42,11 @@ const refusedLog = (changed?: boolean): RunEvent[] => [
 
 async function open(
   log: RunEvent[],
-  trust?: (agent: string, pin: LoggedInstructionPin) => Promise<InstructionTrustAnswer>,
+  trust?: (
+    hub: string,
+    agent: string,
+    pin: LoggedInstructionPin,
+  ) => Promise<InstructionTrustAnswer>,
   announce?: (line: string) => void,
 ) {
   const list = new RunsList(fakeSource([failedRun], { [failedRun.id]: log }).source);
@@ -67,7 +71,7 @@ const reviewButton = (root: HTMLElement) =>
   [...root.querySelectorAll("button")].find((b) => b.textContent === "Review instructions");
 
 verifies("runs.run-view.instructions-refusal", () => {
-  it("says it is the first time, and asks the host for exactly the agent and pin the log carries", async () => {
+  it("says it is the first time, and asks the host for exactly the run's hub and the agent and pin the log carries", async () => {
     const trust = vi.fn(async () => "declined" as const);
     const root = await open(refusedLog(false), trust);
 
@@ -75,7 +79,7 @@ verifies("runs.run-view.instructions-refusal", () => {
       "Reporter didn't start. You haven't trusted its instructions yet.Review instructions",
     );
     await act(async () => reviewButton(root)?.click());
-    expect(trust).toHaveBeenCalledWith("reporter", pin);
+    expect(trust).toHaveBeenCalledWith("acme", "reporter", pin);
   });
 
   it("says the instructions changed, and keeps the button after a decline", async () => {
@@ -181,7 +185,7 @@ verifies("runs.run-view.instructions-refusal", () => {
     );
     await act(async () => reviewButton(root)?.click());
 
-    expect(trust).toHaveBeenCalledWith("translator", pin);
+    expect(trust).toHaveBeenCalledWith("acme", "translator", pin);
   });
 
   it("shows the usual banner for a log without the pin", async () => {

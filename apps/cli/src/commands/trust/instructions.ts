@@ -1,7 +1,12 @@
 import { realpath } from "node:fs/promises";
 import { FileInstructionTrustStore } from "@halonicjs/adapter-fs-node";
 import { InstructionTrustService } from "@halonicjs/app";
-import type { Clock, InstructionPin, InstructionTrustStore } from "@halonicjs/ports";
+import {
+  type Clock,
+  type InstructionPin,
+  type InstructionTrustStore,
+  instructionTrustKey,
+} from "@halonicjs/ports";
 import { profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { loadWorkspace } from "@halonicjs/workspace";
@@ -112,7 +117,8 @@ async function reviewAndTrust(
     return done(words.noInstructions(agent).phrase, { ...facts, status: "not-needed" });
   }
 
-  const key = { location, agent: file.value.id };
+  // The engine's check keys the pin by the agent's hub and id; this saves it under the same key.
+  const key = instructionTrustKey(location, file.hub ?? "", file.value.id);
   const service = new InstructionTrustService({ store: machine.store, clock: machine.clock });
   const check = await service.check(key, pin);
   const about = instructionsAbout(workspace, file);

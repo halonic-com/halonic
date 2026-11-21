@@ -168,6 +168,7 @@ async function trustAcme(): Promise<void> {
   await trustInstructions({
     profile: acmeRuns.profile,
     workspace: acmeRuns.acme,
+    hub: "lab",
     agent: "coder",
     text: "Write the change.",
   });
@@ -195,6 +196,14 @@ async function chooseThisComputer(): Promise<void> {
 }
 
 async function runChange(...args: string[]): Promise<{ code: number; io: CapturedIo }> {
+  return await runChangeIn("lab", ...args);
+}
+
+/** `halonic run <hub>/change`, with the fake sandbox and Claude Code. */
+async function runChangeIn(
+  hub: string,
+  ...args: string[]
+): Promise<{ code: number; io: CapturedIo }> {
   const io = captureIo(acmeRuns.acme);
   const command = runCommandWith({
     ...setup,
@@ -219,7 +228,7 @@ async function runChange(...args: string[]): Promise<{ code: number; io: Capture
     }),
   });
   const code = await runCli(
-    ["run", "lab/change", ...args],
+    ["run", `${hub}/change`, ...args],
     io,
     [command],
     terminal === undefined ? {} : { terminal },
@@ -316,20 +325,48 @@ verifies("cli.run-proposal", () => {
   });
 });
 
-verifies("cli.run-failed-instructions", () => {
-  /** `halonic trust instructions coder` with no terminal, then with the fingerprint it printed. */
-  async function trustCoderInstructions(): Promise<number> {
-    const trust = createTrustInstructionsCommand(() => ({
-      store: new FileInstructionTrustStore(instructionTrustFolder(profileFolder(acmeRuns.profile))),
-      clock: fixedClock(engineStart),
-    }));
-    const trustAgain = (...args: string[]) =>
-      runCli(["instructions", "coder", ...args], captureIo(acmeRuns.acme), [trust]);
-    const shown = captureIo(acmeRuns.acme);
-    await runCli(["instructions", "coder"], shown, [trust]);
-    return await trustAgain("--yes", "--fingerprint", shown.stdout.at(-1) ?? "");
-  }
+/**
+ * `halonic trust instructions <agent>` with no terminal, then with the
+ * fingerprint it printed: `coder`, or `<hub>/coder` when two hubs have one.
+ */
+async function trustCoderInstructions(agent = "coder"): Promise<number> {
+  const trust = createTrustInstructionsCommand(() => ({
+    store: new FileInstructionTrustStore(instructionTrustFolder(profileFolder(acmeRuns.profile))),
+    clock: fixedClock(engineStart),
+  }));
+  const trustAgain = (...args: string[]) =>
+    runCli(["instructions", agent, ...args], captureIo(acmeRuns.acme), [trust]);
+  const shown = captureIo(acmeRuns.acme);
+  await runCli(["instructions", agent], shown, [trust]);
+  return await trustAgain("--yes", "--fingerprint", shown.stdout.at(-1) ?? "");
+}
 
+verifies("cli.commands.trust.instructions", () => {
+  it(
+    "keeps a pin for each hub's coder, so trusting one leaves the other trusted",
+    slowTest,
+    async () => {
+      // Different instructions, so the two coders' pins differ.
+      const lab = await readFile(join(acmeRuns.acme, "hubs/lab/workflows/change.workflow.yaml"));
+      await writeFiles(acmeRuns.acme, {
+        "hubs/sales/hub.yaml": "id: sales\nname: Sales\n",
+        "hubs/sales/agents/coder.agent.yaml":
+          "id: coder\nname: Coder\nharness: claude-code\ninstructions: Write the offer.\n",
+        "hubs/sales/workflows/change.workflow.yaml": lab.toString("utf8"),
+      });
+      await trustWorkspace();
+
+      expect(await trustCoderInstructions("lab/coder")).toBe(exitCode.ok);
+      expect(await trustCoderInstructions("sales/coder")).toBe(exitCode.ok);
+
+      expect((await runChangeIn("lab")).code).toBe(exitCode.ok);
+      expect((await runChangeIn("sales")).code).toBe(exitCode.ok);
+      expect(harnessStarts).toBe(2);
+    },
+  );
+});
+
+verifies("cli.run-failed-instructions", () => {
   it(
     "says how to trust instructions nobody trusted, and runs once they are",
     slowTest,
