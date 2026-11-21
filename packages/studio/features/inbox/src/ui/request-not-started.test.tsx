@@ -4,6 +4,7 @@ import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { BudgetUsedUp } from "../request/inbox-requests.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { unmountAll } from "../test-support/render.tsx";
 import {
@@ -21,6 +22,30 @@ afterEach(() => {
   unmountAll();
   restoreModal();
 });
+
+/** Waits the frame after which the sheet's alert slot shows its line. */
+async function nextFrame() {
+  await act(async () => {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  });
+}
+
+/** The sheet's "Not started: …" line, in its alert slot. */
+function sheetAlert(root: HTMLElement): HTMLElement {
+  const alert = [...root.querySelectorAll<HTMLElement>('dialog [role="alert"]')].find((slot) =>
+    slot.textContent?.startsWith("Not started:"),
+  );
+  if (alert === undefined) throw new Error("no Not started line in the sheet");
+  return alert;
+}
+
+/** `later` comes after `earlier` in the page, and outside it. */
+function follows(earlier: Element, later: Element): boolean {
+  return (
+    !earlier.contains(later) &&
+    (earlier.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+  );
+}
 
 verifies("inbox.request-not-started", () => {
   it("says a failure it can't explain in plain words, with Copy details holding the error", async () => {
@@ -55,10 +80,27 @@ verifies("inbox.request-not-started", () => {
     await type(message(root), "Hello");
     await send(root);
     // The sheet's alert slot fills a frame later; the line's words are the desktop test's.
-    const sheet = root.querySelector("dialog");
-    expect([...(sheet?.querySelectorAll("button") ?? [])].map((b) => b.textContent)).toContain(
-      "Copy details",
-    );
+    await nextFrame();
+    // Copy details reads after the line, outside the alert, as on the desktop form (C551 I5).
+    expect(follows(sheetAlert(root), button(root, "Copy details"))).toBe(true);
+  });
+
+  it("puts Change budget under the line in the phone's sheet", async () => {
+    const requests = requestsStarting([support], async () => {
+      throw new BudgetUsedUp("This month's estimated spend reached its budget of €50.00.");
+    });
+    const openBudget = vi.fn();
+    const { root } = await open(requests, { phone: true, openBudget });
+    await act(async () => {
+      button(root, "New request").click();
+    });
+    await type(message(root), "Hello");
+    await send(root);
+    await nextFrame();
+    const change = button(root, "Change budget");
+    expect(follows(sheetAlert(root), change)).toBe(true);
+    await act(async () => change.click());
+    expect(openBudget).toHaveBeenCalledOnce();
   });
 
   it("lower-cases a common first word after the colon, with no Copy details", async () => {
@@ -122,6 +164,13 @@ verifies("inbox.request-not-started", () => {
     });
     await type(message(root), "Hello");
     await send(root);
-    expect(root.querySelector("dialog code")?.textContent).toBe("halonic run reply");
+    await nextFrame();
+    const command = root.querySelector("dialog code");
+    expect(command?.textContent).toBe("halonic run reply");
+    // The line comes first and its colon leads to the command under it, not above it (C551 I5).
+    const alert = sheetAlert(root);
+    expect(alert.textContent).toContain("To start it, run this in a terminal:");
+    expect(follows(alert, command as Element)).toBe(true);
+    expect(follows(message(root), alert)).toBe(true);
   });
 });

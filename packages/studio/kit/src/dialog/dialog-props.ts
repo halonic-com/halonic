@@ -72,6 +72,11 @@ interface DialogCommonProps {
    * **Open run** for a run that failed after it started. It takes the place of `retryLabel`.
    */
   readonly errorAction?: CalloutAction;
+  /**
+   * With `error`: what follows its sentence, under the failure's Callout and outside the alert,
+   * such as the command the sentence says to run (C551 I5).
+   */
+  readonly errorDetails?: ReactNode;
   /** Where focus goes on close when the opener has gone, such as a deleted row's next row (23 A2). */
   readonly returnFocus?: () => HTMLElement | null;
   /**

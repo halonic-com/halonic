@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Callout, type CalloutAction } from "../callout/callout.tsx";
 
 export interface AlertSlotProps {
@@ -10,6 +10,11 @@ export interface AlertSlotProps {
   readonly waiting: boolean;
   /** The failure's one action: "Try again". */
   readonly retry?: CalloutAction | undefined;
+  /**
+   * What follows the failure's sentence, such as the command it says to run and its buttons. It
+   * shows with the Callout, under it, but outside the alert, so only the sentence is read (C533-3).
+   */
+  readonly details?: ReactNode;
 }
 
 /**
@@ -21,7 +26,7 @@ export interface AlertSlotProps {
  * Every failure is read once: on each attempt the slot empties, and fills again a frame after the
  * request ends. It then scrolls into view, since it's the last thing in a scrolling body.
  */
-export function AlertSlot({ error, attempt, waiting, retry }: AlertSlotProps) {
+export function AlertSlot({ error, attempt, waiting, retry, details }: AlertSlotProps) {
   const slot = useRef<HTMLDivElement>(null);
   const [shownAttempt, setShownAttempt] = useState(attempt);
   const emptied = shownAttempt !== attempt;
@@ -43,13 +48,18 @@ export function AlertSlot({ error, attempt, waiting, retry }: AlertSlotProps) {
   }, [message, shownAttempt]);
 
   return (
-    <div ref={slot} role="alert">
-      {message === undefined ? null : (
-        <div className="pt-4">
-          <Callout key={shownAttempt} tone="danger" {...(retry ? { action: retry } : {})}>
-            {message}
-          </Callout>
-        </div>
+    <div ref={slot}>
+      <div role="alert">
+        {message === undefined ? null : (
+          <div className="pt-4">
+            <Callout key={shownAttempt} tone="danger" {...(retry ? { action: retry } : {})}>
+              {message}
+            </Callout>
+          </div>
+        )}
+      </div>
+      {message === undefined || details === undefined ? null : (
+        <div className="flex flex-col gap-4 pt-4">{details}</div>
       )}
     </div>
   );

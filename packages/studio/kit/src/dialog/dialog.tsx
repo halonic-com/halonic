@@ -140,6 +140,7 @@ function DialogBox(props: DialogProps) {
             attempt={attempt}
             waiting={busy}
             retry={retryAction(props, confirm)}
+            details={props.errorDetails}
           />
         </div>
         {props.footnote === undefined ? null : (
