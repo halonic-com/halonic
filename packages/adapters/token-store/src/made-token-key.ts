@@ -38,7 +38,7 @@ export class TokenKeyMissingError extends KindedError {
       "conflict",
       "The token key that sealed this profile's saved secrets and sign-ins is missing, so they can't be opened.",
       {
-        fix: "Set HALONIC_SECRET_TOKEN_KEY to the key you used before, then try again.",
+        fix: "Set HALONIC_SECRET_TOKEN_KEY to the key you used before. Without it, run halonic google reset and set up Google again.",
       },
     );
   }

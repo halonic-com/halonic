@@ -79,7 +79,16 @@ On a person's own computer nobody makes the key by hand: the CLI and the Studio'
 through `madeTokenKey`, which uses a key from the environment or the profile's secrets file as it
 is, and otherwise makes one and stores it in the secrets file with `setIfMissing`, so two programs
 that make one at once share the first. It makes no key while a token is sealed in the profile, and
-throws `TokenKeyMissingError` instead, because a new key couldn't open those tokens.
+throws `TokenKeyMissingError` instead, because a new key couldn't open those tokens. Nobody ever
+sees a key Halonic made, so the way out then is `halonic google reset`: it removes the Google setup
+and the saved sign-ins, and the next Google setup makes a new key.
+
+Set `HALONIC_SECRET_TOKEN_KEY` everywhere Halonic runs for a profile, or nowhere: a key in the
+environment wins over the one in the secrets file, so when they disagree, tokens sealed under one
+can't be opened under the other. For example, the Studio started from the desktop without the
+variable makes a key in the file, and the CLI run later with the variable set can't open those
+tokens. If tokens can't be opened and you no longer have the old key, run
+`halonic google reset` and set up Google again.
 
 ## Stored format
 
