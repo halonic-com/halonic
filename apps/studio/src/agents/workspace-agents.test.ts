@@ -243,7 +243,7 @@ verifies("studio.workspace-agents", () => {
       const { host, store, changes } = setup();
       const ref = { hubId: "acme", id: "writer" };
       store["hubs/acme/agents/writer.agent.yaml"] =
-        "id: writer\nname: Writer\n# Steps\nmethods:\n  draft-reply:\n    description: Drafts a reply.\n    instructions: Write it.\n    model: smart\n    maxSteps: 3\n";
+        "id: writer\nname: Writer\n# Steps\nmethods:\n  draft-reply:\n    description: Drafts a reply.\n    instructions: Write it.\n    model: smart\n    maxSteps: 3\n    tools: [send-mail]\n    output:\n      subject: string\n      body: string?\n  check:\n    instructions: Check it.\n    tools: []\n";
       expect((await host.settings(ref)).agentSteps).toEqual([
         {
           id: "draft-reply",
@@ -251,7 +251,10 @@ verifies("studio.workspace-agents", () => {
           instructions: "Write it.",
           model: "smart",
           maxSteps: 3,
+          outputFields: ["subject", "body"],
+          tools: ["send-mail"],
         },
+        { id: "check", instructions: "Check it.", tools: [] },
       ]);
 
       expect(
@@ -260,9 +263,10 @@ verifies("studio.workspace-agents", () => {
       expect(store["hubs/acme/agents/writer.agent.yaml"]).toContain("# Steps");
       expect((await host.settings(ref)).agentSteps.map((step) => step.id)).toEqual([
         "draft-reply",
+        "check",
         "draft-reply-2",
       ]);
-      expect((await host.settings(ref)).agentSteps[1]?.instructions).toBe("Shorter.");
+      expect((await host.settings(ref)).agentSteps[2]?.instructions).toBe("Shorter.");
       expect(changes).toHaveLength(1);
 
       await expect(

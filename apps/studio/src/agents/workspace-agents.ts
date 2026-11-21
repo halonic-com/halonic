@@ -175,6 +175,8 @@ export class WorkspaceAgents implements AgentsHost {
         instructions: method.instructions,
         model: method.model,
         maxSteps: method.maxSteps,
+        outputFields: method.output === "text" ? undefined : Object.keys(method.output),
+        tools: method.tools,
       })),
     };
   }

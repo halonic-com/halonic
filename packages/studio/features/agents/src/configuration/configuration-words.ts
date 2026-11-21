@@ -148,19 +148,25 @@ export const configurationWords = {
   /** The Agent steps page (flow-agents 5.2, microcopy 8.5). */
   noAgentStepsTitle: "No agent steps yet",
   noAgentStepsText:
-    "An agent step is a named piece of work inside this agent, with its own instructions, model and turn limit.",
+    "An agent step is a named piece of work inside this agent, with its own instructions, model and model call limit.",
   newAgentStep: "New agent step",
   agentStepName: "Name",
   agentStepNameMissing: "Give it a name.",
   create: "Create",
   creating: "Creating…",
   agentStepInstructions: "What should it do?",
+  /** The hint under it, as in New agent (flow-agents 2.2). */
+  agentStepInstructionsHint: "This becomes its instructions.",
   /** Team decision (HAL-13179): the file can't hold an agent step without instructions. */
-  agentStepInstructionsMissing: "Write what it should do.",
+  agentStepInstructionsMissing: "Say what it should do.",
   agentStepCreateFailed: (reason: string) => `Couldn't create the agent step: ${reason}.`,
   /** The agent step card (flow-agents 7). */
-  agentStepModelAgent: "The agent's model",
-  agentStepLimitAgent: (limit: number) => `The agent's, ${limit}`,
+  agentStepModelAgent: (model: string | undefined) =>
+    model === undefined ? "The agent's model" : `${model}, the agent's model`,
+  agentStepLimitAgent: (limit: number) => `${limit}, the agent's limit`,
+  /** Its tools when the file leaves them out, and when it gives none (C462-6). */
+  agentStepToolsAgent: (agent: string) => `All of ${agent}'s tools`,
+  agentStepToolsNone: "None",
   /** The toast when a change of the subagents wasn't saved for another reason than a loop. */
   subagentsNotSaved: (agent: string) => `Couldn't save ${agent}'s subagents`,
   loading: (name: string) => `Loading ${name}'s settings`,

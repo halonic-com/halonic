@@ -159,7 +159,11 @@ function NewAgentStepDialog({
             }}
           />
         </Field>
-        <Field label={words.agentStepInstructions} error={instructionsProblem ?? null}>
+        <Field
+          label={words.agentStepInstructions}
+          hint={words.agentStepInstructionsHint}
+          error={instructionsProblem ?? null}
+        >
           <TextArea
             ref={instructionsField}
             minRows={3}

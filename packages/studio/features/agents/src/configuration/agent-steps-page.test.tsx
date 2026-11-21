@@ -27,12 +27,14 @@ const draftReply: AgentStep = {
   description: "Drafts a reply to the customer.",
   instructions: "Write a short reply.",
   model: "smart",
+  outputFields: ["subject", "body"],
+  tools: ["send-mail"],
 };
 
 const host = (agentSteps: readonly AgentStep[] = []) =>
   memoryAgentsHost({
     hubs: [{ id: "acme", name: "Acme Mail" }],
-    agents: [{ ...writer, name: "Writer", maxSteps: 8, agentSteps }],
+    agents: [{ ...writer, name: "Writer", model: "fast", maxSteps: 8, agentSteps }],
   });
 
 async function openAgentSteps(agents: AgentsHost) {
@@ -62,7 +64,7 @@ verifies("agents.configuration.agent-steps", () => {
     const page = await openAgentSteps(host());
     expect(page.textContent).toContain("No agent steps yet");
     expect(page.textContent).toContain(
-      "An agent step is a named piece of work inside this agent, with its own instructions, model and turn limit.",
+      "An agent step is a named piece of work inside this agent, with its own instructions, model and model call limit.",
     );
     expect(buttonNamed(page, "New agent step")).toBeDefined();
   });
@@ -77,11 +79,24 @@ verifies("agents.configuration.agent-steps", () => {
     expect(card.querySelector("nav")?.textContent).toContain("Writer");
     expect(card.textContent).toContain("Write a short reply.");
     expect(card.textContent).toContain("smart");
+    expect(card.textContent).toContain("subject, body");
+    expect(card.textContent).toContain("send-mail");
 
     await act(async () => buttonNamed(card, "Writer")?.click());
     await act(async () => buttonNamed(page, "check")?.click());
-    expect(topCard(page)?.textContent).toContain("The agent's model");
-    expect(topCard(page)?.textContent).toContain("The agent's, 8");
+    expect(topCard(page)?.textContent).toContain("fast, the agent's model");
+    expect(topCard(page)?.textContent).toContain("8, the agent's limit");
+    expect(topCard(page)?.textContent).toContain("Text");
+    expect(topCard(page)?.textContent).toContain("All of Writer's tools");
+  });
+
+  it("says None when an agent step may use no tools", async () => {
+    const page = await openAgentSteps(host([{ id: "check", instructions: "Check.", tools: [] }]));
+    await act(async () => buttonNamed(page, "check")?.click());
+    const tools = [...(topCard(page)?.querySelectorAll("dl > div") ?? [])].find(
+      (row) => row.querySelector("dt")?.textContent === "Tools",
+    );
+    expect(tools?.querySelector("dd")?.textContent).toBe("None");
   });
 
   it("asks for a name and what it should do, then adds the agent step and opens its card", async () => {
@@ -90,7 +105,7 @@ verifies("agents.configuration.agent-steps", () => {
     await act(async () => buttonNamed(page, "New agent step")?.click());
     await act(async () => buttonNamed(dialog(), "Create")?.click());
     expect(dialog().textContent).toContain("Give it a name.");
-    expect(dialog().textContent).toContain("Write what it should do.");
+    expect(dialog().textContent).toContain("Say what it should do.");
 
     await typeInto(dialog().querySelector("input") as HTMLInputElement, "Draft reply");
     await typeIntoArea(dialog().querySelector("textarea") as HTMLTextAreaElement, "Keep it short.");
