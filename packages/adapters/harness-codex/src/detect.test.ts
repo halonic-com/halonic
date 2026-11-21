@@ -54,6 +54,17 @@ verifies("harness-codex.detect", () => {
       expect(await found).toEqual({ status: "signed-out", version: "0.167.0" });
     });
 
+    it("is signed out when CODEX_HOME names a folder that isn't there yet", async () => {
+      // What Codex 0.169.0 printed for an agent that never signed in (HAL-15329).
+      const noFolder = ran(
+        1,
+        "",
+        'Error loading configuration: CODEX_HOME points to "/halonic-data/settings/writer", but that path does not exist\n',
+      );
+      const { found } = detectWith(current, noFolder);
+      expect(await found).toEqual({ status: "signed-out", version: "0.167.0" });
+    });
+
     it("is missing when the program isn't found, and asks nothing more", async () => {
       const { probe, found } = detectWith({ status: "missing" });
       expect(await found).toEqual({ status: "missing" });
@@ -102,6 +113,22 @@ verifies("harness-codex.detect", () => {
       ["can't read the stored sign-in", ran(1, "", "Error checking login status: made-up\n")],
       ["exits with 1 and prints a usage message", ran(1, "", "error: unrecognized subcommand")],
       ["says Not logged in inside a longer line", ran(1, "", "Error: Not logged in to the proxy")],
+      [
+        "says CODEX_HOME's folder is missing but exits with 0",
+        ran(
+          0,
+          "",
+          'Error loading configuration: CODEX_HOME points to "/x", but that path does not exist',
+        ),
+      ],
+      [
+        "names CODEX_HOME with another configuration error",
+        ran(
+          1,
+          "",
+          'Error loading configuration: CODEX_HOME points to "/x", but it is not a folder',
+        ),
+      ],
       ["says Not logged in but exits with 0", ran(0, "", "Not logged in\n")],
       ["says Not logged in but exits with 2", ran(2, "", "Not logged in\n")],
       ["is stopped by a signal", ran(null, "", "Not logged in\n")],
