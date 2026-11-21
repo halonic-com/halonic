@@ -30,6 +30,7 @@ export default defineConfig({
         "kept-scroll": `${import.meta.dirname}/e2e/pages/kept-scroll.html`,
         "settings-open-page": `${import.meta.dirname}/e2e/pages/settings-open-page.html`,
         "new-item-row": `${import.meta.dirname}/e2e/pages/new-item-row.html`,
+        "stacked-cards": `${import.meta.dirname}/e2e/pages/stacked-cards.html`,
       },
     },
   },
