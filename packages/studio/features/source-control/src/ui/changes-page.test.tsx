@@ -209,11 +209,14 @@ verifies("source-control.changes-page", () => {
       expect(document.activeElement).toBe(root.querySelector("h1"));
     });
 
-    it("says the folder is part of a larger repository, without Try again", async () => {
+    it("says the folder is part of a larger repository as a note, with no button", async () => {
       const { root } = await openPage(fakeSource({ kind: "nested-repository" }));
-      expect(root.textContent).toContain("Couldn't load changes");
-      expect(root.textContent).toContain("This folder is part of a larger git repository.");
-      expect(root.textContent).toContain("Halonic can't keep versions for it yet.");
+      expect(root.textContent).toContain(
+        "Your folder is part of a larger git repository, so Halonic can't show its changes here. See them with git.",
+      );
+      expect(root.textContent).not.toContain("Couldn't load changes");
+      expect(root.textContent).not.toContain("History is off");
+      expect(root.textContent).not.toContain("folder_not_opened");
       expect(root.querySelector("button")).toBeNull();
     });
 

@@ -15,8 +15,8 @@ export type ChangesRead =
   /** The git program isn't on this computer. */
   | { readonly kind: "no-git" }
   /**
-   * The folder sits inside a larger git repository, so git's answer would be about that one.
-   * Until Halonic can keep a history of the folder itself (HAL-9756), the page only says so.
+   * The folder sits inside a larger git repository whose top is outside the opened folder, so the
+   * shell won't run git on it. The page only says so (HAL-9756).
    */
   | { readonly kind: "nested-repository" };
 

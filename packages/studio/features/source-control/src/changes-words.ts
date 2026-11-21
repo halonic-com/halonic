@@ -27,9 +27,9 @@ export const stateWords = {
   checking: "Checking…",
   stillNoGit: "Still can't find git.",
   turningOnHistory: "Turning on history…",
-  /** The reason under "Couldn't load changes" for a folder inside a larger repository. */
+  /** A folder inside a larger repository: a quiet note in place of the page, with no button (HAL-9756). */
   nestedRepository:
-    "This folder is part of a larger git repository. Halonic can't keep versions for it yet.",
+    "Your folder is part of a larger git repository, so Halonic can't show its changes here. See them with git.",
   nothingChanged: "Nothing has changed since your last version.",
   loading: "Loading changes",
   loadFailed: "Couldn't load changes",
@@ -42,6 +42,9 @@ export const stateWords = {
 export const phoneWords = {
   noGitTitle: "Halonic needs git on your computer to keep versions.",
   notAnswering: "Halonic on your computer isn't answering.",
+  /** Without "See them with git": a phone can't offer that. */
+  nestedRepository:
+    "Your folder is part of a larger git repository, so Halonic can't show its changes here.",
   /** The sharing strip: a share address is set on the computer, so a phone can't add one (552 5.4). */
   onlyHere: "Only on your computer.",
   addOnComputer: "Add where to share on a computer.",

@@ -42,6 +42,7 @@ The page shows one of these, by what the last read said:
 | first read failed | "Couldn't load changes", the reason, Try again |
 | `not-a-repository` | "Keep a history of your work", **Turn on history** (adds `.studio/` to `.gitignore`, then `git init`) |
 | `no-git` | "Halonic needs git to keep versions.", How to install git, **Check again** |
+| `nested-repository` | an info note: "Your folder is part of a larger git repository, so Halonic can't show its changes here. See them with git.", no button (the shell refuses git there with `folder_not_opened`) |
 | `ready`, nothing changed | "Nothing has changed since your last version." |
 | `ready`, files changed | the list of changed items, then History |
 
