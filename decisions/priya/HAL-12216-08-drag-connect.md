@@ -3,6 +3,7 @@
 - Task: HAL-12216
 - Approval: suggested by Liam in his review of #4488 on HAL-12216 (21 Nov, "carry the arrow's `to` on `set`, the way a move does"); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0JlRbqHWoSeScsAGUbsS5JRLnS7UdLGTqhRdkWFKyqNHnRWJ08FPBbjG+fUdobikNzx0lEjLbEdiCOIk7TK6Bw==
 
 ## What changes
 
