@@ -3,6 +3,7 @@
 - Task: HAL-4291 (point 4 of the CTO's review: the Run dock already open)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-4291 (the CTO's review, point 4: close the dock or make its Start unavailable too when the check refuses)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:i/rxVk2NkeKDiIGrHqwNuQdoxLrukwV2+VVapOaTPDHQzysVPk8SQdDK2Fch/OTqb/q1gQaqYpZSuXpqWkNyDw==
 
 ## What changes
 
