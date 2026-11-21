@@ -2,6 +2,8 @@ import { connect, createServer, type Socket } from "node:net";
 import {
   type GatewayListener,
   type GatewayListenerOptions,
+  type GatewayPairing,
+  type GatewayPhones,
   startGatewayListener,
 } from "@halonicjs/adapter-remote-gateway";
 import type { TunnelEndpoint } from "@halonicjs/ports";
@@ -58,29 +60,49 @@ async function startGatewayAndTunnel(
   tunnel: FakeTunnelProvider,
   options: TunnelRigOptions,
 ): Promise<{ gateway: GatewayListener; endpoint: TunnelEndpoint }> {
+  return await withFreePort(async (port) => {
+    const gateway = await startRigGateway(port, source, phones, options);
+    const endpoint = await tunnel.start({ gateway: { host: "127.0.0.1", port: gateway.port } });
+    return { gateway, endpoint };
+  });
+}
+
+/** Runs `start` on a free loopback port, and on another when a process took that one first. */
+export async function withFreePort<T>(start: (port: number) => Promise<T>): Promise<T> {
   for (let attempt = 0; ; attempt++) {
     const port = await freePort();
     try {
-      const gateway = await startGatewayListener({
-        source,
-        phones,
-        pairing: phones,
-        policy: { allowRiskyRemotely: () => options.allowRisky === true },
-        port,
-        // The rig's fakes never fail, so a failure is a bug: let it fail the run.
-        onError: rethrow,
-        ...(options.listTunnelName === false
-          ? {}
-          : { extraHosts: [`gateway-${port}.fake-tunnel.invalid`] }),
-        ...listenerLimits(options),
-      });
-      const endpoint = await tunnel.start({ gateway: { host: "127.0.0.1", port: gateway.port } });
-      return { gateway, endpoint };
+      return await start(port);
     } catch (error) {
       // Another process took the port between the probe and the listener; try another.
       if (attempt >= 4) throw error;
     }
   }
+}
+
+/** The fake tunnel's name for a gateway on `port`, as `FakeTunnelProvider` gives it. */
+export function fakeTunnelName(port: number): string {
+  return `gateway-${port}.fake-tunnel.invalid`;
+}
+
+/** The real gateway listener on `port`, with `access` as the host's phones and pairing. */
+export function startRigGateway(
+  port: number,
+  source: RecordingSource,
+  access: GatewayPhones & GatewayPairing,
+  options: TunnelRigOptions & { onError?: (error: unknown) => void },
+): Promise<GatewayListener> {
+  return startGatewayListener({
+    source,
+    phones: access,
+    pairing: access,
+    policy: { allowRiskyRemotely: () => options.allowRisky === true },
+    port,
+    // The rig's fakes never fail, so a failure is a bug: let it fail the run.
+    onError: options.onError ?? rethrow,
+    ...(options.listTunnelName === false ? {} : { extraHosts: [fakeTunnelName(port)] }),
+    ...listenerLimits(options),
+  });
 }
 
 function rethrow(error: unknown): never {
@@ -162,8 +184,14 @@ function freePort(): Promise<number> {
   });
 }
 
-/** A TCP forwarder on loopback to `port`, which is all a tunnel does to the gateway. */
-function openForwarder(port: number): Promise<{ port: number; close: () => Promise<void> }> {
+/**
+ * A TCP forwarder on loopback to `port`, which is all a tunnel does to the gateway.
+ * `record` gets every chunk that crosses it, either way.
+ */
+export function openForwarder(
+  port: number,
+  record: (chunk: Buffer) => void = () => undefined,
+): Promise<{ port: number; close: () => Promise<void> }> {
   return new Promise((resolve, reject) => {
     const sockets = new Set<Socket>();
     const server = createServer((inbound) => {
@@ -177,6 +205,7 @@ function openForwarder(port: number): Promise<{ port: number; close: () => Promi
           outbound.destroy();
         });
       }
+      for (const socket of [inbound, outbound]) socket.on("data", record);
       inbound.pipe(outbound);
       outbound.pipe(inbound);
     });

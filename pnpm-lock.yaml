@@ -4159,6 +4159,12 @@ importers:
         specifier: workspace:*
         version: link:../contracts
     devDependencies:
+      '@halonicjs/adapter-memory':
+        specifier: workspace:*
+        version: link:../../adapters/memory
+      '@halonicjs/app-agent-host':
+        specifier: workspace:*
+        version: link:../../../apps/agent-host
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../spec
