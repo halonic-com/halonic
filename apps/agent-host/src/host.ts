@@ -43,12 +43,9 @@ import { SetupJobs, setupRoutes } from "./sandbox/setup-routes.ts";
 import { sweepRoots, takeHostLock } from "./sandbox/sweep-lock.ts";
 import { hostWslRemover, type WslRemover } from "./sandbox/wsl-remove-host.ts";
 import { hostKeychainOf } from "./secrets/host-keychain.ts";
-import type { ShellSecretsChannel } from "./secrets/shell-secrets-channel.ts";
 import { healthRoute } from "./server/health-route.ts";
-import { type HostRoute, serveHostOverFrames, startHostServer } from "./server/host-server.ts";
-import { randomLaunchToken } from "./server/launch-token.ts";
+import { type HostServices, relayPortOf, serveHost } from "./serving-modes.ts";
 import { hostIntegrationSignIns } from "./sign-in/host-sign-ins.ts";
-import { carryHostConnection } from "./stdio/frame-stream.ts";
 import { takeStandardOutput } from "./stdio/standard-output.ts";
 import { openTerminal } from "./terminal/open-terminal.ts";
 
@@ -92,9 +89,6 @@ export interface Handshake {
 /** The first line in `--stdio` mode: only the token, as Studio's relay has the address. */
 export type FramedHandshake = Pick<Handshake, "token">;
 
-/** What `--relay-host` may name: the relay's port on Windows' own loopback address. */
-const relayHostPattern = /^127\.0\.0\.1:([1-9][0-9]{0,4})$/;
-
 /**
  * The agent host, as the executable loads it from the unpacked payload.
  *
@@ -106,8 +100,8 @@ const relayHostPattern = /^127\.0\.0\.1:([1-9][0-9]{0,4})$/;
  * - `--sandbox-setting-copy` saves the sandbox choice on standard input in the profile, and `--sandbox-setting-remove` removes it: Studio's shell keeps the copy in Halonic's WSL distro equal to the choice on Windows (see {@link copySandboxSetting}). Both print whether it worked, as JSON;
  * - `--wsl-shared-folders` (with serving) is how Studio's launcher says the host runs in Halonic's WSL distro: every session then denies the distro's shared folders (see {@link WSL_SHARED_FOLDERS}, security review W1);
  * - `--keychain-relay` (with serving) is how Studio says it keeps the host's own secrets in the OS keychain and answers for them on connection id 0 (see {@link hostKeychainOf});
- * - `--stdio --relay-host 127.0.0.1:<port>` serves over standard input and output (see {@link serveOverFrames});
- * - otherwise it serves on loopback (see {@link serve}).
+ * - `--stdio --relay-host 127.0.0.1:<port>` serves over standard input and output (see `serveOverFrames` in `serving-modes.ts`);
+ * - otherwise it serves on loopback (see `serveOnLoopback` in `serving-modes.ts`).
  *
  * The sandbox commands exit with 0 when the answer is `ok`, and 1 when it
  * isn't, so the installer needn't read the JSON.
@@ -194,11 +188,7 @@ export async function run(
   // Waits for the frame stream to run; a move that fails has said why, and is tried again on use.
   keychain?.secrets.moveOutOfFile().catch(() => undefined);
   try {
-    if (args.includes("--stdio")) return await serveOverFrames(args, io, host, keychain?.channel);
-    const ended = await serve(io, host, keychain?.channel);
-    if (ended === undefined) return 0;
-    io.writeError(`The agent host stopped: ${ended.message}\n`);
-    return 1;
+    return await serveHost(args, io, host, keychain?.channel);
   } finally {
     // After serving: its sessions are closed by then.
     await lock?.release().catch((error: unknown) => {
@@ -242,108 +232,6 @@ function connectorPlaces(roots: readonly string[], profileFolder: string | undef
 function argumentAfter(args: readonly string[], name: string): string | undefined {
   const at = args.indexOf(name);
   return at === -1 ? undefined : args[at + 1];
-}
-
-/**
- * Serves on a free port of 127.0.0.1 with a token made for this launch, and
- * prints one {@link Handshake} line. The token goes only to the program that
- * started the host, on standard output: never in arguments, the environment
- * or a file, where other programs could read it. The host stops when its
- * standard input closes, so it never outlives that program.
- *
- * With `keychain`, standard input and output carry the frames of the host's
- * secrets channel after the handshake line, and nothing else: standard
- * output is taken over, so a stray print goes to standard error.
- *
- * @returns `undefined` at the end of the input, or the error that broke the secrets channel's frames
- */
-async function serve(
-  io: HostIo,
-  host: HostServices,
-  keychain: ShellSecretsChannel | undefined,
-): Promise<Error | undefined> {
-  const token = randomLaunchToken();
-  const server = await startHostServer(token, host.routes);
-  host.listeningOn(Number(new URL(server.url).port));
-  await host.startGateway((text) => io.writeError(text));
-  const handshake: Handshake = { url: server.url, token };
-  io.write(`${JSON.stringify(handshake)}\n`);
-  const ended =
-    keychain === undefined
-      ? await inputClosed(io.input)
-      : await carryHostConnection({ input: io.input, output: io.takeOutput() }, keychain);
-  await host.stop();
-  await server.close();
-  return ended;
-}
-
-/**
- * Serves the same routes as {@link serve}, but on no port at all: in WSL,
- * every distro of a person shares one network, so a port in Halonic's distro
- * would be open to their other distros too (HAL-5396). Studio starts the host
- * through `wsl.exe` and relays the connections it accepts on Windows' loopback
- * as frames over the host's standard input and output (see `demuxFrames`).
- *
- * The handshake is one {@link FramedHandshake} line; after it, standard output
- * carries frames only. Requests must name the relay's address
- * (`--relay-host`) in their `Host` header. The host stops when the frame
- * stream ends: at the end of its input, as in the other mode, or when the
- * stream breaks the format. With `keychain`, frames on id 0 are its secrets
- * channel's.
- *
- * @returns the exit code: 0 at the end of the input, 1 when the stream broke, 2 for a wrong `--relay-host`
- */
-async function serveOverFrames(
-  args: readonly string[],
-  io: HostIo,
-  host: HostServices,
-  keychain: ShellSecretsChannel | undefined,
-): Promise<number> {
-  const relayPort = relayPortOf(args);
-  if (relayPort === undefined) {
-    io.writeError("The agent host needs --relay-host 127.0.0.1:<port> with --stdio.\n");
-    return 2;
-  }
-  const output = io.takeOutput();
-  const token = randomLaunchToken();
-  const handshake: FramedHandshake = { token };
-  output.write(`${JSON.stringify(handshake)}\n`);
-  host.listeningOn(relayPort);
-  await host.startGateway((text) => io.writeError(text));
-  const server = serveHostOverFrames(
-    token,
-    host.routes,
-    { input: io.input, output },
-    relayPort,
-    undefined,
-    keychain,
-  );
-  const ended = await server.ended;
-  await host.stop();
-  await server.close();
-  if (ended === undefined) return 0;
-  io.writeError(`The agent host stopped: ${ended.message}\n`);
-  return 1;
-}
-
-/** The port `--relay-host` names, or `undefined` when it is missing or isn't `127.0.0.1:<port>`. */
-function relayPortOf(args: readonly string[]): number | undefined {
-  const relayHost = args[args.indexOf("--relay-host") + 1] ?? "";
-  const port = Number(relayHostPattern.exec(relayHost)?.[1] ?? 0);
-  return port === 0 || port > 65_535 ? undefined : port;
-}
-
-/** The routes the host serves, and how to stop all they started. */
-interface HostServices {
-  routes: HostRoute[];
-  stop(): Promise<void>;
-  /** Tells the host which port its own server listens on, so no provider's address may be that port. */
-  listeningOn(port: number): void;
-  /**
-   * Starts the remote gateway's listener when the setting turns it on, and does nothing otherwise.
-   * A listener that can't start is told to `log` and the host serves without it.
-   */
-  startGateway(log: (text: string) => void): Promise<void>;
 }
 
 /**
@@ -490,14 +378,4 @@ function logToError(text: string): void {
 function hostHarnesses(version: string): Harness[] {
   const probe = createProgramProbe();
   return [claudeCodeHarness({ probe }), codexHarness({ probe, halonicVersion: version })];
-}
-
-function inputClosed(input: Readable): Promise<undefined> {
-  return new Promise((resolve) => {
-    input.once("end", () => resolve(undefined));
-    input.once("close", () => resolve(undefined));
-    input.once("error", () => resolve(undefined));
-    // Nothing is read from the input yet; reading it lets its end arrive.
-    input.resume();
-  });
 }
