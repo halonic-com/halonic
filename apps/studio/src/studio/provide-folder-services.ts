@@ -1,4 +1,4 @@
-import { AgentHostChat, AgentHostPlacementStore } from "@halonicjs/adapter-agent-host-client";
+import { AgentHostChat } from "@halonicjs/adapter-agent-host-client";
 import {
   TauriDefinitionStore,
   TauriEngineLock,
@@ -9,7 +9,6 @@ import {
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
 import {
-  AgentPlacement,
   InstructionTrustService,
   type ServiceRegistry,
   type WorkspaceScope,
@@ -67,6 +66,7 @@ import {
 import { EngineNotAnswering, type KeyboardPlatform } from "@halonicjs/studio-shell";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
+import { agentHostPlacement } from "../agents/agent-host-placement.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { shareChoiceMemory } from "../changes/share-choice.ts";
 import { versionHistoryOf } from "../changes/version-history.ts";
@@ -254,6 +254,9 @@ export function provideFolderServices(
             }),
       }),
     );
+  // Settings › New agents run and the Harness page share the agent host's choices.
+  const placed =
+    transport === undefined ? undefined : agentHostPlacement(transport, files, location);
   services.provide(
     AgentsHostService,
     new WorkspaceAgents({
@@ -261,20 +264,17 @@ export function provideFolderServices(
       onChange: (listener) => scope.events.on("files.changed", listener),
       // The background engine has no chat route yet, so its window answers "not answering".
       ...(engine instanceof EngineService ? { answerChat: answerChatOn(engine) } : {}),
-      ...(transport === undefined
+      ...(transport === undefined || placed === undefined
         ? {}
         : {
             ...agentHostHarnessParts(transport, location),
             newAgents: {
               settings: services.get(HostSettingsService),
-              placement: new AgentPlacement({
-                store: new AgentHostPlacementStore(transport),
-                digest: webCryptoDigest,
-                clock: systemClock,
-              }),
+              placement: placed.placement,
               location,
               reportError: (error) => console.error("Placing a new agent", error),
             },
+            placement: placed.choices,
           }),
       // Looked up when Review and make live is pressed, as for the routines below.
       versionDialog: (paths) => services.get(VersionDialogService).open(paths),

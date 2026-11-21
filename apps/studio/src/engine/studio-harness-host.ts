@@ -175,20 +175,31 @@ async function bridgeServicesOf(
 
 /**
  * The agents' files as they are saved now: the Studio starts its runs on the
- * saved files. The text goes back to UTF-8, the bytes a choice was made for.
+ * saved files.
  */
 function agentFilesOf(definitions: DefinitionSource): AgentFiles {
-  return {
-    bytesOf: async (hubId, agentId) => {
-      const workspace = await loadWorkspace(definitions);
-      const file = filesOf(workspace, "agent").find(
-        (each) => each.hub === hubId && each.value.id === agentId,
-      );
-      const text = file === undefined ? null : await definitions.read(file.path);
-      if (text === null) throw new Error(`Hub "${hubId}" has no agent "${agentId}".`);
-      return new TextEncoder().encode(text);
-    },
-  };
+  return { bytesOf: (hubId, agentId) => savedAgentBytes(definitions, hubId, agentId) };
+}
+
+/**
+ * An agent's file as it is saved now, its text back in UTF-8: the bytes a
+ * placement choice is made for. The engine and the Harness page both read
+ * these, so the page sees the engine's choice.
+ *
+ * @throws when the hub has no such agent
+ */
+export async function savedAgentBytes(
+  definitions: DefinitionSource,
+  hubId: string,
+  agentId: string,
+): Promise<Uint8Array> {
+  const workspace = await loadWorkspace(definitions);
+  const file = filesOf(workspace, "agent").find(
+    (each) => each.hub === hubId && each.value.id === agentId,
+  );
+  const text = file === undefined ? null : await definitions.read(file.path);
+  if (text === null) throw new Error(`Hub "${hubId}" has no agent "${agentId}".`);
+  return new TextEncoder().encode(text);
 }
 
 /**
