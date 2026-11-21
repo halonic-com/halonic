@@ -86,8 +86,16 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
     setShown(current.current);
   }, []);
 
-  // A page that closes stops the reply it was writing.
-  useEffect(() => () => running.current?.abort(), []);
+  // A page that closes stops the reply it was writing, and says nothing about it: the person
+  // didn't press Stop, and there's no chat left to read.
+  const open = useRef(true);
+  useEffect(() => {
+    open.current = true;
+    return () => {
+      open.current = false;
+      running.current?.abort();
+    };
+  }, []);
 
   const send = useCallback(
     (message: string, refused?: (message: string) => void) => {
@@ -98,6 +106,7 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
       update((transcript) => startTurn(transcript, message));
       const finish = (end: ReplyEnd) => {
         running.current = undefined;
+        if (!open.current) return;
         update((transcript) => endTurn(transcript, end));
         setAnswering(false);
         announceEnd(end, said.current.name, said.current.announce);
@@ -116,6 +125,7 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
           const kind = errorKindOf(error);
           if (kind === "denied") {
             running.current = undefined;
+            if (!open.current) return;
             update((transcript) => withoutLastTurn(transcript).transcript);
             setAnswering(false);
             refused?.(message);
