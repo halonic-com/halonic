@@ -1,4 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
+import type { WorkspaceIssue } from "@halonicjs/workspace";
 import { describe, expect, it } from "vitest";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
@@ -131,5 +132,56 @@ verifies("studio.first-hub", () => {
     });
 
     expect(folder.store["hubs/default/hub.yaml"]).toBeUndefined();
+  });
+});
+
+/** A load problem in `file`, as the workspace reports it. */
+function issueIn(file: string, severity: "error" | "warning"): WorkspaceIssue {
+  return {
+    file,
+    severity,
+    source: "syntax",
+    code: "BAD_INDENT",
+    path: [],
+    message: "Flow sequence is not closed.",
+    line: 2,
+    col: 7,
+  };
+}
+
+verifies("studio.first-hub-unloadable", () => {
+  it("refuses the Default hub with the file's load error, naming the line", () => {
+    expect(() => hubFilesFor([issueIn("hubs/default/hub.yaml", "error")], [], "default")).toThrow(
+      expect.objectContaining({
+        kind: "invalid_input",
+        message: "hubs/default/hub.yaml doesn't load: Flow sequence is not closed (line 2).",
+      }),
+    );
+  });
+
+  it("still writes the Default hub for a warning in its file or an error in another file", () => {
+    const issues = [
+      issueIn("hubs/default/hub.yaml", "warning"),
+      issueIn("workspace.yaml", "error"),
+    ];
+
+    expect(hubFilesFor(issues, [], "default")).toEqual({
+      "hubs/default/hub.yaml": "id: default\nname: Default\n",
+    });
+  });
+
+  it("keeps a Default hub file that doesn't load when a workflow is created", async () => {
+    const broken = "id: default\nname: [Default\n";
+    const folder = folderWith({ "hubs/default/hub.yaml": broken });
+
+    await expect(
+      new WorkspaceWorkflows(folder).create({ name: "Daily summary", hubId: "default" }),
+    ).rejects.toMatchObject({
+      kind: "invalid_input",
+      message: expect.stringMatching(/^hubs\/default\/hub\.yaml doesn't load: .+ \(line \d+\)\.$/),
+    });
+
+    expect(folder.changes).toEqual([]);
+    expect(folder.store["hubs/default/hub.yaml"]).toBe(broken);
   });
 });
