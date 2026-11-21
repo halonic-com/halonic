@@ -1,25 +1,46 @@
-import type {
-  PairingEvent,
-  PairingSession,
-  PhonePlatform,
-  RemoteControl,
-  RemoteState,
+import {
+  type PairingEvent,
+  type PairingSession,
+  type PairRefusedReason,
+  type PhonePlatform,
+  pairingRules,
+  type RemoteControl,
+  type RemoteState,
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 
-/** What the suite needs from a host under test. */
+/** What the host told a phone whose pairing try failed. `triesLeft` is 0 for every reason but `wrong-code`. */
+export interface PairTryRefusal {
+  readonly reason: PairRefusedReason;
+  readonly triesLeft: number;
+}
+
+/**
+ * What the suite needs from a host under test: the host, and a driver that
+ * plays the phone and moves the host's time.
+ */
 export interface RemoteControlHarness {
   /** A host that offers remote, with remote off, no phone paired and the risky switch off. */
   control: RemoteControl;
   /** Plays a phone that uses the open pairing's code; resolves once the host has sent `check`. */
   phoneUsesCode(code: string, phone: { name: string; platform: PhonePlatform }): Promise<void>;
+  /**
+   * Plays a phone that tries the open pairing with a wrong code, and gives
+   * what the host told it. Never throws: with no code taking a phone, or too
+   * many failed tries this minute, the host refuses the try before it counts.
+   */
+  phoneTriesWrongCode(): Promise<PairTryRefusal>;
+  /** Moves the host's time `ms` forward, and lets what then falls due run. No test sleeps. */
+  advance(ms: number): Promise<void>;
 }
 
 /** Creates a new host for one test. */
 export type MakeRemoteControl = () => Promise<RemoteControlHarness>;
 
 const symbols = "[2-9A-HJKMNP-Z]";
+const minuteMs = 60_000;
+const { codeLifetimeMs, allowWaitMs, wrongTriesPerCode, failedTriesPerMinute } = pairingRules;
 
 /** The current state: the first item of a new stream. */
 async function stateOf(control: RemoteControl): Promise<RemoteState> {
@@ -79,8 +100,10 @@ async function pairPhone(harness: RemoteControlHarness, name: string) {
 
 /**
  * The contract every {@link RemoteControl} passes: the fake, and the host's
- * pairing service behind Studio (tunnel phase B2). What runs out in time,
- * a code's life and the wait for Allow, is the implementation's own test.
+ * pairing service behind Studio (tunnel phase B2). The pairing rules, a
+ * code's life, the wait for Allow, the wrong tries a code takes and the
+ * host's failed tries a minute, are `pairingRules`, so both are held to the
+ * same numbers.
  */
 export function remoteControlContract(name: string, make: MakeRemoteControl): void {
   verifies("contracts.remote-control", () => {
@@ -88,6 +111,8 @@ export function remoteControlContract(name: string, make: MakeRemoteControl): vo
       stateCases(make);
       pairingCases(make);
       newCodeCases(make);
+      timingCases(make);
+      tryCases(make);
       phoneCases(make);
     });
   });
@@ -258,6 +283,111 @@ function newCodeCases(make: MakeRemoteControl): void {
     await next();
     await expect(session.newCode()).rejects.toThrow();
     expect(await stateOf(control)).toMatchObject({ on: false, pairing: false });
+  });
+}
+
+function timingCases(make: MakeRemoteControl): void {
+  it("ends a code no phone used once its life is over, and keeps the pairing open for a new one", async () => {
+    const harness = await make();
+    const { session, next } = await openPairing(harness.control);
+    await harness.advance(codeLifetimeMs);
+    expect(await next()).toEqual({ type: "code-ended", reason: "code-expired" });
+    expect(await stateOf(harness.control)).toMatchObject({ on: true, pairing: true });
+    expect(await harness.phoneTriesWrongCode()).toEqual({ reason: "code-ended", triesLeft: 0 });
+    await session.newCode();
+    expect(await next()).toMatchObject({ type: "code" });
+    await session.close();
+  });
+
+  it("takes a code until its life is over, and a used code then waits for Allow, not for its life", async () => {
+    const harness = await make();
+    const { session, next, code } = await openPairing(harness.control);
+    await harness.advance(codeLifetimeMs - 1);
+    await harness.phoneUsesCode(code.code, { name: "Pixel 8", platform: "android" });
+    const check = await next();
+    if (check.type !== "check") throw new Error(`the phone's code gave ${check.type}`);
+    expect(Date.parse(check.allowBy) - Date.parse(code.expiresAt)).toBe(allowWaitMs - 1);
+    await harness.advance(allowWaitMs - 1);
+    await session.allow();
+    expect(await next()).toMatchObject({ type: "paired", phone: { name: "Pixel 8" } });
+  });
+
+  it("ends the code when Allow isn't pressed in time, and refuses Allow after", async () => {
+    const harness = await make();
+    const { session, next, code } = await openPairing(harness.control);
+    await harness.phoneUsesCode(code.code, { name: "Pixel 8", platform: "android" });
+    await next();
+    await harness.advance(allowWaitMs);
+    expect(await next()).toEqual({ type: "code-ended", reason: "allow-timed-out" });
+    await expect(session.allow()).rejects.toThrow();
+    expect(await stateOf(harness.control)).toMatchObject({ on: true, pairing: true, phones: [] });
+    await session.close();
+  });
+
+  it("gives a new code a life of its own, so the old code's time runs out on nothing", async () => {
+    const harness = await make();
+    const { session, next } = await openPairing(harness.control);
+    await harness.advance(codeLifetimeMs - 1);
+    await session.newCode();
+    const fresh = await next();
+    if (fresh.type !== "code") throw new Error(`newCode gave ${fresh.type}`);
+    await harness.advance(codeLifetimeMs - 1);
+    await harness.phoneUsesCode(fresh.code, { name: "Pixel 8", platform: "android" });
+    expect(await next()).toMatchObject({ type: "check", phoneName: "Pixel 8" });
+    await session.close();
+  });
+}
+
+function tryCases(make: MakeRemoteControl): void {
+  it("counts a code's wrong tries down, ends it at the last, and a new code starts again", async () => {
+    const harness = await make();
+    const { session, next } = await openPairing(harness.control);
+    const refusals: PairTryRefusal[] = [];
+    for (let tries = 1; tries < wrongTriesPerCode; tries += 1) {
+      refusals.push(await harness.phoneTriesWrongCode());
+    }
+    expect(refusals.map((refusal) => refusal.triesLeft)).toEqual(
+      Array.from({ length: wrongTriesPerCode - 1 }, (_, done) => wrongTriesPerCode - 1 - done),
+    );
+    expect(refusals.every((refusal) => refusal.reason === "wrong-code")).toBe(true);
+    expect(await harness.phoneTriesWrongCode()).toEqual({ reason: "code-ended", triesLeft: 0 });
+    expect(await next()).toEqual({ type: "code-ended", reason: "too-many-tries" });
+    expect(await harness.phoneTriesWrongCode()).toEqual({ reason: "code-ended", triesLeft: 0 });
+    await session.newCode();
+    const fresh = await next();
+    if (fresh.type !== "code") throw new Error(`newCode gave ${fresh.type}`);
+    expect(await harness.phoneTriesWrongCode()).toEqual({
+      reason: "wrong-code",
+      triesLeft: wrongTriesPerCode - 1,
+    });
+    await harness.phoneUsesCode(fresh.code, { name: "Pixel 8", platform: "android" });
+    await next();
+    expect(await harness.phoneTriesWrongCode()).toEqual({ reason: "code-used", triesLeft: 0 });
+    await session.close();
+  });
+
+  it("refuses every try as rate-limited after a minute's failed tries across codes, until the first is a minute old", async () => {
+    const harness = await make();
+    const { session, next } = await openPairing(harness.control);
+    expect((await harness.phoneTriesWrongCode()).reason).toBe("wrong-code");
+    await harness.advance(minuteMs / 2);
+    for (let failed = 1; failed < failedTriesPerMinute; failed += 1) {
+      const refusal = await harness.phoneTriesWrongCode();
+      if (refusal.reason === "wrong-code") continue;
+      expect(refusal).toEqual({ reason: "code-ended", triesLeft: 0 });
+      expect(await next()).toEqual({ type: "code-ended", reason: "too-many-tries" });
+      await session.newCode();
+      expect(await next()).toMatchObject({ type: "code" });
+    }
+    expect(await harness.phoneTriesWrongCode()).toEqual({ reason: "rate-limited", triesLeft: 0 });
+    await harness.advance(minuteMs / 2 - 1);
+    expect(await harness.phoneTriesWrongCode()).toEqual({ reason: "rate-limited", triesLeft: 0 });
+    await harness.advance(1);
+    expect(await harness.phoneTriesWrongCode()).toEqual({
+      reason: "wrong-code",
+      triesLeft: wrongTriesPerCode - 1,
+    });
+    await session.close();
   });
 }
 
