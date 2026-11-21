@@ -6,6 +6,7 @@
 
 The bridge host shall tell the host's `servicesFor` the harness the call runs in and where the agent runs for that call, the placement the engine opens the call's bridge with, so a choice a person changes during the call can't give its bridge another access. `providerAccessOf` shall decide which access the bridge gets to the provider the harness calls (Claude Code calls Anthropic, Codex calls OpenAI), from the workspace's provider files and the provider the agent's `model` points to, reading no secret:
 
+0. An agent whose `model` is an alias of its hub's models gets, wherever it runs, the key of the alias's provider when that provider is of a type the harness calls (`anthropic` for Claude Code; `openai` or `openai-compatible` for Codex) and has a `secret`, with the file's `baseUrl` when it has one, since the engine asks the program for the alias's model on every call, which its own sign-in can't serve. Rule 0 checks no trust itself, so a caller shall pass the alias only after the built-in loop's key check (`cli.harness-model-access`) has passed for it. Otherwise the rules below decide.
 1. An agent on this computer keeps the program's own sign-in.
 2. An agent in the sandbox gets the key of the provider of that type with a `secret` that its model points to, else of the only one, with the file's `baseUrl` when it has one, so the key goes only to that address.
 3. When several such providers could pay and the model points to none, it shall stop with an `invalid_input` error that names them.
@@ -16,6 +17,12 @@ The bridge host shall pass each failure the bridge reports through the host's `s
 
 ## Examples
 
+- Given an agent set to "On this computer" whose model is an alias of the Anthropic provider `zai`, which has a secret,
+  when its access is decided,
+  then its bridge gets `zai`'s key.
+- Given a Codex agent whose model is an alias of an `openai-compatible` provider with a secret,
+  when its access is decided,
+  then its bridge gets that provider's key.
 - Given an agent set to "On this computer" in a workspace with an Anthropic provider with a secret,
   when its access is decided,
   then it signs in with Claude Code's own sign-in.

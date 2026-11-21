@@ -195,6 +195,15 @@ Three optional agent fields say how an agent runs in another program
   program may reach in a sandbox, follows the same rules (requirement `connector-sites`); no
   other transport takes it.
 
+A harness agent's `model` is usually a name its program knows, such as
+`sonnet`. When it is an alias of the hub's models instead, the program runs
+that alias's model through the alias's provider, with the provider's key,
+wherever the agent runs: a `type: anthropic` provider for Claude Code, and
+`openai` or `openai-compatible` (an address that speaks OpenAI's Responses API)
+for Codex. That is how a harness agent runs an open model, such as GLM through
+Z.ai's Anthropic-compatible address. Only the alias's own target counts, not
+its fallbacks (requirement `cli.harness-model-access`).
+
 An optional `harnessLimits` block bounds one step of a harness agent
 (requirement `agent-harness-limits`): `maxSteps` (model calls, 1 to 10000),
 `maxMinutes` (1 to 1440, not counting waits for a person's answer) and

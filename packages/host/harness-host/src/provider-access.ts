@@ -20,6 +20,15 @@ const providerNames: Record<BridgeProvider, string> = {
   openai: "OpenAI",
 };
 
+/**
+ * The provider file types an alias may point a harness to on each route: an
+ * `openai-compatible` address speaks OpenAI's Responses API too, so Codex can call it.
+ */
+const aliasTypes: Record<BridgeProvider, readonly string[]> = {
+  anthropic: ["anthropic"],
+  openai: ["openai", "openai-compatible"],
+};
+
 /** What the rules read of a provider file (`providers/<id>.yaml`). */
 export interface AccessProviderFile {
   readonly id: string;
@@ -40,6 +49,17 @@ export interface ProviderAccessInput {
    * resolved; `undefined` when the file names no model or the name resolves to none.
    */
   readonly modelProvider?: string;
+  /**
+   * The provider id the agent's `model` resolves to when that name is an
+   * alias of its hub's models; left out for no model or a `provider/model` name.
+   * The engine then asks the program for the alias's model on every call,
+   * which the program's own sign-in can't serve.
+   *
+   * Set it only after the built-in loop's key check (`cli.harness-model-access`:
+   * trust, the key's allowed addresses, the harness's route) has passed for the
+   * alias: rule 0 gives the key on this computer too and checks no trust itself.
+   */
+  readonly aliasProvider?: string;
 }
 
 /** The access the bridge gets to the provider the agent's harness calls. */
@@ -68,6 +88,8 @@ export type ProviderAccessChoice =
 /**
  * The access one harness agent's bridge gets:
  *
+ * 0. For an alias, wherever the agent runs, the key of the alias's provider
+ *    when it is of a type the harness calls and has a `secret`.
  * 1. On this computer, the program's own sign-in, which works there and
  *    spends nothing.
  * 2. In the sandbox, the key of a provider of the harness's type that has a
@@ -89,6 +111,8 @@ export type ProviderAccessChoice =
  */
 export function providerAccessOf(input: ProviderAccessInput): ProviderAccessChoice {
   const provider = providerOfHarness[input.harness];
+  const aliasKey = aliasKeyOf(input, provider);
+  if (aliasKey !== undefined) return aliasKey;
   if (input.runsOn === "this-computer") {
     return { kind: "sign-in", provider, reason: "this-computer" };
   }
@@ -128,4 +152,25 @@ export function providerAccessOf(input: ProviderAccessInput): ProviderAccessChoi
     "invalid_input",
     `The workspace has several ${name} providers with a key (${ids}), and the agent's model points to none of them, so Halonic doesn't know whose key the sandboxed agent may spend. Set the agent's model to one of them, such as "${keyed[0]?.id}/<model>".`,
   );
+}
+
+/**
+ * Rule 0: the key of the alias's provider, when the agent's `model` is an
+ * alias of a provider of a type the harness calls that has a `secret`, else
+ * `undefined`, so the other rules decide.
+ */
+function aliasKeyOf(
+  input: ProviderAccessInput,
+  provider: BridgeProvider,
+): ProviderAccessChoice | undefined {
+  if (input.aliasProvider === undefined) return undefined;
+  const file = input.providers.find((candidate) => candidate.id === input.aliasProvider);
+  if (file?.secret === undefined || !aliasTypes[provider].includes(file.type)) return undefined;
+  return {
+    kind: "key",
+    provider,
+    providerId: file.id,
+    secret: file.secret,
+    ...(file.baseUrl === undefined ? {} : { baseUrl: file.baseUrl }),
+  };
 }

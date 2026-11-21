@@ -220,6 +220,7 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
     harnesses,
     bridgeServers: await bridgeServersOf(input, keys.bridgeSecrets),
     services: keys,
+    models: keys.models,
     scrub: keys.scrub,
     reportError: input.reportBridgeError,
     profiles,
