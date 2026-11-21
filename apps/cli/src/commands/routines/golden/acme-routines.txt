@@ -31,6 +31,7 @@ stdout:
         "problems": 0,
         "lastRun": null
       }
-    ]
+    ],
+    "trusted": true
   }
 stderr:
