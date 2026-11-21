@@ -21,6 +21,8 @@ export const pageWords = {
   cardRemoved: (title: string) => `${title} was removed.`,
   /** The team chart's accessible name (flow-agents 5.4). */
   teamChart: (name: string) => `Who works with ${name}`,
+  /** A subagent's card leads to the subagent's own page (flow-agents 6 Clicks, UX 9.9). */
+  openAgent: (name: string) => `Open ${name} ›`,
   runsHeading: "Runs",
   /**
    * R9: the Runs list can't show one agent's runs yet, so the line leads there with

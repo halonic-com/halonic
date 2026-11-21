@@ -140,6 +140,20 @@ verifies("agents.page.cards", () => {
     expect(opened).toEqual([expect.objectContaining({ hubId: "acme", id: "checker" })]);
   });
 
+  it("leads from the subagent's card to its own page with Open Writer ›", async () => {
+    const opened: AgentRef[] = [];
+    const { page } = await openSubagents(host(), (agent) => opened.push(agent));
+    await openCardOf(page, "Writer");
+    await act(async () => buttonNamed(topCard(page) as HTMLElement, "Open Writer ›")?.click());
+    expect(opened).toEqual([{ hubId: "acme", id: "writer" }]);
+  });
+
+  it("has no Open Writer › where the app can't open pages", async () => {
+    const { page } = await openSubagents();
+    await openCardOf(page, "Writer");
+    expect(buttonNamed(topCard(page) as HTMLElement, "Open Writer ›")).toBeUndefined();
+  });
+
   it("shows no team chart once the agent works alone", async () => {
     const agents = memoryAgentsHost({
       hubs: [{ id: "acme", name: "Acme Mail" }],
