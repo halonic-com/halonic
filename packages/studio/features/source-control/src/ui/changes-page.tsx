@@ -1,4 +1,4 @@
-import { EmptyState, usePresentation } from "@halonicjs/studio-kit";
+import { usePresentation } from "@halonicjs/studio-kit";
 import type { ItemRef, PlaceViewProps } from "@halonicjs/studio-shell";
 import {
   type ReactNode,
@@ -31,7 +31,7 @@ import {
   useChangesPhonePages,
   usePhoneOpening,
 } from "./phone-pages.ts";
-import { LoadFailed, Loading, NoGit, TurnOnHistory } from "./read-states.tsx";
+import { LoadFailed, Loading, NestedRepository, NoGit, TurnOnHistory } from "./read-states.tsx";
 import { SharingLine } from "./sharing-line.tsx";
 import { useFocusNewVersion } from "./use-focus-new-version.ts";
 import { type OpenItem, useOpenItem } from "./use-open-item.ts";
@@ -375,16 +375,7 @@ function ReadBody({
     return <TurnOnHistory list={list} state={state} focusHeading={focusHeading} />;
   }
   if (read.kind === "no-git") return <NoGit list={list} phone={phone} />;
-  if (read.kind === "nested-repository") {
-    return (
-      <EmptyState
-        tone="error"
-        align="start"
-        title={stateWords.loadFailed}
-        description={stateWords.nestedRepository}
-      />
-    );
-  }
+  if (read.kind === "nested-repository") return <NestedRepository phone={phone} />;
   return (
     <>
       {read.changes.length === 0 ? (
