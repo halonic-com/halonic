@@ -3,6 +3,7 @@
 - Task: HAL-4291 (the workflow page's Run, PR 2 of 4)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-4291 (the CTO's scope for this task: Run is unavailable while the sandbox can't start, checklist 3.1 and 3.3 of HAL-1833)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2bjNLXh3V4gyBgQ8GsB6mBd72Gg/UgP46un+lnZPSXEqiqIxT38AEj9RmDHgT6rIgtI92nIBjgwiLQn1r3yJDw==
 
 ## What changes
 
