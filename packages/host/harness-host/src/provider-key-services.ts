@@ -157,7 +157,7 @@ export class ProviderKeyServices {
     const models =
       choice.kind === "key" && target?.provider === choice.providerId ? [target.model] : [];
     if (choice.kind === "key") {
-      await this.#requireKeyMayGo(choice, providers);
+      await this.#requireKeyMayGo(agent, choice, providers);
       requireModelAtAddress(choice, models);
     }
     this.#input.reportAccess?.(agent, choice);
@@ -183,6 +183,7 @@ export class ProviderKeyServices {
    * for {@link scrub} before the bridge opens.
    */
   async #requireKeyMayGo(
+    agent: BridgeAgent,
     choice: ProviderAccessChoice & { kind: "key" },
     providers: readonly Provider[],
   ): Promise<void> {
@@ -195,9 +196,10 @@ export class ProviderKeyServices {
       throw withFixInMessage(error);
     }
     if ((await this.bridgeSecrets.get(choice.secret)) === null) {
-      throw new KindedError(
-        "invalid_input",
+      throw new MissingKeyError(
         this.#input.missingKeyText(choice.secret, choice.providerId),
+        { provider: choice.providerId, secret: choice.secret },
+        agent,
       );
     }
   }
@@ -229,18 +231,58 @@ export class ProviderKeyServices {
   }
 }
 
+/** The cause code a run logs when a sandboxed agent's key isn't saved (HAL-13795). */
+export const missingKeyCauseCode = "harness-host.no-key";
+
+/**
+ * A key whose secret holds no value, refused as `invalid_input` in the app's
+ * words. When it stops a run, the engine logs its `failureCause` on
+ * `run.failed`, so a screen can name the provider, the agent and its program
+ * and offer to add the key, rather than say it can't tell the cause. It
+ * names the secret, never a value.
+ *
+ * @example
+ * new MissingKeyError(text, { provider: "claude", secret: "anthropic-key" }, agent).failureCause;
+ * // { code: "harness-host.no-key", detail: { provider: "claude", secret: "anthropic-key", agent: "writer", harness: "claude-code" } }
+ */
+export class MissingKeyError extends KindedError {
+  /** The cause the engine logs on `run.failed`: the code and the names it is about. */
+  readonly failureCause: {
+    readonly code: typeof missingKeyCauseCode;
+    readonly detail: Readonly<Record<"provider" | "secret" | "agent" | "harness", string>>;
+  };
+
+  constructor(
+    message: string,
+    key: { readonly provider: string; readonly secret: string },
+    agent: Pick<BridgeAgent, "agentId" | "harness">,
+  ) {
+    super("invalid_input", message);
+    this.failureCause = {
+      code: missingKeyCauseCode,
+      detail: { ...key, agent: agent.agentId, harness: agent.harness },
+    };
+  }
+}
+
 /**
  * The error with its fix at the end of its message, as one sentence after
  * another. The run log keeps only an error's message, so a refusal there
- * still ends with what to do. Its kind stays the same.
+ * still ends with what to do. Its kind stays the same, and so does the
+ * `failureCause` the app's check gave it, so a screen can still name it.
  */
 function withFixInMessage(error: unknown): unknown {
   if (!(error instanceof Error)) return error;
   const fix = "fix" in error && typeof error.fix === "string" ? error.fix : undefined;
   const message = sentence(error.message);
-  return new KindedError(errorKindOf(error), fix === undefined ? message : `${message} ${fix}`, {
-    cause: error,
-  });
+  const wrapped = new KindedError(
+    errorKindOf(error),
+    fix === undefined ? message : `${message} ${fix}`,
+    { cause: error },
+  );
+  return "failureCause" in error
+    ? Object.assign(wrapped, { failureCause: error.failureCause })
+    : wrapped;
 }
 
 /** The text starting with a capital, as a sentence on its own. */
