@@ -1,7 +1,7 @@
 # Decision: the agent page shows one state for its first read, and the sandbox Callout is read once
 
 - Task: HAL-13177
-- Approval: decided by the team on HAL-13177 (Sofia's design check C516 on HAL-14955, S-4 and S-5; flow-agents 3.1's page states, approved by the board). Liam signs on review.
+- Approval: decided by the team on HAL-13177 (Sofia's design check C516 on HAL-14955, S-4 to S-6; flow-agents 3.1's page states, approved by the board). Liam signs on review.
 - Kind: user-visible
 
 ## What changes
@@ -25,6 +25,10 @@ page can leave its loading state to the panel. The chat's `render` gets a second
 hear only its first line, once, as it shows, not "Check again", "Read the guide" and "opens in your
 browser" with it.
 
+`agents.configuration.agent-steps`: an agent step's card lists its rows as Instructions, Output,
+Model, Model call limit, Tools, as microcopy 8.5 (rev 121) decided per flow-agents 7. Output sat
+after Model call limit (C516 S-6, HAL-14984). A new test checks the order.
+
 Tests: `try-it-panel.test.tsx` tested the chat's own loading and can't-load lines, which are gone.
 It now checks that the chat shows what the page gives it until the agent is read. The page's single
 state is tested in `agent-page-chat.test.tsx`, and "Loading sorter" in `agent-page.test.tsx` is now
@@ -35,11 +39,13 @@ state is tested in `agent-page-chat.test.tsx`, and "Loading sorter" in `agent-pa
 While the agent was slow or couldn't be read, the chat and the panel each showed their own state:
 two "Still loading · Try again", or "Couldn't load this chat" next to "Couldn't load this agent".
 The chat's Try again read only the chat and dropped focus to the page body, and the header said the
-id "writer" (C516 S-4). The Callout's buttons were read as part of the status line (C516 S-5).
+id "writer" (C516 S-4). The Callout's buttons were read as part of the status line (C516 S-5). The card's row order didn't
+match the decided one (C516 S-6).
 
 ## Covers
 
 - agents.chat.first-load
+- agents.configuration.agent-steps
 - agents.chat.sandbox
 - agents.page.frame
 - shell.item-page-chat
