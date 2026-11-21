@@ -82,6 +82,9 @@
       "./phone",
       "./phone-client"
     ],
+    "@halonicjs/studio-services": [
+      "./tauri-ipc"
+    ],
     "@halonicjs/testing-contracts": [
       "./node"
     ],

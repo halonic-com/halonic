@@ -1,4 +1,4 @@
-import type { TauriIpc } from "@halonicjs/studio-services";
+import type { TauriIpc } from "@halonicjs/studio-services/tauri-ipc";
 import type { ConnectBridge, ConnectResult } from "./bridge.ts";
 
 /** Where "Open release page" goes. The capability allows only this address. */

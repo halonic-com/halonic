@@ -3,13 +3,20 @@
   The Android app's own page (flow-install-update 5.3 and 5.4): the connect
   screen, "isn't answering" and the two version screens. Everything after
   Connect is the Studio the computer serves. Words: microcopy 20.4.
-  This page imports none of the Studio's code, so the app doesn't ship it.
+  It ships none of the desktop Studio: only the phone pages of
+  studio-feature-remote/phone and the kit (studio.entry, HAL-15159). Its
+  policy lets it load only its own files and reach only the shell's IPC, and
+  tauri.android.conf.json sends the same one. The build checks both
+  (src/connect/build/connect-page-guard.ts).
 -->
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; frame-ancestors 'none'"
+    />
     <title>Halonic</title>
     <link rel="stylesheet" href="./src/connect/connect.css" />
     <script type="module" src="./src/connect/main.ts"></script>

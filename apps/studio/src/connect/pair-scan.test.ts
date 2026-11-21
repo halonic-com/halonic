@@ -1,5 +1,5 @@
 import { encodePairingQr, pairingQrPrefix } from "@halonicjs/ports";
-import type { TauriIpc } from "@halonicjs/studio-services";
+import type { TauriIpc } from "@halonicjs/studio-services/tauri-ipc";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it, vi } from "vitest";
 import { readPairingScan, tauriPairingScanner } from "./pair-scan.ts";

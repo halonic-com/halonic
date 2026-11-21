@@ -1,4 +1,4 @@
-import type { TauriIpc } from "@halonicjs/studio-services";
+import type { TauriIpc } from "@halonicjs/studio-services/tauri-ipc";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { type PageWindow, releasePage, tauriBridge } from "./tauri-bridge.ts";
