@@ -4,7 +4,7 @@
 // event's `deniedPathGroupCodes`, so the run log and the screens name what
 // the profile denies.
 
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import type { DeniedPathGroup } from "@halonicjs/events";
 import {
   deniedHomePaths,
@@ -42,8 +42,12 @@ export async function homeDeniedGroups(
 }
 
 /**
- * The paths of every {@link homeDeniedGroups} group in one list, for a
- * program that only needs what it may never reach, such as a plugin's local tool.
+ * Every denied path in the person's home folder, in one list, for a program
+ * that only needs what it may never reach, such as a plugin's local tool.
+ * Unlike {@link homeDeniedGroups}, a path that isn't there yet is kept, at the
+ * real place of the folder it would be made in: a session lasts long enough
+ * for the person to sign in to a cloud tool meanwhile, and a sandbox that
+ * denies by name (Seatbelt on macOS) then keeps the new folder out too.
  *
  * @param home - the person's home folder, absolute
  * @param platform - the system, as `process.platform` names it
@@ -53,8 +57,13 @@ export async function homeDeniedPaths(
   platform: NodeJS.Platform,
   disk: Pick<ProfileDisk, "realPath">,
 ): Promise<string[]> {
-  const groups = await homeDeniedGroups(home, platform, disk);
-  return groups.flatMap((group) => group.paths);
+  const paths = new Set<string>();
+  for (const listed of Object.values(deniedHomePaths)) {
+    for (const path of homePathsOf(listed, platform as HomePlatform)) {
+      paths.add(await realPlaceOf(join(home, ...path.split("/")), disk));
+    }
+  }
+  return [...paths];
 }
 
 /**
@@ -94,5 +103,20 @@ async function realOrNothing(
     return await disk.realPath(path);
   } catch {
     return null;
+  }
+}
+
+/**
+ * Where `path` is or would be: the real path of the deepest folder on its way
+ * that is there, followed by the names that aren't there yet. `path` as given
+ * when nothing on its way can be resolved.
+ */
+async function realPlaceOf(path: string, disk: Pick<ProfileDisk, "realPath">): Promise<string> {
+  const missing: string[] = [];
+  for (let existing = path; ; existing = dirname(existing)) {
+    const real = await realOrNothing(existing, disk);
+    if (real !== null) return join(real, ...missing.reverse());
+    if (dirname(existing) === existing) return path;
+    missing.push(basename(existing));
   }
 }
