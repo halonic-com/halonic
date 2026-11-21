@@ -391,6 +391,20 @@ verifies("cli.doctor-secrets", () => {
     ]);
   });
 
+  it("reads the workspace secrets a local integration's connector picks for its sheet, each once (C552)", async () => {
+    const secrets = await secretsOf({
+      "hubs/support/hub.yaml": "id: support\nname: Support\n",
+      "library/connectors/notes.connector.yaml":
+        "transport:\n  integration:\n    folder: notes\n    secrets:\n" +
+        "      notes-key: my-notes-key\n      sync-key: my-notes-key\n      backup-key: backup-key\n",
+    });
+
+    expect(secrets).toEqual([
+      { secret: "my-notes-key", usedBy: [{ kind: "connector", id: "notes" }] },
+      { secret: "backup-key", usedBy: [{ kind: "connector", id: "notes" }] },
+    ]);
+  });
+
   it("leaves out a shared connector the agent's hub doesn't allow, as a run does", async () => {
     const secrets = await secretsOf({
       "hubs/support/hub.yaml": "id: support\nname: Support\nuses:\n  connectors: [notes]\n",
