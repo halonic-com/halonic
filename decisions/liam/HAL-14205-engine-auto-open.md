@@ -2,7 +2,6 @@
 
 - Approval: HAL-14205 (Step A of the HAL-45 plan; a team decision, no board card)
 - Kind: user-visible
-- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:gNRdCEQISZ0XRpJ1do56aHcuKegF7/Rq4WbwkK1aNvKnylSJGqwxLAJJhcMcovtkDEMk1xnzSIXTyX3A8N2DCg==
 
 ## What changes
 
