@@ -117,20 +117,33 @@ verifies("check.trace-since-is-released", () => {
       ]);
     });
 
-    test("says to fetch the tags when the checkout has none", () => {
-      const root = fixtureRepo();
-      write(root, requirementFile, requirementText(id, "0.1.0"));
-      const [error] = sinceErrors(root);
-      expect(error).toContain("No tag v0.1.0");
-      expect(error).toContain("git fetch --tags");
-    });
-
     test("passes for the app version while its release is being cut", () => {
       const root = fixtureRepo("0.1.0");
       release(root, "0.1.0");
       write(root, "apps/studio/package.json", JSON.stringify({ version: "0.2.0" }));
       write(root, requirementFile, requirementText(id, "0.2.0"));
       expect(sinceErrors(root)).toEqual([]);
+    });
+  });
+
+  describe("a checkout without release tags", () => {
+    const fetchTags = (count: number): string =>
+      `${requirementFile}:4: This checkout has no release tags, so the ${count} requirements whose "Since" names a version can't be checked: fetch the tags with \`git fetch --tags\` and run the check again.`;
+
+    test("fails once and says to fetch the tags", () => {
+      const root = fixtureRepo();
+      write(root, requirementFile, requirementText(id, "0.1.0"));
+      const otherFile = `${workflowDirectory}/requirements/timer-repeats.md`;
+      write(root, otherFile, requirementText("workflow.timer-repeats", "0.3.0"));
+      expect(sinceErrors(root)).toEqual([fetchTags(2)]);
+    });
+
+    test("gives the app version no exception", () => {
+      // HAL-14684: the app version is 0.1.0 until the next release, so with the
+      // exception every Since: 0.1.0 in a clone without tags passed unchecked.
+      const root = fixtureRepo("0.1.0");
+      write(root, requirementFile, requirementText(id, "0.1.0"));
+      expect(sinceErrors(root)).toEqual([fetchTags(1)]);
     });
   });
 

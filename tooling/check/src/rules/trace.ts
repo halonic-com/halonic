@@ -179,14 +179,28 @@ function reportUnproven(model: TraceModel, report: Report): void {
  * `v<version>` exists and holds the requirement, by its path or by its ID.
  * The one version without a tag that passes is the app version while its
  * release is being cut: the release pull request writes it before the
- * release bot tags the merged commit.
+ * release bot tags the merged commit. A checkout with no release tags at
+ * all gets no exception: one error tells it to fetch them.
  */
 function reportUnreleasedSince(context: CheckContext, model: TraceModel, report: Report): void {
   const named = model.requirements.filter(({ requirement }) => requirement.since !== unreleased);
-  if (named.length === 0) {
+  const [first] = named;
+  if (first === undefined) {
     return;
   }
   const tags = releaseTags(context.root);
+  if (!tags.any) {
+    // Nothing can be checked without tags, not even the release exception:
+    // the app version is also the last release's version until the next
+    // release pull request raises it (HAL-14684). One error, not one per file.
+    const { file } = first.requirement;
+    report.error(
+      file,
+      `This checkout has no release tags, so the ${named.length} requirements whose "Since" names a version can't be checked: fetch the tags with \`git fetch --tags\` and run the check again.`,
+      sinceLine(context, file),
+    );
+    return;
+  }
   const releasing = appVersion(context);
   for (const { requirement } of named) {
     const problem = sinceProblem(
@@ -215,10 +229,7 @@ function sinceProblem(
     if (version === releasing) {
       return undefined;
     }
-    const noTags = tags.any
-      ? ""
-      : " This checkout has no release tags at all: fetch them with `git fetch --tags` and run the check again.";
-    return `No tag v${version}; write "Since: ${unreleased}".${noTags}`;
+    return `No tag v${version}; write "Since: ${unreleased}".`;
   }
   if (released.files.has(file) || released.ids.has(id)) {
     return undefined;

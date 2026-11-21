@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-13777
 
-If a requirement's `Since` names a version whose tag `v<version>` doesn't exist, or whose tag doesn't hold the requirement by its path or by its ID, then the trace check shall fail on the requirement file and say to write `Since: unreleased`, unless the version is the app version in `apps/studio/package.json` and that version has no tag yet, which is the release being cut.
+If a requirement's `Since` names a version whose tag `v<version>` doesn't exist, or whose tag doesn't hold the requirement by its path or by its ID, then the trace check shall fail on the requirement file and say to write `Since: unreleased`, unless the checkout has release tags and the version is the app version in `apps/studio/package.json` with no tag yet, which is the release being cut.
 
 ## Examples
 
@@ -24,5 +24,5 @@ If a requirement's `Since` names a version whose tag `v<version>` doesn't exist,
   when the trace check runs,
   then it passes.
 - Given a checkout with no release tags at all,
-  when a requirement names a version,
+  when a requirement names a version, the app version included,
   then the check fails and says to fetch the tags.

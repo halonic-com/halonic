@@ -20,8 +20,11 @@ release pull request, and the `main` run right after its merge, would fail.
 Tags are read from git objects only, never the network. CI fetches them
 (`fetch-tags: true` on the build job's checkout and the guard job's head
 checkout) instead of skipping the rule, so a missing fetch fails loudly
-rather than turning the rule off. A clone without tags gets an error that
-says `git fetch --tags`.
+rather than turning the rule off. A clone without tags gets one error that
+says `git fetch --tags` and checks no version until it has them, not even
+the app version: the app version is also the last release's version until
+the next release pull request raises it, so the exception would pass every
+`Since: 0.1.0` unchecked there (HAL-14684).
 
 Twenty-one requirements written after v0.1.0 still said `Since: 0.1.0` and
 now say `Since: unreleased`. Two are guard paths (`check.guard-dependency`,

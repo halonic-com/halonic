@@ -210,8 +210,9 @@ the fix is `Since: unreleased`. The one exception is the release pull
 request: the app version in `apps/studio/package.json` passes before its tag
 exists, because the release bot tags the commit only after the merge. Trace
 reads the tags from the checkout's git objects, never the network; CI's
-checkouts fetch them, and a local clone without them gets an error that
-says `git fetch --tags`.
+checkouts fetch them. A local clone without them gets one error that says
+`git fetch --tags` and checks no version, not even the app version, until
+it has them.
 
 ## Requirement guard: nothing that works may break
 
