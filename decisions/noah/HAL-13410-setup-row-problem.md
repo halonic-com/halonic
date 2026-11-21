@@ -3,6 +3,7 @@
 - Task: HAL-13410
 - Approval: team decision on the approved first-run-progress design (HAL-7986, section 3.1 and section 8 "Decided by the team", board yes on HAL-7993); the reviewer of the pull request on HAL-13410 signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WdqG4SvMxh5/MBA+FMhd28WTBsc2IGyEu/b5h2hI2MzdChQYZ6vwlKvOgx62pp6HJb5uGCdQ/FEslHoHQ+PSDg==
 
 ## What changes
 
