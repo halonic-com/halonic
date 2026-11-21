@@ -53,6 +53,12 @@ createRoot(root).render(
                 detail: "Adds the shop's name",
                 usedBy: "Used by Sales",
               },
+              {
+                id: "welcome",
+                name: "Welcome email",
+                detail: "Draft",
+                usedBy: "Used by Writer",
+              },
             ],
           },
         ]}

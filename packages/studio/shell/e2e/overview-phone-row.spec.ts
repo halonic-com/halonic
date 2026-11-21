@@ -123,3 +123,13 @@ test("at 390px a short detail's dot is right before the used-by text, with no ga
   expect(boxes.usedBy.left - boxes.dot.right).toBeCloseTo(0, 0);
   expect(boxes.dot.top).toBeCloseTo(boxes.usedBy.top, 0);
 });
+
+test("at 390px a detail narrower than 5rem leaves no gap before the used-by text", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 640 });
+  await page.goto("/overview-phone-row.html");
+  const boxes = await lineUnder(page, "Welcome email", "Used by Writer", "Draft");
+  expect(boxes.usedBy.left - boxes.dot.right).toBeCloseTo(0, 0);
+  expect(boxes.dot.top).toBeCloseTo(boxes.usedBy.top, 0);
+});
