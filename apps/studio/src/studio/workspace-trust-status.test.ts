@@ -164,6 +164,11 @@ verifies("studio.workspace-trust-status", () => {
     await trust.refresh();
     const view = new WorkspaceTrustView(trust, "/work/acme");
 
-    expect(await view.remove()).toEqual({ ok: false, reason: "the disk is full" });
+    // The error itself goes along, so the dialog words it and offers Copy details (C529-4).
+    expect(await view.remove()).toEqual({
+      ok: false,
+      reason: "the disk is full",
+      error: new Error("the disk is full"),
+    });
   });
 });
