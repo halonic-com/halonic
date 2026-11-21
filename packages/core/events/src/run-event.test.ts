@@ -67,6 +67,8 @@ verifies("events.run-log-contract", () => {
       | "connector.listing-failed"
       // Added after the reference by events.connector-part-off (HAL-12343).
       | "connector.part-off"
+      // Added after the reference by events.key-origin-answered (HAL-11873).
+      | "key-origin.answered"
       // Added after the reference by events.effect-requested (HAL-1532).
       | "effect.requested"
       | "knowledge.searched"

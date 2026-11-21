@@ -2,11 +2,27 @@
 // call writes its whole turn there, so the run's summary counts what its
 // model calls cost and the budget sees it.
 
-import type { Clock, RunStore } from "@halonicjs/ports";
+import type { BlobStore, Clock, RunStore } from "@halonicjs/ports";
 import type { TurnEvent, TurnLog } from "../agent/turn-log.ts";
 import { SerialRunLog } from "../harness/serial-run-log.ts";
 import { branchOfCall } from "../kernel/run-branches.ts";
 import type { PendingCall, RunState } from "../kernel/run-state.ts";
+import { LargeResultsTurnLog } from "../tools/large-results.ts";
+
+/**
+ * The log a run's model call writes its turn to: the run's own log in `store`
+ * ({@link RunStoreTurnLog}), with a tool result over 256 KB in `blobs`
+ * ({@link LargeResultsTurnLog}).
+ */
+export function runTurnLogOf(
+  store: Pick<RunStore, "append" | "events" | "snapshot">,
+  blobs: Pick<BlobStore, "put">,
+  run: RunState,
+  call: PendingCall,
+  clock: Clock,
+): TurnLog {
+  return new LargeResultsTurnLog(new RunStoreTurnLog(store, run, call, clock), blobs);
+}
 
 /**
  * A {@link TurnLog} that appends a run's model call's turn to the run's log

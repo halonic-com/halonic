@@ -342,3 +342,26 @@ verifies("cli.workspace-provider-key-trust", () => {
     });
   });
 });
+
+verifies("cli.key-origin-ask", () => {
+  it("gives the provider, the key's name and the address as the refusal's detail, never the key's value", async () => {
+    const workspace = await workspaceOf({ type: "openai", secret: keyName });
+    const resolve = workspaceModelResolver({
+      workspace,
+      secrets,
+      http,
+      isTrusted: () => true,
+      keyOrigins: originsOf({ [keyName]: ["https://gateway.example.com"] }),
+    });
+
+    const failure = await resolve(call).catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({
+      failureCause: {
+        code: "models.key-origin-not-allowed",
+        detail: { provider: "main", key: keyName, origin: "https://api.openai.com" },
+      },
+    });
+    expect(JSON.stringify(failure)).not.toContain("fake-key-value");
+  });
+});
