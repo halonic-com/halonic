@@ -1,6 +1,7 @@
 import type { AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
 import { ServiceRegistry } from "@halonicjs/app";
 import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
+import { UnfencedYesService } from "@halonicjs/studio-feature-settings/api";
 import type { TauriIpc } from "@halonicjs/studio-services";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -85,6 +86,8 @@ verifies("studio.desktop-plugins-registered", () => {
       providePlugins(second, parts);
 
       expect(second.get(PluginsHostService)).toBe(first.get(PluginsHostService));
+      // Settings' Take back and the trust check share the window's one yes (`studio.desktop-unfenced-runs`).
+      expect(second.get(UnfencedYesService)).toBe(first.get(UnfencedYesService));
       expect(page.listeners).toHaveLength(1);
     });
 
@@ -124,6 +127,7 @@ verifies("studio.desktop-plugins-registered", () => {
       });
 
       expect(() => services.get(PluginsHostService)).toThrow();
+      expect(() => services.get(UnfencedYesService)).toThrow();
       expect(page.listeners).toHaveLength(0);
     });
   });
