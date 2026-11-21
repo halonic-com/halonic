@@ -133,7 +133,7 @@ verifies("runs.run-view.key-origin-answered", () => {
   });
 
   it("writes a hidden character in a name as its escape", () => {
-    const event = { ...answered("allowed"), key: "gate‮way" } as RunEventBody;
+    const event = { ...answered("allowed"), key: "gate\u202eway" } as RunEventBody;
     const lines = runLogLines(logOf("run_a_01jd8q", [[1, event]]));
     expect(lines[1]).toMatchObject({ text: expect.stringContaining("gate\\u202eway") });
   });

@@ -13,6 +13,8 @@ function providerTab() {
     statusBar: { add: () => undefined },
     itemPage: { addSection: () => undefined },
     itemKinds: { add: (kind: ItemKindContribution) => kinds.push(kind) },
+    services: { provide: () => undefined },
+    dialogs: { add: () => undefined },
   };
   modelsFeature.register(studio as never);
   const tab = kinds.find((kind) => kind.kind === PROVIDER_KIND)?.tab;

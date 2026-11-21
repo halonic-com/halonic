@@ -20,16 +20,6 @@ export function RunLog({ lines }: { readonly lines: readonly RunLogLine[] }) {
             <li key={`blocked-${line.seq}-${line.step.state}`} className="pl-[7ch]">
               <BlockedSitesLogLines step={line.step} />
             </li>
-          ) : line.kind === "words" ? (
-            <li key={line.seq} className="flex gap-2 font-mono text-small">
-              <span className="w-[5ch] shrink-0 text-right text-fg-muted tabular-nums">
-                {line.seq}
-              </span>
-              <span className="min-w-0 wrap-anywhere">
-                <span className="text-fg-muted tabular-nums">{line.time}</span>{" "}
-                <span className="text-fg">{line.text}</span>
-              </span>
-            </li>
           ) : (
             <li key={line.seq} className="flex gap-2 font-mono text-small">
               <span className="w-[5ch] shrink-0 text-right text-fg-muted tabular-nums">
@@ -37,13 +27,25 @@ export function RunLog({ lines }: { readonly lines: readonly RunLogLine[] }) {
               </span>
               <span className="min-w-0 wrap-anywhere">
                 <span className="text-fg-muted tabular-nums">{line.time}</span>{" "}
-                <span className="text-fg">{line.type}</span>{" "}
-                <span className="text-fg-muted">{line.fields}</span>
+                <LineText line={line} />
               </span>
             </li>
           ),
         )}
       </ol>
     </div>
+  );
+}
+
+/** An event's type and fields, or a line in words such as an "Allow this address?" answer. */
+function LineText({ line }: { readonly line: Exclude<RunLogLine, { kind: "blocked" }> }) {
+  if (line.kind === "words") {
+    return <span className="text-fg">{line.text}</span>;
+  }
+  return (
+    <>
+      <span className="text-fg">{line.type}</span>{" "}
+      <span className="text-fg-muted">{line.fields}</span>
+    </>
   );
 }

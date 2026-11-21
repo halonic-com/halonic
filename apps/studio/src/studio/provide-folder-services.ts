@@ -36,7 +36,6 @@ import {
   SkillHostService,
 } from "@halonicjs/studio-feature-library/api";
 import {
-  KeyAddressQuestionsService,
   ModelKeysService,
   ModelsFilesService,
   NoLimitMemoryService,
@@ -77,6 +76,7 @@ import type { GitAnswer } from "../changes/workspace-changes.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
 import { answerChatOn } from "../engine/answer-chat-on.ts";
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
+import { windowKeyOriginPrompt } from "../engine/key-origin-prompt.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
 import { openStudioHarnessHost } from "../engine/studio-harness-host.ts";
 import { provideFilesServices } from "../files/provide-files-services.ts";
@@ -201,7 +201,6 @@ export function provideFolderServices(
   });
   const transport = tauriAgentHostTransport(window);
   const refusals = new RefusalsFeed();
-  const keyOrigins = shellKeyOrigins(ipc);
   const engine =
     remoteEngine ??
     services.provide(
@@ -213,19 +212,8 @@ export function provideFolderServices(
         name,
         definitions: new TauriDefinitionStore(files, location),
         secrets: shellKeychain(ipc),
-        keyOrigins,
-        // Only this window's own engine asks; a remote engine has no window to ask.
-        keyOriginPrompt: {
-          // Looked up when a question comes, as the Models feature provides it.
-          questions: {
-            ask: (question, options) =>
-              services.get(KeyAddressQuestionsService).ask(question, options),
-          },
-          allowOrigin: async (key, origin) => {
-            const { result } = await keyOrigins.allowOrigin(key, origin);
-            return result === "added" || result === "already-allowed";
-          },
-        },
+        keyOrigins: shellKeyOrigins(ipc),
+        keyOriginPrompt: windowKeyOriginPrompt(services, ipc),
         http: new ShellHttpClient(ipc),
         clock: systemClock,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,

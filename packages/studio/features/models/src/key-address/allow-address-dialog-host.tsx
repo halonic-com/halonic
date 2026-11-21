@@ -1,7 +1,7 @@
 import type { DialogHostProps } from "@halonicjs/studio-shell";
 import { useCallback, useSyncExternalStore } from "react";
-import { KeyAddressQueueService } from "./key-address-service.ts";
 import { AllowAddressDialog } from "./allow-address-dialog.tsx";
+import { KeyAddressQueueService } from "./key-address-service.ts";
 
 /**
  * The feature's dialog host: draws the first waiting "Allow this address?" over whatever page is

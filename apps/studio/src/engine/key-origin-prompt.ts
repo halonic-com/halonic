@@ -4,11 +4,20 @@
 // Inbox. A remote engine, a served window and a routine's trigger never get
 // here: only the local `EngineService` is given a prompt.
 
-import type { KeyOriginAskOptions } from "@halonicjs/adapter-workspace-models";
+import {
+  askingModelResolver,
+  type KeyOriginAskOptions,
+  type WorkspaceExecutorOptions,
+} from "@halonicjs/adapter-workspace-models";
+import type { ServiceRegistry } from "@halonicjs/app";
 import type { ModelScope } from "@halonicjs/engine";
 import type { RunEvent } from "@halonicjs/events";
 import type { KeyOrigins, RunStore } from "@halonicjs/ports";
-import type { KeyAddressQuestions } from "@halonicjs/studio-feature-models/api";
+import {
+  type KeyAddressQuestions,
+  KeyAddressQuestionsService,
+} from "@halonicjs/studio-feature-models/api";
+import { shellKeyOrigins, type TauriIpc } from "@halonicjs/studio-services";
 
 /** What the window gives its engine to ask "Allow this address?". */
 export interface KeyOriginPrompt {
@@ -19,6 +28,36 @@ export interface KeyOriginPrompt {
    * (HAL-11887); `true` once it is on the list.
    */
   allowOrigin(key: string, origin: string): Promise<boolean>;
+}
+
+/**
+ * The window's prompt: the open folder's questions, looked up when one comes since the Models
+ * feature provides them, and saving through the shell's `secret_allow_origin`.
+ */
+export function windowKeyOriginPrompt(services: ServiceRegistry, ipc: TauriIpc): KeyOriginPrompt {
+  const keyOrigins = shellKeyOrigins(ipc);
+  return {
+    questions: {
+      ask: (question, options) => services.get(KeyAddressQuestionsService).ask(question, options),
+    },
+    allowOrigin: async (key, origin) => {
+      const { result } = await keyOrigins.allowOrigin(key, origin);
+      return result === "added" || result === "already-allowed";
+    },
+  };
+}
+
+/**
+ * `options` whose model pick asks "Allow this address?" through `host.keyOriginPrompt`; `options`
+ * as they are when the host has no prompt, so nothing is asked.
+ */
+export function withKeyOriginPrompt(
+  options: WorkspaceExecutorOptions,
+  host: Parameters<typeof keyOriginAskOf>[1] & { readonly keyOriginPrompt?: KeyOriginPrompt },
+): WorkspaceExecutorOptions {
+  if (host.keyOriginPrompt === undefined) return options;
+  const ask = keyOriginAskOf(host.keyOriginPrompt, host);
+  return { ...options, resolveModel: askingModelResolver(options.resolveModel, ask) };
 }
 
 /** The run starts a person makes at the window: Run (or a routine's Run now), the Inbox, or a workflow's own Run. */

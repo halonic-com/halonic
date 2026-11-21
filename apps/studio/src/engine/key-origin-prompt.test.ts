@@ -3,7 +3,7 @@ import type { KeyOrigins } from "@halonicjs/ports";
 import type { KeyAddressQuestion } from "@halonicjs/studio-feature-models/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { keyOriginAskOf, type KeyOriginPrompt } from "./key-origin-prompt.ts";
+import { type KeyOriginPrompt, keyOriginAskOf } from "./key-origin-prompt.ts";
 
 /** A run log that starts as `started` says. */
 function runsStartedWith(started: Partial<Extract<RunEvent, { type: "run.started" }>> | "none") {
