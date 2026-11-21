@@ -3,7 +3,7 @@ exit 0
 stdout:
   \e[32m✓\e[39m Done   f4e5d6   Support reply   Sent nothing \e[2m·\e[22m estimated cost €0.12   \e[2m09:15 \e[22m\e[2m·\e[22m\e[2m took 1 s\e[22m
   \e[2mShowing the newest of 3 runs. See them all with halonic runs --limit 3.\e[22m
-  This month: about €0.42 of your €20.00 budget.
+  Estimated spend this month: about €0.42 of your €20.00 budget.
 stderr:
 
 ## NO_COLOR: halonic runs --limit 1
@@ -11,7 +11,7 @@ exit 0
 stdout:
   ✓ Done   f4e5d6   Support reply   Sent nothing · estimated cost €0.12   09:15 · took 1 s
   Showing the newest of 3 runs. See them all with halonic runs --limit 3.
-  This month: about €0.42 of your €20.00 budget.
+  Estimated spend this month: about €0.42 of your €20.00 budget.
 stderr:
 
 ## --json: halonic runs --limit 1

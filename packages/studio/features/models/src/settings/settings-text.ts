@@ -13,17 +13,19 @@ function count(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/** The budget as it is set, like "budget €50.00 a month"; `undefined` when no amount is set. */
+/** The budget as it is set, like "budget €50.00 per month"; `undefined` when no amount is set. */
 function budgetPart(budget: WorkspaceSettings["budget"], currency: string) {
   const parts = [
-    budget?.perRun === undefined ? undefined : `${moneyAmount(budget.perRun, currency)} a run`,
-    budget?.monthly === undefined ? undefined : `${moneyAmount(budget.monthly, currency)} a month`,
+    budget?.perRun === undefined ? undefined : `${moneyAmount(budget.perRun, currency)} per run`,
+    budget?.monthly === undefined
+      ? undefined
+      : `${moneyAmount(budget.monthly, currency)} per month`,
   ].filter((part) => part !== undefined);
   return parts.length === 0 ? undefined : `budget ${parts.join(", ")}`;
 }
 
 /**
- * The one line of the Models section, "3 aliases · 2 providers · budget €50.00 a month": no
+ * The one line of the Models section, "3 aliases · 2 providers · budget €50.00 per month": no
  * providers is "No providers yet"; no budget leaves its part out. While `models.yaml` or the
  * `providers/` folder can't be read it says so, as a line with parts missing would read as fewer
  * aliases or providers. `undefined` while the files are still being read.

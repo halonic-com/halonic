@@ -39,7 +39,8 @@ afterEach(async () => {
 });
 
 /** The list's last line in a month that spent nothing, in a workspace without `budget.monthly`. */
-const nothingSpent = "This month: €0.00. Set budget.monthly to cap it.";
+const nothingSpent =
+  "Estimated spend this month: €0.00. To cap it, set budget.monthly in workspace.yaml or in Studio's Settings › Models.";
 
 const golden = (name: string) => join(import.meta.dirname, "golden", name);
 
@@ -357,7 +358,9 @@ verifies("cli.commands.runs.month-spend", () => {
 
     const { io } = await runsIn(acme);
 
-    expect(io.stdout.at(-1)).toBe("This month: about €0.42. Set budget.monthly to cap it.");
+    expect(io.stdout.at(-1)).toBe(
+      "Estimated spend this month: about €0.42. To cap it, set budget.monthly in workspace.yaml or in Studio's Settings › Models.",
+    );
   });
 
   it("counts the whole month whatever --status, --workflow and --limit show", async () => {
@@ -376,7 +379,7 @@ verifies("cli.commands.runs.month-spend", () => {
 
     expect(io.stdout).toEqual([
       "! Needs you   09d9a0   Support reply   Waiting for you: Approve this reply?   10:40",
-      "This month: about €0.42 of your €20.00 budget.",
+      "Estimated spend this month: about €0.42 of your €20.00 budget.",
     ]);
   });
 
@@ -386,7 +389,7 @@ verifies("cli.commands.runs.month-spend", () => {
 
     const { io } = await runsIn(acme);
 
-    expect(io.stdout.at(-1)).toBe("This month: about $0.42 of your $15.00 budget.");
+    expect(io.stdout.at(-1)).toBe("Estimated spend this month: about $0.42 of your $15.00 budget.");
   });
 
   it("isn't about anything when the month spent nothing or less than the money rule shows", async () => {
@@ -394,7 +397,9 @@ verifies("cli.commands.runs.month-spend", () => {
 
     const { io } = await runsIn(acme);
 
-    expect(io.stdout.at(-1)).toBe("This month: under €0.001. Set budget.monthly to cap it.");
+    expect(io.stdout.at(-1)).toBe(
+      "Estimated spend this month: under €0.001. To cap it, set budget.monthly in workspace.yaml or in Studio's Settings › Models.",
+    );
   });
 
   it("adds no line to an empty list", async () => {
