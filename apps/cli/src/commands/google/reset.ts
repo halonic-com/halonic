@@ -3,7 +3,7 @@
 // there may be no key to set back; removing what it sealed lets Google be set
 // up again with a new key (HAL-13881).
 
-import { rm } from "node:fs/promises";
+import { readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { profileFolder, tokenFolders } from "@halonicjs/profile";
 import {
@@ -23,8 +23,9 @@ import { nodeProfileEnvironment } from "../../workspace-runs.ts";
  * and their sealed client secrets and refresh tokens, and the integrations'
  * sealed sign-ins. The key itself is left: a key that is there still works
  * for new secrets, and without one a new key is made at the next setup.
- * Answering No, or Enter, removes nothing and exits 1. A second run finds
- * nothing to remove and succeeds.
+ * Answering No, or Enter, removes nothing and exits 1. When there is
+ * nothing to remove it says so without asking and succeeds, so a second run
+ * does too.
  *
  * @throws UsageError with an argument, or when there's no terminal to ask and no `--yes`
  */
@@ -35,6 +36,14 @@ export async function resetGoogle(
 ): Promise<CommandResult> {
   if (input.positionals.length > 0) {
     throw new UsageError(googleMessages.resetTakesNothing(), googleMessages.resetUsage());
+  }
+  const folders = sealedFolders(setup);
+  if (!(await anyHoldsSomething(folders))) {
+    return {
+      exitCode: exitCode.ok,
+      lines: [googleMessages.resetNothingThere().phrase],
+      json: { removed: false },
+    };
   }
   const sure = await context.ask({
     question: googleMessages.resetQuestion(),
@@ -50,7 +59,7 @@ export async function resetGoogle(
     };
   }
 
-  for (const folder of sealedFolders(setup)) {
+  for (const folder of folders) {
     await rm(folder, { recursive: true, force: true });
   }
   return {
@@ -64,4 +73,15 @@ export async function resetGoogle(
 function sealedFolders(setup: GoogleSetup): readonly string[] {
   const folder = profileFolder(setup.profile ?? nodeProfileEnvironment());
   return [join(folder.root, "google"), tokenFolders(folder).integrationSignIns];
+}
+
+/** Whether any of the folders is there and holds at least one entry. */
+async function anyHoldsSomething(folders: readonly string[]): Promise<boolean> {
+  for (const folder of folders) {
+    const entries = await readdir(folder).catch(() => []);
+    if (entries.length > 0) {
+      return true;
+    }
+  }
+  return false;
 }

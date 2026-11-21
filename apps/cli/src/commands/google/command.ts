@@ -69,5 +69,5 @@ export function googleCommandWith(
   };
 }
 
-/** `halonic google`: choose what Halonic may do with a Google connection. */
+/** `halonic google`: a Google account's secret and sign-in, sending for a connection, and reset. */
 export const googleCommand: CliCommand = googleCommandWith({});

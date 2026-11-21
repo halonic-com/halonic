@@ -3,7 +3,8 @@ import { markPart, phrase } from "./phrase.ts";
 
 /** The sentences of `halonic google`. */
 export const googleMessages = defineMessages("google", {
-  summary: () => phrase`Choose what Halonic may do with a Google connection`,
+  summary: () =>
+    phrase`Save a Google account's secret, sign it in, switch sending for a connection, or reset Google on this computer`,
   allowSendingSummary: () => phrase`Switch sending on or off for one Google connection`,
   /** What `allow-sending` was doing, for "✕ Couldn't change the setting: …". */
   allowSendingAction: () => phrase`change the setting`,
@@ -48,7 +49,8 @@ export const googleMessages = defineMessages("google", {
   tokenKeyMissingFix: () =>
     phrase`Set HALONIC_SECRET_TOKEN_KEY to the key you used before. Without it, run halonic google reset and set up Google again.`,
 
-  resetSummary: () => phrase`Remove this computer's Google setup and saved sign-ins`,
+  resetSummary: () =>
+    phrase`Remove this computer's Google accounts and every integration's saved sign-ins`,
   /** What `reset` was doing, for "✕ Couldn't remove them: …". */
   resetAction: () => phrase`remove them`,
   resetTakesNothing: () => phrase`halonic google reset takes no account or other argument.`,
@@ -61,10 +63,13 @@ export const googleMessages = defineMessages("google", {
   notReset: () => phrase`Nothing was removed.`,
   /** No terminal, or `CI` set, without `--yes`: exit 2. */
   resetNoTerminal: () =>
-    phrase`Resetting removes this computer's Google setup and saved sign-ins, and there's no terminal to ask you to confirm.`,
+    phrase`Resetting removes this computer's Google accounts and every integration's saved sign-ins, and there's no terminal to ask you to confirm.`,
   resetNoTerminalFix: () => phrase`To remove them anyway, pass --yes.`,
+  /** Nothing there to remove: exit 0 without asking. */
+  resetNothingThere: () =>
+    phrase`Nothing to remove: this computer has no Google accounts or saved sign-ins.`,
   resetDone: () =>
-    phrase`${markPart("done")} Removed. Set up Google again in the Studio to make a new token key.`,
+    phrase`${markPart("done")} Removed. Set up Google again in the Studio. You can save the client secret and sign in there, or with halonic google secret <account> and halonic google sign-in <account>.`,
   /** The account has signed in, or shares its client: a new secret has to be checked first. */
   secretNeedsStaging: () =>
     phrase`This account has signed in, so its secret can't be replaced here.`,

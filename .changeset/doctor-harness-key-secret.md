@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-`halonic doctor` now says when the API key a sandboxed harness agent's run needs isn't saved, also for an agent without a model.
+`halonic doctor` now says when a Claude Code or Codex agent in the sandbox needs an API key that isn't set, also when the agent names no model.

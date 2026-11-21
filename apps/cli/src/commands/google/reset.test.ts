@@ -95,7 +95,7 @@ verifies("cli.commands.google.reset", () => {
     expect(code).toBe(exitCode.ok);
     expect(written.join("")).toContain("Remove the Google accounts set up on this computer");
     expect(io.stdout).toEqual([
-      "✓ Removed. Set up Google again in the Studio to make a new token key.",
+      "✓ Removed. Set up Google again in the Studio. You can save the client secret and sign in there, or with halonic google secret <account> and halonic google sign-in <account>.",
     ]);
     expect(await exists(folders().google)).toBe(false);
     expect(await exists(folders().signIns)).toBe(false);
@@ -123,18 +123,31 @@ verifies("cli.commands.google.reset", () => {
     const { code, io } = await google(["reset"]);
 
     expect(code).toBe(exitCode.usage);
-    expect(io.stderr.join("\n")).toContain("To remove them anyway, pass --yes.");
+    const said = io.stderr.join("\n");
+    expect(said).toContain("every integration's saved sign-ins");
+    expect(said).toContain("To remove them anyway, pass --yes.");
     expect(await exists(folders().google)).toBe(true);
   });
 
-  it("with --yes asks nothing and succeeds on a fresh profile", async () => {
+  it.each([
+    ["with --yes", ["--yes"]],
+    ["without --yes", []],
+  ])("%s on a fresh profile asks nothing and says there's nothing to remove", async (_, extra) => {
     const { terminal, written } = terminalTyping();
 
-    const { code, io } = await google(["reset", "--yes"], terminal);
+    const { code, io } = await google(["reset", ...extra], terminal);
 
     expect(code).toBe(exitCode.ok);
     expect(written).toEqual([]);
-    expect(io.stdout[0]).toMatch(/^✓ Removed\./);
+    expect(io.stdout).toEqual([
+      "Nothing to remove: this computer has no Google accounts or saved sign-ins.",
+    ]);
+  });
+
+  it("names every integration's saved sign-ins in its help", async () => {
+    const { io } = await google(["reset", "--help"]);
+
+    expect(io.stdout.join("\n")).toContain("every integration's saved sign-ins");
   });
 
   it("exits 2 with its usage when given an argument", async () => {
