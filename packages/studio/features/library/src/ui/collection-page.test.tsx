@@ -104,6 +104,14 @@ verifies("library.collection-page", () => {
       expect(cell(root, 2, 0).className).toContain("focus-ring-inset");
     });
 
+    it("draws a record's ⋮ ring inside it, as the cells, so the grid's edge keeps all of it", async () => {
+      const { root } = await opened(sourceOf([swim]));
+      const more = root.querySelector('button[aria-label="More actions for Swim lesson"]');
+      const classes = more?.className.split(" ") ?? [];
+      expect(classes).toContain("focus-ring-inset");
+      expect(classes).not.toContain("focus-ring");
+    });
+
     it("shows plain numbers in nl-NL like money, and booleans as words", () => {
       const column = (type: CollectionColumn["type"]): CollectionColumn => ({
         name: "x",

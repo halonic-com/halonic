@@ -33,6 +33,9 @@ export function RowMenu({ name, cell, onRemove }: RowMenuProps) {
           onFocus={cell.onFocus}
           variant="ghost"
           size="sm"
+          // Inside the button, as the cells have it: at the grid's scrolling edge an outer ring
+          // loses its right side (HAL-14579).
+          ring="inset"
           icon={<MoreIcon />}
           label={collectionWords.rowMenuLabel(name)}
         />

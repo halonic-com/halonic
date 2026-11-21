@@ -5,10 +5,9 @@ import {
   Menu,
   type MenuEntry,
   MoreIcon,
-  usePresentation,
   ViewOnlyLine,
 } from "@halonicjs/studio-kit";
-import { saveNoteWords } from "@halonicjs/studio-shell";
+import { type StudioHost, saveNoteWords } from "@halonicjs/studio-shell";
 import { useId, useRef, useState } from "react";
 import { ADD_COMMAND, viewOnlyLine } from "../list/list-text.ts";
 import {
@@ -37,6 +36,7 @@ import { StatusBox, type UpdateControl } from "./status-box.tsx";
 import { UpdatePluginDialog } from "./update-plugin-dialog.tsx";
 import { usePageActions } from "./use-page-actions.ts";
 import { UsedBy } from "./used-by.tsx";
+import { pluginsViewOnly } from "./view-only.ts";
 import { WhatItAdds } from "./what-it-adds.tsx";
 
 /** The props of `PluginPage`. */
@@ -60,6 +60,8 @@ export interface PluginPageProps {
    * Plugins are view only on a phone and when served (design section 10).
    */
   readonly place?: "app" | "served";
+  /** Where the window runs (`context.host`): the desktop app (the default), served, or a phone. */
+  readonly host?: StudioHost | undefined;
   /** Today, for the trust date's year. */
   readonly now?: () => Date;
 }
@@ -81,7 +83,8 @@ export interface PluginPageProps {
  *
  * On a phone, and in a browser on `halonic serve`, the page is view only: no Trust, Update,
  * Remove trust, Remove, Check again or Open folder, the ⋮ only when there's a panel to open, and
- * at the end the view-only line with the command to run on the computer.
+ * at the end the view-only line with the command to run on the computer. A narrow desktop window
+ * gets the phone's layout but keeps the actions (`pluginsViewOnly`).
  *
  * @example
  * <PluginPage plugin={weather} settings={pluginService} secrets={keychain} actions={actions}
@@ -96,9 +99,10 @@ export function PluginPage({
   onOpenPanel,
   actions,
   place = "app",
+  host,
   now = () => new Date(),
 }: PluginPageProps) {
-  const { phone, viewOnly } = useViewOnly(place);
+  const { phone, viewOnly } = pluginsViewOnly(place, host);
   const statusId = useId();
   const statusBox = useRef<HTMLDivElement>(null);
   const [saveState, setSaveState] = useState<SettingsSaveState | undefined>(undefined);
@@ -338,12 +342,6 @@ function useUpdateCheck(
     }
   }
   return { update, setUpdate, checkForUpdate: check };
-}
-
-/** Plugins are view only on a phone and in a served browser (design section 10). */
-function useViewOnly(place: "app" | "served") {
-  const phone = usePresentation() === "phone";
-  return { phone, viewOnly: phone || place === "served" };
 }
 
 /** The view-only line and the command to run on the computer (design section 10). */

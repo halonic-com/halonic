@@ -15,7 +15,7 @@ interface Reading {
  * for the account whose setup is linked to this connector, and nothing for any other connector.
  * **Set up**, **Sign in again** and **Replace secret** open the account's setup item in the
  * Inbox; **Disconnect Google…** asks the app to disconnect and then reads the account again.
- * When the accounts can't be read, the block keeps what it last showed and says the engine isn't
+ * On a phone the block is text only. When the accounts can't be read, the block keeps what it last showed and says the engine isn't
  * answering.
  */
 export function ConnectorSection({ item, context }: ItemPageSectionViewProps) {
@@ -45,6 +45,7 @@ export function ConnectorSection({ item, context }: ItemPageSectionViewProps) {
       account={account}
       secretEntry={accounts.secretEntry}
       answering={answering}
+      viewOnly={context.host === "phone"}
       onOpenSetup={(accountRef) => {
         inbox.openSetup("google", accountRef);
         context.openPlace?.("inbox");

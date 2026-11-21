@@ -48,6 +48,7 @@ function show(
     builtIn?: boolean;
     openBuiltIn?: boolean;
     phone?: boolean;
+    narrow?: boolean;
     noAdd?: boolean;
     place?: "app" | "served";
     headingLevel?: 2 | 4;
@@ -55,9 +56,12 @@ function show(
 ): Seen {
   const seen: Seen = { opened: [], tabs: [], builtIns: [], calls: [] };
   render(
-    <PresentationProvider presentation={options.phone === true ? "phone" : "desktop"}>
+    <PresentationProvider
+      presentation={options.phone === true || options.narrow === true ? "phone" : "desktop"}
+    >
       <PluginsList
         place={options.place ?? "app"}
+        host={options.phone === true ? "phone" : "desktop-app"}
         {...(options.headingLevel === undefined ? {} : { headingLevel: options.headingLevel })}
         load={options.load ?? { kind: "ready" }}
         plugins={plugins}
@@ -161,6 +165,14 @@ verifies("plugins.plugin-list", () => {
     );
     expect(text()).toContain("No plugins yet");
     expect(text()).not.toContain("Add plugin");
+  });
+
+  it("keeps Add plugin and the whole ⋮ in a desktop window narrower than a phone", async () => {
+    show([weather()], { narrow: true });
+    expect(text()).not.toContain("View only");
+    expect(text()).toContain("Add plugin");
+    await openMenu("Weather");
+    expect(items()).toContain("Remove plugin…");
   });
 
   it("shows no view-only line on this computer", () => {

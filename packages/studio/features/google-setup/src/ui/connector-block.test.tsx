@@ -73,6 +73,7 @@ function Page(props: {
   readonly answering?: boolean;
   readonly entry?: SecretEntry;
   readonly open: (ref: string) => void;
+  readonly viewOnly?: boolean;
   readonly children?: ReactNode;
 }) {
   const [current, setCurrent] = useState(props.initial);
@@ -81,6 +82,7 @@ function Page(props: {
       account={current}
       secretEntry={props.entry ?? desktopEntry}
       answering={props.answering ?? true}
+      viewOnly={props.viewOnly ?? false}
       onOpenSetup={props.open}
       onDisconnect={async () => {
         const answer = await props.answer();
@@ -97,7 +99,10 @@ async function show(
     answer?: () => Promise<DisconnectAnswer>;
     answering?: boolean;
     entry?: SecretEntry;
+    /** The Studio runs on a phone: the phone's layout, and view only. */
     phone?: boolean;
+    /** A desktop window narrower than a phone: only the phone's layout. */
+    narrow?: boolean;
   } = {},
 ) {
   const toasts: ToastStore = createToastStore();
@@ -111,11 +116,13 @@ async function show(
         {...(options.answering === undefined ? {} : { answering: options.answering })}
         {...(options.entry === undefined ? {} : { entry: options.entry })}
         open={open}
+        viewOnly={options.phone === true}
       />
     </ToastStoreProvider>
   );
+  const phoneLayout = options.phone === true || options.narrow === true;
   const container = render(
-    options.phone ? <PresentationProvider presentation="phone">{page}</PresentationProvider> : page,
+    phoneLayout ? <PresentationProvider presentation="phone">{page}</PresentationProvider> : page,
   );
   await settled();
   return { container, toasts, open, answer };
@@ -287,5 +294,13 @@ verifies("google-setup.connector-block", () => {
       "View only on a phone. Change connectors and sending on your computer.",
     );
     expect(container.textContent).not.toContain("Disconnect Google…");
+  });
+
+  it("keeps its buttons in a desktop window narrower than a phone, stacking the rows", async () => {
+    const { container } = await show(account(signedIn), { narrow: true });
+    expect(button(container, "Sign in again")).toBeDefined();
+    expect(container.textContent).toContain("Disconnect Google…");
+    expect(container.textContent).not.toContain("View only");
+    expect(container.querySelector("dl")?.className).toContain("[&>div]:flex-col");
   });
 });
