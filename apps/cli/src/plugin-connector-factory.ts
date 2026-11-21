@@ -118,10 +118,7 @@ export function pluginConnectorSources(
       runners: createRunnerSearch(host.env),
       deniedPaths: async () => [
         ...host.deniedPaths,
-        // TEMPORARY break check (HAL-13056): the fence test must fail without these. Reverted next.
-        ...(await homeDeniedPaths(home, process.platform, { realPath: realPathOnDisk })).filter(
-          () => false,
-        ),
+        ...(await homeDeniedPaths(home, process.platform, { realPath: realPathOnDisk })),
       ],
       // The CLI gives a local tool no Halonic bridge yet.
       bridge: null,
