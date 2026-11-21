@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-13517 (Liam's call after #4052 landed, following decision (a) on HAL-12505); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:igQdrjPcUXvC1qqokzlZxpJJ9yZna8sdqFB15z+fTjuU7Qxn2I2aj90l3ex5/Gxj8FW2fcxdMFKRnz3oV8cwDA==
 
 #4052 (HAL-12784) gave a sandboxed harness agent the key of its harness's provider and kept the
 program's own sign-in on this computer. It didn't know about model aliases: since #3962, the engine
