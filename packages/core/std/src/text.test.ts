@@ -41,4 +41,10 @@ verifies("std.unique-name", () => {
     expect(uniqueName("a", new Set(["a"]))).toBe("a-2");
     expect(uniqueName("a", new Map([["a", 1]]).keys())).toBe("a-2");
   });
+
+  it("numbers every name from 1 when asked, even when the base is free", () => {
+    expect(uniqueName("step", [], { numbered: true })).toBe("step-1");
+    expect(uniqueName("step", ["step-1", "step-3"], { numbered: true })).toBe("step-2");
+    expect(uniqueName("step", ["step", "step-1"], { numbered: true })).toBe("step-2");
+  });
 });
