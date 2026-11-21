@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { stepEventsWords } from "../run-words.ts";
 import { BlockedSitesPanel } from "./blocked-sites.tsx";
 import type { StepEntry } from "./every-step-model.ts";
-import { FailedCallLine } from "./failed-call-line.tsx";
+import { ConnectorNotStartedLine, FailedCallLine } from "./failed-call-line.tsx";
 import { noConnectionProven, stepSandboxes } from "./sandbox-model.ts";
 import { SandboxOffPanel, SandboxPanel, sayText } from "./sandbox-panel.tsx";
 import { stepBlockedSites, stepChildRuns, stepEvents } from "./step-events-model.ts";
@@ -49,7 +49,10 @@ export function StepPanel({
   phone = false,
   live = false,
 }: StepPanelProps) {
-  const { modelCalls, toolCalls } = useMemo(() => stepEvents(log, entry.id), [log, entry.id]);
+  const { modelCalls, toolCalls, connectorsNotStarted } = useMemo(
+    () => stepEvents(log, entry.id),
+    [log, entry.id],
+  );
   const blocked = useMemo(() => stepBlockedSites(log, entry.id), [log, entry.id]);
   const sandboxes = useMemo(() => stepSandboxes(log, entry.id), [log, entry.id]);
   const proven = useMemo(() => noConnectionProven(log, entry.id), [log, entry.id]);
@@ -117,6 +120,7 @@ export function StepPanel({
         )}
         {modelCalls.length === 0 &&
         toolCalls.length === 0 &&
+        connectorsNotStarted.length === 0 &&
         children.length === 0 &&
         sandboxes.length === 0 ? (
           <p className="text-body text-fg-muted">{stepEventsWords.none}</p>
@@ -136,9 +140,12 @@ export function StepPanel({
             </ul>
           </section>
         )}
-        {toolCalls.length === 0 ? null : (
+        {toolCalls.length === 0 && connectorsNotStarted.length === 0 ? null : (
           <section className="flex flex-col gap-1">
             <h3 className="text-body-strong">{stepEventsWords.toolCalls}</h3>
+            {connectorsNotStarted.map((notStarted) => (
+              <ConnectorNotStartedLine key={notStarted.id} notStarted={notStarted} />
+            ))}
             <ul className="-mx-4 divide-y divide-border">
               {toolCalls.map((call) => (
                 <li key={call.id}>

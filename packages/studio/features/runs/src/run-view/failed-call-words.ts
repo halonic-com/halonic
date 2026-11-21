@@ -36,6 +36,20 @@ export const failedCallWords = {
   pluginChanged:
     "Didn't work: the connector {connector} didn't start: its plugin {name} changed since you trusted it.",
   notStarted: "Didn't work: the connector {connector} didn't start.",
+  /**
+   * The line above a step's tool calls for a connector that couldn't list its tools when a turn
+   * started, so the turn went without them: the `halonic tools review` lines decided on HAL-13829,
+   * and for a plugin the cause of the plugin lines above (HAL-15278).
+   */
+  listingProgramMissing:
+    "Couldn't list the tools from {connector}: its program {name} isn't on this computer.",
+  listingSecretNotSet:
+    "Couldn't list the tools from {connector}: it needs the secret {name}, which isn't set.",
+  listingPluginNotTrusted:
+    "Couldn't list the tools from {connector}: its plugin {name} isn't trusted yet.",
+  listingPluginChanged:
+    "Couldn't list the tools from {connector}: its plugin {name} changed since you trusted it.",
+  listingFailed: "Couldn't list the tools from {connector}.",
   /** `{connector}` when the log doesn't name the connector: "the connector of the tool `create_note` didn't start". */
   connectorOfTool: "of the tool {tool}",
   /** `{tool}` with its connector: "`create_note` (*notes-mcp*)". */
