@@ -1,5 +1,5 @@
 import { realpath } from "node:fs/promises";
-import { basename, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { FileTrustStore, FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { pluginTrustFingerprintPrefix } from "@halonicjs/app";
 import { parseFile } from "@halonicjs/format";
@@ -30,7 +30,7 @@ import {
   trustChangesDocument,
 } from "../../output/trust-changes-json.ts";
 import { type FingerprintedCheck, shownDate, trustCheckLines } from "../../output/trust-check.ts";
-import type { PluginSetup } from "../../plugin-host.ts";
+import { type PluginSetup, setupPluginsFolder } from "../../plugin-host.ts";
 import { nodeSandboxWorks } from "../../sandbox-works.ts";
 import { installedPluginHosts, type PluginHosts } from "../../sheet-hosts.ts";
 import { shownPath } from "../../shown-path.ts";
@@ -337,11 +337,9 @@ async function removeTrust(
 ): Promise<CommandResult> {
   const dir = workspaceDir(input, context.cwd);
   const location = await realpath(dir.root).catch(() => resolve(dir.root));
-  const record = await machine.store.get(location);
-  if (record !== null && isPluginRecord(record)) {
-    // A plugin's record is kept under its folder in the plugins folder, and
-    // the folder's name is the plugin's id. `--dir` named the folder, and
-    // `--plugin` refuses it, so only `--remove` goes on.
+  if (await isPluginFolderRecord(machine.store, location, plugins)) {
+    // The folder's name in the plugins folder is the plugin's id. `--dir`
+    // named the folder, and `--plugin` refuses it, so only `--remove` goes on.
     const removeOnly: CommandInput = { positionals: [], options: { remove: true } };
     return await trustPlugin(basename(location), removeOnly, context, plugins);
   }
@@ -352,6 +350,25 @@ async function removeTrust(
     lines: [marked(trustMessages.removed(printable(name)))],
     json: { name, folder: dir.shown, status: "removed" },
   };
+}
+
+/**
+ * Whether the record at `location` is a plugin's, in this profile's plugins
+ * folder, so `--plugin` reaches the same plugin. A plugin's record anywhere
+ * else (a moved profile folder, or `--dir` naming a copy) is removed by
+ * location, as a workspace's is: going by its folder's name would sign out
+ * and untrust another plugin with that id and leave the record named.
+ */
+async function isPluginFolderRecord(
+  store: TrustStore,
+  location: string,
+  plugins: PluginSetup,
+): Promise<boolean> {
+  const record = await store.get(location);
+  if (record === null || !isPluginRecord(record)) return false;
+  const folder = setupPluginsFolder(plugins);
+  const realFolder = await realpath(folder).catch(() => resolve(folder));
+  return dirname(location) === realFolder;
 }
 
 /** Whether the record trusts a plugin: a plugin's fingerprint has its own kind. */

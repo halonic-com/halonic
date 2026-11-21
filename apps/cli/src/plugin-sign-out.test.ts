@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FileRecordStore, FileTrustStore } from "@halonicjs/adapter-fs-node";
@@ -155,6 +155,26 @@ describe("app.plugin-sign-out in the CLI", () => {
     expect(revoked).toHaveLength(1);
     expect(await savedNames()).toEqual(["s4_rain_rain_account"]);
     expect(await machine().store.list()).toEqual([]);
+  });
+
+  it("removes a plugin's record outside the plugins folder by location, leaving the installed plugin alone", async () => {
+    await addSignedInWeather();
+    const store = machine().store;
+    const installed = await realpath(join(folder, "profile", "plugins", "weather"));
+    const copy = join(folder, "elsewhere", "weather");
+    await mkdir(copy, { recursive: true });
+    const location = await realpath(copy);
+    const record = await store.get(installed);
+    if (record === null) throw new Error("trusting Weather saves its record");
+    await store.grant({ ...record, location });
+    const io = captureIo(copy);
+
+    const code = await runCli(["trust", "--remove"], io, [createTrustCommand(machine, setup)]);
+
+    expect(code).toBe(exitCode.ok);
+    expect(revoked).toEqual([]);
+    expect(await savedNames()).toEqual(["s4_rain_rain_account", "s7_weather_weather_account"]);
+    expect((await store.list()).map((kept) => kept.location)).toEqual([installed]);
   });
 
   it("signs out the plugin's sign-ins when it is removed", async () => {
