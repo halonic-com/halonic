@@ -20,8 +20,11 @@ N=${SLOT##*-}
 case "$SLOT" in large-*) PROJ=$((100+N));; small-*) PROJ=$((200+N));; esac
 # Each slot gets its own CPUs, so a job sees only those (nproc, Node's availableParallelism).
 # With --cpus alone it saw all 48 of the VM's, and test runners started a worker per CPU and ran
-# out of memory. vCPUs 2k and 2k+1 are SMT siblings, so 12 in a row are 6 whole cores. The small
-# slots share the last 6 (each capped at 2 by --cpus).
+# out of memory. vCPUs 2k and 2k+1 are SMT siblings, so 12 in a row are 6 whole cores.
+# The small slots share 42-47 with large-4, on purpose: the four large slots use all 48 vCPUs, and
+# taking 6 away from them would cost every build. The three small slots are capped at 2 CPUs each
+# (--cpus) and run short jobs, so when all are busy large-4 has about 6 of its 12 vCPUs to itself
+# and 6 shared. Moving them off needs more vCPUs on the VM.
 case "$SLOT" in
   large-*) CPUSET="$(( (N-1)*12 ))-$(( N*12-1 ))" ;;
   small-*) CPUSET="42-47" ;;
