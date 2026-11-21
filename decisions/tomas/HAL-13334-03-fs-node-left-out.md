@@ -3,6 +3,7 @@
 - Task: HAL-13334
 - Approval: Liam approved the plan, including this requirement change, on HAL-13334 (https://paperclip.halonic.com/HAL/issues/HAL-13334), 19 November.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:svameaYwjuATi+zZ7g3/QejBNwPkhH/nj4lUj+jrPs9FCIjn4Ddp4fkzRsPPZND7X5d25+4a9woYFS0Jq6cOCw==
 
 ## What changes
 
