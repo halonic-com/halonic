@@ -5,6 +5,7 @@ import type { AgentSandboxHost } from "../api.ts";
 import {
   afterResult,
   checkedAtLabel,
+  outcomeLine,
   type SandboxCheckFacts,
   type SandboxFacts,
   type SandboxOutcome,
@@ -95,7 +96,9 @@ export function useAgentSandbox(
       setRunning(null);
       setOutcome(asVerb(ended.outcome, verb));
       setCheck((now) => ended.check ?? afterResult(ended.outcome as SandboxOutcome, now));
-      if (ended.check?.state === "ready") {
+      if (verb === "remove") {
+        announceRef.current(removalLine(ended));
+      } else if (ended.check?.state === "ready") {
         announceRef.current(text.announceReady(checkedAtLabel(ended.check.checkedAt, new Date())));
       }
     },
@@ -175,6 +178,17 @@ function checkedLine(facts: SandboxCheckFacts): string {
     return `ready. Checked ${checkedAtLabel(facts.checkedAt, new Date())}.`;
   return sandboxView({ available: true, place: "app", check: facts, running: null, outcome: null })
     .lead;
+}
+
+/**
+ * What a removal left, said once for a screen reader (HAL-15091): the Callout's line, or, when it
+ * worked, the first line of the state it left.
+ */
+function removalLine(ended: Ended): string {
+  if (ended.check === undefined) return outcomeLine(ended.outcome);
+  if (ended.outcome !== null) return outcomeLine(ended.outcome);
+  const facts = { available: true, place: "app", running: null, outcome: null } as const;
+  return sandboxView({ ...facts, check: ended.check }).lead;
 }
 
 /**

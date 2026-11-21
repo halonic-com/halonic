@@ -33,17 +33,6 @@ export interface WslBackupShell {
   reveal(): Promise<void>;
 }
 
-/**
- * Why a removal through the shell didn't happen, after "The sandbox wasn't removed: ", in the
- * words of the setup's lines (HAL-14863): the helper still ran at the shell's limit and was left
- * to finish, or the helper of an earlier press still runs, so Windows wasn't asked again. The
- * minutes are the shell's `LIMIT` (`apps/studio/src-tauri/src/sandbox_elevate.rs`) and the
- * section's `SETUP_LIMIT_MINUTES`: change them together.
- */
-const REMOVAL_TIMED_OUT = "Windows didn't finish removing it within 5 minutes.";
-const REMOVAL_STILL_RUNNING =
-  "the earlier removal is still running. Wait a minute, then try again.";
-
 const needsRepair: readonly SandboxUnavailableReason[] = ["distro-missing", "setup-conflict"];
 
 /** The reason when the shell couldn't start the helper or wait for it (C525-7, HAL-15013). */
@@ -179,14 +168,19 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
         return outcomeOf("remove", await this.#setup.afterRemoveHelper(elevated.exitCode));
       case "cancelled":
         return { kind: "remove", how: "cancelled" };
+      // The section words these two in the setup's words (HAL-14863, HAL-15091).
       case "timed_out":
-        return { kind: "remove", how: "failed", reason: REMOVAL_TIMED_OUT };
+        return { kind: "remove", how: "timed-out" };
       case "still_running":
-        return { kind: "remove", how: "failed", reason: REMOVAL_STILL_RUNNING };
-      case "failed": {
-        const reason = `Windows couldn't start the sandbox helper: ${elevated.reason.replace(/\.+$/, "")}.`;
-        return { kind: "remove", how: "failed", reason };
-      }
+        return { kind: "remove", how: "still-running" };
+      case "failed":
+        // As for the setup: Windows' own message goes only into Copy details (C525-7, HAL-15013).
+        return {
+          kind: "remove",
+          how: "failed",
+          reason: HELPER_DIDNT_START,
+          details: elevated.reason,
+        };
     }
   }
 

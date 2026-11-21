@@ -78,6 +78,13 @@ export const REMOVE_CANCEL = "Cancel";
 export const REMOVE_DENIED =
   "The sandbox wasn't removed: Windows didn't give Halonic administrator rights.";
 export const removeFailed = (reason: string) => `The sandbox wasn't removed: ${reason}`;
+/** The setup's words for the shell's time limit: nobody may have answered the prompt (HAL-15091). */
+export const REMOVE_TOOK_TOO_LONG = removeFailed(
+  `the removal didn't finish within ${SETUP_LIMIT_MINUTES} minutes.`,
+);
+/** A note, not a failure, as for the setup and the repair (HAL-15091). */
+export const REMOVE_STILL_RUNNING =
+  "The earlier removal is still running. Wait a minute, then try again.";
 export const removeInUse = (runs: number) =>
   `The sandbox wasn't removed: ${runs === 1 ? "1 run is using it. Stop it or let it finish" : `${runs} runs are using it. Stop them or let them finish`}, then try again.`;
 
