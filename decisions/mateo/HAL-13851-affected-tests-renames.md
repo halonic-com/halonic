@@ -4,6 +4,7 @@
 - Approval: Julian's follow-up from the #4070 review (HAL-13845). `tooling/check/src/lib/affected-tests.ts` is a guard trust root, so this note needs both guardians: Liam (CTO) and Julian (security reviewer)
 - Kind: user-visible
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xJxTWWr3mqLRlX9XeLKMZ3VE71QYn+oPmt9S5ARaVG4NoyYprfxJiLVvzIdzqmDcnEcufq4+5fM4mxNA1+IrBQ==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:JSUwd1PjHCH1YG45Y6bR0dZzLoWFGnAKyOCvTdECOMDvNggp33ug2IV0g2xNo9nhByCZ5LMBRWLz5PZXe/cJAQ==
 
 ## What changes
 
