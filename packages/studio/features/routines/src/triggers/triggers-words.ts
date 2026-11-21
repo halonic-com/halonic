@@ -1,4 +1,4 @@
-import type { TriggerOwner } from "../api.ts";
+import { agentCantRunWords, type TriggerOwner } from "../api.ts";
 
 /** The Triggers section's words (flow-routines 2.3). */
 export const triggersWords = {
@@ -15,6 +15,11 @@ export const triggersWords = {
     kind === "workflow"
       ? "Nothing starts this workflow on its own yet; it runs when called or with Run."
       : "Nothing starts this agent on its own yet; it runs when called.",
+  /**
+   * Said on an agent before Add trigger asks for its prompt, since a routine that starts an agent
+   * can't run it yet (HAL-15334).
+   */
+  agentCantRun: `${agentCantRunWords.why} Add a trigger to a workflow that uses this agent instead.`,
   /** The second line of a row that is on: its name and when it starts next. */
   nameAndNext: (name: string, next: string | undefined) =>
     next === undefined ? name : `${name} · ${next}`,

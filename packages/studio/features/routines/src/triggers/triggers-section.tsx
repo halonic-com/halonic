@@ -6,7 +6,7 @@ import {
   usePresentation,
 } from "@halonicjs/studio-kit";
 import type { ItemPageSectionViewProps } from "@halonicjs/studio-shell";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   type RoutinesHost,
   RoutinesHostService,
@@ -53,6 +53,8 @@ export interface TriggersViewProps {
  * routine in the owner's hub that starts it, sorted by name, then **Add trigger**, which opens the
  * new routine with its Trigger picker focused. On an agent, **Add trigger** first asks for the
  * agent's prompt, since that is the agent's real task, and makes the routine only once one is typed.
+ * Above it, an agent's section says that a routine can't run an agent yet
+ * (`routines.triggers.agent-cant-run-note`), so nobody writes that task before learning it.
  */
 export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
   const { load, retry } = useTriggerRows(host, owner);
@@ -64,6 +66,8 @@ export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
   const [promptMissing, setPromptMissing] = useState(false);
   const promptField = useRef<HTMLTextAreaElement>(null);
   const addButton = useRef<HTMLButtonElement>(null);
+  const noteId = useId();
+  const isAgent = owner.kind === "agent";
 
   useEffect(() => {
     if (asking !== undefined) promptField.current?.focus();
@@ -117,6 +121,11 @@ export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
   return (
     <div className="flex flex-col gap-2">
       <Rows load={load} owner={owner} retry={retry} openRoutine={openRoutine} />
+      {isAgent && (
+        <p id={noteId} className="text-small text-fg-muted">
+          {triggersWords.agentCantRun}
+        </p>
+      )}
       {asking !== undefined && (
         <PromptField
           ref={promptField}
@@ -139,6 +148,7 @@ export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
         <Button
           ref={addButton}
           variant={asking === undefined ? "secondary" : "primary"}
+          {...(isAgent && { "aria-describedby": noteId })}
           busy={adding}
           onClick={add}
         >
