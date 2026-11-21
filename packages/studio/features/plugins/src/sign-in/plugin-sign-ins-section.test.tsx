@@ -1,23 +1,13 @@
 // @vitest-environment jsdom
 
-import type { Plugin } from "@halonicjs/format";
-import { type ExternalAddress, OpenExternalProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { PluginSettingsReader } from "../settings/plugin-settings-section.tsx";
-import { acmeWithSignIn, noSettings, weather } from "../test-support/plugins.ts";
-import { render, unmountAll } from "../test-support/render.tsx";
-import {
-  type PluginSignInStatus,
-  type PluginSignIns,
-  PluginSignInsSection,
-  type PluginSignOutResult,
-} from "./plugin-sign-ins-section.tsx";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { acmeWithSignIn, weather } from "../test-support/plugins.ts";
+import { unmountAll } from "../test-support/render.tsx";
+import { authorizeUrl, button, FakeSignIns, press, show } from "../test-support/sign-ins.tsx";
 
 afterEach(unmountAll);
-
-const authorizeUrl = "https://auth.example.com/oauth/authorize?client_id=abc123";
 
 /** Answers from the host that aren't the approved sign-in page, each with what is wrong with it. */
 const wrongPages = [
@@ -27,93 +17,6 @@ const wrongPages = [
   ["the approved host as a user name", "https://auth.example.com@evil.example.net/oauth"],
   ["no address", "auth.example.com/oauth/authorize"],
 ] as const;
-
-/**
- * The host's sign-ins as a test sets them, with every call written down, and
- * the pages the browser opened.
- */
-class FakeSignIns implements PluginSignIns {
-  readonly calls: string[] = [];
-  readonly opened: string[] = [];
-  statuses: PluginSignInStatus[] = [{ signIn: "account", state: "signedOut" }];
-  startAnswer = authorizeUrl;
-  startError: unknown;
-  cancelError: unknown;
-  signOutResult: PluginSignOutResult = { kind: "signedOut", revoke: "revoked" };
-
-  async status(plugin: string) {
-    this.calls.push(`status ${plugin}`);
-    return this.statuses;
-  }
-  async start(plugin: string, signIn: string) {
-    this.calls.push(`start ${plugin} ${signIn}`);
-    if (this.startError !== undefined) throw this.startError;
-    return this.startAnswer;
-  }
-  async cancel(plugin: string, signIn: string) {
-    this.calls.push(`cancel ${plugin} ${signIn}`);
-    if (this.cancelError !== undefined) throw this.cancelError;
-  }
-  async signOut(plugin: string, signIn: string) {
-    this.calls.push(`signOut ${plugin} ${signIn}`);
-    this.statuses = [{ signIn: "account", state: "signedOut" }];
-    return this.signOutResult;
-  }
-  /** The kit's `openExternal`, as the shell gives it: it opens the address once it arrives. */
-  readonly openExternal = async (address: ExternalAddress) => {
-    this.opened.push(await address);
-  };
-}
-
-/** Settings with the client ID set, unless the test leaves it out. */
-function settingsWith(values: Record<string, string>): PluginSettingsReader {
-  return { ...noSettings().settings, settings: async () => values };
-}
-
-async function show(
-  signIns: FakeSignIns,
-  options: {
-    readonly plugin?: Plugin;
-    readonly values?: Record<string, string>;
-    readonly off?: { readonly reason: string };
-    readonly viewOnly?: boolean;
-    readonly announced?: string[];
-  } = {},
-) {
-  const view = render(
-    <OpenExternalProvider openExternal={signIns.openExternal}>
-      <PluginSignInsSection
-        plugin={options.plugin ?? acmeWithSignIn()}
-        settings={settingsWith(options.values ?? { clientId: "abc123" })}
-        signIns={signIns}
-        off={options.off}
-        viewOnly={options.viewOnly ?? false}
-        announceState={(key, text) => options.announced?.push(`${key}: ${text}`)}
-      />
-    </OpenExternalProvider>,
-  );
-  await act(async () => {});
-  return view;
-}
-
-function button(name: string): HTMLButtonElement | undefined {
-  return [...document.querySelectorAll<HTMLButtonElement>("button")].find((candidate) =>
-    candidate.textContent?.startsWith(name),
-  );
-}
-
-async function press(name: string) {
-  const found = button(name);
-  if (found === undefined) throw new Error(`No button ${name}`);
-  await act(async () => found.click());
-}
-
-/** The person comes back to the window, and the section reads where the sign-ins stand again. */
-async function comeBack() {
-  await act(async () => window.dispatchEvent(new Event("focus")));
-}
-
-const waitingLine = "Waiting for acme… Finish in your browser.";
 
 verifies("plugins.plugin-sign-ins", () => {
   describe("signed out", () => {
@@ -382,131 +285,5 @@ verifies("plugins.plugin-sign-in-page", () => {
 
       expect(signIns.opened).toEqual([]);
     });
-  });
-});
-
-verifies("plugins.plugin-sign-in-waiting", () => {
-  it("waits for the browser with Cancel in place of Sign in", async () => {
-    const view = await show(new FakeSignIns());
-
-    await press("Sign in");
-
-    expect(view.textContent).toContain(waitingLine);
-    expect(button("Cancel")).toBeDefined();
-    expect(button("Sign in")).toBeUndefined();
-  });
-
-  it("keeps waiting when the person comes back before the browser finished", async () => {
-    const view = await show(new FakeSignIns());
-    await press("Sign in");
-
-    await comeBack();
-
-    expect(view.textContent).toContain(waitingLine);
-  });
-
-  it("ends the wait when the sign-in finished in the browser", async () => {
-    const signIns = new FakeSignIns();
-    const view = await show(signIns);
-    await press("Sign in");
-    signIns.statuses = [{ signIn: "account", state: "signedIn" }];
-
-    await comeBack();
-
-    expect(view.textContent).not.toContain(waitingLine);
-    expect(view.textContent).toContain("Signed in");
-    expect(button("Sign out")).toBeDefined();
-  });
-
-  it("ends the wait and says how when the sign-in ended without a grant", async () => {
-    const signIns = new FakeSignIns();
-    const view = await show(signIns);
-    await press("Sign in");
-    signIns.statuses = [
-      {
-        signIn: "account",
-        state: "signedOut",
-        lastOutcome: { kind: "providerError", errorCode: "access_denied" },
-      },
-    ];
-
-    await comeBack();
-
-    expect(view.textContent).not.toContain(waitingLine);
-    expect(view.textContent).toContain("acme answered with the error access_denied.");
-    expect(button("Sign in")).toBeDefined();
-  });
-
-  it("hides how the last sign-in ended while it waits for a new one", async () => {
-    const signIns = new FakeSignIns();
-    signIns.statuses = [
-      { signIn: "account", state: "signedOut", lastOutcome: { kind: "cancelled" } },
-    ];
-    const view = await show(signIns);
-
-    await press("Sign in");
-
-    expect(view.textContent).not.toContain("You cancelled the sign-in.");
-  });
-
-  it("cancels the pending sign-in at the host and offers Sign in again, with focus on it", async () => {
-    const signIns = new FakeSignIns();
-    const view = await show(signIns);
-    await press("Sign in");
-    button("Cancel")?.focus();
-
-    await press("Cancel");
-
-    expect(signIns.calls).toContain("cancel acme account");
-    expect(view.textContent).not.toContain(waitingLine);
-    expect(document.activeElement).toBe(button("Sign in"));
-  });
-
-  it("keeps waiting and says why when Cancel fails", async () => {
-    const signIns = new FakeSignIns();
-    signIns.cancelError = new Error("The agent host isn't running.");
-    const view = await show(signIns);
-    await press("Sign in");
-
-    await press("Cancel");
-
-    expect(view.textContent).toContain(waitingLine);
-    expect(view.textContent).toContain("Couldn't cancel the sign-in:");
-  });
-
-  it("stops waiting when the host no longer takes the browser's answer", async () => {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-    try {
-      const view = await show(new FakeSignIns());
-      await press("Sign in");
-
-      await act(async () => vi.advanceTimersByTime(10 * 60 * 1000));
-
-      expect(view.textContent).not.toContain(waitingLine);
-      expect(view.textContent).toContain("The sign-in didn't finish. Try again.");
-      expect(button("Sign in")).toBeDefined();
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("doesn't wait when the browser didn't open", async () => {
-    const signIns = new FakeSignIns();
-    signIns.startAnswer = "https://evil.example.net/oauth/authorize";
-    const view = await show(signIns);
-
-    await press("Sign in");
-
-    expect(view.textContent).not.toContain(waitingLine);
-    expect(button("Sign in")).toBeDefined();
-  });
-
-  it("reads the waiting line once through the window's announcer", async () => {
-    const announced: string[] = [];
-    await show(new FakeSignIns(), { announced });
-
-    await press("Sign in");
-
-    expect(announced).toEqual([`sign-in:acme:account: ${waitingLine}`]);
   });
 });
