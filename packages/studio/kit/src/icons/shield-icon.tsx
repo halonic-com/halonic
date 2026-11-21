@@ -1,6 +1,7 @@
 /**
- * The shield: an outline in the text colour, for the line under a sandboxed step. Decoration: the
- * words next to it say what the sandbox does.
+ * The shield: an outline in the text colour, for the sandbox: the line under a sandboxed step, and
+ * the `Full access` chip of an agent that runs without it. Decoration: the words next to it say
+ * what the sandbox does.
  */
 export function ShieldIcon() {
   return (
