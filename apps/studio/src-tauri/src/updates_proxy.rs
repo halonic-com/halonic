@@ -7,7 +7,8 @@
 //!
 //! An unusable setting stops the check and the download before anything is
 //! sent, and nothing goes direct instead. Installing makes no call, so it
-//! keeps the plain builder.
+//! keeps the plain builder. When the proxy stopped a call, the status says
+//! so rather than "offline" ([`proxy_fault`]).
 
 use std::sync::Arc;
 
@@ -46,6 +47,41 @@ pub(super) fn updater_on_proxy_rules<R: Runtime>(
     Ok(app
         .updater_builder()
         .configure_client(move |client| configure(on_proxy_rules(client, &setting))))
+}
+
+/// How the proxy, rather than the network or the update server, stopped a
+/// call.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ProxyFault {
+    /// The setting is set but unusable, so nothing was sent.
+    Setting,
+    /// The call went through the proxy, and the proxy couldn't be reached
+    /// or refused the tunnel.
+    Unreachable,
+}
+
+/// Whether the proxy stopped a call that failed with `error`.
+pub(super) fn proxy_fault<R: Runtime>(
+    app: &AppHandle<R>,
+    error: &UpdaterError,
+) -> Option<ProxyFault> {
+    fault_of(&app.state::<HttpFetchState>().proxy(), error)
+}
+
+/// Decided by the setting and by the route of the request that failed,
+/// never by the error's message. A connection error on a request that went
+/// direct (a local host, or one on `NO_PROXY`) isn't the proxy's.
+fn fault_of(setting: &ProxySetting, error: &UpdaterError) -> Option<ProxyFault> {
+    match (setting, error) {
+        (ProxySetting::Refused(_), _) => Some(ProxyFault::Setting),
+        (ProxySetting::Proxy { .. }, UpdaterError::Reqwest(error)) if error.is_connect() => {
+            let tunnelled = error
+                .url()
+                .is_some_and(|url| matches!(route_for(url, setting), Ok(Route::Tunnel(_))));
+            tunnelled.then_some(ProxyFault::Unreachable)
+        }
+        _ => None,
+    }
 }
 
 /// Fails for a setting that is set but unusable, as `route_for` does for

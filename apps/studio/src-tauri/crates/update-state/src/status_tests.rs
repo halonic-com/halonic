@@ -1,4 +1,6 @@
-use super::{CheckFailure, JustUpdated, Unit, UpdateState, UpdateStatus, notes_url};
+use super::{
+    CheckFailure, DownloadFailure, JustUpdated, Unit, UpdateState, UpdateStatus, notes_url,
+};
 use serde_json::json;
 
 #[test]
@@ -81,5 +83,27 @@ fn update_state_tells_the_page_who_manages_the_install() {
     assert_eq!(
         serde_json::to_value(&managed).expect("JSON"),
         json!({ "by": "scoop", "command": "scoop update halonic" })
+    );
+}
+
+#[test]
+fn update_state_names_the_proxy_reasons_as_the_page_reads_them() {
+    let cases = [
+        (CheckFailure::ProxySetting, "proxy-setting"),
+        (CheckFailure::Proxy, "proxy"),
+    ];
+    for (reason, name) in cases {
+        assert_eq!(
+            serde_json::to_value(UpdateState::CantCheck { reason }).expect("JSON"),
+            json!({ "kind": "cant-check", "reason": name })
+        );
+    }
+    assert_eq!(
+        serde_json::to_value(UpdateState::DownloadFailed {
+            version: "0.1.1".to_owned(),
+            reason: DownloadFailure::ProxySetting,
+        })
+        .expect("JSON"),
+        json!({ "kind": "download-failed", "version": "0.1.1", "reason": "proxy-setting" })
     );
 }

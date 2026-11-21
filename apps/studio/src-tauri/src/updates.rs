@@ -358,7 +358,7 @@ async fn check<R: Runtime>(app: &AppHandle<R>) {
         }
         Err(error) => {
             halonic_shell_log::record("updates", format!("the check failed: {error}"));
-            let reason = check_failure(&error);
+            let reason = check_failure(app, &error);
             inner.record.last_result = Some(CheckResult::CantCheck { reason });
             if !inner.busy() {
                 inner.state = Some(UpdateState::CantCheck { reason });

@@ -8,7 +8,7 @@ use halonic_update_state::{
 use tauri::{AppHandle, Runtime};
 use tauri_plugin_updater::{Error as UpdaterError, Update};
 
-use super::proxy::updater_on_proxy_rules;
+use super::proxy::{ProxyFault, proxy_fault, updater_on_proxy_rules};
 
 /// Asks the update server once, on Halonic's proxy rules and within the
 /// check's time limit.
@@ -37,9 +37,14 @@ pub(super) fn available(record: &mut UpdaterRecord, version: String) -> UpdateSt
     }
 }
 
-/// Why a check got no usable answer, by the updater's error type, never by
-/// its message.
-pub(super) fn check_failure(error: &UpdaterError) -> CheckFailure {
+/// Why a check got no usable answer, by the proxy setting and the updater's
+/// error type, never by its message.
+pub(super) fn check_failure<R: Runtime>(app: &AppHandle<R>, error: &UpdaterError) -> CheckFailure {
+    match proxy_fault(app, error) {
+        Some(ProxyFault::Setting) => return CheckFailure::ProxySetting,
+        Some(ProxyFault::Unreachable) => return CheckFailure::Proxy,
+        None => {}
+    }
     match error {
         UpdaterError::Reqwest(error) if error.is_connect() => CheckFailure::Offline,
         UpdaterError::Reqwest(error) if error.is_decode() || error.is_body() => {

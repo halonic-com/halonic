@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { aboutView, checkAnnouncement } from "./about-state.ts";
-import type { UpdateState, UpdateStatus } from "./updater-status.ts";
+import type { CheckFailure, UpdateState, UpdateStatus } from "./updater-status.ts";
 
 const now = new Date(2026, 10, 14, 15, 0);
 const checkedToday = new Date(2026, 10, 14, 9, 12).getTime();
@@ -42,7 +42,7 @@ verifies("settings.about-section", () => {
   });
 
   it("words each way a check fails calmly, with the last check only when there was one", () => {
-    const line = (reason: "offline" | "no-answer" | "unreadable", lastChecked: number | null) =>
+    const line = (reason: CheckFailure, lastChecked: number | null) =>
       aboutView(status({ kind: "cant-check", reason }, { lastChecked }), now).line;
     expect(line("offline", checkedEarlier)).toBe(
       "Couldn't check for updates: you're offline. Last checked 3 Nov at 09:12.",
@@ -51,6 +51,12 @@ verifies("settings.about-section", () => {
       "Couldn't check for updates: the update server didn't answer.",
     );
     expect(line("unreadable", null)).toContain("sent something Halonic couldn't read");
+    expect(line("proxy-setting", null)).toBe(
+      "Couldn't check for updates: Halonic can't use your proxy setting HTTPS_PROXY, so nothing was sent.",
+    );
+    expect(line("proxy", null)).toBe(
+      "Couldn't check for updates: Halonic couldn't reach the update server through your proxy.",
+    );
     expect(aboutView(status({ kind: "cant-check", reason: "offline" }), now).callout).toBe(false);
   });
 
@@ -94,6 +100,16 @@ verifies("settings.about-section", () => {
     );
     expect(view.line).toBe("Couldn't download Halonic 0.1.1: you're offline. Try again.");
     expect(view.actions).toEqual(["try-again"]);
+  });
+
+  it("says when the proxy stopped a download, not that you're offline", () => {
+    const view = aboutView(
+      status({ kind: "download-failed", version: "0.1.1", reason: "proxy" }, { automatic: false }),
+      now,
+    );
+    expect(view.line).toBe(
+      "Couldn't download Halonic 0.1.1: Halonic couldn't reach the update server through your proxy. Try again.",
+    );
   });
 
   it("shows a signature that doesn't match as a Callout and never says verified or safe", () => {

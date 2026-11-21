@@ -93,6 +93,11 @@ pub enum CheckFailure {
     NoAnswer,
     /// The answer isn't an update manifest Halonic can read.
     Unreadable,
+    /// `HTTPS_PROXY` is set but unusable, so nothing was sent (HAL-12966).
+    ProxySetting,
+    /// The check went through the proxy, and the proxy couldn't be reached
+    /// or refused the tunnel.
+    Proxy,
 }
 
 /// Why a download stopped.
@@ -105,6 +110,11 @@ pub enum DownloadFailure {
     Stalled,
     /// The download couldn't be kept.
     Disk,
+    /// `HTTPS_PROXY` is set but unusable, so nothing was sent (HAL-12966).
+    ProxySetting,
+    /// The download went through the proxy, and the proxy couldn't be
+    /// reached or refused the tunnel.
+    Proxy,
 }
 
 /// What `done` and `total` count.
