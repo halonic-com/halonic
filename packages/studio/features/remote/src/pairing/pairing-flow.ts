@@ -16,12 +16,16 @@ export type PairingView =
   | { readonly stage: "code"; readonly code: CodeEvent; readonly refused: boolean }
   | { readonly stage: "check"; readonly check: CheckEvent }
   | { readonly stage: "paired"; readonly phone: PairedPhone }
-  | { readonly stage: "ended"; readonly ended: EndedEvent }
+  /** `lastCode`: the code that showed before it stopped working, if one did. */
+  | { readonly stage: "ended"; readonly ended: EndedEvent; readonly lastCode?: CodeEvent }
   /** The host couldn't open a pairing at all. */
   | { readonly stage: "failed" };
 
-/** The step a pairing event leads to; `refused` when the code follows a Don't allow. */
-export function viewOf(event: PairingEvent, refused = false): PairingView {
+/**
+ * The step a pairing event leads to; `refused` when the code follows a Don't allow, and
+ * `lastCode` the code that showed before, for an ending.
+ */
+export function viewOf(event: PairingEvent, refused = false, lastCode?: CodeEvent): PairingView {
   switch (event.type) {
     case "code":
       return { stage: "code", code: event, refused };
@@ -31,7 +35,9 @@ export function viewOf(event: PairingEvent, refused = false): PairingView {
       return { stage: "paired", phone: event.phone };
     case "code-ended":
     case "ended":
-      return { stage: "ended", ended: event };
+      return lastCode === undefined
+        ? { stage: "ended", ended: event }
+        : { stage: "ended", ended: event, lastCode };
   }
 }
 
@@ -39,10 +45,14 @@ export function viewOf(event: PairingEvent, refused = false): PairingView {
  * What the dialog does with a pairing event: show a step, nothing for a pairing the person ended
  * (`closed`), or `refused` for Don't allow, which the design follows with a new code at once.
  */
-function stepOf(event: PairingEvent, refused: boolean): PairingView | "refused" | undefined {
+function stepOf(
+  event: PairingEvent,
+  refused: boolean,
+  lastCode: CodeEvent | undefined,
+): PairingView | "refused" | undefined {
   if (event.type === "ended" && event.reason === "closed") return undefined;
   if (event.type === "code-ended" && event.reason === "denied") return "refused";
-  return viewOf(event, refused);
+  return viewOf(event, refused, lastCode);
 }
 
 /** What {@link usePairing} gives the dialog. */
@@ -74,10 +84,18 @@ export function usePairing(remote: RemoteControl): Pairing {
   const stopFollowing = useRef<() => void>(() => undefined);
   // Set by Don't allow: the next code comes with the reason it is new.
   const refused = useRef(false);
+  // The code that showed last, which an ending keeps on screen, faded (C529-2).
+  const lastCode = useRef<CodeEvent | undefined>(undefined);
+
+  const show = useCallback((step: PairingView) => {
+    if (step.stage === "code") lastCode.current = step.code;
+    setView(step);
+  }, []);
 
   const start = useCallback(() => {
     const mine = ++generation.current;
     setView({ stage: "starting" });
+    lastCode.current = undefined;
     remote.startPairing().then(
       (opened) => {
         if (mine !== generation.current) {
@@ -87,7 +105,7 @@ export function usePairing(remote: RemoteControl): Pairing {
         session.current = opened;
         stopFollowing.current = followStream(opened.events(), (event) => {
           if (event.type === "paired" || event.type === "ended") session.current = undefined;
-          const step = stepOf(event, refused.current);
+          const step = stepOf(event, refused.current, lastCode.current);
           if (step === "refused") {
             refused.current = true;
             opened.newCode().catch(() => {
@@ -95,7 +113,7 @@ export function usePairing(remote: RemoteControl): Pairing {
             });
           } else if (step !== undefined) {
             refused.current = false;
-            setView(step);
+            show(step);
           }
         });
       },
@@ -103,7 +121,7 @@ export function usePairing(remote: RemoteControl): Pairing {
         if (mine === generation.current) setView({ stage: "failed" });
       },
     );
-  }, [remote]);
+  }, [remote, show]);
 
   const end = useCallback(async () => {
     generation.current++;

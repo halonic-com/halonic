@@ -60,13 +60,14 @@ export function CodeStep({
       {refused ? (
         // The margin keeps the whole focus ring (offset and ring, up to 5px) inside the scroller.
         <div ref={refusalTop} className="scroll-mt-2">
-          <Callout tone="attention" title={words.NOT_ALLOWED_TITLE} announce="focus" ref={refusal}>
+          <Callout tone="info" title={words.NOT_ALLOWED_TITLE} announce="focus" ref={refusal}>
             {words.NOT_ALLOWED_LINE}
           </Callout>
         </div>
       ) : null}
-      {/* Too narrow for both side by side, the steps go below the tile, at full width (C306 PP3). */}
-      <div className="flex flex-wrap items-center gap-6">
+      {/* Too narrow for both side by side, the steps go below the tile, at full width (C306 PP3),
+          and the tile alone on its row sits in the middle (C529-3). */}
+      <div className="flex flex-wrap items-center justify-center gap-6">
         <QrTile value={code.qr} label={words.QR_LABEL} />
         <ol className="m-0 flex min-w-0 flex-[1_1_12rem] list-decimal flex-col gap-4 pl-5 text-fg">
           <li>{words.STEP_OPEN}</li>
@@ -161,6 +162,13 @@ export function PairedStep({
  * by the tunnel. `closed` never shows and `denied` goes straight on to a new code (see
  * `usePairing`), so theirs are a fallback.
  */
+/** The endings that stop a code that was showing, so its tile stays under the reason, faded (C529-2). */
+const endsShownCode: ReadonlySet<EndedEvent["reason"]> = new Set([
+  "code-expired",
+  "allow-timed-out",
+  "too-many-tries",
+]);
+
 const endedWords: Record<Exclude<EndedEvent["reason"], "tunnel-down">, words.EndedWords> = {
   closed: words.RAN_OUT,
   denied: words.RAN_OUT,
@@ -174,11 +182,14 @@ const endedWords: Record<Exclude<EndedEvent["reason"], "tunnel-down">, words.End
 /** Why the pairing ended and the one way on, whose button takes focus. */
 export function EndedStep({
   ended,
+  lastCode,
   provider,
   openExternal,
   onNewCode,
 }: {
   readonly ended: EndedEvent;
+  /** The code that showed before, if any. */
+  readonly lastCode?: CodeEvent | undefined;
   readonly provider: string;
   readonly openExternal: (url: string) => void;
   readonly onNewCode: () => void;
@@ -215,13 +226,21 @@ export function EndedStep({
   }
   const shown = endedWords[ended.reason];
   return (
-    <Callout
-      tone="attention"
-      title={shown.title}
-      action={{ label: shown.action, onClick: onNewCode, focus: true }}
-    >
-      {shown.line}
-    </Callout>
+    <div className="flex flex-col gap-4">
+      <Callout
+        tone="attention"
+        title={shown.title}
+        action={{ label: shown.action, onClick: onNewCode, focus: true }}
+      >
+        {shown.line}
+      </Callout>
+      {/* The code that stopped working, faded as drawn: a picture only, so hidden from screen readers. */}
+      {lastCode !== undefined && endsShownCode.has(ended.reason) ? (
+        <div aria-hidden="true" className="flex justify-center opacity-30">
+          <QrTile value={lastCode.qr} label={words.QR_LABEL} />
+        </div>
+      ) : null}
+    </div>
   );
 }
 

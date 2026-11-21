@@ -117,6 +117,7 @@ function Step({
       return (
         <EndedStep
           ended={view.ended}
+          lastCode={view.lastCode}
           provider={provider}
           openExternal={openExternal}
           onNewCode={newCode}
