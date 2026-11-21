@@ -199,6 +199,7 @@ export {
   networkCauseOf,
   type ProviderConfig,
   type ProviderFactoryContext,
+  runFailureReasonOfModelCall,
   VendorErrorText,
 } from "./llm-provider.ts";
 export { type ModelPrice, priceOf } from "./model-price.ts";

@@ -1,3 +1,4 @@
+export { chatFailureOf } from "./chat-run-failure.ts";
 export {
   type FailedModel,
   type FailedStart,
@@ -5,6 +6,7 @@ export {
   failedStartOf,
   type ProviderAddressOf,
   type RunFailedEvent,
+  type RunFailedFacts,
   type WorkspaceModels,
   workspaceModelsOf,
 } from "./failed-model.ts";

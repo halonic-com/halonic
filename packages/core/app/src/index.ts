@@ -13,6 +13,7 @@ export {
 } from "./agent-placement.ts";
 // biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
 export * from "./changes/index.ts";
+export { type ChatFailureCause, chatFailureCauseOf } from "./chat-failure.ts";
 export {
   type ChatAnswer,
   type ChatAnswerEnd,
