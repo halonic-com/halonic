@@ -3,6 +3,7 @@
 - Task: HAL-13334
 - Approval: Liam approved the plan on HAL-13334 (https://paperclip.halonic.com/HAL/issues/HAL-13334), 19 November, including the changes to `workspace.extract` and `workspace.unreadable-file` and that `ignored` no longer lists left-out files, which is the sentence `workspace.load` gains.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BYGzvaOF1ZY1TwlpEsJlZ2dY+J07vaA8p9u6RUwBK1Nxmk4DWh9VnpghiA7G+yU0oRVH0qqMbeZlvuBDvwmDCQ==
 
 ## What changes
 
