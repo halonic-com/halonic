@@ -6,10 +6,10 @@
 
 ## What changes
 
-- New `settings.unfenced-yes-where`: while Settings › Agent sandbox › **Plugins and integrations** needs a yes that isn't saved, it says "You give it with Review on a plugin's page in Plugins." with **Open Plugins**, which opens Settings › Plugins. After a Take back the block reads the status again and goes to that state, so the place shows right under the toast's "until you allow it again".
+- New `settings.unfenced-yes-where`: while Settings › Agent sandbox › **Plugins and integrations** needs a yes that isn't saved, it says "Give it from a plugin's page in Plugins: open the plugin, then Review." with **Open Plugins**, which opens Settings › Plugins. After a Take back the block reads the status again and goes to that state, so the place shows right under the toast's "until you allow it again".
 - New `plugins.off-here-follows-yes`: an open plugin page and the Plugins list read the host's status again whenever the window's yes changes, so after a Take back the open page shows R13's Callout as the list shows "Off on this computer" (#4491's `isOffHere` promise).
 - `studio.desktop-unfenced-runs` (edited): the window's one yes object tells its subscribers after a Take back ends, refused or not, and after a yes is saved. Nothing else in it changes; its existing tests still run.
-- `cli.commands.plugin.off-here` (edited): the third line names the place, "Or allow this in the Halonic desktop app: Settings › Plugins › *Name* › Review. The halonic command runs plugin code only in the sandbox.", and `plugin add` and `trust --plugin` say "! Trusting *Name* won't turn it on here: it stays off on this computer until you allow plugins and integrations to run without the sandbox." with the reason and the place before they ask "Trust *Name* and turn it on?". The tests that checked the old third line check the new one; none is weakened.
+- `cli.commands.plugin.off-here` (edited): the third line names the place, "Or allow this in the Halonic desktop app: Settings › Plugins › *Name* › Review. The halonic command runs plugin code only in the sandbox.", and `plugin add` and `trust --plugin` say "! Trusting *Name* won't turn it on: it stays off on this computer until you allow plugins and integrations to run without the sandbox." with the reason and the place before they ask "Trust *Name* and turn it on?". The tests that checked the old third line check the new one; none is weakened.
 - `docs/guides/plugins.md`: the "off on this computer" row names **Settings › Plugins**, the plugin, then **Review**.
 
 ## Why

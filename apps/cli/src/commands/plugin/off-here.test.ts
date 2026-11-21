@@ -204,7 +204,7 @@ verifies("cli.commands.plugin.off-here", () => {
 
     expect(added.code).toBe(exitCode.ok);
     const warning =
-      "! Trusting Weather won't turn it on here: it stays off on this computer until you allow plugins and integrations to run without the sandbox.";
+      "! Trusting Weather won't turn it on: it stays off on this computer until you allow plugins and integrations to run without the sandbox.";
     // Right above the question, after the check and its fingerprint.
     expect(written()).toContain(
       [warning, ...reasonLines, "", "Trust Weather and turn it on? [y/N] "].join("\n"),
@@ -218,7 +218,7 @@ verifies("cli.commands.plugin.off-here", () => {
     await pluginIn(terminal, "add", await source("weather", true));
 
     expect(written()).toContain("Trust Weather and turn it on?");
-    expect(written()).not.toContain("won't turn it on here");
+    expect(written()).not.toContain("won't turn it on");
   });
 
   it("says on as before in the sandbox, and doesn't ask for a plugin without a backend", async () => {

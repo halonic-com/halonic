@@ -202,7 +202,8 @@ export const UNFENCED_LINE_HERE =
  * Under R16's line while no yes is saved: where the yes is given, since this block has no button
  * for it (C565 row 2, HAL-15373). The yes covers every plugin, so any plugin's Review gives it.
  */
-export const UNFENCED_WHERE = "You give it with Review on a plugin's page in Plugins.";
+export const UNFENCED_WHERE =
+  "Give it from a plugin's page in Plugins: open the plugin, then Review.";
 export const OPEN_PLUGINS = "Open Plugins";
 export const UNFENCED_ALLOWED = "Allowed without the sandbox";
 export const unfencedAllowedOn = (day: string) => `Allowed on ${day}.`;

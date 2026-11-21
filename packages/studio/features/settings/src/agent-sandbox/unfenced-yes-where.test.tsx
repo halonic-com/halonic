@@ -13,7 +13,7 @@ afterEach(unmountAll);
 
 type Status = Awaited<ReturnType<UnfencedYesHost["status"]>>;
 
-const where = "You give it with Review on a plugin's page in Plugins.";
+const where = "Give it from a plugin's page in Plugins: open the plugin, then Review.";
 
 function hostWith(...statuses: Status[]): UnfencedYesHost {
   const status = vi.fn<UnfencedYesHost["status"]>();
