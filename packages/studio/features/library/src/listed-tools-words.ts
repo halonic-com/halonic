@@ -16,6 +16,9 @@ function oneOf(names: readonly string[]): string {
   return names.length < 2 ? last : `${names.slice(0, -1).join(", ")} or ${last}`;
 }
 
+/** The end of a secret's line: Studio has no way yet to set a connector's secret (HAL-14995). */
+const cantSetSecrets = "Studio can't set a connector's secrets yet.";
+
 /** The words of the listed-tools review screen (microcopy 27, HAL-751). */
 export const listedToolsWords = {
   title: (source: string) => `Review the tools from ${source}`,
@@ -115,29 +118,22 @@ export const listedToolsWords = {
       { text: program, code: true },
       { text: ", which isn't on this computer. Install it, then try again." },
     ],
-    /** A command box with {@link listedToolsWords.setSecret} follows it. */
+    /**
+     * Studio reads a connector's secrets from the keychain, and `halonic secret set` writes the
+     * profile's secrets file, so the line gives no command: none would help (HAL-14995).
+     */
     secretMissing: (source: string, secret: string) =>
-      `Couldn't list the tools: ${source} needs the secret ${secret}, which isn't set on this computer. Set it in a terminal, then try again:`,
-    /** A command box with {@link listedToolsWords.setSecret} follows it. */
+      `Couldn't list the tools: ${source} needs the secret ${secret}, which isn't set for Studio. ${cantSetSecrets}`,
     secretRefused: (source: string, secret: string) =>
-      `Couldn't list the tools: ${source} didn't accept the secret ${secret}. Set it again in a terminal, then try again:`,
+      `Couldn't list the tools: ${source} didn't accept the secret ${secret}. ${cantSetSecrets}`,
     /** When the connector declares more than one secret, so Halonic can't tell which one was refused. */
-    secretRefusedOneOf: (
-      source: string,
-      secrets: readonly string[],
-    ): readonly RefusalLinePart[] => [
-      {
-        text: `Couldn't list the tools: ${source} didn't accept one of its secrets, ${oneOf(secrets)}. Set the right one again in a terminal with `,
-      },
-      { text: "halonic secret set", code: true },
-      { text: ", then try again." },
-    ],
+    secretRefusedOneOf: (source: string, secrets: readonly string[]) =>
+      `Couldn't list the tools: ${source} didn't accept one of its secrets, ${oneOf(secrets)}. ${cantSetSecrets}`,
     /** When the server asks for a secret the connector doesn't declare: setting one can't help. */
     secretRefusedNoneSent: (source: string) =>
       `Couldn't list the tools: the server for ${source} asked for a secret, and ${source} doesn't send one.`,
     stopped: (source: string) => `Couldn't list the tools: ${source} stopped before it answered.`,
   },
-  setSecret: (secret: string) => `halonic secret set ${secret}`,
   /**
    * The line on the page of an MCP server over HTTP, which Studio can't list yet (microcopy 11.4).
    * The command follows it in a box; a phone says "on your computer" (rule N4, HAL-12363).

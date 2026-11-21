@@ -218,7 +218,7 @@ describe("the connector page's listed tools", () => {
       expect(runCommand).toHaveBeenCalledWith("workspace.open-trust");
     });
 
-    it("says which secret isn't set, with the command that sets it and Try again", async () => {
+    it("says which secret isn't set, with Try again and no command", async () => {
       const root = render(
         <ConnectorPage
           {...page(
@@ -230,9 +230,9 @@ describe("the connector page's listed tools", () => {
       );
       await settled();
       expect(root.textContent).toContain(
-        "Couldn't list the tools: Notes needs the secret NOTES_TOKEN, which isn't set on this computer. Set it in a terminal, then try again:",
+        "Couldn't list the tools: Notes needs the secret NOTES_TOKEN, which isn't set for Studio. Studio can't set a connector's secrets yet.",
       );
-      expect(root.textContent).toContain("halonic secret set NOTES_TOKEN");
+      expect(root.textContent).not.toContain("halonic secret set");
       const buttons = [...root.querySelectorAll("button")].map((b) => b.textContent);
       expect(buttons).toContain("Try again");
       expect(buttons).not.toContain("Copy details");
