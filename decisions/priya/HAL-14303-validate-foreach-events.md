@@ -2,6 +2,7 @@
 
 - Approval: HAL-14303
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3g2tpKuXwtaeGtYwIqa7NX4bHgCx3JEp75hgYqmcUDXesaJHofoxBbqAPQUKFMOpANaH0k1AOjykCB6uf9NUAw==
 
 ## What changes
 
