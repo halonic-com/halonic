@@ -41,23 +41,27 @@ export interface TrySampleProps {
   readonly buttonRef?: Ref<HTMLButtonElement> | undefined;
   /** The time line's id, which describes the button while it leads; absent once quiet. */
   readonly timeId?: string | undefined;
+  /** The id of the line that says why it's off while Halonic starts (`shell.welcome-start`). */
+  readonly offId?: string | undefined;
 }
 
 /**
  * **Open demo** on the Welcome screen (`shell.welcome-sample`). While Recent is empty it is the
  * primary button, and Welcome shows the time line under the buttons as its description
  * (accessibility pass 1.3); once Recent has entries it is a ghost button under the list. While
- * busy it reads "Copying the demo…", keeps focus and ignores presses.
+ * busy it reads "Copying the demo…", keeps focus and ignores presses. With `offId` it is off,
+ * and screen readers hear the line that says why.
  *
  * @example
  * <TrySample quiet={false} busy={false} onPress={copyDemo} timeId={timeId} />
  */
-export function TrySample({ quiet, busy, onPress, buttonRef, timeId }: TrySampleProps) {
+export function TrySample({ quiet, busy, onPress, buttonRef, timeId, offId }: TrySampleProps) {
   return (
     <Button
       {...(buttonRef === undefined ? {} : { ref: buttonRef })}
       variant={quiet ? "ghost" : "primary"}
       busy={busy}
+      unavailable={busy || offId === undefined ? undefined : { reason: offId }}
       busyLabel={trySampleWords.creating}
       busyName={trySampleWords.creatingName}
       {...(quiet || timeId === undefined ? {} : { "aria-describedby": timeId })}

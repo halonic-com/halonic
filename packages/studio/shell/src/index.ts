@@ -307,6 +307,14 @@ export {
   engineWaitMs,
   type WelcomeOpenProblem,
 } from "./welcome/cant-open.ts";
+export type {
+  LiteCheckResult,
+  StartCause,
+  StartPhase,
+  StartReport,
+  StartState,
+  WelcomeStart,
+} from "./welcome/start-status.ts";
 export {
   removeFromRecentLabel,
   Welcome,

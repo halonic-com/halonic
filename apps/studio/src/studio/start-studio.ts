@@ -65,12 +65,13 @@ import { watchDesktopResources } from "./desktop-resources.ts";
 import { newWorkspaceHostOf } from "./new-workspace-host.ts";
 import { observedSandboxStartCheck } from "./observed-sandbox-start-check.ts";
 import { openFolderScope, savingOf } from "./open-folder-scope.ts";
-import { openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
+import { halonicVersion, openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
 import { provideFolderServices } from "./provide-folder-services.ts";
 import { restartRunsOfWindow } from "./restart-runs.ts";
 import { sampleHostOf } from "./sample-host.ts";
 import { sampleWorkspaceOf } from "./sample-workspace.ts";
 import { startServedStudio } from "./served-studio.ts";
+import { watchStart } from "./start-watch.ts";
 
 export { servedServices } from "./served-studio.ts";
 
@@ -185,12 +186,14 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     toasts: shell.toasts,
   });
   const resources = watchDesktopResources(ipc);
+  const start = watchStart(ipc, platform, halonicVersion);
   const parts = {
     shell,
     switcher,
     platform,
     language: studioLanguage,
     resources,
+    start,
     ...newWorkspace,
     newWorkspaceAsks,
   };
@@ -210,6 +213,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
   const stopped = once(async () => {
     stopRegion();
     resources.stop();
+    start.stop();
     await stopListening();
     window.unmount();
     stopAppearance();

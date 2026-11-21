@@ -6,6 +6,7 @@ import {
   type Shell,
   StudioWindow,
   type WelcomeSampleProblem,
+  type WelcomeStart,
   WelcomeWindow,
   type WindowActions,
 } from "@halonicjs/studio-shell";
@@ -59,6 +60,8 @@ export interface WorkspaceWindowProps {
    * item stays hidden (`shell.resource-status-item`).
    */
   readonly resources?: ResourceWatch | undefined;
+  /** How far Halonic's start has got, which Welcome shows (`shell.welcome-start`). */
+  readonly start?: WelcomeStart | undefined;
 }
 
 /**
@@ -80,6 +83,7 @@ export function WorkspaceWindow({
   newWorkspaceAsks,
   sample,
   resources,
+  start,
 }: WorkspaceWindowProps) {
   const { open } = switcher;
   const showByPerson = useShowByPerson(switcher, (line) => shell.announcer.announce(line));
@@ -222,6 +226,7 @@ export function WorkspaceWindow({
           onOpenFolder={() => showByPerson(() => switcher.pickAndOpen())}
           onNewWorkspace={askNewWorkspace}
           onTrySample={trySample}
+          start={start}
           recent={{
             workspaces: switcher.recent.list(),
             onOpen: (location) => showByPerson(() => switcher.openLocation(location)),
