@@ -51,7 +51,12 @@ export {
   type ConnectorStartFailure,
   connectorStartFailureOf,
 } from "./connector-start-failure.ts";
-export { ConnectorToolError, isConnectorToolError } from "./connector-tool-error.ts";
+export {
+  ConnectorToolError,
+  ConnectorToolTimeoutError,
+  isConnectorToolError,
+  isConnectorToolTimeout,
+} from "./connector-tool-error.ts";
 export {
   type Coordination,
   type CounterResult,
@@ -326,6 +331,7 @@ export {
   type ChatTurnRequest,
   type ChatTurnResponse,
   type ChatTurnSkip,
+  type ChatTurnToolFailure,
   type ChatTurnWaiting,
   type EngineConnection,
   type EngineConnectionState,

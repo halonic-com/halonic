@@ -10,6 +10,7 @@ import type {
   ChatResponse,
   ChatTurnRefusal,
   ChatTurnSkip,
+  ChatTurnToolFailure,
   ChatTurnWaiting,
   Clock,
   ConnectorClient,
@@ -123,6 +124,8 @@ export interface ModelTurnResult extends ChatResponse {
   /** Every assistant and tool message the turn added, ending with the last answer. */
   readonly turn: ChatMessage[];
   readonly refusals: ChatTurnRefusal[];
+  /** The calls to connectors' tools that ran out of time, in order; the model got each error as its result. */
+  readonly toolFailures: ChatTurnToolFailure[];
   /** The listed tools left out because nobody approved them yet; never sent to the model. */
   readonly waiting: ChatTurnWaiting[];
   /** The models skipped before any call, in order. */
@@ -186,6 +189,7 @@ async function turnLoop(
   const context: ToolCallContext = {
     agent: input.agent,
     refusals: [...tools.refusals],
+    toolFailures: [],
     check: input.checkCall ?? checkChatToolCall,
     ...(input.log === undefined ? {} : { log: input.log }),
     ...(effects === undefined ? {} : { effects }),
@@ -208,6 +212,7 @@ async function turnLoop(
       usage,
       turn,
       refusals: context.refusals,
+      toolFailures: context.toolFailures,
       waiting: [...tools.waiting],
       skipped: models.skipped,
       model: answeredBy.model,

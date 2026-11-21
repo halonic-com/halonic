@@ -1,5 +1,12 @@
 import type { ToolNoun, ToolVerb } from "@halonicjs/events";
-import type { ChatMessage, ChatTurnRefusal, ToolCall, ToolRisk } from "@halonicjs/ports";
+import {
+  type ChatMessage,
+  type ChatTurnRefusal,
+  type ChatTurnToolFailure,
+  isConnectorToolTimeout,
+  type ToolCall,
+  type ToolRisk,
+} from "@halonicjs/ports";
 import type { CallChecker } from "./check-call-before-run.ts";
 import { passResultToModel } from "./pass-result-to-model.ts";
 import type { TurnAnswer } from "./turn-approval.ts";
@@ -19,6 +26,8 @@ export interface ToolCallContext {
   readonly log?: TurnLog;
   /** Where a refusal goes. */
   readonly refusals: ChatTurnRefusal[];
+  /** Where a call to a connector's tool that ran out of time goes, for a chat to say why. */
+  readonly toolFailures: ChatTurnToolFailure[];
   /** Checks each call before it runs. */
   readonly check: CallChecker;
   /**
@@ -266,6 +275,7 @@ async function finishCall(
     return ran;
   }
   const { result, outcome } = ran;
+  noteToolFailure(context, tool, call, ran);
   await context.log?.append({
     type: "tool.result",
     agent: context.agent,
@@ -303,6 +313,25 @@ interface ToolRun {
   readonly kind: "ran";
   readonly result: string;
   readonly outcome: "ok" | "error";
+  /** Set when the tool threw a `ConnectorToolTimeoutError`: how long its connector waited. */
+  readonly timedOutWithinMs?: number;
+}
+
+/**
+ * Notes a call to a connector's tool that ran out of time in the turn's
+ * `toolFailures` (requirement `engine.turn-tool-timeout`), naming the tool as
+ * its server lists it. Only a connector's tool: Halonic's own tools have no
+ * connector to name.
+ */
+function noteToolFailure(context: ToolCallContext, tool: TurnTool, call: ToolCall, ran: ToolRun) {
+  if (ran.timedOutWithinMs === undefined || tool.kind !== "server") return;
+  context.toolFailures.push({
+    toolCallId: call.id,
+    reason: "tool-timeout",
+    tool: tool.listedName,
+    connector: tool.source,
+    withinMs: ran.timedOutWithinMs,
+  });
 }
 
 /**
@@ -337,7 +366,9 @@ async function runTool(
     return typeof result === "string" ? { kind: "ran", result, outcome: "ok" } : result;
   } catch (error) {
     const result = `The tool ${call.name} failed: ${toolErrorText(error)}`;
-    return { kind: "ran", result, outcome: "error" };
+    return isConnectorToolTimeout(error)
+      ? { kind: "ran", result, outcome: "error", timedOutWithinMs: error.withinMs }
+      : { kind: "ran", result, outcome: "error" };
   }
 }
 

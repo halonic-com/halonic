@@ -74,6 +74,10 @@ export class AnswerInProgress {
     if (refusals.length > 0) {
       this.tell((listener) => listener.onRefusals?.(refusals));
     }
+    const toolFailures = response.toolFailures ?? [];
+    if (toolFailures.length > 0) {
+      this.tell((listener) => listener.onToolFailures?.(toolFailures));
+    }
     const waiting = response.waiting ?? [];
     this.tell((listener) => listener.onWaiting?.(waiting));
   }

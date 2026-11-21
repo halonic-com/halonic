@@ -5,6 +5,7 @@ import type {
   ChatTurnRefusal,
   ChatTurnResponse,
   ChatTurnSkip,
+  ChatTurnToolFailure,
   ChatTurnWaiting,
 } from "./index.ts";
 
@@ -104,5 +105,38 @@ verifies("ports.chat-turn-waiting", () => {
       waiting: [{ source: "notes", name: "lookup" }],
     };
     expect(response.waiting).toEqual([{ source: "notes", name: "lookup" }]);
+  });
+});
+
+verifies("ports.chat-turn-tool-failure", () => {
+  typeTest("keeps toolFailures optional", () => {
+    expectTypeOf<ChatTurnResponse["toolFailures"]>().toEqualTypeOf<
+      ChatTurnToolFailure[] | undefined
+    >();
+    expectTypeOf(plain).toMatchTypeOf<ChatTurnResponse>();
+  });
+
+  typeTest("names only tool-timeout as a reason", () => {
+    expectTypeOf<ChatTurnToolFailure["reason"]>().toEqualTypeOf<"tool-timeout">();
+    assertType<ChatTurnToolFailure>({
+      toolCallId: "c1",
+      // @ts-expect-error: a model's timeout is the turn's failure, not a call's
+      reason: "model-timeout",
+      tool: "search",
+      connector: "handbook-files",
+      withinMs: 60_000,
+    });
+  });
+
+  it("carries the call, the tool, the connector and how long it waited", () => {
+    const failure: ChatTurnToolFailure = {
+      toolCallId: "c1",
+      reason: "tool-timeout",
+      tool: "search",
+      connector: "handbook-files",
+      withinMs: 60_000,
+    };
+    const response: ChatTurnResponse = { ...plain, toolFailures: [failure] };
+    expect(response.toolFailures).toEqual([failure]);
   });
 });
