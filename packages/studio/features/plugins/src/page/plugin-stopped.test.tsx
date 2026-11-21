@@ -43,10 +43,14 @@ function runStatesOf(stopped: boolean) {
 async function show(
   plugin: InstalledPlugin,
   runStates: PluginRunStates,
-  options: { place?: "app" | "served"; unfencedRuns?: PluginUnfencedRuns } = {},
+  options: {
+    place?: "app" | "served";
+    unfencedRuns?: PluginUnfencedRuns;
+    toasts?: ReturnType<typeof createToastStore>;
+  } = {},
 ) {
   const view = render(
-    <ToastStoreProvider store={createToastStore()}>
+    <ToastStoreProvider store={options.toasts ?? createToastStore()}>
       <PluginPage
         plugin={plugin}
         {...noSettings()}
@@ -94,9 +98,10 @@ verifies("plugins.plugin-page-stopped", () => {
     expect(view.textContent).not.toContain(offLine);
   });
 
-  it("asks the host to forget the stop on Check again, then shows the status box and moves focus to it", async () => {
+  it("asks the host to forget the stop on Check again, then shows the status box, moves focus to it and says the next run tries the sandbox", async () => {
     const runStates = runStatesOf(true);
-    const view = await show(weather("on"), runStates);
+    const toasts = createToastStore();
+    const view = await show(weather("on"), runStates, { toasts });
 
     await act(async () => button(view, "Check again")?.click());
     await act(async () => {});
@@ -106,6 +111,13 @@ verifies("plugins.plugin-page-stopped", () => {
     const focused = document.activeElement;
     expect(focused?.getAttribute("tabindex")).toBe("-1");
     expect(focused?.textContent).not.toContain(stoppedLine);
+    // Nothing was tried yet, so the page doesn't leave "Trusted on …" to say the sandbox works.
+    expect(toasts.list().map(({ tone, title }) => ({ tone, title }))).toEqual([
+      {
+        tone: "info",
+        title: "Halonic tries Weather in the sandbox again the next time a run uses it.",
+      },
+    ]);
   });
 
   it("keeps R15 and says why in a toast when Check again fails", async () => {
