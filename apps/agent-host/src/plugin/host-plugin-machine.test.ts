@@ -176,3 +176,18 @@ verifies("agent-host.plugin-routes", () => {
     });
   });
 });
+
+verifies("agent-host.plugin-run-state", () => {
+  describe("the host's plugin machine", () => {
+    it("hands the run states' hook to the opener, which tells it each start", async () => {
+      const onStart = vi.fn();
+      const { machine, dispose } = machineOf({ onStart });
+      try {
+        machine.onStart?.("weather", "stopped");
+        expect(onStart).toHaveBeenCalledWith("weather", "stopped");
+      } finally {
+        await dispose();
+      }
+    });
+  });
+});

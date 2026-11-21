@@ -40,3 +40,6 @@ export const handOverSecretsBody = s
       .refine((secrets) => Object.keys(secrets).length <= maxHandedSecrets),
   })
   .strict();
+
+/** What Studio gives to read or clear a plugin's run state: the plugin by id, and nothing else. */
+export const pluginRunStateBody = s.object({ plugin: pluginId }).strict();

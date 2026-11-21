@@ -102,7 +102,16 @@ export interface PluginBackendMachine {
   readonly trust: Pick<TrustService, "checkPlugin">;
   /** The plugin's saved setting values; defaults where none are saved. */
   settings(plugin: Plugin): Promise<PluginSettingValues>;
+  /**
+   * Told what came of each gated start of a plugin's runner, by the plugin's
+   * id: `stopped` when the fence failed though the computer passed the
+   * sandbox check (A23). Only told, never asked: it can't change the start.
+   */
+  onStart?(plugin: string, run: PluginBackendStartRun): void;
 }
+
+/** What came of one gated start of a plugin's runner, as `RunnerStartGate` says it. */
+export type PluginBackendStartRun = "fenced" | "unfenced" | "needs-yes" | "stopped";
 
 /**
  * The opener the `plugin` connector factory is given. The backend runs the
@@ -179,9 +188,19 @@ class PluginBackendOpening {
         });
       },
     );
+    this.#tellStart(gated.run);
     if (gated.run === "fenced" || gated.run === "unfenced") return gated.runner;
     if (gated.run === "needs-yes") throw new PluginBackendNotFencedError(gated.reason);
     throw new Error("the sandbox failed its check, so nothing runs");
+  }
+
+  /** Tells the machine's `onStart`; a hook that throws leaves the start as it came out. */
+  #tellStart(run: PluginBackendStartRun): void {
+    try {
+      this.#machine.onStart?.(this.#request.plugin, run);
+    } catch {
+      // Only told: a runner that started still goes back to its caller, who stops it.
+    }
   }
 
   /** The folder the start trusted must be the one the caller checked, so a swap in between starts nothing. */

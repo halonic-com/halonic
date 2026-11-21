@@ -40,6 +40,7 @@ export {
   openPluginBackend,
   type PluginBackendMachine,
   PluginBackendNotFencedError,
+  type PluginBackendStartRun,
 } from "./halonic/open-plugin-backend.ts";
 export { type LoadPluginBackendOptions, loadPluginBackend } from "./halonic/plugin-backend.ts";
 export { runnerFile } from "./halonic/runner-file-path.ts";

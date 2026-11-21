@@ -19,6 +19,8 @@ import type { HostRoute } from "../server/host-server.ts";
 import { hostPluginBackends, unavailablePluginBackends } from "./host-plugin-backends.ts";
 import { hostPluginMachine, runnerTimeLimitMs } from "./host-plugin-machine.ts";
 import { pluginRoutes } from "./plugin-routes.ts";
+import { pluginRunStateRoutes } from "./plugin-run-state-routes.ts";
+import { PluginRunStates } from "./plugin-run-states.ts";
 import { PluginSecretValues } from "./plugin-secret-values.ts";
 import { pluginSignIns } from "./plugin-sign-ins.ts";
 import { PluginTable } from "./plugin-table.ts";
@@ -40,6 +42,8 @@ export interface HostPlugins {
   /** Kept in memory only; the backends read them, and `POST /v1/plugins/secrets` replaces them. */
   readonly secretValues: PluginSecretValues;
   readonly unfenced: UnfencedRunsSource;
+  /** Which plugins' runners stopped because the sandbox failed, for the plugin page's R15. */
+  readonly runStates: PluginRunStates;
   /** The sign-ins of the plugin called `name`, for the host's sign-ins; `undefined` where no plugin runs. */
   signIns(name: string): SignInIntegration | undefined;
   /** Stops every runner, drops the secrets and removes the temp folders of the starts. */
@@ -93,16 +97,23 @@ export function hostPlugins(
   if (profile === undefined) return undefined;
   const secretValues = new PluginSecretValues();
   const unfenced = hostUnfencedRuns(sandbox, profile);
+  const runStates = new PluginRunStates(systemClock);
   if (isSea()) {
     return {
       table: new PluginTable(unavailablePluginBackends()),
       secretValues,
       unfenced,
+      runStates,
       signIns: () => undefined,
       stop: async () => undefined,
     };
   }
-  const { machine, dispose } = hostPluginMachine({ gate: unfenced.gate, profile, version });
+  const { machine, dispose } = hostPluginMachine({
+    gate: unfenced.gate,
+    profile,
+    version,
+    onStart: runStates.started,
+  });
   // A backend reads only the secrets Studio handed over for its plugin, and its own sign-ins' access tokens.
   const context = {
     secrets: secretValues.secrets,
@@ -140,6 +151,7 @@ export function hostPlugins(
     table,
     secretValues,
     unfenced,
+    runStates,
     signIns: pluginSignIns({ machine, secrets: secretValues.secrets, log: logToError }),
     stop: async () => {
       await table.closeAll();
@@ -157,6 +169,7 @@ export function hostPluginRoutes(
   return [
     ...pluginRoutes({ plugins: plugins.table, secretValues: plugins.secretValues, log }),
     ...unfencedRunsRoutes(plugins.unfenced, log),
+    ...pluginRunStateRoutes(plugins.runStates),
   ];
 }
 

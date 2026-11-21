@@ -43,6 +43,8 @@ export interface HostPluginMachineOptions {
   readonly log?: (text: string) => void;
   /** Starts one runner; the real one is `startRunner`. A test passes one whose runner stops on its own. */
   readonly start?: typeof startRunner;
+  /** Told what came of each gated start of a plugin's runner (`PluginRunStates.started`). */
+  readonly onStart?: PluginBackendMachine["onStart"];
 }
 
 /** The machine for plugin backends in the host, and the removal of the temp folders its starts made. */
@@ -131,6 +133,7 @@ export function hostPluginMachine(options: HostPluginMachineOptions): HostPlugin
     digest,
     trust: new TrustService({ store, digest, clock: systemClock, appVersion: options.version }),
     settings: async (plugin) => await settings.values(plugin),
+    ...(options.onStart === undefined ? {} : { onStart: options.onStart }),
   };
   const dispose = async () => {
     await Promise.all(made.splice(0).map(removeFolder));

@@ -483,7 +483,12 @@ for a status the user didn't see, and checks it again at every start.
 without the sandbox before it answers. The `halonic` command still holds no
 yes (`noUnfencedRunConsent`, HAL-12639): it offers none, so a file in the
 profile's `unfenced-runs` folder starts no local integration or plugin backend
-from the command. In the host, a file written into that folder by hand counts
+from the command. When a start's fence proof fails though the computer passed
+the sandbox check (A23), nothing runs, and the host keeps that plugin's stop in
+memory for the plugin page's R15 (`agent-host.plugin-run-state`, HAL-15113):
+`POST /v1/plugins/run-state` reads it and `POST /v1/plugins/run-state/check-again`
+forgets it, behind the launch token, by plugin id, as codes only. Neither
+starts anything or changes what the gate decides. In the host, a file written into that folder by hand counts
 as a yes, as the trust records next to it count as trust: whoever can write the
 profile already decides what runs. A plugin's
 backend gets its secrets from Studio, which hands a trusted plugin's declared
