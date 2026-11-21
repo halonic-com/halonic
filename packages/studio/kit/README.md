@@ -1545,6 +1545,26 @@ With no notes it renders nothing and leaves no gap.
 <NoteLines label="Notes on this run" notes={providerNotes(log)} />;
 ```
 
+## MiddleCut
+
+`MiddleCut` shows a folder on one caption line. When it's too long its middle is cut, so its end,
+which tells folders apart, stays: `~/work/projects/Cust…/Q3 Renewals`. The end is at most its
+last 24 characters, starting on a whole folder name when it can. The cut start always keeps 2em, its
+first letter and a whole "…", so it never reads as the parent folder `..`; a folder short enough to
+keep whole has no start. When the end alone is wider than its row, as at 400% zoom, it wraps
+between folder names first and never draws past the row (WCAG 1.4.10 Reflow).
+
+```tsx
+const folderId = useId();
+<button type="button" aria-label="Workspace: Acme" aria-describedby={folderId}>
+  <MiddleCut id={folderId} text={workspace.folder} />
+</button>;
+```
+
+Its text is the whole folder, so a row named by something else can be described by it with
+`aria-describedby` on its `id`, as the workspace switcher is. `textClassName` sets the line's type
+and colour, `text-caption` `fg-subtle` by default. `middleCutAt(text)` says where the cut falls.
+
 ## LongText and TextSheet
 
 A long text field: Description, Instructions, an agent step's text. Put it in a `Field` like any
@@ -1613,13 +1633,13 @@ menu and let the browser open it. Divide groups with `"divider"`.
 | `trigger` | Renders the button that opens it; a kit `Button` takes every prop it gets |
 | `entries` | Items and `"divider"`s. An item has `id`, `label` and `onSelect`, and optionally |
 |  | `icon`, `keys`, `danger`, `disabled`, `unavailable: { reason }` or `checked` |
-|  | and `attention` (the needs-you dot and its words) |
+|  | and `attention` (the needs-you dot and its words), `detail` and `detailCut` |
 | `description` | Optional: a sentence that explains the menu, shown above the items |
 | `align` | `start` (the default) lines up with the trigger's left edge, `end` its right |
 
 | State | What shows |
 | --- | --- |
-| Default | `surface-raised`, radius 12px, `shadow-2`, 4px padding, at least 180px wide; 32px items |
+| Default | `surface-raised`, radius 12px, `shadow-2`, 4px padding, at least 180px wide and never wider than the window less 8px each side; 32px items |
 | Hover and active | The item under the pointer or the keyboard has focus and the `surface-muted` fill; no ring |
 | Danger | `danger` text, always last, below a divider |
 | Disabled | `fg-disabled`; still listed, but the arrow keys and type-to-find skip it |
@@ -1641,6 +1661,11 @@ the item's description.
 An item with `checked` is one choice of several, a `menuitemradio` with `aria-checked`: `true` on
 the current one, which shows a 16px `accent` check at the right, `false` on the others. The filter
 chips' picker uses it on desktop, where a phone opens the picker sheet.
+
+An item with a `detail` has a second line under its label in `text-caption` `fg-subtle`, such as
+the folder under a workspace's name. It's the item's description, not part of its name. It ends
+in "…"; with `detailCut: "middle"` it's cut in the middle instead, with [`MiddleCut`](#middlecut),
+so a folder's end stays.
 
 An item with `attention` waits for someone, as a window tab can: it shows the still 6px `warning`
 dot at the right, kept in forced colours, and its words follow the label in the item's name,

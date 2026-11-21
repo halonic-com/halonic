@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { Welcome } from "./welcome.tsx";
+import { WelcomeRecent } from "./welcome-recent.tsx";
 import type { WelcomeSampleProblem } from "./welcome-sample.tsx";
 
 afterEach(() => {
@@ -226,5 +228,33 @@ verifies("shell.welcome-sample", () => {
     ]);
     expect(rows[0]?.textContent).toBe("Acme~/Documents/Acme sampleDemo");
     expect(rows[1]?.textContent).toBe("Acme~/Work/Acme");
+  });
+
+  it("puts a sample's tag right after its name on a phone, and at the row's right on desktop", () => {
+    const sample = [{ name: "Acme", location: "C:\\Users\\Sam\\Documents\\Acme", sample: true }]; // leak-guard: allow absolute-path made-up Windows paths for the test
+    const row = (presentation: "desktop" | "phone") => {
+      const container = render(
+        <PresentationProvider presentation={presentation}>
+          <WelcomeRecent
+            workspaces={sample}
+            opening={undefined}
+            onOpen={() => {}}
+            rowRef={() => null}
+          />
+        </PresentationProvider>,
+      );
+      return container.querySelector("li button") as HTMLButtonElement;
+    };
+
+    const phone = row("phone");
+    const nameLine = phone.querySelector(".text-body");
+    expect(nameLine?.textContent).toBe("AcmeDemo");
+    // Only the name and the folder's column: no tag at the right.
+    expect(phone.children).toHaveLength(1);
+
+    const desktop = row("desktop");
+    expect(desktop.querySelector(".text-body")?.textContent).toBe("Acme");
+    expect(desktop.lastElementChild?.textContent).toBe("Demo");
+    expect(desktop.getAttribute("aria-label")).toBe(phone.getAttribute("aria-label"));
   });
 });

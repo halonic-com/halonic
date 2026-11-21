@@ -37,3 +37,28 @@ for (const name of ["Workspace: Acme", "Workspace: Support"]) {
     expect(past).toBeLessThanOrEqual(0);
   });
 }
+
+test.describe("at 200% zoom, a 640px window", () => {
+  test.use({ viewport: { width: 640, height: 400 } });
+
+  test("the menu of a 101-character folder stays inside the window, its key and check shown", async ({
+    page,
+  }) => {
+    await page.goto("/workspace-switcher.html");
+    await page.getByRole("button", { name: "Workspace: Renewals", exact: true }).click();
+    const menu = page.getByRole("menu");
+    await expect(menu).toBeVisible();
+
+    const box = await menu.evaluate((element) => element.getBoundingClientRect().toJSON());
+    expect(box.left).toBeGreaterThanOrEqual(8);
+    expect(box.right).toBeLessThanOrEqual(640 - 8);
+    const item = menu.getByRole("menuitemradio", { name: "Renewals" });
+    for (const part of [item.locator("kbd").first(), item.locator("svg").last()]) {
+      const right = await part.evaluate((element) => element.getBoundingClientRect().right);
+      expect(right).toBeLessThanOrEqual(box.right);
+    }
+    // The folder is cut in the middle, as in the switcher: its end stays.
+    const end = item.locator(".text-caption > span").last();
+    await expect(end).toHaveText("/Q3 Renewals and Escalations");
+  });
+});

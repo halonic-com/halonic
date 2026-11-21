@@ -1,6 +1,7 @@
 import { useId } from "react";
 import { TickIcon } from "../icons/tick-icon.tsx";
 import { Kbd } from "../kbd/kbd.tsx";
+import { MiddleCut } from "../middle-cut/middle-cut.tsx";
 import { StatusChip } from "../status-chip/status-chip.tsx";
 import { type MenuItem, taggedItemName } from "./menu.tsx";
 
@@ -93,14 +94,7 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
       <span className="flex min-w-0 flex-1 flex-col">
         <span className={faded}>{item.label}</span>
         {item.detail === undefined ? null : (
-          // Out of the item's name, which stays the label: a screen reader reads it as its description.
-          <span
-            id={detailId}
-            aria-hidden="true"
-            className={`truncate text-caption text-fg-subtle ${faded}`.trim()}
-          >
-            {item.detail}
-          </span>
+          <ItemDetail id={detailId} item={item} detail={item.detail} faded={faded} />
         )}
         {unavailable ? (
           <span id={reasonId} className="text-small text-fg-muted">
@@ -121,6 +115,39 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
         </span>
       ) : null}
     </button>
+  );
+}
+
+/**
+ * The line under the label, out of the item's name, which stays the label: a screen reader reads
+ * it as its description. It ends in "…", or is cut in the middle when the item says so.
+ */
+function ItemDetail({
+  id,
+  item,
+  detail,
+  faded,
+}: {
+  readonly id: string;
+  readonly item: MenuItem;
+  readonly detail: string;
+  readonly faded: string;
+}) {
+  if (item.detailCut === "middle") {
+    return (
+      <span id={id} aria-hidden="true" className={faded || undefined}>
+        <MiddleCut text={detail} />
+      </span>
+    );
+  }
+  return (
+    <span
+      id={id}
+      aria-hidden="true"
+      className={`truncate text-caption text-fg-subtle ${faded}`.trim()}
+    >
+      {detail}
+    </span>
   );
 }
 

@@ -74,9 +74,13 @@ for (const { kind, name } of rows) {
     expect(await overflow(row)).toBeLessThanOrEqual(0);
     const { line, start, end } = folderParts(row);
     expect(await heightOf(end)).toBeGreaterThan((await lineHeightOf(line)) * 1.5);
-    // The start keeps room for its "…", so the end doesn't read as a folder of its own.
-    const startWidth = await start.evaluate((element) => element.getBoundingClientRect().width);
-    expect(startWidth).toBeGreaterThan(0);
+    // The start keeps 2em, its first letter and a whole "…", so the end doesn't read as a folder
+    // of its own and the start never reads as the parent folder `..`.
+    const { startWidth, fontSize } = await start.evaluate((element) => ({
+      startWidth: element.getBoundingClientRect().width,
+      fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
+    }));
+    expect(startWidth).toBeGreaterThanOrEqual(fontSize * 2 - 0.5);
   });
 }
 

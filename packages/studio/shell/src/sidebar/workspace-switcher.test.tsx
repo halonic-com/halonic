@@ -21,6 +21,17 @@ describe("WorkspaceSwitcher", () => {
     expect(opens?.textContent).toContain("Open a folder…");
   });
 
+  it("is described by its whole folder, so a screen reader hears it too", () => {
+    const folder = "/work/projects/Customer Support/Halonic Workspaces/Q3 Renewals";
+    const container = render(
+      <WorkspaceSwitcher workspace={{ name: "Acme", folder }} menu={menu} />,
+    );
+    const switcher = container.querySelector('button[aria-haspopup="menu"]') as HTMLButtonElement;
+    const description = document.getElementById(switcher.getAttribute("aria-describedby") ?? "");
+    expect(description?.textContent).toBe(folder);
+    expect(switcher.contains(description)).toBe(true);
+  });
+
   it("shows the letter mark, then the name over the folder, each on one line", () => {
     const container = render(
       <WorkspaceSwitcher workspace={{ name: "acme", folder: "~/Work/acme" }} menu={menu} />,
