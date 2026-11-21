@@ -55,14 +55,17 @@ function Wait-Button([IntPtr]$h, [string]$text, [int]$seconds) {
 }
 
 $p = Start-Process $Setup -ArgumentList "/D=$InstallFolder" -PassThru
-$h = [IntPtr]::Zero
-foreach ($i in 1..60) {
+# The licence page comes first (HAL-12506). Look for the window that shows it,
+# not just the first one: .onInit runs the rollback guard (HAL-5404 S3) before
+# the pages, and a window seen while it runs isn't the installer's page.
+$h = [IntPtr]::Zero; $m = [IntPtr]::Zero
+foreach ($i in 1..80) {
   Start-Sleep -Milliseconds 500
   $p.Refresh()
-  if ($p.MainWindowHandle -ne [IntPtr]::Zero) { $h = $p.MainWindowHandle; break }
+  $m = $p.MainWindowHandle
+  if ($m -ne [IntPtr]::Zero -and (Button-Text $m) -eq 'I &Agree') { $h = $m; break }
 }
-if ($h -eq [IntPtr]::Zero) { throw 'The installer opened no window' }
-# The licence page comes first (HAL-12506).
+if ($h -eq [IntPtr]::Zero) { throw "The installer showed no licence page; its window says '$(Button-Text $m)'" }
 Wait-Button $h 'I &Agree' 20
 Save-Picture $h '0-licence'
 # Post the press (WM_COMMAND for button 1), don't send it: the Install page it

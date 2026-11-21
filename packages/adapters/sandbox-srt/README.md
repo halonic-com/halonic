@@ -154,12 +154,17 @@ sessions are open at once, srt still lets one read the other (known limit, `it.f
 
 srt's Windows install records a setup version, and a release of srt that raises it needs
 `windows-install` again (one administrator prompt). Going back to a release with a lower one needs
-`windows-uninstall` with the newer srt first. `windows-setup-version.json` records the pinned
+`windows-uninstall` with the newer srt first, so the Windows installer refuses to go back across a
+raise (`studio.installer-rollback-guard`): it reads the machine's setup version from srt's registry
+key and runs no program for it. `windows-setup-version.json` records the pinned
 sandbox-runtime version and the setup version its `srt-win` needs (HAL-5404). The release writes
 that number into the updater's `latest.json` as `halonic.srtWindowsSetupVersion`, so the updater
 can tell when an update changes it. When you bump sandbox-runtime, update both fields: the unit
 test fails while the version differs from the pin, and the `sandbox-windows` CI job checks the
-setup version against what the real `srt-win` reports after its install.
+setup version against what the real `srt-win` reports after its install, and the registry value
+the installer reads against the one `srt-win` reports. Don't record a setup version above 3 until a
+release with the installer's rollback guard has shipped: older installers go back without the
+check. The unit test fails until then.
 
 ## Exports
 

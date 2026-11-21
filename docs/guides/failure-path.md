@@ -78,7 +78,9 @@ held by another process, an approval, a timer.
   that never proves it starts is replaced by 0.1.1 again. On Windows, every
   installer keeps a copy of itself in the profile's `updates\installers`
   folder until the next version has started once, and `updates\updates.log`
-  says how to go back.
+  says how to go back. It doesn't go back across a raise of srt's Windows
+  setup version (`setup-guard.ps1`, HAL-5404): the new version stays, and
+  the log says why.
 
 ## 3. Resource use is visible
 

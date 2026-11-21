@@ -15,6 +15,19 @@ fn installer_name(version: &str) -> String {
     format!("Halonic-{version}-windows-x64-setup.exe")
 }
 
+/// Whether `name` in the kept installers' folder is kept for a version other
+/// than `version`: its installer, or the record beside it of the setup
+/// version its srt needs (`Halonic-<version>.srt-setup`, HAL-5404 S3).
+fn kept_for_another_version(name: &str, version: &str) -> bool {
+    let Some(rest) = name.strip_prefix("Halonic-") else {
+        return false;
+    };
+    let kept_for = rest
+        .strip_suffix("-windows-x64-setup.exe")
+        .or_else(|| rest.strip_suffix(".srt-setup"));
+    kept_for.is_some_and(|kept_for| kept_for != version)
+}
+
 /// The proof that this version works (failure path 2). The window is open;
 /// once the agent host answers too, `started-<version>` is written and the
 /// installers kept for other versions go. Until then the installer that
@@ -62,16 +75,13 @@ pub(super) fn prove_started<R: Runtime>(app: &AppHandle<R>) {
             }
         }
     }
-    let keep = installer_name(&version);
     let Ok(entries) = std::fs::read_dir(folder.join("installers")) else {
         return;
     };
     for entry in entries.flatten() {
         let name = entry.file_name();
         let name = name.to_string_lossy();
-        let kept = name.starts_with("Halonic-") && name.ends_with("-windows-x64-setup.exe");
-        if kept
-            && name != keep
+        if kept_for_another_version(&name, &version)
             && let Err(error) = std::fs::remove_file(entry.path())
         {
             halonic_shell_log::record("updates", format!("{name} can't be removed: {error}"));
@@ -102,5 +112,33 @@ pub(super) fn log_way_back(inner: &Inner, target: &str) {
     });
     if let Err(error) = written {
         halonic_shell_log::record("updates", format!("updates.log can't be written: {error}"));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_installers_and_records_kept_for_other_versions_go() {
+        assert!(kept_for_another_version(
+            "Halonic-0.1.0-windows-x64-setup.exe",
+            "0.1.1"
+        ));
+        assert!(kept_for_another_version("Halonic-0.1.0.srt-setup", "0.1.1"));
+    }
+
+    #[test]
+    fn this_versions_own_and_anything_else_stay() {
+        assert!(!kept_for_another_version(
+            "Halonic-0.1.1-windows-x64-setup.exe",
+            "0.1.1"
+        ));
+        assert!(!kept_for_another_version(
+            "Halonic-0.1.1.srt-setup",
+            "0.1.1"
+        ));
+        assert!(!kept_for_another_version("notes.txt", "0.1.1"));
+        assert!(!kept_for_another_version("Halonic-0.1.0.zip", "0.1.1"));
     }
 }

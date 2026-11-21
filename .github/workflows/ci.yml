@@ -2476,6 +2476,9 @@ jobs:
             if ($out -ne $c.reason) { throw "Expected the reason '$($c.reason)'" }
           }
           $global:LASTEXITCODE = 0
+      # Windows PowerShell, as the installer runs the guard (HAL-5404 S3).
+      - name: The rollback guard answers each setup version on a fake srt key
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File apps/studio/src-tauri/windows/test-setup-guard.ps1
       - name: The "Halonic is open" and "newer Halonic installed" messages
         run: |
           $version = (Get-Content apps/studio/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version

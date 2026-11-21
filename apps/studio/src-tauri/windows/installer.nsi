@@ -96,6 +96,17 @@ Var RollbackMode
 !define SANDBOX_STEP
 ; What the installer says it uses. CI fails when the real size is off by a quarter.
 !define SIZE_MB 145
+; Halonic change (HAL-5404 S3): the Windows setup version this installer's srt
+; needs (packages/adapters/sandbox-srt/windows-setup-version.json), and the
+; rollback guard that compares it with the computer's. build-installer.ps1
+; sets both and refuses to pack without them.
+!define SRTSETUPVERSION "$%HALONIC_SRT_SETUP_VERSION%"
+!define SETUPGUARD "$%HALONIC_SETUP_GUARD%"
+; .onInit unpacks the guard and nsExec. With /SOLID, anything not reserved
+; here sits behind the app's files, and NSIS shows its "Unpacking data"
+; window while it gets there, before any page or message.
+ReserveFile "${SETUPGUARD}"
+ReserveFile /plugin nsExec.dll
 Var SandboxState
 Var ShortcutState
 Var SandboxOutcome
@@ -648,6 +659,10 @@ Function .onInit
   ; Halonic change (HAL-1206): the version this install replaces, if any.
   ReadRegStr $OldVersion SHCTX "${UNINSTKEY}" "DisplayVersion"
 
+  !ifdef SANDBOX_STEP
+    Call RefuseOlderSetupVersion
+  !endif
+
   ; Halonic change (HAL-1202, flow 2.5): an older installer stops before any
   ; page, and so does an open Halonic until it is closed. Silent, passive and
   ; update installs keep Tauri's behaviour above and in the Install section.
@@ -1110,6 +1125,14 @@ Function KeepInstaller
     CreateDirectory "$1\updates\installers"
     CopyFiles /SILENT /FILESONLY "$EXEPATH" $2
   ${EndIf}
+  ; Halonic change (HAL-5404 S3): beside it, the setup version its srt needs,
+  ; for the guard before a later update goes back to it.
+  CreateDirectory "$1\updates\installers"
+  FileOpen $3 "$1\updates\installers\Halonic-${VERSION}.srt-setup" w
+  ${If} $3 != ""
+    FileWrite $3 "${SRTSETUPVERSION}"
+    FileClose $3
+  ${EndIf}
 FunctionEnd
 
 ; Halonic change (HAL-1206, failure path 2; HAL-8156): after "Restart to
@@ -1150,8 +1173,82 @@ Function WaitForStartOrGoBack
     Sleep 1000
     IntOp $3 $3 + 1
   ${LoopUntil} $3 >= 180
+  ; Halonic change (HAL-5404 S3): not across a raise of srt's setup version,
+  ; and not when the guard can't tell. The new version stays, and
+  ; updates.log says why.
+  !ifdef SANDBOX_STEP
+    StrCpy $R0 '-RecordFile "$1\updates\installers\Halonic-$OldVersion.srt-setup"'
+    Call CheckSetupVersion
+    ${If} $R1 <> 0
+      ; Not Settings: this version didn't start. An uninstall removes the
+      ; sandbox, and the kept installers with it.
+      StrCpy $R3 "${VERSION} didn't prove it starts, but it stays: going back to $OldVersion is refused because $R2. To go back, uninstall ${PRODUCTNAME}, which removes the agent sandbox too, then install $OldVersion again."
+      Call LogUpdateLine
+      Return
+    ${EndIf}
+  !endif
   Exec '"$2" /P /UPDATE /ROLLBACK /RELAUNCH'
 FunctionEnd
+
+!ifdef SANDBOX_STEP
+; Halonic change (HAL-5404 S3): runs the rollback guard (setup-guard.ps1, from
+; this installer's own plugins folder) with the arguments in $R0. Sets $R1 to
+; 0 (go on), 1 (refuse) or 2 (can't tell), and $R2 to the reason. The guard
+; reads srt's marker from the registry and runs nothing from $INSTDIR, which
+; the user can write, so it is safe with administrator rights too.
+Function CheckSetupVersion
+  InitPluginsDir
+  File "/oname=$PLUGINSDIR\setup-guard.ps1" "${SETUPGUARD}"
+  nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\setup-guard.ps1" $R0'
+  Pop $R1
+  Pop $R2
+  Push $R2
+  Call TrimEol
+  Pop $R2
+  ; nsExec gives "error" or "timeout" when PowerShell didn't run.
+  ${If} $R1 != "0"
+  ${AndIf} $R1 != "1"
+    StrCpy $R1 2
+  ${EndIf}
+FunctionEnd
+
+; Halonic change (HAL-5404 S3, flow 2.5): an installer whose srt needs an
+; older setup version than the sandbox on this computer stops before any
+; page, as RefuseOlderInstaller does. Silent and passive ones exit with 2 and
+; no box. When the guard can't tell, it goes on and says so in updates.log.
+Function RefuseOlderSetupVersion
+  StrCpy $R0 "-SetupVersion ${SRTSETUPVERSION}"
+  Call CheckSetupVersion
+  ${If} $R1 = 2
+    StrCpy $R3 "Installing ${VERSION}: the sandbox's setup version wasn't checked because $R2."
+    Call LogUpdateLine
+  ${ElseIf} $R1 = 1
+    ${IfNot} ${Silent}
+    ${AndIf} $PassiveMode <> 1
+      MessageBox MB_OK|MB_ICONEXCLAMATION "The agent sandbox on this computer was set up by a newer ${PRODUCTNAME}. To install ${VERSION}, remove the sandbox in that ${PRODUCTNAME} first (Settings › Agent sandbox), then run this installer again."
+    ${EndIf}
+    SetErrorLevel 2
+    Quit
+  ${EndIf}
+FunctionEnd
+
+; Appends $R3 as a line to updates.log in the profile (HAL-5404 S3).
+Function LogUpdateLine
+  Push $0
+  Push $1
+  Call ProfileFolder
+  Pop $0
+  CreateDirectory "$0\updates"
+  FileOpen $1 "$0\updates\updates.log" a
+  ${If} $1 != ""
+    FileSeek $1 0 END
+    FileWrite $1 "installer: $R3$\r$\n"
+    FileClose $1
+  ${EndIf}
+  Pop $1
+  Pop $0
+FunctionEnd
+!endif
 
 Function un.onInit
   !insertmacro SetContext
