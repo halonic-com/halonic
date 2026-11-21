@@ -77,8 +77,10 @@ for (const { page: path, fields } of [
 test("at 390px the Hub picker is still under the name", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 640 });
   await page.goto("/new-item-row.html");
-  const name = await page.getByLabel("Name", { exact: true }).boundingBox();
-  const hub = await page.getByLabel("Hub", { exact: true }).boundingBox();
-  expect(hub?.y).toBeGreaterThan((name?.y ?? 0) + (name?.height ?? 0));
+  // The labels start their fields: the Hub control itself sits inside the picker's padding.
+  const name = await page.locator("label", { hasText: /^Name$/ }).boundingBox();
+  const nameBox = await page.getByLabel("Name", { exact: true }).boundingBox();
+  const hub = await page.locator("label", { hasText: /^Hub$/ }).boundingBox();
+  expect(hub?.y).toBeGreaterThan((nameBox?.y ?? 0) + (nameBox?.height ?? 0));
   expect(hub?.x).toBeCloseTo(name?.x ?? 0, 0);
 });
