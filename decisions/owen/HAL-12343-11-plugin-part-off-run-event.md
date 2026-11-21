@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12343 (Nina's C54 check on HAL-12637, passed on by Liam: a local tool that can't run must say so in the run, never silently); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/HFryQop53lE6pq4WcVBnE3//qycH+uAA8UrWHbeRYFS2ZKfIEZxLoWyRFiqsEJqy62RM/tfMH3ZLDtq40aQAA==
 
 A plugin's connector joins its backend and its local tools. When one of them can't start, for
 example because the sandbox can't start on this computer, the CLI warned, but the run's log had no
