@@ -18,14 +18,22 @@ const nobodyAnswers: BridgeApprovals = {
 };
 
 /** A session as the engine hands it over: only its fence and its working folder are read. */
-function sessionWith(fence: SandboxFence): SandboxSession {
-  return { fence, profile: { workingFolder: `${worktree}/files/agents/writer` } } as SandboxSession;
+function sessionWith(
+  fence: SandboxFence,
+  workingFolder = `${worktree}/files/agents/writer`,
+): SandboxSession {
+  return { fence, profile: { workingFolder } } as SandboxSession;
 }
 
 /** The writer, whose kept file says `asks` as given. */
 function writerWith(fields: Partial<HarnessAgent["file"]>, harness = "claude-code" as const) {
   const agent = harnessAgentOf("writer", worktree);
   return { ...agent, harness, file: { ...agent.file, ...fields } } as HarnessAgent;
+}
+
+/** How a test's run log answers: `refuses` names the event types it fails to take. */
+interface RunLog {
+  readonly refuses?: readonly BridgeEvent["type"][];
 }
 
 /** Opens the writer's bridge, tells it `session` when given, and asks one call through it. */
@@ -35,9 +43,15 @@ async function askThrough(
   tool: string,
   args: unknown,
   given: SandboxedAsksPaths | null = paths,
+  runLog: RunLog = {},
 ) {
   const server = new RecordingBridgeServer();
   const recorded: BridgeEvent[] = [];
+  const reported: unknown[] = [];
+  const record = async (event: BridgeEvent) => {
+    if (runLog.refuses?.includes(event.type)) throw new Error("The run log is full.");
+    recorded.push(event);
+  };
   const host = new LocalBridgeHost({
     servers: { sandbox: server, "this-computer": server },
     services: {
@@ -48,21 +62,17 @@ async function askThrough(
         approvals: nobodyAnswers,
       }),
     },
-    reportError: () => {},
+    reportError: (error) => void reported.push(error),
     ...(given === null ? {} : { paths: given }),
   });
-  const bridge = await host.open(
-    agent,
-    { record: async (event) => void recorded.push(event) },
-    "sandbox",
-  );
+  const bridge = await host.open(agent, { record }, "sandbox");
   if (session !== undefined) bridge.sessionOpened?.(session);
   const approvals = server.opened[0]?.approvals;
   const answer = await approvals?.request(
     { callId: "c1", tool, args },
     { signal: new AbortController().signal },
   );
-  return { answer, recorded };
+  return { answer, recorded, reported };
 }
 
 const inSandbox = writerWith({ asks: "in-sandbox" });
@@ -127,6 +137,102 @@ verifies("harness-host.sandboxed-asks", () => {
       const { answer } = await askThrough(inSandbox, fenced, "Bash", { command: "ls" }, null);
 
       expect(answer).toEqual(refused);
+    });
+
+    it("when the path can't be resolved, and the run log says why", async () => {
+      const failing: SandboxedAsksPaths = {
+        resolve: async () => {
+          throw new Error("Permission denied.");
+        },
+        windows: false,
+      };
+
+      const { answer, recorded } = await askThrough(inSandbox, fenced, "Edit", edit, failing);
+
+      expect(answer).toEqual(refused);
+      expect(recorded).toEqual([
+        {
+          type: "bridge.failed",
+          agent: "writer",
+          kind: "asks-path",
+          message: expect.stringContaining("Permission denied."),
+        },
+      ]);
+    });
+
+    it("when the run log can't take the call, and says so", async () => {
+      const { answer, recorded } = await askThrough(
+        inSandbox,
+        fenced,
+        "Bash",
+        { command: "ls" },
+        paths,
+        {
+          refuses: ["harness.allowed"],
+        },
+      );
+
+      expect(answer).toEqual(refused);
+      expect(recorded).toEqual([
+        {
+          type: "bridge.failed",
+          agent: "writer",
+          kind: "asks-record",
+          message: expect.stringContaining("The run log is full."),
+        },
+      ]);
+    });
+
+    it("and tells the host when the run log takes nothing at all", async () => {
+      const { answer, reported } = await askThrough(
+        inSandbox,
+        fenced,
+        "Bash",
+        { command: "ls" },
+        paths,
+        {
+          refuses: ["harness.allowed", "bridge.failed"],
+        },
+      );
+
+      expect(answer).toEqual(refused);
+      expect(reported).toEqual([
+        expect.objectContaining({ message: expect.stringContaining("asks-record") }),
+      ]);
+    });
+  });
+
+  describe("on Windows, as the host's platform says", () => {
+    const windowsPaths: SandboxedAsksPaths = { ...paths, windows: true };
+    const windowsFolder = "C:\\data\\proposals\\01JD8Q\\files\\agents\\writer"; // leak-guard: allow absolute-path fixture path
+    const windowsFenced = sessionWith({ state: "fenced" }, windowsFolder);
+
+    it("lets an edit in the working folder through, whatever its letter case", async () => {
+      const { answer } = await askThrough(
+        inSandbox,
+        windowsFenced,
+        "Edit",
+        { file_path: "c:\\Data\\Proposals\\01JD8Q\\files\\agents\\writer\\reply.md" }, // leak-guard: allow absolute-path fixture path
+        windowsPaths,
+      );
+
+      expect(answer).toEqual({ approved: true });
+    });
+
+    it.each([
+      ["a device path", "\\\\.\\C:\\data\\proposals\\01JD8Q\\files\\agents\\writer\\reply.md"],
+      ["a UNC path", "\\\\server\\share\\reply.md"],
+    ])("asks the run's approvals for %s", async (_what, path) => {
+      const { answer, recorded } = await askThrough(
+        inSandbox,
+        windowsFenced,
+        "Edit",
+        { file_path: path },
+        windowsPaths,
+      );
+
+      expect(answer).toEqual({ approved: false, comment: "Nobody can answer." });
+      expect(recorded).toEqual([]);
     });
   });
 });

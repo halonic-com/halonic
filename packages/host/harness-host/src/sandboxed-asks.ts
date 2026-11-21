@@ -17,6 +17,21 @@ export interface SandboxedAsksPaths {
   readonly windows: boolean;
 }
 
+/** What {@link sandboxedAsks} wraps, writes to and reports to. */
+export interface SandboxedAsksInput {
+  /** The services' own approvals, which get every call the policy doesn't let through. */
+  readonly inner: BridgeApprovals;
+  /** The run log of this one run, for `harness.allowed`. */
+  readonly recorder: BridgeRecorder;
+  /** The host's resolver; without it, nothing is let through. */
+  readonly paths: SandboxedAsksPaths | undefined;
+  /**
+   * Hears why a call went to the run's approvals when a path couldn't be
+   * resolved or the run log couldn't take the call; it must not throw.
+   */
+  readonly failed: (failure: { kind: string; message: string }) => void;
+}
+
 /** One bridge's approvals, and the hook the engine gives its session to. */
 export interface SandboxedAsks {
   readonly approvals: BridgeApprovals;
@@ -24,36 +39,63 @@ export interface SandboxedAsks {
 }
 
 /**
- * The bridge's approvals for `agent`: the in-sandbox mode around `inner` for
- * a Claude Code agent whose file, as the run kept it, says `asks: in-sandbox`
- * and a host that resolves paths; `inner` itself for every other agent. A
- * call let through is written to the run log as `harness.allowed` first.
+ * The bridge's approvals for `agent`: the in-sandbox mode around the inner
+ * approvals for a Claude Code agent whose file, as the run kept it, says
+ * `asks: in-sandbox` and a host that resolves paths; the inner approvals
+ * themselves for every other agent. A call let through is written to the run
+ * log as `harness.allowed` first. The session is this bridge's own, so one
+ * run's fence never answers for another's.
  */
 export function sandboxedAsks(
   agent: Pick<HarnessAgent, "agentId" | "harness" | "file">,
-  inner: BridgeApprovals,
-  recorder: BridgeRecorder,
-  paths: SandboxedAsksPaths | undefined,
+  input: SandboxedAsksInput,
 ): SandboxedAsks {
   let session: SandboxSession | undefined;
   const sessionOpened = (opened: SandboxSession) => {
     session = opened;
   };
   const asksInSandbox = agent.harness === "claude-code" && agent.file.asks === "in-sandbox";
+  const { inner, recorder, paths, failed } = input;
   if (!asksInSandbox || paths === undefined) return { approvals: inner, sessionOpened };
+  // The policy fails closed on a throw without saying why, so the cause is
+  // told here before it goes on: the run log then shows why a person was asked.
+  const resolve: PathResolver = async (path) => {
+    try {
+      return await paths.resolve(path);
+    } catch (error) {
+      failed({
+        kind: "asks-path",
+        message: `Couldn't resolve ${path} for the agent's asks: in-sandbox, so the call went to its approvals: ${messageOf(error)}`,
+      });
+      throw error;
+    }
+  };
   const approvals = inSandboxApprovals({
     inner,
     session: () => session,
-    resolve: paths.resolve,
+    resolve,
     windows: paths.windows,
-    record: ({ tool, detail }) =>
-      recorder.record({
-        type: "harness.allowed",
-        agent: agent.agentId,
-        tool,
-        detail,
-        rule: "asks-in-sandbox",
-      }),
+    record: async ({ tool, detail }) => {
+      try {
+        await recorder.record({
+          type: "harness.allowed",
+          agent: agent.agentId,
+          tool,
+          detail,
+          rule: "asks-in-sandbox",
+        });
+      } catch (error) {
+        failed({
+          kind: "asks-record",
+          message: `The run log couldn't record ${tool} under the agent's asks: in-sandbox, so the call went to its approvals: ${messageOf(error)}`,
+        });
+        throw error;
+      }
+    },
   });
   return { approvals, sessionOpened };
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
