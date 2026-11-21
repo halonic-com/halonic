@@ -38,8 +38,8 @@ and its `halonic-runtime.json`, from `runtime-archive.sh`), with a 5-minute limi
 
 | Command | What it does |
 | --- | --- |
-| `install <version> <sha256>` | reads the archive on standard input, checks its SHA-256, unpacks it as root's files, switches `current`, keeps the version before as `previous` and removes older ones |
-| `rollback` | swaps `current` and `previous` |
+| `install <version> <sha256>` | reads the archive on standard input, checks its SHA-256, unpacks it as root's files, puts the version's updater in place (below), switches `current`, keeps the version before as `previous` and removes older ones |
+| `rollback` | swaps `current` and `previous`, and puts the updater of the version it goes back to in place |
 | `security-update` | `apt-get upgrade` from Debian's security archive only, at most once a day, and never while a sandbox session (`bwrap`) runs. It first runs `dpkg --configure -a`, so an update Studio's time limit cut off inside dpkg finishes, instead of every later `apt-get` refusing (HAL-12672). After that and after the upgrade, it drops the setuid and setgid bit from any file under `/usr` the upgrade brought, whoever owns it, with a `dpkg-statoverride` that keeps it off, and removes every file capability under `/usr` (a package script may run `setcap`). It drops them even when `dpkg` or the upgrade fails, then fails with that exit code (HAL-12766) |
 | `import-mount` | reads one Windows drive folder (one line) on standard input, never from the command line (W7), and checks it as the engine does: an absolute drive path with at least one folder, no empty, `.` or `..` segment and no control character. Mounts it with `ro,noexec,nosuid,nodev,uid=<halonic>,gid=<halonic>,umask=077` at a fresh `/mnt/halonic/import-<32 hex digits>` and prints that path. The files belong to `halonic`, so the engine runs `git` and the copy as `halonic`, never as root (W2b, HAL-12443). `/mnt/halonic` must be a real folder of root's that nobody else can write (`wsl.conf` makes it at every start), and every session denies it as a whole (W1). A failed mount removes its mount point |
 | `import-unmount <name>` | unmounts the import mount `<name>` (`import-` and 32 lowercase hex digits, a name, never a path) and removes its mount point with `rmdir` |
@@ -49,8 +49,9 @@ and its `halonic-runtime.json`, from `runtime-archive.sh`), with a 5-minute limi
 Exit codes: 0 done, 1 anything else (such as `/opt/halonic` missing or not root's),
 2 wrong use (also: not root, or the version is already current), 3 a sandbox session
 runs, 4 the SHA-256 differs, 5 the archive is refused (it can't be unpacked, has no
-`bin` folder, holds device, pipe or socket files, or a link that is absolute or leads
-out of the version folder), 6 nothing to roll back to, 7 a mount point could not be unmounted or removed (by `cleanup-import-mounts`: the others were), 8 another `install`, `rollback` or `security-update` is still running.
+`bin` folder, holds device, pipe or socket files, a link that is absolute or leads
+out of the version folder, an `sbin/halonic-runtime` that isn't a plain file, or an
+updater that doesn't start), 6 nothing to roll back to, 7 a mount point could not be unmounted or removed (by `cleanup-import-mounts`: the others were), 8 another `install`, `rollback` or `security-update` is still running.
 
 **One step at a time (HAL-15134).** Studio stops a step that takes too long by
 killing `wsl.exe`, which doesn't stop the updater inside the distro, so a retry
@@ -68,24 +69,36 @@ keep it. The import commands and `status` take no lock: they never touch
 are safe to run twice; holding it behind a long security update would only leave
 stale mounts in place.
 
-**How a changed updater reaches a distro.** The updater ships in the image only,
-never in the runtime archive: it runs as root, so a runtime archive must not be
-able to replace it. A distro gets a new updater only when Studio imports a new
-image. No image has been published yet (it is build only), so no distro outside
-development has the updater from before the lock; the first published image
-carries it. Once images ship, a change to the updater needs a way for Studio to
-tell an old image from a new one and import the new one before it relies on the
-change.
+**How a changed updater reaches a distro (HAL-15161).** The runtime archive
+carries the updater as `sbin/halonic-runtime`, so a new updater arrives with the
+next runtime, without importing the distro again (which would delete the
+projects kept in it, `sandbox-srt.wsl-remove`). After `install` has checked the
+archive's SHA-256 and unpacked it as root's files, and before it switches
+`current`, it puts that version's `sbin/halonic-runtime` at
+`/usr/local/sbin/halonic-runtime`: it must be a plain file (a link is refused,
+exit 5), it is copied to a temporary file in the same folder, made root's
+`0755`, synced and run once (`status`), and only then renamed over the old one.
+A copy that doesn't start is refused (exit 5) and nothing changes. The image's
+own updater is kept once as `/usr/local/sbin/.halonic-runtime.image`, and a
+version without `sbin/halonic-runtime` gets that copy back, so the updater
+always belongs to `current`, also after `rollback`, which puts the target
+version's updater in place the same way. `/usr/local/sbin` is root's alone
+(`customize.sh` makes it `0755`, and the updater refuses it otherwise). The
+image still carries the updater, so a new distro works before its first runtime.
 
 It runs as root, so it never runs or sources a file the `halonic` user can write
-(security review W2 on HAL-5407): it ships in the image, root-owned, and every
-runtime file ends up root's, with no setuid bit and no group or other write.
-Studio checks the archive's SHA-256 on Windows before it sends it, and the script
-checks it again. `check.sh` installs, rolls back and updates three test runtimes
+(security review W2 on HAL-5407): it is root-owned, a new copy comes only from a
+checked, root-owned version folder, and every runtime file ends up root's, with
+no setuid bit and no group or other write. Studio checks the archive's SHA-256
+on Windows before it sends it, against the value in its own build, and the
+script checks it again. `check.sh` installs, rolls back and updates three test runtimes
 and checks owners and modes after each step, refuses archives with links that
 leave the version folder, holds one install on a pipe while a rollback gives up
 with exit 8 and a second install waits and then runs, so both versions end up
-complete and no unpack folder is left, and runs `security-update` with a stand-in `apt-get`
+complete and no unpack folder is left, installs a version that carries a new
+updater, one without (which gets the image's copy back) and rolls back to the
+first (which brings its updater back), refuses an updater that is a link or
+doesn't start without changing anything, and runs `security-update` with a stand-in `apt-get`
 that brings a new setuid program, a setgid program of another system user and a
 program with a file capability, and checks that a setuid file in `halonic`'s home
 folder is left alone: the updater only looks under `/usr`. With an offline stand-in, it checks that a half-configured package is finished and its package script's file capability dropped, even though the update fails, and that a package script that sets a capability and then fails, in `dpkg --configure -a` or in the upgrade, leaves no setuid bit or capability behind. It also runs `import-mount` with a stand-in `mount` (the chroot has no `drvfs`): with good and bad folders, two folders, a folder on the command line, a failed mount, and with `/mnt/halonic` missing, a link or writable by others; `import-unmount` with names that aren't one; and `cleanup-import-mounts` with no `/mnt/halonic`, with a matching mount point, a project's folder, a wrong name, a link and a folder that holds a file. `halonic` can run none of the three.
@@ -95,7 +108,8 @@ folder is left alone: the updater only looks under `/usr`. With an offline stand
 The runtime is the Linux agent host executable (`apps/agent-host`, `pnpm build:sea`),
 which carries Node, the engine and srt. `runtime-archive.sh` packs it as
 `bin/halonic-agent-host`, the path the shell starts (`DISTRO_HOST` in
-`apps/studio/src-tauri/crates/agent-host/src/wsl.rs`), and checks the version
+`apps/studio/src-tauri/crates/agent-host/src/wsl.rs`), with the updater from
+`files/halonic-runtime` as `sbin/halonic-runtime`, and checks the version
 with the updater's rule. The archive is reproducible: the same executable and
 version give the same bytes, so the SHA-256 Studio pins can be checked by
 building again. CI's Linux agent host job packs it on every pull request that

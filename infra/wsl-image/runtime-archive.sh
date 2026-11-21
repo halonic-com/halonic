@@ -2,7 +2,9 @@
 # Packs the runtime Studio installs in Halonic's WSL distro (HAL-14644): the
 # Linux agent host executable, which carries Node, the engine and srt, as
 # bin/halonic-agent-host in the archive the runtime updater takes
-# (files/halonic-runtime install). Build only: nothing is published.
+# (files/halonic-runtime install), and the updater itself as
+# sbin/halonic-runtime, which install puts in place (HAL-15161). Build only:
+# nothing is published.
 # Usage: runtime-archive.sh <halonic-agent-host> <version> <out-dir>
 # Writes <out-dir>/halonic-runtime.tar.gz and <out-dir>/halonic-runtime.json
 # ({"version","sha256","size"}), which Studio pins: it checks the SHA-256 on
@@ -24,10 +26,12 @@ stage="$(mktemp -d)"
 trap 'rm -rf "$stage"' EXIT
 install -d -m 0755 "$stage/bin"
 install -m 0755 "$exe" "$stage/bin/halonic-agent-host"
+install -d -m 0755 "$stage/sbin"
+install -m 0755 "$(dirname "$0")/files/halonic-runtime" "$stage/sbin/halonic-runtime"
 mkdir -p "$out"
 archive="$out/halonic-runtime.tar.gz"
 tar --create --format=gnu --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner \
-  --mode=go-w,ug-s -C "$stage" bin | gzip -n -9 > "$archive"
+  --mode=go-w,ug-s -C "$stage" bin sbin | gzip -n -9 > "$archive"
 sha256="$(sha256sum "$archive" | cut -d' ' -f1)"
 size="$(stat -c %s "$archive")"
 printf '{"version":"%s","sha256":"%s","size":%s}\n' "$version" "$sha256" "$size" > "$out/halonic-runtime.json"

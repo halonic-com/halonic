@@ -4,8 +4,10 @@
 #   %SystemRoot%\System32\wsl.exe -d halonic -u root --exec /usr/local/sbin/halonic-runtime <command> ...
 #
 #   install <version> <sha256>  reads the runtime archive (.tar.gz) on standard input,
-#                               puts it in /opt/halonic/<version> and points `current` at it
-#   rollback                    points `current` back at the version before it
+#                               puts it in /opt/halonic/<version>, puts that version's
+#                               updater in place and points `current` at it
+#   rollback                    points `current` back at the version before it, with
+#                               that version's updater
 #   security-update             Debian security updates, at most once a day
 #   import-mount                reads one Windows drive folder (one line) on standard input,
 #                               mounts it read-only for the halonic user at a fresh
@@ -18,10 +20,13 @@
 #                               or when not run as root)
 #
 # It runs as root, so it never runs or sources a file the halonic user can write
-# (security review W2): it lives in the image, root-owned, reads nothing from
-# /home, and every runtime folder it makes is root-owned and not writable by
-# anyone else. Studio checks the archive's SHA-256 on Windows before it sends it;
-# this script checks it again before unpacking.
+# (security review W2): it is root-owned, reads nothing from /home, and every
+# runtime folder it makes is root-owned and not writable by anyone else. Studio
+# checks the archive's SHA-256 on Windows before it sends it; this script checks
+# it again before unpacking. A runtime archive may carry the updater as
+# sbin/halonic-runtime (HAL-15161): it is taken only from the checked, root-owned
+# version folder, so it has the runtime's trust, and the image's own copy stays
+# for a version without one.
 #
 # Exit codes: 0 done, 2 wrong use, 3 busy (a sandbox session runs), 4 checksum
 # differs, 5 archive refused, 6 nothing to roll back to, 7 a mount point could
@@ -37,6 +42,8 @@ cd /
 slot=/opt/halonic
 state=/var/lib/halonic
 imports=/mnt/halonic
+updater=/usr/local/sbin/halonic-runtime
+image_updater=/usr/local/sbin/.halonic-runtime.image
 
 fail() { echo "halonic-runtime: $2" >&2; exit "$1"; }
 
@@ -130,11 +137,21 @@ do_install() {
     rm -rf "$unpack"
     fail 5 "the archive holds a link that leaves its folder"
   fi
+  if [ -e "$unpack/sbin" ] || [ -L "$unpack/sbin" ]; then
+    if [ ! -d "$unpack/sbin" ] || [ -L "$unpack/sbin" ] ||
+       [ ! -f "$unpack/sbin/halonic-runtime" ] || [ -L "$unpack/sbin/halonic-runtime" ]; then
+      rm -rf "$unpack"
+      fail 5 "the archive's sbin/halonic-runtime is not a file"
+    fi
+  fi
   chown -R -h root:root "$unpack"
   find "$unpack" ! -type l -exec chmod go-w,ug-s {} +
 
   rm -rf "${slot:?}/$version"
   mv -T "$unpack" "$slot/$version"
+  # The updater first: if it can't go in place, `current` stays as it was,
+  # and the next install prunes the folder.
+  use_updater "$version" || fail 5 "the archive's updater doesn't start"
   old="$(target current)"
   point current "$version"
   if [ -n "$old" ]; then point previous "$old"; fi
@@ -160,9 +177,43 @@ do_rollback() {
   now="$(target current)"
   before="$(target previous)"
   [ -n "$before" ] && [ -d "$slot/$before" ] || fail 6 "there is no earlier version"
+  use_updater "$before" || fail 1 "the updater for $before doesn't start"
   point current "$before"
   if [ -n "$now" ]; then point previous "$now"; fi
   echo "rolled back to $before"
+}
+
+# Puts the updater of version $1 in place: its sbin/halonic-runtime, or the
+# image's copy when it has none, so the updater always matches `current`, also
+# after a rollback past a version without one. The image's copy is kept once,
+# before the first replacement. The new copy is written next to the old one
+# (same filesystem), made root's 0755, synced, run once (status) and only then
+# renamed over it: a bash that runs the old one keeps reading the old file, and
+# a copy that doesn't start never replaces one that does. Returns 1 then.
+use_updater() {
+  source="$slot/$1/sbin/halonic-runtime"
+  if [ ! -e "$source" ] && [ ! -L "$source" ]; then source="$image_updater"; fi
+  if [ ! -e "$image_updater" ]; then
+    [ "$source" != "$image_updater" ] || return 0
+    copy_updater "$updater" "$image_updater" || return 1
+  fi
+  ! cmp -s "$source" "$updater" || return 0
+  copy_updater "$source" "$updater"
+}
+
+# Copies the updater $1 to $2 as a root-owned 0755 file that has run once.
+copy_updater() {
+  folder="${2%/*}"
+  [ -d "$folder" ] && [ ! -L "$folder" ] && [ "$(stat -c %u "$folder")" -eq 0 ] &&
+    [ $((0$(stat -c %a "$folder") & 022)) -eq 0 ] || fail 1 "$folder is not root's alone"
+  [ -f "$1" ] && [ ! -L "$1" ] && [ "$(stat -c %u "$1")" -eq 0 ] || fail 1 "$1 is not a file of root's"
+  new="$(mktemp "$folder/.halonic-runtime.XXXXXX")"
+  if cp -- "$1" "$new" && chown root:root "$new" && chmod 0755 "$new" && sync -- "$new" &&
+     "$new" status >/dev/null 2>&1 9>&- && mv -T -- "$new" "$2"; then
+    return 0
+  fi
+  rm -f -- "$new"
+  return 1
 }
 
 # Keeps the current and previous versions, removes every other one, and the
@@ -176,6 +227,8 @@ prune() {
     name="${folder##*/}"
     if [ "$name" != "$keep_current" ] && [ "$name" != "$keep_previous" ]; then rm -rf "$folder"; fi
   done
+  # And an updater copy a stopped step left (mktemp's six characters).
+  rm -f -- "${updater%/*}"/.halonic-runtime.??????
 }
 
 do_security_update() {
