@@ -3,7 +3,12 @@
 // plugin's programs say whether they can run here.
 
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
-import { type LocalToolState, localToolStateOf } from "@halonicjs/app";
+import {
+  type LocalToolState,
+  localToolStateOf,
+  type RunnerFence,
+  runnerFence,
+} from "@halonicjs/app";
 import { profileFolder } from "@halonicjs/profile";
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
@@ -27,6 +32,17 @@ export async function nodeSandboxWorks(): Promise<boolean> {
  */
 export function nodeLocalToolState(): Promise<LocalToolState> {
   return localToolStateOf(nodeSandbox());
+}
+
+/**
+ * Whether a plugin's backend would run in the sandbox here, as its start's gate decides
+ * (`cli.open-plugin-backend`): the same platform and srt check. The command holds no yes to run
+ * without it (`cli.no-unfenced-run-yes`), so `not-fenced` means the backend doesn't start.
+ *
+ * @throws RangeError when `HALONIC_HOME` or the home folder isn't absolute
+ */
+export async function nodePluginCodeFence(): Promise<RunnerFence> {
+  return runnerFence({ platform: process.platform, check: await nodeSandbox().check() });
 }
 
 /** The srt sandbox the CLI starts programs in, with its crash journals in the profile. */

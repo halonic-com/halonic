@@ -30,8 +30,14 @@ import { markPart, type Phrase, phrase, plainText } from "../../messages/phrase.
 import { pluginMessages } from "../../messages/plugin.ts";
 import { runMessages } from "../../messages/run.ts";
 import { trustMessages } from "../../messages/trust.ts";
+import { offHereLines } from "../../output/plugin-off-here.ts";
 import { printable } from "../../output/printable.ts";
-import { openPluginService, type PluginSetup, programsRunFor } from "../../plugin-host.ts";
+import {
+  offHereFor,
+  openPluginService,
+  type PluginSetup,
+  programsRunFor,
+} from "../../plugin-host.ts";
 import { askToTrustPlugin, type PluginTrustAnswer } from "../../plugin-trust-question.ts";
 import {
   checkGitSource,
@@ -94,7 +100,14 @@ export async function addPlugin(
   if (entry.status === "broken") throw problemRefusal(entry.problems);
   const leftOut = leftOutLine(entry.leftOut, context);
   const programsRun = await programsRunFor(setup, [entry.content]);
-  const result = await trustAdded(service, entry, { context, yes, fingerprint, programsRun });
+  const offHere = await offHereFor(setup, [entry.plugin]);
+  const result = await trustAdded(service, entry, {
+    context,
+    yes,
+    fingerprint,
+    programsRun,
+    offHere,
+  });
   return { ...result, lines: [...opened.printedAhead, ...leftOut, ...result.lines] };
 }
 
@@ -226,9 +239,23 @@ async function trustAdded(
   const { plugin } = entry;
   // The manifest's name and version are outside text (cli-output 5).
   const name = printable(plugin.name);
-  const added = pluginMessages.added(name, printable(plugin.version));
+  const version = printable(plugin.version);
+  const added = pluginMessages.added(name, version);
+  const offHere = pluginMessages.addedButOffHere(name, version);
   if (entry.status === "trusted") {
     const json = { id: entry.folder, name: plugin.name, version: plugin.version };
+    if (answer.offHere !== undefined) {
+      return {
+        exitCode: exitCode.ok,
+        lines: offHereLines(offHere, answer.offHere),
+        json: {
+          ...json,
+          fingerprint: entry.fingerprint,
+          status: "on",
+          offOnThisComputer: answer.offHere,
+        },
+      };
+    }
     return {
       exitCode: exitCode.ok,
       lines: [phrase`${markPart("done")} ${added.phrase}`],
@@ -237,6 +264,7 @@ async function trustAdded(
   }
   return await askToTrustPlugin(service, entry, answer, {
     on: added,
+    offHere,
     off: pluginMessages.addedButOff(name, entry.folder),
     noTerminal: pluginMessages.addNoTerminal(name),
   });

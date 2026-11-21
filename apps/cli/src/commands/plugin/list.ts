@@ -1,23 +1,33 @@
 // `halonic plugin list`: the plugins in the profile, one row each (cli-output
 // 3.6), and under a plugin with programs, whether they run on this computer
-// (cli.plugin-programs-run). A thin command over `PluginService.load`: it
+// (cli.plugin-programs-run), and for a plugin that is on but whose backend is
+// off here, why (HAL-15080). A thin command over `PluginService.load`: it
 // lists, and writes nothing, so it needs no trust.
 
-import type { LocalToolState, PluginEntry, PluginInstall, PluginService } from "@halonicjs/app";
-import { type ProfileEnvironment, withHomeAsTilde } from "@halonicjs/profile";
+import type {
+  LocalToolState,
+  PluginEntry,
+  PluginService,
+  RunnerUnfencedReason,
+} from "@halonicjs/app";
+import type { ProfileEnvironment } from "@halonicjs/profile";
 import type { CommandContext, CommandInput, CommandResult } from "../../command.ts";
 import { pluginStateOf } from "../../connector-plugin.ts";
 import { exitCode } from "../../exit-code.ts";
 import { columns } from "../../messages/columns.ts";
 import { dimmed, markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { type PluginState, pluginMessages } from "../../messages/plugin.ts";
+import { offHereReasonLines } from "../../output/plugin-off-here.ts";
+import { shownPluginSource } from "../../output/plugin-source.ts";
 import { printable } from "../../output/printable.ts";
 import { rowIndent } from "../../output/trust-check-rows.ts";
-import { openPluginService, type PluginSetup, programsRunFor } from "../../plugin-host.ts";
+import {
+  offHereFor,
+  openPluginService,
+  type PluginSetup,
+  programsRunFor,
+} from "../../plugin-host.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
-
-/** How many characters of a commit the list shows, as git does. */
-const shownCommitLength = 7;
 
 /**
  * Lists every plugin in the profile, lined up: its name, version, where it
@@ -43,8 +53,12 @@ export async function listPlugins(
     setup,
     checked.map((entry) => entry.content),
   );
+  const offHere = await offHereFor(
+    setup,
+    checked.filter((entry) => pluginStateOf(entry) === "on").map((entry) => entry.plugin),
+  );
   const rows = await Promise.all(
-    entries.map((entry) => pluginRow(service, entry, profile, programsRun)),
+    entries.map((entry) => pluginRow(service, entry, profile, { programsRun, offHere })),
   );
   const json = { plugins: rows.map((row) => row.json) };
   if (rows.length === 0) {
@@ -62,14 +76,21 @@ interface PluginRow {
   readonly json: Readonly<Record<string, unknown>>;
 }
 
+/** What this computer can run, asked once for the whole list. */
+interface RunsHere {
+  readonly programsRun: LocalToolState["kind"] | undefined;
+  /** Why a backend of a plugin that is on doesn't start here, if it doesn't. */
+  readonly offHere: RunnerUnfencedReason | undefined;
+}
+
 async function pluginRow(
   service: PluginService,
   entry: PluginEntry,
   profile: ProfileEnvironment,
-  programsRun: LocalToolState["kind"] | undefined,
+  { programsRun, offHere }: RunsHere,
 ): Promise<PluginRow> {
   const install = await service.install(entry.folder);
-  const source = install === null ? "" : shownSource(install.source, profile);
+  const source = install === null ? "" : shownPluginSource(install.source, profile);
   if (entry.status === "broken") {
     return {
       cells: [
@@ -84,14 +105,18 @@ async function pluginRow(
   }
   const state = pluginStateOf(entry);
   const runs = entry.content.localTools.length === 0 ? undefined : programsRun;
+  const off = state === "on" && entry.plugin.backend !== undefined ? offHere : undefined;
   return {
     cells: [
       phrase`${printable(entry.plugin.name)}`,
       phrase`${printable(entry.plugin.version)}`,
       dimmed(phrase`${printable(source)}`),
-      stateCell(state, entry.folder),
+      off === undefined ? stateCell(state, entry.folder) : offHereCell(),
     ],
-    under: runs === undefined ? [] : [programsRunLine(runs)],
+    under: [
+      ...(off === undefined ? [] : offHereReasonLines(off)),
+      ...(runs === undefined ? [] : [programsRunLine(runs)]),
+    ],
     json: {
       id: entry.folder,
       name: entry.plugin.name,
@@ -99,6 +124,7 @@ async function pluginRow(
       status: state,
       source: install?.source ?? null,
       programsRun: runs ?? null,
+      offOnThisComputer: off ?? null,
     },
   };
 }
@@ -110,22 +136,14 @@ function programsRunLine(runs: LocalToolState["kind"]): Phrase {
   return phrase`${rowIndent}${markPart("needsYou")} ${line}`;
 }
 
+/** "! off on this computer": on, but its backend doesn't start here (R13). */
+function offHereCell(): Phrase {
+  return phrase`${markPart("needsYou")} ${pluginMessages.offHereState().phrase}`;
+}
+
 function stateCell(state: PluginState, id: string): Phrase {
   if (state === "on") {
     return phrase`${markPart("done")} ${pluginMessages.state("on").phrase}`;
   }
   return phrase`${markPart("needsYou")} ${pluginMessages.stateWithFix(state, id).phrase}`;
-}
-
-/**
- * Where a plugin came from, as the list shows it: a git address without its
- * scheme and `.git`, with the short commit, or a folder with the home folder
- * written as `~`.
- */
-function shownSource(source: PluginInstall["source"], profile: ProfileEnvironment): string {
-  if (source.kind === "git") {
-    const address = source.address.replace(/^[a-z+]+:\/\//, "").replace(/\.git$/, "");
-    return `${address}@${source.commit.slice(0, shownCommitLength)}`;
-  }
-  return withHomeAsTilde(profile.platform, profile.homeFolder, source.path);
 }

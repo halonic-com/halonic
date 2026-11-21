@@ -17,9 +17,15 @@ import { markPart, phrase, plainText } from "../../messages/phrase.ts";
 import { pluginMessages } from "../../messages/plugin.ts";
 import { trustMessages } from "../../messages/trust.ts";
 import { nearMatch } from "../../near-match.ts";
+import { offHereLines } from "../../output/plugin-off-here.ts";
 import { printable } from "../../output/printable.ts";
 import { shownDate } from "../../output/trust-check.ts";
-import { openPluginService, type PluginSetup, programsRunFor } from "../../plugin-host.ts";
+import {
+  offHereFor,
+  openPluginService,
+  type PluginSetup,
+  programsRunFor,
+} from "../../plugin-host.ts";
 import {
   askToTrustPlugin,
   brokenPluginError,
@@ -80,27 +86,43 @@ export async function trustPlugin(
   }
   // The manifest's name is outside text (cli-output 5).
   const name = printable(plugin.name);
+  const offHere = await offHereFor(setup, [plugin]);
   if (entry.status === "trusted") {
+    const json = {
+      id: entry.folder,
+      name: plugin.name,
+      version: plugin.version,
+      fingerprint: entry.fingerprint,
+      status: "already-on",
+    };
+    if (offHere !== undefined) {
+      return {
+        exitCode: exitCode.ok,
+        lines: offHereLines(pluginMessages.alreadyTrustedButOffHere(name), offHere),
+        json: { ...json, offOnThisComputer: offHere },
+      };
+    }
     return {
       exitCode: exitCode.ok,
       lines: [
         phrase`${markPart("done")} ${pluginMessages.alreadyOn(name, shownDate(entry.trustedAt)).phrase}`,
       ],
-      json: {
-        id: entry.folder,
-        name: plugin.name,
-        version: plugin.version,
-        fingerprint: entry.fingerprint,
-        status: "already-on",
-      },
+      json,
     };
   }
   return await askToTrustPlugin(
     service,
     entry,
-    { context, yes, fingerprint, programsRun: await programsRunFor(setup, [entry.content]) },
+    {
+      context,
+      yes,
+      fingerprint,
+      programsRun: await programsRunFor(setup, [entry.content]),
+      offHere,
+    },
     {
       on: pluginMessages.trustedOn(name),
+      offHere: pluginMessages.trustedButOffHere(name),
       off: pluginMessages.stillOff(name),
       noTerminal: pluginMessages.offNoTerminal(name),
     },
