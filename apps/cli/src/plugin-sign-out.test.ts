@@ -156,6 +156,7 @@ describe("app.plugin-sign-out in the CLI", () => {
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual([
       "✓ Removed trust for Weather. Nothing from this plugin runs until you trust it.",
+      "✓ Signed you out of weather-account.",
     ]);
     expect(revoked).toHaveLength(1);
     expect(await savedNames()).toEqual(["s4_rain_rain_account"]);
