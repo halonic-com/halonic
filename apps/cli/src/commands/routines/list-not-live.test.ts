@@ -76,7 +76,7 @@ verifies("cli.commands.routines.list", () => {
 
       expect(code).toBe(exitCode.ok);
       expect(io.stdout).toEqual([
-        "Morning check   Daily at 07:00   Next tomorrow 07:00   Never ran",
+        "Morning check   Daily at 08:00   Next tomorrow 08:00   Never ran",
         "! Morning check has changes that aren't live yet. It runs as last committed until you commit them.",
         hint,
       ]);
