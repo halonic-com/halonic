@@ -154,7 +154,10 @@ the alias's, so the key pays only for the model the alias prices. Give the
 alias a `price`: without one, its calls are unpriced, as in any other agent,
 and a cost limit or budget doesn't count them. The bridge reads only the keys
 the workspace's provider files name; a key you saved for anything else never
-reaches it. The CLI does this today; Studio still signs every harness agent in.
+reaches it. The CLI and Studio do this alike (requirement
+`studio.harness-provider-key`); in Studio, the agent host's bridge reaches a
+provider's own `baseUrl` through a client that checks the address as a
+connector's address is, so the name can't lead the key onto your own network.
 
 ## What Studio asks for
 
