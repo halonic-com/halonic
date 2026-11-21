@@ -10,7 +10,7 @@ import { AgentScreen } from "../page/agent-page.tsx";
 import { buttonNamed, show, unmount } from "../test-support.tsx";
 
 /** The panel's size and the map's natural size, as a browser with a layout would measure them. */
-const sizes = { panel: { width: 448, height: 600 }, map: { width: 896, height: 400 } };
+const sizes = { panel: { width: 672, height: 600 }, map: { width: 896, height: 400 } };
 
 /** The resize observers the page made, with the elements each watches. */
 const observers: { readonly callback: () => void; readonly watched: Element[] }[] = [];
@@ -45,7 +45,7 @@ function measure(property: "clientWidth" | "clientHeight" | "offsetWidth" | "off
 }
 
 beforeEach(() => {
-  sizes.panel = { width: 448, height: 600 };
+  sizes.panel = { width: 672, height: 600 };
   observers.length = 0;
   vi.stubGlobal("ResizeObserver", FakeResizeObserver);
   for (const property of ["clientWidth", "clientHeight", "offsetWidth", "offsetHeight"] as const) {
@@ -92,6 +92,16 @@ const openMap = () =>
     </ToastStoreProvider>,
   );
 
+/** Tells the page's resize observers that the panel changed size. */
+const resized = () =>
+  act(() => {
+    for (const observer of observers) {
+      if (observer.watched.some((element) => element.hasAttribute("data-map-panel"))) {
+        observer.callback();
+      }
+    }
+  });
+
 const mapOf = (page: HTMLElement) =>
   page.querySelector<HTMLElement>("[aria-label='How Mail triage fits in']");
 
@@ -114,8 +124,8 @@ verifies("agents.map.lines-and-fit", () => {
 
   it("fits the map to the panel when it opens, with no zoom buttons", async () => {
     const page = await openMap();
-    // 896 wide in a 448 wide panel: half size, centred in the panel's height.
-    expect(mapOf(page)?.style.transform).toBe("translate(0px, 200px) scale(0.5)");
+    // 896 wide in a 672 wide panel: three quarters, centred in the panel's height.
+    expect(mapOf(page)?.style.transform).toBe("translate(0px, 150px) scale(0.75)");
     for (const name of ["Zoom in", "Zoom out", "Fit"]) {
       expect(buttonNamed(page, name)).toBeUndefined();
     }
@@ -124,22 +134,48 @@ verifies("agents.map.lines-and-fit", () => {
   it("fits it again 260 ms after the panel stops changing size", async () => {
     const page = await openMap();
     vi.useFakeTimers();
-    const resized = () =>
-      act(() => {
-        for (const observer of observers) {
-          if (observer.watched.some((element) => element.hasAttribute("data-map-panel"))) {
-            observer.callback();
-          }
-        }
-      });
     sizes.panel = { width: 1200, height: 600 };
     resized();
     act(() => vi.advanceTimersByTime(200));
     resized();
     act(() => vi.advanceTimersByTime(259));
-    expect(mapOf(page)?.style.transform).toBe("translate(0px, 200px) scale(0.5)");
+    expect(mapOf(page)?.style.transform).toBe("translate(0px, 150px) scale(0.75)");
     act(() => vi.advanceTimersByTime(1));
     // Never larger than its natural size: centred at 896 in 1200.
     expect(mapOf(page)?.style.transform).toBe("translate(152px, 100px) scale(1)");
+  });
+});
+
+verifies("agents.map.stacked", () => {
+  it("stacks the sides in a panel narrower than 36 rem: left, centre, below, right, with no lines", async () => {
+    sizes.panel = { width: 390, height: 700 };
+    const page = await openMap();
+    const map = mapOf(page);
+    expect(map?.hasAttribute("data-map-stacked")).toBe(true);
+    expect(map?.style.transform).toBe("");
+    expect(page.querySelector("[data-map-lines]")).toBeNull();
+    // The same groups, in the reading order, so Tab goes the same way.
+    const groups = [...(map?.querySelectorAll("[role=group] > h2") ?? [])].map(
+      (heading) => heading.textContent,
+    );
+    expect(groups).toEqual(["What brings it work", "What it can use", "Who it hands work to"]);
+    const text = map?.textContent ?? "";
+    expect(text.indexOf("Mail triage")).toBeLessThan(text.indexOf("What it can use"));
+  });
+
+  it("fits it again when the panel grows past 36 rem, and stacks it when it shrinks", async () => {
+    sizes.panel = { width: 390, height: 700 };
+    const page = await openMap();
+    vi.useFakeTimers();
+    sizes.panel = { width: 672, height: 600 };
+    resized();
+    act(() => vi.advanceTimersByTime(260));
+    expect(mapOf(page)?.hasAttribute("data-map-stacked")).toBe(false);
+    expect(mapOf(page)?.style.transform).toBe("translate(0px, 150px) scale(0.75)");
+    expect(page.querySelectorAll("[data-map-lines] path")).toHaveLength(5);
+    sizes.panel = { width: 500, height: 600 };
+    resized();
+    act(() => vi.advanceTimersByTime(260));
+    expect(mapOf(page)?.hasAttribute("data-map-stacked")).toBe(true);
   });
 });

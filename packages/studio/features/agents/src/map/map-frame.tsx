@@ -1,4 +1,12 @@
-import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   type Box,
   FIT_DELAY_MS,
@@ -11,12 +19,22 @@ import {
 /** The map's natural width; the fit scales it to the panel from there. */
 const MAP_WIDTH = "w-[56rem]";
 
-/** Where the fit put the map: its scale, and where its top left lands in the panel. */
-interface Fit {
-  readonly scale: number;
-  readonly left: number;
-  readonly top: number;
-}
+/**
+ * Narrower than this many rem, the fitted map's words get too small to read, so its sides stack
+ * (C525-5). In rem, so larger text stacks it sooner.
+ */
+export const STACK_BELOW_REM = 36;
+
+/** Whether the map is stacked, for a side to lay out its cards; `false` outside a map. */
+export const MapStacked = createContext(false);
+
+/**
+ * Where the fit put the map: its scale, and where its top left lands in the panel; or that the
+ * panel is too narrow for it, so the map is stacked.
+ */
+type Fit =
+  | { readonly stacked: false; readonly scale: number; readonly left: number; readonly top: number }
+  | { readonly stacked: true };
 
 /**
  * The agent map's frame (`agents.map.lines-and-fit`): it fits the map to the panel when it opens
@@ -27,6 +45,9 @@ interface Fit {
  * the only things to press. Its children are the grid's cells: left, centre and right in the first
  * row, what it can use across the second. The cards mark themselves with `data-map-centre` and,
  * inside an element with `data-map-side`, `data-map-card`.
+ *
+ * In a panel narrower than {@link STACK_BELOW_REM}, the map isn't fitted: its cells go one under
+ * the other in their reading order, left, centre, below, right, at full size and without lines.
  */
 export function MapFrame({
   label,
@@ -44,6 +65,10 @@ export function MapFrame({
     const room = panel.current;
     const content = map.current;
     if (room === null || content === null) return;
+    if (tooNarrow(room.clientWidth)) {
+      setFit({ stacked: true });
+      return;
+    }
     const width = content.offsetWidth;
     const height = content.offsetHeight;
     const scale = fitScale(
@@ -51,19 +76,24 @@ export function MapFrame({
       { width: room.clientWidth, height: room.clientHeight },
     );
     setFit({
+      stacked: false,
       scale,
       left: Math.max(0, (room.clientWidth - width * scale) / 2),
       top: Math.max(0, (room.clientHeight - height * scale) / 2),
     });
   }, []);
 
-  // Fit before the first paint, so the map never shows at the wrong size.
-  useLayoutEffect(fitNow, []);
+  const stacked = fit?.stacked === true;
+  // Fit before the first paint, so the map never shows at the wrong size; and again once it stops
+  // being stacked, since its natural width can be measured only then.
+  useLayoutEffect(() => {
+    if (!stacked) fitNow();
+  }, [stacked, fitNow]);
 
   // Cards move when what the map shows changes, so the lines are measured after every render.
   useLayoutEffect(() => {
     if (map.current === null) return;
-    const next = measureLines(map.current);
+    const next = stacked ? [] : measureLines(map.current);
     setLines((now) => (sameLines(now, next) ? now : next));
   });
 
@@ -84,22 +114,38 @@ export function MapFrame({
     };
   }, [fitNow]);
 
+  // One section in both layouts, so the resize observer keeps watching it when the layout changes.
   return (
     <div ref={panel} data-map-panel="" className="relative size-full overflow-auto">
       <section
         ref={map}
         aria-label={label}
-        className={`absolute top-0 left-0 ${MAP_WIDTH} origin-top-left`}
-        style={fit && { transform: `translate(${fit.left}px, ${fit.top}px) scale(${fit.scale})` }}
+        data-map-stacked={stacked ? "" : undefined}
+        className={stacked ? "w-full" : `absolute top-0 left-0 ${MAP_WIDTH} origin-top-left`}
+        style={
+          fit?.stacked === false
+            ? { transform: `translate(${fit.left}px, ${fit.top}px) scale(${fit.scale})` }
+            : undefined
+        }
       >
-        <MapLines lines={lines} />
-        {/* Lines need room between the sides, so the gaps are wider than a page's. */}
-        <div className="grid grid-cols-[1fr_minmax(12rem,auto)_1fr] items-start gap-x-16 gap-y-10 p-6">
-          {children}
+        {!stacked && <MapLines lines={lines} />}
+        {/* Lines need room between the sides, so the gaps are wider than a page's. Stacked, a flex
+            column ignores the cells' grid places, so they follow the DOM's order. */}
+        <div className={stacked ? stackedClasses : gridClasses}>
+          <MapStacked value={stacked}>{children}</MapStacked>
         </div>
       </section>
     </div>
   );
+}
+
+const gridClasses = "grid grid-cols-[1fr_minmax(12rem,auto)_1fr] items-start gap-x-16 gap-y-10 p-6";
+const stackedClasses = "flex flex-col gap-6 p-4";
+
+/** Whether a panel this many pixels wide is too narrow for the map; not while it isn't measured. */
+function tooNarrow(width: number): boolean {
+  const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  return width > 0 && width < STACK_BELOW_REM * rem;
 }
 
 /**

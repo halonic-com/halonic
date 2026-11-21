@@ -1,4 +1,4 @@
-import { useToastStore } from "@halonicjs/studio-kit";
+import { inlineLinkClasses, useToastStore } from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useMemo } from "react";
 import type { AgentChange, AgentListing, AgentRef, AgentsHost, AgentTeamMember } from "../api.ts";
@@ -31,9 +31,10 @@ export interface SubagentCardProps {
 }
 
 /**
- * A subagent's card on the agent page (flow-agents 5.4 and 7): its team chart, then the subagent's
- * own Configuration in the narrow panel, so its settings can be read and changed without leaving
- * the agent it works for. Its subagents open as cards on top of it.
+ * A subagent's card on the agent page (flow-agents 5.4 and 7): **Open *Writer* ›** to its own
+ * page where the app can open one, its team chart, then the subagent's own Configuration in the
+ * narrow panel, so its settings can be read and changed without leaving the agent it works for.
+ * Its subagents open as cards on top of it.
  */
 export function SubagentCard({
   host,
@@ -65,6 +66,13 @@ export function SubagentCard({
     );
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {openAgent && (
+        <p className="px-4 pt-4 text-small">
+          <button type="button" className={inlineLinkClasses} onClick={() => openAgent(agent)}>
+            {pageWords.openAgent(name)}
+          </button>
+        </p>
+      )}
       {/* The chart only adds to the settings, so while it is read or can't be, it isn't there. */}
       {team.kind === "ready" && <TeamChart team={team.value} agent={agent} openAgent={openAgent} />}
       <Configuration

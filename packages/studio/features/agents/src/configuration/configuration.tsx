@@ -15,6 +15,7 @@ import {
   useEffect,
   useEffectEvent,
   useLayoutEffect,
+  useRef,
   useState,
 } from "react";
 import type {
@@ -88,11 +89,13 @@ type PageId = BuiltPageId | `section:${string}`;
 
 /**
  * Where Configuration opens, for the agent map's add buttons: on a page, one of its own or a
- * section's by its id, and for Subagents, `adding` opens its Add subagent dialog.
+ * section's by its id, and for Subagents, `adding` opens its Add subagent dialog. With `focus`,
+ * the page's name in the list takes the focus, since the button that was pressed is gone.
  */
 export interface ConfigurationStart {
   readonly page: PageId;
   readonly adding?: boolean | undefined;
+  readonly focus?: boolean | undefined;
 }
 
 /** The pages that are built, in the order of flow-agents 5.1. */
@@ -214,6 +217,7 @@ export function Configuration({
         pages={pages}
         page={page}
         onPick={pickPage}
+        focusPage={start.focus === true}
       />
       <PagePanel narrow={narrow} ids={ids} pages={pages} page={page}>
         {load.kind === "ready" ? (
@@ -286,6 +290,7 @@ function PageList({
   pages,
   page,
   onPick,
+  focusPage,
 }: {
   readonly narrow: boolean;
   readonly across: boolean;
@@ -293,10 +298,18 @@ function PageList({
   readonly pages: readonly Tab<PageId>[];
   readonly page: PageId;
   readonly onPick: (page: PageId) => void;
+  /** Focuses the shown page's name once, when the list is first drawn. */
+  readonly focusPage: boolean;
 }) {
+  const list = useRef<HTMLDivElement>(null);
+  // Once, for the page it opened on.
+  useEffect(() => {
+    if (!focusPage) return;
+    list.current?.querySelector<HTMLElement>("[aria-selected='true'], select")?.focus();
+  }, []);
   if (narrow) {
     return (
-      <div className="px-4 pt-4">
+      <div ref={list} className="px-4 pt-4">
         <Select
           aria-label={words.pages}
           options={pages.map((each) => ({ value: each.id, label: each.label }))}
@@ -308,6 +321,7 @@ function PageList({
   }
   return (
     <div
+      ref={list}
       className={
         across
           ? "border-b border-border px-4 py-3"
