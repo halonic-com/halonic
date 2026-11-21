@@ -25,6 +25,15 @@ verifies("schema-kit.plain-words", () => {
       ]);
     });
 
+    it("doesn't repeat a long quoted number", () => {
+      const long = `0.${"2".repeat(50)}`;
+      expect(onlyIssue(numbers, { params: { temperature: long } })).toEqual([
+        "invalid_type",
+        ["params", "temperature"],
+        "temperature is a number: write it without quotes.",
+      ]);
+    });
+
     it("says what a number isn't when the text isn't one", () => {
       expect(onlyIssue(numbers, { params: { temperature: "hot" } })).toEqual([
         "invalid_type",

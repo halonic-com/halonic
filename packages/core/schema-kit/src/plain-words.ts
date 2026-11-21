@@ -78,7 +78,10 @@ function wrongType(field: string, expected: string, input: unknown): string | un
 
 function notANumber(field: string, input: unknown): string {
   if (typeof input === "string" && input.trim() !== "" && Number.isFinite(Number(input))) {
-    return `${field} is a number: write ${input.trim()} without quotes.`;
+    const value = echo(input);
+    return value === undefined
+      ? `${field} is a number: write it without quotes.`
+      : `${field} is a number: write ${value} without quotes.`;
   }
   return `${field} needs a number, not ${kindOf(input)}.`;
 }

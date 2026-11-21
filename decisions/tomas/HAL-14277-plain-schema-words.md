@@ -18,9 +18,7 @@
   required key" and "There's no field" stay as they are.
 - `format.missing-key-words` said a key with the wrong type keeps Zod's message; it now points to
   the new requirement `schema-kit.plain-words`. Its example and the two tests that quoted Zod's
-  words are updated. The C337 #18 test named its routine at a path the loader ignores and had no
-  prompt, so it checked nothing about the routine; it now sits at `workflows/routines/` with a
-  prompt, next to a second root agent. No test was weakened or skipped.
+  words are updated. No test was weakened or skipped.
 
 ## Why
 
