@@ -34,6 +34,14 @@ export function waitingFor(since: Date, now: Date): string {
 }
 
 /**
+ * How long ago something ended, for a proposal's row meta (HAL-11945 Q2): "Finished 2 h ago".
+ * `verb` says how, such as "Failed" or "Stopped".
+ */
+export function endedAgo(verb: string, at: Date, now: Date): string {
+  return `${verb} ${elapsed(at, now, "short")} ago`;
+}
+
+/**
  * The card's header line (INBOX-CARD-15): "Waiting since 10:42 (1 min)",
  * "Waiting since 01:50 (6 h 40 min)", "Waiting since Sat 10:42 (2 days)".
  * The time is the approval's own, not the run's start.

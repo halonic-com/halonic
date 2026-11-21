@@ -1,4 +1,5 @@
 import type { RunSummary } from "@halonicjs/events";
+import type { ProposalItem } from "./proposal-items.ts";
 
 /** A tool call that waits for your OK, one per call (`RunSummary.approvals`). */
 export interface ApprovalItem {
@@ -89,11 +90,14 @@ export interface SetupItem {
   readonly fixed?: boolean;
 }
 
-export type InboxItem = SetupItem | RunItem;
+export type InboxItem = SetupItem | RunItem | ProposalItem;
 
-/** Whether a run waits on the item, so it takes an answer; a setup item doesn't. */
+/**
+ * Whether a run waits on the item, so it takes an answer. A setup item doesn't, and a proposal's
+ * run has ended.
+ */
 export function isRunItem(item: InboxItem): item is RunItem {
-  return item.kind !== "setup";
+  return item.kind === "approval" || item.kind === "wait";
 }
 
 /**
@@ -197,11 +201,16 @@ export function oldestOfRun(items: readonly InboxItem[], runId: string): RunItem
 
 /**
  * Needs you's order: setup items first, the most recently changed first, then the run items as
- * they come (setup flow 1, UX checklist section 8 point 1).
+ * they come (setup flow 1, UX checklist section 8 point 1), then the proposals as they come, after
+ * the runs that wait for a person (flow-inbox 2.2, HAL-11945 Q1).
  */
-export function needsYouOrder(setups: readonly SetupItem[], runs: readonly RunItem[]): InboxItem[] {
+export function needsYouOrder(
+  setups: readonly SetupItem[],
+  runs: readonly RunItem[],
+  proposals: readonly ProposalItem[] = [],
+): InboxItem[] {
   const recentFirst = [...setups].sort((a, b) => byTimeThenKey(a.changedAt, b.changedAt, a, b));
-  return [...recentFirst, ...runs];
+  return [...recentFirst, ...runs, ...proposals];
 }
 
 function newestFirst(a: RunItem, b: RunItem): number {

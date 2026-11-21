@@ -1,3 +1,4 @@
+import type { ProposedRecord } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
 import type { RunExecutor } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
@@ -14,6 +15,7 @@ import {
 } from "./inbox-items.ts";
 import { ShownRuns } from "./needs-you-news.ts";
 import type { InboxNotices } from "./notices/inbox-notices.ts";
+import { type ProposalItem, proposalItems } from "./proposal-items.ts";
 
 /**
  * The runs the Inbox reads and answers. The app provides them for the open
@@ -35,6 +37,21 @@ export interface InboxRuns {
   agentName?(agentId: string): string | undefined;
   /** Sends an answer to a run; see `RunExecutor.send`. */
   send: RunExecutor["send"];
+  /**
+   * The workspace's run proposals that aren't settled, each with its run's record, which says how
+   * the run ended (HAL-10916). Without it the Inbox lists no proposals. `subscribe` also calls
+   * when a proposal is made or decided.
+   */
+  proposals?(): Promise<readonly RunProposalEntry[]>;
+  /** An item's name as its file says; `undefined` when it can't be read, and the Inbox shows the id. */
+  itemName?(itemId: string): string | undefined;
+}
+
+/** A run's proposal and its run, as {@link InboxRuns.proposals} gives them. */
+export interface RunProposalEntry {
+  readonly record: ProposedRecord;
+  /** The run's record; `undefined` when it can't be read. */
+  readonly run: RunSummary | undefined;
 }
 
 /**
@@ -161,6 +178,8 @@ export class Inbox {
   readonly #setupSources = new Map<InboxSetupSource, () => void>();
   /** Each setup source's items from its last load that succeeded, kept while it fails. */
   readonly #setupItems = new Map<InboxSetupSource, readonly SetupItem[]>();
+  /** The proposals from the last load that succeeded, kept while it fails. */
+  #proposalItems: readonly ProposalItem[] = [];
   /**
    * The items you have answered, by key and waiting time; they stay out until a load no longer
    * lists them. The time tells a step the run came back to from the one you answered.
@@ -228,8 +247,8 @@ export class Inbox {
     if (this.#disposed) return;
     const load = ++this.#loads;
     const sources = [...this.#setupSources.keys()];
-    const [[runs], lists] = await Promise.all([
-      Promise.allSettled([this.#runs.waiting()]),
+    const [[runs, proposals], lists] = await Promise.all([
+      Promise.allSettled([this.#runs.waiting(), this.#runs.proposals?.() ?? []] as const),
       Promise.allSettled(sources.map((source) => source.list())),
     ]);
     if (load !== this.#loads || this.#disposed) return;
@@ -248,6 +267,18 @@ export class Inbox {
       error ??= list?.reason;
       return this.#setupItems.get(source) ?? [];
     });
+    if (proposals.status === "fulfilled") {
+      const runOf = new Map(
+        proposals.value.map((entry) => [entry.record.proposal.runId, entry.run]),
+      );
+      this.#proposalItems = proposalItems(
+        proposals.value.map((entry) => entry.record),
+        (runId) => runOf.get(runId),
+        (id) => this.#runs.itemName?.(id) ?? id,
+      );
+    } else {
+      error ??= proposals.reason;
+    }
     const items = inboxItems(runs.value, (id) => this.#runs.agentName?.(id) ?? id);
     const listed = new Set(items.map(answerId));
     for (const id of this.#answered) if (!listed.has(id)) this.#answered.delete(id);
@@ -255,6 +286,7 @@ export class Inbox {
       items: needsYouOrder(
         setups,
         items.filter((item) => !this.#answered.has(answerId(item))),
+        this.#proposalItems,
       ),
       loaded: true,
       error,
