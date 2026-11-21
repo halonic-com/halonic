@@ -287,7 +287,10 @@ verifies("studio.sandbox-setup-through-shell", () => {
   it.each([
     [{ outcome: "cancelled" } as const, { kind: "setup", how: "cancelled" }],
     [{ outcome: "timed_out" } as const, { kind: "setup", how: "timed-out", repairing: false }],
-    [{ outcome: "still_running" } as const, { kind: "setup", how: "timed-out", repairing: false }],
+    [
+      { outcome: "still_running" } as const,
+      { kind: "setup", how: "still-running", repairing: false },
+    ],
     [
       { outcome: "failed", reason: "The system cannot find the file specified." } as const,
       {

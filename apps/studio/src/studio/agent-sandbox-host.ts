@@ -123,9 +123,8 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
 
   /**
    * How a setup the shell started ended. Only an exit code goes to the host, which checks the
-   * sandbox itself: the code alone never counts as set up. Until the section has its own words for
-   * them (HAL-14863), the 5-minute limit and an earlier helper still running read as a setup that
-   * didn't finish, which is what they are.
+   * sandbox itself: the code alone never counts as set up. The shell can't tell a repair from a
+   * setup; the section words those two outcomes for the press it made.
    */
   async #setUpThroughShell(elevated: ShellElevation): Promise<SandboxOutcome | null> {
     switch (elevated.outcome) {
@@ -134,8 +133,9 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
       case "cancelled":
         return { kind: "setup", how: "cancelled" };
       case "timed_out":
-      case "still_running":
         return { kind: "setup", how: "timed-out", repairing: false };
+      case "still_running":
+        return { kind: "setup", how: "still-running", repairing: false };
       case "failed": {
         const reason = `Windows couldn't start the sandbox helper: ${elevated.reason.replace(/\.+$/, "")}.`;
         return { kind: "setup", how: "failed", reason };

@@ -169,6 +169,11 @@ const chipTones: Record<NonNullable<SandboxView["chip"]>["tone"], StatusChipTone
 
 const marks: Record<SandboxStep["mark"], string> = { done: "✓", doing: "◌", waiting: "○" };
 
+/** A note (an earlier setup still running) reads in the info tone; a failure as a warning. */
+function calloutTone(callout: NonNullable<SandboxView["callout"]>): "info" | "warning" {
+  return callout.note ? "info" : "warning";
+}
+
 /**
  * Settings › Agent sandbox (`settings.agent-sandbox-section`): the chip, the words, the steps while
  * one runs, the failure Callout and the buttons that {@link sandboxView} decides.
@@ -214,7 +219,7 @@ export function AgentSandboxView({
       ) : null}
       {view.callout ? (
         <Callout
-          tone="warning"
+          tone={calloutTone(view.callout)}
           {...(view.callout.action ? { action: calloutAction[view.callout.action] } : {})}
         >
           {view.callout.line}

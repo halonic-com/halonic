@@ -1,8 +1,9 @@
 import { sandboxStartWords } from "@halonicjs/app";
 import * as text from "./sandbox-text.ts";
+import { SETUP_LIMIT_MINUTES } from "./setup-limit.ts";
 
-/** How long a setup may run before Studio says so (SB3). The command isn't stopped. */
-export const SETUP_TIME_LIMIT_MS = 3 * 60 * 1000;
+/** {@link SETUP_LIMIT_MINUTES} in milliseconds. */
+export const SETUP_TIME_LIMIT_MS = SETUP_LIMIT_MINUTES * 60 * 1000;
 
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -51,6 +52,8 @@ export type SandboxCheckFacts =
 export type SandboxOutcome =
   | { readonly kind: "setup"; readonly how: "cancelled" }
   | { readonly kind: "setup"; readonly how: "timed-out"; readonly repairing: boolean }
+  /** Try again while the helper of an earlier press still runs; Windows wasn't asked again. */
+  | { readonly kind: "setup"; readonly how: "still-running"; readonly repairing: boolean }
   | {
       readonly kind: "setup";
       readonly how: "failed";
@@ -111,6 +114,8 @@ export interface SandboxView {
   readonly callout: {
     readonly line: string;
     readonly action: "try-again" | "copy-details" | null;
+    /** A note rather than a failure (an earlier setup still running), in the info tone. */
+    readonly note?: true;
   } | null;
   readonly steps: readonly SandboxStep[];
   /** The guide for what the check found, after the buttons. */
@@ -313,6 +318,12 @@ function calloutFor(outcome: SandboxOutcome): SandboxView["callout"] {
       return {
         line: outcome.repairing ? text.REPAIR_TOOK_TOO_LONG : text.TOOK_TOO_LONG,
         action: "try-again",
+      };
+    case "still-running":
+      return {
+        line: outcome.repairing ? text.REPAIR_STILL_RUNNING : text.STILL_RUNNING,
+        action: "try-again",
+        note: true,
       };
     case "failed":
       return {

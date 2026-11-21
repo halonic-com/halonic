@@ -28,7 +28,7 @@ export interface AgentSandboxControls {
 
 /**
  * The state of Settings › Agent sandbox over a host (`settings.agent-sandbox-section`): the host's
- * check when the section opens, a setup or removal only on a press, and the 3-minute time limit,
+ * check when the section opens, a setup or removal only on a press, and the time limit,
  * which says so and leaves the command running (SB3).
  */
 export function useAgentSandbox(
@@ -93,7 +93,7 @@ export function useAgentSandbox(
       if (!current() || ended === undefined) return;
       busy.current = false;
       setRunning(null);
-      setOutcome(ended.outcome);
+      setOutcome(asVerb(ended.outcome, verb));
       setCheck((now) => ended.check ?? afterResult(ended.outcome as SandboxOutcome, now));
       if (ended.check?.state === "ready") {
         announceRef.current(text.announceReady(checkedAtLabel(ended.check.checkedAt, new Date())));
@@ -175,6 +175,19 @@ function checkedLine(facts: SandboxCheckFacts): string {
     return `ready. Checked ${checkedAtLabel(facts.checkedAt, new Date())}.`;
   return sandboxView({ available: true, place: "app", check: facts, running: null, outcome: null })
     .lead;
+}
+
+/**
+ * The host can't tell a repair from a setup when it reports the time limit or an earlier helper
+ * still running; the press can, so a repair reads in a repair's words.
+ */
+function asVerb(
+  outcome: SandboxOutcome | null,
+  verb: SandboxRunning["verb"],
+): SandboxOutcome | null {
+  if (outcome?.kind !== "setup" || (outcome.how !== "timed-out" && outcome.how !== "still-running"))
+    return outcome;
+  return { ...outcome, repairing: verb === "repair" };
 }
 
 /** Why a host command failed, without its closing full stop; the raw error never shows. */
