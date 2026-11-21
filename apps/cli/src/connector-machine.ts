@@ -32,6 +32,7 @@ import {
 import { PluginConnectorFactory } from "./plugin-connector-factory.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { nodeSandboxWorks } from "./sandbox-works.ts";
+import { installedPluginHosts } from "./sheet-hosts.ts";
 import { halonicVersion } from "./version.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 import type { WorkspaceTrustMachine } from "./workspace-trust.ts";
@@ -65,6 +66,7 @@ export function nodeConnectorMachine(
     clock: systemClock,
     commandSearch: nodeCommandSearch(),
     sandboxWorks: nodeSandboxWorks,
+    pluginHosts: () => installedPluginHosts(environment),
   };
 }
 

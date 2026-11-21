@@ -31,6 +31,7 @@ import {
 import { type FingerprintedCheck, shownDate, trustCheckLines } from "../../output/trust-check.ts";
 import type { PluginSetup } from "../../plugin-host.ts";
 import { nodeSandboxWorks } from "../../sandbox-works.ts";
+import { installedPluginHosts, type PluginHosts } from "../../sheet-hosts.ts";
 import { shownPath } from "../../shown-path.ts";
 import { dirOption, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
@@ -48,6 +49,8 @@ export interface TrustMachine {
   readonly commandSearch: CommandSearch;
   /** Whether the sandbox works here; left out, the check shows no program's sites. */
   readonly sandboxWorks?: () => Promise<boolean>;
+  /** The hosts of the plugins installed here; left out, the check shows no plugin's hosts. */
+  readonly pluginHosts?: () => Promise<PluginHosts>;
 }
 
 /**
@@ -62,6 +65,7 @@ export function nodeTrustMachine(): TrustMachine {
     clock: systemClock,
     commandSearch: nodeCommandSearch(),
     sandboxWorks: nodeSandboxWorks,
+    pluginHosts: () => installedPluginHosts(),
   };
 }
 
@@ -170,6 +174,7 @@ async function reviewAndTrust(
   const lines = trustCheckLines(check, {
     ...facts,
     sandboxWorks: (await machine.sandboxWorks?.()) === true,
+    pluginHosts: (await machine.pluginHosts?.()) ?? new Map(),
   });
   const changes =
     check.status === "changed" ? trustChangesDocument(check.changes, check.trustedAt) : undefined;
