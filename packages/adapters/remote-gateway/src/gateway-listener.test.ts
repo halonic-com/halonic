@@ -336,11 +336,15 @@ verifies("remote-gateway.listener", () => {
     });
 
     it("drops an open session that never says hello", async () => {
-      const t = await openListener({ heartbeatMs: 20, helloTimeoutMs: 100 });
+      // The default heartbeat: this client never answers pings, so a short one
+      // would drop it before its reconnect on a slow runner, and not for its silence.
+      const t = await openListener({ helloTimeoutMs: 100 });
       try {
         const client = await t.pairedClient();
         await client.ended;
         expect(client.socket.destroyed).toBe(true);
+        // The session said goodbye: the heartbeat would have cut the socket without a close frame.
+        expect(client.framesOf(op.close)).toHaveLength(1);
       } finally {
         await t.stop();
       }
