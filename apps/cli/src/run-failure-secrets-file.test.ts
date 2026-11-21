@@ -33,6 +33,22 @@ verifies("cli.run-failure", () => {
     expect(isSetupCause(failed.cause)).toBe(true);
   });
 
+  it("quotes a file with a space in line 2, so the command can be pasted (HAL-15483)", () => {
+    // Every macOS profile is under ~/Library/Application Support; this stands for it.
+    const spaced = "/profile/Application Support/halonic/secrets/secrets.json";
+    const failed = {
+      ...failedWith("error"),
+      cause: { kind: "denied" as const, code: "secrets.file-readable", detail: { file: spaced } },
+    };
+
+    const failure = runFailureOf(failed, undefined);
+    if (failure === undefined) throw new Error("expected a failure");
+    const { fix } = runFailedLines({ title: "Support reply", step: "Draft a reply", runId: "01JD8Q" }, failure);
+    expect(fix === undefined ? undefined : plainText(fix.phrase)).toBe(
+      `Run chmod 600 "${spaced}", then run again.`,
+    );
+  });
+
   it("gives the general lines when the cause doesn't name the file", () => {
     const failed = {
       ...failedWith("error"),

@@ -294,21 +294,17 @@ verifies("runs.run-view.failure-banners", () => {
     it("offers the command to copy before Run again (F24, rule E2)", () => {
       const banner = causeBanner(readable({ file }), undefined, context, false);
       expect(fixes(banner)).toEqual([
-        { kind: "copy-command", command: "chmod 600 '/profile/secrets/secrets.json'" },
+        { kind: "copy-command", command: "chmod 600 /profile/secrets/secrets.json" },
       ]);
     });
 
-    it("quotes the path in the copied command, so a space or a ' doesn't break it", () => {
-      // A macOS profile folder has a space in it; the sentence keeps the CLI's words.
-      const odd = "/profile/Application Support/it's/secrets.json";
+    it("quotes the path in the sentence and the copied command alike, so a space or a $ doesn't break it (HAL-15483)", () => {
+      // A macOS profile folder has a space in it; the sentence says the command Copy command copies.
+      const odd = "/profile/Application Support/$HOME's/secrets.json";
+      const quoted = 'chmod 600 "/profile/Application Support/\\$HOME\'s/secrets.json"';
       const banner = causeBanner(readable({ file: odd }), undefined, context, false);
-      expect(fixes(banner)).toEqual([
-        {
-          kind: "copy-command",
-          command: "chmod 600 '/profile/Application Support/it'\\''s/secrets.json'",
-        },
-      ]);
-      expect(lines(banner)?.[0]).toContain(`Run chmod 600 ${odd} in a terminal`);
+      expect(fixes(banner)).toEqual([{ kind: "copy-command", command: quoted }]);
+      expect(lines(banner)?.[0]).toContain(`Run ${quoted} in a terminal`);
     });
 
     it("says to run it on the computer on a phone, with no button", () => {

@@ -1,11 +1,13 @@
-import { KindedError } from "@halonicjs/std";
+import { KindedError, shellWord } from "@halonicjs/std";
 
 /** The cause code of {@link ReadableSecretsFileError}, as a run log records it. */
 export const readableSecretsFileCode = "secrets.file-readable";
 
 /**
  * A secrets file that group or others can read, refused as `denied` with the
- * fix, `chmod 600 <file>`. It names neither a secret nor a value.
+ * fix, `chmod 600 <file>`, with the file as one shell word so the line can be
+ * pasted as it is (a macOS profile folder has a space in it). It names
+ * neither a secret nor a value.
  *
  * When it stops a run, the engine logs its `failureCause` on `run.failed`,
  * so `halonic run` says the cause and the fix instead of asking for a bug
@@ -24,7 +26,7 @@ export class ReadableSecretsFileError extends KindedError {
 
   constructor(file: string) {
     super("denied", `The secrets file ${file} can be read by other users.`, {
-      fix: `Run chmod 600 ${file}, then run again.`,
+      fix: `Run chmod 600 ${shellWord(file)}, then run again.`,
     });
     this.failureCause = { code: readableSecretsFileCode, detail: { file } };
   }

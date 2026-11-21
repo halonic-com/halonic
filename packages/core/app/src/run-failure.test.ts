@@ -327,6 +327,23 @@ verifies("app.run-failure", () => {
       expect(runFailureOf(failedWith("error", { cause: other }), undefined)).toEqual(general);
     });
 
+    it("names the agent, its model call limit and its file for the engine's turn limit (HAL-15331)", () => {
+      const cause = {
+        kind: "limit_reached" as const,
+        code: "engine.turn-limit",
+        detail: { agent: "looper", turns: "2" },
+      };
+      expect(runFailureOf(failedWith("error", { cause }), calledModel())).toEqual({
+        reason: "turn-limit",
+        agent: "looper",
+        turns: 2,
+        agentFile: "looper.agent.yaml",
+      });
+      expect(isSetupCause(cause)).toBe(false);
+      const noCount = { ...cause, detail: { agent: "looper" } };
+      expect(runFailureOf(failedWith("error", { cause: noCount }), undefined)).toEqual(general);
+    });
+
     it("gives a cancelled run no facts", () => {
       expect(runFailureOf(failedWith("cancelled"), calledModel())).toBeUndefined();
     });

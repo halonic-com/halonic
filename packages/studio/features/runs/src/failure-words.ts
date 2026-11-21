@@ -1,4 +1,5 @@
 import type { ProxyFailure } from "@halonicjs/app/run-failure";
+import { shellWord } from "@halonicjs/std";
 import { capitalised } from "./run-words.ts";
 
 /** "refund, question or spam": the step's choices, any one of which the answer had to be. */
@@ -98,12 +99,13 @@ function asSentence(sentence: string): string {
 }
 
 /**
- * The CLI's fix for a secrets file other users can read, as a command to paste into a terminal.
- * The path is quoted, POSIX style, because a macOS profile folder has a space in it
- * (`Application Support`), and a `$(…)` or `;` in it must not run as shell code.
+ * The CLI's fix for a secrets file other users can read, as a command to paste into a terminal:
+ * the words the banner shows and Copy command copies. The path is one shell word, quoted as the
+ * CLI quotes it, because a macOS profile folder has a space in it (`Application Support`), and a
+ * `$(…)` or `;` in it must not run as shell code.
  */
 function secretsFileCommand(file: string): string {
-  return `chmod 600 '${file.replaceAll("'", "'\\''")}'`;
+  return `chmod 600 ${shellWord(file)}`;
 }
 
 /**
@@ -244,7 +246,7 @@ export const failureWords = {
    * desktop runs the command in a terminal, which Copy command gives; a phone runs it on the computer.
    */
   secretsFileReadable: (workflow: string, step: string, file: string, phone: boolean) =>
-    `${workflow} stopped in the step ${step}: the secrets file ${file} can be read by other users. Run chmod 600 ${file} ${phone ? "on your computer" : "in a terminal"}, then run again.`,
+    `${workflow} stopped in the step ${step}: the secrets file ${file} can be read by other users. Run ${secretsFileCommand(file)} ${phone ? "on your computer" : "in a terminal"}, then run again.`,
   /** The command Copy command copies for a secrets file other users can read (F24). */
   secretsFileCommand,
   engineStopped: (workflow: string, step: string) =>

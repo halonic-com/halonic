@@ -13,6 +13,7 @@ import { proxyFixInWords, proxyProblemInWords } from "./proxy-failures.ts";
 import { sandboxMessages } from "./sandbox.ts";
 import { asSentence } from "./sentence.ts";
 import { suggestedCommand } from "./suggested-command.ts";
+import { itemsNotAListFix, noTransitionFix, taskWithoutAgentFix } from "./workflow-failure-fixes.ts";
 
 /** The run that failed, as line 1 names it and line 2's commands need it. */
 export interface FailedRun {
@@ -257,7 +258,7 @@ const lineTwo = {
       ? phrase`Raise budget.perRun in workspace.yaml.`
       : phrase`Raise budget.monthly in workspace.yaml, or wait until it resets on ${dayAndMonth(failure.resetsOn)}.`,
   "turn-limit": (run, failure) =>
-    phrase`See what ${failure.agent} did with ${suggestedCommand("runs show", run.dir, run.runId)}. Raise its model call limit in ${failure.agentFile} if it needs more.`,
+    phrase`See what ${failure.agent} did with ${suggestedCommand("runs show", run.dir, run.runId)}. Raise its model call limit (maxSteps) in ${failure.agentFile} if it needs more.`,
   "tool-timeout": () => tryLater(),
   "local-only": (_run, failure) =>
     phrase`Point ${failure.agent}'s model alias ${failure.alias} at a local model in models.yaml, or set privacy.localOnly: false in workspace.yaml.`,
@@ -272,43 +273,15 @@ const lineTwo = {
   "unknown-model-alias": (_run, failure) =>
     phrase`Add ${failure.alias} to models.yaml, or set a model on the agent. For a test model with no key, copy models.yaml and providers/mock.yaml from the Acme example.`,
   "secrets-file-readable": (_run, failure) =>
-    phrase`Run chmod 600 ${failure.file}, then run again.`,
+    phrase`Run chmod 600 ${shellWord(failure.file)}, then run again.`,
   "unknown-provider": (_run, failure) =>
     "alias" in failure
       ? phrase`Add providers/${failure.provider}.yaml, or point the model alias ${failure.alias} at a provider the workspace has.`
       : phrase`Add providers/${failure.provider}.yaml, or change ${failure.model} to a provider the workspace has.`,
-  // The same fixes as `validate`'s items-not-a-list; only a list the run's input or
-  // context gives as something else is left to the run (HAL-14313).
-  "items-not-a-list": (_run, failure) => {
-    const path = placeholderPath(failure.items);
-    if (path === undefined) {
-      return phrase`Write one placeholder, such as "{{context.topics}}".`;
-    }
-    if (!/^(input|context)\./.test(path)) {
-      return phrase`Read the list from input or context, such as "{{context.${path}}}".`;
-    }
-    return failure.gives === "nothing"
-      ? phrase`Check the name in ${failure.items}, and pass a JSON list there, such as ["Monday", "Tuesday"].`
-      : phrase`Pass a JSON list, such as ["Monday", "Tuesday"].`;
-  },
-  // The same fixes as `validate`'s no-done-transition: a transition without event takes done (HAL-14313).
-  "no-transition": (_run, failure) => {
-    if (failure.guarded) {
-      return phrase`Add a transition for ${failure.event} without when, as the last one, so the run always has somewhere to go.`;
-    }
-    if (failure.event !== "done") {
-      return phrase`Add a transition with event: ${failure.event}.`;
-    }
-    if (failure.takes.length === 0) {
-      return phrase`Add a transition without event.`;
-    }
-    const [only, ...more] = failure.takes;
-    return only !== undefined && more.length === 0
-      ? phrase`Remove event: ${only}, or add a transition without event.`
-      : phrase`Remove their event, or add a transition without event.`;
-  },
-  // The same fix as `validate`'s task-without-agent (HAL-14313).
-  "task-without-agent": () => phrase`Give it an agent (agent: <id>), or make it a wait step.`,
+  // The fixes `validate` gives for the same workflow problems (HAL-14313).
+  "items-not-a-list": (_run, failure) => itemsNotAListFix(failure),
+  "no-transition": (_run, failure) => noTransitionFix(failure),
+  "task-without-agent": () => taskWithoutAgentFix(),
   // "In models.yaml" first, so it can't read as where the tools are.
   "model-no-tools": (_run, failure) =>
     phrase`In models.yaml, point the model alias ${failure.alias} at a model that can use tools.`,
@@ -381,11 +354,6 @@ function modelNamed(failure: Extract<RunFailure, { reason: "unknown-provider" }>
   return "alias" in failure
     ? phrase`the model alias ${failure.alias}`
     : phrase`the model ${failure.model}`;
-}
-
-/** The path of items that are one placeholder and nothing else, such as "input.topics". */
-function placeholderPath(items: string): string | undefined {
-  return /^\{\{\s*([^{}\s]+)\s*\}\}$/.exec(items.trim())?.[1];
 }
 
 /** "a text", "an object", "a number". */

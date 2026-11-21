@@ -94,8 +94,26 @@ verifies("engine.run-step-limit", () => {
       status: "failed",
       reason: "error",
       error:
-        'Agent "writer" used all 2 of its steps (maxSteps) and was still calling tools, so it gave no answer.',
+        'Agent "writer" used all 2 of its model calls (maxSteps) and was still calling tools, so it gave no answer.',
+      cause: {
+        kind: "limit_reached",
+        code: "engine.turn-limit",
+        detail: { agent: "writer", turns: "2" },
+      },
     });
     expect((await runs.get("run_1"))?.context).not.toHaveProperty("reply");
+  });
+
+  it("says its only model call for a limit of 1", async () => {
+    const { runs } = await runReply([callAnswer(call("c0", "lookup"))], new KernelRuns(), {
+      agents: { writer: { ...writerAgent(), maxSteps: 1 } },
+      halonicTools: [halonicTool("lookup", async () => "found")],
+    });
+
+    expect(await runs.get("run_1")).toMatchObject({
+      error:
+        'Agent "writer" used its only model call (maxSteps) and was still calling tools, so it gave no answer.',
+      cause: { code: "engine.turn-limit", detail: { agent: "writer", turns: "1" } },
+    });
   });
 });
