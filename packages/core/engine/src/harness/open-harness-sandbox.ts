@@ -19,6 +19,10 @@ import {
 import type { StopSignal } from "@halonicjs/std";
 import type { ProgramHarness } from "../kernel/decide-types.ts";
 import { StartFailedError } from "../run/start-failed-error.ts";
+import {
+  launcherReasonOf,
+  ThisComputerStartFailedError,
+} from "../run/this-computer-start-failed-error.ts";
 import type {
   HarnessAgent,
   HarnessRunsOptions,
@@ -62,7 +66,9 @@ export function startTimeoutOf(options: HarnessRunsOptions, phase: StartPhase): 
  * time limit and logs `sandbox.opened`, or `sandbox.off` when a person chose
  * this computer for the agent. A session that opens after the time was up is
  * closed as soon as it arrives. `model` is the task's, so the harness's
- * environment can point its program's background models at it.
+ * environment can point its program's background models at it. A sandbox
+ * that doesn't open fails the step with `sandbox-start-failed`, and the
+ * launcher on this computer with `this-computer-start-failed`.
  */
 export async function openSandbox(
   { options, call, agent: subject, harness, log, limits, stop }: StartedCall,
@@ -97,6 +103,10 @@ export async function openSandbox(
     });
   } catch (error) {
     stop.throwIfStopped();
+    // There is no sandbox to ask why: the launcher's own error says what failed.
+    if (placement.runsOn === "this-computer") {
+      throw new ThisComputerStartFailedError(launcherReasonOf(error), { cause: error });
+    }
     throw new StartFailedError(
       "sandbox-start-failed",
       `The sandbox for agent "${agent}" didn't open.`,

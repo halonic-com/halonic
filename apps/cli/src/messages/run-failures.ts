@@ -167,6 +167,11 @@ const lineOne = {
           run,
           phrase`${failure.agent} didn't start, because the sandbox on this computer didn't start: ${sandboxMessages.reason(failure.code).phrase}`,
         ),
+  "this-computer-start-failed": (run, failure) =>
+    failedIn(
+      run,
+      phrase`${failure.agent} didn't start on this computer: ${asSentence(failure.launcherReason)}`,
+    ),
   "harness-start-failed": (run, failure) => {
     switch (failure.cause) {
       case "not-installed":
@@ -311,6 +316,8 @@ const lineTwo = {
     phrase`Close other programs, or point the model alias ${failure.alias} at a smaller model in models.yaml, then run it again.`,
   "sandbox-start-failed": () =>
     phrase`Run it again. If it keeps happening, add --debug and report it: ${issuesLink}`,
+  // Running it again meets the same launcher, so line 2 doesn't ask for that (HAL-13090).
+  "this-computer-start-failed": (run) => bugFix(run, errorMessages.debugAndReport),
   "harness-start-failed": (_run, failure) => {
     switch (failure.cause) {
       case "not-installed":
@@ -350,11 +357,9 @@ export function runFailedLines(
   return { message: message(run, failure), fix: causeKnown ? undefined : fix(run, failure) };
 }
 
-/** The general lines' fix: report it, asking for `--debug` only when it wasn't given. */
-function bugFix(run: FailedRun): Phrase {
-  return run.debugging === true
-    ? errorMessages.reportWithDetails().phrase
-    : errorMessages.internalFix().phrase;
+/** The general lines' fix, or `fix`: report it, asking for `--debug` only when it wasn't given. */
+function bugFix(run: FailedRun, fix = errorMessages.internalFix): Phrase {
+  return run.debugging === true ? errorMessages.reportWithDetails().phrase : fix().phrase;
 }
 
 function failedIn(run: FailedRun, reason: Phrase): Phrase {

@@ -33,6 +33,7 @@ verifies("events.run-failed-reason", () => {
       | "interrupted"
       | "sandbox-not-ready"
       | "sandbox-start-failed"
+      | "this-computer-start-failed"
       | "harness-start-failed"
       | "key-refused"
       | "out-of-credit"
@@ -135,6 +136,18 @@ verifies("events.run-failed-sandbox-start-failed", () => {
       error: string;
       reason: "sandbox-start-failed";
       sandboxReason: "bubblewrap-missing";
+    }>().toExtend<EventOf<"run.failed">>();
+  });
+});
+
+verifies("events.run-failed-this-computer-start-failed", () => {
+  typeTest("has a reason for a launcher on this computer that didn't open", () => {
+    expectTypeOf<IsReason<"this-computer-start-failed">>().toEqualTypeOf<true>();
+    expectTypeOf<{
+      type: "run.failed";
+      state: string;
+      error: string;
+      reason: "this-computer-start-failed";
     }>().toExtend<EventOf<"run.failed">>();
   });
 });
