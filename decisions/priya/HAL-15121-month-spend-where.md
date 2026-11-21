@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15121
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TJR56AypqsNw+USDyf8OMaaVGdP4p8tfBqBggaxaa6nvD/BDi3dL+u8cgFEJmErU2NhbPKC4Kxo0lgYjLHWpDw==
 
 Iris's flow check C544 (HAL-15101) found that the last line of
 `halonic runs`, "This month: €0.00. Set budget.monthly to cap it.", doesn't
