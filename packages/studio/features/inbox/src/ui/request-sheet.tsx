@@ -1,4 +1,4 @@
-import { Button, Dialog, Field, Select, TextArea } from "@halonicjs/studio-kit";
+import { Button, CommandBox, Dialog, Field, Select, TextArea } from "@halonicjs/studio-kit";
 import { copyDetailsWords } from "@halonicjs/studio-shell";
 import { type Ref, useId, useState } from "react";
 import type { RequestWorkflow } from "../request/inbox-requests.ts";
@@ -19,6 +19,8 @@ export interface RequestSheetProps {
   readonly waiting: boolean;
   /** The "Not started: …" line, or empty; shown in the sheet's alert slot. */
   readonly notStarted: string;
+  /** The command the line's next step leads to, in a CommandBox under the fields (C533-2). */
+  readonly notStartedCommand?: string | undefined;
   /**
    * The run started but failed before its card arrived: the run page's failure line, shown in the
    * alert slot with **Open run** (with `openRun`). The message stays, to send again.
@@ -53,6 +55,7 @@ export function RequestSheet({
   busy,
   waiting,
   notStarted,
+  notStartedCommand,
   runFailed,
   onChangeBudget,
   onCopyDetails,
@@ -115,6 +118,9 @@ export function RequestSheet({
           }}
         />
       </Field>
+      {notStarted !== "" && notStartedCommand !== undefined ? (
+        <CommandBox command={notStartedCommand} />
+      ) : null}
       {notStarted !== "" && onChangeBudget !== undefined ? (
         <div>
           <Button variant="ghost" size="sm" onClick={onChangeBudget}>

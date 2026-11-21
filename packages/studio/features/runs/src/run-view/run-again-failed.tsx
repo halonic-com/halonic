@@ -5,6 +5,8 @@ import type { RunAgain } from "./run-again.ts";
 /**
  * Why the last **Run again** didn't start, in the shell's start-failure Callout under a section
  * named "Run didn't start", with **Try again** starting it again; nothing while it hasn't failed.
+ * While that start is pending, **Try again** stays, busy, and keeps focus; when it fails again,
+ * focus goes to the new Callout, as in the Run panel (C533-1).
  * The run page shows it under its header, the run card over its banner.
  * A refusal because the workspace isn't trusted yet has **Review** instead, which opens the trust
  * check; once the person trusts it, the Callout goes and `onTrusted` gives focus to **Run again**,
@@ -26,7 +28,8 @@ export function RunAgainFailed({
       <StartFailedCallout
         error={runAgain.problem.error}
         notAnswering={engine.notAnswering}
-        tryAgain={runAgain.start}
+        tryAgain={runAgain.tryAgain}
+        takeFocus={runAgain.problem.retried}
         review={
           review === undefined
             ? undefined

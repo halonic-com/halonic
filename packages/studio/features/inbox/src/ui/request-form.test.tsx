@@ -294,8 +294,9 @@ verifies("inbox.request", () => {
       await send(root);
       const alert = root.querySelector('[role="alert"]');
       expect(alert?.textContent).toBe(
-        "Not started: this month's estimated spend reached its budget of €50.00. · Change budget",
+        "Not started: this month's estimated spend reached its budget of €50.00.",
       );
+      expect(alert?.parentElement?.textContent).toContain("· Change budget");
       expect(message(root).value).toBe("Hello");
       await act(async () => button(root, "Change budget").click());
       expect(openBudget).toHaveBeenCalledOnce();
