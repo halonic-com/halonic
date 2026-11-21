@@ -400,11 +400,11 @@ describe("doctorReportLines", () => {
     expect(check(printed(report), "Harnesses")).toEqual([
       "! Harnesses   Claude Code 2.1.0",
       "              Claude Code isn't signed in for Writer.",
-      "              Fix: sign in for Writer with CLAUDE_CONFIG_DIR='/data/harness-settings/writer/claude-code' claude auth login",
+      "              Fix: sign in for Writer with mkdir -p -m 700 '/data/harness-settings/writer/claude-code' && CLAUDE_CONFIG_DIR='/data/harness-settings/writer/claude-code' claude auth login",
     ]);
     const powershell = printed(report, { ...facts, signInShell: "powershell" });
     expect(check(powershell, "Harnesses").at(-1)).toBe(
-      "              Fix: sign in for Writer with $env:CLAUDE_CONFIG_DIR = '/data/harness-settings/writer/claude-code'; claude auth login",
+      "              Fix: sign in for Writer with New-Item -ItemType Directory -Force -Path '/data/harness-settings/writer/claude-code' | Out-Null; $env:CLAUDE_CONFIG_DIR = '/data/harness-settings/writer/claude-code'; claude auth login",
     );
   });
 
