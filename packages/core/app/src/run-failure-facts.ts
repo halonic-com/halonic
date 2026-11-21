@@ -6,7 +6,7 @@
 
 import type { RunFailureCause } from "@halonicjs/events";
 import { assertNever } from "@halonicjs/std";
-import type { FailedModel, FailedStart, RunFailedEvent } from "./failed-model.ts";
+import type { FailedModel, FailedStart, RunFailedFacts } from "./failed-model.ts";
 import { budgetStopOf, nextMonthStart } from "./run-failure-budget.ts";
 import { type ConfigFailure, configFailureOf } from "./run-failure-config.ts";
 import { type ProxyFailure, proxyFailureOf } from "./run-failure-proxy.ts";
@@ -199,7 +199,7 @@ export type RunFailure =
  * // { reason: "model-missing", provider: "Ollama", model: "llama3.2", alias: "local", server: "ollama" }
  */
 export function runFailureOf(
-  failed: RunFailedEvent,
+  failed: RunFailedFacts,
   model: FailedModel | undefined,
   started?: FailedStart,
 ): RunFailure | undefined {
@@ -272,7 +272,7 @@ export function runFailureOf(
 }
 
 /** `instructions-not-trusted` with the agent the check refused, when the log names it. */
-function untrustedFailure(failed: RunFailedEvent): RunFailure {
+function untrustedFailure(failed: RunFailedFacts): RunFailure {
   if (failed.agent === undefined) {
     return generalFailure(failed);
   }
@@ -283,19 +283,23 @@ function untrustedFailure(failed: RunFailedEvent): RunFailure {
 }
 
 /** `budget` with the stop's figures; a monthly budget resets on the first of the next month (UTC). */
-function budgetFailure(failed: RunFailedEvent): RunFailure {
+function budgetFailure(failed: RunFailedFacts): RunFailure {
   const stop = budgetStopOf(failed.cause, failed.error);
   if (stop === undefined) {
     return generalFailure(failed);
   }
   const { currency, budget, spent } = stop;
-  return stop.per === "run"
-    ? { reason: "budget", per: "run", budget, spent, currency }
+  if (stop.per === "run") {
+    return { reason: "budget", per: "run", budget, spent, currency };
+  }
+  // A monthly stop names when it resets, which only a run's own time gives.
+  return failed.at === undefined
+    ? generalFailure(failed)
     : { reason: "budget", per: "month", budget, currency, resetsOn: nextMonthStart(failed.at) };
 }
 
 /** `model-out-of-memory` at the model the run called last. */
-function outOfMemoryFailure(failed: RunFailedEvent, model: FailedModel | undefined): RunFailure {
+function outOfMemoryFailure(failed: RunFailedFacts, model: FailedModel | undefined): RunFailure {
   if (model === undefined) {
     return generalFailure(failed);
   }
@@ -310,14 +314,14 @@ function outOfMemoryFailure(failed: RunFailedEvent, model: FailedModel | undefin
 /** Why the step's program didn't start; the general facts when the log doesn't hold its start. */
 function startFailure(
   reason: StartFailure["reason"],
-  failed: RunFailedEvent,
+  failed: RunFailedFacts,
   started: FailedStart | undefined,
 ): RunFailure {
   return startFailureOf(reason, failed, started) ?? generalFailure(failed);
 }
 
 /** `key-refused` or `no-key`, which both name the secret; without one, the general facts. */
-function keyFailure(failed: RunFailedEvent, model: FailedModel | undefined): RunFailure {
+function keyFailure(failed: RunFailedFacts, model: FailedModel | undefined): RunFailure {
   const secret = model?.provider?.secret;
   if (model === undefined || secret === undefined) {
     return generalFailure(failed);
@@ -335,7 +339,7 @@ function keyFailure(failed: RunFailedEvent, model: FailedModel | undefined): Run
  * `model-unreachable`: the proxy's facts when the engine logged a proxy cause,
  * otherwise at the host the engine names, or else at the provider's own address.
  */
-function unreachableFailure(failed: RunFailedEvent, model: FailedModel | undefined): RunFailure {
+function unreachableFailure(failed: RunFailedFacts, model: FailedModel | undefined): RunFailure {
   if (model === undefined) {
     return generalFailure(failed);
   }
@@ -357,7 +361,7 @@ function unreachableFailure(failed: RunFailedEvent, model: FailedModel | undefin
 }
 
 /** `model-timeout`: a model on this computer also gets the address, as it may still be loading. */
-function timeoutFailure(failed: RunFailedEvent, model: FailedModel | undefined): RunFailure {
+function timeoutFailure(failed: RunFailedFacts, model: FailedModel | undefined): RunFailure {
   if (model === undefined) {
     return generalFailure(failed);
   }
@@ -420,7 +424,7 @@ const knownCauseCodes: ReadonlySet<string> = new Set([
 ]);
 
 /** An `error` whose cause code is in {@link knownCauseCodes}: the engine's message, with its cause known. */
-function knownCauseFailureOf(failed: RunFailedEvent): RunFailure | undefined {
+function knownCauseFailureOf(failed: RunFailedFacts): RunFailure | undefined {
   const code = failed.cause?.code;
   return code !== undefined && knownCauseCodes.has(code)
     ? { ...generalFailure(failed), causeKnown: true }
@@ -439,7 +443,7 @@ export function isSetupCause(cause: RunFailureCause | undefined): cause is RunFa
 }
 
 /** The engine's own message, which is safe to show, for a failure without facts of its own. */
-function generalFailure(failed: RunFailedEvent): Extract<RunFailure, { reason: "error" }> {
+function generalFailure(failed: RunFailedFacts): Extract<RunFailure, { reason: "error" }> {
   return { reason: "error", message: failed.error };
 }
 

@@ -1,5 +1,5 @@
 import type { HarnessStartCause, InstructionsRefusal, RunFailureReason } from "@halonicjs/events";
-import { isModelCallError, isRunFailureError, type ModelCallErrorReason } from "@halonicjs/ports";
+import { isModelCallError, isRunFailureError, runFailureReasonOfModelCall } from "@halonicjs/ports";
 import { InstructionsNotTrustedError } from "../harness/check-instruction-trust.ts";
 import { SandboxNotReadyError } from "./sandbox-not-ready-error.ts";
 import { StartFailedError } from "./start-failed-error.ts";
@@ -19,24 +19,6 @@ export interface RunFailure {
   agent?: string;
   refusal?: InstructionsRefusal;
 }
-
-/**
- * The run failure reason of each model call failure. No key stored is part of
- * `key-refused` (microcopy 15.3): either way, the person fixes the key.
- */
-const reasonOfModelCall = {
-  "no-key": "key-refused",
-  offline: "model-unreachable",
-  "model-missing": "model-missing",
-  "model-no-tools": "model-no-tools",
-  "out-of-memory": "model-out-of-memory",
-  timeout: "model-timeout",
-  "key-refused": "key-refused",
-  "out-of-credit": "out-of-credit",
-  "provider-busy": "provider-busy",
-  refused: "error",
-  "local-only": "local-only",
-} as const satisfies Record<ModelCallErrorReason, RunFailureReason>;
 
 /**
  * Why a run failed, from the error that stopped it. This is the one place the
@@ -68,7 +50,7 @@ const reasonOfModelCall = {
  */
 export function runFailureReasonOf(error: unknown): RunFailure {
   if (isModelCallError(error)) {
-    const reason = reasonOfModelCall[error.reason];
+    const reason = runFailureReasonOfModelCall[error.reason];
     return error.host === undefined ? { reason } : { reason, host: error.host };
   }
   if (error instanceof StartFailedError) {

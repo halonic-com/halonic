@@ -1,4 +1,4 @@
-import type { RunFailureCause, RunFailureKind } from "@halonicjs/events";
+import type { RunFailureCause, RunFailureKind, RunFailureReason } from "@halonicjs/events";
 import type { ChatRequest, ChatResponse, ChatStreamEvent } from "./chat.ts";
 import type { HttpClient } from "./http-client.ts";
 import type { Secrets } from "./secrets.ts";
@@ -90,6 +90,26 @@ export const modelCallErrorReasons = [
  *   and the model's provider isn't local, so the engine never called it.
  */
 export type ModelCallErrorReason = (typeof modelCallErrorReasons)[number];
+
+/**
+ * The run failure reason of each model call failure, as `run.failed` and a
+ * failed chat answer name it. No key stored is part of `key-refused`
+ * (microcopy 15.3): either way, the person fixes the key. `refused` is
+ * `error`: the message says what went wrong.
+ */
+export const runFailureReasonOfModelCall = {
+  "no-key": "key-refused",
+  offline: "model-unreachable",
+  "model-missing": "model-missing",
+  "model-no-tools": "model-no-tools",
+  "out-of-memory": "model-out-of-memory",
+  timeout: "model-timeout",
+  "key-refused": "key-refused",
+  "out-of-credit": "out-of-credit",
+  "provider-busy": "provider-busy",
+  refused: "error",
+  "local-only": "local-only",
+} as const satisfies Record<ModelCallErrorReason, RunFailureReason>;
 
 /**
  * The error an {@link LlmProvider} throws when a model call fails, so the
