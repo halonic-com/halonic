@@ -44,6 +44,15 @@ verifies("format.connector-file", () => {
         "    secretEnv:",
         `      TOKEN: ${name}`,
       );
+    const integration = (name: string) =>
+      yaml(
+        "id: issues",
+        "transport:",
+        "  integration:",
+        "    folder: issues",
+        "    secrets:",
+        `      issues-key: ${name}`,
+      );
     for (const name of [
       "token-key",
       "Serve_Password",
@@ -55,6 +64,9 @@ verifies("format.connector-file", () => {
       ]);
       expect(summary(problemsOf("connector", stdio(name)))).toEqual([
         "transport.stdio.secretEnv.TOKEN secret-name-reserved 6",
+      ]);
+      expect(summary(problemsOf("connector", integration(name)))).toEqual([
+        "transport.integration.secrets.issues-key secret-name-reserved 6",
       ]);
     }
     expect(parsedValue("connector", http("tracker-key")).secret).toBe("tracker-key");

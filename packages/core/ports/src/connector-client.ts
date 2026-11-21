@@ -220,8 +220,17 @@ export type ConnectorTransport =
     }
   /** Built-in Gmail and Drive for one account; `client` names no secret. */
   | { kind: "google"; account: string; client: string }
-  /** A local integration in the I5 runner: a folder under `integrations/`. */
-  | { kind: "integration"; folder: string }
+  /**
+   * A local integration in the I5 runner: a folder under `integrations/`,
+   * with the workspace's settings for it and, for each secret its sheet
+   * names, the workspace secret it gets. Never a secret's value.
+   */
+  | {
+      kind: "integration";
+      folder: string;
+      settings?: Readonly<Record<string, string | number | boolean>>;
+      secretNames?: Readonly<Record<string, string>>;
+    }
   /** A plugin's backend in the I5 runner. */
   | { kind: "plugin"; id: string };
 

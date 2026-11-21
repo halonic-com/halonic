@@ -26,8 +26,8 @@ const sheetName = "integration.yaml";
  * `integrations/` itself can't be listed. A left-out integration is in no
  * trust, so its runner never starts (`not-in-trust`).
  *
- * A workspace doesn't hold settings for its integrations yet, so each gets
- * none, and a `{ fromSetting }` host shows as "not set" in the trust check.
+ * Each gets no settings here: they come from the connector file that names
+ * its folder, which `trustContentInputOf` adds.
  *
  * @param workspace - the workspace folder, read without following links
  * @param digest - for the hash of every file, the one the runner start uses

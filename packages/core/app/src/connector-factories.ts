@@ -10,6 +10,7 @@ import type {
   ConnectorFactory,
   ConnectorFactoryContext,
   ConnectorTool,
+  ConnectorTransport,
 } from "@halonicjs/ports";
 
 /** A connector's transport kind, such as `stdio`. */
@@ -116,11 +117,7 @@ export function connectorConfigOf(connector: Connector): ConnectorConfig {
     };
   }
   if ("integration" in transport) {
-    return {
-      id: connector.id,
-      transport: { kind: "integration", folder: transport.integration.folder },
-      secretEnv: {},
-    };
+    return { id: connector.id, transport: integrationTransport(transport), secretEnv: {} };
   }
   if ("plugin" in transport) {
     return {
@@ -131,4 +128,17 @@ export function connectorConfigOf(connector: Connector): ConnectorConfig {
   }
   const { account, client } = transport.google;
   return { id: connector.id, transport: { kind: "google", account, client }, secretEnv: {} };
+}
+
+/** A local integration's transport, with its settings and secret picks when the file has them. */
+function integrationTransport(
+  transport: Extract<Connector["transport"], { integration: unknown }>,
+): ConnectorTransport {
+  const { folder, settings, secrets } = transport.integration;
+  return {
+    kind: "integration",
+    folder,
+    ...(settings === undefined ? {} : { settings }),
+    ...(secrets === undefined ? {} : { secretNames: secrets }),
+  };
 }

@@ -106,7 +106,9 @@ not here.
   refuses, such as `authorization` and `cookie` (requirement `routine-webhook`). A mail trigger's
   `every` is a number followed by `m`, `h` or `d`, such as `15m` (requirement `routine-mail-interval`).
 - Connectors: besides the local and remote transports, `integration: { folder: <id> }` (a folder
-  under `integrations/`) and `plugin: { id: <id> }` run in the integration runner. Such a connector
+  under `integrations/`) and `plugin: { id: <id> }` run in the integration runner. An `integration`
+  transport may also hold `settings` (plain values, such as the `url` a `{ fromSetting }` host
+  reads) and `secrets` (sheet secret name → workspace secret name). Such a connector
   is local only when its own `local` key says `true` (requirement `connector-runner-transports`).
 - Sign-ins: an integration sheet may declare `signIns` (the `oauth-code` flow, with its URLs, scopes
   and the hosts it may reach), which need `kit` 2 or higher; a plugin's backend can't declare

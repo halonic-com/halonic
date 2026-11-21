@@ -239,9 +239,16 @@ function transportContent(
 /** The transports that run in the runner, or one the schema doesn't know yet. */
 function runnerTransportContent(transport: Connector["transport"]): TransportContent {
   if ("integration" in transport) {
-    // The folder's code and sheet are in `integrations`; this names which folder the connector runs.
+    // The folder's code and sheet are in `integrations`; this names which folder the connector
+    // runs, what it is set to and which workspace secret each of its secrets reads.
     const { integration } = transport;
-    const settings = { folder: posixPath.normalize(integration.folder) };
+    const settings = {
+      folder: posixPath.normalize(integration.folder),
+      ...(integration.settings === undefined ? {} : { settings: { ...integration.settings } }),
+      ...(integration.secrets === undefined
+        ? {}
+        : { secrets: mapValues(integration.secrets, secretReference) }),
+    };
     return { kind: "integration", settings: withUnknown(settings, integration, integrationFields) };
   }
   if ("plugin" in transport) {
@@ -270,7 +277,7 @@ function toolsContent(tools: Connector["tools"]): Record<string, unknown> {
 const stdioFields = new Set(["command", "args", "env", "secretEnv", "inheritEnv", "cwd", "sites"]);
 const httpFields = new Set(["url", "headers"]);
 const googleFields = new Set(["account", "client"]);
-const integrationFields = new Set(["folder"]);
+const integrationFields = new Set(["folder", "settings", "secrets"]);
 const pluginFields = new Set(["id"]);
 const toolsFields = new Set(["allow", "approve"]);
 

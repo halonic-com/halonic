@@ -28,8 +28,9 @@ export const connectorKind: FileKind<Connector> = {
 
 /**
  * Every value the connector gives as a secret's name: its own `secret` (the
- * HTTP bearer token) and, for a local program, each `secretEnv` value. A
- * Google connector names no secret: see {@link checkGoogleValues}.
+ * HTTP bearer token), for a local program each `secretEnv` value, and for a
+ * local integration each `secrets` value. A Google connector names no
+ * secret: see {@link checkGoogleValues}.
  */
 function secretNames(connector: Connector): Array<readonly [string, Path]> {
   const names: Array<readonly [string, Path]> = [];
@@ -39,6 +40,11 @@ function secretNames(connector: Connector): Array<readonly [string, Path]> {
   if ("stdio" in connector.transport) {
     for (const [variable, name] of Object.entries(connector.transport.stdio.secretEnv ?? {})) {
       names.push([name, ["transport", "stdio", "secretEnv", variable]]);
+    }
+  }
+  if ("integration" in connector.transport) {
+    for (const [pick, name] of Object.entries(connector.transport.integration.secrets ?? {})) {
+      names.push([name, ["transport", "integration", "secrets", pick]]);
     }
   }
   return names;
@@ -93,12 +99,19 @@ function checkGoogleValues(connector: Connector): KindCheckProblem[] {
 }
 
 /**
- * HTTP headers and a local program's `env` and `args` take any text, so a
- * key pasted there would be saved in the file. The connector's `secret` and
- * `secretEnv` name the secrets instead.
+ * HTTP headers, a local program's `env` and `args`, and a local
+ * integration's `settings` take any text, so a key pasted there would be
+ * saved in the file (and, for settings, in the trust content as written).
+ * The connector's `secret`, `secretEnv` and `secrets` name the secrets
+ * instead. A setting is most often an address, so it gets the free-text
+ * test, which leaves `http://localhost:3100` alone, not `looksLikeKey`.
  */
 function checkPastedKeys(connector: Connector): KindCheckProblem[] {
   const { transport } = connector;
+  if ("integration" in transport) {
+    const path: Path = ["transport", "integration", "settings"];
+    return checkKeysIn(transport.integration.settings, path, "setting");
+  }
   if ("http" in transport) {
     return checkKeysIn(transport.http.headers, ["transport", "http", "headers"], "header");
   }

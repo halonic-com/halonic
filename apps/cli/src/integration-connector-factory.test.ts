@@ -57,7 +57,27 @@ verifies("cli.integration-connector-factory", () => {
       await client.listTools();
       expect(await client.callTool("lookup", {})).toBe("ok");
       expect(seen.opens).toHaveLength(1);
-      expect(seen.opens[0]).toMatchObject({ id: "notes", folder: "notes", context });
+      expect(seen.opens[0]).toMatchObject({
+        id: "notes",
+        folder: "notes",
+        settings: {},
+        secretNames: {},
+        context,
+      });
+    });
+
+    it("opens with the settings and secret picks the connector file gives", async () => {
+      const settings = { url: "http://192.168.1.20:3100" };
+      const secretNames = { "paperclip-key": "paperclip-agent-key" };
+      const opens: OpenIntegrationRequest[] = [];
+      const factory = new IntegrationConnectorFactory(async (request) => {
+        opens.push(request);
+        throw new Error("only the request is checked");
+      });
+      const transport = { kind: "integration", folder: "notes", settings, secretNames } as const;
+      const client = factory.create({ ...config, transport }, context);
+      await expect(client.listTools()).rejects.toThrow("only the request is checked");
+      expect(opens[0]).toMatchObject({ settings, secretNames });
     });
 
     it("starts nothing when a client that was never used closes", async () => {

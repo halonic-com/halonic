@@ -63,7 +63,24 @@ const GoogleTransport = s
  * A local integration: a folder under `integrations/` whose code runs in the
  * I5 runner. The tools offered are the ones its permission sheet names.
  */
-const IntegrationTransport = s.object({ integration: s.object({ folder: id }).strict() }).strict();
+const IntegrationTransport = s
+  .object({
+    integration: s
+      .object({
+        folder: id,
+        /**
+         * The integration's settings, such as the `url` a `{ fromSetting }`
+         * host of its sheet reads. Plain values only: a key goes in `secrets`.
+         */
+        settings: s
+          .record(s.string().min(1), s.union([s.string(), s.number(), s.boolean()]))
+          .optional(),
+        /** Secret name in its sheet → the workspace secret it gets. Names only. */
+        secrets: s.record(s.string().min(1), s.string().min(1)).optional(),
+      })
+      .strict(),
+  })
+  .strict();
 
 /** A plugin's backend, started in the I5 runner. Same rules as a local integration. */
 const PluginTransport = s.object({ plugin: s.object({ id }).strict() }).strict();

@@ -90,7 +90,7 @@ class LocalIntegrationOpening {
   }
 
   async open(): Promise<ConnectorClient> {
-    const { id, context } = this.#request;
+    const { id, settings, secretNames, context } = this.#request;
     const { workspaceRoot } = context;
     if (workspaceRoot === undefined) {
       throw new Error("there is no workspace folder to run it from");
@@ -110,6 +110,9 @@ class LocalIntegrationOpening {
       transport: this.#machine.transport,
       secrets: context.secrets,
       tokens: context.tokens,
+      // The trust check reads the same settings from the connector file
+      // (`trustContentInputOf`), so the start compares the addresses it showed.
+      choices: { settings, secretNames },
     });
     if (!loaded.ok) {
       throw new Error(loaded.error.map((problem) => problem.message).join("; "));

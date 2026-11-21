@@ -19,6 +19,10 @@ export interface OpenIntegrationRequest {
   readonly id: string;
   /** The integration's folder under `integrations/`, as the connector file names it. */
   readonly folder: string;
+  /** Its settings from the connector file, such as the `url` a `{ fromSetting }` host reads. */
+  readonly settings: Readonly<Record<string, string | number | boolean>>;
+  /** Secret name in its sheet → the workspace secret it gets, from the connector file. */
+  readonly secretNames: Readonly<Record<string, string>>;
   readonly context: ConnectorFactoryContext;
 }
 
@@ -50,8 +54,9 @@ export class IntegrationConnectorFactory implements ConnectorFactory {
     if (transport.kind !== "integration") {
       throw new Error(`Connector "${config.id}" isn't a local integration.`);
     }
+    const { folder, settings = {}, secretNames = {} } = transport;
     return new LazyRunnerClient(config.id, () =>
-      this.#open({ id: config.id, folder: transport.folder, context }),
+      this.#open({ id: config.id, folder, settings, secretNames, context }),
     );
   }
 }

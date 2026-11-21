@@ -148,6 +148,27 @@ verifies("format.secret-names", () => {
       ]);
     });
 
+    it("checks every secrets value of a local integration, each at its line", () => {
+      const pasted = keys[3]?.[1] ?? "";
+      const text = yaml(
+        "id: issues",
+        "transport:",
+        "  integration:",
+        "    folder: tool-paperclip-issues",
+        "    secrets:",
+        "      paperclip-key: paperclip-agent-key",
+        "      other-key: agent key",
+        `      pasted-key: ${pasted}`,
+      );
+      expect(summary(problemsOf("connector", text))).toEqual([
+        "transport.integration.secrets.other-key secret-name 7",
+        "transport.integration.secrets.pasted-key secret-looks-like-key 8",
+      ]);
+      const parsed = parseFile("connector", text);
+      const messages = parsed.ok ? [] : parsed.error.map(({ message }) => message);
+      expect(messages.join(" ")).not.toContain(pasted.slice(4, 20));
+    });
+
     /** A Google connector file with this `secret`, on line 3. */
     function googleSecretConnector(secret: string): string {
       return yaml(

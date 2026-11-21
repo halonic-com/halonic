@@ -9,15 +9,23 @@ import {
   MemoryTrustStore,
   MemoryUnfencedRunConsentStore,
 } from "@halonicjs/adapter-memory";
-import { RunnerStartGate, type TrustCheck, UnfencedRuns } from "@halonicjs/app";
+import {
+  RunnerStartGate,
+  type TrustCheck,
+  trustContentInputOf,
+  UnfencedRuns,
+} from "@halonicjs/app";
+import type { Connector } from "@halonicjs/format";
 import type {
   ConnectorFactoryContext,
+  ConnectorTransport,
   IntegrationTool,
   Sandbox,
   SandboxCheck,
 } from "@halonicjs/ports";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
+import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { IntegrationConnectorFactory } from "./integration-connector-factory.ts";
 import { type LocalIntegrationMachine, openLocalIntegration } from "./open-local-integration.ts";
@@ -40,6 +48,12 @@ hosts: [api.example.com]
 tools:
   - { name: read-note, description: Reads a note., risk: read, untrusted: true }
 `;
+
+/** The sheet with its one host read from the `url` setting. */
+const fromSettingSheet = sheet.replace(
+  "hosts: [api.example.com]",
+  "hosts: [{ fromSetting: url, class: private }]",
+);
 
 const readNote: IntegrationTool = {
   name: "read-note",
@@ -87,23 +101,52 @@ async function setup(
     check?: SandboxCheck;
     runnerBuilt?: boolean;
     beforeTrustCheck?: () => Promise<void>;
+    /** The connector file's settings when the workspace is trusted. */
+    trustedSettings?: Record<string, string>;
+    /** The connector file's settings when the run opens it; the trusted ones unless a test says otherwise. */
+    runSettings?: Record<string, string>;
   } = {},
 ) {
-  const { check = passes, runnerBuilt = true, beforeTrustCheck } = options;
+  const { check = passes, runnerBuilt = true, beforeTrustCheck, trustedSettings } = options;
+  const { runSettings = trustedSettings } = options;
   const trust = cliTrustService(new MemoryTrustStore(), clock);
+  // The trust check reads the integration's settings from its connector file,
+  // as `trustContentInputOf` does for every command.
+  const connectorFile: Connector = {
+    version: 1,
+    id: "notes",
+    transport: {
+      integration: {
+        folder: "notes",
+        ...(trustedSettings === undefined ? {} : { settings: trustedSettings }),
+      },
+    },
+    tools: { approve: [] },
+  };
+  const loaded = {
+    files: [
+      { kind: "connector", path: "library/connectors/notes.connector.yaml", value: connectorFile },
+    ],
+  } as unknown as LoadedWorkspace;
   const subject = async () => ({
     location: root,
     connectors: [],
     commandPaths: new Map(),
     agents: [],
-    integrations: await workspaceIntegrations(root, root),
+    integrations: trustContentInputOf(loaded, await workspaceIntegrations(root, root)).integrations,
     providers: [],
   });
   const shown = await trust.check(await subject());
   if (shown.status === "refused") throw new Error("nothing to refuse");
   await trust.grant(await subject(), shown.fingerprint, "cli");
 
-  const seen = { starts: 0, stops: 0, entries: [] as string[], checks: 0 };
+  const seen = {
+    starts: 0,
+    stops: 0,
+    entries: [] as string[],
+    checks: 0,
+    settings: [] as Readonly<Record<string, unknown>>[],
+  };
   const machine: LocalIntegrationMachine = {
     workspace: new FileSystemFolderReader(root, root),
     digest: webCryptoDigest,
@@ -137,6 +180,7 @@ async function setup(
     startRunner: async (start) => {
       seen.starts += 1;
       seen.entries.push(`${start.entry.file}#${start.entry.exportName}`);
+      seen.settings.push(start.settings);
       const runner: StartedRunner = {
         fence: { state: "fenced" },
         declaration: { name: "notes", version: "1.0.0", tools: [readNote] },
@@ -156,11 +200,12 @@ async function setup(
     trust: null,
   } as unknown as ConnectorFactoryContext;
   const factory = new IntegrationConnectorFactory(openLocalIntegration(machine));
-  const client = () =>
-    factory.create(
-      { id: "notes", transport: { kind: "integration", folder: "notes" }, secretEnv: {} },
-      context,
-    );
+  const transport: ConnectorTransport = {
+    kind: "integration",
+    folder: "notes",
+    ...(runSettings === undefined ? {} : { settings: runSettings }),
+  };
+  const client = () => factory.create({ id: "notes", transport, secretEnv: {} }, context);
   return { seen, client };
 }
 
@@ -214,6 +259,26 @@ verifies("cli.open-local-integration", () => {
       const { seen, client } = await setup({ check: onWindows });
       await expect(client().callTool("read-note", {})).rejects.toThrow(
         /Connector "notes" didn't start: the sandbox isn't available here \(windows\)/,
+      );
+      expect(seen.starts).toBe(0);
+    });
+
+    it("starts with the connector file's settings, so a { fromSetting } host reads its URL", async () => {
+      await put({ "integrations/notes/integration.yaml": fromSettingSheet });
+      const settings = { url: "http://192.168.1.20:3100" };
+      const { seen, client } = await setup({ trustedSettings: settings });
+      expect(await client().callTool("read-note", {})).toBe("answer from read-note");
+      expect(seen.settings).toEqual([settings]);
+    });
+
+    it("refuses when the connector file's URL changed since the workspace was trusted", async () => {
+      await put({ "integrations/notes/integration.yaml": fromSettingSheet });
+      const { seen, client } = await setup({
+        trustedSettings: { url: "http://192.168.1.20:3100" },
+        runSettings: { url: "http://192.168.1.99:3100" },
+      });
+      await expect(client().callTool("read-note", {})).rejects.toThrow(
+        /Connector "notes" didn't start: .*from its settings, changed since the workspace was trusted/,
       );
       expect(seen.starts).toBe(0);
     });
