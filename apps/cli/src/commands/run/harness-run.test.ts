@@ -9,7 +9,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { instructionTrustFolder } from "../../local-harness-host.ts";
-import { runCli } from "../../run-cli.ts";
+import { runCli, type Terminal } from "../../run-cli.ts";
 import { savedFile } from "../../test/acme-proposals.ts";
 import {
   type AcmeRuns,
@@ -54,6 +54,10 @@ let sandboxChecks: number;
 let placement: AgentPlacement;
 /** One setup per test, so a second run in it gets the next run id, not the first one's again. */
 let setup: RunSetup;
+/** The terminal `halonic run` asks in; none by default, as in CI. */
+let terminal: Terminal | undefined;
+/** What the terminal's questions wrote, the lines shown before them included. */
+let asked: string;
 
 beforeEach(async () => {
   writes = {};
@@ -63,6 +67,8 @@ beforeEach(async () => {
   sandboxChecks = 0;
   acmeRuns = await makeAcmeRuns("run-harness-on");
   setup = acmeRunsSetup(acmeRuns);
+  terminal = undefined;
+  asked = "";
   placement = new AgentPlacement({
     store: new FileAgentPlacementStore(placementFolder(profileFolder(acmeRuns.profile))),
     digest: webCryptoDigest,
@@ -212,7 +218,12 @@ async function runChange(...args: string[]): Promise<{ code: number; io: Capture
       placement,
     }),
   });
-  const code = await runCli(["run", "lab/change", ...args], io, [command]);
+  const code = await runCli(
+    ["run", "lab/change", ...args],
+    io,
+    [command],
+    terminal === undefined ? {} : { terminal },
+  );
   return { code, io };
 }
 
@@ -346,4 +357,66 @@ verifies("cli.run-failed-instructions", () => {
       expect(harnessStarts).toBe(1);
     },
   );
+});
+
+verifies("cli.run-instructions-prompt", () => {
+  /** A terminal on stdin where the user types `answers`. */
+  function terminalTyping(...answers: string[]): Terminal {
+    return {
+      env: { LANG: "en_US.UTF-8", NO_COLOR: "1" },
+      platform: "linux",
+      stdoutIsTerminal: true,
+      stderrIsTerminal: true,
+      questions: {
+        write: (text) => {
+          asked += text;
+        },
+        readLine: async () => answers.shift(),
+      },
+    };
+  }
+
+  it(
+    "asks at a terminal, and on yes trusts what the check saw and runs again",
+    slowTest,
+    async () => {
+      await trustWorkspace();
+      writes = { "change.txt": "The change.\n" };
+      terminal = terminalTyping("y");
+
+      const { code, io } = await runChange();
+
+      expect(code).toBe(exitCode.ok);
+      expect(harnessStarts).toBe(1);
+      expect(asked).toContain("Trust check for coder's instructions");
+      expect(asked).toMatch(/^ +Instructions +hubs\/lab\/agents\/coder\.agent\.yaml$/mu);
+      expect(asked).toContain("Trust coder's instructions on this computer?");
+      expect(io.stdout).toContain(
+        "✓ coder's instructions are trusted on this computer. Starting the run again.",
+      );
+      expect(io.stdout.at(-1)).toMatch(/^Run [0-9a-z]{6} proposes changes to 1 file\./u);
+    },
+  );
+
+  it("stays refused on no, with the lines that name the command", slowTest, async () => {
+    await trustWorkspace();
+    terminal = terminalTyping("n");
+
+    const { code, io } = await runChange();
+
+    expect(code).toBe(exitCode.failed);
+    expect(harnessStarts).toBe(0);
+    expect(io.stdout.join("\n")).toContain("halonic trust instructions coder");
+  });
+
+  it("asks nothing with --json, and stays refused", slowTest, async () => {
+    await trustWorkspace();
+    terminal = terminalTyping("y");
+
+    const { code } = await runChange("--json");
+
+    expect(code).toBe(exitCode.failed);
+    expect(asked).toBe("");
+    expect(harnessStarts).toBe(0);
+  });
 });

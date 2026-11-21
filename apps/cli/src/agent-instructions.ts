@@ -4,9 +4,10 @@ import { instructionFilesOf, pinInstructions } from "@halonicjs/adapter-harness-
 import type { InstructionPin } from "@halonicjs/ports";
 import { filesOf, type LoadedFileOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { OwnLineError } from "./command.ts";
+import { harnessNames } from "./messages/harness-names.ts";
 import { phrase } from "./messages/phrase.ts";
 import { trustInstructionsMessages } from "./messages/trust-instructions.ts";
-import type { InstructionSource } from "./output/instruction-trust-lines.ts";
+import type { InstructionSource, InstructionsAbout } from "./output/instruction-trust-lines.ts";
 import { printable } from "./output/printable.ts";
 import { skillFileOf } from "./skill-file.ts";
 
@@ -96,5 +97,14 @@ export function instructionSourcesOf(
       label: trustInstructionsMessages.skillRow(printable(skillId)).phrase,
       path: skillFileOf(workspace, agent.hub ?? "", skillId)?.path,
     };
+  };
+}
+
+/** What the trust lines say about `agent`: its harness's name and where each of its files is. */
+export function instructionsAbout(workspace: LoadedWorkspace, agent: AgentFile): InstructionsAbout {
+  const harness = agent.value.harness;
+  return {
+    harness: harness === undefined ? undefined : harnessNames.get(harness),
+    sourceOf: instructionSourcesOf(workspace, agent),
   };
 }

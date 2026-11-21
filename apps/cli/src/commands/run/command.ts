@@ -9,7 +9,8 @@ import { inputValueName, runMessages } from "../../messages/run.ts";
 import { nodeSandboxWorks } from "../../sandbox-works.ts";
 import { dirOption } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
-import { type RunSetup, runWorkflow } from "./run.ts";
+import { runWorkflow } from "./instructions-prompt.ts";
+import type { RunSetup } from "./run.ts";
 
 /**
  * This computer: its clock and time zone, its trust records, `PATH`, its
