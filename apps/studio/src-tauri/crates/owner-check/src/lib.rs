@@ -9,7 +9,7 @@
 //!   surprise never lets an answer through.
 //! - [`Decision`] and [`PromptWords`]: the prompt says only fixed words the
 //!   shell picks from the decision. No page and no host text goes into it.
-//! - [`FakeOwnerCheck`]: for tests.
+//! - `FakeOwnerCheck`: for tests only, behind the `fake` feature.
 //!
 //! The shell's Android adapter (`owner_check`, `OwnerCheckPlugin.kt`) puts
 //! Android's own `BiometricPrompt` behind the port, with strong (Class 3)
@@ -17,6 +17,7 @@
 
 mod answers;
 mod check;
+#[cfg(any(test, feature = "fake"))]
 mod fake;
 mod prompt;
 
@@ -27,5 +28,6 @@ mod fake_tests;
 
 pub use answers::{Availability, Confirmation};
 pub use check::OwnerCheck;
+#[cfg(any(test, feature = "fake"))]
 pub use fake::FakeOwnerCheck;
 pub use prompt::{Decision, PromptWords};

@@ -31,3 +31,20 @@ fn no_page_may_call_the_owner_check() {
         }
     }
 }
+
+#[test]
+fn no_capability_names_the_owner_check() {
+    // The refusal above holds only while no capability grants the plugin.
+    // Reads every capability file, so one added later is checked too.
+    let folder = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("capabilities");
+    let files = std::fs::read_dir(&folder).expect("the capabilities folder is readable");
+    for file in files {
+        let path = file.expect("a capability file is listed").path();
+        let text = std::fs::read_to_string(&path).expect("a capability file is readable");
+        assert!(
+            !text.contains("owner-check"),
+            "{} must not name the owner check",
+            path.display()
+        );
+    }
+}

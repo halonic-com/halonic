@@ -10,10 +10,16 @@
 //! from [`PromptWords`]. A plugin call that fails reads as unavailable, so
 //! an error never lets an answer through.
 
+use std::time::Duration;
+
 use halonic_owner_check::{Availability, Confirmation, Decision, OwnerCheck, PromptWords};
 use serde::{Deserialize, Serialize};
 use tauri::plugin::{PluginHandle, TauriPlugin};
 use tauri::{Manager, Runtime};
+
+/// How long one prompt may stay open before it reads as cancelled. Long
+/// enough to read it and try a finger twice; the person can ask again.
+const CONFIRM_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// Android's BiometricPrompt, as an [`OwnerCheck`].
 pub struct AndroidOwnerCheck<R: Runtime>(PluginHandle<R>);
@@ -54,13 +60,15 @@ impl<R: Runtime> OwnerCheck for AndroidOwnerCheck<R> {
             description: words.description,
             cancel: words.cancel,
         };
-        match self
+        let asking = self
             .0
-            .run_mobile_plugin_async::<Answer>("confirmOwner", request)
-            .await
-        {
-            Ok(answer) => Confirmation::from_plugin(&answer.answer),
-            Err(_) => Confirmation::Unavailable(Availability::Unavailable),
+            .run_mobile_plugin_async::<Answer>("confirmOwner", request);
+        // If the Activity goes while the prompt is open, nothing answers;
+        // without a limit this call would wait for ever.
+        match tokio::time::timeout(CONFIRM_TIMEOUT, asking).await {
+            Ok(Ok(answer)) => Confirmation::from_plugin(&answer.answer),
+            Ok(Err(_)) => Confirmation::Unavailable(Availability::Unavailable),
+            Err(_elapsed) => Confirmation::Cancelled,
         }
     }
 }

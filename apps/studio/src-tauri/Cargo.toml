@@ -115,6 +115,9 @@ halonic-device-keys = { path = "crates/device-keys" }
 # decision 4b): Android's own BiometricPrompt, strong biometrics only,
 # through the shell's `owner_check` module. No plugin from outside.
 halonic-owner-check = { path = "crates/owner-check" }
+# The owner check's time limit. Tauri's async runtime is already tokio, so
+# this adds no crate to the build, only the timer feature.
+tokio = { version = "1", default-features = false, features = ["time"] }
 
 # Tauri's mock runtime, for the test that every command is refused from the
 # served page.

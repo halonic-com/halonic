@@ -12,3 +12,8 @@ workspace = true
 
 # No dependencies: the prompt itself is Android's own BiometricPrompt,
 # reached through the shell's `owner_check` module and OwnerCheckPlugin.kt.
+
+[features]
+# FakeOwnerCheck, for other crates' tests (their dev-dependencies turn it
+# on). Off in the app, so no build that ships can answer with a fake.
+fake = []

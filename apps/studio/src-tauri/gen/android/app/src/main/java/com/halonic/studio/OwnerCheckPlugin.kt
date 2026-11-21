@@ -7,6 +7,7 @@ import android.hardware.biometrics.BiometricPrompt
 import android.os.Build
 import android.os.CancellationSignal
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
 import app.tauri.annotation.Command
 import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
@@ -64,6 +65,27 @@ class OwnerCheckPlugin(private val host: Activity) : Plugin(host) {
       return
     }
     prompt(invoke, title, description, cancel)
+  }
+
+  // A prompt left open when the app leaves the screen or its Activity goes
+  // would otherwise answer every later call `busy`. Not on pause: on some
+  // phones the prompt itself pauses the Activity.
+  override fun onStop(activity: AppCompatActivity) {
+    closePrompt()
+  }
+
+  override fun onDestroy(activity: AppCompatActivity) {
+    closePrompt()
+  }
+
+  /**
+   * Cancels the open prompt, if any. Its callback then answers `cancelled`,
+   * unless the Activity is already gone; the shell's time limit covers that.
+   */
+  private fun closePrompt() {
+    val signal = open ?: return
+    open = null
+    signal.cancel()
   }
 
   @RequiresApi(ANDROID_11)
