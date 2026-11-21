@@ -45,6 +45,43 @@ verifies("remote.phone-session-memory", () => {
       expect(memory.lastSeq).toBe(0);
     });
 
+    it("ignores the old watch's events after a gap until the new watch is confirmed", () => {
+      const memory = memoryWith(1, 3);
+      const requested = event(4, { type: "approval-requested", approval: approval("a-1") });
+      memory.add(requested);
+      expect(memory.add(said(6))).toBe("gap");
+      expect(memory.add(said(7))).toBe("ignored");
+      expect(memory.add(said(8))).toBe("ignored");
+
+      memory.watchConfirmed();
+      for (const replayed of [said(1), said(2), said(3), requested]) {
+        expect(memory.add(replayed)).toBe("held");
+      }
+      for (let seq = 5; seq <= 8; seq += 1) expect(memory.add(said(seq))).toBe("held");
+
+      expect(memory.events.map((held) => held.seq)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+      expect(memory.openApprovals.map((open) => open.approval.id)).toEqual(["a-1"]);
+    });
+
+    it("ignores events after history-gone until the new watch is confirmed", () => {
+      const memory = memoryWith(40, 42);
+      memory.startOver();
+      expect(memory.lastSeq).toBe(0);
+      expect(memory.add(said(43))).toBe("ignored");
+      memory.watchConfirmed();
+      expect(memory.add(said(10))).toBe("held");
+      expect(memory.events.map((held) => held.seq)).toEqual([10]);
+    });
+
+    it("hands out the same events array until the events change", () => {
+      const memory = memoryWith(1, 2);
+      const first = memory.events;
+      expect(memory.events).toBe(first);
+      memory.add(said(3));
+      expect(memory.events).not.toBe(first);
+      expect(memory.events.map((held) => held.seq)).toEqual([1, 2, 3]);
+    });
+
     it("ignores an event it already has", () => {
       const memory = memoryWith(1, 3);
       expect(memory.add(said(2, "again"))).toBe("repeat");
