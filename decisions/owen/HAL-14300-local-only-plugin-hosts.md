@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-14300 (C42 of HAL-14271); Liam decided it is a security change, and Julian reviews and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:QRhg427isfGY3H66jXvrJdO8PLWmiQA8YGgHULO8UnXfqur3zSKl/IwFsXNuFvwI1Paz2fW+j+hr53zyHDvBDA==
 
 ## What changes
 
