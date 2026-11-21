@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-15332 (finding 3 of Iris's flow check C561 on HAL-15313); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4OKwyV7w5OqugHd4O+f3rpn+D/WYeHfPNrbXoh28AEnzqttaXOOyCwkwpkqIutE45zXzARSk7+w7j1dM1MMnBw==
 
 With a Claude Code agent whose model alias points at an `openai-compatible` provider, `halonic doctor` asked for a Claude Code sign-in and warned that the model searches the web, while `halonic run` stops on the refusal that Claude Code can't call that provider. Both lines pointed the wrong way.
 
