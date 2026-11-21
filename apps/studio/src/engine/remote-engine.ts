@@ -11,7 +11,7 @@ import {
   type TauriIpc,
   tauriEngineFetch,
 } from "@halonicjs/studio-services";
-import { EngineNotAnswering } from "@halonicjs/studio-shell";
+import { EngineNotAnswering, WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import type { RoutineRunStart } from "./engine-service.ts";
 import type { PageRuns } from "./page-refusal.ts";
 
@@ -191,12 +191,18 @@ async function asStudioError<T>(promise: Promise<T>): Promise<T> {
 
 /**
  * What the hosts word by kind, as a `KindedError`: the engine's refusal with its own fixed
- * sentence, and an engine the shell no longer reaches as `EngineNotAnswering`. Anything else,
- * such as `RunTargetNotFound`, stays as it is.
+ * sentence, its refusal of a workspace that isn't trusted as `WorkspaceUntrusted`, and an engine
+ * the shell no longer reaches as `EngineNotAnswering`. Anything else, such as `RunTargetNotFound`,
+ * stays as it is.
  */
 function studioErrorOf(error: unknown): unknown {
   if (error instanceof EngineCallRefused && ["engine_unavailable", "io"].includes(error.kind)) {
     return Object.assign(new EngineNotAnswering(), { cause: error });
+  }
+  // The engine's refusal of a workspace that isn't trusted, so a page offers Review for it as for
+  // the page's own engine; any other 403 stays a plain `denied`.
+  if (error instanceof RemoteHostError && error.code === "workspace_not_trusted") {
+    return new WorkspaceUntrusted(error.message, { cause: error });
   }
   if (error instanceof RemoteHostError) {
     return new KindedError(kindsByStatus[error.status] ?? "unavailable", error.message, {

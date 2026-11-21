@@ -7,7 +7,7 @@ import {
   CommandBox,
   usePresentation,
 } from "@halonicjs/studio-kit";
-import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
+import { type EngineWords, engineWords, isUntrustedRefusal } from "@halonicjs/studio-shell";
 import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnswerElsewhere } from "../answer-elsewhere.ts";
 import { wasDecidedElsewhere } from "../decide.ts";
@@ -242,20 +242,35 @@ export function manualAnswerOf(error: unknown): ManualAnswer | null {
 
 /**
  * The sentence after "Couldn't record your decision." for a failure **Try again** may fix: an
- * `unavailable` error without a command to run, such as another engine holding the workspace.
+ * `unavailable` error without a command to run, such as another engine holding the workspace, or
+ * a `denied` one that isn't about trust, such as a folder that isn't open or a served computer's
+ * 403.
  */
 export function failureDetailOf(error: unknown): string | null {
-  if (errorKindOf(error) !== "unavailable" || manualAnswerOf(error) !== null) return null;
+  if (!saysWhyItFailed(error)) return null;
   const { message } = error as { message: string };
   return message === "" ? null : message;
 }
 
+/** Whether a failure's message is the sentence {@link failureDetailOf} shows. */
+function saysWhyItFailed(error: unknown): boolean {
+  switch (errorKindOf(error)) {
+    case "unavailable":
+      return manualAnswerOf(error) === null;
+    case "denied":
+      return !isUntrustedRefusal(error);
+    default:
+      return false;
+  }
+}
+
 /**
- * True for an answer refused because the workspace isn't trusted: the window's engine refuses
- * every answer of such a workspace as `denied`, the same way each time, so no retry can help.
+ * True for an answer refused because the workspace isn't trusted: the engine's
+ * `workspace.untrusted` refusal, which it gives every answer of such a workspace the same way each
+ * time, so no retry can help. Another `denied` is a failure with its own sentence.
  */
 export function wasRefusedUntrusted(error: unknown): boolean {
-  return errorKindOf(error) === "denied";
+  return isUntrustedRefusal(error);
 }
 
 /** What the bar shows for an answer that came too late: its sentence, and **Open run** when it can. */
