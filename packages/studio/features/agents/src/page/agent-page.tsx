@@ -50,6 +50,7 @@ import { pageWords } from "./page-words.ts";
 import { RunsView } from "./runs-view.tsx";
 import { useAgentCards } from "./use-agent-cards.ts";
 import { useLoad } from "./use-load.ts";
+import { focusAfterAdd, focusedIn, mapAdds, pickedPageTab } from "./view-opening.ts";
 
 /**
  * The Library's commands that open it on a tab (`library.skill` and so on); the Agents feature
@@ -435,53 +436,6 @@ function useTakenNames(host: AgentsHost, { hubId, id }: AgentRef): readonly stri
     return host.subscribe(() => void read());
   }, [host, hubId, id]);
   return takenNames;
-}
-
-/**
- * What the agent map's add buttons do: each opens Configuration on its page, Add subagent with its
- * dialog open. Add trigger is there only once a feature adds the Triggers section.
- */
-function mapAdds(
-  sections: readonly ItemPageSectionListing[] | undefined,
-  Sections: ComponentType<SectionsProps> | undefined,
-  openConfiguration: (start: ConfigurationStart) => void,
-) {
-  const triggers =
-    Sections === undefined ? undefined : sections?.find((each) => each.id === "triggers");
-  return {
-    addTrigger: triggers && (() => openConfiguration({ page: `section:${triggers.id}` })),
-    addTool: () => openConfiguration({ page: "tools" }),
-    addSubagent: () => openConfiguration({ page: "subagents", adding: true }),
-  };
-}
-
-/** The element the view focused itself as it was drawn, such as the model picker; else none. */
-function focusedIn(box: HTMLElement | null): HTMLElement | null {
-  const focused = document.activeElement;
-  return box !== null && focused instanceof HTMLElement && box.contains(focused) ? focused : null;
-}
-
-/**
- * Where focus goes after an add button on the map: the Add subagent dialog's field when the dialog
- * opened, else the page Configuration opened on.
- */
-function focusAfterAdd(box: HTMLElement | null): HTMLElement | null {
-  const focused = document.activeElement;
-  if (focused instanceof HTMLElement && focused.closest("[role=dialog]") !== null) return focused;
-  return pickedPageTab(box);
-}
-
-/**
- * Configuration's picked page in its page list, a control that shows where the person landed; the
- * Select stands for the list in a narrow panel.
- */
-function pickedPageTab(box: HTMLElement | null): HTMLElement | null {
-  const list = `[aria-label="${configurationWords.pages}"]`;
-  return (
-    box?.querySelector<HTMLElement>(`${list}[role=tablist] [aria-selected="true"]`) ??
-    box?.querySelector<HTMLElement>(`${list}:not([role=tablist])`) ??
-    null
-  );
 }
 
 /** The hub's name for the breadcrumb, else its id while the hubs aren't read. */
