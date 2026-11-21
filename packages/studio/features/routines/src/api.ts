@@ -146,7 +146,11 @@ export interface RoutineView extends RoutineRef {
   readonly liveSince?: string | undefined;
   /** What the live version holds; absent when the routine was never live or the host can't say. */
   readonly live?: RoutineLiveValues | undefined;
-  /** Mistakes the checks found, such as a bad cron or an unknown time zone, in the engine's words. */
+  /**
+   * The errors the workspace's checks found in its file, such as a bad cron, as
+   * {@link RoutineListing.problems} has them, so the Starts card says why it can't start as its row
+   * does (HAL-15300).
+   */
   readonly problems: readonly string[];
   /**
    * True when its input lacks a field its workflow's first step reads, so the engine refuses to

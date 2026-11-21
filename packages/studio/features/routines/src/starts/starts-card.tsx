@@ -9,7 +9,7 @@ import {
   type RoutineTrigger,
   type RoutineView,
 } from "../api.ts";
-import { cantStartWords } from "../cant-start.ts";
+import { cantStartReason, pageStartFacts } from "../cant-start.ts";
 import { failureReason } from "../page/page-words.ts";
 import { startsWords as words } from "./starts-words.ts";
 import { useTargets } from "./use-targets.ts";
@@ -120,20 +120,20 @@ export function StartsCard({ host, routine }: StartsCardProps) {
   );
 }
 
-/** The one line about a target that can't be started; nothing for one that can. */
+/**
+ * The one line about a routine that can't start or a target that can't be started; nothing for one
+ * that can. Why it can't start is the sentence its list row gives: a workflow or agent that isn't
+ * in the workspace, or the first error in its file (HAL-15082, HAL-15300).
+ */
 function TargetState({ routine, name }: { readonly routine: RoutineView; readonly name: string }) {
+  const cantStart = cantStartReason(pageStartFacts(routine));
+  if (cantStart !== undefined) return <p className="text-small text-danger">{cantStart}</p>;
   switch (routine.targetState) {
-    case "not-found":
-      // The sentence the list row and Run now's toast give too (HAL-15082).
-      return (
-        <p className="text-small text-danger">
-          {cantStartWords.targetMissing(routine.target.id, routine.target.kind)}
-        </p>
-      );
     case "never-live":
       return <p className="text-small text-fg-muted">{words.neverLive(name)}</p>;
     case "in-trash":
       return <p className="text-small text-fg-muted">{words.inTrash(name)}</p>;
+    case "not-found":
     case "ready":
       return null;
   }
