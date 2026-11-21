@@ -2,15 +2,26 @@
 
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useCallback, useSyncExternalStore } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { currentLocation, type TabLocation, TabSet } from "../tabs/tab-set.ts";
+import { installFakePopover } from "../test-support/fake-popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { HistoryButtons } from "./history-buttons.tsx";
 
 const workflows: TabLocation = { key: "workflows", title: "Workflows" };
 const reply: TabLocation = { key: "workflow/acme/reply", title: "Support reply", kind: "workflow" };
 
-afterEach(unmountAll);
+// Focusing an unavailable Back or Forward opens the kit Tooltip with its reason, a `popover`.
+let uninstallPopover = (): void => {};
+
+beforeEach(() => {
+  uninstallPopover = installFakePopover();
+});
+
+afterEach(() => {
+  unmountAll();
+  uninstallPopover();
+});
 
 /** A page as the frame shows it: a `main` whose `h1` is the active tab's place. */
 function Page({ tabs }: { readonly tabs: TabSet }) {
