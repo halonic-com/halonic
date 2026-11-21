@@ -2,6 +2,7 @@
 
 - Approval: HAL-13771, where the team decided the fallback state of the approved request sheet (HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:IICK2fiF8piur3p9f3mevUsX1kelNgM7AjJz+QSI9+syNF9ue8XIJmSUrbLXhuMZUm0Dhu+e/V9usgANivNTDw==
 
 ## What changes
 
