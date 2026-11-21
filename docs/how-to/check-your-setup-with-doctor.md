@@ -129,6 +129,19 @@ With `--json`, the check is `secrets`, with `missing` and `unreadable`: each a
 list of the secrets and what uses them, such as
 `{"check": "secrets", "status": "failed", "missing": [{"secret": "anthropic-key", "usedBy": [{"kind": "provider", "id": "claude"}]}], "unreadable": []}`.
 
+#### Studio keeps its own secrets
+
+Studio on your desktop and the `halonic` commands keep secrets in two
+different places, and neither reads the other's. Studio keeps a connector's
+secret in your system keychain: set it on the connector's page in the
+Library, under **Secrets**. `halonic doctor`, `halonic run` and the other
+commands read the secrets file in your profile folder
+(`secrets/secrets.json`): set it there with `halonic secret set <name>`. So a
+secret you set with `halonic secret set` still shows **Not set** in Studio,
+and one you set in Studio still shows ✕ "isn't set" here. If you use both,
+set it in both. A model provider's API key works the same way: Studio's Models
+page keeps it in the keychain.
+
 ### Sandbox
 
 **Checks:** whether the sandbox that agents run in can start on this computer.
