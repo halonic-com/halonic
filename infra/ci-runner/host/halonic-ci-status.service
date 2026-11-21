@@ -1,0 +1,7 @@
+[Unit]
+Description=Read-only CI status feed (/srv/ci/status/ci-status.json)
+After=libvirtd.service
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/halonic-ci-status
+Nice=10
