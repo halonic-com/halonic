@@ -6,6 +6,7 @@ import {
   CHECKING_USED_BY,
   goesAwayLine,
   type PluginActions,
+  type PluginSignOut,
   type PluginUse,
   REMOVE_PLUGIN,
   REMOVING,
@@ -22,8 +23,8 @@ export interface RemovePluginDialogProps {
   readonly plugin: InstalledPlugin;
   readonly remove: PluginActions["remove"];
   readonly usedBy: PluginActions["usedBy"];
-  /** After it's removed: the page says so in a toast. */
-  readonly onRemoved: () => void;
+  /** After it's removed, with what it signed out: the page says so in a toast. */
+  readonly onRemoved: (signOut: PluginSignOut) => void;
   readonly onCancel: () => void;
 }
 
@@ -73,7 +74,7 @@ export function RemovePluginDialog({
     try {
       const outcome = await remove(plugin.plugin);
       if (outcome.kind === "removed") {
-        onRemoved();
+        onRemoved(outcome);
         return;
       }
       setFailure(removeFailedLine(plugin.name, outcome.secret, outcome.reason));

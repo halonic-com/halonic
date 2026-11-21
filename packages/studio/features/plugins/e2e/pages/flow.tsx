@@ -53,10 +53,10 @@ const actions: PluginActions = {
         one.plugin === plugin ? { ...weather("on"), plugin: one.plugin } : one,
       ),
     ),
-  revoke: async () => {},
+  revoke: async () => ({ signInsNotConfirmed: [] }),
   remove: async (plugin) => {
     change(installed.filter((one) => one.plugin !== plugin));
-    return { kind: "removed" };
+    return { kind: "removed", signInsNotConfirmed: [] };
   },
   checkForUpdate: async () => ({ kind: "up-to-date" }),
   applyUpdate: async () => {},

@@ -201,7 +201,7 @@ export function PluginsList({
     { readonly id: string; readonly target: ContextMenuTarget } | undefined
   >(undefined);
   const [removing, setRemoving] = useState<InstalledPlugin | undefined>(undefined);
-  const { run, toastRemoved } = usePageActions();
+  const { run, toastRemoved, toastSignedOut } = usePageActions();
   const installed = plugins.find((plugin) => plugin.plugin === menu?.id);
   const builtInMenu = builtIn.find((plugin) => `${BUILT_IN_PREFIX}${plugin.id}` === menu?.id);
 
@@ -212,7 +212,10 @@ export function PluginsList({
           open: () => onOpen(installed.plugin),
           openInNewTab: () => onOpenInNewTab(installed.plugin),
           openFolder: () => void run("openFolder", () => actions.openFolder(installed.plugin)),
-          revoke: () => void run("revoke", () => actions.revoke(installed.plugin)),
+          revoke: () =>
+            void run("revoke", async () =>
+              toastSignedOut(installed.name, await actions.revoke(installed.plugin)),
+            ),
           remove: () => setRemoving(installed),
         });
 
@@ -278,9 +281,9 @@ export function PluginsList({
           plugin={removing}
           remove={actions.remove}
           usedBy={actions.usedBy}
-          onRemoved={() => {
+          onRemoved={(signOut) => {
             setRemoving(undefined);
-            toastRemoved(removing.name);
+            toastRemoved(removing.name, signOut);
           }}
           onCancel={() => setRemoving(undefined)}
         />

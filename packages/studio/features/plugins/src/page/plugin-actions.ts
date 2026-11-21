@@ -9,9 +9,19 @@ import { reasonAfterColon } from "@halonicjs/studio-shell";
 import type { ProgramsRun } from "../trust/trust-text.ts";
 import type { PluginUnfencedRuns } from "../trust/unfenced-status.ts";
 
+/**
+ * What **Remove trust** or **Remove plugin** signed out of the plugin's sign-ins (core's
+ * `app.plugin-sign-out`): the sign-ins whose provider didn't confirm the revoke, or that had no
+ * address to revoke at, so their token may still work there until it expires. Empty when there was
+ * nothing to say.
+ */
+export interface PluginSignOut {
+  readonly signInsNotConfirmed: readonly string[];
+}
+
 /** How removing a plugin ended: core's `PluginService.remove`. */
 export type PluginRemoveOutcome =
-  | { readonly kind: "removed" }
+  | ({ readonly kind: "removed" } & PluginSignOut)
   /** One of its secrets couldn't be deleted; its folder and settings are kept, so removing again finishes. */
   | { readonly kind: "secret"; readonly secret: string; readonly reason: string };
 
@@ -51,8 +61,11 @@ export interface PluginUpdateApproval {
 export interface PluginActions {
   /** **Trust** in the trust check from Review: core's `PluginService.trust`. The feed then says it's on. */
   readonly trust: (plugin: string) => Promise<void>;
-  /** **Remove trust**: core's `PluginService.revoke`. The feed then says it isn't trusted. */
-  readonly revoke: (plugin: string) => Promise<void>;
+  /**
+   * **Remove trust**: core's `PluginService.revoke`, which signs the plugin's sign-ins out first.
+   * The feed then says it isn't trusted.
+   */
+  readonly revoke: (plugin: string) => Promise<PluginSignOut>;
   /** **Remove plugin**: core's `PluginService.remove`, with the keychain deleting its secrets. */
   readonly remove: (plugin: string) => Promise<PluginRemoveOutcome>;
   /** The connectors, in any workspace on this computer, whose transport is this plugin. */
