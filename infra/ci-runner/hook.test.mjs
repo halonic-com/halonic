@@ -240,3 +240,29 @@ test("each job container is capped and unprivileged (C5)", () => {
   assert.match(slot, /^JOB_WORK=\/home\/runner\/actions-runner\/_work /m);
   assert.ok(slot.includes('-v "$WORK:$JOB_WORK"'));
 });
+
+test("the slot script fails closed on the App key and userns-remap, and caps the shared caches", () => {
+  const slot = read("vm/halonic-runner-slot.sh");
+  assert.ok(slot.includes(`[ "$(stat -c '%u %a' "$KEY")" = "0 400" ] || fail`));
+  assert.ok(slot.includes('[ ! -L "$KEY" ] || fail'));
+  assert.ok(slot.includes('[[ "$BASE" =~ ^[1-9][0-9]*$ ]] || fail'));
+  assert.ok(slot.includes('[ "$TOKEN" != null ] || fail'));
+  assert.ok(slot.includes("limit -p bhard=$TRUSTED_QUOTA $TRUSTED_PROJ"));
+});
+
+test("the slot script reads the job's event file inside the container, never as root on the VM", () => {
+  const slot = read("vm/halonic-runner-slot.sh");
+  assert.ok(
+    slot.includes(
+      'docker exec "hci-$SLOT" head -c 1048576 "$JOB_WORK/_temp/_github_workflow/event.json"',
+    ),
+  );
+  assert.doesNotMatch(slot, /\$WORK\/_temp/);
+});
+
+test("stopping the firewall unit leaves the CI VM's rules in place", () => {
+  const unit = read("host/halonic-ci-nft.service");
+  assert.doesNotMatch(unit, /^ExecStop/m);
+  assert.match(unit, /^RequiredBy=libvirtd\.service$/m);
+  assert.match(read("host/halonic-ci.nft"), /^delete table inet halonic_ci$/m);
+});

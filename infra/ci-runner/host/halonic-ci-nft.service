@@ -10,7 +10,10 @@ Wants=network-pre.target
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/sbin/nft -f /etc/halonic-ci/halonic-ci.nft
-ExecStop=/usr/sbin/nft delete table inet halonic_ci
+ExecReload=/usr/sbin/nft -f /etc/halonic-ci/halonic-ci.nft
+# No ExecStop: stopping libvirtd doesn't stop the running VM, so the rules must stay. The file
+# swaps the table atomically (its own `delete table`), and a load that fails keeps the old one.
+# Remove the rules by hand (nft delete table inet halonic_ci) only with the VM shut down.
 
 [Install]
 WantedBy=multi-user.target
