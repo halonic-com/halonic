@@ -5,7 +5,7 @@
 
 ## What changes
 
-- `tooling/check/process-starters.json` gets an entry for `apps/cli/src/deploy-target-loader.ts`. Its one `import()` takes a computed name, which the `process-starts` check refuses without an entry.
+- `tooling/check/process-starters.json` gets an entry (merged first in halonic#4595, because CI checks against the base's list) for `apps/cli/src/deploy-target-loader.ts`. Its one `import()` takes a computed name, which the `process-starts` check refuses without an entry.
 - The name is always `@halonicjs/target-<host>-deploy`, and the loader refuses any host that isn't one lowercase word before it imports anything. So the name is a bare package name, never a path, and it can't reach a file under a skill's `scripts/` folder.
 
 ## Why
@@ -15,3 +15,7 @@ The CLI may not list or import a target package (`check.cli-never-uses-deploy-ta
 ## Tests
 
 `apps/cli/src/deploy-target-loader.starts.test.ts` points the loader at a skill's script as a path, as a `../` path and through a host with a slash, and checks that each is refused, nothing is imported and the script never runs. `deploy-target-loader.test.ts` covers the load, the package that isn't installed, and a package that's broken or doesn't fit the port.
+
+## Covers
+
+- tooling/check/
