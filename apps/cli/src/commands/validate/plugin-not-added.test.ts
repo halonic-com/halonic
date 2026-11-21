@@ -1,6 +1,6 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { pluginsFolder, profileFolder } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -49,7 +49,7 @@ verifies("cli.commands.validate.plugin-not-added", () => {
     const { code, io } = await validateIn(workspace);
 
     expect(code).toBe(exitCode.ok);
-    expect(io.stdout).toContain("library/connectors/orders.connector.yaml");
+    expect(io.stdout).toContain(`library${sep}connectors${sep}orders.connector.yaml`);
     expect(io.stdout.join("\n")).toContain(`! ${notAdded}  (plugin-not-added)`);
   });
 
