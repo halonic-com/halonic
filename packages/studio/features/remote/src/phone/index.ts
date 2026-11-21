@@ -22,3 +22,14 @@ export {
   phoneStatusLabel,
   RECONNECTING_QUIET_MS,
 } from "./phone-status.ts";
+export {
+  type PhoneRemote,
+  RECONNECT_TO_ANSWER,
+  type RemoteApproval,
+  type RemoteEvent,
+  type RemoteNotSentReason,
+  type RemoteRefusal,
+  type RemoteSendOutcome,
+  type RemoteSession,
+  type RemoteView,
+} from "./remote-view.ts";
