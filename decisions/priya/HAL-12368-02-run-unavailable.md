@@ -3,6 +3,7 @@
 - Task: HAL-12368
 - Approval: the team's call on HAL-12368 (small detail of an approved screen, HAL-2282), from Sofia's UX check on HAL-12363 (L4, L5 and rule N5) and her note on HAL-12368 from the UX check on HAL-12679 (L4 takes Elena's Harness page step); Liam reviews and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WLnXUNDog6rrUVReMJelGgxDI/gyooRDOLOjGwK5N1iNNyMiA3gBAHnEpZd2kGgaHzKlOOLILHVUlSd1KTisBw==
 
 ## What changes
 
