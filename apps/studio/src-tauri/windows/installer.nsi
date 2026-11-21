@@ -1775,7 +1775,9 @@ Function un.PageConfirmLeave
 FunctionEnd
 
 ; Removes the agent sandbox (flow 2.7, CHECK I9), and sets $SandboxOutcome to
-; "removed", "none" (nothing was set up, nothing asked), "refused", "failed"
+; "removed", "removed_kept" (removed, but the access it kept on the user's
+; folders goes at Halonic's next start), "none" (nothing was set up, nothing
+; asked), "refused", "failed"
 ; (with $SandboxReason) or "skipped" (a silent uninstall without administrator
 ; rights, which can't ask).
 Function un.RemoveSandbox
@@ -1797,6 +1799,15 @@ Function un.RemoveSandbox
   DetailPrint "   If it was set up, Windows asks for administrator rights."
   Call un.ProfileFolder
   Pop $1
+  ; A removal with administrator rights leaves the access the sandbox kept on
+  ; the user's folders, and a mark in the profile: the agent host takes that
+  ; access back the next time it starts as the user (HAL-5404 S2). A mark
+  ; that was there before may be from an earlier such removal, so it counts
+  ; only when this one ran with administrator rights too.
+  StrCpy $3 1
+  ${If} ${FileExists} "$1\agent-host\forget-pending"
+    System::Call 'shell32::IsUserAnAdmin() i .r3'
+  ${EndIf}
   nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\sandbox-remove.ps1" -HostExe "$INSTDIR\halonic-agent-host.exe" -ProfileFolder "$1"'
   Pop $2
   Pop $SandboxReason
@@ -1806,6 +1817,11 @@ Function un.RemoveSandbox
   ${If} $2 == "0"
     StrCpy $SandboxOutcome "removed"
     DetailPrint "✓ Removed the agent sandbox"
+    ${If} $3 <> 0
+    ${AndIf} ${FileExists} "$1\agent-host\forget-pending"
+      StrCpy $SandboxOutcome "removed_kept"
+      DetailPrint "   Its access to your project folders is removed the next time you start ${PRODUCTNAME}."
+    ${EndIf}
   ${ElseIf} $2 == "20"
     StrCpy $SandboxOutcome "none"
   ${ElseIf} $2 == "10"
@@ -1833,8 +1849,30 @@ Function un.PageDone
   Pop $0
 
   ${If} $SandboxOutcome == "removed"
+  ${OrIf} $SandboxOutcome == "removed_kept"
     ${NSD_CreateLabel} 0 0 100% 10u "✓ The agent sandbox is removed."
     Pop $0
+    ${If} $SandboxOutcome == "removed_kept"
+      ; Lined up under line 1's text, not its ✓: measured in pixels with the
+      ; label's own font, so it holds at any display scaling (HAL-15004).
+      SendMessage $0 ${WM_GETFONT} 0 0 $1
+      System::Call 'user32::GetDC(p r0) p .r2'
+      System::Call 'gdi32::SelectObject(p r2, p r1) p .r1'
+      System::Call '*(i 0, i 0) p .r3'
+      System::Call 'gdi32::GetTextExtentPoint32W(p r2, w "✓ ", i 2, p r3)'
+      System::Call '*$3(i .r4)'
+      System::Free $3
+      System::Call 'gdi32::SelectObject(p r2, p r1)'
+      System::Call 'user32::ReleaseDC(p r0, p r2)'
+      System::Call '*(i 0, i 0, i 0, i 0) p .r3'
+      System::Call 'user32::GetClientRect(p r0, p r3)'
+      System::Call '*$3(i, i, i .r5)'
+      System::Free $3
+      IntOp $5 $5 - $4
+      ; Two lines high, so a wrap at a larger scaling isn't cut off.
+      ${NSD_CreateLabel} $4 12u $5 20u "Its access to your project folders is removed the next time you start ${PRODUCTNAME}."
+      Pop $0
+    ${EndIf}
   ${ElseIf} $SandboxOutcome == "refused"
   ${OrIf} $SandboxOutcome == "failed"
     ${NSD_CreateLabel} 0 0 100% 20u "! The agent sandbox's Windows account and firewall filters are still on this computer."

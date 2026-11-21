@@ -4,7 +4,9 @@
 #     the default button, and Enter cancels: nothing is removed;
 #   - with the box ticked, Uninstall removes Halonic, the agent sandbox, the
 #     trust records and the harness settings, and keeps the runs;
-#   - it ends on "Halonic is uninstalled", which says the sandbox is removed.
+#   - it ends on "Halonic is uninstalled", which says the sandbox is removed
+#     and, as this removal has administrator rights, when the access it kept
+#     on the user's folders goes.
 # The runner is an administrator, so the removal needs no prompt here; the
 # refused prompt needs a desktop Windows machine.
 param(
@@ -142,7 +144,19 @@ Save-Picture $h '11-uninstall-settings-ticked'
 Click ([U]::GetDlgItem($h, 1))
 Wait-Button $h '&Close' 300
 Save-Picture $h '12-uninstalled'
-Must-Find $h '✓ The agent sandbox is removed.' 'Static' | Out-Null
+$done = Must-Find $h '✓ The agent sandbox is removed.' 'Static'
+# The runner's uninstaller runs with administrator rights, so the removal left
+# the access the sandbox kept on the user's folders, and the mark that has the
+# agent host take it back at its next start (HAL-5404 S2): the page says when
+# it goes, lined up under the first line's text, past its ✓.
+if (-not (Test-Path (Join-Path $profileFolder 'agent-host\forget-pending'))) { throw 'The removal with administrator rights left no mark' }
+$kept = Must-Find $h 'Its access to your project folders is removed the next time you start Halonic.' 'Static'
+$first = New-Object U+RECT
+$second = New-Object U+RECT
+[U]::GetWindowRect($done, [ref]$first) | Out-Null
+[U]::GetWindowRect($kept, [ref]$second) | Out-Null
+if ($second.L -le $first.L) { throw "The second line starts at $($second.L), not past the first line's ✓ at $($first.L)" }
+if ($second.R -gt $first.R) { throw "The second line ends at $($second.R), past the page's edge at $($first.R)" }
 Click ([U]::GetDlgItem($h, 1))
 Wait-Closed $h 15 'Close'
 
@@ -152,4 +166,4 @@ if (Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic
 if (Test-Path (Join-Path $profileFolder 'trust')) { throw 'The trust records are still there' }
 if (Test-Path (Join-Path $profileFolder 'workspaces\k1\harness-settings')) { throw 'The harness settings are still there' }
 if (-not (Test-Path (Join-Path $profileFolder 'workspaces\k1\runs\r1.log'))) { throw 'The settings box removed the runs' }
-Write-Output 'uninstall: Enter cancelled; Uninstall removed Halonic, the sandbox and the settings, and kept the runs'
+Write-Output 'uninstall: Enter cancelled; Uninstall removed Halonic, the sandbox and the settings, kept the runs, and said when the kept access goes'

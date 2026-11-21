@@ -116,7 +116,8 @@ Removing the sandbox (Settings › Agent sandbox, or the uninstaller) also takes
 back the write access srt kept on your folders between sessions. A removal that
 runs with administrator rights, such as a silent uninstall from an elevated
 prompt, can't do that part safely, so it leaves it for later: Halonic takes the
-access back the next time it starts as you, without administrator rights. If
+access back the next time it starts as you, without administrator rights. The
+uninstaller's last page says so after such an uninstall. If
 you never start Halonic again after such an uninstall, the access stays on your
 folders until you run `srt-win acl forget --all` yourself.
 
