@@ -1,9 +1,20 @@
 // How the local executor ends a run with `run.failed`: on the run's log as
 // it is when the write lands, so a write that got there first is kept.
 
-import { type RunEvent, type RunFailureReason, summarize } from "@halonicjs/events";
+import {
+  type RunEvent,
+  type RunFailureCause,
+  type RunFailureReason,
+  summarize,
+} from "@halonicjs/events";
 import type { RunStore } from "@halonicjs/ports";
 import { hasEnded } from "../kernel/run-state.ts";
+
+/** How a run failed: the log's error and, when the failure has one, its typed cause. */
+export interface Failure {
+  readonly error: string;
+  readonly cause?: RunFailureCause;
+}
 
 /**
  * Ends a run that hasn't ended with `run.failed`, reading again when another
@@ -15,7 +26,7 @@ import { hasEnded } from "../kernel/run-state.ts";
 export async function appendFailed(
   store: Pick<RunStore, "events" | "append">,
   runId: string,
-  error: string,
+  { error, cause }: Failure,
   reason: RunFailureReason,
   now: () => string,
 ): Promise<boolean> {
@@ -30,6 +41,7 @@ export async function appendFailed(
       state: summary.state,
       error,
       reason,
+      ...(cause === undefined ? {} : { cause }),
     };
     if ((await store.append(runId, summary.lastSeq, [failed])).ok) return true;
   }

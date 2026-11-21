@@ -1,4 +1,4 @@
-import type { RunSummary } from "@halonicjs/events";
+import { parentEndedCause, type RunSummary } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { RunWorkflow } from "../api.ts";
@@ -216,6 +216,31 @@ verifies("runs.run-page", () => {
       expect(page({ ...cancelled, state: null, statesVisited: [] }).banner).toEqual({
         kind: "note",
         text: "Support reply was cancelled before it started.",
+      });
+    });
+
+    it("says a child run was cancelled because its parent ended, and links to the parent", () => {
+      const olderLog = {
+        status: "failed" as const,
+        reason: "cancelled" as const,
+        parentRunId: "run_c_4f2a1b",
+      };
+      const withParent = { ...olderLog, cause: parentEndedCause };
+      const parent = { kind: "open-run", runId: "run_c_4f2a1b", label: "Open run 4f2a1b" };
+      expect(page({ ...withParent, state: "draft" }).banner).toEqual({
+        kind: "note",
+        text: "Support reply was cancelled because the run that started it ended. Nothing after the step Draft ran.",
+        parent,
+      });
+      expect(page({ ...withParent, state: null, statesVisited: [] }).banner).toEqual({
+        kind: "note",
+        text: "Support reply was cancelled because the run that started it ended.",
+        parent,
+      });
+      // An older log has no cause: the plain note, as before.
+      expect(page({ ...olderLog, state: "draft" }).banner).toEqual({
+        kind: "note",
+        text: "Support reply was cancelled in the step Draft. Nothing after it ran.",
       });
     });
   });

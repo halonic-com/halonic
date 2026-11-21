@@ -314,7 +314,13 @@ verifies("engine.local-child-runs", () => {
     const before = childRuns("approval");
     await before.executor.start(start);
     // The parent's end is written; the engine stops before it cancels the child.
-    await appendFailed(before.runs, "run_1", "Stop.", "error", () => "2026-11-11T12:00:00.000Z");
+    await appendFailed(
+      before.runs,
+      "run_1",
+      { error: "Stop." },
+      "error",
+      () => "2026-11-11T12:00:00.000Z",
+    );
 
     const setup = { workflow: onboard("approval"), workflows, blobs: before.blobs };
     await runsOn([], before.runs, setup).executor.start({ ...start, runId: "run_9" });

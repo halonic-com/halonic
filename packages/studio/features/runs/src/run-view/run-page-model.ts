@@ -4,7 +4,7 @@
 
 import { moneyAmount, runWait, shortRunId } from "@halonicjs/app";
 import type { WorkspaceModels } from "@halonicjs/app/run-failure";
-import type { PendingApproval, RunSummary } from "@halonicjs/events";
+import { endedWithParent, type PendingApproval, type RunSummary } from "@halonicjs/events";
 import { escapeHidden } from "@halonicjs/std";
 import type { ProviderKind, RunsSource, RunWorkflow, SourcedRun } from "../api.ts";
 import { currentStepName, type RunChip, runRow } from "../list/run-row.ts";
@@ -52,13 +52,21 @@ export type RunBanner =
        */
       readonly details?: string;
     }
-  /** A cancelled run's plain note, without a Callout's colour: nothing needs fixing. */
-  | { readonly kind: "note"; readonly text: string };
+  /**
+   * A cancelled run's plain note, without a Callout's colour: nothing needs fixing. A child run
+   * its parent's end cancelled links to the parent (UX check R9).
+   */
+  | { readonly kind: "note"; readonly text: string; readonly parent?: OpenRunAction };
+
+/** **Open run 01jd8q**: opens another run's page. */
+export interface OpenRunAction {
+  readonly kind: "open-run";
+  readonly runId: string;
+  readonly label: string;
+}
 
 /** The banner's one button. */
-export type BannerAction =
-  | { readonly kind: "review-in-inbox" }
-  | { readonly kind: "open-run"; readonly runId: string; readonly label: string };
+export type BannerAction = { readonly kind: "review-in-inbox" } | OpenRunAction;
 
 /**
  * A button that mends a failed run's cause: copy the command that does it, go to Models, the
@@ -211,13 +219,7 @@ function approvalText(oldest: PendingApproval, count: number, context: RunPageCo
 function endedBanner(summary: RunSummary, workflow: string, step: string): RunBanner {
   const message = summary.error?.trim() ?? "";
   if (summary.reason === "cancelled") {
-    return {
-      kind: "note",
-      text:
-        summary.statesVisited.length === 0
-          ? runPageWords.cancelledBeforeStart(workflow)
-          : runPageWords.cancelledIn(workflow, step),
-    };
+    return cancelledNote(summary, workflow, step);
   }
   if (summary.reason === "budget") {
     const stop = budgetStopOf(summary);
@@ -244,6 +246,34 @@ function endedBanner(summary: RunSummary, workflow: string, step: string): RunBa
     name: runPageWords.failedName,
     lines: [line],
     details: [line, `Run ${summary.id}`, message].filter((part) => part !== "").join("\n"),
+  };
+}
+
+/**
+ * A cancelled run's note: in its step or before it started, and, for a child run its parent's end
+ * cancelled (the engine's typed cause), why, with **Open run** for the parent (UX check R9).
+ */
+function cancelledNote(summary: RunSummary, workflow: string, step: string): RunBanner {
+  const started = summary.statesVisited.length > 0;
+  const parentId = summary.parentRunId;
+  if (parentId === null || !endedWithParent(summary.cause)) {
+    return {
+      kind: "note",
+      text: started
+        ? runPageWords.cancelledIn(workflow, step)
+        : runPageWords.cancelledBeforeStart(workflow),
+    };
+  }
+  return {
+    kind: "note",
+    text: started
+      ? runPageWords.cancelledWithParentIn(workflow, step)
+      : runPageWords.cancelledWithParent(workflow),
+    parent: {
+      kind: "open-run",
+      runId: parentId,
+      label: runPageWords.openRun(shortRunId(parentId)),
+    },
   };
 }
 
