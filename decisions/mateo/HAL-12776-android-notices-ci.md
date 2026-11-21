@@ -3,6 +3,7 @@
 - Task: HAL-12776 (follow-up from Julian's review of HAL-12585, #3678 and #3679)
 - Approval: Julian asked for these three changes in his review of HAL-12585 and opened HAL-12776 for them. Liam reviews this tooling and workflow PR and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SkMe73r8d9FI3uNUiutF6UNtN0Ws/ni6FuWuJPSgmRZxqh5XaWEmu8hKv/f2S/IB+KS9pgWxs7LQzOj6njszBw==
 
 ## What changes
 
