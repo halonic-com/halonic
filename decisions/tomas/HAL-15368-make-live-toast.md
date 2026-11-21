@@ -15,7 +15,10 @@ success toast says "{name} is live." with `Version "{version}"` on its second li
 The requirement `source-control.create-version-elsewhere` gets that sentence and an example; the
 draft requirements `routines.page.review-and-make-live` and `agents.page.review-and-make-live` say
 the page passes the name. No test was weakened or skipped; tests for the line, its description and
-the toast are added, and the make-live tests now check the name is passed.
+the toast are added, and the make-live tests now check the name is passed. The two make-live
+tests of `apps/studio/src/routines/workspace-routines.test.ts` move unchanged in meaning to
+`workspace-routines-make-live.test.ts` (with the name check), because the old file would pass
+the 500-line limit.
 
 ## Why
 
@@ -26,3 +29,4 @@ just goes away. One toast replaces the existing one, so the action doesn't stack
 ## Covers
 
 - source-control.create-version-elsewhere
+- apps/studio/src/routines/workspace-routines.test.ts
