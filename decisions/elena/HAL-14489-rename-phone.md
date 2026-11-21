@@ -3,6 +3,7 @@
 - Task: HAL-14489
 - Approval: team decision under the HAL-2282 rule for a detail of approved screens, no new words (Sofia as designer, rows NS1, PT1, PT2, NS2 and CP1 of her C403 check on HAL-14497, and IX1 of her C410 check on HAL-14518); Liam reviews the pull request on HAL-14489 and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Fk6zg+6AB14RT+d/6b9FWPwM49pZryGQqbeZe85NuLVd+n6eWERR8/ROmuGL/yo2HPAD5sKhDQG5DkqNh51tCw==
 
 ## What changes
 
