@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: tunnel phase B build plan, decision 19 (HAL-12232); task HAL-12237
 
-Until the remote gateway takes pairings and passes its attack suite, every launch of the agent host shall serve a `RemoteControl` that shows remote unavailable and off, with no phone and no pairing, and shall refuse to turn remote on, open a pairing or change the risky switch. It shall keep no file and open no socket.
+While the remote gateway doesn't yet take pairings and pass its attack suite, every launch of the agent host shall serve a `RemoteControl` that shows remote unavailable and off, with no phone and no pairing, and shall refuse to turn remote on, open a pairing or change the risky switch. It shall keep no file and open no socket.
 
 ## Examples
 
