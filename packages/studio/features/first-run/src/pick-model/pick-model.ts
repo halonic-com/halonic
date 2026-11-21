@@ -2,6 +2,7 @@ import { type FirstRunKeyProvider, firstRunKeyProviders, type ModelChoice } from
 import type { SecretText } from "@halonicjs/studio-kit";
 import type { ModelChoiceLine, ModelChoiceService } from "../api.ts";
 import {
+  busyAfterChange,
   firstLocalModel,
   firstPicked,
   type LocalState,
@@ -50,6 +51,8 @@ export class PickModel {
   /** Whether the person changed the options, so a late detection no longer moves the tick. */
   #touched = false;
   #keysKnown: boolean;
+  /** Whether the screen closed, so nothing asks the service any more. */
+  #disposed = false;
   #testRequest = 0;
   #lineRequest = 0;
   #checkRequest = 0;
@@ -120,15 +123,13 @@ export class PickModel {
    */
   async press(key?: SecretText): Promise<void> {
     if (this.#state.busy !== undefined) return;
+    this.#touched = true; // a late detection must not move the tick and cancel this test
     const { button, picked } = this.#state;
     if (button === "check-again") return this.#checkLocal();
     if (picked === "sample") return this.#parts.done({ kind: "sample" });
     const confirm = this.#confirm;
     if (confirm !== undefined) {
-      const request = this.#testRequest;
-      return this.#continue(request, confirm.testId, confirm.fingerprint).catch((error: unknown) =>
-        this.#broke(request, error),
-      );
+      return this.#continue(this.#testRequest, confirm.testId, confirm.fingerprint);
     }
     const choice = pickedChoice(this.#state);
     if (choice === undefined || this.#parts.service === undefined) return;
@@ -139,6 +140,7 @@ export class PickModel {
 
   /** Stops the timers and drops every answer still to come, when the screen closes. */
   dispose(): void {
+    this.#disposed = true;
     this.#testRequest += 1;
     this.#lineRequest += 1;
     this.#checkRequest += 1;
@@ -172,11 +174,10 @@ export class PickModel {
 
   async #checkLocal(): Promise<void> {
     const service = this.#parts.service;
-    if (service === undefined) return;
+    if (service === undefined || this.#disposed) return;
     const request = ++this.#checkRequest;
-    this.#change({
-      busy: this.#state.picked === "local" ? { kind: "checking" } : this.#state.busy,
-    });
+    const checking = this.#state.picked === "local";
+    this.#change({ busy: checking ? { kind: "checking" } : this.#state.busy });
     const local: LocalState = await service.localModels().catch((cause: unknown) => {
       this.#parts.report(cause);
       return { kind: "not-found", cause } as const;
@@ -218,21 +219,21 @@ export class PickModel {
       if (test.kind !== "tested" || test.outcome !== "ok") return this.#stop(test);
       await this.#afterPass(service, request, test.testId);
     } catch (error) {
-      this.#broke(request, error);
+      this.#broke(request, error, "test");
     }
   }
 
   /** The service failed, which it never should: the error goes to the log, the screen says try again. */
-  #broke(request: number, error: unknown): void {
+  #broke(request: number, error: unknown, step: "test" | "save"): void {
     if (request !== this.#testRequest) return;
     this.#parts.report(error);
-    this.#stop({ kind: "broke" });
+    this.#stop({ kind: "broke", step });
   }
 
   async #afterPass(service: ModelChoiceService, request: number, testId: string): Promise<void> {
     const preview = await service.preview(testId);
     if (request !== this.#testRequest) return;
-    if (preview === undefined) return this.#stop({ kind: "broke" });
+    if (preview === undefined) return this.#stop({ kind: "broke", step: "test" });
     if (!sameLine(preview, this.#state.line)) {
       this.#confirm = { testId, fingerprint: preview.fingerprint };
       return this.#stop({ kind: "line-changed" }, preview);
@@ -244,8 +245,11 @@ export class PickModel {
     const service = this.#parts.service;
     if (service === undefined) return;
     if (this.#state.busy === undefined) this.#set({ busy: { kind: "saving" } });
-    const saved = await service.continue(testId, fingerprint);
-    if (request !== this.#testRequest) return;
+    const saved = await service.continue(testId, fingerprint).catch((error: unknown) => {
+      this.#broke(request, error, "save");
+      return undefined;
+    });
+    if (saved === undefined || request !== this.#testRequest) return;
     this.#confirm = undefined;
     if (!saved.ok)
       return this.#stop({ kind: "not-saved", failed: saved.failed, keySaved: saved.keySaved });
@@ -253,10 +257,11 @@ export class PickModel {
     this.#parts.done({ kind: "saved", changes: saved.changes, trusted: saved.trusted });
   }
 
-  /** Ends the wait with `message`, and with the line a passed test gave when it differs. */
+  /** Ends the wait with `message`, and with the line a passed test gave, which Continue trusts. */
   #stop(message: PickMessage | undefined, line?: ModelChoiceLine): void {
     this.#stopSlowTimer?.();
     this.#stopSlowTimer = undefined;
+    if (line !== undefined) this.#lineRequest += 1; // a trust line still asked for can't replace it
     this.#set({ busy: undefined, message, ...(line === undefined ? {} : { line }) });
   }
 
@@ -272,18 +277,14 @@ export class PickModel {
     this.#testRequest += 1;
     this.#confirm = undefined;
     this.#stopSlowTimer?.();
-    const busy =
-      this.#state.busy?.kind === "checking" && this.#state.picked === "local"
-        ? this.#state.busy
-        : undefined;
-    this.#set({ busy, message: undefined, line: undefined });
+    this.#set({ busy: busyAfterChange(this.#state), message: undefined, line: undefined });
     void this.#askLine();
   }
 
   async #askLine(): Promise<void> {
     const choice = pickedChoice(this.#state);
     const request = ++this.#lineRequest;
-    if (choice === undefined || this.#parts.service === undefined) return;
+    if (choice === undefined || this.#parts.service === undefined || this.#disposed) return;
     const line = await this.#parts.service.lineFacts(choice).catch((error: unknown) => {
       this.#parts.report(error);
       return undefined;

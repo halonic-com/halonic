@@ -79,7 +79,8 @@ verifies("first-run.pick-model", () => {
     [{ kind: "not-saved", failed: "key", keySaved: false }, "couldn't keep the key"],
     [{ kind: "not-saved", failed: "no-save", keySaved: false }, "Use Sample answers."],
     [{ kind: "not-saved", failed: "write", keySaved: true }, "The key is kept on this computer."],
-    [{ kind: "broke" }, "couldn't test this choice"],
+    [{ kind: "broke", step: "test" }, "couldn't test this choice"],
+    [{ kind: "broke", step: "save" }, "couldn't save this choice"],
   ])("words %j", (message, words) => {
     expect(messageText(message, "anthropic")).toContain(words);
   });

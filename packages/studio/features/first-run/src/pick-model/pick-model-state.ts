@@ -35,7 +35,8 @@ export type LocalState =
  * - `line-changed`: the passed test's trust line isn't the one shown, so the
  *   screen shows the new one and Continue must be pressed again.
  * - `not-saved`: Continue failed at that step.
- * - `broke`: the service failed, which it never should; the cause went to the log.
+ * - `broke`: the service failed while testing or while saving, which it never
+ *   should; the cause went to the log.
  */
 export type PickMessage =
   | { readonly kind: "not-a-key"; readonly problem: KeyProblem }
@@ -47,7 +48,7 @@ export type PickMessage =
       readonly failed: Extract<ModelChoiceSaved, { ok: false }>["failed"];
       readonly keySaved: boolean;
     }
-  | { readonly kind: "broke" };
+  | { readonly kind: "broke"; readonly step: "test" | "save" };
 
 /** What the one button does: test then continue, continue, or ask Ollama again. */
 export type PickButton = "test-and-continue" | "continue" | "check-again";
@@ -150,6 +151,13 @@ export function pickButton(
   if (state.picked === "local")
     return hasLocalModel(state.local) ? "test-and-continue" : "check-again";
   return state.keySaved.has(state.provider) && !state.replacing ? "continue" : "test-and-continue";
+}
+
+/** The wait a changed choice keeps: only a detection still running while the local option is ticked. */
+export function busyAfterChange(
+  state: Pick<PickModelState, "busy" | "picked">,
+): PickBusy | undefined {
+  return state.busy?.kind === "checking" && state.picked === "local" ? state.busy : undefined;
 }
 
 /** Whether two choices are the same option, provider and model. */

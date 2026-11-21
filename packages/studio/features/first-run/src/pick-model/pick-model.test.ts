@@ -32,6 +32,7 @@ function fakeService(
     saved?: FirstRunKeyProvider[];
     local?: LocalModels;
     preview?: Partial<ModelChoicePreview>;
+    lineFacts?: () => Promise<ModelChoiceLine>;
   } = {},
 ) {
   const tests: {
@@ -44,7 +45,7 @@ function fakeService(
     localModels: vi.fn(
       async (): Promise<LocalModels> => options.local ?? { kind: "not-found", cause: "off" },
     ),
-    lineFacts: async () => anthropicLine,
+    lineFacts: vi.fn(options.lineFacts ?? (async () => anthropicLine)),
     test: (choice, key) => {
       const answer = later<ModelChoiceTest>();
       tests.push({ choice, key, answer });
@@ -163,6 +164,43 @@ verifies("first-run.pick-model", () => {
     expect(service.continue).toHaveBeenCalledWith("t1", "trust-1");
   });
 
+  it("keeps the passed test's changed line when the opening line answers late", async () => {
+    const opening = later<ModelChoiceLine>();
+    const { service, tests } = fakeService({
+      preview: { localOnlyOff: false },
+      lineFacts: () => opening.promise,
+    });
+    const { pick } = open(service);
+    const pressed = pick.press(new SecretText("sk-ant-1"));
+    tests[0]?.answer.resolve({ kind: "tested", outcome: "ok", testId: "t1" });
+    await pressed;
+    expect(pick.state.message).toEqual({ kind: "line-changed" });
+    opening.resolve(anthropicLine);
+    await settle();
+    expect(pick.state.line?.localOnlyOff).toBe(false);
+    await pick.press();
+    expect(service.continue).toHaveBeenCalledWith("t1", "trust-1");
+  });
+
+  it("keeps the key test running when the detection finds a model after the press", async () => {
+    const { service, tests } = fakeService({ local: { kind: "one", model: "llama3.2" } });
+    const { pick } = open(service);
+    const pressed = pick.press(new SecretText("sk-ant-1"));
+    await settle();
+    expect(pick.state).toMatchObject({ picked: "key", busy: { kind: "testing-key" } });
+    tests[0]?.answer.resolve({ kind: "tested", outcome: "key-refused" });
+    await pressed;
+    expect(pick.state.message).toEqual({ kind: "tested", outcome: "key-refused" });
+  });
+
+  it("asks the service nothing more once the screen closes", async () => {
+    const { service } = fakeService({ saved: ["openai"] });
+    const { pick } = open(service);
+    pick.dispose();
+    await settle();
+    expect(service.lineFacts).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps the newest test when an earlier one fails late", async () => {
     const { service, tests } = fakeService();
     const { pick } = open(service);
@@ -218,6 +256,24 @@ verifies("first-run.pick-model", () => {
     await settle();
     await pick.press(new SecretText("sk-ant-1"));
     expect(report).toHaveBeenCalledWith(new Error("bridge closed"));
-    expect(pick.state).toMatchObject({ busy: undefined, message: { kind: "broke" } });
+    expect(pick.state).toMatchObject({
+      busy: undefined,
+      message: { kind: "broke", step: "test" },
+    });
+  });
+
+  it("reports a save that throws, and says the choice wasn't saved", async () => {
+    const { service, tests } = fakeService();
+    service.continue = async () => {
+      throw new Error("bridge closed");
+    };
+    const { pick, report, done } = open(service);
+    await settle();
+    const pressed = pick.press(new SecretText("sk-ant-1"));
+    tests[0]?.answer.resolve({ kind: "tested", outcome: "ok", testId: "t1" });
+    await pressed;
+    expect(report).toHaveBeenCalledWith(new Error("bridge closed"));
+    expect(pick.state.message).toEqual({ kind: "broke", step: "save" });
+    expect(done).not.toHaveBeenCalled();
   });
 });

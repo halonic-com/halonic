@@ -131,7 +131,9 @@ export function messageText(message: PickMessage, provider: FirstRunKeyProvider)
     case "not-saved":
       return notSavedText(message.failed, message.keySaved);
     case "broke":
-      return "Studio couldn't test this choice. Try again.";
+      return message.step === "save"
+        ? "Studio couldn't save this choice. Try again."
+        : "Studio couldn't test this choice. Try again.";
   }
 }
 
