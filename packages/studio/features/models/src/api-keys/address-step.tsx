@@ -72,7 +72,11 @@ export function useAddressStep({
   const summary =
     state === undefined || secretName === undefined ? null : (
       <>
-        <AddressLine state={state} secretName={secretName} />
+        <AddressLine
+          state={state}
+          secretName={secretName}
+          onTryAgain={() => setReads((count) => count + 1)}
+        />
         {listed && !adding ? (
           <p>
             <Button variant="ghost" onClick={() => setAdding(true)}>

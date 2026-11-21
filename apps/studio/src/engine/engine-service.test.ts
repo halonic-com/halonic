@@ -46,7 +46,7 @@ verifies("studio.engine-service", () => {
       await service.close();
     });
 
-    it("refuses as `conflict` in plain words when another engine holds it, and logs the process", async () => {
+    it("refuses as `conflict` in plain words when another engine holds it, the process only in its details", async () => {
       const reportError = vi.fn();
       const service = serviceOn(fakeShell({ pid: 4242 }), acmeFiles(), { reportError });
 
@@ -55,8 +55,9 @@ verifies("studio.engine-service", () => {
       expect(refusal).toBeInstanceOf(KindedError);
       expect(refusal).toMatchObject({
         kind: "conflict",
-        message: "Acme is already running in another Halonic on this computer (process 4242).",
+        message: "Acme is already running in another Halonic on this computer.",
         fix: "Stop that one, then try again.",
+        details: expect.stringContaining("Held by process 4242."),
       });
     });
 

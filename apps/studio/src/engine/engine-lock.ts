@@ -30,8 +30,8 @@ export interface EngineLockHold {
  * Takes the lock of the workspace called `name`; `onLost` hears once if another process later
  * takes it over.
  *
- * @throws KindedError `conflict` naming the workspace and the other process, `unavailable` when the
- *   lock can't be written, or the lock's other refusals
+ * @throws KindedError `conflict` naming the workspace, with the other process for Copy details,
+ *   `unavailable` when the lock can't be written, or the lock's other refusals
  */
 export async function holdEngineLock(
   lock: PageEngineLock,
@@ -63,9 +63,9 @@ const lockWords = {
 } as const;
 
 /**
- * The lock's refusal as the page says it. A `conflict` names the workspace and the other process,
- * which can be a terminal's `halonic serve` or another window (HAL-13758). A lock the shell can't
- * write says so in Halonic's words, and a folder that isn't open in this window is a failure
+ * The lock's refusal as the page says it. A `conflict` names the workspace and keeps the other
+ * process's number for **Copy details**; that process can be a terminal's `halonic serve` or
+ * another window (HAL-13758). A lock the shell can't write says so in Halonic's words, and a folder that isn't open in this window is a failure
  * Halonic can't explain; both keep the shell's words for **Copy details** (UX check S4, HAL-12390).
  * Others stay as they are.
  */
@@ -73,11 +73,13 @@ function lockRefusal(refusal: unknown, name: string): unknown {
   if (!(refusal instanceof KindedError)) return refusal;
   const shellKind = shellKindOf(refusal.cause);
   if (refusal.kind === "conflict") {
+    // The process number is for Copy details only, never the sentence (microcopy 1.6 S1, C566 #48).
     const pid = pidOf(refusal.cause);
-    const holder = pid === undefined ? "" : ` (process ${pid})`;
-    return new KindedError(
+    const holder = pid === undefined ? "" : `\nHeld by process ${pid}.`;
+    return new ErrorWithDetails(
       "conflict",
-      `${name} is already running in another Halonic on this computer${holder}.`,
+      `${name} is already running in another Halonic on this computer.`,
+      `${refusal.message}${holder}`,
       { fix: "Stop that one, then try again.", cause: refusal },
     );
   }

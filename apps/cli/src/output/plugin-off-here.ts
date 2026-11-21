@@ -2,12 +2,15 @@
 // C540 #2, HAL-15080): its code doesn't run in the sandbox here, and the
 // command never runs it without (`cli.no-unfenced-run-yes`), so its backend
 // doesn't start. `plugin add`, `trust --plugin` and `plugin list` say it the
-// same way, as Studio's plugin page does.
+// same way, as Studio's plugin page does, but with the CLI's own sandbox
+// words: Studio's fixes can point to its Settings, which the CLI doesn't
+// have (C566 #22, HAL-15361).
 
-import { type RunnerUnfencedReason, runnerUnfencedWords } from "@halonicjs/app";
+import type { RunnerUnfencedReason } from "@halonicjs/app";
 import type { Message } from "../messages/define.ts";
 import { markPart, type Phrase, phrase } from "../messages/phrase.ts";
 import { pluginMessages } from "../messages/plugin.ts";
+import { sandboxMessages } from "../messages/sandbox.ts";
 import { rowIndent } from "./trust-check-rows.ts";
 
 /**
@@ -19,9 +22,8 @@ import { rowIndent } from "./trust-check-rows.ts";
  * // ["  Plugin code can't run in the sandbox inside a container. …", "  Or allow this in the Halonic desktop app. …"]
  */
 export function offHereReasonLines(reason: RunnerUnfencedReason): Phrase[] {
-  const words = runnerUnfencedWords(reason, "plugin");
   return [
-    phrase`${rowIndent}${words.reason} ${words.fix}`,
+    phrase`${rowIndent}${sandboxMessages.reasonAndFix(reason).phrase}`,
     phrase`${rowIndent}${pluginMessages.offHereAllow().phrase}`,
   ];
 }

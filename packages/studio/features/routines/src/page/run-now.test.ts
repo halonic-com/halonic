@@ -19,7 +19,7 @@ const daily = {
 function lockRefusal(): KindedError {
   return new KindedError(
     "conflict",
-    "Acme is already running in another Halonic on this computer (process 4120).",
+    "Acme is already running in another Halonic on this computer.",
     { fix: "Stop that one, then try again." },
   );
 }
@@ -65,7 +65,7 @@ verifies("routines.page.run-now-failed", () => {
     expect(toast).toMatchObject({
       tone: "danger",
       title: "Couldn't start Daily.",
-      text: "Acme is already running in another Halonic on this computer (process 4120). Stop that one, then try again.",
+      text: "Acme is already running in another Halonic on this computer. Stop that one, then try again.",
       sticky: true,
       action: { label: "Try again" },
     });
