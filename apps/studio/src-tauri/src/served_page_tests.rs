@@ -152,6 +152,7 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "workspace_key",
         "resource_report",
         "lite_check",
+        "sandbox_elevate",
         "pair_scan",
         "pair_scan_cancel",
         "agent_host_request",

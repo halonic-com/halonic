@@ -22,7 +22,8 @@
 //! makes and removes a probe file in the profile (capabilities/desktop-lite-check.json) and the `update_*` commands
 //! (capabilities/desktop-updates.json) and the page's close request
 //! (capabilities/desktop-window.json) and the `wsl_*` commands of the sandbox
-//! backup (capabilities/desktop-sandbox-backup.json), and on Android the
+//! backup (capabilities/desktop-sandbox-backup.json) and, on Windows,
+//! `sandbox_elevate` (capabilities/desktop-sandbox-elevate.json), and on Android the
 //! pairing scanner's `pair_scan` and `pair_scan_cancel`
 //! (capabilities/phone-pair-scan.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
@@ -64,6 +65,7 @@ mod records;
 mod resource_report;
 mod runs;
 mod sandbox_backup;
+mod sandbox_elevate;
 mod secrets;
 mod system_region;
 mod trust;
@@ -114,6 +116,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(files::FileState::default())
         .manage(plugin_source::PluginSources::default())
         .manage(plugin_git::PluginGitExports::default());
+    #[cfg(windows)]
+    let builder = builder.manage(sandbox_elevate::ElevateState::default());
     #[cfg(desktop)]
     let builder = builder
         .manage(updates::Updates::default())
@@ -255,6 +259,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             sandbox_backup::wsl_removal_offered,
             sandbox_backup::wsl_backup_choose,
             sandbox_backup::wsl_backup_reveal,
+            sandbox_elevate::sandbox_elevate,
             blobs::blob_put,
             blobs::blob_get,
             records::record_append,
