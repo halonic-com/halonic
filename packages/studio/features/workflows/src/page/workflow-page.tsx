@@ -35,7 +35,7 @@ import { firstTestsPick, firstView, panelClass } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
 import { ProgramStepsLine } from "./program-steps-line.tsx";
 import { dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
-import { useRunGate } from "./run-gate.ts";
+import { unavailableFor, useRunGate } from "./run-gate.ts";
 import { StartRow, useStartRefusal } from "./start-row.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
@@ -237,8 +237,8 @@ export function WorkflowScreen({
               ref={runButton}
               variant="primary"
               size="sm"
-              // The sandbox's Callout comes first on the page, so it describes Run when both hold.
-              unavailable={gate.unavailable ?? cantStart.unavailable}
+              // Described by both first lines when both hold, the sandbox's Callout first as on the page.
+              unavailable={unavailableFor(gate.unavailable, cantStart.unavailable)}
               onClick={() => {
                 setRowCard(undefined);
                 setDock("start");

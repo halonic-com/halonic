@@ -4,7 +4,7 @@ import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import type { WorkflowStep, WorkflowView } from "../api.ts";
+import type { StartRefusal, WorkflowStep, WorkflowView } from "../api.ts";
 import { buttonNamed, memoryHost, memoryRuns, show, unmount } from "../test-support.tsx";
 import { WorkflowScreen } from "./workflow-page.tsx";
 
@@ -38,6 +38,7 @@ async function open(
     readonly phone?: boolean;
     readonly openAgent?: (id: string) => void;
     readonly announce?: (line: string) => void;
+    readonly startRefusal?: StartRefusal;
   } = {},
 ) {
   const answers = [...(options.answers ?? [bubblewrapMissing])];
@@ -46,6 +47,7 @@ async function open(
   );
   const { host } = memoryHost([], [], [options.workflow ?? reply()], [], {
     startRun: async () => ({ runId: "run_mfx3k2a1_01jd8q" }),
+    ...(options.startRefusal && { startRefusal: async () => options.startRefusal }),
   });
   const page = await show(
     <PresentationProvider presentation={options.phone ? "phone" : "desktop"}>
@@ -81,6 +83,24 @@ verifies("workflows.page.cant-run", () => {
     );
     act(() => run.click());
     expect(page.textContent).not.toContain("START A RUN");
+  });
+
+  it("is described by both first lines when the files also say Studio can't start the run", async () => {
+    const reason = "Writer uses a connector, which Studio can't start yet.";
+    const { page } = await open({
+      startRefusal: {
+        reason,
+        fix: "To start it, run this in a terminal:",
+        command: "halonic run reply",
+      },
+    });
+    const run = runOf(page) as HTMLButtonElement;
+    expect(run.getAttribute("aria-disabled")).toBe("true");
+    const described = (run.getAttribute("aria-describedby") ?? "")
+      .split(" ")
+      .map((id) => document.getElementById(id)?.textContent);
+    expect(described[0]).toBe(firstLine);
+    expect(described[1]).toContain(reason);
   });
 
   it("ends with the step, its program and the agent's settings, which open the agent", async () => {

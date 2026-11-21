@@ -37,3 +37,15 @@ export function useRunGate(
     unavailable: refused ? { reason: cantRunId } : undefined,
   };
 }
+
+/**
+ * Run's `unavailable` from every reason that holds, such as the sandbox's and the files' refusal
+ * (`workflows.start.start-run`): unavailable while any holds, and described by each first line, in
+ * the order the page shows them. `undefined` while none holds.
+ */
+export function unavailableFor(
+  ...reasons: readonly (ButtonUnavailable | undefined)[]
+): ButtonUnavailable | undefined {
+  const ids = reasons.flatMap((one) => (one === undefined ? [] : [one.reason]));
+  return ids.length === 0 ? undefined : { reason: ids.join(" ") };
+}
