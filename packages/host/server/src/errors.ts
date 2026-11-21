@@ -67,11 +67,6 @@ export const serverErrors = {
     code: "routine_not_found",
     message: "There is no such routine.",
   },
-  routineOff: {
-    status: 409,
-    code: "routine_off",
-    message: "This routine is switched off. Switch it on to run it.",
-  },
   eventNotAccepted: {
     status: 409,
     code: "event_not_accepted",

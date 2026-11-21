@@ -74,12 +74,19 @@ verifies("server.engine-routines", () => {
       ]);
     });
 
-    it("answers 409 routine_off for a routine that is switched off, and starts nothing", async () => {
+    it("starts a routine that is switched off too, because off only stops its automatic starts", async () => {
       const { server, calls } = testEngine({ routines: [placedRoutine({ enabled: false })] });
       const answer = await sendTo(server, "POST", runNow);
-      expect(answer.status).toBe(409);
-      expect(await answer.json()).toMatchObject({ code: "routine_off" });
-      expect(calls.started).toEqual([]);
+      expect(answer.status).toBe(201);
+      expect(await answer.json()).toEqual({ runId: "run_1" });
+      expect(calls.started).toEqual([
+        {
+          hubId: "acme",
+          workflowId: "send-digest",
+          input: { at: "2026-11-12T10:00:00.000Z" },
+          trigger: { type: "manual", routineId: "acme/digest", at: "2026-11-12T10:00:00.000Z" },
+        },
+      ]);
     });
 
     it("starts an agent, in the hub a workspace-level routine names", async () => {

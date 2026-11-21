@@ -71,9 +71,6 @@ export function createRoutineRoutes(ports: RoutineRoutePorts): RoutineRoutes {
       if (placed === undefined) {
         return errorResponse(serverErrors.routineNotFound);
       }
-      if (!placed.routine.enabled) {
-        return errorResponse(serverErrors.routineOff);
-      }
       const at = clock.now();
       // A manual start has no earlier run to name, so `{{trigger.lastRun}}` is null.
       const start = routineStartOrRefusal(placed, { at, lastRun: null });

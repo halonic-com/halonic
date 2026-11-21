@@ -194,9 +194,9 @@ verifies("studio.remote-engine", () => {
     it("words the engine's refusals of Run now by kind, with the engine's sentence", async () => {
       const answers: [EngineAnswer, string, string][] = [
         [
-          { status: 409, body: { code: "routine_off", message: "This routine is switched off." } },
+          { status: 409, body: { code: "event_not_accepted", message: "Not now." } },
           "conflict",
-          "This routine is switched off.",
+          "Not now.",
         ],
         [
           { status: 403, body: { code: "workspace_not_trusted", message: "Not trusted." } },
