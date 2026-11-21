@@ -1,4 +1,4 @@
-import type { PairingQrPayload } from "@halonicjs/ports";
+import type { PairingOutcome, TunnelPairingProblem } from "./phone-tunnel.ts";
 
 /**
  * How a computer is reached, as its second line says it. On Android the
@@ -16,61 +16,13 @@ export interface FoundComputer {
   readonly route: Exclude<PhoneRoute, "tailscale">;
 }
 
-/** Where a pairing starts: a scanned QR code, or a typed code for a chosen computer. */
-export type PairingStart =
-  | { readonly kind: "scanned"; readonly payload: PairingQrPayload }
-  | { readonly kind: "typed"; readonly computer: FoundComputer; readonly code: string };
+/** The route a pairing started on; `wifi` when the typed route's computer was found on this Wi-Fi. */
+export type PairingFrom =
+  | { readonly route: "qr" }
+  | { readonly route: "typed"; readonly wifi: boolean };
 
-/**
- * Why a pairing stopped, from what the phone can tell (the gateway's
- * `pair-refused` frame and message, and the transport's errors):
- *
- * - `wrongCode`: the typed code didn't match; `triesLeft` is 1 to 4.
- * - `codeEnded`: the code ran out, had its fifth wrong try, or its window
- *   was closed.
- * - `codeUsed`: another phone used the code first.
- * - `rateLimited`: the computer had too many failed tries this minute.
- * - `denied`: Don't allow was pressed on the computer.
- * - `timedOut`: Allow wasn't pressed within 2 minutes.
- * - `cantConfirm`: the computer that answered isn't the one in the QR code.
- * - `unreachable`: the computer didn't answer, or refused the connection.
- * - `phoneOffline`: the phone's own network is down.
- */
-export type PairingProblem =
-  | { readonly kind: "wrongCode"; readonly triesLeft: number }
-  | {
-      readonly kind:
-        | "codeEnded"
-        | "codeUsed"
-        | "rateLimited"
-        | "denied"
-        | "timedOut"
-        | "cantConfirm"
-        | "unreachable"
-        | "phoneOffline";
-    };
-
-/** The handshake is done: both screens show the same check code until Allow or Don't allow. */
-export interface PairingCheck {
-  readonly kind: "check";
-  /** The computer's own name, from the handshake. */
-  readonly computer: string;
-  /** The 6 characters, without the group separator: "4F72KQ". */
-  readonly checkCode: string;
-}
-
-/**
- * The phone's side of a pairing, which the Android shell drives with the
- * `halonic-tunnel` crate. One pairing at a time.
- */
-export interface PhonePairing {
-  /** Connects to the computer and runs the handshake up to the check code. */
-  start(from: PairingStart): Promise<PairingCheck | PairingProblem>;
-  /** After {@link start} gave the check code: waits for Allow on the computer. */
-  waitForAllow(): Promise<{ readonly kind: "paired"; readonly computer: string } | PairingProblem>;
-  /** Ends the pairing the phone started; nothing is kept. A waiting call gives `codeEnded`. */
-  cancel(): Promise<void>;
-}
+/** Everything that can stop a pairing: a problem, Don't allow (`refused`) or no Allow in time. */
+export type PairingStop = TunnelPairingProblem | Exclude<PairingOutcome, { kind: "paired" }>;
 
 /**
  * The screen a pairing problem leads to (`p-m6` to `p-m10`):
@@ -82,38 +34,36 @@ export interface PhonePairing {
  * - `used`: This code was already used.
  * - `refused`: The computer didn't allow this phone.
  * - `unreachable`: Can't reach the computer; `wifi` when it was found on this Wi-Fi.
- * - `rateLimited`, `cantConfirm`: not drawn in the design yet; their words
- *   are a wording gap on the task.
  */
 export type PairingProblemScreen =
   | { readonly screen: "typedWrong"; readonly triesLeft: number }
   | { readonly screen: "ended"; readonly noAllow: boolean }
-  | { readonly screen: "used" | "refused" | "rateLimited" | "cantConfirm" }
+  | { readonly screen: "used" | "refused" }
   | { readonly screen: "unreachable"; readonly wifi: boolean };
 
-/** Which problem screen a pairing problem shows, for the route it started on. */
-export function problemScreen(problem: PairingProblem, from: PairingStart): PairingProblemScreen {
-  switch (problem.kind) {
-    case "wrongCode":
-      return from.kind === "typed"
-        ? { screen: "typedWrong", triesLeft: problem.triesLeft }
+/**
+ * Which problem screen a pairing stop shows, for the route it started on. A failed handshake
+ * and too many tries read as "no longer works": the fix is the same, a new code on the
+ * computer (decided on HAL-12248, no new words).
+ */
+export function problemScreen(stop: PairingStop, from: PairingFrom): PairingProblemScreen {
+  switch (stop.kind) {
+    case "wrong-code":
+      return from.route === "typed"
+        ? { screen: "typedWrong", triesLeft: stop.triesLeft }
         : { screen: "ended", noAllow: false };
-    case "codeEnded":
+    case "code-ended":
+    case "rate-limited":
+    case "handshake-failed":
+    case "unreadable":
       return { screen: "ended", noAllow: false };
-    case "timedOut":
+    case "timeout":
       return { screen: "ended", noAllow: true };
-    case "codeUsed":
+    case "code-used":
       return { screen: "used" };
-    case "denied":
+    case "refused":
       return { screen: "refused" };
-    case "rateLimited":
-    case "cantConfirm":
-      return { screen: problem.kind };
-    case "unreachable":
-    case "phoneOffline":
-      return {
-        screen: "unreachable",
-        wifi: from.kind === "typed" && from.computer.route === "wifi",
-      };
+    case "cant-reach":
+      return { screen: "unreachable", wifi: from.route === "typed" && from.wifi };
   }
 }
