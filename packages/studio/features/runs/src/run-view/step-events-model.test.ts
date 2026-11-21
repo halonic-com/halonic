@@ -47,6 +47,7 @@ verifies("runs.run-view.step-events", () => {
         { id: 8, model: "claude-sonnet", tokens: "cached, no model call" },
       ],
       toolCalls: [{ id: 6, tool: "send_email", args: '{\n  "to": "sam@acme.example"\n}' }],
+      connectorsNotStarted: [],
     });
     expect(stepEvents(events, "step-0").modelCalls).toEqual([
       { id: 3, model: "claude-haiku", tokens: "80 in · 12 out" },
@@ -54,7 +55,11 @@ verifies("runs.run-view.step-events", () => {
   });
 
   it("has nothing for a step without calls", () => {
-    expect(stepEvents(events, "step-2")).toEqual({ modelCalls: [], toolCalls: [] });
+    expect(stepEvents(events, "step-2")).toEqual({
+      modelCalls: [],
+      toolCalls: [],
+      connectorsNotStarted: [],
+    });
   });
 
   it("escapes hidden and direction-changing characters in the tool's name and its arguments", () => {

@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-12415 option (a), decided by the team (Chief with Sofia, 18 Nov) under HAL-2282; ux check HAL-12390 C7 and rule E1; microcopy (HAL-751) revision 113, 1.6, E1, E3 and E4; the lines for a logged cause: HAL-12471, the connector-start ones decided by the team on HAL-13829
+- Source: HAL-12415 option (a), decided by the team (Chief with Sofia, 18 Nov) under HAL-2282; ux check HAL-12390 C7 and rule E1; microcopy (HAL-751) revision 113, 1.6, E1, E3 and E4; the lines for a logged cause: HAL-12471, the connector-start ones decided by the team on HAL-13829; the approved call's row: HAL-15009
 
 When a step's tool call has a `tool.result` whose `outcome` is `error` or `unknown`, the step panel (`runs.run-view.step-events`) shall show one quiet line under that call, outside its folded arguments, starting with a ✕ that a screen reader doesn't hear:
 
@@ -18,9 +18,11 @@ When the result has a `cause` the events package's reader `toolFailureCauseOf` r
 
 The program and the secret are the names the cause holds, in code style; the line never shows a secret's value.
 
+A call a person approved whose connector then didn't start has no `tool.called`: the engine logs its `tool.result` with the `connector-not-started` cause right after the turn lists its tools again (`engine.tool-result-cause`). The panel shall list such a call as a tool call from its `approval.requested`, named by its tool with its arguments folded, in the order it was asked for, and give it the `connector-not-started` line above, naming the connector the approval names. The result belongs to the approved call of the same tool, by the state's agent or its subagent, that has neither a `tool.called` nor a result yet. An approved call that was made is listed once, from its `tool.called`; a rejected call isn't listed.
+
 The connector in brackets shall come from the event the engine logs right before the call, `connector.started` or a `tool.unasked` for the same tool; without one the brackets are left out. The line shall never show the result's text, which is the tool's or the engine's own words (E3). A call whose outcome is `ok`, a call from an older log without `outcome`, and a call that has no result yet shall have no line. A `tool.result` finds its call the way the timeline does (`entryOf`), so of two calls to the same tool, only the one that failed has the line.
 
-Limits, for the docs: the connector is named by its id in the workspace, as the log writes it, not by a display name. A call a person approved whose connector then didn't start has no `tool.called`, and a connector that couldn't list its tools when a turn started (`connector.listing-failed`) made no call, so the panel lists neither as a tool call and neither gets this line. Results from harness tools (Claude Code, Codex) carry no cause and keep the `unknown` or `error` line.
+Limits, for the docs: the connector is named by its id in the workspace, as the log writes it, not by a display name. A connector that couldn't list its tools when a turn started (`connector.listing-failed`) made no call, so it gets no tool call and no such line; it gets its own line above the tool calls (`runs.run-view.step-connector-not-started`). Results from harness tools (Claude Code, Codex) carry no cause and keep the `unknown` or `error` line.
 
 ## Examples
 
@@ -39,6 +41,9 @@ Limits, for the docs: the connector is named by its id in the workspace, as the 
 - Given a call to `read_note` on the connector notes whose result has the cause `connector-not-started` with `why: "program-missing"` and `name: "acme-notes-mcp"`,
   when the person opens its step,
   then under `read_note` the panel reads "✕ Didn't work: the connector *notes* didn't start: its program `acme-notes-mcp` isn't on this computer.".
+- Given step Draft waited for an OK on `send_mail` to the connector mail, the person approved it, and mail then didn't start because its program `acme-mail-mcp` is gone,
+  when the person opens Draft's entry,
+  then `send_mail` is listed under Tool calls with its arguments folded, and under it the panel reads "✕ Didn't work: the connector *mail* didn't start: its program `acme-mail-mcp` isn't on this computer.".
 - Given a call to `create_note` whose result has a cause with a code the reader doesn't know,
   when the person opens its step,
   then under `create_note` the panel reads the line for its outcome, as without a cause.
