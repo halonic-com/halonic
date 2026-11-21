@@ -1,6 +1,11 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { halonicCommand, isWindowsFolder, startRunCommand } from "./halonic-command.ts";
+import {
+  halonicCommand,
+  isWindowsFolder,
+  reviewToolsCommand,
+  startRunCommand,
+} from "./halonic-command.ts";
 
 // The drive is joined on, so no drive path stands in this file for the leak guard to find.
 const drive = "D:";
@@ -55,5 +60,17 @@ verifies("app.halonic-command", () => {
   it("gives no command to start a run of a Windows folder, whose run Studio wouldn't list", () => {
     expect(startRunCommand(`${drive}\\Acme\\Acme sample`, "reply")).toBeUndefined();
     expect(startRunCommand("\\\\acme\\Acme sample", "reply")).toBeUndefined();
+  });
+
+  it("reviews a connector's tools in a POSIX folder, or in no folder", () => {
+    expect(reviewToolsCommand("/acme/Documents/Acme sample", "notes-mcp")).toBe(
+      'halonic tools review --dir "/acme/Documents/Acme sample" notes-mcp',
+    );
+    expect(reviewToolsCommand(undefined, "notes-mcp")).toBe("halonic tools review notes-mcp");
+  });
+
+  it("gives no command to review tools of a Windows folder, whose approval Studio wouldn't read", () => {
+    expect(reviewToolsCommand(`${drive}\\Acme\\Acme sample`, "notes-mcp")).toBeUndefined();
+    expect(reviewToolsCommand("\\\\acme\\Acme sample", "notes-mcp")).toBeUndefined();
   });
 });

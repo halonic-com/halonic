@@ -74,3 +74,21 @@ export function startRunCommand(
   if (isWindowsFolder(folder)) return undefined;
   return halonicCommand(folder, "run", workflow === undefined ? [] : [workflow]);
 }
+
+/**
+ * The `halonic tools review` command that reviews a connector's listed tools, as
+ * {@link halonicCommand} builds it. `undefined` for a Windows folder: the CLI in WSL 2 keeps the
+ * approvals in the Linux profile, and Studio reads those of the Windows profile, so an approval
+ * made there would never count in Studio (D-A, HAL-12822).
+ *
+ * @param folder - the workspace folder's absolute path, or `undefined` where the app gives none
+ * @param connectorId - the connector's id, as the command takes it
+ * @returns the command, or `undefined` when an approval it makes wouldn't count in Studio
+ */
+export function reviewToolsCommand(
+  folder: string | undefined,
+  connectorId: string,
+): string | undefined {
+  if (isWindowsFolder(folder)) return undefined;
+  return halonicCommand(folder, "tools review", [connectorId]);
+}

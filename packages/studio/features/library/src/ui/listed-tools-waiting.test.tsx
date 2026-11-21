@@ -36,6 +36,9 @@ const statusHost: ConnectorStatusHost = {
   subscribe: () => () => {},
 };
 
+// The drive is joined on, so no drive path stands in this file for the leak guard to find.
+const drive = "D:";
+
 /** The connector `notes-mcp`, an MCP server over HTTP. */
 function httpServer(): void {
   statusList.mockResolvedValue([
@@ -92,10 +95,13 @@ function page(
     readonly id?: string;
     readonly host?: "phone";
     readonly runCommand?: (id: string) => boolean;
+    /** The workspace folder the status host gives, which the commands to copy name. */
+    readonly folder?: string;
   } = {},
 ): ItemViewProps {
-  const { id = "notes", host, runCommand } = options;
-  const provided = new Map<unknown, unknown>([[ConnectorStatusHostService, statusHost]]);
+  const { id = "notes", host, runCommand, folder } = options;
+  const status = folder === undefined ? statusHost : { ...statusHost, folder };
+  const provided = new Map<unknown, unknown>([[ConnectorStatusHostService, status]]);
   if (tools !== undefined) provided.set(ListedToolsHostService, tools);
   return {
     item: { kind: "connector", hub: "local", id },
@@ -212,7 +218,7 @@ describe("the connector page's listed tools", () => {
       expect(runCommand).toHaveBeenCalledWith("workspace.open-trust");
     });
 
-    it("says which secret isn't set, with the command that sets it and Try again", async () => {
+    it("says which secret isn't set, with Try again and no command", async () => {
       const root = render(
         <ConnectorPage
           {...page(
@@ -224,9 +230,9 @@ describe("the connector page's listed tools", () => {
       );
       await settled();
       expect(root.textContent).toContain(
-        "Couldn't list the tools: Notes needs the secret NOTES_TOKEN, which isn't set on this computer. Set it in a terminal, then try again:",
+        "Couldn't list the tools: Notes needs the secret NOTES_TOKEN, which isn't set for Studio. Studio can't set a connector's secrets yet.",
       );
-      expect(root.textContent).toContain("halonic secret set NOTES_TOKEN");
+      expect(root.textContent).not.toContain("halonic secret set");
       const buttons = [...root.querySelectorAll("button")].map((b) => b.textContent);
       expect(buttons).toContain("Try again");
       expect(buttons).not.toContain("Copy details");
@@ -327,5 +333,42 @@ describe("the connector page's listed tools", () => {
       expect(root.textContent).not.toContain("waiting for your approval");
       expect(reviewButton(root)).toBeUndefined();
     });
+  });
+});
+
+verifies("studio.commands-name-folder", () => {
+  it("names the workspace folder in the command, so it works from a new terminal", async () => {
+    httpServer();
+    const root = render(
+      <ConnectorPage
+        {...page(
+          toolsHost(async () => snapshot([])),
+          { id: "notes-mcp", folder: "/acme/Documents/Acme sample" },
+        )}
+      />,
+    );
+    await settled();
+    expect(root.textContent).toContain(
+      'halonic tools review --dir "/acme/Documents/Acme sample" notes-mcp',
+    );
+  });
+
+  it("gives only the sentence for a Windows folder, whose approvals Studio wouldn't read", async () => {
+    httpServer();
+    const root = render(
+      <ConnectorPage
+        {...page(
+          toolsHost(async () => snapshot([])),
+          { id: "notes-mcp", folder: `${drive}\\Acme\\Acme sample` },
+        )}
+      />,
+    );
+    await settled();
+    expect(root.textContent).toContain("Studio can't list this server's tools yet.");
+    expect(root.textContent).not.toContain("To review them");
+    expect(root.textContent).not.toContain("halonic tools review");
+    expect(root.querySelector('button[aria-label="Copy command"]')).toBeNull();
+    const labels = [...root.querySelectorAll("button")].map((b) => b.textContent);
+    expect(labels).not.toContain("Try again");
   });
 });

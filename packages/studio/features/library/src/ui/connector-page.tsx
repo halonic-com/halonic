@@ -1,3 +1,4 @@
+import { reviewToolsCommand } from "@halonicjs/app";
 import { Button, usePresentation } from "@halonicjs/studio-kit";
 import {
   engineWordsOf,
@@ -32,11 +33,15 @@ const openTrustCommand = "workspace.open-trust";
  */
 function ListedToolsLine({
   status,
+  folder,
   ...waiting
-}: ListedToolsWaitingProps & { readonly status: ConnectorStatusState }) {
+}: ListedToolsWaitingProps & {
+  readonly status: ConnectorStatusState;
+  readonly folder: string | undefined;
+}) {
   if (!status.loaded && status.error === undefined) return null;
   if (status.connector?.connection?.kind === "http") {
-    return <ListedToolsElsewhere connectorId={status.connector.id} />;
+    return <ListedToolsElsewhere command={reviewToolsCommand(folder, status.connector.id)} />;
   }
   return <ListedToolsWaiting {...waiting} />;
 }
@@ -143,6 +148,7 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
         <ListedToolsLine
           model={toolsModel}
           status={status}
+          folder={host.folder}
           sourceName={name}
           engine={engineWordsOf(context)}
           {...(runCommand === undefined

@@ -25,6 +25,8 @@ export interface WorkspaceConnectorStatusOptions {
   readonly refusals: RefusalsFeed;
   /** The workspace's Google accounts, where a Google connector's sign-in is kept. */
   readonly google: Pick<GoogleSetupAccounts, "list" | "subscribe">;
+  /** The workspace folder's absolute path, which the commands to copy name (D1, HAL-12725). */
+  readonly folder?: string;
   /**
    * Calls its listener when the window comes to the front, so the connectors are read again
    * then too; returns a function that stops it.
@@ -102,11 +104,13 @@ function asksOf({ transport, tools }: Connector): ConnectorAsks | undefined {
  * );
  */
 export class WorkspaceConnectorStatus implements ConnectorStatusHost {
+  readonly folder: string | undefined;
   readonly #options: WorkspaceConnectorStatusOptions;
   readonly #listeners = new Set<() => void>();
   #stopWatching: (() => void) | undefined;
 
   constructor(options: WorkspaceConnectorStatusOptions) {
+    this.folder = options.folder;
     this.#options = options;
   }
 
