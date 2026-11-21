@@ -105,7 +105,7 @@ verifies("cli.commands.plugin.programs-run", () => {
     expect(code).toBe(exitCode.notTrusted);
     const lines = [...io.stdout, ...io.stderr].join("\n");
     expect(lines).toMatch(
-      /\n {2}files +node tools\/server\.js\n +Runs: Doesn't run now\. The sandbox can't start on this computer\n/u,
+      /\n {2}files +node tools\/server\.js\n +Runs: Doesn't start on this computer: the sandbox can't start here\n/u,
     );
   });
 
@@ -130,7 +130,7 @@ verifies("cli.commands.plugin.programs-run", () => {
     expect(io.stdout).toHaveLength(3);
     expect(io.stdout[0]).toMatch(/^Lister .*✓ on$/u);
     expect(io.stdout[1]).toBe(
-      "  ! Programs: Doesn't run now. The sandbox can't start on this computer",
+      "  ! Programs: Doesn't start on this computer: the sandbox can't start here",
     );
     expect(io.stdout[2]).toMatch(/^Weather .*✓ on$/u);
   });

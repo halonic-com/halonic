@@ -103,7 +103,7 @@ async function pluginRow(
   };
 }
 
-/** "  ! Programs: Doesn't run now. …", with no mark when they run. */
+/** "  ! Programs: Doesn't start on this computer: …", with no mark when they run. */
 function programsRunLine(runs: LocalToolState["kind"]): Phrase {
   const line = pluginMessages.listProgramsRun(runs).phrase;
   if (runs === "ready") return phrase`${rowIndent}${line}`;
