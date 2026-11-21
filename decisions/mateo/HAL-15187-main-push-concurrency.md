@@ -10,7 +10,10 @@ In `.github/workflows/ci.yml`:
 
 - **A push to `main` gets a run group of its own commit** (`ci-<sha>`), so its run no longer waits behind the previous push's run. Pull requests, merge groups and `release/**` pushes keep their groups.
 - **Nine macOS and Windows jobs get a job group** shared by all pushes to `main`: `tauri-windows`, `tauri-keychain-macos`, `sandbox-fence-macos`, `sandbox-mxc-fence`, `sandbox-windows`, `installer-windows`, `update-windows`, and the macOS and Windows legs of `sandbox-os` and `agent-host`. One runs, one waits, and a newer push's job replaces the waiting one, as the whole run did before. Everywhere else the job group carries the run's own ID, so nothing waits.
-- **`ci-ok` counts one of those nine jobs as skipped when it ended as cancelled on a push to `main`**, and says so in a notice. Any other cancelled job, a failed job, or a cancelled job on a pull request, merge group or release branch still fails `ci-ok`.
+- **`ci-ok` counts one of those nine jobs as skipped when it was cancelled on a push to `main` before it started**, and says so in a notice. It reads the run's jobs from the API: a job replaced while it waited has no runner and no steps. A job that started and hit its `timeout-minutes` also ends as cancelled, but it still fails `ci-ok`, on `main` too, as it does today. So does any other cancelled job, a failed job, or a cancelled job on a pull request, merge group or release branch.
+- **`ci-ok` gets `actions: read`**, only to list its own run's jobs for that check. No other job's permissions change.
+
+On a busy hour a main run with a replaced job ends grey (`cancelled`), while its `ci-ok` is green. Under "Done means merged", that main run counts as green: its `ci-ok` passed.
 
 No job is removed and no check is loosened for pull requests or the merge queue.
 

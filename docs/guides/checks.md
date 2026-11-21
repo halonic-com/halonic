@@ -925,7 +925,11 @@ commit, so its Linux jobs start at once. The macOS and Windows jobs above
 share one group per job across pushes to `main`: one runs, one waits, and a
 newer push's job replaces the waiting one, because running them on every merge
 would need more macOS runners than GitHub gives us. Such a replaced job shows
-as cancelled and counts as skipped for `ci-ok` (HAL-15187).
+as cancelled and counts as skipped for `ci-ok`, but only if it never started
+(no runner, no steps): one that started and hit its timeout still fails
+`ci-ok` (HAL-15187). A main run with a replaced job then ends grey
+(`cancelled`) while its `ci-ok` is green; for "done means merged" it counts
+as green, because its `ci-ok` passed.
 
 **The built-on label.** Every pull request needs a `built-on:paperclip` or `built-on:halonic` label,
 which says which tool built the change. The `Built-on label` workflow

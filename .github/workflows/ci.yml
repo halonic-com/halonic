@@ -17,7 +17,8 @@
 # shared across runs, so at most one runs and one waits, and a newer push's
 # job replaces the one waiting. Running them on every merge would take more
 # macOS runners than GitHub gives us. ci-ok counts such a replaced job as
-# skipped: the newer push tests the same code and more. On pull requests,
+# skipped if it never started: the newer push tests the same code and more.
+# One that started and timed out still fails ci-ok. On pull requests,
 # merge groups and release branches the job groups are the run's own, so
 # nothing changes there.
 #
@@ -3084,9 +3085,10 @@ jobs:
     # fail-fast (above) cancels it when a job fails. There ci-ok runs
     # anyway and reports that failure at once. ci-ok doesn't need fail-fast:
     # a watcher that timed out or errored must not fail a green run. On a
-    # push to main, a macOS or Windows job that a newer push replaced ends as
-    # cancelled without cancelling the run; it counts as skipped here (see
-    # the top of this file).
+    # push to main, a macOS or Windows job that a newer push replaced before
+    # it started ends as cancelled without cancelling the run; it counts as
+    # skipped here (see the top of this file). One that started and then
+    # timed out still fails it.
     if: ${{ github.event_name == 'merge_group' || !cancelled() }}
     needs:
       [
@@ -3121,23 +3123,56 @@ jobs:
       ]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
-    permissions: {}
+    permissions:
+      actions: read # to tell a replaced job from a timed-out one on a push to main
     steps:
       - name: Every job passed or was skipped
         env:
           NEEDS: ${{ toJSON(needs) }}
-          # The jobs whose group all pushes to main share; keep in step with
-          # their `concurrency` blocks.
-          REPLACEABLE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'tauri-windows tauri-keychain-macos sandbox-fence-macos sandbox-mxc-fence sandbox-os sandbox-windows agent-host installer-windows update-windows' || '' }}
+          MAIN_PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          # The jobs whose group all pushes to main share, with the start of
+          # their display name; keep in step with their `concurrency` blocks
+          # and `name:` lines.
+          SHARED: >-
+            {"tauri-windows": "Tauri shell on Windows (build and tests)",
+            "tauri-keychain-macos": "Keychain contract on macOS",
+            "sandbox-fence-macos": "Sandbox fence (Seatbelt)",
+            "sandbox-mxc-fence": "Sandbox fence (MXC on Windows 11)",
+            "sandbox-os": "Sandbox packages on ",
+            "sandbox-windows": "Sandbox fence on Windows (canary probes)",
+            "agent-host": "Agent host executable (",
+            "installer-windows": "Windows installer (build, install, uninstall)",
+            "update-windows": "Windows update (0.1.0 to 0.1.1)"}
         run: |
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
-          replaced=$(echo "$NEEDS" | jq -r --arg jobs "$REPLACEABLE" \
-            '($jobs | split(" ")) as $shared | [to_entries[] | select(.value.result == "cancelled" and (.key | IN($shared[]))) | .key] | join(", ")')
-          if [ -n "$replaced" ]; then
-            echo "::notice::Replaced by a newer push to main, counted as skipped: $replaced."
+          # A shared job replaced by a newer push to main was cancelled while
+          # it waited: it has no runner and no steps. A job that hit its
+          # timeout-minutes also ends as cancelled, but it started, so it
+          # still fails ci-ok. Each such job counts as replaced only if every
+          # cancelled leg of it never started.
+          replaced=""
+          if [ "$MAIN_PUSH" = "true" ]; then
+            cancelled=$(echo "$NEEDS" | jq -r --argjson shared "$SHARED" \
+              '[to_entries[] | select(.value.result == "cancelled") | .key as $k | select($shared | has($k)) | $k] | join(" ")')
+            if [ -n "$cancelled" ]; then
+              jobs=$(gh api --paginate "repos/$REPO/actions/runs/$RUN_ID/attempts/$RUN_ATTEMPT/jobs?per_page=100" --jq '.jobs[]' | jq -s .) \
+                || { echo "::error::Couldn't list this run's jobs to tell a replaced job from a timed-out one."; exit 1; }
+              replaced=$(echo "$jobs" | jq -r --argjson shared "$SHARED" --arg keys "$cancelled" \
+                '. as $jobs | [$keys | split(" ")[] | . as $k
+                  | [$jobs[] | select(.conclusion == "cancelled" and (.name | startswith($shared[$k])))] as $legs
+                  | select(($legs | length) > 0 and all($legs[]; (.steps | length) == 0 and (.runner_name // "") == ""))
+                  | $k] | join(" ")')
+            fi
           fi
-          failed=$(echo "$NEEDS" | jq -r --arg jobs "$REPLACEABLE" \
-            '($jobs | split(" ")) as $shared | [to_entries[] | select(.value.result != "success" and .value.result != "skipped") | select((.value.result == "cancelled" and (.key | IN($shared[]))) | not)] | length')
+          if [ -n "$replaced" ]; then
+            echo "::notice::Replaced by a newer push to main before it started, counted as skipped: $replaced."
+          fi
+          failed=$(echo "$NEEDS" | jq -r --arg replaced "$replaced" \
+            '($replaced | split(" ")) as $r | [to_entries[] | select(.value.result != "success" and .value.result != "skipped") | select(.key | IN($r[]) | not)] | length')
           if [ "$failed" != "0" ]; then
             echo "::error::$failed required job(s) failed or were cancelled."
             exit 1
