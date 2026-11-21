@@ -74,8 +74,12 @@ export interface PluginActions {
   readonly applyUpdate?: (plugin: string, approved: PluginUpdateApproval) => Promise<void>;
   /** **Check again**: reads the plugins folder again, so the feed has the plugin as it is now. */
   readonly reload: () => Promise<void>;
-  /** Whether this computer can run the plugins' programs (`PluginLocalTools.state()`); the trust check says so. */
-  readonly programsRun?: ProgramsRun;
+  /**
+   * Whether this computer can run the plugins' programs (`PluginLocalTools.state()`), which the
+   * trust check reads when it opens. It throws when the app can't say. Left out where the app
+   * doesn't know: the Programs rows then keep the line that holds either way.
+   */
+  readonly programs?: () => Promise<ProgramsRun>;
   /** **Open folder**: shows the plugin's folder in the computer's file manager. */
   readonly openFolder: (plugin: string) => Promise<void>;
   /**

@@ -136,7 +136,7 @@ export function PluginsSettingsSection({
           plugin={justAdded}
           manifest={justAdded.manifest}
           trust={plugins.actions.trust}
-          programsRun={plugins.actions.programsRun}
+          programs={plugins.actions.programs}
           unfencedRuns={plugins.actions.unfencedRuns}
           onTrusted={() => toastOn(justAdded.name, justAdded.manifest)}
           onNotNow={() => {

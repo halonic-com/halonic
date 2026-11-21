@@ -174,7 +174,7 @@ export function PluginPage({
           plugin={plugin}
           manifest={manifest}
           trust={actions.trust}
-          programsRun={actions.programsRun}
+          programs={actions.programs}
           unfencedRuns={actions.unfencedRuns}
           onClose={() => setReviewing(false)}
           returnFocus={() => statusBox.current}
@@ -186,7 +186,7 @@ export function PluginPage({
           plugin={plugin}
           found={update.found}
           applyUpdate={updates.apply}
-          programsRun={actions.programsRun}
+          programs={actions.programs}
           unfencedRuns={actions.unfencedRuns}
           onUpdated={() => setUpdate({ kind: "idle" })}
           onKeep={() => setUpdate({ kind: "up-to-date", version: updates.version })}

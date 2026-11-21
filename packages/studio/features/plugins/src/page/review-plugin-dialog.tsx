@@ -3,6 +3,7 @@ import type { Plugin } from "@halonicjs/format";
 import { useState } from "react";
 import { changeSummary } from "../trust/change-rows.ts";
 import { PluginTrustDialog } from "../trust/plugin-trust-dialog.tsx";
+import { useProgramsRun } from "../trust/programs-run.ts";
 import type { ProgramsRun, TrustCheckReason } from "../trust/trust-text.ts";
 import {
   type PluginUnfencedRuns,
@@ -19,7 +20,8 @@ export interface ReviewPluginDialogProps {
   readonly plugin: InstalledPlugin;
   readonly manifest: Plugin;
   readonly trust: PluginActions["trust"];
-  readonly programsRun?: ProgramsRun;
+  /** Whether the plugins' programs can run here, read when the check opens (`PluginActions.programs`). */
+  readonly programs?: (() => Promise<ProgramsRun>) | undefined;
   /** The host's sandbox status and saved yes, read when the check opens; without it, T9. */
   readonly unfencedRuns?: PluginUnfencedRuns | undefined;
   /** After **Trust** is saved, and on **Not now** and Escape. */
@@ -49,7 +51,7 @@ export function ReviewPluginDialog({
   plugin,
   manifest,
   trust,
-  programsRun,
+  programs,
   unfencedRuns,
   onClose,
   onTrusted,
@@ -60,6 +62,7 @@ export function ReviewPluginDialog({
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | undefined>(undefined);
   const status = useTrustStatus(unfencedRuns);
+  const programsRun = useProgramsRun(programs);
 
   async function confirm(allow: RunnerUnfencedReason | undefined) {
     setBusy(true);

@@ -33,6 +33,8 @@ export interface DesktopPluginsParts {
   readonly onReloadFailed: (error: unknown) => void;
   /** The agent host's sandbox status and the yes to run without it, which the trust check reads. */
   readonly unfencedRuns?: PluginUnfencedRuns;
+  /** Whether the plugins' programs can run here, which the trust check reads when it opens (`desktopProgramsRun`). */
+  readonly programs?: PluginsHost["actions"]["programs"];
 }
 
 /** The desktop's plugins host, and the feed it keeps current. */
@@ -64,6 +66,7 @@ export function desktopPluginsHost({
   signIns,
   onReloadFailed,
   unfencedRuns,
+  programs,
 }: DesktopPluginsParts): DesktopPluginsHost {
   const service = new PluginService({
     plugins: new TauriPluginFolderReader(ipc),
@@ -89,6 +92,7 @@ export function desktopPluginsHost({
       onReloadFailed,
     }),
     ...(unfencedRuns === undefined ? {} : { unfencedRuns }),
+    ...(programs === undefined ? {} : { programs }),
   };
   return {
     reload: actions.reload,

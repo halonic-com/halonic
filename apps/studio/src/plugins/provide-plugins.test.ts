@@ -53,6 +53,7 @@ verifies("studio.desktop-plugins-registered", () => {
         ipc,
         window: page.window,
         transport,
+        platform: "linux",
         onFocus: page.onFocus,
         onReloadFailed: () => {},
       });
@@ -73,6 +74,7 @@ verifies("studio.desktop-plugins-registered", () => {
         ipc,
         window: page.window,
         transport,
+        platform: "linux" as const,
         onFocus: page.onFocus,
         onReloadFailed: () => {},
       };
@@ -94,6 +96,7 @@ verifies("studio.desktop-plugins-registered", () => {
         ipc,
         window: page.window,
         transport,
+        platform: "linux",
         onFocus: page.onFocus,
         onReloadFailed: (error) => failures.push(error),
       });
@@ -115,6 +118,7 @@ verifies("studio.desktop-plugins-registered", () => {
         ipc,
         window: page.window,
         transport: undefined,
+        platform: "linux",
         onFocus: page.onFocus,
         onReloadFailed: () => {},
       });

@@ -8,7 +8,9 @@ import {
 import type { ServiceRegistry } from "@halonicjs/app";
 import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
 import { shellKeychain, type TauriIpc } from "@halonicjs/studio-services";
+import type { KeyboardPlatform } from "@halonicjs/studio-shell";
 import { type DesktopPluginsHost, desktopPluginsHost } from "./desktop-plugins-host.ts";
+import { desktopProgramsRun } from "./programs-run.ts";
 import { desktopUnfencedRuns } from "./unfenced-runs.ts";
 
 /**
@@ -36,6 +38,8 @@ export function providePlugins(
     readonly window: object;
     /** The agent host's transport; `undefined` where the page has no agent host. */
     readonly transport: AgentHostTransport | undefined;
+    /** The computer's operating system: on Windows the trust check isn't told whether programs run. */
+    readonly platform: KeyboardPlatform;
     readonly onFocus: (listener: () => void) => () => void;
     readonly onReloadFailed: (error: unknown) => void;
   },
@@ -55,6 +59,7 @@ export function providePlugins(
     signIns: new AgentHostIntegrationSignIns(transport),
     onReloadFailed: parts.onReloadFailed,
     unfencedRuns: desktopUnfencedRuns(new AgentHostUnfencedRuns(transport)),
+    programs: desktopProgramsRun(transport, parts.platform),
   });
   hosts.set(parts.window, plugins);
   const reload = (): void => {
