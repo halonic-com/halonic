@@ -7,7 +7,7 @@ import {
   type TabIds,
   TabList,
 } from "@halonicjs/studio-kit";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { NameField } from "./name-field.tsx";
 
 /** Props for {@link ItemHeader}. */
@@ -18,6 +18,10 @@ export interface ItemHeaderProps<Id extends string> {
   readonly kind: string;
   readonly name: string;
   readonly onRename: (name: string) => void;
+  /** Checks a new name as it is typed (`NameField`'s `check`); without it every name is kept. */
+  readonly check?: ((name: string) => string | undefined) | undefined;
+  /** The `h1`, for a page that gives it the focus, such as once **Try again** has read the item. */
+  readonly titleRef?: Ref<HTMLHeadingElement> | undefined;
   /** The item's ⋮ menu. Without entries there's no ⋮. */
   readonly actions?: readonly MenuItem[] | undefined;
   /** The page's views, Flow · Configuration · Runs, with their badges. */
@@ -44,6 +48,8 @@ export function ItemHeader<Id extends string>({
   kind,
   name,
   onRename,
+  check,
+  titleRef,
   actions = [],
   views,
   view,
@@ -55,7 +61,11 @@ export function ItemHeader<Id extends string>({
   return (
     <header className={headerClasses}>
       <div className="flex min-w-0 items-center gap-1">
-        <h1 className="flex min-w-0 items-center gap-1.5">
+        <h1
+          ref={titleRef}
+          tabIndex={-1}
+          className="flex min-w-0 items-center gap-1.5 rounded-xs focus-ring"
+        >
           <span
             aria-hidden="true"
             className="inline-grid size-icon-sm shrink-0 text-fg-subtle *:size-full"
@@ -63,7 +73,7 @@ export function ItemHeader<Id extends string>({
             {icon}
           </span>
           <span className={kindClasses}>{kind}</span>
-          <NameField name={name} label={`${kind} name`} onRename={onRename} />
+          <NameField name={name} label={`${kind} name`} onRename={onRename} check={check} />
         </h1>
         {actions.length === 0 ? null : (
           <Menu
