@@ -120,7 +120,7 @@ ui: { … } # optional
 | --- | --- | --- |
 | `id` | yes | Lower-case words joined by `-`. At most 48 characters. Unique in a profile. |
 | `version` | yes | The plugin's own version, `major.minor.patch`. |
-| `sdk` | yes | The SDK version the plugin was built for. Today it is `1`. The loader refuses any other. |
+| `sdk` | yes | The SDK version the plugin was built for: `1`, or `2` for a backend with `signIns`. The loader refuses a higher one. |
 | `name` | yes | What people see. Plain text. |
 | `description` | no | One line about what it does. |
 | `backend` | no | Code that calls outside services, in Halonic's isolated worker. |
@@ -154,13 +154,88 @@ number is written once.
   value into the request. The backend's code never sees it.
 - **`tools`:** every tool, with `description`, `risk` (`read`, `write` or
   `send`), `untrusted` and `arguments`.
+- **`signIns`:** optional, the OAuth sign-ins Halonic runs for the backend.
+  See [Sign-ins](#sign-ins) below.
 
 Two rules are specific to plugins:
 
-- A plugin backend **can't declare `tokens`**. Sign-in isn't supported in 0.1.
-  Use an API key.
+- A plugin backend **can't declare `tokens`**, the tokens an integration
+  stores itself. For a service with an OAuth sign-in, declare `signIns`; for
+  any other, use an API key.
 - A plugin backend **can't need a process** (`needs: process`). Starting a
   program is what `localTools` is for.
+
+### Sign-ins
+
+A backend that signs in to a service with OAuth declares it in `signIns`, and
+the plugin says `sdk: 2`. With `sdk: 1`, `plugin add` refuses it with "signIns
+need sdk: 2 or higher". Halonic's own code runs the sign-in and keeps the
+tokens; the backend uses the access token but never reads it.
+
+```yaml
+sdk: 2
+backend:
+  hosts: [api.acme.example]
+  secrets:
+    acme-client-secret:
+      purpose: The client secret of Halonic's Acme app.
+  signIns:
+    account:
+      purpose: Access to your Acme account.
+      flow: oauth-code
+      authorizeUrl: https://acme.example/oauth/authorize
+      tokenUrl: https://acme.example/oauth/token
+      revokeUrl: https://acme.example/oauth/revoke # optional
+      clientId: acme-app-id # or { fromSetting: <a setting under ui.settings> }
+      clientSecret: acme-client-secret # optional
+      scopes:
+        - { scope: orders.read, reason: read your orders }
+      access:
+        hosts: [api.acme.example]
+        as: bearer
+```
+
+- **`purpose`** is what the person reads above the sign-in.
+- **`flow`** is `oauth-code`: authorization code with PKCE and a loopback
+  redirect, the only flow so far.
+- **`authorizeUrl`**, **`tokenUrl`** and the optional **`revokeUrl`** are
+  `https` addresses. The revoke address is on the host of the token or the
+  sign-in page, because signing out sends it the refresh token.
+- **`clientId`** is a fixed ID or `{ fromSetting: <setting> }`, never a
+  secret: OAuth puts it in the browser's address bar.
+- **`clientSecret`** names a secret of the backend that has only a `purpose`
+  and no `hosts`. It goes only to the token and revoke addresses, and comes
+  only from the plugin's own secrets. Leave it out for a public client.
+- **`scopes`** each have a `scope` and a `reason`, which the trust check shows.
+- **`access`** lists the hosts the access token may go to and how it goes in:
+  `as: bearer`, or `as: header` with `header` and an optional `prefix`.
+
+The backend's code names the sign-in in a request,
+`auth: { signIn: "account", as: "bearer" }`, and Halonic puts the token in,
+only on the `access` hosts and only over `https`. When the person has to sign
+in again, the request fails with `sign-in-needed`. The full field list is in
+[the permission sheet](integrations.md#the-permission-sheet).
+
+The trust check lists each sign-in under **Sign-ins**, with its purpose and one
+line, such as "Signs in to your Acme account at acme.example. Halonic gets the
+tokens from acme.example. It can: read your orders. The sign-in is used only
+with api.acme.example." When the sign-in page and the token address are on
+different services, a `!` line says so. The summary counts the sign-ins.
+
+In Studio, the plugin's page has a **Sign-ins** section with a block for each
+one: **Sign in** opens the sign-in page in the browser, and the block shows
+"Waiting for *service*… Finish in your browser." with **Cancel** until you
+finish there. **Cancel** drops the pending sign-in. After 10 minutes without an
+answer the block says "The sign-in didn't finish. Try again." Signed in, it
+shows **Sign out**. A sign-in whose manifest entry changed asks you to
+**Sign in again**.
+
+Removing a plugin's trust or the plugin signs it out first: Halonic revokes
+each saved sign-in at its `revokeUrl`, where there is one, and deletes it even
+when the revoke fails. That holds for Studio's **Remove trust**,
+`halonic trust --plugin <id> --remove`, `halonic trust --remove` in the
+plugin's folder, `halonic plugin remove` and Settings › **Trusted sources**.
+A plugin added later under the same id doesn't start signed in.
 
 ### `localTools`
 
@@ -336,7 +411,7 @@ with `!` when they don't, so a plugin that is on but whose programs can't start
 here doesn't look as if they run.
 `halonic trust --plugin <id>` turns on a plugin already added;
 `halonic trust --plugin <id> --remove` removes the trust, so the plugin is off
-(its settings and secrets stay). `halonic plugin remove <id>` asks first (or
+(its settings and secrets stay; its sign-ins are signed out). `halonic plugin remove <id>` asks first (or
 needs `--yes`), then removes the plugin with its trust, settings and the API
 key you entered.
 
