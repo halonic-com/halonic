@@ -3,6 +3,7 @@
 - Task: HAL-15106, the follow-up to HAL-15090 (#4471)
 - Approval: decided by the team on HAL-15106, following the HAL-15090 decision (wording on an approved screen). Liam signs on review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:RUJlvguMZn1TCWBjqmhOjRyrR6XGAn1KbpBaZ0eVsyrAaOYW23tIt3qzng2jb3d4Sm02Pz8RFiXGKQlIL7U1Cg==
 
 ## What changes
 
