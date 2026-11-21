@@ -90,7 +90,8 @@ verifies("studio.workspace-routines", () => {
     const agent = setup({}, [], {
       "hubs/acme/agents/analyst.agent.yaml": `${analystFile}harness: codex\n`,
     });
-    expect((await agent.host.read(weekly)).startsProgram).toBe(true);
+    // An agent on its own can't run yet, so Run now gives that reason, not the sandbox's (HAL-14848).
+    expect((await agent.host.read(weekly)).startsProgram).toBe(false);
     const workflow = setup({}, [], {
       "hubs/acme/agents/coder.agent.yaml": coder,
       "hubs/acme/workflows/reply.workflow.yaml":
