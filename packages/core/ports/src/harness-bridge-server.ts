@@ -62,12 +62,14 @@ export type BridgeProviderAccess =
 
 /**
  * What is recorded of the bridge: the model calls and Halonic tool calls that
- * go through it, and the failures it told the program the run log has the
- * details of (`bridge.failed`, from {@link HarnessBridgeOptions.reportError}).
+ * go through it, the failures it told the program the run log has the
+ * details of (`bridge.failed`, from {@link HarnessBridgeOptions.reportError}),
+ * and the program's own calls its approvals let through without asking
+ * (`harness.allowed`, HAL-14992).
  */
 export type BridgeEvent =
   | Extract<HarnessEvent, { type: "llm.request" | "llm.response" | "tool.called" | "tool.result" }>
-  | Extract<RunEventBody, { type: "bridge.failed" }>;
+  | Extract<RunEventBody, { type: "bridge.failed" | "harness.allowed" }>;
 
 /** Writes the bridge's events to the run's log. The engine adds `runId`, `seq`, `at` and the `state`. */
 export interface BridgeRecorder {
