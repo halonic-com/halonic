@@ -123,11 +123,12 @@ verifies("workflows.start.start-run", () => {
   });
 });
 
-verifies("workflows.start.start-run", () => {
-  /** The docked card's width classes: never wider than the page area, so a phone-narrow window doesn't scroll sideways (HAL-13162). */
-  const capped = (page: HTMLElement, label: string) =>
-    page.querySelector(`aside[aria-label='${label}']`)?.className.split(" ") ?? [];
+/** A docked card's width classes, found by its label. */
+const capped = (page: HTMLElement, label: string) =>
+  page.querySelector(`aside[aria-label='${label}']`)?.className.split(" ") ?? [];
 
+verifies("workflows.start.start-run", () => {
+  // Never wider than the page area, so a phone-narrow window doesn't scroll sideways (HAL-13162).
   it("keeps the start card, the waiting line and the run's card within the page's width", async () => {
     const runs = memoryRuns();
     const { page } = await open(async () => ({ runId: "run_mfx3k2a1_01jd8q" }), runs);
@@ -143,7 +144,9 @@ verifies("workflows.start.start-run", () => {
     });
     expect(capped(page, "Run 01jd8q")).toContain("max-w-full");
   });
+});
 
+verifies("workflows.page.docked-card-body", () => {
   // jsdom lays nothing out, so this checks the container query's classes: at 200 % zoom in a
   // 1280 px window the canvas beside a 480 px card would be 142 px wide (DW1, WCAG 1.4.10).
   it("gives a docked card the page's body under 800 px, hiding the canvas, and shows it again on close", async () => {
