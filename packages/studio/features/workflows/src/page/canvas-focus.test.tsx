@@ -27,11 +27,11 @@ function viewOf(page: HTMLElement) {
   return { zoom: zoom ?? 1, pan: { x: x ?? 0, y: y ?? 0 } };
 }
 
-/** Where a card shows on screen, its Start chip (20 pixels above it) included when it has one. */
+/** Where a card shows on screen, its Start chip (8 pixels above it) included when it has one. */
 function shownBox(page: HTMLElement, card: HTMLElement, chip: boolean) {
   const { zoom, pan } = viewOf(page);
   const left = Number.parseFloat(card.style.left);
-  const top = Number.parseFloat(card.style.top) - (chip ? 20 : 0);
+  const top = Number.parseFloat(card.style.top) - (chip ? 8 : 0);
   const right = left + Number.parseFloat(card.style.width);
   const bottom = Number.parseFloat(card.style.top) + Number.parseFloat(card.style.height);
   return {

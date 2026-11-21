@@ -289,7 +289,7 @@ verifies("workflows.page.step-cards", () => {
     expect(title?.className).toContain("line-clamp-2");
     expect(title?.getAttribute("title")).toBe(long);
     const chip = [...page.querySelectorAll("span")].find((span) => span.textContent === "Start");
-    expect(chip?.className).toContain("-top-5");
+    expect(chip?.className).toContain("-translate-y-1/2");
   });
 
   it("names a card by its title, and by its id only when it has none", async () => {
