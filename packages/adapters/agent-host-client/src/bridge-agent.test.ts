@@ -14,7 +14,7 @@ async function toldFor(agent: OpeningAgent): Promise<BridgeAgent[]> {
     },
   });
   const streamOpened = host.nextStream("POST /v1/bridge/open");
-  const opening = bridges.open(agent, recorder);
+  const opening = bridges.open(agent, recorder, "sandbox");
   const stream = await streamOpened;
   stream.send(opened);
   const bridge = await opening;
@@ -28,12 +28,20 @@ verifies("agent-host-client.bridge-agent-model", () => {
     const told = await toldFor({
       runId: "run-1",
       agentId: "writer",
+      harness: "claude-code",
       hubId: "acme",
       file: { model: "open-coder-agent" },
     });
 
     expect(told).toEqual([
-      { runId: "run-1", agentId: "writer", hubId: "acme", model: "open-coder-agent" },
+      {
+        runId: "run-1",
+        agentId: "writer",
+        harness: "claude-code",
+        hubId: "acme",
+        model: "open-coder-agent",
+        runsOn: "sandbox",
+      },
     ]);
   });
 
@@ -41,6 +49,7 @@ verifies("agent-host-client.bridge-agent-model", () => {
     const engineAgent = {
       runId: "run-1",
       agentId: "writer",
+      harness: "codex" as const,
       hubId: "acme",
       file: {},
       filesFolder: "/x",
@@ -48,6 +57,8 @@ verifies("agent-host-client.bridge-agent-model", () => {
 
     const told = await toldFor(engineAgent);
 
-    expect(told).toEqual([{ runId: "run-1", agentId: "writer", hubId: "acme" }]);
+    expect(told).toEqual([
+      { runId: "run-1", agentId: "writer", harness: "codex", hubId: "acme", runsOn: "sandbox" },
+    ]);
   });
 });

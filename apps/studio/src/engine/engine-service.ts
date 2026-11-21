@@ -32,6 +32,9 @@ import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
 import { TauriBlobStore, TauriRecordStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
 import { nodeSchedulerFactory } from "@halonicjs/adapter-scheduler-node";
 import {
+  harnessModelAccess,
+  harnessProviderModel,
+  requireKeyMayGo,
   routineStateCollection,
   runTimerCollection,
   type WorkflowRef,
@@ -71,7 +74,7 @@ import {
   type PageRuns,
   workflowRefusalOf,
 } from "./page-refusal.ts";
-import type { EngineDecisions, StudioHarnessHost } from "./studio-harness-host.ts";
+import type { EngineParts, StudioHarnessHost } from "./studio-harness-host.ts";
 
 export type { PageEngineLock } from "./engine-lock.ts";
 
@@ -374,9 +377,9 @@ export class EngineService {
    * now. Without one the engine still opens for the workflows that need none,
    * and a run of an agent in a harness fails at its harness step.
    */
-  async #openHarnessHost(decisions: EngineDecisions): Promise<StudioHarnessHost | undefined> {
+  async #openHarnessHost(engine: EngineParts): Promise<StudioHarnessHost | undefined> {
     try {
-      return await this.#options.openHarnessHost?.(decisions);
+      return await this.#options.openHarnessHost?.(engine);
     } catch (error) {
       this.#options.reportError(error);
       return undefined;
@@ -407,6 +410,22 @@ export class EngineService {
       const harnessHost = await this.#openHarnessHost({
         approvalsOf: (runId) => executor?.bridgeApprovals(runId),
         remoteDecisionsOf: (runId) => executor?.bridgeRemoteDecisions(runId),
+        // A sandboxed agent's key, as the engine's own model calls send one (HAL-13795).
+        workspace: () => workspace,
+        secrets: this.#options.secrets,
+        requireKeyMayGo: async (file) =>
+          requireKeyMayGo(file, {
+            trusted: await this.#options.isTrusted(workspace),
+            keyOrigins: this.#options.keyOrigins,
+          }),
+        aliases: {
+          providerModel: harnessProviderModel,
+          access: async (loaded, hubId, name, harness) =>
+            harnessModelAccess(loaded, hubId, name, harness, {
+              isTrusted: () => this.#options.isTrusted(loaded),
+              keyOrigins: this.#options.keyOrigins,
+            }),
+        },
       });
       await harnessHost?.start(await openRunsOf(runStore));
       const engine = assembleEngine({

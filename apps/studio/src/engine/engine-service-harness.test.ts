@@ -1,17 +1,19 @@
+import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import { verifies } from "@halonicjs/testing-spec";
+import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { describe, expect, it } from "vitest";
 import { acmeFiles, fakeShell, serviceOn } from "./engine-service.testing.ts";
-import type { EngineDecisions, StudioHarnessHost } from "./studio-harness-host.ts";
+import type { EngineParts, StudioHarnessHost } from "./studio-harness-host.ts";
 
 verifies("studio.engine-service", () => {
   describe("with an agent host", () => {
     const reply = { hubId: "support", workflowId: "reply" };
     const coder = acmeFiles({ writer: "harness: claude-code\n" });
 
-    /** A harness host that records its start, and keeps the engine's decisions it was given. */
+    /** A harness host that records its start, and keeps the engine's parts it was given. */
     function fakeHarnessHost() {
       const started: ReadonlySet<string>[] = [];
-      let decisions: EngineDecisions | undefined;
+      let decisions: EngineParts | undefined;
       const host: StudioHarnessHost = {
         harnesses: {} as StudioHarnessHost["harnesses"],
         proposalFolders: {
@@ -23,7 +25,7 @@ verifies("studio.engine-service", () => {
           started.push(openRuns);
         },
       };
-      const openHarnessHost = async (given: EngineDecisions) => {
+      const openHarnessHost = async (given: EngineParts) => {
         decisions = given;
         return host;
       };
@@ -32,6 +34,7 @@ verifies("studio.engine-service", () => {
         openHarnessHost,
         approvalsOf: (runId: string) => decisions?.approvalsOf(runId),
         remoteDecisionsOf: (runId: string) => decisions?.remoteDecisionsOf(runId),
+        engine: () => decisions,
       };
     }
 
@@ -104,6 +107,78 @@ verifies("studio.engine-service", () => {
       await expect(service.open()).resolves.toBeDefined();
       expect(reported).toEqual([unreachable]);
       await service.close();
+    });
+  });
+});
+
+verifies("studio.harness-provider-key", () => {
+  describe("the engine's parts for a sandboxed agent's key", () => {
+    const coder = acmeFiles({ writer: "harness: claude-code\n" });
+    const ownAddress = {
+      version: 1,
+      id: "zai",
+      type: "anthropic",
+      secret: "zai-key",
+      baseUrl: "https://api.zai.acme.test/anthropic",
+      local: false,
+      options: {},
+    } as const;
+
+    /** Opens the engine on `isTrusted`, and gives the parts it handed the harness host. */
+    async function partsWhen(isTrusted: boolean): Promise<EngineParts | undefined> {
+      let given: EngineParts | undefined;
+      const service = serviceOn(fakeShell(), coder, {
+        isTrusted: async () => isTrusted,
+        openHarnessHost: async (engine) => {
+          given = engine;
+          return {
+            harnesses: {} as StudioHarnessHost["harnesses"],
+            proposalFolders: {
+              open: async () => "/p",
+              folderOf: async () => null,
+              end: async () => {},
+            },
+            start: async () => {},
+          };
+        },
+      });
+      await service.open();
+      await service.close();
+      return given;
+    }
+
+    it("gives the loaded workspace and the model calls' key check, bound to the workspace's trust", async () => {
+      const trusted = await partsWhen(true);
+      const untrusted = await partsWhen(false);
+
+      const loaded = trusted?.workspace();
+      const agents = loaded === undefined ? [] : filesOf(loaded, "agent");
+      expect(agents.map((file) => file.value.id)).toContain("writer");
+      await expect(trusted?.requireKeyMayGo(ownAddress)).resolves.toBeUndefined();
+      await expect(untrusted?.requireKeyMayGo(ownAddress)).rejects.toMatchObject({
+        message: expect.stringContaining("zai"),
+      });
+    });
+
+    it("gives the model calls' alias check, bound to the workspace's trust", async () => {
+      const trusted = await partsWhen(true);
+      const untrusted = await partsWhen(false);
+      const withAlias = await loadWorkspace(
+        new MemoryDefinitionStore({
+          "workspace.yaml": "id: acme\nname: Acme\n",
+          "hubs/lab/hub.yaml": "id: lab\nname: Lab\n",
+          "providers/zai.yaml": `id: zai\ntype: anthropic\nsecret: zai-key\nbaseUrl: ${ownAddress.baseUrl}\n`,
+          "models.yaml": "aliases:\n  open-coder:\n    provider: zai\n    model: glm-5.3\n",
+        }),
+      );
+
+      expect(trusted?.aliases.providerModel(withAlias, "lab", "open-coder")).toBe("glm-5.3");
+      await expect(
+        trusted?.aliases.access(withAlias, "lab", "open-coder", "claude-code"),
+      ).resolves.toMatchObject({ providerId: "zai" });
+      await expect(
+        untrusted?.aliases.access(withAlias, "lab", "open-coder", "claude-code"),
+      ).rejects.toThrow();
     });
   });
 });

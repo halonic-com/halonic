@@ -33,7 +33,7 @@ verifies("agent-host-client.bridges", () => {
       const { bridges, bridge } = await openOn(host, served);
       expect(host.calls[0]).toEqual({
         route: "POST /v1/bridge/open",
-        body: { ...agent, providers: served.providers, prices },
+        body: { runId: "run-1", agentId: "writer", providers: served.providers, prices },
       });
       expect(bridge).toMatchObject({ url: opened.url, token: opened.token });
       expect(bridge.providers).toBe(served.providers);
@@ -47,7 +47,7 @@ verifies("agent-host-client.bridges", () => {
         refused(429, "too_many_bridges", "Too many bridges."),
       );
       const bridges = new AgentHostBridges(host, { servicesFor: () => services() });
-      await expect(bridges.open(agent, recorder)).rejects.toMatchObject({
+      await expect(bridges.open(agent, recorder, "sandbox")).rejects.toMatchObject({
         status: 429,
         kind: "too_many_bridges",
       });
@@ -57,7 +57,7 @@ verifies("agent-host-client.bridges", () => {
       const host = hostAnswering();
       const bridges = new AgentHostBridges(host, { servicesFor: () => services() });
       const streamOpened = host.nextStream("POST /v1/bridge/open");
-      const opening = bridges.open(agent, recorder);
+      const opening = bridges.open(agent, recorder, "sandbox");
       const stream = await streamOpened;
       stream.send({ type: "failed", message: "No port free." });
       await expect(opening).rejects.toEqual(
@@ -70,7 +70,7 @@ verifies("agent-host-client.bridges", () => {
       const host = hostAnswering();
       const bridges = new AgentHostBridges(host, { servicesFor: () => services() });
       const streamOpened = host.nextStream("POST /v1/bridge/open");
-      const opening = bridges.open(agent, recorder);
+      const opening = bridges.open(agent, recorder, "sandbox");
       const stream = await streamOpened;
       stream.send({ type: "opened", bridge: "b1" });
       await expect(opening).rejects.toMatchObject({ kind: "answer_invalid" });
@@ -81,7 +81,7 @@ verifies("agent-host-client.bridges", () => {
       const host = hostAnswering();
       const bridges = new AgentHostBridges(host, { servicesFor: () => services() });
       const streamOpened = host.nextStream("POST /v1/bridge/open");
-      const opening = bridges.open(agent, recorder);
+      const opening = bridges.open(agent, recorder, "sandbox");
       (await streamOpened).end();
       await expect(opening).rejects.toMatchObject({ kind: "bridge_failed" });
     });
@@ -92,7 +92,7 @@ verifies("agent-host-client.bridges", () => {
         const host = hostAnswering();
         const bridges = new AgentHostBridges(host, { servicesFor: () => services() });
         const streamOpened = host.nextStream("POST /v1/bridge/open");
-        const opening = bridges.open(agent, recorder);
+        const opening = bridges.open(agent, recorder, "sandbox");
         const failed = expect(opening).rejects.toMatchObject({ kind: "bridge_failed" });
         const stream = await streamOpened;
         await vi.advanceTimersByTimeAsync(bridgeOpenLimitMs - 1);

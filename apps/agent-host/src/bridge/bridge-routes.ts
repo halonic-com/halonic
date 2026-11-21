@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { HarnessBridgeServer, OpenHarnessBridge, Secrets } from "@halonicjs/ports";
+import { SecretScrubber } from "@halonicjs/std";
 import { CallChannel } from "../server/call-channel.ts";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
@@ -224,15 +225,22 @@ async function openBridge(
   observerFor: ApprovalObserverFor | undefined,
 ): Promise<{ id: string; channel: CallChannel } | undefined> {
   const channel = new CallChannel(stream);
+  // The keys Studio hands this bridge, so its failures are scrubbed of them.
+  const keys = new SecretScrubber();
   let bridge: OpenHarnessBridge;
   try {
-    bridge = await serverFor(studioSecrets(channel, body.providers)).open({
+    bridge = await serverFor(studioSecrets(channel, body.providers, keys)).open({
       runId: body.runId,
       agentId: body.agentId,
       providers: body.providers,
       price: (provider, model) => priceIn(body.prices, provider, model),
       ...studioServices(channel, observerFor?.(body.runId, body.agentId)),
-      reportError: studioFailureReport(channel, body.agentId, (text) => process.stderr.write(text)),
+      reportError: studioFailureReport(
+        channel,
+        body.agentId,
+        (text) => process.stderr.write(text),
+        keys,
+      ),
     });
   } catch (error) {
     stream.send({

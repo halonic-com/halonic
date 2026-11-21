@@ -14,7 +14,7 @@ async function failedWith(line: unknown): Promise<{ error: unknown; hungUp: bool
   const host = hostAnswering();
   const bridges = new AgentHostBridges(host, { servicesFor: () => services() });
   const streamOpened = host.nextStream("POST /v1/bridge/open");
-  const opening = bridges.open(agent, recorder);
+  const opening = bridges.open(agent, recorder, "sandbox");
   const stream = await streamOpened;
   stream.send(line);
   const error = await opening.then(

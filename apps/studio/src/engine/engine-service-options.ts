@@ -11,7 +11,7 @@ import type {
 import type { TauriIpc } from "@halonicjs/studio-services";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { PageEngineLock } from "./engine-lock.ts";
-import type { EngineDecisions, StudioHarnessHost } from "./studio-harness-host.ts";
+import type { EngineParts, StudioHarnessHost } from "./studio-harness-host.ts";
 
 /** What an {@link EngineService} is built from. */
 export interface EngineServiceOptions {
@@ -64,11 +64,12 @@ export interface EngineServiceOptions {
   onLockLost?(): void;
   /**
    * Builds the harness host on the agent host, when one runs (`openStudioHarnessHost`).
-   * `decisions` gives one run's bridge approvals and its phone's decisions,
-   * the engine's once it is built. Without it, a workflow with an agent in a
-   * harness is refused.
+   * `engine` gives one run's bridge approvals and its phone's decisions,
+   * the engine's once it is built, and the loaded workspace, the keychain
+   * and the key check a sandboxed agent's provider key is served with.
+   * Without it, a workflow with an agent in a harness is refused.
    */
-  openHarnessHost?(decisions: EngineDecisions): Promise<StudioHarnessHost>;
+  openHarnessHost?(engine: EngineParts): Promise<StudioHarnessHost>;
   /**
    * Builds the runs' connectors on the agent host, when one runs (`studioRunConnectors`), and
    * the approvals their listed tools are checked against, once per engine. Without it, a

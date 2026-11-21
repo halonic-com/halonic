@@ -183,6 +183,19 @@ export interface HarnessBridgeOptions {
 }
 
 /**
+ * The providers a bridge reaches with a key Halonic keeps, in a fixed order:
+ * its `keyProviders` (requirement `harness-bridge.key-providers`). The Node
+ * bridge reports them, and Studio works them out from the same providers it
+ * sends the agent host, so the two can't name different ones.
+ */
+export function bridgeKeyProviders(
+  providers: Partial<Record<BridgeProvider, BridgeProviderAccess>>,
+): BridgeProvider[] {
+  const all: readonly BridgeProvider[] = ["anthropic", "openai"];
+  return all.filter((provider) => providers[provider]?.kind === "key");
+}
+
+/**
  * The `cost` the bridge records on a model call's `llm.response`, in the
  * workspace's budget currency (requirement `ports.harness-bridge-server`).
  * A sign-in call costs 0, because the person's subscription pays. A keyed call

@@ -4,7 +4,7 @@ import type { BridgeApprovals, BridgeRecorder, BridgeTools } from "@halonicjs/po
 import { AgentHostBridges, type BridgeServices } from "./bridges.ts";
 import { FakeHost, type FakeStream, ok } from "./fake-host.test-helper.ts";
 
-export const agent = { runId: "run-1", agentId: "writer" };
+export const agent = { runId: "run-1", agentId: "writer", harness: "claude-code" } as const;
 export const opened = {
   type: "opened",
   bridge: "b1",
@@ -51,7 +51,7 @@ export async function openOn(
 }> {
   const bridges = new AgentHostBridges(host, { servicesFor: () => served });
   const streamOpened = host.nextStream("POST /v1/bridge/open");
-  const opening = bridges.open(agent, events);
+  const opening = bridges.open(agent, events, "sandbox");
   const stream = await streamOpened;
   stream.send(first);
   return { bridges, bridge: await opening, stream };

@@ -1,11 +1,13 @@
-import type {
-  BridgeProvider,
-  BridgeProviderAccess,
-  BridgeRecorder,
-  HarnessBridge,
-  ModelPrice,
-  OpenHarnessBridge,
-  Secrets,
+import type { Placement, ProgramHarness } from "@halonicjs/engine";
+import {
+  type BridgeProvider,
+  type BridgeProviderAccess,
+  type BridgeRecorder,
+  bridgeKeyProviders,
+  type HarnessBridge,
+  type ModelPrice,
+  type OpenHarnessBridge,
+  type Secrets,
 } from "@halonicjs/ports";
 import { type Infer, parse, s } from "@halonicjs/schema-kit";
 import { isPlainObject } from "@halonicjs/std";
@@ -38,6 +40,8 @@ export const bridgeOpenLimitMs = 30_000;
 export interface BridgeAgent {
   readonly runId: string;
   readonly agentId: string;
+  /** The harness the agent's call runs in, whose program calls one provider. */
+  readonly harness: ProgramHarness;
   /** The hub whose workspace the agent's file is in, where Studio resolves its model. */
   readonly hubId?: string;
   /**
@@ -46,12 +50,19 @@ export interface BridgeAgent {
    * an alias to choose the provider's access; `undefined` when the file names none.
    */
   readonly model?: string;
+  /**
+   * Where the agent runs for this call, as the engine opens its bridge, so a
+   * choice a person changes during the call can't give its bridge another
+   * access: only an agent in the sandbox gets a key Halonic keeps.
+   */
+  readonly runsOn: Placement;
 }
 
 /** The agent the engine opens a bridge for; the engine's `HarnessAgent` has these and more. */
 export interface OpeningAgent {
   readonly runId: string;
   readonly agentId: string;
+  readonly harness: ProgramHarness;
   readonly hubId?: string;
   /** The agent's file as the call reads it, whose `model` Studio is told. */
   readonly file?: { readonly model?: string | undefined };
@@ -67,6 +78,12 @@ export interface BridgeServices extends BridgeCallServices {
 export interface AgentHostBridgesOptions {
   /** The providers, prices, tools, approvals and keys of the agent's bridge. */
   servicesFor(agent: BridgeAgent): BridgeServices | Promise<BridgeServices>;
+  /**
+   * Removes the value of every key `servicesFor`'s secrets handed out from a
+   * text, so a `bridge.failed` loses it here too, after the host's own scrub;
+   * none by default.
+   */
+  scrub?(text: string): string;
 }
 
 const firstLineSchema = s.discriminatedUnion("type", [
@@ -113,16 +130,23 @@ type CallOutcome = { result: unknown } | { error: string };
 export class AgentHostBridges {
   readonly #transport: AgentHostTransport;
   readonly #servicesFor: AgentHostBridgesOptions["servicesFor"];
+  readonly #scrub: (text: string) => string;
   /** The host's id of each open bridge, by its token, for {@link idOf}. */
   readonly #ids = new Map<string, string>();
 
   constructor(transport: AgentHostTransport, options: AgentHostBridgesOptions) {
     this.#transport = transport;
     this.#servicesFor = options.servicesFor;
+    this.#scrub = options.scrub ?? ((text) => text);
   }
 
   /**
-   * Opens the agent's bridge in the host.
+   * Opens the agent's bridge in the host. The bridge names the providers it
+   * reaches with a key Halonic keeps in its `keyProviders`, worked out from
+   * the providers sent to the host, so the harness's environment gives the
+   * program a stand-in key.
+   *
+   * @param runsOn - where the agent runs for this call, which `servicesFor` is told
    *
    * @throws {@link AgentHostError} when the host refuses (`too_many_bridges`)
    *   or the bridge can't listen (`bridge_failed`, or the kind of the host's
@@ -131,8 +155,9 @@ export class AgentHostBridges {
   async open(
     agent: OpeningAgent,
     recorder: BridgeRecorder,
+    runsOn: Placement,
   ): Promise<OpenHarnessBridge & Pick<BridgeServices, "providers">> {
-    const services = await this.#servicesFor(bridgeAgentOf(agent));
+    const services = await this.#servicesFor(bridgeAgentOf(agent, runsOn));
     const hangUp = new AbortController();
     const body = {
       runId: agent.runId,
@@ -163,13 +188,15 @@ export class AgentHostBridges {
     const serving = this.#serve(opened.bridge, lines, {
       ...services,
       secrets,
-      recorder: hostBridgeRecorder(recorder, opened.token),
+      recorder: hostBridgeRecorder(recorder, opened.token, this.#scrub),
     });
     const { url, token, socketPath } = opened;
+    const keyProviders = bridgeKeyProviders(services.providers);
     return {
       url,
       token,
       ...(socketPath === undefined ? {} : { socketPath }),
+      ...(keyProviders.length === 0 ? {} : { keyProviders }),
       close: () => this.#close(opened.bridge, opened.token, serving, hangUp),
       // So the run log can say how the agent signs in: the kind and provider, never a key.
       providers: services.providers,
@@ -379,12 +406,14 @@ export function fitsAnswerLimit(text: string): boolean {
 }
 
 /** What `servicesFor` is told of the agent: only the fields it names, so nothing else of the engine's leaks in. */
-function bridgeAgentOf(agent: OpeningAgent): BridgeAgent {
+function bridgeAgentOf(agent: OpeningAgent, runsOn: Placement): BridgeAgent {
   const model = agent.file?.model;
   return {
     runId: agent.runId,
     agentId: agent.agentId,
+    harness: agent.harness,
     ...(agent.hubId === undefined ? {} : { hubId: agent.hubId }),
     ...(model === undefined ? {} : { model }),
+    runsOn,
   };
 }
