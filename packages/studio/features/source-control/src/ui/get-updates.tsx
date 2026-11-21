@@ -22,7 +22,7 @@ export function GetUpdates({
   const getUpdates = async (): Promise<void> => {
     const outcome = await list.getUpdates();
     if (outcome.kind === "got") {
-      toasts?.show({ tone: "success", title: updatesWords.got(outcome.count) });
+      toasts?.show({ tone: "success", title: updatesWords.got(outcome.count, outcome.people) });
     } else if (outcome.kind === "choosing") {
       // The choices open on the page; nothing to say here.
     } else if (outcome.kind === "up-to-date") {

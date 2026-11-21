@@ -60,10 +60,10 @@ verifies("source-control.get-updates", () => {
       run(mine, "push", "--quiet", "origin", "HEAD");
       run(root, "clone", "--quiet", "origin.git", "sam");
       const sam = join(root, "sam");
-      const publish = (file: string, text: string) => {
+      const publish = (file: string, text: string, author = "Sam") => {
         writeFileSync(join(sam, file), text);
         run(sam, "add", "--all");
-        run(sam, "commit", "-m", `Sam: ${file}`, "--quiet");
+        run(sam, "-c", `user.name=${author}`, "commit", "-m", `${author}: ${file}`, "--quiet");
         run(sam, "push", "--quiet", "origin", "HEAD");
       };
       return { root, mine, run, publish };
@@ -75,9 +75,25 @@ verifies("source-control.get-updates", () => {
         publish("b.md", "two\n");
         publish("c.md", "three\n");
         const changes = real(mine);
-        expect(await changes.getUpdates()).toEqual({ kind: "got", count: 2 });
+        expect(await changes.getUpdates()).toEqual({ kind: "got", count: 2, people: ["Sam"] });
         expect(readFileSync(join(mine, "c.md"), "utf8")).toBe("three\n");
         expect(await changes.getUpdates()).toEqual({ kind: "up-to-date" });
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it("names who recorded the versions it got, each once, oldest first", async () => {
+      const { root, mine, publish } = shared();
+      try {
+        publish("b.md", "two\n", "Sam");
+        publish("c.md", "three\n", "Kim");
+        publish("d.md", "four\n", "Sam");
+        expect(await real(mine).getUpdates()).toEqual({
+          kind: "got",
+          count: 3,
+          people: ["Sam", "Kim"],
+        });
       } finally {
         rmSync(root, { recursive: true, force: true });
       }
@@ -114,7 +130,7 @@ verifies("source-control.get-updates", () => {
       try {
         run(mine, "branch", "--unset-upstream");
         publish("b.md", "two\n");
-        expect(await real(mine).getUpdates()).toEqual({ kind: "got", count: 1 });
+        expect(await real(mine).getUpdates()).toEqual({ kind: "got", count: 1, people: ["Sam"] });
         expect(readFileSync(join(mine, "b.md"), "utf8")).toBe("two\n");
       } finally {
         rmSync(root, { recursive: true, force: true });

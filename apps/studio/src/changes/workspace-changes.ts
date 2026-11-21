@@ -279,13 +279,12 @@ export class WorkspaceChanges implements ChangesSource {
     const after = await this.#head();
     if (after === before) return { kind: "up-to-date" };
     const range = before === null ? "HEAD" : `${before}..HEAD`;
-    const log = await this.#run(["log", "--oneline", range]);
+    // One line per version, with who recorded it; git lists the newest first.
+    const log = await this.#run(["log", "--format=%an", range]);
     if (log === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
     if (log.code !== 0) throw new KindedError("unavailable", readableProblem(log));
-    return {
-      kind: "got",
-      count: log.stdout.split("\n").filter((line) => line.trim() !== "").length,
-    };
+    const names = log.stdout.split("\n").filter((name) => name.trim() !== "");
+    return { kind: "got", count: names.length, people: [...new Set(names.reverse())] };
   }
 
   startMerge(): Promise<MergeStart> {

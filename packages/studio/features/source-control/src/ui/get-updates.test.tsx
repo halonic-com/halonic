@@ -34,18 +34,30 @@ const press = (button: HTMLElement | undefined) =>
 
 verifies("source-control.get-updates", () => {
   describe("Get updates", () => {
-    it("says how many versions it got", async () => {
+    it("says how many versions it got, and from whom", async () => {
       const { fake, toasts } = await openPage({ remote: true });
-      fake.setUpdates({ kind: "got", count: 2 });
+      fake.setUpdates({ kind: "got", count: 2, people: ["Sam"] });
       await press(getUpdatesButton());
-      expect(toasts.list().map((toast) => toast.title)).toEqual([
-        "Got 2 versions from the shared copy",
-      ]);
+      expect(toasts.list().map((toast) => toast.title)).toEqual(["Got 2 versions from Sam"]);
     });
 
     it("says one version in the singular", async () => {
       const { fake, toasts } = await openPage({ remote: true });
-      fake.setUpdates({ kind: "got", count: 1 });
+      fake.setUpdates({ kind: "got", count: 1, people: ["Sam"] });
+      await press(getUpdatesButton());
+      expect(toasts.list()[0]?.title).toBe("Got 1 version from Sam");
+    });
+
+    it("says the team when more than one person recorded the versions", async () => {
+      const { fake, toasts } = await openPage({ remote: true });
+      fake.setUpdates({ kind: "got", count: 3, people: ["Sam", "Kim"] });
+      await press(getUpdatesButton());
+      expect(toasts.list()[0]?.title).toBe("Got 3 versions from the team");
+    });
+
+    it("says the shared copy when git named nobody", async () => {
+      const { fake, toasts } = await openPage({ remote: true });
+      fake.setUpdates({ kind: "got", count: 1, people: [] });
       await press(getUpdatesButton());
       expect(toasts.list()[0]?.title).toBe("Got 1 version from the shared copy");
     });
@@ -84,7 +96,7 @@ verifies("source-control.get-updates", () => {
 
     it("reads the changes again after it got versions", async () => {
       const { fake, root } = await openPage({ remote: true });
-      fake.setUpdates({ kind: "got", count: 1 });
+      fake.setUpdates({ kind: "got", count: 1, people: ["Sam"] });
       fake.answer({
         kind: "ready",
         changes: [{ path: "a.md", status: "modified", staged: false }],

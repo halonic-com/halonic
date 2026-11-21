@@ -130,11 +130,11 @@ verifies("source-control.changes-page", () => {
 
     it("gets updates and reads again when the shared copy had newer versions", async () => {
       const fake = fakeSource({ kind: "ready", changes: [] });
-      fake.setUpdates({ kind: "got", count: 2 });
+      fake.setUpdates({ kind: "got", count: 2, people: ["Sam"] });
       const list = new ChangesList(fake.source);
       await settle();
       fake.answer(twoChanged);
-      expect(await list.getUpdates()).toEqual({ kind: "got", count: 2 });
+      expect(await list.getUpdates()).toEqual({ kind: "got", count: 2, people: ["Sam"] });
       expect(list.changedItemCount).toBe(2);
       expect(list.state.gettingUpdates).toBe(false);
     });
