@@ -3,12 +3,10 @@ import { useState } from "react";
 import { pageWords } from "./page-words.ts";
 
 // On the desktop the name field is the title the eye reads, so the h1 that takes focus when the
-// page opens lies over the avatar, "AGENT" and the name, with its text unseen: its ring outlines the
-// title (AG4, HAL-14377). Clicks go through it to the field. On a phone it's for screen readers only.
-const titleOverlayClasses = [
-  "pointer-events-none absolute inset-0 select-none overflow-hidden whitespace-nowrap rounded-xs",
-  "text-transparent focus-ring",
-].join(" ");
+// page opens is an empty box over the avatar, "AGENT" and the name: its ring outlines the title
+// (AG4, HAL-14377). Its name sits in an sr-only span, so high contrast has no text in it to paint.
+// Clicks go through it to the field. On a phone the whole h1 is for screen readers only.
+const titleOverlayClasses = "pointer-events-none absolute inset-0 rounded-xs focus-ring";
 
 export const titleClasses = (phone: boolean): string => (phone ? "sr-only" : titleOverlayClasses);
 
