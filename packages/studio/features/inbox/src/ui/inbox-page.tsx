@@ -22,6 +22,7 @@ import { waitingCount } from "../inbox-count.ts";
 import type { InboxItem } from "../inbox-items.ts";
 import type { InboxNotices } from "../notices/inbox-notices.ts";
 import { mergeNotices } from "../notices/merge-notices.ts";
+import { proposalMeta } from "../plain/proposal-text.ts";
 import { secretTarget } from "../plain/secret-target.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
 import { ApprovalCard } from "./approval-card.tsx";
@@ -29,6 +30,7 @@ import type { NextItem } from "./card-parts.tsx";
 import { countDetail, inboxRow, itemTitle, lateCount } from "./inbox-row.tsx";
 import { failureReason, isSignedOut, loadFailed, StaleLine } from "./load-lines.tsx";
 import { NoticesSection } from "./notices-section.tsx";
+import { ProposalCard } from "./proposal-card.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
 import { SetupPane } from "./setup-pane.tsx";
 import { useOpenItem } from "./use-open-item.ts";
@@ -411,6 +413,16 @@ function OpenCard({
         focus={focus}
         openRun={openRun}
         announce={announce}
+      />
+    );
+  }
+  if (item.kind === "proposal") {
+    return (
+      <ProposalCard
+        item={item}
+        ended={proposalMeta(item, now())}
+        startedBy={facts?.startedBy}
+        onOpenRun={openThisRun}
       />
     );
   }

@@ -16,6 +16,7 @@ export type {
   InboxRuns,
   InboxSetupSource,
   InboxState,
+  RunProposalEntry,
   SetupEntry,
   SetupFocus,
   SetupViewProps,
@@ -46,6 +47,7 @@ export { type FailedRunNotice, failedRunNotices } from "./notices/failed-run-not
 export type { InboxNotice, InboxNotices, SandboxFixedNotice } from "./notices/inbox-notices.ts";
 export { newestFirst as newestNoticeFirst } from "./notices/merge-notices.ts";
 export { clockTime } from "./plain/waiting-time.ts";
+export type { ProposalEnding, ProposalItem } from "./proposal-items.ts";
 export {
   BudgetUsedUp,
   type InboxRequests,

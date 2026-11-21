@@ -1,14 +1,18 @@
 import { markHiddenName } from "@halonicjs/std";
 import { type ListRow, StatusChip } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
-import type { InboxItem, SetupItem } from "../inbox-items.ts";
+import { type InboxItem, isRunItem, type SetupItem } from "../inbox-items.ts";
 import { approvalTitle } from "../plain/approval-text.ts";
+import { proposalMeta, proposalTitle } from "../plain/proposal-text.ts";
 import { isLate, movesOnMeta, waitingFor } from "../plain/waiting-time.ts";
+import type { ProposalItem } from "../proposal-items.ts";
 import type { RunFacts, RunFactsOf } from "./run-facts.ts";
 
 /** An item's title, as its row and its card show it. */
 export function itemTitle(item: InboxItem): string {
-  return item.kind === "approval" ? approvalTitle(item) : markHiddenName(item.title);
+  if (item.kind === "approval") return approvalTitle(item);
+  if (item.kind === "proposal") return proposalTitle(item);
+  return markHiddenName(item.title);
 }
 
 /**
@@ -27,6 +31,7 @@ export function inboxRow(item: InboxItem, now: Date, runFacts: RunFactsOf | unde
  */
 export function rowFor(item: InboxItem, now: Date, facts?: RunFacts): ListRow {
   if (item.kind === "setup") return setupRow(item);
+  if (item.kind === "proposal") return proposalRow(item, now);
   const waiting = waitingFor(new Date(item.since), now);
   const movesOn =
     item.kind === "wait" && item.movesOnAt !== null
@@ -62,6 +67,19 @@ function setupRow(item: SetupItem): ListRow {
 }
 
 /**
+ * A proposal's row (HAL-11945 Q1 and Q2): its title, how and when its run ended, and a neutral
+ * **Proposal** chip. Nothing has stopped, so it is never amber and never late.
+ */
+function proposalRow(item: ProposalItem, now: Date): ListRow {
+  return {
+    id: item.key,
+    title: itemTitle(item),
+    meta: proposalMeta(item, now),
+    trailing: <StatusChip tone="neutral">Proposal</StatusChip>,
+  };
+}
+
+/**
  * "2 waiting · 1 late" after the heading, read "Needs you, 2 waiting, 1 late". "Waiting" is the
  * user's turn, so violet; "late" is amber with a dot. No count when it is 0, never "0 late".
  */
@@ -91,5 +109,5 @@ export function countDetail(waiting: number, late = 0): { detail?: ReactNode } {
 
 /** How many of the items have waited a day or more. */
 export function lateCount(items: readonly InboxItem[], now: Date): number {
-  return items.filter((item) => item.kind !== "setup" && isLate(new Date(item.since), now)).length;
+  return items.filter((item) => isRunItem(item) && isLate(new Date(item.since), now)).length;
 }
