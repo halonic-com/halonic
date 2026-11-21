@@ -1,5 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { connect, type Socket } from "node:net";
+import { TestPhone } from "./e2e-phone.test-helper.ts";
+import { FakePairing, FakePhones } from "./e2e-session.test-helper.ts";
 import { FakeSource } from "./fake-source.test-helper.ts";
 import { type GatewayListener, gatewayPath, startGatewayListener } from "./gateway-listener.ts";
 
@@ -62,11 +64,16 @@ export function handshakeRequest(
   return { text: `${lines.join("\r\n")}\r\n\r\n`, key };
 }
 
-/** A raw client: sends bytes and collects what comes back. */
+/** A raw client: sends bytes and collects what comes back. Once it has a phone, it speaks inside the session. */
 export class RawClient {
   readonly socket: Socket;
   received = Buffer.alloc(0);
   ended: Promise<void>;
+  /** The phone whose session it speaks in, after {@link RawClient.reconnect}. */
+  phone: TestPhone | undefined;
+  /** The gateway messages read from the host so far; each frame is decrypted once, in order. */
+  readonly #messages: unknown[] = [];
+  #framesRead = 0;
 
   constructor(port: number) {
     this.socket = connect(port, "127.0.0.1");
@@ -91,11 +98,11 @@ export class RawClient {
     throw new Error(`Never saw the expected bytes; got: ${this.received.toString("latin1")}`);
   }
 
-  /** The text frames the host sent, decoded; skips the HTTP response head and non-text frames. */
-  textFrames(): unknown[] {
+  /** The frames of one type the host sent, raw; skips the HTTP response head. */
+  framesOf(type: number): Buffer[] {
     const start = this.received.indexOf("\r\n\r\n");
     if (start === -1) return [];
-    const frames: unknown[] = [];
+    const frames: Buffer[] = [];
     let at = start + 4;
     while (at + 2 <= this.received.length) {
       const opcode = (this.received[at] ?? 0) & 0x0f;
@@ -106,13 +113,31 @@ export class RawClient {
         header = 4;
       }
       if (at + header + length > this.received.length) break;
-      if (opcode === 1)
-        frames.push(
-          JSON.parse(this.received.subarray(at + header, at + header + length).toString("utf8")),
-        );
+      if (opcode === type) frames.push(this.received.subarray(at + header, at + header + length));
       at += header + length;
     }
     return frames;
+  }
+
+  /** The gateway messages the host sent inside the session, decrypted by the phone. */
+  messages(): unknown[] {
+    const frames = this.framesOf(op.binary);
+    for (; this.#framesRead < frames.length; this.#framesRead++) {
+      const message = this.phone?.read(frames[this.#framesRead] ?? Buffer.alloc(0));
+      if (message !== "rekey") this.#messages.push(message);
+    }
+    return [...this.#messages];
+  }
+
+  /** Reconnects as a phone to the host key it pinned, and reads the host's message 2. */
+  async reconnect(hostKey: Uint8Array, phone = new TestPhone()): Promise<void> {
+    this.phone = phone;
+    this.write(clientFrame(op.binary, phone.resume1(hostKey)));
+    for (let turn = 0; turn < 200 && this.framesOf(op.binary).length === 0; turn++) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    phone.readResume2(this.framesOf(op.binary)[0] ?? Buffer.alloc(0));
+    this.#framesRead = 1;
   }
 
   /** Opens the WebSocket: sends the handshake and waits for the 101. */
@@ -128,16 +153,18 @@ export class RawClient {
     }
   }
 
+  /** Sends one gateway message inside the session. */
   async sendJson(message: unknown): Promise<void> {
-    this.write(clientFrame(op.text, Buffer.from(JSON.stringify(message))));
+    if (this.phone === undefined) throw new Error("reconnect first");
+    this.write(clientFrame(op.binary, this.phone.say(message)));
   }
 
-  /** Waits until the host has sent `count` text frames. */
+  /** Waits until the host has sent `count` gateway messages inside the session. */
   async frames(count: number): Promise<unknown[]> {
-    for (let turn = 0; turn < 200 && this.textFrames().length < count; turn++) {
+    for (let turn = 0; turn < 200 && this.messages().length < count; turn++) {
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
-    return this.textFrames();
+    return this.messages();
   }
 
   end(): void {
@@ -153,24 +180,47 @@ export async function openListener(
     maxConnections?: number;
     heartbeatMs?: number;
     helloTimeoutMs?: number;
+    handshakeTimeoutMs?: number;
   } = {},
 ) {
   const source = new FakeSource();
+  const phones = new FakePhones();
+  const pairing = new FakePairing(phones);
   const clients: RawClient[] = [];
+  const errors: unknown[] = [];
   const listener: GatewayListener = await startGatewayListener({
     source,
+    phones,
+    pairing,
+    onError: (error) => errors.push(error),
     policy: { allowRiskyRemotely: () => options.allowRisky === true },
     ...(options.extraHosts === undefined ? {} : { extraHosts: options.extraHosts }),
     ...(options.maxConnections === undefined ? {} : { maxConnections: options.maxConnections }),
     ...(options.heartbeatMs === undefined ? {} : { heartbeatMs: options.heartbeatMs }),
     ...(options.helloTimeoutMs === undefined ? {} : { helloTimeoutMs: options.helloTimeoutMs }),
+    ...(options.handshakeTimeoutMs === undefined
+      ? {}
+      : { handshakeTimeoutMs: options.handshakeTimeoutMs }),
   });
   return {
     source,
+    phones,
+    pairing,
+    /** What the listener reported through `onError`. */
+    errors,
     listener,
     client(): RawClient {
       const client = new RawClient(listener.port);
       clients.push(client);
+      return client;
+    },
+    /** A client of a paired phone, connected and reconnected into its session. */
+    async pairedClient(): Promise<RawClient> {
+      const client = this.client();
+      const phone = new TestPhone();
+      phones.pair(phone.keys.publicKey);
+      await client.open(listener.port);
+      await client.reconnect(phones.host.publicKey, phone);
       return client;
     },
     async stop(): Promise<void> {

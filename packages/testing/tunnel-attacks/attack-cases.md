@@ -19,23 +19,23 @@ until it is fixed; the fix adds the test.
 | A3 | asking the gateway, through the tunnel, for the bridge, the model gateway, MCP or secrets | `src/direct-hit.test.ts` |  |
 | A4 | DNS rebinding and a `Host` the attacker chooses (also user information, dots, ports, forwarded names, absolute targets) | `src/host-and-origin.test.ts` |  |
 | A5 | a web page's request: any `Origin`, and a CORS preflight | `src/host-and-origin.test.ts` |  |
-| A6 | oversize: a declared length over 64 KiB or absurd, a message in fragments, endless fragments | `src/frame-attacks.test.ts` |  |
+| A6 | oversize: a declared length over one Noise message (65,536 bytes) or absurd, a message in fragments, endless fragments | `src/frame-attacks.test.ts` |  |
 | A7 | frames that break the format; malformed, nested, duplicated or oddly encoded messages; a message before or after hello | `src/frame-attacks.test.ts` |  |
 | A8 | floods and slots: too many connections, 2,000 frames at once, a phone that never says hello | `src/frame-attacks.test.ts` |  |
 | A9 | asking for a shell, a file, a secret or a setting; extra fields (`risk`); odd ids; a prompt that is a command; a risky approval | `src/protocol-escape.test.ts` |  |
 | A10 | a first fuzz pass: the parser against a second reading of the protocol, and hostile connections | `src/fuzz.test.ts` |  |
-| B1 | a client that never paired opens a session | TODO, phase B |  |
+| B1 | a client that never paired opens a session | `src/session-attacks.test.ts` (reconnect; pairing with B2 and B7) |  |
 | B2 | a QR code used twice | TODO, phase B |  |
 | B3 | a QR code after it expired | TODO, phase B |  |
 | B4 | a QR code made for another host, or a pairing token guessed or edited | TODO, phase B |  |
 | B5 | many pairing attempts in a row | TODO, phase B |  |
 | B6 | a revoked device, also on a connection already open | TODO, phase B |  |
 | B7 | a stolen session: a copied key or ticket used from another client | TODO, phase B |  |
-| B8 | a replayed message or handshake, a reordered frame | TODO, phase B |  |
+| B8 | a replayed message or handshake, a reordered frame | `src/session-attacks.test.ts` (reconnect; pairing with B7) |  |
 | B9 | a client before the handshake holds the slots paired phones need (idle connections hold a slot until a timeout; behind a tunnel every client comes from loopback, so the gateway can't tell them apart by address) | TODO, phase B |  |
 | B10 | a man in the middle reads or changes a session | TODO, phase B |  |
-| B11 | a downgrade to no end-to-end encryption | TODO, phase B |  |
-| B12 | a changed host key is accepted without the person deciding | TODO, phase B |  |
+| B11 | a downgrade to no end-to-end encryption | `src/session-attacks.test.ts`, `src/frame-attacks.test.ts` |  |
+| B12 | a changed host key is accepted without the person deciding | `src/session-attacks.test.ts` (the host's side; the phone's is D1's) |  |
 
 ## Running a longer fuzz pass
 

@@ -1,7 +1,8 @@
 import { request } from "node:http";
-import { gatewayMaxMessageBytes } from "@halonicjs/ports";
+import { gatewayFrameKinds, gatewayMaxFrameBytes } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { TestPhone } from "./e2e-phone.test-helper.ts";
 import { gatewayLoopbackHost } from "./gateway-listener.ts";
 import {
   clientFrame,
@@ -122,26 +123,35 @@ verifies("remote-gateway.listener", () => {
     it("works with Node's own WebSocket client, which is not our code", async () => {
       const t = await openListener();
       try {
+        const phone = new TestPhone();
+        t.phones.pair(phone.keys.publicKey);
         const socket = new WebSocket(`ws://127.0.0.1:${t.listener.port}/v1/gateway`);
-        const answer = await new Promise<string>((resolve, reject) => {
-          socket.onopen = () =>
-            socket.send(JSON.stringify({ type: "hello", id: "h1", version: 2 }));
-          socket.onmessage = (event) => resolve(String(event.data));
+        socket.binaryType = "arraybuffer";
+        const answer = await new Promise<unknown>((resolve, reject) => {
+          socket.onopen = () => socket.send(phone.resume1(t.phones.host.publicKey));
+          socket.onmessage = (event) => {
+            const frame = new Uint8Array(event.data as ArrayBuffer);
+            if (frame[0] === gatewayFrameKinds.resume2) {
+              phone.readResume2(frame);
+              socket.send(phone.say({ type: "hello", id: "h1", version: 2 }));
+            } else {
+              resolve(phone.read(frame));
+            }
+          };
           socket.onerror = () => reject(new Error("The client could not connect."));
         });
-        expect(JSON.parse(answer)).toMatchObject({ type: "welcome", replyTo: "h1" });
+        expect(answer).toMatchObject({ type: "welcome", replyTo: "h1" });
         socket.close();
       } finally {
         await t.stop();
       }
     });
 
-    it("carries the protocol: hello, list, watch and events", async () => {
+    it("carries the protocol inside the session: hello, list, watch and events", async () => {
       const t = await openListener();
       try {
         t.source.addSession("s1");
-        const client = t.client();
-        await client.open(t.listener.port);
+        const client = await t.pairedClient();
         await client.sendJson({ type: "hello", id: "h1", version: 2 });
         await client.sendJson({ type: "watch", id: "w1", sessionId: "s1", afterSeq: 0 });
         await client.frames(2);
@@ -152,6 +162,7 @@ verifies("remote-gateway.listener", () => {
           "ok",
           "event",
         ]);
+        expect(client.framesOf(op.text)).toEqual([]);
       } finally {
         await t.stop();
       }
@@ -176,48 +187,54 @@ verifies("remote-gateway.listener", () => {
       const t = await openListener();
       try {
         const client = t.client();
+        const phone = new TestPhone();
+        t.phones.pair(phone.keys.publicKey);
         const handshake = handshakeRequest(t.listener.port);
-        const first = clientFrame(
-          op.text,
-          Buffer.from(JSON.stringify({ type: "hello", id: "h1", version: 2 })),
-        );
+        const first = clientFrame(op.binary, phone.resume1(t.phones.host.publicKey));
         client.write(Buffer.concat([Buffer.from(handshake.text), first]));
-        expect(await client.frames(1)).toEqual([
-          { type: "welcome", replyTo: "h1", version: 2, maxMessageBytes: gatewayMaxMessageBytes },
-        ]);
+        await client.until(() => client.framesOf(op.binary).length > 0);
+        expect(client.framesOf(op.binary)[0]?.[0]).toBe(gatewayFrameKinds.resume2);
+        phone.readResume2(client.framesOf(op.binary)[0] ?? Buffer.alloc(0));
       } finally {
         await t.stop();
       }
     });
 
-    it("sends too-large and closes on a frame that declares more than 64 KiB", async () => {
+    it("closes, sending nothing, on a frame that declares more than one Noise message", async () => {
+      const t = await openListener();
+      try {
+        const client = await t.pairedClient();
+        client.write(
+          clientFrame(op.binary, Buffer.alloc(gatewayMaxFrameBytes + 1)).subarray(0, 14),
+        );
+        await client.ended;
+        expect(client.framesOf(op.binary)).toHaveLength(1);
+      } finally {
+        await t.stop();
+      }
+    });
+
+    it("closes, sending nothing, on a text frame, even one holding a valid message", async () => {
       const t = await openListener();
       try {
         const client = t.client();
         await client.open(t.listener.port);
-        client.write(
-          clientFrame(op.text, Buffer.alloc(gatewayMaxMessageBytes + 1, 0x20)).subarray(0, 14),
-        );
-        expect(await client.frames(1)).toEqual([{ type: "error", code: "too-large" }]);
+        client.write(clientFrame(op.text, Buffer.from('{"type":"hello","id":"h1","version":2}')));
         await client.ended;
+        expect(client.framesOf(op.text)).toEqual([]);
+        expect(client.framesOf(op.binary)).toEqual([]);
       } finally {
         await t.stop();
       }
     });
 
-    it("sends malformed and closes on a binary frame or a bad message", async () => {
+    it("sends malformed, inside the session, and closes on a bad message", async () => {
       const t = await openListener();
       try {
-        const binary = t.client();
-        await binary.open(t.listener.port);
-        binary.write(clientFrame(op.binary, Buffer.from("{}")));
-        expect(await binary.frames(1)).toEqual([{ type: "error", code: "malformed" }]);
-        await binary.ended;
-        const bad = t.client();
-        await bad.open(t.listener.port);
-        bad.write(clientFrame(op.text, Buffer.from('{"type":"run-command","id":"x"}')));
-        expect(await bad.frames(1)).toEqual([{ type: "error", code: "malformed" }]);
-        await bad.ended;
+        const client = await t.pairedClient();
+        await client.sendJson({ type: "run-command", id: "x" });
+        expect(await client.frames(1)).toEqual([{ type: "error", code: "malformed" }]);
+        await client.ended;
       } finally {
         await t.stop();
       }
@@ -228,9 +245,29 @@ verifies("remote-gateway.listener", () => {
       try {
         const client = t.client();
         await client.open(t.listener.port);
-        client.write(clientFrame(op.text, Buffer.from("{}"), { mask: false }));
+        client.write(clientFrame(op.binary, Buffer.from("{}"), { mask: false }));
         await client.ended;
-        expect(client.textFrames()).toEqual([]);
+        expect(client.framesOf(op.binary)).toEqual([]);
+      } finally {
+        await t.stop();
+      }
+    });
+
+    it("ends only that connection, and reports it, when the phone store throws", async () => {
+      const t = await openListener();
+      try {
+        const connect = t.phones.connected.bind(t.phones);
+        t.phones.connected = () => {
+          throw new Error("the phone store failed");
+        };
+        const failing = await t.pairedClient();
+        await failing.sendJson({ type: "hello", id: "h1", version: 2 });
+        await failing.ended;
+        expect(t.errors).toEqual([new Error("the phone store failed")]);
+        t.phones.connected = connect;
+        const next = await t.pairedClient();
+        await next.sendJson({ type: "hello", id: "h1", version: 2 });
+        expect(await next.frames(1)).toMatchObject([{ type: "welcome" }]);
       } finally {
         await t.stop();
       }
@@ -240,8 +277,7 @@ verifies("remote-gateway.listener", () => {
       const t = await openListener();
       try {
         t.source.addSession("s1");
-        const client = t.client();
-        await client.open(t.listener.port);
+        const client = await t.pairedClient();
         await client.sendJson({ type: "hello", id: "h1", version: 2 });
         await client.sendJson({ type: "watch", id: "w1", sessionId: "s1", afterSeq: 0 });
         await client.frames(2);
@@ -270,8 +306,8 @@ verifies("remote-gateway.listener", () => {
       }
     });
 
-    it("drops a connection that answers pings but never says hello", async () => {
-      const t = await openListener({ heartbeatMs: 20, helloTimeoutMs: 100 });
+    it("drops a connection that answers pings but never finishes its handshake", async () => {
+      const t = await openListener({ heartbeatMs: 20, handshakeTimeoutMs: 100 });
       try {
         const client = t.client();
         await client.open(t.listener.port);
@@ -282,11 +318,38 @@ verifies("remote-gateway.listener", () => {
       }
     });
 
-    it("keeps a connection that said hello past the hello time", async () => {
-      const t = await openListener({ helloTimeoutMs: 1_000 });
+    it("reports, and carries on, when the pairing service fails as a pairing times out", async () => {
+      const t = await openListener({ handshakeTimeoutMs: 100 });
       try {
+        t.pairing.failsToCount = true;
         const client = t.client();
         await client.open(t.listener.port);
+        client.write(clientFrame(op.binary, new TestPhone().pair1(t.pairing.code ?? "")));
+        await client.ended;
+        expect(t.errors).toEqual([new Error("the pairing service failed")]);
+        const next = await t.pairedClient();
+        await next.sendJson({ type: "hello", id: "h1", version: 2 });
+        expect(await next.frames(1)).toMatchObject([{ type: "welcome" }]);
+      } finally {
+        await t.stop();
+      }
+    });
+
+    it("drops an open session that never says hello", async () => {
+      const t = await openListener({ heartbeatMs: 20, helloTimeoutMs: 100 });
+      try {
+        const client = await t.pairedClient();
+        await client.ended;
+        expect(client.socket.destroyed).toBe(true);
+      } finally {
+        await t.stop();
+      }
+    });
+
+    it("keeps a connection that said hello past the hello and handshake times", async () => {
+      const t = await openListener({ helloTimeoutMs: 1_000, handshakeTimeoutMs: 1_000 });
+      try {
+        const client = await t.pairedClient();
         await client.sendJson({ type: "hello", id: "h1", version: 2 });
         expect(await client.frames(1)).toHaveLength(1);
         await new Promise((resolve) => setTimeout(resolve, 1_500));

@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { Duplex } from "node:stream";
-import { gatewayMaxMessageBytes } from "@halonicjs/ports";
+import { gatewayMaxFrameBytes, gatewaySessionLimits } from "@halonicjs/ports";
 import { GatewayConnection } from "./gateway-connection.ts";
+import type { GatewayPairing, GatewayPhones } from "./phone-access.ts";
+import { SecureSession } from "./secure-session.ts";
 import type { GatewayPolicy, GatewaySessionSource } from "./session-source.ts";
 import { encodeFrame, FrameReader, frameType } from "./websocket-frames.ts";
 
@@ -18,6 +20,10 @@ export const gatewayPath = "/v1/gateway";
 export interface GatewayListenerOptions {
   source: GatewaySessionSource;
   policy: GatewayPolicy;
+  /** The host's key and its paired phones. */
+  phones: GatewayPhones;
+  /** The host's pairing service. */
+  pairing: GatewayPairing;
   /** The port to listen on; a free one by default. */
   port?: number;
   /**
@@ -29,8 +35,16 @@ export interface GatewayListenerOptions {
   maxConnections?: number;
   /** How often the host pings each connection. A connection that sends nothing for 2.5 times this is dropped. */
   heartbeatMs?: number;
-  /** How long a connection may stay without saying hello before it is dropped. */
+  /** How long an open end-to-end session may stay without saying hello before it is dropped. */
   helloTimeoutMs?: number;
+  /** How long a connection's handshake may take; the ADR's 10 seconds by default. Tests shorten it. */
+  handshakeTimeoutMs?: number;
+  /**
+   * A connection's session threw, because the pairing service or the phone
+   * store failed. The listener has already ended that connection; the others
+   * and the host carry on.
+   */
+  onError(error: unknown): void;
 }
 
 /** A running gateway listener. */
@@ -143,18 +157,30 @@ function isHandshakeKey(key: string | undefined): boolean {
   return key !== undefined && /^[A-Za-z0-9+/]{22}==$/.test(key);
 }
 
-/** Runs one phone's connection on its upgraded socket. */
+/**
+ * Runs one phone's connection on its upgraded socket, inside the end-to-end
+ * session: every binary frame goes to the {@link SecureSession}, and the
+ * gateway protocol runs only inside it. A text frame, a frame over one Noise
+ * message or a frame that breaks the format closes the connection: there is
+ * no cleartext answer to send.
+ */
 function serveSocket(socket: Duplex, options: GatewayListenerOptions, head: Buffer): void {
-  const reader = new FrameReader(gatewayMaxMessageBytes);
+  const reader = new FrameReader(gatewayMaxFrameBytes);
   let closing = false;
   const send = (opcode: number, payload: Uint8Array) => {
     if (!closing && !socket.destroyed) socket.write(encodeFrame(opcode, payload));
   };
-  const connection = new GatewayConnection({
-    source: options.source,
-    policy: options.policy,
-    transport: {
-      send: (json) => send(frameType.text, Buffer.from(json, "utf8")),
+  const session = new SecureSession({
+    phones: options.phones,
+    pairing: options.pairing,
+    helloTimeoutMs: options.helloTimeoutMs ?? defaultHelloTimeoutMs,
+    handshakeTimeoutMs: options.handshakeTimeoutMs ?? gatewaySessionLimits.handshakeTimeoutMs,
+    // The session has closed its wire by then; the error only needs reporting.
+    onError: (error) => options.onError(error),
+    openConnection: (transport) =>
+      new GatewayConnection({ source: options.source, policy: options.policy, transport }),
+    wire: {
+      send: (frame) => send(frameType.binary, frame),
       bufferedBytes: () => socket.writableLength,
       close: () => {
         send(frameType.close, Buffer.alloc(0));
@@ -172,42 +198,42 @@ function serveSocket(socket: Duplex, options: GatewayListenerOptions, head: Buff
     else send(frameType.ping, Buffer.alloc(0));
   }, heartbeatMs);
   heartbeat.unref();
-  // A phone that answers pings but never says hello would otherwise hold its slot for ever.
-  const helloDeadline = setTimeout(() => {
-    if (!connection.hasGreeted()) socket.destroy();
-  }, options.helloTimeoutMs ?? defaultHelloTimeoutMs);
-  helloDeadline.unref();
+  // A throw here would be uncaught in a socket handler and stop the whole host.
+  const failed = (error: unknown) => {
+    socket.destroy();
+    options.onError(error);
+  };
+  const closeSession = () => {
+    try {
+      session.close();
+    } catch (error) {
+      failed(error);
+    }
+  };
+  const receive = (bytes: Uint8Array) => {
+    try {
+      session.receive(bytes);
+    } catch (error) {
+      closeSession();
+      failed(error);
+    }
+  };
   const onBytes = (chunk: Buffer) => {
     heardAt = Date.now();
     for (const event of reader.push(chunk)) {
-      switch (event.kind) {
-        case "message":
-          connection.receive({ binary: event.binary, bytes: event.bytes });
-          break;
-        case "ping":
-          send(frameType.pong, event.bytes);
-          break;
-        case "close":
-          connection.close();
-          break;
-        case "too-large":
-          connection.receiveTooLarge();
-          break;
-        case "protocol-error":
-          connection.close();
-          break;
-      }
+      if (event.kind === "message" && event.binary) receive(event.bytes);
+      else if (event.kind === "ping") send(frameType.pong, event.bytes);
+      else if (event.kind !== "pong") closeSession();
     }
   };
   socket.on("data", onBytes);
   // Bytes that came in the same packet as the handshake.
   if (head.length > 0) onBytes(head);
   // An HTTP server's sockets stay half open when the peer ends its side, so end ours too.
-  socket.once("end", () => connection.close());
+  socket.once("end", closeSession);
   socket.once("close", () => {
     clearInterval(heartbeat);
-    clearTimeout(helloDeadline);
-    connection.close();
+    closeSession();
   });
   socket.on("error", () => socket.destroy());
 }
