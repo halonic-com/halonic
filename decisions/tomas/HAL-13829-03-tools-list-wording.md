@@ -3,6 +3,7 @@
 - Task: HAL-13829 (CN3 of the C248 check on HAL-13818)
 - Approval: the team decided the words on HAL-13829 (small wording on an existing command); Liam reviews this pull request and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:uIiCQ6B8nXd0bQXTXj+HMqjFc8jplHN2/2HVwx5ZkCg9mrsD5V6atWqnaPuDDZSphJfg8qxJpKLbHgGjIG4xBg==
 
 ## What changes
 
