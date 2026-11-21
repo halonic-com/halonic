@@ -103,6 +103,32 @@ Until you trust a workspace, `doctor` only asks servers on this computer. A
 server at any other address shows as not answering until you run
 `halonic trust`.
 
+### Secrets
+
+Not in 0.1.0: on `main` only.
+
+**Checks:** the secrets a run in this workspace needs that the Models line
+doesn't check: the `secret` of an `http` connector and the `secretEnv` of a
+program connector, for each connector an agent lists under `connectors`; the
+`secret` of a provider the aliases use whose key the Models line doesn't check,
+such as the test model or a model server on this computer; the webhook `secret`
+of each routine that isn't `enabled: false`; and the `secret` of a provider
+whose key `halonic run` gives a Claude Code or Codex agent running in the
+sandbox, such as the only keyed provider of its type for an agent without a
+`model`. A cloud provider's key stays on the Models line, so no secret is named
+twice. A connector no agent uses isn't checked. `doctor` only learns whether
+each secret is set; it never shows a value. Shown inside a workspace, after
+Models and before Sandbox, only when there's something to report.
+
+| You see | Means | Fix |
+| --- | --- | --- |
+| ✕ a secret "isn't set" | A run that needs this secret stops. The line says what uses it, such as `✕ Secrets     anthropic-key isn't set (provider claude) · halonic secret set anthropic-key`. A secret several things use is one line, such as `(connectors files and notes)`. `doctor` exits 1. | Run the command at the end of the line, `halonic secret set <name>`, then run `doctor` again. |
+| ! "couldn't read" a secret "from the secret store" | Halonic couldn't ask the secrets file about this secret, such as `! Secrets     couldn't read files-token from the secret store (connector files)`. The secret may still be there. The other lines still show. | Run `halonic secret list`: it says what's wrong with the file and how to fix it. Then run `halonic doctor` again. |
+
+With `--json`, the check is `secrets`, with `missing` and `unreadable`: each a
+list of the secrets and what uses them, such as
+`{"check": "secrets", "status": "failed", "missing": [{"secret": "anthropic-key", "usedBy": [{"kind": "provider", "id": "claude"}]}], "unreadable": []}`.
+
 ### Sandbox
 
 **Checks:** whether the sandbox that agents run in can start on this computer.
