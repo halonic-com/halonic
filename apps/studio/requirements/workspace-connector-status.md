@@ -24,3 +24,7 @@ When the desktop app opens a folder, it shall give the Library feature the folde
   then the view hears that something changed.
 - Given the engine refused a call from `search`,
   then the status gives that refusal for `search` and tells its listeners.
+- Given an agent's Try it chat whose turn refused a call from `search`,
+  then the status gives that refusal for `search`.
+- Given a run whose turn left the `lookup` tool of `mail` waiting for an approval,
+  then the status gives `lookup` as waiting for `mail`.

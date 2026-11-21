@@ -38,12 +38,7 @@ import {
   workspaceBudget,
   workspaceExecutorOptions,
 } from "@halonicjs/adapter-workspace-models";
-import {
-  type ChatAnswer,
-  type ChatAnswerRequest,
-  ChatService,
-  type startOfDueRun,
-} from "@halonicjs/app";
+import type { startOfDueRun } from "@halonicjs/app";
 import {
   type AssembledEngine,
   assembleEngine,
@@ -471,15 +466,4 @@ export class EngineService {
 async function openRunsOf(runs: TauriRunStore): Promise<ReadonlySet<string>> {
   const open = await runs.list({ status: ["running", "waiting"] });
   return new Set(open.map((run) => run.id));
-}
-
-/**
- * Answers a chat, such as an agent's Try it, on the engine's executor. It counts as a start, so
- * each answer is refused as `denied` when the workspace may start nothing now, before any model
- * turn: the chat gives the agent its own connectors and tools.
- */
-export function answerChatOn(
-  engine: Pick<EngineService, "openForStart">,
-): (request: ChatAnswerRequest) => Promise<ChatAnswer> {
-  return async (request) => new ChatService((await engine.openForStart()).executor).answer(request);
 }

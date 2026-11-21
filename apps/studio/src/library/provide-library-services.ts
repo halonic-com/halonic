@@ -13,7 +13,7 @@ import type { GoogleSetupAccounts } from "@halonicjs/studio-feature-google-setup
 import {
   ConnectorStatusHostService,
   ListedToolsHostService,
-  RefusalsFeed,
+  type RefusalsFeed,
 } from "@halonicjs/studio-feature-library/api";
 import { secretsKey, tokenStoreKey } from "@halonicjs/studio-services";
 import { agentHostToolLister, noHttpInStudio } from "../connect/agent-host-tool-lister.ts";
@@ -28,6 +28,8 @@ export interface LibraryServiceParts {
   readonly transport: AgentHostTransport | undefined;
   readonly trust: WorkspaceTrust;
   readonly location: string;
+  /** What the folder's engine refused and left waiting, which its chats and runs record. */
+  readonly refusals: RefusalsFeed;
   /** The workspace's Google accounts, which the status of a Google connector is read from. */
   readonly google: Pick<GoogleSetupAccounts, "list" | "subscribe">;
   /** Calls the listener whenever the window comes to the front; returns a function that stops it. */
@@ -48,7 +50,7 @@ export function provideLibraryServices(
     ConnectorStatusHostService,
     new WorkspaceConnectorStatus({
       definitions: new TauriDefinitionStore(parts.files, parts.location),
-      refusals: new RefusalsFeed(),
+      refusals: parts.refusals,
       google: parts.google,
       onFocus: parts.onFocus,
       onWatchError: (error) => console.error(error),

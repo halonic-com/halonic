@@ -26,11 +26,14 @@ the run moved on (`studio.workspace-runs`).
 ## Library in the desktop app
 
 The desktop app registers the Library feature. For each open folder it gives the feature the
-folder's connector files, each shown as connected, and a list of what the engine refused from
-them. The page's engine can't start a connector yet, so nothing records a refusal and that list stays
-empty until it can. It reads the files again when one changes
-or the window comes to the front. Google connectors are left out until the app reads the account's
-sign-in (`studio.workspace-connector-status`).
+folder's connector files with how each connects, and a list of what the page's engine refused from
+them and which of their listed tools wait for an approval. A Google connector's state is read from
+its account's setup record; any other connector shows as not checked yet. An agent's Try it chat
+records what its turns refused and left waiting; a run records only the tools it left waiting, not
+its refusals. When an engine runs the folder in the background, the page opens no engine of its
+own and nothing reaches the list yet. The list is kept in memory, so it starts empty each time the
+folder opens. It reads the files again when one changes or the window comes to the front
+(`studio.workspace-connector-status`).
 
 ## Settings in the desktop app
 

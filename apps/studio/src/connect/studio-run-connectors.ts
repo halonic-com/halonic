@@ -136,16 +136,19 @@ export async function studioListedToolApproval(
 /**
  * A run's `reportWaiting`: a warning naming the Library, where the tools a turn left out are
  * approved, as the CLI's names `halonic tools review`. A run asks at every step, so each warning
- * is given once for each connector and set of tools.
+ * is given once for each connector and set of tools. Every report goes to `record` too, the
+ * Library's refusals list, which keeps the current set.
  *
  * @example
- * const reportWaiting = libraryWaitingReporter((line) => console.warn(line));
+ * const reportWaiting = libraryWaitingReporter((line) => console.warn(line), refusals.recordWaitingOf);
  */
 export function libraryWaitingReporter(
   warn: (line: string) => void,
+  record: (connector: string, waiting: readonly ChatTurnWaiting[]) => void = () => undefined,
 ): (connector: string, waiting: readonly ChatTurnWaiting[]) => void {
   const told = new Set<string>();
   return (connector, waiting) => {
+    record(connector, waiting);
     const names = waiting.map((tool) => tool.name).join(", ");
     const key = `${connector}\n${names}`;
     if (told.has(key)) return;

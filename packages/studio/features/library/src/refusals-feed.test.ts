@@ -60,4 +60,20 @@ verifies("library.refusals-feed", () => {
     feed.recordWaiting([{ source: "notes", name: "lookup" }]);
     expect(listener).toHaveBeenCalledTimes(1);
   });
+
+  it("replaces one connector's waiting tools and keeps the others', telling watchers only of a change", () => {
+    const feed = new RefusalsFeed();
+    const listener = vi.fn();
+    feed.subscribe(listener);
+    const send: ChatTurnWaiting = { source: "mail", name: "send" };
+    feed.recordWaitingOf("notes", [{ source: "notes", name: "lookup" }]);
+    feed.recordWaitingOf("mail", [send]);
+    feed.recordWaitingOf("notes", [{ source: "notes", name: "lookup" }]);
+    expect(listener).toHaveBeenCalledTimes(2);
+
+    feed.recordWaitingOf("notes", [{ source: "notes", name: "find" }]);
+    expect(feed.waiting("notes")).toEqual([{ source: "notes", name: "find" }]);
+    expect(feed.waiting("mail")).toEqual([send]);
+    expect(listener).toHaveBeenCalledTimes(3);
+  });
 });

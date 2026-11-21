@@ -10,7 +10,7 @@ import {
   TauriToolApprovalStore,
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
-import type { TokenStore } from "@halonicjs/ports";
+import type { ChatTurnWaiting, TokenStore } from "@halonicjs/ports";
 import { systemClock } from "@halonicjs/std";
 import { shellKeychain, type TauriIpc } from "@halonicjs/studio-services";
 import { noHttpInStudio } from "../connect/agent-host-tool-lister.ts";
@@ -30,6 +30,8 @@ export interface RunConnectorParts {
   readonly transport: AgentHostTransport;
   readonly trust: WorkspaceTrust;
   readonly tokens: TokenStore;
+  /** Hears the listed tools of a connector that wait for approval: the Library's refusals list. */
+  readonly onWaiting: (connector: string, waiting: readonly ChatTurnWaiting[]) => void;
 }
 
 /** The runs' connectors and the Library's approvals of their tools, for one engine. */
@@ -40,6 +42,7 @@ export async function openStudioRunConnectors({
   transport,
   trust,
   tokens,
+  onWaiting,
 }: RunConnectorParts): Promise<StudioRunConnectors> {
   return {
     connectors: studioRunConnectors({
@@ -58,7 +61,7 @@ export async function openStudioRunConnectors({
       approvals: new TauriToolApprovalStore(ipc),
       digest: webCryptoDigest,
       clock: systemClock,
-      reportWaiting: libraryWaitingReporter((line) => console.warn(line)),
+      reportWaiting: libraryWaitingReporter((line) => console.warn(line), onWaiting),
     }),
   };
 }
