@@ -84,6 +84,30 @@ verifies("studio.workspace-files-host", () => {
     expect(await host.problems()).toEqual([]);
   });
 
+  it("checks an agent's model alias against models.yaml, as halonic validate does (HAL-14323, S12)", async () => {
+    const files = {
+      "models.yaml": "aliases:\n  default:\n    provider: mock\n    model: echo\n",
+      "providers/mock.yaml": "id: mock\nname: Test model\ntype: mock\nlocal: true\n",
+      "hubs/acme/hub.yaml": "id: acme\nname: Acme\n",
+      "hubs/acme/agents/writer.agent.yaml":
+        "id: writer\nname: Writer\nmodel: default\ninstructions: Write.\n",
+      "hubs/acme/agents/sorter.agent.yaml":
+        "id: sorter\nname: Sorter\nmodel: smrt\ninstructions: Sort.\n",
+    };
+    const { host } = setup(Object.keys(files), {}, files);
+
+    const problems = await host.problems();
+
+    expect(problems.filter((problem) => problem.file.endsWith("writer.agent.yaml"))).toEqual([]);
+    expect(problems).toContainEqual(
+      expect.objectContaining({
+        file: "hubs/acme/agents/sorter.agent.yaml",
+        severity: "error",
+        message: 'Agent "sorter" uses unknown model alias "smrt"',
+      }),
+    );
+  });
+
   it("marks a file with unsaved changes that changed outside, and tells a subscriber", async () => {
     const { host, watching } = setup(["a.md"], { "a.md": "mine" }, {}, { held: ["a.md"] });
     let told = 0;

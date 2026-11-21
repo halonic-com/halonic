@@ -3,3 +3,12 @@ export const configurationPages = ["general", "request-form", "tests", "problems
 
 /** One page of Configuration. */
 export type ConfigurationPage = (typeof configurationPages)[number];
+
+/** The page Configuration opens on: Tests for a made test, Problems when asked for them, else General. */
+export function configurationStart(
+  madeTest: object | undefined,
+  problemsAsked: number | undefined,
+): ConfigurationPage | undefined {
+  if (madeTest !== undefined) return "tests";
+  return problemsAsked === undefined ? undefined : "problems";
+}

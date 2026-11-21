@@ -1,6 +1,6 @@
 import { AgentHostError } from "@halonicjs/adapter-agent-host-client";
 import { whoUses } from "@halonicjs/app";
-import type { ChatRequest, ChatResponse, DefinitionSource } from "@halonicjs/ports";
+import type { ChatRequest, ChatResponse } from "@halonicjs/ports";
 import type {
   KnowledgeHost,
   KnowledgeRef,
@@ -15,7 +15,7 @@ import {
   loadWorkspace,
   resolveModel,
 } from "@halonicjs/workspace";
-import { unsavedSource } from "./workspace-library-items.ts";
+import { checkedSource, unsavedSource } from "./workspace-library-items.ts";
 import type { WorkspaceSkillsParts } from "./workspace-skills.ts";
 
 /** What {@link WorkspaceKnowledge} needs besides the workspace's files: a way to call a model. */
@@ -124,7 +124,7 @@ export class WorkspaceKnowledge implements KnowledgeHost {
   }
 
   async summarize(source: KnowledgeRef): Promise<SummarizeOutcome> {
-    const workspace = await loadWorkspace(this.#withModels());
+    const workspace = await loadWorkspace(checkedSource(this.#parts.files));
     const found = await this.#find(source, workspace);
     const folder = found === undefined ? undefined : folderOf(found.config);
     if (found === undefined || found.provider !== "files" || folder === undefined) {
@@ -186,23 +186,6 @@ export class WorkspaceKnowledge implements KnowledgeHost {
     return filesOf(workspace, "knowledge").find(
       (file) => file.hub === source.hub && file.value.id === source.id,
     )?.value;
-  }
-
-  /** The workspace as {@link unsavedSource} reads it, and also its model aliases and providers. */
-  #withModels(): DefinitionSource {
-    const { files } = this.#parts;
-    const base = unsavedSource(files);
-    return {
-      ...base,
-      list: async () => {
-        const [listed, providers, models] = await Promise.all([
-          base.list(),
-          files.list("providers"),
-          files.read("models.yaml"),
-        ]);
-        return [...listed, ...providers, ...(models === null ? [] : ["models.yaml"])];
-      },
-    };
   }
 
   /** The paths of the documents under `folder`, sorted. */

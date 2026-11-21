@@ -22,7 +22,7 @@ import {
 } from "@halonicjs/studio-feature-files/api";
 import { loadWorkspace, placeOf } from "@halonicjs/workspace";
 import { defaultYamlLimits, editYaml, readYaml } from "@halonicjs/yaml";
-import { unsavedSource } from "../library/workspace-library-items.ts";
+import { checkedSource, unsavedSource } from "../library/workspace-library-items.ts";
 
 /** What {@link WorkspaceFilesHost} needs of the workspace's files and events. */
 export interface FilesHostParts {
@@ -217,7 +217,7 @@ export class WorkspaceFilesHost implements FilesHost {
 
   async problems(): Promise<readonly FileIssue[]> {
     try {
-      const workspace = await loadWorkspace(unsavedSource(this.#parts.files));
+      const workspace = await loadWorkspace(checkedSource(this.#parts.files));
       return workspace.issues
         .map(({ file, severity, message, line, col }) => ({ file, severity, message, line, col }))
         .sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.col - b.col);

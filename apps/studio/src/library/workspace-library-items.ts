@@ -1,4 +1,5 @@
 import { type LibraryItemKind, libraryItemPath, whoUses } from "@halonicjs/app";
+import { fileKinds, kindNames } from "@halonicjs/format";
 import type { DefinitionSource } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type {
@@ -31,6 +32,26 @@ export interface WorkspaceLibraryItemsParts {
  * the shared library items, agents and workflows (where routines live).
  */
 const folders = ["hubs", "library", "agents", "workflows"];
+
+/**
+ * Where the checks read, as `halonic validate` does: the first folder of every place a kind's file
+ * can sit (`hubs` for a hub's own), and the files a kind keeps at the workspace root, such as
+ * `models.yaml`. Read from the kinds, so a new kind is checked without a change here. Without
+ * `models.yaml` every agent's `model:` alias looked unknown (HAL-14323). The Library's rows and
+ * their "Used by" keep to {@link folders}.
+ */
+function checkedPlaces(): { readonly folders: string[]; readonly rootFiles: string[] } {
+  const places = kindNames().flatMap((kind) => fileKinds[kind].places);
+  const atRoot = places.filter((place) => place.scope !== "hub");
+  const folders = places.flatMap((place) => [
+    ...(place.scope !== "hub" && place.folder !== "" ? [place.folder.split("/")[0] ?? ""] : []),
+    ...(place.scope !== "workspace" ? ["hubs"] : []),
+  ]);
+  const rootFiles = atRoot.filter((place) => place.folder === "").map((place) => place.name);
+  return { folders: [...new Set(folders)], rootFiles: [...new Set(rootFiles)] };
+}
+
+const checked = checkedPlaces();
 
 /** What {@link WorkspaceLibraryItems} needs: the reads, and the kernel's way to change and undo. */
 export interface WorkspaceLibraryItemsHostParts extends WorkspaceLibraryItemsParts {
@@ -193,6 +214,28 @@ export function unsavedSource(files: WorkspaceLibraryItemsParts["files"]): Defin
       const listed = await Promise.all(folders.map((folder) => files.list(folder)));
       const settings = (await files.read(settingsPath)) === null ? [] : [settingsPath];
       return [...settings, ...listed.flat()];
+    },
+    read: (path) => files.read(path),
+    version: async () => "unsaved",
+  };
+}
+
+/**
+ * The workspace's files the checks read, with unsaved changes applied: every place a kind's file
+ * can sit, so a problem Studio shows is one `halonic validate` finds.
+ *
+ * @example
+ * (await loadWorkspace(checkedSource(files))).issues; // no "unknown model alias" for an alias in models.yaml
+ */
+export function checkedSource(files: WorkspaceLibraryItemsParts["files"]): DefinitionSource {
+  return {
+    location: "workspace:unsaved",
+    list: async () => {
+      const listed = await Promise.all(checked.folders.map((folder) => files.list(folder)));
+      const existing = await Promise.all(
+        checked.rootFiles.map(async (path) => ((await files.read(path)) === null ? [] : [path])),
+      );
+      return [...existing.flat(), ...listed.flat()];
     },
     read: (path) => files.read(path),
     version: async () => "unsaved",
