@@ -6,6 +6,11 @@ set -euo pipefail
 SLOT=${1:?slot, e.g. large-1}
 . /etc/halonic-ci/pool.env   # APP_ID INSTALLATION_ID ORG RUNNER_GROUP_ID IMAGE
 KEY=/etc/halonic-ci/app.pem
+TRUSTED=/cache/trusted; TRUSTED_PROJ=300; TRUSTED_QUOTA=20g
+fail() { echo "slot ${SLOT}: $1" >&2; exit 1; }
+# Fail closed: the App key must be a root-only 0400 file, not a link.
+[ -f "$KEY" ] && [ ! -L "$KEY" ] || fail "$KEY missing or not a file"
+[ "$(stat -c '%u %a' "$KEY")" = "0 400" ] || fail "$KEY must be owned by root with mode 0400"
 case "$SLOT" in
   large-*) LABEL=halonic-ci-large; CPUS=12; MEM=9g;  QUOTA=20g; TMPFS=1g ;;
   small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=2g;  QUOTA=6g;  TMPFS=512m ;;
@@ -23,7 +28,7 @@ JWT="$hdr.$pl.$sig"
 api() { curl -fsS -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "$@"; }
 TOKEN=$(api -X POST -H "Authorization: Bearer $JWT" \
   "https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens" | jq -r .token)
-[ -n "$TOKEN" ] && [ "$TOKEN" != null ]
+[ -n "$TOKEN" ] && [ "$TOKEN" != null ] || fail "no installation token"
 
 # Remove this slot's leftover idle registrations (a slot runs one runner at a time, so any
 # that exist now belong to a container that is gone: VM reboot, slot restart).
@@ -45,6 +50,7 @@ RUNNER_ID=$(jq -r .runner.id <<<"$RESP")
 
 # userns-remap: container uid 1001 (runner) = host uid SUBUID_BASE+1001
 BASE=$(awk -F: '$1=="dockremap"{print $2; exit}' /etc/subuid)
+[[ "$BASE" =~ ^[1-9][0-9]*$ ]] || fail "no dockremap range in /etc/subuid (userns-remap off?)"
 RUID=$((BASE+1001))
 RUN=/run/halonic-ci/$SLOT; WORK=/cache/work/$SLOT
 JOB_WORK=/home/runner/actions-runner/_work  # leak-guard: allow absolute-path the runner's work dir inside the image
@@ -52,6 +58,14 @@ rm -rf "$RUN" "$WORK"; install -d -m 0700 -o "$RUID" -g "$RUID" "$RUN" "$WORK"
 umask 077; jq -r .encoded_jit_config <<<"$RESP" > "$RUN/jitconfig"; chown "$RUID:$RUID" "$RUN/jitconfig"; chmod 0400 "$RUN/jitconfig"
 unset RESP TOKEN JWT
 xfs_quota -x -c "project -s -p $WORK $PROJ" -c "limit -p bhard=$QUOTA $PROJ" /cache >/dev/null
+# The shared caches get one project quota too (set once: new files inherit the project).
+(
+  flock 9
+  if ! xfs_io -c lsproj "$TRUSTED" 2>/dev/null | grep -qx "projid = $TRUSTED_PROJ"; then
+    xfs_quota -x -c "project -s -p $TRUSTED $TRUSTED_PROJ" /cache >/dev/null
+  fi
+  xfs_quota -x -c "limit -p bhard=$TRUSTED_QUOTA $TRUSTED_PROJ" /cache >/dev/null
+) 9>/run/halonic-ci/trusted-quota.lock
 
 STATE=/run/halonic-ci/$SLOT.state; JOBLOG=/var/log/halonic-ci/jobs.jsonl
 install -d -m 0755 /var/log/halonic-ci
@@ -69,8 +83,8 @@ docker run --rm --name "hci-$SLOT" --hostname "$NAME" --init \
   -v "$RUN:/run/halonic-ci:ro" \
   -v /etc/halonic-ci/pool:/etc/halonic-ci:ro \
   -v "$WORK:$JOB_WORK" \
-  -v /cache/trusted/pnpm-store:/cache/pnpm-store \
-  -v /cache/trusted/ms-playwright:/cache/ms-playwright \
+  -v "$TRUSTED/pnpm-store:/cache/pnpm-store" \
+  -v "$TRUSTED/ms-playwright:/cache/ms-playwright" \
   "$IMAGE" &
 DPID=$!
 
@@ -98,12 +112,15 @@ while kill -0 "$DPID" 2>/dev/null; do
     if [ "$JOB_START" = 0 ] && [[ "$procs" == *Runner.Worker* ]]; then
       JOB_START=$(date +%s)
     fi
-    evf=$WORK/_temp/_github_workflow/event.json
+    # The event file is the job's to change (it could be a link to any VM file), so read it
+    # inside the container as the runner user, never as root here.
     if [ "$JOB_START" != 0 ] && [ -z "$EV" ]; then
-      if [ -s "$evf" ]; then
-        if   jq -e 'has("merge_group")'  "$evf" >/dev/null 2>&1; then EV=merge_group; REF=$(jq -r '.merge_group.head_ref // ""' "$evf"); SHA=$(jq -r '.merge_group.head_sha // ""' "$evf")
-        elif jq -e 'has("pull_request")' "$evf" >/dev/null 2>&1; then EV=pull_request; REF=$(jq -r '.pull_request.head.ref // ""' "$evf"); SHA=$(jq -r '.pull_request.head.sha // ""' "$evf")
-        else EV=push; REF=$(jq -r '.ref // ""' "$evf"); SHA=$(jq -r '.after // ""' "$evf"); fi
+      evj=$(docker exec "hci-$SLOT" head -c 1048576 "$JOB_WORK/_temp/_github_workflow/event.json" 2>/dev/null || true)
+      if [ -n "$evj" ]; then
+        if   jq -e 'has("merge_group")'  >/dev/null 2>&1 <<<"$evj"; then EV=merge_group; REF=$(jq -r '.merge_group.head_ref // ""' <<<"$evj"); SHA=$(jq -r '.merge_group.head_sha // ""' <<<"$evj")
+        elif jq -e 'has("pull_request")' >/dev/null 2>&1 <<<"$evj"; then EV=pull_request; REF=$(jq -r '.pull_request.head.ref // ""' <<<"$evj"); SHA=$(jq -r '.pull_request.head.sha // ""' <<<"$evj")
+        elif jq -e . >/dev/null 2>&1 <<<"$evj"; then EV=push; REF=$(jq -r '.ref // ""' <<<"$evj"); SHA=$(jq -r '.after // ""' <<<"$evj"); fi
+        REF=${REF:0:255}; SHA=${SHA:0:64}
       fi
     fi
   fi

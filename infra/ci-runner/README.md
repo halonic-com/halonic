@@ -30,7 +30,9 @@ server by the board supervisor after it merges; the server doesn't pull from the
 4. **Fork run approval** (repo setting): a maintainer approves every outside contributor's run.
 
 `SMOKE_BRANCH` / `SMOKE_WORKFLOW` in `pool.conf` admit one test workflow on one own branch. Both
-are empty except during a smoke test.
+are empty except during a smoke test. That branch's code is **not reviewed** and runs with the
+writable shared caches, so use only a branch that only admins can push to, and empty both again
+right after the test.
 
 `node --test infra/ci-runner/hook.test.mjs` runs the hook as shipped against sample events (CI runs
 it in the `fast` job).
@@ -43,7 +45,7 @@ it in the `fast` job).
 | Host | `host/halonic-ci-status.*`: a read-only status feed, fetched from the VM every minute over SSH with a key that can run only the status command. |
 | VM | Docker with `userns-remap`. One systemd unit per slot (`vm/halonic-runner@.service`). |
 | VM | `/etc/halonic-ci/app.pem`: the GitHub App's key (only permission: self-hosted runners), root-only `0400`. Never in the image, a container or a backup that leaves the VM. |
-| VM | `/cache/trusted/{pnpm-store,ms-playwright}`: package and browser caches, no secrets, shared by all slots and kept between jobs. `/cache/work/<slot>`: the job's work dir, quota-capped and wiped after every job. |
+| VM | `/cache/trusted/{pnpm-store,ms-playwright}`: package and browser caches, no secrets, shared by all slots and kept between jobs, capped together at 20 GB (XFS project 300). `/cache/work/<slot>`: the job's work dir, quota-capped and wiped after every job. |
 
 Site data stays out of this repo: `/etc/halonic-ci/pool.env` (see `vm/pool.env.example`),
 `/etc/halonic-ci/slots` (the list of slot units) and `/etc/halonic-ci/site.nft` (the server's
@@ -74,6 +76,10 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
 
 ## Operating
 
+- **App key:** the slot script refuses to start unless `/etc/halonic-ci/app.pem` is a root-owned
+  `0400` file, and unless `/etc/subuid` has the `dockremap` range (userns-remap on).
+- **Weekly audit (Timothy):** check the org audit log for any change to the `halonic-ci` runner
+  group (repositories, workflows, public repos) and to the `halonic-ci-runners` App (C6).
 - **Kill switch:** clear `CI_RUNNER_LARGE` and `CI_RUNNER_SMALL` (the next runs go back to
   GitHub-hosted). On the VM: `touch /etc/halonic-ci/paused` and stop the slots. If the VM is
   suspected compromised, also revoke the App key and rotate the Turbo signing key.
@@ -87,13 +93,19 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   shared caches and starts the slots again.
 - **Firewall first:** `host/halonic-ci-nft.service` is required by `libvirtd.service`. If the rules
   don't load (a missing `/etc/halonic-ci/site.nft`, say), libvirtd and the CI VM don't start.
+  The unit has no stop command: stopping it leaves the rules in place, because the VM keeps
+  running without libvirtd. After editing the rules, `systemctl reload halonic-ci-nft` swaps them
+  in one step, and a file that doesn't load keeps the old ones.
 - **Status:** the host writes `/srv/ci/status/ci-status.json` and `jobs.jsonl` (per job: event,
   ref, seconds, `mem_peak`, `cpu_seconds`). On GitHub, a job's `runnerName` starting with `hci-`
-  ran here.
+  ran here. The status files carry fields a job controls (ref, event), so a dashboard or an agent
+  reads them as untrusted text, never as commands or markup.
 
 ## Not built yet
 
 - A bandwidth cap (`tc`) on the CI network.
+- A size cap on each container's writable layer (the runner's home, `~/.cache`). It needs Docker's
+  data root on an XFS volume mounted with `pquota`, then `--storage-opt size=` per slot (C5).
 - Runner `--disableupdate` and a weekly image rebuild (today the timer only prunes).
 - A check that nothing trusts the server's public IP (C4).
 - Paperclip's cpuset kept off the CI CPUs.
