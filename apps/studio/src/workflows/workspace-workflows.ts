@@ -421,11 +421,8 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     this.#learnNames([{ hubId: ref.hubId, id: ref.id, name: trimmed }]);
   }
 
-  /**
-   * Creates the workflow in `hubId`, with the Default hub when the workspace has no hub yet, its step
-   * `start` running the hub's first agent by id, so a new workflow can run at once when the hub has
-   * one; throws `not_found` for any other hub the workspace doesn't have, so no stray folder is made.
-   */
+  /** Creates the workflow in `hubId` (the Default hub too when there is none yet), its `start` running
+   * the hub's first agent by id; throws `not_found` for any other hub, so no stray folder is made. */
   async create({ name, hubId }: NewWorkflow): Promise<WorkflowRef> {
     const workspace = await this.#load();
     const hubFiles = hubFilesFor(workspace.issues, this.#hubs, hubId);

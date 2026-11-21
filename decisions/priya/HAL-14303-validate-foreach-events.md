@@ -31,3 +31,4 @@ No test was weakened or skipped. `workspace-workflows.test.ts` expects 1 error a
 - workflow.validate
 - workflow.validate-template-names
 - studio.workspace-workflows
+- packages/testing/parity/allowed-differences.json
