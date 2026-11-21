@@ -68,6 +68,13 @@ const shareRemoteName = "origin";
 const versionCountCap = 1000;
 
 /**
+ * The least time between two re-reads that changed files ask for. Each read starts git, and on
+ * Windows each start is a process of its own, so a burst of changes reads once at its start and
+ * once at its end (HAL-14812).
+ */
+export const filesChangedGapMs = 1000;
+
+/**
  * The open workspace's history, read through the shell's `git` command: what changed since the
  * last version, and turning history on for a folder that has none (requirement
  * `source-control.changes-page`).
@@ -76,6 +83,8 @@ export class WorkspaceChanges implements ChangesSource {
   readonly #options: WorkspaceChangesOptions;
   readonly #merge: UpdatesMerge;
   readonly #sharedCopy: SharedCopy;
+  /** Whether the last read found a repository and git; true until a read says otherwise. */
+  #repository = true;
 
   constructor(options: WorkspaceChangesOptions) {
     this.#options = options;
@@ -112,6 +121,12 @@ export class WorkspaceChanges implements ChangesSource {
   }
 
   async read(): Promise<ChangesRead> {
+    const read = await this.#read();
+    this.#repository = read.kind === "ready";
+    return read;
+  }
+
+  async #read(): Promise<ChangesRead> {
     const inside = await this.#run(["rev-parse", "--is-inside-work-tree"]);
     if (inside === "no-git") return { kind: "no-git" };
     // Git refuses a folder owned by someone else with the same exit code as "no repository here";
@@ -311,9 +326,22 @@ export class WorkspaceChanges implements ChangesSource {
     return this.#merge.cancel();
   }
 
+  /**
+   * Wakes `listener` each time the window comes to the front, and when files changed, at most once
+   * per {@link filesChangedGapMs}. A folder that isn't a repository, or a computer without git,
+   * isn't read again for changed files: editing a file doesn't make it one, and the next focus
+   * reads again (HAL-14812).
+   */
   subscribe(listener: () => void): () => void {
-    const stops = [this.#options.onFocus(listener), this.#options.onFilesChanged(listener)];
+    const filesChanged = spaced(listener, filesChangedGapMs);
+    const stops = [
+      this.#options.onFocus(listener),
+      this.#options.onFilesChanged(() => {
+        if (this.#repository) filesChanged.ask();
+      }),
+    ];
     return () => {
+      filesChanged.stop();
       for (const stop of stops) stop();
     };
   }
@@ -459,6 +487,32 @@ function shareReason(answer: GitAnswer): string {
     return "the shared copy didn't accept your sign-in.";
   }
   return knownGitProblem(answer) ?? "Git didn't share the versions.";
+}
+
+/**
+ * Calls `call` when asked, at most once per `gapMs`: the first ask at once, and the asks during
+ * the gap once, at its end.
+ */
+function spaced(call: () => void, gapMs: number): { ask(): void; stop(): void } {
+  let last = Number.NEGATIVE_INFINITY;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const run = () => {
+    timer = undefined;
+    last = Date.now();
+    call();
+  };
+  return {
+    ask() {
+      if (timer !== undefined) return;
+      const wait = last + gapMs - Date.now();
+      if (wait <= 0) run();
+      else timer = setTimeout(run, wait);
+    },
+    stop() {
+      clearTimeout(timer);
+      timer = undefined;
+    },
+  };
 }
 
 /** Whether the shell refused because it found no git program (`GitRefusal.kind`). */
