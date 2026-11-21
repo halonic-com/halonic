@@ -99,6 +99,17 @@ verifies("agents.configuration.agent-steps", () => {
     expect(tools?.querySelector("dd")?.textContent).toBe("None");
   });
 
+  it("says JSON when an agent step answers in JSON with no fields", async () => {
+    const page = await openAgentSteps(
+      host([{ id: "check", instructions: "Check.", outputFields: [] }]),
+    );
+    await act(async () => buttonNamed(page, "check")?.click());
+    const output = [...(topCard(page)?.querySelectorAll("dl > div") ?? [])].find(
+      (row) => row.querySelector("dt")?.textContent === "Output",
+    );
+    expect(output?.querySelector("dd")?.textContent).toBe("JSON");
+  });
+
   it("asks for a name and what it should do, then adds the agent step and opens its card", async () => {
     const agents = host();
     const page = await openAgentSteps(agents);
