@@ -311,7 +311,7 @@ export const systemMachine: Machine = {
     }
   },
   dockerDesktopVisible: () => dockerDesktopShows(dockerSocket, sharedWslFolder),
-  elevated: removalSteps.elevated,
+  elevated: systemRemovalSteps.elevated,
   async profileReadGranted() {
     if (process.platform !== "win32") return false;
     try {
