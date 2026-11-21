@@ -352,6 +352,11 @@ verifies("app.review-try-it-holds-back", () => {
       ["working folder", `${clerk}workingFolder: notes\n`, `${clerk}workingFolder: .\n`],
       ["network allowlist", clerk, clerk.replace("[docs.acme.test]", "['*']")],
       ["harness", clerk, `${clerk}harness: claude-code\n`],
+      [
+        "asks",
+        `${clerk}harness: claude-code\n`,
+        `${clerk}harness: claude-code\nasks: in-sandbox\n`,
+      ],
     ])("leaves out a change to an agent's %s", async (_what, before, after) => {
       const { read, reason } = await tried(agent, before, after);
       expect(read).toBe(before);

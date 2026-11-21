@@ -110,6 +110,19 @@ export const trustMessages = defineMessages("trust", {
   allowedSites: () => phrase`Allowed sites`,
   /** The label over an agent's folder, shown only when it isn't `files/agents/<id>`. */
   workingFolder: () => phrase`Working folder`,
+  /**
+   * The label over what an agent with `asks: in-sandbox` does without a
+   * person's OK. Wording decided by the team (HAL-14992), on the approved
+   * trust screen.
+   */
+  withoutAsking: () => phrase`Without asking`,
+  /** What an agent with `asks: in-sandbox` does without asking, under {@link withoutAsking}. */
+  inSandboxCalls: () => phrase`edits and runs commands in its working folder, inside the sandbox`,
+  /** A changed agent's `asks`: it turned `in-sandbox` on, or off again. */
+  asksChanged: (inSandbox: boolean) =>
+    inSandbox
+      ? phrase`now edits and runs commands in its working folder without asking, inside the sandbox`
+      : phrase`asks again before it edits or runs a command`,
   /** After a wildcard site, `*.example.com`. */
   everySiteUnder: (domain: string) => phrase`every site under ${domain}`,
   /** After a site with a Punycode label (`xn--`). */
