@@ -1,13 +1,14 @@
 // The lines `halonic serve` prints for the routines a web request starts
 // (HAL-14299): one per webhook routine that is on, with the address it
 // listens at, and a ✕ line when its secret isn't set or names a secret that
-// belongs to Halonic or a plugin, since the server then refuses every
+// belongs to Halonic or a plugin, or when the routine has a trigger value
+// `halonic validate` reports (HAL-15084), since the server then refuses every
 // request for it. Without them, nothing said why a webhook routine never
 // started.
 
 import { webhookPathPrefix } from "@halonicjs/host-server";
 import { type Secrets, workspaceSecrets } from "@halonicjs/ports";
-import { type PlacedRoutine, routineKey } from "@halonicjs/routines";
+import { type PlacedRoutine, routineKey, triggerValueProblems } from "@halonicjs/routines";
 import type { Phrase } from "../../messages/phrase.ts";
 import { serveMessages } from "../../messages/serve.ts";
 import { printable } from "../../output/printable.ts";
@@ -40,6 +41,11 @@ export async function webhookRoutineLines(
       lines.push(serveMessages.webhookSecretNotSet(name, printable(secret)).phrase);
     } else if (state === "reserved") {
       lines.push(serveMessages.webhookSecretNotOwn(name, printable(secret)).phrase);
+    }
+    // The first one only, as a start stops at it (`routineStart`).
+    const problem = triggerValueProblems(routine)[0];
+    if (problem !== undefined) {
+      lines.push(serveMessages.webhookRoutineInvalid(name, printable(problem.message)).phrase);
     }
   }
   return lines;
