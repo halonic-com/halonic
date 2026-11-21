@@ -68,6 +68,13 @@ export interface YamlEdited {
  *   { kind: "rename", path: ["states", "write"], to: "draft" },
  * ]);
  * // { ok: true, value: { text: "states:\n  draft: # the first draft\n    agent: writer\n", layout: "kept" } }
+ *
+ * @example
+ * // A move takes the item's comments along; `to` is its index after the move.
+ * const moved = editYaml("on:\n  # first\n  - a\n  - b # second\n", [
+ *   { kind: "move", path: ["on", 0], to: 1 },
+ * ]);
+ * // { ok: true, value: { text: "on:\n  - b # second\n  # first\n  - a\n", layout: "kept" } }
  */
 export function editYaml(
   text: string,
@@ -113,7 +120,8 @@ function applyEdit(before: Step, edit: YamlEdit, limits: YamlLimits): Result<Ste
   if (!expected.ok) {
     return expected;
   }
-  if (deepEqual(expected.value, before.data)) {
+  // Moving an item among equal ones keeps the data, but its comments still move with it.
+  if (deepEqual(expected.value, before.data) && !movesItem(edit)) {
     return ok({ text: before.text, data: before.data, layout: "kept" });
   }
   const attempts: [YamlLayout, () => string | undefined][] = [
@@ -140,6 +148,11 @@ function applyEdit(before: Step, edit: YamlEdit, limits: YamlLimits): Result<Ste
   return err("The new value doesn't read back the same from YAML.");
 }
 
+/** True for a `move` that puts the item at another index. */
+function movesItem(edit: YamlEdit): boolean {
+  return edit.kind === "move" && edit.path[edit.path.length - 1] !== edit.to;
+}
+
 /**
  * The first fallback: the same edit through the yaml library's Document API,
  * rendered again. Comments stay; spacing may not.
@@ -155,6 +168,9 @@ function renderWithDocument(text: string, edit: YamlEdit, expected: unknown): st
   }
   if (edit.kind === "rename") {
     return renameInDocument(document, edit) ? render(text, document) : undefined;
+  }
+  if (edit.kind === "move") {
+    return moveInDocument(document, edit) ? render(text, document) : undefined;
   }
   return setInDocument(text, document, edit, expected);
 }
@@ -187,6 +203,20 @@ function renameInDocument(
     return false;
   }
   key.value = edit.to;
+  return true;
+}
+
+/** Moves the item's own node, so the comments the library hangs on it go with it. */
+function moveInDocument(
+  document: ReturnType<typeof parseDocument>,
+  edit: Extract<YamlEdit, { kind: "move" }>,
+): boolean {
+  const { path } = edit;
+  const list = path.length === 1 ? document.contents : document.getIn(path.slice(0, -1), true);
+  if (!isSeq(list)) {
+    return false;
+  }
+  list.items.splice(edit.to, 0, ...list.items.splice(path[path.length - 1] as number, 1));
   return true;
 }
 

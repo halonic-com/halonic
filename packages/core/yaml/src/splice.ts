@@ -9,6 +9,7 @@ import {
   flowAncestor,
   insertItem,
   isFilledFlow,
+  moveItem,
   nodeAt,
   type Parsed,
   parse,
@@ -63,6 +64,13 @@ function spliceLines(text: string, edit: YamlEdit): string | undefined {
       );
     case "rename":
       return renameKey(parsed, edit.path, edit.to);
+    case "move":
+      return moveItem(
+        parsed,
+        edit.path.slice(0, -1),
+        edit.path[edit.path.length - 1] as number,
+        edit.to,
+      );
   }
 }
 

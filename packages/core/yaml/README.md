@@ -90,7 +90,7 @@ writing is up to the caller.
 ## Editing
 
 `editYaml(text, edits, limits?)` takes a list of `YamlEdit`s and answers with a `YamlEdited`
-(`text` and `layout`, a `YamlLayout`) or with a `YamlProblem` or `YamlEditProblem`. It applies `set`, `delete`, `insert` and `rename` edits to a file
+(`text` and `layout`, a `YamlLayout`) or with a `YamlProblem` or `YamlEditProblem`. It applies `set`, `delete`, `insert`, `rename` and `move` edits to a file
 and keeps everything the edits don't touch, so a structured editor can save
 while the user watches the file.
 
@@ -102,6 +102,7 @@ const edited = editYaml(text, [
   { kind: "insert", path: ["steps", 1], value: { id: "review" } },
   { kind: "delete", path: ["draft"] },
   { kind: "rename", path: ["env", "REGION"], to: "AWS_REGION" },
+  { kind: "move", path: ["steps", 0], to: 1 },
 ]);
 if (!edited.ok) {
   // a readYaml problem, or { kind: "bad-edit", edit: 1, message }
@@ -131,14 +132,23 @@ save(edited.value.text);
   key stays quoted; a plain one gets quotes when the new name needs them.
   Renaming to a key the map already has is a problem; renaming to the same
   name changes nothing.
+- `move` moves a list item to index `to` of the same list. `to` is the item's
+  index after the move, as when it is taken out and put back in: moving item
+  0 of `[a, b, c]` to 2 gives `[b, c, a]`. The item's lines move as one block,
+  with the comment lines right above it at its own indent, the comment at
+  the end of its line and the comment lines indented under it; a blank line between items, and a comment above the
+  first item at the list key's indent, stay where they are. So a header
+  comment right over the first item of a file that is a list moves with that
+  item; leave a blank line under the header to keep it first. `to` must be
+  an index the list has; moving to the same index changes nothing.
 - If any edit doesn't fit, nothing is applied and the problem names that edit.
 
 **Setting a whole map or list.** A `set` with a whole object changes only what
 differs: changed keys are set, new keys go at the end, and keys missing from
 the new value are deleted. Lists are compared item by item at the same index,
 so putting an item at the front of a list rewrites every item after it and
-moves their comments. To add, remove or reorder items, use `insert` and
-`delete`: they keep the comments with their items. A `set` of the whole document
+moves their comments. To add, remove or reorder items, use `insert`,
+`delete` and `move`: they keep the comments with their items. A `set` of the whole document
 (`[]`) keeps the comments at the top of the file.
 
 **Layout.** Every result is read back and must give the expected data. When
