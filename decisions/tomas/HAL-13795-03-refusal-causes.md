@@ -2,6 +2,7 @@
 
 - Approval: Noah's C503 M2 and M3 on HAL-14914, "fix now", wording on approved screens decided by the team with Noah (HAL-2282); the package owner (Liam) approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:uBJ6qJtZHQA3m5W41ulBiBszvrIOAd/3zG9j9DDNGvJZa7F9gfx+FshyQEQn0rpej/eZjbIMPPIz5D+jS0CTCw==
 
 ## What changes
 
