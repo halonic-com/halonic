@@ -2,11 +2,13 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-3814 (plan for `halonic run`, PR B, approved by Liam on HAL-3895)
+- Source: HAL-3814 (plan for `halonic run`, PR B, approved by Liam on HAL-3895); HAL-10236; HAL-4291
 
 The CLI shall turn a workspace's provider file into a model provider by its type: `mock` into the mock model; `anthropic` into Anthropic's Messages API; `openai`, `openai-compatible`, `ollama` and `lmstudio` into OpenAI's chat completions API. A provider without `baseUrl` shall use Anthropic's or OpenAI's own address, or the default address `doctor` shows for `ollama` and `lmstudio`. The key shall be read for each call from the secret the file names, through the workspace's view of the secrets, and a key that isn't set shall fail the call with `no-key`. A type the CLI has no adapter for, and an `openai-compatible` file without `baseUrl`, shall be a `not_found` error with a fix.
 
 The CLI shall pick a model call's model from the agent editor's unsaved settings when the call has them, else from the call's alias, else the agent's `model`, else the hub's default model, else the workspace's. It shall resolve the name through the aliases the hub can use, or as `provider/model`, and give the model its provider, alias, secret name, price, its alias's `params` (left out when the alias sets none; the engine lays the agent's over them, requirement `engine.model-params`), whether it runs on this computer (always for the mock model) and its alias's fallbacks, each with its own alias's `params`. An alias the hub doesn't have and a provider the workspace doesn't have shall each be a `not_found` error with a fix.
+
+It shall find the agents a hub's workflow runs, each once, through every workflow it starts, and, for the Studio's run controls (HAL-4291), the agents each of its states runs: its own agent, its branches' and those of a workflow it starts. An agent with no file in the hub is left out.
 
 ## Examples
 
@@ -25,3 +27,6 @@ The CLI shall pick a model call's model from the agent editor's unsaved settings
 - Given a call with the alias `fast` for the same agent,
   when the model is picked,
   then it is `fast`.
+- Given the workflow `reply`, whose `read` runs `writer` and whose `check` starts `review`, which runs `sorter` and `writer`,
+  when its states' agents are found,
+  then `read` runs `writer`, `check` runs `sorter` and `writer`, and the final state runs none.

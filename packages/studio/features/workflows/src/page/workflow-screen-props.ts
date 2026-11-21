@@ -1,3 +1,4 @@
+import type { SandboxStartCheck } from "@halonicjs/app";
 import type { ShownRuns } from "@halonicjs/studio-feature-inbox/api";
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
 import type { SaveState } from "@halonicjs/studio-shell";
@@ -39,8 +40,18 @@ export interface WorkflowScreenProps {
   readonly testsAsked?: number;
   /** Reads a state change to screen readers (`announcer.announceState`); without it nothing is read. */
   readonly announceState?: AnnounceState;
-  /** Says a line to a screen reader (`announcer.announce`), for why the run card's Run again didn't start; without it nothing is said. */
+  /**
+   * Says a line to a screen reader, politely (`announcer.announce`): why the run card's Run again
+   * didn't start, and what Check again found; without it nothing is said.
+   */
   readonly announce?: (line: string) => void;
   /** The window's save state, for the toolbar's "1 field not saved"; absent without a window. */
   readonly saving?: Pick<SaveState, "setFieldsNotSaved"> | undefined;
+  /**
+   * Checks whether the sandbox can start, for a workflow whose steps start a program; where it is
+   * absent, Run is never disabled for the sandbox (the engine still refuses such a run).
+   */
+  readonly sandboxStartCheck?: SandboxStartCheck | undefined;
+  /** Opens an agent's page, for the can't-run Callout's "*Writer*'s settings ›"; without it there is no link. */
+  readonly openAgent?: (agentId: string) => void;
 }

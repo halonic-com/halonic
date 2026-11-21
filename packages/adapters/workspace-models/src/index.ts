@@ -10,7 +10,12 @@ export {
 } from "./harness-model-access.ts";
 export type { ModelText } from "./model-texts.ts";
 export { type KeyDestination, keyDestination } from "./provider-origin.ts";
-export { startsAProgram, type WorkflowRef, workflowAgentsOf } from "./workflow-agents.ts";
+export {
+  startsAProgram,
+  stateAgentsOf,
+  type WorkflowRef,
+  workflowAgentsOf,
+} from "./workflow-agents.ts";
 export { type WorkspaceBudget, workspaceBudget } from "./workspace-budget.ts";
 export {
   type WorkspaceExecutorInput,
