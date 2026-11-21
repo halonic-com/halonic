@@ -2,6 +2,7 @@
 
 - Approval: Liam's first review note on PR 02 (halonic#3967, HAL-6702) asks for the suite and the fake target; the build plan was approved by Liam on HAL-13512; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9qq4SB1nMR1A4EjvjbRP6QGrMgLCanOMqi2KuF0XAHNQj8Hu0U/5L8n7QDqsSQxrZjcQOi/iGY+UsTFfsoS9BA==
 
 ## What changes
 
