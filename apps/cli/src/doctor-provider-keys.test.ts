@@ -9,7 +9,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { cliProviderKeys } from "./cli-provider-keys.ts";
-import { agentsWithProviderKey } from "./doctor-provider-keys.ts";
+import { agentsWithProviderKey, withHarnessProviderKeys } from "./doctor-provider-keys.ts";
+import { doctorWorkspace } from "./doctor-workspace.ts";
 
 let root: string;
 
@@ -64,7 +65,8 @@ const noSecrets: Secrets = {
   },
 };
 
-async function keyedOf(
+/** The harness agents `run` gives a provider key, and the keys they get. */
+async function providerKeyAgentsOf(
   workspace: LoadedWorkspace,
   placement: PlacementReader,
   { trusted = false }: { trusted?: boolean } = {},
@@ -81,6 +83,26 @@ async function keyedOf(
     location: root,
     readFile: async (path) => new Uint8Array(await readFile(join(root, path))),
     access: (agent) => keys.accessFor(agent),
+  });
+}
+
+/** The ids of the harness agents `run` gives a provider key. */
+async function keyedOf(
+  workspace: LoadedWorkspace,
+  placement: PlacementReader,
+  options: { trusted?: boolean } = {},
+): Promise<ReadonlySet<string>> {
+  return (await providerKeyAgentsOf(workspace, placement, options)).agents;
+}
+
+/** The workspace as `doctor` reads it from its files, before the keys are added. */
+function doctorWorkspaceOf(workspace: LoadedWorkspace) {
+  return doctorWorkspace({
+    workspace,
+    integrations: [],
+    location: root,
+    fallbackName: "acme",
+    commandPaths: new Map(),
   });
 }
 
@@ -141,5 +163,91 @@ verifies("app.doctor-agent-sign-in", () => {
 
     expect(await keyedOf(workspace, placementOf())).toEqual(new Set(["writer"]));
     expect(await keyedOf(workspace, placementOf("reports/writer"))).toEqual(new Set());
+  });
+});
+
+verifies("cli.doctor-secrets", () => {
+  /** C536 G1: a root agent of Claude Code without a model, and one keyed Anthropic provider no alias uses. */
+  const noModel = {
+    "workspace.yaml": files["workspace.yaml"],
+    "providers/claude.yaml": files["providers/claude.yaml"],
+    "hubs/support/hub.yaml": files["hubs/support/hub.yaml"],
+    "agents/writer2.agent.yaml": "id: writer2\nname: Writer two\nharness: claude-code\n",
+  };
+
+  it("keeps the key run gives a harness agent without a model, so doctor checks it (HAL-15086)", async () => {
+    const workspace = await workspaceOf(noModel);
+
+    const found = await providerKeyAgentsOf(workspace, placementOf());
+
+    expect(found.agents).toEqual(new Set(["writer2"]));
+    expect(found.keys).toEqual([{ provider: "claude", secret: "anthropic-key" }]);
+    // On this computer the program's own sign-in is used, so no key is needed.
+    expect((await providerKeyAgentsOf(workspace, placementOf("writer2"))).keys).toEqual([]);
+  });
+
+  it("keeps the key of an agent that gets it in one hub only, as that run still needs it", async () => {
+    const workspace = await workspaceOf({
+      ...noModel,
+      "hubs/reports/hub.yaml": "id: reports\nname: Reports\n",
+    });
+
+    const found = await providerKeyAgentsOf(workspace, placementOf("reports/writer2"));
+
+    expect(found.agents).toEqual(new Set());
+    expect(found.keys).toEqual([{ provider: "claude", secret: "anthropic-key" }]);
+  });
+
+  it("adds a key the Models line doesn't check to the secrets, used by its provider", async () => {
+    const workspace = doctorWorkspaceOf(await workspaceOf(noModel));
+
+    const withKeys = withHarnessProviderKeys(workspace, [
+      { provider: "claude", secret: "anthropic-key" },
+    ]);
+
+    expect(withKeys.secrets).toEqual([
+      { secret: "anthropic-key", usedBy: [{ kind: "provider", id: "claude" }] },
+    ]);
+  });
+
+  it("leaves out a key the Models line checks already, so no secret is named twice", async () => {
+    const workspace = doctorWorkspaceOf(
+      await workspaceOf({
+        ...noModel,
+        "models.yaml": "aliases:\n  smart:\n    provider: claude\n    model: claude-sonnet-5-5\n",
+      }),
+    );
+
+    const withKeys = withHarnessProviderKeys(workspace, [
+      { provider: "claude", secret: "anthropic-key" },
+    ]);
+
+    expect(withKeys.secrets).toEqual([]);
+  });
+
+  it("adds the provider to a secret a connector uses too, named as first written", async () => {
+    const workspace = doctorWorkspaceOf(
+      await workspaceOf({
+        ...noModel,
+        "library/connectors/files.connector.yaml":
+          "name: Files\ntransport:\n  stdio:\n    command: acme-files\n    secretEnv:\n      FILES_TOKEN: ANTHROPIC_KEY\n",
+        "hubs/support/agents/helper.agent.yaml":
+          "id: helper\nname: Helper\ninstructions: Help.\nconnectors: [files]\n",
+      }),
+    );
+
+    const withKeys = withHarnessProviderKeys(workspace, [
+      { provider: "claude", secret: "anthropic-key" },
+    ]);
+
+    expect(withKeys.secrets).toEqual([
+      {
+        secret: "ANTHROPIC_KEY",
+        usedBy: [
+          { kind: "connector", id: "files" },
+          { kind: "provider", id: "claude" },
+        ],
+      },
+    ]);
   });
 });
