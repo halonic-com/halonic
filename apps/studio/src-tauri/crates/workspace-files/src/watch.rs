@@ -29,7 +29,7 @@ use crate::leave_out::LeaveOut;
 /// with a message that says what to do.
 ///
 /// `halonic doctor` warns about such a folder with its own copy of this
-/// limit, `studioWatchedFileLimit` in `apps/cli/src/studio-watch-limit.ts`;
+/// limit, `studioWatchedFileLimit` in `packages/adapters/doctor-node/src/studio-watch-limit.ts`;
 /// a test there reads this line and checks the two are equal.
 pub const MAX_WATCHED_FILES: usize = 50_000;
 

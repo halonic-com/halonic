@@ -11,6 +11,7 @@ import {
   doctorService as machineDoctorService,
   type DoctorMachine as NodeDoctorMachine,
   trustedOnMachine as machineTrustedOnMachine,
+  networkProblemOf,
   nodeCommandSearch,
 } from "@halonicjs/adapter-doctor-node";
 import { FileAgentPlacementStore, FileTrustStore } from "@halonicjs/adapter-fs-node";
@@ -21,7 +22,6 @@ import type { Secrets } from "@halonicjs/ports";
 import { placementFolder, profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { type AddedPlugins, addedPluginsOf } from "./connector-plugin.ts";
-import { networkProblemOf } from "./doctor-network.ts";
 import { engineHttp } from "./engine-http.ts";
 import { nodeHarnessPrograms } from "./harness-programs.ts";
 import { openPluginService } from "./plugin-host.ts";

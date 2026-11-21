@@ -1,6 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { nodeCommandSearch, readDoctorWorkspace, usedConnectors } from "@halonicjs/adapter-doctor-node";
+import {
+  nodeCommandSearch,
+  readDoctorWorkspace,
+  studioWatchedFileLimit,
+  usedConnectors,
+} from "@halonicjs/adapter-doctor-node";
 import type { DoctorReport, DoctorWorkspace, ProfileProblem } from "@halonicjs/app";
 import { type Secrets, workspaceSecrets } from "@halonicjs/ports";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
@@ -20,7 +25,6 @@ import { exitCode } from "../../exit-code.ts";
 import { doctorMessages } from "../../messages/doctor.ts";
 import { doctorReportLines } from "../../output/doctor-report.ts";
 import { profileProblem } from "../../profile-place.ts";
-import { studioWatchedFileLimit } from "../../studio-watch-limit.ts";
 import { halonicVersion } from "../../version.ts";
 import {
   dirOption,

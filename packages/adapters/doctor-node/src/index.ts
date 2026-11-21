@@ -12,6 +12,7 @@ export {
   trustedOnMachine,
   withHarnessSettingsFolders,
 } from "./doctor-machine.ts";
+export { networkProblemOf } from "./doctor-network.ts";
 export {
   type DoctorWorkspaceInput,
   doctorProvider,
@@ -25,5 +26,6 @@ export {
   type ReadWorkspaceOptions,
   readDoctorWorkspace,
 } from "./read-workspace.ts";
+export { studioWatchedFileLimit } from "./studio-watch-limit.ts";
 export { workspaceIntegrations } from "./workspace-integrations.ts";
 export { fileProblemsOf } from "./workspace-problems.ts";

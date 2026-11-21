@@ -963,6 +963,9 @@ importers:
       '@halonicjs/adapter-http-kit':
         specifier: workspace:*
         version: link:../http-kit
+      '@halonicjs/adapter-http-node':
+        specifier: workspace:*
+        version: link:../http-node
       '@halonicjs/adapter-workspace-models':
         specifier: workspace:*
         version: link:../workspace-models
