@@ -25,6 +25,7 @@ import {
   type NewWorkspaceHost,
 } from "../new-workspace/new-workspace-dialog.tsx";
 import { createdLine } from "../new-workspace/new-workspace-text.ts";
+import type { FreshCopyAsks } from "../sample/fresh-copy-asks.ts";
 import { SampleChip } from "../sample/sample-chip.tsx";
 import type { CreatedSample, SampleHost } from "../sample/sample-host.ts";
 import { freshCopyFailedLine, freshCopyLine, freshCopyTryAgain } from "../sample/sample-text.ts";
@@ -55,6 +56,8 @@ export interface WorkspaceWindowProps {
   readonly newWorkspaceAsks?: NewWorkspaceAsks;
   /** What **Open demo** needs from the app. Without it Welcome has no such button. */
   readonly sample?: SampleHost;
+  /** Lets the rest of the app ask for a fresh copy of the demo, such as the first run's Start over. */
+  readonly freshCopyAsks?: FreshCopyAsks;
   /**
    * The memory and free-disk watch the status bar's resources item shows. Without it the
    * item stays hidden (`shell.resource-status-item`).
@@ -82,6 +85,7 @@ export function WorkspaceWindow({
   newWorkspace,
   newWorkspaceAsks,
   sample,
+  freshCopyAsks,
   resources,
   start,
 }: WorkspaceWindowProps) {
@@ -157,6 +161,13 @@ export function WorkspaceWindow({
             freshCopyRunning.current = false;
           }
         };
+  // The latest copy for an ask: `freshCopy` is made again each render.
+  const latestFreshCopy = useRef(freshCopy);
+  latestFreshCopy.current = freshCopy;
+  useEffect(
+    () => freshCopyAsks?.subscribe(() => void latestFreshCopy.current?.()),
+    [freshCopyAsks],
+  );
   const shown = useSyncExternalStore(
     (onChange) => open.subscribe(onChange),
     () => open.shown,

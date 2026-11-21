@@ -8,13 +8,18 @@ export const FIRST_RUN_STATE = "halonic.first-run.state";
  * Where the first run's state lives for the folder at `location` (`first-run.state`): one key in
  * the page's storage on this device, the same whichever folder is open. Like Recent, a state that
  * can't be read counts as none, and one that can't be written stays as it was, so the first run
- * never stops a folder from opening.
+ * never stops a folder from opening. The device's `startOver` copies the demo again for Help's
+ * **Start over**; it is left out where the window has no Open demo.
  *
  * @example
- * const device = firstRunDeviceOf("/docs/Acme sample", window.localStorage);
+ * const device = firstRunDeviceOf("/docs/Acme sample", { storage: window.localStorage });
  */
-export function firstRunDeviceOf(location: string, storage: RecentStorage): FirstRunDevice {
+export function firstRunDeviceOf(
+  location: string,
+  { storage, startOver }: { readonly storage: RecentStorage; readonly startOver?: () => void },
+): FirstRunDevice {
   return {
+    ...(startOver === undefined ? {} : { startOver }),
     folder: location,
     read: () => {
       try {
