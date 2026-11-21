@@ -13,6 +13,7 @@ import {
   KeyBody,
   LocalBody,
   LocalStateLine,
+  LockedLine,
   OffOption,
   OptionCard,
 } from "./pick-model-options.tsx";
@@ -167,7 +168,9 @@ function Footer(props: {
         </Button>
       </div>
       {line !== undefined && (
-        <p className="text-right text-small text-fg-muted phone:text-left">{line}</p>
+        <p className="text-right text-small text-fg-muted phone:text-left">
+          <LockedLine>{line}</LockedLine>
+        </p>
       )}
     </div>
   );

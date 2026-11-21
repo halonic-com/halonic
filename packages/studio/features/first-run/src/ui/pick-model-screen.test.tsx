@@ -147,6 +147,19 @@ verifies("first-run.pick-model", () => {
     expect(face).not.toContain("peer-focus-visible:focus-ring");
   });
 
+  it("puts a hidden lock before the trust line and where the key is kept", async () => {
+    const root = await open(fakeService([], { kind: "not-found", cause: "off" }));
+    const lockBefore = (text: string) =>
+      [...root.querySelectorAll("span")].find(
+        (span) => span.textContent === text && span.querySelector("svg") !== null,
+      );
+    const trust = lockBefore("Will pass 1 secret to Anthropic. Turns off Local only.");
+    const kept = lockBefore("Kept encrypted on this computer. Studio never shows it again.");
+    for (const line of [trust, kept]) {
+      expect(line?.firstElementChild?.getAttribute("aria-hidden")).toBe("true");
+    }
+  });
+
   it("draws Ollama's missing model in amber, not the violet of your turn", async () => {
     const root = await open(fakeService(["openai"], { kind: "none-downloaded" }));
     const line = [...root.querySelectorAll("span")].find(

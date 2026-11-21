@@ -6,6 +6,7 @@ import {
   Field,
   InfoIcon,
   Input,
+  LockIcon,
   Select,
   Spinner,
   TickIcon,
@@ -112,6 +113,18 @@ function StateLine({
   );
 }
 
+/** A line with the 14px lock before it (sheets 01 and 07): the trust line and where a key is kept. */
+export function LockedLine({ children }: { readonly children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="size-3.5 shrink-0 *:size-full" aria-hidden="true">
+        <LockIcon />
+      </span>
+      {children}
+    </span>
+  );
+}
+
 /** The local option's state line, by what the detection found. */
 export function LocalStateLine({ local }: { readonly local: LocalState }) {
   if (local.kind === "one" || local.kind === "several") {
@@ -212,7 +225,7 @@ export function KeyBody(props: {
           </button>
         </p>
       ) : (
-        <Field label={words.keyField} hint={words.keyKept}>
+        <Field label={words.keyField} hint={<LockedLine>{words.keyKept}</LockedLine>}>
           <Input
             ref={props.keyField}
             type="password"
