@@ -24,8 +24,8 @@ import type {
 import { InputRefused } from "../kernel/input-refused.ts";
 import { callOf, hasEnded, type PendingCall, type RunState } from "../kernel/run-state.ts";
 import { readRun, step } from "../kernel/step.ts";
-import { appendFailed } from "./append-failed.ts";
-import { childNow, childStart, endChildrenOf, parentEndedError, receiverOf } from "./child-runs.ts";
+import { appendFailed, type Failure } from "./append-failed.ts";
+import { childNow, childStart, endChildrenOf, parentEnded, receiverOf } from "./child-runs.ts";
 import { failedCallInput } from "./failed-call-input.ts";
 import { LocalHarnessCalls } from "./local-harness-calls.ts";
 import { type CallModel, LocalModelCalls } from "./local-model-calls.ts";
@@ -197,8 +197,8 @@ export class LocalRuns {
 
   /** Ends the run as cancelled and, as for any run that ends, its child runs still going. */
   async #cancelDown(runId: string): Promise<void> {
-    await this.#cancelOne(runId, cancelledError);
-    await this.#ended(runId, cancelledError);
+    await this.#cancelOne(runId, { error: cancelledError });
+    await this.#ended(runId, { error: cancelledError });
   }
 
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription {
@@ -365,7 +365,7 @@ export class LocalRuns {
       const reason = unbuilt.type === "run-harness" ? "harness-unavailable" : "error";
       await this.#fail(
         runId,
-        `The local executor can't carry out a ${unbuilt.type} effect yet.`,
+        { error: `The local executor can't carry out a ${unbuilt.type} effect yet.` },
         reason,
       );
       await this.#ended(runId);
@@ -378,14 +378,14 @@ export class LocalRuns {
 
   /**
    * A run has just ended: the child runs it started that are still going are
-   * cancelled with `childError`, all the way down. Then, when it is a
+   * cancelled as `child` says, all the way down. Then, when it is a
    * top-level run, its harness calls and its child runs' stop, and its
    * proposal folder and its connectors end. It waits on those calls, so no
    * input recorded inside a harness call may end its run or any run above it
    * (today that is only `harness-asked`, which never does).
    */
-  async #ended(runId: string, childError = parentEndedError): Promise<void> {
-    const end = (childRunId: string) => this.#cancelOne(childRunId, childError);
+  async #ended(runId: string, child: Failure = parentEnded): Promise<void> {
+    const end = (childRunId: string) => this.#cancelOne(childRunId, child);
     await endChildrenOf(this.store, runId, end);
     await this.#folders.ended(runId, async (topLevelRunId) => {
       this.#modelCalls.stopUnder(topLevelRunId);
@@ -465,16 +465,16 @@ export class LocalRuns {
     if (parent != null) await this.#hearFromChild(parent.runId, runId);
   }
 
-  /** Ends a run as cancelled, with `error`, and stops its harness and model calls. */
-  async #cancelOne(runId: string, error: string): Promise<void> {
-    await this.#fail(runId, error, "cancelled");
+  /** Ends a run as cancelled, as `failure` says, and stops its harness and model calls. */
+  async #cancelOne(runId: string, failure: Failure): Promise<void> {
+    await this.#fail(runId, failure, "cancelled");
     this.#modelCalls.stop(runId);
     await this.#harnessCalls.stop(runId);
   }
 
   /** Ends a run that hasn't ended with `run.failed`, and tells its parent. */
-  async #fail(runId: string, error: string, reason: RunFailureReason = "error"): Promise<void> {
-    if (!(await appendFailed(this.store, runId, error, reason, () => this.#now()))) return;
+  async #fail(runId: string, failure: Failure, reason: RunFailureReason = "error"): Promise<void> {
+    if (!(await appendFailed(this.store, runId, failure, reason, () => this.#now()))) return;
     await this.#tellParentOf(runId);
   }
 
