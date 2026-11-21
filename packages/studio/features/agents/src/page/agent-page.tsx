@@ -11,15 +11,11 @@ import {
   useTabIds,
 } from "@halonicjs/studio-kit";
 import {
-  type CardStack,
   type CloseStack,
   createCloseStack,
-  dropGoneCards,
   ItemGone,
   type ItemPageSectionListing,
   type ItemViewProps,
-  noCards,
-  openCard,
   type SaveState,
   type SectionsProps,
   StackedCards,
@@ -29,7 +25,6 @@ import {
   type AgentChange,
   type AgentListing,
   type AgentRef,
-  type AgentStep,
   type AgentsHost,
   AgentsHostService,
   type AgentToolList,
@@ -40,12 +35,13 @@ import { configurationWords } from "../configuration/configuration-words.ts";
 import { useConfigurationLoads } from "../configuration/use-configuration-loads.ts";
 import { fileItemOf } from "../trash/file-item.ts";
 import { useAgentTrash } from "../trash/use-agent-trash.tsx";
-import { AgentStepCard, agentStepCardKey, agentStepOfCard } from "./agent-step-card.tsx";
+import { AgentStepCard, agentStepOfCard } from "./agent-step-card.tsx";
 import { forgetFreshAgent, isFreshAgent } from "./fresh-agents.ts";
 import { NotLiveLine } from "./not-live-line.tsx";
 import { pageWords } from "./page-words.ts";
 import { RenameField } from "./rename-field.tsx";
-import { SubagentCard, subagentCardKey, subagentOfCard } from "./subagent-card.tsx";
+import { SubagentCard, subagentOfCard } from "./subagent-card.tsx";
+import { useAgentCards } from "./use-agent-cards.ts";
 import { type Load, useLoad } from "./use-load.ts";
 
 /**
@@ -362,71 +358,6 @@ export function AgentScreen({
 /** The hub's name for the breadcrumb, else its id while the hubs aren't read. */
 function hubName(host: AgentsHost, hubId: string): string {
   return host.hubs().find((hub) => hub.id === hubId)?.name ?? hubId;
-}
-
-/** The agent page's stack of cards, and the ways to change it. */
-interface AgentCards {
-  readonly stack: CardStack;
-  readonly set: (stack: CardStack) => void;
-  readonly openSubagent: (agent: AgentListing) => void;
-  readonly openAgentStep: (step: AgentStep) => void;
-  readonly close: () => void;
-}
-
-/**
- * The cards stacked on the agent page's panel (flow-agents 7): a subagent and an agent step open
- * as cards, and a card whose agent or agent step is gone drops with every card above it, saying
- * so to screen readers. The stack is the page's state, so it stays across tab switches while the
- * page stays mounted.
- */
-function useAgentCards(
-  host: AgentsHost,
-  agent: AgentRef,
-  announce: ((text: string) => void) | undefined,
-): AgentCards {
-  const [stack, setStack] = useState<CardStack>(noCards);
-  const latest = useRef(stack);
-  latest.current = stack;
-  const set = useCallback((next: CardStack) => setStack(next), []);
-  const openSubagent = useCallback(
-    (sub: AgentListing) =>
-      setStack((now) => openCard(now, { key: subagentCardKey(sub), title: sub.name })),
-    [],
-  );
-  const openAgentStep = useCallback(
-    (step: AgentStep) =>
-      setStack((now) => openCard(now, { key: agentStepCardKey(step), title: step.id })),
-    [],
-  );
-  const close = useCallback(() => setStack(noCards), []);
-  const { hubId, id } = agent;
-  useEffect(() => {
-    let live = true;
-    const check = async () => {
-      if (latest.current.length === 0) return;
-      const [team, agentSettings] = await Promise.all([
-        host.team({ hubId, id }),
-        host.settings({ hubId, id }),
-      ]).catch(() => []);
-      if (!live || team === undefined || agentSettings === undefined) return;
-      const agents = new Set(team.map((member) => member.id));
-      const steps = new Set(agentSettings.agentSteps.map((step) => step.id));
-      const { stack: kept, removed } = dropGoneCards(latest.current, (card) => {
-        const sub = subagentOfCard(card.key);
-        const step = agentStepOfCard(card.key);
-        return (sub === undefined || agents.has(sub)) && (step === undefined || steps.has(step));
-      });
-      if (removed === undefined) return;
-      setStack(kept);
-      announce?.(pageWords.cardRemoved(removed.title));
-    };
-    const stop = host.subscribe(() => void check());
-    return () => {
-      live = false;
-      stop();
-    };
-  }, [host, hubId, id, announce]);
-  return { stack, set, openSubagent, openAgentStep, close };
 }
 
 /**
