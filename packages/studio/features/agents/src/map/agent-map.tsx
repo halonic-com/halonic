@@ -1,6 +1,6 @@
 import { LetterTile } from "@halonicjs/studio-kit";
 import type { CloseStack } from "@halonicjs/studio-shell";
-import { type ReactNode, useId, useRef, useState } from "react";
+import { type ReactNode, useId, useLayoutEffect, useRef, useState } from "react";
 import {
   type AgentListing,
   type AgentSettings,
@@ -62,10 +62,23 @@ export function AgentMap(props: AgentMapProps) {
   const { settings, openAgentStep } = props;
   const [drawer, setDrawer] = useState<MapSide>();
   const opener = useRef<HTMLButtonElement | null>(null);
+  const boxes = useRef<Partial<Record<MapSide, HTMLDivElement | null>>>({});
   const sides = mapSides(props);
   // Shown only while its side still has too many cards; a change to the file can take that away.
   const open =
     drawer !== undefined && sides[drawer].items.length > MAX_SIDE_CARDS ? drawer : undefined;
+  // When it does, the drawer and its summary card go, and the focus in them with them: it goes to
+  // the side's first card or button instead of the page's body.
+  useLayoutEffect(() => {
+    if (drawer === undefined || open !== undefined) return;
+    setDrawer(undefined);
+    if (document.activeElement === null || document.activeElement === document.body) {
+      boxes.current[drawer]?.querySelector<HTMLElement>("button")?.focus();
+    }
+  }, [drawer, open]);
+  const box = (key: MapSide) => (element: HTMLDivElement | null) => {
+    boxes.current[key] = element;
+  };
   const close = () => {
     setDrawer(undefined);
     opener.current?.focus();
@@ -109,12 +122,16 @@ export function AgentMap(props: AgentMapProps) {
         )
       }
     >
-      <div className="col-start-1 row-start-1">
+      <div ref={box("in")} className="col-start-1 row-start-1">
         {(sides.in.items.length > 0 || sides.in.add) && side("in")}
       </div>
       <CentreCard settings={settings} openAgentStep={openAgentStep} />
-      <div className="col-span-3 row-start-2">{side("use")}</div>
-      <div className="col-start-3 row-start-1">{side("out")}</div>
+      <div ref={box("use")} className="col-span-3 row-start-2">
+        {side("use")}
+      </div>
+      <div ref={box("out")} className="col-start-3 row-start-1">
+        {side("out")}
+      </div>
     </MapFrame>
   );
 }
