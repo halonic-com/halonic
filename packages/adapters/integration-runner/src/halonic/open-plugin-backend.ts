@@ -70,9 +70,27 @@ export class PluginBackendNotFencedError extends Error {
 }
 
 /**
+ * The runner's fence failed though the computer passed the sandbox check
+ * (A23), so the runner was stopped and nothing ran. The next start tries the
+ * sandbox again; it never runs without it.
+ */
+export class PluginBackendStoppedError extends Error {
+  override readonly name = "PluginBackendStoppedError";
+  /** The plugin's id, so a caller can name it and open its page. */
+  readonly plugin: string;
+
+  constructor(plugin: string) {
+    super(
+      `Halonic stopped the plugin ${plugin}: its sandbox didn't hold, so it didn't run. The next run that uses it tries the sandbox again.`,
+    );
+    this.plugin = plugin;
+  }
+}
+
+/**
  * Opens a plugin's backend in the runner and returns its client.
  *
- * @throws when nothing started, such as a plugin that isn't trusted or changed since, or a fence that failed
+ * @throws when nothing started, such as a plugin that isn't trusted or changed since, or a fence that failed ({@link PluginBackendStoppedError})
  */
 export type OpenPluginBackend = (request: OpenPluginBackendRequest) => Promise<ConnectorClient>;
 
@@ -191,7 +209,7 @@ class PluginBackendOpening {
     this.#tellStart(gated.run);
     if (gated.run === "fenced" || gated.run === "unfenced") return gated.runner;
     if (gated.run === "needs-yes") throw new PluginBackendNotFencedError(gated.reason);
-    throw new Error("the sandbox failed its check, so nothing runs");
+    throw new PluginBackendStoppedError(this.#request.plugin);
   }
 
   /** Tells the machine's `onStart`; a hook that throws leaves the start as it came out. */
