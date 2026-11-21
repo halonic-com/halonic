@@ -3,7 +3,9 @@
  * design on HAL-15159, section 3 and B7 item 10). It keeps the newest events
  * within a cap, so a host that streams without end can't grow the phone's
  * memory without limit, and it notices a gap in `seq`, after which the
- * gateway client drops what it holds and watches the session from 0.
+ * gateway client drops what it holds and watches the session from 0. Until
+ * the host confirms that new watch, events of the old one may still arrive,
+ * so the memory ignores every event until then.
  *
  * The open approvals are kept apart from the events: an approval requested
  * long ago stays open after its event fell out of the cap.
@@ -32,9 +34,12 @@ export interface HeldApproval {
  * - `gap`: one or more events before it are missing, so the phone dropped
  *   everything it held of the session, and must watch it from 0;
  * - `repeat`: the phone already had it (its `seq` is not above the last
- *   one), so nothing changed.
+ *   one), so nothing changed;
+ * - `ignored`: the phone is watching the session again from 0 and the host
+ *   hasn't confirmed that watch yet, so the event belongs to the old watch
+ *   and nothing changed.
  */
-export type AddResult = "held" | "gap" | "repeat";
+export type AddResult = "held" | "gap" | "repeat" | "ignored";
 
 interface HeldEvent {
   readonly event: RemoteEvent;
@@ -49,6 +54,8 @@ export class SessionMemory {
   private heldBytes = 0;
   private dropped = false;
   private last: number | undefined;
+  private waitingForWatch = false;
+  private snapshot: readonly RemoteEvent[] | undefined;
   private readonly approvals = new Map<string, HeldApproval>();
 
   /**
@@ -60,9 +67,10 @@ export class SessionMemory {
     return this.last ?? 0;
   }
 
-  /** The events held, oldest first. */
+  /** The events held, oldest first; the same array until they change. */
   get events(): readonly RemoteEvent[] {
-    return this.held.map((entry) => entry.event);
+    this.snapshot ??= this.held.map((entry) => entry.event);
+    return this.snapshot;
   }
 
   /** Whether older events were dropped to stay within the cap. */
@@ -77,13 +85,14 @@ export class SessionMemory {
 
   /**
    * Takes the next event of a watch. The first event after {@link clear}
-   * may have any `seq`, since the host keeps only its newest events; after
-   * that each one must be one more than the last.
+   * or {@link watchConfirmed} may have any `seq`, since the host keeps only
+   * its newest events; after that each one must be one more than the last.
    */
   add(event: RemoteEvent): AddResult {
+    if (this.waitingForWatch) return "ignored";
     if (this.last !== undefined && event.seq <= this.last) return "repeat";
     if (this.last !== undefined && event.seq !== this.last + 1) {
-      this.clear();
+      this.startOver();
       return "gap";
     }
     this.last = event.seq;
@@ -92,9 +101,28 @@ export class SessionMemory {
     return "held";
   }
 
-  /** Drops everything held, as after `history-gone` or a gap. */
+  /**
+   * Drops everything held and ignores events until {@link watchConfirmed},
+   * as after a gap or `history-gone`, when the client watches the session
+   * again from 0.
+   */
+  startOver(): void {
+    this.clear();
+    this.waitingForWatch = true;
+  }
+
+  /**
+   * The host confirmed the new watch with `ok`. It sends that before the
+   * new watch's first event, so every event from here on belongs to it.
+   */
+  watchConfirmed(): void {
+    this.waitingForWatch = false;
+  }
+
+  /** Drops everything held, and takes the next event as the session's first. */
   clear(): void {
     this.held = [];
+    this.snapshot = undefined;
     this.heldBytes = 0;
     this.dropped = false;
     this.last = undefined;
@@ -104,6 +132,7 @@ export class SessionMemory {
   private hold(event: RemoteEvent): void {
     const bytes = utf8.encode(JSON.stringify(event.body)).byteLength;
     this.held.push({ event, bytes });
+    this.snapshot = undefined;
     this.heldBytes += bytes;
     while (this.held.length > maxHeldEvents || this.heldBytes > maxHeldEventBytes) {
       const oldest = this.held.shift();
