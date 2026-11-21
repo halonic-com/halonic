@@ -2,9 +2,9 @@
 //! the Android adapter of `halonic-device-keys`. Each paired computer's key
 //! pair is a file in the app's private data, sealed by an AES-256-GCM key
 //! in the Android Keystore (StrongBox when the phone has one) through the
-//! Kotlin `DeviceKeyPlugin`. The shell keeps the store as state; the phone
-//! transport loads and saves through it, and forgets a computer's key on
-//! Removed and on Forget.
+//! Kotlin `DeviceKeyPlugin`. The phone tunnel (`phone_tunnel`) opens the
+//! store with [`key_store`] for its paired-computer list, which loads and
+//! saves through it, and forgets a computer's key on Removed and on Forget.
 //!
 //! No capability grants the plugin's commands, so no page can call them;
 //! only the shell does, from Rust. A call waits for the Kotlin side, so it
@@ -21,7 +21,7 @@ use halonic_blob_store::base64url;
 use halonic_device_keys::{DeviceKeyError, KeyWrapper, WrappedFileStore};
 use serde::{Deserialize, Serialize};
 use tauri::plugin::{PluginHandle, TauriPlugin};
-use tauri::{Manager, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 
 /// The folder in the app's data that holds the sealed keys.
 const FOLDER: &str = "device-keys";
@@ -31,6 +31,22 @@ pub type DeviceKeys<R> = WrappedFileStore<AndroidKeystore<R>>;
 
 /// The Android Keystore, as a [`KeyWrapper`].
 pub struct AndroidKeystore<R: Runtime>(PluginHandle<R>);
+
+/// The Kotlin side, kept so [`key_store`] can open the store.
+struct KeystorePlugin<R: Runtime>(PluginHandle<R>);
+
+/// The phone's key store over the sealed keys' folder, for the phone
+/// tunnel's paired-computer list; `None` before this plugin is set up. The
+/// debug Keystore check keeps a store of its own over the same folder, and
+/// only ever touches its own `halonic-contract-*` computers.
+pub fn key_store<R: Runtime>(app: &AppHandle<R>) -> Option<DeviceKeys<R>> {
+    let plugin = app.try_state::<KeystorePlugin<R>>()?;
+    let data = app.path().app_data_dir().ok()?;
+    Some(WrappedFileStore::new(
+        data.join(FOLDER),
+        AndroidKeystore(plugin.0.clone()),
+    ))
+}
 
 #[derive(Serialize)]
 struct SealRequest {
@@ -103,6 +119,7 @@ pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
     tauri::plugin::Builder::new("device-keys")
         .setup(|app, api| {
             let handle = api.register_android_plugin("com.halonic.studio", "DeviceKeyPlugin")?;
+            app.manage(KeystorePlugin(handle.clone()));
             let data = app.path().app_data_dir()?;
             #[cfg(debug_assertions)]
             let check_wrapper = AndroidKeystore(handle.clone());

@@ -31,7 +31,9 @@ pub use connect_result::{ConnectResult, HelloBody, HelloReply, MAX_HELLO_BYTES};
 pub use hello::{AppVersions, Hello, HelloOutcome, NotHalonic, compare_versions, read_hello};
 pub use home_network::{Reach, reach};
 pub use local_network::{call_needs_local_network, lookup_needs_local_network};
-pub use navigation::{Destination, NavigationTarget, navigation_destination, page_may_stay};
+pub use navigation::{
+    Destination, NavigationTarget, is_app_page, navigation_destination, page_may_stay,
+};
 pub use pair_scan::{CameraPermission, QR_CODE_FORMAT, ScanAnswer, read_scanned};
 pub use scan_session::{CANCEL_FOLLOW_UPS, CancelPlan, ScanId, ScanSession};
 pub use timed_resolver::TimedResolver;
