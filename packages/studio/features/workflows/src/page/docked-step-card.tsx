@@ -154,7 +154,11 @@ export function DockedStepCard({
   };
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: Escape from any field in the card closes it.
-    <div onKeyDown={onKeyDown} className="w-panel max-w-full shrink-0 shadow-2">
+    <div
+      onKeyDown={onKeyDown}
+      // Under 800 px it takes the body as the other docked cards do; the canvas hides behind it (DW1).
+      className="w-panel max-w-full shrink-0 shadow-2 @max-[800px]:w-full"
+    >
       <SidePanel
         title={words.title(step)}
         onClose={onClose}

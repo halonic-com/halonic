@@ -357,3 +357,29 @@ verifies("workflows.page.step-card", () => {
     expect(docked(phone.page)).toBeNull();
   });
 });
+
+verifies("workflows.page.docked-card-body", () => {
+  // jsdom lays nothing out, so this checks the container query's classes: at 200 % zoom in a
+  // 1280 px window the 360 px card would leave 262 px of blank body, the canvas hidden (C538-1).
+  it("gives a step's card the page's body under 800 px, and on close shows the canvas with focus on the step", async () => {
+    const { page } = await showPage();
+    const panel = () => page.querySelector("[role='tabpanel']")?.className.split(" ") ?? [];
+    await pick(page, "write");
+
+    expect(docked(page)?.parentElement?.className.split(" ")).toContain("@max-[800px]:w-full");
+    expect(panel()).toContain("@max-[800px]:hidden");
+
+    await act(async () =>
+      docked(page)?.querySelector<HTMLButtonElement>("button[aria-label='Close step']")?.click(),
+    );
+    expect(docked(page)).toBeNull();
+    expect(panel()).not.toContain("@max-[800px]:hidden");
+    expect(document.activeElement).toBe(canvasCard(page, "write"));
+
+    await pick(page, "done");
+    await act(async () => {
+      docked(page)?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(document.activeElement).toBe(canvasCard(page, "done"));
+  });
+});

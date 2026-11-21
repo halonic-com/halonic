@@ -16,6 +16,7 @@ import {
 } from "@halonicjs/studio-kit";
 import { engineWordsOf, type ItemViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { WorkflowGuideService, WorkflowsHostService } from "../api.ts";
 import type { View } from "../canvas/geometry.ts";
 import { Configuration } from "../configuration/configuration-page.tsx";
@@ -44,6 +45,7 @@ import {
   useProblemsGate,
   useStartRefusal,
 } from "./start-row.tsx";
+import { stepCardIn } from "./step-card.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
 import { useOpenProblems } from "./use-open-problems.ts";
@@ -157,6 +159,14 @@ export function WorkflowScreen({
   };
   // The step picked on the canvas, which says what happened to it while a run is shown (4.5).
   const [pickedStep, setPickedStep] = useState<string | undefined>();
+  const body = useRef<HTMLDivElement>(null);
+  // Closing a step's card hands focus back to its step. The canvas shows again first: under 800 px
+  // it was hidden behind the card, and a hidden step can't take focus.
+  const closeStepCard = () => {
+    const closed = pickedStep;
+    flushSync(() => setPickedStep(undefined));
+    if (closed !== undefined) stepCardIn(body.current, closed)?.focus();
+  };
   // The test just made from a run: Configuration opens on Tests with it picked. A page opened on
   // its Tests (`startOnTests`) starts the same way, with no test picked.
   // `n` counts the tests made, so each one remounts Configuration and the Tests page reads again.
@@ -308,7 +318,7 @@ export function WorkflowScreen({
       />
       <GuideSlot {...guideSlot} page={guidePage} at="top" />
       {/* The container a docked card measures: under 800 px it takes the whole body (DW1). */}
-      <div className="@container flex min-h-0 flex-1">
+      <div ref={body} className="@container flex min-h-0 flex-1">
         <TabPanel
           ids={ids}
           tabs={views}
@@ -418,7 +428,7 @@ export function WorkflowScreen({
           saving={saving}
           onOpenStep={setPickedStep}
           announce={announce}
-          onClose={() => setPickedStep(undefined)}
+          onClose={closeStepCard}
         />
         <GuideSlot {...guideSlot} page={guidePage} at="right" />
       </div>
