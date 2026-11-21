@@ -1,6 +1,7 @@
 import { shortRunId } from "@halonicjs/app";
 import type { RoutineVersions } from "@halonicjs/app/routines";
 import type { RunSummary } from "@halonicjs/events";
+import type { Routine } from "@halonicjs/format";
 import type { DefinitionSource } from "@halonicjs/ports";
 import { CronError, describeTrigger, nextRun, routineKey, routineStart } from "@halonicjs/routines";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
@@ -11,7 +12,6 @@ import {
   type RoutineChanges,
   type RoutineHub,
   type RoutineListing,
-  type RoutineLiveValues,
   type RoutineMailbox,
   type RoutineNextTimes,
   type RoutineRef,
@@ -40,6 +40,7 @@ import {
   targetOfFile,
   triggerOfFile,
 } from "./routine-files.ts";
+import { livenessOf, runningOf } from "./routine-liveness.ts";
 import {
   idOf,
   mailboxesOf,
@@ -49,7 +50,6 @@ import {
   routineGone,
   routineKeyOf,
   runsOf,
-  runTargetName,
   type StoredSkip,
   skipOf,
   startedByOf,
@@ -118,9 +118,6 @@ export interface WorkspaceRoutinesParts {
     ): Promise<{ readonly id: string }>;
   };
 }
-
-/** The fields of a {@link RoutineView} that say whether the saved routine is the live one. */
-type RoutineLiveness = Pick<RoutineView, "everLive" | "changesNotLive" | "liveSince" | "live">;
 
 /** How many of a routine's newest runs the Runs view lists. */
 const RUNS_SHOWN = 20;
@@ -194,22 +191,25 @@ export class WorkspaceRoutines implements RoutinesHost {
       this.#parts.trusted?.() ?? true,
     ]);
     const now = this.#parts.now();
-    const listings = routineFiles(workspace).map((file): RoutineListing => {
-      const own = runsOf(runs, routineKeyOf(file));
-      return {
-        hubId: file.hub,
-        id: idOf(file),
-        name: file.value.name,
-        enabled: file.value.enabled,
-        summary: summaryOf(workspace, file),
-        targetName: targetName(workspace, file),
-        nextRun: file.value.enabled ? this.#nextRunOf(file, now) : undefined,
-        targetFound: targetFound(workspace, targetOfFile(file.value.run, file.hub)),
-        needsSignIn: false,
-        needsYou: own.filter((run) => run.status === "waiting").length,
-        pausedUntilTrusted: !trusted,
-      };
-    });
+    const listings = await Promise.all(
+      routineFiles(workspace).map(async (file): Promise<RoutineListing> => {
+        const own = runsOf(runs, routineKeyOf(file));
+        const routine = await this.#running(file);
+        return {
+          hubId: file.hub,
+          id: idOf(file),
+          name: file.value.name,
+          enabled: file.value.enabled,
+          summary: summaryOf(workspace, routine, file.hub),
+          targetName: targetName(workspace, file),
+          nextRun: this.#nextRunOf(routine, now),
+          targetFound: targetFound(workspace, targetOfFile(file.value.run, file.hub)),
+          needsSignIn: false,
+          needsYou: own.filter((run) => run.status === "waiting").length,
+          pausedUntilTrusted: !trusted,
+        };
+      }),
+    );
     for (const listing of listings) this.#names.set(nameKey(listing), listing.name);
     return listings;
   }
@@ -220,14 +220,14 @@ export class WorkspaceRoutines implements RoutinesHost {
     const { value } = file;
     this.#names.set(nameKey(ref), value.name);
     const target = targetOfFile(value.run, file.hub);
-    const liveness = await this.#liveness(workspace, file);
+    const versions = await this.#parts.liveness?.(file.path);
     return {
       ...ref,
       name: value.name,
       enabled: value.enabled,
       trigger: triggerOfFile(value.trigger),
       triggerSentence: describeTrigger(value.trigger),
-      summary: summaryOf(workspace, file),
+      summary: summaryOf(workspace, runningOf(file, versions), file.hub),
       targetName: targetName(workspace, file),
       target,
       targetState: targetFound(workspace, target) ? "ready" : "not-found",
@@ -235,7 +235,7 @@ export class WorkspaceRoutines implements RoutinesHost {
       overlap: value.overlap,
       catchUp: value.catchUp,
       file: file.path,
-      ...liveness,
+      ...livenessOf(workspace, file, versions),
       problems: [
         ...workspace.issues
           .filter((issue) => issue.file === file.path)
@@ -275,8 +275,8 @@ export class WorkspaceRoutines implements RoutinesHost {
 
   async nextTimes(ref: RoutineRef, count: number): Promise<RoutineNextTimes> {
     const workspace = await this.#load();
-    const { value } = this.#find(workspace, ref);
-    return nextTimesOf(ref.hubId, value, count, this.#parts);
+    const routine = await this.#running(this.#find(workspace, ref));
+    return nextTimesOf(ref.hubId, routine, count, this.#parts);
   }
 
   async runs(ref: RoutineRef): Promise<RoutineRuns> {
@@ -340,19 +340,23 @@ export class WorkspaceRoutines implements RoutinesHost {
   async startingRoutines(owner: TriggerOwner): Promise<readonly TriggerRow[]> {
     const workspace = await this.#load();
     const now = this.#parts.now();
-    return routineFiles(workspace)
-      .filter((file) => file.hub === owner.hubId && startsOwner(file, owner))
-      .map(
-        (file): TriggerRow => ({
+    const files = routineFiles(workspace).filter(
+      (file) => file.hub === owner.hubId && startsOwner(file, owner),
+    );
+    const rows = await Promise.all(
+      files.map(async (file): Promise<TriggerRow> => {
+        const routine = await this.#running(file);
+        return {
           hubId: file.hub,
           id: idOf(file),
           name: file.value.name,
           enabled: file.value.enabled,
-          sentence: describeTrigger(file.value.trigger),
-          nextRun: file.value.enabled ? this.#nextRunOf(file, now) : undefined,
-        }),
-      )
-      .sort((first, second) => first.name.localeCompare(second.name));
+          sentence: describeTrigger(routine.trigger),
+          nextRun: this.#nextRunOf(routine, now),
+        };
+      }),
+    );
+    return rows.sort((first, second) => first.name.localeCompare(second.name));
   }
 
   async ownerName(owner: TriggerOwner): Promise<string | undefined> {
@@ -424,10 +428,19 @@ export class WorkspaceRoutines implements RoutinesHost {
     }
   }
 
-  /** The next time a routine starts on its own; none when its trigger isn't a clock or doesn't parse. */
-  #nextRunOf(file: PlacedFile, now: Date): string | undefined {
+  /** The routine at `file` as the scheduler runs it; see {@link runningOf}. */
+  async #running(file: PlacedFile): Promise<Routine> {
+    return runningOf(file, await this.#parts.liveness?.(file.path));
+  }
+
+  /**
+   * The next time `routine`, as it runs, starts on its own; none when it is off or its trigger
+   * isn't a clock or doesn't parse.
+   */
+  #nextRunOf(routine: Routine, now: Date): string | undefined {
+    if (!routine.enabled) return undefined;
     try {
-      return nextRun(file.value.trigger, now, this.#parts.timeZone)?.toISOString();
+      return nextRun(routine.trigger, now, this.#parts.timeZone)?.toISOString();
     } catch (error) {
       if (error instanceof CronError) return undefined;
       throw error;
@@ -440,28 +453,6 @@ export class WorkspaceRoutines implements RoutinesHost {
     );
     if (file === undefined) throw routineGone();
     return file;
-  }
-
-  /** The page's live fields for the routine's file: live and unchanged when the app can't tell. */
-  async #liveness(workspace: LoadedWorkspace, file: PlacedFile): Promise<RoutineLiveness> {
-    const versions = await this.#parts.liveness?.(file.path);
-    if (versions === undefined) return { everLive: true, changesNotLive: false };
-    const { liveState, live } = versions;
-    const liveValues: RoutineLiveValues | undefined =
-      live === null
-        ? undefined
-        : {
-            triggerSentence: describeTrigger(live.trigger),
-            targetName: runTargetName(workspace, live.run, file.hub),
-            overlap: live.overlap,
-            catchUp: live.catchUp,
-          };
-    return {
-      everLive: liveState.state !== "never-versioned",
-      changesNotLive: liveState.state === "not-live",
-      liveSince: liveState.state === "not-live" ? liveState.since : undefined,
-      live: liveValues,
-    };
   }
 
   /** Loads the workspace from its files as they are now, and keeps its hubs for {@link WorkspaceRoutines.hubs}. */

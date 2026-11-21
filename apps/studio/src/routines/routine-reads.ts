@@ -179,9 +179,16 @@ export function runTargetName(
   );
 }
 
-/** The routine as one line, for its row and its page: "Weekdays at 07:30 → Briefing". */
-export function summaryOf(workspace: LoadedWorkspace, file: PlacedFile): string {
-  return `${describeTrigger(file.value.trigger)} → ${targetName(workspace, file)}`;
+/**
+ * A routine in `hub` as one line, for its row and its page: "Weekdays at 07:30 → Briefing". Pass
+ * the routine as it runs (`runningOf`), so the line says what really happens.
+ */
+export function summaryOf(
+  workspace: LoadedWorkspace,
+  routine: Routine,
+  hub: string | null,
+): string {
+  return `${describeTrigger(routine.trigger)} → ${runTargetName(workspace, routine.run, hub)}`;
 }
 
 export function startsOwner(file: PlacedFile, owner: TriggerOwner): boolean {
