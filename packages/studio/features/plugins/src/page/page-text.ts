@@ -181,3 +181,14 @@ export function offUntilAllowed(name: string): string {
  * names the desktop app, since a served browser may be on the same computer (C540, HAL-15080).
  */
 export const ALLOW_IN_DESKTOP_APP = "Allow this in the Halonic desktop app.";
+
+/**
+ * The plugin page when the agent host stopped a plugin because the sandbox failed while it ran
+ * (microcopy 24.1 R15, approved on HAL-1949; design HAL-1873 section 10, `rl-page-stopped`).
+ */
+export function stoppedWhileRunning(name: string): string {
+  return `${name} stopped: the sandbox stopped working while it ran.`;
+}
+
+/** R15's second sentence, under its title. */
+export const NOT_WITHOUT_SANDBOX = "Halonic doesn't start it again without the sandbox.";

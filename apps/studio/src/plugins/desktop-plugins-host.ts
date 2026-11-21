@@ -10,7 +10,11 @@ import {
 import { PluginService, type SignOutPlugin, TrustService } from "@halonicjs/app";
 import type { Secrets } from "@halonicjs/ports";
 import { systemClock } from "@halonicjs/std";
-import type { PluginsHost, PluginUnfencedRuns } from "@halonicjs/studio-feature-plugins/api";
+import type {
+  PluginRunStates,
+  PluginsHost,
+  PluginUnfencedRuns,
+} from "@halonicjs/studio-feature-plugins/api";
 import { halonicVersion } from "../studio/open-trusts.ts";
 import { desktopPluginInstaller } from "./desktop-plugin-installer.ts";
 import { desktopPluginActions } from "./plugin-actions.ts";
@@ -35,6 +39,8 @@ export interface DesktopPluginsParts {
   readonly onReloadFailed: (error: unknown) => void;
   /** The agent host's sandbox status and the yes to run without it, which the trust check reads. */
   readonly unfencedRuns?: PluginUnfencedRuns;
+  /** Whether the agent host stopped a plugin because the sandbox failed, for the plugin page's R15. */
+  readonly runStates?: PluginRunStates;
   /** Whether the plugins' programs can run here, which the trust check reads when it opens (`desktopProgramsRun`). */
   readonly programs?: PluginsHost["actions"]["programs"];
 }
@@ -70,6 +76,7 @@ export function desktopPluginsHost({
   signOut,
   onReloadFailed,
   unfencedRuns,
+  runStates,
   programs,
 }: DesktopPluginsParts): DesktopPluginsHost {
   const service = new PluginService({
@@ -97,6 +104,7 @@ export function desktopPluginsHost({
       onReloadFailed,
     }),
     ...(unfencedRuns === undefined ? {} : { unfencedRuns }),
+    ...(runStates === undefined ? {} : { runStates }),
     ...(programs === undefined ? {} : { programs }),
   };
   return {

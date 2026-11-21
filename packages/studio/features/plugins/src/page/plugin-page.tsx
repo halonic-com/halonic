@@ -34,6 +34,7 @@ import type { InstalledPlugin } from "./plugin-pages.ts";
 import { RemovePluginDialog } from "./remove-plugin-dialog.tsx";
 import { ReviewPluginDialog } from "./review-plugin-dialog.tsx";
 import { StatusBox, type UpdateControl } from "./status-box.tsx";
+import { StoppedStatus } from "./stopped-status.tsx";
 import { UpdatePluginDialog } from "./update-plugin-dialog.tsx";
 import { usePageActions } from "./use-page-actions.ts";
 import { UsedBy } from "./used-by.tsx";
@@ -235,17 +236,26 @@ export function PluginPage({
             <Quoted text={manifest.description} />
           </p>
         )}
-        <AllowStatus
-          key={reviews}
+        <StoppedStatus
           id={statusId}
           boxRef={statusBox}
           plugin={plugin}
-          unfencedRuns={actions.unfencedRuns}
+          runStates={actions.runStates}
           viewOnly={viewOnly}
-          onReview={() => setReviewing(true)}
+          onCheckAgainFailed={(error) => fail("reload", error)}
         >
-          {statusView}
-        </AllowStatus>
+          <AllowStatus
+            key={reviews}
+            id={statusId}
+            boxRef={statusBox}
+            plugin={plugin}
+            unfencedRuns={actions.unfencedRuns}
+            viewOnly={viewOnly}
+            onReview={() => setReviewing(true)}
+          >
+            {statusView}
+          </AllowStatus>
+        </StoppedStatus>
         {manifest === undefined ? null : (
           <PluginSections
             manifest={manifest}

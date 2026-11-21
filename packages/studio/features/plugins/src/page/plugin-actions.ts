@@ -8,6 +8,7 @@ import type { Plugin } from "@halonicjs/format";
 import { reasonAfterColon } from "@halonicjs/studio-shell";
 import type { ProgramsRun } from "../trust/trust-text.ts";
 import type { PluginUnfencedRuns } from "../trust/unfenced-status.ts";
+import type { PluginRunStates } from "./stopped-status.tsx";
 
 /** How removing a plugin ended: core's `PluginService.remove`. */
 export type PluginRemoveOutcome =
@@ -87,6 +88,11 @@ export interface PluginActions {
    * check reads when it opens and saves when the box is ticked. Without it the check keeps T9.
    */
   readonly unfencedRuns?: PluginUnfencedRuns;
+  /**
+   * Whether the agent host stopped a plugin because the sandbox failed while it ran, and R15's
+   * **Check again**. Without it the page never shows R15.
+   */
+  readonly runStates?: PluginRunStates;
 }
 
 /** The ⋮ button's name (a11y A10). */
