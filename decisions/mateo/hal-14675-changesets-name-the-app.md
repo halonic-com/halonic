@@ -3,6 +3,7 @@
 - Task: HAL-14675
 - Approval: Liam asked for this change on HAL-14675 (from HAL-14674); he reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fghazSRYlwFpbK0R/4vABFY/Qn5mMNcyRUdSe2Sm9n75XZskyYNrtJf6JjeQE6peMSezHAjCiHub560onY6fDA==
 
 ## What changes
 
