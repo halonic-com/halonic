@@ -57,7 +57,7 @@ export const taskState: StateHandler<"task"> = {
   },
 };
 
-function startAgent(context: StateContext): StateStep {
+function startAgent(context: StateContext<"task">): StateStep {
   const { run, stateId, state, agents } = context;
   const agent = state.agent;
   if (agent === undefined) {
@@ -79,7 +79,7 @@ function startAgent(context: StateContext): StateStep {
  * its `input`, or the error when its agent has no such method.
  */
 function promptOf(
-  { run, stateId, state, scope, agents }: StateContext,
+  { run, stateId, state, scope, agents }: StateContext<"task">,
   agent: string,
 ): string | { readonly error: string } {
   if (state.method === undefined) {
@@ -100,7 +100,7 @@ function failWith(error: string): StateStep {
  * Only the result of the call the state waits on counts. Any other result,
  * such as one delivered twice after a retry, changes nothing.
  */
-function takeCallResult(context: StateContext, input: DecideInput): StateStep {
+function takeCallResult(context: StateContext<"task">, input: DecideInput): StateStep {
   const pending = context.run.pendingCall;
   if (input.type !== "effect-done") {
     return nothing;
@@ -123,7 +123,7 @@ function takeCallResult(context: StateContext, input: DecideInput): StateStep {
 }
 
 function finishAgent(
-  { stateId, state, agents, scope }: StateContext,
+  { stateId, state, agents, scope }: StateContext<"task">,
   pending: PendingCall,
   answer: unknown,
 ): StateStep {

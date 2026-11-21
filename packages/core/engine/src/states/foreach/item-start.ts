@@ -23,7 +23,7 @@ export interface ItemStart {
  * definitions the run started with, and its child runs nest at most
  * {@link maxChildDepth} deep, as a `workflow` state's do.
  */
-export function itemWorkOf(context: StateContext): ItemWork | string {
+export function itemWorkOf(context: StateContext<"foreach">): ItemWork | string {
   const { run, stateId, state, workflows } = context;
   const workflow = state.workflow;
   if (workflow === undefined) {
@@ -41,7 +41,10 @@ export function itemWorkOf(context: StateContext): ItemWork | string {
   return { workflow };
 }
 
-function agentWorkOf({ stateId, state, agents }: StateContext, agent: string): ItemWork | string {
+function agentWorkOf(
+  { stateId, state, agents }: StateContext<"foreach">,
+  agent: string,
+): ItemWork | string {
   if (state.method !== undefined && methodOf(agents, agent, state.method) === undefined) {
     return noMethodError(stateId, agent, state.method);
   }
@@ -55,7 +58,7 @@ function agentWorkOf({ stateId, state, agents }: StateContext, agent: string): I
  * items this step has already started; a child run takes none.
  */
 export function startItem(
-  context: StateContext,
+  context: StateContext<"foreach">,
   work: ItemWork,
   item: unknown,
   index: number,
@@ -82,7 +85,7 @@ export function startItem(
  * after it.
  */
 function itemPrompt(
-  { run, state, agents }: StateContext,
+  { run, state, agents }: StateContext<"foreach">,
   agent: string,
   item: unknown,
   itemScope: Record<string, unknown>,
@@ -102,7 +105,7 @@ function itemPrompt(
 
 /** With no `input`, the child gets `{ <as>: item }`. */
 function startChild(
-  { run, stateId, state }: StateContext,
+  { run, stateId, state }: StateContext<"foreach">,
   workflowId: string,
   named: Record<string, unknown>,
   itemScope: Record<string, unknown>,

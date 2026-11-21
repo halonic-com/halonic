@@ -36,7 +36,7 @@ export const parallelState: StateHandler<"parallel"> = {
   onInput: takeBranchResult,
 };
 
-function startBranches(context: StateContext): StateStep {
+function startBranches(context: StateContext<"parallel">): StateStep {
   const { run, stateId, state, agents } = context;
   const branches = branchesOf(state);
   if (branches.length === 0) {
@@ -75,7 +75,7 @@ function startBranches(context: StateContext): StateStep {
  * its `input`, or the error when its agent has no such method.
  */
 function promptOf(
-  { run, stateId, state, scope, agents }: StateContext,
+  { run, stateId, state, scope, agents }: StateContext<"parallel">,
   name: string,
   branch: Branch,
 ): string | { readonly error: string } {
@@ -93,7 +93,7 @@ function promptOf(
  * Only the result of a call a branch waits on counts. Any other, such as
  * one delivered twice after a retry, changes nothing.
  */
-function takeBranchResult(context: StateContext, input: DecideInput): StateStep {
+function takeBranchResult(context: StateContext<"parallel">, input: DecideInput): StateStep {
   if (input.type !== "effect-done" && input.type !== "effect-failed") {
     return nothing;
   }
@@ -126,7 +126,11 @@ function takeBranchResult(context: StateContext, input: DecideInput): StateStep 
 }
 
 /** Records how the branch ended, then joins the branches if it was the last one running. */
-function endWith(context: StateContext, branch: RunningBranch, end: BranchEnd): StateStep {
+function endWith(
+  context: StateContext<"parallel">,
+  branch: RunningBranch,
+  end: BranchEnd,
+): StateStep {
   const { run, stateId, state, scope } = context;
   const agent = branch.call?.agent ?? "";
   const finished = branchFinished(stateId, agent, branch.name, end);
@@ -136,7 +140,7 @@ function endWith(context: StateContext, branch: RunningBranch, end: BranchEnd): 
 
 /** A branch's answer; one its agent's output doesn't allow ends the branch with an error. */
 function answered(
-  { state, agents }: StateContext,
+  { state, agents }: StateContext<"parallel">,
   branch: RunningBranch,
   answer: unknown,
 ): BranchEnd {

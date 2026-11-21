@@ -3,7 +3,7 @@
 // the context, with the blob of the answer's text (the base fixture's
 // recorded run log has one), and this keeps that place and that text.
 
-import type { WorkflowState } from "@halonicjs/format";
+import type { StateOf } from "@halonicjs/workflow";
 import type { SaveArtifact } from "../../kernel/decide-types.ts";
 import type { StateOutcome } from "../../kernel/registry.ts";
 
@@ -24,7 +24,7 @@ const mediaTypePattern = new RegExp(`^${token}/${token}$`, "u");
  */
 export function artifactOf(
   stateId: string,
-  state: WorkflowState,
+  state: StateOf<"task">,
   answer: unknown,
 ): SaveArtifact | Extract<StateOutcome, { type: "fail" }> | null {
   const artifact = state.artifact;

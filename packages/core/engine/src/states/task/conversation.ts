@@ -5,8 +5,7 @@
 // text). The base fixture's recorded run log has one; this keeps that place
 // and that value.
 
-import type { WorkflowState } from "@halonicjs/format";
-import type { Scope } from "@halonicjs/workflow";
+import type { Scope, StateOf } from "@halonicjs/workflow";
 import type { DecidedEvent } from "../../kernel/decide-types.ts";
 
 /** One turn of a kept conversation. */
@@ -23,7 +22,7 @@ export interface Turn {
  * @returns the `context.updated` to append, or nothing for a state without `conversation`
  */
 export function conversationTurns(
-  state: WorkflowState,
+  state: StateOf<"task">,
   scope: Scope,
   prompt: string,
   answer: unknown,

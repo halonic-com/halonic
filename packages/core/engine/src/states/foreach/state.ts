@@ -45,7 +45,7 @@ export const foreachState: StateHandler<"foreach"> = {
 /** The list the state goes through, or why it has none. */
 type ItemList = { readonly items: readonly unknown[] } | { readonly error: string };
 
-function startItems(context: StateContext): StateStep {
+function startItems(context: StateContext<"foreach">): StateStep {
   const work = itemWorkOf(context);
   if (typeof work === "string") {
     return failed(work);
@@ -61,7 +61,7 @@ function startItems(context: StateContext): StateStep {
 }
 
 /** Only the result of an item's call counts; any other result changes nothing. */
-function takeCallResult(context: StateContext, input: EffectDoneInput): StateStep {
+function takeCallResult(context: StateContext<"foreach">, input: EffectDoneInput): StateStep {
   const running = runningItem(
     context,
     (item) => "call" in item && item.call.callId === input.callId,
@@ -104,7 +104,7 @@ function takeCallResult(context: StateContext, input: EffectDoneInput): StateSte
 }
 
 /** Only news of an item's child run counts; news of any other run changes nothing. */
-function takeChildNews(context: StateContext, input: ChildInput): StateStep {
+function takeChildNews(context: StateContext<"foreach">, input: ChildInput): StateStep {
   const running = runningItem(
     context,
     (item) => "childRunId" in item && item.childRunId === input.childRunId,
@@ -149,7 +149,7 @@ function takeChildNews(context: StateContext, input: ChildInput): StateStep {
 
 /** An item ended with `output`: start the next ones, or finish the state once none is left. */
 function finishItem(
-  context: StateContext,
+  context: StateContext<"foreach">,
   work: ItemWork,
   running: RunningItem,
   output: unknown,
@@ -171,7 +171,7 @@ function finishItem(
  * those running now have ended in this step.
  */
 function startMore(
-  context: StateContext,
+  context: StateContext<"foreach">,
   work: ItemWork,
   items: readonly unknown[],
   finished: number,
@@ -193,7 +193,7 @@ function startMore(
 
 /** Every item has ended: the results go to `output`, in item order, and the state is done. */
 function finishState(
-  { run, stateId, state, scope }: StateContext,
+  { run, stateId, state, scope }: StateContext<"foreach">,
   count: number,
   last: RunningItem | null,
   output: unknown,
@@ -215,7 +215,7 @@ function finishState(
 }
 
 function runningItem(
-  { run, stateId }: StateContext,
+  { run, stateId }: StateContext<"foreach">,
   matches: (item: RunningItem) => boolean,
 ): RunningItem | undefined {
   return run.foreach?.state === stateId ? run.foreach.running.find(matches) : undefined;
@@ -225,18 +225,18 @@ function runningItem(
  * Cancels the child run of every item still going, the one that waits too:
  * the run fails, so no one would ever end them.
  */
-function cancelItemChildren({ run, stateId }: StateContext): Effect[] {
+function cancelItemChildren({ run, stateId }: StateContext<"foreach">): Effect[] {
   const running = run.foreach?.state === stateId ? run.foreach.running : [];
   return running.flatMap((item) =>
     "childRunId" in item ? [{ type: "cancel-child", childRunId: item.childRunId }] : [],
   );
 }
 
-function stillRunning({ run, stateId }: StateContext): number {
+function stillRunning({ run, stateId }: StateContext<"foreach">): number {
   return run.foreach?.state === stateId ? run.foreach.running.length : 0;
 }
 
-function itemsOf({ stateId, state, scope }: StateContext): ItemList {
+function itemsOf({ stateId, state, scope }: StateContext<"foreach">): ItemList {
   if (state.items === undefined) {
     return { error: `For-each state "${stateId}" names no items.` };
   }

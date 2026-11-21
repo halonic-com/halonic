@@ -1,6 +1,7 @@
-import type { Workflow, WorkflowState } from "@halonicjs/format";
+import type { StateType, Workflow, WorkflowState } from "@halonicjs/format";
 import { contextBefore } from "./inputs.ts";
 import { hasState } from "./machine.ts";
+import { type StateKey, typesUsing, usesKey } from "./state-keys.ts";
 import { contextKey, notAChoice, unknownTemplateNames } from "./template-checks.ts";
 import { issue, stateKey, type ValidateOptions, type WorkflowIssue } from "./workflow-issue.ts";
 
@@ -232,6 +233,84 @@ const unguardedShadow: StateCheck = ({ id, state }) => {
   return issues;
 };
 
+/** How a message names a state type: "a for-each step". */
+const typeNames: { readonly [Type in StateType]: string } = {
+  task: "task",
+  wait: "wait",
+  final: "final",
+  workflow: "workflow",
+  parallel: "parallel",
+  foreach: "for-each",
+};
+
+/**
+ * A key the state's type doesn't use is ignored when it runs, and the file's
+ * one shape for every type lets it through: one warning per key, saying
+ * which types use it. The keys each type uses are the engine's (`STATE_KEYS`).
+ */
+const ignoredKeys: StateCheck = ({ id, state }) =>
+  (Object.keys(state) as StateKey[])
+    .filter((key) => state[key] !== undefined && !usesKey(state.type, key))
+    .filter((key) => !refusedKeys[state.type]?.includes(key))
+    .map((key) => {
+      const message = `"${id}" is a ${typeNames[state.type]} step: ${key} is ignored. ${whereKeyBelongs(state.type, key)}`;
+      return issue("warning", "ignored-key", message, stateKey(id, key), id);
+    });
+
+/**
+ * Keys a type doesn't use that another check refuses with an error, so the
+ * user gets that error alone and not an `ignored-key` warning as well.
+ */
+const refusedKeys: Partial<Record<StateType, readonly StateKey[]>> = {
+  wait: ["signal"], // wait-with-signal
+};
+
+/** What to do with a key a state of `type` ignores. */
+function whereKeyBelongs(type: StateType, key: StateKey): string {
+  if (key === "agent" && (type === "wait" || type === "final")) {
+    return "Put the agent on a task step before it.";
+  }
+  const users = typesUsing(key).map((user) => typeNames[user]);
+  return `Only ${spokenList(users)} steps use it; remove it here.`;
+}
+
+/** `["a", "b", "c"]` as "a, b and c". */
+function spokenList(items: readonly string[]): string {
+  const last = items.at(-1) ?? "";
+  return items.length <= 1 ? last : `${items.slice(0, -1).join(", ")} and ${last}`;
+}
+
+/** `with` holds a method's arguments, so a step or branch without `method` ignores it. */
+const withWithoutMethod: StateCheck = ({ id, state }) => {
+  const issues: WorkflowIssue[] = [];
+  if (usesKey(state.type, "with") && state.with !== undefined && state.method === undefined) {
+    const message = `"${id}" has with but no method: with is ignored. Add the method it is for, or put the text in input.`;
+    issues.push(issue("warning", "ignored-key", message, stateKey(id, "with"), id));
+  }
+  for (const [name, branch] of Object.entries(state.branches ?? {})) {
+    if (branch.with !== undefined && branch.method === undefined) {
+      const message = `Branch "${name}" of "${id}" has with but no method: with is ignored. Add the method it is for, or put the text in input.`;
+      const path = stateKey(id, "branches", name, "with");
+      issues.push(issue("warning", "ignored-key", message, path, id));
+    }
+  }
+  return issues;
+};
+
+/** With `join: any` the step fails only when every branch fails, so `continueOnError` changes nothing. */
+const continueOnErrorWithAny: StateCheck = ({ id, state }) =>
+  state.type === "parallel" && state.join === "any" && state.continueOnError !== undefined
+    ? [
+        issue(
+          "warning",
+          "ignored-key",
+          `"${id}" has join: any, so continueOnError is ignored. Remove it, or use join: all.`,
+          stateKey(id, "continueOnError"),
+          id,
+        ),
+      ]
+    : [];
+
 /** The checks run on every state, in this order. */
 export const STATE_CHECKS: readonly StateCheck[] = [
   unknownTargets,
@@ -251,4 +330,7 @@ export const STATE_CHECKS: readonly StateCheck[] = [
   unknownAgent,
   unguardedShadow,
   notAChoice,
+  ignoredKeys,
+  withWithoutMethod,
+  continueOnErrorWithAny,
 ];

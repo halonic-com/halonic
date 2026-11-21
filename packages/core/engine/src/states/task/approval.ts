@@ -28,7 +28,7 @@ const approvalEvents: readonly string[] = ["approve", "reject"];
 
 /** Records the approval under a new call id, and waits for a person's answer. */
 export function askForApproval(
-  { run, stateId }: StateContext,
+  { run, stateId }: StateContext<"task">,
   stopped: PendingCall,
   { tool, args, resume, connector }: ApprovalNeeded,
 ): StateStep {
@@ -63,7 +63,10 @@ export const nothingToResume: AgentResume = { messages: [], calls: [], step: 0 }
  * for the built-in loop, and wait, with the call still running. A question
  * from any other call changes nothing.
  */
-export function askForHarnessApproval(context: StateContext, input: HarnessAskedInput): StateStep {
+export function askForHarnessApproval(
+  context: StateContext<"task">,
+  input: HarnessAskedInput,
+): StateStep {
   const pending = context.run.pendingCall;
   if (pending === null || pending.state !== context.stateId || pending.callId !== input.callId) {
     return nothing;
@@ -92,7 +95,7 @@ export function askForHarnessApproval(context: StateContext, input: HarnessAsked
  * @throws InputRefused when no approval of this state waits for an answer
  */
 export function answerApproval(
-  { run, stateId, agents }: StateContext,
+  { run, stateId, agents }: StateContext<"task">,
   input: SendInput,
 ): StateStep {
   const approval = approvalAnswered(run.approvals, stateId, input.callId);
