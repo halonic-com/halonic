@@ -9,7 +9,8 @@ use crate::request::Refusal;
 /// `plain` is whether the request goes over `http`: that is only allowed to
 /// this computer or a private network, so a key never crosses the internet in
 /// the clear. Link-local addresses are refused for both, because they hold
-/// cloud metadata services; so are the unspecified, multicast and broadcast ones.
+/// cloud metadata services, and so are [`SERVICE_ADDRESSES_V4`]; so are the
+/// unspecified, multicast and broadcast ones.
 ///
 /// # Errors
 ///
@@ -39,10 +40,23 @@ fn unmapped(ip: IpAddr) -> IpAddr {
     }
 }
 
+/// Service addresses inside `100.64.0.0/10` that no request may reach, over
+/// `http` or `https`: Alibaba Cloud's metadata service (`100.100.100.200`) and
+/// Tailscale's own DNS and client address (`100.100.100.100`). The same
+/// two that `http-kit` takes out of the range.
+const SERVICE_ADDRESSES_V4: [Ipv4Addr; 2] = [
+    Ipv4Addr::new(100, 100, 100, 200),
+    Ipv4Addr::new(100, 100, 100, 100),
+];
+
 fn refused(ip: IpAddr) -> bool {
     match ip {
         IpAddr::V4(v4) => {
-            v4.is_unspecified() || v4.is_multicast() || v4.is_broadcast() || v4.is_link_local()
+            v4.is_unspecified()
+                || v4.is_multicast()
+                || v4.is_broadcast()
+                || v4.is_link_local()
+                || SERVICE_ADDRESSES_V4.contains(&v4)
         }
         IpAddr::V6(v6) => v6.is_unspecified() || v6.is_multicast() || is_unicast_link_local_v6(v6),
     }
@@ -61,10 +75,11 @@ pub(crate) fn is_local(ip: IpAddr) -> bool {
     }
 }
 
-/// `100.64.0.0/10`, the carrier-grade range tailnets and VPNs use.
+/// `100.64.0.0/10`, the carrier-grade range tailnets and VPNs use, without
+/// the [`SERVICE_ADDRESSES_V4`] in it.
 fn is_shared_v4(ip: Ipv4Addr) -> bool {
     let [a, b, ..] = ip.octets();
-    a == 100 && b & 0xc0 == 0x40
+    a == 100 && b & 0xc0 == 0x40 && !SERVICE_ADDRESSES_V4.contains(&ip)
 }
 
 #[cfg(test)]
@@ -86,7 +101,13 @@ mod tests {
             "192.168.1.20",
             "172.16.0.1",
             "fd12::1",
+            "100.64.0.0",
             "100.64.1.1",
+            "100.100.100.99",
+            "100.100.100.101",
+            "100.100.100.199",
+            "100.100.100.201",
+            "100.127.255.255",
         ] {
             assert_eq!(code(ip, true), None, "{ip}");
         }
@@ -94,7 +115,13 @@ mod tests {
 
     #[test]
     fn address_public_needs_https() {
-        for ip in ["93.184.216.34", "2606:4700::1111", "100.128.0.1"] {
+        for ip in [
+            "93.184.216.34",
+            "2606:4700::1111",
+            "100.63.255.255",
+            "100.128.0.0",
+            "100.128.0.1",
+        ] {
             assert_eq!(code(ip, true), Some("plain_http_public"), "{ip}");
             assert_eq!(code(ip, false), None, "{ip}");
         }
@@ -113,6 +140,20 @@ mod tests {
         ] {
             assert_eq!(code(ip, false), Some("address_refused"), "{ip}");
             assert_eq!(code(ip, true), Some("address_refused"), "{ip}");
+        }
+    }
+
+    #[test]
+    fn address_service_addresses_in_the_shared_range_are_refused_either_way() {
+        for ip in [
+            "100.100.100.200",
+            "100.100.100.100",
+            "::ffff:100.100.100.200",
+            "::ffff:100.100.100.100",
+        ] {
+            assert_eq!(code(ip, false), Some("address_refused"), "{ip}");
+            assert_eq!(code(ip, true), Some("address_refused"), "{ip}");
+            assert!(!is_local(ip.parse().unwrap()), "{ip}");
         }
     }
 
