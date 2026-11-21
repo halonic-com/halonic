@@ -1,14 +1,10 @@
 // What a tick of the routine scheduler dropped, gathered per routine for its
-// skip records: the catch-up rule's ranges, and single times the overlap rule
-// or a changed routine dropped.
+// skip records: the catch-up rule's ranges, single times the overlap rule or a
+// changed routine dropped, and the times whose start was refused.
 
+import { errorKindOf } from "@halonicjs/std";
 import type { LastRuns } from "./routine-last-runs.ts";
-import type {
-  SkippedTimes,
-  SkipReason,
-  SkipRecords,
-  TargetUnavailableWhy,
-} from "./routine-skips.ts";
+import type { SkippedTimes, SkipReason, SkipRecords } from "./routine-skips.ts";
 
 /** A range of a routine's due times the tick function dropped, with the routine key. */
 export type DroppedRange = SkippedTimes & { key: string };
@@ -19,17 +15,19 @@ interface DueTime {
   at: Date;
 }
 
-/** Single times of one routine dropped for one reason and `why`. */
-interface SingleTimes {
+/** What a skip carries besides its reason: `why` for `target-unavailable`, `sentence` for `start-refused`. */
+type SkipDetail = Pick<SkippedTimes, "why" | "sentence">;
+
+/** Single times of one routine dropped for one reason and detail. */
+interface SingleTimes extends SkipDetail {
   reason: SkipReason;
-  why?: TargetUnavailableWhy;
   times: Date[];
 }
 
 /** Gathers a tick's dropped times by routine, then adds them to the skip records. */
 export class TickSkips {
   private readonly byKey = new Map<string, SkippedTimes[]>();
-  /** By routine key, then by reason and `why` together. */
+  /** By routine key, then by reason and detail together. */
   private readonly singles = new Map<string, Map<string, SingleTimes>>();
 
   /** Ranges the tick function dropped (the catch-up rule). */
@@ -40,22 +38,29 @@ export class TickSkips {
   }
 
   /**
-   * Single due times dropped for one reason, and for `target-unavailable`
-   * its `why`; one tick's times of a routine for one reason make one range.
+   * Single due times dropped for one reason and its detail (the `why` of
+   * `target-unavailable`, the sentence of `start-refused`); one tick's times
+   * of a routine for one reason and detail make one range.
    */
-  addTimes(times: readonly DueTime[], reason: SkipReason, why?: TargetUnavailableWhy): void {
-    const group = why === undefined ? reason : `${reason}:${why}`;
+  addTimes(times: readonly DueTime[], reason: SkipReason, detail: SkipDetail = {}): void {
+    const group = JSON.stringify([reason, detail.why, detail.sentence]);
     for (const { key, at } of times) {
       const reasons = this.singles.get(key) ?? new Map<string, SingleTimes>();
-      const single = reasons.get(group) ?? {
-        reason,
-        ...(why === undefined ? {} : { why }),
-        times: [],
-      };
+      const single = reasons.get(group) ?? { reason, ...detail, times: [] };
       single.times.push(at);
       reasons.set(group, single);
       this.singles.set(key, reasons);
     }
+  }
+
+  /**
+   * A due time whose start was refused, as `start-refused` with the error's
+   * message as its sentence when the error has a kind: a `KindedError`'s
+   * message is safe to show, and an `internal` one's is not.
+   */
+  addRefused(time: DueTime, error: unknown): void {
+    const shown = errorKindOf(error) !== "internal" && error instanceof Error;
+    this.addTimes([time], "start-refused", shown ? { sentence: error.message } : {});
   }
 
   /**
@@ -88,11 +93,10 @@ export class TickSkips {
 
   private foldSingles(): void {
     for (const [key, reasons] of this.singles) {
-      for (const { reason, why, times } of reasons.values()) {
+      for (const { times, ...detail } of reasons.values()) {
         const millis = times.map((time) => time.getTime());
         const range: SkippedTimes = {
-          reason,
-          ...(why === undefined ? {} : { why }),
+          ...detail,
           from: new Date(Math.min(...millis)),
           to: new Date(Math.max(...millis)),
           count: new Set(millis).size,

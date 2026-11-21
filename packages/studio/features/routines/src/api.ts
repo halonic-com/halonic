@@ -163,11 +163,14 @@ export type RoutineSkipReason =
   | "window"
   | "changed"
   | "target-never-live"
-  | "target-in-trash";
+  | "target-in-trash"
+  | "start-refused";
 
 /** A range of due times that didn't start, as one quiet row of the Runs view. */
 export interface RoutineSkip {
   readonly reason: RoutineSkipReason;
+  /** For `start-refused`: the refusal's own sentence; absent when Halonic can't explain it. */
+  readonly sentence?: string;
   /** ISO times of the oldest and the newest skipped time. */
   readonly from: string;
   readonly to: string;

@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { queuedSentence, runTime, skipSentence, timeRange } from "./runs-words.ts";
+import { queuedSentence, runTime, skipName, skipSentence, timeRange } from "./runs-words.ts";
 
 // Tue 3 Nov 2026, 12:00 local.
 const now = new Date(2026, 10, 3, 12, 0);
@@ -30,6 +30,25 @@ it("says why a time didn't start", () => {
   expect(skipSentence({ ...skip, reason: "target-in-trash" }, "Briefing", now)).toBe(
     "08:00 Tue: Briefing was deleted",
   );
+});
+
+it("says a refused start with its sentence, or that Halonic can't explain it, and names it for a screen reader", () => {
+  const sentence = "This window can't run Briefing.";
+  const one = { reason: "start-refused" as const, from: at(10, 3, 8), to: at(10, 3, 8), count: 1 };
+  expect(skipSentence({ ...one, sentence }, "Briefing", now)).toBe(
+    "08:00 Tue: couldn't start. This window can't run Briefing.",
+  );
+  expect(skipSentence(one, "Briefing", now)).toBe(
+    "08:00 Tue: couldn't start. Halonic ran into a problem it can't explain yet.",
+  );
+  expect(skipName({ ...one, sentence }, now)).toBe(
+    "Couldn't start at 08:00 Tue. This window can't run Briefing.",
+  );
+  const range = { ...one, from: at(10, 3, 7), count: 2, sentence };
+  expect(skipName(range, now)).toBe(
+    "Couldn't start from 07:00 to 08:00 Tue. This window can't run Briefing.",
+  );
+  expect(skipName({ ...one, reason: "busy" }, now)).toBeUndefined();
 });
 
 it("says queued times for one and for many", () => {

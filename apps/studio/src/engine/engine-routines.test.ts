@@ -195,7 +195,21 @@ verifies("studio.engine-routines", () => {
 
     expect(errors[0]).toMatchObject({ kind: "unavailable" });
     expect(await routineRuns(service)).toEqual([]);
+    // The Runs view reads it back as a refused start, with the refusal's sentence.
+    expect(await service.routineSkips("support/hourly")).toMatchObject([
+      {
+        reason: "start-refused",
+        sentence: (errors[0] as Error).message,
+        from: "2026-11-20T11:00:00.000Z",
+        count: 1,
+      },
+    ]);
     await service.close();
+  });
+
+  it("reads no skip records before the engine opens", async () => {
+    const { service } = serviceWith(hourly, fakeTime("2026-11-20T10:00:30.000Z"));
+    expect(await service.routineSkips("support/hourly")).toEqual([]);
   });
 });
 

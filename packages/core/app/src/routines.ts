@@ -13,6 +13,11 @@ export {
   type RoutineTime,
   type ScheduledRun,
 } from "./routine-scheduler.ts";
-export type { SkipReason, SkipRecord, TargetUnavailableWhy } from "./routine-skips.ts";
+export {
+  type SkipReason,
+  type SkipRecord,
+  SkipRecords,
+  type TargetUnavailableWhy,
+} from "./routine-skips.ts";
 export type { UnavailableTime } from "./routine-targets.ts";
 export { type RoutineVersions, routineVersions } from "./routine-versions.ts";

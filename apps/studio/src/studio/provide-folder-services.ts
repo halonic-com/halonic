@@ -306,8 +306,8 @@ export function provideFolderServices(
       // Run now refuses with the routine's own words; the engine checks again before it starts.
       trusted: async () => trust.mayStartNow(),
       engine: { start: (start, trigger) => engine.startRoutine(start, trigger) },
-      // The source control feature gives the dialog once the shell instantiates its services,
-      // which is after this, so it is looked up when Make live is pressed.
+      skips: (key) => engine.routineSkips(key),
+      // Looked up when Make live is pressed, as the source control feature's services come later.
       versionDialog: (paths) => services.get(VersionDialogService).open(paths),
       askTrust,
     }),
