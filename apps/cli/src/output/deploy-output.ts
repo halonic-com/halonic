@@ -12,12 +12,12 @@ import type {
   DeployStep,
   DeployUnchanged,
 } from "@halonicjs/ports";
-import type { CommandContext, CommandResult } from "../../command.ts";
-import { exitCode } from "../../exit-code.ts";
-import type { Message } from "../../messages/define.ts";
-import { deployMessages } from "../../messages/deploy.ts";
-import { type Phrase, plainText } from "../../messages/phrase.ts";
-import type { Progress } from "../../output/progress.ts";
+import type { CommandContext, CommandResult } from "../command.ts";
+import { exitCode } from "../exit-code.ts";
+import type { Message } from "../messages/define.ts";
+import { deployMessages } from "../messages/deploy.ts";
+import { type Phrase, plainText } from "../messages/phrase.ts";
+import type { Progress } from "./progress.ts";
 
 /** Draws a deploy as its events come; see {@link deployLiveLines}. */
 export interface DeployLiveLines {

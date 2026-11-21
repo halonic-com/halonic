@@ -1,8 +1,8 @@
 import type { DeployDone, DeployEvent, DeployedVersion } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import type { JsonFields } from "../../command.ts";
-import { plainText } from "../../messages/phrase.ts";
+import type { JsonFields } from "../command.ts";
+import { plainText } from "../messages/phrase.ts";
 import { deployLiveLines, deployResult } from "./deploy-output.ts";
 
 function versionOf(number: number, commit: string, halonicVersion = "0.3.1"): DeployedVersion {
@@ -55,7 +55,7 @@ const live: DeployDone = {
 
 const facts = { workspace: "Acme", deployment: "web", took: "38 s", stepLines: [] };
 
-verifies("cli.commands.deploy.output", () => {
+verifies("cli.deploy-output", () => {
   it("prints each step's live line, then its ✓ line, with one line for everything created", () => {
     const { ahead, doing, waits, lines } = deployOnLines();
     for (const event of firstDeploy) lines.onEvent(event);

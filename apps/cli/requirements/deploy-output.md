@@ -1,4 +1,4 @@
-# cli.commands.deploy.output
+# cli.deploy-output
 
 - Status: active
 - Since: unreleased
