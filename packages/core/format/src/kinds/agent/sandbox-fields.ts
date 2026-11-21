@@ -14,6 +14,15 @@ import { foldName, relativePathProblem } from "../../shared/relative-path.ts";
  */
 export const AgentHarness = s.enum(["halonic", "claude-code", "codex"]);
 
+/**
+ * When a harness agent's own tools ask for a person's OK (HAL-14992):
+ * `always`, the default, or `in-sandbox`, where Halonic answers the calls
+ * that stay in the agent's working folder while the run is inside Halonic's
+ * sandbox. Only `claude-code` takes it for now; the workspace check refuses
+ * it on any other harness.
+ */
+export const AgentAsks = s.enum(["always", "in-sandbox"]);
+
 /** The ids of the harnesses an agent can run in, for a caller that checks one outside an agent's file. */
 export const AGENT_HARNESSES: readonly string[] = AgentHarness.options;
 

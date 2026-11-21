@@ -165,3 +165,48 @@ verifies("workspace.trust-agents", () => {
     });
   });
 });
+
+verifies("workspace.trust-agent-asks", () => {
+  it("adds asks to an agent's content only for in-sandbox", () => {
+    const content = trustContent({
+      connectors: [],
+      agents: [
+        { ...coder, asks: "in-sandbox" },
+        agent("reviewer", { harness: "claude-code", asks: "always" }),
+      ],
+    });
+
+    expect(content.agents).toEqual([
+      {
+        id: "coder",
+        harness: "claude-code",
+        allowedSites: ["api.example.com"],
+        asks: "in-sandbox",
+      },
+      { id: "reviewer", harness: "claude-code", allowedSites: [] },
+    ]);
+  });
+
+  it("keeps the fingerprint of an agent trusted before the field, with asks: always", async () => {
+    expect(await fingerprintOf([{ ...coder, asks: "always" }])).toBe(await fingerprintOf([coder]));
+  });
+
+  it("asks again when an agent turns in-sandbox on, listing asks as the changed field", async () => {
+    const turnedOn = { ...coder, asks: "in-sandbox" as const };
+    const result = changes([coder], [turnedOn]);
+
+    expect(await fingerprintOf([turnedOn])).not.toBe(await fingerprintOf([coder]));
+    expect(result.agents.changed.map((change) => [change.id, change.fields])).toEqual([
+      ["coder", ["asks"]],
+    ]);
+    expect(result.onlyRemoves).toBe(false);
+  });
+
+  it("lists turning it off as a change too, since the record differs", () => {
+    const result = changes([{ ...coder, asks: "in-sandbox" }], [coder]);
+
+    expect(result.agents.changed.map((change) => [change.id, change.fields])).toEqual([
+      ["coder", ["asks"]],
+    ]);
+  });
+});

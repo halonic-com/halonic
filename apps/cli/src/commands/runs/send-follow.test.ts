@@ -293,3 +293,28 @@ verifies("cli.workspace-file-problems", () => {
     expect(await eventsOfTheRun()).toEqual(before);
   });
 });
+
+// `cli.run-harness-asks`: `runs send` refuses as `run` does, ending "Nothing was sent.".
+verifies("cli.run-harness-asks", () => {
+  it("refuses a run recorded in Codex whose agent names asks, and sends nothing", async () => {
+    await startWaitingRun();
+    await startedInHarness("codex");
+    const before = await eventsOfTheRun();
+    await turnOffLocalOnly(acme);
+    const file = join(acme, "hubs/support/agents/writer.agent.yaml");
+    await writeFile(
+      file,
+      `${await readFile(file, "utf8")}harness: claude-code\nasks: in-sandbox\n`,
+    );
+    await trustAcme();
+
+    const { code, io } = await halonic(["runs", "send", "01jd8q", "approve"]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr).toEqual([
+      "✕ Couldn't send approve to run 01jd8q: Writer's file says when it asks before it acts, which only Claude Code follows, and this run starts it in another program. Nothing was sent.",
+      "  Run it in Claude Code, or remove asks from Writer's file.",
+    ]);
+    expect(await eventsOfTheRun()).toEqual(before);
+  });
+});

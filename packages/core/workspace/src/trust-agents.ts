@@ -1,6 +1,7 @@
 // The part of the trust content that harness agents add (stack 3c of the
 // HAL-189 plan): the program each one starts, the sites it may reach and,
-// when it isn't the default, the folder it writes to. They decide what a
+// when it isn't the default, the folder it writes to and when its tools ask
+// for a person's OK (HAL-14992). They decide what a
 // program on the person's computer can touch, so a change asks for trust
 // again (plan 11).
 
@@ -16,6 +17,12 @@ export interface AgentTrustContent {
   allowedSites: string[];
   /** The folder the agent writes to, normalised. Only there when it isn't `files/agents/<id>`. */
   workingFolder?: string;
+  /**
+   * When the agent's own tools ask for a person's OK. Only there when it
+   * isn't the default `always`, so content trusted before the field existed
+   * keeps its fingerprint.
+   */
+  asks?: "in-sandbox";
 }
 
 /**
@@ -42,6 +49,7 @@ function agentContent(agent: Agent): AgentTrustContent {
     harness: agent.harness ?? "halonic",
     allowedSites: asciiAllowedSites(agent.allowedSites ?? []).sort(compareText),
     ...(isDefault ? {} : { workingFolder }),
+    ...(agent.asks === "in-sandbox" ? { asks: agent.asks } : {}),
   };
 }
 

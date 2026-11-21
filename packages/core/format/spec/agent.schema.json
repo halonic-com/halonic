@@ -342,6 +342,13 @@
         }
       },
       "additionalProperties": false
+    },
+    "asks": {
+      "type": "string",
+      "enum": [
+        "always",
+        "in-sandbox"
+      ]
     }
   },
   "required": [

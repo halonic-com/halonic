@@ -31,6 +31,7 @@ export const AGENT_FIELDS: Readonly<Record<string, string>> = {
   harness: "Runs in",
   workingFolder: "Working folder",
   allowedSites: "Sites it can reach",
+  asks: "Asks before it acts",
   output: "Reply format",
   maxSteps: "Most model calls",
   harnessLimits: "Harness limits",
@@ -53,6 +54,7 @@ const IMPORTANT_FIELDS: ReadonlySet<string> = new Set([
   "harness",
   "workingFolder",
   "allowedSites",
+  "asks",
 ]);
 
 /** Fields of a list of names, described as "added …, removed …". */
@@ -71,6 +73,7 @@ const VALUE_FIELDS: ReadonlySet<string> = new Set([
   "model",
   "harness",
   "workingFolder",
+  "asks",
   "maxSteps",
   "version",
   "id",
@@ -207,6 +210,9 @@ function shownValue(field: string, value: unknown, agent: Agent): string {
   }
   if (field === "workingFolder") {
     return defaultWorkingFolder(agent.id);
+  }
+  if (field === "asks") {
+    return "always";
   }
   return "none";
 }
