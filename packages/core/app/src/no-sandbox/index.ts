@@ -19,6 +19,12 @@ export {
   type ResolvedPath,
 } from "./ask-policy.ts";
 export {
+  type InSandboxAllowed,
+  type InSandboxApprovalsOptions,
+  type InSandboxSession,
+  inSandboxApprovals,
+} from "./in-sandbox-approvals.ts";
+export {
   askProtectedPaths,
   isProtectedPath,
   type PathSegments,

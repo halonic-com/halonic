@@ -15,6 +15,7 @@ import type {
   OpenHarnessBridge,
   Sandbox,
   SandboxProfile,
+  SandboxSession,
 } from "@halonicjs/ports";
 import type { ProgramHarness } from "../kernel/decide-types.ts";
 import type { StartPhase } from "./start-limits.ts";
@@ -82,6 +83,14 @@ export interface HostedHarnessBridge extends OpenHarnessBridge {
    * agent signs in. Absent when the host doesn't say.
    */
   readonly providers?: Partial<Record<BridgeProvider, BridgeProviderAccess>>;
+  /**
+   * Hears the call's sandbox session once it is open, before the program
+   * starts (requirement `engine.harness-bridge-session`). The bridge opens
+   * first, so this is how its approvals learn the session's own fence proof
+   * and working folder, never from the placement or the agent's file.
+   * Absent when the host doesn't need them.
+   */
+  sessionOpened?(session: SandboxSession): void;
 }
 
 /**

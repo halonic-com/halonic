@@ -269,6 +269,7 @@ async function runInBridge(
     );
     const stopReports = session.onBlocked((block) => blocked.note(block));
     try {
+      bridge.sessionOpened?.(session);
       const timeoutMs = startTimeoutOf(options, "harness");
       await logHarnessStart(
         started,
