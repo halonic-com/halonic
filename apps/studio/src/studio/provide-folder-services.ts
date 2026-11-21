@@ -251,16 +251,7 @@ export function provideFolderServices(
             }),
       }),
     );
-  // A background engine runs the routines itself, so only the page's own engine opens for them.
-  if (remoteEngine === undefined) {
-    provideEngineAutoOpen(services, services.get(engineServiceKey), {
-      ipc,
-      files,
-      trust,
-      location,
-      scope,
-    });
-  }
+  provideEngineAutoOpen(services, { ipc, files, trust, location, scope, remoteEngine });
   services.provide(
     AgentsHostService,
     new WorkspaceAgents({
