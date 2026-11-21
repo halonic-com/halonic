@@ -12,4 +12,8 @@ export const newWorkflowWords = {
   folder: (path: string) => `Folder: ${path}`,
   describe: "Describe it to the Assistant instead ›",
   createFailed: (reason: string) => `Couldn't create the workflow: ${reason}.`,
+  defaultHubUnreadable: (file: string, line: number) =>
+    `${file} can't be read right now (line ${line}). Fix it in the file, then try again`,
+  defaultHubUnreadableOnPhone:
+    "the Default hub's file can't be read right now. Fix it on a computer, then try again",
 } as const;

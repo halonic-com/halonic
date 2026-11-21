@@ -110,7 +110,7 @@ verifies("studio.first-hub", () => {
       ).rejects.toMatchObject({
         kind: "invalid_input",
         message: expect.stringMatching(
-          /^hubs\/default\/hub\.yaml doesn't load: .+ \(line \d+\)\.$/,
+          /^hubs\/default\/hub\.yaml can't be read right now \(line \d+\)\.$/,
         ),
       });
       await expect(
@@ -150,11 +150,15 @@ function issueIn(file: string, severity: "error" | "warning"): WorkspaceIssue {
 }
 
 verifies("studio.first-hub-unloadable", () => {
-  it("refuses the Default hub with the file's load error, naming the line", () => {
+  it("refuses the Default hub naming the file and line, with the parser's words only as the cause", () => {
     expect(() => hubFilesFor([issueIn("hubs/default/hub.yaml", "error")], [], "default")).toThrow(
       expect.objectContaining({
         kind: "invalid_input",
-        message: "hubs/default/hub.yaml doesn't load: Flow sequence is not closed (line 2).",
+        message: "hubs/default/hub.yaml can't be read right now (line 2).",
+        fix: "Fix it in the file, then try again.",
+        file: "hubs/default/hub.yaml",
+        line: 2,
+        cause: expect.objectContaining({ message: "Flow sequence is not closed." }),
       }),
     );
   });
@@ -178,7 +182,8 @@ verifies("studio.first-hub-unloadable", () => {
       new WorkspaceWorkflows(folder).create({ name: "Daily summary", hubId: "default" }),
     ).rejects.toMatchObject({
       kind: "invalid_input",
-      message: expect.stringMatching(/^hubs\/default\/hub\.yaml doesn't load: .+ \(line \d+\)\.$/),
+      file: "hubs/default/hub.yaml",
+      line: expect.any(Number),
     });
 
     expect(folder.changes).toEqual([]);

@@ -1,9 +1,10 @@
 import { findSecretShape } from "@halonicjs/std";
 import { Dialog, Field, Input, Select, TextArea, usePresentation } from "@halonicjs/studio-kit";
-import { errorReasonFor, NameAndHubRow, NewItemNote } from "@halonicjs/studio-shell";
+import { NameAndHubRow, NewItemNote } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState } from "react";
 import type { AgentHub, AgentRef, NewAgent } from "../api.ts";
 import { agentFilePath } from "./agent-file.ts";
+import { createFailureReason } from "./default-hub-refusal.ts";
 import { newAgentWords as words } from "./new-agent-words.ts";
 
 /** The props of {@link NewAgentDialog}. */
@@ -76,8 +77,7 @@ export function NewAgentDialog({
       const written = instructions.trim();
       onCreated(await create({ name: name.trim(), hubId, instructions: written }));
     } catch (error) {
-      const reason = errorReasonFor(error);
-      setFailure(words.createFailed(reason.replace(/\.$/, "")));
+      setFailure(words.createFailed(createFailureReason(error, phone)));
       setBusy(false);
     }
   }
