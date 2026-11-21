@@ -94,7 +94,7 @@ built-in test model needs nothing, so it isn't listed.
 | --- | --- | --- |
 | ✓ "answering at" an address | The model server on this computer answers, and the line lists the models it has loaded. | Nothing. |
 | ✓ "API key stored" | The key for this cloud provider is stored. | Nothing. |
-| ! an alias "needs an API key" | The aliases named on the line use a provider whose key isn't stored. Agents that use them won't run. | Store the key with `halonic secret set <name>`, where `<name>` is the `secret` in the provider's file. |
+| ! an alias "needs an API key" | The aliases named on the line use a provider whose key isn't stored. Agents that use them won't run. For a provider an agent names directly, the line names that model instead, such as `claude/claude-sonnet-5-5 needs an API key for claude.` | Store the key with `halonic secret set <name>`, where `<name>` is the `secret` in the provider's file. |
 | ! "couldn't read" a key "from the secret store" | Halonic couldn't read this provider's key from the secrets file, for example because the file is damaged or other users can read it. The key may still be there. | Run `halonic secret list`: it says what's wrong with the file and how to fix it, such as `chmod 600 <file>`. Then run `halonic doctor` again. Don't set the key again until `doctor` says it isn't set. |
 | ✕ "no model alias default" | The workspace has no model alias `default`, and agents that don't name a model of their own need it. They won't run until it's added. `doctor` exits 1. | Copy `models.yaml` and `providers/mock.yaml` from Acme (`examples/acme`), or add your own alias `default`. |
 | ✕ "isn't answering" at an address | The model server on this computer doesn't answer. Every alias that uses it fails, and Halonic doesn't fall back to another model by itself. | Start the server (for example, open Ollama or LM Studio). Check that the address matches `baseUrl` in the provider's file. |
@@ -145,7 +145,7 @@ warning, because only the agents that use that harness are stopped.
 | ! an agent uses a harness "and it isn't installed" | That agent can't start. | Install the harness, then run `doctor` again. |
 | ! a version "isn't supported" | The installed harness is older than Halonic needs. The line says which version it needs. | Update the harness, then run `doctor` again. |
 | ! "couldn't ask its version" | Halonic found the harness, but asking its version failed. The line gives the harness's own error. | Check that the harness runs on its own in a terminal. |
-| ! a harness "isn't signed in for" an agent | Each agent signs in to its harness on its own, in its own settings folder, not with your personal sign-in. | Run the sign-in command on the `Fix:` line in your own terminal. It signs in for that agent only. |
+| ! a harness "isn't signed in for" an agent | Each agent signs in to its harness on its own, in its own settings folder, not with your personal sign-in. An agent whose runs in the sandbox get a provider key instead, the workspace's `anthropic` or `openai` key as `halonic run` gives it, isn't asked about, because its runs don't use its own sign-in. | Run the sign-in command on the `Fix:` line in your own terminal. It signs in for that agent only. |
 
 ### Node.js
 
