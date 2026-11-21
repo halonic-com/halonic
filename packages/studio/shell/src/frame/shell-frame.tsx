@@ -62,6 +62,11 @@ export interface ShellFrameProps {
    * (`HeaderBadges` with `layout="strip"`). Left out, the strip shows only a save problem.
    */
   readonly phoneBadges?: ReactNode;
+  /**
+   * The strips under the top bar, `Strips`, such as the first-run bar: at the top of the panel on
+   * the desktop and under the top bar on a phone, after the engine's line in both.
+   */
+  readonly strips?: ReactNode;
   /** The top bar on a phone, `PhoneTopBar`: Back, the place or page title, its actions. */
   readonly phoneTopBar?: ReactNode;
   /**
@@ -172,6 +177,7 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
       <div className={`flex min-h-0 flex-1 flex-col bg-surface ${desktop ? panel : phoneColumn}`}>
         {desktop ? null : props.phoneTopBar}
         <EngineLine engine={props.engine} />
+        {props.strips}
         {desktop ? null : <PhoneNotices saveNote={props.saveNote} badges={props.phoneBadges} />}
         <div className={`relative flex min-h-0 flex-1 ${desktop ? "" : phoneContent}`}>
           {desktop ? (

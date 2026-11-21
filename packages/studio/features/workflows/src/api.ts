@@ -364,3 +364,43 @@ export interface WorkflowsHost {
 /** The open workspace's workflows, provided by the app (`workflows.host`). */
 export const WorkflowsHostService: ServiceKey<WorkflowsHost> =
   serviceKey<WorkflowsHost>("workflows.host");
+
+/** One line of a guide card: plain text, after a label when it has one ("The email:"). */
+export interface WorkflowGuideLine {
+  readonly label?: string | undefined;
+  readonly text: string;
+}
+
+/** What the guide card's one button can ask of the workflow's page. */
+export interface WorkflowGuidePage {
+  /** Opens the page's Run form at the right, as the page's own **Run** does. */
+  openRunForm(): void;
+}
+
+/** A guide card as the workflow's page shows it: a title, its lines and one primary button. */
+export interface WorkflowGuideCard {
+  /** The card's heading, such as "Your first run". */
+  readonly title: string;
+  readonly lines: readonly WorkflowGuideLine[];
+  readonly action: {
+    /** The button's words, such as "Run your first workflow". */
+    readonly label: string;
+    run(page: WorkflowGuidePage): void;
+  };
+}
+
+/**
+ * A card another feature shows at the right of a workflow's canvas, such as the first run's guide
+ * card (first-run-flow 3.2). The page shows it on Flow while no run or step card is docked there,
+ * and above the canvas on a phone. It has no ✕: the feature that gives it decides when it goes.
+ */
+export interface WorkflowGuide {
+  /** The card for this workflow now, or `undefined` for none. */
+  card(workflow: WorkflowRef): WorkflowGuideCard | undefined;
+  /** Calls `listener` whenever a card may have changed. Returns a function that stops the calls. */
+  subscribe(listener: () => void): () => void;
+}
+
+/** The guide on workflow pages, provided by another feature, such as First Run (`workflows.guide`). */
+export const WorkflowGuideService: ServiceKey<WorkflowGuide> =
+  serviceKey<WorkflowGuide>("workflows.guide");

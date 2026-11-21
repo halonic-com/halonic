@@ -2,7 +2,7 @@ import type { SandboxStartCheck } from "@halonicjs/app";
 import type { ShownRuns } from "@halonicjs/studio-feature-inbox/api";
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
 import type { SaveState } from "@halonicjs/studio-shell";
-import type { WorkflowsHost } from "../api.ts";
+import type { WorkflowGuide, WorkflowsHost } from "../api.ts";
 import type { AnnounceState } from "../start/run-announcement.ts";
 
 /** Props for `WorkflowScreen`. */
@@ -54,4 +54,6 @@ export interface WorkflowScreenProps {
   readonly sandboxStartCheck?: SandboxStartCheck | undefined;
   /** Opens an agent's page, for the can't-run Callout's "*Writer*'s settings ›"; without it there is no link. */
   readonly openAgent?: (agentId: string) => void;
+  /** Another feature's guide card, such as the first run's; without it the page shows none. */
+  readonly guide?: WorkflowGuide | undefined;
 }

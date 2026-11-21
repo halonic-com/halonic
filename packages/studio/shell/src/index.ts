@@ -120,6 +120,7 @@ export {
   StatusBarSaveNote,
   type StatusBarSaveNoteProps,
 } from "./frame/status-bar-save-note.tsx";
+export { type StripProps, Strips, type StripsProps } from "./frame/strips.tsx";
 export { firstLoad, type HomeCardSource } from "./home/first-load.ts";
 export type { HomeCardProps } from "./home/home-page.tsx";
 export { HomeSectionEmpty } from "./home/home-section.tsx";
