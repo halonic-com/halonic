@@ -143,6 +143,17 @@ verifies("app.plugin-connector-opening", () => {
     ).toEqual([["forecasts", "local:files", { kind: "needs-desktop-app" }]]);
   });
 
+  it("gives the parts that can't start for the run's log, none before it opens", async () => {
+    const { open } = setUp({ sandbox: null });
+    const connector = open();
+    expect(connector.newPartsOff?.()).toEqual([]);
+    await connector.listTools();
+    expect(connector.newPartsOff?.()).toEqual([
+      { part: "local:files", reason: "needs-desktop-app" },
+    ]);
+    expect(connector.newPartsOff?.()).toEqual([]);
+  });
+
   it("opens nothing for a connector closed before its first use", async () => {
     const { open, backendRequests, localToolSets } = setUp();
     await open().close();

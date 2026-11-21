@@ -59,6 +59,7 @@ function fixture(options: FixtureOptions = {}): Fixture {
         id: config.id,
         listTools: async () => [],
         callTool: async () => "",
+        newPartsOff: () => [{ part: "local:lister", reason: "sandbox-unavailable" }],
         close: async () => {
           log.push(`close ${config.id}`);
           if (options.closeFails === true) throw new Error("the program didn't stop");
@@ -255,5 +256,17 @@ verifies("engine.run-connectors", () => {
       `Run "run_1" can't start its connectors: the engine has closed.`,
     );
     expect(log).toEqual([]);
+  });
+});
+
+verifies("cli.run-plugin-part-off", () => {
+  it("keeps the parts a connector found off, so the run's log can say which tools are off", async () => {
+    const { connectors } = fixture();
+
+    const [opened] = await connectors.open(runOf("run_1", live, true));
+
+    expect(opened?.newPartsOff?.()).toEqual([
+      { part: "local:lister", reason: "sandbox-unavailable" },
+    ]);
   });
 });

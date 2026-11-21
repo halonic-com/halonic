@@ -27,7 +27,10 @@ optional and come with a requirement.
   that couldn't list its tools when a model turn started, with a
   `connector-not-started` cause (`program-missing` or `secret-not-set` and
   the name, else `other`), never the error's text (requirement
-  `connector-listing-failed`).
+  `connector-listing-failed`). `connector.part-off` records one part of a
+  connector, such as a plugin's local tool, that offers no tools in a run
+  while the others do, with a reason code, never the error's text
+  (requirement `connector-part-off`).
 - `run.failed` and `RunFailureReason`: `reason` says why a run failed
   (requirement `run-failed-reason`), for example `model-missing`,
   `model-no-tools`, `harness-unavailable` or `sandbox-start-failed`.

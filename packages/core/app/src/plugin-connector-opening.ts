@@ -13,6 +13,7 @@ import type {
   ConnectorCallOptions,
   ConnectorClient,
   ConnectorFactoryContext,
+  ConnectorPartOff,
   ConnectorTool,
   TrustGrant,
 } from "@halonicjs/ports";
@@ -160,6 +161,8 @@ class LazyPluginConnector implements ConnectorClient {
   readonly id: string;
   readonly #open: () => Promise<ConnectorClient>;
   #opened: Promise<ConnectorClient> | undefined;
+  /** The connector once it opened, for the calls that can't wait for it. */
+  #current: ConnectorClient | undefined;
   #closed = false;
 
   constructor(id: string, open: () => Promise<ConnectorClient>) {
@@ -179,11 +182,17 @@ class LazyPluginConnector implements ConnectorClient {
     return await (await this.#client()).callTool(name, args, options);
   }
 
+  /** The opened connector's parts found off since the last call; none before it opened. */
+  newPartsOff(): readonly ConnectorPartOff[] {
+    return this.#current?.newPartsOff?.() ?? [];
+  }
+
   /** Closes the connector if it opened. Closing one that was never used opens nothing. */
   async close(): Promise<void> {
     this.#closed = true;
     const opened = this.#opened;
     this.#opened = undefined;
+    this.#current = undefined;
     await (await opened?.catch(() => undefined))?.close();
   }
 
@@ -192,7 +201,9 @@ class LazyPluginConnector implements ConnectorClient {
     this.#opened ??= this.#open();
     const opening = this.#opened;
     try {
-      return await opening;
+      const client = await opening;
+      if (!this.#closed) this.#current = client;
+      return client;
     } catch (error) {
       if (this.#opened === opening) this.#opened = undefined;
       const reason = error instanceof Error ? error.message : String(error);

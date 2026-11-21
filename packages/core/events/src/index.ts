@@ -12,6 +12,7 @@ export {
   blockedSites,
   type StepBlockedSites,
 } from "./blocked-sites.ts";
+export type { ConnectorPartOffReason } from "./connector-part-off.ts";
 export { providerNotes } from "./provider-notes.ts";
 export type {
   ApprovalResolver,

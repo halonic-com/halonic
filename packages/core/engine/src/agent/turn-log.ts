@@ -1,4 +1,5 @@
-import type { RunEventBody } from "@halonicjs/events";
+import { maxCauseNameLength, type RunEventBody } from "@halonicjs/events";
+import type { ConnectorPartOff } from "@halonicjs/ports";
 import { connectorStartCause } from "./connector-start-cause.ts";
 
 /** The run log events a model turn writes, with the `agent.*` events of the subagents it hands tasks to. */
@@ -17,7 +18,8 @@ export type TurnEvent = Extract<
       | "tool.result"
       | "tool.refused"
       | "tool.unasked"
-      | "connector.listing-failed";
+      | "connector.listing-failed"
+      | "connector.part-off";
   }
 >;
 
@@ -50,5 +52,32 @@ export async function logListingFailures(
   for (const [connector, error] of listingErrors) {
     const cause = connectorStartCause(error);
     await log.append({ type: "connector.listing-failed", agent, connector, cause });
+  }
+}
+
+/**
+ * Writes a `connector.part-off` for each part of a connector that the
+ * turn's listing found off (requirement `engine.connector-part-off`), such
+ * as a plugin's local tool that can't start while its backend's tools are
+ * offered. `partsOff` is the turn's (`TurnTools.partsOff`), by connector id.
+ * The part's name is cut to `maxCauseNameLength`. A turn with no log writes
+ * nothing.
+ */
+export async function logPartsOff(
+  log: TurnLog | undefined,
+  agent: string,
+  partsOff: ReadonlyMap<string, readonly ConnectorPartOff[]>,
+): Promise<void> {
+  if (log === undefined) return;
+  for (const [connector, parts] of partsOff) {
+    for (const { part, reason } of parts) {
+      await log.append({
+        type: "connector.part-off",
+        agent,
+        connector,
+        part: part.slice(0, maxCauseNameLength),
+        reason,
+      });
+    }
   }
 }

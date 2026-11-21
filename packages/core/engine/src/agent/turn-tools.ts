@@ -8,6 +8,8 @@ import {
   type ChatTurnRefusal,
   type ChatTurnWaiting,
   type ConnectorClient,
+  type ConnectorPartOff,
+  type ConnectorTool,
   isConnectorToolError,
   type ToolDefinition,
   type ToolRisk,
@@ -118,6 +120,12 @@ export interface TurnTools {
    * model: its `listing` refusal has the words.
    */
   readonly listingErrors: ReadonlyMap<string, unknown>;
+  /**
+   * The parts of each connector that its listing found off, by connector
+   * id (`ConnectorClient.newPartsOff`), for the engine to log. A connector
+   * gives each part once, so a later turn of the run has no entry for it.
+   */
+  readonly partsOff: ReadonlyMap<string, readonly ConnectorPartOff[]>;
 }
 
 /** Where a turn's tools come from. */
@@ -178,13 +186,8 @@ async function addConnectorTools(
   lists: Pick<Connector["tools"], "approve" | "read"> | undefined,
   declared: DeclaredTools | undefined,
 ) {
-  let listed: Awaited<ReturnType<ConnectorClient["listTools"]>>;
-  try {
-    listed = await connector.listTools();
-  } catch (error) {
-    builder.refuseListing(connector.id, error);
-    return;
-  }
+  const listed = await listConnectorTools(builder, connector);
+  if (listed === undefined) return;
   const approved = await approveConnectorListing(approval, connector.id, listed);
   for (const refusal of approved.refusals) {
     builder.refuse(refusal);
@@ -216,6 +219,24 @@ async function addConnectorTools(
   }
 }
 
+/**
+ * The tools `connector` lists, or `undefined` when its listing fails, which
+ * is refused. Either way, keeps the parts the connector found off.
+ */
+async function listConnectorTools(
+  builder: ToolListBuilder,
+  connector: ConnectorClient,
+): Promise<ConnectorTool[] | undefined> {
+  try {
+    return await connector.listTools();
+  } catch (error) {
+    builder.refuseListing(connector.id, error);
+    return undefined;
+  } finally {
+    builder.partsOff(connector.id, connector.newPartsOff?.() ?? []);
+  }
+}
+
 /** What a map by connector id holds for one connector, if anything. */
 function forConnector<T>(byConnector: Readonly<Record<string, T>> | undefined, id: string) {
   return byConnector !== undefined && Object.hasOwn(byConnector, id) ? byConnector[id] : undefined;
@@ -227,6 +248,7 @@ class ToolListBuilder {
   private readonly refusals: ChatTurnRefusal[] = [];
   private readonly waiting: ChatTurnWaiting[] = [];
   private readonly listingErrors = new Map<string, unknown>();
+  private readonly offParts = new Map<string, readonly ConnectorPartOff[]>();
 
   add(tool: TurnTool): void {
     const name = tool.definition.name;
@@ -258,6 +280,11 @@ class ToolListBuilder {
     this.listingErrors.set(connector, error);
   }
 
+  /** Keeps the parts of a connector its listing found off, if any. */
+  partsOff(connector: string, parts: readonly ConnectorPartOff[]): void {
+    if (parts.length > 0) this.offParts.set(connector, parts);
+  }
+
   wait(waiting: readonly ChatTurnWaiting[]): void {
     this.waiting.push(...waiting);
   }
@@ -273,6 +300,7 @@ class ToolListBuilder {
       refusals: this.refusals,
       waiting: this.waiting,
       listingErrors: this.listingErrors,
+      partsOff: this.offParts,
     };
   }
 }

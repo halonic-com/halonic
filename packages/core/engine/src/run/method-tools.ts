@@ -4,7 +4,7 @@
 // call isn't a tool the model calls, so a method can't turn it off.
 
 import type { AgentMethod } from "@halonicjs/format";
-import type { ConnectorClient } from "@halonicjs/ports";
+import { type ConnectorClient, forwardedPartsOff } from "@halonicjs/ports";
 import type { HalonicTool } from "../agent/turn-tools.ts";
 
 /** Halonic's tools a method's call is offered. */
@@ -28,6 +28,7 @@ export function methodConnectors(
     ...(connector.local === undefined ? {} : { local: connector.local }),
     listTools: async () => (await connector.listTools()).filter((tool) => named.has(tool.name)),
     callTool: (name, args, options) => connector.callTool(name, args, options),
+    ...forwardedPartsOff(connector),
     close: () => connector.close(),
   }));
 }

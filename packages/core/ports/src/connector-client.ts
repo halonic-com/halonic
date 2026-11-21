@@ -1,3 +1,4 @@
+import type { ConnectorPartOffReason } from "@halonicjs/events";
 import type { HttpClient } from "./http-client.ts";
 import type { SandboxSession } from "./sandbox.ts";
 import type { Secrets } from "./secrets.ts";
@@ -105,8 +106,40 @@ export interface ConnectorClient {
     args: Record<string, unknown>,
     options?: ConnectorCallOptions,
   ): Promise<string>;
+  /**
+   * The parts of the connector found off since the last call, each once
+   * (requirement `ports.connector-parts-off`). A connector with parts, such
+   * as a plugin's backend and its local tools, may leave one out of its
+   * listing and offer the others; this says which and why. A connector of
+   * one part leaves it out: its listing throws instead.
+   */
+  newPartsOff?(): readonly ConnectorPartOff[];
   /** Release the connection (stop a local process). Safe to call twice. */
   close(): Promise<void>;
+}
+
+/**
+ * The `newPartsOff` for a client that wraps `connector`, such as one that
+ * filters its tools: the connector's own, or none when it has none, so a
+ * wrapper never hides a part that is off (requirement
+ * `ports.connector-parts-off`). Spread it into the wrapper.
+ *
+ * @example
+ * const filtered: ConnectorClient = { id, listTools, callTool, close, ...forwardedPartsOff(connector) };
+ */
+export function forwardedPartsOff(
+  connector: ConnectorClient,
+): Pick<ConnectorClient, "newPartsOff"> {
+  if (connector.newPartsOff === undefined) return {};
+  return { newPartsOff: () => connector.newPartsOff?.() ?? [] };
+}
+
+/** A part of a connector that offers no tools, as {@link ConnectorClient.newPartsOff} gives it. */
+export interface ConnectorPartOff {
+  /** `backend`, or `local:` and a local tool's name. */
+  readonly part: string;
+  /** A code only, never an error's text. */
+  readonly reason: ConnectorPartOffReason;
 }
 
 /**

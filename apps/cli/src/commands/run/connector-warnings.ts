@@ -16,7 +16,10 @@ type ListingFailed = Extract<RunEvent, { type: "connector.listing-failed" }>;
  * Warns once for each connector a run's log says couldn't list its tools:
  * what happened, then the cause and its fix, indented under it. Every step
  * lists the tools again, and every follow reads the log from its first
- * event, so a connector is warned about only the first time.
+ * event, so a connector is warned about only the first time. A connector
+ * whose parts the log already named as off (`connector.part-off`, written
+ * before the listing's failure) gets no warning here: the run already
+ * warned for each part, with why.
  *
  * @param dir - the user's own `--dir`, for the command it suggests
  * @param fileOf - the path of a connector's file in the workspace, or
@@ -34,6 +37,7 @@ export function connectorWarnings(
 ): (event: RunEvent) => void {
   const warned = new Set<string>();
   return (event) => {
+    if (event.type === "connector.part-off") warned.add(event.connector);
     if (event.type !== "connector.listing-failed" || warned.has(event.connector)) return;
     warned.add(event.connector);
     for (const line of warningLines(event, dir, fileOf(event.connector))) {

@@ -6,7 +6,7 @@
 import type { SendingSettings } from "@halonicjs/app";
 import type { ToolFailureCause, ToolNotMadeReason } from "@halonicjs/events";
 import type { Agent, Connector } from "@halonicjs/format";
-import { type ConnectorClient, isConnectorToolError } from "@halonicjs/ports";
+import { type ConnectorClient, forwardedPartsOff, isConnectorToolError } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 import { connectorStartCause } from "../agent/connector-start-cause.ts";
 import type { ListedToolApproval } from "../agent/listed-tool-approval.ts";
@@ -74,6 +74,7 @@ export function readToolsOf(
         (tool) => countedRisk(tool.risk, tools, tool.name) === "read",
       ),
     callTool: (name, args, options) => connector.callTool(name, args, options),
+    ...forwardedPartsOff(connector),
     close: () => connector.close(),
   };
 }
@@ -276,6 +277,7 @@ export function allowedToolsOf(
         listTools: async () =>
           (await connector.listTools()).filter((tool) => allowed.has(tool.name)),
         callTool: (name, args, options) => connector.callTool(name, args, options),
+        ...forwardedPartsOff(connector),
         close: () => connector.close(),
       },
     ];

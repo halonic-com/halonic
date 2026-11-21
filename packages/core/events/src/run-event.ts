@@ -1,5 +1,6 @@
 import type { AgentResume } from "./agent-resume.ts";
 import type { ConnectorListingFailedEvent } from "./connector-listing-failed.ts";
+import type { ConnectorPartOffEvent } from "./connector-part-off.ts";
 import type {
   ApprovalResolver,
   CantTryStep,
@@ -288,6 +289,7 @@ export type RunEventBody =
       timeoutMs: number;
     }
   | ConnectorListingFailedEvent
+  | ConnectorPartOffEvent
   /**
    * A step is about to make a connector call that can change things
    * (requirement `events.effect-requested`). Written before the call, so a
