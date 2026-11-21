@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { FileUnfencedRunConsentStore, FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { MemoryTrustStore } from "@halonicjs/adapter-memory";
 import type { GatedRunner } from "@halonicjs/app";
@@ -16,6 +16,8 @@ import { SavedUnfencedYes } from "./saved-unfenced-yes.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { profilePlatformOf } from "./workspace-runs.ts";
+
+const onWindows = process.platform === "win32";
 
 let base: string;
 let dir: OpenWorkspaceDir;
@@ -138,9 +140,14 @@ verifies("cli.local-integration-unfenced-yes", () => {
       computer.startedUnfenced?.(reason);
       expect(warnings.map(plainText)).toEqual([
         "! Integration code runs without the sandbox on this computer, so it may be able to use your files, programs and sign-ins, and reach other addresses.",
-        expect.stringMatching(/^ {2}\S.*container.*\S$/),
+        // The reason this platform gives: "container" here, "windows" on Windows.
         expect.stringMatching(
-          /^ {2}More: https:\/\/docs\.halonic\.dev\/security\/sandbox\/.* \(container\)$/,
+          reason === "windows" ? /^ {2}On Windows, .*WSL 2.*\.$/ : /^ {2}\S.*container.*\S$/,
+        ),
+        expect.stringMatching(
+          new RegExp(
+            `^ {2}More: https://docs\\.halonic\\.dev/security/sandbox/.* \\(${reason}\\)$`,
+          ),
         ),
       ]);
       if (started.run === "unfenced") await started.runner.close();
@@ -226,8 +233,14 @@ verifies("cli.local-integration-unfenced-yes", () => {
     it("only removes the yes once the computer passes the sandbox check, as every host does", async () => {
       const computer = await machine(passes);
       await hostSaves("container");
-      expect(await computer.gate.status()).toEqual({ run: "fenced" });
-      expect(await readdir(hostFolder())).toEqual([]);
+      // On Windows integration code never runs in the sandbox in this version, so no check
+      // passes there and the yes stays.
+      expect(await computer.gate.status()).toEqual(
+        onWindows ? { run: "needs-yes", reason: "windows" } : { run: "fenced" },
+      );
+      expect(await readdir(hostFolder())).toEqual(
+        onWindows ? [basename(new FileUnfencedRunConsentStore(hostFolder()).file)] : [],
+      );
       await computer.dispose();
     });
   });
