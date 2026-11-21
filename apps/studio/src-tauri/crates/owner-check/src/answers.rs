@@ -57,7 +57,11 @@ impl Confirmation {
             "cancelled" => Self::Cancelled,
             "locked-out" => Self::LockedOut,
             "busy" => Self::Busy,
-            other => Self::Unavailable(Availability::from_plugin(other)),
+            other => match Availability::from_plugin(other) {
+                // `ready` is a status, not how a prompt ended.
+                Availability::Ready => Self::Unavailable(Availability::Unavailable),
+                reason => Self::Unavailable(reason),
+            },
         }
     }
 

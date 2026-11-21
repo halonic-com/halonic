@@ -14,6 +14,9 @@ Before the phone sends an answer to an approval, the shell shall ask the person 
 - Given a phone with a strong fingerprint enrolled,
   when the person closes the prompt or Android closes it,
   then nothing is sent.
+- Given a prompt that is open,
+  when the app leaves the screen, or nobody answers within 2 minutes,
+  then nothing is sent, and the next answer shows a new prompt.
 - Given a phone whose only biometric is a weak face unlock,
   when the person approves from the phone,
   then no prompt shows and nothing is sent.
