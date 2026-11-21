@@ -18,9 +18,16 @@ function Chip({ listing }: { readonly listing: RoutineListing }) {
   if (!listing.targetFound) {
     return (
       <StatusChip tone="danger">
-        {listWords.cantStart}
-        {/* The row's name is its text, so this makes it "… Can't start: support-reply isn't in this workspace". */}
-        <span className="sr-only">: {listWords.cantStartWhy(listing.targetName)}</span>
+        {/*
+         * The row's name is its text, so screen readers hear "… Can't start: support-reply isn't in
+         * this workspace". The words and the reason are one text: the chip is a flex box and the
+         * reason is positioned out of it, so Chromium puts a space between two parts, which a
+         * braille display shows as "Can't start :" (C538-4).
+         */}
+        <span aria-hidden="true">{listWords.cantStart}</span>
+        <span className="sr-only">
+          {`${listWords.cantStart}: ${listWords.cantStartWhy(listing.targetName)}`}
+        </span>
       </StatusChip>
     );
   }
