@@ -3,6 +3,7 @@
 - Task: HAL-15333 (follow-up to HAL-11873, from Iris's flow check C561 on HAL-15313)
 - Approval: HAL-15333 asks for this change; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oyBrCRfJkwXgi/BP26B+fkyYTiYPELz2TJPuZV2mMQxxXGOABLvw2kP8lv3zziiuXhoJRKmBus+A8ldcolGJBg==
 
 ## What changes
 
