@@ -197,7 +197,7 @@ verifies("runs.run-view.run-again", () => {
     expect(copyDetailsCount(root)).toBe(before + 1);
   });
 
-  it("words a refusal as the Run panel does: its next step and its command, without Try again", async () => {
+  it("words a refusal as the Run panel does: its next step and its command, Try again only for a conflict", async () => {
     const connector = Object.assign(
       new KindedError("unavailable", "Reporter uses a connector, which Studio can't start yet.", {
         fix: "To start it, run this in a terminal:",
@@ -225,7 +225,7 @@ verifies("runs.run-view.run-again", () => {
       "Couldn't start the run: Acme is already running in another Halonic on this computer.",
     );
     expect(line?.textContent).toContain("Stop that one, then try again.");
-    expect(line?.textContent).not.toContain("Try again");
+    expect(line?.textContent).toContain("Try again");
   });
 
   it("says each failed start once", async () => {

@@ -48,7 +48,7 @@ verifies("shell.start-failure", () => {
       });
     });
 
-    it("shows a conflict's next step without Try again", () => {
+    it("shows a conflict's next step with Try again", () => {
       const held = new KindedError(
         "conflict",
         "Acme is already running in another Halonic on this computer.",
@@ -58,7 +58,7 @@ verifies("shell.start-failure", () => {
         reason: "Acme is already running in another Halonic on this computer.",
         fix: "Stop that one, then try again.",
         command: undefined,
-        tryAgain: false,
+        tryAgain: true,
         copyDetails: false,
       });
     });

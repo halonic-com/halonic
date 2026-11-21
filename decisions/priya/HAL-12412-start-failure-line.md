@@ -8,12 +8,13 @@ different ways. The UX check (row S2, rule E5) asks for one: the reason lower ca
 unless it starts with a name, the refusal's next step and its command, and **Try again**, from one
 shared function. The requirement now says so, and a new example covers a refusal's next step and
 its command, which come without **Try again**. A lock another Halonic holds is worded as HAL-13758
-decided, also without **Try again**.
+decided and keeps **Try again**, because the other Halonic may have finished by then (UX check S1,
+design check C471-6 on HAL-14728).
 
 ## Tests
 
-No test was weakened or removed. One test was added for a refusal's next step, its command, and a
-lock another Halonic holds, each without **Try again**.
+No test was weakened or removed. One test was added for a refusal's next step and its command,
+without **Try again**, and a lock another Halonic holds, with **Try again**.
 
 ## Covers
 

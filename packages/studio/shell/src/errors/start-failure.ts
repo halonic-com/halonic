@@ -1,3 +1,4 @@
+import { errorKindOf } from "@halonicjs/std";
 import { EngineNotAnswering } from "../engine/engine-not-answering.ts";
 import { rawDetailsOf } from "./copy-details-words.ts";
 import { errorReasonFor } from "./error-message.ts";
@@ -28,7 +29,8 @@ export interface StartFailure {
  * - A failure Halonic can't explain (`internal`, or no reason) says "Halonic ran into a problem it
  *   can't explain yet." with **Copy details** only: starting again the same way won't help.
  * - A refusal with a next step shows the step, and its command when it has one, without **Try
- *   again** (D7).
+ *   again** (D7). A `conflict` keeps **Try again** next to its step: the other Halonic may have
+ *   finished by the time the person reads it (UX check S1, design check C471-6).
  * - Any other reason gets **Try again**; one that replaces raw text gets **Copy details** too.
  *
  * `notAnswering` is the reason for an engine that can't be reached, in the words for where Studio
@@ -51,7 +53,7 @@ export function startFailureOf(error: unknown, notAnswering: string): StartFailu
     reason: withFullStop(lowerAfterColon(reason)),
     fix,
     command: fix === undefined ? undefined : commandOf(error),
-    tryAgain: fix === undefined,
+    tryAgain: fix === undefined || errorKindOf(error) === "conflict",
     copyDetails: rawDetailsOf(error) !== undefined,
   };
 }
