@@ -122,6 +122,7 @@ verifies("plugins.feature", () => {
     const signIns: PluginSignIns = {
       status: async () => [],
       start: async () => "https://auth.example.com/oauth/authorize",
+      cancel: async () => {},
       signOut: async () => ({ kind: "notSignedIn" }),
     };
     const withSignIns = studioWith([weather()], signIns);
