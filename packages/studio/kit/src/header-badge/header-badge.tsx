@@ -64,6 +64,12 @@ export interface HeaderBadgeStatus {
   readonly tone: HeaderBadgeStatusTone;
   /** Where it leads, said after the state but not shown (the chevron shows it): "Details". */
   readonly action: string;
+  /**
+   * Its name, when it isn't the words and the action with a full stop between them: the strings
+   * table's "Connected to Tim's laptop. Details" and "Reconnecting. Details" (`phoneStatusLabel`'s
+   * `name`), which say the state in a sentence instead of reading its middle dot or ellipsis.
+   */
+  readonly name?: string | undefined;
   readonly onClick: () => void;
 }
 
@@ -135,6 +141,9 @@ const phoneLines = {
  * <HeaderBadge as="status" tone="attention" action="Details" onClick={openDetails}>
  *   Can't reach your computer
  * </HeaderBadge>
+ * <HeaderBadge as="status" tone={label.tone} action="Details" name={label.name} onClick={open}>
+ *   {label.text}
+ * </HeaderBadge>
  */
 export function HeaderBadge(props: HeaderBadgeProps) {
   if (props.as === "status") {
@@ -193,7 +202,7 @@ const statusLooks: Record<HeaderBadgeStatusTone, { readonly fill: string; readon
 /**
  * The connection label: 32px, radius 8px, `text-body-strong`, wrapping at large text instead of
  * being cut. Its target is 48px high, so it fits the 48px top bar without growing it. Named by its
- * state and where it leads ("Can't reach your computer. Details"). A colour change, not a live
+ * state and where it leads ("Can't reach your computer. Details"), or by its `name`. A colour change, not a live
  * region: the screen that owns it announces a change once.
  */
 function StatusBadge({ props }: { readonly props: HeaderBadgeStatus }) {
@@ -202,7 +211,7 @@ function StatusBadge({ props }: { readonly props: HeaderBadgeStatus }) {
     <button
       type="button"
       className={`inline-flex min-h-8 min-w-0 cursor-pointer items-center gap-2 rounded-sm border border-transparent py-1.5 pr-2 pl-3 text-start text-body-strong transition-colors focus-ring hit-touch contrast-more:border-border-control ${look.fill}`}
-      aria-label={`${spokenOf(props.children)}. ${props.action}`}
+      aria-label={props.name ?? `${spokenOf(props.children)}. ${props.action}`}
       onClick={props.onClick}
     >
       {/* In high contrast the fill would turn into the background: the dot keeps its shape in

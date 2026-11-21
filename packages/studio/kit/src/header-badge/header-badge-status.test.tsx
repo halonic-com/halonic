@@ -48,6 +48,22 @@ verifies("kit.header-badge-status", () => {
     expect(dotOf(removed).className).toContain("bg-danger");
   });
 
+  it("takes the name it is given instead of its words, so an ellipsis isn't read (HAL-15415)", () => {
+    const { container } = render(
+      <HeaderBadge
+        as="status"
+        tone="waiting"
+        action="Details"
+        name="Reconnecting. Details"
+        onClick={vi.fn()}
+      >
+        Reconnecting…
+      </HeaderBadge>,
+    );
+    expect(buttonIn(container).getAttribute("aria-label")).toBe("Reconnecting. Details");
+    expect(buttonIn(container).textContent).toBe("Reconnecting…");
+  });
+
   it("keeps its dot in high contrast, in the text colour (HAL-12946)", () => {
     for (const tone of ["success", "waiting", "attention", "danger"] as const) {
       const dot = dotOf(buttonIn(render(label(tone, "Connected")).container));
