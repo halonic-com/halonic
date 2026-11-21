@@ -1,4 +1,4 @@
-import { isPrivateWorkspacePath } from "@halonicjs/ports";
+import { isLeftOut, isPrivateWorkspacePath, type LeaveOut } from "@halonicjs/ports";
 import { isDomError } from "./folder-access.ts";
 import type { FileHandle, FolderHandle } from "./handles.ts";
 
@@ -61,12 +61,17 @@ export async function fileAt(root: FolderHandle, path: string): Promise<FileHand
 
 /**
  * Every file under `folder`, whose workspace path is `prefix` (`""` for the
- * opened folder), in no set order. Private entries, scratch files and names
- * a workspace path can't hold are left out, with everything under them.
+ * opened folder), in no set order. Private entries, scratch files, names
+ * a workspace path can't hold and what `leaveOut` names are left out, with
+ * everything under them: the walk never steps into a left-out folder.
  */
-export async function filesUnder(folder: FolderHandle, prefix: string): Promise<FoundFile[]> {
+export async function filesUnder(
+  folder: FolderHandle,
+  prefix: string,
+  leaveOut?: LeaveOut,
+): Promise<FoundFile[]> {
   try {
-    return await walk(folder, prefix);
+    return await walk(folder, prefix, leaveOut);
   } catch (error) {
     // A folder under the opened one removed while it is walked holds nothing now.
     if (prefix !== "" && isDomError(error, "NotFoundError")) {
@@ -76,7 +81,11 @@ export async function filesUnder(folder: FolderHandle, prefix: string): Promise<
   }
 }
 
-async function walk(folder: FolderHandle, prefix: string): Promise<FoundFile[]> {
+async function walk(
+  folder: FolderHandle,
+  prefix: string,
+  leaveOut: LeaveOut | undefined,
+): Promise<FoundFile[]> {
   const found: FoundFile[] = [];
   for await (const entry of folder.values()) {
     // A backslash can't be in a workspace path; Chromium refuses it anyway.
@@ -84,8 +93,11 @@ async function walk(folder: FolderHandle, prefix: string): Promise<FoundFile[]> 
       continue;
     }
     const path = prefix === "" ? entry.name : `${prefix}/${entry.name}`;
+    if (isLeftOut(path, leaveOut)) {
+      continue;
+    }
     if (entry.kind === "directory") {
-      found.push(...(await filesUnder(entry, path)));
+      found.push(...(await filesUnder(entry, path, leaveOut)));
     } else {
       found.push({ path, handle: entry });
     }

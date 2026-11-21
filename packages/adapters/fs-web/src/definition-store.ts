@@ -1,12 +1,16 @@
 import { DigestWatch, runOwnChange } from "@halonicjs/adapter-watch-kit";
 import {
+  checkLeaveOut,
   checkPublicWorkspacePath,
   type DefinitionStore,
   type DefinitionWatch,
   type DefinitionWatchListener,
   type ExpectedContent,
+  isLeftOut,
+  type ListOptions,
   type RemoveOptions,
   type RemoveResult,
+  type VersionOptions,
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
@@ -84,17 +88,23 @@ export class BrowserFolderDefinitionStore implements DefinitionStore {
     this.#quietMs = options.quietMs ?? defaultQuietMs;
   }
 
-  async list(dir?: string): Promise<string[]> {
+  /** With `leaveOut`, the walk never steps into a left-out folder. */
+  async list(dir?: string, options: ListOptions = {}): Promise<string[]> {
+    const { leaveOut } = options;
+    checkLeaveOut(leaveOut);
     if (dir !== undefined) {
       checkPublicWorkspacePath(dir);
     }
     const prefix = dir ?? "";
     return await this.#withAccess(async () => {
+      if (dir !== undefined && isLeftOut(dir, leaveOut)) {
+        return [];
+      }
       const folder = await folderAt(this.#root, prefix);
       if (folder === null) {
         return [];
       }
-      return (await filesUnder(folder, prefix)).map((file) => file.path).sort();
+      return (await filesUnder(folder, prefix, leaveOut)).map((file) => file.path).sort();
     });
   }
 
@@ -173,13 +183,13 @@ export class BrowserFolderDefinitionStore implements DefinitionStore {
   }
 
   /**
-   * `sha256:` and the first 16 hex characters of a hash over every file it
-   * serves and its text, worked out as the memory adapter does, so the same
-   * files give the same version in both.
+   * `sha256:` and the first 16 hex characters of a hash over every file
+   * `list()` gives with the same `leaveOut`, and its text, worked out as the
+   * memory adapter does, so the same files give the same version in both.
    */
-  async version(): Promise<string> {
+  async version(options: VersionOptions = {}): Promise<string> {
     const parts: string[] = [];
-    for (const path of await this.list()) {
+    for (const path of await this.list(undefined, options)) {
       const content = await this.read(path);
       if (content !== null) {
         parts.push(`${path}\n${content}`);
