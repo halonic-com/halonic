@@ -1,9 +1,9 @@
 import type { RoutineTrigger } from "@halonicjs/format";
 import { isAgentRunsNotAvailable, workspaceSecrets } from "@halonicjs/ports";
-import { type PlacedRoutine, routineStart, webhookFacts } from "@halonicjs/routines";
+import { type PlacedRoutine, type RoutineStart, webhookFacts } from "@halonicjs/routines";
 import type { ServerPorts } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
-import { startRoutineRun } from "./routine-run-start.ts";
+import { routineStartOrRefusal, startRoutineRun } from "./routine-run-start.ts";
 import { refuseUnlessTrusted } from "./trust-routes.ts";
 
 /** Every webhook address starts with this, then `<hubId or @workspace>/<routineId>`. */
@@ -113,15 +113,10 @@ export function createWebhookRoutes(ports: WebhookPorts): WebhookRoutes {
       if (untrusted !== null) {
         return untrusted;
       }
-      const { key, placed, trigger, signed, now } = sender;
-      const facts = webhookFacts(trigger, {
-        at: now,
-        body: new TextDecoder().decode(body),
-        headers: Object.fromEntries(request.headers),
-      });
-      const start = routineStart(placed, facts);
-      if (start.hub === null) {
-        throw new Error(`Routine ${key} runs outside a hub, so it must name one in run.hub.`);
+      const { key, placed, signed, now } = sender;
+      const start = webhookStart(request, sender, body);
+      if (start instanceof Response) {
+        return start;
       }
       const busy = await overlapAnswer(runStore, key, placed.routine.overlap);
       if (busy !== null) {
@@ -144,7 +139,7 @@ export function createWebhookRoutes(ports: WebhookPorts): WebhookRoutes {
       // The same delivery always gets the same run id, so the executor itself starts nothing twice.
       const runId = `webhook-${delivery}`;
       try {
-        const summary = await startRoutineRun(runs, start.hub, start, runTrigger, runId);
+        const summary = await startRoutineRun(runs, start.hubId, start.start, runTrigger, runId);
         return Response.json({ runId: summary.id }, { status: 202 });
       } catch (error) {
         // A start that failed must not use up the delivery: the sender's retry should get through.
@@ -155,6 +150,33 @@ export function createWebhookRoutes(ports: WebhookPorts): WebhookRoutes {
       }
     },
   };
+}
+
+/**
+ * What a proven delivery starts, in which hub, with its body and the headers
+ * the routine lists as trigger values; or the 400 answer when the routine
+ * names a value its trigger doesn't have.
+ *
+ * @throws Error when the routine runs outside a hub and names none
+ */
+function webhookStart(
+  request: Request,
+  sender: ProvenSender,
+  body: Uint8Array,
+): { start: RoutineStart; hubId: string } | Response {
+  const facts = webhookFacts(sender.trigger, {
+    at: sender.now,
+    body: new TextDecoder().decode(body),
+    headers: Object.fromEntries(request.headers),
+  });
+  const start = routineStartOrRefusal(sender.placed, facts);
+  if (start instanceof Response) {
+    return start;
+  }
+  if (start.hub === null) {
+    throw new Error(`Routine ${sender.key} runs outside a hub, so it must name one in run.hub.`);
+  }
+  return { start, hubId: start.hub };
 }
 
 /**

@@ -140,6 +140,19 @@ verifies("server.engine-routines", () => {
       expect((await sendTo(agents.server, "POST", runNow)).status).toBe(501);
     });
 
+    it("answers 400 with validate's reason for an input that names no trigger value, and starts nothing", async () => {
+      const run = { workflow: "send-digest", input: { day: "{{trigger.date}}" } };
+      const { server, calls } = testEngine({ routines: [placedRoutine({ run })] });
+      const answer = await sendTo(server, "POST", runNow);
+      expect(answer.status).toBe(400);
+      expect(await answer.json()).toEqual({
+        code: "invalid_input",
+        message:
+          "{{trigger.date}} isn't a trigger value. Use {{trigger.at}} or {{trigger.lastRun}}.",
+      });
+      expect(calls.started).toEqual([]);
+    });
+
     it("takes only an empty JSON object", async () => {
       const { server, calls } = testEngine({ routines: [placedRoutine()] });
       expect((await sendTo(server, "POST", runNow, { type: "text/plain" })).status).toBe(415);
