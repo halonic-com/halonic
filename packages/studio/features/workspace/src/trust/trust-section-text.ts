@@ -2,18 +2,18 @@
 export const TRUST_HEADING = "Trust";
 /** The line when the workspace holds nothing to trust (HAL-10131, HAL-11795). */
 export const NOTHING_TO_TRUST_LINE = "Nothing to trust here.";
-/** Only what trust gates today: Studio runs don't check it yet (HAL-12409, C52 7.1). */
+/** Studio runs check trust since HAL-12409 (#3756), and Summarize since HAL-13134 (#4105). */
 export const NOT_TRUSTED_LINE =
-  "Not trusted yet. Its routines and connectors won't start, and a provider won't send its key to another address.";
+  "Not trusted yet. Halonic won't start programs or call real models from this workspace.";
 /** The button of Settings › Trust that opens the workspace page at Trust. */
 export const OPEN_TRUST = "Open Trust";
 export const REVIEW = "Review";
 export const REVIEW_CHANGES = "Review changes";
 export const REMOVE_TRUST = "Remove trust";
 export const REMOVING = "Removing…";
-/** The Remove trust dialog's line: removing it also closes the engine, so its runs stop (HAL-13678). */
+/** The Remove trust dialog's line: every start asks or refuses, and removing it closes the engine, so its runs stop (HAL-12409, HAL-13678). */
 export const REMOVE_TRUST_BODY =
-  "Its routines and connectors won't start until you trust it again, and runs in progress stop.";
+  "Halonic will ask again before running anything from this workspace, and runs in progress stop.";
 export const CHANGED_BADGE = "Changed since you trusted it";
 export const LOADING_LINE = "Loading workspace settings";
 export const TRY_AGAIN = "Try again";

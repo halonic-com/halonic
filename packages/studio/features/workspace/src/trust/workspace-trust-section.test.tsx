@@ -158,7 +158,7 @@ verifies("workspace.trust-section", () => {
   it("offers Review for a workspace that isn't trusted yet", () => {
     show(control("not-trusted").value);
     expect(element.textContent).toContain(
-      "Not trusted yet. Its routines and connectors won't start, and a provider won't send its key to another address.",
+      "Not trusted yet. Halonic won't start programs or call real models from this workspace.",
     );
     expect(button("Review")).toBeDefined();
   });
@@ -182,7 +182,7 @@ verifies("workspace.trust-section", () => {
     const dialog = document.querySelector("dialog[open]");
     expect(dialog?.textContent).toContain("Remove trust from Acme?");
     expect(dialog?.textContent).toContain(
-      "Its routines and connectors won't start until you trust it again, and runs in progress stop.",
+      "Halonic will ask again before running anything from this workspace, and runs in progress stop.",
     );
     expect(document.activeElement).toBe(button("Cancel"));
     act(() => button("Cancel")?.click());
