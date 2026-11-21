@@ -2,6 +2,7 @@
 
 - Approval: HAL-14995 (Liam's decision, option 1, a team decision building on the approved plugin secret fields); the CTO, Liam, approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2Kiq9J1+0qwZSpoEocp+Opv2yD0k0PyAORhPLRn4/tNx2wclXqtKtR62IR5TjKGNkwBiecA9+JaPSB9juVf3Bw==
 
 The desktop app's connector page gets a Secrets section that writes a
 connector's secrets to the keychain its program reads them from
