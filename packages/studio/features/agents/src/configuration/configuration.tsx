@@ -76,6 +76,8 @@ export interface ConfigurationProps {
   readonly showModel?: boolean;
   /** Called once the Model page was shown for the waiting request, which then stops waiting. */
   readonly onModelShown?: () => void;
+  /** Where it opens, for the agent map's add buttons; on Behaviour when absent. */
+  readonly start?: ConfigurationStart | undefined;
 }
 
 type BuiltPageId = "behaviour" | "model" | "harness" | "tools" | "subagents" | "agentSteps";
@@ -83,10 +85,22 @@ type BuiltPageId = "behaviour" | "model" | "harness" | "tools" | "subagents" | "
 /** A page: one of the agents feature's own, or a section another feature adds, by its id. */
 type PageId = BuiltPageId | `section:${string}`;
 
+/**
+ * Where Configuration opens, for the agent map's add buttons: on a page, one of its own or a
+ * section's by its id, and for Subagents, `adding` opens its Add subagent dialog.
+ */
+export interface ConfigurationStart {
+  readonly page: PageId;
+  readonly adding?: boolean | undefined;
+}
+
 /** The pages that are built, in the order of flow-agents 5.1. */
 const builtPages: readonly Tab<PageId>[] = (
   ["behaviour", "model", "harness", "tools", "subagents", "agentSteps"] as const
 ).map((id) => ({ id, label: words.pageNames[id] }));
+
+/** Where Configuration opens unless it's asked to open elsewhere. */
+const onBehaviour: ConfigurationStart = { page: "behaviour" };
 
 /** The list's pages: the built ones, then a page per section, when the sections can be drawn. */
 function pageTabs(
@@ -145,8 +159,9 @@ export function Configuration({
   Sections,
   showModel = false,
   onModelShown,
+  start = onBehaviour,
 }: ConfigurationProps) {
-  const [picked, setPage] = useState<PageId>("behaviour");
+  const [picked, setPage] = useState<PageId>(start.page);
   const pages = pageTabs(sections, Sections);
   const page = shownPage(pages, picked);
   // The picker takes the focus once for each request, so a later click on Model doesn't move it.
@@ -233,6 +248,7 @@ export function Configuration({
                 settings={load.value}
                 openSubagent={openSubagent}
                 announce={announce}
+                startAdding={start.adding}
               />
             )}
             {page === "agentSteps" && (

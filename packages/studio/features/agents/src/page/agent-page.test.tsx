@@ -36,6 +36,9 @@ verifies("agents.page.frame", () => {
     expect(page.querySelector("h1")?.textContent).toBe("Sorter");
     expect(buttonNamed(page, "Configuration")?.getAttribute("aria-selected")).toBe("true");
     expect(page.querySelector("[role=status]")).toBeNull();
+    const views = page.querySelector("[role=tablist][aria-label='Agent views']");
+    expect([...(views?.querySelectorAll("[role=tab]") ?? [])].map((tab) => tab.id)).toHaveLength(3);
+    expect(buttonNamed(page, "Flow")?.getAttribute("role")).toBe("tab");
   });
 
   it("says on the empty Runs tab that the agent runs as a step in a workflow", async () => {

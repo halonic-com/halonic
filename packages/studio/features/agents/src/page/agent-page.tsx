@@ -28,9 +28,11 @@ import {
   AgentsHostService,
   type AgentToolList,
 } from "../api.ts";
-import { Configuration } from "../configuration/configuration.tsx";
+import { Configuration, type ConfigurationStart } from "../configuration/configuration.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
 import { useConfigurationLoads } from "../configuration/use-configuration-loads.ts";
+import { FlowView } from "../map/flow-view.tsx";
+import { mapWords } from "../map/map-words.ts";
 import { fileItemOf } from "../trash/file-item.ts";
 import { useAgentTrash } from "../trash/use-agent-trash.tsx";
 import { forgetFreshAgent, isFreshAgent } from "./fresh-agents.ts";
@@ -83,6 +85,8 @@ export function AgentPage({ item, context, step, asked, Sections, sections }: It
       announce={announce}
       {...(openItem && {
         openAgent: (agent: AgentRef) => openItem({ kind: "agent", hub: agent.hubId, id: agent.id }),
+        openWorkflow: (workflow: AgentRef) =>
+          openItem({ kind: "workflow", hub: workflow.hubId, id: workflow.id }),
       })}
     />
   );
@@ -106,6 +110,8 @@ export interface AgentScreenProps extends AgentRef {
   readonly announce?: ((text: string) => void) | undefined;
   /** Opens another agent's page, from a card's team chart; absent where the app can't. */
   readonly openAgent?: ((agent: AgentRef) => void) | undefined;
+  /** Opens a workflow's page, from its card on the agent map; absent where the app can't. */
+  readonly openWorkflow?: ((workflow: AgentRef) => void) | undefined;
   /** The sections other features add to the page, such as Triggers; Configuration lists them as pages. */
   readonly sections?: readonly ItemPageSectionListing[] | undefined;
   /** The shell's component that draws them; absent where there's no window. */
@@ -119,9 +125,9 @@ export interface AgentScreenProps extends AgentRef {
 
 /**
  * The agent page's frame (`agents.page.frame`): the letter avatar, "AGENT" and the name, then the
- * agent's Configuration, with its Runs in the other tab. The page is a skeleton when the read
- * takes over 300 ms, and says why when the agent can't be read. Flow and the Try it chat join it
- * in the next pull requests.
+ * agent's Flow (the agent map), Runs and Configuration in its tabs. The page is a skeleton when the
+ * read takes over 300 ms, and says why when the agent can't be read. The Try it chat joins it in a
+ * later pull request.
  */
 export function AgentScreen({
   host,
@@ -135,6 +141,7 @@ export function AgentScreen({
   closeStack,
   announce,
   openAgent,
+  openWorkflow,
   sections,
   Sections,
   modelRequest,
@@ -174,9 +181,12 @@ export function AgentScreen({
     modelRequest,
   );
   const cards = useAgentCards(host, { hubId, id }, announce);
+  // The page an add button on the map opens Configuration on; picking a view by hand forgets it.
+  const [configurationStart, setConfigurationStart] = useState<ConfigurationStart>();
   // Picking another view closes the stack: cards belong to the view they opened over (flow-agents 7).
-  const showView = (next: AgentView) => {
+  const showView = (next: AgentView, start?: ConfigurationStart) => {
     if (next !== view) cards.close();
+    setConfigurationStart(start);
     selectView(next);
   };
   const ownCloseStack = useMemo(() => createCloseStack(), []);
@@ -266,7 +276,7 @@ export function AgentScreen({
             <AgentRead load={load} name={name} retry={retry} />
           </div>
         )}
-        {panel === "configuration" && (
+        {cardViews.has(panel) && (
           <StackedCards
             itemPath={[hubName(host, hubId), name]}
             stack={cards.stack}
@@ -286,26 +296,42 @@ export function AgentScreen({
               />
             )}
           >
-            <Configuration
-              host={host}
-              name={name}
-              load={settings.load}
-              aliases={aliases.load}
-              defaultModel={defaultModel}
-              retryAliases={aliases.retry}
-              retry={settings.retry}
-              startOnInstructions={fresh}
-              save={save}
-              openLibrary={openLibrary}
-              openSubagent={cards.openSubagent}
-              reportNotSaved={reportNotSaved}
-              announce={announce}
-              openAgentStep={cards.openAgentStep}
-              sections={sections}
-              Sections={Sections}
-              showModel={modelWaiting}
-              onModelShown={modelShown}
-            />
+            {panel === "flow" ? (
+              <FlowView
+                host={host}
+                agent={{ hubId, id }}
+                name={name}
+                openAsFile={trash.openAsFile}
+                openAgentStep={cards.openAgentStep}
+                openSubagent={cards.openSubagent}
+                openAgent={openAgent}
+                openWorkflow={openWorkflow}
+                openTool={openLibrary}
+                {...mapAdds(sections, Sections, showView)}
+              />
+            ) : (
+              <Configuration
+                host={host}
+                name={name}
+                load={settings.load}
+                aliases={aliases.load}
+                defaultModel={defaultModel}
+                retryAliases={aliases.retry}
+                retry={settings.retry}
+                startOnInstructions={fresh}
+                save={save}
+                openLibrary={openLibrary}
+                openSubagent={cards.openSubagent}
+                reportNotSaved={reportNotSaved}
+                announce={announce}
+                openAgentStep={cards.openAgentStep}
+                sections={sections}
+                Sections={Sections}
+                showModel={modelWaiting}
+                onModelShown={modelShown}
+                start={configurationStart}
+              />
+            )}
           </StackedCards>
         )}
         {panel === "runs" && (
@@ -314,6 +340,24 @@ export function AgentScreen({
       </TabPanel>
     </div>
   );
+}
+
+/**
+ * What the agent map's add buttons do: each opens Configuration on its page, Add subagent with its
+ * dialog open. Add trigger is there only once a feature adds the Triggers section.
+ */
+function mapAdds(
+  sections: readonly ItemPageSectionListing[] | undefined,
+  Sections: ComponentType<SectionsProps> | undefined,
+  showView: (view: AgentView, start: ConfigurationStart) => void,
+) {
+  const triggers =
+    Sections === undefined ? undefined : sections?.find((each) => each.id === "triggers");
+  return {
+    addTrigger: triggers && (() => showView("configuration", { page: `section:${triggers.id}` })),
+    addTool: () => showView("configuration", { page: "tools" }),
+    addSubagent: () => showView("configuration", { page: "subagents", adding: true }),
+  };
 }
 
 /** The hub's name for the breadcrumb, else its id while the hubs aren't read. */
@@ -362,7 +406,10 @@ function AgentRead({
   );
 }
 
-type AgentView = "configuration" | "runs";
+type AgentView = "flow" | "configuration" | "runs";
+
+/** The views stacked cards open over: a subagent or an agent step opens from either. */
+const cardViews: ReadonlySet<AgentView | "read"> = new Set(["flow", "configuration"]);
 
 /**
  * The view the page shows. Runs can't list anything in 0.1 (R9), so the page opens where the agent
@@ -393,8 +440,9 @@ function useAgentView(hubId: string, id: string, modelRequest: string | undefine
   return { view, selectView, fresh, modelWaiting, modelShown };
 }
 
-/** The page's views, as far as they are built: Flow and the Try it chat join them later. */
+/** The page's views, as far as they are built: the Try it chat joins them later. */
 const agentTabs: readonly Tab<AgentView>[] = [
+  { id: "flow", label: mapWords.tab },
   { id: "runs", label: pageWords.runsHeading },
   { id: "configuration", label: configurationWords.tab },
 ];
