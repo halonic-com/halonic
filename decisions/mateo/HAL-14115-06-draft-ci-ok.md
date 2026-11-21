@@ -2,7 +2,7 @@
 
 - Approval: Mateo's proposal on HAL-14115 (21 Nov 00:58, "a recurring queue cause"), held until after the HAL-14331 freeze; it changes `.github/workflows/ci.yml`, which holds the guard job, so Liam and Julian both sign it as guardians
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mLE7g69ArGLAqJOsluyl8dWETERoh9HlCzbIhge7makeO1UAvMvr/P9eBCfFHOReUH8LFO8i4Crgiyk9omcFAw==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:n2IcIV3X6xTHrfn1xMyvn6sIY+365inb+F9tkm5Vcg1xMEtPGsytr7sXBxCxW74/+HPfEn8MfdHIJne0F75HAw==
 - Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:rAk7G4SXVSiJK59TnTTy896E6dc9PhryMUPXiGKloptDTOpsDd6N+mskA3VFpM630InZxlvMAPN3g0QBAcKMBg==
 
 ## What changes

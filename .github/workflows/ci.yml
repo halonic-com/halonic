@@ -3108,7 +3108,7 @@ jobs:
     # A green `ci-ok` then always means the guard ran (HAL-14115: #4223 was
     # green as a draft and failed the guard once ready).
     name: ${{ github.event.pull_request.draft && 'ci-ok (draft, light run)' || 'ci-ok' }}
-    # Not always():in a pull request run that was itself cancelled (a newer
+    # Not always(): in a pull request run that was itself cancelled (a newer
     # push replaced it) ci-ok ends as cancelled, not failed, so the newer
     # run's result is the one that shows. Cancelled never satisfies the
     # required check, unlike skipped. In any other run a cancelled or failed
