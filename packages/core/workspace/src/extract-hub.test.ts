@@ -1,7 +1,8 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { extractHub, filesOf, loadWorkspace } from "./index.ts";
-import { home } from "./test/home-workspace.ts";
+import { extractHub, filesOf, loadWorkspace, planHubExtract } from "./index.ts";
+import { home, homeFiles } from "./test/home-workspace.ts";
+import { LeftOutSource } from "./test/left-out-source.ts";
 import { MemoryStore } from "./test/memory-store.ts";
 
 verifies("workspace.extract", () => {
@@ -98,6 +99,68 @@ verifies("workspace.extract", () => {
       });
 
       expect(result.ok || result.error.kind).toBe("not_empty");
+    });
+  });
+
+  it("leaves a node_modules folder behind: it is installed, not written", async () => {
+    const source = new LeftOutSource({
+      ...homeFiles,
+      "hubs/family/tools/node_modules/kit/index.js": "module.exports = 1;\n",
+      "hubs/family/tools/mail.js": "export {};\n",
+    });
+    const target = new MemoryStore();
+
+    await extractHub(await loadWorkspace(source), source, target, "family");
+
+    expect(target.files.has("hubs/family/tools/mail.js")).toBe(true);
+    expect([...target.files.keys()].filter((path) => path.includes("node_modules/"))).toEqual([]);
+  });
+
+  describe("a knowledge source whose documents sit in an agent's working folder", () => {
+    /**
+     * The home workspace, where a coder in `family` writes in `docs/`, the
+     * notes' folder's parent. Claude Code sends its work to its own cloud
+     * model, so the workspace isn't local only.
+     */
+    const coderInDocs = () =>
+      new LeftOutSource({
+        ...homeFiles,
+        "workspace.yaml": "id: home\nname: Home\n",
+        "hubs/family/agents/coder.agent.yaml":
+          "name: Coder\nmodel: default\nharness: claude-code\nworkingFolder: docs\n",
+      });
+
+    it("takes the documents along, listing the folder the loader left out", async () => {
+      const source = coderInDocs();
+      const workspace = await loadWorkspace(source);
+      const target = new MemoryStore();
+
+      const result = await extractHub(workspace, source, target, "family");
+
+      expect(workspace.leftOut).toEqual(["docs"]);
+      expect(workspace.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+      expect(result.ok).toBe(true);
+      expect(target.files.get("docs/notes/recipes.md")).toBe("Pancakes.\n");
+      expect(target.files.has("docs/other.md")).toBe(false);
+    });
+
+    it("says which folders it needs when the plan isn't given their files", async () => {
+      const workspace = await loadWorkspace(coderInDocs());
+
+      expect(planHubExtract(workspace, "family")).toEqual({
+        ok: false,
+        error: { kind: "left_out_documents", folders: ["docs"] },
+      });
+    });
+
+    it("plans the documents when it is given the folder's files", async () => {
+      const source = coderInDocs();
+      const workspace = await loadWorkspace(source);
+
+      const plan = planHubExtract(workspace, "family", { leftOutFiles: await source.list("docs") });
+
+      const paths = plan.ok ? plan.value.files.map((file) => file.path) : [];
+      expect(paths).toContain("docs/notes/recipes.md");
     });
   });
 });

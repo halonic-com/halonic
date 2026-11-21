@@ -12,5 +12,6 @@ If the `DefinitionSource` refuses to read one of the workspace's files because t
 - Given a source that refuses a file with `EPERM`, when the workspace is loaded, then it throws the same `invalid_input` error.
 - Given a source that refuses `notes/README.md`, a file no kind places, and whose version reads every file, when the workspace is loaded, then the error names `notes/README.md`.
 - Given a source whose version fails with `EACCES` while every file reads on its own, when the workspace is loaded, then the version's error is thrown unchanged.
+- Given a source that refuses every file under `repo/`, the working folder of a Claude Code agent, when the workspace is loaded, then it loads: the loader leaves that folder out and reads none of its files.
 - Given a source whose read fails with an error without such a code, when the workspace is loaded, then that error is thrown unchanged.
 - Given a workspace folder with an agent file set to mode 000, when `halonic validate` runs, then it exits with 2 and says "✕ Couldn't check acme: the workspace file … can't be read." with the fix on the next line.

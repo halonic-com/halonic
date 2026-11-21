@@ -6,10 +6,15 @@ import {
   type KindValues,
   parseFile,
 } from "@halonicjs/format";
-import { type DefinitionSource, isUnreadableWorkspaceFolderError } from "@halonicjs/ports";
+import {
+  type DefinitionSource,
+  isUnreadableWorkspaceFolderError,
+  type LeaveOut,
+} from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { ReadFile } from "./checks/check-context.ts";
 import { checkWorkspace } from "./checks/check-workspace.ts";
+import { agentFolders, leaveOutFor, leftOutNames } from "./left-out-folders.ts";
 import { misplacedFile } from "./misplaced-files.ts";
 import { placeOf } from "./places.ts";
 
@@ -42,7 +47,11 @@ export type LoadedFile = { [Name in KindName]: LoadedFileOf<Name> }[KindName];
 export interface LoadedWorkspace {
   /** The source's location, such as "memory:demo". */
   readonly location: string;
-  /** The source's version of the definitions, read before the files. */
+  /**
+   * The source's version of the definitions, read before the files. It
+   * covers what the loader lists, so a change in a left-out folder alone
+   * doesn't change it.
+   */
   readonly version: string;
   /** Every file that parsed, sorted by path. A file with an error is not among them. */
   readonly files: readonly LoadedFile[];
@@ -53,9 +62,17 @@ export interface LoadedWorkspace {
   readonly issues: readonly WorkspaceIssue[];
   /**
    * The files no kind places, such as a README or a file in an older
-   * layout, sorted. The reserved `.halonic/` folders are left out.
+   * layout, sorted. The reserved `.halonic/` folders are left out, and so
+   * are the {@link leftOut} folders and every `node_modules` folder.
    */
   readonly ignored: readonly string[];
+  /**
+   * The working folders of the harness agents, which the loader didn't list,
+   * read or version: what the agents write in, not definitions. Sorted. A
+   * caller that needs their files, such as hub extract, lists them from the
+   * source.
+   */
+  readonly leftOut: readonly string[];
 }
 
 /**
@@ -73,7 +90,9 @@ type FileOutcome =
 /**
  * Loads one workspace: lists the source, finds each file's kind from where
  * it sits (the registered kinds' places drive it), and parses it with that
- * kind. Files in the reserved `.halonic/` folders are skipped. A file no
+ * kind. It reads the agent files first, to leave the harness agents' working
+ * folders and every `node_modules` folder out of the listing and the version
+ * (`workspace.load-leaves-out-working-folders`). Files in the reserved `.halonic/` folders are skipped. A file no
  * kind places is listed as ignored, with a warning when it plainly belongs
  * somewhere else, such as a provider inside a hub or `agents/clerk.yaml`.
  *
@@ -98,15 +117,23 @@ export async function loadWorkspace(
   source: DefinitionSource,
   options: { readonly sheetHosts?: SheetHosts } = {},
 ): Promise<LoadedWorkspace> {
-  const version = await versionOf(source);
-  const paths = (await listPaths(source)).filter((path) => !isReservedPath(path));
-  const outcomes = await Promise.all(paths.map((path) => loadFile(source, path)));
+  const agentOutcomes = await loadAgentFiles(source);
+  const leaveOut = leaveOutFor(loadedAgents(agentOutcomes.values()));
+  const version = await versionOf(source, leaveOut);
+  const paths = (await listPaths(source, undefined, leaveOut)).filter(
+    (path) => !isReservedPath(path),
+  );
+  const outcomes = await Promise.all(
+    paths.map((path) =>
+      agentOutcomes.has(path) ? agentOutcomes.get(path) : loadFile(source, path),
+    ),
+  );
   const files: LoadedFile[] = [];
   const read: ReadFile[] = [];
   const issues: WorkspaceIssue[] = [];
   const ignored: string[] = [];
   for (const outcome of outcomes) {
-    if (outcome === null) {
+    if (outcome === null || outcome === undefined) {
       continue;
     }
     if ("ignored" in outcome) {
@@ -123,7 +150,41 @@ export async function loadWorkspace(
     issues.push(...outcome.issues);
   }
   issues.push(...checkWorkspace(files, read, paths, options.sheetHosts));
-  return { location: source.location, version, files, issues: byFile(issues), ignored };
+  return {
+    location: source.location,
+    version,
+    files,
+    issues: byFile(issues),
+    ignored,
+    leftOut: leaveOut.folders,
+  };
+}
+
+/**
+ * The agent files, parsed, by path: those in the agents' folders at the root
+ * and in the hubs. An agent file never sits in a working folder, so these
+ * are all of them. `node_modules` is left out already, as it holds none.
+ */
+async function loadAgentFiles(source: DefinitionSource): Promise<Map<string, FileOutcome | null>> {
+  const lists = await Promise.all(
+    agentFolders().map((folder) => listPaths(source, folder, { names: leftOutNames })),
+  );
+  const paths = lists
+    .flat()
+    .filter((path) => !isReservedPath(path) && placeOf(path)?.kind === "agent");
+  const outcomes = await Promise.all(paths.map((path) => loadFile(source, path)));
+  return new Map(paths.map((path, index) => [path, outcomes[index] ?? null]));
+}
+
+/** The agent files that parsed, among some outcomes. */
+function loadedAgents(outcomes: Iterable<FileOutcome | null>): LoadedFileOf<"agent">[] {
+  const agents: LoadedFileOf<"agent">[] = [];
+  for (const outcome of outcomes) {
+    if (outcome !== null && "loaded" in outcome && outcome.loaded?.kind === "agent") {
+      agents.push(outcome.loaded);
+    }
+  }
+  return agents;
 }
 
 async function loadFile(source: DefinitionSource, path: string): Promise<FileOutcome | null> {
@@ -170,9 +231,9 @@ const unreadableCodes: ReadonlySet<unknown> = new Set(["EACCES", "EPERM"]);
  *
  * @throws KindedError `invalid_input` naming the file or folder that can't be read
  */
-async function versionOf(source: DefinitionSource): Promise<string> {
+async function versionOf(source: DefinitionSource, leaveOut: LeaveOut): Promise<string> {
   try {
-    return await source.version();
+    return await source.version({ leaveOut });
   } catch (error) {
     if (isUnreadableWorkspaceFolderError(error)) {
       throw unreadableFolder(error.path, error);
@@ -180,7 +241,7 @@ async function versionOf(source: DefinitionSource): Promise<string> {
     if (!isUnreadable(error)) {
       throw error;
     }
-    for (const path of await listPaths(source)) {
+    for (const path of await listPaths(source, undefined, leaveOut)) {
       await readText(source, path);
     }
     // Every file reads on its own: pass on what the source said.
@@ -196,9 +257,13 @@ async function versionOf(source: DefinitionSource): Promise<string> {
  *
  * @throws KindedError `invalid_input` when a folder can't be read
  */
-async function listPaths(source: DefinitionSource): Promise<string[]> {
+async function listPaths(
+  source: DefinitionSource,
+  dir: string | undefined,
+  leaveOut: LeaveOut,
+): Promise<string[]> {
   try {
-    return await source.list();
+    return await source.list(dir, { leaveOut });
   } catch (error) {
     if (isUnreadableWorkspaceFolderError(error)) {
       throw unreadableFolder(error.path, error);
