@@ -18,8 +18,8 @@ it has no tag. The release pull request writes the new version into
 release pull request, and the `main` run right after its merge, would fail.
 
 Tags are read from git objects only, never the network. CI fetches them
-(`fetch-tags: true` on the build job's checkout and the guard job's head
-checkout) instead of skipping the rule, so a missing fetch fails loudly
+(`fetch-tags: true` on the build and trace jobs' checkouts and the guard
+job's head checkout) instead of skipping the rule, so a missing fetch fails loudly
 rather than turning the rule off. A clone without tags gets one error that
 says `git fetch --tags` and checks no version until it has them, not even
 the app version: the app version is also the last release's version until
