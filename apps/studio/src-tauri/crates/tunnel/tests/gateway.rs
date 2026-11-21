@@ -8,6 +8,11 @@
 //! Ignored in plain `cargo test`, because it needs pnpm and the workspace's
 //! packages. CI's Rust job has both and runs it with `--ignored`.
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 use std::process::{Child, ChildStdin, Command, Stdio};
@@ -222,7 +227,8 @@ async fn pair(
     assert_eq!(check.host_key, host.host_key);
     wire.send(check.frame3.clone()).await;
 
-    let decrypted = &host.next_line().await["decrypted"];
+    let line = host.next_line().await;
+    let decrypted = &line["decrypted"];
     assert_eq!(decrypted["name"], "Pixel");
     assert_eq!(decrypted["platform"], "android");
     assert_eq!(decrypted["checkCode"], check.check_code.as_str());
