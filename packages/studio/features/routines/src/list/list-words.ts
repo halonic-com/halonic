@@ -18,6 +18,9 @@ export const listWords = {
   /** Read after a search or a hub change (HAL-14241). */
   shownCount: (count: number) => (count === 1 ? "1 routine." : `${count} routines.`),
   more: (name: string) => `More actions for ${name}`,
+  cantStart: "Can't start",
+  /** Read after "Can't start" by screen readers only, so the row's name says why (HAL-14940). */
+  cantStartWhy: (targetName: string) => `${targetName} isn't in this workspace`,
   off: "Off",
   needsSignIn: "Needs sign-in again",
   needsYou: "Needs you",
