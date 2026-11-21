@@ -4,8 +4,7 @@ import type { YamlEdit } from "@halonicjs/yaml";
 
 /**
  * The step's arrows as its file writes them, from the file's data as read (no defaults filled in),
- * or `undefined` when the step has no `on` list. A moved arrow is written back from these, so it
- * keeps only the keys the file gives it.
+ * or `undefined` when the step has no `on` list.
  */
 export function writtenArrows(data: unknown, stepId: string): readonly unknown[] | undefined {
   const states = recordAt(data, "states");
@@ -15,8 +14,8 @@ export function writtenArrows(data: unknown, stepId: string): readonly unknown[]
 
 /**
  * The edits of the workflow's file that make one change of the arrows out of `stepId`: a new arrow
- * `{ to }` (on done, the format's default) after the others, or one arrow taken out and put back
- * one place up or down.
+ * `{ to }` (on done, the format's default) after the others, or one arrow moved one place up or
+ * down, together with its comments.
  *
  * @param stepIds - the workflow's steps, which a new arrow must go to
  * @param written - the step's arrows as its file writes them (see {@link writtenArrows})
@@ -52,10 +51,7 @@ export function arrowEdits(
       "This step's arrows changed in the meantime. Look at them again, then move the arrow.",
     );
   }
-  return [
-    { kind: "delete", path: [...path, index] },
-    { kind: "insert", path: [...path, place], value: arrows[index] },
-  ];
+  return [{ kind: "move", path: [...path, index], to: place }];
 }
 
 /** The map at `key` of `value`, or `undefined` when there is none. */
