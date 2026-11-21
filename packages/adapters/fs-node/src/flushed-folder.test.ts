@@ -1,4 +1,4 @@
-import { type FileHandle, open } from "node:fs/promises";
+import { type FileHandle, open, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, afterEach, beforeAll, expect, it, vi } from "vitest";
@@ -24,12 +24,12 @@ function systemError(code: string): Error {
 }
 
 verifies("fs-node.flush-folder", () => {
-  it.skipIf(process.platform === "win32")("flushes the folder once", async () => {
+  it("flushes the folder once on Linux and macOS, and nothing on Windows", async () => {
     const sync = vi.spyOn(handles, "sync");
 
     await flushFolder(await tempFolder());
 
-    expect(sync).toHaveBeenCalledTimes(1);
+    expect(sync).toHaveBeenCalledTimes(process.platform === "win32" ? 0 : 1);
   });
 
   it("opens nothing on Windows", async () => {
@@ -39,16 +39,16 @@ verifies("fs-node.flush-folder", () => {
     await expect(flushFolder(missing, "linux")).rejects.toMatchObject({ code: "ENOENT" });
   });
 
-  // Windows can't open a folder for reading at all, so this runs on the others only.
-  it.skipIf(process.platform === "win32")(
-    "accepts a file system that can't flush a folder, and throws any other error",
-    async () => {
-      const folder = await tempFolder();
-      vi.spyOn(handles, "sync").mockRejectedValueOnce(systemError("EINVAL"));
-      await expect(flushFolder(folder)).resolves.toBeUndefined();
+  it("accepts a file system that can't flush a folder, and throws any other error", async () => {
+    // Windows can't open a folder for reading, so a file stands in for it and
+    // the test plays Linux: the error handling is the same, and it runs everywhere.
+    const standIn = join(await tempFolder(), "stand-in");
+    await writeFile(standIn, "");
 
-      vi.spyOn(handles, "sync").mockRejectedValueOnce(systemError("EIO"));
-      await expect(flushFolder(folder)).rejects.toMatchObject({ code: "EIO" });
-    },
-  );
+    vi.spyOn(handles, "sync").mockRejectedValueOnce(systemError("EINVAL"));
+    await expect(flushFolder(standIn, "linux")).resolves.toBeUndefined();
+
+    vi.spyOn(handles, "sync").mockRejectedValueOnce(systemError("EIO"));
+    await expect(flushFolder(standIn, "linux")).rejects.toMatchObject({ code: "EIO" });
+  });
 });

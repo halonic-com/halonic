@@ -24,22 +24,20 @@ afterEach(async () => {
 });
 
 verifies("secrets-file.folder-flush", () => {
-  it.skipIf(process.platform === "win32")(
-    "flushes the folder once the new file is in place, before the save answers",
-    async () => {
-      const seenAtFolderFlush: string[] = [];
-      const original = handles.sync;
-      vi.spyOn(handles, "sync").mockImplementation(async function (this: FileHandle) {
-        if ((await this.stat()).isDirectory()) {
-          seenAtFolderFlush.push(await readFile(file, "utf8"));
-        }
-        await original.call(this);
-      });
+  it("flushes the folder once the new file is in place, before the save answers, except on Windows", async () => {
+    const seenAtFolderFlush: string[] = [];
+    const original = handles.sync;
+    vi.spyOn(handles, "sync").mockImplementation(async function (this: FileHandle) {
+      if ((await this.stat()).isDirectory()) {
+        seenAtFolderFlush.push(await readFile(file, "utf8"));
+      }
+      await original.call(this);
+    });
 
-      await new FileSecretStore(file).setIfMissing("token-key", "made-value");
+    await new FileSecretStore(file).setIfMissing("token-key", "made-value");
 
-      expect(seenAtFolderFlush).toHaveLength(1);
-      expect(seenAtFolderFlush[0]).toContain("made-value");
-    },
-  );
+    // Windows can't open a folder to flush it, so nothing is flushed there.
+    const expected = process.platform === "win32" ? [] : [expect.stringContaining("made-value")];
+    expect(seenAtFolderFlush).toEqual(expected);
+  });
 });
