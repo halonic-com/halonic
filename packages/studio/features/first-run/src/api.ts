@@ -1,6 +1,6 @@
 /**
  * The services and types other features may use. Features import each other only through this
- * file. The app provides `SampleWorkspaceService` for each open folder.
+ * file. The app provides `SampleWorkspaceService` and `FirstRunDeviceService` for each open folder.
  */
 import type {
   ChoiceChange,
@@ -43,10 +43,28 @@ export interface SampleWorkspace {
 export const SampleWorkspaceService: ServiceKey<SampleWorkspace> =
   serviceKey<SampleWorkspace>("first-run.sample");
 
+/**
+ * Where the first run's state lives on this device (`first-run.state`), for the folder open in
+ * the window; the app provides it. The state is one for the device, not one per folder: it names
+ * the folder its first run is in.
+ */
+export interface FirstRunDevice {
+  /** The open folder, as this device names it (its location); the same each time it opens. */
+  readonly folder: string;
+  /** The state as last saved, or `undefined` when none was saved or it can't be read. */
+  read(): string | undefined;
+  /** Saves the state. A save that fails keeps the old one; the window goes on with the new one. */
+  write(text: string): void;
+}
+
+/** The first run's place on this device, provided by the app for each open folder. */
+export const FirstRunDeviceService: ServiceKey<FirstRunDevice> =
+  serviceKey<FirstRunDevice>("first-run.device");
+
 import type { FirstRun } from "./first-run.ts";
 
 export type { FirstRun } from "./first-run.ts";
-export type { SampleProgress, SampleProgressState } from "./sample-progress.ts";
+export type { FirstRunState, FirstRunStep } from "./first-run-state.ts";
 
 /** The open workspace's first run; the First Run feature provides it. */
 export const FirstRunService: ServiceKey<FirstRun> = serviceKey<FirstRun>("first-run");
