@@ -158,6 +158,16 @@ describe("AgentHostRemoteControl", () => {
       expect(await all(session.events())).toEqual([code, { type: "ended", reason: "closed" }]);
     });
 
+    it("hangs up a pairing whose first line isn't the opened line", async () => {
+      const host = new FakeHost();
+      const opening = host.nextStream("POST /v1/remote/pairing");
+      const starting = new AgentHostRemoteControl(host).startPairing();
+      const stream = await opening;
+      stream.send(code);
+      await expect(starting).rejects.toThrow(AgentHostError);
+      expect(stream.signal.aborted).toBe(true);
+    });
+
     it("rejects a pairing the host refuses to open", async () => {
       const host = new FakeHost().refuseStream(
         "POST /v1/remote/pairing",

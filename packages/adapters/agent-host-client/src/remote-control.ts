@@ -55,13 +55,17 @@ export class AgentHostRemoteControl implements RemoteControl {
     const answer = await this.#transport.stream(pairingRoute, {}, { signal: leave.signal });
     if (!answer.ok) throw answerError(pairingRoute, answer.answer);
     const lines = answer.lines[Symbol.asyncIterator]();
-    const first = await lines.next();
-    if (first.done === true) {
+    try {
+      const first = await lines.next();
+      if (first.done === true)
+        throw new Error("The agent host ended the pairing before it opened.");
+      const { pairing } = checked(pairingRoute, first.value, pairingOpenedSchema);
+      return new RelayedPairing(this.#transport, pairing, lines, leave);
+    } catch (error) {
+      // Without the pairing's id nothing can close it, so hang up: the host closes it then.
       leave.abort();
-      throw new Error("The agent host ended the pairing before it opened.");
+      throw error;
     }
-    const { pairing } = checked(pairingRoute, first.value, pairingOpenedSchema);
-    return new RelayedPairing(this.#transport, pairing, lines, leave);
   }
 
   revoke(phoneId: string): Promise<void> {
