@@ -1,6 +1,6 @@
 # Decision: the CLI's lock holder takes back what an uninstall with administrator rights left
 
-- Approval: the task asks for this change ([HAL-15184](/HAL/issues/HAL-15184), from Nina's C545 check on HAL-15153, case 8); it completes the design Liam approved for #4419 on HAL-5404
+- Approval: the task asks for this change (HAL-15184, from Nina's C545 check on HAL-15153, case 8); it completes the design Liam approved for #4419 on HAL-5404
 - Kind: user-visible
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:dBGftjg66ZlVZyDqMRTh3KABfRzSGHVp94dG1t78x1IXWKPOmw0bEfliPq8YP5pFAwMAHopN3Yv/uWxP64I5Bw==
 
