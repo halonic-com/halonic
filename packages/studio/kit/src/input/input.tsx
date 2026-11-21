@@ -40,6 +40,12 @@ interface InputBase extends Omit<InputHTMLAttributes<HTMLInputElement>, OwnedAtt
   readonly trailing?: ReactNode;
   /** The `id` of a line outside the Field that also describes the control, read after the Field's own. */
   readonly describedBy?: string;
+  /**
+   * For an error shown outside the Field (a Callout next to the control), whose `id` goes in
+   * `describedBy`: the box gets the error look and the text `aria-invalid`, as with the Field's
+   * own error. The Field's error still counts when this is false.
+   */
+  readonly invalid?: boolean;
   /** Mono text, for a value that is code: a model id, a secret name, a URL. */
   readonly mono?: boolean;
   readonly ref?: Ref<HTMLInputElement>;
@@ -81,12 +87,13 @@ export function Input({
   trailing,
   mono = false,
   describedBy: extraDescription,
+  invalid: invalidOutside = false,
   ref,
   onKeyDown,
   ...native
 }: InputProps) {
   const field = useFieldControl();
-  const invalid = field?.invalid ?? false;
+  const invalid = invalidOutside || (field?.invalid ?? false);
   const state = fieldBoxState({ disabled: native.disabled, invalid, readOnly: native.readOnly });
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
