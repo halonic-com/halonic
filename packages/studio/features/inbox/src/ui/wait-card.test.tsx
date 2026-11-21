@@ -300,9 +300,13 @@ verifies("inbox.wait-card", () => {
       });
       later(2);
       await press(button(root, "Reject"));
-      expect(root.querySelector("[role='alert']")?.textContent).toBe(
+      const slot = root.querySelector("[role='alert']") as HTMLElement;
+      expect(slot.textContent).toBe(
         "Halonic on the server is too old for this answer. Update Halonic on the server, then answer again.",
       );
+      // An info Callout, as "This is no longer waiting for you." is, not a plain line (C415).
+      expect(slot.querySelector(".bg-accent-soft")?.textContent).toBe(slot.textContent);
+      expect(slot.querySelector("button")).toBeNull();
     });
 
     it("shows the command to copy, with no Try again, when only the command line can answer", async () => {

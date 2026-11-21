@@ -281,7 +281,10 @@ interface FailedLineProps {
   readonly manual?: ManualAnswer | null;
   /** Shows "This is no longer waiting for you." with **Open run**, in place of **Try again**, when set. */
   readonly elsewhere?: DecidedElsewhere | null;
-  /** Shows this sentence, the host's {@link EngineWords.tooOldToAnswer}, with no **Try again**, when set. */
+  /**
+   * Shows this sentence, the host's {@link EngineWords.tooOldToAnswer}, in an info Callout like
+   * "This is no longer waiting for you.", with no **Try again**, when set.
+   */
   readonly tooOld?: string | null;
   /** Shows "This workspace isn't trusted yet, …" with **Review**, in place of **Try again**, when set. */
   readonly untrusted?: RefusedUntrusted | null;
@@ -357,7 +360,7 @@ function ShownLine({ shown }: { readonly shown: Shown }) {
       );
     }
     case "too-old":
-      return shown.tooOld;
+      return <Callout tone="info">{shown.tooOld}</Callout>;
     case "untrusted": {
       const { review } = shown.untrusted;
       return (
