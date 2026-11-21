@@ -3,13 +3,13 @@ import { isMap, isScalar, isSeq, type Node } from "yaml";
 import { applyEditToData, type YamlEdit } from "./edit-data.ts";
 import { lineEndingOf } from "./edit-text.ts";
 import type { YamlPath } from "./read.ts";
+import { moveItem } from "./splice-move.ts";
 import {
   addPair,
   deleteEntry,
   flowAncestor,
   insertItem,
   isFilledFlow,
-  moveItem,
   nodeAt,
   type Parsed,
   parse,
