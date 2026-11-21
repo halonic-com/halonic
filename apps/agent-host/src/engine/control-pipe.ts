@@ -19,7 +19,10 @@ export interface ControlPipeHandlers {
   sandboxHost(connection: SandboxHostMessage["connection"]): void;
   /** The shell asked the engine to stop. */
   stop(): void;
-  /** The pipe broke the protocol or failed: the engine must stop. Called at most once. */
+  /**
+   * The pipe broke the protocol or failed, or a handler threw (its error is the
+   * fault's `cause`): the engine must stop. Called at most once.
+   */
   fault(error: ControlPipeFault): void;
   /** Standard input ended: the shell is gone, and the engine must stop. */
   end(): void;
@@ -42,6 +45,7 @@ interface OpenRequest {
  * open request, or an answer of the wrong kind.
  */
 export class ControlPipe {
+  readonly #input: Readable;
   readonly #output: Writable;
   readonly #handlers: ControlPipeHandlers;
   readonly #decoder = new ControlFrameDecoder();
@@ -51,6 +55,7 @@ export class ControlPipe {
   #closed = false;
 
   constructor(input: Readable, output: Writable, handlers: ControlPipeHandlers) {
+    this.#input = input;
     this.#output = output;
     this.#handlers = handlers;
     input.on("data", (chunk: Buffer) => this.#receive(chunk));
@@ -89,9 +94,17 @@ export class ControlPipe {
       return Promise.resolve({ result: "refused", reason: "busy" });
     }
     const id = this.#nextId++;
+    // Encoded before the request counts as open: a name too long for a frame
+    // must not hold one of the open slots forever.
+    let frame: Buffer;
+    try {
+      frame = encodeControlFrame({ kind, id, name });
+    } catch (error) {
+      return Promise.reject(error);
+    }
     return new Promise<BrokerAnswer>((resolve, reject) => {
       this.#open.set(id, { kind, resolve, reject });
-      this.#output.write(encodeControlFrame({ kind, id, name }));
+      this.#output.write(frame);
     });
   }
 
@@ -103,7 +116,12 @@ export class ControlPipe {
         if (this.#closed) return;
       }
     } catch (error) {
-      this.#close(error instanceof ControlPipeFault ? error : new ControlPipeFault("Bad frame."));
+      // Decoding and parsing throw only faults, so anything else came from a handler.
+      this.#close(
+        error instanceof ControlPipeFault
+          ? error
+          : new ControlPipeFault("A control pipe handler failed.", { cause: error }),
+      );
     }
   }
 
@@ -137,6 +155,8 @@ export class ControlPipe {
   #close(fault: ControlPipeFault | null): void {
     if (this.#closed) return;
     this.#closed = true;
+    // Nothing after a fault or the end is read: the pipe can't be trusted again.
+    this.#input.destroy();
     const reason = fault ?? new Error("The shell closed the control pipe.");
     for (const request of this.#open.values()) request.reject(reason);
     this.#open.clear();

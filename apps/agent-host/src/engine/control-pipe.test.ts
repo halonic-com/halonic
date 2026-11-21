@@ -26,7 +26,7 @@ function answer(id: number, brokerFields: string): string {
 }
 
 /** A pipe on fake standard input and output, with what its handlers heard. */
-function openPipe() {
+function openPipe(overrides: Partial<ControlPipeHandlers> = {}) {
   const input = new PassThrough();
   const output = new PassThrough();
   const heard = {
@@ -40,6 +40,7 @@ function openPipe() {
     stop: () => heard.stops++,
     fault: (error) => heard.faults.push(error),
     end: () => heard.ends++,
+    ...overrides,
   };
   const pipe = new ControlPipe(input, output, handlers);
   const chunks: Buffer[] = [];
@@ -103,6 +104,16 @@ verifies("agent-host.engine-control-pipe", () => {
       });
       expect(await written()).toEqual([]);
     });
+
+    it("doesn't count a request whose name is too long for a frame as open", async () => {
+      const { pipe, written } = openPipe();
+      pipe.send(handshake);
+      await expect(pipe.ask("secret_get", "x".repeat(64 * 1024))).rejects.toThrow(RangeError);
+      for (let index = 0; index < 16; index++) void pipe.ask("secret_get", `key_${index}`);
+      const sent = await written();
+      expect(sent).toHaveLength(17);
+      expect(sent.at(-1)).toEqual({ kind: "secret_get", id: 17, name: "key_15" });
+    });
   });
 
   describe("what the shell sends", () => {
@@ -124,6 +135,7 @@ verifies("agent-host.engine-control-pipe", () => {
     const faults: [string, Buffer][] = [
       ["a length of 0", Buffer.alloc(4)],
       ["a length over the cap", Buffer.from([0, 2, 0, 1])],
+      ["JSON without a length", Buffer.from('{"canary-value"}')],
       ["bad UTF-8", shellFrame(Buffer.from([0x7b, 0xff, 0x7d]))],
       ["bad JSON", shellFrame("{canary-value")],
       ["not an object", shellFrame("[]")],
@@ -149,8 +161,11 @@ verifies("agent-host.engine-control-pipe", () => {
         input.write(Buffer.concat([frame, shellFrame('{"kind":"stop"}')]));
         await expect(open).rejects.toBeInstanceOf(ControlPipeFault);
         expect(heard.faults).toHaveLength(1);
+        // Neither the content nor the length, which is content on a misaligned stream.
         expect(heard.faults[0]?.message).not.toContain("canary");
+        expect(heard.faults[0]?.message).not.toContain(String(frame.readUInt32BE(0)));
         expect(heard.stops).toBe(0);
+        expect(input.destroyed).toBe(true);
       });
     }
 
@@ -163,6 +178,22 @@ verifies("agent-host.engine-control-pipe", () => {
       await expect(open).resolves.toEqual({ result: "value", value: null });
       await settle();
       expect(heard.faults).toHaveLength(1);
+    });
+
+    it("stops with a fault that keeps the cause when a handler throws", async () => {
+      const failure = new Error("The engine couldn't stop.");
+      const { pipe, input, heard } = openPipe({
+        stop: () => {
+          throw failure;
+        },
+      });
+      pipe.send(handshake);
+      const open = pipe.ask("secret_get", "acme_key");
+      input.write(shellFrame('{"kind":"stop"}'));
+      await expect(open).rejects.toBeInstanceOf(ControlPipeFault);
+      expect(heard.faults).toHaveLength(1);
+      expect(heard.faults[0]?.message).toMatch(/handler failed/);
+      expect(heard.faults[0]?.cause).toBe(failure);
     });
 
     it("fails open requests and says the shell is gone when input ends", async () => {

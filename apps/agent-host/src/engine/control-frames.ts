@@ -52,7 +52,8 @@ export class ControlFrameDecoder {
     while (this.pending.length - at >= frameLengthBytes) {
       const length = this.pending.readUInt32BE(at);
       if (length === 0 || length > maxShellFrameBytes) {
-        throw new ControlPipeFault(`A control frame of ${length} bytes is refused.`);
+        // Without the length: on a misaligned stream those 4 bytes are the frame's content.
+        throw new ControlPipeFault("A control frame's length is zero or over the cap.");
       }
       if (this.pending.length - at < frameLengthBytes + length) break;
       const start = at + frameLengthBytes;
@@ -62,11 +63,6 @@ export class ControlFrameDecoder {
     // A copy, so the rest doesn't keep the whole chunk alive.
     this.pending = Buffer.from(this.pending.subarray(at));
     return values;
-  }
-
-  /** Whether part of a frame is still waiting for its rest. */
-  get midFrame(): boolean {
-    return this.pending.length > 0;
   }
 }
 
