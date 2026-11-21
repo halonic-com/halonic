@@ -184,3 +184,14 @@ verifies("kit.command-box", () => {
     expect(status.className).toContain("text-caption text-fg-muted");
   });
 });
+
+verifies("kit.command-box-wrap", () => {
+  it("lets the button wrap under the command rather than shrink the command below 160px", () => {
+    const { container } = render(<CommandBox command={command} />);
+    const { text } = parts(container);
+    const row = text.parentElement as HTMLElement;
+    expect(row.className.split(" ")).toContain("flex-wrap");
+    // flex-1 alone has a 0 basis: the box would shrink beside the button instead of wrapping.
+    expect(text.className.split(" ")).toEqual(expect.arrayContaining(["flex-1", "basis-40"]));
+  });
+});

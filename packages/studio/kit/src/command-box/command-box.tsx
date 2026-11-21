@@ -22,10 +22,12 @@ type Outcome = "copied" | "failed" | null;
 
 /**
  * The command's box: `font-mono` `text-small` on `surface-muted`. A long path wraps anywhere
- * rather than scrolling sideways, and one click selects the whole command.
+ * rather than scrolling sideways, and one click selects the whole command. Rather than shrink
+ * below 10rem (160px) beside the copy button, it lets the button wrap under it and takes the
+ * whole line, so a narrow strip doesn't squeeze the command to a few letters a line.
  */
 const textClasses =
-  "min-w-0 flex-1 rounded-xs bg-surface-muted px-2 py-1.5 font-mono text-small text-fg wrap-anywhere select-all";
+  "min-w-0 flex-1 basis-40 rounded-xs bg-surface-muted px-2 py-1.5 font-mono text-small text-fg wrap-anywhere select-all";
 
 const captionClasses = "basis-full text-caption text-fg-muted";
 
