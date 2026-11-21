@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { KindedError } from "@halonicjs/std";
+import { WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -16,8 +17,7 @@ verifies("inbox.wait-card", () => {
         trust: { review, granted: 0 },
         decisions: {
           answer: async () => {
-            throw new KindedError(
-              "denied",
+            throw new WorkspaceUntrusted(
               "This workspace isn't trusted yet, so nothing was started.",
             );
           },
@@ -32,6 +32,25 @@ verifies("inbox.wait-card", () => {
       const reviewButton = button(slot, "Review");
       await act(async () => reviewButton.click());
       expect(review).toHaveBeenCalledWith(reviewButton);
+    });
+
+    it("keeps a served computer's 403 sentence after Couldn't record your decision, with no Review", async () => {
+      const { root, later } = openCard({
+        trust: { review: vi.fn(), granted: 0 },
+        decisions: {
+          answer: async () => {
+            throw new KindedError(
+              "denied",
+              "The computer refused to send your answer. The workspace may not be trusted yet.",
+            );
+          },
+        },
+      });
+      later(2);
+      await press(button(root, "Reject"));
+      expect(root.querySelector("[role='alert']")?.textContent).toBe(
+        "Couldn't record your decision. The computer refused to send your answer. The workspace may not be trusted yet.Try again",
+      );
     });
   });
 });

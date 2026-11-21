@@ -50,8 +50,7 @@ import {
 } from "@halonicjs/engine";
 import type { RunSummary, RunVersion } from "@halonicjs/events";
 import type { RunExecutor, SendOptions } from "@halonicjs/ports";
-import { KindedError } from "@halonicjs/std";
-import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
+import { type ServiceKey, serviceKey, WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import {
   filesOf,
   type LoadedWorkspace,
@@ -158,12 +157,12 @@ export class EngineService {
   /**
    * Refuses, failing closed, a workspace that isn't trusted and reaches more than the test model.
    *
-   * @throws KindedError `denied`
+   * @throws WorkspaceUntrusted `denied`, with the code that tells it from other `denied` errors
    */
   async #refuseUntrusted(workspace: LoadedWorkspace): Promise<void> {
     const may = await this.#options.mayStart(workspace).catch(() => false);
     if (!may) {
-      throw new KindedError("denied", "This workspace isn't trusted yet, so nothing was started.");
+      throw new WorkspaceUntrusted("This workspace isn't trusted yet, so nothing was started.");
     }
   }
 
