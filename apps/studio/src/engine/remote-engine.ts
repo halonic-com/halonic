@@ -75,7 +75,7 @@ export class RemoteEngine {
    * engine reads the routine itself, so only its key goes, never what it starts.
    *
    * @returns the new run's id
-   * @throws KindedError `conflict` for a routine that is off, `not_found` for one that is gone,
+   * @throws KindedError `not_found` for a routine that is gone,
    *   `denied` for a workspace that isn't trusted, or `EngineNotAnswering`
    */
   async startRoutine(

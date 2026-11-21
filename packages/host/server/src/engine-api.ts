@@ -72,11 +72,12 @@ export interface RoutineRunBody {
 /**
  * Why Run now started nothing, as the `ServerErrorBody` code:
  * `workspace_not_trusted` (403), `routine_not_found` (404) when no routine
- * file has the key, `routine_off` (409) when the routine is switched off.
+ * file has the key. A routine that is switched off still starts: off only
+ * stops its automatic starts.
  * A routine whose workflow, agent or hub is gone gets the run start's own
  * 404 (`hub_not_found`, `workflow_not_found`, `agent_not_found`).
  */
-export type RoutineRunRefusal = "workspace_not_trusted" | "routine_not_found" | "routine_off";
+export type RoutineRunRefusal = "workspace_not_trusted" | "routine_not_found";
 
 /** What the engine's `GET /api/hello` answers: nothing else, no product name or version. */
 export interface EngineHelloBody {

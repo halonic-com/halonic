@@ -17,8 +17,8 @@ When a desktop window opens a workspace folder, the Studio shall ask the shell o
 - Given the engine runs the workspace,
   when the person presses Run now on routine `nightly` at the workspace root,
   then the shell gets `POST /api/routines/{hub}/{routine}/run` with `@workspace` and `nightly`, and the routine's run id comes back.
-- Given the engine answers 409 `routine_off` to Run now,
-  then it fails as `conflict` with "This routine is switched off. Switch it on to run it."
+- Given the engine answers 409 to Run now with the sentence "The run doesn't take this event now.",
+  then it fails as `conflict` with that sentence.
 - Given the engine answers 403 `workspace_not_trusted` to Run now,
   then it fails as `denied` with the code `workspace.untrusted`; a 403 with another code fails as `denied` without it.
 - Given the engine stopped after the folder opened,
