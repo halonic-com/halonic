@@ -26,10 +26,18 @@ interface LineBoxes {
   readonly usedByCut: boolean;
 }
 
+/** The detail of the "Refund handling" row: long enough to be cut on a phone. */
+const longDetail = "When an email asks for a refund";
+
 /** Reads the boxes of the line under `name`'s row. */
-async function lineUnder(page: Page, name: string, usedBy: string): Promise<LineBoxes> {
+async function lineUnder(
+  page: Page,
+  name: string,
+  usedBy: string,
+  detail = longDetail,
+): Promise<LineBoxes> {
   return page.evaluate(
-    ({ name, usedBy }) => {
+    ({ name, usedBy, detail }) => {
       const row = [...document.querySelectorAll("tr")].find((each) =>
         each.textContent?.includes(name),
       );
@@ -52,13 +60,13 @@ async function lineUnder(page: Page, name: string, usedBy: string): Promise<Line
       }
       return {
         line: boxOf(line),
-        detail: boxOf(find("When an email asks for a refund")),
+        detail: boxOf(find(detail)),
         dot: boxOf(find(" · ")),
         usedBy: boxOf(usedBySpan),
         usedByCut: usedBySpan.scrollWidth > usedBySpan.clientWidth,
       };
     },
-    { name, usedBy },
+    { name, usedBy, detail },
   );
 }
 
@@ -88,7 +96,7 @@ test("at 390px the line reads the cut detail, the dot and the whole used-by text
   expect(boxes.detail.right - boxes.detail.left).toBeGreaterThan(0);
   expect(inside(boxes.detail, boxes.line)).toBe(true);
   expect(boxes.detail.top).toBeCloseTo(boxes.usedBy.top, 0);
-  await expect(page.getByText("When an email asks for a refund", { exact: true })).toBeVisible();
+  await expect(page.getByText(longDetail, { exact: true })).toBeVisible();
 });
 
 test("at 195px the used-by text has the line alone and whole, with no stray dot", async ({
@@ -104,4 +112,14 @@ test("at 195px the used-by text has the line alone and whole, with no stray dot"
   expect(boxes.dot.top).toBeGreaterThanOrEqual(boxes.line.bottom - 0.5);
   expect(boxes.detail.top).toBeGreaterThanOrEqual(boxes.line.bottom - 0.5);
   await expect(page.getByText("Not used yet", { exact: true })).toBeVisible();
+});
+
+test("at 390px a short detail's dot is right before the used-by text, with no gap", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 640 });
+  await page.goto("/overview-phone-row.html");
+  const boxes = await lineUnder(page, "Shop name", "Used by Sales", "Adds the shop's name");
+  expect(boxes.usedBy.left - boxes.dot.right).toBeCloseTo(0, 0);
+  expect(boxes.dot.top).toBeCloseTo(boxes.usedBy.top, 0);
 });
