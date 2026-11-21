@@ -898,7 +898,7 @@ requirement guard, and the workflow lint unless the group changes
 | Windows update (0.1.0 to 0.1.1) | when the Tauri shell or `apps/agent-host` changes: updates an installed 0.1.0 to 0.1.1 and opens it again, refuses a bad signature and a failed download, and goes back to 0.1.1 from a 0.1.2 that doesn't start |
 | Android shell | when the Tauri shell or Studio's connect page changes: builds the debug APK |
 | End-to-end, docs | the Studio's Playwright tests when their area changes; the docs job is a stub until `apps/docs` exists |
-| Live cloud suites passed | pull requests and the queue, when the change touches a cloud path (`cloud-affected.ts`): a pull request gets only a notice; in the merge queue it waits for `live-cloud.yml`'s `live-cloud` job to have passed on the pull request's head. Only a notice while `LIVE_CLOUD_ENABLED` isn't `true` |
+| Live cloud suites passed | pull requests and the queue, when the change touches a cloud path (`cloud-affected.ts`): a draft gets only a notice; a ready pull request fails at once until `live-cloud.yml`'s `live-cloud` job passed on its head, and `live-cloud-gate.yml` re-runs it when they pass; in the merge queue it waits for that job on the pull request's head. Only a notice while `LIVE_CLOUD_ENABLED` isn't `true` |
 | Cancel the run on the first failure | merge queue only: watches the run's other jobs and cancels the run when one fails |
 
 **The merge queue.** `main` merges through GitHub's merge queue. The queue builds each pull request
@@ -948,7 +948,10 @@ branch without running Stryker locally, start `.github/workflows/mutation.yml`:
 `.github/workflows/live-cloud.yml` runs the live suites against the
 Cloudflare test account (ADR 5.9). On a pull request it runs only when the
 change touches a cloud path and the pull request is ready for review, and it
-reuses an earlier pass when none of its inputs changed. A fork never gets the
+reuses an earlier pass when none of its inputs changed. Until that pass is
+there, CI's "Live cloud suites passed" job is red, so `ci-ok` is red and the
+pull request isn't queued; `.github/workflows/live-cloud-gate.yml` re-runs
+that job when the suites pass (HAL-14858). A fork never gets the
 token. Every night it runs every live suite on `main` again, without reuse,
 and every 6 hours it deletes the `hlt-` test resources older than 2 hours. The
 token is in the protected `cloudflare-live` environment. Until the repository
