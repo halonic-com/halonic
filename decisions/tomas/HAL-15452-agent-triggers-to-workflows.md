@@ -1,7 +1,7 @@
 # Decision: an agent's Triggers leads to its workflows instead of Add trigger
 
 - Task: HAL-15452
-- Approval: a detail of an approved screen (the Triggers section, flow-routines 2.3), decided by the team under the HAL-2282 rule from flow check C579 findings 1 and 2 (HAL-15448), with Sofia asked on HAL-15452. Liam signs this note at code review.
+- Approval: a detail of an approved screen (the Triggers section, flow-routines 2.3), decided by the team under the HAL-2282 rule from flow check C579 findings 1 and 2 (HAL-15448), confirmed by Sofia on HAL-15460. Liam signs this note at code review.
 - Kind: user-visible
 
 ## What changes
@@ -29,7 +29,9 @@ and its how-to. Studio's words come from `agentCantRunWords` alone.
 Requirements changed: `routines.triggers.agent-cant-run-note` (rewritten for the new section),
 `routines.triggers.add-trigger-creates-routine` (Add trigger and its Prompt on an agent removed),
 `routines.triggers.empty-state` (no agent line), and the sentence quoted in
-`routines.new.create`, `routines.starts.starts-card`, `studio.engine-service` and `cli.commands.serve.serve`.
+`routines.new.create`, `routines.starts.starts-card`, `studio.engine-service` and `cli.commands.serve.serve`;
+`studio.workspace-routines` gains that it gives an agent's section the workflows that run the agent
+as a step, with one example.
 
 Tests changed: in `triggers-section.test.tsx` the four tests of an agent's Prompt (asks first, Cancel,
 focus after Cancel, the line above the Prompt) are removed with the behaviour they test, and the
@@ -53,5 +55,6 @@ today. When Halonic can run an agent on its own, Add trigger on an agent comes b
 - routines.new.create
 - routines.starts.starts-card
 - studio.engine-service
+- studio.workspace-routines
 - cli.commands.serve.serve
 - packages/studio/features/routines/src/triggers/triggers-section.test.tsx
