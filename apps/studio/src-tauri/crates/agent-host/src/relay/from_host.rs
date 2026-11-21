@@ -4,12 +4,19 @@ use std::io::Read;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
+use super::secrets::SecretRequests;
 use super::{Broken, DATA, END, FRAME_LIMIT, HEADER_LENGTH, RESET, Shared, ToClient};
+use crate::host_secrets::HOST_SECRETS_ID;
 
 impl Shared {
     /// Reads the host's frames until its output ends or breaks the format,
-    /// then stops the relay.
-    pub(super) fn pass_host_frames(self: &Arc<Self>, mut output: impl Read) {
+    /// then stops the relay. Frames on id 0 are secret requests for
+    /// `secrets`; without it, they break the stream as before.
+    pub(super) fn pass_host_frames(
+        self: &Arc<Self>,
+        mut output: impl Read,
+        secrets: Option<&SecretRequests>,
+    ) {
         let mut header = [0_u8; HEADER_LENGTH];
         while output.read_exact(&mut header).is_ok() {
             let id = u32::from_be_bytes([header[0], header[1], header[2], header[3]]);
@@ -25,18 +32,28 @@ impl Shared {
             if output.read_exact(&mut bytes).is_err() {
                 break;
             }
-            let passed = match kind {
-                DATA => self.to_client(id, ToClient::Data(bytes)),
-                END => self.to_client(id, ToClient::End),
-                RESET => self.host_reset(id),
-                // Only the relay opens connections; any other kind is unknown.
-                _ => Err(Broken),
+            let passed = match (id, secrets) {
+                (HOST_SECRETS_ID, Some(secrets)) => secrets.pass(kind, bytes),
+                _ => self.pass_to_client(id, kind, bytes),
             };
             if passed.is_err() {
                 break;
             }
         }
         self.stop();
+    }
+
+    /// Passes one of the host's frames to its connection's client. A frame
+    /// on id 0 lands here only when the host has no secrets channel, and
+    /// breaks the stream like any id never opened.
+    fn pass_to_client(&self, id: u32, kind: u8, bytes: Vec<u8>) -> Result<(), Broken> {
+        match kind {
+            DATA => self.to_client(id, ToClient::Data(bytes)),
+            END => self.to_client(id, ToClient::End),
+            RESET => self.host_reset(id),
+            // Only the relay opens connections; any other kind is unknown.
+            _ => Err(Broken),
+        }
     }
 
     /// Queues the host's bytes or end for a connection's client. A frame
