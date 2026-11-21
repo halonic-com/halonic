@@ -2,8 +2,9 @@ import type { ProgramProbe } from "@halonicjs/ports";
 
 /**
  * Whether a harness's program can use its own sandbox on this computer.
- * A harness asks it only for a run outside Halonic's fence, where the
- * program's own sandbox is the only one around its shell commands.
+ * A harness asks it only for a run Halonic's fence isn't proven around
+ * (`off`, `not-fenced` or `stopped`), where the program's own sandbox is
+ * the only one around its shell commands.
  */
 export type OwnSandboxCheck = () => Promise<boolean>;
 
@@ -49,7 +50,7 @@ export const bwrapCheckArgs: readonly string[] = [
  *
  * @example
  * const ownSandbox = ownSandboxCheck({ probe, linuxNeeds: ["socat"] });
- * if (session.fence.state === "off" && (await ownSandbox())) args.push("--settings", file);
+ * if (session.fence.state !== "fenced" && (await ownSandbox())) args.push("--settings", file);
  */
 export function ownSandboxCheck(options: OwnSandboxCheckOptions): OwnSandboxCheck {
   const platform = options.platform ?? process.platform;

@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: review follow-up on HAL-5216 (finding 700), approach agreed on HAL-5231, system checks on HAL-5354
 
-The harness kit shall tell a harness whether its program's own sandbox works on this computer, for runs outside Halonic's fence: yes on macOS, no on Windows, and on Linux only when `bwrap` starts a program in a new network namespace and every other program the harness names is found and runs. It shall check again for each run.
+The harness kit shall tell a harness whether its program's own sandbox works on this computer, for runs Halonic's fence isn't proven around (fence `off`, `not-fenced` or `stopped`): yes on macOS, no on Windows, and on Linux only when `bwrap` starts a program in a new network namespace and every other program the harness names is found and runs. It shall check again for each run.
 
 ## Examples
 

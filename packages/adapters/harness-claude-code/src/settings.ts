@@ -27,7 +27,7 @@ export const deniedClaudeCodeTools: readonly string[] = ["WebFetch", "WebSearch"
 /**
  * `settings.json`: Claude Code's own sandbox is off inside Halonic's fence,
  * because Halonic's sandbox is already around it and the two don't nest
- * (outside the fence, {@link unfencedSettings} turns it on), and its web tools
+ * (wherever the fence isn't proven, {@link unfencedSettings} turns it on), and its web tools
  * are denied. A deny rule wins over any allow rule a project adds.
  *
  * Halonic's tools are allowed without Claude Code's own prompt: the bridge
