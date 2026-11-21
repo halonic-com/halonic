@@ -6,6 +6,7 @@ import {
   getKeyLink,
   keySavedLine,
   localLine,
+  localUseLine,
   messageText,
   trustLine,
 } from "./pick-model-words.ts";
@@ -36,7 +37,10 @@ verifies("first-run.pick-model", () => {
 
   it("words the local option's states", () => {
     expect(localLine({ kind: "one", model: "llama3.2" })).toBe("Found Ollama · llama3.2");
-    expect(localLine({ kind: "several", models: ["a", "b"] })).toBe("Found Ollama");
+    expect(localLine({ kind: "several", models: ["a", "b"] })).toBe(
+      "Found Ollama · 2 models downloaded",
+    );
+    expect(localUseLine("llama3.2")).toBe("Agents will use llama3.2 on this computer.");
     expect(localLine({ kind: "none-downloaded" })).toContain("has no model yet");
     expect(localLine({ kind: "not-found", cause: "off" })).toBe("No model found on this computer.");
     expect(localLine({ kind: "desktop-only" })).toBe("Local models need the desktop app.");

@@ -11,6 +11,8 @@ export const pickModelWords = {
   heading: "Pick a model",
   intro: "The agents need a model to think with. Choose one.",
   key: "Use a key from a provider",
+  keyNote: "Anthropic, OpenAI or Gemini",
+  keyPlaceholder: "Paste your key here",
   provider: "Provider",
   keyField: "Key",
   keyKept: "Kept encrypted on this computer. Studio never shows it again.",
@@ -22,10 +24,15 @@ export const pickModelWords = {
   local: "Use a model on this computer",
   localFree: "Free, nothing leaves this computer.",
   localOff: "Local models need the desktop app.",
+  model: "Model",
+  pullHint: "Download a small model first, in a terminal. Then check again.",
+  startHint: "Start Ollama, then check again.",
   copyCommand: "Copy command",
   pullCommand: "ollama pull llama3.2",
   sample: "Just show me, with Sample answers",
   sampleHint: "No key and no account. The answers are scripted, not from a real model.",
+  sampleNote:
+    "The run and its Inbox card will carry a Sample answers label, so nobody takes it for a real model. Add a key or a local model later to use a real one.",
   back: "Back",
   loadingHint: "The first time can take a minute.",
   slowHint: "Still loading. Bigger models take longer the first time.",
@@ -48,6 +55,11 @@ export function keySavedLine(provider: FirstRunKeyProvider): string {
   return `A key is saved for ${firstRunProviders[provider].name}`;
 }
 
+/** "Agents will use llama3.2 on this computer.", under a found model. */
+export function localUseLine(model: string): string {
+  return `Agents will use ${model} on this computer.`;
+}
+
 /** The one button's label: what it does, or what it waits for. */
 export function buttonLabel(button: PickButton, busy: PickBusy | undefined): string {
   if (busy?.kind === "testing-key") return "Testing…";
@@ -58,7 +70,7 @@ export function buttonLabel(button: PickButton, busy: PickBusy | undefined): str
   return button === "continue" ? "Continue" : "Test and continue";
 }
 
-/** The local option's state line (3.3's table); the picker of several models comes after "Found Ollama". */
+/** The local option's state line (3.3's table, as Noah's sheet 01 words it). */
 export function localLine(local: LocalState): string {
   switch (local.kind) {
     case "desktop-only":
@@ -68,9 +80,9 @@ export function localLine(local: LocalState): string {
     case "one":
       return `Found Ollama · ${local.model}`;
     case "several":
-      return "Found Ollama";
+      return `Found Ollama · ${local.models.length} models downloaded`;
     case "none-downloaded":
-      return "Ollama is running, but has no model yet. Download a small one first:";
+      return "Ollama is running, but has no model yet.";
     case "not-found":
       return "No model found on this computer.";
   }
