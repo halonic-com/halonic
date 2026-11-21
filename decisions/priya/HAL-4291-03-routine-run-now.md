@@ -3,6 +3,7 @@
 - Task: HAL-4291 (the routine page's Run now, PR 3 of 4, which also carries design check CF1 on the Callout from PR 1)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-4291 (the CTO's scope for this task: Run now is unavailable while the sandbox can't start, checklist 3.1 and 3.3 of HAL-1833; and the designer's check C410 of HAL-14518, decided by the team under HAL-2282: the new fixes and the phone line; the words stay placeholders by key until HAL-1784)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:RfAISs4z7uoSjLlSsU+TjKXj8ArH5G3qTTh1xRafGBd66ftoByqrcSBBJ+6x8fSQ99akO/RMggMTpSyDqKqrCg==
 
 ## What changes
 
