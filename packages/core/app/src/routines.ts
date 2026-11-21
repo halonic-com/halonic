@@ -20,4 +20,4 @@ export {
   type TargetUnavailableWhy,
 } from "./routine-skips.ts";
 export type { UnavailableTime } from "./routine-targets.ts";
-export { type RoutineVersions, routineVersions } from "./routine-versions.ts";
+export { type RoutineVersions, routineVersions, runningRoutine } from "./routine-versions.ts";
