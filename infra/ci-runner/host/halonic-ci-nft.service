@@ -2,6 +2,8 @@
 Description=Halonic CI VM network rules (nft table inet halonic_ci)
 # libvirtd requires this unit (RequiredBy= below): if the rules don't load, for example because
 # /etc/halonic-ci/site.nft is missing, libvirtd doesn't start and the CI VM stays off.
+# No ExecStop: stopping or restarting this unit must never leave a running VM unfiltered (stopping
+# libvirtd doesn't stop QEMU). `nft -f` swaps the table atomically, and a failed load keeps the old one.
 After=network-pre.target
 Before=libvirtd.service
 Wants=network-pre.target
@@ -10,7 +12,6 @@ Wants=network-pre.target
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/sbin/nft -f /etc/halonic-ci/halonic-ci.nft
-ExecStop=/usr/sbin/nft delete table inet halonic_ci
 
 [Install]
 WantedBy=multi-user.target

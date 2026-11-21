@@ -89,7 +89,15 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   don't load (a missing `/etc/halonic-ci/site.nft`, say), libvirtd and the CI VM don't start.
 - **Status:** the host writes `/srv/ci/status/ci-status.json` and `jobs.jsonl` (per job: event,
   ref, seconds, `mem_peak`, `cpu_seconds`). On GitHub, a job's `runnerName` starting with `hci-`
-  ran here.
+  ran here. These files are built from data the VM and its jobs control:
+  readers (the dashboard, agents) treat them as untrusted text.
+- **Firewall restarts:** `host/halonic-ci-nft.service` has no stop action, so stopping or
+  restarting it keeps the rules in place. To change the rules, edit the file and restart the unit:
+  the table is swapped atomically, and a load that fails keeps the old one.
+- **Weekly audit (C6, Timothy):** check the `halonic-ci` runner group's settings (repository
+  access, public repositories, workflow access) in the org audit log.
+- **Smoke tests:** `SMOKE_BRANCH` runs that branch's code, unreviewed, with the writable shared
+  caches. Use it only with a branch that only admins can push to, and empty it again afterwards.
 
 ## Not built yet
 
@@ -99,3 +107,7 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
 - Paperclip's cpuset kept off the CI CPUs.
 - The runner group restricted to `ci.yml`.
 - The queue gate refusing cross-repository pull requests (C7), and the real-fork test (T1).
+- A full disk cap (C5): the work dir has an XFS quota, but the container's writable layer (the
+  runner's home, `~/.cache`) and `/cache/trusted/*` don't, so one job can still fill the VM's root
+  disk or `/cache`. Planned: an XFS project quota on `/cache/trusted` and `--storage-opt size=` (or a
+  capped volume for the home folder), once the VM's Docker storage supports it.

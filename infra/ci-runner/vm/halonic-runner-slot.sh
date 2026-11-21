@@ -6,6 +6,8 @@ set -euo pipefail
 SLOT=${1:?slot, e.g. large-1}
 . /etc/halonic-ci/pool.env   # APP_ID INSTALLATION_ID ORG RUNNER_GROUP_ID IMAGE
 KEY=/etc/halonic-ci/app.pem
+# Fail closed: the App key must be root-only, and userns-remap must be set up.
+[ "$(stat -c '%u %a' "$KEY")" = "0 400" ] || { echo "$KEY must be owned by root with mode 0400" >&2; exit 3; }
 case "$SLOT" in
   large-*) LABEL=halonic-ci-large; CPUS=12; MEM=9g;  QUOTA=20g; TMPFS=1g ;;
   small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=2g;  QUOTA=6g;  TMPFS=512m ;;
@@ -45,6 +47,7 @@ RUNNER_ID=$(jq -r .runner.id <<<"$RESP")
 
 # userns-remap: container uid 1001 (runner) = host uid SUBUID_BASE+1001
 BASE=$(awk -F: '$1=="dockremap"{print $2; exit}' /etc/subuid)
+[[ "$BASE" =~ ^[0-9]+$ ]] && [ "$BASE" -gt 0 ] || { echo "no dockremap range in /etc/subuid" >&2; exit 3; }
 RUID=$((BASE+1001))
 RUN=/run/halonic-ci/$SLOT; WORK=/cache/work/$SLOT
 JOB_WORK=/home/runner/actions-runner/_work  # leak-guard: allow absolute-path the runner's work dir inside the image
@@ -98,12 +101,14 @@ while kill -0 "$DPID" 2>/dev/null; do
     if [ "$JOB_START" = 0 ] && [[ "$procs" == *Runner.Worker* ]]; then
       JOB_START=$(date +%s)
     fi
-    evf=$WORK/_temp/_github_workflow/event.json
+    # The job controls this file, so read it inside the container (as the runner user), never
+    # as root on the VM, where a symlink could point it at any VM file.
     if [ "$JOB_START" != 0 ] && [ -z "$EV" ]; then
-      if [ -s "$evf" ]; then
-        if   jq -e 'has("merge_group")'  "$evf" >/dev/null 2>&1; then EV=merge_group; REF=$(jq -r '.merge_group.head_ref // ""' "$evf"); SHA=$(jq -r '.merge_group.head_sha // ""' "$evf")
-        elif jq -e 'has("pull_request")' "$evf" >/dev/null 2>&1; then EV=pull_request; REF=$(jq -r '.pull_request.head.ref // ""' "$evf"); SHA=$(jq -r '.pull_request.head.sha // ""' "$evf")
-        else EV=push; REF=$(jq -r '.ref // ""' "$evf"); SHA=$(jq -r '.after // ""' "$evf"); fi
+      evj=$(docker exec "hci-$SLOT" cat "$JOB_WORK/_temp/_github_workflow/event.json" 2>/dev/null || true)
+      if [ -n "$evj" ]; then
+        if   jq -e 'has("merge_group")'  <<<"$evj" >/dev/null 2>&1; then EV=merge_group; REF=$(jq -r '.merge_group.head_ref // ""' <<<"$evj"); SHA=$(jq -r '.merge_group.head_sha // ""' <<<"$evj")
+        elif jq -e 'has("pull_request")' <<<"$evj" >/dev/null 2>&1; then EV=pull_request; REF=$(jq -r '.pull_request.head.ref // ""' <<<"$evj"); SHA=$(jq -r '.pull_request.head.sha // ""' <<<"$evj")
+        else EV=push; REF=$(jq -r '.ref // ""' <<<"$evj"); SHA=$(jq -r '.after // ""' <<<"$evj"); fi
       fi
     fi
   fi
