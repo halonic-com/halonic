@@ -95,20 +95,8 @@ export function causeBanner(
       return danger([failureWords.diskFull(workflow, step)]);
     case "interrupted":
       return interrupted(summary, workflow, step);
-    case "answer-not-an-option": {
-      const choices = answerChoicesOf(summary.cause);
-      if (choices !== undefined) {
-        const agent = agentNameOf(choices.agent, context);
-        return danger([failureWords.answerNotAChoice(workflow, step, agent, choices.options)], {
-          fixes: [{ kind: "see-step" }],
-        });
-      }
-      // An older log: its cause doesn't give the choices, so the agent comes from the log.
-      const agent = facts.offOptionAgent ?? facts.agent;
-      return agent === undefined
-        ? undefined
-        : danger([failureWords.answerNotAnOption(workflow, step, agent)]);
-    }
+    case "answer-not-an-option":
+      return answerNotAnOption(summary, facts, context, workflow, step);
     case "model-unreachable":
       return proxyBanner(summary, facts, context) ?? modelUnreachable(facts, context, phone);
     case "model-out-of-memory":
@@ -129,6 +117,31 @@ export function causeBanner(
     default:
       return undefined;
   }
+}
+
+/**
+ * An answer that isn't one of the step's choices: with the choices and **See the step** when the
+ * cause gives them, or else the agent from the log.
+ */
+function answerNotAnOption(
+  summary: RunSummary,
+  facts: FailureFacts,
+  context: RunPageContext,
+  workflow: string,
+  step: string,
+): RunBanner | undefined {
+  const choices = answerChoicesOf(summary.cause);
+  if (choices !== undefined) {
+    const agent = agentNameOf(choices.agent, context);
+    return danger([failureWords.answerNotAChoice(workflow, step, agent, choices.options)], {
+      fixes: [{ kind: "see-step" }],
+    });
+  }
+  // An older log: its cause doesn't give the choices, so the agent comes from the log.
+  const agent = facts.offOptionAgent ?? facts.agent;
+  return agent === undefined
+    ? undefined
+    : danger([failureWords.answerNotAnOption(workflow, step, agent)]);
 }
 
 /** The cause code the harness bridge gives a socket path longer than the system takes (HAL-13862). */
