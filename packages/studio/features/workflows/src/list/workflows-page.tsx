@@ -1,4 +1,15 @@
-import { Button, EmptyState, inlineLinkClasses, usePresentation } from "@halonicjs/studio-kit";
+import {
+  type BrokenFileActions,
+  brokenFileActions,
+  brokenFileMenu,
+} from "@halonicjs/studio-feature-files/api";
+import {
+  Button,
+  EmptyState,
+  inlineLinkClasses,
+  usePresentation,
+  useToastStore,
+} from "@halonicjs/studio-kit";
 import {
   copyDetailsWords,
   detailsOf,
@@ -6,9 +17,12 @@ import {
   type EngineWords,
   engineReasonFor,
   engineWordsOf,
+  FilesWithErrorsService,
+  type FilesWithErrorsSource,
   isUnexplained,
   OverviewPage,
   type PlaceViewProps,
+  useBrokenFiles,
   useCopyDetails,
 } from "@halonicjs/studio-shell";
 import { defaultHub } from "@halonicjs/workspace";
@@ -22,7 +36,7 @@ import {
 import { NewWorkflowDialog } from "../new/new-workflow-dialog.tsx";
 import { listWords } from "./list-words.ts";
 import { takeNewWorkflowRequests } from "./new-request.ts";
-import { rowId, workflowHubs } from "./workflow-rows.tsx";
+import { brokenRowId, rowId, workflowHubs } from "./workflow-rows.tsx";
 
 /**
  * Whether the workflows have loaded: the skeleton, a first read that failed, or the list. A list
@@ -51,11 +65,15 @@ export function WorkflowsPage({ context }: PlaceViewProps) {
     openItemInNewTab === undefined
       ? undefined
       : (ref: WorkflowRef) => openItemInNewTab({ kind: "workflow", hub: ref.hubId, id: ref.id });
+  const filesWithErrors = context.services.find(FilesWithErrorsService);
+  const toasts = useToastStore();
   return (
     <WorkflowsView
       announceState={(key, text) => context.announcer.announceState(key, text)}
       host={context.services.get(WorkflowsHostService)}
       engine={engineWordsOf(context)}
+      brokenActions={brokenFileActions(context, toasts)}
+      {...(filesWithErrors ? { filesWithErrors } : {})}
       {...(open ? { open } : {})}
       {...(openInNewTab ? { openInNewTab } : {})}
     />
@@ -73,6 +91,10 @@ export interface WorkflowsViewProps {
   readonly engine?: EngineWords;
   /** Reads how many items a search or hub change left (`announcer.announceState`); absent in tests that don't listen. */
   readonly announceState?: ((key: string, text: string) => void) | undefined;
+  /** The workspace's files with errors: a workflow file that didn't load keeps its row (C348 ST4). */
+  readonly filesWithErrors?: FilesWithErrorsSource;
+  /** What a broken file's row and its ⋮ menu do; without it the row opens nothing and has no menu. */
+  readonly brokenActions?: BrokenFileActions;
 }
 
 /**
@@ -90,6 +112,8 @@ export function WorkflowsView({
   openInNewTab,
   engine,
   announceState,
+  filesWithErrors,
+  brokenActions = {},
 }: WorkflowsViewProps) {
   const words = engine ?? engineWordsOf({});
   const phone = usePresentation() === "phone";
@@ -142,13 +166,20 @@ export function WorkflowsView({
   }, [host, read]);
 
   const listings = load.kind === "ready" ? load.listings : [];
+  const broken = useBrokenFiles(filesWithErrors, "workflow");
+  const brokenOf = (id: string) => broken.find((file) => brokenRowId(file) === id);
+  // A broken file has no page: its row opens the file at its first problem.
   const openRow = (id: string) => {
     const listing = listings.find((each) => rowId(each) === id);
     if (listing !== undefined) open?.(listing);
+    const file = brokenOf(id);
+    if (file !== undefined) brokenActions.open?.(file);
   };
   const openRowInNewTab = (id: string) => {
     const listing = listings.find((each) => rowId(each) === id);
     if (listing !== undefined) (openInNewTab ?? open)?.(listing);
+    const file = brokenOf(id);
+    if (file !== undefined) brokenActions.open?.(file);
   };
   const startCreating = () => setCreating(true);
   // A workflow needs a hub to live in, and the hubs are known only once the first read is done. A
@@ -187,7 +218,7 @@ export function WorkflowsView({
       ) : (
         <OverviewPage
           announceState={announceState}
-          hubs={workflowHubs(host.hubs(), listings)}
+          hubs={workflowHubs(host.hubs(), listings, broken)}
           words={{
             searchLabel: listWords.searchLabel,
             loadingLabel: listWords.loadingLabel,
@@ -209,6 +240,11 @@ export function WorkflowsView({
           }}
           loading={load.kind === "loading"}
           quietWhenEmpty
+          // Only a broken file's row has a ⋮ menu so far.
+          itemMenu={(row) => {
+            const file = brokenOf(row.id);
+            return file === undefined ? [] : brokenFileMenu(file, brokenActions);
+          }}
           {...(offersNew
             ? { newButton: { label: listWords.newWorkflow, onClick: startCreating } }
             : {})}

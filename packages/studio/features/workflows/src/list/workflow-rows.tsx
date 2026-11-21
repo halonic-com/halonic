@@ -1,11 +1,21 @@
 import { LetterTile, StatusChip } from "@halonicjs/studio-kit";
-import type { OverviewHub, OverviewItem } from "@halonicjs/studio-shell";
+import {
+  brokenFileItem,
+  type FileWithErrors,
+  type OverviewHub,
+  type OverviewItem,
+} from "@halonicjs/studio-shell";
 import type { WorkflowHub, WorkflowLastRun, WorkflowListing, WorkflowRef } from "../api.ts";
 import { lastRunOutcome, listWords, runWhen } from "./list-words.ts";
 
 /** The row id of a workflow: unique across hubs, because two hubs can both have a `reply`. */
 export function rowId(ref: WorkflowRef): string {
   return `${ref.hubId}/${ref.id}`;
+}
+
+/** The row id of a workflow file that didn't load: its path, which no workflow's row id can be. */
+export function brokenRowId(file: FileWithErrors): string {
+  return `file:${file.path}`;
 }
 
 /** A chip's drawn symbol and its space: sighted people see "✕ 2 problems", a screen reader hears "2 problems". */
@@ -88,18 +98,28 @@ function itemOf(listing: WorkflowListing, now: Date): OverviewItem {
   };
 }
 
-/** The hubs of the overview page: every hub in the workspace's order, with its workflows by name. */
+function brokenItemOf(file: FileWithErrors): OverviewItem {
+  return { ...brokenFileItem(file, brokenRowId(file)), avatar: <LetterTile name={file.name} /> };
+}
+
+/**
+ * The hubs of the overview page: every hub in the workspace's order, with its workflows by name. A
+ * workflow file that didn't load keeps its row in its hub, in the error state (C348 ST4).
+ */
 export function workflowHubs(
   hubs: readonly WorkflowHub[],
   listings: readonly WorkflowListing[],
+  broken: readonly FileWithErrors[] = [],
   now: Date = new Date(),
 ): readonly OverviewHub[] {
   return hubs.map((hub) => ({
     id: hub.id,
     name: hub.name,
-    items: listings
-      .filter((listing) => listing.hubId === hub.id)
-      .toSorted((a, b) => a.name.localeCompare(b.name))
-      .map((listing) => itemOf(listing, now)),
+    items: [
+      ...listings
+        .filter((listing) => listing.hubId === hub.id)
+        .map((listing) => itemOf(listing, now)),
+      ...broken.filter((file) => file.hub === hub.id).map(brokenItemOf),
+    ].toSorted((a, b) => a.name.localeCompare(b.name)),
   }));
 }
