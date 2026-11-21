@@ -176,5 +176,8 @@ export function offUntilAllowed(name: string): string {
   return `${name} is off on this computer until you allow plugins and integrations to run without the sandbox.`;
 }
 
-/** R13 on a phone or a served browser, where the yes can't be given: in place of **Review**. */
-export const ALLOW_ON_COMPUTER = "Allow this on your computer.";
+/**
+ * R13 on a phone or a served browser, where the yes can't be given: in place of **Review**. It
+ * names the desktop app, since a served browser may be on the same computer (C540, HAL-15080).
+ */
+export const ALLOW_IN_DESKTOP_APP = "Allow this in the Halonic desktop app.";

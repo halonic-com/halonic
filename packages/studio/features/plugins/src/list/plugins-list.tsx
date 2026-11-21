@@ -25,6 +25,7 @@ import type { InstalledPlugin } from "../page/plugin-pages.ts";
 import { RemovePluginDialog } from "../page/remove-plugin-dialog.tsx";
 import { usePageActions } from "../page/use-page-actions.ts";
 import { pluginsViewOnly } from "../page/view-only.ts";
+import { asksAboutYes, useOffHere } from "../trust/off-here.ts";
 import {
   ADD_COMMAND,
   ADD_PLUGIN,
@@ -40,6 +41,7 @@ import {
   LOADING_LABEL,
   moreFor,
   NOT_TRUSTED_CHIP,
+  OFF_HERE_CHIP,
   OPEN,
   OPEN_IN_NEW_TAB,
   PLUGINS,
@@ -170,7 +172,8 @@ function AddOnCommandLine({ line }: { readonly line: string | undefined }) {
  * plugins "Installed on this computer" and the ones "Built in". A row has a letter avatar, the
  * name, the description and what it adds, and on the right its chips, version and trust date. The
  * chips are neutral unless broken: "Not trusted yet" and "Changed since you trusted it" with the
- * dashed ring, "2 errors" in `danger` for a plugin that can't load. The ⋮ has Open, Open in new
+ * dashed ring, "2 errors" in `danger` for a plugin that can't load, and "Off on this computer" in
+ * `warning` for one that's trusted but waits for the yes to run without the sandbox (R13). The ⋮ has Open, Open in new
  * tab, Open folder, Remove trust and **Remove plugin…**; a built-in plugin has only Open.
  *
  * @example
@@ -215,8 +218,9 @@ export function PluginsList({
 
   const openMore = (id: string) => (event: { readonly currentTarget: HTMLElement }) =>
     setMenu({ id, target: { element: event.currentTarget } });
+  const offHere = useOffHere(actions.unfencedRuns, plugins);
   const installedRows = plugins.map((plugin) =>
-    installedRow(plugin, now(), openMore(plugin.plugin)),
+    installedRow(plugin, now(), openMore(plugin.plugin), offHere),
   );
   const builtInRows = builtInRowsOf(builtIn, onOpenBuiltIn !== undefined, openMore);
   const add = viewOnly ? undefined : onAdd;
@@ -344,6 +348,7 @@ function installedRow(
   plugin: InstalledPlugin,
   now: Date,
   onMore: (event: { readonly currentTarget: HTMLElement }) => void,
+  offHere: boolean,
 ): ListRow {
   const trusted = trustedDay(plugin.trustedAt, now);
   const meta = rowMeta(plugin.manifest);
@@ -361,7 +366,7 @@ function installedRow(
       error: { reason: first, chip: errorsChip(Math.max(plugin.problems.length, 1)) },
     };
   }
-  const chip = chipFor(plugin.status);
+  const chip = offHere && asksAboutYes(plugin) ? offHereChip() : chipFor(plugin.status);
   const version = plugin.manifest?.version;
   const detail = [version, trusted === undefined ? undefined : `trusted ${trusted}`]
     .filter((part) => part !== undefined)
@@ -382,6 +387,11 @@ function chipFor(status: InstalledPlugin["status"]): ReactNode {
   if (status === "not-trusted") return <Dashed>{NOT_TRUSTED_CHIP}</Dashed>;
   if (status === "changed") return <Dashed>{CHANGED_CHIP}</Dashed>;
   return null;
+}
+
+/** R13 on a row: the plugin is trusted, but off until the yes to run without the sandbox. */
+function offHereChip(): ReactNode {
+  return <StatusChip tone="warning">{OFF_HERE_CHIP}</StatusChip>;
 }
 
 /** A neutral chip with the dashed ring: "not decided yet". */

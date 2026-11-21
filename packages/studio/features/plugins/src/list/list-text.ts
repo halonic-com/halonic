@@ -23,6 +23,8 @@ export const ADD_PLUGIN = "Add plugin";
 export const NOT_TRUSTED_CHIP = "Not trusted yet";
 export const CHANGED_CHIP = "Changed since you trusted it";
 export const BUILT_IN_CHIP = "Built in";
+/** A trusted plugin with a backend that waits for the yes to run without the sandbox (R13's words). */
+export const OFF_HERE_CHIP = "Off on this computer";
 
 /** The chip of a plugin that can't load: "1 error", "2 errors". */
 export function errorsChip(count: number): string {

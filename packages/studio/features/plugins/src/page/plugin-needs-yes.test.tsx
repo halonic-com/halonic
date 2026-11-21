@@ -134,11 +134,11 @@ verifies("plugins.plugin-page-needs-yes", () => {
     expect(view.textContent).not.toContain(offLine);
   });
 
-  it("says to allow it on the computer, with no Review, where the page is view only", async () => {
+  it("says to allow it in the desktop app, with no Review, where the page is view only", async () => {
     const view = await show(weather("on"), host(needsYes), "served");
 
     expect(view.textContent).toContain(offLine);
-    expect(view.textContent).toContain("Allow this on your computer.");
+    expect(view.textContent).toContain("Allow this in the Halonic desktop app.");
     expect(button(view, "Review")).toBeUndefined();
   });
 });
