@@ -70,11 +70,12 @@ verifies("agent-host.keychain-secrets", () => {
       const running = run(args, "1.2.3", io, () => sandboxHere());
       await relay.handshakeLine();
 
-      await eventually(async () => (await secretsFileStore.get("remote-host-key")) === null);
-      expect(shell.stored.get("remote_host_key")).toBe(savedKey);
-      expect(errors.join("")).toContain(
-        "Moved remote-host-key from the secrets file to the keychain.",
+      // The line comes last, once the file's copy is gone, so wait for it rather than the file.
+      await eventually(() =>
+        errors.join("").includes("Moved remote-host-key from the secrets file to the keychain."),
       );
+      expect(await secretsFileStore.get("remote-host-key")).toBeNull();
+      expect(shell.stored.get("remote_host_key")).toBe(savedKey);
       expect(errors.join("")).not.toContain(savedKey);
 
       relay.streams.input.end();

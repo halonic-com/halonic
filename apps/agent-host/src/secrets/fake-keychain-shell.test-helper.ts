@@ -14,6 +14,8 @@ export class FakeKeychainShell {
   readonly asked: string[] = [];
   /** When set, every request fails with this kind, as on a system without a keychain. */
   failWith: string | undefined;
+  /** When set, every `delete` fails with this kind, as a keychain that won't let go of a value. */
+  failDeleteWith: string | undefined;
   /** When set, `set` keeps this instead of the value it was given, as a broken keychain would. */
   keepInstead: string | undefined;
   readonly #send: (frame: Buffer) => void;
@@ -34,6 +36,9 @@ export class FakeKeychainShell {
   #answer(request: ShellSecretRequest): ShellSecretAnswer {
     if (this.failWith !== undefined) {
       return { ok: false, kind: this.failWith, message: "No keychain on this system." };
+    }
+    if (request.op === "delete" && this.failDeleteWith !== undefined) {
+      return { ok: false, kind: this.failDeleteWith, message: "The keychain refused." };
     }
     if (request.op === "get") return { ok: true, value: this.stored.get(request.name) ?? null };
     if (request.op === "set") this.stored.set(request.name, this.keepInstead ?? request.value);
