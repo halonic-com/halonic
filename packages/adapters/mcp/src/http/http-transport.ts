@@ -188,6 +188,7 @@ class Deadline {
       return new McpError(
         "unavailable",
         `The MCP server didn't answer ${name} within ${Math.round(this.#timeoutMs / 1000)} seconds.`,
+        { timeoutMs: this.#timeoutMs },
       );
     }
     if (this.#caller?.aborted === true) {

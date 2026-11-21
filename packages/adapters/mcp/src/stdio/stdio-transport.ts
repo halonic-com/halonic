@@ -224,6 +224,7 @@ function isRequestId(value: unknown): value is string | number {
 function notAnsweredInTime(method: string, timeoutMs: number): McpError {
   return new McpStoppedError(
     `The program didn't answer ${method} within ${Math.round(timeoutMs / 1000)} seconds, so it was stopped.`,
+    { timeoutMs },
   );
 }
 

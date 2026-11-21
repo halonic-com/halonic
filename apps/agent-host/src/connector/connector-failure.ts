@@ -7,6 +7,7 @@ import {
   ProgramStoppedAtStartError,
   SecretNotSetError,
 } from "@halonicjs/adapter-mcp";
+import { isConnectorToolTimeout } from "@halonicjs/ports";
 
 /**
  * Why a connector failed, in terms Studio's page can word (UX check C2,
@@ -51,6 +52,8 @@ export function connectorFailureReasonOf(error: unknown): ConnectorFailureReason
 }
 
 function isStopped(error: unknown): boolean {
+  // A call that ran out of time keeps the connector's own error as its cause.
+  if (isConnectorToolTimeout(error)) return isStopped(error.cause);
   return (
     error instanceof McpStoppedError ||
     error instanceof ConnectorStoppedError ||
