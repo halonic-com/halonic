@@ -4,7 +4,7 @@ import { FakeHost, ok, refused } from "./fake-host.test-helper.ts";
 import { AgentHostPlacementStore } from "./placement-store.ts";
 import { AgentHostError } from "./transport.ts";
 
-const key = { location: "/work/acme", agent: "coder" };
+const key = { location: "/work/acme", hub: "support", agent: "coder" };
 const placement = {
   ...key,
   runsOn: "this-computer" as const,
@@ -33,6 +33,20 @@ verifies("agent-host-client.placement-store", () => {
       );
     });
 
+    it("fails on a choice for the same agent id in another hub", async () => {
+      const other = { ...placement, hub: "billing" };
+      const host = new FakeHost().answer("POST /v1/placements/get", ok({ placement: other }));
+      await expect(new AgentHostPlacementStore(host).get(key)).rejects.toThrow(
+        /isn't for this agent/,
+      );
+    });
+
+    it("fails on a choice saved before the key had a hub", async () => {
+      const { hub: _hub, ...hubless } = placement;
+      const host = new FakeHost().answer("POST /v1/placements/get", ok({ placement: hubless }));
+      await expect(new AgentHostPlacementStore(host).get(key)).rejects.toThrow();
+    });
+
     it("fails on a choice with an extra field", async () => {
       const extra = { ...placement, sandbox: false };
       const host = new FakeHost().answer("POST /v1/placements/get", ok({ placement: extra }));
@@ -54,7 +68,7 @@ verifies("agent-host-client.placement-store", () => {
   });
 
   describe("save and remove", () => {
-    it("saves exactly the five fields of the choice", async () => {
+    it("saves exactly the six fields of the choice", async () => {
       const host = new FakeHost().answer("POST /v1/placements/save", ok({}));
       await new AgentHostPlacementStore(host).save({ ...placement });
       expect(host.calls).toEqual([{ route: "POST /v1/placements/save", body: placement }]);

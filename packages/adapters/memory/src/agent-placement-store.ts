@@ -43,13 +43,13 @@ export class MemoryAgentPlacementStore implements AgentPlacementStore {
   }
 }
 
-/** One string per key. JSON keeps a location with a `/` from running into the agent id. */
+/** One string per key. JSON keeps a location with a `/` from running into the hub id. */
 function keyId(key: AgentPlacementKey): string {
-  return JSON.stringify([key.location, key.agent]);
+  return JSON.stringify([key.location, key.hub, key.agent]);
 }
 
 function describeKey(key: AgentPlacementKey): string {
-  return `the agent ${JSON.stringify(key.agent)} in ${JSON.stringify(key.location)}`;
+  return `the agent ${JSON.stringify(key.agent)} of the hub ${JSON.stringify(key.hub)} in ${JSON.stringify(key.location)}`;
 }
 
 /** Reads a placement, and refuses one that isn't exactly a placement for this key. */

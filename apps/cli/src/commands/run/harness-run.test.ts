@@ -177,7 +177,7 @@ async function chooseThisComputer(): Promise<void> {
   const file = new Uint8Array(
     await readFile(join(acmeRuns.acme, "hubs/lab/agents/coder.agent.yaml")),
   );
-  const subject = { location: await realpath(acmeRuns.acme), agent: "coder", file };
+  const subject = { location: await realpath(acmeRuns.acme), hub: "lab", agent: "coder", file };
   const shown = await agentFingerprint(file, webCryptoDigest);
   expect((await placement.chooseThisComputer(subject, shown)).ok).toBe(true);
 }

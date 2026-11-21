@@ -11,4 +11,5 @@ The placement store stand-in shall get, save and remove an agent's "this compute
 - Given a host with no choice, when the engine asks for one, then the answer is `null`.
 - Given a host that answers a choice for another agent, when the engine asks, then the call fails.
 - Given a host that refuses with `placement_unreadable`, when the engine asks, then the call fails with that kind and the host's reason.
-- Given a choice, when the engine saves it, then the host gets exactly its five fields.
+- Given a host that answers a choice for the same agent id in another hub, when the engine asks, then the call fails.
+- Given a choice, when the engine saves it, then the host gets exactly its six fields.

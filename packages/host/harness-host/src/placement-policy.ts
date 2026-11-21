@@ -55,6 +55,7 @@ export class FilePlacementPolicy implements PlacementPolicy {
     const file = await this.#files.bytesOf(agent.hubId, agent.agentId, agent);
     const answer = await this.#reader.where({
       location: this.#location,
+      hub: agent.hubId,
       agent: agent.agentId,
       file,
     });

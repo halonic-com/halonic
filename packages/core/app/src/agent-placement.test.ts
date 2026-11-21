@@ -17,7 +17,7 @@ const digest: Digest = {
   },
 };
 
-const coder: AgentPlacementKey = { location: "/workspaces/acme", agent: "coder" };
+const coder: AgentPlacementKey = { location: "/workspaces/acme", hub: "support", agent: "coder" };
 const coderFile = "kind: agent\nid: coder\nharness: claude-code\n";
 
 function subject(file: string, key: AgentPlacementKey = coder): PlacementSubject {
@@ -43,9 +43,13 @@ function setup() {
 }
 
 /** Chooses "this computer" for the file, the way a person does: with the fingerprint they were shown. */
-async function chooseThisComputer(placement: AgentPlacement, file: string): Promise<void> {
-  const shown = await placement.where(subject(file));
-  const chosen = await placement.chooseThisComputer(subject(file), shown.agentFingerprint);
+async function chooseThisComputer(
+  placement: AgentPlacement,
+  file: string,
+  key: AgentPlacementKey = coder,
+): Promise<void> {
+  const shown = await placement.where(subject(file, key));
+  const chosen = await placement.chooseThisComputer(subject(file, key), shown.agentFingerprint);
   expect(chosen).toEqual({ ok: true, value: undefined });
 }
 
@@ -94,6 +98,20 @@ verifies("app.agent-placement", () => {
     );
     expect(otherAgent.runsOn).toBe("sandbox");
     expect(otherWorkspace.runsOn).toBe("sandbox");
+  });
+
+  it("puts nothing but the key in the store, never the file's bytes", async () => {
+    const { store, placement } = setup();
+    await chooseThisComputer(placement, coderFile);
+
+    expect(Object.keys(store.saves[0] ?? {}).sort()).toEqual([
+      "agent",
+      "agentFingerprint",
+      "chosenAt",
+      "hub",
+      "location",
+      "runsOn",
+    ]);
   });
 
   it("counts a choice made for an earlier version of the file as no choice", async () => {
@@ -169,19 +187,6 @@ verifies("app.agent-placement", () => {
     });
   });
 
-  it("puts nothing but the key in the store, never the file's bytes", async () => {
-    const { store, placement } = setup();
-    await chooseThisComputer(placement, coderFile);
-
-    expect(Object.keys(store.saves[0] ?? {}).sort()).toEqual([
-      "agent",
-      "agentFingerprint",
-      "chosenAt",
-      "location",
-      "runsOn",
-    ]);
-  });
-
   it("gives the engine a side that can't make a choice", () => {
     expectTypeOf<keyof PlacementReader>().toEqualTypeOf<"where">();
     expectTypeOf<keyof AgentPlacement>().toEqualTypeOf<
@@ -244,9 +249,57 @@ verifies("app.agent-placement", () => {
     ["a choice other than this computer", { runsOn: "sandbox" }],
     ["another agent's key", { agent: "writer" }],
     ["another workspace's key", { location: "/workspaces/other" }],
+    ["the same agent id in another hub", { hub: "billing" }],
+    ["a choice saved before the key had a hub", { hub: undefined }],
   ])("runs the agent in a sandbox when the store gives back %s", async (_kind, change) => {
     const placement = over(async () => choice(change));
 
     expect((await placement.where(subject(coderFile))).runsOn).toBe("sandbox");
+  });
+});
+
+// An agent id is unique only in its hub, so two hubs in one workspace can
+// each have a `writer` (Julian, HAL-13203).
+verifies("app.agent-placement", () => {
+  const writerFile = "kind: agent\nid: writer\nharness: claude-code\n";
+  const acmeWriter: AgentPlacementKey = {
+    location: "/workspaces/acme",
+    hub: "acme",
+    agent: "writer",
+  };
+  const otherWriter: AgentPlacementKey = { ...acmeWriter, hub: "other" };
+
+  it("leaves the same agent in another hub in its sandbox, even with an identical file", async () => {
+    const { placement } = setup();
+    await chooseThisComputer(placement, writerFile, acmeWriter);
+
+    expect((await placement.where(subject(writerFile, acmeWriter))).runsOn).toBe("this-computer");
+    expect(await placement.where(subject(writerFile, otherWriter))).toMatchObject({
+      runsOn: "sandbox",
+      reason: "not-chosen",
+    });
+  });
+
+  it("doesn't put the same agent in another hub on hold when its file differs", async () => {
+    const { placement } = setup();
+    await chooseThisComputer(placement, writerFile, acmeWriter);
+
+    const otherFile = `${writerFile}tools: [web]\n`;
+    expect(await placement.where(subject(otherFile, otherWriter))).toMatchObject({
+      runsOn: "sandbox",
+      reason: "not-chosen",
+    });
+  });
+
+  it("keeps one hub's choice when the person chooses for the same agent in another hub", async () => {
+    const { placement } = setup();
+    const otherFile = `${writerFile}tools: [web]\n`;
+    await chooseThisComputer(placement, writerFile, acmeWriter);
+    await chooseThisComputer(placement, otherFile, otherWriter);
+    expect((await placement.where(subject(writerFile, acmeWriter))).runsOn).toBe("this-computer");
+
+    await placement.chooseSandbox(otherWriter);
+    expect((await placement.where(subject(writerFile, acmeWriter))).runsOn).toBe("this-computer");
+    expect((await placement.where(subject(otherFile, otherWriter))).runsOn).toBe("sandbox");
   });
 });

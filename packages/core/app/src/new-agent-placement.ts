@@ -30,7 +30,7 @@ export const newAgentsRun: HostSetting<NewAgentsRun> = hostSetting<NewAgentsRun>
  * Studio's agent creation calls it (`studio.new-agents-run`).
  *
  * @example
- * const run = await newAgentPlacement(settings, placement, { location, agent: "coder", file });
+ * const run = await newAgentPlacement(settings, placement, { location, hub: "support", agent: "coder", file });
  */
 export async function newAgentPlacement(
   settings: HostSettings,

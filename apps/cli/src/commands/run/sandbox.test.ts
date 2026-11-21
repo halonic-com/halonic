@@ -88,7 +88,7 @@ async function writerWith(lines: string): Promise<void> {
 /** A person chose "On this computer" for Writer, for its file as it is now. */
 async function chooseThisComputer(): Promise<void> {
   const file = new Uint8Array(await readFile(join(acme, writerPath)));
-  const subject = { location: await realpath(acme), agent: "writer", file };
+  const subject = { location: await realpath(acme), hub: "support", agent: "writer", file };
   const shown = await agentFingerprint(file, webCryptoDigest);
   expect((await placement.chooseThisComputer(subject, shown)).ok).toBe(true);
 }

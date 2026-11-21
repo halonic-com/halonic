@@ -124,10 +124,10 @@ function machineWith(check: SandboxCheck, choices = new ProfileChoices()) {
   return { machine, placement };
 }
 
-/** A person chose "On this computer" for Writer, after the warning, for the file as it is now. */
-async function chooseThisComputer(placement: AgentPlacement): Promise<void> {
-  const file = new Uint8Array(readFileSync(join(root, writer)));
-  const subject = { location: "/work/acme", agent: "writer", file };
+/** A person chose "On this computer" for Writer in `hub`, after the warning, for the file as it is now. */
+async function chooseThisComputer(placement: AgentPlacement, hub = "support"): Promise<void> {
+  const file = new Uint8Array(readFileSync(join(root, `hubs/${hub}/agents/writer.agent.yaml`)));
+  const subject = { location: "/work/acme", hub, agent: "writer", file };
   const shown = await agentFingerprint(file, webCryptoDigest);
   expect((await placement.chooseThisComputer(subject, shown)).ok).toBe(true);
 }
@@ -347,6 +347,21 @@ verifies("cli.sandbox-gate", () => {
       const pulled = await workspaceOf({ [writer]: `${writerFile}workingFolder: files/out\n` });
 
       await refusal(checkRunSandbox(pulled, supportReply, machine));
+      expect(machine.checks).toBe(1);
+    });
+
+    it("doesn't carry a choice over to the same agent in another hub, even with an identical file (Julian, HAL-13203)", async () => {
+      const workspace = await workspaceOf({
+        "hubs/billing/hub.yaml": "id: billing\nname: Billing\n",
+        "hubs/billing/agents/writer.agent.yaml": writerFile,
+        "hubs/billing/workflows/support-reply.workflow.yaml": oneStep("support-reply", "writer"),
+      });
+      const { machine, placement } = machineWith(bubblewrapMissing);
+      await chooseThisComputer(placement, "support");
+
+      expect(await checkRunSandbox(workspace, supportReply, machine)).toHaveLength(1);
+      expect(machine.checks).toBe(0);
+      await refusal(checkRunSandbox(workspace, { ...supportReply, hubId: "billing" }, machine));
       expect(machine.checks).toBe(1);
     });
 

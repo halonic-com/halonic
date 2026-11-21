@@ -30,9 +30,13 @@ function setup(texts: Record<string, string>) {
   return { reader, files, policy };
 }
 
-/** Chooses "this computer" for the file, the way a person does. */
-async function chooseThisComputer(reader: AgentPlacement, file: string): Promise<void> {
-  const subject = { location, agent: "coder", file: encodeUtf8(file) };
+/** Chooses "this computer" for the file of an agent in a hub, the way a person does. */
+async function chooseThisComputer(
+  reader: AgentPlacement,
+  file: string,
+  hub = "support",
+): Promise<void> {
+  const subject = { location, hub, agent: "coder", file: encodeUtf8(file) };
   const shown = await reader.where(subject);
   await reader.chooseThisComputer(subject, shown.agentFingerprint);
 }
@@ -52,6 +56,13 @@ verifies("harness-host.placement", () => {
       runsOn: "this-computer",
       chosenAt: "2026-11-11T10:00:00.000Z",
     });
+  });
+
+  it("asks about the agent in the hub the engine names, not the same id in another hub", async () => {
+    const { reader, policy } = setup({ "support/coder": "kind: agent\n" });
+    await chooseThisComputer(reader, "kind: agent\n", "billing");
+
+    expect(await policy.where(coder)).toEqual({ runsOn: "sandbox" });
   });
 
   it("runs the agent in a sandbox again once its file changed", async () => {

@@ -49,10 +49,10 @@ export class FileAgentPlacementStore implements AgentPlacementStore {
   }
 
   async save(placement: AgentPlacementRecord): Promise<void> {
-    const { location, agent, runsOn, agentFingerprint, chosenAt } = placement;
+    const { location, hub, agent, runsOn, agentFingerprint, chosenAt } = placement;
     // The key goes first, so a person who opens the file sees whose it is.
     // Only the fields of a placement are written, so `get` can read it back.
-    const record = { location, agent, runsOn, agentFingerprint, chosenAt };
+    const record = { location, hub, agent, runsOn, agentFingerprint, chosenAt };
     const text = `${JSON.stringify(record, null, 2)}\n`;
     const file = this.#file(placement);
     const temporary = `${file}.${randomUUID()}.tmp`;
@@ -77,13 +77,18 @@ export class FileAgentPlacementStore implements AgentPlacementStore {
 }
 
 /**
- * The hash of a key: the JSON of `[location, agent]` as UTF-16 code units,
- * little-endian. JSON keeps a location ending in `/` from running into the
- * agent id, and UTF-16 keeps lone surrogates apart, as for trust records.
+ * The hash of a key: the JSON of `[location, hub, agent]` as UTF-16 code
+ * units, little-endian. JSON keeps a location ending in `/` from running into
+ * the hub id, and UTF-16 keeps lone surrogates apart, as for trust records.
+ *
+ * A choice saved by version 1 of the port, whose key had no hub, hashed
+ * `[location, agent]`, so it is never found under this name: the agent runs
+ * in its sandbox until the person chooses again (HAL-13203). Its file stays
+ * in the folder, unread.
  */
 function hashKey(key: AgentPlacementKey): string {
   return createHash("sha256")
-    .update(JSON.stringify([key.location, key.agent]), "utf16le")
+    .update(JSON.stringify([key.location, key.hub, key.agent]), "utf16le")
     .digest("hex");
 }
 
@@ -107,7 +112,7 @@ function parsePlacement(key: AgentPlacementKey, file: string, text: string): Age
 
 function unreadable(key: AgentPlacementKey, file: string, cause: unknown): Error {
   return new Error(
-    `The placement for the agent ${JSON.stringify(key.agent)} in ${JSON.stringify(key.location)} can't be read (${JSON.stringify(file)}).`,
+    `The placement for the agent ${JSON.stringify(key.agent)} of the hub ${JSON.stringify(key.hub)} in ${JSON.stringify(key.location)} can't be read (${JSON.stringify(file)}).`,
     { cause },
   );
 }

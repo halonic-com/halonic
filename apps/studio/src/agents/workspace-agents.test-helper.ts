@@ -6,6 +6,7 @@ export const writerFile = "id: writer\nname: Writer\ndescription: Drafts replies
 const replyFile =
   "id: reply\nname: Reply\ninitial: first\nstates:\n  first:\n    agent: writer\n    on:\n      - to: done\n  done:\n    type: final\n";
 
+/** A `WorkspaceAgents` over an in-memory workspace with hubs `acme` and `beta`, with the changes it made. */
 export function setup(
   extra: Pick<WorkspaceAgentsParts, "newAgents" | "liveness" | "answerChat" | "detectHarness"> = {},
 ) {

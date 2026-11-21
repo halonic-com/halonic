@@ -123,29 +123,29 @@ verifies("fs-node.rename-retry-on-windows", () => {
   });
 
   describe("agent placement store: a choice another program holds on Windows", () => {
-    const key = { location: "/workspaces/acme", agent: "coder" };
+    const key = { location: "/workspaces/acme", hub: "support", agent: "coder" };
 
     it("saves once the other program lets go of the choice", async () => {
       const root = await tempFolder();
       const store = new FileAgentPlacementStore(root);
-      await store.save(agentPlacement(key.location, key.agent, "sha256:aa"));
+      await store.save(agentPlacement(key, "sha256:aa"));
       hooks.busyRenames = 2;
-      await store.save(agentPlacement(key.location, key.agent, "sha256:bb"));
+      await store.save(agentPlacement(key, "sha256:bb"));
       expect(hooks.waits).toBe(2);
-      expect(await store.get(key)).toEqual(agentPlacement(key.location, key.agent, "sha256:bb"));
+      expect(await store.get(key)).toEqual(agentPlacement(key, "sha256:bb"));
       await onlyFile(root);
     });
 
     it("fails, keeps the old choice and removes its temporary file when the choice stays held", async () => {
       const root = await tempFolder();
       const store = new FileAgentPlacementStore(root);
-      await store.save(agentPlacement(key.location, key.agent, "sha256:aa"));
+      await store.save(agentPlacement(key, "sha256:aa"));
       hooks.busyRenames = 100;
-      await expect(
-        store.save(agentPlacement(key.location, key.agent, "sha256:bb")),
-      ).rejects.toMatchObject({ code: "EBUSY" });
+      await expect(store.save(agentPlacement(key, "sha256:bb"))).rejects.toMatchObject({
+        code: "EBUSY",
+      });
       expect(hooks.waits).toBe(15);
-      expect(await store.get(key)).toEqual(agentPlacement(key.location, key.agent, "sha256:aa"));
+      expect(await store.get(key)).toEqual(agentPlacement(key, "sha256:aa"));
       await onlyFile(root);
     });
   });

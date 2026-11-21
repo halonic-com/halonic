@@ -9,8 +9,10 @@ const unnamed = "The agent host was not told to serve this workspace.";
  * The "this computer" choices over loopback, so Studio can give the engine an
  * `AgentPlacementStore` whose files are the CLI's own: `POST /v1/placements/get`
  * answers `{ placement }` (`null` when there is none), `…/save` and `…/remove`
- * answer `{}`. A location that is not the real path of a workspace the
- * launcher named is 404 `unknown_workspace` and nothing is read or written. A
+ * answer `{}`. Each body names the choice's `location`, `hub` and `agent`: a
+ * body without the hub is refused, never read as some hub (HAL-13203). A
+ * location that is not the real path of a workspace the launcher named is
+ * 404 `unknown_workspace` and nothing is read or written. A
  * choice that exists but can't be read is 422 `placement_unreadable` with the
  * reason, so Studio runs the agent in a sandbox and says why.
  */

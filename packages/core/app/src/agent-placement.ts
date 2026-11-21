@@ -99,7 +99,7 @@ export async function agentFingerprint(file: Uint8Array, digest: Digest): Promis
  *
  * @example
  * const placement = new AgentPlacement({ store, digest, clock });
- * const answer = await placement.where({ location, agent: "coder", file });
+ * const answer = await placement.where({ location, hub: "support", agent: "coder", file });
  * if (answer.runsOn === "sandbox") return openSandbox(profile);
  */
 export class AgentPlacement implements PlacementReader {
@@ -136,7 +136,7 @@ export class AgentPlacement implements PlacementReader {
     }
     if (!isAgentPlacementFor(key, record)) {
       const error = new Error(
-        `The placement store gave back something that isn't a valid placement for the agent ${JSON.stringify(key.agent)} in ${JSON.stringify(key.location)}.`,
+        `The placement store gave back something that isn't a valid placement for the agent ${JSON.stringify(key.agent)} of the hub ${JSON.stringify(key.hub)} in ${JSON.stringify(key.location)}.`,
       );
       return { runsOn: "sandbox", agentFingerprint: fingerprint, reason: "unreadable", error };
     }
@@ -185,5 +185,5 @@ export class AgentPlacement implements PlacementReader {
 
 /** Only the key, so the file's bytes never reach the store. */
 function keyOf(key: AgentPlacementKey): AgentPlacementKey {
-  return { location: key.location, agent: key.agent };
+  return { location: key.location, hub: key.hub, agent: key.agent };
 }

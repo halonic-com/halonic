@@ -80,7 +80,10 @@ verifies("fs-node.writes-reach-the-disk", () => {
       ["trust record", (root: string) => new FileTrustStore(root).grant(trustRecord("/w"))],
       [
         "placement record",
-        (root: string) => new FileAgentPlacementStore(root).save(agentPlacement("/w", "writer")),
+        (root: string) =>
+          new FileAgentPlacementStore(root).save(
+            agentPlacement({ location: "/w", hub: "support", agent: "writer" }),
+          ),
       ],
       [
         "connector setting",
