@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: tunnel phase B build plan, decisions 1–4 (HAL-12232); task HAL-12238; ADR "Pairing and the end-to-end session"; attack cases B1, B8, B11 and B12
 
-Through a tunnel, the remote gateway shall let no client past its end-to-end session that the session doesn't allow: a phone that isn't paired shall learn so only from an encrypted `not-paired` after the host's message 2, a replayed handshake or message and a reordered message shall get no further than closing, a protocol message in the clear shall get no answer at all, and a phone that pinned another host key shall get only a cleartext `handshake-failed`. None of these shall ask the host for anything.
+When a client connects through a tunnel, the remote gateway shall let it do nothing that its end-to-end session doesn't allow: a phone that isn't paired shall learn so only from an encrypted `not-paired` after the host's message 2, a replayed handshake or message and a reordered message shall get no further than closing, a protocol message in the clear shall get no answer at all, and a phone that pinned another host key shall get only a cleartext `handshake-failed`. None of these shall ask the host for anything.
 
 ## Examples
 
