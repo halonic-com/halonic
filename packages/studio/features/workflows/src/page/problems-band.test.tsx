@@ -148,7 +148,9 @@ verifies("workflows.start.start-run", () => {
     await act(async () => buttonNamed(page, "Open Problems")?.click());
     await act(() => vi.advanceTimersByTimeAsync(1));
 
-    expect(page.textContent).toContain('"draft" has no transitions');
+    expect(page.textContent).toContain(
+      "Has no way out. Add an arrow from it on its card, or make it an End.",
+    );
     expect(document.activeElement?.getAttribute("role")).toBe("tab");
     expect(document.activeElement?.textContent).toContain("Problems");
   });

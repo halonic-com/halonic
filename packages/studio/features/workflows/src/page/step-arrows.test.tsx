@@ -265,7 +265,7 @@ verifies("workflows.page.step-arrows", () => {
     expect(from.map((button) => button.textContent)).toEqual(["From sort", "From approve"]);
 
     await act(async () => from[1]?.click());
-    expect(page.querySelector("aside h2")?.textContent).toBe("Step approve");
+    expect(page.querySelector("aside h2")?.textContent).toBe("approve");
     // The new card's title takes the focus the button had, so a screen reader hears where it is.
     expect(document.activeElement).toBe(page.querySelector("aside h2"));
   });

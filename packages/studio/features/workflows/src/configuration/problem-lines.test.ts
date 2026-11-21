@@ -37,18 +37,33 @@ verifies("workflows.configuration.problem-lines", () => {
 
   it("reads a row with the core's message, its step and its severity", () => {
     const [step, whole] = problemRows([
-      problem("dead-end", "error", "review"),
+      problem("unknown-gets", "error", "review"),
       problem("no-final", "warning"),
     ]);
     expect([step?.severity, step?.text, step?.stepId]).toEqual([
       "error",
-      "core says dead-end",
+      "core says unknown-gets",
       "review",
     ]);
     expect([whole?.severity, whole?.text, whole?.stepId]).toEqual([
       "warning",
       "core says no-final",
       undefined,
+    ]);
+  });
+
+  it("reads the checks a new step gets in Studio's words, not the file's", () => {
+    const rows = problemRows([
+      problem("task-without-agent", "error", "step-1"),
+      problem("dead-end", "error", "step-1"),
+      problem("unreachable", "warning", "step-1"),
+      problem("wait-without-events", "warning", "wait-1"),
+    ]);
+    expect(rows.map((row) => row.text)).toEqual([
+      "Has no agent, so every run fails here. Pick one on its card, or make it a Wait.",
+      "Has no way out. Add an arrow from it on its card, or make it an End.",
+      "Can't be reached: no arrow leads to it.",
+      "Gives a person no answers to pick, such as approve. Add them in the workflow's file.",
     ]);
   });
 

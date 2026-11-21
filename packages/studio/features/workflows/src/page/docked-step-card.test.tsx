@@ -142,7 +142,7 @@ verifies("workflows.page.step-card", () => {
     await pick(page, "write");
 
     const card = docked(page);
-    expect(card?.querySelector("h2")?.textContent).toBe("Step write");
+    expect(card?.querySelector("h2")?.textContent).toBe("write");
     expect(document.activeElement).toBe(card?.querySelector("h2"));
     expect(card?.textContent).toContain("Support reply › write");
     expect(field(page, "Prompt")?.value).toBe("Answer {{input.message}}");
@@ -159,7 +159,7 @@ verifies("workflows.page.step-card", () => {
     expect(field(page, "Description")).toBeDefined();
 
     await pick(page, "start");
-    expect(docked(page)?.querySelector("h2")?.textContent).toBe("Step start");
+    expect(docked(page)?.querySelector("h2")?.textContent).toBe("start");
     await choose(field(page, "Agent") as HTMLSelectElement, "sorter");
     expect(docked(page)?.textContent).toContain("The agent gets the run input.");
   });
@@ -306,7 +306,7 @@ verifies("workflows.page.step-card", () => {
     await pick(page, "done");
 
     expect(page.querySelectorAll("aside")).toHaveLength(1);
-    expect(docked(page)?.querySelector("h2")?.textContent).toBe("Step done");
+    expect(docked(page)?.querySelector("h2")?.textContent).toBe("done");
   });
 
   it("closes on Esc and on ✕, and the step is no longer selected", async () => {

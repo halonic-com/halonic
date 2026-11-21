@@ -87,8 +87,10 @@ verifies("workflows.configuration.pages", () => {
     await act(async () => tab(page, "Problems")?.click());
 
     const rows = [...page.querySelectorAll("li")].map((row) => row.textContent);
-    expect(rows[0]).toBe("✕Error:Step review has no transitions and is not final.review");
-    expect(rows[1]).toBe("△Warning:Step start is never reached from the first step.start");
+    expect(rows[0]).toBe(
+      "✕Error:Has no way out. Add an arrow from it on its card, or make it an End.review",
+    );
+    expect(rows[1]).toBe("△Warning:Can't be reached: no arrow leads to it.start");
 
     await act(async () =>
       page.querySelector<HTMLButtonElement>("[aria-label='Open review']")?.click(),

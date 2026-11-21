@@ -34,6 +34,21 @@ const stepLines: Readonly<Record<string, string>> = {
   unreachable: "Can't be reached",
 };
 
+/**
+ * The sentence of Configuration › Problems for a step's check, in Studio's words where the core's
+ * message speaks the file's (`agent: <id>`, "transitions", "final"). A newly added step gets these
+ * checks, so they are the first problems a person meets (C544, HAL-15120). It leaves out the step's
+ * name: the row's link names it.
+ */
+const rowSentences: Readonly<Record<string, string>> = {
+  "task-without-agent":
+    "Has no agent, so every run fails here. Pick one on its card, or make it a Wait.",
+  "dead-end": "Has no way out. Add an arrow from it on its card, or make it an End.",
+  unreachable: "Can't be reached: no arrow leads to it.",
+  "wait-without-events":
+    "Gives a person no answers to pick, such as approve. Add them in the workflow's file.",
+};
+
 /** The sentence of a check that is about the whole workflow, not one step. */
 const stripLines: Readonly<Record<string, string>> = {
   "missing-initial": "This workflow has no first step.",
@@ -44,7 +59,7 @@ const stripLines: Readonly<Record<string, string>> = {
 export interface ProblemRow {
   readonly severity: WorkflowProblem["severity"];
   readonly glyph: string;
-  /** What the row says: the core's full message. */
+  /** What the row says: Studio's sentence for the check, or the core's full message when none is written. */
   readonly text: string;
   /** The step it is about, which the row links to; absent for a problem of the whole workflow. */
   readonly stepId?: string | undefined;
@@ -65,7 +80,7 @@ export function problemRows(problems: readonly WorkflowProblem[]): readonly Prob
     return {
       severity: problem.severity,
       glyph: problemGlyph[problem.severity],
-      text: problem.message,
+      text: rowSentences[problem.code] ?? problem.message,
       stepId: problem.stepId,
     };
   });
