@@ -124,7 +124,7 @@ verifies("app.sandbox-start-words", () => {
       "Halonic can't run Claude Code or Codex agents outside the sandbox yet.",
     );
     expect(words.calloutFix).toBe(
-      "Save a change to this agent's file, which puts it back in the sandbox.",
+      "Save any change to this agent's file, even one added space. A changed file undoes the choice to run the agent outside the sandbox.",
     );
   });
 

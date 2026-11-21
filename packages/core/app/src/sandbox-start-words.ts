@@ -154,8 +154,8 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   },
   "not-offered": {
     reason: "Halonic can't run Claude Code or Codex agents outside the sandbox yet.",
-    fix: "save a change to this agent's file, which puts it back in the sandbox.",
-    cantRunFix: "Save a change to this agent's file, which puts the agent back in the sandbox.",
+    // Any byte counts: the choice holds only for the file as it was (`app.agent-placement`).
+    fix: "save any change to this agent's file, even one added space. A changed file undoes the choice to run the agent outside the sandbox.",
   },
   other: {
     reason: "Halonic can't tell what the sandbox is missing.",
