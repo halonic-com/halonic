@@ -52,6 +52,9 @@
     "@halonicjs/adapter-mcp": [
       "./protocol"
     ],
+    "@halonicjs/adapter-remote-gateway": [
+      "./testing"
+    ],
     "@halonicjs/adapter-scheduler-node": [
       "./node"
     ],

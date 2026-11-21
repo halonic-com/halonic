@@ -4,7 +4,8 @@
   "type": "module",
   "description": "The remote gateway: the one listener a tunnel may reach, speaking only the remote gateway protocol.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
