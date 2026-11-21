@@ -5,10 +5,11 @@
 import { readdir } from "node:fs/promises";
 import { arch, platform } from "node:os";
 import { join } from "node:path";
-import { FileTrustStore } from "@halonicjs/adapter-fs-node";
+import { FileAgentPlacementStore, FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { NodeResourceProbe } from "@halonicjs/adapter-system-node";
 import {
+  AgentPlacement,
   type DataFolder,
   DoctorService,
   type DoctorServiceOptions,
@@ -16,6 +17,7 @@ import {
   type LoadedModelSource,
   type NetworkProblem,
   type NodeProblem,
+  type PlacementReader,
   ResourceReport,
   type SaveTimers,
   type TrustService,
@@ -23,6 +25,7 @@ import {
 import type { Provider } from "@halonicjs/format";
 import type {
   HttpClient,
+  KeyOrigins,
   ResourceProbe,
   RunStore,
   Sandbox,
@@ -32,6 +35,7 @@ import type {
 } from "@halonicjs/ports";
 import {
   type ProfileFolder,
+  placementFolder,
   profileFolder,
   trustFolder,
   workspaceFolders,
@@ -48,6 +52,7 @@ import {
 } from "./local-model-servers.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
+import { profileKeyOrigins } from "./secret-host.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import { cliTrustService } from "./workspace-trust.ts";
 import { nodeIsWsl, nodeProblemOf, windowsDriveOf } from "./wsl.ts";
@@ -79,6 +84,18 @@ export interface DoctorMachine {
   readonly wslDistro?: string | undefined;
   /** The terminal a person types a harness's sign-in into: PowerShell on Windows, `sh` elsewhere. */
   readonly signInShell: SignInShell;
+  /**
+   * Where each agent runs, as the person chose on this computer, the choices
+   * `run` reads, so the Harnesses line leaves out an agent whose runs get a
+   * provider key (HAL-14661). Left out, it asks about every agent's sign-in.
+   */
+  readonly placement?: PlacementReader;
+  /**
+   * The addresses each saved key may be sent to, as `run` reads them, so the
+   * Harnesses line decides an agent's key with `run`'s own check (HAL-14661).
+   * Left out, it asks about every agent's sign-in.
+   */
+  readonly keyOrigins?: KeyOrigins;
 }
 
 /** The workspace for {@link doctorService}, with the provider files its servers are read from. */
@@ -144,6 +161,12 @@ export function nodeDoctorMachine(): DoctorMachine {
     network: () => networkProblemOf(proxySetting),
     wslDistro: process.env["WSL_DISTRO_NAME"],
     signInShell: system === "win32" ? "powershell" : "sh",
+    placement: new AgentPlacement({
+      store: new FileAgentPlacementStore(placementFolder(profile)),
+      digest: webCryptoDigest,
+      clock: systemClock,
+    }),
+    keyOrigins: profileKeyOrigins(),
   };
 }
 
@@ -211,6 +234,18 @@ export async function withHarnessSettingsFolders(
 async function isTrusted(trust: TrustService, workspace: MachineWorkspace | null) {
   if (workspace === null) return false;
   return (await trust.check(workspace.workspace.trust)).status === "trusted";
+}
+
+/**
+ * Whether `run` would find the workspace trusted on this computer, from the
+ * same trust records `doctor`'s Workspace line reads.
+ */
+export async function trustedOnMachine(
+  machine: Pick<DoctorMachine, "trustStore">,
+  workspace: DoctorWorkspace,
+): Promise<boolean> {
+  const trust = cliTrustService(machine.trustStore, systemClock);
+  return (await trust.check(workspace.trust)).status === "trusted";
 }
 
 /**

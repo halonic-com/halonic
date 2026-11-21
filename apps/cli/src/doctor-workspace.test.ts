@@ -185,6 +185,40 @@ verifies("cli.doctor-workspace", () => {
     expect(doctor.aliases).toEqual([{ alias: "smart", provider: "anthropic" }]);
     expect(doctor.providers.map((provider) => provider.provider)).toEqual(["anthropic"]);
   });
+
+  it("checks the key of a provider an agent names directly, after the aliases (HAL-14661)", async () => {
+    const workspace = await workspaceOf({
+      "workspace.yaml": acmeSettings,
+      "models.yaml": "aliases:\n  local: { provider: ollama, model: llama3.2 }\n",
+      ...providerFiles,
+      "providers/claude.yaml": "id: claude\ntype: anthropic\nsecret: anthropic-key\n",
+      "agents/writer.agent.yaml":
+        "id: writer\nname: Writer\nharness: claude-code\nmodel: claude/claude-sonnet-5-5\n",
+      "hubs/billing/hub.yaml": "id: billing\nname: Billing\n",
+      // A hub's agent naming a provider an alias uses, or the same name again, adds nothing.
+      "hubs/billing/agents/clerk.agent.yaml":
+        "id: clerk\nname: Clerk\nmodel: ollama/qwen3\nmethods:\n  sum: { instructions: Add., model: claude/claude-sonnet-5-5 }\n",
+    });
+
+    const doctor = doctorWorkspace({
+      workspace,
+      integrations: [],
+      location: root,
+      fallbackName: "acme",
+      commandPaths: new Map(),
+    });
+
+    expect(doctor.aliases).toEqual([
+      { alias: "local", provider: "ollama" },
+      { alias: "claude/claude-sonnet-5-5", provider: "claude" },
+    ]);
+    expect(doctor.providers).toEqual([
+      { provider: "ollama", name: "Ollama", runs: "on-this-computer", address: "localhost:11434" },
+      { provider: "claude", name: "claude", runs: "with-a-key", secret: "anthropic-key" },
+    ]);
+    // The Models line checks the key, so the Secrets line doesn't name it again.
+    expect(doctor.secrets).toEqual([]);
+  });
 });
 
 verifies("cli.doctor-workspace", () => {

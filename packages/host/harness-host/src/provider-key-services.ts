@@ -22,6 +22,7 @@ import {
   filesOf,
   type LoadedWorkspace,
   modelPrice,
+  type ResolvedModelTarget,
   resolveModel,
 } from "@halonicjs/workspace";
 import type { BridgeAgent, BridgeServices } from "./bridge-host.ts";
@@ -73,6 +74,9 @@ export interface ModelAliasRules {
     harness: string,
   ): Promise<{ readonly providerId: string } | undefined>;
 }
+
+/** What the access of an agent is decided from: the parts of {@link BridgeAgent} that aren't its run's. */
+export type AccessAgent = Pick<BridgeAgent, "harness" | "hubId" | "model" | "runsOn">;
 
 /** The program's own sign-in: Halonic never reads it and spends nothing on it. */
 const signIn: BridgeProviderAccess = { kind: "sign-in" };
@@ -141,18 +145,7 @@ export class ProviderKeyServices {
   async servicesFor(agent: BridgeAgent): Promise<BridgeServices> {
     const workspace = this.#workspaceFor(agent);
     const providers = filesOf(workspace, "provider").map((file) => file.value);
-    const target =
-      agent.model === undefined
-        ? undefined
-        : resolveModel(workspace, agent.hubId ?? null, agent.model);
-    const alias = await this.#aliasAccess(workspace, agent);
-    const choice = providerAccessOf({
-      harness: agent.harness,
-      runsOn: agent.runsOn,
-      providers,
-      ...(target === undefined ? {} : { modelProvider: target.provider }),
-      ...(alias === undefined ? {} : { aliasProvider: alias.providerId }),
-    });
+    const { choice, target, alias } = await this.#decide(workspace, agent);
     const pinned = choice.kind === "key" && alias?.providerId === choice.providerId;
     const models =
       choice.kind === "key" && target?.provider === choice.providerId ? [target.model] : [];
@@ -175,6 +168,47 @@ export class ProviderKeyServices {
       },
       approvals: refusingApprovals,
     };
+  }
+
+  /**
+   * The access the agent's bridge would get in the workspace now, decided as
+   * {@link servicesFor} decides it, without checking the key's value or
+   * reading it. `halonic doctor` asks it, so it can't tell an agent to sign
+   * in whose runs get a key (HAL-14661).
+   *
+   * @throws what {@link servicesFor} throws before it reads a key
+   *
+   * @example
+   * await keys.accessFor({ harness: "claude-code", model: "claude/claude-sonnet-5-5", runsOn: "sandbox" });
+   * // { kind: "key", provider: "anthropic", providerId: "claude", secret: "anthropic-key" }
+   */
+  async accessFor(agent: AccessAgent): Promise<ProviderAccessChoice> {
+    const { choice } = await this.#decide(this.#input.workspace(), agent);
+    return choice;
+  }
+
+  /** The agent's `model` resolved in its hub, its alias's keyed provider, and `providerAccessOf`'s choice. */
+  async #decide(
+    workspace: LoadedWorkspace,
+    agent: AccessAgent,
+  ): Promise<{
+    choice: ProviderAccessChoice;
+    target: ResolvedModelTarget | undefined;
+    alias: { readonly providerId: string } | undefined;
+  }> {
+    const target =
+      agent.model === undefined
+        ? undefined
+        : resolveModel(workspace, agent.hubId ?? null, agent.model);
+    const alias = await this.#aliasAccess(workspace, agent);
+    const choice = providerAccessOf({
+      harness: agent.harness,
+      runsOn: agent.runsOn,
+      providers: filesOf(workspace, "provider").map((file) => file.value),
+      ...(target === undefined ? {} : { modelProvider: target.provider }),
+      ...(alias === undefined ? {} : { aliasProvider: alias.providerId }),
+    });
+    return { choice, target, alias };
   }
 
   /**
@@ -205,7 +239,7 @@ export class ProviderKeyServices {
   /** The keyed provider of an agent whose `model` is an alias, after the app's check. */
   async #aliasAccess(
     workspace: LoadedWorkspace,
-    agent: BridgeAgent,
+    agent: AccessAgent,
   ): Promise<{ readonly providerId: string } | undefined> {
     if (agent.hubId === undefined || agent.model === undefined) return undefined;
     return await this.#input.aliases.access(workspace, agent.hubId, agent.model, agent.harness);
