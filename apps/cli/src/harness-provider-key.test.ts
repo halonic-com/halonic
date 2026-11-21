@@ -198,6 +198,7 @@ verifies("cli.harness-provider-key", () => {
       const told: ProviderAccessChoice[] = [];
 
       const {
+        fakes,
         replies,
         profile: given,
         filesWithKey,
@@ -216,6 +217,9 @@ verifies("cli.harness-provider-key", () => {
       // The program's environment and arguments hold the bridge's stand-in, never the key.
       expect(JSON.stringify(given)).not.toContain(key);
       expect(JSON.stringify(given?.env)).toContain("ANTHROPIC_BASE_URL");
+      // The harness's environment is told the bridge serves Anthropic with a key, so
+      // Claude Code gets a stand-in and doesn't say it isn't logged in (HAL-13795).
+      expect(fakes.bridges.map((bridge) => bridge.keyProviders)).toEqual([["anthropic"]]);
       // No file the program may read holds the key either.
       expect(filesWithKey).toEqual([]);
       // The run log names the provider the key came from, never the key.
