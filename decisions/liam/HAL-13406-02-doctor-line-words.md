@@ -1,6 +1,6 @@
 # Decision: the doctor's lines are worded in the shared words package
 
-- Approval: Liam planned it on HAL-13406 (first-run-progress 4.2, sized on HAL-8005 item 1); Mateo checks it there and Julian signs, because Liam wrote it
+- Approval: Liam planned it on HAL-13406 (first-run-progress 4.2, sized on HAL-8005 item 1); Mateo checked it on HAL-14801 and Julian signs, because Liam wrote it
 - Kind: internal
 - Task: HAL-13406
 
