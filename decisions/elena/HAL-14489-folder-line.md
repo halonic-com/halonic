@@ -1,7 +1,7 @@
 # Decision: the workspace menu fits a narrow window, and the folder line's details from C399
 
 - Task: HAL-14489
-- Approval: team decision under the HAL-2282 rule for a detail of approved screens, no new words (Sofia as designer, rows WM1, MC3, RT1 and WN1 of her C399 check on HAL-14480); Liam reviews the pull request on HAL-14489 and signs this note
+- Approval: team decision under the HAL-2282 rule for a detail of approved screens, no new words (Sofia as designer, rows WM1, MC2, SM1 and WN1 of her C399 check on HAL-14480); Liam reviews the pull request on HAL-14489 and signs this note
 - Kind: user-visible
 
 ## What changes
@@ -11,9 +11,9 @@
   the shared `MiddleCut`; the workspace menu sets it on each Recent row, so its folder is cut in the
   middle like the switcher above it. `MiddleCut` moves from the shell into the kit for this, and the
   shell's switcher, Welcome's Recent and More import it from there.
-- **MC3:** when a folder is cut, its end stops 2em short of the row (was 1.25em), so the start keeps
+- **MC2:** when a folder is cut, its end stops 2em short of the row (was 1.25em), so the start keeps
   its first letter and a whole "…". A folder that isn't cut has no start at all.
-- **RT1:** on a phone, a sample's **Demo** tag on Welcome's Recent sits on the name's line, right
+- **SM1:** on a phone, a sample's **Demo** tag on Welcome's Recent sits on the name's line, right
   after the name; on desktop it stays at the row's right. The row's name is unchanged.
 - **WN1:** the sidebar's switcher and More's workspace row keep their names and are described by
   their whole folder (`aria-describedby` on the folder line), as a menu item's detail already is.
