@@ -8,7 +8,7 @@ Manual checks of how the coding-agent harnesses sign in when they run behind Hal
 
 ## What the Claude Code check does
 
-It opens the run's real bridge, set up for a subscription, puts a small "tap" in front of it, and opens an srt sandbox whose only reachable address is that tap. Claude Code gets the variables its adapter gives it (`ANTHROPIC_BASE_URL`, `ANTHROPIC_CUSTOM_HEADERS`, `CLAUDE_CONFIG_DIR`, `CLAUDE_CODE_TMPDIR`), a home folder of its own, and nothing else from your environment. Then it:
+It opens the run's real bridge, set up for a subscription, puts a small "tap" in front of it, and opens an srt sandbox whose only reachable address is that tap. Claude Code gets the variables its adapter gives it (`ANTHROPIC_BASE_URL`, `ANTHROPIC_CUSTOM_HEADERS`, `CLAUDE_CONFIG_DIR`, `CLAUDE_CODE_TMPDIR`, `HALONIC_RUN_TOKEN`), a home folder of its own, and nothing else from your environment. Then it:
 
 1. Looks for the sign-in: is `.credentials.json` in the settings folder, and (on macOS) which Keychain entries are named "Claude Code…". It reads neither.
 2. Asks `claude auth status`, outside the sandbox and inside it: signed in, yes or no.
