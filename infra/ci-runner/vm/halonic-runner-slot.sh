@@ -4,6 +4,16 @@
 # clean up. The App key never leaves this VM's root-only /etc/halonic-ci/app.pem.
 set -euo pipefail
 SLOT=${1:?slot, e.g. large-1}
+PAUSED=/etc/halonic-ci/paused
+# Paused: register no runner. systemd checks the units' ConditionPathExists only on a manual start,
+# not on a Restart=always restart, so without this a slot kept taking jobs while the weekly cleanup
+# and the hourly cache check waited for it. The sleep keeps a paused slot from restarting every 5 s.
+# --cleanup (ExecStopPost) still runs: it only removes this slot's stale registrations.
+if [ "${2:-}" != "--cleanup" ] && [ -e "$PAUSED" ]; then
+  echo "slot ${SLOT}: paused ($PAUSED exists), not taking a job"
+  sleep 30
+  exit 0
+fi
 . /etc/halonic-ci/pool.env   # APP_ID INSTALLATION_ID ORG RUNNER_GROUP_ID IMAGE
 KEY=/etc/halonic-ci/app.pem
 TRUSTED=/cache/trusted; TRUSTED_PROJ=300; TRUSTED_QUOTA=20g
@@ -19,15 +29,13 @@ esac
 N=${SLOT##*-}
 case "$SLOT" in large-*) PROJ=$((100+N));; small-*) PROJ=$((200+N));; esac
 # Each slot gets its own CPUs, so a job sees only those (nproc, Node's availableParallelism).
-# With --cpus alone it saw all 48 of the VM's, and test runners started a worker per CPU and ran
+# With --cpus alone it saw all of the VM's, and test runners started a worker per CPU and ran
 # out of memory. vCPUs 2k and 2k+1 are SMT siblings, so 6 in a row are 3 whole cores.
-# The small slots share 42-47 with large-8, on purpose: the eight large slots use all 48 vCPUs, and
-# taking 6 away from them would cost every build. The three small slots are capped at 2 CPUs each
-# (--cpus) and run short jobs, so when all are busy large-8 runs slower. Moving them off needs more
-# vCPUs on the VM.
+# On the 80-vCPU VM, the eleven large slots take 0-65 and the three small slots share 66-71, each
+# capped at 2 CPUs (--cpus). 72-79 stay free for the VM itself (Docker, systemd, the status feed).
 case "$SLOT" in
   large-*) CPUSET="$(( (N-1)*6 ))-$(( N*6-1 ))" ;;
-  small-*) CPUSET="42-47" ;;
+  small-*) CPUSET="66-71" ;;
 esac
 
 b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
