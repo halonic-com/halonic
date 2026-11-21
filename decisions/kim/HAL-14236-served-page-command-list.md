@@ -3,6 +3,7 @@
 - Task: HAL-14236
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14236 (spotted in HAL-14219, assigned from HAL-14927). A team decision with no board card.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:uP40blkeg0ekuxiBx/htNRMkA2cDXt8xZZ4BS2r758RjDx7F2fbhQGR4IqXJHhkIS+K7KS3ucRxCQe0pEg1uAw==
 
 ## What changes
 
