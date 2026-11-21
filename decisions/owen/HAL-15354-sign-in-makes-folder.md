@@ -3,6 +3,7 @@
 - Task: HAL-15354, found while fixing HAL-15329
 - Approval: decided by the team on HAL-15354 (a fix to the approved sign-in command, no new flow or wording). Liam signs on review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:eRexuCk532j7ho99pFp3arsQN3TJzUALr9uYkfmu6A4CIKM7Afzq+36k7DRCVBCMJYOEUlMqJujuV+oCB4CQBw==
 
 ## What changes
 
