@@ -3,6 +3,7 @@
 - Task: HAL-15167 (split out of HAL-14831: the board's decision of 21 Nov 18:20 and the out-of-memory note of 18:50)
 - Approval: the board decided the shard split and the move of `fast` (Timothy, 21 Nov, HAL-14831) and asked for the memory fix (HAL-15167); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jtcUPU4Hg+hNv1lTUgldfu98qxkvAPs7BfAFLR+tBFwFTonOWTHFG1DmnVuX7UXAsscNuECWj7Krp7fO4bsBBQ==
 
 ## What changes
 
