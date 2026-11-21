@@ -357,9 +357,8 @@ export class FakeRemoteControl implements RemoteControl {
     this.pairingNow = undefined;
     this.change({ pairing: false });
     pairing.session.end(reason, this.current.tunnel);
-    if (pairing.turnedOn && this.current.phones.length === 0 && reason !== "remote-off") {
-      void this.setRemote(false);
-    }
+    // A pairing that paired a phone never ends here: Allow clears it first.
+    if (pairing.turnedOn && reason !== "remote-off") void this.setRemote(false);
   }
 
   /** Gives the pairing a new code that works, dropping a phone that waited at `check`. */
