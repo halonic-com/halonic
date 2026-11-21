@@ -52,7 +52,21 @@ is the reference.
    terminal, leaves it added but off; a script passes
    `--yes --fingerprint <fingerprint>` (see Trust below).
 7. Give an agent its tools: add the plugin's connector to a workspace. A
-   workspace names the plugin; it can't trust it.
+   workspace names the plugin; it can't trust it. Write a connector file,
+   such as `library/connectors/my-plugin.connector.yaml`, that names the
+   plugin by its id:
+
+   ```yaml
+   name: My plugin
+   transport:
+     plugin:
+       id: my-plugin
+   ```
+
+   Then list the connector, by its file name without `.connector.yaml`, in
+   the agent: `connectors: [my-plugin]`. When the plugin reaches a host,
+   also set `privacy.localOnly: false` in `workspace.yaml`; `halonic validate`
+   reports it while that is still `true`.
 
 ## Run it and see errors
 
@@ -61,8 +75,13 @@ is the reference.
   for example
   `✕ Couldn't add the plugin: plugin.yaml 21:13 backend.tools[0].risk: Invalid option: expected one of "read"|"write"|"send"`.
   `halonic validate` checks a workspace, not a plugin folder.
-- **After you edit:** a changed file changes the fingerprint, so the plugin is
-  off until you trust it again. `halonic plugin list` shows it as "changed
+- **After you edit:** `plugin add` copies the plugin into the `plugins/<id>`
+  folder of Halonic's data folder (`HALONIC_HOME`, see the
+  [CLI README](../../apps/cli/README.md#environment)), and Halonic runs that
+  copy. Editing the folder you added it from changes nothing, although
+  `halonic plugin list` shows that folder as the plugin's source. Edit the
+  copy, or remove the plugin and add it again (see below). A changed file
+  changes the fingerprint, so the plugin is off until you trust it again. `halonic plugin list` shows it as "changed
   since you trusted it"; run `halonic trust --plugin <id>` and read the check.
 - **Adding it twice is refused** ("is already added"). Removing it deletes its
   settings and the API key you entered, so after `plugin remove` you enter them
