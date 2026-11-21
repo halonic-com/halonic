@@ -167,14 +167,13 @@ const RUNTIME_INSTALL_LIMIT: Duration = Duration::from_secs(300);
 /// say the distro has none, so the host starts on whatever it has and the
 /// log says why (HAL-15147).
 pub(super) fn install_bundled_runtime(wsl: &Path, app_folder: &Path) -> Result<(), String> {
-    let status = runtime_command(wsl, RuntimeStep::Status)
-        .and_then(|command| run_runtime_step_within(command, STATUS_LIMIT));
-    let current = status.as_deref().map(current_runtime);
-    let current = current
-        .as_ref()
-        .map(Option::as_deref)
-        .map_err(|error| *error);
-    let known = current.ok().flatten();
+    let read_current = || {
+        runtime_command(wsl, RuntimeStep::Status)
+            .and_then(|command| run_runtime_step_within(command, STATUS_LIMIT))
+            .map(|printed| current_runtime(&printed))
+    };
+    let mut current = read_current();
+    let known = current.as_ref().ok().and_then(Option::as_deref);
     let update = bundled_runtime(app_folder).and_then(|bundled| {
         bundled
             .map(|bundled| {
@@ -183,7 +182,16 @@ pub(super) fn install_bundled_runtime(wsl: &Path, app_folder: &Path) -> Result<(
             })
             .transpose()
     });
-    let (line, outcome) = runtime_ending(current, update);
+    // A stopped install may still finish in the distro, so `status` is read
+    // again before the start is refused for want of a runtime (HAL-15233).
+    // A second read that fails keeps the first answer.
+    if update.is_err()
+        && matches!(current, Ok(None))
+        && let Ok(again) = read_current()
+    {
+        current = Ok(again);
+    }
+    let (line, outcome) = runtime_ending(current.as_ref().map(Option::as_deref), update);
     halonic_shell_log::record("wsl", line);
     outcome
 }
