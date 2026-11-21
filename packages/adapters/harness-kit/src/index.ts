@@ -41,6 +41,7 @@ export {
 } from "./profile-host.ts";
 export { programEnvironment } from "./program-environment.ts";
 export { type ReadLinesOptions, readLines } from "./read-lines.ts";
+export { type ResolvedRealPath, resolveRealPath } from "./real-path.ts";
 export {
   instructionFilesOf,
   RunInstructions,
