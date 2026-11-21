@@ -7,7 +7,7 @@ verifies("studio.workspace-liveness", () => {
   it("reads a routine's live state by its file and gives the page what the live version starts", async () => {
     const asked: string[] = [];
     const { host } = setup({
-      liveness: async (path) => {
+      liveness: async () => async (path) => {
         asked.push(path);
         return {
           live: {
@@ -42,7 +42,7 @@ verifies("studio.workspace-liveness", () => {
 
   it("counts a routine no version has as never live, and one without the part as live", async () => {
     const never = setup({
-      liveness: async () => ({
+      liveness: async () => async () => ({
         live: null,
         saved: null,
         savedProblems: [],
@@ -77,7 +77,7 @@ const liveWeekly: Routine = {
 function savedButNotLive(saved: string, live: Routine | null, never = false) {
   return setup(
     {
-      liveness: async () => ({
+      liveness: async () => async () => ({
         live,
         saved: null,
         savedProblems: [],

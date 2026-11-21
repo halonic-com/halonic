@@ -108,7 +108,7 @@ verifies("studio.workspace-liveness", () => {
     it("gives the routine as the last version has it", async () => {
       const change: VcsChange = { path, status: "modified", staged: false };
       const { subject } = liveness(ready(change), { [path]: tuesdays }, { before: mondays });
-      const versions = await subject.routineVersions(path);
+      const versions = await (await subject.routineVersionsAt())(path);
       expect(versions.liveState.state).toBe("not-live");
       expect(versions.live?.trigger).toEqual({ schedule: "0 9 * * 1" });
       expect(versions.saved?.trigger).toEqual({ schedule: "0 9 * * 2" });
@@ -152,7 +152,7 @@ verifies("studio.workspace-liveness", () => {
         expect(await stateNow()).toBe("live");
         write(tuesdays);
         expect(await stateNow()).toBe("not-live");
-        expect((await subject.routineVersions(path)).live?.trigger).toEqual({
+        expect((await (await subject.routineVersionsAt())(path)).live?.trigger).toEqual({
           schedule: "0 9 * * 1",
         });
         await changes.createVersion({ message: "On Tuesdays", paths: [path] });

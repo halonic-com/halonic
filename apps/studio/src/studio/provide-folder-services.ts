@@ -301,7 +301,7 @@ export function provideFolderServices(
     new WorkspaceRoutines({
       files: services.get(workspaceFilesKey),
       onChange: onLivenessChange,
-      liveness: (path) => liveness.routineVersions(path),
+      liveness: () => liveness.routineVersionsAt(),
       runs: services.get(RunsSourceService),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       now: () => new Date(),

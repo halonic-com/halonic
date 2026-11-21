@@ -1,9 +1,8 @@
 import { shortRunId } from "@halonicjs/app";
 import type { RoutineVersions } from "@halonicjs/app/routines";
 import type { RunSummary } from "@halonicjs/events";
-import type { Routine } from "@halonicjs/format";
 import type { DefinitionSource } from "@halonicjs/ports";
-import { CronError, describeTrigger, nextRun, routineKey, routineStart } from "@halonicjs/routines";
+import { describeTrigger, routineKey, routineStart } from "@halonicjs/routines";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import {
   EngineNotAnswering,
@@ -29,6 +28,7 @@ import {
 import { StartRefused } from "@halonicjs/studio-feature-workflows/api";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { editYaml } from "@halonicjs/yaml";
+import type { RoutineVersionsAt } from "../changes/workspace-liveness.ts";
 import type { RoutineRunStart } from "../engine/engine-service.ts";
 import { WindowCantStart } from "../engine/page-refusal.ts";
 import {
@@ -40,9 +40,10 @@ import {
   targetOfFile,
   triggerOfFile,
 } from "./routine-files.ts";
-import { livenessOf, runningOf } from "./routine-liveness.ts";
+import { listedVersionsAt, livenessOf, runningOf } from "./routine-liveness.ts";
 import {
   errorsOf,
+  findRoutine,
   idOf,
   mailboxesOf,
   nameKey,
@@ -56,13 +57,13 @@ import {
   startedByOf,
   startsOwner,
   summaryOf,
-  targetFor,
   targetFound,
   targetName,
   targetStartsProgram,
   targetsOf,
+  targetWithPrompt,
 } from "./routine-reads.ts";
-import { nextTimesOf, triggerProblems } from "./routine-times.ts";
+import { nextRunOf, nextTimesOf, triggerProblems } from "./routine-times.ts";
 
 /** What {@link WorkspaceRoutines} needs of the workspace's files, runs, clock and engine. */
 export interface WorkspaceRoutinesParts {
@@ -98,10 +99,13 @@ export interface WorkspaceRoutinesParts {
   /** Calls `listener` each time the scheduler adds to a routine's skips, which starts no run. */
   readonly onSkips?: (listener: () => void) => () => void;
   /**
-   * The routine at a path from the workspace folder, as the live version has it and as it is saved
-   * (core's `routineVersions`). Without it a routine counts as live and unchanged.
+   * Reads the live version once, then gives the routine at a path from the workspace folder as that
+   * version has it and as it is saved (core's `routineVersions`). Without it a routine counts as
+   * live and unchanged.
    */
-  readonly liveness?: (path: string) => Promise<RoutineVersions>;
+  readonly liveness?: () => Promise<RoutineVersionsAt>;
+  /** Hears why a list fell back to the saved files; the console when absent. */
+  readonly reportError?: (error: unknown) => void;
   /**
    * Opens Create version with only `paths` in it (source control's `VersionDialogService`), and
    * answers once a version is made or the dialog is closed. Absent where the app can't offer that,
@@ -124,17 +128,6 @@ export interface WorkspaceRoutinesParts {
 
 /** How many of a routine's newest runs the Runs view lists. */
 const RUNS_SHOWN = 20;
-
-/**
- * What a new routine made from `choice` runs. An agent's prompt is its real task, so an agent with
- * no prompt is refused rather than written with a stand-in.
- */
-function targetWithPrompt(choice: RoutineTargetChoice, prompt: string): RoutineTarget {
-  if (choice.kind === "agent" && prompt.trim() === "") {
-    throw new KindedError("invalid_input", `Say what ${choice.name} should do.`);
-  }
-  return targetFor(choice, prompt);
-}
 
 /**
  * The Routines feature's host (`studio.workspace-routines`), over the workspace's files: every
@@ -192,16 +185,17 @@ export class WorkspaceRoutines implements RoutinesHost {
   }
 
   async list(): Promise<readonly RoutineListing[]> {
-    const [workspace, runs, trusted] = await Promise.all([
+    const [workspace, runs, trusted, versionsAt] = await Promise.all([
       this.#load(),
       this.#parts.runs.list(),
       this.#parts.trusted?.() ?? true,
+      this.#listedVersionsAt(),
     ]);
     const now = this.#parts.now();
     const listings = await Promise.all(
       routineFiles(workspace).map(async (file): Promise<RoutineListing> => {
         const own = runsOf(runs, routineKeyOf(file));
-        const routine = await this.#running(file);
+        const routine = runningOf(file, await versionsAt(file.path));
         const target = targetOfFile(file.value.run, file.hub);
         return {
           hubId: file.hub,
@@ -210,7 +204,7 @@ export class WorkspaceRoutines implements RoutinesHost {
           enabled: file.value.enabled,
           summary: summaryOf(workspace, routine, file.hub),
           targetName: targetName(workspace, file),
-          nextRun: this.#nextRunOf(routine, now),
+          nextRun: nextRunOf(routine, now, this.#parts.timeZone),
           targetKind: target.kind,
           targetFound: targetFound(workspace, target),
           problems: errorsOf(workspace, file),
@@ -226,11 +220,11 @@ export class WorkspaceRoutines implements RoutinesHost {
 
   async read(ref: RoutineRef): Promise<RoutineView> {
     const workspace = await this.#load();
-    const file = this.#find(workspace, ref);
+    const file = findRoutine(workspace, ref);
     const { value } = file;
     this.#names.set(nameKey(ref), value.name);
     const target = targetOfFile(value.run, file.hub);
-    const versions = await this.#parts.liveness?.(file.path);
+    const versions = await this.#versionsOf(file);
     return {
       ...ref,
       name: value.name,
@@ -257,20 +251,20 @@ export class WorkspaceRoutines implements RoutinesHost {
 
   async targets(ref: RoutineRef): Promise<readonly RoutineTargetChoice[]> {
     const workspace = await this.#load();
-    this.#find(workspace, ref);
+    findRoutine(workspace, ref);
     return targetsOf(workspace, ref.hubId);
   }
 
   async mailboxes(ref: RoutineRef): Promise<readonly RoutineMailbox[]> {
     const workspace = await this.#load();
-    this.#find(workspace, ref);
+    findRoutine(workspace, ref);
     return mailboxesOf(workspace, ref.hubId);
   }
 
   /** Writes the fields present as edits of the routine's file, which keep its comments and layout. */
   async save(ref: RoutineRef, changes: RoutineChanges): Promise<void> {
     const workspace = await this.#load();
-    const file = this.#find(workspace, ref);
+    const file = findRoutine(workspace, ref);
     const path = routinePath(ref);
     const text = await this.#parts.files.read(path);
     if (text === null) throw routineGone();
@@ -285,13 +279,14 @@ export class WorkspaceRoutines implements RoutinesHost {
 
   async nextTimes(ref: RoutineRef, count: number): Promise<RoutineNextTimes> {
     const workspace = await this.#load();
-    const routine = await this.#running(this.#find(workspace, ref));
+    const file = findRoutine(workspace, ref);
+    const routine = runningOf(file, await this.#versionsOf(file));
     return nextTimesOf(ref.hubId, routine, count, this.#parts);
   }
 
   async runs(ref: RoutineRef): Promise<RoutineRuns> {
     const workspace = await this.#load();
-    const { value } = this.#find(workspace, ref);
+    const { value } = findRoutine(workspace, ref);
     const key = routineKey({ hub: ref.hubId, routine: value });
     const runs = runsOf(await this.#parts.runs.list(), key)
       .slice(0, RUNS_SHOWN)
@@ -315,7 +310,7 @@ export class WorkspaceRoutines implements RoutinesHost {
   async trash(ref: RoutineRef): Promise<TrashedRoutine> {
     const { files } = this.#parts;
     const workspace = await this.#load();
-    const { value } = this.#find(workspace, ref);
+    const { value } = findRoutine(workspace, ref);
     files.change(`Deleted routine ${value.name}`, { [routinePath(ref)]: null });
     const afterDelete = files.step;
     return {
@@ -353,16 +348,17 @@ export class WorkspaceRoutines implements RoutinesHost {
     const files = routineFiles(workspace).filter(
       (file) => file.hub === owner.hubId && startsOwner(file, owner),
     );
+    const versionsAt = await this.#listedVersionsAt();
     const rows = await Promise.all(
       files.map(async (file): Promise<TriggerRow> => {
-        const routine = await this.#running(file);
+        const routine = runningOf(file, await versionsAt(file.path));
         return {
           hubId: file.hub,
           id: idOf(file),
           name: file.value.name,
           enabled: file.value.enabled,
           sentence: describeTrigger(routine.trigger),
-          nextRun: this.#nextRunOf(routine, now),
+          nextRun: nextRunOf(routine, now, this.#parts.timeZone),
         };
       }),
     );
@@ -407,7 +403,7 @@ export class WorkspaceRoutines implements RoutinesHost {
     engine: NonNullable<WorkspaceRoutinesParts["engine"]>,
   ): Promise<RunNowResult> {
     const view = await this.read(ref);
-    const { value } = this.#find(await this.#load(), ref);
+    const { value } = findRoutine(await this.#load(), ref);
     if (this.#parts.trusted !== undefined && !(await this.#parts.trusted())) {
       return { started: false, refusal: { reason: "not-trusted" } };
     }
@@ -438,31 +434,19 @@ export class WorkspaceRoutines implements RoutinesHost {
     }
   }
 
-  /** The routine at `file` as the scheduler runs it; see {@link runningOf}. */
-  async #running(file: PlacedFile): Promise<Routine> {
-    return runningOf(file, await this.#parts.liveness?.(file.path));
+  /** The versions of one routine, for its page and Next: a history that can't be read rejects, so the page says why. */
+  async #versionsOf(file: PlacedFile): Promise<RoutineVersions | undefined> {
+    const versionsAt = await this.#parts.liveness?.();
+    return versionsAt?.(file.path);
   }
 
-  /**
-   * The next time `routine`, as it runs, starts on its own; none when it is off or its trigger
-   * isn't a clock or doesn't parse.
-   */
-  #nextRunOf(routine: Routine, now: Date): string | undefined {
-    if (!routine.enabled) return undefined;
-    try {
-      return nextRun(routine.trigger, now, this.#parts.timeZone)?.toISOString();
-    } catch (error) {
-      if (error instanceof CronError) return undefined;
-      throw error;
-    }
-  }
-
-  #find(workspace: LoadedWorkspace, ref: RoutineRef): PlacedFile {
-    const file = routineFiles(workspace).find(
-      (one) => one.hub === ref.hubId && idOf(one) === ref.id,
+  /** The versions of every routine a list shows, from one read; see {@link listedVersionsAt}. */
+  #listedVersionsAt() {
+    const { liveness, reportError } = this.#parts;
+    return listedVersionsAt(
+      liveness,
+      reportError ?? ((error) => console.error("Reading which routines are live", error)),
     );
-    if (file === undefined) throw routineGone();
-    return file;
   }
 
   /** Loads the workspace from its files as they are now, and keeps its hubs for {@link WorkspaceRoutines.hubs}. */
