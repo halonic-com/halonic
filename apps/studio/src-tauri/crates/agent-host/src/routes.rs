@@ -317,6 +317,45 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/unfenced-runs/take-back",
         route(Method::Post, "/v1/unfenced-runs/take-back", Answer::Json),
     ),
+    // Settings › Remote (HAL-12237): the host keeps remote's rules and the
+    // phones; the page only shows the state and asks. Leaving the pairing's
+    // stream closes the pairing.
+    (
+        "GET /v1/remote/state",
+        route(Method::Get, "/v1/remote/state", Answer::Stream),
+    ),
+    (
+        "POST /v1/remote/on",
+        route(Method::Post, "/v1/remote/on", Answer::Json),
+    ),
+    (
+        "POST /v1/remote/allow-risky",
+        route(Method::Post, "/v1/remote/allow-risky", Answer::Json),
+    ),
+    (
+        "POST /v1/remote/revoke",
+        route(Method::Post, "/v1/remote/revoke", Answer::Json),
+    ),
+    (
+        "POST /v1/remote/revoke-all",
+        route(Method::Post, "/v1/remote/revoke-all", Answer::Json),
+    ),
+    (
+        "POST /v1/remote/pairing",
+        route(Method::Post, "/v1/remote/pairing", Answer::Stream),
+    ),
+    (
+        "POST /v1/remote/pairing/answer",
+        route(Method::Post, "/v1/remote/pairing/answer", Answer::Json),
+    ),
+    (
+        "POST /v1/remote/pairing/new-code",
+        route(Method::Post, "/v1/remote/pairing/new-code", Answer::Json),
+    ),
+    (
+        "POST /v1/remote/pairing/close",
+        route(Method::Post, "/v1/remote/pairing/close", Answer::Json),
+    ),
 ];
 
 /// The route a page names, when it is one of the table's and answers as

@@ -61,6 +61,13 @@ export const agentHostRequestRoutes = [
   "GET /v1/unfenced-runs",
   "POST /v1/unfenced-runs/allow",
   "POST /v1/unfenced-runs/take-back",
+  "POST /v1/remote/on",
+  "POST /v1/remote/allow-risky",
+  "POST /v1/remote/revoke",
+  "POST /v1/remote/revoke-all",
+  "POST /v1/remote/pairing/answer",
+  "POST /v1/remote/pairing/new-code",
+  "POST /v1/remote/pairing/close",
 ] as const;
 
 /** The agent host's routes that answer with an NDJSON stream. */
@@ -68,6 +75,8 @@ export const agentHostStreamRoutes = [
   "POST /v1/sandbox/sessions/blocked",
   "POST /v1/bridge/open",
   "POST /v1/harnesses/runs/start",
+  "GET /v1/remote/state",
+  "POST /v1/remote/pairing",
 ] as const;
 
 export type AgentHostRequestRoute = (typeof agentHostRequestRoutes)[number];
