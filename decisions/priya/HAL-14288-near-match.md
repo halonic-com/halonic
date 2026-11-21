@@ -3,6 +3,7 @@
 - Task: HAL-14288
 - Approval: Liam approves this note in review on HAL-14288 (one task per PR, HAL-11702)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9TwYBu+6i0f2FcoPJmOnuEgqAaMsD8dsvT+GkibVZ6vugD+Li1An30IpRnr+HlLWMRyGFdvalssPiLrvLNm+Cw==
 
 ## What changes
 
