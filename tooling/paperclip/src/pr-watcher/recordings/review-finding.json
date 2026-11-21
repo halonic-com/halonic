@@ -1,0 +1,41 @@
+{
+  "/repos/halonic-com/halonic/pulls/4588": {
+    "html_url": "https://github.com/halonic-com/halonic/pull/4588",
+    "state": "open",
+    "merged_at": null,
+    "merge_commit_sha": "0509394472d37b4937fe148536e1a821c57ebe62",
+    "mergeable": null,
+    "head": {
+      "sha": "7651f8c1e4af38752f56d353156c5dd19ff54984",
+      "ref": "priya/HAL-14219-engine-contract"
+    },
+    "base": {
+      "ref": "main"
+    }
+  },
+  "/repos/halonic-com/halonic/commits/7651f8c1e4af38752f56d353156c5dd19ff54984/check-runs?check_name=ci-ok&per_page=100": {
+    "total_count": 1,
+    "check_runs": [
+      {
+        "name": "ci-ok",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-21T20:41:55Z"
+      }
+    ]
+  },
+  "/repos/halonic-com/halonic/pulls/4588/reviews?per_page=100&page=1": [],
+  "/repos/halonic-com/halonic/pulls/4588/comments?sort=created&direction=desc&per_page=100": [],
+  "/repos/halonic-com/halonic/issues/4588/comments?per_page=100&page=1": [
+    {
+      "id": 7068971810,
+      "created_at": "2026-11-21T20:44:22Z",
+      "body": "(recorded comment)"
+    },
+    {
+      "id": 7069067870,
+      "created_at": "2026-11-21T20:52:27Z",
+      "body": "- [major] (recorded finding)"
+    }
+  ]
+}

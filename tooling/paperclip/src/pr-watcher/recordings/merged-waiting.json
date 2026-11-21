@@ -1,0 +1,41 @@
+{
+  "/repos/halonic-com/halonic/pulls/4574": {
+    "html_url": "https://github.com/halonic-com/halonic/pull/4574",
+    "state": "closed",
+    "merged_at": "2026-11-21T20:50:47Z",
+    "merge_commit_sha": "8510cebd781c3b56403ad98d9faa711e94d23b12",
+    "mergeable": null,
+    "head": {
+      "sha": "bbb446a8c2bcd875e10a8e3dce3a49f5fe3b961b",
+      "ref": "mateo/HAL-14831-03-slot-layout"
+    },
+    "base": {
+      "ref": "main"
+    }
+  },
+  "/repos/halonic-com/halonic/commits/8510cebd781c3b56403ad98d9faa711e94d23b12/check-runs?check_name=ci-ok&per_page=100": {
+    "total_count": 1,
+    "check_runs": [
+      {
+        "name": "ci-ok",
+        "status": "queued",
+        "conclusion": null,
+        "started_at": "2026-11-21T21:13:26Z"
+      }
+    ]
+  },
+  "/repos/halonic-com/halonic/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1": {
+    "workflow_runs": [
+      {
+        "head_sha": "54d9e0b98d0a4c1c0ee398b0f1a07ddc250071cf",
+        "conclusion": "success",
+        "created_at": "2026-11-21T20:42:17Z"
+      }
+    ]
+  },
+  "/repos/halonic-com/halonic/compare/8510cebd781c3b56403ad98d9faa711e94d23b12...54d9e0b98d0a4c1c0ee398b0f1a07ddc250071cf": {
+    "status": "behind",
+    "ahead_by": 0,
+    "behind_by": 9
+  }
+}

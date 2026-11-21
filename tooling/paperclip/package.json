@@ -1,0 +1,28 @@
+{
+  "name": "@halonicjs/tooling-paperclip",
+  "private": true,
+  "type": "module",
+  "description": "Scripts that run beside Paperclip without a model: the PR watcher and the reviewer path list.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "tooling",
+    "owner": "mateo",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}
