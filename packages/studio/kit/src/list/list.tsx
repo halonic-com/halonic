@@ -11,7 +11,8 @@ import { checkColumns } from "./row-columns.tsx";
 
 /**
  * A bordered group of rows: agents, routines, runs. It's one Tab stop: ↑ ↓ move between rows,
- * → reaches a row's More button, Enter opens and Space selects when the list allows it.
+ * → reaches a row's actions and its More button, Enter opens and Space selects when the list allows
+ * it.
  *
  * It's a one-column `grid` (plus the checkbox and More buttons' columns), because rows hold a
  * button and can be selected; a `listbox` can't hold buttons.
@@ -61,7 +62,8 @@ export function List<Id extends string>({
   const allRows = sections.flatMap((section) => section.rows);
   const hasMore = allRows.some((row) => row.more !== undefined);
   const hasCheck = onOpen !== undefined && selection !== undefined;
-  const grid = useGridNavigation(gridRows(sections, hasCheck, hasMore), {
+  const actionColumns = allRows.reduce((most, row) => Math.max(most, row.actions?.length ?? 0), 0);
+  const grid = useGridNavigation(gridRows(sections, { hasCheck, actionColumns, hasMore }), {
     startColumn: firstFocusColumn(hasCheck),
     // Tab enters at the first row that does something; the arrows still reach the inert ones.
     startRow: allRows.find((row) => row.inert !== true)?.id,
@@ -107,6 +109,7 @@ export function List<Id extends string>({
     chevrons,
     hasMore,
     hasCheck,
+    actionColumns,
     grid,
     onOpen,
     onOpenInNewTab,
@@ -229,21 +232,37 @@ function headingRowId(groupId: string): string {
   return `group-heading:${groupId}`;
 }
 
+/** Which of the grid's columns the List has, besides the main cell's. */
+interface GridColumns {
+  readonly hasCheck: boolean;
+  /** The most actions any row has: each takes a column of its own after the main cell. */
+  readonly actionColumns: number;
+  readonly hasMore: boolean;
+}
+
 /** The grid as `useGridNavigation` sees it: every heading row and row, in order. */
 function gridRows<Id extends string>(
   sections: readonly ListSection<Id>[],
-  hasCheck: boolean,
-  hasMore: boolean,
+  columns: GridColumns,
 ): GridRow[] {
   return sections.flatMap((section) => [
     ...(section.heading === undefined ? [] : [{ id: headingRowId(section.id), cells: [] }]),
-    ...section.rows.map((row) => ({ id: row.id, cells: gridCells(row, hasCheck, hasMore) })),
+    ...section.rows.map((row) => ({ id: row.id, cells: gridCells(row, columns) })),
   ]);
 }
 
-/** A row's focusable cells: its checkbox, its main cell and its More button. */
-function gridCells(row: AnyListRow, hasCheck: boolean, hasMore: boolean): boolean[] {
-  return [...(hasCheck ? [true] : []), true, ...(hasMore ? [row.more !== undefined] : [])];
+/**
+ * A row's focusable cells: its checkbox, its main cell, its actions and its More button. A row
+ * with fewer actions than another leaves those columns empty, so its More button lines up.
+ */
+function gridCells(row: AnyListRow, { hasCheck, actionColumns, hasMore }: GridColumns): boolean[] {
+  const actions = row.actions?.length ?? 0;
+  return [
+    ...(hasCheck ? [true] : []),
+    true,
+    ...Array.from({ length: actionColumns }, (_, index) => index < actions),
+    ...(hasMore ? [row.more !== undefined] : []),
+  ];
 }
 
 interface SectionProps<Id extends string> {

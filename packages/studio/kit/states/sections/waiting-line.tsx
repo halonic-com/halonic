@@ -5,7 +5,7 @@ const noAction = () => undefined;
 
 export const waitingLineSection: PartSection = {
   id: "waiting-line",
-  number: "15.7",
+  number: "15.8",
   name: "WaitingLine",
   order:
     "first-run-progress section 2 · top to bottom: inline, row, banner · nothing shows before 2 s",

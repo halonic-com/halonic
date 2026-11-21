@@ -77,9 +77,27 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
    * before it finishes."
    */
   readonly metaDescribes?: boolean;
+  /**
+   * A part under the meta line, in the text column, as a setup step's WaitingLine while it checks
+   * something. It isn't in the row's name: a status line inside it speaks for itself.
+   */
+  readonly under?: ReactNode;
+  /**
+   * Text buttons under the meta line, as a setup step's ways out of a problem: Check again, Open
+   * Models, Something wrong?. Each is a cell of the grid after the main cell, so → reaches them
+   * and the List stays one Tab stop. A click on one doesn't open the row.
+   */
+  readonly actions?: readonly ListRowAction[];
   readonly tag?: never;
   readonly cells?: never;
   readonly child?: never;
+}
+
+/** One of a row's text buttons: "Check again". */
+export interface ListRowAction {
+  /** A verb or a question that says what happens. Unique in its row: it's the button's key. */
+  readonly label: string;
+  readonly onClick: () => void;
 }
 
 /** One item in a List with `columns`: a run in the Runs list. */
@@ -95,6 +113,8 @@ interface ListColumnsRowBase<Id extends string> extends ListRowBase<Id> {
   readonly inert?: never;
   readonly wrap?: never;
   readonly metaDescribes?: never;
+  readonly under?: never;
+  readonly actions?: never;
 }
 
 /** A row on its own: its `label` is optional. */
