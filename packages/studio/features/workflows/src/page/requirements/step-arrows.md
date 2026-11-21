@@ -15,5 +15,5 @@ When a step that isn't an end has its docked card and the host can change arrows
 - Given Move up on arrow 2 is picked twice before the first move is written, then the arrow moves once.
 - Given `sort`, when the user picks `done` in Go to… and presses Add, then "3 → done on done" is added and "Arrow added: sort to done." is announced; pressing Add with nothing picked puts focus on Go to….
 - Given a host that can't change the file, then Add shows the toast "Couldn't change step sort" and the rows stay.
-- Given `write`, then Arrows in lists "From sort" and "From approve"; pressing "From approve" opens "Step approve" with focus on its title.
+- Given `write`, then Arrows in lists "From sort" and "From approve"; pressing "From approve" opens "approve" with focus on its title.
 - Given `sort` has two arrows to `write` and `write` one to itself, then Arrows in on `write` still lists "From sort" once and not "From write".

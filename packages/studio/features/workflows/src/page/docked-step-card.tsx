@@ -115,7 +115,7 @@ const noCheck = (): null => null;
 
 /**
  * The card docked at the right that edits a picked step (`workflows.page.step-card`, flow-workflows
- * 5.1 and 5.2): the breadcrumb, "Step triage" as its title, then the fields the step's kind has.
+ * 5.1 and 5.2): the breadcrumb, the step's name ("triage") as its title, then the fields the step's kind has.
  * Each field saves by itself, after a pause in typing and when it is left; a field with a mistake
  * isn't saved. The canvas beside it stays usable and undimmed.
  */
@@ -165,7 +165,7 @@ export function DockedStepCard({
     // biome-ignore lint/a11y/noStaticElementInteractions: Escape from any field in the card closes it.
     <div onKeyDown={onKeyDown} className="w-panel max-w-full shrink-0 shadow-2">
       <SidePanel
-        title={words.title(step.id)}
+        title={words.title(step)}
         onClose={onClose}
         actions={
           <Button

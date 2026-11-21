@@ -116,7 +116,7 @@ verifies("workflows.canvas.toolbar", () => {
     });
 
     const title = page.querySelector("aside h2");
-    expect(title?.textContent).toBe("Step wait-2");
+    expect(title?.textContent).toBe("wait-2");
     expect(document.activeElement).toBe(title);
     const added = [...page.querySelectorAll<HTMLElement>("button[aria-pressed]")].find(
       (card) => card.querySelector("[title]")?.textContent === "wait-2",

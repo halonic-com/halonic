@@ -1,4 +1,4 @@
-import type { WorkflowStepProgram, WorkflowStepType } from "../api.ts";
+import type { WorkflowStep, WorkflowStepProgram, WorkflowStepType } from "../api.ts";
 
 /** An arrow's place in its step's list, as "Arrow 2 is now first." says it. */
 const places = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth"];
@@ -34,7 +34,11 @@ export const pageWords = {
   },
   /** The docked step card (flow-workflows 5.1, 5.2; microcopy 9.4). */
   stepCard: {
-    title: (stepId: string) => `Step ${stepId}`,
+    /**
+     * The card's title: the step's name as its card on the canvas shows it, its title or else its
+     * id. No "Step" before it, which read "Step step-1" for a new step (C544, HAL-15120).
+     */
+    title: (step: Pick<WorkflowStep, "id" | "title">) => step.title ?? step.id,
     breadcrumb: (workflowName: string, stepId: string) => `${workflowName} › ${stepId}`,
     close: "Close step",
     type: "Type",

@@ -10,7 +10,7 @@ When the host can add steps, the workflows feature shall show a toolbar at the t
 
 - Given Support reply, then the canvas's top left has Step, Wait and Auto layout, heard as "Add step", "Add wait" and "Auto layout", and in high contrast the divider shows in the text's colour.
 - Given cards ending at x 448 with the right-most one at y 133, when Step is pressed, then the new step goes at (500, 140), and once it shows it is selected.
-- Given Support reply at 200 % on a host that can change steps, when Wait is pressed, then once `wait-2` shows its card opens with "Step wait-2" focused, and the canvas pans until `wait-2` shows whole, left of the card.
+- Given Support reply at 200 % on a host that can change steps, when Wait is pressed, then once `wait-2` shows its card opens with "wait-2" focused, and the canvas pans until `wait-2` shows whole, left of the card.
 - Given a step `done` the person moved, when Auto layout is pressed, then the host forgets the places; with no places saved, the host isn't asked.
 - Given the host can't change the file, when Step is pressed, then a danger toast says "Couldn't change Support reply" and why.
 - Given a host that can't add steps, or a phone, then the canvas has no toolbar.

@@ -132,7 +132,7 @@ verifies("workflows.page.guide-card", () => {
       (card) => card.querySelector("[title]")?.textContent === "write",
     );
     await press(write);
-    expect(page.querySelector("aside h2")?.textContent).toBe("Step write");
+    expect(page.querySelector("aside h2")?.textContent).toBe("write");
     expect(guideCardOf(page)).toBeNull();
   });
 
