@@ -8,7 +8,7 @@
 
 **What changes for the requirements.** `cli.workspace-file-problems` says that `run` and `runs send` refuse for the errors that stop the run's workflow, and its examples change: a broken `weekly-report` no longer stops `support-reply`, and a missing default alias stops it for its own hub's agents only ("1 problem", not "2"). `studio.workspace-workflows` says a workflow has the errors elsewhere that stop its run, not only its agents'. In Studio, an error in a provider, `workspace.yaml`, a hub file, a called workflow or the default alias now makes Run unavailable, where it didn't before; a folder without `workspace.yaml` stops every run, in Studio as in the CLI.
 
-**The refusal names the files.** Line 1 said only "Acme has 1 problem in its files." It now names the files that stop the run: one or two by path, three or more as the first and "and 2 other files", in the order `halonic validate` lists them; when none of those errors is in a file, it keeps "in its files". The count, the exit code, the fix line and `doctor` stay as they are, and the problems themselves are still not repeated, so a key pasted into a file never shows.
+**The refusal names the files.** Line 1 said only "Acme has 1 problem in its files." It now names the files that stop the run: one or two by path, three or more as the first and "and 2 other files", in the order `halonic validate` lists them; when none of those errors is in a file, it keeps "in its files". The example of `workspace.local-only-sheet-hosts` quotes that line, so it now names the connector's file too. The count, the exit code, the fix line and `doctor` stay as they are, and the problems themselves are still not repeated, so a key pasted into a file never shows.
 
 **Studio's band.** The workflow page's problems band ("Support reply can't run: it has 2 problems.") never said what to do, while the start card did. It now has the start card's own words as its second line, "Fix them before it can run." ("Fix it …" for one). Its first line, that the problems stop the workflow, a terminal's run too, is now true, as both count the same errors.
 
@@ -18,3 +18,4 @@
 - cli.commands.test.run-tests
 - workflows.start.start-run
 - studio.workspace-workflows
+- workspace.local-only-sheet-hosts

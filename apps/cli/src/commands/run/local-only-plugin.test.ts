@@ -140,7 +140,7 @@ verifies("workspace.local-only-sheet-hosts", () => {
     );
     expect(ran).toBe(exitCode.usage);
     expect(running.stderr[0]).toBe(
-      "✕ Couldn't run support-reply: Acme has 1 problem in its files. Nothing ran.",
+      "✕ Couldn't run support-reply: Acme has 1 problem in library/connectors/orders.connector.yaml. Nothing ran.",
     );
   });
 
