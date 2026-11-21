@@ -138,13 +138,16 @@ verifies("inbox.notices-section", () => {
     expect(document.activeElement).toBe(heading);
   });
 
-  it("says the notice went, as the heading focus alone doesn't (ND1)", async () => {
+  it("says which notice went, as the heading focus alone doesn't (ND1, microcopy 19.4)", async () => {
     const { source } = fakeNotices(async () => [a, b]);
     const announce = vi.fn();
     const { root } = await open(source, vi.fn(), undefined, announce);
     await act(async () => button(root, "Dismiss Daily summary failed at 06:00").click());
     await act(async () => button(root, "Dismiss Weekly report failed at 07:00").click());
-    expect(announce.mock.calls).toEqual([["Notice dismissed."], ["Notice dismissed."]]);
+    expect(announce.mock.calls).toEqual([
+      ["Dismissed: Daily summary failed at 06:00"],
+      ["Dismissed: Weekly report failed at 07:00"],
+    ]);
   });
 
   it("describes each Open run by its row's title", async () => {
