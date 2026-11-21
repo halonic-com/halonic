@@ -18,6 +18,7 @@ import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
 import { type PageRuns, workflowRefusalOf } from "../engine/page-refusal.ts";
 import { checkedSource } from "../library/workspace-library-items.ts";
+import { hubFilesFor } from "../studio/first-hub.ts";
 import { programOf } from "./step-program.ts";
 import {
   endedIn,
@@ -28,7 +29,6 @@ import {
   workflowFolder,
   workflowSuffix,
 } from "./workflow-files.ts";
-import { hubFilesFor } from "../studio/first-hub.ts";
 
 /** What {@link WorkspaceWorkflows} needs of the workspace's files, events and runs. */
 export interface WorkspaceWorkflowsParts {

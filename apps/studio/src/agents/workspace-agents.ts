@@ -31,6 +31,7 @@ import type {
 import { loopRefusal } from "@halonicjs/studio-feature-agents/api";
 import { filesOf, loadWorkspace, modelAliases, settingsPath } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
+import { hubFilesFor } from "../studio/first-hub.ts";
 import {
   agentGone,
   agentSuffix,
@@ -42,7 +43,6 @@ import {
 } from "./agent-file.ts";
 import { paramsEdits, paramsOf } from "./agent-params.ts";
 import { agentUsersOf, defaultModelOf } from "./agent-reads.ts";
-import { hubFilesFor } from "../studio/first-hub.ts";
 
 /** What {@link WorkspaceAgents} needs of the workspace's files. */
 export interface WorkspaceAgentsParts {
