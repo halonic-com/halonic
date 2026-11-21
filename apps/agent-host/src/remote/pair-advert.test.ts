@@ -298,5 +298,23 @@ verifies("agent-host.remote-pair-advert", () => {
       await advert.stop();
       expect(sockets[1]?.closed).toBe(true);
     });
+
+    it("opens a socket for a start after a stop only once the first socket is closed", async () => {
+      const { open, sockets, finish } = heldOpen();
+      const { advert, gapOver } = advertOnFakeSocket(open);
+      const first = advert.start(desk);
+      const stopped = advert.stop();
+      const second = advert.start(desk);
+      await settled();
+      expect(sockets).toHaveLength(1);
+      await finish();
+      expect(sockets[0]?.closed).toBe(true);
+      expect(sockets).toHaveLength(2);
+      await finish();
+      gapOver();
+      await Promise.all([first, stopped, second]);
+      expect(sockets[1]?.closed).toBe(false);
+      await advert.stop();
+    });
   });
 });

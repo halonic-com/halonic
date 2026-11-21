@@ -96,7 +96,9 @@ interface Run {
  * drops a query from an address that isn't on that interface's subnet
  * (RFC 6762 section 11), so a VPN, a container bridge or a router can't
  * reach it. `start` and `stop` may come in any order: after `stop`
- * resolves, no socket of this advertisement is open.
+ * resolves, no socket of this advertisement is open, and a `start` that
+ * follows a `stop` opens its socket only once the old one is closed, so at
+ * most one is ever bound.
  *
  * @example
  * const lan = { address: "192.168.1.20", netmask: "255.255.255.0" };
@@ -106,12 +108,19 @@ interface Run {
 export class PairAdvert {
   readonly #options: PairAdvertOptions;
   #run: Run | undefined;
+  /** A `stop`'s closing of its socket while it lasts, which the next socket waits for. */
+  #closing: Promise<void> | undefined;
 
   constructor(options: PairAdvertOptions) {
     this.#options = options;
   }
 
-  /** Starts advertising, announcing twice a second apart; does nothing while it runs. */
+  /**
+   * Starts advertising, announcing twice a second apart; does nothing while
+   * it runs. A socket that can't open still leaves the advertisement
+   * running, without a socket, until `stop`: a pairing is one try, and the
+   * next pairing tries again.
+   */
   async start(advertisement: PairAdvertisement): Promise<void> {
     if (this.#run !== undefined) return;
     let messages: AdvertMessages;
@@ -126,7 +135,7 @@ export class PairAdvert {
     const run: Run = {
       messages,
       subnet,
-      socket: this.#open(advertisement.lan),
+      socket: this.#openAfterClosing(advertisement.lan),
       stopped: false,
       announced: false,
       lastSentAt: Number.NEGATIVE_INFINITY,
@@ -158,6 +167,24 @@ export class PairAdvert {
     if (run === undefined) return;
     this.#run = undefined;
     run.stopped = true;
+    const closed = this.#close(run);
+    const closing = closed
+      .catch(() => undefined)
+      .finally(() => {
+        if (this.#closing === closing) this.#closing = undefined;
+      });
+    this.#closing = closing;
+    await closed;
+  }
+
+  /** Opens the socket at once, or once the socket a `stop` is closing is closed. */
+  #openAfterClosing(lan: LanInterface): Promise<MulticastSocket | undefined> {
+    const closing = this.#closing;
+    return closing === undefined ? this.#open(lan) : closing.then(() => this.#open(lan));
+  }
+
+  /** Says goodbye on the run's socket when it announced, then closes it. */
+  async #close(run: Run): Promise<void> {
     const socket = await run.socket;
     if (socket === undefined) return;
     try {
