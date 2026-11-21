@@ -410,7 +410,8 @@ the kit, which places it (`agent-host.plugin-sign-ins`). Removing a plugin's
 trust or the plugin signs out each of its grants first, found from the grants
 and not the sheet: revoked where it can be, and deleted also when the revoke
 fails, so a plugin added later under the same id isn't signed in
-(`app.plugin-sign-out`). Removing a plugin's record in Settings › Trusted
+(`app.plugin-sign-out`), also when `halonic trust --remove` runs in the
+plugin's folder without `--plugin`. Removing a plugin's record in Settings › Trusted
 sources signs it out the same way, and adding a plugin under an id no folder
 has signs out what is left for that id first, such as after a folder was
 deleted by hand. A local integration

@@ -1,6 +1,7 @@
 import { realpath } from "node:fs/promises";
-import { resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { FileTrustStore, FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import { pluginTrustFingerprintPrefix } from "@halonicjs/app";
 import { parseFile } from "@halonicjs/format";
 import type { Clock, TrustRecord, TrustStore } from "@halonicjs/ports";
 import { profileFolder, trustFolder } from "@halonicjs/profile";
@@ -29,7 +30,7 @@ import {
   trustChangesDocument,
 } from "../../output/trust-changes-json.ts";
 import { type FingerprintedCheck, shownDate, trustCheckLines } from "../../output/trust-check.ts";
-import type { PluginSetup } from "../../plugin-host.ts";
+import { type PluginSetup, setupPluginsFolder } from "../../plugin-host.ts";
 import { nodeSandboxWorks } from "../../sandbox-works.ts";
 import { installedPluginHosts, type PluginHosts } from "../../sheet-hosts.ts";
 import { shownPath } from "../../shown-path.ts";
@@ -115,7 +116,7 @@ export function createTrustCommand(
         return await listTrusted(machine(), context.cwd);
       }
       if (input.options["remove"] === true) {
-        return await removeTrust(machine(), input, context.cwd);
+        return await removeTrust(machine(), input, context, plugins);
       }
       return await reviewAndTrust(machine(), input, context);
     },
@@ -324,15 +325,24 @@ async function listed(record: TrustRecord, cwd: string) {
 
 /**
  * `--remove`: forgets the trust in the workspace, even when its record can't
- * be read or its folder is gone, so the user can always start over.
+ * be read or its folder is gone, so the user can always start over. In a
+ * plugin's folder the record is the plugin's, so it goes the `--plugin` way
+ * and signs the plugin out first (`app.plugin-sign-out`).
  */
 async function removeTrust(
   machine: TrustMachine,
   input: CommandInput,
-  cwd: string,
+  context: CommandContext,
+  plugins: PluginSetup,
 ): Promise<CommandResult> {
-  const dir = workspaceDir(input, cwd);
+  const dir = workspaceDir(input, context.cwd);
   const location = await realpath(dir.root).catch(() => resolve(dir.root));
+  if (await isPluginFolderRecord(machine.store, location, plugins)) {
+    // The folder's name in the plugins folder is the plugin's id. `--dir`
+    // named the folder, and `--plugin` refuses it, so only `--remove` goes on.
+    const removeOnly: CommandInput = { positionals: [], options: { remove: true } };
+    return await trustPlugin(basename(location), removeOnly, context, plugins);
+  }
   const name = await nameAt(location, dir.shown);
   await cliTrustService(machine.store, machine.clock).revoke(location);
   return {
@@ -340,6 +350,30 @@ async function removeTrust(
     lines: [marked(trustMessages.removed(printable(name)))],
     json: { name, folder: dir.shown, status: "removed" },
   };
+}
+
+/**
+ * Whether the record at `location` is a plugin's, in this profile's plugins
+ * folder, so `--plugin` reaches the same plugin. A plugin's record anywhere
+ * else (a moved profile folder, or `--dir` naming a copy) is removed by
+ * location, as a workspace's is: going by its folder's name would sign out
+ * and untrust another plugin with that id and leave the record named.
+ */
+async function isPluginFolderRecord(
+  store: TrustStore,
+  location: string,
+  plugins: PluginSetup,
+): Promise<boolean> {
+  const record = await store.get(location);
+  if (record === null || !isPluginRecord(record)) return false;
+  const folder = setupPluginsFolder(plugins);
+  const realFolder = await realpath(folder).catch(() => resolve(folder));
+  return dirname(location) === realFolder;
+}
+
+/** Whether the record trusts a plugin: a plugin's fingerprint has its own kind. */
+function isPluginRecord(record: TrustRecord): boolean {
+  return record.fingerprint.startsWith(pluginTrustFingerprintPrefix);
 }
 
 /**

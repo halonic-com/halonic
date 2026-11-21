@@ -104,7 +104,7 @@ export function openPluginService(setup: PluginSetup, cwd?: string): PluginServi
   const environment = setup.profile ?? nodeProfileEnvironment();
   const profile = profileFolder(environment);
   const clock = setup.clock ?? systemClock;
-  const folder = pluginsFolder(profile);
+  const folder = setupPluginsFolder(setup);
   return new PluginService({
     plugins: new FileSystemFolderReader(folder),
     writer: new FileSystemPluginFolder(folder, { clock }),
@@ -120,6 +120,16 @@ export function openPluginService(setup: PluginSetup, cwd?: string): PluginServi
     }),
     halonicData: halonicDataFolders(profile.root, cwd),
   });
+}
+
+/**
+ * The plugins folder the plugin service opens for `setup`, as written; its
+ * links aren't resolved.
+ *
+ * @throws when `HALONIC_HOME` or the home folder isn't an absolute folder
+ */
+export function setupPluginsFolder(setup: PluginSetup): string {
+  return pluginsFolder(profileFolder(setup.profile ?? nodeProfileEnvironment()));
 }
 
 /** The profile folder and the workspace data in `cwd`, when there is one, in both spellings each. */
