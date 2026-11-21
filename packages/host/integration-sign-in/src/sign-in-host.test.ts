@@ -83,7 +83,20 @@ function exampleHost(names: readonly string[] = ["example"]) {
     change(name: string, edit: (now: SignInSource) => SignInSource) {
       current.set(name, edit(current.get(name) as SignInSource));
     },
+    /** Like a host that can't load plugins: the app no longer names it, and the host drops its parts. */
+    stopRunning(name: string) {
+      current.delete(name);
+      host.forget(name);
+    },
   };
+}
+
+/** The example's sign-in as a public client, whose sheet names no client secret. */
+function withoutClientSecret(now: SignInSource): SignInSource {
+  const signIn = now.sheet.signIns[signInName];
+  if (signIn === undefined) throw new Error("the example sheet has no sign-in");
+  const { clientSecret: _, ...publicSignIn } = signIn;
+  return { ...now, sheet: { ...now.sheet, signIns: { [signInName]: publicSignIn } } };
 }
 
 function tokenAnswer() {
@@ -257,12 +270,50 @@ verifies("integration-sign-in.sign-out-all", () => {
     ]);
   });
 
-  it("signs out nothing for an integration the app doesn't name", async () => {
-    const test = exampleHost();
-    await signIn(test.host);
+  describe("for an integration the host runs no sign-ins for", () => {
+    it("removes the grant another host saved, and sends no revoke without the client secret", async () => {
+      const test = exampleHost();
+      await signIn(test.host);
+      test.bodies.length = 0;
+      test.secretsAsked.length = 0;
+      test.stopRunning("example");
 
-    expect(await test.host.signOutAll("unknown")).toEqual([]);
-    expect(test.saved()).toHaveLength(1);
+      const signedOut = await test.host.signOutAll("example");
+
+      expect(signedOut).toEqual([
+        { signIn: signInName, result: { kind: "signedOut", revoke: "notConfirmed" } },
+      ]);
+      expect(test.bodies).toEqual([]);
+      expect(test.secretsAsked).toEqual([]);
+      expect(test.saved()).toEqual([]);
+    });
+
+    it("revokes a sign-in that needs no client secret", async () => {
+      const test = exampleHost();
+      test.change("example", withoutClientSecret);
+      await signIn(test.host);
+      test.bodies.length = 0;
+      test.stopRunning("example");
+
+      const signedOut = await test.host.signOutAll("example");
+
+      expect(signedOut).toEqual([
+        { signIn: signInName, result: { kind: "signedOut", revoke: "revoked" } },
+      ]);
+      expect(test.bodies).toHaveLength(1);
+      expect(test.bodies[0]).toContain(`token=${rotatedRefreshToken}`);
+      expect(test.saved()).toEqual([]);
+    });
+
+    it("signs out nothing when it has no saved grant, and leaves the others' grants", async () => {
+      const test = exampleHost();
+      await signIn(test.host);
+      test.bodies.length = 0;
+
+      expect(await test.host.signOutAll("unknown")).toEqual([]);
+      expect(test.bodies).toEqual([]);
+      expect(test.saved()).toHaveLength(1);
+    });
   });
 
   it("forget drops the parts and keeps the grants", async () => {
