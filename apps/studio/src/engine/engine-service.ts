@@ -62,6 +62,7 @@ import {
   runDefinitionsOf,
 } from "@halonicjs/workspace";
 import { studioConnectorCalls } from "../connect/studio-run-connectors.ts";
+import { openEngineHarnessHost } from "./engine-harness-host.ts";
 import { type EngineLockHold, holdEngineLock } from "./engine-lock.ts";
 import { answerRefusalOf, refuseConnectorApprove } from "./engine-refusals.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
@@ -71,7 +72,6 @@ import {
   type PageRuns,
   workflowRefusalOf,
 } from "./page-refusal.ts";
-import type { EngineDecisions, StudioHarnessHost } from "./studio-harness-host.ts";
 
 export type { PageEngineLock } from "./engine-lock.ts";
 
@@ -369,20 +369,6 @@ export class EngineService {
     };
   }
 
-  /**
-   * The harness host, or none when no agent host runs or it can't be reached
-   * now. Without one the engine still opens for the workflows that need none,
-   * and a run of an agent in a harness fails at its harness step.
-   */
-  async #openHarnessHost(decisions: EngineDecisions): Promise<StudioHarnessHost | undefined> {
-    try {
-      return await this.#options.openHarnessHost?.(decisions);
-    } catch (error) {
-      this.#options.reportError(error);
-      return undefined;
-    }
-  }
-
   async #openOnce(): Promise<OpenEngine> {
     const { ipc, location, name, clock, reportError } = this.#options;
     // After the runs a removed trust stopped are ended, whose closer gives the lock back then.
@@ -404,7 +390,7 @@ export class EngineService {
       const runStore = new TauriRunStore(ipc, location);
       // Set once the engine is built; a bridge opens only during a run, so after that.
       let executor: LocalExecutor | undefined;
-      const harnessHost = await this.#openHarnessHost({
+      const harnessHost = await openEngineHarnessHost(this.#options, workspace, {
         approvalsOf: (runId) => executor?.bridgeApprovals(runId),
         remoteDecisionsOf: (runId) => executor?.bridgeRemoteDecisions(runId),
       });

@@ -8,10 +8,19 @@ import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import type { HarnessAgent } from "@halonicjs/engine";
 import type { BridgeApprovals, BridgeRecorder, SandboxProfile } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import { beforeAll, describe, expect, it } from "vitest";
 import { openStudioHarnessHost, type StudioHarnessInput } from "./studio-harness-host.ts";
 
 const location = "/acme";
+
+/** The workspace as the engine loaded it: with no provider file, so every agent keeps its program's own sign-in. */
+let loaded: LoadedWorkspace;
+beforeAll(async () => {
+  loaded = await loadWorkspace(
+    new MemoryDefinitionStore({ "workspace.yaml": "id: acme\nname: Acme\n" }),
+  );
+});
 
 /** The bridge's stream: its lines, then open until `until` settles, as the host keeps it while a call waits. */
 function bridgeStream(lines: unknown[], until: Promise<void>): AsyncIterable<unknown> {
@@ -107,11 +116,15 @@ function inputOn(
     approvalsOf: () => undefined,
     remoteDecisionsOf: () => undefined,
     reportError: () => {},
+    workspace: () => loaded,
+    secrets: { get: async () => null },
+    requireKeyMayGo: async () => {},
+    aliases: { providerModel: () => undefined, access: async () => undefined },
     ...more,
   };
 }
 
-const agent = { runId: "run_1", agentId: "coder" } as HarnessAgent;
+const agent = { runId: "run_1", agentId: "coder", harness: "claude-code" } as HarnessAgent;
 const recorder: BridgeRecorder = { record: async () => {} };
 
 /** Opens the agent's bridge, waits for its one call to be answered, then closes it. */

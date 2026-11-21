@@ -128,6 +128,7 @@ export {
   type BridgeTools,
   bridgeCallCharge,
   bridgeCallCost,
+  bridgeKeyProviders,
   type HarnessBridgeOptions,
   type HarnessBridgeServer,
   harnessBridgeServerVersion,

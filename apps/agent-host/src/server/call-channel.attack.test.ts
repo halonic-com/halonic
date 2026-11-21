@@ -1,4 +1,5 @@
 import type { BridgeProvider, BridgeProviderAccess } from "@halonicjs/ports";
+import { SecretScrubber } from "@halonicjs/std";
 import { describe, expect, it } from "vitest";
 import { studioSecrets, studioServices } from "../bridge/studio-services.ts";
 import { CallChannel, type ChannelAnswer, StudioCallError } from "./call-channel.ts";
@@ -202,7 +203,7 @@ describe("studioSecrets, asked for a secret the bridge doesn't name", () => {
 
   it("answers null without asking Studio, whatever the name", async () => {
     const stream = fakeStream();
-    const secrets = studioSecrets(new CallChannel(stream), providers);
+    const secrets = studioSecrets(new CallChannel(stream), providers, new SecretScrubber());
     const names = [
       "openai-key",
       "ANTHROPIC-KEY",
@@ -224,7 +225,7 @@ describe("studioSecrets, asked for a secret the bridge doesn't name", () => {
   it("refuses a secret Studio answers in the wrong shape", async () => {
     const stream = fakeStream();
     const channel = new CallChannel(stream);
-    const secrets = studioSecrets(channel, providers);
+    const secrets = studioSecrets(channel, providers, new SecretScrubber());
     for (const result of [42, { value: "k" }, ["k"], undefined]) {
       const pending = secrets.get("anthropic-key");
       channel.answer(lastCall(stream), { result });

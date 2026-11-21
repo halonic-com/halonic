@@ -10,6 +10,7 @@ import type {
   Secrets,
 } from "@halonicjs/ports";
 import { parse, type Schema, s } from "@halonicjs/schema-kit";
+import type { SecretScrubber } from "@halonicjs/std";
 import { type CallChannel, StudioCallError } from "../server/call-channel.ts";
 import { portSchema } from "../server/port-schema.ts";
 
@@ -159,23 +160,29 @@ function listen(tell: () => void): void {
  * through the recorder's own call, so a Studio from before this event needs
  * nothing new. The bridge's hook must not throw and can't wait, so a record
  * Studio doesn't take goes to `log` rather than back to the bridge.
+ *
+ * A failure's message loses every key value the bridge's secrets handed out
+ * first, so a key a provider's error quotes reaches neither the run log nor
+ * `log` (Studio scrubs it again before the run log records it).
  */
 export function studioFailureReport(
   channel: CallChannel,
   agentId: string,
   log: (text: string) => void,
+  keys: Pick<SecretScrubber, "scrub">,
 ): (failure: { kind: string; message: string }) => void {
   return (failure) => {
+    const message = keys.scrub(failure.message);
     const event = {
       type: "bridge.failed",
       agent: agentId,
       kind: failure.kind,
-      message: failure.message,
+      message,
     };
     channel.call(studioMethods.record, event, quick).catch((error: unknown) => {
       const reason = error instanceof Error ? error.message : String(error);
       log(
-        `The run log couldn't record a failure of the harness bridge (${failure.kind}): ${failure.message} (${reason})\n`,
+        `The run log couldn't record a failure of the harness bridge (${failure.kind}): ${message} (${reason})\n`,
       );
     });
   };
@@ -185,20 +192,28 @@ export function studioFailureReport(
  * The provider keys of one bridge, which Studio keeps. Only the secrets the
  * bridge's providers name are asked for: any other name is `null` without a
  * call, so the bridge can't read the person's other secrets through it.
+ * Each value Studio gives is remembered in `keys`, so the bridge's failures
+ * are scrubbed of it ({@link studioFailureReport}).
  */
 export function studioSecrets(
   channel: CallChannel,
   providers: Partial<Record<BridgeProvider, BridgeProviderAccess>>,
+  keys: Pick<SecretScrubber, "remember">,
 ): Secrets {
   const named = new Set<string>();
   for (const access of Object.values(providers)) {
     if (access?.kind === "key") named.add(access.secret);
   }
   return {
-    get: async (name) =>
-      named.has(name)
-        ? checked(secretValue, await channel.call(studioMethods.getSecret, { name }, quick))
-        : null,
+    get: async (name) => {
+      if (!named.has(name)) return null;
+      const value = checked(
+        secretValue,
+        await channel.call(studioMethods.getSecret, { name }, quick),
+      );
+      if (value !== null) keys.remember(value);
+      return value;
+    },
   };
 }
 

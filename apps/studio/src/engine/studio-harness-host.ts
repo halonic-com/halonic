@@ -9,6 +9,10 @@
 // Only the fenced sandbox runs agents: the host has no unfenced session yet,
 // so an agent the person set to "On this computer" is refused before it
 // starts, never run outside the fence.
+//
+// A sandboxed agent's bridge gets a provider key Halonic keeps, as in the
+// CLI (`studio-provider-keys.ts`). The agent host reads its value from here
+// when a call needs it, and both sides scrub it out of the bridge's failures.
 
 import {
   AgentHostBridges,
@@ -30,6 +34,7 @@ import type { HarnessAgent, HarnessRunsOptions, RunProposalFolders } from "@halo
 import {
   type AgentFiles,
   FilePlacementPolicy,
+  type ProviderKeyServices,
   refusingApprovals,
 } from "@halonicjs/host-harness-host";
 import type {
@@ -41,9 +46,10 @@ import type {
   SandboxSession,
 } from "@halonicjs/ports";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
+import { type StudioKeyParts, studioProviderKeys } from "./studio-provider-keys.ts";
 
 /** What {@link openStudioHarnessHost} builds from. */
-export interface StudioHarnessInput {
+export interface StudioHarnessInput extends StudioKeyParts {
   readonly transport: AgentHostTransport;
   /** The workspace folder, which the launcher named to the host. */
   readonly location: string;
@@ -71,6 +77,9 @@ export interface StudioHarnessInput {
 /** What the engine gives the harness host once it is built: one run's approvals and its phone's decisions. */
 export type EngineDecisions = Pick<StudioHarnessInput, "approvalsOf" | "remoteDecisionsOf">;
 
+/** What the engine gives the harness host when it opens: its decisions, and its parts for a sandboxed agent's key. */
+export type EngineParts = EngineDecisions & StudioKeyParts;
+
 /** What the engine gets: `harnesses` and `proposalFolders` go to `runs` of the executor. */
 export interface StudioHarnessHost {
   readonly harnesses: HarnessRunsOptions;
@@ -96,8 +105,10 @@ const environments = { "claude-code": claudeCodeEnvironment, codex: codexEnviron
  */
 export async function openStudioHarnessHost(input: StudioHarnessInput): Promise<StudioHarnessHost> {
   const { transport, location } = input;
+  const keys = studioProviderKeys(input);
   const bridges = new AgentHostBridges(transport, {
-    servicesFor: (agent) => bridgeServicesOf(agent, input),
+    servicesFor: (agent) => bridgeServicesOf(agent, input, keys),
+    scrub: keys.scrub,
   });
   const bridgeIdOf = bridges.idOf.bind(bridges);
   const proposalFolders = new AgentHostProposalFolders(transport, location);
@@ -127,6 +138,8 @@ export async function openStudioHarnessHost(input: StudioHarnessInput): Promise<
       }),
       instructionTrust: { service: input.instructionTrust, location },
       home: null,
+      // An alias's model, read from the same files as the agent's bridge (HAL-12488).
+      models: keys.models,
     },
     proposalFolders,
     start: async (openRuns) => {
@@ -137,25 +150,26 @@ export async function openStudioHarnessHost(input: StudioHarnessInput): Promise<
 }
 
 /**
- * What each agent's bridge serves, as the CLI's does: the program's own
- * sign-in for both providers, so no key passes through, and no Halonic
- * tools. Its approvals are the engine's for the agent's run, which a card
- * and a phone decide; until the engine is built, they refuse every request,
- * and a phone's decision is refused.
+ * What each agent's bridge serves, as the CLI's does: the provider access
+ * `keys` decides, a key Halonic keeps for an agent in the sandbox, with its
+ * prices, and no Halonic tools. Its approvals are the engine's for the
+ * agent's run, which a card and a phone decide; until the engine is built,
+ * they refuse every request, and a phone's decision is refused.
+ *
+ * @throws what `keys.servicesFor` throws, before the bridge opens, so the program never starts
  */
-function bridgeServicesOf(agent: BridgeAgent, input: StudioHarnessInput): BridgeServices {
+async function bridgeServicesOf(
+  agent: BridgeAgent,
+  input: StudioHarnessInput,
+  keys: ProviderKeyServices,
+): Promise<BridgeServices> {
+  const served = await keys.servicesFor(agent);
   const remoteDecisions = input.remoteDecisionsOf(agent.runId);
   return {
-    providers: { anthropic: { kind: "sign-in" }, openai: { kind: "sign-in" } },
-    prices: {},
-    tools: {
-      list: async () => [],
-      check: async (name) => ({ kind: "refused", reason: `${name} isn't a tool of this agent.` }),
-      call: async (name) => ({ result: `${name} isn't a tool of this agent.`, outcome: "error" }),
-    },
+    ...served,
     approvals: input.approvalsOf(agent.runId) ?? refusingApprovals,
     ...(remoteDecisions === undefined ? {} : { remoteDecisions }),
-    secrets: { get: async () => null },
+    secrets: keys.bridgeSecrets,
   };
 }
 

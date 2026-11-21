@@ -2,8 +2,8 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { Socket } from "node:net";
 import {
   type BridgeEvent,
-  type BridgeProvider,
   type BridgeRecorder,
+  bridgeKeyProviders,
   type HarnessBridgeOptions,
   harnessBridgeTokenHeader,
   type OpenHarnessBridge,
@@ -95,7 +95,7 @@ export async function openBridge(
   if (run.signal?.aborted) await close();
 
   const { url, socketPath } = listening;
-  const keyProviders = keyProvidersOf(run.providers);
+  const keyProviders = bridgeKeyProviders(run.providers);
   return {
     url,
     token,
@@ -103,12 +103,6 @@ export async function openBridge(
     ...(keyProviders.length === 0 ? {} : { keyProviders }),
     close,
   };
-}
-
-/** The providers the run reaches with a key Halonic keeps, in a fixed order. */
-function keyProvidersOf(providers: HarnessBridgeOptions["providers"]): BridgeProvider[] {
-  const all: readonly BridgeProvider[] = ["anthropic", "openai"];
-  return all.filter((provider) => providers[provider]?.kind === "key");
 }
 
 /** What {@link serve} needs of the bridge a request came to. */

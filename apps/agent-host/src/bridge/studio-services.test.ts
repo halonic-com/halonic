@@ -1,3 +1,5 @@
+import { SecretScrubber } from "@halonicjs/std";
+import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CallChannel, StudioCallError } from "../server/call-channel.ts";
 import type { NdjsonStream } from "../server/ndjson-stream.ts";
@@ -27,10 +29,11 @@ function answeringChannel(result: unknown): { channel: CallChannel; lines: unkno
 describe("studioSecrets", () => {
   it("asks Studio only for a secret the bridge's providers name", async () => {
     const { channel, lines } = answeringChannel("test-value");
-    const secrets = studioSecrets(channel, {
-      anthropic: { kind: "key", secret: "anthropic-key" },
-      openai: { kind: "sign-in" },
-    });
+    const secrets = studioSecrets(
+      channel,
+      { anthropic: { kind: "key", secret: "anthropic-key" }, openai: { kind: "sign-in" } },
+      new SecretScrubber(),
+    );
     await expect(secrets.get("anthropic-key")).resolves.toBe("test-value");
     await expect(secrets.get("github-token")).resolves.toBeNull();
     expect(lines).toHaveLength(1);
@@ -133,7 +136,11 @@ describe("studioServices", () => {
       ended: new Promise(() => {}),
     });
     const { recorder, tools, approvals } = studioServices(channel);
-    const secrets = studioSecrets(channel, { anthropic: { kind: "key", secret: "anthropic-key" } });
+    const secrets = studioSecrets(
+      channel,
+      { anthropic: { kind: "key", secret: "anthropic-key" } },
+      new SecretScrubber(),
+    );
     const signal = new AbortController().signal;
     const quick = [
       recorder.record({} as Parameters<typeof recorder.record>[0]),
@@ -158,12 +165,13 @@ describe("studioServices", () => {
 
 describe("studioFailureReport", () => {
   const failure = { kind: "internal", message: "bad reply header [run token]" };
+  const noKeys = new SecretScrubber();
 
   it("sends a failure to Studio's recorder as bridge.failed", async () => {
     const { channel, lines } = answeringChannel(null);
     const logged: string[] = [];
 
-    studioFailureReport(channel, "writer", (text) => logged.push(text))(failure);
+    studioFailureReport(channel, "writer", (text) => logged.push(text), noKeys)(failure);
 
     await vi.waitFor(() => expect(lines).toHaveLength(1));
     expect(lines[0]).toMatchObject({
@@ -179,13 +187,56 @@ describe("studioFailureReport", () => {
     channel.close();
     const logged = Promise.withResolvers<string>();
 
-    expect(() => studioFailureReport(channel, "writer", logged.resolve)(failure)).not.toThrow();
+    expect(() =>
+      studioFailureReport(channel, "writer", logged.resolve, noKeys)(failure),
+    ).not.toThrow();
 
     const text = await logged.promise;
     expect(text).toContain(
       "The run log couldn't record a failure of the harness bridge (internal): bad reply header [run token]",
     );
     expect(text.endsWith("\n")).toBe(true);
+  });
+});
+
+verifies("agent-host.bridge-key-scrub", () => {
+  /** An invented key, which no failure may carry on. */
+  const key = "sk-ant-acme-not-real-7f3a";
+
+  it("scrubs a key Studio handed the bridge out of its failures, on the run log's way and the log's", async () => {
+    const { channel, lines } = answeringChannel(key);
+    const keys = new SecretScrubber();
+    const secrets = studioSecrets(
+      channel,
+      { anthropic: { kind: "key", secret: "anthropic-key" } },
+      keys,
+    );
+    await secrets.get("anthropic-key");
+    const failure = { kind: "internal", message: `upstream refused ${key}` };
+
+    studioFailureReport(channel, "writer", () => {}, keys)(failure);
+
+    await vi.waitFor(() => expect(lines).toHaveLength(2));
+    expect(lines[1]).toMatchObject({
+      method: "recorder.record",
+      params: { type: "bridge.failed", message: "upstream refused [secret removed]" },
+    });
+    expect(JSON.stringify(lines[1])).not.toContain(key);
+
+    channel.close();
+    const logged = Promise.withResolvers<string>();
+    studioFailureReport(channel, "writer", logged.resolve, keys)(failure);
+    expect(await logged.promise).not.toContain(key);
+  });
+
+  it("remembers no value for a secret the bridge's providers don't name", async () => {
+    const { channel } = answeringChannel(key);
+    const keys = new SecretScrubber();
+    const secrets = studioSecrets(channel, { anthropic: { kind: "sign-in" } }, keys);
+
+    await expect(secrets.get("anthropic-key")).resolves.toBeNull();
+
+    expect(keys.scrub(key)).toBe(key);
   });
 });
 
