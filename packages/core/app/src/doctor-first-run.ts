@@ -60,7 +60,11 @@ export type DefaultModelTarget =
     };
 
 /** Why `default` points at a model that can't be used yet. */
-export type DefaultModelCause = "models.no-key" | "models.unreachable" | "default-model.local-only";
+export type DefaultModelCause =
+  | "models.no-key"
+  | "models.key-unreadable"
+  | "models.unreachable"
+  | "default-model.local-only";
 
 /** The Default model line. */
 export interface DefaultModelLine extends DoctorLine {
@@ -125,6 +129,8 @@ function defaultModelCause(
   for (const problem of models.problems) {
     if (problem.provider !== provider.provider) continue;
     if (problem.problem === "unreachable") return "models.unreachable";
+    // The store couldn't be asked, so the key may be there: never call it missing (HAL-14629).
+    if (problem.problem === "key-unreadable") return "models.key-unreadable";
     if (problem.alias === defaultAlias) return "models.no-key";
   }
   return undefined;
@@ -169,7 +175,7 @@ export interface LastRunLine extends DoctorLine {
  *
  * @example
  * lastRunLine({ runId: "r1", step: 2, steps: 3, stepName: "Write reply", durationMs: 6800,
- *   failure: { reason: "no-key", provider: "Anthropic", secret: "anthropic-key", alias: "default" } }, report);
+ *   failure: { reason: "no-key", provider: "Anthropic", secret: "anthropic-key", model: "claude-sonnet-4-5", alias: "default" } }, report);
  * // { check: "last-run", status: "failed", …, cause: "models.no-key", causeShownOn: "models" }
  */
 export function lastRunLine(
@@ -220,11 +226,15 @@ function causeShownOn(
   }
   if (failure.reason === "no-key" || (failure.reason === "model-unreachable" && failure.local)) {
     const problems = models === undefined || "timedOut" in models ? [] : models.problems;
-    const shown = problems.some((one) =>
-      one.problem === "no-key"
-        ? failure.reason === "no-key" && one.alias === failure.alias
-        : failure.reason === "model-unreachable" && one.address === failure.address,
-    );
+    const shown = problems.some((one) => {
+      if (one.problem === "no-key")
+        return failure.reason === "no-key" && one.alias === failure.alias;
+      if (one.problem === "unreachable") {
+        return failure.reason === "model-unreachable" && one.address === failure.address;
+      }
+      // A key the store couldn't be read for isn't the missing key the run stopped at.
+      return false;
+    });
     return shown ? "models" : undefined;
   }
   // Only the same reason: a sandbox that broke differently since the run is a different cause.

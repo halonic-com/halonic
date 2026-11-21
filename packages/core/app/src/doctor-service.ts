@@ -35,12 +35,7 @@ import {
   type WorkspaceLine,
   workspaceLine,
 } from "./doctor-lines.ts";
-import {
-  type AliasProvider,
-  type ModelProviderState,
-  type ModelsLine,
-  modelsLine,
-} from "./doctor-models-line.ts";
+import type { AliasProvider, ModelsLine } from "./doctor-models-line.ts";
 import { type MxcLine, mxcLine } from "./doctor-mxc-line.ts";
 import { type NoSandboxLine, noSandboxLine } from "./doctor-no-sandbox-line.ts";
 import {
@@ -54,14 +49,9 @@ import {
   type DoctorHarness,
   signedOutAgents,
 } from "./doctor-sign-ins.ts";
-import {
-  lineOf,
-  type TimedOutLine,
-  timedOut,
-  timedOutLine,
-  withinLimit,
-} from "./doctor-time-limit.ts";
-import type { ProviderModels, ResourceReport, Resources } from "./resource-report.ts";
+import { lineOf, type TimedOutLine, type timedOut, withinLimit } from "./doctor-time-limit.ts";
+import { workspaceModels } from "./doctor-workspace-models.ts";
+import type { ResourceReport } from "./resource-report.ts";
 import type { SandboxChoiceService } from "./sandbox-choice.ts";
 import type { SaveTimers } from "./save-scheduler.ts";
 import type { TrustCheck, TrustSubject } from "./trust-service.ts";
@@ -376,60 +366,6 @@ function trustLine(workspace: DoctorWorkspace, trust: TrustCheck["status"] | nul
     fileProblems: workspace.fileProblems,
     tooManyFilesToWatch: workspace.tooManyFilesToWatch,
   });
-}
-
-/**
- * The Models line, or none without model aliases. It needs the stored keys,
- * and the resource report's loaded models when a provider runs on this
- * computer, so it ran over when one of those did.
- */
-function workspaceModels(
-  workspace: DoctorWorkspace,
-  resources: Resources | typeof timedOut,
-  keys: ReadonlyMap<string, boolean | "unreadable"> | typeof timedOut,
-): ModelsLine | TimedOutLine<"models"> | undefined {
-  if (workspace.aliases.length === 0) return undefined;
-  const local = workspace.providers.some((provider) => provider.runs === "on-this-computer");
-  if (keys === timedOut || (local && resources === timedOut)) return timedOutLine("models");
-  const loaded = resources === timedOut ? [] : resources.models;
-  const providers = workspace.providers.map((provider) => providerState(provider, loaded, keys));
-  return modelsLine(providers, workspace.aliases);
-}
-
-/** A provider as the Models line takes it, with what the report and the secrets found. */
-function providerState(
-  provider: DoctorProvider,
-  loaded: readonly ProviderModels[],
-  keys: ReadonlyMap<string, boolean | "unreadable">,
-): ModelProviderState {
-  const { provider: id, name } = provider;
-  switch (provider.runs) {
-    case "on-this-computer": {
-      const found = loaded.find((models) => models.provider === id);
-      if (found === undefined) {
-        throw new Error(
-          `The provider ${id} runs on this computer, but the resource report has no LoadedModelSource for it.`,
-        );
-      }
-      return {
-        provider: id,
-        name,
-        runs: provider.runs,
-        address: provider.address,
-        models: found.models,
-      };
-    }
-    case "with-a-key":
-      return {
-        provider: id,
-        name,
-        runs: provider.runs,
-        secret: provider.secret,
-        keyStored: keys.get(id) ?? false,
-      };
-    case "without-a-key":
-      return { provider: id, name, runs: provider.runs };
-  }
 }
 
 /** The workspace's agents that run in a harness other than Halonic's own loop. */

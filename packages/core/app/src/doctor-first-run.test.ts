@@ -42,7 +42,15 @@ function input(
 
 const noKey = answered(
   modelsLine(
-    [{ provider: "anthropic", name: "Anthropic", runs: "with-a-key", keyStored: false }],
+    [
+      {
+        provider: "anthropic",
+        name: "Anthropic",
+        runs: "with-a-key",
+        secret: "anthropic-key",
+        keyStored: false,
+      },
+    ],
     [{ alias: "default", provider: "anthropic" }],
   ),
 );
@@ -99,6 +107,16 @@ verifies("app.doctor-default-model", () => {
     expect(line?.cause).toBe("models.unreachable");
   });
 
+  it("takes a key the store couldn't read from the Models line, never a missing key", () => {
+    const unreadable = modelsLine(
+      [{ ...anthropic, runs: "with-a-key", secret: "anthropic-key", keyStored: "unreadable" }],
+      [{ alias: "default", provider: "anthropic" }],
+    );
+    expect(defaultModelLine(input(anthropic, { models: unreadable }))?.cause).toBe(
+      "models.key-unreadable",
+    );
+  });
+
   it("is ✓ when the model can be used, names no cause when Models ran over, and is left out without default", () => {
     expect(defaultModelLine(input(anthropic))?.status).toBe("ok");
     expect(
@@ -137,6 +155,7 @@ verifies("app.doctor-last-run", () => {
       reason: "no-key",
       provider: "Anthropic",
       secret: "key",
+      model: "claude-sonnet-4-5",
       alias: "default",
     } as const;
     expect(lastRunLine({ ...run, failure }, { models: noKey, sandbox })).toEqual({
@@ -166,11 +185,29 @@ verifies("app.doctor-last-run", () => {
     expect(line?.causeShownOn).toBe("default-model");
   });
 
+  it("doesn't point a missing key at a Models line that couldn't read the key", () => {
+    const unreadable = modelsLine(
+      [{ ...anthropic, runs: "with-a-key", secret: "anthropic-key", keyStored: "unreadable" }],
+      [{ alias: "default", provider: "anthropic" }],
+    );
+    const failure = {
+      reason: "no-key",
+      provider: "Anthropic",
+      secret: "anthropic-key",
+      model: "claude-sonnet-4-5",
+      alias: "default",
+    } as const;
+    const line = lastRunLine({ ...run, failure }, { models: answered(unreadable), sandbox });
+    expect(line?.cause).toBe("models.no-key");
+    expect(line).not.toHaveProperty("causeShownOn");
+  });
+
   it("points at the Models line only when it shows the same alias or server", () => {
     const otherAlias = {
       reason: "no-key",
       provider: "OpenAI",
       secret: "openai-key",
+      model: "gpt-4.1",
       alias: "smart",
     } as const;
     expect(
@@ -284,7 +321,13 @@ verifies("app.doctor-last-run", () => {
       }),
       lastRun: {
         ...run,
-        failure: { reason: "no-key", provider: "Anthropic", secret: "key", alias: "default" },
+        failure: {
+          reason: "no-key",
+          provider: "Anthropic",
+          secret: "key",
+          model: "claude-sonnet-4-5",
+          alias: "default",
+        },
       },
     });
     expect(report.lastRun?.causeShownOn).toBe("models");
