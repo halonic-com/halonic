@@ -87,5 +87,5 @@ export function providePlugins(
 export function agentHostPluginSignOut(transport: AgentHostTransport): SignOutPlugin {
   const signIns = new AgentHostIntegrationSignIns(transport);
   // A plugin's sign-ins are signed in under its id.
-  return async (plugin) => void (await signIns.signOutAll(plugin));
+  return (plugin) => signIns.signOutAll(plugin);
 }

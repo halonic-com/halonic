@@ -119,7 +119,7 @@ ui: { … } # optional
 | --- | --- | --- |
 | `id` | yes | Lower-case words joined by `-`. At most 48 characters. Unique in a profile. |
 | `version` | yes | The plugin's own version, `major.minor.patch`. |
-| `sdk` | yes | The SDK version the plugin was built for. Today it is `1`. The loader refuses any other. |
+| `sdk` | yes | The SDK version the plugin was built for: `1`, or `2` for a backend with `signIns`. The loader refuses a number newer than this Halonic's SDK, which is `2` today. |
 | `name` | yes | What people see. Plain text. |
 | `description` | no | One line about what it does. |
 | `backend` | no | Code that calls outside services, in Halonic's isolated worker. |
@@ -153,11 +153,16 @@ number is written once.
   value into the request. The backend's code never sees it.
 - **`tools`:** every tool, with `description`, `risk` (`read`, `write` or
   `send`), `untrusted` and `arguments`.
+- **`signIns`:** each OAuth sign-in, as an integration declares it (see
+  [the integrations guide](integrations.md)). Needs `sdk: 2`. Halonic runs
+  the sign-in and keeps the token; the backend uses it through `auth` but
+  never reads it.
 
 Two rules are specific to plugins:
 
-- A plugin backend **can't declare `tokens`**. Sign-in isn't supported in 0.1.
-  Use an API key.
+- A plugin backend **can't declare `tokens`**, the values an integration
+  writes and reads back itself. To sign in to a service, declare it in
+  `signIns`, or use an API key.
 - A plugin backend **can't need a process** (`needs: process`). Starting a
   program is what `localTools` is for.
 
@@ -337,7 +342,11 @@ here doesn't look as if they run.
 `halonic trust --plugin <id> --remove` removes the trust, so the plugin is off
 (its settings and secrets stay). `halonic plugin remove <id>` asks first (or
 needs `--yes`), then removes the plugin with its trust, settings and the API
-key you entered.
+key you entered. Both, and **Remove trust** in Studio, also sign you out of
+the plugin's sign-ins on this computer: each token is revoked at the provider
+where the sign-in has a revoke address, and forgotten here either way. When the
+provider doesn't confirm, the command says so, because the token may still
+work there until it expires.
 
 In a script, `plugin add` and `trust --plugin` take
 `--yes --fingerprint <fingerprint>`; the fingerprint must match what the check
@@ -371,8 +380,8 @@ describePluginConformance({
 It reads `plugin.yaml` the way Halonic does, and checks for these. It fails when:
 
 - the folder has no manifest, or both `plugin.yaml` and `integration.yaml`;
-- the manifest fails its schema or its own checks, or its `sdk` isn't this
-  Halonic's;
+- the manifest fails its schema or its own checks, or its `sdk` is newer than
+  this Halonic's;
 - a file the manifest names (the backend's `entry`, a local tool's `script`) is
   missing;
 - the backend's code differs from the manifest (name, version, a tool's text,

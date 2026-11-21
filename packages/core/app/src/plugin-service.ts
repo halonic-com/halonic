@@ -42,6 +42,7 @@ import type {
   PluginAddRefusal,
   PluginEntry,
   PluginRemoveRefusal,
+  PluginSignedOut,
   PluginTrustRefusal,
   SignOutPlugin,
 } from "./plugin-service-types.ts";
@@ -261,12 +262,13 @@ export class PluginService {
    * before its folder.
    *
    * @param id - the plugin's id, which is its folder's name
+   * @returns each sign-in it signed out, and how
    * @throws a `RangeError` when `id` isn't a single folder name, and what the sign-out throws
    */
-  async revoke(id: string): Promise<void> {
+  async revoke(id: string): Promise<readonly PluginSignedOut[]> {
     const folder = pluginFolderOf(id);
     try {
-      await this.#options.signOut(folder);
+      return await this.#options.signOut(folder);
     } finally {
       // A sign-in that couldn't be signed out never keeps a plugin trusted.
       const location = await this.#options.plugins.locationOf(folder);
@@ -356,17 +358,18 @@ export class PluginService {
    * exactly the id is removed: `remove("weather")` leaves `Weather`.
    *
    * @param id - the plugin's id, which is its folder's name
+   * @returns each sign-in it signed out, and how, once everything is removed
    * @throws a `RangeError` when `id` isn't a single folder name, and what
    *   the sign-out, the trust store, the records or the plugins folder throw
    */
   async remove(
     id: string,
     deleteSecret: DeletePluginSecret,
-  ): Promise<Result<void, PluginRemoveRefusal>> {
+  ): Promise<Result<readonly PluginSignedOut[], PluginRemoveRefusal>> {
     const folder = pluginFolderOf(id);
     const entry = await this.#topEntry(folder);
-    if (entry?.kind === "folder") await this.revoke(folder);
-    else await this.#options.signOut(folder);
+    const signedOut =
+      entry?.kind === "folder" ? await this.revoke(folder) : await this.#options.signOut(folder);
     for (const [secret, storedName] of Object.entries(
       await this.#storedSecretNames(entry, folder),
     )) {
@@ -380,7 +383,7 @@ export class PluginService {
     await this.#settings.forget(folder);
     await this.#installs.forget(folder);
     await this.#options.writer.remove(folder);
-    return ok(undefined);
+    return ok(signedOut);
   }
 
   /**

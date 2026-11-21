@@ -53,7 +53,7 @@ async function setup() {
     trust,
     records: new TestRecordStore(),
     clock,
-    signOut: async () => undefined,
+    signOut: async () => [],
   });
   const added = await service.add(weatherSource(), { from, replace: false });
   if (!added.ok || added.value.status !== "new") throw new Error("expected a new plugin");
@@ -71,7 +71,7 @@ verifies("app.plugin-remove", () => {
   it("removes the plugin with its trust, secrets, settings and install record", async () => {
     const { folder, service, store, plugin } = await setup();
     const { deleted, deleteSecret } = secretWriter();
-    expect(await service.remove("weather", deleteSecret)).toEqual({ ok: true, value: undefined });
+    expect(await service.remove("weather", deleteSecret)).toEqual({ ok: true, value: [] });
     expect(deleted.sort()).toEqual([...weatherSecrets].sort());
     expect(await folder.reader.entries()).toEqual([]);
     expect(await store.list()).toEqual([]);

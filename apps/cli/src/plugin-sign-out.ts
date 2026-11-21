@@ -33,7 +33,7 @@ export interface CliPluginSignOutOptions {
  * `integration-sign-ins` folder, found from the grants themselves: each is
  * revoked at the address the person approved, with the plugin's own client
  * secret where the CLI has it, and its grant removed also when the revoke
- * fails. A plugin with no grant reads no token key.
+ * fails. A plugin with no grant reads no token key, and gives none.
  *
  * @example
  * new PluginService({ ..., signOut: cliPluginSignOut({ profile, secrets, clock }) });
@@ -42,9 +42,9 @@ export function cliPluginSignOut(options: CliPluginSignOutOptions): SignOutPlugi
   return async (plugin) => {
     const records = new FileRecordStore(tokenFolders(options.profile).integrationSignIns);
     const signIns = signInsInTokenNames(plugin, await storedTokenNames(records));
-    if (signIns.length === 0) return;
+    if (signIns.length === 0) return [];
     const tokens = createTokenStore({ records, secrets: options.secrets, clock: options.clock });
-    await signOutSavedSignIns({
+    return await signOutSavedSignIns({
       integration: plugin,
       signIns,
       grants: createSignInGrants(tokens, webCryptoDigest),

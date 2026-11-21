@@ -3,7 +3,12 @@
 // over `PluginService.trust` and `revoke`: it asks the same question as
 // `plugin add`, through the same code, so the two can't drift apart.
 
-import type { PluginEntry, PluginService } from "@halonicjs/app";
+import {
+  type PluginEntry,
+  type PluginService,
+  signInsNotConfirmed,
+  signInsSignedOut,
+} from "@halonicjs/app";
 import { KindedError } from "@halonicjs/std";
 import {
   type CommandContext,
@@ -18,6 +23,7 @@ import { pluginMessages } from "../../messages/plugin.ts";
 import { trustMessages } from "../../messages/trust.ts";
 import { nearMatch } from "../../near-match.ts";
 import { offHereLines } from "../../output/plugin-off-here.ts";
+import { pluginSignedOutLines } from "../../output/plugin-signed-out.ts";
 import { printable } from "../../output/printable.ts";
 import { shownDate } from "../../output/trust-check.ts";
 import {
@@ -156,16 +162,26 @@ async function findPlugin(service: PluginService, id: string): Promise<PluginEnt
 }
 
 /**
- * `--remove`: forgets the trust, also when the plugin can't be read or
- * checked any more. Its settings and secrets stay; `plugin remove` deletes them.
+ * `--remove`: signs out the plugin's sign-ins and forgets the trust, also
+ * when the plugin can't be read or checked any more, and says which sign-ins
+ * it signed out. Its settings and secrets stay; `plugin remove` deletes them.
  */
 async function removeTrust(service: PluginService, entry: PluginEntry): Promise<CommandResult> {
-  await service.revoke(entry.folder);
+  const signedOut = await service.revoke(entry.folder);
   const name = entry.status === "broken" ? entry.folder : entry.plugin.name;
   return {
     exitCode: exitCode.ok,
-    lines: [phrase`${markPart("done")} ${pluginMessages.trustRemoved(printable(name)).phrase}`],
-    json: { id: entry.folder, name, status: "removed" },
+    lines: [
+      phrase`${markPart("done")} ${pluginMessages.trustRemoved(printable(name)).phrase}`,
+      ...pluginSignedOutLines(printable(name), signedOut),
+    ],
+    json: {
+      id: entry.folder,
+      name,
+      status: "removed",
+      signedOut: signInsSignedOut(signedOut),
+      signOutNotConfirmed: signInsNotConfirmed(signedOut),
+    },
   };
 }
 

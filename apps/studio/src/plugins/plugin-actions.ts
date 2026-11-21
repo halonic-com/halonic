@@ -56,7 +56,7 @@ export function desktopPluginActions({
         const trusted = await service.trust(plugin, shown, "prompt");
         if (!trusted.ok) throw new Error(trustRefusalLine(trusted.error));
       }),
-    revoke: (plugin) => changing(() => service.revoke(plugin)),
+    revoke: (plugin) => changing(async () => void (await service.revoke(plugin))),
     remove: (plugin) =>
       changing(async () => {
         const removed = await service.remove(plugin, (name) => secrets.remove(name));

@@ -278,6 +278,16 @@ export const pluginMessages = defineMessages("plugin", {
   /** `--plugin <id> --remove`, word for word from the words check on HAL-1991. */
   trustRemoved: (name: string) =>
     phrase`Removed trust for ${name}. Nothing from this plugin runs until you trust it.`,
+  /** With a ✓, under {@link trustRemoved} or {@link removed}, when it signed out the plugin's sign-ins. */
+  signedOut: (signIns: readonly string[]) => phrase`Signed you out of ${signIns.join(", ")}.`,
+  /**
+   * With a !, under {@link signedOut}, when the provider didn't confirm, or
+   * there was no address to revoke at: Studio's words after **Sign out**.
+   */
+  signedOutNotConfirmed: (name: string, tokens: number) =>
+    tokens === 1
+      ? phrase`You're signed out here. ${name} didn't confirm, so the token may still work there until it expires.`
+      : phrase`You're signed out here. ${name} didn't confirm, so the tokens may still work there until they expire.`,
 
   /**
    * A plugin's backend doesn't start for lack of trust (`PluginBackendNotTrustedError`

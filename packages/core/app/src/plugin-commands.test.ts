@@ -41,7 +41,7 @@ function setup() {
     trust: new TrustService({ store, digest, clock, appVersion: "0.1.0" }),
     records: new TestRecordStore(),
     clock,
-    signOut: async () => undefined,
+    signOut: async () => [],
   });
   const deleted: string[] = [];
   const scope = new WorkspaceScope({
@@ -80,7 +80,7 @@ verifies("app.plugin-commands", () => {
 
     expect(await commands.execute("plugins.remove", { id: "weather" })).toEqual({
       ok: true,
-      value: undefined,
+      value: [],
     });
     expect(deleted.length).toBeGreaterThan(0);
     expect(await commands.execute("plugins.list")).toEqual([]);
@@ -109,7 +109,7 @@ verifies("app.plugin-commands", () => {
   it("leaves the bus as it was when a plugin command already has a handler", async () => {
     const { service } = setup();
     const bus = new CommandBus<PluginCommands>();
-    bus.register("plugins.remove", () => ({ ok: true, value: undefined }));
+    bus.register("plugins.remove", () => ({ ok: true, value: [] }));
 
     expect(() => registerPluginCommands(bus, { service, deleteSecret: async () => {} })).toThrow(
       CommandError,
