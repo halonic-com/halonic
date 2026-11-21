@@ -23,6 +23,7 @@ verifies("studio.untrusted-starts-nothing", () => {
     );
   const refusal = {
     kind: "denied",
+    code: "workspace.untrusted",
     message: "This workspace isn't trusted yet, so nothing was started.",
   };
 

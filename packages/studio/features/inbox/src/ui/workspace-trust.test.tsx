@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
-import { KindedError } from "@halonicjs/std";
 import { Dialog } from "@halonicjs/studio-kit";
-import { createBadgeRegistry } from "@halonicjs/studio-shell";
+import { createBadgeRegistry, WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -25,7 +24,7 @@ function trustGate() {
   const gate = { trusted: false, sent: [] as string[] };
   const send = (what: string) => async () => {
     if (!gate.trusted) {
-      throw new KindedError("denied", "This workspace isn't trusted yet, so nothing was started.");
+      throw new WorkspaceUntrusted("This workspace isn't trusted yet, so nothing was started.");
     }
     gate.sent.push(what);
     return waitingRun("r47");

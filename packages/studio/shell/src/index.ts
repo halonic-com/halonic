@@ -89,6 +89,11 @@ export {
   engineWordsOf,
   type StudioHost,
 } from "./engine/engine-words.ts";
+export {
+  isUntrustedRefusal,
+  WorkspaceUntrusted,
+  workspaceUntrustedCode,
+} from "./engine/workspace-untrusted.ts";
 export { copyDetailsWords, detailsOf } from "./errors/copy-details-words.ts";
 export {
   type ErrorAction,
