@@ -90,7 +90,7 @@ verifies("app.sandbox-start-words", () => {
   });
 
   it("points the fixes the CLI words as WSL 2 to Settings", () => {
-    for (const code of ["distro-missing", "setup-conflict", "setup-needed"]) {
+    for (const code of ["distro-missing", "runtime-missing", "setup-conflict", "setup-needed"]) {
       const words = sandboxStartWords(code);
       expect(words.fix).toBe("open Settings and set up the sandbox there.");
       expect(words.calloutFix).toBe("Open Settings and set up the sandbox there.");

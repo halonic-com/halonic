@@ -3,8 +3,8 @@ import { expect, it } from "vitest";
 import { type SandboxCheck, sandboxVersion } from "./index.ts";
 
 verifies("ports.sandbox-check-setup-again", () => {
-  it("is in version 9 of the port", () => {
-    expect(sandboxVersion).toBe(9);
+  it("is in the port since version 9", () => {
+    expect(sandboxVersion).toBeGreaterThanOrEqual(9);
   });
 
   it("says a setup was done for an older release of the backend", () => {

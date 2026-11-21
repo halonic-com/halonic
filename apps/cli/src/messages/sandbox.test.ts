@@ -39,6 +39,7 @@ describe("the sandbox sentences", () => {
       "WSL isn't installed, and the sandbox needs it. Install it with wsl --install --no-distribution in a terminal run as administrator, restart Windows, then run it again.",
       "Windows needs to restart to finish setting up WSL. Restart Windows, then run it again.",
       "WSL works, but Halonic's own Linux system for the sandbox isn't installed. Use Halonic inside WSL 2 on this computer, then run it again.",
+      "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish. Use Halonic inside WSL 2 on this computer, then run it again.",
       "Another program set up the sandbox on this computer, in a way Halonic can't use. Use Halonic inside WSL 2 on this computer, then run it again.",
       "The sandbox's one-time setup isn't done for this version of Halonic. Use Halonic inside WSL 2 on this computer, then run it again.",
       "Ubuntu 24.04 blocks the user namespaces the sandbox needs. Allow them for bubblewrap with an AppArmor rule; the guide has the exact commands.",
@@ -97,6 +98,10 @@ describe("the sandbox sentences", () => {
       ],
       [
         "WSL works, but Halonic's own Linux system for the sandbox isn't installed.",
+        "Fix: use Halonic inside WSL 2 on this computer. Then run halonic doctor again.",
+      ],
+      [
+        "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish.",
         "Fix: use Halonic inside WSL 2 on this computer. Then run halonic doctor again.",
       ],
       [
@@ -205,6 +210,7 @@ describe("the sandbox sentences", () => {
       "wsl-missing": section(""),
       "restart-needed": section(""),
       "distro-missing": section(""),
+      "runtime-missing": section(""),
       "setup-conflict": section(""),
       "setup-needed": section(""),
       "user-namespaces-restricted": section("#user-namespaces"),

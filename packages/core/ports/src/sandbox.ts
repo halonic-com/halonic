@@ -19,8 +19,10 @@
  * (docs/adr/2026-11-18-sandbox-reason-not-offered.md).
  * 9: `SandboxCheck.setupAgain`, for a one-time setup done for an older
  * release of the backend (docs/adr/2026-11-21-sandbox-check-setup-again.md).
+ * 10: the reason code `runtime-missing`, for Halonic's WSL distro without its
+ * runtime (docs/adr/2026-11-21-sandbox-reason-runtime-missing.md).
  */
-export const sandboxVersion = 9;
+export const sandboxVersion = 10;
 
 /**
  * How files reach the sandbox. `shared`: the program sees the same folders as
@@ -60,6 +62,9 @@ export interface SandboxCapabilities {
  * - `wsl-missing`: WSL isn't installed, which needs an administrator.
  * - `restart-needed`: WSL is installed, but Windows must restart first.
  * - `distro-missing`: WSL works, but Halonic's own distro isn't imported (no administrator needed).
+ * - `runtime-missing`: Halonic's distro is imported, but the runtime that runs the sandbox in it
+ *   isn't installed, as after a setup that didn't finish; repair installs it without importing the
+ *   distro again (since version 10).
  * - `setup-conflict`: the machine-wide setup belongs to another program, or is set up another way.
  * - `setup-needed`: the one-time administrator setup isn't done, or was done by another release of the backend.
  * - `user-namespaces-restricted`: the system doesn't let programs create user namespaces, as Ubuntu 24.04 does by default.
@@ -84,6 +89,7 @@ export const sandboxUnavailableReasons = [
   "wsl-missing",
   "restart-needed",
   "distro-missing",
+  "runtime-missing",
   "setup-conflict",
   "setup-needed",
   "user-namespaces-restricted",

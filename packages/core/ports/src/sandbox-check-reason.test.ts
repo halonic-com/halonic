@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import type { SandboxCheck } from "./index.ts";
-import { sandboxUnavailableReasons } from "./index.ts";
+import { sandboxUnavailableReasons, sandboxVersion } from "./index.ts";
 
 // Type tests too: `tsc -p tsconfig.test.json` checks them. Each `@ts-expect-error`
 // fails the typecheck if the line it marks ever starts to compile.
@@ -17,6 +17,7 @@ verifies("ports.sandbox-check-reason", () => {
       "wsl-missing",
       "restart-needed",
       "distro-missing",
+      "runtime-missing",
       "setup-conflict",
       "setup-needed",
       "user-namespaces-restricted",
@@ -61,6 +62,16 @@ verifies("ports.sandbox-check-reason", () => {
       missing: ["this app has no session outside the sandbox"],
     };
     expect(refused.reason).toBe("not-offered");
+  });
+
+  it("takes version 10's code for a distro without its runtime", () => {
+    expect(sandboxVersion).toBeGreaterThanOrEqual(10);
+    const refused: SandboxCheck = {
+      ok: false,
+      reason: "runtime-missing",
+      missing: ["Halonic's WSL distro has no runtime installed"],
+    };
+    expect(refused.reason).toBe("runtime-missing");
   });
 
   it("doesn't compile with a reason that isn't listed", () => {

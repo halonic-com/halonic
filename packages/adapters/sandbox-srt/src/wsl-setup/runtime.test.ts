@@ -91,7 +91,7 @@ verifies("sandbox-srt.wsl-runtime", () => {
       expect(await setup.run()).toMatchObject({
         outcome: "failed",
         code: "runtime-busy",
-        reason: "other",
+        reason: "runtime-missing",
       });
       expect((await store.load()).step).toBe("installing-runtime");
       fake.machine.runtimeInstallCode = 0;
@@ -108,11 +108,23 @@ verifies("sandbox-srt.wsl-runtime", () => {
         expect(await setupOn(fake, saved).setup.run()).toEqual({
           outcome: "failed",
           code: "runtime-install-failed",
-          reason: "other",
+          reason: "runtime-missing",
           detail: `exit ${code}: refused`,
         });
       },
     );
+
+    it("says other, not runtime-missing, when the distro keeps an older runtime", async () => {
+      const { fake, saved } = imported();
+      fake.machine.runtime = "0.0.9+aaaaaaaaaaaa";
+      fake.machine.runtimeInstallCode = 4;
+
+      expect(await setupOn(fake, saved).setup.run()).toMatchObject({
+        outcome: "failed",
+        code: "runtime-install-failed",
+        reason: "other",
+      });
+    });
 
     it("counts exit 2 as done when another run made the version current", async () => {
       const { fake, saved } = imported();

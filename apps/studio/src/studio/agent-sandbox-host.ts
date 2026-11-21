@@ -35,7 +35,11 @@ export interface WslBackupShell {
   reveal(): Promise<void>;
 }
 
-const needsRepair: readonly SandboxUnavailableReason[] = ["distro-missing", "setup-conflict"];
+const needsRepair: readonly SandboxUnavailableReason[] = [
+  "distro-missing",
+  "runtime-missing",
+  "setup-conflict",
+];
 
 /** The reason when the shell couldn't start the helper or wait for it (C525-7, HAL-15013). */
 const HELPER_DIDNT_START = "Windows couldn't start Halonic's sandbox helper.";

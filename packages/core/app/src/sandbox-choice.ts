@@ -140,6 +140,7 @@ const setupReasons: readonly SandboxUnavailableReason[] = [
   "wsl-missing",
   "restart-needed",
   "distro-missing",
+  "runtime-missing",
   "sign-in-needed",
   "bubblewrap-missing",
   "linux-tools-missing",

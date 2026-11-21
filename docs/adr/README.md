@@ -56,6 +56,7 @@ code is built the way it is, before you change something they describe.
 | [Desktop engine in its own process](2026-11-20-desktop-engine-runs-in-its-own-process.md) | One engine process per workspace, owned by the shell; the page reaches it only through the shell, and it gets secrets over a private pipe |
 | [The merge queue writes only its own cache area](2026-11-20-the-merge-queue-writes-only-its-own-cache-area.md) | The queue's cache token uploads only to `q/<hash>` and reads it before `main`'s entry; `main` never reads `q/`; only `ci.yml`'s `build` job uses the remote cache (proposed) |
 | [A setup done for an older release says `setupAgain`](2026-11-21-sandbox-check-setup-again.md) | An optional flag on a `setup-needed` refusal, so Studio can tell "set up again" from "never set up" (v9) |
+| [A WSL distro without its runtime says `runtime-missing`](2026-11-21-sandbox-reason-runtime-missing.md) | A new `SandboxUnavailableReason` for Halonic's distro without its runtime, which repair installs without importing the distro again (v10) |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).

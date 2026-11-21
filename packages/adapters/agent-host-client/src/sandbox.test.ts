@@ -94,6 +94,17 @@ verifies("agent-host-client.sandbox", () => {
       await expect(sandbox.check()).rejects.toMatchObject({ kind: "answer_invalid" });
     });
 
+    it("answers a distro without its runtime as the host does (port version 10)", async () => {
+      const check = {
+        ok: false,
+        reason: "runtime-missing",
+        missing: ["Halonic's WSL distro has no runtime installed"],
+      };
+      const host = hostWithSession().answer("GET /v1/sandbox/check", ok(check));
+      const sandbox = await AgentHostSandbox.connect(host);
+      expect(await sandbox.check()).toEqual(check);
+    });
+
     it("opens a session in the host with the profile unchanged", async () => {
       const host = hostWithSession();
       const session = await (await AgentHostSandbox.connect(host)).open(profile);

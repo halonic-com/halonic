@@ -28,6 +28,8 @@ export interface WslRuntime {
  */
 export interface WslRuntimeFailure {
   code: "runtime-busy" | "runtime-install-failed";
+  /** The runtime the distro still has as current, or `null` when it has none (HAL-15132). */
+  kept: string | null;
   detail: string;
 }
 
@@ -96,7 +98,8 @@ export async function ensureWslRuntime(
   distro: string,
   runtime: WslRuntime,
 ): Promise<WslRuntimeFailure | null> {
-  if ((await installedVersion(host, distro)) === runtime.version) return null;
+  const before = await installedVersion(host, distro);
+  if (before === runtime.version) return null;
   const installed = await host.installRuntime(distro, runtime);
   if (installed.code === 0) return null;
   const detail = `exit ${installed.code}: ${firstLine(installed.output)}`;
@@ -107,8 +110,9 @@ export async function ensureWslRuntime(
   ) {
     return null;
   }
+  // The updater switches `current` only once the new runtime is in place, so a failure keeps `before`.
   if (installed.code === EXIT_BUSY || installed.code === EXIT_LOCKED) {
-    return { code: "runtime-busy", detail };
+    return { code: "runtime-busy", kept: before, detail };
   }
-  return { code: "runtime-install-failed", detail };
+  return { code: "runtime-install-failed", kept: before, detail };
 }

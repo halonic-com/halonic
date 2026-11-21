@@ -14,6 +14,7 @@ import { sandboxMessages } from "./sandbox.ts";
 const fixDiffersOnPurpose: readonly string[] = [
   "windows",
   "distro-missing",
+  "runtime-missing",
   "setup-conflict",
   "setup-needed",
 ];
