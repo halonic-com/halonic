@@ -3,6 +3,7 @@
 - Task: HAL-15122
 - Approval: a team decision with no board card (HAL-2282 rule: wording on an approved command, from Iris's flow check C544-6 on HAL-15101); Maya confirms the wording on the task, and the reviewer approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:J2UN/pzSeasmyQOfbfCFBz3UAESdM2ehfonYUCYIxXKMw71jYjiFme+scXG6c11pRlt8UuLWIuwThyfyvzlLBQ==
 
 ## What changes
 
