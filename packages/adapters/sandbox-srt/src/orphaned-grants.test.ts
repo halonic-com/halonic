@@ -55,6 +55,30 @@ const forgotAll = (calls: string[][]) =>
   calls.some((call) => call.join(" ") === "profile forget") &&
   calls.some((call) => call.join(" ") === "acl forget --all");
 
+verifies("sandbox-srt.removal-kept-access", () => {
+  describe("a removal with administrator rights", () => {
+    /** The removal's result when srt's status after it is `status`. */
+    function removal(status: string) {
+      const { grants } = fakeGrants((args) => (args[0] === "user" ? { stdout: status } : {}));
+      return new SrtSandbox(windows(true, "grants_kept"), undefined, null, {
+        grants,
+        warn: () => {},
+      }).remove();
+    }
+
+    it("says the kept access goes at the next start when srt lists kept grants and no account", async () => {
+      expect(await removal(userStatus(false, "present"))).toEqual({
+        ok: true,
+        keptAccess: "until_next_start",
+      });
+    });
+
+    it("is done without keptAccess when srt still lists its sandbox account", async () => {
+      expect(await removal(userStatus(true, "present"))).toEqual({ ok: true });
+    });
+  });
+});
+
 verifies("sandbox-srt.forget-after-admin-removal", () => {
   describe("a removal with administrator rights", () => {
     it("takes nothing back itself, and says the next start takes the grants back when it will see them", async () => {
@@ -64,7 +88,7 @@ verifies("sandbox-srt.forget-after-admin-removal", () => {
         grants,
         warn: (message) => warnings.push(message),
       });
-      expect(await sandbox.remove()).toEqual({ ok: true });
+      expect(await sandbox.remove()).toEqual({ ok: true, keptAccess: "until_next_start" });
       expect(forgotAll(calls)).toBe(false);
       expect(warnings.join()).toMatch(/next time it starts .*srt-win acl forget --all/);
     });

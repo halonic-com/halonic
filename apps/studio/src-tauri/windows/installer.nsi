@@ -1859,7 +1859,9 @@ Function un.PageConfirmLeave
 FunctionEnd
 
 ; Removes the agent sandbox (flow 2.7, CHECK I9), and sets $SandboxOutcome to
-; "removed", "none" (nothing was set up, nothing asked), "refused", "failed"
+; "removed", "removed_kept" (removed, but the access it kept on the user's
+; folders goes at Halonic's next start), "none" (nothing was set up, nothing
+; asked), "refused", "failed"
 ; (with $SandboxReason) or "skipped" (a silent uninstall without administrator
 ; rights, which can't ask).
 Function un.RemoveSandbox
@@ -1890,6 +1892,13 @@ Function un.RemoveSandbox
   ${If} $2 == "0"
     StrCpy $SandboxOutcome "removed"
     DetailPrint "✓ Removed the agent sandbox"
+  ${ElseIf} $2 == "2"
+    ; With administrator rights the removal leaves the access the sandbox
+    ; kept on the user's folders; the agent host takes it back the next time
+    ; it starts as the user (HAL-5404 S2).
+    StrCpy $SandboxOutcome "removed_kept"
+    DetailPrint "✓ Removed the agent sandbox"
+    DetailPrint "   Its access to your project folders is removed the next time you start ${PRODUCTNAME}."
   ${ElseIf} $2 == "20"
     StrCpy $SandboxOutcome "none"
   ${ElseIf} $2 == "10"
@@ -1917,8 +1926,30 @@ Function un.PageDone
   Pop $0
 
   ${If} $SandboxOutcome == "removed"
+  ${OrIf} $SandboxOutcome == "removed_kept"
     ${NSD_CreateLabel} 0 0 100% 10u "✓ The agent sandbox is removed."
     Pop $0
+    ${If} $SandboxOutcome == "removed_kept"
+      ; Lined up under line 1's text, not its ✓: measured in pixels with the
+      ; label's own font, so it holds at any display scaling (HAL-15004).
+      SendMessage $0 ${WM_GETFONT} 0 0 $1
+      System::Call 'user32::GetDC(p r0) p .r2'
+      System::Call 'gdi32::SelectObject(p r2, p r1) p .r1'
+      System::Call '*(i 0, i 0) p .r3'
+      System::Call 'gdi32::GetTextExtentPoint32W(p r2, w "✓ ", i 2, p r3)'
+      System::Call '*$3(i .r4)'
+      System::Free $3
+      System::Call 'gdi32::SelectObject(p r2, p r1)'
+      System::Call 'user32::ReleaseDC(p r0, p r2)'
+      System::Call '*(i 0, i 0, i 0, i 0) p .r3'
+      System::Call 'user32::GetClientRect(p r0, p r3)'
+      System::Call '*$3(i, i, i .r5)'
+      System::Free $3
+      IntOp $5 $5 - $4
+      ; Two lines high, so a wrap at a larger scaling isn't cut off.
+      ${NSD_CreateLabel} $4 12u $5 20u "Its access to your project folders is removed the next time you start ${PRODUCTNAME}."
+      Pop $0
+    ${EndIf}
   ${ElseIf} $SandboxOutcome == "refused"
   ${OrIf} $SandboxOutcome == "failed"
     ${NSD_CreateLabel} 0 0 100% 20u "! The agent sandbox's Windows account and firewall filters are still on this computer."
