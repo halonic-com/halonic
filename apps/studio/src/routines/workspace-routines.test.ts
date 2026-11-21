@@ -202,6 +202,7 @@ verifies("studio.workspace-routines", () => {
           {
             reason: "start-refused",
             sentence: "This window can't run Briefing.",
+            fix: "Open Acme in Studio, then try again.",
             from: "2026-11-01T08:00:00Z",
             to: "2026-11-01T08:00:00Z",
             count: 1,
@@ -220,11 +221,11 @@ verifies("studio.workspace-routines", () => {
       ["new", "failed", "schedule"],
       ["old", "completed", "schedule"],
     ]);
-    expect(skips.map(({ reason, sentence }) => [reason, sentence])).toEqual([
-      ["missed", undefined],
-      ["target-in-trash", undefined],
-      ["start-refused", "This window can't run Briefing."],
-      ["start-refused", undefined],
+    expect(skips.map(({ reason, sentence, fix }) => [reason, sentence, fix])).toEqual([
+      ["missed", undefined, undefined],
+      ["target-in-trash", undefined, undefined],
+      ["start-refused", "This window can't run Briefing.", "Open Acme in Studio, then try again."],
+      ["start-refused", undefined, undefined],
     ]);
   });
 

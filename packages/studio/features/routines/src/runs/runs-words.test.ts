@@ -32,14 +32,22 @@ it("says why a time didn't start", () => {
   );
 });
 
-it("says a refused start with its sentence, or that Halonic can't explain it, and names it for a screen reader", () => {
+it("says a refused start with its sentence and next step, or that Halonic can't explain it, and names it for a screen reader", () => {
   const sentence = "This window can't run Briefing.";
   const one = { reason: "start-refused" as const, from: at(10, 3, 8), to: at(10, 3, 8), count: 1 };
   expect(skipSentence({ ...one, sentence }, "Briefing", now)).toBe(
     "08:00 Tue: couldn't start. This window can't run Briefing.",
   );
   expect(skipSentence(one, "Briefing", now)).toBe(
-    "08:00 Tue: couldn't start. Halonic ran into a problem it can't explain yet.",
+    "08:00 Tue: couldn't start. Halonic ran into a problem it can't explain yet. Press Run now to see the details.",
+  );
+  const running = "Acme is already running in another Halonic on this computer.";
+  const withStep = { ...one, sentence: running, fix: "Stop that one, then try again." };
+  expect(skipSentence(withStep, "Briefing", now)).toBe(
+    `08:00 Tue: couldn't start. ${running} Stop that one, then try again.`,
+  );
+  expect(skipName(withStep, now)).toBe(
+    `Couldn't start at 08:00 Tue. ${running} Stop that one, then try again.`,
   );
   expect(skipName({ ...one, sentence }, now)).toBe(
     "Couldn't start at 08:00 Tue. This window can't run Briefing.",

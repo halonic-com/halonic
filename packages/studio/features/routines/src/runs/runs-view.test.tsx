@@ -183,7 +183,7 @@ verifies("routines.runs.view", () => {
     );
     expect(refused?.querySelector("button")).toBeNull();
     expect(unexplained?.querySelector(".sr-only")?.textContent).toBe(
-      "Couldn't start at 08:00 Tue. Halonic ran into a problem it can't explain yet.",
+      "Couldn't start at 08:00 Tue. Halonic ran into a problem it can't explain yet. Press Run now to see the details.",
     );
     expect(page.textContent).not.toContain("No runs yet");
   });

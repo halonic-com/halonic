@@ -25,6 +25,8 @@ export interface StoredSkip {
   readonly why?: "never-live" | "in-trash";
   /** For `start-refused`: the refusal's sentence, absent when Halonic can't explain it. */
   readonly sentence?: string;
+  /** For `start-refused`: the refusal's next step, absent when it has none. */
+  readonly fix?: string;
   readonly from: string;
   readonly to: string;
   readonly count: number;
@@ -76,7 +78,8 @@ export function skipOf(stored: StoredSkip): RoutineSkip {
     };
   }
   if (stored.reason === "start-refused" && stored.sentence !== undefined) {
-    return { reason: stored.reason, sentence: stored.sentence, from, to, count };
+    const { reason, sentence, fix } = stored;
+    return { reason, sentence, ...(fix === undefined ? {} : { fix }), from, to, count };
   }
   return { reason: stored.reason, from, to, count };
 }

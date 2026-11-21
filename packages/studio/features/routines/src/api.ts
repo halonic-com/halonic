@@ -171,6 +171,8 @@ export interface RoutineSkip {
   readonly reason: RoutineSkipReason;
   /** For `start-refused`: the refusal's own sentence; absent when Halonic can't explain it. */
   readonly sentence?: string;
+  /** For `start-refused`: the refusal's next step, after its sentence; absent when it has none. */
+  readonly fix?: string;
   /** ISO times of the oldest and the newest skipped time. */
   readonly from: string;
   readonly to: string;

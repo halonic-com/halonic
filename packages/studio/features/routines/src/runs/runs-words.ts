@@ -1,3 +1,4 @@
+import { withFullStop } from "@halonicjs/studio-shell";
 import type { RoutineRun, RoutineRunStart, RoutineSkip, RoutineSkipReason } from "../api.ts";
 
 /** The Runs view's words (flow-routines 3.9, microcopy 12.3). */
@@ -100,8 +101,18 @@ export function timeRange(from: string, to: string, now: Date): string {
 
 const missed = "missed while Halonic was closed or asleep";
 
-/** What a refused start says when the refusal has no sentence of its own (microcopy 22 F13). */
-const unexplained = "Halonic ran into a problem it can't explain yet.";
+/**
+ * What a refused start says when the refusal has no sentence of its own (microcopy 22 F13). The row
+ * has no **Copy details**, so it points to **Run now**, whose Run panel has them (C553 row 10).
+ */
+const unexplained =
+  "Halonic ran into a problem it can't explain yet. Press Run now to see the details.";
+
+/** A refused start's reason, then its next step when it has one (rule E4, C553 row 9). */
+function refusal(skip: RoutineSkip): string {
+  if (skip.sentence === undefined) return unexplained;
+  return skip.fix === undefined ? skip.sentence : `${skip.sentence} ${withFullStop(skip.fix)}`;
+}
 
 const skipReasons: Record<
   Exclude<RoutineSkipReason, "target-never-live" | "target-in-trash" | "start-refused">,
@@ -124,7 +135,7 @@ export function skipSentence(skip: RoutineSkip, targetName: string, now: Date): 
     case "target-in-trash":
       return `${when}: ${targetName} was deleted`;
     case "start-refused":
-      return `${when}: couldn't start. ${skip.sentence ?? unexplained}`;
+      return `${when}: couldn't start. ${refusal(skip)}`;
     default:
       return `${when}: ${skipReasons[skip.reason]}`;
   }
@@ -132,13 +143,14 @@ export function skipSentence(skip: RoutineSkip, targetName: string, now: Date): 
 
 /**
  * What a screen reader hears for a skipped row, when it isn't its text: a refused start leads with
- * what happened, "Couldn't start at 17:27 Sat. *reason*" ("from 17:27 to 17:29 Sat" for a range).
+ * what happened, "Couldn't start at 17:27 Sat. *reason* *next step*" ("from 17:27 to 17:29 Sat" for a
+ * range).
  */
 export function skipName(skip: RoutineSkip, now: Date): string | undefined {
   if (skip.reason !== "start-refused") return undefined;
   const when = timeRange(skip.from, skip.to, now);
   const at = skip.from === skip.to ? `at ${when}` : `from ${when}`;
-  return `Couldn't start ${at}. ${skip.sentence ?? unexplained}`;
+  return `Couldn't start ${at}. ${refusal(skip)}`;
 }
 
 /** The line of times waiting for the previous run to end (busy rule "Queue it"). */

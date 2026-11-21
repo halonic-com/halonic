@@ -12,7 +12,8 @@ import { deleteValue } from "./routine-last-runs.ts";
  * `target-unavailable`: the workflow or agent it starts can't be started,
  * for the reason in `why` (see {@link TargetUnavailableWhy}).
  * `start-refused`: the scheduler asked for the run and the start was refused,
- * with the refusal's own sentence in `sentence` when it has one.
+ * with the refusal's own sentence in `sentence` and its next step in `fix`
+ * when it has them.
  */
 export type SkipReason =
   | CatchUpReason
@@ -37,6 +38,8 @@ export interface SkippedTimes {
   why?: TargetUnavailableWhy;
   /** For `start-refused` only: the refusal's sentence, absent when the error has no kind. */
   sentence?: string;
+  /** For `start-refused` only: the refusal's next step, absent when it has none or no sentence. */
+  fix?: string;
   /** The oldest dropped time. */
   from: Date;
   /** The newest dropped time. */
@@ -54,6 +57,8 @@ export interface SkipRecord {
   why?: TargetUnavailableWhy;
   /** For `start-refused` only: the refusal's sentence, absent when the error has no kind. */
   sentence?: string;
+  /** For `start-refused` only: the refusal's next step, absent when it has none or no sentence. */
+  fix?: string;
   /** ISO time of the oldest skipped time. */
   from: string;
   /** ISO time of the newest skipped time. */
@@ -100,18 +105,24 @@ export function addSkips(
   return next.slice(0, MAX_SKIP_RECORDS);
 }
 
-/** Whether a row and a skip are for the same reason, `why` and sentence (two texts make two rows). */
+/** Whether a row and a skip are for the same reason, `why`, sentence and step (two texts make two rows). */
 function sameReason(row: SkipRecord, skip: SkippedTimes): boolean {
-  return row.reason === skip.reason && row.why === skip.why && row.sentence === skip.sentence;
+  return (
+    row.reason === skip.reason &&
+    row.why === skip.why &&
+    row.sentence === skip.sentence &&
+    row.fix === skip.fix
+  );
 }
 
-/** The `why` and `sentence` of a skip or a row, for a row made from it. */
+/** The `why`, `sentence` and `fix` of a skip or a row, for a row made from it. */
 function detailOf(
-  skip: Pick<SkippedTimes, "why" | "sentence">,
-): Pick<SkipRecord, "why" | "sentence"> {
+  skip: Pick<SkippedTimes, "why" | "sentence" | "fix">,
+): Pick<SkipRecord, "why" | "sentence" | "fix"> {
   return {
     ...(skip.why === undefined ? {} : { why: skip.why }),
     ...(skip.sentence === undefined ? {} : { sentence: skip.sentence }),
+    ...(skip.fix === undefined ? {} : { fix: skip.fix }),
   };
 }
 
@@ -281,6 +292,7 @@ function isRecord(value: unknown): value is SkipRecord {
     (row.reason === "start-refused"
       ? row.sentence === undefined || typeof row.sentence === "string"
       : row.sentence === undefined) &&
+    (row.fix === undefined || (typeof row.fix === "string" && typeof row.sentence === "string")) &&
     isTime(row.from) &&
     isTime(row.to) &&
     isTime(row.decidedAt) &&
