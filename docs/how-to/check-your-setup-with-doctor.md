@@ -96,7 +96,7 @@ built-in test model needs nothing, so it isn't listed.
 | ✓ "API key stored" | The key for this cloud provider is stored. | Nothing. |
 | ! an alias "needs an API key" | The aliases named on the line use a provider whose key isn't stored. Agents that use them won't run. For a provider an agent names directly, the line names that model instead, such as `claude/claude-sonnet-5-5 needs an API key for claude.` | Store the key with `halonic secret set <name>`, where `<name>` is the `secret` in the provider's file. |
 | ! "couldn't read" a key "from the secret store" | Halonic couldn't read this provider's key from the secrets file, for example because the file is damaged or other users can read it. The key may still be there. | Run `halonic secret list`: it says what's wrong with the file and how to fix it, such as `chmod 600 <file>`. Then run `halonic doctor` again. Don't set the key again until `doctor` says it isn't set. |
-| ✕ "no model alias default" | The workspace has no model alias `default`, and agents that don't name a model of their own need it. They won't run until it's added. `doctor` exits 1. | Copy `models.yaml` and `providers/mock.yaml` from Acme (`examples/acme`), or add your own alias `default`. |
+| ✕ "no model alias default" | The workspace has no model alias `default`, and agents that don't name a model of their own need it. They won't run until it's added. `doctor` exits 1. When a workflow runs those agents, `halonic validate` fails with `unknown-default-model`, and `doctor` shows ✕ "problems in its files" on the Workspace line instead, with no Models line: the Models check waits until the files have no errors. | Copy `models.yaml` and `providers/mock.yaml` from Acme (`examples/acme`), or add your own alias `default`. |
 | ✕ "isn't answering" at an address | The model server on this computer doesn't answer. Every alias that uses it fails, and Halonic doesn't fall back to another model by itself. | Start the server (for example, open Ollama or LM Studio). Check that the address matches `baseUrl` in the provider's file. |
 
 Until you trust a workspace, `doctor` only asks servers on this computer. A
@@ -133,15 +133,19 @@ page the `More:` link opens.
 
 **Checks:** the agent harnesses Halonic can start besides its own, Claude Code
 and Codex: whether each is installed, which version, and whether each agent
-that uses one is signed in. Shown when a harness is installed or an agent uses
-one.
+that uses one is signed in. Shown when a harness is ready for you (installed
+in a version Halonic supports, and you're signed in to it on your own account),
+or when one of the problems below applies. A harness you aren't signed in to
+yourself isn't listed. So with Claude Code or Codex installed, nobody signed in
+to it on their own account, and every agent that uses it covered by a provider
+key or its own sign-in, there's no Harnesses line at all.
 
 A harness that no agent uses is never a warning. Each line here is at most a
 warning, because only the agents that use that harness are stopped.
 
 | You see | Means | Fix |
 | --- | --- | --- |
-| ✓ a harness and its version | The harness is installed and Halonic supports this version. | Nothing. |
+| ✓ a harness and its version | The harness is installed, Halonic supports this version, and you're signed in to it yourself. | Nothing. |
 | ! an agent uses a harness "and it isn't installed" | That agent can't start. | Install the harness, then run `doctor` again. |
 | ! a version "isn't supported" | The installed harness is older than Halonic needs. The line says which version it needs. | Update the harness, then run `doctor` again. |
 | ! "couldn't ask its version" | Halonic found the harness, but asking its version failed. The line gives the harness's own error. | Check that the harness runs on its own in a terminal. |
