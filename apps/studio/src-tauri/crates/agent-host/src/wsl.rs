@@ -320,8 +320,26 @@ pub fn install_runtime(
     archive: &Path,
     sha256: &str,
 ) -> Result<(), WslError> {
+    install_runtime_within(wsl, version, archive, sha256, Duration::MAX)
+}
+
+/// [`install_runtime`] with a time limit: an updater that hasn't ended after
+/// `limit` is stopped, so a stuck install never holds up the host's start.
+/// The updater points `current` at the new version with one rename, so a
+/// stopped install leaves the version before it current.
+///
+/// # Errors
+///
+/// [`WslError::TimedOut`] after `limit`, otherwise as [`install_runtime`].
+pub fn install_runtime_within(
+    wsl: &Path,
+    version: &str,
+    archive: &Path,
+    sha256: &str,
+    limit: Duration,
+) -> Result<(), WslError> {
     let command = runtime_command(wsl, RuntimeStep::Install { version, sha256 })?;
-    send_archive(command, archive, sha256)
+    send_archive(command, archive, sha256, limit)
 }
 
 /// Runs `command`, a step from [`runtime_command`], with no input, and
@@ -358,13 +376,18 @@ pub fn file_sha256(path: &Path) -> Result<String, WslError> {
 /// so renaming another file into its place between the check and the send
 /// changes nothing. A write into the same file can still change what is sent:
 /// the updater's own SHA-256 check refuses that.
-fn send_archive(command: Command, archive: &Path, sha256: &str) -> Result<(), WslError> {
+fn send_archive(
+    command: Command,
+    archive: &Path,
+    sha256: &str,
+    limit: Duration,
+) -> Result<(), WslError> {
     let mut file = File::open(archive).map_err(archive_error)?;
     if reader_sha256(&mut file)? != sha256 {
         return Err(WslError::ChecksumDiffers);
     }
     file.seek(SeekFrom::Start(0)).map_err(archive_error)?;
-    run(command, Input::Given(Stdio::from(file))).map(drop)
+    run_within(command, Input::Given(Stdio::from(file)), limit).map(drop)
 }
 
 fn reader_sha256(file: &mut File) -> Result<String, WslError> {
@@ -394,7 +417,7 @@ fn distro_command(wsl: &Path, user: &str, program: &str) -> Command {
     command
 }
 
-fn check_version(version: &str) -> Result<(), WslError> {
+pub(crate) fn check_version(version: &str) -> Result<(), WslError> {
     let allowed = |character: char| character.is_ascii_alphanumeric() || "._+-".contains(character);
     let valid = !version.is_empty()
         && version.len() <= VERSION_LIMIT
@@ -410,7 +433,7 @@ fn check_version(version: &str) -> Result<(), WslError> {
     }
 }
 
-fn check_sha256(sha256: &str) -> Result<(), WslError> {
+pub(crate) fn check_sha256(sha256: &str) -> Result<(), WslError> {
     let valid = sha256.len() == 64
         && sha256
             .bytes()
