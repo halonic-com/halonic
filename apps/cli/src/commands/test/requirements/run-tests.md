@@ -18,7 +18,7 @@ The `halonic test` command shall run the workflow tests of the workspace in the 
   then it prints "✕ support-reply › Spam gets a reply", "Expected the run to end in the step Finished with the reply approved, but it ended in Finished without a reply, because nobody needs to answer spam." and the file and line under it, and exits with 1.
 - Given a test that expects the spam mail to end in `nothing`, a step the workflow doesn't have,
   when `halonic test` runs,
-  then no test runs, because `validate` reports the step (`workspace.test-references`): it prints "✕ Couldn't test acme: Acme has 1 problem in its files. Nothing ran." and exits with 2.
+  then no test runs, because `validate` reports the step (`workspace.test-references`): it prints "✕ Couldn't test acme: Acme has 1 problem in hubs/support/workflows/support-reply.test.yaml. Nothing ran." and exits with 2.
 - Given a test whose sorter reply is "questions", which isn't one of the sorter's options,
   when `halonic test` runs,
   then under the failed test it prints 'Expected the run to finish, but it failed in the step Classify it. The agent sorter answered "questions", which isn't one of its options (refund, question, spam). Tighten the agent's instructions or use a larger model.' and exits with 1.

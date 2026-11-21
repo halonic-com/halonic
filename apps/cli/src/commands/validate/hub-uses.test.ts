@@ -60,7 +60,7 @@ verifies("workspace.hub-uses", () => {
 
       expect(testCode).toBe(exitCode.usage);
       expect(tested.stderr[0]).toBe(
-        "✕ Couldn't test acme: Acme has 2 problems in its files. Nothing ran.",
+        "✕ Couldn't test acme: Acme has 2 problems in hubs/support/hub.yaml. Nothing ran.",
       );
     },
     heavyTestTimeout,

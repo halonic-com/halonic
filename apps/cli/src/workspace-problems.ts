@@ -29,7 +29,12 @@ export function workspaceProblemsOf(workspace: LoadedWorkspace): WorkspaceIssue[
  * don't count.
  */
 export function fileProblemsOf(workspace: LoadedWorkspace): number {
-  return workspaceProblemsOf(workspace).filter((issue) => issue.severity === "error").length;
+  return fileErrorsOf(workspace).length;
+}
+
+/** The errors {@link fileProblemsOf} counts, in the order `halonic validate` lists them. */
+function fileErrorsOf(workspace: LoadedWorkspace): WorkspaceIssue[] {
+  return workspaceProblemsOf(workspace).filter((issue) => issue.severity === "error");
 }
 
 /**
@@ -43,18 +48,25 @@ export function misplacedFilesOf(workspace: LoadedWorkspace): number {
 
 /**
  * A run refused because the workspace's files have errors: `invalid_input`,
- * exit 2, as for any file the user gave that is wrong. The fix points at
- * `halonic validate`, which lists them; the problems themselves aren't
- * repeated here, so a pasted key in one never reaches this error.
+ * exit 2, as for any file the user gave that is wrong. It names the files,
+ * and the fix points at `halonic validate`, which lists the problems; the
+ * problems themselves aren't repeated here, so a pasted key in one never
+ * reaches this error.
  */
 export class WorkspaceFileProblemsError extends KindedError {
   /** The detailed code on line 3 and in `--json`. */
   readonly code = "workspace-file-problems";
 
-  constructor(workspace: string, count: number, nothingDone: Message, typedDir?: string) {
+  constructor(
+    workspace: string,
+    count: number,
+    files: readonly string[],
+    nothingDone: Message,
+    typedDir?: string,
+  ) {
     super(
       "invalid_input",
-      plainText(workspaceMessages.fileProblems(workspace, count, nothingDone.phrase).phrase),
+      plainText(workspaceMessages.fileProblems(workspace, count, files, nothingDone.phrase).phrase),
       { fix: plainText(workspaceMessages.fileProblemsFix(typedDir).phrase) },
     );
   }
@@ -62,8 +74,8 @@ export class WorkspaceFileProblemsError extends KindedError {
 
 /**
  * Refuses to go on when the workspace's files have errors, before anything
- * starts: "✕ Couldn't run support-reply: Acme has 2 problems in its files.
- * Nothing ran." and "See them with: halonic validate".
+ * starts: "✕ Couldn't run support-reply: Acme has 2 problems in
+ * providers/mock.yaml. Nothing ran." and "See them with: halonic validate".
  *
  * @param nothingDone - the end of line 1: "Nothing ran." or "Nothing was sent."
  * @param typedDir - the user's own `--dir`, for the suggested command
@@ -75,8 +87,10 @@ export function refuseFileProblems(
   nothingDone: Message,
   typedDir: string | undefined,
 ): void {
-  const count = fileProblemsOf(workspace);
-  if (count === 0) return;
+  const errors = fileErrorsOf(workspace);
+  if (errors.length === 0) return;
   const name = printable(workspaceNameOf(workspace, dir));
-  throw new WorkspaceFileProblemsError(name, count, nothingDone, typedDir);
+  // A file name is the user's own text, so it is shown as safely as the workspace's name.
+  const files = [...new Set(errors.map((issue) => printable(issue.file)))];
+  throw new WorkspaceFileProblemsError(name, errors.length, files, nothingDone, typedDir);
 }

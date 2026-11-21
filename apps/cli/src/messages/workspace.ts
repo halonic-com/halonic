@@ -1,4 +1,4 @@
-import { counted } from "./counts.ts";
+import { counted, listInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { type Phrase, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
@@ -20,12 +20,15 @@ export const workspaceMessages = defineMessages("workspace", {
   fileUnreadableFix: () => phrase`Check the file's permissions, or move it out of the workspace.`,
   /**
    * The reason a run is refused when the workspace's files have errors, each
-   * leaving a file out (HAL-6613, built on run's Couldn't line with Sofia):
-   * "Couldn't run support-reply: Acme has 2 problems in its files. Nothing ran."
+   * leaving a file out (HAL-6613, built on run's Couldn't line with Sofia),
+   * naming the files so the user knows which one stops the run (C544-3):
+   * "Couldn't run support-reply: Acme has 1 problem in
+   * hubs/support/workflows/weekly-report.workflow.yaml. Nothing ran."
+   * Two files are both named; from three on, the first and how many others.
    * `nothingDone` is "Nothing ran." or "Nothing was sent.".
    */
-  fileProblems: (workspace: string, count: number, nothingDone: Phrase) =>
-    phrase`${workspace} has ${counted(count, "problem", "problems")} in its files. ${nothingDone}`,
+  fileProblems: (workspace: string, count: number, files: readonly string[], nothingDone: Phrase) =>
+    phrase`${workspace} has ${counted(count, "problem", "problems")} in ${filesInWords(files)}. ${nothingDone}`,
   /** Its fix; `dir` is the user's own `--dir`. */
   fileProblemsFix: (dir?: string) => phrase`See them with: ${suggestedCommand("validate", dir)}`,
   noWorkspaceFix: () =>
@@ -50,3 +53,18 @@ export const workspaceMessages = defineMessages("workspace", {
   /** The fix when the command that holds the engine runs until it is stopped, as `routines watch` and `serve` do. */
   engineOpenStopFix: () => phrase`Stop it with Ctrl C there, then run again.`,
 });
+
+/**
+ * The files a refusal names: one or two by their paths, more as the first
+ * and a count, so the line stays readable when a whole folder is broken.
+ *
+ * @example
+ * filesInWords(["workspace.yaml"]); // "workspace.yaml"
+ * filesInWords(["providers/mock.yaml", "workspace.yaml"]); // "providers/mock.yaml and workspace.yaml"
+ * filesInWords(["a.yaml", "b.yaml", "c.yaml"]); // "a.yaml and 2 other files"
+ */
+function filesInWords(files: readonly string[]): string {
+  if (files.length <= 2) return listInWords(files);
+  const [first] = files;
+  return `${first} and ${counted(files.length - 1, "other file", "other files")}`;
+}

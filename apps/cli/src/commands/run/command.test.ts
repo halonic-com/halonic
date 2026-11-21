@@ -162,7 +162,7 @@ verifies("cli.run", () => {
     expect(code).toBe(exitCode.usage);
     expect(io.stdout).toEqual([]);
     expect(io.stderr).toEqual([
-      "✕ Couldn't run support-reply: Acme has 2 problems in its files. Nothing ran.",
+      "✕ Couldn't run support-reply: Acme has 2 problems in hubs/reports/agents/reporter.agent.yaml and hubs/support/agents/sorter.agent.yaml. Nothing ran.",
       "  See them with: halonic validate",
     ]);
     expect(io.stderr.join("\n")).not.toContain("report it");
@@ -272,7 +272,7 @@ verifies("cli.json-lines", () => {
       error: {
         kind: "invalid_input",
         code: "workspace-file-problems",
-        message: "Acme has 2 problems in its files. Nothing ran.",
+        message: "Acme has 2 problems in hubs/reports/agents/reporter.agent.yaml and hubs/support/agents/sorter.agent.yaml. Nothing ran.",
         fix: "See them with: halonic validate",
       },
     });

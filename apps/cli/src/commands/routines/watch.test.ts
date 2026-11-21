@@ -292,7 +292,7 @@ verifies("cli.workspace-file-problems", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr.slice(0, 2)).toEqual([
-      "✕ Couldn't watch the routines in acme: Acme has 1 problem in its files. Nothing ran.",
+      "✕ Couldn't watch the routines in acme: Acme has 1 problem in hubs/support/workflows/routines/hourly-follow-up.routine.yaml. Nothing ran.",
       "  See them with: halonic validate",
     ]);
     expect(await storedRuns()).toEqual([]);

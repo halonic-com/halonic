@@ -56,7 +56,7 @@ verifies("cli.workspace-file-problems", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr.slice(0, 2)).toEqual([
-      "✕ Couldn't run support-reply: Acme has 1 problem in its files. Nothing ran.",
+      "✕ Couldn't run support-reply: Acme has 1 problem in providers/anthropic.yaml. Nothing ran.",
       "  See them with: halonic validate",
     ]);
     expect([...io.stdout, ...io.stderr].join("\n")).not.toContain(pastedKey);
@@ -82,17 +82,17 @@ verifies("cli.workspace-file-problems", () => {
       "providers/mock.yaml",
       "type: mock",
       "type: antropic",
-      "1 problem",
+      "1 problem in providers/mock.yaml",
     ],
-    // One problem per hub whose workflow runs an agent without a model.
+    // One problem per hub whose workflow runs an agent without a model, on that agent's file.
     [
       "a default alias no file has",
       "workspace.yaml",
       "model: default",
       "model: smart",
-      "2 problems",
+      "2 problems in hubs/reports/agents/reporter.agent.yaml and hubs/support/agents/sorter.agent.yaml",
     ],
-  ])("refuses %s before anything starts, as validate does", async (_, path, from, to, count) => {
+  ])("refuses %s before anything starts, as validate does", async (_, path, from, to, found) => {
     const file = join(acme, path);
     await writeFile(file, (await readFile(file, "utf8")).replace(from, to));
     const profile = freshProfile();
@@ -102,7 +102,7 @@ verifies("cli.workspace-file-problems", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr.slice(0, 2)).toEqual([
-      `✕ Couldn't run support-reply: Acme has ${count} in its files. Nothing ran.`,
+      `✕ Couldn't run support-reply: Acme has ${found}. Nothing ran.`,
       "  See them with: halonic validate",
     ]);
     const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
@@ -118,9 +118,41 @@ verifies("cli.workspace-file-problems", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr.slice(0, 2)).toEqual([
-      "✕ Couldn't run support-reply: Acme has 1 problem in its files. Nothing ran.",
+      "✕ Couldn't run support-reply: Acme has 1 problem in hubs/support/workflows/support-reply.workflow.yaml. Nothing ran.",
       "  See them with: halonic validate",
     ]);
+  });
+
+  // C544-3 (HAL-15119): "Acme has 1 problem in its files." didn't say which file stopped the run.
+  it("names another workflow's file when its error stops the run", async () => {
+    const file = join(acme, "hubs/reports/workflows/weekly-report.workflow.yaml");
+    await writeFile(file, `version: 2\n${await readFile(file, "utf8")}`);
+    const io = captureIo(acme);
+
+    await runCli(["run", "support-reply", ...samsEmail], io, [runCommand()]);
+
+    expect(io.stderr[0]).toBe(
+      "✕ Couldn't run support-reply: Acme has 1 problem in hubs/reports/workflows/weekly-report.workflow.yaml. Nothing ran.",
+    );
+  });
+
+  it("names the first file and counts the others when three files have errors", async () => {
+    for (const path of [
+      "hubs/support/workflows/support-reply.workflow.yaml",
+      "hubs/reports/workflows/weekly-report.workflow.yaml",
+    ]) {
+      const file = join(acme, path);
+      await writeFile(file, `version: 2\n${await readFile(file, "utf8")}`);
+    }
+    await pasteKeyIntoProvider(acme);
+    const io = captureIo(acme);
+
+    await runCli(["run", "support-reply", ...samsEmail], io, [runCommand()]);
+
+    expect(io.stderr[0]).toMatch(
+      /^✕ Couldn't run support-reply: Acme has 3 problems in \S+ and 2 other files\. Nothing ran\.$/,
+    );
+    expect(io.stderr.join("\n")).not.toContain(pastedKey);
   });
 
   // C337 row 4 (HAL-14268): a misspelled name in a condition used to run, and send spam to a draft.
@@ -137,7 +169,7 @@ verifies("cli.workspace-file-problems", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr[0]).toBe(
-      "✕ Couldn't run support-reply: Acme has 1 problem in its files. Nothing ran.",
+      "✕ Couldn't run support-reply: Acme has 1 problem in hubs/support/workflows/support-reply.workflow.yaml. Nothing ran.",
     );
     const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
     expect(listed.total).toBe(0);
@@ -156,7 +188,7 @@ verifies("cli.workspace-file-problems", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr[0]).toBe(
-      "✕ Couldn't run announce: Acme has 1 problem in its files. Nothing ran.",
+      "✕ Couldn't run announce: Acme has 1 problem in hubs/support/workflows/announce.workflow.yaml. Nothing ran.",
     );
     const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
     expect(listed.total).toBe(0);
