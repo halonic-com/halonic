@@ -3,6 +3,7 @@
 - Task: HAL-14661
 - Approval: Liam decided on HAL-14661 (https://paperclip.halonic.com/HAL/issues/HAL-14661) that all three findings from Maya's runs (C443 L1–L3 on HAL-14653) get fixed in one pull request. A team decision with no board card (HAL-2282 rule): no new wording.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ErdxcmaX94r7P3YRIcnV2mLou75u/IFDQhL2CFdDbOgCQ/aEGxgsm5kmUe53qvaGyxeuqLbNrOelA7hVsuvbAQ==
 
 ## What changes
 
