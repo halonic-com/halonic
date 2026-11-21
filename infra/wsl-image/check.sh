@@ -154,6 +154,38 @@ chroot "$root" "$updater" install 1.4.0+0123abcd "$sum" < "$packed/a/halonic-run
 [ "$(chroot "$root" /opt/halonic/current/bin/halonic-agent-host)" = packed ] || fail "the packed runtime doesn't start"
 owned_by_root
 rm -rf "$packed"
+# Overlapping steps (HAL-15134): Studio's time limit kills wsl.exe, not the
+# updater, so a retry can start while an install still runs. The first install
+# holds the lock while it waits for its archive on a pipe; a rollback meanwhile
+# gives up with exit 8, and a second install waits and runs after it. Both
+# versions end up fully checked, and no unpack folder is left.
+fifth="$(runtime 1.5.0)"
+sixth="$(runtime 1.6.0)"
+lock="$root/var/lib/halonic/lock"
+mkfifo "$root/tmp/held"
+exec 8<>"$root/tmp/held"
+chroot "$root" "$updater" install 1.5.0 "$fifth" < "$root/tmp/held" >/dev/null 8>&- &
+held=$!
+for _ in $(seq 100); do flock -n "$lock" true 2>/dev/null || break; sleep 0.1; done
+if flock -n "$lock" true 2>/dev/null; then fail "an install didn't take the lock"; fi
+code=0; chroot "$root" "$updater" rollback 2>/dev/null 8>&- || code=$?
+[ "$code" -eq 8 ] || fail "a rollback during an install gave exit $code, not 8"
+install_runtime 1.6.0 "$sixth" >/dev/null 8>&- &
+waiting=$!
+sleep 1
+kill -0 "$waiting" 2>/dev/null || fail "a second install didn't wait for the first"
+[ -z "$(find "$root/opt/halonic" -maxdepth 1 -name '.incoming-1.6.0*')" ] || fail "a second install unpacked during the first"
+cat "$root/tmp/1.5.0.tar.gz" >&8
+exec 8>&-
+wait "$held" || fail "the first of two installs failed"
+wait "$waiting" || fail "the second of two installs failed"
+rm "$root/tmp/held"
+[ "$(links)" = "1.6.0 1.5.0" ] || fail "after two overlapping installs: $(links)"
+for version in 1.5.0 1.6.0; do
+  [ "$(chroot "$root" "/opt/halonic/$version/bin/engine")" = "$version" ] || fail "an overlapping install left $version incomplete"
+done
+[ -z "$(find "$root/opt/halonic" -maxdepth 1 -name '.incoming-*')" ] || fail "an install left its unpack folder"
+owned_by_root
 # An update Studio's time limit cut off inside dpkg (HAL-12672): socat is left
 # half-configured, and its package script sets a file capability. Offline, so
 # a stand-in apt-get fails on update: the next security-update still finishes

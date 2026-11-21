@@ -25,7 +25,8 @@
 #
 # Exit codes: 0 done, 2 wrong use, 3 busy (a sandbox session runs), 4 checksum
 # differs, 5 archive refused, 6 nothing to roll back to, 7 a mount point could
-# not be unmounted or removed (by cleanup: the others were), 1 anything else.
+# not be unmounted or removed (by cleanup: the others were), 8 another install,
+# rollback or security update is still running, 1 anything else.
 set -euo pipefail
 umask 022
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
@@ -46,6 +47,22 @@ need_root() {
   chmod 0755 "$slot"
   install -d -o root -g root -m 0700 "$state"
 }
+
+# Studio stops a step that takes too long by killing wsl.exe, which doesn't
+# stop this script in the distro (HAL-15134). So install, rollback and
+# security-update hold one lock for the whole step, and one that waits more
+# than lock_wait seconds for it gives up with exit 8 instead of overlapping:
+# two installs would remove each other's folders while they are checked.
+# The lock is on fd 9; apt-get and dpkg run without it (see without_lock).
+lock_wait=60
+take_lock() {
+  exec 9>"$state/lock"
+  flock -w "$lock_wait" 9 || fail 8 "another install, rollback or security update is running"
+}
+
+# Runs a command without the lock's fd, so a daemon a package script starts
+# can't keep the lock after this script ends.
+without_lock() { "$@" 9>&-; }
 
 # The version a link in the slot points at, or nothing.
 target() {
@@ -83,6 +100,7 @@ do_install() {
     *[!0-9a-f]*) fail 2 "not a SHA-256: $sum" ;;
   esac
   [ "${#sum}" -eq 64 ] || fail 2 "not a SHA-256: $sum"
+  take_lock
   [ "$(target current)" != "$version" ] || fail 2 "$version is already the current version"
 
   work="$(mktemp -d "$state/install.XXXXXX")"
@@ -91,9 +109,10 @@ do_install() {
   echo "$sum  $work/runtime.tar.gz" | sha256sum --check --status ||
     fail 4 "the archive's SHA-256 differs from $sum"
 
-  unpack="$slot/.incoming-$version"
-  rm -rf "$unpack"
-  mkdir -m 0755 "$unpack"
+  # A folder of its own, so even a run without the lock never removes
+  # another run's files while they are checked.
+  unpack="$(mktemp -d "$slot/.incoming-$version.XXXXXX")"
+  chmod 0755 "$unpack"
   # As root, without the archive's owners: every file becomes root's.
   if ! tar -xzf "$work/runtime.tar.gz" -C "$unpack" --no-same-owner --no-overwrite-dir; then
     rm -rf "$unpack"
@@ -137,6 +156,7 @@ links_stay_inside() {
 
 do_rollback() {
   [ $# -eq 0 ] || fail 2 "usage: rollback"
+  take_lock
   now="$(target current)"
   before="$(target previous)"
   [ -n "$before" ] && [ -d "$slot/$before" ] || fail 6 "there is no earlier version"
@@ -145,7 +165,9 @@ do_rollback() {
   echo "rolled back to $before"
 }
 
-# Keeps the current and previous versions, removes every other one.
+# Keeps the current and previous versions, removes every other one, and the
+# unpack folders a stopped install left. Only a step that holds the lock runs
+# it, so no other install is unpacking into one of them.
 prune() {
   keep_current="$(target current)"
   keep_previous="$(target previous)"
@@ -158,6 +180,7 @@ prune() {
 
 do_security_update() {
   [ $# -eq 0 ] || fail 2 "usage: security-update"
+  take_lock
   stamp="$state/security-update.stamp"
   if [ -n "$(find "$stamp" -mmin -1440 2>/dev/null)" ]; then
     echo "skipped: security updates ran in the last 24 hours"
@@ -186,9 +209,9 @@ SRC
   # Debian's security archive only, whatever else is in sources.list.d.
   set -- -o Dir::Etc::SourceList=/dev/null -o "Dir::Etc::SourceParts=$lists" \
     -o "Dir::State::Lists=$lists" -o Dpkg::Options::=--force-confold
-  apt-get "$@" -q update
+  without_lock apt-get "$@" -q update
   with_drops apt-get "$@" -q -y upgrade
-  apt-get clean
+  without_lock apt-get clean
   touch "$stamp"
   echo "security updates installed"
 }
@@ -198,7 +221,7 @@ SRC
 # HAL-12766), and returns the command's exit code, so set -e still stops.
 with_drops() {
   rc=0
-  "$@" || rc=$?
+  without_lock "$@" || rc=$?
   drop_setuid
   drop_capabilities
   return "$rc"

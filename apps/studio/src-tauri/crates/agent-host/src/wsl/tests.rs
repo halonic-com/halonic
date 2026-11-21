@@ -95,6 +95,7 @@ fn runtime_update_reports_the_updaters_reason() {
         (5, WslError::ArchiveRefused),
         (6, WslError::NothingToRollBack),
         (7, WslError::MountsLeft),
+        (8, WslError::UpdateRunning),
         (2, WslError::Failed(Some(2))),
     ] {
         let (updater, _script) = ending_with(code, &received);

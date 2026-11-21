@@ -45,7 +45,32 @@ Exit codes: 0 done, 1 anything else (such as `/opt/halonic` missing or not root'
 2 wrong use (also: not root, or the version is already current), 3 a sandbox session
 runs, 4 the SHA-256 differs, 5 the archive is refused (it can't be unpacked, has no
 `bin` folder, holds device, pipe or socket files, or a link that is absolute or leads
-out of the version folder), 6 nothing to roll back to, 7 a mount point could not be unmounted or removed (by `cleanup-import-mounts`: the others were).
+out of the version folder), 6 nothing to roll back to, 7 a mount point could not be unmounted or removed (by `cleanup-import-mounts`: the others were), 8 another `install`, `rollback` or `security-update` is still running.
+
+**One step at a time (HAL-15134).** Studio stops a step that takes too long by
+killing `wsl.exe`, which doesn't stop the updater inside the distro, so a retry
+can start while the stopped step still runs. `install`, `rollback` and
+`security-update` therefore take one lock (`flock` on `/var/lib/halonic/lock`,
+root's only) before they read or change anything, and hold it to the end. One
+that waits more than 60 seconds for it changes nothing and exits 8 (`WslError::UpdateRunning`
+in the shell); Studio tries again at the next start. Each `install` also unpacks
+into a folder of its own (`/opt/halonic/.incoming-<version>.XXXXXX`), so one run
+never removes another's files while they are checked, and the folders a stopped
+install left go at the next install, which holds the lock. `apt-get` and `dpkg`
+run without the lock's file descriptor, so a daemon a package script starts can't
+keep it. The import commands and `status` take no lock: they never touch
+`/opt/halonic`, and `cleanup-import-mounts` only runs `umount` and `rmdir`, which
+are safe to run twice; holding it behind a long security update would only leave
+stale mounts in place.
+
+**How a changed updater reaches a distro.** The updater ships in the image only,
+never in the runtime archive: it runs as root, so a runtime archive must not be
+able to replace it. A distro gets a new updater only when Studio imports a new
+image. No image has been published yet (it is build only), so no distro outside
+development has the updater from before the lock; the first published image
+carries it. Once images ship, a change to the updater needs a way for Studio to
+tell an old image from a new one and import the new one before it relies on the
+change.
 
 It runs as root, so it never runs or sources a file the `halonic` user can write
 (security review W2 on HAL-5407): it ships in the image, root-owned, and every
@@ -53,7 +78,9 @@ runtime file ends up root's, with no setuid bit and no group or other write.
 Studio checks the archive's SHA-256 on Windows before it sends it, and the script
 checks it again. `check.sh` installs, rolls back and updates three test runtimes
 and checks owners and modes after each step, refuses archives with links that
-leave the version folder, and runs `security-update` with a stand-in `apt-get`
+leave the version folder, holds one install on a pipe while a rollback gives up
+with exit 8 and a second install waits and then runs, so both versions end up
+complete and no unpack folder is left, and runs `security-update` with a stand-in `apt-get`
 that brings a new setuid program, a setgid program of another system user and a
 program with a file capability, and checks that a setuid file in `halonic`'s home
 folder is left alone: the updater only looks under `/usr`. With an offline stand-in, it checks that a half-configured package is finished and its package script's file capability dropped, even though the update fails, and that a package script that sets a capability and then fails, in `dpkg --configure -a` or in the upgrade, leaves no setuid bit or capability behind. It also runs `import-mount` with a stand-in `mount` (the chroot has no `drvfs`): with good and bad folders, two folders, a folder on the command line, a failed mount, and with `/mnt/halonic` missing, a link or writable by others; `import-unmount` with names that aren't one; and `cleanup-import-mounts` with no `/mnt/halonic`, with a matching mount point, a project's folder, a wrong name, a link and a folder that holds a file. `halonic` can run none of the three.
