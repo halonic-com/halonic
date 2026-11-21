@@ -70,5 +70,11 @@ export interface UpdateStatus {
   readonly lastChecked: number | null;
   readonly justUpdated: JustUpdated | null;
   readonly managed: ManagedUpdates | null;
+  /**
+   * The update found or ready raises srt's Windows setup version, so installing it asks for
+   * administrator rights once more where the agent sandbox is set up (HAL-5404). Absent counts as
+   * false.
+   */
+  readonly sandboxSetupAgain?: boolean;
   readonly state: UpdateState;
 }

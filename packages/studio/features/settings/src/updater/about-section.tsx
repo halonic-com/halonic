@@ -8,12 +8,19 @@ import {
   ViewOnlyLine,
 } from "@halonicjs/studio-kit";
 import type { SettingsSectionProps, SettingsSurface } from "@halonicjs/studio-shell";
-import { HalonicVersionService, type UpdaterHost, UpdaterService } from "../api.ts";
+import {
+  type AgentSandboxHost,
+  AgentSandboxService,
+  HalonicVersionService,
+  type UpdaterHost,
+  UpdaterService,
+} from "../api.ts";
 import { type AboutAction, type AboutProgress, aboutView } from "./about-state.ts";
 import * as text from "./about-text.ts";
 import { repository } from "./links.ts";
 import { RestartFlowService } from "./restart-flow.ts";
 import * as restartText from "./restart-text.ts";
+import { useSandboxSetUp } from "./use-sandbox-set-up.ts";
 import { useUpdater } from "./use-updater.ts";
 
 /** Restart to update leads; Cancel download steps back; the rest are secondary. */
@@ -46,6 +53,7 @@ export function AboutSection({ context, surface }: SettingsSectionProps) {
       announce={(line) => context.announcer.announce(line)}
       onRestart={flow === undefined ? undefined : () => flow.request()}
       surface={surface}
+      sandbox={context.services.find(AgentSandboxService)}
     />
   );
 }
@@ -59,11 +67,14 @@ export interface AboutHostViewProps {
   readonly onRestart?: (() => void) | undefined;
   /** `phone` on the phone's Settings page, where the headings sit under the page's `h1`. */
   readonly surface?: SettingsSurface | undefined;
+  /** The agent sandbox, asked only whether it is set up, for the line that an update sets it up again. */
+  readonly sandbox?: AgentSandboxHost | undefined;
 }
 
 /** The section over an updater: the status line, its buttons, the automatic switch and the links. */
-export function AboutHostView({ host, announce, onRestart, surface }: AboutHostViewProps) {
+export function AboutHostView({ host, announce, onRestart, surface, sandbox }: AboutHostViewProps) {
   const updater = useUpdater(host, announce);
+  const sandboxSetUp = useSandboxSetUp(sandbox, updater.status?.sandboxSetupAgain === true);
   const Version = `h${versionLevel(surface)}` as const;
   const { status } = updater;
   if (status === null)
@@ -79,7 +90,7 @@ export function AboutHostView({ host, announce, onRestart, surface }: AboutHostV
         <AboutLinks heading={null} />
       </div>
     );
-  const view = aboutView(status, new Date());
+  const view = aboutView(status, new Date(), sandboxSetUp);
   const checking = status.checking;
   const version = "version" in status.state ? status.state.version : "";
   const buttons: Record<AboutAction, { label: string; run: () => void }> = {
@@ -134,6 +145,9 @@ export function AboutHostView({ host, announce, onRestart, surface }: AboutHostV
             <ExternalLink href={view.notesUrl}>{text.RELEASE_NOTES}</ExternalLink>
           )}
         </div>
+      )}
+      {view.setupAgain === null ? null : (
+        <p className="text-small text-fg-muted">{view.setupAgain}</p>
       )}
       {status.managed === null ? null : (
         <ManagedBlock command={status.managed.command} surface={surface} />
