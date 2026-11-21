@@ -57,7 +57,7 @@ const failingFence: Sandbox = {
 
 async function machine(fenced?: Sandbox) {
   return computerIntegrationMachine({
-    ...(fenced === undefined ? {} : { fenced }),
+    ...(fenced === undefined ? {} : { testFencedSandbox: fenced }),
     dir,
     workspace: await loadWorkspace(dir.store),
     trust: {
