@@ -1,5 +1,5 @@
 import { LetterTile } from "@halonicjs/studio-kit";
-import { type ReactNode, useId } from "react";
+import { type ReactNode, useContext, useId } from "react";
 import {
   type AgentListing,
   type AgentSettings,
@@ -10,7 +10,7 @@ import {
   type AgentUser,
   agentToolLists,
 } from "../api.ts";
-import { MapFrame } from "./map-frame.tsx";
+import { MapFrame, MapStacked } from "./map-frame.tsx";
 import type { MapSide } from "./map-geometry.ts";
 import { mapWords as words } from "./map-words.ts";
 
@@ -61,8 +61,9 @@ export function AgentMap(props: AgentMapProps) {
   const workIn = users.length + handsWork.length > 0 || props.addTrigger !== undefined;
   return (
     <MapFrame label={words.map(settings.name)}>
-      <div className="col-start-1 row-start-1">
-        {workIn && (
+      {/* Only with something on it, so an empty left side leaves no gap in the stacked map. */}
+      {workIn && (
+        <div className="col-start-1 row-start-1">
           <Side heading={words.workIn} side="in">
             {users.map((user) => (
               <Card
@@ -80,8 +81,8 @@ export function AgentMap(props: AgentMapProps) {
             ))}
             {props.addTrigger && <AddButton label={words.addTrigger} onAdd={props.addTrigger} />}
           </Side>
-        )}
-      </div>
+        </div>
+      )}
       <CentreCard settings={settings} openAgentStep={openAgentStep} />
       <div className="col-span-3 row-start-2">
         <Side heading={words.canUse} side="use" columns>
@@ -163,11 +164,13 @@ function Side({
   readonly heading: string;
   /** Which side it is, for the lines to its cards. */
   readonly side: MapSide;
-  /** Three a row, for what it can use; one under the other otherwise. */
+  /** Three a row, two in a stacked map, for what it can use; one under the other otherwise. */
   readonly columns?: boolean;
   readonly children: ReactNode;
 }) {
   const headingId = useId();
+  const stacked = useContext(MapStacked);
+  const grid = stacked ? "grid grid-cols-2 gap-2" : "grid grid-cols-3 gap-2";
   return (
     // biome-ignore lint/a11y/useSemanticElements: a side of cards, not form fields, so not a fieldset.
     <div
@@ -179,7 +182,7 @@ function Side({
       <h2 id={headingId} className="text-caption text-fg-muted uppercase">
         {heading}
       </h2>
-      <div className={columns ? "grid grid-cols-3 gap-2" : "flex flex-col gap-2"}>{children}</div>
+      <div className={columns ? grid : "flex flex-col gap-2"}>{children}</div>
     </div>
   );
 }

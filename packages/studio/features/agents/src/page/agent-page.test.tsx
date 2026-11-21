@@ -38,7 +38,11 @@ verifies("agents.page.frame", () => {
     expect(buttonNamed(page, "Configuration")?.getAttribute("aria-selected")).toBe("false");
     expect(page.querySelector("[role=status]")).toBeNull();
     const views = page.querySelector("[role=tablist][aria-label='Agent views']");
-    expect([...(views?.querySelectorAll("[role=tab]") ?? [])].map((tab) => tab.id)).toHaveLength(3);
+    // The workflow page's order (flow-agents 3.1).
+    const order = [...(views?.querySelectorAll("[role=tab]") ?? [])].map((tab) =>
+      tab.id.slice(tab.id.lastIndexOf("-") + 1),
+    );
+    expect(order).toEqual(["flow", "configuration", "runs"]);
     expect(buttonNamed(page, "Flow")?.getAttribute("role")).toBe("tab");
   });
 

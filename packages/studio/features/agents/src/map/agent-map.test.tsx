@@ -166,6 +166,19 @@ verifies("agents.map.add-button-per-side", () => {
     expect(tabNamed(page, "Tools")?.getAttribute("aria-selected")).toBe("true");
   });
 
+  it("focuses Triggers in the page list after Add trigger, so the focus isn't lost", async () => {
+    const Sections = ({ only }: { readonly only?: string }) => <p>Section {only}</p>;
+    const page = await openFlow({ sections: [{ id: "triggers", title: "Triggers" }], Sections });
+    await act(async () => buttonNamed(page, "+ Add trigger")?.click());
+    expect(document.activeElement).toBe(tabNamed(page, "Triggers"));
+  });
+
+  it("focuses Tools in the page list after Add a tool, so the focus isn't lost", async () => {
+    const page = await openFlow();
+    await act(async () => buttonNamed(page, "+ Add a tool")?.click());
+    expect(document.activeElement).toBe(tabNamed(page, "Tools"));
+  });
+
   it("opens Subagents with its dialog from Add subagent", async () => {
     const page = await openFlow({ id: "refunds" });
     await act(async () => buttonNamed(page, "+ Add subagent")?.click());

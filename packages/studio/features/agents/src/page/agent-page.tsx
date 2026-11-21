@@ -125,7 +125,7 @@ export interface AgentScreenProps extends AgentRef {
 
 /**
  * The agent page's frame (`agents.page.frame`): the letter avatar, "AGENT" and the name, then the
- * agent's Flow (the agent map), Runs and Configuration in its tabs, open on Flow. The page is a skeleton when the
+ * agent's Flow (the agent map), Configuration and Runs in its tabs, open on Flow. The page is a skeleton when the
  * read takes over 300 ms, and says why when the agent can't be read. The Try it chat joins it in a
  * later pull request.
  */
@@ -344,7 +344,8 @@ export function AgentScreen({
 
 /**
  * What the agent map's add buttons do: each opens Configuration on its page, Add subagent with its
- * dialog open. Add trigger is there only once a feature adds the Triggers section.
+ * dialog open, which takes the focus; the others focus their page's name. Add trigger is there
+ * only once a feature adds the Triggers section.
  */
 function mapAdds(
   sections: readonly ItemPageSectionListing[] | undefined,
@@ -354,8 +355,10 @@ function mapAdds(
   const triggers =
     Sections === undefined ? undefined : sections?.find((each) => each.id === "triggers");
   return {
-    addTrigger: triggers && (() => showView("configuration", { page: `section:${triggers.id}` })),
-    addTool: () => showView("configuration", { page: "tools" }),
+    addTrigger:
+      triggers &&
+      (() => showView("configuration", { page: `section:${triggers.id}`, focus: true })),
+    addTool: () => showView("configuration", { page: "tools", focus: true }),
     addSubagent: () => showView("configuration", { page: "subagents", adding: true }),
   };
 }
@@ -442,9 +445,12 @@ function useAgentView(hubId: string, id: string, modelRequest: string | undefine
   return { view, selectView, fresh, modelWaiting, modelShown };
 }
 
-/** The page's views, as far as they are built: the Try it chat joins them later. */
+/**
+ * The page's views, as far as they are built, in the workflow page's order (flow-agents 3.1): the
+ * Try it chat joins them later.
+ */
 const agentTabs: readonly Tab<AgentView>[] = [
   { id: "flow", label: mapWords.tab },
-  { id: "runs", label: pageWords.runsHeading },
   { id: "configuration", label: configurationWords.tab },
+  { id: "runs", label: pageWords.runsHeading },
 ];
