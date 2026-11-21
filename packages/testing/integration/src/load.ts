@@ -33,14 +33,24 @@ export function loadSubject(
       // The canary store answers by name, so each secret is picked as itself.
       secretNames: Object.fromEntries(Object.keys(sheet.secrets).map((name) => [name, name])),
     },
-    // A replay answers from the recording and never connects anywhere, so
-    // there is no address to check.
-    transport: transport as AddressCheckingHttpClient,
+    transport: replayTransport(transport),
     secrets: canarySecrets,
     tokens,
     capabilities: sheet.needs,
   });
   return loaded.ok ? loaded.value : fail(problemsText(loaded.error));
+}
+
+/**
+ * A replay answers from the recording and never connects anywhere, so there
+ * is no address to check, for a private host name either.
+ */
+function replayTransport(transport: HttpClient): AddressCheckingHttpClient {
+  const replay: HttpClient & Pick<AddressCheckingHttpClient, "withPrivateNames"> = {
+    fetch: (url, init) => transport.fetch(url, init),
+    withPrivateNames: () => replay as AddressCheckingHttpClient,
+  };
+  return replay as AddressCheckingHttpClient;
 }
 
 /** The subject's sheet, checked. Fails the check when it doesn't pass. */

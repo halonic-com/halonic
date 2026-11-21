@@ -98,6 +98,20 @@ verifies("http-node.address-check", () => {
     ).rejects.toBeInstanceOf(AddressRefusedError);
   });
 
+  it("counts the names it is given as private, and an IP address as its own class", async () => {
+    const { http } = client({ "api.example.test": [["127.0.0.1"], ["10.0.0.5"]] });
+    const named = http.withPrivateNames?.(["API.example.test", "127.0.0.1"]);
+    await expect(named?.fetch(`http://api.example.test:${server.port}/`)).rejects.toThrow(
+      "api.example.test has no address a private host may reach",
+    );
+    await expect(http.fetch(`http://api.example.test:${server.port}/`)).rejects.toThrow(
+      "api.example.test has no address a public host may reach",
+    );
+    const literal = await named?.fetch(`http://127.0.0.1:${server.port}/`);
+    expect(await literal?.text()).toBe("hello");
+    expect(server.connections()).toBe(1);
+  });
+
   it("checks an IP address in the URL as it is, with no lookup", async () => {
     const { http, lookups } = client({});
     const response = await http.fetch(`http://127.0.0.1:${server.port}/`);

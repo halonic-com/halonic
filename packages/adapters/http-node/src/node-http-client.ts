@@ -94,7 +94,10 @@ export function createNodeHttpClient(options: NodeHttpOptions): AddressCheckingH
     },
   };
   // This is the transport that checks addresses, so it is the one place that says so.
-  return client as AddressCheckingHttpClient;
+  return Object.assign(client, {
+    withPrivateNames: (names: readonly string[]) =>
+      createNodeHttpClient({ ...options, hostClass: privateNamesFirst(names, options.hostClass) }),
+  }) as AddressCheckingHttpClient;
 
   async function sendChecked(
     url: URL,
@@ -169,6 +172,24 @@ export function createNodeHttpClient(options: NodeHttpOptions): AddressCheckingH
     });
     return { kind: "tunnel", socket };
   }
+}
+
+/**
+ * `private` for each of the names, and the class `hostClass` gives any other
+ * host. Only a name counts this way: an IP address keeps the class its text
+ * gives it.
+ */
+function privateNamesFirst(
+  names: readonly string[],
+  hostClass: NodeHttpOptions["hostClass"],
+): NodeHttpOptions["hostClass"] {
+  const privateNames = new Set(names.map((name) => name.toLowerCase()));
+  return (url) => {
+    const hostname = url.hostname.replace(/^\[|\]$/g, "");
+    return privateNames.has(hostname) && parseIpAddress(hostname) === undefined
+      ? "private"
+      : hostClass(url);
+  };
 }
 
 /**

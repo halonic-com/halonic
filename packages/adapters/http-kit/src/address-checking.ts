@@ -19,4 +19,13 @@ declare const addressChecking: unique symbol;
  */
 export interface AddressCheckingHttpClient extends HttpClient {
   readonly [addressChecking]: true;
+  /**
+   * The same transport, except that each of these host names counts as
+   * `private`: it connects only to the private addresses the name resolves
+   * to, on every request, and never through a proxy. For a host name the
+   * user set in a `private` setting, whose text can't show where it points
+   * (HAL-15005). A transport that can't check a name's addresses before it
+   * connects leaves this out, and the kit then refuses such an integration.
+   */
+  readonly withPrivateNames?: (names: readonly string[]) => AddressCheckingHttpClient;
 }

@@ -35,7 +35,8 @@ const fixedHost = s
  * Where the host of a `{ fromSetting }` URL may be, which the sheet declares
  * so the trust check can say it before the setting is filled in:
  * - `loopback`: only on this computer (`localhost`, `127.0.0.0/8`, `::1`);
- * - `private`: only on the home network, as a private IP address;
+ * - `private`: only on the home network: a private IP address, or a host name
+ *   over `https` that the transport connects to only at its private addresses;
  * - `public`: any public host name, over `https`.
  *
  * `integrationPolicy` refuses a setting whose URL is outside the class.
