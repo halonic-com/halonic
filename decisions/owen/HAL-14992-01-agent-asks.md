@@ -2,6 +2,7 @@
 
 - Approval: HAL-14992, Owen's plan approved with changes by Liam
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zGX/SvClUAiDL28jWyCMlOGSxj2eIofBcs0s63WJXC6Z8S5CKdif2WPR0mcD6LFs6JUBfNbGoMR59oNP/AbrBg==
 
 A Claude Code agent in a headless `halonic run` can't edit or run anything:
 every Edit, Write and Bash call asks for a person's OK, and the CLI refuses
