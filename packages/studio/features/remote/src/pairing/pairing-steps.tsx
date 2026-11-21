@@ -162,13 +162,6 @@ export function PairedStep({
  * by the tunnel. `closed` never shows and `denied` goes straight on to a new code (see
  * `usePairing`), so theirs are a fallback.
  */
-/** The endings that stop a code that was showing, so its tile stays under the reason, faded (C529-2). */
-const endsShownCode: ReadonlySet<EndedEvent["reason"]> = new Set([
-  "code-expired",
-  "allow-timed-out",
-  "too-many-tries",
-]);
-
 const endedWords: Record<Exclude<EndedEvent["reason"], "tunnel-down">, words.EndedWords> = {
   closed: words.RAN_OUT,
   denied: words.RAN_OUT,
@@ -178,6 +171,13 @@ const endedWords: Record<Exclude<EndedEvent["reason"], "tunnel-down">, words.End
   busy: words.BUSY,
   "remote-off": words.REMOTE_TURNED_OFF,
 };
+
+/** The endings that stop a code that was showing, so its tile stays under the reason, faded (C529-2). */
+const endsShownCode: ReadonlySet<EndedEvent["reason"]> = new Set([
+  "code-expired",
+  "allow-timed-out",
+  "too-many-tries",
+]);
 
 /** Why the pairing ended and the one way on, whose button takes focus. */
 export function EndedStep({
