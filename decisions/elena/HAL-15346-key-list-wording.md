@@ -2,6 +2,7 @@
 
 - Approval: HAL-15346 (Paperclip task), follow-up to Iris's finding 1 on C561 (HAL-15333); wording decided by the team under HAL-2282; Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ydc6cLvv9AlUuwT38rNOz+6smgKNoktGfxUsf9G8xGFBxh2K0SyfL3T8Q7M/QKR9HRIyIO5QUiSuq8rLvejkBA==
 - Task: HAL-15346
 
 ## What changes
