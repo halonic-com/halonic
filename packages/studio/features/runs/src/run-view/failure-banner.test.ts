@@ -1,47 +1,19 @@
-import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { ProviderKind } from "../api.ts";
-import { mondayMorning, summaryWith } from "../summary.test-helper.ts";
+import { summaryWith } from "../summary.test-helper.ts";
+import {
+  budgetPage,
+  call,
+  context,
+  event,
+  failed,
+  failedEvent,
+  kinds,
+  lines,
+} from "./failure-banner.test-helper.ts";
 import { causeBanner } from "./failure-banner.ts";
-import { type RunPageContext, runBanner } from "./run-page-model.ts";
-
-const kinds: Record<string, ProviderKind> = { ollama: "local", claude: "cloud" };
-/** The `name` each provider's file gives; Ollama's file names none. */
-const names: Record<string, string> = { claude: "Claude" };
-const context: RunPageContext = {
-  workflow: { name: "Support reply", stepDescription: () => undefined },
-  workflowOfRun: () => undefined,
-  providerKind: (id) => kinds[id],
-  providerName: (id) => names[id],
-  currency: "EUR",
-  now: mondayMorning,
-};
-
-function event(rest: Record<string, unknown>, seq: number): RunEvent {
-  return { runId: "run_a", seq, at: "2026-11-16T08:00:00Z", ...rest } as RunEvent;
-}
-
-const call = (provider: string, model: string) =>
-  event({ type: "llm.request", agent: "reporter", provider, model, messages: 1 }, 2);
-const failedEvent = (host?: string) =>
-  event({ type: "run.failed", state: "draft", error: "x", ...(host ? { host } : {}) }, 3);
-
-function failed(reason: RunSummary["reason"], changes: Partial<RunSummary> = {}) {
-  return summaryWith({
-    status: "failed",
-    reason,
-    error: "engine text",
-    state: "draft",
-    ...changes,
-  });
-}
-
-const lines = (banner: ReturnType<typeof causeBanner>) =>
-  banner?.kind === "callout" ? banner.lines : undefined;
-
-const budgetPage = (changes: Partial<RunSummary>) =>
-  runBanner({ summary: failed("budget", changes) }, context);
+import { runBanner } from "./run-page-model.ts";
 
 verifies("runs.run-view.failure-banners", () => {
   describe("a model that can't be reached", () => {
@@ -290,23 +262,6 @@ verifies("runs.run-view.failure-banners", () => {
     expect(lines(banner)).toEqual([line]);
     const details = banner?.kind === "callout" ? banner.details : undefined;
     expect(details?.split("\n")).toEqual([line, expect.stringMatching(/^Run /), "engine text"]);
-  });
-
-  it("says the disk is full, in the step it stopped in", () => {
-    expect(lines(causeBanner(failed("disk-full"), undefined, context, false))).toEqual([
-      "Support reply stopped in the step Draft: the disk is full, so Halonic couldn't write the run log. Free some space, then run again.",
-    ]);
-  });
-
-  it("says the engine stopped, during a step or before the first", () => {
-    const during = failed("interrupted", { statesVisited: ["draft"] });
-    expect(lines(causeBanner(during, undefined, context, false))).toEqual([
-      "Support reply stopped because Halonic's engine stopped during the step Draft. Nothing after that step ran.",
-    ]);
-    const before = failed("interrupted", { statesVisited: [], state: null });
-    expect(lines(causeBanner(before, undefined, context, false))).toEqual([
-      "Support reply stopped because Halonic's engine stopped before the first step. Nothing ran.",
-    ]);
   });
 
   it("leaves every other run to the page's other banners", () => {

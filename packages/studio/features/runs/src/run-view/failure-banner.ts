@@ -1,14 +1,14 @@
 // The failed banners by cause (microcopy 22 F6, F7, F8, F10, F15, F20, F21; checklist FX-D2, FX-D3).
-// Each reads the run's reason, and the log for what the summary doesn't hold: the model and its
-// provider from the last model call, the agent from the last agent that started, and the harness
-// program and its limit from the last `harness.started`. A setup cause the engine names, such as
-// a provider type Halonic can't call, is read from the summary's cause with the CLI's own facts
-// (`setupFailureOf`). Run again is the banner's button (`run-again.ts`); a banner adds the fixes
-// that come before it (Copy command, or Open Models where the cause is fixed in Models) and the
-// links after it (Open Models, Copy details).
+// Each reads the run's reason, or its typed cause, and the log for what the summary doesn't hold:
+// the model and its provider from the last model call, the agent from the last agent that started
+// or the branch whose answer wasn't an option, and the harness program and its limit from the last
+// `harness.started`. A setup cause the engine names, such as a provider type Halonic can't call, is
+// read from the summary's cause with the CLI's own facts (`setupFailureOf`). Run again is the
+// banner's button (`run-again.ts`); a banner adds the fixes that come before it (Copy command, or
+// Open Models where the cause is fixed in Models) and the links after it (Open Models, Copy details).
 
 import { setupFailureOf } from "@halonicjs/app/run-failure";
-import type { RunEvent, RunSummary } from "@halonicjs/events";
+import type { RunEvent, RunFailureCause, RunSummary } from "@halonicjs/events";
 import { failureWords } from "../failure-words.ts";
 import { currentStepName } from "../list/run-row.ts";
 import { providerNameOf } from "../provider-name.ts";
@@ -32,6 +32,8 @@ interface FailureFacts {
   /** `run.failed` named an empty host: the provider's address has none, such as `localhost:11434` without `http://`. */
   readonly noHost: boolean;
   readonly agent: string | undefined;
+  /** The parallel branch's agent whose answer wasn't one of its options, which failed the run. */
+  readonly offOptionAgent: string | undefined;
   /** The harness program the last step tried to start, and how long the engine waits for it. */
   readonly harness:
     | { readonly id: string; readonly agent: string; readonly timeoutMs: number }
@@ -65,6 +67,11 @@ export function causeBanner(
   if (setup !== undefined) {
     return setup;
   }
+  if (summary.cause?.code === socketPathTooLongCode) {
+    return danger([
+      failureWords.socketPathTooLong(workflow, step, socketLimitOf(summary.cause), phone),
+    ]);
+  }
   const facts = factsFrom(log ?? [], context);
   switch (summary.reason) {
     case "sandbox-start-failed":
@@ -76,6 +83,12 @@ export function causeBanner(
       return danger([failureWords.diskFull(workflow, step)]);
     case "interrupted":
       return interrupted(summary, workflow, step);
+    case "answer-not-an-option": {
+      const agent = facts.offOptionAgent ?? facts.agent;
+      return agent === undefined
+        ? undefined
+        : danger([failureWords.answerNotAnOption(workflow, step, agent)]);
+    }
     case "model-unreachable":
       return proxyBanner(summary, facts, context) ?? modelUnreachable(facts, context, phone);
     case "model-out-of-memory":
@@ -96,6 +109,19 @@ export function causeBanner(
     default:
       return undefined;
   }
+}
+
+/** The cause code the harness bridge gives a socket path longer than the system takes (HAL-13862). */
+const socketPathTooLongCode = "harness-bridge.socket-path-too-long";
+
+/** The socket path's length, the system's limit and the system, only when the cause gives all three. */
+function socketLimitOf(cause: RunFailureCause) {
+  const bytes = cause.detail?.["bytes"];
+  const most = cause.detail?.["limit"];
+  const system = cause.detail?.["system"];
+  return bytes === undefined || most === undefined || system === undefined
+    ? undefined
+    : { bytes, most, system };
 }
 
 /**
@@ -397,6 +423,10 @@ function factsFrom(log: readonly RunEvent[], context: RunPageContext): FailureFa
   );
   const failed = log.findLast((event) => event.type === "run.failed");
   const harness = log.findLast((event) => event.type === "harness.started");
+  const offOption = log.findLast(
+    (event): event is Extract<RunEvent, { type: "agent.finished" }> =>
+      event.type === "agent.finished" && event.reason === "answer-not-an-option",
+  );
   return {
     provider: request?.provider,
     model: request?.model,
@@ -404,6 +434,7 @@ function factsFrom(log: readonly RunEvent[], context: RunPageContext): FailureFa
     host: failed?.host === "" ? undefined : failed?.host,
     noHost: failed?.host === "",
     agent: started === undefined ? undefined : agentNameOf(started.agent, context),
+    offOptionAgent: offOption === undefined ? undefined : agentNameOf(offOption.agent, context),
     harness:
       harness === undefined
         ? undefined
