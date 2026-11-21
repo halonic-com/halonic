@@ -20,15 +20,21 @@ export const trustInstructionsMessages = defineMessages("trustInstructions", {
   action: (agent?: string) =>
     agent === undefined ? phrase`trust the instructions` : phrase`trust ${agent}'s instructions`,
 
-  heading: (agent: string) => phrase`Instructions of ${agent}`,
-  /** Above the list, when the agent never had instructions trusted on this computer. */
-  firstTime: (agent: string) =>
-    phrase`Before ${agent} runs in a harness on this computer, check what its instructions tell it to do.`,
+  heading: (agent: string) => phrase`Trust check for ${agent}'s instructions`,
+  /**
+   * Above the list, when the agent never had instructions trusted on this
+   * computer. `harness` is its name, such as Claude Code; without one the
+   * sentence leaves out where it runs.
+   */
+  firstTime: (agent: string, harness?: string) =>
+    harness === undefined
+      ? phrase`Before ${agent} runs on this computer, check what its instructions tell it to do.`
+      : phrase`Before ${agent} runs in ${harness} on this computer, check what its instructions tell it to do.`,
   /** Above the list instead, when the trusted instructions changed. */
   changedSince: () => phrase`These changed since you trusted them on this computer.`,
   /** Above the list instead, when what was trusted can't be read: it never counts as trust. */
   unreadable: () => phrase`Halonic couldn't read what was trusted before, so it's asking again.`,
-  /** The tags in front of a file, as `halonic trust` tags its rows. */
+  /** The tags after a file's name, as `halonic trust` tags its rows. */
   newFile: () => phrase`New`,
   changedFile: () => phrase`Changed`,
   removedFile: () => phrase`Removed`,

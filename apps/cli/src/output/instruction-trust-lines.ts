@@ -17,15 +17,17 @@ export type InstructionQuestion = Exclude<InstructionTrustCheck, { kind: "truste
  * same lines go before the question and into a refusal.
  *
  * @param agent - the agent as the person typed it, escaped for the terminal
+ * @param harness - the name of the harness it runs in, such as Claude Code, if it has one
  */
 export function instructionTrustLines(
   agent: string,
   check: InstructionQuestion,
   pin: InstructionPin,
+  harness?: string,
 ): Phrase[] {
   return [
     words.heading(agent).phrase,
-    phrase`${rowIndent}${introOf(agent, check)}`,
+    phrase`${rowIndent}${introOf(agent, check, harness)}`,
     phrase``,
     ...fileRows(check, pin),
     phrase``,
@@ -34,14 +36,16 @@ export function instructionTrustLines(
   ];
 }
 
-function introOf(agent: string, check: InstructionQuestion): Phrase {
+function introOf(agent: string, check: InstructionQuestion, harness?: string): Phrase {
   if (check.unreadable !== undefined) return words.unreadable().phrase;
-  return check.hadTrusted ? words.changedSince().phrase : words.firstTime(agent).phrase;
+  return check.hadTrusted ? words.changedSince().phrase : words.firstTime(agent, harness).phrase;
 }
 
 /**
  * One row per file, by name. The first time, every file is new, so none is
  * tagged; after that only what changed is, and a removed file is listed too.
+ * A tag goes at the end of its row, as in `halonic trust`, and the tags line
+ * up in one column after the longest name.
  */
 function fileRows(check: InstructionQuestion, pin: InstructionPin): Phrase[] {
   const names = Object.keys(pin.files);
@@ -49,18 +53,18 @@ function fileRows(check: InstructionQuestion, pin: InstructionPin): Phrase[] {
     return names.map((name) => phrase`${rowIndent}${printable(name)}`);
   }
   const { added, changed, removed } = check.changes;
-  const tagOf = (name: string): Phrase => {
+  const tagOf = (name: string): Phrase | undefined => {
     if (added.includes(name)) return words.newFile().phrase;
     if (changed.includes(name)) return words.changedFile().phrase;
-    return phrase``;
+    return undefined;
   };
-  const rows = names.map((name) => [
-    phrase`${rowIndent}${tagOf(name)}`,
-    phrase`${printable(name)}`,
+  // A file with no tag is a row of one cell, so its line doesn't end in spaces.
+  const rowOf = (name: string, tag: Phrase | undefined): Phrase[] => {
+    const cell = phrase`${rowIndent}${printable(name)}`;
+    return tag === undefined ? [cell] : [cell, tag];
+  };
+  return columns([
+    ...names.map((name) => rowOf(name, tagOf(name))),
+    ...removed.map((name) => rowOf(name, words.removedFile().phrase)),
   ]);
-  const gone = removed.map((name) => [
-    phrase`${rowIndent}${words.removedFile().phrase}`,
-    phrase`${printable(name)}`,
-  ]);
-  return columns([...rows, ...gone]);
 }

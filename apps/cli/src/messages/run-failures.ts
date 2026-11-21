@@ -185,7 +185,7 @@ const lineOne = {
         )
       : failedIn(
           run,
-          phrase`${failure.agent} didn't start, because nobody has trusted its instructions on this computer yet.`,
+          phrase`${failure.agent} didn't start, because its instructions aren't trusted on this computer yet.`,
         );
   },
   error: (run, failure) => {
@@ -271,7 +271,7 @@ const lineTwo = {
   },
   // The command that shows the files and asks (HAL-13062, the board's C on HAL-10522).
   "instructions-not-trusted": (run, failure) =>
-    phrase`Review them and trust them with ${suggestedCommand(`trust instructions ${shellWord(failure.agent)}`, run.dir)}, then run again.`,
+    phrase`Review and trust them with ${suggestedCommand(`trust instructions ${shellWord(failure.agent)}`, run.dir)}, then run again.`,
   error: (run) => bugFix(run),
   internal: (run) => bugFix(run),
 } satisfies ByReason;

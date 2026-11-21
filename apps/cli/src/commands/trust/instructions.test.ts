@@ -127,7 +127,10 @@ verifies("cli.commands.trust.instructions", () => {
 
       expect(code).toBe(exitCode.ok);
       const shown = asked;
-      expect(shown).toContain("Instructions of coder");
+      expect(shown).toContain("Trust check for coder's instructions");
+      expect(shown).toContain(
+        "Before coder runs in Claude Code on this computer, check what its instructions tell it to do.",
+      );
       expect(shown).toMatch(/^ +AGENTS\.md$/mu);
       expect(shown).toMatch(/^ +skills\/review\/SKILL\.md$/mu);
       expect(shown).toMatch(/^ +sha256:[0-9a-f]{64}$/mu);
@@ -160,8 +163,8 @@ verifies("cli.commands.trust.instructions", () => {
 
       const shown = asked;
       expect(shown).toContain("These changed since you trusted them on this computer.");
-      expect(shown).toMatch(/^ +Changed +skills\/review\/SKILL\.md$/mu);
-      expect(shown).toMatch(/^ {4,}AGENTS\.md$/mu);
+      expect(shown).toMatch(/^ +skills\/review\/SKILL\.md +Changed$/mu);
+      expect(shown).toMatch(/^ +AGENTS\.md$/mu);
     });
   });
 

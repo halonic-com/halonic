@@ -5,7 +5,7 @@ import type { Clock, InstructionPin, InstructionTrustStore } from "@halonicjs/po
 import { profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { loadWorkspace } from "@halonicjs/workspace";
-import { agentNamed, savedInstructionsPin } from "../../agent-instructions.ts";
+import { type AgentFile, agentNamed, savedInstructionsPin } from "../../agent-instructions.ts";
 import {
   type CliCommand,
   type CommandContext,
@@ -15,6 +15,7 @@ import {
 } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
 import { instructionTrustFolder } from "../../local-harness-host.ts";
+import { harnessNames } from "../../messages/harness-names.ts";
 import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { trustMessages } from "../../messages/trust.ts";
 import { trustInstructionsMessages as words } from "../../messages/trust-instructions.ts";
@@ -122,7 +123,8 @@ async function reviewAndTrust(
   const key = { location, agent: file.value.id };
   const service = new InstructionTrustService({ store: machine.store, clock: machine.clock });
   const check = await service.check(key, pin);
-  const refusal = { agent, dir, pin };
+  const harness = harnessNameOf(file);
+  const refusal = { agent, dir, pin, harness };
   if (fingerprint !== undefined && fingerprint !== pin.digest) {
     throw fingerprintNotCurrent(refusal, check.kind === "ask" ? check : undefined);
   }
@@ -134,7 +136,7 @@ async function reviewAndTrust(
     });
   }
 
-  const lines = instructionTrustLines(agent, check, pin);
+  const lines = instructionTrustLines(agent, check, pin, harness);
   const trusted = await context.ask({
     question: words.question(agent),
     shownFirst: lines,
@@ -157,11 +159,13 @@ async function reviewAndTrust(
   });
 }
 
-/** What a refusal names: the agent as typed, the user's `--dir`, and the pin it shows. */
+/** What a refusal names: the agent as typed, the user's `--dir`, the pin it shows and the agent's harness. */
 interface RefusalFacts {
   readonly agent: string;
   readonly dir: string | undefined;
   readonly pin: InstructionPin;
+  /** Its name, such as Claude Code, when the agent runs in one. */
+  readonly harness: string | undefined;
 }
 
 /** "✕ That fingerprint doesn't match coder's instructions as they are now.", exit 3. */
@@ -173,7 +177,10 @@ function fingerprintNotCurrent(
     problem: words.fingerprintNotCurrent(facts.agent),
     fix: words.fingerprintNotCurrentFix(facts.agent, facts.dir),
     fingerprint: facts.pin.digest,
-    check: check === undefined ? [] : instructionTrustLines(facts.agent, check, facts.pin),
+    check:
+      check === undefined
+        ? []
+        : instructionTrustLines(facts.agent, check, facts.pin, facts.harness),
     action: null,
   });
 }
@@ -191,6 +198,11 @@ function noTerminal(facts: RefusalFacts, lines: readonly Phrase[]): NotTrustedEr
 
 function done(line: Phrase, json: Readonly<Record<string, unknown>>): CommandResult {
   return { exitCode: exitCode.ok, lines: [phrase`${markPart("done")} ${line}`], json };
+}
+
+/** The name of the harness the agent runs in, such as Claude Code; `undefined` for none or Halonic's own. */
+function harnessNameOf(file: AgentFile): string | undefined {
+  return file.value.harness === undefined ? undefined : harnessNames.get(file.value.harness);
 }
 
 /** The agent as typed, made safe to print, for "✕ Couldn't trust coder's instructions: …". */

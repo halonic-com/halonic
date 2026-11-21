@@ -332,10 +332,10 @@ verifies("cli.run-failed-instructions", () => {
       expect(harnessStarts).toBe(0);
       const shown = [...refused.io.stdout, ...refused.io.stderr].join("\n");
       expect(shown).toContain(
-        "coder didn't start, because nobody has trusted its instructions on this computer yet.",
+        "coder didn't start, because its instructions aren't trusted on this computer yet.",
       );
       expect(shown).toContain(
-        "Review them and trust them with halonic trust instructions coder, then run again.",
+        "Review and trust them with halonic trust instructions coder, then run again.",
       );
       expect(shown).not.toContain("can't tell the cause");
 

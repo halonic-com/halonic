@@ -20,8 +20,8 @@ verifies("cli.run-failed-instructions", () => {
   it("says nobody trusted the agent's instructions, and the command that trusts them", () => {
     const failure = runFailureOf({ ...refused, agent: "coder", changed: false }, undefined);
     expect(wordsOf(failure)).toEqual([
-      "Change failed in the step Write the file: coder didn't start, because nobody has trusted its instructions on this computer yet.",
-      "Review them and trust them with halonic trust instructions coder --dir ./acme, then run again.",
+      "Change failed in the step Write the file: coder didn't start, because its instructions aren't trusted on this computer yet.",
+      "Review and trust them with halonic trust instructions coder --dir ./acme, then run again.",
     ]);
   });
 
