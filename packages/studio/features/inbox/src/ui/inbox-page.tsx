@@ -405,6 +405,7 @@ function OpenCard({
         item={item}
         source={inbox.setupSource(item.provider)}
         answering={answering}
+        signedOut={signedOut}
         words={words}
         close={close}
         focus={focus}

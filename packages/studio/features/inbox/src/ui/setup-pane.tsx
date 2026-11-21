@@ -8,12 +8,21 @@ import { SetupCard } from "./setup-card.tsx";
 export interface SetupPaneProps extends SetupViewProps {
   /** The item's source, or none once it was taken out. */
   readonly source: InboxSetupSource | undefined;
+  /**
+   * Whether the list stopped loading because the served Studio's sign-in ended: the engine still
+   * answers, so the line says to sign in again rather than that it isn't answering (HAL-13809).
+   */
+  readonly signedOut?: boolean;
 }
+
+/** The line over an open setup item once the served Studio's sign-in ended (HAL-13811). */
+export const setupSignedOutText = "Sign in again to see where the setup stands.";
 
 /**
  * An open setup item in the Inbox's pane: the source's own view at the current step, loaded when
  * it opens, else the item's title and progress line. Escape closes it, as **Not now** does.
- * While the engine isn't answering, the host's "showing what it said last" line sits over the item (UX checklist 1, U3).
+ * While the engine isn't answering, the host's "showing what it said last" line sits over the item (UX checklist 1, U3),
+ * or, signed out, "Sign in again to see where the setup stands.".
  * While the view loads, a skeleton says "Loading the Google setup"; when it can't load, "Couldn't
  * load the Google setup", the reason and **Try again** (UX checklist 1, U2).
  */
@@ -21,6 +30,7 @@ export function SetupPane({
   source,
   item,
   answering,
+  signedOut = false,
   words = engineWords["desktop-app"],
   close,
   focus,
@@ -45,7 +55,11 @@ export function SetupPane({
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: Escape from anywhere in the item closes it
     <div className="flex flex-col" onKeyDown={onKeyDown}>
-      {answering ? null : <p className="px-4 pt-4 text-small text-fg-muted">{words.showingLast}</p>}
+      {answering ? null : (
+        <p className="px-4 pt-4 text-small text-fg-muted">
+          {signedOut ? setupSignedOutText : words.showingLast}
+        </p>
+      )}
       {source?.view === undefined ? (
         <SetupCard {...props} />
       ) : (
