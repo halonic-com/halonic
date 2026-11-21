@@ -1,7 +1,7 @@
 # format.workflow-artifact-name
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-14301, from Nina's C340 check on HAL-14271 (code row C39); the wording is a team decision under HAL-2282
 
 When `parseFile` reads a workflow file, the format shall refuse an artifact name that isn't one file name, at the name: a name with `/` or `\`, an empty name, `.` and `..` say to use a file name without folders, such as `announcement.md`, and any other name follows the rules for a path in an agent's working folder (`format.agent-sandbox-fields`).

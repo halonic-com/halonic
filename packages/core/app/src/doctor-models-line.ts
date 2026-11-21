@@ -63,7 +63,13 @@ export type ModelProblem =
    * ! "couldn't read anthropic-key from the secret store (provider anthropic)".
    * One per provider, and no command that sets the key: it may be there (HAL-14629).
    */
-  | { problem: "key-unreadable"; provider: string; name: string; secret: string };
+  | { problem: "key-unreadable"; provider: string; name: string; secret: string }
+  /**
+   * ✕ the workspace's default model is an alias no file has, such as `default`
+   * in a workspace made with plain `halonic init`: an agent without a model
+   * stops on it (HAL-14301).
+   */
+  | { problem: "no-alias"; alias: string };
 
 /** The Models line of `halonic doctor`. */
 export interface ModelsLine extends DoctorLine {
@@ -71,8 +77,9 @@ export interface ModelsLine extends DoctorLine {
   /** The providers that are ready, in the order given. */
   ready: ProviderReport[];
   /**
-   * Unreachable providers first, in the order given, then the aliases without
-   * a key, then the providers whose key couldn't be read.
+   * A default model no file has first, then unreachable providers in the order
+   * given, then the aliases without a key, then the providers whose key
+   * couldn't be read.
    */
   problems: ModelProblem[];
 }
@@ -88,9 +95,12 @@ export interface ModelsLine extends DoctorLine {
  * keychain: the key may be there, so it isn't called missing. A workspace with
  * no aliases, or no workspace, has no line, and neither has one whose
  * aliases all use a provider that needs no key, because it would name nothing.
+ * A default model that is an alias no file has is ✕ and comes first, also
+ * without aliases (HAL-14301).
  *
  * @param providers every provider the aliases use, with what the host found
  * @param aliases the workspace's aliases, in the order of `models.yaml`
+ * @param missingDefault the workspace's default model, when it is an alias no file has
  * @throws Error when an alias names a provider that isn't in `providers`, because the host passes every provider the aliases use
  *
  * @example
@@ -104,6 +114,7 @@ export interface ModelsLine extends DoctorLine {
 export function modelsLine(
   providers: readonly ModelProviderState[],
   aliases: readonly AliasProvider[],
+  missingDefault?: string,
 ): ModelsLine | undefined {
   const byId = new Map(providers.map((state) => [state.provider, state]));
   for (const { alias, provider } of aliases) {
@@ -112,9 +123,12 @@ export function modelsLine(
         `The model alias ${alias} uses the provider ${provider}, which wasn't given.`,
       );
   }
-  if (aliases.length === 0) return undefined;
+  if (aliases.length === 0 && missingDefault === undefined) return undefined;
 
   const problems = [
+    ...(missingDefault === undefined
+      ? []
+      : [{ problem: "no-alias" as const, alias: missingDefault }]),
     ...unreachableProblems(providers),
     ...noKeyProblems(byId, aliases),
     ...unreadableKeyProblems(providers),
@@ -126,7 +140,9 @@ export function modelsLine(
 }
 
 function modelsStatus(problems: readonly ModelProblem[]): ModelsLine["status"] {
-  if (problems.some((problem) => problem.problem === "unreachable")) return "failed";
+  if (problems.some(({ problem }) => problem === "unreachable" || problem === "no-alias")) {
+    return "failed";
+  }
   return problems.length > 0 ? "warning" : "ok";
 }
 

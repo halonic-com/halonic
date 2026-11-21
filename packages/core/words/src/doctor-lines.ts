@@ -184,14 +184,19 @@ function readyProvider(provider: ProviderReport): Phrase {
 }
 
 /**
- * One sentence per unreachable server, then one per provider naming its
- * aliases without a key, then one per provider whose key couldn't be read.
+ * A default model no file has, one sentence per unreachable server, then one
+ * per provider naming its aliases without a key, then one per provider whose
+ * key couldn't be read.
  */
 function modelProblems(problems: readonly ModelProblem[]): Phrase[] {
   const lines: Phrase[] = [];
   const unreadable: Phrase[] = [];
   const aliasesByProvider = new Map<string, { name: string; aliases: string[] }>();
   for (const problem of problems) {
+    if (problem.problem === "no-alias") {
+      lines.push(doctorMessages.noModelAlias(printable(problem.alias)).phrase);
+      continue;
+    }
     if (problem.problem === "unreachable") {
       lines.push(
         doctorMessages.notAnswering(printable(problem.name), printable(problem.address)).phrase,

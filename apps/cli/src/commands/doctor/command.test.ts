@@ -107,6 +107,43 @@ verifies("cli.commands.doctor.check-this-computer", () => {
     expect(io.stdout.at(-1)).toBe("No problems. 1 warning.");
   });
 
+  it("fails the Models line of a workspace with no model, and exits with 1 (HAL-14301)", async () => {
+    // As plain `halonic init` writes it: no models.yaml, so the default model `default` is nowhere.
+    mkdirSync(join(folder, "fresh"));
+    writeFileSync(join(folder, "fresh", "workspace.yaml"), "id: fresh\nname: Fresh\n");
+    const io = captureIo(folder);
+
+    const code = await runCli(["doctor", "--dir", "fresh"], io, [
+      createDoctorCommand(() => machine()),
+    ]);
+
+    expect(code).toBe(exitCode.failed);
+    expect(io.stdout.slice(2, 4)).toEqual([
+      "✓ Workspace   Fresh · test model only, no trust needed",
+      "✕ Models      no model alias default · copy models.yaml and providers/mock.yaml from Acme, or add your own",
+    ]);
+    expect(io.stdout.at(-1)).toBe(
+      "1 problem. Agents without a model of their own won't run until default is added.",
+    );
+  });
+
+  it("fails the Models line when an agent with no model of its own gets a default no file has", async () => {
+    writeAcme();
+    mkdirSync(join(folder, "acme", "agents"));
+    writeFileSync(join(folder, "acme", "agents", "clerk.agent.yaml"), "name: Clerk\n");
+    const io = captureIo(folder);
+
+    const code = await runCli(["doctor", "--dir", "acme"], io, [
+      createDoctorCommand(() => machine()),
+    ]);
+
+    expect(code).toBe(exitCode.failed);
+    expect(io.stdout.slice(3, 5)).toEqual([
+      "✕ Models      Ollama answering at localhost:11434 · llama3.2 loaded (2.0 GB)",
+      "              no model alias default · copy models.yaml and providers/mock.yaml from Acme, or add your own",
+    ]);
+  });
+
   it("exits with 1 when the sandbox can't start", async () => {
     const io = captureIo(folder);
     const inContainer = machine({ ok: false, reason: "container", missing: ["a container"] });

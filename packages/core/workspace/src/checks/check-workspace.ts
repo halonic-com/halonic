@@ -8,6 +8,7 @@ import { checkDefaultRuntimes, checkInstructionFiles } from "./ignored-settings.
 import { checkIntegrationSettings } from "./integration-settings.ts";
 import { checkLocalOnly } from "./local-only.ts";
 import { checkModelsFile, checkSessionModel } from "./model-aliases.ts";
+import { checkModelProviders } from "./model-providers.ts";
 import { checkRoutines } from "./routines.ts";
 import { checkWorkflowTests } from "./workflow-tests.ts";
 import { checkSubflowLoops, checkWorkflows } from "./workflows.ts";
@@ -22,6 +23,7 @@ const checks: readonly WorkspaceCheck[] = [
   checkWorkspaceFile,
   checkDuplicateIds,
   checkModelsFile,
+  checkModelProviders,
   checkSessionModel,
   checkHubUses,
   checkAgents,
