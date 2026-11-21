@@ -4,7 +4,7 @@ import { markPart, phrase } from "./phrase.ts";
 /** The sentences of `halonic google`. */
 export const googleMessages = defineMessages("google", {
   summary: () =>
-    phrase`Save a Google account's secret and sign it in, choose what Halonic may do with it, or reset Google on this computer`,
+    phrase`Save a Google account's secret, sign it in, switch sending for a connection, or reset Google on this computer`,
   allowSendingSummary: () => phrase`Switch sending on or off for one Google connection`,
   /** What `allow-sending` was doing, for "✕ Couldn't change the setting: …". */
   allowSendingAction: () => phrase`change the setting`,
@@ -69,7 +69,7 @@ export const googleMessages = defineMessages("google", {
   resetNothingThere: () =>
     phrase`Nothing to remove: this computer has no Google accounts or saved sign-ins.`,
   resetDone: () =>
-    phrase`${markPart("done")} Removed. Set up Google again in the Studio, then save its secret and sign in there or with halonic google secret and halonic google sign-in.`,
+    phrase`${markPart("done")} Removed. Set up Google again in the Studio. You can save the client secret and sign in there, or with halonic google secret <account> and halonic google sign-in <account>.`,
   /** The account has signed in, or shares its client: a new secret has to be checked first. */
   secretNeedsStaging: () =>
     phrase`This account has signed in, so its secret can't be replaced here.`,

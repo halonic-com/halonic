@@ -12,7 +12,9 @@ runs it with `--yes` is told too. When neither the `google` folder nor `integrat
 holds anything, it asks nothing, with or without `--yes` or a terminal, prints "Nothing to remove:
 this computer has no Google accounts or saved sign-ins." and exits 0, where it used to print
 "✓ Removed.". The ✓ line now names `halonic google secret` and `halonic google sign-in` next to the
-Studio. The `google` group's summary covers secret, sign-in and reset as well as allow-sending.
+Studio, with `<account>` as the other fix lines in this file do. The `google` group's summary covers
+secret, sign-in and reset as well as switching sending for a connection. Maya confirmed the wording
+on HAL-15129.
 
 What it removes, what it leaves and its other exits stay the same. The fresh-profile example now
 expects the "Nothing to remove" line, and one example is added for the line without a terminal.
