@@ -208,6 +208,7 @@ verifies("app.plugin-sign-out", () => {
       signOutPlugin: async (id) => {
         tries.push(id);
         if (!signOutWorks) throw new Error("the agent host isn't running");
+        return [];
       },
     });
     await expect(host.remove("/profile/plugins/weather")).rejects.toBeInstanceOf(
