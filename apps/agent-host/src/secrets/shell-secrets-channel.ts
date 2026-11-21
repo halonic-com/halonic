@@ -73,8 +73,17 @@ export class ShellSecretsChannel implements HostConnection {
     if (frame.kind !== FrameKind.data || waiting === undefined) {
       throw new FrameStreamError("The shell sent on the secrets channel without a request.");
     }
+    let answer: ShellSecretAnswer;
+    try {
+      answer = answerOf(frame.bytes);
+    } catch (error) {
+      // Close here, while the request still waits, so it and every one behind it fail
+      // instead of hanging, and none of them is sent on the broken stream.
+      this.close(error instanceof Error ? error : new FrameStreamError(String(error)));
+      throw error;
+    }
     this.#waiting = undefined;
-    waiting.resolve(answerOf(frame.bytes));
+    waiting.resolve(answer);
   }
 
   close(reason: Error): void {

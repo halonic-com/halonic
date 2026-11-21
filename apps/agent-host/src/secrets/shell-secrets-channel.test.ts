@@ -73,6 +73,22 @@ verifies("agent-host.keychain-secrets", () => {
       );
     });
 
+    it("fails the waiting request and the one behind it when the answer can't be read", async () => {
+      const { channel, sent, open } = openChannel();
+      open();
+      const waiting = channel.ask({ op: "get", name: "remote_host_key" });
+      const behind = channel.ask({ op: "delete", name: "remote_host_key" });
+      await settle();
+      expect(() =>
+        channel.receive({ connection: 0, kind: FrameKind.data, bytes: Buffer.from("{bad") }),
+      ).toThrow(FrameStreamError);
+
+      await expect(waiting).rejects.toThrow(/^The secrets channel to Studio closed: .* isn't JSON/);
+      await expect(behind).rejects.toThrow(/^The secrets channel to Studio closed/);
+      // The request behind it never went out on the broken stream.
+      expect(sent).toHaveLength(1);
+    });
+
     it("breaks the stream on a frame on id 0 that isn't data", async () => {
       const { channel, open } = openChannel();
       open();
