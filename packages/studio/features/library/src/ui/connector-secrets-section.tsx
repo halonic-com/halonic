@@ -1,6 +1,6 @@
 import { Button, Field, Input, StatusChip } from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   type ConnectorSecretState,
   connectorSecretWords as words,
@@ -34,13 +34,24 @@ export function ConnectorSecretsSection({
   const [states, setStates] = useState<Readonly<Record<string, ConnectorSecretState>>>({});
   // The names joined, so a new array with the same names doesn't read the keychain again.
   const nameList = names.join("\n");
+  // Saves and removes so far, and the count at each name's latest one, so a check that started
+  // before a save or remove doesn't put back the state that save or remove replaced.
+  const changes = useRef({ count: 0, latest: new Map<string, number>() });
+
+  function changed(name: string, state: ConnectorSecretState) {
+    changes.current.count += 1;
+    changes.current.latest.set(name, changes.current.count);
+    setStates((now) => ({ ...now, [name]: state }));
+  }
 
   useEffect(() => {
     if (nameList === "") return;
     let current = true;
+    const startedAfter = changes.current.count;
     void (async () => {
       const read = await secretStates(secrets, nameList.split("\n"));
-      if (current) setStates(read);
+      if (!current) return;
+      setStates((now) => answersStillCurrent(read, now, changes.current.latest, startedAfter));
     })();
     return () => {
       current = false;
@@ -60,7 +71,7 @@ export function ConnectorSecretsSection({
           sourceName={sourceName}
           secrets={secrets}
           state={states[name] ?? "not-set"}
-          onState={(state) => setStates((now) => ({ ...now, [name]: state }))}
+          onState={(state) => changed(name, state)}
         />
       ))}
     </section>
@@ -133,6 +144,24 @@ function SecretRow({ name, sourceName, secrets, state, onState }: SecretRowProps
       ) : null}
     </div>
   );
+}
+
+/**
+ * The states a check read, except for a secret saved or removed after the check started: that
+ * one keeps the state the save or remove gave it, which is newer than the check's answer.
+ */
+function answersStillCurrent(
+  read: Readonly<Record<string, ConnectorSecretState>>,
+  now: Readonly<Record<string, ConnectorSecretState>>,
+  latestChange: ReadonlyMap<string, number>,
+  startedAfter: number,
+): Record<string, ConnectorSecretState> {
+  const states: Record<string, ConnectorSecretState> = { ...read };
+  for (const [name, change] of latestChange) {
+    const kept = now[name];
+    if (change > startedAfter && kept !== undefined) states[name] = kept;
+  }
+  return states;
 }
 
 /**
