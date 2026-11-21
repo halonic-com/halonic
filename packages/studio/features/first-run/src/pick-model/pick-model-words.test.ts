@@ -51,7 +51,7 @@ verifies("first-run.pick-model", () => {
     expect(buttonLabel("check-again", { kind: "checking" })).toBe("Checking…");
     expect(buttonLabel("continue", { kind: "saving" })).toBe("Saving…");
     expect(buttonLabel("test-and-continue", undefined)).toBe("Test and continue");
-    expect(getKeyLink("gemini")).toBe("Get one from Gemini ↗");
+    expect(getKeyLink("gemini")).toBe("Get one from Gemini");
     expect(keySavedLine("openai")).toBe("A key is saved for OpenAI");
   });
 

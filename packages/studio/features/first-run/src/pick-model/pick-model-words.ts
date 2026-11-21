@@ -45,9 +45,9 @@ export const keyPages: Readonly<Record<FirstRunKeyProvider, string>> = {
   gemini: "https://aistudio.google.com/apikey",
 };
 
-/** "Get one from Anthropic ↗". */
+/** "Get one from Anthropic", to which the external link adds its ↗. */
 export function getKeyLink(provider: FirstRunKeyProvider): string {
-  return `Get one from ${firstRunProviders[provider].name} ↗`;
+  return `Get one from ${firstRunProviders[provider].name}`;
 }
 
 /** "A key is saved for Anthropic". */
