@@ -54,4 +54,18 @@ export const deployMessages = defineMessages("deploy", {
     phrase`${markPart("done")} ${deployment} already runs commit ${commit} with Halonic ${halonic}. Nothing changed on Cloudflare.`,
   /** A line from the target the user must see, such as the lock lost after the switch. The deploy is live. */
   warning: (message: string) => phrase`${markPart("needsYou")} ${message}`,
+
+  /** A host that isn't one lowercase word, so no package name is made from it. */
+  notAHost: (host: string) => phrase`"${host}" is not a deploy host.`,
+  notAHostFix: () => phrase`Check host in deployments.yaml.`,
+  /** The deploy target for a deployment's `host` isn't installed (wording with Sofia, flow section 9). */
+  targetMissing: (host: string, pkg: string) =>
+    phrase`Deploying to ${host} needs the package ${pkg}, and it isn't installed. Nothing changed on ${host}.`,
+  targetMissingFix: (pkg: string) =>
+    phrase`Install it next to halonic, then run again: npm install ${pkg}`,
+  /** The package is there but doesn't give a target this halonic can use. */
+  targetUnusable: (pkg: string, reason: string) =>
+    phrase`The installed ${pkg} can't be used by this halonic: ${reason}.`,
+  targetUnusableFix: (pkg: string) =>
+    phrase`Install the ${pkg} that matches your halonic version, then run again.`,
 });
