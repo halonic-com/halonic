@@ -23,13 +23,18 @@ describe("NameAndHubRow", () => {
     expect(grid.children).toHaveLength(2);
   });
 
-  it("puts the Hub picker under the name on a phone, so the sheet doesn't scroll sideways", () => {
-    expect(row("phone", true).className).not.toContain("grid-cols");
+  // e2e/new-item-row.spec.ts checks the boxes at 195px in a real browser.
+  it("puts the Hub picker under the name on a phone, in one column that can shrink", () => {
+    const grid = row("phone", true);
+    expect(grid.className).toContain("grid-cols-[minmax(0,1fr)]");
+    expect(grid.className).not.toContain("160px");
+    expect(grid.children).toHaveLength(2);
   });
 
-  it("is one column with only one hub", () => {
+  it("is one column that can shrink with only one hub", () => {
     const grid = row("desktop", false);
-    expect(grid.className).not.toContain("grid-cols");
+    expect(grid.className).toContain("grid-cols-[minmax(0,1fr)]");
+    expect(grid.className).not.toContain("160px");
     expect(grid.children).toHaveLength(1);
   });
 });
