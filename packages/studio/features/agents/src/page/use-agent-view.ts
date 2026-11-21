@@ -5,7 +5,7 @@ import { mapWords } from "../map/map-words.ts";
 import { forgetFreshAgent, isFreshAgent } from "./fresh-agents.ts";
 import { pageWords } from "./page-words.ts";
 
-/** The agent page's views: the panel beside the chat, or the page on a phone. */
+/** The views of the agent page's panel. */
 export type AgentView = "flow" | "configuration" | "runs";
 
 /**

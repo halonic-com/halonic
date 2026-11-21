@@ -1,4 +1,5 @@
-import { WorkspaceAgents, type WorkspaceAgentsParts } from "./workspace-agents.ts";
+import { WorkspaceAgents } from "./workspace-agents.ts";
+import type { WorkspaceAgentsParts } from "./workspace-agents-parts.ts";
 
 /** What the WorkspaceAgents tests share: a workspace of a few files, kept in memory. */
 
