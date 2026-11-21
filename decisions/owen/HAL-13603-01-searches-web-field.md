@@ -3,6 +3,7 @@
 - Task: HAL-13603
 - Approval: HAL-13604 (Liam approved the plan: an optional `searchesWeb` list in the provider file); Liam signs this note in review on HAL-13603
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DNValwODYBqgehZW+X1oCl0kk7l7RxpS1UrkFUKWIyxeowiphYc4WmkgNYgmsZCuFSi6m9+v7D/wWGfqZ3YlAg==
 
 ## What changes
 
