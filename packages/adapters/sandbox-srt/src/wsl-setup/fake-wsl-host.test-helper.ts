@@ -1,4 +1,5 @@
 import type { ProgramResult, WslDistro, WslHost, WslPolicy } from "./host.ts";
+import { RUNTIME_UPDATER } from "./runtime.ts";
 
 /** A Windows machine as a test sets it up: what WSL says, and every call the setup made. */
 export interface FakeWsl {
@@ -21,10 +22,18 @@ export interface FakeWsl {
     dockerSocket: boolean;
     wslFolder: string;
     distroStarts: boolean;
+    /** The runtime version `/opt/halonic/current` points at, or `null`: the image ships none. */
+    runtime: string | null;
+    /** What the runtime updater's `install` ends with; 0 makes the version current. */
+    runtimeInstallCode: number;
   };
 }
 
 const ok = (output = ""): ProgramResult => ({ code: 0, output });
+
+/** What the runtime updater's `status` prints in the fake distro. */
+const runtimeStatus = (current: string | null): ProgramResult =>
+  ok(`{"current":"${current ?? ""}","previous":"","securityUpdated":""}\n`);
 
 export function fakeWsl(): FakeWsl {
   const fake: FakeWsl = {
@@ -44,6 +53,8 @@ export function fakeWsl(): FakeWsl {
       dockerSocket: false,
       wslFolder: "",
       distroStarts: true,
+      runtime: null,
+      runtimeInstallCode: 0,
     },
     host: undefined as never,
   };
@@ -95,7 +106,13 @@ export function fakeWsl(): FakeWsl {
       if (program[0] === "uname") return ok(`${machine.kernel}\n`);
       if (program[0] === "test") return { code: machine.dockerSocket ? 0 : 1, output: "" };
       if (program[0] === "ls") return ok(machine.wslFolder);
+      if (program[0] === RUNTIME_UPDATER) return runtimeStatus(machine.runtime);
       return { code: 127, output: "" };
+    },
+    installRuntime: async (_name, runtime) => {
+      fake.calls.push(`install runtime ${runtime.version} ${runtime.sha256} ${runtime.archive}`);
+      if (machine.runtimeInstallCode === 0) machine.runtime = runtime.version;
+      return { code: machine.runtimeInstallCode, output: "" };
     },
     setRunOnce: async (command) => {
       fake.calls.push("set RunOnce");

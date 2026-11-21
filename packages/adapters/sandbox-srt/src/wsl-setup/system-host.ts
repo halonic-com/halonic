@@ -164,6 +164,12 @@ export function systemWslHost(given: Run = systemRun): WslHost {
     importDistro: (name, location, rootfs) =>
       run(wsl, ["--import", name, location, rootfs, "--version", "2"]),
     runInDistro: (name, program) => run(wsl, ["-d", name, "--exec", ...program]),
+    // Root in the distro goes only through Studio's shell, which checks the
+    // archive on Windows first; that link comes with HAL-14644's shell part.
+    installRuntime: async () => ({
+      code: null,
+      output: "installing the runtime goes through Studio's shell, which isn't connected yet",
+    }),
     async setRunOnce(command) {
       await run(reg, [
         "add",

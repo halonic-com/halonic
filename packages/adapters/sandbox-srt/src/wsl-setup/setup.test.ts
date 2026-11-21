@@ -11,6 +11,7 @@ function setupOn(fake: FakeWsl, store = memoryWslSetupStore()) {
     location: "%LOCALAPPDATA%\\Halonic\\wsl",
     rootfs: "image.tar.gz",
     resumeCommand: '"Halonic.exe" --resume-sandbox-setup',
+    runtime: { version: "0.1.0+0123456789ab", sha256: "ab".repeat(32), archive: "runtime.tar.gz" },
   });
   return { setup, store };
 }

@@ -12,6 +12,7 @@ import {
   type WslProblem,
 } from "./detect.ts";
 import type { WslHost } from "./host.ts";
+import { ensureWslRuntime, type WslRuntime, type WslRuntimeFailure } from "./runtime.ts";
 import { HALONIC_DISTRO, type WslSetupState, type WslSetupStore } from "./state.ts";
 
 /**
@@ -33,6 +34,7 @@ export type WslResidual = "default-distro" | "docker-desktop-visible";
  * - `distro-wont-start`: the distro is imported but a program doesn't start in it.
  * - `kernel-too-old` (W11): the WSL kernel is below the floor; `wsl --update` fixes it.
  * - `kernel-unreadable` (W11): `uname -r` in the distro gave no kernel version, so the floor can't be checked.
+ * - `runtime-busy` and `runtime-install-failed`: see {@link WslRuntimeFailure}.
  */
 export type WslSetupFailureCode =
   | "wsl-install-failed"
@@ -40,7 +42,8 @@ export type WslSetupFailureCode =
   | "distro-not-ours"
   | "distro-wont-start"
   | "kernel-too-old"
-  | "kernel-unreadable";
+  | "kernel-unreadable"
+  | WslRuntimeFailure["code"];
 
 /** How a run of the setup ended. Words are never in here: `detail` is for logs and support. */
 export type WslSetupResult =
@@ -67,6 +70,8 @@ export interface WslSetupOptions {
   rootfs: string;
   /** What `RunOnce` runs after the restart: Studio's own program with its resume flag. */
   resumeCommand: string;
+  /** The runtime Studio ships, which the `installing-runtime` step puts in the distro. */
+  runtime: WslRuntime;
   /** The distro's name; only a test changes it. */
   distro?: string;
   /** The lowest kernel version the check accepts; defaults to {@link WSL_KERNEL_FLOOR}. */
@@ -76,14 +81,17 @@ export interface WslSetupOptions {
 /**
  * The saved state machine of the `srt-wsl` setup (HAL-3779, section 5.4):
  * `not-started` → `installing-wsl` (one administrator prompt) → `restart-needed`
- * → `importing-distro` (no administrator) → `checking` → `done`. The state is
- * saved before each step starts, so the next start resumes at that step.
+ * → `importing-distro` (no administrator) → `checking` → `installing-runtime`
+ * → `done`. The state is saved before each step starts, so the next start
+ * resumes at that step. Running it again repairs: over its own import it goes
+ * straight to `checking`, and installs the runtime only when the version
+ * Studio ships isn't current, never importing the distro again.
  *
  * It never writes `.wslconfig`, never replaces a distro it didn't import, and
  * never throws for a failed step: the result says how it ended.
  *
  * @example
- * const setup = new WslSetup({ host, store, location, rootfs, resumeCommand });
+ * const setup = new WslSetup({ host, store, location, rootfs, resumeCommand, runtime });
  * const result = await setup.run(); // `restart-needed`, then after the restart:
  * await setup.run(); // `{ outcome: "done", residuals: [] }`
  */
@@ -137,6 +145,8 @@ export class WslSetup {
         return this.#importDistro(state);
       case "checking":
         return this.#check(state);
+      case "installing-runtime":
+        return this.#installRuntime(state);
       case "done":
         return { result: { outcome: "done", residuals: [] } };
     }
@@ -293,8 +303,17 @@ export class WslSetup {
         "update-wsl",
       );
     }
+    // After the check, so a ~100 MB archive never goes into a distro that won't start.
+    return { state: { ...state, step: "installing-runtime" as const } };
+  }
+
+  /** The runtime Studio ships is current in the distro (HAL-14644); then the setup is done, with what leaks in (W6). */
+  async #installRuntime(state: WslSetupState) {
+    const failure = await ensureWslRuntime(this.#host, this.#distro, this.#options.runtime);
+    if (failure !== null) return failed(failure.code, "other", failure.detail);
+    const registered = (await this.#host.distros()).find((entry) => entry.name === this.#distro);
     const residuals: WslResidual[] = [];
-    if (registered.isDefault) residuals.push("default-distro");
+    if (registered?.isDefault === true) residuals.push("default-distro");
     if (await this.#dockerDesktopVisible()) residuals.push("docker-desktop-visible");
     await this.#host.clearRunOnce();
     await this.#store.save({ ...state, step: "done" });
