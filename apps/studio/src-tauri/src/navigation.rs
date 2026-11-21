@@ -11,7 +11,7 @@ use halonic_connect::{
     Address, Destination, NavigationTarget, navigation_destination, page_may_stay,
 };
 use tauri::plugin::{Builder, TauriPlugin};
-use tauri::{Manager, Runtime, Url, Webview};
+use tauri::{AppHandle, Manager, Runtime, Url, Webview};
 use tauri_plugin_opener::OpenerExt;
 
 /// The page `back_to_connect` loads: the app's own page, which is the connect
@@ -66,8 +66,7 @@ pub fn guard<R: Runtime>() -> TauriPlugin<R> {
                     false
                 }
                 Destination::Browser => {
-                    // If nothing can open it, the tap does nothing.
-                    let _ = webview.opener().open_url(url.as_str(), None::<&str>);
+                    open_in_browser(webview.app_handle(), url);
                     false
                 }
                 Destination::Nowhere => false,
@@ -94,6 +93,33 @@ fn target(url: &Url) -> NavigationTarget<'_> {
         query: url.query(),
         fragment: url.fragment(),
     }
+}
+
+/// Hands `url` to the browser and returns straight away. On Android the
+/// guard runs on the UI thread, inside the WebView's link callback, and the
+/// opener sends its request to that same thread and waits for the answer.
+/// Called from the guard itself, it waited for itself, and the app froze
+/// until Android said it wasn't responding (HAL-1375 phone checks 6, 16 and
+/// 23). The release page button never froze: its call comes from the page,
+/// off the UI thread.
+fn open_in_browser<R: Runtime>(app: &AppHandle<R>, url: &Url) {
+    let app = app.clone();
+    let url = url.to_string();
+    off_the_calling_thread(move || {
+        // If nothing can open it, the tap does nothing; the log says why.
+        if let Err(error) = app.opener().open_url(url, None::<&str>) {
+            halonic_shell_log::record(
+                "navigation",
+                format!("opening a link in the browser: {error}"),
+            );
+        }
+    });
+}
+
+/// Runs `work` on a thread of its own, so the caller never waits for it,
+/// and `work` may wait for the caller's thread.
+fn off_the_calling_thread(work: impl FnOnce() + Send + 'static) {
+    tauri::async_runtime::spawn_blocking(work);
 }
 
 /// Forgets the confirmed address and loads the connect page in its Change

@@ -3,14 +3,17 @@
 //! `halonic_connect` has its own tests for the decision on made-up targets;
 //! these start from real URLs, the way the webview hands them over.
 
-use std::sync::Arc;
+use std::sync::{Arc, mpsc};
 use std::thread;
+use std::time::Duration;
 
 use halonic_connect::{Destination, navigation_destination, page_may_stay, parse_address};
 use tauri::test::mock_builder;
 use tauri::{Manager, Url};
 
-use super::{CHANGE_ADDRESS_PAGE, ConfirmedAddress, back_to_connect, target};
+use super::{
+    CHANGE_ADDRESS_PAGE, ConfirmedAddress, back_to_connect, off_the_calling_thread, target,
+};
 use crate::shell;
 
 /// The origin the app's pages load from on this platform, without a path.
@@ -454,4 +457,26 @@ fn back_to_connect_forgets_the_confirmed_address() {
     back_to_connect(webview);
 
     assert_eq!(state.get(), None);
+}
+
+/// The opener on Android: it asks the thread the guard runs on, and waits
+/// for that thread's answer. Run on the calling thread, `work` would wait
+/// for itself and time out here (HAL-1375 phone checks 6, 16 and 23).
+#[test]
+fn work_handed_off_the_calling_thread_may_wait_for_the_calling_thread() {
+    let (answer, answers) = mpsc::channel::<()>();
+    let (report, reports) = mpsc::channel::<bool>();
+
+    off_the_calling_thread(move || {
+        let answered = answers.recv_timeout(Duration::from_secs(5)).is_ok();
+        report.send(answered).expect("the test still listens");
+    });
+    // The calling thread answers only once it has its control back.
+    answer.send(()).expect("the work still listens");
+
+    let answered = reports.recv().expect("the work reports");
+    assert!(
+        answered,
+        "the work could not get the calling thread's answer"
+    );
 }
