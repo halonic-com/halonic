@@ -129,15 +129,17 @@ export async function openToolSource(
 
 /**
  * Why a connector has no listed tools to approve: its tools are built into
- * Halonic (`built_in`, such as Google's), or it is a plugin's connector,
- * whose tools the plugin's trust already covers (`plugin`).
+ * Halonic (`built_in`, such as Google's), it is a plugin's connector, whose
+ * tools the plugin's trust already covers (`plugin`), or it is an
+ * integration's connector, whose tools come from the integration's
+ * permission sheet (`integration`).
  */
-export type NoToolsToApprove = "built_in" | "plugin";
+export type NoToolsToApprove = "built_in" | "plugin" | "integration";
 
 /**
  * The source's listed tools now, checked against its approvals, or why it
- * has none to approve. A plugin's connector isn't started for this: its
- * tools need no approval.
+ * has none to approve. A plugin's or an integration's connector isn't
+ * started for this: its tools need no approval (HAL-14784).
  *
  * @throws NotTrustedError when the workspace isn't trusted as it is now (exit 3): nothing starts
  * @throws OwnLineError when Halonic refused the whole listing, or an approval can't be read
@@ -152,6 +154,9 @@ export async function checkToolSource(
   }
   if ("plugin" in source.connector.transport) {
     return "plugin";
+  }
+  if ("integration" in source.connector.transport) {
+    return "integration";
   }
   const listing = await readSourceListing(
     {
@@ -202,7 +207,8 @@ export interface NoToolsShown {
  * and for a plugin's connector the plugin's state as `pluginState`. A plugin
  * that isn't added gets a second line saying so (HAL-13716), and a third
  * naming a near id when one is close; one that is off gets a `!` warning
- * (HAL-14296).
+ * (HAL-14296). An integration's connector gets one line naming its
+ * permission sheet (HAL-14784).
  */
 export async function noToolsToApprove(
   why: NoToolsToApprove,
@@ -211,6 +217,9 @@ export async function noToolsToApprove(
 ): Promise<NoToolsShown> {
   const json = { needsNoApproval: why };
   const { transport } = source.connector;
+  if (why === "integration") {
+    return { lines: [toolsMessages.integrationTools(source.shown).phrase], warnings: [], json };
+  }
   if (!("plugin" in transport)) {
     return { lines: [toolsMessages.onlyBuiltIn(source.shown).phrase], warnings: [], json };
   }

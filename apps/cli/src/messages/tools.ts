@@ -141,6 +141,9 @@ export const toolsMessages = defineMessages("tools", {
   /** HAL-12638: a plugin's connector. Its tools are on once the plugin is trusted, so this isn't an error. */
   pluginTools: (source: string) =>
     phrase`${source} is a plugin's connector. Its tools need no approval: trusting the plugin covers them.`,
+  /** HAL-14784: an integration's connector. Its tools come from the integration's permission sheet, so this isn't an error. */
+  integrationTools: (source: string) =>
+    phrase`${source} is an integration's connector. Its tools need no approval: they come from the integration's permission sheet.`,
   /** After {@link pluginTools} when no plugin with the connector's id is added to this profile. */
   pluginNotAdded: (plugin: string) =>
     phrase`The plugin ${plugin} isn't added, so it has no tools yet. Add it with halonic plugin add <folder or git address>.`,
