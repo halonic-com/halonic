@@ -19,6 +19,7 @@ import { asksFirstWords, connectorPageWords, connectorToolsWords } from "../new-
 import { ConnectorConnectionSummary } from "./connector-connection-summary.tsx";
 import { ConnectorSecretsSection } from "./connector-secrets-section.tsx";
 import { ConnectorStatusSection } from "./connector-status-section.tsx";
+import { HttpConnectorSecret } from "./http-connector-secret.tsx";
 import { useItemTrash } from "./item-trash.tsx";
 import { sharedHubKey } from "./library-place.tsx";
 import { ListedToolsElsewhere } from "./listed-tools-elsewhere.tsx";
@@ -81,7 +82,8 @@ function SecretsPart({
 
 /**
  * The `connector` item kind's page, kept thin so the full connector page (HAL-751) can replace it
- * without touching the section: the connector's name as the `h1`, then how it connects, then the status section, then the sections other features add
+ * without touching the section: the connector's name as the `h1`, then how it connects (with where an
+ * HTTP connector's secret is set), then the status section, then the sections other features add
  * (the Google block, for a Google connector).
  */
 export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
@@ -194,10 +196,13 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
       )}
       <SecretsPart section={secretsSection} sourceName={name} />
       {connector?.connection === undefined ? null : (
-        <ConnectorConnectionSummary
-          connection={connector.connection}
-          secretsOnPage={secretsSection !== undefined}
-        />
+        <>
+          <ConnectorConnectionSummary
+            connection={connector.connection}
+            secretsOnPage={secretsSection !== undefined}
+          />
+          <HttpConnectorSecret connection={connector.connection} host={context.host} />
+        </>
       )}
       <ConnectorStatusSection
         model={model}
