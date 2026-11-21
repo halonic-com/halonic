@@ -42,7 +42,7 @@ export interface CodexRunOptions {
   settings: SettingsFolderWriter;
   /** Who Halonic is, as `initialize` tells Codex. */
   clientInfo: ClientInfo;
-  /** Whether Codex's own sandbox works here; asked only for a run outside Halonic's fence. */
+  /** Whether Codex's own sandbox works here; asked only for a run Halonic's fence isn't proven around. */
   ownSandbox: OwnSandboxCheck;
 }
 
@@ -120,7 +120,7 @@ export class CodexRun implements HarnessRun {
     });
   }
 
-  /** Writes `config.toml` and starts `codex app-server` in the session, in its own sandbox outside the fence. */
+  /** Writes `config.toml` and starts `codex app-server` in the session, in its own sandbox wherever the fence isn't proven. */
   async #launch(
     session: SandboxSession,
     bridge: HarnessBridge,
@@ -131,8 +131,8 @@ export class CodexRun implements HarnessRun {
       throw new Error("Codex needs a settings folder, and the sandbox profile has none.");
     }
     await writeSettingsFiles(folder, { [codexConfigFile]: codexConfigText() }, settings);
-    // Outside the fence, Codex's own sandbox is the one around the commands it starts.
-    const own = session.fence.state === "off" && (await ownSandbox());
+    // Wherever the fence isn't proven, Codex's own sandbox is the one around the commands it starts.
+    const own = session.fence.state !== "fenced" && (await ownSandbox());
     if (this.#cancelled) throw cancelledError();
     return session.start({
       program: codexProgram,

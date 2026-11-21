@@ -34,7 +34,7 @@ const keptErrorCharacters = 4_096;
 export interface ClaudeCodeRunOptions {
   /** Writes the agent's settings folder and the run's instructions file before Claude Code starts. */
   settings: SettingsFolderWriter;
-  /** Whether Claude Code's own sandbox works here; asked only for a run outside Halonic's fence. */
+  /** Whether Claude Code's own sandbox works here; asked only for a run Halonic's fence isn't proven around. */
   ownSandbox: OwnSandboxCheck;
 }
 
@@ -96,8 +96,8 @@ export class ClaudeCodeRun implements HarnessRun {
     }
     await writeClaudeCodeSettings(folder, settings);
     const instructionsFile = await this.#writeInstructions(session.profile.tempFolder, settings);
-    // Outside the fence, Claude Code's own sandbox is the one around its shell commands.
-    const own = session.fence.state === "off" && (await ownSandbox());
+    // Wherever the fence isn't proven, Claude Code's own sandbox is the one around its shell commands.
+    const own = session.fence.state !== "fenced" && (await ownSandbox());
     if (this.#cancelled) throw cancelledError();
     const process = await session.start(
       claudeCodeCommand(this.#task, {

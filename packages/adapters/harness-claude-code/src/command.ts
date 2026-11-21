@@ -14,7 +14,7 @@ export interface ClaudeCodeFiles {
   instructionsFile: string | null;
   /** The run's folder of pinned instruction files, whose `skills/` Claude Code loads as a plugin; `null` when the run has none. */
   skillsFolder: string | null;
-  /** Whether Claude Code's own sandbox is on: only outside Halonic's fence, where it works. */
+  /** Whether Claude Code's own sandbox is on: only where Halonic's fence isn't proven, and it works. */
   ownSandbox: boolean;
 }
 
