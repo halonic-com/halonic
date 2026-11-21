@@ -66,30 +66,38 @@ verifies("kit.chat-transcript", () => {
     expect(scroller.scrollTop).toBe(100);
   });
 
-  it("shows the notice at the top, with the warning mark, and keeps the messages", () => {
+  it("shows the notice above the messages, with the warning mark, and keeps the messages", () => {
     const notice = "The engine isn't answering. Showing what it said last.";
     const { container } = render(transcript(["Reading it."], notice));
     const region = container.querySelector("section") as HTMLElement;
-    const top = region.firstElementChild as HTMLElement;
+    const top = region.previousElementSibling as HTMLElement;
     expect(top.textContent).toBe(notice);
     expect(top.id).toBe("engine-line");
     expect(top.querySelector("[aria-hidden] svg path")).not.toBeNull();
     expect(region.querySelector("[data-chat-message=reply]")?.textContent).toContain("Reading it.");
   });
 
-  it("pads its scroll by the notice's height, so a focused button isn't hidden under it", () => {
-    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(57);
+  it("keeps the notice out of the scroller, so it covers neither the focus ring nor a message", () => {
+    const notice = "The engine isn't answering. Showing what it said last.";
+    const { container } = render(transcript(["Reading it."], notice));
+    const region = container.querySelector("section") as HTMLElement;
+    expect(region.querySelector("#engine-line")).toBeNull();
+    expect(region.children).toHaveLength(1);
+  });
+
+  it("is described by the notice while there is one", () => {
     const notice = "The engine isn't answering. Showing what it said last.";
     const { container, rerender } = render(transcript(["Reading it."], notice));
     const region = container.querySelector("section") as HTMLElement;
-    expect(region.style.scrollPaddingTop).toBe("57px");
+    expect(region.getAttribute("aria-describedby")).toBe("engine-line");
     rerender(transcript(["Reading it."]));
-    expect(region.style.scrollPaddingTop).toBe("");
+    expect(region.hasAttribute("aria-describedby")).toBe(false);
   });
 
   it("shows no line at the top without a notice", () => {
     const { container } = render(transcript(["Reading it."]));
     const region = container.querySelector("section") as HTMLElement;
+    expect(region.previousElementSibling).toBeNull();
     expect(region.children).toHaveLength(1);
     expect(region.firstElementChild?.className).toContain("max-w-reading");
   });

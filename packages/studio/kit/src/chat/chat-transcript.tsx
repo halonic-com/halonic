@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useLayoutEffect, useRef } from "react";
+import { type ReactNode, useLayoutEffect, useRef } from "react";
 import { WarningIcon } from "../icons/warning-icon.tsx";
 import { LineFrame } from "../line-frame/line-frame.tsx";
 
@@ -7,8 +7,8 @@ export interface ChatTranscriptProps {
   /** The region's name: "Chat with Sorter". */
   readonly label: string;
   /**
-   * A line at the top that stays while it's true, with the warning mark: "The engine isn't
-   * answering. Showing what it said last." The messages under it stay.
+   * A line above the messages that stays while it's true, with the warning mark: "The engine
+   * isn't answering. Showing what it said last." The messages under it stay.
    */
   readonly notice?: string | undefined;
   /**
@@ -36,6 +36,10 @@ const AT_END_SLACK_PX = 24;
  * WebKit, which the desktop app runs in on macOS and Linux, doesn't. The ring is inset because
  * the pane around the transcript would clip an outer one.
  *
+ * The notice sits above the scroller, not in it, so it never covers the ring or a message the
+ * browser scrolls into view. The region is described by the notice, so a screen reader still
+ * reads it when the transcript takes the focus.
+ *
  * @example
  * <ChatTranscript label="Chat with Sorter">
  *   <ChatMessage from="you">Sort this mail</ChatMessage>
@@ -43,7 +47,6 @@ const AT_END_SLACK_PX = 24;
  */
 export function ChatTranscript({ label, notice, noticeId, children }: ChatTranscriptProps) {
   const scroller = useRef<HTMLElement>(null);
-  const noticeLine = useRef<HTMLDivElement>(null);
   const atEnd = useRef(true);
 
   // After every render, since a reply grows by re-rendering its steps.
@@ -53,30 +56,6 @@ export function ChatTranscript({ label, notice, noticeId, children }: ChatTransc
       element.scrollTop = element.scrollHeight;
     }
   });
-
-  // The sticky notice covers the top of the scroller, so a button the browser scrolls into view
-  // when it takes focus would land under it. Padding the scroll by the notice's height keeps it
-  // clear. The notice wraps on a narrow window, so its height is measured again when it changes.
-  useEffect(() => {
-    const element = scroller.current;
-    const line = noticeLine.current;
-    if (element === null || line === null) {
-      return;
-    }
-    const padByTheNotice = () => {
-      element.style.scrollPaddingTop = `${line.offsetHeight}px`;
-    };
-    padByTheNotice();
-    if (typeof ResizeObserver === "undefined") {
-      return () => element.style.removeProperty("scroll-padding-top");
-    }
-    const observer = new ResizeObserver(padByTheNotice);
-    observer.observe(line);
-    return () => {
-      observer.disconnect();
-      element.style.removeProperty("scroll-padding-top");
-    };
-  }, [notice === undefined]);
 
   function noteWhereTheReaderIs() {
     const element = scroller.current;
@@ -88,20 +67,23 @@ export function ChatTranscript({ label, notice, noticeId, children }: ChatTransc
   }
 
   return (
-    <section
-      ref={scroller}
-      aria-label={label}
-      // biome-ignore lint/a11y/noNoninteractiveTabindex: a scroller must be a Tab stop to scroll by keyboard in WebKit.
-      tabIndex={0}
-      className="flex min-h-0 flex-1 flex-col overflow-y-auto focus-ring-inset"
-      onScroll={noteWhereTheReaderIs}
-    >
+    <div className="flex min-h-0 flex-1 flex-col">
       {notice === undefined ? null : (
-        <div ref={noticeLine} id={noticeId} className="sticky top-0 bg-surface">
+        <div id={noticeId}>
           <LineFrame icon={<WarningIcon />}>{notice}</LineFrame>
         </div>
       )}
-      <div className="mx-auto flex w-full max-w-reading flex-col gap-6 px-4 py-4">{children}</div>
-    </section>
+      <section
+        ref={scroller}
+        aria-label={label}
+        aria-describedby={notice === undefined ? undefined : noticeId}
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scroller must be a Tab stop to scroll by keyboard in WebKit.
+        tabIndex={0}
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto focus-ring-inset"
+        onScroll={noteWhereTheReaderIs}
+      >
+        <div className="mx-auto flex w-full max-w-reading flex-col gap-6 px-4 py-4">{children}</div>
+      </section>
+    </div>
   );
 }
