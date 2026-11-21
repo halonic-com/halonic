@@ -3,7 +3,9 @@
 // its tool calls with their arguments. The panel only draws what this
 // returns. A tool call that failed gets a quiet "✕ Didn't work" line
 // (HAL-12415, option a; microcopy 1.6, E1), with its cause when the engine
-// logged one (HAL-12471).
+// logged one (HAL-12471). A call a person approved whose connector then
+// didn't start, and a connector that couldn't list its tools, show too
+// (HAL-15009).
 
 import { shortRunId } from "@halonicjs/app";
 import {
@@ -30,7 +32,10 @@ export interface ModelCall {
 
 /** One tool call of a step. */
 export interface ToolCall {
-  /** The `seq` of its `tool.called`. */
+  /**
+   * The `seq` of its `tool.called`, or of its `approval.requested` for a
+   * call a person approved that was never made ({@link approvedCallsNotMade}).
+   */
   readonly id: number;
   /** The tool's name as the model wrote it, "send_email". */
   readonly tool: string;
@@ -63,10 +68,29 @@ export interface FailedCall {
   readonly connector?: string;
 }
 
+/** Why a connector didn't start, as `connector.listing-failed` and `tool.result` log it. */
+export type ConnectorStartCause = Extract<ToolFailureCause, { code: "connector-not-started" }>;
+
+/** A connector that couldn't list its tools when one of the step's model turns started. */
+export interface ConnectorNotStarted {
+  /** The `seq` of the step's first `connector.listing-failed` for it. */
+  readonly id: number;
+  /** Its id in the workspace, "notes". */
+  readonly connector: string;
+  /** Why, with a program's or a secret's `name` escaped. */
+  readonly cause: ConnectorStartCause;
+}
+
 /** What a step's entry shows in the side panel. */
 export interface StepEvents {
   readonly modelCalls: readonly ModelCall[];
   readonly toolCalls: readonly ToolCall[];
+  /**
+   * The connectors whose tools the step's turns went without, once each,
+   * for a quiet line above its tool calls; one a tool call's own line
+   * already says didn't start is left out.
+   */
+  readonly connectorsNotStarted: readonly ConnectorNotStarted[];
 }
 
 /**
@@ -81,10 +105,11 @@ export interface StepEvents {
  * //   toolCalls: [{ id: 6, tool: "send_email", args: '{\n  "to": "sam@acme.example"\n}' }] }
  */
 export function stepEvents(events: readonly RunEvent[], entryId: string): StepEvents {
+  const stepLog = eventsOfStep(events, entryId);
   const modelCalls: ModelCall[] = [];
-  const toolCalls: ToolCall[] = [];
+  const calledTools: ToolCall[] = [];
   const failures = failedCalls(events);
-  for (const event of eventsOfStep(events, entryId)) {
+  for (const event of stepLog) {
     if (event.type === "llm.response") {
       modelCalls.push({
         id: event.seq,
@@ -96,15 +121,149 @@ export function stepEvents(events: readonly RunEvent[], entryId: string): StepEv
       });
     } else if (event.type === "tool.called") {
       const failed = failures.get(event.seq);
-      toolCalls.push({
+      calledTools.push({
         id: event.seq,
         tool: escapeHidden(event.tool),
-        args: escapeHidden(JSON.stringify(event.args ?? {}, null, 2)),
+        args: argsText(event.args),
         ...(failed === undefined ? {} : { failed }),
       });
     }
   }
-  return { modelCalls, toolCalls };
+  // In the order they were asked for: an approved call by its approval.
+  const toolCalls = [...calledTools, ...approvedCallsNotMade(stepLog)].sort(
+    (first, second) => first.id - second.id,
+  );
+  return { modelCalls, toolCalls, connectorsNotStarted: connectorsNotStarted(stepLog, toolCalls) };
+}
+
+/** A call's arguments as indented JSON, escaped. */
+function argsText(args: unknown): string {
+  return escapeHidden(JSON.stringify(args ?? {}, null, 2));
+}
+
+type ApprovalRequested = Extract<RunEvent, { type: "approval.requested" }>;
+
+/**
+ * The calls among `stepLog` that a person approved but whose connector then
+ * didn't start, so the engine logged a `tool.result` with a
+ * `connector-not-started` cause and no `tool.called` (HAL-13829). Each is
+ * listed from its `approval.requested`, which names the tool, its arguments
+ * and its connector. An approved call that was made has its own
+ * `tool.called` and is listed from that.
+ */
+function approvedCallsNotMade(stepLog: readonly RunEvent[]): ToolCall[] {
+  const approvals = new WaitingApprovedCalls();
+  const calls: ToolCall[] = [];
+  for (const event of stepLog) {
+    if (event.type === "approval.requested") approvals.asked(event);
+    else if (event.type === "approval.resolved") approvals.resolved(event);
+    else if (event.type === "tool.called") approvals.called(event);
+    else if (event.type === "tool.result") {
+      const request = approvals.answered(event);
+      if (request === undefined || toolFailureCauseOf(event)?.code !== "connector-not-started") {
+        continue;
+      }
+      calls.push({
+        id: request.seq,
+        tool: escapeHidden(request.tool),
+        args: argsText(request.args),
+        failed: failedCallOf(event, request.connector),
+      });
+    }
+  }
+  return calls;
+}
+
+/**
+ * The calls a person approved that are neither made nor answered yet, as a
+ * step's log is read in order.
+ */
+class WaitingApprovedCalls {
+  readonly #asked = new Map<string, ApprovalRequested>();
+  #approved: ApprovalRequested[] = [];
+
+  asked(request: ApprovalRequested): void {
+    this.#asked.set(request.callId, request);
+  }
+
+  resolved(answer: Extract<RunEvent, { type: "approval.resolved" }>): void {
+    const request = this.#asked.get(answer.callId);
+    if (answer.approved && request !== undefined) this.#approved.push(request);
+  }
+
+  /** The call was made: it has its own `tool.called`. */
+  called(call: Extract<RunEvent, { type: "tool.called" }>): void {
+    this.#approved = this.#approved.filter((request) => !isCallOf(request, call));
+  }
+
+  /** The approved call `result` answers, if one waits for it; it no longer waits. */
+  answered(result: Extract<RunEvent, { type: "tool.result" }>): ApprovalRequested | undefined {
+    const request = this.#approved.find((candidate) => isCallOf(candidate, result));
+    this.#approved = this.#approved.filter((candidate) => candidate !== request);
+    return request;
+  }
+}
+
+/**
+ * Whether `event`, a `tool.called` or a `tool.result`, is the call `request`
+ * asked about: the same tool, by the state's agent or by the subagent whose
+ * call it was.
+ */
+function isCallOf(
+  request: ApprovalRequested,
+  event: Extract<RunEvent, { type: "tool.called" | "tool.result" }>,
+): boolean {
+  return (
+    event.tool === request.tool &&
+    (event.agent === request.agent || event.agent === request.subagent)
+  );
+}
+
+/**
+ * The connectors among `stepLog` that couldn't list their tools when a
+ * turn started (`connector.listing-failed`), once each, in the order they
+ * first failed. A connector that a line under one of `toolCalls` already
+ * says didn't start is left out, so the panel doesn't say it twice.
+ */
+function connectorsNotStarted(
+  stepLog: readonly RunEvent[],
+  toolCalls: readonly ToolCall[],
+): ConnectorNotStarted[] {
+  const saidUnderACall = new Set(
+    toolCalls.flatMap(({ failed }) =>
+      failed?.cause?.code === "connector-not-started" && failed.connector !== undefined
+        ? [failed.connector]
+        : [],
+    ),
+  );
+  const byConnector = new Map<string, ConnectorNotStarted>();
+  for (const event of stepLog) {
+    if (event.type !== "connector.listing-failed") continue;
+    const connector = escapeHidden(event.connector);
+    if (byConnector.has(connector) || saidUnderACall.has(connector)) continue;
+    byConnector.set(connector, { id: event.seq, connector, cause: listingCauseOf(event) });
+  }
+  return [...byConnector.values()];
+}
+
+/**
+ * The cause of a `connector.listing-failed`, read as the same cause on a
+ * `tool.result` is (`toolFailureCauseOf`), since the log is read from a
+ * file; one it can't read says only that the connector didn't start.
+ */
+function listingCauseOf(
+  event: Extract<RunEvent, { type: "connector.listing-failed" }>,
+): ConnectorStartCause {
+  const cause = toolFailureCauseOf({
+    type: "tool.result",
+    agent: event.agent,
+    tool: "",
+    result: "",
+    cause: event.cause,
+  });
+  return cause?.code === "connector-not-started"
+    ? escapedCause(cause)
+    : { code: "connector-not-started", why: "other" };
 }
 
 /**
@@ -146,7 +305,7 @@ function failedCallOf(
 }
 
 /** `cause` with the only text it can carry, a program's or a secret's name, escaped. */
-function escapedCause(cause: ToolFailureCause): ToolFailureCause {
+function escapedCause<Cause extends ToolFailureCause>(cause: Cause): Cause {
   return cause.code === "connector-not-started" && cause.name !== undefined
     ? { ...cause, name: escapeHidden(cause.name) }
     : cause;

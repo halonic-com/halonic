@@ -2,7 +2,7 @@ import type { ToolFailureCause, ToolNotMadeReason } from "@halonicjs/events";
 import type { ReactNode } from "react";
 import { failedCallWords } from "./failed-call-words.ts";
 import { fillWords } from "./fill-words.tsx";
-import type { FailedCall } from "./step-events-model.ts";
+import type { ConnectorNotStarted, ConnectorStartCause, FailedCall } from "./step-events-model.ts";
 
 type FailedCallKey = keyof typeof failedCallWords;
 
@@ -19,11 +19,45 @@ export function FailedCallLine({
   readonly failed: FailedCall;
 }) {
   return (
-    <p className="px-4 pb-3 text-small text-fg-muted">
+    <QuietFailureLine className="px-4 pb-3">{failedCallSentence(tool, failed)}</QuietFailureLine>
+  );
+}
+
+/**
+ * "✕ Couldn't list the tools from *notes*: its program `acme-notes-mcp` isn't on this computer.",
+ * above a step's tool calls, for a connector its turns went without
+ * (`runs.run-view.step-connector-not-started`).
+ */
+export function ConnectorNotStartedLine({
+  notStarted,
+}: {
+  readonly notStarted: ConnectorNotStarted;
+}) {
+  const { connector, cause } = notStarted;
+  return (
+    <QuietFailureLine className="py-1.5">
+      {fillWords(failedCallWords, listingKeys[connectorStartKey(cause)], {
+        connector: <em>{connector}</em>,
+        name: <code className="font-mono">{cause.name}</code>,
+      })}
+    </QuietFailureLine>
+  );
+}
+
+/** A quiet line after a ✕ that is drawn only; a screen reader hears the words. */
+function QuietFailureLine({
+  className,
+  children,
+}: {
+  readonly className: string;
+  readonly children: ReactNode;
+}) {
+  return (
+    <p className={`${className} text-small text-fg-muted`}>
       <span aria-hidden="true" className="text-danger">
         ✕{" "}
       </span>
-      {failedCallSentence(tool, failed)}
+      {children}
     </p>
   );
 }
@@ -76,12 +110,19 @@ const notMadeKeys: Readonly<Record<ToolNotMadeReason, FailedCallKey>> = {
  * The line for a connector that didn't start: the program or the secret it missed when the cause
  * names it, else only that it didn't start.
  */
-function connectorStartKey(
-  cause: Extract<ToolFailureCause, { code: "connector-not-started" }>,
-): FailedCallKey {
+function connectorStartKey(cause: ConnectorStartCause): StartLineKey {
   if (cause.name === undefined || cause.why === "other") return "notStarted";
   return cause.why === "program-missing" ? "programMissing" : "secretNotSet";
 }
+
+type StartLineKey = "notStarted" | "programMissing" | "secretNotSet";
+
+/** The line for a connector that couldn't list its tools, for each of {@link connectorStartKey}'s. */
+const listingKeys: Readonly<Record<StartLineKey, FailedCallKey>> = {
+  notStarted: "listingFailed",
+  programMissing: "listingProgramMissing",
+  secretNotSet: "listingSecretNotSet",
+};
 
 /** "60 seconds", or "1 second". */
 function secondsOf(cause: Extract<ToolFailureCause, { code: "time-limit" }>): ReactNode[] {

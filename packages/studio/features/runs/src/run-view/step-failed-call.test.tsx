@@ -196,3 +196,64 @@ verifies("runs.run-view.step-failed-call", () => {
     expect(lineFor(unknownCause, "unknown")).toContain("broke off without an answer");
   });
 });
+
+verifies("runs.run-view.step-failed-call", () => {
+  const asked: RunEventBody = {
+    type: "approval.requested",
+    state: "draft",
+    agent: "writer",
+    tool: "send_mail",
+    connector: "mail",
+    args: { to: "support" },
+    callId: "call-3",
+    resume: { kind: "agent" } as never,
+  };
+  const answered = (approved: boolean): RunEventBody => ({
+    type: "approval.resolved",
+    state: "draft",
+    agent: "writer",
+    tool: "send_mail",
+    callId: "call-3",
+    approved,
+  });
+  const programMissing: ToolFailureCause = {
+    code: "connector-not-started",
+    why: "program-missing",
+    name: "acme-mail-mcp",
+  };
+
+  it("lists an approved call whose connector didn't start from its approval, with the cause", () => {
+    const shown = lines([
+      [0, asked],
+      [0, answered(true)],
+      [0, result("send_mail", "error", programMissing)],
+    ]);
+
+    expect(shown).toEqual({
+      send_mail:
+        "✕ Didn't work: the connector mail didn't start: its program acme-mail-mcp isn't on this computer.",
+    });
+    expect(document.querySelector("aside li pre")?.textContent).toBe('{\n  "to": "support"\n}');
+  });
+
+  it("lists an approved call that was made once, from its own call", () => {
+    const shown = lines([
+      [0, asked],
+      [0, answered(true)],
+      [0, called("send_mail")],
+      [0, result("send_mail", "error", { code: "engine-stopped" })],
+    ]);
+
+    expect(Object.keys(shown)).toEqual(["send_mail"]);
+    expect(document.querySelector("aside li pre")?.textContent).toContain("Refund");
+  });
+
+  it("doesn't list a rejected call", () => {
+    expect(
+      lines([
+        [0, asked],
+        [0, answered(false)],
+      ]),
+    ).toEqual({});
+  });
+});
