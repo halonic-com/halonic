@@ -115,6 +115,39 @@
       }
     },
     {
+      // The phone page keeps nothing at rest (tunnel D7, HAL-15159, B7 item 12): no web storage
+      // and no console. Reaching the window object is banned too, so they can't be reached
+      // through it. Tests aren't shipped, so they're left out.
+      "includes": [
+        "**/packages/studio/features/remote/src/phone/**",
+        "!**/*.test.ts",
+        "!**/*.test.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "error"
+          },
+          "style": {
+            "noRestrictedGlobals": {
+              "level": "error",
+              "options": {
+                "deniedGlobals": {
+                  "localStorage": "The phone keeps nothing on disk (B7 item 12).",
+                  "sessionStorage": "The phone keeps nothing on disk (B7 item 12).",
+                  "indexedDB": "The phone keeps nothing on disk (B7 item 12).",
+                  "caches": "The phone keeps nothing on disk (B7 item 12).",
+                  "window": "The phone page reaches no web storage, so not the window object either (B7 item 12).",
+                  "globalThis": "The phone page reaches no web storage, so not the global object either (B7 item 12).",
+                  "self": "The phone page reaches no web storage, so not the global object either (B7 item 12)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": [
         "**/packages/core/**",
         "!**/*.test.ts",
