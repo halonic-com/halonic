@@ -50,7 +50,7 @@ verifies("studio.workspace-trust-review", () => {
     expect(JSON.stringify(review)).not.toContain("‹secret");
   });
 
-  it("lists a local integration that reads no address from a setting once, by its connector (C552)", () => {
+  it("lists a local integration's connector once under Addresses, with the integration in its own section (C552)", () => {
     const notes: IntegrationTrustContent = {
       id: "notes",
       folder: "integrations/notes",
@@ -76,15 +76,20 @@ verifies("studio.workspace-trust-review", () => {
       facts,
     );
 
-    expect(review?.summary).toEqual(["Will pass 1 secret and list 2 addresses."]);
-    expect(review?.sections[0]).toMatchObject({ heading: "Addresses (2)" });
-    expect(review?.sections[0]?.rows).toEqual([
+    expect(review?.summary).toEqual([
+      "Will run 2 integrations, pass 1 secret and list 2 addresses.",
+    ]);
+    // The integrations themselves are in their own section (studio.workspace-trust-integrations).
+    expect(review?.sections.map((section) => section.heading)).toEqual([
+      "Integrations (2)",
+      "Addresses (1)",
+    ]);
+    expect(review?.sections[1]?.rows).toEqual([
       {
         id: "notes",
         detail: "integrations/notes",
         lines: [["Gets secrets", "my-notes-key as notes-key"]],
       },
-      { id: "crm", detail: "", lines: [["CRM_URL", "not set"]] },
     ]);
   });
 });

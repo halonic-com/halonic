@@ -19,7 +19,8 @@ export interface TrustCheckFlow {
 
 /**
  * The trust check as a flow, for the controls that open it (the header badge and the workspace
- * page's **Review**): **Not now** closes it with nothing saved, **Trust** saves the person's trust
+ * page's **Review**): opening it asks how the workspace's integrations run on this computer,
+ * **Not now** closes it with nothing saved, **Trust** saves the person's trust
  * in exactly the fingerprint shown and says "Acme can run now"; a failed save keeps it open.
  *
  * @param returnFocus - the control to give focus back to when the check closes
@@ -65,7 +66,11 @@ export function useTrustCheck(
     setBusy(false);
     setError(`Couldn't save trust: ${result.reason}. Nothing was started.`);
   };
-  const open = () => review !== undefined && setOpened(review.fingerprint);
+  const open = () => {
+    if (review === undefined) return;
+    trust.checkRuns?.();
+    setOpened(review.fingerprint);
+  };
   return {
     open,
     ask: () => {

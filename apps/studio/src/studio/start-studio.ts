@@ -82,6 +82,7 @@ import { watchStart } from "./start-watch.ts";
 export { servedServices } from "./served-studio.ts";
 
 import { firstRunDeviceOf } from "./first-run-device.ts";
+import { runsStatusOf } from "./integration-runs-status.ts";
 import { keyboardPlatform, studioHost } from "./studio-host.ts";
 import { followSystemRegion } from "./system-region.ts";
 import { demoModelWatch } from "./test-model-watch.ts";
@@ -305,7 +306,8 @@ export async function openFolder(
       ? undefined
       : openFolderScope(files, location, trust);
   const services = scope?.services ?? new ServiceRegistry();
-  const trustView = trust === undefined ? undefined : new WorkspaceTrustView(trust, location);
+  const trustView =
+    trust === undefined ? undefined : new WorkspaceTrustView(trust, location, runsStatusOf(window));
   services.provide(DisplaySettingsService, display);
   services.provide(WorkspacePageService, { name, trust: trustView });
   const sample = sampleWorkspaceOf(

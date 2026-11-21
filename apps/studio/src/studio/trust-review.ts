@@ -10,11 +10,16 @@ import type {
   AgentTrustContent,
   ChangedAgent,
   ConnectorTrustContent,
-  IntegrationTrustContent,
   ProviderTrustContent,
   TrustChanges,
 } from "@halonicjs/workspace";
 import { harnessName } from "./harness-name.ts";
+import {
+  type IntegrationRuns,
+  integrationRow,
+  integrationsIntro,
+  secretName,
+} from "./integration-trust-rows.ts";
 
 /** What the check doesn't hold, because only the host knows it. */
 export interface TrustReviewFacts {
@@ -22,7 +27,11 @@ export interface TrustReviewFacts {
   readonly name: string;
   /** Its folder, such as "/work/acme". */
   readonly folder: string;
+  /** Whether its local integrations run in the sandbox on this computer; left out, unsaid. */
+  readonly runs?: IntegrationRuns;
 }
+
+export type { IntegrationRuns } from "./integration-trust-rows.ts";
 
 /** The fixed last line while programs run without the agent sandbox (states-flow-map F11). */
 export const noSandboxFootnote =
@@ -79,7 +88,7 @@ export function trustReviewOf(check: TrustCheck, facts: TrustReviewFacts): Trust
       ...common,
       title: `${facts.name} changed since you trusted it on ${since}`,
       changed: true,
-      ...changesView(check.changes, since, unpinned),
+      ...changesView(check.changes, since, unpinned, facts.runs),
     };
   }
   const { connectors, agents = [], integrations = [], providers = [] } = check.content;
@@ -90,27 +99,19 @@ export function trustReviewOf(check: TrustCheck, facts: TrustReviewFacts): Trust
     summary: startSummary(check.content),
     sections: sectionsOf(
       [...programs(connectors).map((row) => programRow(row, unpinned))],
+      integrations.map((row) => integrationRow(row, facts.runs)),
       agents.map(agentRow),
-      [
-        ...addresses(connectors).map((row) => addressRow(row)),
-        // As in the CLI, a local integration has its own row only for the
-        // addresses its settings hold: its connector's row names its folder (C552).
-        ...integrations.filter(readsAnAddress).flatMap((row) => integrationRows(row)),
-        ...providers.map(providerRow),
-      ],
+      [...addresses(connectors).map((row) => addressRow(row)), ...providers.map(providerRow)],
+      facts.runs,
     ),
   };
-}
-
-/** Whether a local integration's sheet reads an address from one of its settings. */
-function readsAnAddress(integration: IntegrationTrustContent): boolean {
-  return Object.keys(integration.addresses).length > 0;
 }
 
 function changesView(
   changes: TrustChanges,
   since: string,
   unpinned: ReadonlySet<string>,
+  runs: IntegrationRuns,
 ): Pick<TrustReview, "summary" | "sections" | "unchanged"> {
   const kind = (isKind: (row: ConnectorTrustContent) => boolean) => ({
     added: changes.added.filter(isKind).length,
@@ -119,18 +120,16 @@ function changesView(
   const connectorAddresses = kind((row) => !isProgram(row));
   const counts = [
     ["program", kind(isProgram)],
+    [
+      "integration",
+      { added: changes.integrations.added.length, changed: changes.integrations.changed.length },
+    ],
     ["agent", { added: changes.agents.added.length, changed: changes.agents.changed.length }],
     [
       "address",
       {
-        added:
-          connectorAddresses.added +
-          changes.integrations.added.length +
-          changes.providers.added.length,
-        changed:
-          connectorAddresses.changed +
-          changes.integrations.changed.length +
-          changes.providers.changed.length,
+        added: connectorAddresses.added + changes.providers.added.length,
+        changed: connectorAddresses.changed + changes.providers.changed.length,
       },
     ],
   ] as const;
@@ -169,23 +168,29 @@ function changesView(
         ),
       ],
       [
+        ...tagged(
+          changes.integrations.added.map((row) => integrationRow(row, runs)),
+          "New",
+        ),
+        ...tagged(
+          changes.integrations.changed.map((row) => integrationRow(row.after, runs)),
+          "Changed",
+        ),
+      ],
+      [
         ...tagged(changes.agents.added.map(agentRow), "New"),
         ...tagged(changes.agents.changed.flatMap(agentChangeRows), "Changed"),
       ],
       [
         ...tagged(pick(changes.added, isAddress).map(addressRow), "New"),
         ...tagged(pick(changedConnectors, isAddress).map(addressRow), "Changed"),
-        ...tagged(changes.integrations.added.flatMap(integrationRows), "New"),
-        ...tagged(
-          changes.integrations.changed.flatMap((row) => integrationRows(row.after)),
-          "Changed",
-        ),
         ...tagged(changes.providers.added.map(providerRow), "New"),
         ...tagged(
           changes.providers.changed.map((row) => providerRow(row.after)),
           "Changed",
         ),
       ],
+      runs,
       true,
     ),
     unchanged:
@@ -195,8 +200,10 @@ function changesView(
 
 function sectionsOf(
   programRows: readonly TrustRowView[],
+  integrationRows: readonly TrustRowView[],
   agentRows: readonly TrustRowView[],
   addressRows: readonly TrustRowView[],
+  runs: IntegrationRuns,
   changed = false,
 ): TrustSectionView[] {
   const heading = (name: string, rows: readonly TrustRowView[]) =>
@@ -206,6 +213,13 @@ function sectionsOf(
       heading: heading("Programs", programRows),
       rows: programRows,
       open: programRows.some((row) => row.warning !== undefined) || changed,
+    },
+    {
+      heading: heading("Integrations", integrationRows),
+      intro: integrationsIntro,
+      rows: integrationRows,
+      // Where they don't start, the section opens by itself, so the person sees it.
+      open: runs?.state === "not-fenced" || changed,
     },
     {
       heading: heading("Agents", agentRows),
@@ -290,23 +304,6 @@ function providerRow(provider: ProviderTrustContent): TrustRowView {
   };
 }
 
-function integrationRows(integration: IntegrationTrustContent): TrustRowView[] {
-  const settings = Object.entries(integration.addresses);
-  return [
-    {
-      id: integration.id,
-      detail: settings.length === 0 ? "no address set" : "",
-      lines: settings.map(([name, address]) => [name, settingAddress(address)] as const),
-    },
-  ];
-}
-
-function settingAddress(address: string | null): string {
-  if (address === null) return "not set";
-  const refused = /^‹refused: (.+)›$/u.exec(address)?.[1];
-  return refused === undefined ? address : `can't be used: ${refused}`;
-}
-
 function agentRow(agent: AgentTrustContent): TrustRowView {
   return {
     id: agent.id,
@@ -379,6 +376,7 @@ function startSummary(content: TrustCheck["content"]): string[] {
       : undefined,
     agents.length > 0 ? counted(agents.length, "agent") : undefined,
   ].filter((part) => part !== undefined);
+  const integrations = content.integrations ?? [];
   const secrets = new Set([
     ...content.connectors.flatMap(secretNames),
     ...providers.flatMap((provider) =>
@@ -387,14 +385,12 @@ function startSummary(content: TrustCheck["content"]): string[] {
   ]).size;
   const addressCount =
     addresses(content.connectors).length +
-    (content.integrations ?? []).reduce(
-      (sum, integration) => sum + Object.keys(integration.addresses).length,
-      0,
-    ) +
+    integrations.reduce((sum, integration) => sum + Object.keys(integration.addresses).length, 0) +
     providers.length;
   const sites = new Set(agents.flatMap((agent) => agent.allowedSites)).size;
   const clauses = [
     started.length > 0 ? `start ${started.join(" and ")}` : undefined,
+    integrations.length > 0 ? `run ${counted(integrations.length, "integration")}` : undefined,
     secrets > 0 ? `pass ${counted(secrets, "secret")}` : undefined,
     addressCount > 0 ? `list ${counted(addressCount, "address")}` : undefined,
     sites > 0 ? `allow ${counted(sites, "site")}` : undefined,
@@ -430,10 +426,6 @@ function programs(connectors: readonly ConnectorTrustContent[]): ConnectorTrustC
 
 function addresses(connectors: readonly ConnectorTrustContent[]): ConnectorTrustContent[] {
   return connectors.filter(isAddress);
-}
-
-function secretName(reference: string): string {
-  return /^‹secret (.+)›$/u.exec(reference)?.[1] ?? reference;
 }
 
 /** The secrets a connector gets, by name: its own, its program's and its integration's picks. */

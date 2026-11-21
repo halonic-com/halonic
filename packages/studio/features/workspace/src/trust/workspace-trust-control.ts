@@ -97,6 +97,12 @@ export interface WorkspaceTrustControl {
   grant(fingerprint: string): Promise<TrustGrantResult>;
   /** Forgets the person's trust, so the workspace asks again. Never rejects. */
   remove(): Promise<TrustGrantResult>;
+  /**
+   * Asks again whether the workspace's integrations run in the sandbox on this computer, so the
+   * check's Runs rows say how they run now. The check calls it each time it opens. Absent where
+   * nobody can say.
+   */
+  checkRuns?(): void;
   /** Calls `listener` after every change of the badge or the check; returns the way to stop. */
   subscribe(listener: () => void): () => void;
   /**
