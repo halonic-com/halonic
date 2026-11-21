@@ -127,8 +127,9 @@ the sign-in, so the integration will use the token, with
 kit places the token only the way the sheet says (`placement-not-in-sheet`
 otherwise), only on the sheet's hosts and only over `https`, and returns a 401
 unchanged. It refuses a request with `sign-in-needed` when the user has to
-sign in again. A local integration or a plugin backend can't
-declare `signIns` until the trust content shows them. A
+sign in again. A plugin backend may declare `signIns` (with `sdk: 2`), because
+the plugin's trust check shows each one ([plugins guide](plugins.md#sign-ins)).
+Any other local integration can't (`sign-ins-not-allowed`). A
 client secret is a `secrets` entry with only a `purpose`, named in the
 sign-in's `clientSecret`; it goes only to the sign-in's token and revoke hosts.
 A `revokeUrl` is on the host of the `tokenUrl` or the `authorizeUrl`
