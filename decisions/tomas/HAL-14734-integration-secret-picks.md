@@ -3,7 +3,6 @@
 - Task: HAL-14734
 - Approval: the team's call on HAL-14734, a follow-up to Nina's review of halonic#4144 (C469 N1); the words are Mara's on HAL-14737. A team decision with no board card (HAL-2282 rule): it extends the trust check's approved "gets the secret" wording to one more kind of row, no new screen or flow.
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Rmn1Md1Pi28jxC7rq+5l7yVczcyI5GQApv+Es/YAggUvypreiN/Far6/MAhlM8gLt6TnarAQdGQGzyysqvk1CQ==
 
 ## What changes
 
@@ -15,7 +14,10 @@ both names are the same. Studio shows the same row with a `Gets secrets` line. T
 secrets in the "Will pass N secrets" summary.
 
 The requirements `cli.trust-check` and `studio.workspace-trust-review` gain a sentence and an
-example for this. No test was weakened or skipped; the existing tests run unchanged.
+example for this. No test was weakened or skipped: the integration rows' tests moved from
+`apps/cli/src/output/trust-check.test.ts` into their own file,
+`apps/cli/src/output/trust-check-integrations.test.ts`, and run there unchanged, so the first
+file holds fewer tests than before.
 
 ## Why
 
@@ -26,3 +28,4 @@ answering yes couldn't see which of their secrets goes to which integration.
 
 - cli.trust-check
 - studio.workspace-trust-review
+- apps/cli/src/output/trust-check.test.ts
