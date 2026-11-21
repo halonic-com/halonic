@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14977 (the board's decision C520-9: Help stays the menu, and each First run item gets the line from Noah's drawn sheet); built on https://paperclip.halonic.com/HAL/issues/HAL-15164
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:t3PVDKbpdqs1ehrRsCSwDkVhAm+uE1KqUtflwsFjMmMchRzYbODTqCjP0Lp7CPZ/FklDDt65NB6zf4L62G0fAQ==
 
 Help › First run's **Show the guide** and **Start over** each get a line under the label, as Noah's sheet draws
 them. Start over's says "Copies Acme to a new folder and begins again at the first step. Your old copy stays
