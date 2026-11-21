@@ -2,6 +2,7 @@
 
 - Approval: the way past the refusal is the board's C on HAL-10522; the package owner (Liam) approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jqgKL2JmchGbSVIc7/YKte/Di8TobrWSam0DnD0p6N2g/hOGx3q7wD4MacQzIoRvaUi+IwDfIhDyO/vLPsVNAA==
 
 ## What changes
 
