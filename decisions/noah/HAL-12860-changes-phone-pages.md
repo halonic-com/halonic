@@ -3,6 +3,7 @@
 - Task: HAL-12860
 - Approval: team decision under the HAL-2282 rule for a detail of approved screens (the phone's Changes, What changed and version pages, and the approved `shell.place-stacks` rule); Liam reviews the pull request on HAL-12860 and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:S16hVhIv4CWA2l2ZtVK9616j1FTe74L/m46AkNBqAzerkzYeg9WDifjk4KHGcGj2S5O0PBBk3y1F3KtZ7AV0DA==
 
 ## What changes
 
