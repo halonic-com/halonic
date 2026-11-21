@@ -127,20 +127,32 @@ folders until you run `srt-win acl forget --all` yourself.
 
 ## "This computer" has none of it
 
-Nothing makes this choice yet. Studio's Settings › Agent sandbox saves a
-**New agents run** choice, but nothing reads it, and Studio refuses an agent
-set to this computer. The CLI has no command that makes one; it only reads
-such a choice. The limits below describe the choice once it can be made.
+You can choose to run an agent on this computer, without the sandbox. You make
+the choice in the desktop app, on the agent's Harness page under **Where it
+runs**: **On this computer** opens a warning, and nothing is saved until you
+confirm with **Run on this computer**. Settings › Agent sandbox › **New agents
+run** makes the same choice for each agent the desktop app creates. Studio in a
+browser can't make it, and the CLI has no command that makes it; the CLI only
+reads it.
 
-The choice is per agent and per computer: run an agent on this computer
-without the sandbox. That agent runs with all your rights: it can read your keys
-and Halonic's own data, change any file you can and reach any address. The
-choice lives in your profile folder, never in the workspace. It is bound to the
-exact bytes of the agent's file, so a changed file goes back to the sandbox, and
-it doesn't carry to another computer. The CLI reads these choices:
-`halonic serve` prints a `!` line for such an agent before its run.
-`halonic run` still stops it with exit 9, and `halonic routines watch`
-refuses its routine.
+That agent runs with all your rights: it can read your keys and Halonic's own
+data, change any file you can and reach any address. The choice is per agent
+and per computer. It lives in your profile folder, never in the workspace, so it
+doesn't carry to another computer. It is bound to the exact bytes of the agent's
+file: once the file changes, even only its whitespace, the choice is on hold and
+the agent runs in the sandbox again until you confirm again (**Review and
+confirm** on the Harness page).
+
+What starts such an agent:
+
+- `halonic serve` and `halonic run` start it without the sandbox, and print a
+  `!` line for it before its run: "Writer runs on this computer without the
+  sandbox, as chosen on 9 Nov."
+- Studio doesn't start it yet: its run fails before the agent's program starts.
+  The Harness page says so under **On this computer**: "Studio can't start it
+  this way; halonic serve on this computer can."
+- `halonic routines watch` refuses a routine whose agent runs in Claude Code or
+  Codex, wherever that agent runs, so it doesn't start this one either (exit 9).
 
 ## Related decisions
 
