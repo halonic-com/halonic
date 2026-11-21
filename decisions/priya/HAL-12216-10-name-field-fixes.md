@@ -1,14 +1,14 @@
 # Decision: the name field's reason is read out, wraps, and takes the heading's type
 
 - Task: HAL-12216
-- Approval: C434 RN1 to RN3 (HAL-14607), decided by the designer on the approved screen (HAL-2282); Liam approves this note in review
+- Approval: C434 RN1 to RN3 (HAL-14607), decided by the designer on the approved screen (HAL-2282); Julian approves this note in review (HAL-14905)
 - Kind: user-visible
 
 ## What changes
 
 - `shell.item-page-header`: where a page checks names, the reason a name can't be kept now shows once the typing pauses, not on every key. It is read out once through the window's announcer, because a screen reader doesn't read a description again when it changes under focus. Enter on that name shows the reason at once if it isn't shown yet and reads it again. Leaving the field puts the old name back, as before, and now announces "Name not changed: <the reason>".
 - The reason's line wraps before the window's edge, instead of running off it at 200 % zoom.
-- The name field takes its type from the heading it sits in. `ItemHeader`'s `h1` now carries `text-section`, so item pages look the same. The Workflows, Routines and Library collection pages, whose `h1` is `text-title`, get their title's size back.
+- The name field takes its type from the heading it sits in. `ItemHeader`'s `h1` now carries `text-section`, so item pages look the same. The Workflows and Library collection pages, whose `h1` is `text-title`, get their title's 28 px back. The Routines page's title grows from 15 px to 28 px, the same as theirs.
 
 Nothing is removed or weakened: the reason is still the field's description, and Enter and leaving the field keep and refuse the same names. An example for the announcements is added to the requirement, and tests for them to `name-field.test.tsx`.
 
