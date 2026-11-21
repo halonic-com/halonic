@@ -91,10 +91,13 @@ export interface WorkspaceAgentsParts {
   readonly answerChat?: (request: ChatAnswerRequest) => Promise<ChatAnswer>;
   /**
    * Opens Create version with only `paths` in it (source control's `VersionDialogService`), and
-   * answers once a version is made or the dialog is closed. Absent where the app can't offer that,
-   * so there is no `makeLive`.
+   * answers once a version is made or the dialog is closed. With `name`, the dialog says it makes
+   * that item live. Absent where the app can't offer that, so there is no `makeLive`.
    */
-  readonly versionDialog?: (paths: readonly string[]) => Promise<"made" | "cancelled">;
+  readonly versionDialog?: (
+    paths: readonly string[],
+    options?: { readonly name?: string },
+  ) => Promise<"made" | "cancelled">;
   /**
    * Where each agent runs on this computer, kept by the agent host. Absent where there is no agent
    * host (the browser): the Harness page then offers no choice.
@@ -133,7 +136,8 @@ export class WorkspaceAgents implements AgentsHost {
     const { versionDialog } = parts;
     if (versionDialog !== undefined) {
       // Only the agent's own file, so the version holds nothing else the person changed.
-      this.makeLive = async (ref) => versionDialog([(await this.#find(ref)).path]);
+      this.makeLive = async (ref, options) =>
+        versionDialog([(await this.#find(ref)).path], options);
     }
   }
 

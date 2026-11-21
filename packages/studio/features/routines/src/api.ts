@@ -330,9 +330,10 @@ export interface RoutinesHost {
    * Makes the routine live: opens Create version with only this routine's file, and answers
    * `"made"` once the version is created, `"cancelled"` when the person closed it. Absent while
    * the app can't offer that, so Run now's dialog has no **Make live first**. Rejects with the
-   * reason the version couldn't be made.
+   * reason the version couldn't be made. With `name`, Create version says it makes that routine
+   * live, and its toast says the routine is live.
    */
-  makeLive?(ref: RoutineRef): Promise<"made" | "cancelled">;
+  makeLive?(ref: RoutineRef, options?: { readonly name?: string }): Promise<"made" | "cancelled">;
   /**
    * Starts the Google sign-in for the account a Run now refused as signed out. Absent where the
    * sign-in can't run, so the toast has no **Sign in with Google**. Rejects with the reason it

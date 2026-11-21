@@ -6,14 +6,19 @@ verifies("studio.workspace-agents-make-live", () => {
   describe("WorkspaceAgents make live", () => {
     it("opens Create version with only the agent's own file, and answers what it answered", async () => {
       const opened: (readonly string[])[] = [];
+      const names: (string | undefined)[] = [];
       const { host } = setup({
-        versionDialog: async (paths) => {
+        versionDialog: async (paths, options) => {
           opened.push(paths);
+          names.push(options?.name);
           return opened.length === 1 ? "made" : "cancelled";
         },
       });
-      expect(await host.makeLive?.({ hubId: "acme", id: "writer" })).toBe("made");
+      expect(await host.makeLive?.({ hubId: "acme", id: "writer" }, { name: "Writer" })).toBe(
+        "made",
+      );
       expect(await host.makeLive?.({ hubId: "acme", id: "writer" })).toBe("cancelled");
+      expect(names).toEqual(["Writer", undefined]);
       expect(opened).toEqual([
         ["hubs/acme/agents/writer.agent.yaml"],
         ["hubs/acme/agents/writer.agent.yaml"],

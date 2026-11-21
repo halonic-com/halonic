@@ -281,7 +281,8 @@ export function provideFolderServices(
             placement: placed.choices,
           }),
       // Looked up when Review and make live is pressed, as for the routines below.
-      versionDialog: (paths) => services.get(VersionDialogService).open(paths),
+      versionDialog: (paths, options) =>
+        services.get(VersionDialogService).open(paths, { makesLive: options?.name }),
     }),
   );
   const workflows = services.provide(
@@ -311,7 +312,8 @@ export function provideFolderServices(
       skips: (key) => engine.routineSkips(key),
       onSkips: (listener) => engine.onRoutineSkips(listener),
       // Looked up when Make live is pressed, as the source control feature's services come later.
-      versionDialog: (paths) => services.get(VersionDialogService).open(paths),
+      versionDialog: (paths, options) =>
+        services.get(VersionDialogService).open(paths, { makesLive: options?.name }),
       askTrust,
     }),
   );

@@ -199,6 +199,14 @@ export const versionWords = {
   tryAgain: "Try again",
   nothingToCreate: "Nothing has changed since your last version.",
   created: (name: string) => `Created version "${name}"`,
+  /**
+   * Under the title when "Review and make live" opened Create version for a routine or agent, and
+   * its success toast's title once the version is made (HAL-15368).
+   */
+  makesLive: (item: string) => `Creating this version makes ${item} live.`,
+  isLive: (item: string) => `${item} is live.`,
+  /** The line under "<item> is live." that names the version. */
+  versionNamed: (name: string) => `Version "${name}"`,
   /** The box under What's in it, shown only when a share address is set. */
   shareRightAway: "Share with your team right away",
   shareRightAwayCaption:

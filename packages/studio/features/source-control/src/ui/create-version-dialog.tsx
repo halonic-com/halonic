@@ -1,4 +1,12 @@
-import { Checkbox, Dialog, Field, Input, TextArea, useToastStore } from "@halonicjs/studio-kit";
+import {
+  Checkbox,
+  Dialog,
+  Field,
+  Input,
+  TextArea,
+  type ToastMessage,
+  useToastStore,
+} from "@halonicjs/studio-kit";
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import type { ShareChoice } from "../api.ts";
 import { groupIntoItems } from "../change-items.ts";
@@ -15,6 +23,11 @@ export interface CreateVersionDialogProps {
   readonly files: readonly ChangedFile[];
   /** Whether this is the first version of the workspace. */
   readonly first?: boolean;
+  /**
+   * The routine or agent the version makes live, when "Review and make live" opened the dialog:
+   * a line under the title says so, and the success toast says it is live.
+   */
+  readonly makesLive?: string | undefined;
   /** Where focus goes when the dialog closes and the button that opened it has gone. */
   readonly returnFocus: () => HTMLElement | null;
   /** Called once the version is made and the page has read again, for where focus goes next. */
@@ -31,7 +44,9 @@ export interface CreateVersionDialogProps {
  * the Studio has already saved everything (save model). Ctrl Enter creates from any field and
  * Enter in Notes adds a line. An empty name says "Give this version a name." and focuses Name.
  * With a share address set, "Share with your team right away" shares the version once it is
- * made, and the box keeps the person's last choice.
+ * made, and the box keeps the person's last choice. Opened by "Review and make live", it says
+ * which routine or agent the version makes live, and once it is made the toast says that is live
+ * and names the version on its second line, instead of "Created version" (HAL-15368).
  *
  * Not here yet: the tests line and "Ask for review".
  */
@@ -39,12 +54,14 @@ export function CreateVersionDialog({
   list,
   files,
   first = false,
+  makesLive,
   returnFocus,
   onCreated,
   canShare = false,
   shareChoice,
 }: CreateVersionDialogProps) {
   const toasts = useToastStore();
+  const makesLiveId = useId();
   const nameField = useRef<HTMLInputElement>(null);
   const items = groupIntoItems(files);
   const [ticked, setTicked] = useState<ReadonlySet<string>>(
@@ -92,10 +109,10 @@ export function CreateVersionDialog({
       // The dialog is gone with the version, and so is the button that opened it.
       onCreated();
       if (canShare && shareRightAway) {
-        void shareAndSay(list, toasts, sharedWordsFor(name.trim()));
+        void shareAndSay(list, toasts, sharedWordsFor(name.trim(), makesLive));
         return;
       }
-      toasts?.show({ tone: "success", title: versionWords.created(name.trim()) });
+      toasts?.show(createdToast(name.trim(), makesLive));
       return;
     }
     setBusy(false);
@@ -117,11 +134,17 @@ export function CreateVersionDialog({
       confirm={{ label: versionWords.createVersion, busyLabel: versionWords.creating }}
       busy={busy}
       {...(error === undefined ? {} : { error, retryLabel: versionWords.tryAgain })}
+      {...(makesLive === undefined ? {} : { describedBy: makesLiveId })}
       returnFocus={returnFocus}
       onConfirm={() => void create()}
       onCancel={() => list.cancelVersion()}
     >
       <div className="flex flex-col gap-4">
+        {makesLive === undefined ? null : (
+          <p id={makesLiveId} className="text-fg-muted">
+            {versionWords.makesLive(makesLive)}
+          </p>
+        )}
         <Field label={versionWords.name} error={nameEmpty ? versionWords.emptyName : null}>
           <Input
             ref={nameField}
@@ -181,7 +204,31 @@ function ShareRightAway({
   );
 }
 
-/** The toasts of sharing a version as it is made: one success toast names the version. */
-function sharedWordsFor(name: string): ShareToastWords {
-  return { shared: () => versionWords.createdAndShared(name), afterReason: versionWords.savedHere };
+/**
+ * The success toast of a version made without sharing: "Created version", or "<item> is live."
+ * with the version on its second line when the version makes a routine or agent live.
+ */
+function createdToast(name: string, makesLive: string | undefined): ToastMessage {
+  if (makesLive === undefined) return { tone: "success", title: versionWords.created(name) };
+  return {
+    tone: "success",
+    title: versionWords.isLive(makesLive),
+    text: versionWords.versionNamed(name),
+  };
+}
+
+/**
+ * The toasts of sharing a version as it is made: one success toast names the version, on its
+ * second line under "<item> is live." when the version makes a routine or agent live.
+ */
+function sharedWordsFor(name: string, makesLive: string | undefined): ShareToastWords {
+  const sharedVersion = () => versionWords.createdAndShared(name);
+  if (makesLive === undefined) {
+    return { shared: sharedVersion, afterReason: versionWords.savedHere };
+  }
+  return {
+    shared: () => versionWords.isLive(makesLive),
+    sharedText: sharedVersion,
+    afterReason: versionWords.savedHere,
+  };
 }

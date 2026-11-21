@@ -50,6 +50,7 @@ export function VersionDialogs({
       list={list}
       files={list.versionFiles}
       first={hasNoVersions(state.history)}
+      makesLive={state.version.makesLive}
       returnFocus={returnFocus}
       onCreated={onCreated}
       canShare={canShare}

@@ -47,13 +47,14 @@ async function studioWith({ identity }: { readonly identity?: Identity } = {}) {
   const [host] = shell.contributions.dialogs.list();
   if (host === undefined) throw new Error("No dialog host");
   const Dialogs = await loadView<ComponentType<DialogHostProps>>(host);
+  const toasts = createToastStore();
   render(
-    <ToastStoreProvider store={createToastStore()}>
+    <ToastStoreProvider store={toasts}>
       <Dialogs context={context} />
     </ToastStoreProvider>,
   );
   await act(settle);
-  return { fake, workspace, versionDialog: workspace.get(VersionDialogService) };
+  return { fake, workspace, toasts, versionDialog: workspace.get(VersionDialogService) };
 }
 
 const dialogs = () => [...document.querySelectorAll("dialog[open]")];
@@ -87,6 +88,42 @@ verifies("source-control.create-version-elsewhere", () => {
       expect(await answer).toBe("made");
       expect(fake.versions.map((version) => version.paths)).toEqual([[triage]]);
       expect(dialogs()).toEqual([]);
+    });
+
+    it("says Create version makes the item live, and then that it is live", async () => {
+      const { toasts, versionDialog } = await studioWith();
+      let answer: Promise<string> = Promise.resolve("not opened");
+      await act(async () => {
+        answer = versionDialog.open([triage], { makesLive: "Triage" });
+        await settle();
+      });
+      const line = "Creating this version makes Triage live.";
+      expect(dialogs()[0]?.textContent).toContain(line);
+      // The line describes the dialog, so a screen reader hears it as the dialog opens.
+      const described = dialogs()[0]?.getAttribute("aria-describedby") ?? "";
+      expect(described).not.toBe("");
+      expect(document.getElementById(described)?.textContent).toBe(line);
+
+      const name = (dialogs()[0]?.querySelector("input") as HTMLInputElement | null)?.value;
+      await press("Create version");
+      expect(await answer).toBe("made");
+      // One toast, which says the item is live and names the version.
+      expect(toasts.list()).toMatchObject([
+        { tone: "success", title: "Triage is live.", text: `Version "${name}"` },
+      ]);
+    });
+
+    it("keeps Created version as the toast when nothing is made live", async () => {
+      const { toasts, versionDialog } = await studioWith();
+      await act(async () => {
+        void versionDialog.open([triage]);
+        await settle();
+      });
+      expect(dialogs()[0]?.textContent).not.toContain("live");
+      expect(dialogs()[0]?.hasAttribute("aria-describedby")).toBe(false);
+      const name = (dialogs()[0]?.querySelector("input") as HTMLInputElement | null)?.value;
+      await press("Create version");
+      expect(toasts.list().map((toast) => toast.title)).toEqual([`Created version "${name}"`]);
     });
 
     it("answers cancelled when the person presses Cancel", async () => {

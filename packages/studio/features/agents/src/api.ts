@@ -365,9 +365,10 @@ export interface AgentsHost {
    * Makes the agent live: opens Create version with only this agent's file, and answers `"made"`
    * once the version is created, `"cancelled"` when the person closed it. Absent while the app
    * can't offer that, so the "Changes not live yet" line has no **Review and make live**. Rejects
-   * with the reason the version couldn't be made, and like {@link AgentsHost.read}.
+   * with the reason the version couldn't be made, and like {@link AgentsHost.read}. With `name`,
+   * Create version says it makes that agent live, and its toast says the agent is live.
    */
-  makeLive?(ref: AgentRef): Promise<"made" | "cancelled">;
+  makeLive?(ref: AgentRef, options?: { readonly name?: string }): Promise<"made" | "cancelled">;
   /**
    * Whether the workspace may start anything now: `false` while this computer doesn't trust it
    * (states H16). Absent where there is no folder to trust, which counts as yes.

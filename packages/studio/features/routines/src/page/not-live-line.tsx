@@ -20,8 +20,9 @@ export interface NotLiveLineProps {
  * The quiet "Changes not live yet" line under the routine's summary, only while its saved changes
  * aren't in a version (`routines.page.frame-and-states`). Where the host can make the routine live,
  * the line ends in **Review and make live** (`routines.page.review-and-make-live`, microcopy 2),
- * which opens Create version with only this routine and reads the routine again once a version is
- * made. When the line then goes, `onMadeLive` moves the focus the link had. On a phone the link
+ * which opens Create version with only this routine, saying it makes the routine live, and reads
+ * the routine again once a version is made. Create version's toast then says the routine is live
+ * (HAL-15368). When the line then goes, `onMadeLive` moves the focus the link had. On a phone the link
  * sits at the right of the line, and under the words when both don't fit, as on the agent page.
  */
 export function NotLiveLine({ host, routine, readAgain, onMadeLive }: NotLiveLineProps) {
@@ -39,7 +40,7 @@ export function NotLiveLine({ host, routine, readAgain, onMadeLive }: NotLiveLin
 
   async function reviewAndMakeLive() {
     try {
-      if ((await host.makeLive?.(routine)) !== "made") return;
+      if ((await host.makeLive?.(routine, { name: routine.name })) !== "made") return;
       madeLive.current = true;
       readAgain();
     } catch (error) {

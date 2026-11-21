@@ -15,16 +15,18 @@ const link = "Review and make live";
 
 /**
  * Daily with changes that aren't live until a version is made, with `makeLive` answering `answer`
- * (or rejecting with it when it is an error); `asked` counts the times it was asked.
+ * (or rejecting with it when it is an error); `asked` counts the times it was asked, and keeps the
+ * names it was given for Create version.
  */
 function hostMaking(answer: "made" | "cancelled" | Error) {
   let changesNotLive = true;
-  const asked = { makeLive: 0 };
+  const asked = { makeLive: 0, names: [] as (string | undefined)[] };
   const { host: reading } = hostReading(() => ({ ...daily, changesNotLive }));
   const host: RoutinesHost = {
     ...reading,
-    makeLive: async () => {
+    makeLive: async (_ref, options) => {
       asked.makeLive += 1;
+      asked.names.push(options?.name);
       if (answer instanceof Error) throw answer;
       if (answer === "made") changesNotLive = false;
       return answer;
@@ -43,6 +45,8 @@ verifies("routines.page.review-and-make-live", () => {
 
     await act(async () => button?.click());
     expect(asked.makeLive).toBe(1);
+    // Named, so Create version says it makes Daily live and its toast says Daily is live.
+    expect(asked.names).toEqual(["Daily"]);
     expect(page.textContent).not.toContain(line);
     expect(document.activeElement).toBe(page.querySelector("h1"));
   });

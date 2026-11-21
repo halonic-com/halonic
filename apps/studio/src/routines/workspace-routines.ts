@@ -107,10 +107,13 @@ export interface WorkspaceRoutinesParts {
   readonly reportError?: (error: unknown) => void;
   /**
    * Opens Create version with only `paths` in it (source control's `VersionDialogService`), and
-   * answers once a version is made or the dialog is closed. Absent where the app can't offer that,
-   * so there is no `makeLive`.
+   * answers once a version is made or the dialog is closed. With `name`, the dialog says it makes
+   * that item live. Absent where the app can't offer that, so there is no `makeLive`.
    */
-  readonly versionDialog?: (paths: readonly string[]) => Promise<"made" | "cancelled">;
+  readonly versionDialog?: (
+    paths: readonly string[],
+    options?: { readonly name?: string },
+  ) => Promise<"made" | "cancelled">;
   /**
    * Starts what a routine runs, as the scheduler would start it. Absent where the app has no
    * engine, so there is no `runNow`. Rejects with `WindowCantStart` or `StartRefused` for what
@@ -157,7 +160,7 @@ export class WorkspaceRoutines implements RoutinesHost {
     }
     if (versionDialog !== undefined) {
       // Only the routine's own file, so the version holds nothing else the person changed.
-      this.makeLive = (ref) => versionDialog([routinePath(ref)]);
+      this.makeLive = (ref, options) => versionDialog([routinePath(ref)], options);
     }
     if (askTrust !== undefined) {
       this.askTrust = askTrust;
