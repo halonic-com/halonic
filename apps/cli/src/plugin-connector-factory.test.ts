@@ -98,6 +98,7 @@ async function setUp() {
       },
       { name: "halonic", version: "0.0.0-test" },
     ),
+    new MemorySecrets({}),
   );
   const context = {
     secrets: new MemorySecrets({}),

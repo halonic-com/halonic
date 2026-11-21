@@ -23,12 +23,14 @@ import {
   type PluginConnectorSources,
   type PluginPartUnavailable,
 } from "@halonicjs/app";
-import type {
-  ConnectorClient,
-  ConnectorConfig,
-  ConnectorFactory,
-  ConnectorFactoryContext,
-  Sandbox,
+import {
+  type ConnectorClient,
+  type ConnectorConfig,
+  type ConnectorFactory,
+  type ConnectorFactoryContext,
+  pluginSecrets,
+  type Sandbox,
+  type Secrets,
 } from "@halonicjs/ports";
 
 export type { OpenPluginBackend, OpenPluginBackendRequest };
@@ -39,15 +41,22 @@ export type { OpenPluginBackend, OpenPluginBackendRequest };
  * local tool's session at the first call that needs that tool. Each stops
  * when the client closes.
  *
+ * A run gives every factory the secrets as a workspace may pick them
+ * (`workspaceSecrets`), which refuse every plugin's name. So a plugin's
+ * connector reads from `secrets`, the store itself, and only that plugin's
+ * own names in it (`pluginSecrets`), never the run's view (HAL-15079).
+ *
  * @example
- * new ConnectorFactories([stdioFactory, httpFactory, new PluginConnectorFactory(sources)]);
+ * new ConnectorFactories([stdioFactory, httpFactory, new PluginConnectorFactory(sources, secrets)]);
  */
 export class PluginConnectorFactory implements ConnectorFactory {
   readonly transport = "plugin";
   readonly #sources: PluginConnectorSources;
+  readonly #secrets: Secrets;
 
-  constructor(sources: PluginConnectorSources) {
+  constructor(sources: PluginConnectorSources, secrets: Secrets) {
     this.#sources = sources;
+    this.#secrets = secrets;
   }
 
   create(config: ConnectorConfig, context: ConnectorFactoryContext): ConnectorClient {
@@ -55,7 +64,8 @@ export class PluginConnectorFactory implements ConnectorFactory {
     if (transport.kind !== "plugin") {
       throw new Error(`Connector "${config.id}" isn't a plugin's backend.`);
     }
-    return openPluginConnector(this.#sources, { id: config.id, plugin: transport.id }, context);
+    const own = { ...context, secrets: pluginSecrets(this.#secrets, transport.id) };
+    return openPluginConnector(this.#sources, { id: config.id, plugin: transport.id }, own);
   }
 }
 
