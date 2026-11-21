@@ -272,7 +272,7 @@ function usedSecrets(workspace: LoadedWorkspace, providerFiles: readonly Provide
  * A secret's name as the `Secrets` port compares it. A name the port refuses
  * is kept as written: the store refuses it too, and `doctor` says so.
  */
-function comparedName(secret: string): string {
+export function comparedName(secret: string): string {
   return isSecretName(secret) ? secretKey(secret) : secret;
 }
 

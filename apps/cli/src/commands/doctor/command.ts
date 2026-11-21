@@ -15,7 +15,7 @@ import {
   trustedOnMachine,
   withHarnessSettingsFolders,
 } from "../../doctor-machine.ts";
-import { agentsWithProviderKey } from "../../doctor-provider-keys.ts";
+import { agentsWithProviderKey, withHarnessProviderKeys } from "../../doctor-provider-keys.ts";
 import { doctorWorkspace } from "../../doctor-workspace.ts";
 import { exitCode } from "../../exit-code.ts";
 import { doctorMessages } from "../../messages/doctor.ts";
@@ -105,7 +105,7 @@ function givenDir(input: CommandInput): string | undefined {
  * line can say when Studio won't watch the folder (HAL-12295). With the
  * person's placement choices, it finds the harness agents whose runs get a
  * provider key, so the Harnesses line doesn't ask about their own sign-in
- * (HAL-14661).
+ * (HAL-14661) and the Secrets line checks that key (HAL-15086).
  *
  * @throws NoWorkspaceError when `--dir` was given and has no `workspace.yaml`
  */
@@ -131,10 +131,7 @@ async function readWorkspace(
     fallbackName: dir.name,
     commandPaths: await commandPaths(connectors, nodeCommandSearch()),
   });
-  const workspace = {
-    ...found,
-    ...(await providerKeyAgents(computer, secrets, loaded, found, location)),
-  };
+  const workspace = await withProviderKeyAgents(computer, secrets, loaded, found, location);
   const tooManyToWatch = await store.hasMoreFilesThan(watchedFileLimit);
   const providerFiles = new Map(
     filesOf(loaded, "provider").map((file) => [file.value.id, file.value]),
@@ -146,34 +143,37 @@ async function readWorkspace(
 }
 
 /**
- * The harness agents whose runs get a provider key, decided with the CLI's
+ * `found`, with the harness agents whose runs get a provider key and the
+ * keys they get among the secrets to check, decided with the CLI's
  * own key services as `run` builds them, with the person's placement choices,
  * the workspace's trust and the keys' allowed addresses. Without the choices
- * or the addresses, nothing, so the Harnesses line asks about every agent.
+ * or the addresses, `found` as it is, so the Harnesses line asks about every agent.
  */
-async function providerKeyAgents(
+async function withProviderKeyAgents(
   computer: DoctorMachine,
   secrets: Secrets,
   loaded: LoadedWorkspace,
   found: DoctorWorkspace,
   location: string,
-): Promise<Pick<DoctorWorkspace, "agentsWithProviderKey">> {
+): Promise<DoctorWorkspace> {
   const { placement, keyOrigins } = computer;
-  if (placement === undefined || keyOrigins === undefined) return {};
+  if (placement === undefined || keyOrigins === undefined) return found;
   const keys = cliProviderKeys({
     workspace: () => loaded,
     secrets,
     trusted: await trustedOnMachine(computer, found),
     keyOrigins,
   });
+  const keyed = await agentsWithProviderKey({
+    workspace: loaded,
+    placement,
+    location,
+    readFile: async (path) => new Uint8Array(await readFile(join(location, path))),
+    access: (agent) => keys.accessFor(agent),
+  });
   return {
-    agentsWithProviderKey: await agentsWithProviderKey({
-      workspace: loaded,
-      placement,
-      location,
-      readFile: async (path) => new Uint8Array(await readFile(join(location, path))),
-      access: (agent) => keys.accessFor(agent),
-    }),
+    ...withHarnessProviderKeys(found, keyed.keys),
+    agentsWithProviderKey: keyed.agents,
   };
 }
 

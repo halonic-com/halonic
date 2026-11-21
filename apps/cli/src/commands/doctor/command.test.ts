@@ -396,6 +396,47 @@ verifies("cli.doctor-secrets", () => {
     expect(io.stdout.join("\n")).not.toContain(value);
   });
 
+  it("fails a Secrets line with the key run gives a sandboxed harness agent without a model (C536 G1, HAL-15086)", async () => {
+    writeWorkspace({
+      "workspace.yaml": "id: acme\nname: Acme\n",
+      "models.yaml": "aliases:\n  default:\n    provider: mock\n    model: echo\n",
+      "providers/mock.yaml": "id: mock\nname: Test model\ntype: mock\nlocal: true\n",
+      "providers/claude.yaml": "id: claude\ntype: anthropic\nsecret: anthropic-key\n",
+      "hubs/support/hub.yaml": "id: support\nname: Support\n",
+      "agents/writer2.agent.yaml": "id: writer2\nname: Writer two\nharness: claude-code\n",
+    });
+    const io = captureIo(folder);
+    // As in C536: Claude Code is installed and signed out, and every agent runs in the sandbox.
+    const sandboxed: DoctorMachine = {
+      ...machine(),
+      harnesses: [
+        {
+          id: "claude-code",
+          name: "Claude Code",
+          signIn: { program: "claude", args: ["login"], folderVariable: "CLAUDE_CONFIG_DIR" },
+          detect: async () => ({ status: "signed-out", version: "2.1.325" }),
+        },
+      ],
+      placement: {
+        where: async () => ({
+          runsOn: "sandbox",
+          agentFingerprint: "sha256:0",
+          reason: "not-chosen",
+        }),
+      },
+      keyOrigins: { allowedOrigins: async () => undefined },
+    };
+
+    const code = await runCli(["doctor", "--dir", "acme"], io, [
+      createDoctorCommand(() => sandboxed),
+    ]);
+
+    expect(code).toBe(exitCode.failed);
+    expect(io.stdout).toContain(
+      "✕ Secrets     anthropic-key isn't set (provider claude) · halonic secret set anthropic-key",
+    );
+  });
+
   it("warns about a secret the store couldn't read, and still prints every line", async () => {
     writeWorkspace(filesConnector);
     const io = captureIo(folder);
