@@ -14,7 +14,7 @@ import {
 } from "./sign-in-urls.ts";
 
 /** The first `kit` that has `signIns`. */
-const SIGN_IN_KIT = 2;
+export const SIGN_IN_KIT = 2;
 
 /** The URL fields of a sign-in, with whether a query is allowed on each. */
 const URL_FIELDS = [
@@ -174,11 +174,10 @@ function revokeHostProblems(
  * and without the default port, or the setting it reads.
  */
 function endpointHost(url: IntegrationSignInUrl): string {
-  const fixed = fixedSignInUrl(url);
-  if (fixed === undefined) {
-    return typeof url === "string" ? url : `fromSetting ${url.fromSetting}`;
+  if (typeof url !== "string") {
+    return `fromSetting ${url.fromSetting}`;
   }
-  const host = fixed.host.toLowerCase();
+  const host = (fixedSignInUrl(url)?.host ?? "").toLowerCase();
   return host.endsWith(":443") ? host.slice(0, -4) : host;
 }
 

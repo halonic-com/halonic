@@ -4,6 +4,7 @@
 // checks that when the plugin loads.
 import type { KindCheckProblem } from "../../kind.ts";
 import { checkIntegrationSheet } from "../integration/kind.ts";
+import { SIGN_IN_KIT } from "../integration/sign-in-checks.ts";
 import { backendSheet } from "./backend.ts";
 import { declaredSecrets, declaredTools, duplicates, inTwoParts, problem } from "./problems.ts";
 import {
@@ -83,23 +84,19 @@ function lengthProblems(plugin: Plugin): KindCheckProblem[] {
 /**
  * The backend's own sheet checks, with their paths moved under `backend`.
  * A backend may not start a program: that is what local tools are for, and
- * only they run in the sandbox. It may not declare `signIns` yet either:
- * the trust check and the trust content don't show a sign-in, so the user
- * couldn't approve one.
+ * only they run in the sandbox. Its `signIns` are checked as a sheet's; the
+ * trust check names each one's hosts, so the user approves them.
  */
 function backendProblems(plugin: Plugin): KindCheckProblem[] {
   const sheet = backendSheet(plugin);
   if (sheet === undefined) {
     return [];
   }
-  const problems: KindCheckProblem[] = checkIntegrationSheet(sheet).map((found) => ({
-    ...found,
-    path: ["backend", ...found.path],
-  }));
-  for (const name of Object.keys(sheet.signIns)) {
-    const message = `a backend can't declare the sign-in ${name} yet: the trust check doesn't show sign-ins`;
-    problems.push(problem(plugin, "backend-sign-in", ["backend", "signIns", name], message));
-  }
+  const problems: KindCheckProblem[] = checkIntegrationSheet(sheet).map((found) =>
+    found.code === "sign-ins-need-kit-2"
+      ? signInsNeedSdkProblem(plugin)
+      : { ...found, path: ["backend", ...found.path] },
+  );
   sheet.needs.forEach((need, index) => {
     if (need === "process") {
       const message = "a backend can't start a program; declare it under localTools instead";
@@ -107,6 +104,15 @@ function backendProblems(plugin: Plugin): KindCheckProblem[] {
     }
   });
   return problems;
+}
+
+/**
+ * A plugin has no `kit`: its `sdk` is the version a sign-in needs, so the
+ * sheet's `sign-ins-need-kit-2` is said at `sdk`, in the plugin's words.
+ */
+function signInsNeedSdkProblem(plugin: Plugin): KindCheckProblem {
+  const message = `signIns need sdk: ${SIGN_IN_KIT} or higher, and this plugin says sdk: ${plugin.sdk}. Set sdk: ${SIGN_IN_KIT}`;
+  return problem(plugin, "sign-ins-need-kit-2", ["sdk"], message);
 }
 
 function localToolProblems(plugin: Plugin): KindCheckProblem[] {

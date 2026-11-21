@@ -399,9 +399,15 @@ serves these routes only with a profile folder, and Studio starts it with one
 (`--profile-folder`), so they are live on a shipped host. It seals the grants
 with the profile's token key, as it does Google's tokens, in
 `<profile>/integration-sign-ins/tokens`. Its token and revoke requests go only
-to public hosts, follow no redirect and never reach the host's own ports. No
-integration can hold a sign-in yet (`noSignInIntegrations`), so for now every
-route answers `404 unknown_integration`. The callback has the
+to public hosts, follow no redirect and never reach the host's own ports. Only
+a trusted plugin's backend can hold a sign-in: every read of its sheet,
+settings or client secret reads the plugin's folder and checks the trust
+record again, and a plugin that isn't there, changed or lost its trust answers
+`404 unknown_integration`. The client secret is read only from that plugin's
+own handed-over secrets, and the backend gets the access token only through
+the kit, which places it (`agent-host.plugin-sign-ins`). A local integration
+that isn't a plugin still can't declare a sign-in (`sign-ins-not-allowed`),
+because only a plugin's trust check shows a sign-in's hosts. The callback has the
 same `Host` and `Origin` checks and the same defence, the sign-in's `state`
 (plus PKCE), and a path no sign-in waits on gets a plain 400 page that repeats
 nothing of the request. The relay passes only `/v1/google/callback` without the

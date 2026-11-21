@@ -6,7 +6,8 @@ import { MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
 import type { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { RunnerStartGate, type SaveTimers, UnfencedRuns } from "@halonicjs/app";
-import type { Sandbox } from "@halonicjs/ports";
+import type { SignInIntegration } from "@halonicjs/host-integration-sign-in";
+import type { Sandbox, SignInTokens } from "@halonicjs/ports";
 import { type ProfileFolder, unfencedRunsFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { proxySetting } from "../proxy-setting.ts";
@@ -15,6 +16,7 @@ import { hostPluginBackends, unavailablePluginBackends } from "./host-plugin-bac
 import { hostPluginMachine } from "./host-plugin-machine.ts";
 import { pluginRoutes } from "./plugin-routes.ts";
 import { PluginSecretValues } from "./plugin-secret-values.ts";
+import { pluginSignIns } from "./plugin-sign-ins.ts";
 import { PluginTable } from "./plugin-table.ts";
 import { type UnfencedRunsSource, unfencedRunsRoutes } from "./unfenced-runs-routes.ts";
 
@@ -34,6 +36,8 @@ export interface HostPlugins {
   /** Kept in memory only; the backends read them, and `POST /v1/plugins/secrets` replaces them. */
   readonly secretValues: PluginSecretValues;
   readonly unfenced: UnfencedRunsSource;
+  /** The sign-ins of the plugin called `name`, for the host's sign-ins; `undefined` where no plugin runs. */
+  signIns(name: string): SignInIntegration | undefined;
   /** Stops every runner, drops the secrets and removes the temp folders of the starts. */
   stop(): Promise<void>;
 }
@@ -70,6 +74,8 @@ export function hostUnfencedRuns(
  * it only with the user's yes for the reason at that start. `stop` stops
  * every runner and removes the temp folders of their starts.
  *
+ * @param signInTokens - the host's sign-in tokens for a plugin, which its backend places
+ *
  * The shipped single executable runs no plugin, but it builds the same gate
  * and saved yes, so the `/v1/unfenced-runs` routes answer alike in both builds.
  */
@@ -77,6 +83,7 @@ export function hostPlugins(
   version: string,
   sandbox: SrtSandbox,
   profile: ProfileFolder | undefined,
+  signInTokens: (plugin: string) => SignInTokens | undefined,
 ): HostPlugins | undefined {
   if (profile === undefined) return undefined;
   const secretValues = new PluginSecretValues();
@@ -86,14 +93,16 @@ export function hostPlugins(
       table: new PluginTable(unavailablePluginBackends()),
       secretValues,
       unfenced,
+      signIns: () => undefined,
       stop: async () => undefined,
     };
   }
   const { machine, dispose } = hostPluginMachine({ gate: unfenced.gate, profile, version });
-  // A backend reads only the secrets Studio handed over for its plugin, and no sign-in token yet.
+  // A backend reads only the secrets Studio handed over for its plugin, and its own sign-ins' access tokens.
   const context = {
     secrets: secretValues.secrets,
     tokens: new MemoryTokenStore(),
+    signInTokens,
     http: createNodeHttpClient({ hostClass: () => "public", proxy: proxySetting }),
     trust: null,
   };
@@ -104,6 +113,7 @@ export function hostPlugins(
     table,
     secretValues,
     unfenced,
+    signIns: pluginSignIns({ machine, secrets: secretValues.secrets, log: logToError }),
     stop: async () => {
       await table.closeAll();
       await dispose();

@@ -185,7 +185,8 @@ function secretRows(content: PluginTrustContent): Phrase[] {
 function signInRows(content: PluginTrustContent): Phrase[] {
   const service = content.plugin.name;
   return (content.signIns ?? []).flatMap((signIn) => {
-    const facts = declaredSignInTrustFacts(signIn, shownHost);
+    // The whole line is escaped below, so the hosts go in as written.
+    const facts = declaredSignInTrustFacts(signIn, hostText);
     const line = pluginMessages.signInTrustLine(printable(signInTrustLine(service, facts)));
     const warning = signInTokenHostDiffers(facts)
       ? [
@@ -206,12 +207,17 @@ function addressRows(content: PluginTrustContent): Phrase[] {
   return [...hosts].map((host) => phrase`  ${host}`);
 }
 
-/** A host as written, or the setting that holds it. */
-function shownHost(host: unknown): string {
-  if (typeof host === "string") return printable(host);
+/** A host as written, or the setting that holds it, not yet escaped: for a line that is escaped whole. */
+function hostText(host: unknown): string {
+  if (typeof host === "string") return host;
   const setting = (host as { fromSetting?: unknown } | null)?.fromSetting;
   const words = pluginMessages.hostFromSetting(typeof setting === "string" ? setting : "");
   return plainText(words.phrase);
+}
+
+/** A host as {@link hostText} gives it, escaped, where nothing else escapes it. */
+function shownHost(host: unknown): string {
+  return printable(hostText(host));
 }
 
 /** A catalogue sentence as plain text, for the first column of a row. */

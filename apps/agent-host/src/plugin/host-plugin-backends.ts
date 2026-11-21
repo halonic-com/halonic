@@ -6,10 +6,16 @@ import {
 } from "@halonicjs/adapter-integration-runner";
 import { PluginBackendNotTrustedError, pluginSecretNames, readPluginFolder } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
-import type { ConnectorClient, ConnectorFactoryContext } from "@halonicjs/ports";
+import type { ConnectorClient, ConnectorFactoryContext, SignInTokens } from "@halonicjs/ports";
 import { PluginRefusal } from "./plugin-refusal.ts";
 import { pluginIdPattern } from "./plugin-schemas.ts";
 import type { PluginBackends } from "./plugin-table.ts";
+
+/** What a plugin's backend may use: the context of every backend, and the access tokens of its own sign-ins. */
+export interface HostPluginContext extends ConnectorFactoryContext {
+  /** The host's sign-in tokens for `plugin`, or `undefined` where the host runs no sign-ins. */
+  signInTokens(plugin: string): SignInTokens | undefined;
+}
 
 /**
  * The host's {@link PluginBackends} on this computer: the CLI's own opener
@@ -18,12 +24,12 @@ import type { PluginBackends } from "./plugin-table.ts";
  * loads a plugin's code: it runs only in the runner the gate started.
  *
  * @param machine - what a start uses; its gate allows a run without the sandbox only with the user's saved yes for the reason at that start
- * @param context - the secrets and tokens a backend may use
+ * @param context - the secrets, tokens and sign-in tokens a backend may use
  * @param log - where the detail of a refusal goes; the answer carries a fixed message only
  */
 export function hostPluginBackends(
   machine: PluginBackendMachine,
-  context: ConnectorFactoryContext,
+  context: HostPluginContext,
   log: (text: string) => void = () => undefined,
 ): PluginBackends {
   const open = openPluginBackend(machine);
@@ -33,7 +39,14 @@ export function hostPluginBackends(
       pluginSecretNames((await trustedPlugin(machine, plugin, log)).plugin),
     open: async (plugin, fingerprint): Promise<ConnectorClient> => {
       try {
-        return await open({ id: plugin, plugin, context, fingerprint });
+        const signInTokens = context.signInTokens(plugin);
+        return await open({
+          id: plugin,
+          plugin,
+          context,
+          fingerprint,
+          ...(signInTokens === undefined ? {} : { signInTokens }),
+        });
       } catch (error) {
         throw refusalFor(error, log) ?? error;
       }
@@ -47,8 +60,9 @@ export function hostPluginBackends(
  * Only a plugin id of the allow-list reaches the disk.
  *
  * @returns the manifest as read, and the fingerprint the trust covers
+ * @throws PluginRefusal `plugin_not_trusted` when the trust doesn't cover the plugin, or it has no backend
  */
-async function trustedPlugin(
+export async function trustedPlugin(
   machine: PluginBackendMachine,
   plugin: string,
   log: (text: string) => void,

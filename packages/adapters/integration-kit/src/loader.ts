@@ -290,16 +290,17 @@ function localTokenProblems(
 }
 
 /**
- * A local integration can't declare `signIns` until the trust content shows
- * them: the client secret leaves `secrets`, and the token, revoke and
- * authorize hosts needn't be in `hosts`, so the person approving would never
- * see where the code and the client secret go.
+ * A local integration that isn't a plugin's backend can't declare `signIns`
+ * yet: the client secret leaves `secrets`, and the token, revoke and
+ * authorize hosts needn't be in `hosts`, and only a plugin's trust check
+ * shows them. Without it the person approving would never see where the code
+ * and the client secret go.
  */
 function localSignInProblems(
   source: PrepareIntegrationOptions["source"],
   sheet: IntegrationSheet,
 ): LoadProblem[] {
-  if (source.origin !== "local") {
+  if (source.origin !== "local" || source.plugin === true) {
     return [];
   }
   return Object.keys(sheet.signIns).map((name) => ({

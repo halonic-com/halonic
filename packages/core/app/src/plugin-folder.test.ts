@@ -130,26 +130,45 @@ verifies("app.plugin-folder", () => {
     ]);
   });
 
-  it("refuses a sign-in in an integration.yaml, which the plugin check never sees", async () => {
-    const sheet = integrationSheet.replace("kit: 1", "kit: 2").replace(
-      "tools:",
-      `signIns:
+  it("reads a backend's sign-in, from an integration.yaml and from a plugin.yaml", async () => {
+    const signIn = (host: string) => `signIns:
   example-account:
     purpose: Access to your Example account.
     flow: oauth-code
     authorizeUrl: https://auth.example.com/authorize
     tokenUrl: https://auth.example.com/token
     clientId: example-app-id
-    access: { hosts: [radar.example.com], as: bearer }
-tools:`,
+    access: { hosts: [${host}], as: bearer }
+`;
+    const sheet = integrationSheet
+      .replace("kit: 1", "kit: 2")
+      .replace("tools:", `${signIn("radar.example.com")}tools:`);
+    const fromSheet = await readPluginFolder(
+      new TestFolderReader().putFiles({
+        "radar/integration.yaml": sheet,
+        "radar/backend/index.js": "",
+      }),
+      digest,
+      "radar",
     );
-    const reader = new TestFolderReader().putFiles({ "radar/integration.yaml": sheet });
-    const problems = await problemsOf(reader, "radar");
-    expect(
-      problems
-        .filter((problem) => problem.code === "backend-sign-in")
-        .map((problem) => [problem.file, problem.path]),
-    ).toEqual([["integration.yaml", ["signIns", "example-account"]]]);
+    if (!fromSheet.ok) throw new Error(JSON.stringify(fromSheet.error));
+    expect(Object.keys(fromSheet.value.plugin.backend?.signIns ?? {})).toEqual(["example-account"]);
+
+    const manifest = weatherManifest
+      .replace(/^sdk: \d+$/m, "sdk: 2")
+      .replace(
+        "backend:\n",
+        `backend:\n${signIn("api.example.com").replace(/^/gm, "  ").trimEnd()}\n`,
+      );
+    const fromManifest = await readPluginFolder(
+      weatherFolder().putFiles({ "weather/plugin.yaml": manifest }),
+      digest,
+      "weather",
+    );
+    if (!fromManifest.ok) throw new Error(JSON.stringify(fromManifest.error));
+    expect(Object.keys(fromManifest.value.plugin.backend?.signIns ?? {})).toEqual([
+      "example-account",
+    ]);
   });
 
   it("needs the backend's entry and every script to be files in the folder", async () => {

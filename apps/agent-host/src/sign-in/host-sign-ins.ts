@@ -30,20 +30,12 @@ export interface HostSignInsOptions {
 }
 
 /**
- * The app runs no integration that may hold a sign-in yet: a local
- * integration's sheet can't declare one (`sign-ins-not-allowed`) until Studio
- * shows its sign-in hosts. Until then every sign-in route answers
- * `unknown_integration`.
- */
-export const noSignInIntegrations = (): undefined => undefined;
-
-/**
  * The integration sign-ins of the profile the host serves. The grants are
  * sealed with the profile's token key, as Google's tokens are, in a folder of
  * their own. Nothing is created until a sign-in saves its grant.
  *
  * @example
- * const signIns = openHostSignIns({ profile, env: process.env, integration: noSignInIntegrations, ownPorts });
+ * const signIns = openHostSignIns({ profile, env: process.env, integration: plugins.signIns, ownPorts });
  * routes.push(...integrationSignInRoutes({ signIns }));
  */
 export function openHostSignIns(options: HostSignInsOptions): SignInHost {
@@ -72,32 +64,48 @@ export function openHostSignIns(options: HostSignInsOptions): SignInHost {
   });
 }
 
-/** What {@link hostIntegrationSignInRoutes} needs from the host. */
-export interface HostSignInRoutesOptions {
-  /** The profile folder, or `undefined` without one: then no sign-in route is served. */
+/** What {@link hostIntegrationSignIns} needs from the host. */
+export interface HostIntegrationSignInsOptions {
+  /** The profile folder, or `undefined` without one: then there are no sign-ins and no route. */
   readonly profile: ProfileFolder | undefined;
   /** The relay's port in `--stdio` mode, where an integration's sign-in can't start yet. */
   readonly relayPort: number | undefined;
+  /**
+   * The integration called `name`, or `undefined` when the host runs no
+   * sign-ins for it. Only a trusted plugin's backend may hold a sign-in: a
+   * local integration that isn't one can't declare it (`sign-ins-not-allowed`).
+   */
+  integration(name: string): SignInIntegration | undefined;
   /** The host's own ports, which no provider's address may name. */
   ownPorts(): Iterable<number>;
   readonly log: (text: string) => void;
 }
 
+/** The host's integration sign-ins and their routes. */
+export interface HostIntegrationSignIns {
+  /** The sign-ins, whose tokens a plugin's backend places; `undefined` without a profile folder. */
+  readonly host: SignInHost | undefined;
+  readonly routes: HostRoute[];
+}
+
 /**
- * The routes of the integrations' sign-ins, over the profile's grants; none
- * without a profile folder.
+ * The integrations' sign-ins over the profile's grants, and their routes;
+ * none without a profile folder.
  */
-export function hostIntegrationSignInRoutes(options: HostSignInRoutesOptions): HostRoute[] {
-  if (options.profile === undefined) return [];
-  const signIns = openHostSignIns({
+export function hostIntegrationSignIns(
+  options: HostIntegrationSignInsOptions,
+): HostIntegrationSignIns {
+  if (options.profile === undefined) return { host: undefined, routes: [] };
+  const host = openHostSignIns({
     profile: options.profile,
     env: process.env,
-    integration: noSignInIntegrations,
+    integration: (name) => options.integration(name),
     ownPorts: options.ownPorts,
   });
-  return integrationSignInRoutes({
-    signIns,
+  const routes = integrationSignInRoutes({
+    signIns: host,
     log: options.log,
     ...(options.relayPort === undefined ? {} : { relayPort: options.relayPort }),
   });
+  return { host, routes };
 }
