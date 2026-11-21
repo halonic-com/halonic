@@ -5,7 +5,12 @@ import {
   signInTokenHostWarning,
   signInTrustLine,
 } from "@halonicjs/app";
-import { type Plugin, placedSecrets } from "@halonicjs/format";
+import {
+  type AddressClass,
+  type Plugin,
+  type PluginSettingValue,
+  placedSecrets,
+} from "@halonicjs/format";
 import type { PluginToolRisk } from "../page/plugin-pages.ts";
 import { clientSecretHosts, clientSecretNames } from "../sign-in/client-secret-hosts.ts";
 import {
@@ -13,6 +18,7 @@ import {
   hostWords,
   type SecretKind,
   secretHow,
+  settingAddressFrom,
   settingAddressRow,
   type TrustCounts,
 } from "./trust-text.ts";
@@ -77,6 +83,8 @@ export interface TrustAddress {
   readonly program: boolean;
   /** For a host from a setting: where it may be, as the sheet declares it (R9). */
   readonly where?: string | undefined;
+  /** For a host from a setting that's set: its value, and where it comes from (R9's "set" form). */
+  readonly set?: { readonly value: string; readonly from: string } | undefined;
 }
 
 /** What In Studio lists: what Halonic draws for the plugin, each title with where it shows. */
@@ -107,7 +115,10 @@ export interface TrustCheckContent {
  * const content = trustCheckContent(weather.manifest);
  * content.counts.tools; // 1
  */
-export function trustCheckContent(plugin: Plugin): TrustCheckContent {
+export function trustCheckContent(
+  plugin: Plugin,
+  values: Readonly<Record<string, PluginSettingValue>> = {},
+): TrustCheckContent {
   const localTools = plugin.localTools ?? [];
   const labelOf = (setting: string) => plugin.ui?.settings[setting]?.label;
   const tools: TrustTool[] = [
@@ -149,7 +160,7 @@ export function trustCheckContent(plugin: Plugin): TrustCheckContent {
       warning: signInTokenHostDiffers(facts) ? signInTokenHostWarning(facts) : undefined,
     };
   });
-  const addresses = addressesOf(plugin, labelOf);
+  const addresses = addressesOf(plugin, labelOf, values);
   const ui = plugin.ui;
   const inStudio: TrustInStudio = {
     settings: Object.keys(ui?.settings ?? {}).length > 0,
@@ -203,28 +214,48 @@ function programOf(local: LocalTool): TrustProgram {
 /**
  * The backend's hosts, then each program's that the backend doesn't already reach. A host from a
  * setting is its own row, with the class the sheet declares, so "only the addresses above" stays
- * true before the setting is filled in (R9; programs can't name one).
+ * true before the setting is filled in (R9; programs can't name one). Once it's set, the row
+ * shows the value and where it comes from.
  */
 function addressesOf(
   plugin: Plugin,
   labelOf: (setting: string) => string | undefined,
+  values: Readonly<Record<string, PluginSettingValue>>,
 ): TrustAddress[] {
   const backend = new Map<string, TrustAddress>();
   for (const host of plugin.backend?.hosts ?? []) {
     const address =
       typeof host === "string"
         ? { address: host, program: false }
-        : {
-            address: settingAddressRow(plugin.name, labelOf(host.fromSetting) ?? host.fromSetting),
-            program: false,
-            where: ADDRESS_CLASS_WORDS[host.class],
-          };
+        : settingAddress(plugin.name, host, labelOf, values);
     if (!backend.has(address.address)) backend.set(address.address, address);
   }
   const programs = unique((plugin.localTools ?? []).flatMap((local) => local.network)).filter(
     (address) => !backend.has(address),
   );
   return [...backend.values(), ...programs.map((address) => ({ address, program: true }))];
+}
+
+/** R9's row for a host from a setting, in its "set" form once the setting has a value. */
+function settingAddress(
+  plugin: string,
+  host: { readonly fromSetting: string; readonly class: AddressClass },
+  labelOf: (setting: string) => string | undefined,
+  values: Readonly<Record<string, PluginSettingValue>>,
+): TrustAddress {
+  const label = labelOf(host.fromSetting) ?? host.fromSetting;
+  const where = ADDRESS_CLASS_WORDS[host.class];
+  const value = values[host.fromSetting];
+  const set = typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
+  return {
+    address: settingAddressRow(plugin, label),
+    program: false,
+    where,
+    set:
+      set === undefined
+        ? undefined
+        : { value: set, from: settingAddressFrom(plugin, label, where) },
+  };
 }
 
 /** Core's text starts lowercase, after a name in the CLI's row; here it stands on its own line. */

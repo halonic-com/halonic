@@ -5,7 +5,7 @@ import {
   pluginTrustContent,
   pluginTrustSections,
 } from "@halonicjs/app";
-import type { Plugin } from "@halonicjs/format";
+import type { Plugin, PluginSettingValue } from "@halonicjs/format";
 import { Callout, Dialog, Disclosure, StatusChip } from "@halonicjs/studio-kit";
 import { originText, type PluginOrigin, RISK_WORDS } from "../page/page-text.ts";
 import { Quoted } from "../ui/quoted.tsx";
@@ -20,7 +20,12 @@ import {
   type UnfencedYes,
 } from "./runs-line.ts";
 import { Checking, LastLine, useUnfencedYes } from "./runs-line-parts.tsx";
-import { type TrustCheckContent, type TrustSecret, trustCheckContent } from "./trust-check.ts";
+import {
+  type TrustAddress,
+  type TrustCheckContent,
+  type TrustSecret,
+  trustCheckContent,
+} from "./trust-check.ts";
 import {
   ADDRESSES_SECTION,
   ARROW,
@@ -80,6 +85,8 @@ export interface PluginTrustDialogProps {
   readonly update?: { readonly keep: string; readonly toCommit?: string | undefined } | undefined;
   /** Whether the plugin's programs can run here; when unsaid, the Runs line holds either way. */
   readonly programsRun?: ProgramsRun;
+  /** The plugin's saved settings, so a host from a setting that's set shows its value (R9). */
+  readonly settingValues?: Readonly<Record<string, PluginSettingValue>> | undefined;
   /**
    * Whether plugin code runs in the sandbox on this computer, read when the check opens (the
    * "Runs" line design section 2). When unsaid, the last line holds either way (T9).
@@ -118,7 +125,7 @@ export interface PluginTrustDialogProps {
  */
 export function PluginTrustDialog(props: PluginTrustDialogProps) {
   const { manifest, reason, fence } = props;
-  const content = trustCheckContent(manifest);
+  const content = trustCheckContent(manifest, props.settingValues);
   const summary = trustSummary(content.counts, props.programsRun);
   const code: PluginCode = {
     backend: manifest.backend !== undefined,
@@ -362,15 +369,7 @@ function Section({
           <Items>
             {addresses.map((address) => (
               <li key={address.address} className="text-small wrap-anywhere">
-                {address.where === undefined ? (
-                  <code className="font-mono">{address.address}</code>
-                ) : (
-                  // R9: the row in `fg`, where the host may be in `fg-muted`.
-                  <>
-                    {address.address}
-                    <span className="text-fg-muted"> · {address.where}</span>
-                  </>
-                )}
+                <AddressText address={address} />
                 {address.program ? <span className="text-fg-muted"> {THE_PROGRAM}</span> : null}
               </li>
             ))}
@@ -463,5 +462,26 @@ function ChangeLine({ row }: { readonly row: ChangeRow }) {
 function secretKinds(secrets: readonly TrustSecret[]): SecretKind[] {
   return (["backend", "program"] as const).filter((kind) =>
     secrets.some((secret) => secret.kind === kind),
+  );
+}
+
+/** An Addresses row: a host, or R9's row for a host from a setting, set or not yet. */
+function AddressText({ address }: { readonly address: TrustAddress }) {
+  if (address.set !== undefined) {
+    // R9 once set: the value as an address, then where it comes from in `fg-muted`.
+    return (
+      <>
+        <code className="font-mono">{address.set.value}</code>
+        <span className="text-fg-muted"> {address.set.from}</span>
+      </>
+    );
+  }
+  if (address.where === undefined) return <code className="font-mono">{address.address}</code>;
+  // R9: the row in `fg`, where the host may be in `fg-muted`.
+  return (
+    <>
+      {address.address}
+      <span className="text-fg-muted"> · {address.where}</span>
+    </>
   );
 }

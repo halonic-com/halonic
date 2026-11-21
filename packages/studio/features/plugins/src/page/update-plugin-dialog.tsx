@@ -1,8 +1,10 @@
 import type { RunnerUnfencedReason } from "@halonicjs/app";
 import { useState } from "react";
+import type { PluginSettingsReader } from "../settings/plugin-settings-section.tsx";
 import { changeSummary } from "../trust/change-rows.ts";
 import { PluginTrustDialog } from "../trust/plugin-trust-dialog.tsx";
 import { useProgramsRun } from "../trust/programs-run.ts";
+import { useSettingValues } from "../trust/setting-values.ts";
 import type { ProgramsRun } from "../trust/trust-text.ts";
 import {
   type PluginUnfencedRuns,
@@ -21,6 +23,8 @@ export interface UpdatePluginDialogProps {
   readonly applyUpdate: NonNullable<PluginActions["applyUpdate"]>;
   /** Whether the plugins' programs can run here, read when the check opens (`PluginActions.programs`). */
   readonly programs?: (() => Promise<ProgramsRun>) | undefined;
+  /** The plugin's saved settings, read when the check opens, so R9 shows a value that's set. */
+  readonly settings?: Pick<PluginSettingsReader, "settings"> | undefined;
   /** The host's sandbox status and saved yes, read when the check opens; without it, T9. */
   readonly unfencedRuns?: PluginUnfencedRuns | undefined;
   /** After **Trust and update** is saved. */
@@ -44,6 +48,7 @@ export function UpdatePluginDialog({
   found,
   applyUpdate,
   programs,
+  settings,
   unfencedRuns,
   onUpdated,
   onKeep,
@@ -52,6 +57,7 @@ export function UpdatePluginDialog({
   const [failure, setFailure] = useState<string | undefined>(undefined);
   const status = useTrustStatus(unfencedRuns);
   const programsRun = useProgramsRun(programs);
+  const settingValues = useSettingValues(settings, found.manifest);
 
   async function confirm(allow: RunnerUnfencedReason | undefined) {
     setBusy(true);
@@ -80,6 +86,7 @@ export function UpdatePluginDialog({
       }
       update={{ keep: plugin.manifest?.version ?? "", toCommit: found.toCommit }}
       programsRun={programsRun}
+      settingValues={settingValues}
       fence={status.fence}
       unfencedYes={status.yes}
       busy={busy}

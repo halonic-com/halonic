@@ -174,6 +174,14 @@ export function settingAddressRow(plugin: string, label: string): string {
   return `The address you enter in ${plugin}'s settings, under ${label}`;
 }
 
+/**
+ * After the value of a setting that names a host, once it's set (R9's "set" form): where it comes
+ * from and where it may be.
+ */
+export function settingAddressFrom(plugin: string, label: string, where: string): string {
+  return `(from ${plugin}'s settings: ${label} · ${where})`;
+}
+
 /** After R9's row: where that host may be, as the sheet declares it, always shown. */
 export const ADDRESS_CLASS_WORDS: Readonly<Record<AddressClass, string>> = {
   private: "only on your home network",
