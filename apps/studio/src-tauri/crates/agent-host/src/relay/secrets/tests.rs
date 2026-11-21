@@ -102,7 +102,7 @@ fn host_secrets_channel_is_closed_unless_the_shell_answers_secrets() {
 
 #[test]
 fn host_secrets_channel_takes_one_request_at_a_time() {
-    let (backend, release) = Held::new();
+    let (backend, release) = Held::with_release();
     let (relay, mut host) = relay_answering(backend);
     let get = json!({ "op": "get", "name": "remote_host_key" });
     request(&mut host, &get);
@@ -122,7 +122,7 @@ struct Held {
 }
 
 impl Held {
-    fn new() -> (Arc<dyn SecretBackend>, Sender<()>) {
+    fn with_release() -> (Arc<dyn SecretBackend>, Sender<()>) {
         let (release, released) = mpsc::channel();
         let backend = Arc::new(Self {
             released: Mutex::new(released),
