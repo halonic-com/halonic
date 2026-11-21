@@ -3,6 +3,7 @@
 - Task: HAL-15368
 - Approval: Sofia decides the wording on HAL-15368 (https://paperclip.halonic.com/HAL/issues/HAL-15368#comment-5068ce9d-03d2-422f-8f2b-6a4ee7877fcf), from the flow check C548 4 on HAL-15204. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:UUPIedXfgs8bbqsJkQxlDni19BA/oUx3A8MB4rfYWZfbFDSwaqJPB8F8y9bxu2NxruFyjD5sQbya5AKfqU/5Aw==
 
 ## What changes
 
