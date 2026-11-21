@@ -13,7 +13,13 @@ import {
   FileTrustStore,
 } from "@halonicjs/adapter-fs-node";
 import { bothSpellings } from "@halonicjs/adapter-system-node";
-import { type DeletePluginSecret, type LocalToolState, PluginService } from "@halonicjs/app";
+import {
+  type DeletePluginSecret,
+  type LocalToolState,
+  PluginService,
+  type RunnerFence,
+  type RunnerUnfencedReason,
+} from "@halonicjs/app";
 import type { Clock, HttpClient } from "@halonicjs/ports";
 import {
   type ProfileEnvironment,
@@ -25,7 +31,7 @@ import {
 import { systemClock } from "@halonicjs/std";
 import type { GitExporter } from "./commands/plugin/git-source.ts";
 import { cliPluginSignOut } from "./plugin-sign-out.ts";
-import { nodeLocalToolState } from "./sandbox-works.ts";
+import { nodeLocalToolState, nodePluginCodeFence } from "./sandbox-works.ts";
 import { chainedSecrets } from "./secret-host.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import { cliTrustService } from "./workspace-trust.ts";
@@ -40,6 +46,8 @@ export interface PluginSetup {
   readonly exportGit?: GitExporter;
   /** Whether a plugin's programs can run here; this computer's srt sandbox is asked by default. */
   readonly localToolState?: () => Promise<LocalToolState>;
+  /** Whether a plugin's backend runs in the sandbox here; this computer's srt sandbox is asked by default. */
+  readonly pluginCodeFence?: () => Promise<RunnerFence>;
   /** Where removing a plugin or its trust revokes its sign-ins; the Node client for public hosts by default. */
   readonly http?: HttpClient;
 }
@@ -60,6 +68,24 @@ export async function programsRunFor(
   if (plugins.every((plugin) => plugin.localTools.length === 0)) return undefined;
   const state = await (setup.localToolState ?? nodeLocalToolState)();
   return state.kind;
+}
+
+/**
+ * Why a trusted plugin with a backend is off on this computer: its code doesn't run in the sandbox
+ * here, and the command never runs it without (R13, HAL-15080). `undefined` when none of `plugins`
+ * has a backend, so the sandbox is only asked when a line shows the answer, or when it runs.
+ *
+ * @example
+ * await offHereFor({}, [entry.plugin]);
+ * // "container"
+ */
+export async function offHereFor(
+  setup: PluginSetup,
+  plugins: readonly { readonly backend?: unknown }[],
+): Promise<RunnerUnfencedReason | undefined> {
+  if (plugins.every((plugin) => plugin.backend === undefined)) return undefined;
+  const fence = await (setup.pluginCodeFence ?? nodePluginCodeFence)();
+  return fence.state === "not-fenced" ? fence.reason : undefined;
 }
 
 /**

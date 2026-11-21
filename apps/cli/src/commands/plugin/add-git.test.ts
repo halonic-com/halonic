@@ -47,6 +47,8 @@ function setupWith(exportGit?: GitExporter): PluginSetup {
       variables: { HALONIC_HOME: join(folder, "profile") },
     },
     clock: { now: () => new Date("2026-11-12T09:00:00.000Z") },
+    // In the sandbox, so a backend runs whatever this computer's sandbox says (HAL-15080).
+    pluginCodeFence: async () => ({ state: "fenced" }),
     ...(exportGit === undefined ? {} : { exportGit }),
   };
 }

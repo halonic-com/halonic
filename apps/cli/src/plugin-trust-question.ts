@@ -5,7 +5,12 @@
 // exit 3 on No, without a terminal, or for a fingerprint that isn't current.
 // Only the lines around the question differ, so each command passes its own.
 
-import type { PluginEntry, PluginProblem, PluginService } from "@halonicjs/app";
+import type {
+  PluginEntry,
+  PluginProblem,
+  PluginService,
+  RunnerUnfencedReason,
+} from "@halonicjs/app";
 import { formatPath } from "@halonicjs/schema-kit";
 import { KindedError } from "@halonicjs/std";
 import type { CommandContext, CommandResult } from "./command.ts";
@@ -15,6 +20,7 @@ import { markPart, type Phrase, phrase, plainText } from "./messages/phrase.ts";
 import { pluginMessages } from "./messages/plugin.ts";
 import { trustMessages } from "./messages/trust.ts";
 import { NotTrustedError } from "./not-trusted.ts";
+import { offHereLines } from "./output/plugin-off-here.ts";
 import {
   type ProgramsRun,
   pluginFingerprintLines,
@@ -33,12 +39,16 @@ export interface PluginTrustAnswer {
   readonly fingerprint: string | undefined;
   /** Whether the plugin's programs can run on this computer, for each program's Runs line. */
   readonly programsRun?: ProgramsRun;
+  /** Why its backend is off on this computer once trusted (`offHereFor`); `undefined` when it runs. */
+  readonly offHere?: RunnerUnfencedReason | undefined;
 }
 
 /** The lines a command says around the question, for the plugin it asks about. */
 export interface PluginTrustWords {
   /** With a ✓, once it is trusted. */
   readonly on: Message;
+  /** With a !, once it is trusted while its backend is off on this computer (R13). */
+  readonly offHere: Message;
   /** With a !, after No or Enter. */
   readonly off: Message;
   /** Line 1 of the refusal when there's no terminal to ask. */
@@ -58,6 +68,7 @@ export interface PluginTrustWords {
  * @example
  * await askToTrustPlugin(service, entry, { context, yes: false, fingerprint: undefined }, words);
  * // { exitCode: 0, lines: ["✓ Weather is on now."], json: { …, status: "on" } }
+ * // With `offHere: "container"`: "! Weather is trusted, but off on this computer until …", the reason and where to allow it
  */
 export async function askToTrustPlugin(
   service: PluginService,
@@ -105,6 +116,13 @@ export async function askToTrustPlugin(
       throw brokenPluginError(id, granted.error.problems);
     }
     throw fingerprintNotCurrent(entry, { check: [], fingerprint: granted.error.fingerprint });
+  }
+  if (answer.offHere !== undefined) {
+    return {
+      exitCode: exitCode.ok,
+      lines: offHereLines(words.offHere, answer.offHere),
+      json: { ...json, status: "on", offOnThisComputer: answer.offHere },
+    };
   }
   return {
     exitCode: exitCode.ok,

@@ -33,6 +33,8 @@ function setupWith(state: LocalToolState): PluginSetup {
       variables: { HALONIC_HOME: join(folder, "profile") },
     },
     clock: { now: () => new Date("2026-11-21T09:00:00.000Z") },
+    // In the sandbox, so a backend runs whatever this computer's sandbox says (HAL-15080).
+    pluginCodeFence: async () => ({ state: "fenced" }),
     localToolState: async () => {
       asked += 1;
       return state;

@@ -238,6 +238,24 @@ export const pluginMessages = defineMessages("plugin", {
   /** With a ✓, when it's trusted as it is now; nothing is asked. */
   alreadyOn: (name: string, trustedOn: string) =>
     phrase`${name} is already on. Nothing changed since ${trustedOn}.`,
+
+  // HAL-15080 (check C540 #2): a trusted plugin whose backend doesn't start
+  // here, because its code doesn't run in the sandbox on this computer and
+  // the command never runs it without. R13's words, as Studio's page says it.
+  /** With a !, in place of "is on now". */
+  trustedButOffHere: (name: string) =>
+    phrase`${name} is trusted, but off on this computer until you allow plugins and integrations to run without the sandbox.`,
+  /** With a !, in place of "is already on". */
+  alreadyTrustedButOffHere: (name: string) =>
+    phrase`${name} is already trusted, but off on this computer until you allow plugins and integrations to run without the sandbox.`,
+  /** With a !, in place of `plugin add`'s "Added … It's on.". */
+  addedButOffHere: (name: string, version: string) =>
+    phrase`Added ${name} ${version}. It's trusted, but off on this computer until you allow plugins and integrations to run without the sandbox.`,
+  /** Under the reason: where the yes can be given, and why not here. */
+  offHereAllow: () =>
+    phrase`Allow it in the Halonic desktop app. The halonic command runs plugin code only in the sandbox.`,
+  /** The state on its `plugin list` line, with a !. */
+  offHereState: () => phrase`off on this computer`,
   /** Answer No, or Enter, with a !: exit 3. */
   stillOff: (name: string) =>
     phrase`${name} is still off. Nothing from it runs until you trust it.`,
