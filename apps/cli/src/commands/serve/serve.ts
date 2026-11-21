@@ -276,7 +276,8 @@ async function listenOnComputer(
         folder: root,
         home,
       }),
-      // Read at every request too, so the waiting list names a renamed agent at once.
+      // Read at every request too, from the live version a run uses: a rename saved in an
+      // agent file shows once a new live version holds it.
       agentNames: workspaceAgentNames(() => versions.latest()),
     },
     studioPage: openStudioPageFolder(studioFolderOf(setup)),

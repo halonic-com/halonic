@@ -1,4 +1,5 @@
 import type { RunSummary } from "@halonicjs/events";
+import type { SendOptions } from "@halonicjs/ports";
 import { type ErrorKind, KindedError } from "@halonicjs/std";
 import type { InboxRuns } from "@halonicjs/studio-feature-inbox/api";
 import { unreachableWords } from "@halonicjs/studio-shell";
@@ -122,7 +123,8 @@ async function ask(
  * The runs of the served workspace as the Inbox reads and answers them
  * (requirement `studio.served-inbox-runs`): it lists what waits with
  * `GET /api/waiting-runs` and sends approve, reject and wait answers with
- * `POST /api/runs/<id>/events`, both on the page's own address and session.
+ * `POST /api/runs/<id>/events`, naming the call or wait step it answers,
+ * both on the page's own address and session.
  * It names each agent as the list last named it, and by its id when it didn't.
  *
  * While anyone listens, the list is read again every 10 s and when the window
@@ -173,12 +175,17 @@ export class ServedInboxRuns implements InboxRuns {
     runId: string,
     event: string,
     payload?: unknown,
-    options?: { readonly callId?: string },
+    options?: SendOptions,
   ): Promise<RunSummary> {
+    // The call or wait step goes along, so the host refuses an answer that came late
+    // rather than letting it answer the run's next call or wait step.
     const body = {
       event,
       ...(payload === undefined ? {} : { payload }),
       ...(options?.callId === undefined ? {} : { callId: options.callId }),
+      ...(options?.wait === undefined
+        ? {}
+        : { wait: { state: options.wait.state, since: options.wait.since } }),
     };
     const summary = await ask(
       this.#options,

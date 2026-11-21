@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { RunSummary } from "@halonicjs/events";
+import { KindedError } from "@halonicjs/std";
 import { PresentationProvider } from "@halonicjs/studio-kit";
 import { createShell } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
@@ -255,5 +256,27 @@ verifies("inbox.home", () => {
     fake.fail(new Error("fetch failed"));
     await act(() => inbox.refresh());
     expect(rows(root)).toHaveLength(1);
+    expect(root.querySelector('[role="status"]')?.textContent).toBe("");
+  });
+
+  it("says over its rows to sign in again once the sign-in ended (HAL-13830 HM1)", async () => {
+    const fake = fakeRuns([notes]);
+    const inbox = new Inbox(fake.runs);
+    const root = await renderSuspending(<OnHome inbox={inbox} />);
+    await settled();
+    const status = root.querySelector('[role="status"]');
+    expect(status?.textContent).toBe("");
+    fake.fail(new KindedError("unauthenticated", "Sign in again to list what waits for you."));
+    await act(() => inbox.refresh());
+    // The status was there before the line, so a screen reader reads the line once (as SO2).
+    expect(root.querySelector('[role="status"]')).toBe(status);
+    expect(status?.textContent).toBe("Sign in again to list what waits for you.");
+    expect(rows(root)).toHaveLength(1);
+    await act(() => inbox.refresh());
+    expect(root.querySelector('[role="status"]')).toBe(status);
+
+    fake.answer();
+    await act(() => inbox.refresh());
+    expect(status?.textContent).toBe("");
   });
 });

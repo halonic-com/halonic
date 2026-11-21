@@ -422,7 +422,7 @@ verifies("inbox.page", () => {
       expect(line?.classList.contains("pt-4")).toBe(true);
     });
 
-    it("has Next take the card's width and wrap its label, so a long title isn't cut (HAL-13801 IN1)", async () => {
+    it("has Next take the card's width and wrap its label as one run of text (HAL-13801 IN1, HAL-13830 IN2)", async () => {
       const clock = { now: new Date(2026, 10, 8, 10, 43) };
       const root = render(
         <PresentationProvider presentation="phone">
@@ -437,6 +437,16 @@ verifies("inbox.page", () => {
       const next = button(root, "Next: Approve this reply?");
       expect(next.classList.contains("w-full")).toBe(true);
       expect(next.className).not.toContain("whitespace-nowrap");
+      // The button is a flex box: the label and the count are one item, the screen reader's count apart.
+      const items = [...next.children];
+      expect(items.map((item) => item.textContent)).toEqual([
+        "Next: Approve this reply? ·\u00a01\u00a0left",
+        ", 1 left",
+      ]);
+      expect(items[1]?.className).toContain("sr-only");
+      expect(items[0]?.querySelector('[aria-hidden="true"]')?.textContent).toBe(
+        " ·\u00a01\u00a0left",
+      );
     });
 
     it("has no Back link on the desktop", async () => {

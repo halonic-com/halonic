@@ -6,7 +6,7 @@
 
 The `halonic serve` command shall give the server the names of the served workspace's agents, by id, as the agent files of the live version say, read again at every request, so `GET /api/waiting-runs` can name the agents and subagents its approvals name. When two agent files have the same id, the first one shall win, as on the desktop.
 
-Rationale: a person reads an approval by the agent's name, as `halonic run` and the desktop show it. A name read at every request shows a renamed agent at once, as the workspace's name does.
+Rationale: a person reads an approval by the agent's name, as `halonic run` and the desktop show it. The names come from the live version, the one a run uses, as the workspace's name does: a rename saved in an agent file shows once a new live version holds it, and the next request then gets it.
 
 ## Examples
 

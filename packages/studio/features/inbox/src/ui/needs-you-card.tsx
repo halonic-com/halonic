@@ -1,10 +1,17 @@
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { Button, List, usePresentation } from "@halonicjs/studio-kit";
-import { firstLoad, type HomeCardProps } from "@halonicjs/studio-shell";
+import {
+  type EngineWords,
+  engineWords,
+  engineWordsOf,
+  firstLoad,
+  type HomeCardProps,
+} from "@halonicjs/studio-shell";
 import { use, useCallback, useSyncExternalStore } from "react";
 import { InboxService } from "../api.ts";
 import type { Inbox } from "../inbox.ts";
 import { inboxRow } from "./inbox-row.tsx";
+import { SignedOutLine } from "./load-lines.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
 import { useRunFacts } from "./use-run-facts.ts";
 
@@ -19,6 +26,7 @@ export function NeedsYouCard({ context, attempt }: HomeCardProps) {
     <NeedsYouView
       inbox={context.services.get(InboxService)}
       runFacts={runFacts}
+      words={engineWordsOf(context)}
       attempt={attempt}
       {...(openPlace === undefined ? {} : { openInbox: () => openPlace("inbox") })}
     />
@@ -36,6 +44,8 @@ export interface NeedsYouViewProps {
   readonly now?: () => Date;
   /** The section's Try again count from {@link HomeCardProps}; a new one loads again after a failed first load. */
   readonly attempt?: number;
+  /** The engine words for this window's host, for a sign-in that ended with no reason of its own. */
+  readonly words?: EngineWords;
 }
 
 /**
@@ -45,7 +55,8 @@ export interface NeedsYouViewProps {
  * waiting, the one line "Nothing is waiting for you." and the heading stays.
  *
  * The section shows its skeleton until the Inbox's first list loads, and its error with **Try
- * again** if that load fails; a later failed load keeps the rows as they were.
+ * again** if that load fails; a later failed load keeps the rows as they were. When the served
+ * Studio's sign-in ended, the Inbox's "Sign in again to …" line shows over them (HAL-13830 HM1).
  */
 export function NeedsYouView({
   inbox,
@@ -53,6 +64,7 @@ export function NeedsYouView({
   openInbox,
   now = () => new Date(),
   attempt = 0,
+  words = engineWords["desktop-app"],
 }: NeedsYouViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
   const state = useSyncExternalStore(subscribe, () => inbox.state);
@@ -69,6 +81,7 @@ export function NeedsYouView({
 
   return (
     <>
+      <SignedOutLine error={state.loaded ? state.error : undefined} words={words} />
       <List
         label="Needs you"
         rows={shown.map((item) => inboxRow(item, now(), runFacts))}
