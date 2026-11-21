@@ -2,7 +2,7 @@
 
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeAll, expect, it } from "vitest";
+import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { buttonNamed, unmount } from "../test-support.tsx";
 import {
   arrowsSection,
@@ -22,7 +22,7 @@ afterEach(unmount);
 
 verifies("workflows.page.step-arrows", () => {
   it("numbers the step's arrows in file order, with their event, timer and condition", async () => {
-    const { page } = await showPage();
+    const { page } = await showPage(vi.fn);
 
     await pick(page, "sort");
     expect(arrowsSection(page).rows).toEqual([
@@ -35,13 +35,13 @@ verifies("workflows.page.step-arrows", () => {
   });
 
   it("has no arrows section on an end step", async () => {
-    const { page } = await showPage();
+    const { page } = await showPage(vi.fn);
     await pick(page, "done");
     expect(arrowsSection(page).section).toBeUndefined();
   });
 
   it("moves an arrow from its ⋮, keeping focus on its row, and says where it is now", async () => {
-    const { page, changeArrows, announce } = await showPage();
+    const { page, changeArrows, announce } = await showPage(vi.fn);
     await pick(page, "sort");
 
     await menuPick(page, "More actions for arrow 2", "Move up");
@@ -58,7 +58,7 @@ verifies("workflows.page.step-arrows", () => {
   });
 
   it("offers Move up only below the first arrow and Move down only above the last", async () => {
-    const { page } = await showPage();
+    const { page } = await showPage(vi.fn);
     await pick(page, "sort");
 
     const entries = openMenu(page, "More actions for arrow 1").map((one) => [
@@ -80,7 +80,7 @@ verifies("workflows.page.step-arrows", () => {
   });
 
   it("moves once when Move up is picked again before the first move is written", async () => {
-    const { page, changeArrows, release } = await showPage({ held: true });
+    const { page, changeArrows, release } = await showPage(vi.fn, { held: true });
     await pick(page, "sort");
 
     await menuPick(page, "More actions for arrow 2", "Move up");
@@ -95,13 +95,13 @@ verifies("workflows.page.step-arrows", () => {
   });
 
   it("has no arrows section where the host can't change arrows", async () => {
-    const { page } = await showPage({ canChangeArrows: false });
+    const { page } = await showPage(vi.fn, { canChangeArrows: false });
     await pick(page, "sort");
     expect(arrowsSection(page).section).toBeUndefined();
   });
 
   it("adds an arrow on done to the step picked in Go to…, and says so", async () => {
-    const { page, changeArrows, announce } = await showPage();
+    const { page, changeArrows, announce } = await showPage(vi.fn);
     await pick(page, "sort");
 
     const picker = await goTo(page, "done");
@@ -117,7 +117,7 @@ verifies("workflows.page.step-arrows", () => {
   });
 
   it("puts focus on Go to… when Add is pressed with no step picked, and adds nothing", async () => {
-    const { page, changeArrows } = await showPage();
+    const { page, changeArrows } = await showPage(vi.fn);
     await pick(page, "sort");
 
     await act(async () => buttonNamed(page, "Add")?.click());
@@ -127,7 +127,7 @@ verifies("workflows.page.step-arrows", () => {
   });
 
   it("says why on a toast when the arrows can't change, and announces nothing", async () => {
-    const { page, announce, toasts } = await showPage({ fail: true });
+    const { page, announce, toasts } = await showPage(vi.fn, { fail: true });
     await pick(page, "sort");
 
     await goTo(page, "done");
@@ -141,7 +141,7 @@ verifies("workflows.page.step-arrows", () => {
   });
 
   it("lists the steps with arrows in, each opening its step's card", async () => {
-    const { page } = await showPage();
+    const { page } = await showPage(vi.fn);
     await pick(page, "write");
 
     const from = [...page.querySelectorAll<HTMLButtonElement>("aside section button")].filter(
@@ -156,7 +156,7 @@ verifies("workflows.page.step-arrows", () => {
   });
 
   it("lists a step with two arrows in once, and not the step's own arrow to itself", async () => {
-    const { page } = await showPage({
+    const { page } = await showPage(vi.fn, {
       workflow: {
         ...reply,
         arrows: [

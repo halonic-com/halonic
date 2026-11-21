@@ -26,7 +26,7 @@ const focusedStep = () => (document.activeElement as HTMLElement | null)?.datase
 
 verifies("workflows.page.remove", () => {
   it("removes a step at once and says what went with it, with Undo", async () => {
-    const { page, removeStep, toasts, announce } = await showPage();
+    const { page, removeStep, toasts, announce } = await showPage(vi.fn);
     await pick(page, "write");
 
     await press(page, "Remove step");
@@ -46,7 +46,7 @@ verifies("workflows.page.remove", () => {
   });
 
   it("puts focus on the canvas when the removed step was the last in the file", async () => {
-    const { page } = await showPage();
+    const { page } = await showPage(vi.fn);
     await pick(page, "done");
 
     await press(page, "Remove step");
@@ -58,7 +58,7 @@ verifies("workflows.page.remove", () => {
     const undo = vi.fn(async () => {
       throw new KindedError("conflict", "Step write can't be put back.");
     });
-    const { page, toasts } = await showPage({ undo });
+    const { page, toasts } = await showPage(vi.fn, { undo });
     await pick(page, "write");
     await press(page, "Remove step");
 
@@ -75,7 +75,7 @@ verifies("workflows.page.remove", () => {
   });
 
   it("refuses to remove the first step, says why under the button, and removes nothing", async () => {
-    const { page, removeStep, announce } = await showPage();
+    const { page, removeStep, announce } = await showPage(vi.fn);
     await pick(page, "sort");
 
     await press(page, "Remove step");
@@ -90,7 +90,7 @@ verifies("workflows.page.remove", () => {
   });
 
   it("removes an arrow from its trash button, focusing the next row, else Add", async () => {
-    const { page, removeArrow, toasts } = await showPage();
+    const { page, removeArrow, toasts } = await showPage(vi.fn);
     await pick(page, "sort");
 
     await press(page, "Remove arrow 1");
@@ -109,7 +109,7 @@ verifies("workflows.page.remove", () => {
   });
 
   it("says why on a toast when the host can't remove, and keeps the step and the arrow", async () => {
-    const { page, toasts } = await showPage({ fail: true });
+    const { page, toasts } = await showPage(vi.fn, { fail: true });
     await pick(page, "sort");
 
     await press(page, "Remove arrow 1");

@@ -2,7 +2,7 @@
 
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeAll, expect, it } from "vitest";
+import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { choose, field, typeAndLeave, unmount } from "../test-support.tsx";
 import { arrowsSection, menuPick, pick, showPage } from "./step-arrows.test-helper.tsx";
 
@@ -34,7 +34,7 @@ const anyRef = expect.objectContaining({ id: "reply" });
 
 verifies("workflows.page.arrow-fields", () => {
   it("expands a pressed row to To, On event, Condition (JSON) and Label, one row at a time", async () => {
-    const { page } = await showPage();
+    const { page } = await showPage(vi.fn);
     await pick(page, "sort");
 
     await expand(page, 1);
@@ -57,7 +57,7 @@ verifies("workflows.page.arrow-fields", () => {
   });
 
   it("saves a pick of To at once, and the event and label when they're left", async () => {
-    const { page, changeArrows } = await showPage();
+    const { page, changeArrows } = await showPage(vi.fn);
     await pick(page, "sort");
     await expand(page, 2);
 
@@ -65,7 +65,7 @@ verifies("workflows.page.arrow-fields", () => {
     await typeAndLeave(field(page, "On event") as HTMLInputElement, "skipped");
     await typeAndLeave(field(page, "Label") as HTMLInputElement, "Nothing to reply");
 
-    expect(changeArrows.mock.calls.map((call) => call.slice(1))).toEqual([
+    expect(vi.mocked(changeArrows).mock.calls.map((call) => call.slice(1))).toEqual([
       ["sort", { kind: "set", index: 1, field: "to", value: "done" }],
       ["sort", { kind: "set", index: 1, field: "event", value: "skipped" }],
       ["sort", { kind: "set", index: 1, field: "label", value: "Nothing to reply" }],
@@ -75,7 +75,7 @@ verifies("workflows.page.arrow-fields", () => {
   });
 
   it("says a condition isn't JSON when it's left, keeps the saved one, and empty takes it out", async () => {
-    const { page, changeArrows } = await showPage();
+    const { page, changeArrows } = await showPage(vi.fn);
     await pick(page, "sort");
     await expand(page, 1);
     const condition = field(page, "Condition (JSON)") as HTMLTextAreaElement;
@@ -106,7 +106,7 @@ verifies("workflows.page.arrow-fields", () => {
   });
 
   it("offers a wait step's arrow a timer in place of its event, with After's hint", async () => {
-    const { page, changeArrows } = await showPage();
+    const { page, changeArrows } = await showPage(vi.fn);
     await pick(page, "approve");
     await expand(page, 1);
 
@@ -142,14 +142,14 @@ verifies("workflows.page.arrow-fields", () => {
   });
 
   it("offers no timer on a step that isn't a wait", async () => {
-    const { page } = await showPage();
+    const { page } = await showPage(vi.fn);
     await pick(page, "sort");
     await expand(page, 1);
     expect(page.textContent).not.toContain("Use a timer instead");
   });
 
   it("keeps a moved arrow's row expanded in its new place", async () => {
-    const { page } = await showPage();
+    const { page } = await showPage(vi.fn);
     await pick(page, "sort");
     await expand(page, 2);
 

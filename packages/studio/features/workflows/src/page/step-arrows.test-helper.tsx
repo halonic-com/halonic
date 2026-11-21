@@ -3,7 +3,6 @@
 import { KindedError } from "@halonicjs/std";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { act } from "react";
-import { vi } from "vitest";
 import type { WorkflowArrowChange, WorkflowsHost, WorkflowView } from "../api.ts";
 import { memoryHost, memoryRuns, show } from "../test-support.tsx";
 import { WorkflowScreen } from "./workflow-page.tsx";
@@ -35,28 +34,42 @@ type RemoveStep = NonNullable<WorkflowsHost["removeStep"]>;
 type RemoveArrow = NonNullable<WorkflowsHost["removeArrow"]>;
 
 /**
+ * Wraps a host part so the test can check its calls. Tests pass vitest's `vi.fn`, which only test
+ * files may import, so the helper sees the wrapped part as the part itself (see {@link spied}).
+ */
+export type Spy = (part: (...args: never[]) => unknown) => unknown;
+
+/** `part` wrapped by `spy`, called the way `part` is. */
+function spied<F extends (...args: never[]) => unknown>(spy: Spy, part: F): F {
+  return spy(part) as F;
+}
+
+/**
  * The page over a host whose arrows change as the file would: an added arrow comes last, a moved
  * one swaps places, a removed step takes its arrows and those into it along. `fail` makes every
  * change fail instead, `held` makes each arrow change wait until the returned `release` is
  * called, `canChangeArrows: false` leaves `changeArrows` out, and `undo` is what each removal's
- * undo does.
+ * undo does. `spy` wraps the host's parts and `announce` so the test can check their calls.
  */
-export async function showPage({
-  fail = false,
-  held = false,
-  canChangeArrows = true,
-  workflow = reply,
-  undo = async () => {},
-} = {}) {
+export async function showPage(
+  spy: Spy,
+  {
+    fail = false,
+    held = false,
+    canChangeArrows = true,
+    workflow = reply,
+    undo = async () => {},
+  } = {},
+) {
   let view = workflow;
   let release: () => void = () => {};
-  const changeArrows = vi.fn<ChangeArrows>(async (_ref, stepId, change) => {
+  const changeArrows = spied<ChangeArrows>(spy, async (_ref, stepId, change) => {
     if (held) await new Promise<void>((resolve) => (release = resolve));
     if (fail) throw new KindedError("invalid_input", "The file can't be changed.");
     view = { ...view, arrows: changedArrows(view.arrows, stepId, change) };
     notify([]);
   });
-  const removeStep = vi.fn<RemoveStep>(async (_ref, stepId) => {
+  const removeStep = spied<RemoveStep>(spy, async (_ref, stepId) => {
     if (fail) throw new KindedError("invalid_input", "The file can't be changed.");
     const gone = view.arrows.filter((arrow) => arrow.from === stepId || arrow.to === stepId);
     view = {
@@ -67,7 +80,7 @@ export async function showPage({
     notify([]);
     return { arrows: gone.length, undo };
   });
-  const removeArrow = vi.fn<RemoveArrow>(async (_ref, stepId, index) => {
+  const removeArrow = spied<RemoveArrow>(spy, async (_ref, stepId, index) => {
     if (fail) throw new KindedError("invalid_input", "The file can't be changed.");
     const arrow = view.arrows.filter((one) => one.from === stepId)[index];
     view = { ...view, arrows: view.arrows.filter((one) => one !== arrow) };
@@ -81,7 +94,7 @@ export async function showPage({
     removeStep,
     removeArrow,
   });
-  const announce = vi.fn();
+  const announce = spied(spy, (_message: string) => {});
   const toasts = createToastStore();
   const page = await show(
     <ToastStoreProvider store={toasts}>
