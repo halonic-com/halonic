@@ -2,6 +2,7 @@
 
 - Approval: the task to build this is HAL-13427, whose description asks for this change and its security review by Liam and Julian; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:XUqvO/dhrRSwab5E9zYwJH3L2kYYpon/X7HSM/XxOxDCmcj1o3UKknQcet35Ili7KzDTzOORkYp52caHoHUiAA==
 - Task: HAL-13427
 
 ## What changes
