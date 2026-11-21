@@ -99,6 +99,9 @@ export function ProblemsBand({
   );
 }
 
+/** **Open *Writer*** ends the sentence on a desktop and sits on its own line on a phone. */
+const openAgentLine = "phone:block";
+
 /** "*Writer* uses the model alias `smrt`, which this workspace doesn't have. …" · **Open *Writer***. */
 function MissingAliasLine({
   missingAlias: { agent, alias },
@@ -116,9 +119,13 @@ function MissingAliasLine({
       {openAgent === undefined ? null : (
         <>
           {" "}
-          <button type="button" className={inlineLinkClasses} onClick={() => openAgent(agent.id)}>
-            {words.openAgent(agent.name)}
-          </button>
+          {/* On a phone the link is 48 px tall, which would push its line down inside the
+              sentence, so it gets a line of its own there (C564 B). */}
+          <span className={openAgentLine}>
+            <button type="button" className={inlineLinkClasses} onClick={() => openAgent(agent.id)}>
+              {words.openAgent(agent.name)}
+            </button>
+          </span>
         </>
       )}
     </span>

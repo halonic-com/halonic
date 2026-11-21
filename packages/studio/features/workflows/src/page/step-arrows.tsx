@@ -28,6 +28,9 @@ const arrowNumber = [
   "phone:h-control-lg touch:h-control-lg",
 ].join(" ");
 
+/** A row's words wrap like a sentence, from the left, instead of centred like a button label. */
+const arrowWords = "min-w-0 text-start";
+
 /** Props for {@link StepArrows}. */
 export interface StepArrowsProps {
   readonly stepId: string;
@@ -192,8 +195,12 @@ export function StepArrows({
                     icon={<ChevronDownIcon />}
                     onClick={() => setExpanded(expanded === index ? undefined : index)}
                   >
-                    <span className="font-medium">{words.to(nameOf(names, arrow.to))}</span>{" "}
-                    <span className="text-fg-muted">{whenItFires(arrow)}</span>
+                    {/* One child, so the kit button's flex row doesn't split the words into
+                        two centred columns when they wrap: they read as one sentence (C564 A). */}
+                    <span className={arrowWords}>
+                      <span className="font-medium">{words.to(nameOf(names, arrow.to))}</span>{" "}
+                      <span className="text-fg-muted">{whenItFires(arrow)}</span>
+                    </span>
                   </Button>
                   <NeverTakenLine beatenBy={beatenBy[index]} />
                 </span>

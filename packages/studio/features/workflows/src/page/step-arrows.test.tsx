@@ -49,6 +49,18 @@ verifies("workflows.page.step-arrows", () => {
     expect(classes(number)).toEqual(expect.arrayContaining(["h-control-sm", "items-center"]));
   });
 
+  // The kit button lays out each child as its own centred flex item, so two spans would wrap as
+  // two columns (C564 A). The words sit in one child that starts at the left.
+  it("wraps a row's words as one sentence from the left", async () => {
+    const { page } = await showPage(vi.fn);
+    await pick(page, "sort");
+
+    const row = arrowsSection(page).section?.querySelector("li button[aria-expanded]");
+    const words = row?.lastElementChild;
+    expect(words?.textContent).toBe("→ approve on done if category = refund");
+    expect(words?.className.split(" ")).toEqual(expect.arrayContaining(["min-w-0", "text-start"]));
+  });
+
   it("has no arrows section on an end step", async () => {
     const { page } = await showPage(vi.fn);
     await pick(page, "done");
