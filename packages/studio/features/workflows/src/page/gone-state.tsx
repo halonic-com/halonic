@@ -13,3 +13,15 @@ export function goneState(
   if (load.kind !== "failed" || load.gone !== true || goToWorkflows === undefined) return undefined;
   return <ItemGone kindName="workflow" place="Workflows" onGoTo={goToWorkflows} />;
 }
+
+/**
+ * What stands in the page's place, or `undefined` when the page shows: after Delete the strip with
+ * Undo, where "isn't in this workspace any more" would otherwise be; else the item-gone state.
+ */
+export function insteadOfPage(
+  trashStrip: ReactNode,
+  load: ReturnType<typeof useWorkflow>["load"],
+  goToWorkflows: (() => void) | undefined,
+): ReactNode {
+  return trashStrip ?? goneState(load, goToWorkflows);
+}
