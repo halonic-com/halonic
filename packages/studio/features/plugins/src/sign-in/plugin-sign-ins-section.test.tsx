@@ -4,7 +4,7 @@ import type { Plugin } from "@halonicjs/format";
 import { type ExternalAddress, OpenExternalProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PluginSettingsReader } from "../settings/plugin-settings-section.tsx";
 import { acmeWithSignIn, noSettings, weather } from "../test-support/plugins.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -18,6 +18,15 @@ import {
 afterEach(unmountAll);
 
 const authorizeUrl = "https://auth.example.com/oauth/authorize?client_id=abc123";
+
+/** Answers from the host that aren't the approved sign-in page, each with what is wrong with it. */
+const wrongPages = [
+  ["another host", "https://evil.example.net/oauth/authorize?client_id=abc123"],
+  ["the approved host over http", "http://auth.example.com/oauth/authorize?client_id=abc123"],
+  ["the approved host on another port", "https://auth.example.com:8443/oauth/authorize"],
+  ["the approved host as a user name", "https://auth.example.com@evil.example.net/oauth"],
+  ["no address", "auth.example.com/oauth/authorize"],
+] as const;
 
 /**
  * The host's sign-ins as a test sets them, with every call written down, and
@@ -313,22 +322,53 @@ verifies("plugins.plugin-sign-in-page", () => {
     expect(signIns.opened).toEqual([authorizeUrl]);
   });
 
-  it.each([
-    ["another host", "https://evil.example.net/oauth/authorize?client_id=abc123"],
-    ["the approved host over http", "http://auth.example.com/oauth/authorize?client_id=abc123"],
-    ["the approved host on another port", "https://auth.example.com:8443/oauth/authorize"],
-    ["the approved host as a user name", "https://auth.example.com@evil.example.net/oauth"],
-    ["no address", "auth.example.com/oauth/authorize"],
-  ])("opens nothing when the host answers %s, and names the approved host", async (_, answer) => {
-    const signIns = new FakeSignIns();
-    signIns.startAnswer = answer;
-    const view = await show(signIns);
+  it.each(wrongPages)(
+    "opens nothing when the host answers %s, and names the approved host",
+    async (_, answer) => {
+      const signIns = new FakeSignIns();
+      signIns.startAnswer = answer;
+      const view = await show(signIns);
 
-    await press("Sign in");
+      await press("Sign in");
 
-    expect(signIns.opened).toEqual([]);
-    expect(view.textContent).toContain(
-      "Couldn't start the sign-in: the page to open isn't on auth.example.com.",
-    );
+      expect(signIns.opened).toEqual([]);
+      expect(view.textContent).toContain(
+        "Couldn't start the sign-in: the page to open isn't on auth.example.com.",
+      );
+    },
+  );
+
+  // Studio's oldest webviews (WebKitGTK 2.44, Chromium 123) have no `URL.parse` (HAL-13797).
+  describe("without URL.parse", () => {
+    // jsdom's `URL` inherits `parse`, so it is hidden behind an own `undefined` rather than deleted.
+    let parse: PropertyDescriptor | undefined;
+    beforeEach(() => {
+      parse = Object.getOwnPropertyDescriptor(URL, "parse");
+      Object.defineProperty(URL, "parse", { value: undefined, configurable: true });
+    });
+    afterEach(() => {
+      if (parse === undefined) Reflect.deleteProperty(URL, "parse");
+      else Object.defineProperty(URL, "parse", parse);
+    });
+
+    it("opens the address the host answers on the approved host", async () => {
+      expect(URL.parse).toBeUndefined();
+      const signIns = new FakeSignIns();
+      await show(signIns);
+
+      await press("Sign in");
+
+      expect(signIns.opened).toEqual([authorizeUrl]);
+    });
+
+    it.each(wrongPages)("opens nothing when the host answers %s", async (_, answer) => {
+      const signIns = new FakeSignIns();
+      signIns.startAnswer = answer;
+      await show(signIns);
+
+      await press("Sign in");
+
+      expect(signIns.opened).toEqual([]);
+    });
   });
 });
