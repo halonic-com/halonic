@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12238 (tunnel B3), from the phase B build plan on HAL-12232 (decisions 1–4, 8 and 9) and the ADR "Pairing and the end-to-end session"; Julian and Liam review this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:z1G5tWi3LEZaTz3HehxPRrJd49rQOMHc/IKXcOufA83tZep4Q+a/TZQvQjlDMkRvEFNRk8PAG73oUKsspCJ1Bw==
 
 The remote gateway's listener now gives every binary frame to `SecureSession`, the host's end of the end-to-end session, and runs the gateway protocol only inside it. That changes what two active requirements say about the wire, and nothing about what the gateway lets a phone do:
 
