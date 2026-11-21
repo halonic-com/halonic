@@ -244,6 +244,20 @@ verifies("cloudflare-live.transfer", () => {
       ).rejects.toThrow(/answered 404 not_found, expected 401/);
       expect(waited).toBe(2);
     });
+    it("names Cloudflare's error number for a 500 page, and nothing else of the page", async () => {
+      const target: WorkerTarget = {
+        baseUrl: base,
+        fetch: async () =>
+          new Response(
+            `<html><title>Worker threw exception | ${base}</title>Error 1101 ${key}</html>`,
+            { status: 500, headers: { "content-type": "text/html" } },
+          ),
+      };
+      const error = await workerChecks.adminKeyActive(target).catch((caught: unknown) => caught);
+      expect(String(error)).toMatch(/answered 500 Cloudflare error 1101, expected 401/);
+      expect(String(error)).not.toContain(key);
+      expect(String(error)).not.toContain("example.workers.dev");
+    });
   });
 
   describe("the bad-key checks", () => {

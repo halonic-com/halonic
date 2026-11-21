@@ -116,5 +116,37 @@ verifies("cloudflare-live.transfer", () => {
       ).rejects.toThrow("try 5 failed");
       expect(tries).toBe(6);
     });
+
+    it("reports each retried failure with its try and time, but not a pass or a failure it throws", async () => {
+      const outcomes = ["fail", "pass", "fail", "pass", "pass", "pass"];
+      let tries = 0;
+      let clock = 1_000;
+      const reported: string[] = [];
+      await eventually(
+        async () => {
+          if (outcomes[tries++] === "fail") throw new Error(`try ${tries} failed`);
+        },
+        {
+          sleep: async (ms) => {
+            clock += ms;
+          },
+          now: () => clock,
+          onRetry: (attempt, elapsedMs, error) =>
+            reported.push(`${attempt} ${elapsedMs} ${(error as Error).message}`),
+        },
+      );
+      expect(reported).toEqual(["1 0 try 1 failed", "3 10000 try 3 failed"]);
+
+      const thrown: string[] = [];
+      await expect(
+        eventually(
+          async () => {
+            throw new Error("not a retry");
+          },
+          { retryIf: () => false, onRetry: () => void thrown.push("reported") },
+        ),
+      ).rejects.toThrow("not a retry");
+      expect(thrown).toEqual([]);
+    });
   });
 });

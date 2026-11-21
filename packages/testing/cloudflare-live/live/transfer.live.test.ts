@@ -37,14 +37,22 @@ describe("the deployed Worker's admin routes", () => {
     await expect(workerChecks.adminClosed(target, "not-the-key")).resolves.toBeUndefined();
   });
 
-  // While the key rolls out, an older Worker version still gives the closed 404: retry only that,
-  // so any other wrong answer, such as a wrong key taken, fails at once.
+  // While the key rolls out, an older Worker version still gives the closed 404, and on CI a try a
+  // few seconds after the key was set has met a 500 (HAL-14453): retry only those, so any other
+  // wrong answer, such as a wrong key taken, fails at once. A 500 that lasts still fails at the end.
   const olderVersionAnswered = (error: unknown) =>
-    error instanceof UnexpectedStatus && error.status === 404;
+    error instanceof UnexpectedStatus && (error.status === 404 || error.status >= 500);
 
-  // Two secret changes at a few seconds each, each waited out with several passes in a row, plus
-  // the transfer: more than the config's 60 s.
-  const transferTimeout = 240_000;
+  // Each retried failure is printed with its try and time, so a run that runs out of tries shows
+  // how long the older version kept answering. The checks' messages never hold a key.
+  const report = (wait: string) => (attempt: number, elapsedMs: number, error: unknown) =>
+    console.log(
+      `${wait}, try ${attempt} at ${Math.round(elapsedMs / 1000)} s: ${error instanceof Error ? error.message : String(error)}`,
+    );
+
+  // Two secret changes, each waited out with several passes in a row (up to about a minute for the
+  // key, a minute and a half for its removal), plus the transfer: more than the config's 60 s.
+  const transferTimeout = 300_000;
   it(
     "refuses bad keys, takes an export in and gives it back, and is closed again afterwards",
     async () => {
@@ -70,7 +78,7 @@ describe("the deployed Worker's admin routes", () => {
               await workerChecks.adminKeyActive(target);
               await workerChecks.adminRefusesBadKeys(target, key);
             },
-            { retryIf: olderVersionAnswered },
+            { retryIf: olderVersionAnswered, onRetry: report("waiting for the key") },
           );
           return roundTrip({ baseUrl: target.baseUrl, key, source: exampleExport, work });
         },
@@ -79,11 +87,14 @@ describe("the deployed Worker's admin routes", () => {
 
       // Removing a secret makes a new Worker version, which takes a moment to answer everywhere.
       // Until then an older one still takes the key, and its answer depends on the route, so every
-      // failure is retried, but only a run of passes counts. An edge that doesn't route the address
-      // has had its whole wait already, so trying it again would only multiply that (HAL-14054).
+      // failure is retried, but only a run of passes counts. On CI an older version kept the key
+      // for more than the 35 s that 8 tries wait, so this waits as long as 16 tries (HAL-14453). An
+      // edge that doesn't route the address has had its whole wait already, so trying it again
+      // would only multiply that (HAL-14054).
       await eventually(() => workerChecks.adminClosed(target, used), {
-        attempts: 8,
+        attempts: 16,
         retryIf: (error) => !(error instanceof EdgeNotRouted),
+        onRetry: report("waiting for the key to go"),
       });
     },
     transferTimeout,
