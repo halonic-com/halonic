@@ -29,6 +29,7 @@ export default defineConfig({
         "toast-placement": `${import.meta.dirname}/e2e/pages/toast-placement.html`,
         "kept-scroll": `${import.meta.dirname}/e2e/pages/kept-scroll.html`,
         "settings-open-page": `${import.meta.dirname}/e2e/pages/settings-open-page.html`,
+        "new-item-row": `${import.meta.dirname}/e2e/pages/new-item-row.html`,
       },
     },
   },
