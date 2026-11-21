@@ -15,7 +15,8 @@
     "@halonicjs/engine",
     "@halonicjs/oauth-sign-in",
     "@halonicjs/google-setup",
-    "@halonicjs/test-runner"
+    "@halonicjs/test-runner",
+    "@halonicjs/words"
   ],
   "apiTypes": [
     "@halonicjs/events",

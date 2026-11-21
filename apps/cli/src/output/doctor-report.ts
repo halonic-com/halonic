@@ -34,6 +34,7 @@ import {
   wsl2FolderDocs,
 } from "../messages/sandbox.ts";
 import { shownSize } from "../messages/size.ts";
+import { suggestedCommand } from "../messages/suggested-command.ts";
 import type { Mark } from "./paint.ts";
 import { printable, withoutUnsafe } from "./printable.ts";
 import { shellWord } from "./shell-word.ts";
@@ -175,8 +176,13 @@ function workspaceCheck(line: WorkspaceLine, dir: string | undefined): CheckLine
 }
 
 function workspaceTrust(line: WorkspaceLine, dir: string | undefined): Message {
+  const trust = suggestedCommand("trust", dir);
   if (line.fileProblems !== undefined) {
-    return doctorMessages.fileProblems(line.name, line.fileProblems, dir);
+    return doctorMessages.fileProblems(
+      line.name,
+      line.fileProblems,
+      suggestedCommand("validate", dir),
+    );
   }
   switch (line.trust) {
     case "trusted":
@@ -184,13 +190,13 @@ function workspaceTrust(line: WorkspaceLine, dir: string | undefined): Message {
     case "not-needed":
       return doctorMessages.testModelOnly(line.name);
     case "changed":
-      return doctorMessages.changedSinceTrusted(dir);
+      return doctorMessages.changedSinceTrusted(trust);
     case "refused":
-      return doctorMessages.refused(dir);
+      return doctorMessages.refused(trust);
     case "new":
     case "unreadable":
       // A record that can't be read reads as not trusted, because `halonic trust` writes it again.
-      return doctorMessages.notTrusted(dir);
+      return doctorMessages.notTrusted(trust);
   }
 }
 
