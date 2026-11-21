@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for this on HAL-14270 (/HAL/issues/HAL-14270), from Nina's check C337 on HAL-14257 (row 13, code row C17); a team decision that builds on the approved C336 wording; Owen wrote it, so Liam signs
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:X83Uzy2njU6uaDhorEdPrbK9zdlrz87rbwY2deKVuVK8phcSafcM4yne0xAYodYRftSiqviFOt7/IfZM4P2hCw==
 
 ## What changes
 
