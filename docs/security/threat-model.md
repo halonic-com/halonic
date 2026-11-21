@@ -658,7 +658,11 @@ starts it and talks to it over loopback; the engine, budgets, approvals and
 the run log stay in Studio, and the bridge asks Studio for keys, tools and
 approvals as calls on a stream. For now its bridges offer no Halonic tools.
 A sandboxed agent's bridge gets the key of the workspace's provider, as in
-the CLI, and an agent on this computer keeps its program's own sign-in
+the CLI. As in the CLI, an agent on this computer keeps its program's own
+sign-in, except one whose `model` is an alias, which gets the alias's key
+(`harness-host.provider-access`). Studio can't run an agent on this computer
+yet: `noUnfencedSandbox` stops the run before its bridge opens, so only that
+check keeps a key from a program outside the sandbox
 (`src/engine/studio-harness-host.ts`, `studio.harness-provider-key`). The host runs as you, outside the sandbox,
 like Studio.
 

@@ -36,3 +36,10 @@ It builds on the approved Settings › Models screen, so the team decides it (Li
   model at a provider without its own address.* Liam asked for a plain refusal rather than a bare
   "refused" from the bridge; Studio stops before the key is read or the program starts.
 
+## Covers
+
+- studio.harness-provider-key
+- agent-host-client.bridge-provider-keys
+- agent-host.bridge-key-scrub
+- packages/adapters/agent-host-client/src/bridge-agent.test.ts
+- packages/adapters/agent-host-client/src/bridges.test.ts

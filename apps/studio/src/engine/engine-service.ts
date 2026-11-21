@@ -32,9 +32,6 @@ import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
 import { TauriBlobStore, TauriRecordStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
 import { nodeSchedulerFactory } from "@halonicjs/adapter-scheduler-node";
 import {
-  harnessModelAccess,
-  harnessProviderModel,
-  requireKeyMayGo,
   routineStateCollection,
   runTimerCollection,
   type WorkflowRef,
@@ -65,6 +62,7 @@ import {
   runDefinitionsOf,
 } from "@halonicjs/workspace";
 import { studioConnectorCalls } from "../connect/studio-run-connectors.ts";
+import { openEngineHarnessHost } from "./engine-harness-host.ts";
 import { type EngineLockHold, holdEngineLock } from "./engine-lock.ts";
 import { answerRefusalOf, refuseConnectorApprove } from "./engine-refusals.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
@@ -74,7 +72,6 @@ import {
   type PageRuns,
   workflowRefusalOf,
 } from "./page-refusal.ts";
-import type { EngineParts, StudioHarnessHost } from "./studio-harness-host.ts";
 
 export type { PageEngineLock } from "./engine-lock.ts";
 
@@ -372,20 +369,6 @@ export class EngineService {
     };
   }
 
-  /**
-   * The harness host, or none when no agent host runs or it can't be reached
-   * now. Without one the engine still opens for the workflows that need none,
-   * and a run of an agent in a harness fails at its harness step.
-   */
-  async #openHarnessHost(engine: EngineParts): Promise<StudioHarnessHost | undefined> {
-    try {
-      return await this.#options.openHarnessHost?.(engine);
-    } catch (error) {
-      this.#options.reportError(error);
-      return undefined;
-    }
-  }
-
   async #openOnce(): Promise<OpenEngine> {
     const { ipc, location, name, clock, reportError } = this.#options;
     // After the runs a removed trust stopped are ended, whose closer gives the lock back then.
@@ -407,25 +390,9 @@ export class EngineService {
       const runStore = new TauriRunStore(ipc, location);
       // Set once the engine is built; a bridge opens only during a run, so after that.
       let executor: LocalExecutor | undefined;
-      const harnessHost = await this.#openHarnessHost({
+      const harnessHost = await openEngineHarnessHost(this.#options, workspace, {
         approvalsOf: (runId) => executor?.bridgeApprovals(runId),
         remoteDecisionsOf: (runId) => executor?.bridgeRemoteDecisions(runId),
-        // A sandboxed agent's key, as the engine's own model calls send one (HAL-13795).
-        workspace: () => workspace,
-        secrets: this.#options.secrets,
-        requireKeyMayGo: async (file) =>
-          requireKeyMayGo(file, {
-            trusted: await this.#options.isTrusted(workspace),
-            keyOrigins: this.#options.keyOrigins,
-          }),
-        aliases: {
-          providerModel: harnessProviderModel,
-          access: async (loaded, hubId, name, harness) =>
-            harnessModelAccess(loaded, hubId, name, harness, {
-              isTrusted: () => this.#options.isTrusted(loaded),
-              keyOrigins: this.#options.keyOrigins,
-            }),
-        },
       });
       await harnessHost?.start(await openRunsOf(runStore));
       const engine = assembleEngine({

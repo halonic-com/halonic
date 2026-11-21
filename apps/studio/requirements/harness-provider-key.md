@@ -10,7 +10,7 @@ When a sandboxed harness agent's bridge opens in the agent host, Studio shall se
 2. when the engine's check refuses the key's address, with the check's message and its fix;
 3. when the key's secret holds no value, saying it isn't saved on this computer and to save it in Settings › Models.
 
-The bridge shall name the providers it reaches with a key in its `keyProviders`, so Claude Code gets its stand-in key, and a `bridge.failed` from the host shall lose every key value Studio handed out before the run log records it. An agent on this computer keeps the program's own sign-in.
+The bridge shall name the providers it reaches with a key in its `keyProviders`, so Claude Code gets its stand-in key, and a `bridge.failed` from the host shall lose every key value Studio handed out before the run log records it. As in the CLI (`harness-host.provider-access`), an agent on this computer keeps the program's own sign-in, except one whose `model` is an alias, which gets the alias's key. Studio can't run an agent on this computer yet: its sandbox (`noUnfencedSandbox`) stops the run before the bridge opens, so no key reaches a program outside the sandbox.
 
 ## Examples
 
@@ -26,7 +26,7 @@ The bridge shall name the providers it reaches with a key in its `keyProviders`,
 - Given a key the bridge read,
   when the host reports a failure whose message quotes it,
   then the run log records it with the key removed.
-- Given an agent set to "On this computer",
+- Given an agent set to "On this computer" whose `model` isn't an alias,
   when its bridge opens,
   then it keeps the program's own sign-in and no key is read.
 - Given an alias `open-coder` of provider `zai`'s model `glm-5.3`, which has its own address,
