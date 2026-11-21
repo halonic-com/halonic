@@ -10,7 +10,7 @@ import type { HarnessStrip } from "../configuration/harness-strip.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { buttonNamed, show, typeIntoArea, unmount } from "../test-support.tsx";
 import { TryItChatView } from "./try-it-chat.tsx";
-import { useTryItChat } from "./use-try-it-chat.ts";
+import { ASK_ENGINE_EVERY_MS, useTryItChat } from "./use-try-it-chat.ts";
 
 afterEach(() => {
   unmount();
@@ -205,7 +205,7 @@ verifies("agents.chat.reply-ends", () => {
     expect(buttonNamed(page, "Try again")).toBeUndefined();
   });
 
-  it("offers Try again when the engine stopped before any tool", async () => {
+  it("offers Try again when the engine stopped before any tool, once it answers again", async () => {
     const { host, finish } = scriptedHost();
     const page = await show(<Chat host={host} announce={vi.fn()} />);
     await sendMessage(page, "Sort this mail");
@@ -213,6 +213,8 @@ verifies("agents.chat.reply-ends", () => {
     expect(page.querySelector(".text-danger")?.textContent).toBe(
       "Stopped when Halonic's engine stopped.",
     );
+    expect(buttonNamed(page, "Try again")).toBeUndefined();
+    await act(async () => window.dispatchEvent(new Event("focus")));
     expect(buttonNamed(page, "Try again")).toBeDefined();
   });
 
@@ -348,12 +350,102 @@ verifies("agents.chat.not-trusted", () => {
     expect(toasts.list()).toHaveLength(0);
   });
 
+  /** A chat whose engine refuses each answer as `denied`, as an untrusted workspace's engine does. */
+  async function refusedByEngine(ask?: () => Promise<"trusted" | "declined">) {
+    const { host, requests, finish } = scriptedHost();
+    const withGate = Object.assign(host, {
+      askTrust: ask,
+      workspaceName: () => "Acme",
+    });
+    const toasts = createToastStore();
+    const page = await show(
+      <ToastStoreProvider store={toasts}>
+        <Chat host={withGate} announce={vi.fn()} />
+      </ToastStoreProvider>,
+    );
+    await sendMessage(page, "Sort this mail");
+    await finish(new KindedError("denied", "This workspace isn't trusted."));
+    const box = () => (page.querySelector("textarea") as HTMLTextAreaElement).value;
+    return { page, requests, toasts, box };
+  }
+
+  it("puts the message back and says why when the engine refuses it, with no failure line", async () => {
+    const { page, toasts, box } = await refusedByEngine();
+    expect(box()).toBe("Sort this mail");
+    expect(said(page)).toEqual([]);
+    expect(page.querySelector(".text-danger")).toBeNull();
+    expect(toasts.list()[0]?.title).toBe("Not started: Acme isn't trusted yet");
+  });
+
+  it("opens the gate when the engine refuses, and sends the message again once trusted", async () => {
+    const ask = vi.fn(async () => "trusted" as const);
+    const { page, requests, box } = await refusedByEngine(ask);
+    expect(ask).toHaveBeenCalledTimes(1);
+    expect(requests.map((request) => request.messages.at(-1)?.content)).toEqual([
+      "Sort this mail",
+      "Sort this mail",
+    ]);
+    expect(said(page)).toEqual(["Sort this mail"]);
+    expect(box()).toBe("");
+  });
+
   it("keeps the message and shows the toast after Not now", async () => {
     const { page, requests, toasts, box } = await untrusted(async () => "declined");
     await sendMessage(page, "Sort this mail");
     expect(requests).toHaveLength(0);
     expect(box()).toBe("Sort this mail");
     expect(toasts.list()[0]?.title).toBe("Not started: Acme isn't trusted yet");
+  });
+});
+
+verifies("agents.chat.engine-quiet", () => {
+  const line = "The engine isn't answering. Showing what it said last.";
+
+  /** A chat whose first answer failed because the engine stopped answering. */
+  async function quietChat() {
+    const { host, requests, finish } = scriptedHost();
+    const page = await show(<Chat host={host} announce={vi.fn()} />);
+    await sendMessage(page, "Sort this mail");
+    await finish(new KindedError("unavailable", "The engine isn't answering."));
+    return { host, requests, page };
+  }
+
+  it("keeps the transcript under the line, and Send waits with the line as its reason", async () => {
+    const { requests, page } = await quietChat();
+    expect(page.textContent).toContain(line);
+    expect(said(page)).toEqual(["Sort this mail", "Stopped when Halonic's engine stopped."]);
+    await sendMessage(page, "And this one?");
+    expect(requests).toHaveLength(1);
+    expect((page.querySelector("textarea") as HTMLTextAreaElement).value).toBe("And this one?");
+    const send = buttonNamed(page, "Send") as HTMLButtonElement;
+    const reason = document.getElementById(send.getAttribute("aria-describedby") ?? "");
+    expect(reason?.textContent).toBe(line);
+  });
+
+  it("drops the line when the engine answers as the window comes to the front", async () => {
+    const { requests, page } = await quietChat();
+    await act(async () => window.dispatchEvent(new Event("focus")));
+    expect(page.textContent).not.toContain(line);
+    await sendMessage(page, "And this one?");
+    expect(requests).toHaveLength(2);
+  });
+
+  it("asks every 5 seconds and keeps the line until the engine answers", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    try {
+      const { host, page } = await quietChat();
+      const list = vi
+        .spyOn(host, "list")
+        .mockRejectedValueOnce(new KindedError("unavailable", "The engine isn't answering."));
+      await act(async () => vi.advanceTimersByTime(ASK_ENGINE_EVERY_MS));
+      expect(list).toHaveBeenCalledTimes(1);
+      expect(page.textContent).toContain(line);
+      await act(async () => vi.advanceTimersByTime(ASK_ENGINE_EVERY_MS));
+      expect(list).toHaveBeenCalledTimes(2);
+      expect(page.textContent).not.toContain(line);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
