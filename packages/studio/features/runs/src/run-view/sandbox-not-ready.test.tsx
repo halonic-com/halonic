@@ -73,7 +73,7 @@ verifies("runs.run-view.sandbox-not-ready", () => {
     const root = await open(log("bubblewrap-missing"), async () => ({ ok: true }));
 
     expect(banner(root)?.textContent).toBe(
-      `Support reply didn't start: the sandbox can't start on this computer.${words.reason}${words.calloutFix}Nothing ran.Read the guide ↗ (opens in your browser)Check again`,
+      `Support reply didn't start: the sandbox can't start on this computer.${words.reason}${words.calloutFix}Nothing ran.How to install bubblewrap ↗ (opens in your browser)Check again`,
     );
   });
 
@@ -128,13 +128,19 @@ verifies("runs.run-view.sandbox-not-ready", () => {
     expect(inBanner().map((one) => one.textContent)).toEqual(["Run again"]);
   });
 
-  it("links the guide for the reason", async () => {
+  it("links the guide for the reason, named for where it goes (R9)", async () => {
     const root = await open(log("bubblewrap-missing"));
     const link = banner(root)?.querySelector("a");
-    expect(link?.textContent).toContain("Read the guide");
+    expect(link?.textContent).toContain("How to install bubblewrap");
+    expect(link?.textContent).not.toContain("Read the guide");
     expect(link?.getAttribute("href")).toBe(
       `https://docs.halonic.dev/${sandboxStartWords("bubblewrap-missing").docsKey}`,
     );
+  });
+
+  it("names the general guide for a reason with no guide of its own (R9)", async () => {
+    const root = await open(log("other"));
+    expect(banner(root)?.querySelector("a")?.textContent).toContain("What the sandbox needs");
   });
 
   it("shows the new reason when the sandbox still can't start, and keeps the button", async () => {

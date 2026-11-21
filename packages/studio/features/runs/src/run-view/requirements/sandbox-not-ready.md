@@ -2,13 +2,13 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-4293 (checklist 3.6, 3.9, 3.10); HAL-11626 R10 (the agent by its name); `events.run-failed-sandbox-not-ready`; `app.sandbox-start-words`; `app.sandbox-start-check`. The words are placeholders until HAL-1784 is approved: reviewers check the keys.
+- Source: HAL-4293 (checklist 3.6, 3.9, 3.10); HAL-11626 R10 (the agent by its name), R9 (the guide link named for the reason); `events.run-failed-sandbox-not-ready`; `app.sandbox-start-words`; `app.sandbox-start-check`. The words are placeholders until HAL-1784 is approved: reviewers check the keys.
 
 When a run failed with the reason `sandbox-not-ready`, the run page shall show, in the danger tone, a banner named "Run failed" with these lines, in this order:
 
 - "*Reporter* didn't start: the sandbox can't start on this computer.", with the name of the agent that was about to start, as its file names it (its id when the workspace no longer has it; the workflow's when the log names none);
 - the reason and the fix from `sandboxStartWords` for `run.failed`'s `sandboxReason` (a missing or unknown code reads as `other`); on a phone the fix is the phone fix, which says to do it on the computer;
-- "Nothing ran."; and a link, "Read the guide", to the docs section for the reason.
+- "Nothing ran."; and a link to the docs section for the reason, named for where it goes (`sandboxStartWords`' `docsName`, such as "How to install bubblewrap"; "What the sandbox needs" for a reason with no section of its own).
 
 Until the log is read the page keeps its general banner. The check's own sentence never shows.
 
@@ -24,7 +24,7 @@ Where nothing provides it, there is no button. The banner has no way to run anyw
 
 - Given a run that failed with `sandbox-not-ready` and `sandboxReason` `bubblewrap-missing`,
   when its page is shown,
-  then the banner gives the words for `sandbox-start.bubblewrap-missing`, then "Nothing ran.", and has Check again.
+  then the banner gives the words for `sandbox-start.bubblewrap-missing`, then "Nothing ran." and the link "How to install bubblewrap", and has Check again.
 - Given the same banner and a check that now passes,
   when the person presses Check again,
   then it reads "The sandbox works now. You can run Support reply." and has Run again in place of Check again.

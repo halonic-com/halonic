@@ -263,7 +263,6 @@ export const runPageWords = {
   /** The failed banner of a run the sandbox check refused (microcopy 23.3): the agent's name, or the workflow's. */
   sandboxNotReady: (name: string) =>
     `${capitalised(name)} didn't start: the sandbox can't start on this computer.`,
-  sandboxDocs: "Read the guide",
   /** Where the guide lives; the catalogue's docs key follows it. */
   sandboxDocsBase: "https://docs.halonic.dev",
   sandboxNothingRan: "Nothing ran.",
