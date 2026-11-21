@@ -14,8 +14,8 @@ export function agentStepOfCard(key: string): string | undefined {
 }
 
 /**
- * An agent step's card on the agent page (flow-agents 7): what it is for, its instructions, and
- * the model and model call limit it runs with, its own or the agent's, its output and its tools.
+ * An agent step's card on the agent page (flow-agents 7): what it is for, its instructions, its
+ * output, the model and model call limit it runs with, its own or the agent's, and its tools.
  * Its own model alias that the hub doesn't have is marked under it, as the Model page marks the
  * agent's (C605).
  */
@@ -32,14 +32,14 @@ export function AgentStepCard({
   const missingAlias = useMissingAlias(host, agent, step.model);
   const rows: readonly [label: string, value: string, problem?: string | undefined][] = [
     [words.instructions, step.instructions],
-    [words.model, step.model ?? words.agentStepModelAgent(agent.model), missingAlias],
-    [words.turnLimit, step.maxSteps?.toString() ?? words.agentStepLimitAgent(agent.maxSteps)],
     [
       words.output,
       step.outputFields === undefined
         ? words.outputKinds.text
         : step.outputFields.join(", ") || words.outputKinds.json,
     ],
+    [words.model, step.model ?? words.agentStepModelAgent(agent.model), missingAlias],
+    [words.turnLimit, step.maxSteps?.toString() ?? words.agentStepLimitAgent(agent.maxSteps)],
     [
       words.pageNames.tools,
       step.tools === undefined
