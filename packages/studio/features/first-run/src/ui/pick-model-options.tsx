@@ -21,6 +21,7 @@ import {
   keySavedLine,
   localLine,
   localUseLine,
+  ollamaPage,
   pickModelWords as words,
 } from "../pick-model/pick-model-words.ts";
 
@@ -174,7 +175,14 @@ export function LocalBody({
           <CommandBox command={words.pullCommand} />
         </>
       )}
-      {local.kind === "not-found" && <p className="text-small text-fg">{words.startHint}</p>}
+      {local.kind === "not-found" && (
+        <>
+          <p className="text-small text-fg">{words.startHint}</p>
+          <p className="text-small text-fg">
+            {words.noOllama} <ExternalLink href={ollamaPage}>{words.getOllama}</ExternalLink>
+          </p>
+        </>
+      )}
       {busy?.kind === "loading-local" && <LoadingNote slow={busy.slow} />}
       {localModel !== undefined && <p className={noteClasses}>{localUseLine(localModel)}</p>}
     </>
@@ -197,11 +205,16 @@ function LoadingNote({ slow }: { readonly slow: boolean }) {
   );
 }
 
-/** The ticked key option's body: the provider switch, the key field or the saved key, and the links. */
+/**
+ * The ticked key option's body: the provider switch, the key field or the saved key, and the
+ * links. `problemId` is the message that says what's wrong with the pasted key, which the key
+ * field is then described by, so going back to it repeats the message (C575).
+ */
 export function KeyBody(props: {
   readonly pick: PickModel;
   readonly state: PickModelState;
   readonly keyField: Ref<HTMLInputElement>;
+  readonly problemId: string | undefined;
 }) {
   const { pick, state } = props;
   const saved = state.keySaved.has(state.provider) && !state.replacing;
@@ -233,13 +246,15 @@ export function KeyBody(props: {
             spellCheck={false}
             placeholder={words.keyPlaceholder}
             disabled={state.busy?.kind === "testing-key"}
+            {...(props.problemId === undefined ? {} : { describedBy: props.problemId })}
             mono
           />
         </Field>
       )}
       <p className="text-small text-fg">
         {words.noKey}{" "}
-        <ExternalLink href={keyPages[state.provider]}>{getKeyLink(state.provider)}</ExternalLink>{" "}
+        <ExternalLink href={keyPages[state.provider]}>{getKeyLink(state.provider)}</ExternalLink>
+        {". "}
         <span className="text-fg-muted">{words.needsAccount}</span>
       </p>
       <p className={noteClasses}>{words.cost}</p>
