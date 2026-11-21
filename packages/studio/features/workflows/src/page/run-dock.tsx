@@ -51,22 +51,43 @@ async function firstTestInput(
 
 export type Dock = "start" | { readonly runId: string } | undefined;
 
+/** Which button opened the start form: the page's Run, or a guide card's button. */
+export type DockOpener = "run" | "guide";
+
 /**
  * The page's cards: the one docked at the right (the start form, then the run it started; C18,
  * C25), and the run whose card the Runs view docks. The page keeps both, so only one card shows at
  * a time: two side by side leave the list no room. A docked card that closes gives focus back to
- * the Run button that opened it (`runButton`), or to the workflow's name (`title`) on a page
- * without one, rather than dropping it to the body (DK1).
+ * the button that opened it (`runButton`, or `guideButton` once the guide card is drawn again), or
+ * to the workflow's name (`title`) on a page without either, rather than dropping it to the body
+ * (DK1, `workflows.page.guide-card-focus`).
  */
 export function useDock(title: RefObject<HTMLElement | null>) {
   const [dock, setDock] = useState<Dock>();
   const [rowCard, setRowCard] = useState<string | undefined>();
   const runButton = useRef<HTMLButtonElement>(null);
+  const guideButton = useRef<HTMLButtonElement>(null);
+  const openedBy = useRef<DockOpener>("run");
+  // The guide card comes back only once the dock has closed and the page has drawn again, so its
+  // button is focused in an effect; each close from the guide counts up to run it once more.
+  const [guideCloses, setGuideCloses] = useState(0);
+  useEffect(() => {
+    if (guideCloses === 0) return;
+    (guideButton.current ?? runButton.current ?? title.current)?.focus();
+  }, [guideCloses, title]);
+  const openDock = (opener: DockOpener) => {
+    openedBy.current = opener;
+    setDock("start");
+  };
   const closeDock = () => {
     setDock(undefined);
+    if (openedBy.current === "guide") {
+      setGuideCloses((count) => count + 1);
+      return;
+    }
     (runButton.current ?? title.current)?.focus();
   };
-  return { dock, setDock, closeDock, runButton, rowCard, setRowCard };
+  return { dock, setDock, openDock, closeDock, runButton, guideButton, rowCard, setRowCard };
 }
 
 interface RunDockProps {
