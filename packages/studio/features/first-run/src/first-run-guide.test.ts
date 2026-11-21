@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { FirstRun } from "./first-run.ts";
 import { firstRunGuide } from "./first-run-guide.ts";
+import { FirstRunStart } from "./first-run-start.ts";
 import type { FirstRunState } from "./first-run-state.ts";
 
 const folder = "/docs/Acme sample";
@@ -20,9 +21,15 @@ function firstRunOf(saved: FirstRunState | undefined, sample = true) {
   return firstRun;
 }
 
+/** The guide of `firstRun` on a page that can't start a run, as before the run's build. */
+function guideOf(firstRun: FirstRun) {
+  const start = new FirstRunStart(firstRun, undefined);
+  return firstRunGuide(firstRun, start, { view: "PickModelPage", load: async () => ({}) });
+}
+
 verifies("first-run.guide-card", () => {
   it("shows the card on Support reply in the demo while the first run is on", () => {
-    const card = firstRunGuide(firstRunOf(undefined)).card(supportReply);
+    const card = guideOf(firstRunOf(undefined)).card(supportReply);
     expect(card?.title).toBe("Your first run");
     expect(card?.lines).toEqual([
       {
@@ -34,34 +41,32 @@ verifies("first-run.guide-card", () => {
     expect(card?.action.again).toBe(false);
   });
 
-  it("opens the page's Run form from its button", () => {
+  it("opens the page's Run form from its button where the page can't start a run itself", () => {
     const openRunForm = vi.fn();
-    firstRunGuide(firstRunOf(undefined)).card(supportReply)?.action.run({ openRunForm });
+    guideOf(firstRunOf(undefined)).card(supportReply)?.action.run({ openRunForm });
     expect(openRunForm).toHaveBeenCalledOnce();
   });
 
   it("reads Run again after a run that ended without a win", () => {
     const ended: FirstRunState = { kind: "on", folder, since: "", step: "run", ended: true };
-    expect(firstRunGuide(firstRunOf(ended)).card(supportReply)?.action).toMatchObject({
+    expect(guideOf(firstRunOf(ended)).card(supportReply)?.action).toMatchObject({
       label: "Run again",
       again: true,
     });
   });
 
   it("shows none on another workflow, outside the demo, or once the first run is paused or won", () => {
-    expect(
-      firstRunGuide(firstRunOf(undefined)).card({ hubId: "support", id: "triage" }),
-    ).toBeUndefined();
-    expect(firstRunGuide(firstRunOf(undefined, false)).card(supportReply)).toBeUndefined();
+    expect(guideOf(firstRunOf(undefined)).card({ hubId: "support", id: "triage" })).toBeUndefined();
+    expect(guideOf(firstRunOf(undefined, false)).card(supportReply)).toBeUndefined();
     const paused: FirstRunState = { kind: "paused", folder, since: "", step: "demo" };
-    expect(firstRunGuide(firstRunOf(paused)).card(supportReply)).toBeUndefined();
-    expect(firstRunGuide(firstRunOf({ kind: "done", folder })).card(supportReply)).toBeUndefined();
+    expect(guideOf(firstRunOf(paused)).card(supportReply)).toBeUndefined();
+    expect(guideOf(firstRunOf({ kind: "done", folder })).card(supportReply)).toBeUndefined();
   });
 
   it("tells the page when its card may have changed", () => {
     const firstRun = firstRunOf(undefined);
     const changed = vi.fn();
-    firstRunGuide(firstRun).subscribe(changed);
+    guideOf(firstRun).subscribe(changed);
     firstRun.send({ kind: "left" });
     expect(changed).toHaveBeenCalledOnce();
   });

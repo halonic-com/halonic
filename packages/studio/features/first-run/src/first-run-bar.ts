@@ -12,7 +12,7 @@ export interface BarStep {
 }
 
 /** The ways out the bar may show at its right; each shows once, and only here (first-run-flow 5). */
-export type BarWayOut = "skip";
+export type BarWayOut = "skip" | "cancel";
 
 /**
  * The strip `1 Demo · 2 Model · 3 Run · 4 Approve` for a first run that is on
@@ -37,10 +37,15 @@ function markOf(index: number, current: number, failed: boolean): BarMark {
 
 /**
  * The way out at the bar's right for the step the first run is at: **Skip, I'll explore** on the
- * demo screen. The model screen's **Set up later** comes with that screen, **Something wrong?**
- * with the Check this computer dialog (HAL-13411), and **Cancel run** with the run's own build;
- * until then those steps show none.
+ * demo screen, and **Cancel run** while the run is going, where the engine can cancel one
+ * (`canCancel`). The model screen's **Set up later** comes with its own task, and **Something
+ * wrong?** with the Check this computer dialog (HAL-13411); until then those steps show none.
  */
-export function barWayOut(state: Extract<FirstRunState, { kind: "on" }>): BarWayOut | undefined {
-  return state.step === "demo" ? "skip" : undefined;
+export function barWayOut(
+  state: Extract<FirstRunState, { kind: "on" }>,
+  canCancel: boolean,
+): BarWayOut | undefined {
+  if (state.step === "demo") return "skip";
+  const going = state.step === "run" && state.failed !== true && state.ended !== true;
+  return going && canCancel ? "cancel" : undefined;
 }

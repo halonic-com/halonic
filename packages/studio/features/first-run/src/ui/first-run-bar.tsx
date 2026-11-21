@@ -1,9 +1,10 @@
 import { Button, CloseIcon, TickIcon, usePresentation } from "@halonicjs/studio-kit";
 import { pageHeading, type StripProps } from "@halonicjs/studio-shell";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { FirstRunService } from "../api.ts";
-import type { FirstRun } from "../first-run.ts";
+import { type FirstRun, SUPPORT_HUB, SUPPORT_WORKFLOW } from "../first-run.ts";
 import { type BarMark, type BarStep, barSteps, barWayOut } from "../first-run-bar.ts";
+import { type FirstRunStart, FirstRunStartService } from "../first-run-start.ts";
 import { barWords } from "../first-run-words.ts";
 
 /**
@@ -14,6 +15,7 @@ import { barWords } from "../first-run-words.ts";
  */
 export function FirstRunBar({ context }: StripProps) {
   const firstRun = context.services.get(FirstRunService);
+  const start = context.services.get(FirstRunStartService);
   useEffect(() => firstRun.notice(), [firstRun]);
   const state = useFirstRunState(firstRun);
   // On a phone the strip can wrap, and a rail would start a line, so it has none there.
@@ -21,7 +23,9 @@ export function FirstRunBar({ context }: StripProps) {
   if (state.kind !== "on" || !firstRun.isOnHere) {
     return null;
   }
-  const wayOut = barWayOut(state);
+  const wayOut = barWayOut(state, start.canCancel);
+  const backToSupportReply = () =>
+    context.openItem?.({ kind: "workflow", hub: SUPPORT_HUB, id: SUPPORT_WORKFLOW });
   return (
     <section aria-label={barWords.label} className={barClasses}>
       <ol className={`flex min-w-0 flex-wrap items-center gap-y-1 ${rails ? "" : "gap-x-3"}`}>
@@ -47,7 +51,45 @@ export function FirstRunBar({ context }: StripProps) {
           </Button>
         </div>
       ) : null}
+      {wayOut === "cancel" ? <CancelRun start={start} onCancelled={backToSupportReply} /> : null}
     </section>
+  );
+}
+
+/**
+ * **Cancel run** (first-run-flow 3.4, `first-run.run`): ends the run as cancelled and goes back to
+ * Support reply's page, where the guide card reads **Run again**. Busy until the engine answers;
+ * when it can't cancel, the bar says so and the button stays.
+ */
+function CancelRun({
+  start,
+  onCancelled,
+}: {
+  readonly start: FirstRunStart;
+  readonly onCancelled: () => void;
+}) {
+  const [failed, setFailed] = useState(false);
+  const cancel = async () => {
+    setFailed(false);
+    try {
+      await start.cancel();
+      onCancelled();
+    } catch (error) {
+      console.error("Cancel run", error);
+      setFailed(true);
+    }
+  };
+  return (
+    <div className="ms-auto flex shrink-0 items-center gap-3">
+      {failed ? (
+        <p role="alert" className="text-danger">
+          {barWords.cancelFailed}
+        </p>
+      ) : null}
+      <Button variant="ghost" size="sm" onClick={cancel}>
+        {barWords.cancel}
+      </Button>
+    </div>
   );
 }
 

@@ -4,9 +4,10 @@ import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { FirstRun } from "../first-run.ts";
 import { barSteps, barWayOut } from "../first-run-bar.ts";
+import { FirstRunStart, FirstRunStartService } from "../first-run-start.ts";
 import type { FirstRunState } from "../first-run-state.ts";
 import { FirstRunBar } from "./first-run-bar.tsx";
 
@@ -46,8 +47,13 @@ function firstRunOf(saved: FirstRunState | undefined, sample = true, here = fold
   return new FirstRun(runs, { isSample: () => sample }, device, () => new Date(0));
 }
 
-function renderBar(firstRun: FirstRun, presentation: "desktop" | "phone" = "desktop") {
-  const context = { services: { get: () => firstRun } } as unknown as WorkspaceContext;
+function renderBar(
+  firstRun: FirstRun,
+  presentation: "desktop" | "phone" = "desktop",
+  start = new FirstRunStart(firstRun, undefined),
+) {
+  const get = (key: unknown) => (key === FirstRunStartService ? start : firstRun);
+  const context = { services: { get } } as unknown as WorkspaceContext;
   return render(
     <PresentationProvider presentation={presentation}>
       <FirstRunBar context={context} />
@@ -85,8 +91,8 @@ verifies("first-run.bar", () => {
     });
 
     it("offers Skip, I'll explore on the demo screen only, until the other ways out are built", () => {
-      expect(barWayOut(on("demo"))).toBe("skip");
-      expect(barWayOut(on("run"))).toBeUndefined();
+      expect(barWayOut(on("demo"), false)).toBe("skip");
+      expect(barWayOut(on("run"), false)).toBeUndefined();
     });
   });
 
@@ -151,6 +157,43 @@ verifies("first-run.bar", () => {
       true,
       true,
     ]);
+  });
+
+  it("offers Cancel run while the run is going, where the engine can cancel", () => {
+    expect(barWayOut(on("run"), true)).toBe("cancel");
+    expect(barWayOut(on("run", { failed: true }), true)).toBeUndefined();
+    expect(barWayOut(on("run", { ended: true }), true)).toBeUndefined();
+    expect(barWayOut(on("approve"), true)).toBeUndefined();
+  });
+
+  it("cancels the run with Cancel run and opens Support reply's page", async () => {
+    const firstRun = firstRunOf(on("run"));
+    const start = new FirstRunStart(firstRun, { startRun: vi.fn(), cancelRun: vi.fn() });
+    const cancel = vi.spyOn(start, "cancel").mockResolvedValue();
+    const openItem = vi.fn();
+    const get = (key: unknown) => (key === FirstRunStartService ? start : firstRun);
+    const context = { services: { get }, openItem } as unknown as WorkspaceContext;
+    const bar = render(<FirstRunBar context={context} />);
+    await act(async () => bar.querySelector("button")?.click());
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(openItem).toHaveBeenCalledWith({
+      kind: "workflow",
+      hub: "support",
+      id: "support-reply",
+    });
+  });
+
+  it("says when the run couldn't be cancelled, and keeps Cancel run", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const firstRun = firstRunOf(on("run"));
+    const start = new FirstRunStart(firstRun, { startRun: vi.fn(), cancelRun: vi.fn() });
+    vi.spyOn(start, "cancel").mockRejectedValue(new Error("There's no run."));
+    const bar = renderBar(firstRun, "desktop", start);
+    await act(async () => bar.querySelector("button")?.click());
+    expect(bar.querySelector("[role=alert]")?.textContent).toBe(
+      "Couldn't cancel the run. Try again.",
+    );
+    expect(bar.querySelector("button")?.textContent).toBe("Cancel run");
   });
 
   it("draws nothing outside the first run: another folder, off, or after the win", () => {
