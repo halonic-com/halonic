@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -14,10 +14,13 @@ import {
   type StoredRun,
   storeRuns as storeAcmeRuns,
   supportReply,
+  today,
   waiting,
   writeFiles,
 } from "../../test/acme-runs.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
+import { goldenText, runGolden } from "../../test/golden.ts";
+import { checklistProblems } from "../../test/golden-checklist.ts";
 import { runsCommandWith } from "./command.ts";
 
 let acmeRuns: AcmeRuns;
@@ -34,6 +37,11 @@ beforeEach(async () => {
 afterEach(async () => {
   await removeAcmeRuns(acmeRuns);
 });
+
+/** The list's last line in a month that spent nothing, in a workspace without `budget.monthly`. */
+const nothingSpent = "This month: €0.00. Set budget.monthly to cap it.";
+
+const golden = (name: string) => join(import.meta.dirname, "golden", name);
 
 const storeRuns = (...runs: readonly StoredRun[]) => storeAcmeRuns(acmeRuns, ...runs);
 
@@ -55,6 +63,7 @@ verifies("cli.commands.runs.list", () => {
         "◌ Running     09d9c0   Support reply   In Draft a reply                       10:53",
         "! Needs you   09d9a0   Support reply   Waiting for you: Approve this reply?   10:40",
         "✓ Done        a1b2c3   Support reply   Sent nothing                           10:31 · took 18 s",
+        nothingSpent,
       ]);
       expect(io.stderr).toEqual([]);
     });
@@ -66,6 +75,7 @@ verifies("cli.commands.runs.list", () => {
 
       expect(io.stdout).toEqual([
         "✓ Done   a1b2c3   Support reply   Sent nothing   10:31 · took 18 s",
+        nothingSpent,
       ]);
     });
 
@@ -76,6 +86,7 @@ verifies("cli.commands.runs.list", () => {
 
       expect(io.stdout).toEqual([
         "✓ Done   a1b2c3   mail-triage   Sent nothing   10:31 · took 18 s",
+        nothingSpent,
       ]);
     });
 
@@ -92,6 +103,7 @@ verifies("cli.commands.runs.list", () => {
 
       expect(io.stdout).toEqual([
         "✓ Done   a1b2c3   \\u001b[2J\\u001b[31mSupport\\u202e reply   Sent nothing   10:31 · took 18 s",
+        nothingSpent,
       ]);
     });
 
@@ -101,10 +113,11 @@ verifies("cli.commands.runs.list", () => {
       const { io } = await runsIn(acme, "--limit", "1", "--status", "waiting");
       expect(io.stdout).toEqual([
         "! Needs you   09d9a0   Support reply   Waiting for you: Approve this reply?   10:40",
+        nothingSpent,
       ]);
 
       const cut = await runsIn(acme, "--limit", "1");
-      expect(cut.io.stdout.at(-1)).toBe(
+      expect(cut.io.stdout.at(-2)).toBe(
         "Showing the newest of 3 runs. See them all with halonic runs --limit 3.",
       );
     });
@@ -114,7 +127,7 @@ verifies("cli.commands.runs.list", () => {
 
       for (const workflow of ["support-reply", "support/support-reply"]) {
         const { io } = await runsIn(acme, "--workflow", workflow);
-        expect(io.stdout).toHaveLength(1);
+        expect(io.stdout).toHaveLength(2);
         expect(io.stdout[0]).toContain("a1b2c3");
       }
       const gone = await runsIn(acme, "--workflow", "mail-triage");
@@ -247,6 +260,7 @@ verifies("cli.commands.runs.list", () => {
       const gone = await runsIn(acme, "--workflow", "\u001b[31mgone");
       expect(gone.io.stdout).toEqual([
         "✓ Done   a1b2c3   \\u001b[31mgone   Sent nothing   10:31 · took 18 s",
+        nothingSpent,
       ]);
       const noMatch = await runsIn(acme, "--workflow", "\u001b[31mgone", "--status", "failed");
       expect(noMatch.io.stdout[0]).toBe("No failed runs of \\u001b[31mgone in Acme.");
@@ -281,5 +295,115 @@ verifies("cli.commands.runs.list", () => {
         "  Run it inside a workspace, create one with halonic init, or copy the example with halonic init --example acme.",
       ]);
     });
+  });
+});
+
+/** A finished run of Support reply that started at `start` and made one model call priced at `cost`. */
+function pricedRun(
+  id: string,
+  start: string,
+  cost: number,
+  kind: "run" | "test" = "run",
+): StoredRun {
+  return {
+    id,
+    start,
+    kind,
+    after: [
+      [start, { type: "state.entered", state: "draft" }],
+      [
+        start,
+        {
+          type: "llm.response",
+          agent: "writer",
+          provider: "anthropic",
+          model: "smart",
+          usage: { inputTokens: 10, outputTokens: 10 },
+          latencyMs: 900,
+          text: "Hello",
+          cost,
+        },
+      ],
+      [start, { type: "run.completed", state: "draft", context: {} }],
+    ],
+  };
+}
+
+/** This month's runs cost €0.42; October's €5 and a test run's €9 don't count. */
+const monthOfRuns: readonly StoredRun[] = [
+  pricedRun("run_mfx3k2a1_0c7b31", "2026-10-31T23:59:00.000Z", 5),
+  pricedRun("run_mfx3k2a1_e1d2c3", "2026-11-01T00:00:00.000Z", 0.3),
+  pricedRun("run_mfx3k2a1_f4e5d6", today("09:15:00"), 0.12),
+  pricedRun("run_mfx3k2a1_a7b8c9", today("09:30:00"), 9, "test"),
+];
+
+const workspaceWith = (budget: string) => `id: acme\nname: Acme\nbudget:\n${budget}`;
+
+verifies("cli.commands.runs.month-spend", () => {
+  it("ends with this month's estimated spend out of budget.monthly, after the cut-off line, as the golden file has it", async () => {
+    await writeFiles(acme, { "workspace.yaml": workspaceWith("  monthly: 20\n") });
+    await storeRuns(...monthOfRuns);
+    const args = ["runs", "--limit", "1"];
+
+    const output = await runGolden(args, () => [runsCommand()], acme);
+
+    expect(output.noColour.exit).toBe(exitCode.ok);
+    expect(checklistProblems(output)).toEqual([]);
+    expect(goldenText(args, output)).toBe(await readFile(golden("month-spend.txt"), "utf8"));
+  });
+
+  it("says how to cap the month without budget.monthly", async () => {
+    await storeRuns(...monthOfRuns);
+
+    const { io } = await runsIn(acme);
+
+    expect(io.stdout.at(-1)).toBe("This month: about €0.42. Set budget.monthly to cap it.");
+  });
+
+  it("counts the whole month whatever --status, --workflow and --limit show", async () => {
+    await writeFiles(acme, { "workspace.yaml": workspaceWith("  monthly: 20\n") });
+    await storeRuns(...monthOfRuns, waiting, running);
+
+    const { io } = await runsIn(
+      acme,
+      "--status",
+      "waiting",
+      "--workflow",
+      "support-reply",
+      "--limit",
+      "1",
+    );
+
+    expect(io.stdout).toEqual([
+      "! Needs you   09d9a0   Support reply   Waiting for you: Approve this reply?   10:40",
+      "This month: about €0.42 of your €20.00 budget.",
+    ]);
+  });
+
+  it("writes both amounts in budget.currency", async () => {
+    await writeFiles(acme, { "workspace.yaml": workspaceWith("  monthly: 15\n  currency: USD\n") });
+    await storeRuns(...monthOfRuns);
+
+    const { io } = await runsIn(acme);
+
+    expect(io.stdout.at(-1)).toBe("This month: about $0.42 of your $15.00 budget.");
+  });
+
+  it("isn't about anything when the month spent nothing or less than the money rule shows", async () => {
+    await storeRuns(pricedRun("run_mfx3k2a1_b0b0b0", today("08:00:00"), 0.0002));
+
+    const { io } = await runsIn(acme);
+
+    expect(io.stdout.at(-1)).toBe("This month: under €0.001. Set budget.monthly to cap it.");
+  });
+
+  it("adds no line to an empty list", async () => {
+    await storeRuns({ ...monthOfRuns[1], kind: "test" } as StoredRun);
+
+    const { io } = await runsIn(acme);
+
+    expect(io.stdout).toEqual([
+      "No runs in Acme yet, only test runs. Start one with halonic run <workflow>.",
+    ]);
   });
 });

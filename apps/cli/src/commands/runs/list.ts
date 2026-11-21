@@ -1,21 +1,26 @@
 // `halonic runs`: the list of a workspace's latest real runs (cli-output 3.4,
 // "the list", C174 on HAL-2000). A thin command over `RunHistory`, the
 // service the Studio's Runs list reads too: this file reads the options,
-// asks the service, and turns its answer into rows. The words are the
-// catalogue's (`runsListMessages`, `workflowMessages`).
+// asks the service, and turns its answer into rows, then ends with this
+// month's spend (HAL-14778). The words are the catalogue's
+// (`runsListMessages`, `workflowMessages`).
 
 import {
+  defaultCurrency,
   defaultRunListLimit,
   type HubWorkflow,
   hubWorkflows,
   lookUpWorkflow,
+  moneyAmount,
   RunHistory,
   type RunListFilter,
   workflowIn,
 } from "@halonicjs/app";
+import { monthsSpend } from "@halonicjs/engine";
 import type { RunSummary } from "@halonicjs/events";
+import type { RunStore } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
-import { loadWorkspace } from "@halonicjs/workspace";
+import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import {
   type CommandContext,
   type CommandInput,
@@ -28,6 +33,7 @@ import { columns } from "../../messages/columns.ts";
 import { usageMessages } from "../../messages/general.ts";
 import { dimmed, type Phrase, phrase } from "../../messages/phrase.ts";
 import {
+  estimatedSpend,
   type GivenFilters,
   type ListFilters,
   runsListMessages,
@@ -77,7 +83,8 @@ export async function listRuns(
   // The workspace's name is outside text (cli-output section 5).
   const workspaceName = printable(workspaceNameOf(loaded, workspace));
   const workflows = hubWorkflows(loaded);
-  const history = new RunHistory(await openWorkspaceRuns(workspace.root, setup.profile));
+  const runs = await openWorkspaceRuns(workspace.root, setup.profile);
+  const history = new RunHistory(runs);
   const filter = await runFilter(options.filters, workflows, history, workspaceName);
   const list = await history.listRuns(filter, options.limit);
   const json = { runs: list.runs, total: list.total };
@@ -87,11 +94,13 @@ export async function listRuns(
     const lines = await emptyListLines(shown, history, workspaceName, dir);
     return { exitCode: exitCode.ok, lines, json };
   }
-  const rows = await runRows(list.runs, workflows, history, setup.clock());
+  const clock = setup.clock();
+  const rows = await runRows(list.runs, workflows, history, clock);
   const lines = [...columns(rows)];
   if (list.total > list.runs.length) {
     lines.push(runsListMessages.leftOut(list.runs.length, list.total, shown, dir).phrase);
   }
+  lines.push(await thisMonthLine(runs, loaded, clock.now));
   return { exitCode: exitCode.ok, lines, json };
 }
 
@@ -223,6 +232,26 @@ function givenFilters(filters: ListFilters): GivenFilters | undefined {
     return { ...filters, workflow: filters.workflow };
   }
   return undefined;
+}
+
+/**
+ * The list's last line: what this calendar month (UTC) has spent, out of
+ * `budget.monthly` when the workspace sets one (HAL-14778). The month's spend
+ * is `monthsSpend`'s, the one the Studio's Spend tile and the monthly budget
+ * stop use, so all three say the same amount, in the workspace's
+ * `budget.currency`.
+ */
+async function thisMonthLine(
+  runs: RunStore,
+  workspace: LoadedWorkspace,
+  now: Date,
+): Promise<Phrase> {
+  const budget = filesOf(workspace, "workspace")[0]?.value.budget;
+  const currency = budget?.currency ?? defaultCurrency;
+  const [month] = await monthsSpend(runs, now.toISOString(), 1);
+  const spent = estimatedSpend(month?.spent ?? 0, currency);
+  const monthly = budget?.monthly === undefined ? undefined : moneyAmount(budget.monthly, currency);
+  return runsListMessages.thisMonth(spent, monthly).phrase;
 }
 
 /** One row of five cells per run: status, short id, workflow, What, and When dimmed. */

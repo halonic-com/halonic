@@ -1,3 +1,4 @@
+import { moneyAmount } from "@halonicjs/app";
 import { nearMatch } from "../near-match.ts";
 import type { Mark } from "../output/paint.ts";
 import { counted } from "./counts.ts";
@@ -170,6 +171,17 @@ export const runsListMessages = defineMessages("runsList", {
     ];
   },
 
+  /**
+   * The last line of a list that shows runs: what this calendar month (UTC)
+   * has spent, by the rule of the Studio's Spend tile and the monthly budget
+   * stop, then the monthly budget, or how to set one (HAL-14778). `spent` is
+   * written by {@link estimatedSpend}.
+   */
+  thisMonth: (spent: string, budget?: string) =>
+    budget === undefined
+      ? phrase`This month: ${spent}. Set budget.monthly to cap it.`
+      : phrase`This month: ${spent} of your ${budget} budget.`,
+
   /** No real runs at all, whatever the filters. */
   noRunsYet: (workspace: string, dir?: string) =>
     phrase`No runs in ${workspace} yet. Start one with ${suggestedCommand("run", dir, "<workflow>")}.`,
@@ -217,6 +229,24 @@ export function statusYouMeant(given: string): StatusFilter | undefined {
   return (
     studioStatusWords.get(typed) ?? (nearMatch(typed, statusFilters) as StatusFilter | undefined)
   );
+}
+
+/**
+ * A month's spend as {@link runsListMessages.thisMonth} says it: "about
+ * €0.42", since every cost is an estimate, as the receipt's "estimated cost"
+ * is. Nothing spent reads "€0.00", and an amount the money rule writes as
+ * "under €0.001" stays that way: neither is "about" anything.
+ *
+ * @example
+ * estimatedSpend(0.42, "EUR"); // "about €0.42"
+ * estimatedSpend(0, "EUR"); // "€0.00"
+ * estimatedSpend(0.0002, "EUR"); // "under €0.001"
+ */
+export function estimatedSpend(spent: number, currency: string): string {
+  const amount = moneyAmount(spent, currency);
+  // The money rule's own test for an amount that reads "under €0.001".
+  const tiny = spent > 0 && spent.toFixed(3) === "0.000";
+  return spent === 0 || tiny ? amount : `about ${amount}`;
 }
 
 /**
