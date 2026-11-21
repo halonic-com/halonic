@@ -1,5 +1,6 @@
 // The rows of the trust check (cli-output 3.5, revision 40): a program with
-// its command, secrets, ! line and sites, an address, a model provider's
+// its command, secrets, ! line and sites, an address (a plugin's with the
+// hosts its backend reaches), a model provider's
 // address, a local integration with the address each of its settings holds, an agent
 // with its sites and folder, and a changed agent's or local integration's
 // rows for what changed. `trust-check.ts` puts them in sections.
@@ -17,8 +18,17 @@ import type {
 } from "@halonicjs/workspace";
 import { columnGap } from "../messages/columns.ts";
 import type { Message } from "../messages/define.ts";
-import { dim, markPart, type Phrase, phrase, visibleLength } from "../messages/phrase.ts";
+import {
+  dim,
+  markPart,
+  type Phrase,
+  phrase,
+  plainText,
+  visibleLength,
+} from "../messages/phrase.ts";
+import { pluginMessages } from "../messages/plugin.ts";
 import { type PackageRegistry, trustMessages } from "../messages/trust.ts";
+import type { PluginHosts } from "../sheet-hosts.ts";
 import { printable } from "./printable.ts";
 
 /**
@@ -82,14 +92,52 @@ export function programSites(connector: ConnectorTrustContent): string[] {
   return strings(connector.settings["sites"]);
 }
 
-/** "  inbox         https://mail.example.com/mcp · gets the secret INBOX_KEY". */
-export function addressRow(connector: ConnectorTrustContent): Phrase {
-  const address =
-    connector.transport === "http" ? text(connector.settings["url"]) : connector.transport;
-  return row(
-    printable(connector.id),
-    withSecrets(phrase`${printable(address)}`, secretNames(connector)),
-  );
+/**
+ * "  inbox         https://mail.example.com/mcp · gets the secret INBOX_KEY".
+ * A plugin connector names its plugin, "  orders        plugin acme-orders",
+ * and, when the plugin is installed here and its backend lists hosts, the
+ * line "Reaches api.acme.example." under it (HAL-14860). The hosts come from
+ * `pluginHosts`, the installed plugins' manifests, which the plugin's own
+ * trust check covered; they show what the connector reaches and aren't in
+ * the workspace's fingerprint.
+ *
+ * @param pluginHosts - the `backend.hosts` of each installed plugin, by its id; left out, none are shown
+ */
+export function addressRows(
+  connector: ConnectorTrustContent,
+  pluginHosts: PluginHosts = new Map(),
+): Phrase[] {
+  if (connector.transport !== "plugin") {
+    const address =
+      connector.transport === "http" ? text(connector.settings["url"]) : connector.transport;
+    return [addressLine(connector, phrase`${printable(address)}`)];
+  }
+  const plugin = text(connector.settings["id"]);
+  const hosts = [...new Set((pluginHosts.get(plugin) ?? []).map(shownHost))];
+  return [
+    addressLine(connector, trustMessages.pluginAddress(printable(plugin)).phrase),
+    ...(hosts.length === 0
+      ? []
+      : [phrase`${underRow}${trustMessages.pluginReaches(hosts).phrase}`]),
+  ];
+}
+
+/** The connector's row: its id, then `address` and the secrets it gets. */
+function addressLine(connector: ConnectorTrustContent, address: Phrase): Phrase {
+  return row(printable(connector.id), withSecrets(address, secretNames(connector)));
+}
+
+/** A host as a plugin's manifest writes it, or the setting that holds it, not yet escaped: for a line that is escaped whole. */
+export function hostText(host: unknown): string {
+  if (typeof host === "string") return host;
+  const setting = (host as { fromSetting?: unknown } | null)?.fromSetting;
+  const words = pluginMessages.hostFromSetting(typeof setting === "string" ? setting : "");
+  return plainText(words.phrase);
+}
+
+/** A host as {@link hostText} gives it, escaped, where nothing else escapes it. */
+export function shownHost(host: unknown): string {
+  return printable(hostText(host));
 }
 
 /**

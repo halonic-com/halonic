@@ -40,9 +40,14 @@ lists, in this order (requirement `cli.trust-check`):
 - **Agents:** every agent that runs in Claude Code or Codex, with its allowed
   sites and its working folder when it isn't the default. Agents in Halonic's
   own harness aren't listed.
-- **Addresses:** HTTP connectors, local integrations that read an address from
-  a setting, and every model provider other than the test model, with its
-  `baseUrl` (or its type when the file names none) and the secret it gets.
+- **Addresses:** HTTP connectors, connectors to a plugin, local integrations
+  that read an address from a setting, and every model provider other than the
+  test model, with its `baseUrl` (or its type when the file names none) and the
+  secret it gets. A plugin connector names its plugin and, when the plugin is
+  installed on this computer, the hosts its backend lists, "Reaches
+  api.acme.example.". Those hosts come from the plugin's own manifest, which
+  `halonic plugin add` showed you, so they aren't in the workspace's
+  fingerprint.
   Secrets are shown by name, never by value. A provider whose key goes to an
   address other than its type's own gets a second line, "Sends its key to
   https://llm.example.com." (see

@@ -32,6 +32,7 @@ import { NotTrustedError } from "./not-trusted.ts";
 import { printable } from "./output/printable.ts";
 import { trustChangesDocument } from "./output/trust-changes-json.ts";
 import { type FingerprintedCheck, trustCheckLines } from "./output/trust-check.ts";
+import type { PluginHosts } from "./sheet-hosts.ts";
 import { halonicVersion } from "./version.ts";
 import type { OpenWorkspaceDir, WorkspaceDir } from "./workspace-dir.ts";
 import { webCryptoDigest } from "./workspace-runs.ts";
@@ -185,6 +186,8 @@ export interface WorkspaceTrustMachine {
   readonly commandSearch: CommandSearch;
   /** Whether the sandbox works here; left out, the check shows no program's sites. */
   readonly sandboxWorks?: () => Promise<boolean>;
+  /** The hosts of the plugins installed here; left out, the check shows no plugin's hosts. */
+  readonly pluginHosts?: () => Promise<PluginHosts>;
 }
 
 /**
@@ -228,6 +231,7 @@ export async function trustedGrant(
       name,
       folder: dir.shown,
       sandboxWorks: (await machine.sandboxWorks?.()) === true,
+      pluginHosts: (await machine.pluginHosts?.()) ?? new Map(),
     }),
     changes: changed ? trustChangesDocument(check.changes, check.trustedAt) : undefined,
   });

@@ -26,7 +26,7 @@ import { pluginMessages } from "../messages/plugin.ts";
 import { trustMessages } from "../messages/trust.ts";
 import { nodeProfileEnvironment } from "../workspace-runs.ts";
 import { printable } from "./printable.ts";
-import { row, rowIndent, underRow } from "./trust-check-rows.ts";
+import { hostText, row, rowIndent, shownHost, underRow } from "./trust-check-rows.ts";
 
 /** The tool risks in the order the check lists them, each with its group's heading. */
 const riskGroups: readonly { readonly risk: string; readonly heading: () => Message }[] = [
@@ -205,19 +205,6 @@ function signInRows(content: PluginTrustContent): Phrase[] {
 function addressRows(content: PluginTrustContent): Phrase[] {
   const hosts = new Set(content.hosts.map((entry) => shownHost(entry.host)));
   return [...hosts].map((host) => phrase`  ${host}`);
-}
-
-/** A host as written, or the setting that holds it, not yet escaped: for a line that is escaped whole. */
-function hostText(host: unknown): string {
-  if (typeof host === "string") return host;
-  const setting = (host as { fromSetting?: unknown } | null)?.fromSetting;
-  const words = pluginMessages.hostFromSetting(typeof setting === "string" ? setting : "");
-  return plainText(words.phrase);
-}
-
-/** A host as {@link hostText} gives it, escaped, where nothing else escapes it. */
-function shownHost(host: unknown): string {
-  return printable(hostText(host));
 }
 
 /** A catalogue sentence as plain text, for the first column of a row. */
