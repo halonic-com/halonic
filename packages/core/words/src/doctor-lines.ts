@@ -8,6 +8,7 @@
 
 import {
   type DiskLine,
+  type DoctorPluginProblem,
   doctorCheckLimitMs,
   type HarnessesLine,
   type HarnessProblem,
@@ -16,6 +17,7 @@ import {
   type ModelsLine,
   type NetworkLine,
   type NodeLine,
+  type PluginsLine,
   type ProviderReport,
   type SecretsLine,
   type TimedOutLine,
@@ -61,6 +63,7 @@ export type WordedLine =
   | WorkspaceLine
   | ModelsLine
   | SecretsLine
+  | PluginsLine
   | HarnessesLine
   | NodeLine
   | NetworkLine
@@ -96,6 +99,8 @@ export function doctorLineWords(line: WordedLine, face: DoctorFace): DoctorLineW
       return { label: doctorMessages.modelsLabel(), items: modelsItems(line) };
     case "secrets":
       return { label: doctorMessages.secretsLabel(), items: secretsItems(line, face) };
+    case "plugins":
+      return { label: doctorMessages.pluginsLabel(), items: pluginsItems(line, face) };
     case "harnesses":
       return { label: doctorMessages.harnessesLabel(), items: harnessesItems(line, face) };
     case "node":
@@ -241,6 +246,40 @@ function secretsItems(line: SecretsLine, face: DoctorFace): DoctorLineItem[] {
         doctorMessages.secretUnreadable(printable(secret), users(usedBy)).phrase,
     ),
   ].map((sentence) => ({ sentence }));
+}
+
+/**
+ * Each plugin problem: one that isn't added with the near id or the fix
+ * under it, then one sentence for each plugin that is off or can't be read.
+ */
+function pluginsItems(line: PluginsLine, face: DoctorFace): DoctorLineItem[] {
+  return line.problems.flatMap((problem) => pluginProblem(problem, face));
+}
+
+function pluginProblem(problem: DoctorPluginProblem, face: DoctorFace): DoctorLineItem[] {
+  // Connector and plugin ids come from the workspace's files and the plugins folder.
+  const plugin = printable(problem.plugin);
+  switch (problem.problem) {
+    case "not-added": {
+      const sentence = doctorMessages.pluginNotAdded(printable(problem.connector), plugin).phrase;
+      if (problem.near === undefined) {
+        return [{ sentence }, { fix: doctorMessages.addPlugin().phrase }];
+      }
+      return [
+        { sentence },
+        { sentence: doctorMessages.pluginNear(printable(problem.near)).phrase },
+      ];
+    }
+    case "off":
+      return [
+        {
+          sentence: doctorMessages.pluginOff(plugin, problem.why, face.shellWord(problem.plugin))
+            .phrase,
+        },
+      ];
+    case "broken":
+      return [{ sentence: doctorMessages.pluginBroken(plugin).phrase }];
+  }
 }
 
 /** The harnesses that are ready as one sentence, then each problem with its fix. */

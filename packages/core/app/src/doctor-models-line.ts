@@ -7,6 +7,34 @@
 import type { DoctorLine } from "./doctor-checks.ts";
 import type { LoadedModel, Reading } from "./resource-report.ts";
 
+/**
+ * A provider the workspace's aliases use, as the host reads it from its
+ * file. The host decides how it runs, because only the host knows each
+ * adapter's default address.
+ */
+export type DoctorProvider =
+  | {
+      provider: string;
+      name: string;
+      runs: "on-this-computer";
+      /** Where Halonic reaches it, such as "localhost:11434". */
+      address: string;
+    }
+  | {
+      provider: string;
+      name: string;
+      runs: "with-a-key";
+      /** The name of the secret that holds its key. */
+      secret: string;
+    }
+  | {
+      provider: string;
+      name: string;
+      runs: "without-a-key";
+      /** The built-in test model, Sample answers, rather than a provider that only needs no key. */
+      testModel?: boolean;
+    };
+
 /** A provider the workspace's model aliases use, as the host found it. */
 export type ModelProviderState =
   | {

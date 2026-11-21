@@ -6,8 +6,8 @@
 // file problems. Studio counts causes, not lines, by the cause ids here.
 
 import type { DoctorLine } from "./doctor-checks.ts";
-import type { AliasProvider, ModelsLine } from "./doctor-models-line.ts";
-import type { DoctorProvider, DoctorReport } from "./doctor-service.ts";
+import type { AliasProvider, DoctorProvider, ModelsLine } from "./doctor-models-line.ts";
+import type { DoctorReport } from "./doctor-service.ts";
 import type { TimedOutLine } from "./doctor-time-limit.ts";
 import type { RunFailure } from "./run-failure-facts.ts";
 

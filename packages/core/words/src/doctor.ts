@@ -35,6 +35,7 @@ export const doctorMessages = defineMessages("doctor", {
   workspaceLabel: () => phrase`Workspace`,
   modelsLabel: () => phrase`Models`,
   secretsLabel: () => phrase`Secrets`,
+  pluginsLabel: () => phrase`Plugins`,
   sandboxLabel: () => phrase`Sandbox`,
   harnessesLabel: () => phrase`Harnesses`,
   nodeLabel: () => phrase`Node.js`,
@@ -129,6 +130,26 @@ export const doctorMessages = defineMessages("doctor", {
    */
   secretUnreadable: (secret: string, users: readonly SecretUserName[]) =>
     phrase`couldn't read ${secret} from the secret store (${usedBy(users)})`,
+
+  // The Plugins line (C40 on HAL-14271, decided by the team on HAL-14296), in
+  // the words `halonic tools review` uses for the same plugin.
+  /** Plugins ✕: "orders uses the plugin acme-order, which isn't added." */
+  pluginNotAdded: (connector: string, plugin: string) =>
+    phrase`${connector} uses the plugin ${plugin}, which isn't added.`,
+  /** Under {@link pluginNotAdded}, when one added plugin's id is close: "Did you mean acme-orders?" */
+  pluginNear: (near: string) => phrase`Did you mean ${near}?`,
+  /** Under {@link pluginNotAdded}, when no added plugin's id is close. */
+  addPlugin: () =>
+    phrase`Fix: add it with halonic plugin add <folder or git address>, then run halonic doctor again.`,
+  /**
+   * Plugins !: "acme-orders is off: changed since you trusted it · halonic
+   * trust --plugin acme-orders". `pluginWord` is the id as one shell word.
+   */
+  pluginOff: (plugin: string, why: "not-trusted" | "changed", pluginWord: string) =>
+    phrase`${plugin} is off: ${why === "changed" ? "changed since you trusted it" : "not trusted yet"} ${markPart("separator")} halonic trust --plugin ${pluginWord}`,
+  /** Plugins !, for a plugin whose folder can't be read or checked. */
+  pluginBroken: (plugin: string) =>
+    phrase`${plugin} can't be read or checked, so it's off. See halonic plugin list.`,
 
   /** Sandbox ✓: "ready · bubblewrap". */
   sandboxReady: (kind: string) => phrase`ready ${markPart("separator")} ${kind}`,
