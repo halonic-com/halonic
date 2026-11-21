@@ -4,11 +4,14 @@ import { defineFeature } from "@halonicjs/studio-shell";
 import { FirstRunDeviceService, FirstRunService, SampleWorkspaceService } from "./api.ts";
 import { FirstRun } from "./first-run.ts";
 import { firstRunGuide } from "./first-run-guide.ts";
+import { firstRunHelpItems } from "./first-run-help.ts";
+import { helpWords } from "./first-run-words.ts";
 
 /**
  * The First Run feature (`first-run.state`): the first run's state on this device, the first-run
  * bar under the top bar (`first-run.bar`) and the guide card on Support reply's page
- * (`first-run.guide-card`), from **Open demo** until the first win.
+ * (`first-run.guide-card`), from **Open demo** until the first win, and **Help › First run**
+ * (`first-run.help`).
  */
 export const firstRunFeature = defineFeature({
   id: "first-run",
@@ -34,6 +37,14 @@ export const firstRunFeature = defineFeature({
       order: 10,
       view: "FirstRunBar",
       load: () => import("./ui/first-run-bar.tsx"),
+    });
+    studio.help.add({
+      id: "first-run.help",
+      order: 20,
+      title: helpWords.title,
+      items: (context) =>
+        firstRunHelpItems(context.services.get(FirstRunService), context.openItem),
+      subscribe: (context, listener) => context.services.get(FirstRunService).subscribe(listener),
     });
   },
 });

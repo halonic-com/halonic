@@ -78,6 +78,37 @@ export class FirstRun {
     }
   }
 
+  /** Whether the open folder is the demo, where **Help › First run** shows the guide. */
+  get isDemo(): boolean {
+    return this.#sample.isSample();
+  }
+
+  /** Whether **Start over** can copy the demo again here. */
+  get canStartOver(): boolean {
+    return this.#device.startOver !== undefined;
+  }
+
+  /** **Show the guide**: takes a paused first run up again here, else begins it again at Demo. */
+  showGuide(): void {
+    if (this.isOnHere) return;
+    if (this.#state.kind === "paused" && this.#state.folder === this.#device.folder) {
+      this.send({ kind: "resumed" });
+      return;
+    }
+    this.send({
+      kind: "guide-reopened",
+      folder: this.#device.folder,
+      at: this.#now().toISOString(),
+    });
+  }
+
+  /** **Start over**: the first run goes off, and the app copies the demo again, which starts it. */
+  startOver(): void {
+    if (this.#device.startOver === undefined) return;
+    this.send({ kind: "reset" });
+    this.#device.startOver();
+  }
+
   /** Applies `event`, then saves and tells the listeners if the state changed. */
   send(event: FirstRunEvent): void {
     if (this.#disposed) return;

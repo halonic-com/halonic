@@ -55,6 +55,11 @@ export interface FirstRunDevice {
   read(): string | undefined;
   /** Saves the state. A save that fails keeps the old one; the window goes on with the new one. */
   write(text: string): void;
+  /**
+   * Copies the demo again into the next free folder and opens it, as the demo chip's **Fresh copy
+   * of the demo** does, for **Help › First run › Start over**. Absent where the app can't.
+   */
+  startOver?(): void;
 }
 
 /** The first run's place on this device, provided by the app for each open folder. */

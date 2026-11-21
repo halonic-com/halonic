@@ -28,3 +28,10 @@ export const guideWords = {
   /** After a run that ended without a win (3.4, 8b). */
   runAgain: "Run again",
 } as const;
+
+/** The first run's group in the Help menu (first-run-flow 5 and 10.2 R8, decided by the team). */
+export const helpWords = {
+  title: "First run",
+  showGuide: "Show the guide",
+  startOver: "Start over",
+} as const;

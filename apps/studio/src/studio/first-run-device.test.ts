@@ -21,18 +21,28 @@ function storage(blocked = false) {
 verifies("first-run.state", () => {
   it("keeps one state for the device, whichever folder saved it", () => {
     const pages = storage();
-    expect(firstRunDeviceOf("/docs/Acme sample", pages).read()).toBeUndefined();
-    firstRunDeviceOf("/docs/Acme sample", pages).write('{"kind":"off"}');
-    const other = firstRunDeviceOf("/work/Shop", pages);
+    expect(firstRunDeviceOf("/docs/Acme sample", { storage: pages }).read()).toBeUndefined();
+    firstRunDeviceOf("/docs/Acme sample", { storage: pages }).write('{"kind":"off"}');
+    const other = firstRunDeviceOf("/work/Shop", { storage: pages });
     expect(other.folder).toBe("/work/Shop");
     expect(other.read()).toBe('{"kind":"off"}');
     expect([...pages.items.keys()]).toEqual([FIRST_RUN_STATE]);
   });
 
+  it("copies the demo again for Start over, where the window can", () => {
+    let copies = 0;
+    const startOver = () => {
+      copies += 1;
+    };
+    firstRunDeviceOf("/docs/Acme sample", { storage: storage(), startOver }).startOver?.();
+    expect(copies).toBe(1);
+    expect(firstRunDeviceOf("/docs/Acme sample", { storage: storage() }).startOver).toBeUndefined();
+  });
+
   it("reads nothing from blocked storage, and a failed write doesn't throw but is reported", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     try {
-      const device = firstRunDeviceOf("/docs/Acme sample", storage(true));
+      const device = firstRunDeviceOf("/docs/Acme sample", { storage: storage(true) });
       expect(device.read()).toBeUndefined();
       expect(() => device.write('{"kind":"off"}')).not.toThrow();
       expect(warn).toHaveBeenCalledOnce();

@@ -29,6 +29,7 @@ import {
   UpdaterService,
 } from "@halonicjs/studio-feature-settings/api";
 import {
+  FreshCopyAsks,
   folderName,
   mountWorkspaceWindow,
   NewWorkspaceAsks,
@@ -66,6 +67,7 @@ import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import { desktopFeatures } from "./desktop-features.ts";
 import { watchDesktopResources } from "./desktop-resources.ts";
+import type { DeviceMemory } from "./device-memory.ts";
 import { newWorkspaceHostOf } from "./new-workspace-host.ts";
 import { observedSandboxStartCheck } from "./observed-sandbox-start-check.ts";
 import { openFolderScope, savingOf } from "./open-folder-scope.ts";
@@ -174,6 +176,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
   const stopAppearance = watchAppearance(display, rootOf(page.element));
   const picked = new TauriPickedFolders(ipc);
   const newWorkspaceAsks = new NewWorkspaceAsks();
+  const freshCopyAsks = new FreshCopyAsks();
   const newWorkspace = newWorkspaceOf(page.window, platform);
   const device: DeviceMemory = {
     recent: new RecentWorkspaces(page.storage ?? noStorage),
@@ -182,6 +185,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     ...(newWorkspace.newWorkspace === undefined
       ? {}
       : { startOwnWorkspace: () => newWorkspaceAsks.ask() }),
+    ...(newWorkspace.sample === undefined ? {} : { startOver: () => freshCopyAsks.ask() }),
   };
   const switcher = new WorkspaceSwitcher({
     pickFolder: () => pickFolder(ipc),
@@ -202,6 +206,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     start,
     ...newWorkspace,
     newWorkspaceAsks,
+    freshCopyAsks,
   };
   const window = mountWorkspaceWindow(page.element, parts);
   // Formats follows the system's region once the shell has read it; until then, the browser's.
@@ -261,16 +266,6 @@ function newWorkspaceOf(window: object, platform: KeyboardPlatform) {
   return { newWorkspace: newWorkspaceHostOf(parts), sample: sampleHostOf(parts) };
 }
 
-/** What this device remembers across folders: Recent, and the page's storage behind it. */
-export interface DeviceMemory {
-  readonly recent: RecentWorkspaces;
-  readonly storage: RecentStorage;
-  /** Opens the New workspace dialog; `undefined` when the window has none. */
-  readonly startOwnWorkspace?: () => void;
-  /** The computer's operating system; left out, the Studio's words name no program of one. */
-  readonly platform?: KeyboardPlatform;
-}
-
 /**
  * Opens the workspace in a folder with a scope of its own (`openWorkspace`): the folder's files
  * through the shell's file commands, the assistant's changes to review kept in the profile, and
@@ -314,7 +309,7 @@ export async function openFolder(
     device.startOwnWorkspace,
   );
   services.provide(SampleWorkspaceService, sample);
-  services.provide(FirstRunDeviceService, firstRunDeviceOf(location, device.storage));
+  services.provide(FirstRunDeviceService, firstRunDeviceOf(location, device));
   services.provide(SampleHintService, sample);
   const trustStore = ipc === undefined ? undefined : new TauriTrustStore(ipc);
   services.provide(

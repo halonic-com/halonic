@@ -39,8 +39,10 @@ export type FirstRunState =
 export type FirstRunEvent =
   /** **Open demo** opened a copy of Acme, at the ISO time `at`. */
   | { readonly kind: "demo-opened"; readonly folder: string; readonly at: string }
-  /** **Start over** or **Show the guide** in Help: the first run begins again in `folder`. */
-  | { readonly kind: "started-over"; readonly folder: string; readonly at: string }
+  /** **Show the guide** in Help: the first run begins again at Demo in `folder`. */
+  | { readonly kind: "guide-reopened"; readonly folder: string; readonly at: string }
+  /** **Start over** in Help: it is off, so the fresh copy of the demo starts it when it opens. */
+  | { readonly kind: "reset" }
   | { readonly kind: "model-picking" }
   | { readonly kind: "run-started" }
   | { readonly kind: "run-waiting" }
@@ -59,8 +61,10 @@ export function nextFirstRun(state: FirstRunState, event: FirstRunEvent): FirstR
     case "demo-opened":
       // Only the first demo starts it: a later copy, or the demo after a win, doesn't.
       return state.kind === "off" ? begun(event) : state;
-    case "started-over":
+    case "guide-reopened":
       return begun(event);
+    case "reset":
+      return off;
     case "left":
       return state.kind === "on" ? { ...where(state), kind: "paused", step: state.step } : state;
     case "resumed":
