@@ -107,11 +107,12 @@ export const failureWords = {
   sandboxStartFailed: (agent: string) =>
     `${capitalised(agent)} didn't start: the sandbox on this computer didn't start. Nothing ran.`,
   /**
-   * `this-computer-start-failed`: the CLI's line 1 (`cli.run-failed-this-computer-start`), with
-   * the launcher's own reason. It names no sandbox, since the person chose to run without one.
+   * `this-computer-start-failed`: the CLI's line 1 (`cli.run-failed-this-computer-start`) without
+   * the launcher's reason, which is Halonic's own text and stays in Copy details, then its line 2's
+   * next step (C566, row 11). It names no sandbox, since the person chose to run without one.
    */
-  thisComputerStartFailed: (workflow: string, step: string, agent: string, reason: string) =>
-    `${workflow} failed in the step ${step}: ${agent} didn't start on this computer: ${asSentence(reason)}`,
+  thisComputerStartFailed: (workflow: string, step: string, agent: string) =>
+    `${workflow} failed in the step ${step}: ${agent} didn't start on this computer. Nothing ran in that step. Halonic can't fix this from here: copy the details and report it.`,
   /** F7: names the model alias the call went to, or the model when an older log doesn't give it. */
   cloudModelUnreachable: (
     provider: string,

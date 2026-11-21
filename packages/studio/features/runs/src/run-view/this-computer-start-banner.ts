@@ -2,7 +2,8 @@
 // an agent that runs on this computer without the sandbox, by the person's choice, whose launcher
 // refused to start it. It says what `halonic run` says on its line 1
 // (`cli.run-failed-this-computer-start`), from the same facts (`runFailureOf`), so a CLI run shown
-// in Studio reads the same in both.
+// in Studio reads the same in both, but leaves the launcher's reason to Copy details, as the CLI
+// leaves it to `--debug` on line 2 (C566, row 11).
 
 import { failedStartOf, runFailureOf } from "@halonicjs/app/run-failure";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
@@ -11,9 +12,9 @@ import { withDetails } from "./danger-banner.ts";
 import type { RunBanner, RunPageContext } from "./run-page-model.ts";
 
 /**
- * The agent of the failed step, as its file names it, and the launcher's reason, which the engine
- * logs as `run.failed`'s error (`engine.this-computer-start-failed`), with **Copy details** and no
- * **Run again**: the same launcher would refuse it the same way.
+ * The agent of the failed step, as its file names it, with **Copy details** and no **Run again**:
+ * the same launcher would refuse it the same way. Copy details holds the launcher's reason, which
+ * the engine logs as `run.failed`'s error (`engine.this-computer-start-failed`).
  *
  * @param log The run's log, for the step's own `sandbox.started`, which names the agent.
  * @returns `undefined` until the log is read, and for a log without that step's start, so the page
@@ -36,9 +37,7 @@ export function thisComputerStartBanner(
   }
   // As its file names it; an agent the workspace no longer has keeps its id.
   const agent = context.agentName?.(failure.agent) ?? failure.agent;
-  return withDetails(
-    failureWords.thisComputerStartFailed(workflow, step, agent, failure.launcherReason),
-    summary,
-    { noRunAgain: true },
-  );
+  return withDetails(failureWords.thisComputerStartFailed(workflow, step, agent), summary, {
+    noRunAgain: true,
+  });
 }

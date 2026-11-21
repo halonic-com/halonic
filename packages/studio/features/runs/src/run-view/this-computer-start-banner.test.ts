@@ -32,14 +32,22 @@ const callout = (banner: ReturnType<typeof causeBanner>) =>
 
 verifies("runs.run-view.this-computer-start", () => {
   describe("a launcher on this computer that didn't start the step's agent", () => {
-    const line = `Support reply failed in the step Draft: Writer didn't start on this computer: ${reason}.`;
+    const line =
+      "Support reply failed in the step Draft: Writer didn't start on this computer. Nothing ran in that step. Halonic can't fix this from here: copy the details and report it.";
 
-    it("says what halonic run says, with the agent's name and the launcher's reason", () => {
+    it("says what halonic run says, with the agent's name and a next step", () => {
       const banner = callout(causeBanner(summary, refusedLog(true), named, false));
 
       expect(banner?.tone).toBe("danger");
       expect(banner?.lines).toEqual([line]);
       expect(banner?.lines.join(" ")).not.toContain("sandbox");
+    });
+
+    it("keeps the launcher's reason off the banner, in Copy details only", () => {
+      const banner = callout(causeBanner(summary, refusedLog(true), named, false));
+
+      expect(banner?.lines.join(" ")).not.toContain(reason);
+      expect(banner?.details).toContain(reason);
     });
 
     it("offers Copy details and no Run again, since the launcher would refuse it again", () => {
@@ -52,7 +60,7 @@ verifies("runs.run-view.this-computer-start", () => {
     it("names an agent the workspace no longer has by its id", () => {
       const banner = callout(causeBanner(summary, refusedLog(true), context, false));
 
-      expect(banner?.lines[0]).toContain(": writer didn't start on this computer: ");
+      expect(banner?.lines[0]).toContain(": writer didn't start on this computer. ");
     });
 
     it("keeps the general banner until the log is read, and for a log without the step's start", () => {
