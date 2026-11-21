@@ -232,9 +232,10 @@ verifies("format.parity-defaults", () => {
 });
 
 verifies("format.parity-fixtures", () => {
-  it("allows the 26 files the format entries name", () => {
-    // Ten from earlier entries, 15 unknown keys at their own line and one unclosed quote (HAL-14261).
-    expect(report.results.filter((result) => result.verdict === "allowed").length).toBe(26);
+  it("allows the 27 files the format entries name", () => {
+    // Ten from earlier entries, 15 unknown keys at their own line and one unclosed quote (HAL-14261),
+    // and one id that isn't its file name's (HAL-14277).
+    expect(report.results.filter((result) => result.verdict === "allowed").length).toBe(27);
   });
 
   it("passes a mail interval of 15m, which the old code refused (format.routine-mail-interval)", () => {

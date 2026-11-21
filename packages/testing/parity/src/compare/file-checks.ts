@@ -36,7 +36,7 @@ export function placeIdOf(kind: string, file: string): string | undefined {
     return undefined;
   }
   const name = parts.at(-1) ?? "";
-  return name.replace(/(\.(agent|workflow|flow|test|routine|connector))?\.ya?ml$/, "");
+  return name.replace(/(\.(agent|workflow|flow|test|routine|connector|collection))?\.ya?ml$/, "");
 }
 
 function textOf(fixtures: string, parityCase: ParityCase, file: string): string {

@@ -75,8 +75,47 @@ verifies("format.id-from-place", () => {
     expect(parsedValue("provider", yaml("type: mock"), "spare").id).toBe("spare");
   });
 
-  it("keeps the file's own id over the place's", () => {
-    expect(parsedValue("provider", yaml("id: mock", "type: mock"), "spare").id).toBe("mock");
+  it("keeps the file's own id when it is the place's", () => {
+    expect(parsedValue("provider", yaml("id: mock", "type: mock"), "mock").id).toBe("mock");
+  });
+
+  it("fails a file whose own id isn't its file name's, at its id", () => {
+    const text = yaml("name: Author", "id: author");
+    const parsed = parseFile("agent", text, {
+      id: "writer",
+      idSource: { file: "writer.agent.yaml" },
+    });
+    expect(parsed.ok ? [] : parsed.error.map((problem) => [problem.code, problem.line])).toEqual([
+      ["id-differs-from-place", 2],
+    ]);
+    expect(parsed.ok ? "" : parsed.error[0]?.message).toBe(
+      "The id is author, but the file is writer.agent.yaml. Use the same name in both, or leave id out.",
+    );
+  });
+
+  it("names the folder for a hub whose own id isn't its folder's", () => {
+    const parsed = parseFile("hub", yaml("id: note", "name: Notes"), {
+      id: "notes",
+      idSource: { folder: "hubs/notes/" },
+    });
+    expect(parsed.ok ? [] : parsed.error.map((problem) => problem.message)).toEqual([
+      "The id is note, but the folder is hubs/notes/. Use the same name, or leave id out.",
+    ]);
+  });
+
+  it("names the place's id when the caller doesn't say where it comes from", () => {
+    const [problem] = problemsOf("provider", yaml("id: mock", "type: mock"), "spare");
+    expect(problem?.message).toBe(
+      "The id is mock, but the file name gives spare. Use the same name in both, or leave id out.",
+    );
+  });
+
+  it("gives the id's problem next to the schema's", () => {
+    const text = yaml("id: author", "name: Author", "modle: smart");
+    expect(summary(problemsOf("agent", text, "writer"))).toEqual([
+      "id id-differs-from-place 1",
+      " unrecognized_keys 3",
+    ]);
   });
 
   it("checks an id from the place like one in the file", () => {
@@ -91,8 +130,10 @@ verifies("format.id-from-place", () => {
   });
 
   it("leaves the message of an id in the file as it is", () => {
-    const [problem] = problemsOf("provider", yaml("id: Spare", "type: mock"), "spare");
-    expect(problem?.message).not.toMatch(/comes from/);
+    const problems = problemsOf("provider", yaml("id: Spare", "type: mock"), "Spare");
+    expect(problems.map((problem) => problem.message)).not.toContainEqual(
+      expect.stringMatching(/comes from/),
+    );
   });
 
   it("ignores the place for kinds that have no id of their own", () => {

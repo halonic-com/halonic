@@ -16,6 +16,37 @@ export function nearName(typed: string, names: readonly string[]): string | unde
 }
 
 /**
+ * The one name the typed name likely meant, for "Did you mean": the name that
+ * differs only in upper and lower case (`Sorter` for `sorter`), or else the
+ * one near spelling ({@link nearName}), case aside.
+ *
+ * @example
+ * likelyName("Sorter", ["sorter", "writer"]); // "sorter"
+ * likelyName("reveiw", ["draft", "review"]); // "review"
+ */
+export function likelyName(typed: string, names: readonly string[]): string | undefined {
+  const lower = typed.toLowerCase();
+  const sameLetters = names.filter((name) => name.toLowerCase() === lower);
+  if (sameLetters.length > 0) {
+    return sameLetters.length === 1 ? sameLetters[0] : undefined;
+  }
+  const near = nearName(
+    lower,
+    names.map((name) => name.toLowerCase()),
+  );
+  return near === undefined ? undefined : names.find((name) => name.toLowerCase() === near);
+}
+
+/**
+ * What follows an unknown name's message: `. Did you mean "<name>"?` with a
+ * likely name, or nothing, so a message without one stays as it was.
+ */
+export function didYouMean(typed: string, names: readonly string[]): string {
+  const likely = likelyName(typed, names);
+  return likely === undefined ? "" : `. Did you mean "${likely}"?`;
+}
+
+/**
  * The fewest single-character insertions, deletions, substitutions and swaps
  * of two neighbours that turn `from` into `to` (optimal string alignment), so
  * "knid" is one step from "kind".
