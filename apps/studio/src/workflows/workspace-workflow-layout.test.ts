@@ -64,6 +64,58 @@ verifies("studio.workspace-workflow-layout", () => {
     });
   });
 
+  it("adds an arrow on done from the picked step after its conditional ones, in the same change", async () => {
+    const { host, store, changes } = setup(
+      "  sort:\n    on:\n      # Refunds need a person.\n      - to: done\n        when: { equals: ['{{context.category}}', refund] }\n",
+    );
+
+    expect(await host.addStep(reply, "task", { x: 240, y: 0 }, "sort")).toBe("step-1");
+
+    expect(changes).toEqual(["Added step step-1 to workflow Reply"]);
+    expect(store[path]).toContain("      # Refunds need a person.\n");
+    const { arrows } = await host.read(reply);
+    expect(arrows.filter((arrow) => arrow.from === "sort")).toEqual([
+      expect.objectContaining({ to: "done", condition: expect.anything() }),
+      expect.objectContaining({ to: "step-1", event: undefined, condition: undefined }),
+    ]);
+    expect(arrows.filter((arrow) => arrow.from === "step-1")).toEqual([]);
+  });
+
+  it("chains steps: each new one gets its arrow from the one added before it", async () => {
+    const { host } = setup("  sort: {}\n");
+
+    const first = await host.addStep(reply, "task", { x: 240, y: 0 }, "sort");
+    const second = await host.addStep(reply, "task", { x: 480, y: 0 }, first);
+    await host.addStep(reply, "wait", { x: 720, y: 0 }, second);
+
+    const { arrows } = await host.read(reply);
+    const added = arrows.filter((arrow) => ["sort", "step-1", "step-2"].includes(arrow.from));
+    expect(added.map((arrow) => `${arrow.from} → ${arrow.to}`)).toEqual([
+      "sort → step-1",
+      "step-1 → step-2",
+      "step-2 → wait-1",
+    ]);
+  });
+
+  it("adds no arrow from a step that already goes on when done, nor from an End", async () => {
+    const { host } = setup();
+
+    await host.addStep(reply, "wait", { x: 240, y: 0 }, "start");
+    await host.addStep(reply, "task", { x: 480, y: 0 }, "done");
+
+    const { arrows } = await host.read(reply);
+    expect(arrows.map((arrow) => `${arrow.from} → ${arrow.to}`)).toEqual(["start → done"]);
+  });
+
+  it("refuses a picked step the workflow no longer has, and writes nothing", async () => {
+    const { host, changes } = setup();
+
+    await expect(host.addStep(reply, "task", { x: 0, y: 0 }, "gone")).rejects.toMatchObject({
+      kind: "not_found",
+    });
+    expect(changes).toEqual([]);
+  });
+
   it("forgets the places for Auto layout, as one change, and writes nothing when there are none", async () => {
     const { host, store, changes } = setup("layout:\n  done: { x: 0, y: 140 }\n");
 

@@ -380,13 +380,18 @@ export interface WorkflowsHost {
   /**
    * Adds an agent step `step-1` (`task`) or a wait step `wait-1` to the workflow, the next free
    * number when that one is taken, placed at `at` on the canvas, as one undoable change that saves itself; resolves to the
-   * new step's id. It has no arrows yet. Absent while the app can't change the workflow's file, so
-   * the canvas shows no toolbar. Rejects with the reason the file couldn't be changed.
+   * new step's id. It has no arrows of its own. Given `from`, the picked step, the same change adds
+   * an arrow from it to the new step, on done, after its other arrows, unless `from` ends the
+   * workflow or already has an on-done arrow without a condition, which would always fire first.
+   * Absent while the app can't change the workflow's file, so the canvas shows no toolbar. Rejects
+   * with the reason the file couldn't be changed, and a `from` that isn't there; then nothing is
+   * written.
    */
   addStep?(
     ref: WorkflowRef,
     type: "task" | "wait",
     at: { readonly x: number; readonly y: number },
+    from?: string,
   ): Promise<string>;
   /**
    * Forgets where a person put the steps, so every step takes the automatic place again (**Auto

@@ -1,5 +1,5 @@
 import { Button, PlusIcon } from "@halonicjs/studio-kit";
-import type { Box, Point } from "../canvas/geometry.ts";
+import { type Box, overlaps, type Point } from "../canvas/geometry.ts";
 import { pageWords } from "./page-words.ts";
 
 const words = pageWords.toolbar;
@@ -67,20 +67,34 @@ function Spoken({ shown, name }: { readonly shown: string; readonly name: string
 }
 
 /**
- * Where a new step goes: to the right of the right-most card, level with it, on the grid
- * (flow-workflows 5.3). On an empty canvas, at the origin.
+ * Where a new step goes (flow-workflows 5.3, C544-10): to the right of `after`, the picked step's
+ * card, level with it, on the grid; when a card is already there, the next free spot below it, so
+ * cards never overlap. With nothing picked, to the right of the right-most card, level with it. On
+ * an empty canvas, at the origin.
  */
-export function newStepPlace(boxes: Iterable<Box>): Point {
+export function newStepPlace(boxes: Iterable<Box>, after?: Box): Point {
+  const all = [...boxes];
+  const from = after ?? rightMostOf(all);
+  if (from === undefined) return { x: 0, y: 0 };
+  const place = { x: snap(from.x + from.width + NEW_STEP_GAP), y: snap(from.y) };
+  if (after === undefined) return place;
+  // The new card takes the size of the card it follows until it shows.
+  const blockerAt = (y: number) =>
+    all.find((box) => overlaps(box, { ...place, y, width: from.width, height: from.height }));
+  for (let blocker = blockerAt(place.y); blocker !== undefined; blocker = blockerAt(place.y)) {
+    place.y = snap(blocker.y + blocker.height + NEW_STEP_GAP);
+  }
+  return place;
+}
+
+/** The card whose right edge is furthest right, or `undefined` on an empty canvas. */
+function rightMostOf(boxes: readonly Box[]): Box | undefined {
   let rightMost: Box | undefined;
   for (const box of boxes) {
     if (rightMost === undefined || box.x + box.width > rightMost.x + rightMost.width)
       rightMost = box;
   }
-  if (rightMost === undefined) return { x: 0, y: 0 };
-  return {
-    x: snap(rightMost.x + rightMost.width + NEW_STEP_GAP),
-    y: snap(rightMost.y),
-  };
+  return rightMost;
 }
 
 /** The nearest grid line at or after `value`, so a new card never overlaps the one it follows. */

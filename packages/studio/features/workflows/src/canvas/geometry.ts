@@ -34,6 +34,16 @@ export function boundsOf(boxes: readonly Box[]): Box | undefined {
   return { x: left, y: top, width: right - left, height: bottom - top };
 }
 
+/** Whether two boxes share any of the canvas; boxes that only touch at an edge don't. */
+export function overlaps(one: Box, other: Box): boolean {
+  return (
+    one.x < other.x + other.width &&
+    other.x < one.x + one.width &&
+    one.y < other.y + other.height &&
+    other.y < one.y + one.height
+  );
+}
+
 /**
  * The view that shows all of `content` in a viewport of `viewport` size, centred, with `padding`
  * around it. It never zooms in past 100 %, so one card isn't blown up (`workflows.canvas.fit-and-zoom`).

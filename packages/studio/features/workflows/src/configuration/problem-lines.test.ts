@@ -74,6 +74,12 @@ verifies("workflows.configuration.problem-lines", () => {
     ]);
   });
 
+  it("says answers for a wait step's missing events on its card and its row alike", () => {
+    const missing = problem("wait-without-events", "warning", "wait-1");
+    expect(cardSummary([missing])).toBe("△ Has no answers to pick");
+    expect(problemRows([missing])[0]?.text).toContain("no answers to pick");
+  });
+
   it("counts errors and warnings", () => {
     expect(
       countProblems([problem("dead-end"), problem("unreachable", "warning"), problem("no-final")]),
