@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this change on HAL-15207 (https://paperclip.halonic.com/HAL/issues/HAL-15207), from his review of #4423 on HAL-14277 (point 2), which kept it out of that pull request because it changes what the old app recorded. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gxoJ1Yga4KrPzDEmzTQQ19/NMu6igV1azQgDBTLXDXsfaMijI4bKcZIdAVPPC0VJKUMa5DwOVDhBcy/DGb1CCg==
 
 ## What changes
 
