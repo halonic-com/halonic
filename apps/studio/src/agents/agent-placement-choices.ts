@@ -95,7 +95,9 @@ export class AgentPlacementChoices {
  */
 export function choicesHere(choices: AgentPlacementChoices | undefined): AgentPlacementChoices {
   if (choices === undefined) {
-    throw new Error("Halonic can't choose where agents run from here.");
+    throw new Error(
+      "Halonic can't choose where agents run in the browser. Open this workspace in the desktop app to choose.",
+    );
   }
   return choices;
 }

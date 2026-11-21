@@ -59,8 +59,8 @@ function optionsFor(placement: AgentPlacementState): RadioOption<RunsOn>[] {
  * warned about: Cancel is focused and **Run on this computer** is the danger button. When the
  * agent's file changed since, the choice is on hold: a Callout with **Review and confirm** opens
  * the same warning. While the agent's file has unsaved changes, the warning asks the person to
- * save first: the choice is for the saved file, which may hold what they already took out. Not drawn
- * where Studio can't choose (the browser).
+ * save first: the choice is for the saved file, which may hold what they already took out. Where
+ * Studio can't choose (the browser), only a line pointing to the desktop app is drawn.
  */
 export function WhereItRuns({ host, settings }: WhereItRunsProps) {
   const ref = { hubId: settings.hubId, id: settings.id };
@@ -70,7 +70,10 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
   const [error, setError] = useState<string | null>(null);
   const saveFirstId = useId();
 
-  if (load.kind === "loading" || load.kind === "unavailable") return null;
+  if (load.kind === "loading") return null;
+  if (load.kind === "unavailable") {
+    return <p className="text-caption text-fg-subtle">{words.desktopOnly}</p>;
+  }
   if (load.kind === "failed") {
     return (
       <Field label={words.label}>

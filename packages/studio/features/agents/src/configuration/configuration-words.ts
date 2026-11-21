@@ -138,6 +138,11 @@ export const configurationWords = {
     /** The agent's file has unsaved changes: the choice is for the saved file, so save first (HAL-13201). */
     saveFirst: (agent: string) =>
       `${agent}'s file has changes that aren't saved. This choice is for the saved file, so save first, then confirm.`,
+    /**
+     * In place of the choice where Studio can't make it (the browser). Team decision on HAL-15226,
+     * from words check C553 (HAL-15219, row 41).
+     */
+    desktopOnly: "Choose where agents run in the desktop app.",
     notSaved: (reason: string) => `Couldn't save where it runs: ${reason}`,
     couldntRead: (reason: string) => `Couldn't read where it runs: ${reason}`,
   },

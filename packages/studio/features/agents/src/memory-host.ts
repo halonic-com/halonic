@@ -149,7 +149,9 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
   const fingerprintOf = (ref: AgentRef) => `sha256:memory-${versions.get(keyOf(ref)) ?? 0}`;
   const canChoose = () => {
     if (options.placement === false) {
-      throw new Error("Halonic can't choose where agents run from here.");
+      throw new Error(
+        "Halonic can't choose where agents run in the browser. Open this workspace in the desktop app to choose.",
+      );
     }
   };
 

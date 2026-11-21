@@ -174,9 +174,10 @@ verifies("agents.configuration.where-it-runs", () => {
       expect(radioNamed(page, words.inSandbox)?.checked).toBe(true);
     });
 
-    it("isn't drawn where Studio can't choose where agents run", async () => {
+    it("isn't drawn where Studio can't choose where agents run, and points to the desktop app", async () => {
       const page = await open(agentsHost({ placement: false }));
-      expect(page.textContent).toBe("");
+      expect(page.textContent).toBe(words.desktopOnly);
+      expect(page.querySelector("input[type=radio]")).toBeNull();
     });
   });
 });

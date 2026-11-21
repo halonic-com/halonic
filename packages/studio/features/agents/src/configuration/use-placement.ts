@@ -4,7 +4,7 @@ import type { AgentPlacementState, AgentRef, AgentsHost } from "../api.ts";
 /** What the host said of where the agent runs, or that it couldn't say. */
 export type PlacementLoad =
   | { readonly kind: "loading" }
-  /** Studio can't choose where agents run here (no agent host): Where it runs isn't drawn. */
+  /** Studio can't choose where agents run here (no agent host): only a desktop app line is drawn. */
   | { readonly kind: "unavailable" }
   | { readonly kind: "failed"; readonly reason: string }
   | { readonly kind: "loaded"; readonly placement: AgentPlacementState };
