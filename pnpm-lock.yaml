@@ -311,6 +311,9 @@ importers:
       '@halonicjs/adapter-connector-stdio-sandbox':
         specifier: workspace:*
         version: link:../../packages/adapters/connector-stdio-sandbox
+      '@halonicjs/adapter-doctor-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/doctor-node
       '@halonicjs/adapter-env-secrets':
         specifier: workspace:*
         version: link:../../packages/adapters/env-secrets

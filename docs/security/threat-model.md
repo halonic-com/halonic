@@ -374,6 +374,17 @@ removes it: only the shell does, from a person's press, so a program in a sandbo
 page can't pick its own fence. Until the real canary exists (HAL-10552) the trust check
 fails closed, so no backend is reported as in use.
 
+The host also runs **Studio's "Check this computer"** (HAL-13407): `POST /v1/doctor`
+runs `halonic doctor`'s own checks (`adapters/doctor-node`) and answers facts and
+ids, never words. It takes only a workspace folder the launcher named, and it
+writes nothing: the profile's trust records are read only, so a record the check
+would shrink stays as it is, and an agent's own sign-in isn't asked, because that
+runs Claude Code or Codex on a settings folder in the profile. It reaches a model
+server at an address the workspace names only once the workspace is trusted here,
+as the CLI does, never a cloud provider, and runs no model test. The key lines
+aren't answered: the host holds no keychain. One check runs at a time; neither
+the answer nor the log quotes an error's text.
+
 The host also opens the **Google setup** of the profile it serves (HAL-9911):
 `POST /v1/google/disconnect` asks Google to end an account's sign-in and removes
 the refresh token, the record and the client secret. The page and the shell

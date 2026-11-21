@@ -34,6 +34,7 @@
   "version": "0.0.0",
   "dependencies": {
     "@halonicjs/adapter-connector-stdio-sandbox": "workspace:*",
+    "@halonicjs/adapter-doctor-node": "workspace:*",
     "@halonicjs/adapter-env-secrets": "workspace:*",
     "@halonicjs/adapter-fs-node": "workspace:*",
     "@halonicjs/adapter-git": "workspace:*",

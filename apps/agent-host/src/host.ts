@@ -22,6 +22,7 @@ import { bridgeProviderFetches } from "./bridge/provider-fetches.ts";
 import { bridgeSocketFolder, sweepLeftOverBridges } from "./bridge/socket-folder.ts";
 import { hostConnectorRoutes } from "./connector/connector-factory.ts";
 import { connectorRoutes } from "./connector/connector-routes.ts";
+import { hostDoctorRoutes } from "./doctor/host-doctor-routes.ts";
 import { RunLedger } from "./gateway/run-ledger.ts";
 import { googleRoutes } from "./google/google-routes.ts";
 import { harnessFolders } from "./harness/harness-folders.ts";
@@ -199,6 +200,7 @@ export async function run(
           secrets: hostSecretsOf(keychain, home.profile),
           log: (text) => io.writeError(text),
         },
+    sharedFolders.length > 0,
   );
   // Waits for the frame stream to run; a move that fails has said why, and is tried again on use.
   keychain?.secrets.moveOutOfFile().catch(() => undefined);
@@ -259,6 +261,7 @@ function argumentAfter(args: readonly string[], name: string): string | undefine
  * @param choice - the choice service of this host's backend, `undefined` without a profile folder (no choice route is served)
  * @param wslRemover - removes Halonic's WSL distro, `undefined` without a profile folder (no `remove-wsl` route is served)
  * @param remote - where the host offers remote, with the store of its host key; `undefined` when it offers none
+ * @param onWsl - whether the host runs inside Halonic's WSL distro (`--wsl-shared-folders`), for the doctor's drive warning
  */
 async function hostServices(
   version: string,
@@ -271,6 +274,7 @@ async function hostServices(
   choice: SandboxChoiceService | undefined,
   wslRemover: WslRemover | undefined,
   remote: ServedRemoteHome | undefined,
+  onWsl: boolean,
 ): Promise<HostServices> {
   const sessions = new SessionTable();
   const listeningPorts = new Set<number>();
@@ -371,6 +375,17 @@ async function hostServices(
     ...hostPluginRoutes(plugins, logToError),
     ...signIns.routes,
     signInRoute({ harnesses, openTerminal: (command) => openTerminal(command) }),
+    ...hostDoctorRoutes({
+      version,
+      profile,
+      trustStore: connectors.trustStore,
+      workspaceRoots: connectors.workspaceRoots,
+      sandbox,
+      harnesses,
+      onWsl,
+      ownPorts: () => [...listeningPorts, ...bridges.ports()],
+      log: logToError,
+    }),
     ...remoteRoutes(hostRemote.control),
   ];
   const stop = async () => {

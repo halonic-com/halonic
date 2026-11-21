@@ -15,6 +15,7 @@ export {
 export { AgentHostChat } from "./chat.ts";
 export { AgentHostConnectorFactory } from "./connector.ts";
 export { ConnectorFailedError, type ConnectorFailure } from "./connector-failure.ts";
+export { AgentHostDoctor, type HostDoctorLine, type HostDoctorReport } from "./doctor.ts";
 export {
   AgentHostGoogleSetup,
   type GoogleAccountType,

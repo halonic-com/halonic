@@ -232,6 +232,10 @@ const ROUTES: &[(&str, Route)] = &[
     // the window, whose policy lets it call no model itself. The host refuses
     // any other provider.
     (
+        "POST /v1/doctor",
+        route(Method::Post, "/v1/doctor", Answer::Json),
+    ),
+    (
         "POST /v1/models/chat",
         route(Method::Post, "/v1/models/chat", Answer::Json),
     ),
