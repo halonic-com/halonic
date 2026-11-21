@@ -20,6 +20,12 @@ export interface IntegrationPolicy {
    */
   readonly localHosts?: readonly string[];
   /**
+   * The host names the user set in a `private` setting, each also in
+   * `hosts`. The loader hands them to the transport, which connects to such
+   * a name only at the private addresses it resolves to.
+   */
+  readonly privateNames?: readonly string[];
+  /**
    * Each secret it may use, the hosts that secret may go to, and where the
    * sheet puts it. An `optional` secret, such as the key of a server that
    * may need none, is left out of the request when the workspace hasn't set

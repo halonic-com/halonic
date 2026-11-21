@@ -22,6 +22,12 @@ export interface IntegrationPolicy {
   readonly hosts: readonly string[];
   /** Hosts the user chose that it may call over plain `http`: on this machine or a private network. */
   readonly localHosts?: readonly string[];
+  /**
+   * The host names the user set in a `private` setting. The text can't show
+   * where a name points, so the transport counts each as private and connects
+   * only to the private addresses it resolves to, on every request.
+   */
+  readonly privateNames?: readonly string[];
   /** Each secret, the hosts it may go to, whether a request may go without it, and where it goes. */
   readonly secrets: Readonly<Record<string, DeclaredSecret>>;
   /** Each sign-in, and where its access token may go and how it is put in. */
@@ -116,10 +122,14 @@ export function integrationPolicy(
   const classes = settingClasses(sheet);
   const hosts: string[] = [];
   const localHosts: string[] = [];
+  const privateNames: string[] = [];
   sheet.hosts.forEach((host, index) => {
     const found = resolveHost(sheet, host, classes, settings, ["hosts", index], problems);
     if (found !== undefined) {
       (found.plain ? localHosts : hosts).push(found.host);
+    }
+    if (found?.privateName) {
+      privateNames.push(found.hostname);
     }
   });
 
@@ -160,6 +170,7 @@ export function integrationPolicy(
     name: sheet.id,
     hosts: unique(hosts),
     ...(localHosts.length > 0 ? { localHosts: unique(localHosts) } : {}),
+    ...(privateNames.length > 0 ? { privateNames: unique(privateNames) } : {}),
     secrets,
     signIns,
     tokens: sheet.tokens.map((token) => token.name),
@@ -252,6 +263,8 @@ interface FoundHost {
   readonly hostname: string;
   /** Plain `http`, so only to a local address. */
   readonly plain: boolean;
+  /** A host name in a `private` setting, which only the transport's check at connect keeps private. */
+  readonly privateName?: boolean;
 }
 
 /** The class the sheet declares for each setting a `{ fromSetting }` host reads. */
@@ -306,7 +319,8 @@ export function resolveHost(
     });
     return undefined;
   }
-  if (declared === undefined || addressClassOf(found.hostname) !== declared) {
+  const written = addressClassOf(found.hostname, declared);
+  if (declared === undefined || written !== declared) {
     problems.push({
       code: "setting-outside-class",
       path,
@@ -314,28 +328,41 @@ export function resolveHost(
     });
     return undefined;
   }
-  return found;
+  return isName(found.hostname) && declared === "private" ? { ...found, privateName: true } : found;
 }
 
 /**
- * The class a URL's host is in, read from the literal text: a name can
- * resolve anywhere, so only `localhost` and IP addresses count as this
- * computer or the home network, and an IP address never counts as public.
- * Undefined for an address in no class, such as link-local `169.254.0.0/16`,
- * where cloud machines serve their credentials, or `[::]`.
+ * The class a URL's host is in. An IP address is read from its text, and
+ * never counts as public; `localhost` is this computer. Undefined for an
+ * address in no class, such as link-local `169.254.0.0/16`, where cloud
+ * machines serve their credentials, or `[::]`, and for `*.localhost`.
  *
- * Checking the addresses a public name resolves to is the Node transport's
- * job (I5 design 3.8), on every request.
+ * Any other name can resolve anywhere, so its text proves nothing: it is in
+ * the class the sheet declares, `private` or `public`, and the transport
+ * checks the addresses it resolves to against that class on every request
+ * (I5 design 3.8; HAL-15005). A name never counts as `loopback`, so only
+ * `localhost` reaches this computer.
  */
-function addressClassOf(hostname: string): AddressClass | undefined {
+function addressClassOf(
+  hostname: string,
+  declared: AddressClass | undefined,
+): AddressClass | undefined {
   if (isLoopback(hostname)) {
     return "loopback";
   }
   if (isLocalAddress(hostname)) {
     return "private";
   }
+  if (!isName(hostname)) {
+    return undefined;
+  }
+  return declared === "private" ? "private" : "public";
+}
+
+/** A host name other than `localhost` and `*.localhost`, rather than an IP address. */
+function isName(hostname: string): boolean {
   const literal = hostname.startsWith("[") || ipv4(hostname) !== undefined;
-  return literal || hostname.endsWith(".localhost") ? undefined : "public";
+  return !literal && hostname !== "localhost" && !hostname.endsWith(".localhost");
 }
 
 /** What a class allows, for a message. */
@@ -344,7 +371,7 @@ function classWords(declared: AddressClass | undefined): string {
     case "loopback":
       return "a URL on this machine (localhost, 127.0.0.0/8 or [::1])";
     case "private":
-      return "a URL with a private network address (10/8, 172.16/12, 192.168/16, 100.64/10 or fc00::/7)";
+      return "a URL with a private network address (10/8, 172.16/12, 192.168/16, 100.64/10 or fc00::/7) or an https URL with a host name that points to one";
     case "public":
       return "an https URL with a public host name";
     case undefined:

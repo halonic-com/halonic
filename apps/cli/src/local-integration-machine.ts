@@ -13,7 +13,7 @@ import { rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
 import { type AddressCheckingHttpClient, connectorHostClass } from "@halonicjs/adapter-http-kit";
-import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
+import { createNodeHttpClient, type Resolve } from "@halonicjs/adapter-http-node";
 import {
   type RunnerMachine,
   runnerFile,
@@ -114,9 +114,7 @@ export function computerIntegrationMachine(
       nodeFolder: runnerNodeFolder(process.execPath),
       runnerFile: runnerFile(),
     },
-    transport:
-      input.transport ??
-      createNodeHttpClient({ hostClass: connectorHostClass, proxy: proxySetting }),
+    transport: input.transport ?? integrationTransport(),
     // Read again at every start: what was checked when the command began is never reused.
     trustCheck: async () => {
       const read = await readWorkspaceTrust(input.dir, input.trust.commandSearch, input.workspace);
@@ -147,6 +145,20 @@ export function computerIntegrationMachine(
       );
     },
   };
+}
+
+/**
+ * What local integrations' requests go out through: the Node transport, which
+ * checks the addresses a name resolves to on every request. A name counts as
+ * public unless the integration's sheet makes it private, which the kit does
+ * per integration with `withPrivateNames`. A test passes a fake `resolve`.
+ */
+export function integrationTransport(resolve?: Resolve): AddressCheckingHttpClient {
+  return createNodeHttpClient({
+    hostClass: connectorHostClass,
+    proxy: proxySetting,
+    ...(resolve === undefined ? {} : { resolve }),
+  });
 }
 
 /**

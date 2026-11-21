@@ -169,6 +169,9 @@ integration never holds it, and the host keeps the request log.
   in `localHosts` (`localhost`, a loopback address or a private network address), and
   a secret goes over plain `http` only to this machine (`secret-over-plain-http`
   otherwise). `file:`, `data:` and URLs with a user name are refused.
+- **A host name in a `private` setting** goes over `https` only, and the loader hands it to the
+  transport's `withPrivateNames`, so it connects only to the private addresses the name resolves
+  to, on every request. A transport without it is refused (`private-name-unchecked`).
 - **Redirects** are followed by the kit (`redirect: "manual"`), and every hop
   is checked like the first request. Leaving the origin drops
   `authorization`, `cookie` and `proxy-authorization`, as browsers do.
