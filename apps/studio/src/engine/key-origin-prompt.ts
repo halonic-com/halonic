@@ -60,7 +60,7 @@ export function withKeyOriginPrompt(
   return { ...options, resolveModel: askingModelResolver(options.resolveModel, ask) };
 }
 
-/** The run starts a person makes at the window: Run (or a routine's Run now), the Inbox, or a workflow's own Run. */
+/** The run starts a person makes at the window: Run (or a routine's Run now) and the Inbox. */
 const askableTriggers: ReadonlySet<string> = new Set(["manual", "inbox"]);
 
 /**
@@ -93,9 +93,9 @@ export function keyOriginAskOf(
 }
 
 /**
- * Whether the call's run was started by a person at this window: its `run.started` has no
- * trigger (a workflow's own Run), or a `manual` or `inbox` one, and it isn't a subflow. A chat
- * turn, a scheduled or signalled run, and a run whose log can't be read are a no.
+ * Whether the call's run was started by a person at this window: its `run.started` has a
+ * `manual` or `inbox` trigger, and it isn't a subflow. A chat turn, a scheduled or signalled run,
+ * a run with no trigger (`halonic run` in a terminal) and a run whose log can't be read are a no.
  */
 async function startedByAPerson(
   runs: Pick<RunStore, "events">,
@@ -105,5 +105,5 @@ async function startedByAPerson(
   const events = await runs.events(scope.runId).catch((): RunEvent[] => []);
   const started = events.find((event) => event.type === "run.started");
   if (started?.type !== "run.started" || started.parent !== undefined) return false;
-  return started.trigger === undefined || askableTriggers.has(started.trigger.type);
+  return started.trigger !== undefined && askableTriggers.has(started.trigger.type);
 }

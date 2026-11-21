@@ -53,11 +53,9 @@ const setTimer = () => () => undefined;
 
 verifies("studio.key-origin-prompt", () => {
   describe("keyOriginAskOf", () => {
-    it("may ask for a run a person started with Run, from the Inbox, or from a workflow's own Run", async () => {
-      for (const trigger of [{ type: "manual" }, { type: "inbox" }, undefined] as const) {
-        const runs = runsStartedWith(
-          trigger === undefined ? {} : { trigger: { ...trigger, at: "2026-11-21T09:14:00.000Z" } },
-        );
+    it("may ask for a run a person started with Run or from the Inbox", async () => {
+      for (const type of ["manual", "inbox"] as const) {
+        const runs = runsStartedWith({ trigger: { type, at: "2026-11-21T09:14:00.000Z" } });
         const ask = keyOriginAskOf(promptAnswering("allowed").prompt, {
           runs,
           keyOrigins,
@@ -67,21 +65,31 @@ verifies("studio.key-origin-prompt", () => {
       }
     });
 
-    it("never asks for a routine's trigger, a subflow, a chat turn or a run it can't read", async () => {
+    it("never asks for a routine's trigger, a run with no trigger, a subflow, a chat turn or a run it can't read", async () => {
       const { prompt } = promptAnswering("allowed");
+      const byHand = { trigger: { type: "manual", at: "2026-11-21T09:14:00.000Z" } } as const;
+      const terminal = runsStartedWith({});
+      expect(
+        await keyOriginAskOf(prompt, { runs: terminal, keyOrigins, setTimer }).mayAsk({
+          runId: "run-1",
+        }),
+      ).toBe(false);
       for (const type of ["schedule", "every", "mail", "signal", "webhook"] as const) {
         const runs = runsStartedWith({ trigger: { type, at: "2026-11-21T09:14:00.000Z" } });
         expect(
           await keyOriginAskOf(prompt, { runs, keyOrigins, setTimer }).mayAsk({ runId: "run-1" }),
         ).toBe(false);
       }
-      const subflow = runsStartedWith({ parent: { runId: "run-0", state: "draft", depth: 1 } });
+      const subflow = runsStartedWith({
+        ...byHand,
+        parent: { runId: "run-0", state: "draft", depth: 1 },
+      });
       expect(
         await keyOriginAskOf(prompt, { runs: subflow, keyOrigins, setTimer }).mayAsk({
           runId: "run-1",
         }),
       ).toBe(false);
-      const manual = runsStartedWith({});
+      const manual = runsStartedWith(byHand);
       expect(
         await keyOriginAskOf(prompt, { runs: manual, keyOrigins, setTimer }).mayAsk(undefined),
       ).toBe(false);
