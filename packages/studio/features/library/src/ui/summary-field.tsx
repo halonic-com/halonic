@@ -127,6 +127,8 @@ function problemLine(reason: SummarizeFailure, name: string, notAnswering: strin
       return knowledgeWords.noDocuments(name);
     case "too-large":
       return knowledgeWords.summarizeFailed(name, knowledgeWords.tooLarge);
+    case "untrusted":
+      return knowledgeWords.summarizeFailed(name, knowledgeWords.untrusted);
     case "host-unreachable":
       return knowledgeWords.summarizeFailed(name, knowledgeWords.hostUnreachable(notAnswering));
     case "model-failed":
@@ -158,7 +160,7 @@ function Problem({
       </Callout>
     );
   }
-  if (reason === "no-documents" || reason === "too-large") {
+  if (reason === "no-documents" || reason === "too-large" || reason === "untrusted") {
     return <Callout tone="danger">{line}</Callout>;
   }
   return (

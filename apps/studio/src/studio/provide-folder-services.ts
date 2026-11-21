@@ -67,6 +67,7 @@ import {
   tokenStoreKey,
 } from "@halonicjs/studio-services";
 import { EngineNotAnswering } from "@halonicjs/studio-shell";
+import { loadWorkspace } from "@halonicjs/workspace";
 import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { versionHistoryOf } from "../changes/version-history.ts";
@@ -350,6 +351,9 @@ export function provideFolderServices(
         transport === undefined
           ? () => Promise.reject(new EngineNotAnswering())
           : (provider, request) => new AgentHostChat(transport, location).chat(provider, request),
+      // The agent host reads the saved provider files, so their trust is what counts.
+      mayCallModel: async () =>
+        trust.mayStart(await loadWorkspace(new TauriDefinitionStore(files, location))),
     }),
   );
   services.provide(
