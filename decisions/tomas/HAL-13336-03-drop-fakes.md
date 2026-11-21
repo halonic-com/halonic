@@ -3,6 +3,7 @@
 - Task: HAL-13336
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13336 (the task asks to move adapter-cloudflare-durable's Node tests into workerd and drop their fakes; Liam agreed on 19 Nov that this note comes with part 3 and signs it in review on the task)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hShgIQYyF4LMBhGJnl6wUXvgyPTcc04cHpry/KzYXc9oB62HJ3lZHm0vH+fimNhVc2LFl6ZsL5hQqhXsOxGrAw==
 
 ## What changes
 
