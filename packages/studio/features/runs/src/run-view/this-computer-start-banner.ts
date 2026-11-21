@@ -9,12 +9,13 @@ import { failedStartOf, runFailureOf } from "@halonicjs/app/run-failure";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { failureWords } from "../failure-words.ts";
 import { withDetails } from "./danger-banner.ts";
-import type { RunBanner, RunPageContext } from "./run-page-model.ts";
+import type { BannerFix, RunBanner, RunPageContext } from "./run-page-model.ts";
 
 /**
- * The agent of the failed step, as its file names it, with **Copy details** and no **Run again**:
- * the same launcher would refuse it the same way. Copy details holds the launcher's reason, which
- * the engine logs as `run.failed`'s error (`engine.this-computer-start-failed`).
+ * The agent of the failed step, as its file names it, with **Copy details**, then **Report a
+ * problem ↗**, and no **Run again**: the same launcher would refuse it the same way. Copy details
+ * holds the launcher's reason, which the engine logs as `run.failed`'s error
+ * (`engine.this-computer-start-failed`).
  *
  * @param log The run's log, for the step's own `sandbox.started`, which names the agent.
  * @returns `undefined` until the log is read, and for a log without that step's start, so the page
@@ -39,5 +40,14 @@ export function thisComputerStartBanner(
   const agent = context.agentName?.(failure.agent) ?? failure.agent;
   return withDetails(failureWords.thisComputerStartFailed(workflow, step, agent), summary, {
     noRunAgain: true,
+    afterDetails: [reportProblem],
   });
 }
+
+/** **Report a problem ↗**: a new issue on Halonic's GitHub, where the copied details go. */
+const reportProblem: BannerFix = {
+  kind: "open-external",
+  label: failureWords.reportProblem,
+  address: failureWords.reportProblemAddress,
+  opens: failureWords.opensGitHub,
+};

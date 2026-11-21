@@ -6,7 +6,7 @@ import type { BannerFix, RunBanner } from "./run-page-model.ts";
 /** The buttons a failed run's banner may carry around **Run again**. */
 export type DangerButtons = Pick<
   Extract<RunBanner, { kind: "callout" }>,
-  "fixes" | "links" | "details" | "noRunAgain"
+  "fixes" | "links" | "details" | "afterDetails" | "noRunAgain"
 >;
 
 /** A failed run's banner: its lines, and the buttons that mend the cause around **Run again**. */
@@ -21,7 +21,7 @@ export function danger(lines: readonly string[], buttons: DangerButtons = {}): R
 export function withDetails(
   line: string,
   summary: RunSummary,
-  buttons: Pick<DangerButtons, "noRunAgain"> = {},
+  buttons: Pick<DangerButtons, "noRunAgain" | "afterDetails"> = {},
 ): RunBanner {
   const message = summary.error?.trim() ?? "";
   return danger([line], {
