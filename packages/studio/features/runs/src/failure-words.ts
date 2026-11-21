@@ -220,6 +220,9 @@ export const failureWords = {
     phone: boolean,
   ) =>
     `${workflow} stopped in the step ${step}: the path to Halonic's data is too long for the bridge's socket${limit === undefined ? "" : ` (${limit.bytes} bytes, and ${limit.system} takes at most ${limit.most})`}. Move Halonic's data to a shorter path${phone ? " on your computer" : ""}, then run again.`,
+  /** The cause and fix the CLI says for the same run (HAL-12569, HAL-14122); a phone adds where to run it. */
+  secretsFileReadable: (workflow: string, step: string, file: string, phone: boolean) =>
+    `${workflow} stopped in the step ${step}: the secrets file ${file} can be read by other users. Run chmod 600 ${file}${phone ? " on your computer" : ""}, then run again.`,
   engineStopped: (workflow: string, step: string) =>
     `${workflow} stopped because Halonic's engine stopped during the step ${step}. Nothing after that step ran.`,
   engineStoppedBeforeFirstStep: (workflow: string) =>
