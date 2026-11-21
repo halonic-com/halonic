@@ -3,6 +3,7 @@
 - Task: HAL-15357 (follow-up from HAL-15286: the large slots now have 6 CPUs and 10 GB)
 - Approval: Liam agreed the new defaults on HAL-15286 (21 Nov 20:50) and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:A0/00A1ubfoiV03y3mjJ4bkJlLz4C51URzbpXohJ1MxPcSCLg9c/IMeeaDX8EE+RIxtSk00zvk0tlJ8cTqsqBQ==
 
 ## What changes
 
