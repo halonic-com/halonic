@@ -42,16 +42,20 @@ function secretsOf(connection: ConnectorConnection): readonly string[] | null {
 /**
  * How one connector connects, for the connector page to put above its status: the transport, where
  * it goes, and the names of its secrets (never their values; no row for an integration or a plugin),
- * as plain rows under a heading. It is a plain `div`, with no landmark of its own: the shell owns
- * the landmarks.
+ * as plain rows under a heading. With `secretsOnPage`, the page's Secrets section lists them with
+ * their state, so there is no row here: a second list with no state read as a stale one, the
+ * connector's own state right under it as theirs (C552 finding 6). It is a plain `div`, with no
+ * landmark of its own: the shell owns the landmarks.
  */
 export function ConnectorConnectionSummary({
   connection,
+  secretsOnPage = false,
 }: {
   readonly connection: ConnectorConnection;
+  readonly secretsOnPage?: boolean;
 }) {
   const headingId = useId();
-  const secrets = secretsOf(connection);
+  const secrets = secretsOnPage ? null : secretsOf(connection);
   const words = connectionSummaryWords;
   const detail = detailRowOf(connection);
   return (

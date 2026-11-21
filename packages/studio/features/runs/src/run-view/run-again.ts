@@ -1,7 +1,7 @@
 import type { RunEvent } from "@halonicjs/events";
 import { errorKindOf } from "@halonicjs/std";
 import { type EngineWords, startFailureOf, withFullStop } from "@halonicjs/studio-shell";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RunStartHost, SourcedRun } from "../api.ts";
 import { runPageWords } from "../run-words.ts";
 
@@ -55,7 +55,9 @@ export interface RunAgain {
  * **Run again** for `run`: a new run of the same workflow with the same input, opened when it has
  * started. `undefined` when the page can't do it ({@link inputToRunAgain}, or no host or no way to
  * open a run). A failed start is said through `announce` once, when it happens: the reason, then
- * the next step when there is one (rule E4, C533-1).
+ * the next step when there is one, and its command, which the page shows in a CommandBox (rule E4,
+ * C533-1, C552 finding 7). A refusal because the workspace isn't trusted yet goes once the
+ * workspace may run, wherever the person trusted it.
  */
 export function useRunAgain(
   host: RunStartHost | undefined,
@@ -69,6 +71,14 @@ export function useRunAgain(
   const [busy, setBusy] = useState(false);
   // A ref, so two clicks in the same render still start one run.
   const pending = useRef(false);
+  const onTrusted = host?.onTrusted;
+  const untrusted = problem !== undefined && errorKindOf(problem.error) === "denied";
+  // Trusted from the status bar, not from the refusal's Review: the refusal is stale (C552 finding 7).
+  // Focus stays where the person trusted it.
+  useEffect(() => {
+    if (onTrusted === undefined || !untrusted) return;
+    return onTrusted(() => setProblem(undefined));
+  }, [onTrusted, untrusted]);
   const input = run === undefined ? undefined : inputToRunAgain(run, log);
   if (host === undefined || openRun === undefined || run === undefined || input === undefined) {
     return undefined;
@@ -102,9 +112,13 @@ export function useRunAgain(
   return { start: () => begin(false), tryAgain: () => begin(true), busy, problem, review };
 }
 
-/** "Couldn't start the run: *reason*", then the next step when there is one. */
+/**
+ * "Couldn't start the run: *reason*", then the next step when there is one, then the command a
+ * step such as "To start it, run this in a terminal:" leads to, so the line doesn't end on a colon.
+ */
 function failedLine(error: unknown, engine: EngineWords): string {
   const failure = startFailureOf(error, engine.notAnswering);
   const step = failure.fix === undefined ? "" : ` ${withFullStop(failure.fix)}`;
-  return `${runPageWords.runAgainFailed(failure.reason)}${step}`;
+  const command = failure.command === undefined ? "" : ` ${failure.command}`;
+  return `${runPageWords.runAgainFailed(failure.reason)}${step}${command}`;
 }

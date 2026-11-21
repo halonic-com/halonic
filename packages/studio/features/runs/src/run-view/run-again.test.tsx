@@ -281,6 +281,28 @@ verifies("runs.run-view.run-again-try-again", () => {
     );
   });
 
+  it("announces the command a terminal step leads to, so the line doesn't end on its colon", async () => {
+    const connector = Object.assign(
+      new KindedError("unavailable", "Reporter uses a connector, which Studio can't start yet.", {
+        fix: "To start it, run this in a terminal:",
+      }),
+      { command: "halonic run reply" },
+    );
+    const announce = vi.fn();
+    const root = await open(
+      failed,
+      { startRun: vi.fn(async () => Promise.reject(connector)) },
+      vi.fn(),
+      (line) => announce(line),
+    );
+    await act(async () => button(root, "Run again")?.click());
+    expect(announce).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /can't start yet\. To start it, run this in a terminal: halonic run reply$/,
+      ),
+    );
+  });
+
   it("keeps Try again in place, busy and focused, while it starts, then focuses a new failure", async () => {
     let refuse: (error: unknown) => void = () => {};
     const startRun = vi
@@ -354,6 +376,33 @@ verifies("runs.run-view.run-again-review", () => {
       expect(root.querySelector("header")?.contains(document.activeElement)).toBe(inHeader);
       unmountAll();
     }
+  });
+
+  it("takes the sentence away, leaving focus alone, when the workspace is trusted from the status bar", async () => {
+    const listeners = new Set<() => void>();
+    const onTrusted = (listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    };
+    const root = await open(failed, {
+      startRun: vi.fn(async () => untrusted()),
+      askTrust: vi.fn(),
+      onTrusted,
+    });
+    await act(async () => button(root, "Run again")?.click());
+    expect(root.textContent).toContain("Couldn't start the run");
+    expect(listeners.size).toBe(1);
+    const elsewhere = document.body.appendChild(document.createElement("button"));
+    elsewhere.focus();
+
+    await act(async () => {
+      for (const listener of listeners) listener();
+    });
+    expect(root.textContent).not.toContain("Couldn't start the run");
+    expect(button(root, "Review")).toBeUndefined();
+    expect(document.activeElement).toBe(elsewhere);
+    expect(listeners.size).toBe(0);
+    elsewhere.remove();
   });
 
   it("keeps Try again, not Review, for another refusal, or where the host can't ask", async () => {

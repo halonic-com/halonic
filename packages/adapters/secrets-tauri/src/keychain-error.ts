@@ -24,7 +24,10 @@ const errorKinds: Readonly<Record<KeychainRefusalKind, ErrorKind>> = {
 /**
  * A keychain call that failed for a reason other than a bad name or value.
  * `refusal` is the shell's own kind, the same on desktop and Android; `kind`
- * is how a surface should respond. The message never holds a value.
+ * is how a surface should respond. The message is the shell's own, with no
+ * prefix, so a screen can show it as the reason ("Couldn't save the secret:
+ * the keychain is locked."); the refusal stays in `refusal` for the logs
+ * (C552 finding 6). The message never holds a value.
  */
 export class KeychainError extends Error {
   override readonly name = "KeychainError";
@@ -36,7 +39,7 @@ export class KeychainError extends Error {
    * @param message - the shell's message, which never holds the value
    */
   constructor(refusal: KeychainRefusalKind, message: string) {
-    super(`The keychain refused the call (${refusal}): ${message}`);
+    super(message);
     this.refusal = refusal;
   }
 
