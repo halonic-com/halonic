@@ -8,7 +8,8 @@
  * `{tool}` is the tool's name, with its connector in brackets when the log names it. The lines
  * for a cause the engine logged (`events.tool-result-cause`, HAL-12471): the one for a time limit
  * is the example microcopy 1.6 gives, the connector-start ones were decided by the team on
- * HAL-13829, and the others by the team on HAL-12471. A call that ran out of time or that the
+ * HAL-13829, the plugin ones by the team from words check C557 (HAL-15278), as `halonic run` says
+ * them, and the others by the team on HAL-12471. A call that ran out of time or that the
  * engine stopped may still have done its work, so those lines say so, as the `unknown` one does.
  */
 export const failedCallWords = {
@@ -30,6 +31,10 @@ export const failedCallWords = {
     "Didn't work: the connector {connector} didn't start: its program {name} isn't on this computer.",
   secretNotSet:
     "Didn't work: the connector {connector} didn't start: it needs the secret {name}, which isn't set.",
+  pluginNotTrusted:
+    "Didn't work: the connector {connector} didn't start: its plugin {name} isn't trusted yet.",
+  pluginChanged:
+    "Didn't work: the connector {connector} didn't start: its plugin {name} changed since you trusted it.",
   notStarted: "Didn't work: the connector {connector} didn't start.",
   /** `{connector}` when the log doesn't name the connector: "the connector of the tool `create_note` didn't start". */
   connectorOfTool: "of the tool {tool}",

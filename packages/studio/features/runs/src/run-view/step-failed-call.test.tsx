@@ -160,10 +160,43 @@ verifies("runs.run-view.step-failed-call", () => {
     expect(lineFor({ code: "connector-not-started", why: "program-missing" })).toBe(plain);
   });
 
-  it("says only that the connector didn't start for a plugin that isn't trusted or changed", () => {
+  it("names the plugin of a connector that didn't start because of its trust", () => {
+    expect(
+      lineFor({ code: "connector-not-started", why: "plugin-not-trusted", name: "files" }),
+    ).toBe(
+      "✕ Didn't work: the connector notes-mcp didn't start: its plugin files isn't trusted yet.",
+    );
+    expect(lineFor({ code: "connector-not-started", why: "plugin-changed", name: "files" })).toBe(
+      "✕ Didn't work: the connector notes-mcp didn't start: its plugin files changed since you trusted it.",
+    );
+  });
+
+  it("shows the plugin in italics, as the connector, and offers no button", () => {
+    lines([
+      [0, connectorStarted],
+      [0, called("create_note")],
+      [
+        0,
+        result("create_note", "error", {
+          code: "connector-not-started",
+          why: "plugin-not-trusted",
+          name: "files",
+        }),
+      ],
+    ]);
+
+    const line = document.querySelector("aside li p");
+    expect([...(line?.querySelectorAll("em") ?? [])].map((em) => em.textContent)).toEqual([
+      "notes-mcp",
+      "files",
+    ]);
+    expect(line?.querySelector("code, button")).toBeNull();
+  });
+
+  it("says only that the connector didn't start for a plugin cause without a name", () => {
     const plain = "✕ Didn't work: the connector notes-mcp didn't start.";
     for (const why of ["plugin-not-trusted", "plugin-changed"] as const) {
-      expect(lineFor({ code: "connector-not-started", why, name: "files" })).toBe(plain);
+      expect(lineFor({ code: "connector-not-started", why })).toBe(plain);
     }
   });
 

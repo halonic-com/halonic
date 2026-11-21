@@ -59,7 +59,7 @@ function failedCallSentence(tool: string, failed: FailedCall): ReactNode[] {
     case "connector-not-started":
       return fillWords(failedCallWords, connectorStartKey(cause), {
         ...values,
-        name: <code className="font-mono">{cause.name}</code>,
+        name: namedInCause(cause),
       });
   }
 }
@@ -73,9 +73,9 @@ const notMadeKeys: Readonly<Record<ToolNotMadeReason, FailedCallKey>> = {
 };
 
 /**
- * The line for a connector that didn't start: the program or the secret it missed when the cause
- * names it, else only that it didn't start. A plugin that isn't trusted yet, or changed since,
- * gets only that too: the plugin's own page says why and lets the person trust it.
+ * The line for a connector that didn't start: the program or the secret it missed, or the plugin
+ * that isn't trusted yet or changed since, when the cause names it, else only that it didn't
+ * start. The plugin line has no button: the plugin's own page has the trust step (HAL-15278).
  */
 function connectorStartKey(
   cause: Extract<ToolFailureCause, { code: "connector-not-started" }>,
@@ -87,10 +87,26 @@ function connectorStartKey(
     case "secret-not-set":
       return "secretNotSet";
     case "plugin-not-trusted":
+      return "pluginNotTrusted";
     case "plugin-changed":
+      return "pluginChanged";
     case "other":
       return "notStarted";
   }
+}
+
+/**
+ * The name a connector-start cause holds: a plugin in italics, as the connector is, since both
+ * are names from the workspace; a program or a secret in code style.
+ */
+function namedInCause(
+  cause: Extract<ToolFailureCause, { code: "connector-not-started" }>,
+): ReactNode {
+  return cause.why === "plugin-not-trusted" || cause.why === "plugin-changed" ? (
+    <em>{cause.name}</em>
+  ) : (
+    <code className="font-mono">{cause.name}</code>
+  );
 }
 
 /** "60 seconds", or "1 second". */
