@@ -3,7 +3,7 @@
 // agent of the step the log's last start names (`failedStartOf`). The facts
 // are data; the CLI and Studio word them.
 
-import type { FailedStart, RunFailedEvent } from "./failed-model.ts";
+import type { FailedStart, RunFailedFacts } from "./failed-model.ts";
 
 /** The reasons a step's program didn't start, each with its own facts. */
 export type StartFailure =
@@ -39,7 +39,7 @@ export type StartFailure =
  */
 export function startFailureOf(
   reason: StartFailure["reason"],
-  failed: RunFailedEvent,
+  failed: RunFailedFacts,
   started: FailedStart | undefined,
 ): StartFailure | undefined {
   if (started === undefined) {
@@ -62,7 +62,7 @@ export function startFailureOf(
 }
 
 /** `harness-start-failed` for the program the step's `harness.started` names, and how long the engine waited for it. */
-function harnessFailure(failed: RunFailedEvent, started: FailedStart): StartFailure | undefined {
+function harnessFailure(failed: RunFailedFacts, started: FailedStart): StartFailure | undefined {
   if (started.harness === undefined) {
     return undefined;
   }

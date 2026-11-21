@@ -9,6 +9,7 @@ import type {
   ToolDefinition,
 } from "@halonicjs/ports";
 import { AnswerInProgress, asError, ListenerFailed } from "./chat-answer.ts";
+import { type ChatFailureCause, chatFailureCauseOf } from "./chat-failure.ts";
 
 /** The turn limit of a chat when nothing sets one. */
 export const defaultTurnLimit = 16;
@@ -90,13 +91,15 @@ export interface ChatAnswerListener {
  *
  * For `stopped` and `failed`, `toolsRan` says whether a tool already ran in
  * this answer, so it may have changed something and sending the message
- * again isn't safe.
+ * again isn't safe. A model turn that failed for a reason a run would name,
+ * such as a model that can't be reached, gives it as `cause`, so the chat
+ * says the run's sentence for it (`chatFailureOf`); any other failure has none.
  */
 export type ChatAnswerEnd =
   | { reason: "answered" }
   | { reason: "turn-limit"; turns: number }
   | { reason: "stopped"; toolsRan: boolean }
-  | { reason: "failed"; error: Error; toolsRan: boolean };
+  | { reason: "failed"; error: Error; toolsRan: boolean; cause?: ChatFailureCause };
 
 /** The result of {@link ChatService.answer}. */
 export interface ChatAnswer {
@@ -164,7 +167,13 @@ export class ChatService {
         return answer.endStopped();
       }
       if (response instanceof Error) {
-        return answer.end({ reason: "failed", error: response, toolsRan: answer.toolsRan });
+        const cause = chatFailureCauseOf(response);
+        return answer.end({
+          reason: "failed",
+          error: response,
+          toolsRan: answer.toolsRan,
+          ...(cause === undefined ? {} : { cause }),
+        });
       }
       answer.addTurn(response);
       if (response.toolCalls.length === 0) {
