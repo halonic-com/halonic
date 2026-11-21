@@ -153,7 +153,7 @@ export function programRow(programsRun: ProgramsRun, fence: TrustFence, tools: n
         }
       : {
           kind: "off",
-          runs: `Doesn't start on this computer: the sandbox can't start here. ${off}`,
+          runs: `${runsLine("sandbox-unavailable")}. ${off}`,
           setUp: false,
         };
   }

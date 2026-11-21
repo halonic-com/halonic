@@ -82,7 +82,7 @@ export const pluginMessages = defineMessages("plugin", {
    */
   programsRun: (state: LocalToolState["kind"] | undefined) =>
     phrase`${pluginTrustRunsLabel}: ${pluginTrustRunsText(state)}`,
-  /** Under a plugin with programs on `plugin list`: "Programs: Doesn't run now. …", in Studio's words. */
+  /** Under a plugin with programs on `plugin list`: "Programs: Doesn't start on this computer: …", in Studio's words. */
   listProgramsRun: (state: LocalToolState["kind"]) =>
     phrase`${pluginTrustSectionHeadings.programs}: ${pluginTrustRunsText(state)}`,
   secretsHeading: () => phrase`Secrets`,
