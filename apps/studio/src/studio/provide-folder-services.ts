@@ -76,6 +76,7 @@ import type { GitAnswer } from "../changes/workspace-changes.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
 import { answerChatOn } from "../engine/answer-chat-on.ts";
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
+import { windowKeyOriginPrompt } from "../engine/key-origin-prompt.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
 import { openStudioHarnessHost } from "../engine/studio-harness-host.ts";
 import { provideFilesServices } from "../files/provide-files-services.ts";
@@ -212,6 +213,7 @@ export function provideFolderServices(
         definitions: new TauriDefinitionStore(files, location),
         secrets: shellKeychain(ipc),
         keyOrigins: shellKeyOrigins(ipc),
+        keyOriginPrompt: windowKeyOriginPrompt(services, ipc),
         http: new ShellHttpClient(ipc),
         clock: systemClock,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,

@@ -63,6 +63,7 @@ import { type EngineLockHold, holdEngineLock } from "./engine-lock.ts";
 import { answerRefusalOf, refuseConnectorApprove } from "./engine-refusals.ts";
 import { pageRoutines, routineSkipsOf } from "./engine-routines.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
+import { withKeyOriginPrompt } from "./key-origin-prompt.ts";
 import {
   agentRefusalOf,
   agentStartRefusalOf,
@@ -400,6 +401,17 @@ export class EngineService {
         await this.check({ hubId, workflowId });
         await this.#refuseUntrusted(workspace);
       });
+      const fromWorkspace = workspaceExecutorOptions({
+        workspace,
+        secrets: this.#options.secrets,
+        http: this.#options.http,
+        clock,
+        isTrusted: () => this.#options.isTrusted(workspace),
+        keyOrigins: this.#options.keyOrigins,
+        // The approvals given in the Library, read at the start of every turn. Without an
+        // agent host no connector starts, so no listed tool is offered.
+        listedToolApproval: runConnectors?.listedToolApproval ?? noListedToolApproval,
+      });
       const engine = assembleEngine({
         createScheduler: nodeSchedulerFactory({
           store: new TauriRecordStore(ipc, location),
@@ -409,17 +421,8 @@ export class EngineService {
           reportError,
         }),
         executor: {
-          ...workspaceExecutorOptions({
-            workspace,
-            secrets: this.#options.secrets,
-            http: this.#options.http,
-            clock,
-            isTrusted: () => this.#options.isTrusted(workspace),
-            keyOrigins: this.#options.keyOrigins,
-            // The approvals given in the Library, read at the start of every turn. Without an
-            // agent host no connector starts, so no listed tool is offered.
-            listedToolApproval: runConnectors?.listedToolApproval ?? noListedToolApproval,
-          }),
+          // "Allow this address?" (HAL-11873), only with the window's prompt.
+          ...withKeyOriginPrompt(fromWorkspace, { ...this.#options, runs: runStore }),
           runs: {
             store: runStore,
             blobs: new TauriBlobStore(ipc, location),

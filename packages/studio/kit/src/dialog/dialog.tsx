@@ -156,6 +156,7 @@ function DialogBox(props: DialogProps) {
   return (
     <dialog
       ref={dialog}
+      role={props.alert === true ? "alertdialog" : undefined}
       aria-labelledby={ids.title}
       aria-describedby={describedBy(props, ids)}
       className={`${frame} ${anchorClasses[anchor]} ${sizeClasses[size]}${props.height === undefined || phone ? "" : " dialog-height"}`}

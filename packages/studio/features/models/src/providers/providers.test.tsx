@@ -102,6 +102,7 @@ function tabTitle(id: string, files: ModelsFiles | undefined): string | undefine
           if (added.kind === "model-provider") describe = added.tab?.describe;
         },
         addSection: () => undefined,
+        provide: () => undefined,
       }),
     },
   );

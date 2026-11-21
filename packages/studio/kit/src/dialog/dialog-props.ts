@@ -9,8 +9,11 @@ export type DialogSize = "sm" | "md" | "lg";
 export interface DialogConfirm {
   /** Names the action: "Delete agent", never "OK". */
   readonly label: string;
-  /** `danger` when it deletes or removes something. Default `primary`. */
-  readonly variant?: "primary" | "danger";
+  /**
+   * `danger` when it deletes or removes something. `secondary` when pressing it by reflex would
+   * do harm, so it mustn't be the prominent button. Default `primary`.
+   */
+  readonly variant?: "primary" | "secondary" | "danger";
   /**
    * The label while `busy`: "Deleting…". Required, because it's also why Cancel and the ✕ are
    * unavailable then.
@@ -90,6 +93,11 @@ interface DialogCommonProps {
    * something to read first, such as Check this computer's lines (first-run-progress 5).
    */
   readonly focusTitle?: boolean;
+  /**
+   * `role="alertdialog"`, for a decision that interrupts and must be answered before the work
+   * goes on, such as "Allow this address?". Default `false`: a plain `dialog`.
+   */
+  readonly alert?: boolean;
   readonly children: ReactNode;
 }
 

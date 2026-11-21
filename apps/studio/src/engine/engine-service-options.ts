@@ -11,6 +11,7 @@ import type {
 import type { TauriIpc } from "@halonicjs/studio-services";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { PageEngineLock } from "./engine-lock.ts";
+import type { KeyOriginPrompt } from "./key-origin-prompt.ts";
 import type { EngineParts, StudioHarnessHost } from "./studio-harness-host.ts";
 
 /** What an {@link EngineService} is built from. */
@@ -32,6 +33,12 @@ export interface EngineServiceOptions {
    * with a key; a key with a list goes only to those origins, a key without one keeps the trust rule.
    */
   readonly keyOrigins: KeyOrigins;
+  /**
+   * "Allow this address?" (HAL-11873): when a run a person started at this window is refused
+   * because its key may not go to the provider's address, the engine asks here, saves only
+   * that address and picks the model again. Left out, nothing is asked and the call fails.
+   */
+  readonly keyOriginPrompt?: KeyOriginPrompt;
   /** What the model providers call their servers with. */
   readonly http: HttpClient;
   readonly clock: Clock;

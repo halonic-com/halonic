@@ -381,6 +381,21 @@ export const stepGroupWords = {
 };
 
 /** Show the run log (checklist part 1, 1.10; mc 1.2 and 3.D W-D3). */
+/**
+ * A person's answer to "Allow this address?" as the run log says it (HAL-11873 UX checklist,
+ * C-20): what was allowed or refused, never who answered. The address is as it is saved.
+ */
+export function keyOriginAnswerWords(answer: {
+  readonly provider: string;
+  readonly key: string;
+  readonly origin: string;
+  readonly answer: "allowed" | "not-allowed";
+}): string {
+  return answer.answer === "allowed"
+    ? `Allowed ${answer.origin} for key "${answer.key}".`
+    : `Not allowed: provider "${answer.provider}" can't send key "${answer.key}" to ${answer.origin}.`;
+}
+
 export const runLogWords = {
   show: "Show the run log",
   /** Team decision (HAL-2282): the same button, back to the timeline. */

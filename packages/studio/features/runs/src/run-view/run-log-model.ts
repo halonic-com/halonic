@@ -4,6 +4,7 @@
 
 import { blockedSites, type RunEvent, type StepBlockedSites } from "@halonicjs/events";
 import { escapeHidden } from "@halonicjs/std";
+import { keyOriginAnswerWords } from "../run-words.ts";
 import { clockTimeWithSeconds } from "../time-words.ts";
 import { logSiteLimit } from "./blocked-sites.tsx";
 
@@ -21,7 +22,12 @@ export type RunLogLine =
       readonly fields: string;
     }
   /** A step's blocked sites, once per step at its first, in place of its blocked-site events. */
-  | { readonly kind: "blocked"; readonly seq: number; readonly step: StepBlockedSites };
+  | { readonly kind: "blocked"; readonly seq: number; readonly step: StepBlockedSites }
+  /**
+   * A person's answer to "Allow this address?", in words, in place of its `key-origin.answered`
+   * event: the time with seconds and what was allowed or not, never who answered.
+   */
+  | { readonly kind: "words"; readonly seq: number; readonly time: string; readonly text: string };
 
 /** The fields every line already shows, or that every event of the run has alike. */
 const shownApart = new Set(["runId", "seq", "at", "entry", "type"]);
@@ -32,7 +38,8 @@ const shownApart = new Set(["runId", "seq", "at", "entry", "type"]);
  * written as its `\uXXXX` escape, so a value can't turn the line around.
  * A step's blocked sites become one "Blocked: …" line per site, in place of
  * their `sandbox.blocked` events (requirement `runs.run-view.blocked-sites`);
- * blocked files stay events.
+ * blocked files stay events. A `key-origin.answered` event is one line in words
+ * (requirement `runs.run-view.key-origin-answered`).
  *
  * @example
  * runLogLines(events);
@@ -50,6 +57,16 @@ export function runLogLines(events: readonly RunEvent[]): RunLogLine[] {
       lines.push({ kind: "blocked", seq: event.seq, step: blocked });
     }
     if (event.type === "sandbox.blocked" && event.block.kind === "network") {
+      continue;
+    }
+    if (event.type === "key-origin.answered") {
+      const time = clockTimeWithSeconds(new Date(event.at));
+      lines.push({
+        kind: "words",
+        seq: event.seq,
+        time,
+        text: escapeHidden(keyOriginAnswerWords(event)),
+      });
       continue;
     }
     lines.push({

@@ -104,3 +104,37 @@ verifies("runs.run-view.run-log", () => {
     expect(lines.at(-1)).toMatchObject({ kind: "event", type: "sandbox.blocked" });
   });
 });
+
+verifies("runs.run-view.key-origin-answered", () => {
+  const answered = (answer: "allowed" | "not-allowed"): RunEventBody => ({
+    type: "key-origin.answered",
+    provider: "Gateway",
+    key: "gateway-key",
+    origin: "https://gateway.example.com",
+    answer,
+  });
+
+  it("says an Allow in words, with its time and without who answered", () => {
+    const lines = runLogLines(logOf("run_a_01jd8q", [[1, answered("allowed")]]));
+    expect(lines[1]).toEqual({
+      kind: "words",
+      seq: 2,
+      time: "10:41:00",
+      text: 'Allowed https://gateway.example.com for key "gateway-key".',
+    });
+  });
+
+  it("says a Don't allow in words too", () => {
+    const lines = runLogLines(logOf("run_a_01jd8q", [[1, answered("not-allowed")]]));
+    expect(lines[1]).toMatchObject({
+      kind: "words",
+      text: 'Not allowed: provider "Gateway" can\'t send key "gateway-key" to https://gateway.example.com.',
+    });
+  });
+
+  it("writes a hidden character in a name as its escape", () => {
+    const event = { ...answered("allowed"), key: "gate\u202eway" } as RunEventBody;
+    const lines = runLogLines(logOf("run_a_01jd8q", [[1, event]]));
+    expect(lines[1]).toMatchObject({ text: expect.stringContaining("gate\\u202eway") });
+  });
+});
