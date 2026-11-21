@@ -77,7 +77,7 @@ verifies("studio.workspace-trust-review", () => {
     );
 
     expect(review?.summary).toEqual([
-      "Will run 2 integrations, pass 1 secret and list 2 addresses.",
+      "Will run 2 integrations, pass 1 secret and list 3 addresses.",
     ]);
     // The integrations themselves are in their own section (studio.workspace-trust-integrations).
     expect(review?.sections.map((section) => section.heading)).toEqual([

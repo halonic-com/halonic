@@ -19,4 +19,4 @@ The desktop app shall build the trust check from the same check the CLI uses, in
 - Given a connector that runs the local integration in `integrations/notes` and gives the sheet's secret notes-key the workspace secret my-notes-key,
   then its row under Addresses reads `integrations/notes` with the line **Gets secrets** "my-notes-key as notes-key".
 - Given that connector also gives the sheet's secret sync-key the workspace secret sync-key, and the integration's sheet reads no address from a setting,
-  then the summary says "Will run 1 integration, pass 2 secrets and list 1 address.", **Addresses (1)** has only the connector's row, and its line reads **Gets secrets** "my-notes-key as notes-key and sync-key".
+  then **Addresses (1)** has only the connector's row, and its line reads **Gets secrets** "my-notes-key as notes-key and sync-key".
