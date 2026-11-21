@@ -275,7 +275,7 @@ verifies("agents.configuration.open-at-model", () => {
         .find((tab) => tab.textContent === name)
         ?.click(),
     );
-  /** The Configuration page shown, by its name in the list of pages; `undefined` on Runs. */
+  /** The Configuration page shown, by its name in the list of pages; `undefined` on Flow or Runs. */
   const configurationPage = (page: HTMLElement) =>
     page.querySelector('[aria-label="Configuration pages"] [role=tab][aria-selected=true]')
       ?.textContent ?? undefined;
@@ -319,10 +319,10 @@ verifies("agents.configuration.open-at-model", () => {
     expect(document.activeElement).not.toBe(page.querySelector("select"));
   });
 
-  it("opens on Configuration › Behaviour without the step", async () => {
+  it("opens on Flow without the step", async () => {
     const page = await show(screen(agents()));
     await settle();
-    expect(configurationPage(page)).toBe("Behaviour");
+    expect(configurationPage(page)).toBeUndefined();
     expect(document.activeElement).not.toBe(page.querySelector("select"));
   });
 });
