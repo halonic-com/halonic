@@ -440,11 +440,13 @@ verifies("inbox.page", () => {
       // The button is a flex box: the label and the count are one item, the screen reader's count apart.
       const items = [...next.children];
       expect(items.map((item) => item.textContent)).toEqual([
-        "Next: Approve this reply? · 1 left",
+        "Next: Approve this reply? ·\u00a01\u00a0left",
         ", 1 left",
       ]);
       expect(items[1]?.className).toContain("sr-only");
-      expect(items[0]?.querySelector('[aria-hidden="true"]')?.textContent).toBe(" · 1 left");
+      expect(items[0]?.querySelector('[aria-hidden="true"]')?.textContent).toBe(
+        " ·\u00a01\u00a0left",
+      );
     });
 
     it("has no Back link on the desktop", async () => {

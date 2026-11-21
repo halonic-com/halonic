@@ -265,7 +265,7 @@ verifies("inbox.approval-card", () => {
         "Rejected by you at 10:44. This tool call didn't run. The agent is told, and the run continues.",
       );
       const next = button(root, "Next");
-      expect(next.textContent).toBe("Next: Approve this reply? · 2 left, 2 left");
+      expect(next.textContent).toBe("Next: Approve this reply? ·\u00a02\u00a0left, 2 left");
       await press(next);
       expect(open).toHaveBeenCalledOnce();
     });
@@ -292,7 +292,7 @@ verifies("inbox.approval-card", () => {
       const labels = [...root.querySelectorAll("button")].map((b) => b.textContent);
       expect(labels.slice(-2)).toEqual([
         "Back to the chat with Mailbot",
-        "Next: Approve this reply? · 2 left, 2 left",
+        "Next: Approve this reply? ·\u00a02\u00a0left, 2 left",
       ]);
       await press(button(root, "Back to the chat"));
       expect(back).toHaveBeenCalledOnce();
