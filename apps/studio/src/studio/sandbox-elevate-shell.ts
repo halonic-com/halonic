@@ -14,8 +14,8 @@ export type ShellElevation =
   | { readonly outcome: "still_running" }
   | { readonly outcome: "failed"; readonly reason: string };
 
-/** Starts the sandbox helper's setup through the shell, with Windows' administrator prompt. */
-export type ElevateSetup = () => Promise<ShellElevation>;
+/** Starts the sandbox helper's setup or removal through the shell, with Windows' administrator prompt. */
+export type ElevateHelper = (verb: "setup" | "remove") => Promise<ShellElevation>;
 
 const elevationSchema = s.discriminatedUnion("outcome", [
   s.object({ outcome: s.literal("exited"), exitCode: s.number().int().min(0) }).strict(),
@@ -26,16 +26,16 @@ const elevationSchema = s.discriminatedUnion("outcome", [
 ]) satisfies Schema<ShellElevation>;
 
 /**
- * The shell's start of the helper's setup, where the shell offers it: on Windows, with the agent
- * host beside the shell (the host in the WSL distro has no Windows setup). The shell answers
+ * The shell's start of the helper, where the shell offers it: on Windows, with the agent host
+ * beside the shell (the host in the WSL distro has no Windows setup). The shell answers
  * `wsl_removal_offered` for exactly that. `undefined` otherwise, and the host then runs the setup
- * itself, as before.
+ * and the removal itself, as before.
  */
-export async function elevateSetupOf(ipc: TauriIpc): Promise<ElevateSetup | undefined> {
+export async function elevateHelperOf(ipc: TauriIpc): Promise<ElevateHelper | undefined> {
   const besideShell = await ipc.invoke("wsl_removal_offered").catch(() => false);
   if (besideShell !== true) return undefined;
-  return async () => {
-    const answer = parse(elevationSchema, await ipc.invoke("sandbox_elevate", { verb: "setup" }));
+  return async (verb) => {
+    const answer = parse(elevationSchema, await ipc.invoke("sandbox_elevate", { verb }));
     if (!answer.ok) throw new Error("The shell gave an answer Studio can't read.");
     return answer.value;
   };

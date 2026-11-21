@@ -94,6 +94,16 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/sandbox/remove",
         route(Method::Post, "/v1/sandbox/remove", Answer::Json),
     ),
+    // A removal the shell runs through the helper (HAL-14841): the host's
+    // half before the prompt, then how it ended from the exit code.
+    (
+        "POST /v1/sandbox/remove/before",
+        route(Method::Post, "/v1/sandbox/remove/before", Answer::Json),
+    ),
+    (
+        "POST /v1/sandbox/remove/elevated",
+        route(Method::Post, "/v1/sandbox/remove/elevated", Answer::Json),
+    ),
     (
         "POST /v1/sandbox/remove-wsl",
         route(Method::Post, "/v1/sandbox/remove-wsl", Answer::Json),

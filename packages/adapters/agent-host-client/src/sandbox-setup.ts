@@ -195,6 +195,35 @@ export class AgentHostSandboxSetup {
   }
 
   /**
+   * Does the host's half of a removal that the shell then runs through the signed helper with
+   * its own administrator prompt (HAL-14841): it takes back the grants the sandbox kept on the
+   * user's folders. `ok` means the shell may start the helper. While sandboxed runs go on, the
+   * host refuses before any prompt, and this answers how many.
+   *
+   * @throws {@link AgentHostError} `sandbox_busy` while the host runs a setup or removal itself, or when the host can't be reached
+   */
+  async beforeRemoveHelper(): Promise<SandboxSetupResult | { readonly inUse: number }> {
+    const route = "POST /v1/sandbox/remove/before";
+    const answer = await this.#transport.request(route, {});
+    if (answer.status === 409) {
+      const inUse = parse(inUseSchema, answer.body);
+      if (inUse.ok) return { inUse: inUse.value.runs };
+    }
+    return readAnswer(route, answer, resultSchema);
+  }
+
+  /**
+   * Says how a removal ended that the shell ran through the signed helper (HAL-14841): the host
+   * words the helper's `exitCode`.
+   *
+   * @throws {@link AgentHostError} `sandbox_busy` while the host runs a setup or removal itself, or when the host can't be reached
+   */
+  async afterRemoveHelper(exitCode: number): Promise<SandboxSetupResult> {
+    const route = "POST /v1/sandbox/remove/elevated";
+    return readAnswer(route, await this.#transport.request(route, { exitCode }), resultSchema);
+  }
+
+  /**
    * Starts removing Halonic's WSL distro after the user's explicit choice, or
    * joins the removal that runs. With `export-then-remove` a failed backup
    * removes nothing.
