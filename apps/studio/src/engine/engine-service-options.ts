@@ -35,6 +35,8 @@ export interface EngineServiceOptions {
   /** What the model providers call their servers with. */
   readonly http: HttpClient;
   readonly clock: Clock;
+  /** The zone of a routine's schedule that names none: the computer's own. */
+  readonly timeZone: string;
   /**
    * Whether the workspace, as the engine loaded it, is trusted on this computer. Asked on every
    * model call, so a provider's stored key goes to a non-default address only after a person

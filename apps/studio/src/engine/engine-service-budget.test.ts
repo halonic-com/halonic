@@ -28,6 +28,7 @@ function serviceOf(settings: string): EngineService {
     lock: { hold: async () => ({ release: async () => {} }) },
     location: "/acme",
     name: "Acme",
+    timeZone: "UTC",
     definitions: new MemoryDefinitionStore({ "workspace.yaml": settings }),
     secrets: { get: async () => null },
     keyOrigins: noKeyOrigins,

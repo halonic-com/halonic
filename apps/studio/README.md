@@ -21,7 +21,9 @@ runs an engine of its own in the page (`src/engine/engine-service.ts`) with
 models and secrets only: a workflow that needs a connector or an agent in a
 harness is refused as `unavailable`. An answer from the Inbox, such as Approve
 or Reject, goes to that engine, and the runs are read again so the Inbox shows
-the run moved on (`studio.workspace-runs`).
+the run moved on (`studio.workspace-runs`). While it is open, that engine starts
+the folder's routines on time, as `halonic routines watch` does
+(`studio.engine-routines`).
 
 ## Library in the desktop app
 

@@ -223,6 +223,7 @@ export function provideFolderServices(
         keyOrigins: shellKeyOrigins(ipc),
         http: new ShellHttpClient(ipc),
         clock: systemClock,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         isTrusted: async (workspace) => (await trust.checkLoaded(workspace)).status === "trusted",
         mayStart: (workspace) => trust.mayStart(workspace),
         // Removing the trust here or in Settings › Trusted sources checks it again.
