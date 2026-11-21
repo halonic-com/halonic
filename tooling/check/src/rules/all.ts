@@ -4,6 +4,7 @@ import { checkAbsolutePaths } from "./absolute-paths.ts";
 import { checkAdvisories } from "./advisories.ts";
 import { checkAgentsMd } from "./agents-md.ts";
 import { checkApiSpecs } from "./api-specs.ts";
+import { checkChangesets } from "./changesets.ts";
 import { checkDco } from "./dco.ts";
 import { checkDeny } from "./deny.ts";
 import { checkDependencies } from "./dependencies.ts";
@@ -48,6 +49,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "native-disabled": checkNativeDisabled,
   "readme-examples": checkReadmeExamples,
   versions: checkVersions,
+  changesets: checkChangesets,
   "api-specs": checkApiSpecs,
   dco: (context) => checkDco(context),
   trace: checkTrace,

@@ -13,6 +13,9 @@ Also add the sentence as a changeset file with `pnpm changeset` and pick
 `@halonicjs/app-studio`. This goes for the CLI too: it has no versioned
 package yet, so its changes go into the app's changelog, which is
 Halonic's one changelog.
+The `changesets` check in `pnpm check` fails a changeset that names
+any other package: `changeset version` would leave its sentence out of
+the release notes.
 
 Good: `Routines now fire interval triggers at the right time.`
 Not good: `Fix off-by-one in tick().`
