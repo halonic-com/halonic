@@ -21,13 +21,22 @@ export interface CommandBoxProps {
 type Outcome = "copied" | "failed" | null;
 
 /**
- * The command's box: `font-mono` `text-small` on `surface-muted`. A long path wraps anywhere
- * rather than scrolling sideways, and one click selects the whole command. Rather than shrink
- * below 10rem (160px) beside the copy button, it lets the button wrap under it and takes the
- * whole line, so a narrow strip doesn't squeeze the command to a few letters a line.
+ * The command's box: `font-mono` `text-small` on `surface-muted`. It wraps rather than scrolling
+ * sideways, and one click selects the whole command.
+ *
+ * It breaks only between shell words, so `--filter` or a path stays whole; only a single word
+ * wider than the whole box breaks inside. It keeps at least 192px beside Copy: in a narrower place
+ * Copy goes under the command, instead of squeezing it into a column a few letters wide.
  */
 const textClasses =
-  "min-w-0 flex-1 basis-40 rounded-xs bg-surface-muted px-2 py-1.5 font-mono text-small text-fg wrap-anywhere select-all";
+  "min-w-0 grow basis-48 rounded-xs bg-surface-muted px-2 py-1.5 font-mono text-small text-fg select-all";
+
+/**
+ * One shell word. As an inline block it never breaks after the hyphen of `--filter`: the line
+ * breaks only at the spaces between words. A word wider than the box is held to its width and
+ * breaks anywhere inside, so the box still never scrolls sideways.
+ */
+const wordClasses = "inline-block max-w-full wrap-anywhere";
 
 const captionClasses = "basis-full text-caption text-fg-muted";
 
@@ -93,7 +102,7 @@ export function CommandBox({ command }: CommandBoxProps) {
   return (
     <div className="flex flex-wrap items-start gap-x-1 gap-y-1.5 phone:items-center">
       <code ref={text} className={textClasses}>
-        {command}
+        <CommandWords command={command} />
       </code>
       <Button
         variant="ghost"
@@ -110,6 +119,24 @@ export function CommandBox({ command }: CommandBoxProps) {
         shown={inModal || toasts === null}
       />
     </div>
+  );
+}
+
+/**
+ * The command's words, each in its own span, with the spaces between them kept as they are, so
+ * the text (and what a hand copy gets) is the command exactly.
+ */
+function CommandWords({ command }: { command: string }) {
+  // Splitting on a captured run of spaces keeps the runs: words and spaces alternate.
+  const pieces = command.split(/(\s+)/);
+  return pieces.map((piece, index) =>
+    index % 2 === 1 || piece === "" ? (
+      piece
+    ) : (
+      <span key={index} className={wordClasses}>
+        {piece}
+      </span>
+    ),
   );
 }
 
