@@ -22,7 +22,7 @@ verifies("shell.phone-help", () => {
       { heading: "First run" },
       {
         id: "first-run.help:show-guide",
-        label: "Show the guide",
+        label: "Show the guide again",
         onSelect: () => picked.push("guide"),
       },
       { id: "first-run.help:start-over", label: "Start over", onSelect: () => picked.push("over") },

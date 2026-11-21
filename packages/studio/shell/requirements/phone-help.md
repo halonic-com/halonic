@@ -8,7 +8,7 @@ Where the Help menu (`shell.help-menu`) has items, the More page on a phone shal
 
 ## Examples
 
-- Given the Help groups "Check this computer" (no title) and "First run" with **Show the guide** and **Start over**,
+- Given the Help groups "Check this computer" (no title) and "First run" with **Show the guide again** and **Start over**,
   when the user opens More on a phone,
   then it shows a list "Help" with **Check this computer**, then a list "First run" with the two items.
 - Given that page,

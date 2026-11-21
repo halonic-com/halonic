@@ -7,7 +7,7 @@ const supportReply: ItemRef = { kind: "workflow", hub: "support", id: SUPPORT_WO
 
 /**
  * The first run's items in **Help › First run** (`first-run.help`), only in the demo: **Show the
- * guide**, which takes the first run up again (or begins it again at Demo) and opens Support
+ * guide again**, which takes the first run up again (or begins it again at Demo) and opens Support
  * reply, and **Start over** where the app can copy the demo again, each with a line that says what
  * it does. In someone's own workspace "Your old copy" would have nothing to refer to, so neither
  * shows there. Both show whatever the state, so the menu never offers a stale choice: showing the
