@@ -89,7 +89,7 @@ export function createTrustCommand(
     argumentsBesideSubcommands: true,
     strayArgumentFix: optionForWord,
     summary: trustMessages.summary(),
-    action: (input) => trustMessages.action(givenPlugin(input) ?? givenDir(input)),
+    action: actionOf,
     options: {
       dir: dirOption,
       plugin: {
@@ -429,6 +429,21 @@ function refuseWords(given: readonly string[]): void {
   if (word === undefined) return;
   const problem = usageMessages.takesNoArguments("trust", shown);
   throw shown.length === 1 ? new UsageError(problem, optionForWord(word)) : new UsageError(problem);
+}
+
+/**
+ * What the command was doing, for its "✕ Couldn't …" line: trusting,
+ * listing or removing, in the order `run` picks them.
+ */
+function actionOf(input: CommandInput): Message {
+  const name = givenPlugin(input) ?? givenDir(input);
+  if (input.options["remove"] === true) {
+    return trustMessages.removeAction(name);
+  }
+  if (input.options["list"] === true && givenPlugin(input) === undefined) {
+    return trustMessages.listAction();
+  }
+  return trustMessages.action(name);
 }
 
 /** The `--plugin` id, made safe to print, for "✕ Couldn't trust weather: …". */

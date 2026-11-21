@@ -2,9 +2,13 @@ import type { ProfileEnvironment } from "@halonicjs/profile";
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { createTrustCommand } from "./commands/trust/command.ts";
+import { exitCode } from "./exit-code.ts";
 import { plainText } from "./messages/phrase.ts";
 import { printError } from "./print-error.ts";
 import { checkProfileHome } from "./profile-home.ts";
+import { runCli } from "./run-cli.ts";
+import { captureIo } from "./test/capture-io.ts";
 
 // Built from parts, so the repo's leak guard doesn't read it as a real machine's path.
 const drive = "D:";
@@ -31,8 +35,8 @@ verifies("cli.profile-home", () => {
       expect(error).toBeInstanceOf(KindedError);
       expect(error).toMatchObject({
         kind: "invalid_input",
-        message: 'HALONIC_HOME must be an absolute folder, not "~/.halonic".',
-        fix: 'Use $HOME instead of ~, which the shell leaves as it is inside quotes: HALONIC_HOME="$HOME/.halonic".',
+        message: 'HALONIC_HOME must be a full path, not "~/.halonic".',
+        fix: `Inside quotes the shell doesn't turn ~ into your home folder. Use $HOME instead: HALONIC_HOME="$HOME/.halonic".`,
       });
       expect((error as Error).cause).toBeInstanceOf(RangeError);
     });
@@ -43,27 +47,56 @@ verifies("cli.profile-home", () => {
         lines.push(plainText(line)),
       );
       expect(lines).toEqual([
-        '✕ HALONIC_HOME must be an absolute folder, not "~/.halonic".',
-        '  Use $HOME instead of ~, which the shell leaves as it is inside quotes: HALONIC_HOME="$HOME/.halonic".',
+        '✕ HALONIC_HOME must be a full path, not "~/.halonic".',
+        `  Inside quotes the shell doesn't turn ~ into your home folder. Use $HOME instead: HALONIC_HOME="$HOME/.halonic".`,
+      ]);
+    });
+
+    it("follows what trust was doing: --list, --remove or trusting", async () => {
+      // The trust command opens the profile folder through this machine, as it does with the real one.
+      const refusing = createTrustCommand(() => {
+        checkProfileHome(linux({ HALONIC_HOME: "~/.halonic" }));
+        throw new Error("It was accepted.");
+      });
+      const firstLines: string[] = [];
+      for (const argv of [
+        ["trust", "--list"],
+        ["trust", "--dir", "acme", "--remove"],
+        ["trust", "--remove"],
+      ]) {
+        const io = captureIo("/srv/acme");
+        expect(await runCli(argv, io, [refusing])).toBe(exitCode.usage);
+        firstLines.push(io.stderr[0] ?? "");
+      }
+      expect(firstLines).toEqual([
+        `✕ Couldn't list the trusted workspaces: HALONIC_HOME must be a full path, not "~/.halonic".`,
+        `✕ Couldn't remove the trust from acme: HALONIC_HOME must be a full path, not "~/.halonic".`,
+        `✕ Couldn't remove the trust from this folder: HALONIC_HOME must be a full path, not "~/.halonic".`,
       ]);
     });
 
     it("says to set a full path for any other relative folder", () => {
       expect(refusalOf(linux({ HALONIC_HOME: "profile" }))).toMatchObject({
-        message: 'HALONIC_HOME must be an absolute folder, not "profile".',
+        message: 'HALONIC_HOME must be a full path, not "profile".',
         fix: "Set HALONIC_HOME to a full path, such as $HOME/.halonic.",
       });
     });
 
-    it("joins the example the Windows way on Windows", () => {
-      const environment: ProfileEnvironment = {
-        platform: "windows",
-        homeFolder: `${drive}\\people\\acme`,
-        variables: { HALONIC_HOME: "profile" },
-      };
-      expect(refusalOf(environment)).toMatchObject({
-        fix: "Set HALONIC_HOME to a full path, such as $HOME\\.halonic.",
-      });
+    it("names the person's own home folder on Windows, for a ~ too", () => {
+      // A user environment variable on Windows: nothing turns $HOME or ~ into the home folder.
+      for (const [home, value] of [
+        [`${drive}\\people\\acme`, "profile"],
+        [`${drive}\\people\\acme\\`, "~\\.halonic"],
+      ] as const) {
+        const environment: ProfileEnvironment = {
+          platform: "windows",
+          homeFolder: home,
+          variables: { HALONIC_HOME: value },
+        };
+        expect(refusalOf(environment)).toMatchObject({
+          fix: `Set HALONIC_HOME to a full path, such as ${drive}\\people\\acme\\.halonic.`,
+        });
+      }
     });
   });
 

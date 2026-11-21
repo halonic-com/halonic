@@ -2,7 +2,7 @@
 // most often a quoted `export HALONIC_HOME="~/.halonic"`, which the shell
 // leaves as it is. The profile package refuses it with a `RangeError`, a
 // bug to `printError`; here it becomes an `invalid_input` error with that
-// sentence and a fix (HAL-15274, `cli.profile-home`).
+// sentence and a fix (HAL-15274 and HAL-15429, `cli.profile-home`).
 
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { KindedError } from "@halonicjs/std";
@@ -20,7 +20,7 @@ import { profileMessages } from "./messages/profile.ts";
  *
  * @example
  * checkProfileHome({ platform: "linux", homeFolder: "/srv/acme", variables: { HALONIC_HOME: "~/.halonic" } });
- * // throws: HALONIC_HOME must be an absolute folder, not "~/.halonic".
+ * // throws: HALONIC_HOME must be a full path, not "~/.halonic".
  */
 export function checkProfileHome(environment: ProfileEnvironment): ProfileEnvironment {
   const home = environment.variables["HALONIC_HOME"];
@@ -41,10 +41,21 @@ export function checkProfileHome(environment: ProfileEnvironment): ProfileEnviro
   return environment;
 }
 
-/** The fix, with `$HOME/.halonic` joined the system's way. */
+/**
+ * The fix. Windows has no shell that turns `$HOME` or `~` into the home
+ * folder where `HALONIC_HOME` is set, so there it names the home folder
+ * itself, for a `~` value too.
+ */
 function fixFor(home: string, environment: ProfileEnvironment) {
-  const example = environment.platform === "windows" ? "$HOME\\.halonic" : "$HOME/.halonic";
+  if (environment.platform === "windows") {
+    return profileMessages.homeRelativeFix(windowsExample(environment.homeFolder));
+  }
   return home.startsWith("~")
-    ? profileMessages.homeTildeFix(example)
-    : profileMessages.homeRelativeFix(example);
+    ? profileMessages.homeTildeFix()
+    : profileMessages.homeRelativeFix("$HOME/.halonic");
+}
+
+/** `.halonic` in the Windows home folder, joined with `\`, after any trailing separator. */
+function windowsExample(homeFolder: string): string {
+  return `${homeFolder.replace(/[\\/]+$/, "")}\\.halonic`;
 }

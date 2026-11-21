@@ -48,6 +48,9 @@ describe("trust's sentences", () => {
       "Review what a workspace can start, and trust it on this computer",
     );
     expect(words(trustMessages.action("Acme"))).toBe("trust Acme");
+    expect(words(trustMessages.listAction())).toBe("list the trusted workspaces");
+    expect(words(trustMessages.removeAction("Acme"))).toBe("remove the trust from Acme");
+    expect(words(trustMessages.removeAction())).toBe("remove the trust from this folder");
   });
 
   it("has the lines for a workspace that changed since it was trusted", () => {

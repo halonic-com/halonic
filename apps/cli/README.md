@@ -92,7 +92,7 @@ the folder doesn't move them. Without `HALONIC_HOME`, Halonic uses `~/.local/sha
 `$XDG_DATA_HOME/halonic`), `~/Library/Application Support/halonic` on macOS and
 `%LOCALAPPDATA%\halonic` on Windows. The CLI and Studio share it, so set it in your shell's startup
 file (such as `~/.zshrc`) and reopen Halonic after you change it. On Windows, set it as a user
-environment variable instead.
+environment variable instead. Use the full path of your home folder, such as `C:\Users\acme\.halonic`. <!-- leak-guard: allow absolute-path made-up example path -->
 
 To move your data, for example when a run says the bridge's socket path is too long (Linux takes
 at most 107 bytes, macOS 103), move the folder to a short path and point `HALONIC_HOME` at it.
@@ -103,8 +103,8 @@ mv ~/.local/share/halonic ~/.halonic
 echo 'export HALONIC_HOME="$HOME/.halonic"' >> ~/.zshrc
 ```
 
-`HALONIC_HOME` must be a full path. Write `$HOME`, not `~`: inside quotes the shell leaves `~` as
-it is, and every command then stops with `HALONIC_HOME must be an absolute folder, not "~/.halonic".`
+`HALONIC_HOME` must be a full path. Write `$HOME`, not `~`: inside quotes the shell doesn't turn `~`
+into your home folder, and every command then stops with `HALONIC_HOME must be a full path, not "~/.halonic".`
 
 ## Exit codes
 
