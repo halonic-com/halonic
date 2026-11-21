@@ -15,6 +15,7 @@ export {
 } from "./doctor-machine.ts";
 export { networkProblemOf } from "./doctor-network.ts";
 export {
+  comparedName,
   type DoctorWorkspaceInput,
   doctorProvider,
   doctorWorkspace,

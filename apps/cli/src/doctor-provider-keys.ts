@@ -6,6 +6,7 @@
 // can check that each is saved (HAL-15086). An agent whose run would stop on
 // its model alias gets that refusal instead (HAL-15332).
 
+import { comparedName } from "@halonicjs/adapter-doctor-node";
 import { WorkspaceModelError } from "@halonicjs/adapter-workspace-models";
 import type {
   DoctorWorkspace,
@@ -15,7 +16,6 @@ import type {
 } from "@halonicjs/app";
 import type { AccessAgent, ProviderAccessChoice } from "@halonicjs/host-harness-host";
 import { filesOf, type LoadedFileOf, type LoadedWorkspace } from "@halonicjs/workspace";
-import { comparedName } from "./doctor-workspace.ts";
 
 /** What {@link agentsWithProviderKey} reads. */
 export interface ProviderKeyAgentsInput {

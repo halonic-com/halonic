@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { doctorWorkspace } from "@halonicjs/adapter-doctor-node";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import type { PlacementReader } from "@halonicjs/app";
 import type { Secrets } from "@halonicjs/ports";
@@ -10,7 +11,6 @@ import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { cliProviderKeys } from "./cli-provider-keys.ts";
 import { agentsWithProviderKey, withHarnessProviderKeys } from "./doctor-provider-keys.ts";
-import { doctorWorkspace } from "./doctor-workspace.ts";
 
 let root: string;
 
