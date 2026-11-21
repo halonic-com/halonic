@@ -39,4 +39,4 @@ No test is weakened. Three test files move with their code, and every case is ke
 - apps/cli/src/messages/counts.test.ts
 - apps/cli/src/messages/size.test.ts
 - apps/cli/src/messages/doctor.test.ts
-- tooling/check/policy.json
+- tooling/check/
