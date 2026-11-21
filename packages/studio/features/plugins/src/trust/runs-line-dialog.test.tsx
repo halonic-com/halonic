@@ -370,3 +370,37 @@ verifies("plugins.plugin-trust-setting-address", () => {
     expect(dialog().textContent).toContain("Reaches 3 addresses.");
   });
 });
+
+/** The Programs section's row. */
+function programsRow(): HTMLElement | undefined {
+  return [...dialog().querySelectorAll("summary")].find((summary) =>
+    summary.textContent?.startsWith("Programs"),
+  );
+}
+
+verifies("plugins.plugin-trust-row-marks", () => {
+  it("puts the triangle on the Programs row when plugin code isn't in the sandbox, keeping its name", () => {
+    openPrograms(weather, windows, "ready");
+
+    const mark = programsRow()?.querySelector(".text-attention");
+    expect(mark?.querySelector("svg")).not.toBeNull();
+    expect(mark?.getAttribute("aria-hidden")).toBe("true");
+    expect(mark?.nextElementSibling?.textContent).toBe("Programs (1)");
+  });
+
+  it("gives the Programs row no triangle in the sandbox", () => {
+    openPrograms(weather, { state: "fenced" }, "ready");
+
+    expect(programsRow()?.querySelector(".text-attention")).toBeNull();
+  });
+
+  it("shows R9's row in the text colour and only where the host may be in the muted colour", () => {
+    openPrograms(homeStation, { state: "fenced" }, undefined);
+
+    const row = textNode(dialog(), "The address you enter in Weather's settings, under Station");
+    expect(row?.className).toContain("text-fg");
+    expect(row?.className).not.toContain("text-fg-muted");
+    expect(row?.nextElementSibling?.className).toContain("text-fg-muted");
+    expect(row?.nextElementSibling?.textContent).toBe(" · only on your home network");
+  });
+});

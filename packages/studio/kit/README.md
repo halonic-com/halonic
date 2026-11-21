@@ -902,6 +902,7 @@ open.
 | `tone` | `label` (the default) in `text-body-strong`, or `value` in `text-body` |
 | `defaultOpen` | Open when it first renders; after that the user opens and closes it |
 | `label` | A caption above the row, for a summary that's only a value |
+| `mark` | `warning` puts the triangle in the attention colour before the words, hidden from screen readers, when the rows inside carry a warning |
 | `children` | What opens, in `text-small` `fg-muted` in the 16px inset. Nothing clickable goes in the row itself |
 
 The row is at least 48px, padded 0 16px, with a 20px chevron in `fg-subtle` at the right: down
