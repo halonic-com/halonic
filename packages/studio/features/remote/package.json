@@ -5,7 +5,8 @@
   "description": "The Remote feature of the Studio: Settings › Remote, the Pair a phone dialog and the status bar item.",
   "exports": {
     ".": "./src/index.ts",
-    "./api": "./src/api.ts"
+    "./api": "./src/api.ts",
+    "./phone": "./src/phone/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
