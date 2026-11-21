@@ -138,6 +138,14 @@ export interface DoctorWorkspace {
    * log, for Studio's Last run line. Left out, there is no such line.
    */
   lastRun?: LastRunInput;
+  /**
+   * The ids of the harness agents whose runs here get a provider key Halonic
+   * keeps instead of their own sign-in, as the host decides for `run`: the
+   * Harnesses line doesn't ask about their own sign-in, because their runs
+   * don't use it (HAL-14661). Left out, or without an agent, it asks about
+   * every one.
+   */
+  agentsWithProviderKey?: ReadonlySet<string>;
 }
 
 /** What {@link DoctorService} needs from the host. */
@@ -378,12 +386,16 @@ function harnessAgents(workspace: DoctorWorkspace | null): HarnessAgent[] {
   );
 }
 
-/** The harness agents with their settings folders, where the host gives them. */
+/**
+ * The harness agents with their settings folders, where the host gives them,
+ * but those whose runs use a provider key: their own sign-in isn't used.
+ */
 function agentSettingsFolders(workspace: DoctorWorkspace | null): AgentSettingsFolder[] {
   const folderOf = workspace?.harnessSettingsFolder;
   if (workspace === null || folderOf === undefined) return [];
   return workspace.trust.agents.flatMap((agent) => {
     if (agent.harness === undefined || agent.harness === "halonic") return [];
+    if (workspace.agentsWithProviderKey?.has(agent.id) === true) return [];
     const settingsFolder = folderOf(agent.id, agent.harness);
     if (settingsFolder === undefined) return [];
     return [{ agent: agent.name, harness: agent.harness, settingsFolder }];

@@ -27,6 +27,7 @@ export {
   providerAccessOf,
 } from "./provider-access.ts";
 export {
+  type AccessAgent,
   type ModelAliasRules,
   ProviderKeyServices,
   type ProviderKeyServicesInput,
