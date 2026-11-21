@@ -373,8 +373,10 @@ function installedRow(
     .join(" · ");
   return {
     ...base,
+    // The List never shrinks its trailing part, so `flex-wrap` alone wouldn't wrap it. Under 24rem
+    // (320 CSS px is 200 % zoom at 640) the version line goes under the chip instead (C564, 1.4.10).
     trailing: (
-      <span className="flex items-center gap-2">
+      <span className="flex items-center gap-2 max-[24rem]:flex-col max-[24rem]:items-end">
         {chip}
         {detail === "" ? null : <span className="text-small text-fg-muted">{detail}</span>}
       </span>
