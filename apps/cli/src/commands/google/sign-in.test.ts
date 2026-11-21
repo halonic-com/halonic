@@ -317,7 +317,7 @@ verifies("cli.commands.google.sign-in", () => {
     const gone = await readyAccount("gone");
     const goneRun = await signIn([gone], machine);
     expect(goneRun.code).toBe(exitCode.notFound);
-    expect(goneRun.printed).toContain("Use the connection's file name");
+    expect(goneRun.printed).toContain("Use the connector's file name");
   });
 
   it("refuses a record linked to another workspace, and a --connection that isn't its connector", async () => {
