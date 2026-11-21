@@ -31,7 +31,7 @@ import { pluginMessages } from "../../messages/plugin.ts";
 import { runMessages } from "../../messages/run.ts";
 import { trustMessages } from "../../messages/trust.ts";
 import { printable } from "../../output/printable.ts";
-import { openPluginService, type PluginSetup } from "../../plugin-host.ts";
+import { openPluginService, type PluginSetup, programsRunFor } from "../../plugin-host.ts";
 import { askToTrustPlugin, type PluginTrustAnswer } from "../../plugin-trust-question.ts";
 import {
   checkGitSource,
@@ -93,7 +93,8 @@ export async function addPlugin(
   // Only a replace keeps a copy that can't be read back; `add` never replaces.
   if (entry.status === "broken") throw problemRefusal(entry.problems);
   const leftOut = leftOutLine(entry.leftOut, context);
-  const result = await trustAdded(service, entry, { context, yes, fingerprint });
+  const programsRun = await programsRunFor(setup, [entry.content]);
+  const result = await trustAdded(service, entry, { context, yes, fingerprint, programsRun });
   return { ...result, lines: [...opened.printedAhead, ...leftOut, ...result.lines] };
 }
 

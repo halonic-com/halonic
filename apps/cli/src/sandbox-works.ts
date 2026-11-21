@@ -1,7 +1,9 @@
 // Whether this computer's sandbox works, for the trust check: a program's
-// sites are shown only where a sandbox keeps the program to them.
+// sites are shown only where a sandbox keeps the program to them, and a
+// plugin's programs say whether they can run here.
 
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import { type LocalToolState, localToolStateOf } from "@halonicjs/app";
 import { profileFolder } from "@halonicjs/profile";
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
@@ -13,7 +15,22 @@ import { nodeProfileEnvironment } from "./workspace-runs.ts";
  * @throws RangeError when `HALONIC_HOME` or the home folder isn't absolute
  */
 export async function nodeSandboxWorks(): Promise<boolean> {
-  const profile = profileFolder(nodeProfileEnvironment());
-  const check = await new SrtSandbox(undefined, undefined, privateJournalFolder(profile)).check();
+  const check = await nodeSandbox().check();
   return check.ok;
+}
+
+/**
+ * Whether a plugin's programs can run on this computer, as
+ * `PluginLocalTools.state()` says for the sandbox a run starts them in.
+ *
+ * @throws RangeError when `HALONIC_HOME` or the home folder isn't absolute
+ */
+export function nodeLocalToolState(): Promise<LocalToolState> {
+  return localToolStateOf(nodeSandbox());
+}
+
+/** The srt sandbox the CLI starts programs in, with its crash journals in the profile. */
+function nodeSandbox(): SrtSandbox {
+  const profile = profileFolder(nodeProfileEnvironment());
+  return new SrtSandbox(undefined, undefined, privateJournalFolder(profile));
 }

@@ -2,7 +2,8 @@
 // before it asks (cli-output 3.6): the same sections, headings and order as
 // Studio's trust check (microcopy 24 T6-T9, CHECK P8), taken from the shared
 // `pluginTrustSections` (app.plugin-trust-sections): Tools for agents,
-// Programs, Secrets, Sign-ins, Addresses, then the last line. Studio's
+// Programs, Secrets, Sign-ins, Addresses, then the last line. Under each
+// program, where it runs, in Studio's words (`pluginTrustRunsText`). Studio's
 // "In Studio" section is left out: 0.1 has no Studio to draw the plugin's
 // settings, commands, cards or panel, and that part carries no code
 // (HAL-6417). Every word comes from the catalogue; this file only decides
@@ -10,6 +11,7 @@
 
 import {
   declaredSignInTrustFacts,
+  type LocalToolState,
   type PluginTrustContent,
   type PluginTrustSection,
   pluginProgramSecretText,
@@ -40,15 +42,23 @@ const riskGroups: readonly { readonly risk: string; readonly heading: () => Mess
  * sections that have rows, then what Halonic doesn't check. The question
  * itself, with `[y/N]`, is asked after these lines.
  *
+ * @param programsRun - whether the plugin's programs can run on this computer,
+ *   as `PluginLocalTools.state()` says; without it, each program's Runs line
+ *   says what holds either way
+ *
  * @example
  * pluginTrustCheckLines(entry.content, entry.location);
  * // ["Trust Weather and turn it on?", "", "Tools for agents",
  * //  "  Agents can use these through a connector. …", "  Reads         get_forecast", …, "", "Plugin code runs apart from the rest of Halonic. …"]
  */
-export function pluginTrustCheckLines(content: PluginTrustContent, folder: string): Phrase[] {
+export function pluginTrustCheckLines(
+  content: PluginTrustContent,
+  folder: string,
+  programsRun?: ProgramsRun,
+): Phrase[] {
   return [
     pluginMessages.trustQuestion(printable(content.plugin.name)).phrase,
-    ...pluginTrustSections(content).flatMap((name) => sectionLines(content, name)),
+    ...pluginTrustSections(content).flatMap((name) => sectionLines(content, name, programsRun)),
     ...locationLines(content, folder),
     phrase``,
     pluginMessages.notChecked().phrase,
@@ -73,13 +83,16 @@ export function pluginFingerprintLines(fingerprint: string): Phrase[] {
   ];
 }
 
+/** Whether a plugin's programs can run here, as `PluginLocalTools.state()` says, if known. */
+export type ProgramsRun = LocalToolState["kind"] | undefined;
+
 /** Each section the CLI shows, with its heading from the catalogue and its rows. */
 const cliSections: Readonly<
   Record<
     Exclude<PluginTrustSection, "in-studio">,
     {
       readonly heading: () => Message;
-      readonly rows: (content: PluginTrustContent) => Phrase[];
+      readonly rows: (content: PluginTrustContent, programsRun: ProgramsRun) => Phrase[];
     }
   >
 > = {
@@ -100,10 +113,14 @@ export const pluginTrustCheckHeadings = (): Partial<Record<PluginTrustSection, s
   );
 
 /** A section with its heading after an empty line; "In Studio" has nothing to show here. */
-function sectionLines(content: PluginTrustContent, name: PluginTrustSection): Phrase[] {
+function sectionLines(
+  content: PluginTrustContent,
+  name: PluginTrustSection,
+  programsRun: ProgramsRun,
+): Phrase[] {
   if (name === "in-studio") return [];
   const { heading, rows } = cliSections[name];
-  return [phrase``, heading().phrase, ...rows(content)];
+  return [phrase``, heading().phrase, ...rows(content, programsRun)];
 }
 
 /**
@@ -145,10 +162,14 @@ function toolRows(content: PluginTrustContent): Phrase[] {
   return [phrase`${rowIndent}${pluginMessages.toolsIntro().phrase}`, ...groups];
 }
 
-function programRows(content: PluginTrustContent): Phrase[] {
-  return content.localTools.map((tool) => {
+/** Each program with what starts it, then where it runs, as Studio labels it under an open program. */
+function programRows(content: PluginTrustContent, programsRun: ProgramsRun): Phrase[] {
+  return content.localTools.flatMap((tool) => {
     const command = [...startWords(tool.start), ...tool.args].join(" ");
-    return row(printable(tool.id), phrase`${printable(command)}`);
+    return [
+      row(printable(tool.id), phrase`${printable(command)}`),
+      phrase`${underRow}${pluginMessages.programsRun(programsRun).phrase}`,
+    ];
   });
 }
 

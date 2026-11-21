@@ -266,7 +266,9 @@ The check lists what the plugin can do and reach:
   **Sends**. Agents get them through a connector, and each one asks a person
   first, a tool that reads too, until the connector file's `read` list names it.
 - **Programs:** local tools, each with its command and
-  arguments.
+  arguments, and a **Runs** line under each that says whether it can run on
+  this computer: in the agent sandbox, or not now, because the sandbox can't
+  start here.
 - **Secrets:** each by name and the addresses it goes to, never its value.
   This is the backend's route; a secret named in a local tool's `env` goes to
   that program.
@@ -286,6 +288,9 @@ file in the folder. So:
   workspace that names it, can't create or change it.
 
 Other commands: `halonic plugin list` shows each plugin and whether it is on.
+Under a plugin with programs, a line says whether they run on this computer,
+with `!` when they don't, so a plugin that is on but whose programs can't start
+here doesn't look as if they run.
 `halonic trust --plugin <id>` turns on a plugin already added;
 `halonic trust --plugin <id> --remove` removes the trust, so the plugin is off
 (its settings and secrets stay). `halonic plugin remove <id>` asks first (or

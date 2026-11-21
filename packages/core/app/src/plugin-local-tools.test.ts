@@ -22,6 +22,7 @@ import {
   type LocalToolSet,
   LocalToolUnavailableError,
   localToolConnectorId,
+  localToolStateOf,
   PluginLocalToolNotTrustedError,
   PluginLocalTools,
 } from "./plugin-local-tools.ts";
@@ -45,6 +46,17 @@ verifies("app.plugin-local-tools", () => {
     await expect(refused).rejects.toMatchObject({ state: { kind: "needs-desktop-app" } });
     await expect(connector.listTools()).rejects.toThrow("it needs the desktop app");
     await connector.close();
+  });
+
+  it("gives the same state without a PluginLocalTools, opening nothing", async () => {
+    const sandbox = new TestSandbox();
+    sandbox.checkResult = { ok: false, reason: "container", missing: [] };
+    expect(await localToolStateOf(null)).toEqual({ kind: "needs-desktop-app" });
+    expect(await localToolStateOf(sandbox)).toEqual({
+      kind: "sandbox-unavailable",
+      reason: "container",
+    });
+    expect(sandbox.sessions).toHaveLength(0);
   });
 
   it("where the sandbox can't start, says why with its reason, and opens nothing", async () => {

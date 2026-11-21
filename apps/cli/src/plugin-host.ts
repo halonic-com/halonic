@@ -12,7 +12,7 @@ import {
   FileTrustStore,
 } from "@halonicjs/adapter-fs-node";
 import { bothSpellings } from "@halonicjs/adapter-system-node";
-import { type DeletePluginSecret, PluginService } from "@halonicjs/app";
+import { type DeletePluginSecret, type LocalToolState, PluginService } from "@halonicjs/app";
 import type { Clock } from "@halonicjs/ports";
 import {
   type ProfileEnvironment,
@@ -23,6 +23,7 @@ import {
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { GitExporter } from "./commands/plugin/git-source.ts";
+import { nodeLocalToolState } from "./sandbox-works.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import { cliTrustService } from "./workspace-trust.ts";
 
@@ -34,6 +35,26 @@ export interface PluginSetup {
   readonly clock?: Clock;
   /** How `plugin add` exports a git address; the git on the `PATH`, hardened, by default. */
   readonly exportGit?: GitExporter;
+  /** Whether a plugin's programs can run here; this computer's srt sandbox is asked by default. */
+  readonly localToolState?: () => Promise<LocalToolState>;
+}
+
+/**
+ * Whether the programs of `plugins` can run on this computer, or `undefined`
+ * when none of them has a program, so the sandbox is only asked when a line
+ * shows the answer.
+ *
+ * @example
+ * await programsRunFor({}, [entry.content]);
+ * // "sandbox-unavailable"
+ */
+export async function programsRunFor(
+  setup: PluginSetup,
+  plugins: readonly { readonly localTools: readonly unknown[] }[],
+): Promise<LocalToolState["kind"] | undefined> {
+  if (plugins.every((plugin) => plugin.localTools.length === 0)) return undefined;
+  const state = await (setup.localToolState ?? nodeLocalToolState)();
+  return state.kind;
 }
 
 /**

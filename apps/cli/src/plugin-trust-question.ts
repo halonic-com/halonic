@@ -15,7 +15,11 @@ import { markPart, type Phrase, phrase, plainText } from "./messages/phrase.ts";
 import { pluginMessages } from "./messages/plugin.ts";
 import { trustMessages } from "./messages/trust.ts";
 import { NotTrustedError } from "./not-trusted.ts";
-import { pluginFingerprintLines, pluginTrustCheckLines } from "./output/plugin-trust-check.ts";
+import {
+  type ProgramsRun,
+  pluginFingerprintLines,
+  pluginTrustCheckLines,
+} from "./output/plugin-trust-check.ts";
 import { printable } from "./output/printable.ts";
 
 /** A plugin that was read and checked, and isn't trusted as it is now. */
@@ -27,6 +31,8 @@ export interface PluginTrustAnswer {
   /** `--yes`, which counts only with a `--fingerprint`. */
   readonly yes: boolean;
   readonly fingerprint: string | undefined;
+  /** Whether the plugin's programs can run on this computer, for each program's Runs line. */
+  readonly programsRun?: ProgramsRun;
 }
 
 /** The lines a command says around the question, for the plugin it asks about. */
@@ -64,7 +70,7 @@ export async function askToTrustPlugin(
   const json = { id, name: plugin.name, version: plugin.version, fingerprint };
   // The manifest's name is outside text (cli-output 5).
   const name = printable(plugin.name);
-  const check = pluginTrustCheckLines(entry.content, entry.location);
+  const check = pluginTrustCheckLines(entry.content, entry.location, answer.programsRun);
   const fix = pluginMessages.addNoTerminalFix(id);
   if (answer.fingerprint !== undefined && answer.fingerprint !== fingerprint) {
     throw fingerprintNotCurrent(entry);
