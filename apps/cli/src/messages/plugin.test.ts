@@ -71,7 +71,7 @@ describe("plugin's sentences", () => {
           "plugin.yaml",
           "2:10",
           "version",
-          "Invalid input: expected string, received number",
+          'version is text: write "1.2" in quotes.',
         ),
       ),
       words(
@@ -79,7 +79,7 @@ describe("plugin's sentences", () => {
           "plugin.yaml",
           "6:7",
           "name",
-          "Invalid input: expected string, received number",
+          'name is text: write "7" in quotes.',
         ),
       ),
       words(
@@ -96,7 +96,7 @@ describe("plugin's sentences", () => {
     ]).toEqual([
       "plugin.yaml 3:5 id: use lower-case words",
       'plugin.yaml 2:10 version is a number here; write it in quotes, with three numbers, such as "1.0.0".',
-      "plugin.yaml 6:7 name is a number here; write it in quotes.",
+      'plugin.yaml 6:7 name is text: write "7" in quotes.',
       "plugin.yaml sdk: needs SDK 3",
       "plugin.yaml 9:1 Map keys must be unique",
       "Fix plugin.yaml, then run halonic plugin add again.",
