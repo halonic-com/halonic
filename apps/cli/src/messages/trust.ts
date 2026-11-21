@@ -7,6 +7,14 @@ import { suggestedCommand } from "./suggested-command.ts";
 /** Where an unpinned program downloads its code from: npm for `npx`, PyPI for `uvx` and `pipx run`. */
 export type PackageRegistry = "npm" | "PyPI";
 
+/** A workspace secret a local integration gets, and the name its sheet reads it as. */
+export interface SecretPick {
+  /** The workspace secret's name, such as `my-notes-key`. */
+  readonly secret: string;
+  /** The secret's name in the integration's sheet, such as `notes-key`. */
+  readonly as: string;
+}
+
 /** How many rows of one kind are marked New and how many Changed since the workspace was trusted. */
 export interface RowChanges {
   readonly added: number;
@@ -92,6 +100,16 @@ export const trustMessages = defineMessages("trust", {
   /** The secrets a program gets, after its command: "gets the secret GMAIL_TOKEN". */
   getsSecrets: (names: readonly string[]) =>
     phrase`gets the ${names.length === 1 ? "secret" : "secrets"} ${listed(names)}`,
+  /**
+   * The workspace secrets a local integration's connector picks, after its
+   * folder: "gets the secrets my-notes-key as notes-key and backup", where
+   * "as" names the secret in the integration's sheet when it differs (Mara,
+   * HAL-14737).
+   */
+  getsPickedSecrets: (picks: readonly SecretPick[]) =>
+    phrase`gets the ${picks.length === 1 ? "secret" : "secrets"} ${listed(
+      picks.map(({ secret, as }) => (secret === as ? secret : `${secret} as ${as}`)),
+    )}`,
   /**
    * The variables a program takes from the person's environment, after its
    * secrets: "takes AWS_PROFILE from your environment". The team's words
