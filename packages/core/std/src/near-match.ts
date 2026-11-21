@@ -1,6 +1,15 @@
 /** How far a typo may be from a name for "Did you mean": the CLI's limit for a command (cli-output 1.3). */
 const nearDistance = 2;
 
+/** Options for {@link nearMatch}. */
+export interface NearMatchOptions {
+  /**
+   * Other spellings a name may be found by, besides itself. The CLI gives the
+   * stem `--x` of an option `--no-x`, so "--colour" finds "--no-color".
+   */
+  readonly spellingsOf?: (candidate: string) => readonly string[];
+}
+
 /**
  * The one name within an edit distance of 2 of `typed`, for "Did you mean".
  * When none is that close, or two or more are, there's no guess: a guess
@@ -10,9 +19,16 @@ const nearDistance = 2;
  * nearMatch("soter", ["writer", "sorter"]); // "sorter"
  * nearMatch("xyz", ["writer", "sorter"]); // undefined
  */
-export function nearMatch(typed: string, candidates: Iterable<string>): string | undefined {
-  const near = [...new Set(candidates)].filter(
-    (candidate) => editDistance(typed, candidate) <= nearDistance,
+export function nearMatch(
+  typed: string,
+  candidates: Iterable<string>,
+  options: NearMatchOptions = {},
+): string | undefined {
+  const spellingsOf = options.spellingsOf ?? (() => []);
+  const near = [...new Set(candidates)].filter((candidate) =>
+    [candidate, ...spellingsOf(candidate)].some(
+      (spelling) => editDistance(typed, spelling) <= nearDistance,
+    ),
   );
   return near.length === 1 ? near[0] : undefined;
 }

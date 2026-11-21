@@ -6,13 +6,8 @@ import {
   parseEvery,
   triggerValueProblems,
 } from "@halonicjs/routines";
-import {
-  didYouMean,
-  inputReads,
-  missingStartFields,
-  nearName,
-  readsWholeInput,
-} from "@halonicjs/workflow";
+import { nearMatch } from "@halonicjs/std";
+import { didYouMean, inputReads, missingStartFields, readsWholeInput } from "@halonicjs/workflow";
 import type { LoadedFileOf, WorkspaceIssue } from "../load-workspace.ts";
 import type { CheckContext } from "./check-context.ts";
 
@@ -130,7 +125,7 @@ function unreadInputIssues(context: CheckContext, routine: Routine): WorkspaceIs
 
 /** "Did you mean input.day?" for a close field, or else the fields the steps read. */
 function unreadHint(key: string, read: readonly string[]): string {
-  const near = nearName(key, read);
+  const near = nearMatch(key, read);
   if (near !== undefined) {
     return `Did you mean input.${near}?`;
   }
