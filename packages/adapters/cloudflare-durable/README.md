@@ -77,7 +77,12 @@ port over it.
   and late updates change nothing. `DurableRunStore` is the `RunStore` port:
   `get` comes from the log (always current), `list` from D1 (may lag).
 - **The listener and the run list.** The platform wakes the object, not the client, so the
-  Worker subclasses `RunObject` and overrides `timerListener()` and `runList()`.
+  Worker subclasses `RunObject`, overrides `timerListener()` and implements `runList()`, which
+  is abstract: a subclass without it doesn't compile.
+- **A failed send is reported.** Each failed run list update goes to `reportRunListFailure()`
+  with the run, the attempt and the time to the next try. By default that is one line in the
+  Worker's log with the error's name and message, never its stack. A Worker that exports
+  `RunObject` itself, with no run list, gets that line on every try.
 
 ## The routines object
 

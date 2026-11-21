@@ -44,6 +44,9 @@ function newState(storage: DurableObjectStorage): RunState {
     nap: async () => {},
     listener: () => ({ onTimer: async () => {} }),
     runList: () => ({ publish: async () => {} }),
+    onRunListFailure: ({ error }) => {
+      throw error;
+    },
   });
 }
 

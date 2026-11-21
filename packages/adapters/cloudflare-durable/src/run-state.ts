@@ -29,6 +29,18 @@ export interface RunListSink {
   publish(summary: RunSummary, seq: number): Promise<void>;
 }
 
+/** A run list update that failed. It is kept and tried again after `retryInMs`. */
+export interface RunListFailure {
+  /** The run whose summary didn't reach the run list. */
+  runId: string;
+  /** How many tries in a row have failed, this one included. */
+  attempt: number;
+  /** How long until the next try. */
+  retryInMs: number;
+  /** What the run list, or getting it, threw. */
+  error: unknown;
+}
+
 /** What a {@link RunState} needs. Each is read at the time of use, so a test can change it. */
 export interface RunStateOptions {
   sql: RunSql;
@@ -37,6 +49,8 @@ export interface RunStateOptions {
   nap: (ms: number, signal: AbortSignal) => Promise<void>;
   listener: () => Pick<SchedulerListener, "onTimer">;
   runList: () => RunListSink;
+  /** Hears of every failed run list update, so a run list that never fills doesn't go unseen. */
+  onRunListFailure: (failure: RunListFailure) => void;
 }
 
 /**
@@ -187,19 +201,28 @@ export class RunState implements RunObjectApi {
     }
   }
 
-  /** Sends the run's summary to the run list when the outbox says it is behind, and its try is due. */
+  /**
+   * Sends the run's summary to the run list when the outbox says it is behind, and its try is due.
+   * A failure is kept for the next try and reported, never thrown: the alarm must still be set.
+   */
   async #sendRunListUpdate(): Promise<void> {
     const entry = this.#outbox.entry();
     if (entry === null || entry.dueAtMs > this.#nowMs()) return;
-    const events = this.#log.events();
-    const summary = summarize(events);
-    try {
-      if (summary !== null) {
+    const summary = summarize(this.#log.events());
+    if (summary !== null) {
+      try {
         await this.#options.runList().publish(summary, this.#log.lastSeq());
+      } catch (error) {
+        const nowMs = this.#nowMs();
+        const kept = this.#outbox.failed(entry, nowMs);
+        this.#options.onRunListFailure({
+          runId: summary.id,
+          attempt: kept.failures,
+          retryInMs: kept.dueAtMs - nowMs,
+          error,
+        });
+        return;
       }
-    } catch {
-      this.#outbox.failed(entry, this.#nowMs());
-      return;
     }
     this.#outbox.sent(entry.seq);
   }

@@ -5,7 +5,7 @@
 
 import type { ScheduledTimer } from "@halonicjs/ports";
 import { sqlOfStorage } from "../run-sql.ts";
-import { RunState } from "../run-state.ts";
+import { type RunListFailure, RunState } from "../run-state.ts";
 import { SuiteClock } from "./suite-case.ts";
 
 export const second = 1000;
@@ -32,6 +32,7 @@ export function newState(
   let publishing: (summaryId: string) => Promise<void> = async () => {};
   const clock = new SuiteClock();
   const delivered: ScheduledTimer[] = [];
+  const failures: RunListFailure[] = [];
   let behaviour: () => Promise<void> = async () => {};
   const state = new RunState({
     sql: sqlOfStorage(storage),
@@ -50,6 +51,7 @@ export function newState(
         published.push([summary.id, seq]);
       },
     }),
+    onRunListFailure: (failure) => failures.push(failure),
   });
   const inMs = (ms: number) => new Date(clock.now().getTime() + ms).toISOString();
   return {
@@ -59,6 +61,7 @@ export function newState(
     delivered,
     inMs,
     published,
+    failures,
     onDelivery: (change: () => Promise<void>) => {
       behaviour = change;
     },

@@ -59,14 +59,19 @@ export class RunOutbox {
     this.#sql.exec("DELETE FROM outbox WHERE seq = ?", seq);
   }
 
-  /** Keeps the entry for another try after the backoff: 1 second, doubling, at most 15 minutes. */
-  failed(entry: OutboxEntry, nowMs: number): void {
+  /**
+   * Keeps the entry for another try after the backoff: 1 second, doubling, at most 15 minutes.
+   * Returns the entry as kept, so the failure can be reported with its count and next try.
+   */
+  failed(entry: OutboxEntry, nowMs: number): OutboxEntry {
     const failures = entry.failures + 1;
+    const dueAtMs = nowMs + retryWaitMs(failures);
     this.#sql.exec(
       "UPDATE outbox SET failures = ?, due_at_ms = ? WHERE seq = ?",
       failures,
-      nowMs + retryWaitMs(failures),
+      dueAtMs,
       entry.seq,
     );
+    return { seq: entry.seq, failures, dueAtMs };
   }
 }

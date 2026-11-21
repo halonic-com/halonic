@@ -32,7 +32,7 @@ export {
 export { defaultRoutinesObjectName, RoutinesObject } from "./routines-object.ts";
 export { RunObject } from "./run-object.ts";
 export type { RunHealth, RunObjectApi } from "./run-object-api.ts";
-export type { RunListSink } from "./run-state.ts";
+export type { RunListFailure, RunListSink } from "./run-state.ts";
 export {
   defaultOverdueAfterMs,
   defaultQuietAfterMs,
