@@ -6,7 +6,13 @@ import {
   parseEvery,
   triggerValueProblems,
 } from "@halonicjs/routines";
-import { inputReads, missingStartFields, nearName, readsWholeInput } from "@halonicjs/workflow";
+import {
+  didYouMean,
+  inputReads,
+  missingStartFields,
+  nearName,
+  readsWholeInput,
+} from "@halonicjs/workflow";
 import type { LoadedFileOf, WorkspaceIssue } from "../load-workspace.ts";
 import type { CheckContext } from "./check-context.ts";
 
@@ -181,9 +187,12 @@ function targetProblem(context: CheckContext, routine: Routine): RoutineProblem 
           message: `unknown workflow "${run.workflow}"`,
         };
   }
-  return context.nameableIds("agent", hub).has(run.agent)
-    ? null
-    : { path: ["run", "agent"], code: "unknown-agent", message: `unknown agent "${run.agent}"` };
+  const agents = context.nameableIds("agent", hub);
+  if (agents.has(run.agent)) {
+    return null;
+  }
+  const message = `unknown agent "${run.agent}"${didYouMean(run.agent, [...agents])}`;
+  return { path: ["run", "agent"], code: "unknown-agent", message };
 }
 
 /** Whether the root has agents or workflows of its own, so a root routine can run there. */

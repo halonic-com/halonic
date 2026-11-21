@@ -1,4 +1,10 @@
-import { type FilePlace, fileKinds, type KindName, kindNames } from "@halonicjs/format";
+import {
+  type FilePlace,
+  fileKinds,
+  type IdSource,
+  type KindName,
+  kindNames,
+} from "@halonicjs/format";
 
 /** Where a workspace's own settings live; every workspace has one. */
 export const settingsPath = "workspace.yaml";
@@ -101,4 +107,28 @@ export function placeMatches(path: string): PlaceMatch[] {
     );
   }
   return matches;
+}
+
+/**
+ * What gives a path its place id, for the message when a file's own id
+ * differs: its file name, or the hub folder for a hub's own file. Matches
+ * like {@link placeOf}; `undefined` where the place gives no id.
+ *
+ * @example
+ * idSourceOf("hubs/billing/agents/clerk.agent.yaml"); // { file: "clerk.agent.yaml" }
+ * idSourceOf("hubs/billing/hub.yaml"); // { folder: "hubs/billing/" }
+ */
+export function idSourceOf(path: string): IdSource | undefined {
+  for (const place of patterns) {
+    const match = place.pattern.exec(path);
+    if (match === null) {
+      continue;
+    }
+    if (place.hasId) {
+      return { file: path.slice(path.lastIndexOf("/") + 1) };
+    }
+    const hub = place.inHub ? match[1] : undefined;
+    return hub === undefined ? undefined : { folder: `hubs/${hub}/` };
+  }
+  return undefined;
 }

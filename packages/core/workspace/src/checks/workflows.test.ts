@@ -112,7 +112,10 @@ verifies("workspace.workflows", () => {
       }),
     );
     expect(workspace.issues.map((issue) => [issue.path.join("."), issue.message])).toEqual([
-      ["states.check.agent", '"check" uses unknown agent "clerk"'],
+      [
+        "states.check.agent",
+        '"check" uses unknown agent "clerk". clerk is in the hub billing; a workflow can only use its own hub\'s agents.',
+      ],
     ]);
   });
 

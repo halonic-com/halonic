@@ -1,4 +1,4 @@
-import { type Issue, type Path, parse } from "@halonicjs/schema-kit";
+import { formatPath, type Issue, type Path, parse } from "@halonicjs/schema-kit";
 import { err, ok, type Result } from "@halonicjs/std";
 import type { YamlProblem } from "@halonicjs/yaml";
 import type { FileKind, KindCheckProblem } from "./kind.ts";
@@ -39,6 +39,9 @@ export interface ParsedFile<Value> {
   readonly warnings: readonly FileProblem[];
 }
 
+/** What gives a file its place id, as a message names it: its file name, or its hub's folder. */
+export type IdSource = { readonly file: string } | { readonly folder: string };
+
 /** What the caller knows about the file beyond its text. */
 export interface ParseFileOptions {
   /**
@@ -47,6 +50,8 @@ export interface ParseFileOptions {
    * `idFromPlace` says.
    */
   readonly id?: string;
+  /** Where `id` comes from, such as `{ file: "writer.agent.yaml" }`, for the message when the file's own id differs. */
+  readonly idSource?: IdSource;
 }
 
 /**
@@ -76,20 +81,59 @@ export function parseFile<Name extends KindName>(
   }
   const source = read.value;
   const prepared = prepare(fileKind, source.data, options.id);
+  const idProblems = idDiffers(fileKind, source.data, options).map((problem) =>
+    checkProblem(problem, source),
+  );
   const parsed = parse(fileKind.schema, prepared.data);
   if (!parsed.ok) {
     const issues = wordIssues(parsed.error, prepared.data);
     const problems = issues.map((issue) => schemaProblem(issue, source));
-    return err(
-      prepared.idFromPlace ? problems.map((problem) => namePlaceId(problem, options.id)) : problems,
-    );
+    // An id that is wrong in itself, such as `in process`, is the one to fix first.
+    const idFailed = problems.some((problem) => formatPath(problem.path) === "id");
+    return err([
+      ...(idFailed ? [] : idProblems),
+      ...(prepared.idFromPlace
+        ? problems.map((problem) => namePlaceId(problem, options.id))
+        : problems),
+    ]);
   }
   const found = fileKind.check?.(parsed.value) ?? [];
-  const problems = found.map((problem) => checkProblem(problem, source));
+  const problems = [...idProblems, ...found.map((problem) => checkProblem(problem, source))];
   if (problems.some((problem) => problem.severity === "error")) {
     return err(problems);
   }
   return ok({ value: parsed.value, warnings: problems });
+}
+
+/**
+ * A file's own id must be the one its place gives (HAL-14277). Otherwise the
+ * run and `validate` could know it by different names, and whatever names it
+ * by its file name finds it "unknown" with nothing pointing at the cause.
+ * A file without an id of its own takes its place's, so leaving it out is fine.
+ */
+function idDiffers(
+  kind: Pick<FileKind<unknown>, "idFromPlace">,
+  data: unknown,
+  options: ParseFileOptions,
+): KindCheckProblem[] {
+  const placeId = options.id;
+  if (kind.idFromPlace !== "fallback" || placeId === undefined || !isMap(data)) {
+    return [];
+  }
+  const ownId = data["id"];
+  if (typeof ownId !== "string" || ownId === placeId) {
+    return [];
+  }
+  const source = options.idSource;
+  let message: string;
+  if (source === undefined) {
+    message = `The id is ${ownId}, but the file name gives ${placeId}. Use the same name in both, or leave id out.`;
+  } else if ("file" in source) {
+    message = `The id is ${ownId}, but the file is ${source.file}. Use the same name in both, or leave id out.`;
+  } else {
+    message = `The id is ${ownId}, but the folder is ${source.folder}. Use the same name, or leave id out.`;
+  }
+  return [{ severity: "error", code: "id-differs-from-place", path: ["id"], message }];
 }
 
 /** The data the kind's schema gets, and whether its id is the place's. */

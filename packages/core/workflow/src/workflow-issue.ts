@@ -53,6 +53,11 @@ export interface WorkflowIssue {
 export interface ValidateOptions {
   /** The agent ids that exist; when given, the agents states use are checked. */
   agents?: readonly string[];
+  /**
+   * The hub each agent of another hub is in, by agent id; an unknown agent
+   * found there says so, since a workflow can only use its own hub's agents.
+   */
+  agentHubs?: Readonly<Record<string, string>>;
   /** The workflow ids of the hub; when given, the workflows states run are checked. */
   workflows?: readonly string[];
   /** The options of each agent whose reply is a choice, by agent id; when given, `when` values are checked. */
