@@ -2,7 +2,6 @@
 
 - Approval: HAL-15225 (words check C553, rows 26, 28 and 29, a team decision on an approved screen under HAL-2282); the CTO, Liam, approves this note in review
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Gzew/U/zdxq41NS6EjgdZZlX3nx8qqnaDw7R2vuSU5ZKVVPIgxrcODTZ6jwjC7oQwTnIM//zSYKlyv7erFvyBw==
 
 `library.connector-secrets` changes three things it says, and empties the entry for a refused name.
 The line under each secret's name is the approved key hint (microcopy rev 96,
