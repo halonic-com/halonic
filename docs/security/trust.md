@@ -86,6 +86,14 @@ untrusted or changed workspace with exit 3 and write the check and the fingerpri
 can only reach the test model needs no trust. `halonic validate` starts
 nothing, so it doesn't check.
 
+Before trust, the same commands refuse a workspace whose files have errors
+(exit 2, requirement `cli.workspace-file-problems`): a file with an error is
+left out of the loaded workspace, and a provider file left out for a pasted
+key could make the workspace look as if it reached only the test model.
+`halonic routines watch` makes one exception: a routine's own file adds
+nothing to the trust content, so it leaves just that routine out, with a ✕
+line, and checks and starts the others.
+
 The host's server (`packages/host/server`, behind `halonic serve` and the
 cloud Worker) checks trust on every request that starts a run, which are
 `POST /api/runs` and `POST /api/agent-runs` (requirement `server.trust-gate`). It

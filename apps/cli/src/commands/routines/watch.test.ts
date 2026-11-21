@@ -279,12 +279,10 @@ verifies("cli.commands.routines.watch", () => {
 });
 
 verifies("cli.workspace-file-problems", () => {
-  it("refuses to watch when the workspace's files have problems, and writes nothing to the run log", async () => {
+  // A routine's own file with errors leaves only that routine out (watch-cant-start.test.ts).
+  it("refuses to watch when a file other than a routine's has problems, and writes nothing to the run log", async () => {
     await writeFiles(acmeRuns.acme, {
-      "hubs/support/workflows/routines/hourly-follow-up.routine.yaml": hourly.replace(
-        "workflow: follow-up",
-        "workflow: gone",
-      ),
+      "hubs/support/workflows/spare.workflow.yaml": `version: 2\n${followUp.replace("id: follow-up", "id: spare")}`,
     });
     const io = captureIo(acmeRuns.acme);
 
@@ -292,7 +290,7 @@ verifies("cli.workspace-file-problems", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr.slice(0, 2)).toEqual([
-      "✕ Couldn't watch the routines in acme: Acme has 1 problem in hubs/support/workflows/routines/hourly-follow-up.routine.yaml. Nothing ran.",
+      "✕ Couldn't watch the routines in acme: Acme has 1 problem in hubs/support/workflows/spare.workflow.yaml. Nothing ran.",
       "  See them with: halonic validate",
     ]);
     expect(await storedRuns()).toEqual([]);

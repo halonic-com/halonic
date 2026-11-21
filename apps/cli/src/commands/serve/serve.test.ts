@@ -132,7 +132,7 @@ verifies("cli.commands.serve.serve", () => {
 
     expect(io.stdout.slice(-2)).toEqual([
       `Friday digest starts on a web request at ${address}/api/webhooks/support/friday-digest`,
-      "✕ Friday digest won't start: its secret friday-hook isn't set. Set it with: halonic secret set friday-hook",
+      "✕ Friday digest can't start: its secret friday-hook isn't set. Set it with: halonic secret set friday-hook",
     ]);
   });
 

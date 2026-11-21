@@ -49,7 +49,7 @@ with the request's body.
    The address ends with the routine's hub and the routine's id. A routine
    in the workspace itself, not in a hub, has `@workspace` in place of the
    hub, such as `/api/webhooks/@workspace/new-order`. A ✕ line
-   under it says why the routine won't start, such as a secret that isn't set
+   under it says why the routine can't start, such as a secret that isn't set
    or a routine that starts an agent.
 
 ## Sign a request

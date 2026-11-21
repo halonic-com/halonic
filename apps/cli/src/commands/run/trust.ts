@@ -15,7 +15,7 @@ import type { Message } from "../../messages/define.ts";
 import { runMessages } from "../../messages/run.ts";
 import type { SandboxGateRun } from "../../sandbox-gate.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
-import { refuseFileProblems } from "../../workspace-problems.ts";
+import { refuseFileProblems, refuseFileProblemsOutsideRoutines } from "../../workspace-problems.ts";
 import { needsNoTrust, trustedGrant, type WorkspaceTrustMachine } from "../../workspace-trust.ts";
 
 /** What the trust check reads on this computer, so tests can hand it a memory store. */
@@ -52,6 +52,40 @@ export async function checkRunTrust(
   run?: SandboxGateRun,
 ): Promise<TrustGrant | null> {
   refuseFileProblems(dir, workspace, nothingDone, typedDir, run);
-  if (await needsNoTrust(dir, workspace, run?.harness)) return null;
+  return await trustGrantOf(dir, workspace, machine, typedDir, nothingDone, run?.harness);
+}
+
+/**
+ * {@link checkRunTrust} for `routines watch`, which refuses only the errors
+ * outside the routine files: a routine whose own file has errors is left
+ * out of the watch, and the others start (HAL-15372). A routine file adds
+ * nothing to the trust content, so leaving one out never makes the
+ * workspace look as if it reached only the test model.
+ *
+ * @returns the trust grant, or `null` for runs that can only reach the test model
+ * @throws WorkspaceFileProblemsError when a file other than a routine's has an error (exit 2)
+ * @throws NotTrustedError when the workspace was never trusted here, or changed since (exit 3)
+ */
+export async function checkRoutinesTrust(
+  dir: OpenWorkspaceDir,
+  workspace: LoadedWorkspace,
+  machine: RunTrustMachine,
+  typedDir: string | undefined,
+): Promise<TrustGrant | null> {
+  const nothingRan = runMessages.nothingRan();
+  refuseFileProblemsOutsideRoutines(dir, workspace, nothingRan, typedDir);
+  return await trustGrantOf(dir, workspace, machine, typedDir, nothingRan);
+}
+
+/** The trust check after the file problems were refused: never called without that refusal. */
+async function trustGrantOf(
+  dir: OpenWorkspaceDir,
+  workspace: LoadedWorkspace,
+  machine: RunTrustMachine,
+  typedDir: string | undefined,
+  nothingDone: Message,
+  harness?: string,
+): Promise<TrustGrant | null> {
+  if (await needsNoTrust(dir, workspace, harness)) return null;
   return await trustedGrant(dir, machine, typedDir, nothingDone, workspace);
 }
