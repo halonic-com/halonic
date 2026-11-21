@@ -1,0 +1,18 @@
+{
+  "identifier": "desktop-engine",
+  "description": "On desktop, the app's own page may call the engine process that runs its workspace's runs and routines through the engine_* commands: the shell makes each call, so the engine's launch token stays in the shell (B1 step 4, HAL-14219). The page names a route of the shell's table and sends its params apart, never a URL. It is local only, so the Studio the computer serves gets no engine.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-engine-request",
+    "allow-engine-stream",
+    "allow-engine-stream-end"
+  ]
+}

@@ -54,7 +54,13 @@ each behind its own capability in `src-tauri/capabilities/` (`desktop-*.json`)
 that is local only, so the Studio the computer serves gets none of them. The
 agent host commands take a route of the host's table, never a URL: the shell
 starts the host for the profile and makes each call, so the launch token never
-reaches the page (`src-tauri/requirements/agent-host-commands.md`).
+reaches the page (`src-tauri/requirements/agent-host-commands.md`). The
+engine commands (`engine_request`, `engine_stream`, `engine_stream_end`,
+`capabilities/desktop-engine.json`) work the same way for the engine process
+that runs a window's workspace: the page names a route of the shell's table
+and sends its params apart, the shell checks each param and makes the call
+with the engine's token. While the shell knows no engine for the window, they
+answer `engine_unavailable` (`src-tauri/requirements/engine-commands.md`).
 `src-tauri/gen/android/` is the Android project, generated once by
 `tauri android init` and kept in git, so changes to it show up in review.
 

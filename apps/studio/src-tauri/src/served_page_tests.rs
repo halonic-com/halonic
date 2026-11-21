@@ -4,7 +4,8 @@
 //! may still call `connect` and, on desktop, `git`, the `secret_*`
 //! commands, `pick_folder`, `documents_folder`, `pick_parent_folder`,
 //! `create_workspace_folder`, the `trust_*` commands, the `host_settings_*`
-//! commands, the `run_*` commands, the `agent_host_*` commands, the `fs_*`
+//! commands, the `run_*` commands, the `agent_host_*` commands, the
+//! `engine_*` commands, the `fs_*`
 //! commands, the `blob_*` and `record_*` commands and the `update_*`
 //! commands, and, on Android, `pair_scan` and `pair_scan_cancel`.
 
@@ -16,6 +17,7 @@ use tauri::webview::{InvokeRequest, WebviewWindow};
 use crate::shell;
 
 mod device_keys;
+mod engine;
 mod engine_lock;
 mod pair_scan;
 mod runs;
@@ -159,6 +161,9 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "agent_host_sandbox_choice_save",
         "engine_ready",
         "start_status",
+        "engine_request",
+        "engine_stream",
+        "engine_stream_end",
         "http_fetch",
         "http_fetch_abort",
         "fs_list",

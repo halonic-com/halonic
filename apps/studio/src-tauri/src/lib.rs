@@ -11,7 +11,8 @@
 //! commands (capabilities/desktop-host-settings.json) and the `run_*` commands
 //! (capabilities/desktop-runs.json) and the `engine_lock_*` commands
 //! (capabilities/desktop-engine-lock.json) and the `agent_host_*` commands
-//! with `engine_ready` and `start_status` (capabilities/desktop-agent-host.json) and the `fs_*` commands
+//! with `engine_ready` and `start_status` (capabilities/desktop-agent-host.json) and the `engine_*` commands
+//! (capabilities/desktop-engine.json) and the `fs_*` commands
 //! (capabilities/desktop-files.json, with the read-only `folder_*` commands) and the plugin install commands `plugin_source_*` (capabilities/desktop-plugin-source.json) and `plugin_folder_place` (capabilities/desktop-plugin-folder-place.json) and the git export `plugin_git_export*` (capabilities/desktop-plugin-git-export.json) and the `blob_*` commands
 //! (capabilities/desktop-blobs.json) and the `record_*` commands
 //! (capabilities/desktop-records.json) and the read-only `google_setup_read`
@@ -36,7 +37,10 @@ mod connect;
 mod device_key_check;
 #[cfg(target_os = "android")]
 mod device_keys;
+mod engine;
 mod engine_lock;
+mod engine_routes;
+mod engine_sse;
 mod file_answers;
 mod files;
 mod git;
@@ -48,6 +52,7 @@ mod lite_check;
 mod local_network;
 mod native_dialogs;
 mod navigation;
+mod page_streams;
 mod pair_scan;
 mod plugin_folder;
 mod plugin_folder_place;
@@ -103,6 +108,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(engine_lock::EngineLockState::default())
         .manage(records::RecordState::default())
         .manage(agent_host::AgentHostState::default())
+        .manage(engine::EngineState::default())
         .manage(http_fetch::HttpFetchState::from_env())
         .manage(sandbox_backup::BackupState::default())
         .manage(files::FileState::default())
@@ -152,6 +158,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             if payload.event() == PageLoadEvent::Started {
                 agent_host::page_loaded(webview.app_handle());
                 agent_host::end_page_streams(webview.app_handle(), webview.label());
+                engine::end_page_streams(webview.app_handle(), webview.label());
                 http_fetch::end_page_calls(webview.app_handle(), webview.label());
                 files::end_page_watches(webview.app_handle(), webview.label());
                 pair_scan::end_page_scan(webview.app_handle());
@@ -166,6 +173,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                     .state::<engine_lock::EngineLockState>()
                     .release_window(window.label());
                 agent_host::end_page_streams(window.app_handle(), window.label());
+                engine::end_page_streams(window.app_handle(), window.label());
                 http_fetch::end_page_calls(window.app_handle(), window.label());
                 files::end_page_watches(window.app_handle(), window.label());
                 pair_scan::end_page_scan(window.app_handle());
@@ -219,6 +227,9 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             agent_host::updates::agent_host_security_updates,
             agent_host::progress::engine_ready,
             agent_host::progress::start_status,
+            engine::engine_request,
+            engine::engine_stream,
+            engine::engine_stream_end,
             http_fetch::http_fetch,
             http_fetch::http_fetch_abort,
             files::fs_list,
