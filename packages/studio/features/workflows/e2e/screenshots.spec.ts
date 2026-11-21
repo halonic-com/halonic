@@ -321,9 +321,10 @@ for (const size of welcomeSizes) {
 
 /**
  * The workflow canvas with arrows out of the steps a run went along drawn blue (HAL-11974): no
- * run, a run that has reached Review, a finished run, and a run that took the "rejected" branch.
+ * run, a run that has reached Review, a finished run, a run that took the "rejected" branch, a
+ * run that failed in Publish and one that failed in its first step.
  */
-const canvasRuns = ["none", "mid", "done", "branch", "failed"] as const;
+const canvasRuns = ["none", "mid", "done", "branch", "failed", "first"] as const;
 
 for (const shown of canvasRuns) {
   for (const scheme of schemes) {
@@ -332,15 +333,15 @@ for (const shown of canvasRuns) {
       await page.goto(`/canvas.html?run=${shown}`);
       await expect(page.getByRole("group", { name: "Workflow canvas" })).toBeVisible();
       await expect(page.getByText("Summarise the change")).toBeVisible();
-      const taken = { none: 0, mid: 1, done: 3, branch: 3, failed: 2 }[shown];
+      const taken = { none: 0, mid: 1, done: 3, branch: 3, failed: 2, first: 0 }[shown];
       await expect(page.locator("g[data-taken]")).toHaveCount(taken);
-      const dots = { none: 0, mid: 2, done: 4, branch: 3, failed: 3 }[shown];
+      const dots = { none: 0, mid: 2, done: 4, branch: 3, failed: 3, first: 1 }[shown];
       await expect(page.getByTestId("status-dot")).toHaveCount(dots);
       // The first card's Start chip clears its kind label; a long end card's title stays in its box.
       const chip = await page.getByText("Start", { exact: true }).boundingBox();
       const kind = await page.getByText("AGENT STEP").first().boundingBox();
       expect((chip?.y ?? Infinity) + (chip?.height ?? 0)).toBeLessThanOrEqual(kind?.y ?? -Infinity);
-      if (shown === "failed") {
+      if (shown === "failed" || shown === "first") {
         // The failed card's Failed chip sits on its top edge, clear of its kind and its name (HAL-13100).
         const failed = page.locator("button.ring-danger");
         const mark = await failed.locator(":scope > [aria-hidden='true']").boundingBox();
@@ -348,6 +349,14 @@ for (const shown of canvasRuns) {
         expect((mark?.y ?? Infinity) + (mark?.height ?? 0)).toBeLessThanOrEqual(
           label?.y ?? -Infinity,
         );
+      }
+      if (shown === "first") {
+        // When the first step fails, Start and Failed are both centred on its top edge (HAL-14627).
+        const failed = await page
+          .locator("button.ring-danger > [aria-hidden='true']")
+          .boundingBox();
+        const middle = (box: typeof chip) => (box?.y ?? 0) + (box?.height ?? 0) / 2;
+        expect(Math.abs(middle(chip) - middle(failed))).toBeLessThanOrEqual(1);
       }
       const spilled = await page
         .locator("button[aria-pressed]")
