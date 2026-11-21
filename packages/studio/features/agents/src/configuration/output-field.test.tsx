@@ -116,7 +116,7 @@ verifies("agents.configuration.output", () => {
     await pick(page, "JSON");
     expect(await saved()).toEqual({ type: "json" });
     expect(page.textContent).toContain("Schema (JSON)");
-    expect(page.textContent).toContain("Each reply is checked against this schema.");
+    expect(page.textContent).toContain("The agent is asked to reply in this shape.");
 
     await typeIntoArea(schemaBox(page), '{ "type": ');
     await act(async () => vi.advanceTimersByTime(SAVE_PAUSE_MS));
