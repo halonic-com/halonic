@@ -26,8 +26,3 @@ export function takeNewAgentRequests(onRequest: () => void): () => void {
   take();
   return () => listeners.delete(take);
 }
-
-/** Forgets a waiting request, for a page that can't open the dialog. */
-export function dropNewAgentRequest(): void {
-  pending = false;
-}

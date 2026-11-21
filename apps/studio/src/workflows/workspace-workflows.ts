@@ -18,6 +18,7 @@ import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
 import { type PageRuns, workflowRefusalOf } from "../engine/page-refusal.ts";
 import { checkedSource } from "../library/workspace-library-items.ts";
+import { hubFilesFor } from "../studio/first-hub.ts";
 import { programOf } from "./step-program.ts";
 import {
   endedIn,
@@ -433,12 +434,13 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     this.#learnNames([{ hubId: ref.hubId, id: ref.id, name: trimmed }]);
   }
 
-  /** Creates the workflow in `hubId`; throws when the workspace has no such hub, so no stray folder is made. */
+  /**
+   * Creates the workflow in `hubId`, with the Default hub when the workspace has no hub yet; throws
+   * `not_found` for any other hub the workspace doesn't have, so no stray folder is made.
+   */
   async create({ name, hubId }: NewWorkflow): Promise<WorkflowRef> {
     await this.#load();
-    if (!this.#hubs.some((hub) => hub.id === hubId)) {
-      throw new Error(`The workspace has no hub "${hubId}".`);
-    }
+    const hubFiles = hubFilesFor(this.#hubs, hubId);
     const folder = workflowFolder(hubId);
     const taken = (await this.#parts.files.list(folder))
       .filter((path) => path.startsWith(`${folder}/`) && path.endsWith(workflowSuffix))
@@ -446,6 +448,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
       .filter((id) => !id.includes("/"));
     const id = uniqueName(slugify(name), taken);
     this.#parts.files.change(`Created workflow ${name}`, {
+      ...hubFiles,
       [`${folder}/${id}${workflowSuffix}`]: newWorkflowText(id, name),
     });
     this.#names.set(`${hubId}/${id}`, name);

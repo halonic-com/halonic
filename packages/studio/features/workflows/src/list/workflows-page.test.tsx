@@ -144,7 +144,7 @@ verifies("workflows.list.rows-and-states", () => {
     );
   });
 
-  it("offers no New workflow while the workflows load, or when the workspace has no hub", async () => {
+  it("offers no New workflow while the workflows load, and offers it once they have, even with no hub", async () => {
     const loading = { ...memoryHost(hubs, []).host, list: () => new Promise<never>(() => {}) };
     expect(
       buttonNamed(await show(<WorkflowsView host={loading} />), "New workflow"),
@@ -152,7 +152,7 @@ verifies("workflows.list.rows-and-states", () => {
     unmount();
 
     const page = await show(<WorkflowsView host={memoryHost([], []).host} />);
-    expect(buttonNamed(page, "New workflow")).toBeUndefined();
+    expect(buttonNamed(page, "New workflow")).toBeDefined();
   });
 
   it("shows only the empty state, with its one button, when there are no workflows", async () => {
@@ -318,10 +318,10 @@ verifies("workflows.list.rows-and-states", () => {
     expect(document.querySelector("dialog")).not.toBeNull();
   });
 
-  it("drops Ctrl K's New workflow when there is no hub to put one in", async () => {
+  it("opens Ctrl K's New workflow in a workspace with no hub, and only once", async () => {
     requestNewWorkflow();
-    await show(<WorkflowsView host={memoryHost([], workflows).host} />);
-    expect(document.querySelector("dialog")).toBeNull();
+    await show(<WorkflowsView host={memoryHost([], []).host} />);
+    expect(document.querySelector("dialog")).not.toBeNull();
 
     unmount();
     await show(<WorkflowsView host={memoryHost(hubs, workflows).host} />);

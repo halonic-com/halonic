@@ -26,8 +26,3 @@ export function takeNewWorkflowRequests(onRequest: () => void): () => void {
   take();
   return () => listeners.delete(take);
 }
-
-/** Forgets a waiting request, for a page that can't open the dialog. */
-export function dropNewWorkflowRequest(): void {
-  pending = false;
-}

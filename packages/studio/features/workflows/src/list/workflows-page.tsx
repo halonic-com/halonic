@@ -10,6 +10,7 @@ import {
   type PlaceViewProps,
   useCopyDetails,
 } from "@halonicjs/studio-shell";
+import { defaultHub } from "@halonicjs/workspace";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type WorkflowListing,
@@ -19,7 +20,7 @@ import {
 } from "../api.ts";
 import { NewWorkflowDialog } from "../new/new-workflow-dialog.tsx";
 import { listWords } from "./list-words.ts";
-import { dropNewWorkflowRequest, takeNewWorkflowRequests } from "./new-request.ts";
+import { takeNewWorkflowRequests } from "./new-request.ts";
 import { rowId, workflowHubs } from "./workflow-rows.tsx";
 
 /**
@@ -140,18 +141,18 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
     if (listing !== undefined) (openInNewTab ?? open)?.(listing);
   };
   const startCreating = () => setCreating(true);
-  // A workflow needs a hub to live in, and the hubs are known only once the first read is done.
-  const canCreate = load.kind === "ready" && host.hubs().length > 0;
+  // A workflow needs a hub to live in, and the hubs are known only once the first read is done. A
+  // workspace with no hub gets the Default hub with its first workflow (`workflows.new.first-hub`).
+  const canCreate = load.kind === "ready";
+  const hubsForNew = host.hubs().length > 0 ? host.hubs() : [defaultHub];
   // A phone doesn't edit workflows, so its list has no New workflow (UX 10.15).
   const offersNew = canCreate && !phone;
-  // Ctrl K's New workflow waits until the dialog can open; with no hub to put one in, it is dropped.
-  const noHubs = load.kind === "ready" && host.hubs().length === 0;
+  // Ctrl K's New workflow waits until the dialog can open.
   useEffect(() => {
-    if (noHubs) dropNewWorkflowRequest();
     // A phone takes the request and drops it, so the dialog doesn't open later, unasked, on a desktop.
     if (phone) return takeNewWorkflowRequests(() => undefined);
     return offersNew ? takeNewWorkflowRequests(() => setCreating(true)) : undefined;
-  }, [offersNew, noHubs, phone]);
+  }, [offersNew, phone]);
 
   return (
     <div className="flex w-full flex-col gap-4 px-6 py-5">
@@ -205,7 +206,7 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
       )}
       {creating && (
         <NewWorkflowDialog
-          hubs={host.hubs()}
+          hubs={hubsForNew}
           takenIds={(hubId) =>
             listings.filter((listing) => listing.hubId === hubId).map((listing) => listing.id)
           }

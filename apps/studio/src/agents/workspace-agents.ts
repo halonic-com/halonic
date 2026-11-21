@@ -31,6 +31,7 @@ import type {
 import { loopRefusal } from "@halonicjs/studio-feature-agents/api";
 import { filesOf, loadWorkspace, modelAliases, settingsPath } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
+import { hubFilesFor } from "../studio/first-hub.ts";
 import {
   agentGone,
   agentSuffix,
@@ -408,12 +409,13 @@ export class WorkspaceAgents implements AgentsHost {
     return this.#parts.onChange(listener);
   }
 
-  /** Creates the agent in `hubId`; throws `not_found` when the workspace has no such hub, so no stray folder is made. */
+  /**
+   * Creates the agent in `hubId`, with the Default hub when the workspace has no hub yet; throws
+   * `not_found` for any other hub the workspace doesn't have, so no stray folder is made.
+   */
   async create({ name, hubId, instructions = "" }: NewAgent): Promise<AgentRef> {
     await this.#load();
-    if (!this.#hubs.some((hub) => hub.id === hubId)) {
-      throw new KindedError("not_found", `The workspace has no hub "${hubId}".`);
-    }
+    const hubFiles = hubFilesFor(this.#hubs, hubId);
     const folder = agentFolder(hubId);
     const taken = (await this.#parts.files.list(folder))
       .filter((path) => path.startsWith(`${folder}/`) && path.endsWith(agentSuffix))
@@ -421,7 +423,10 @@ export class WorkspaceAgents implements AgentsHost {
       .filter((id) => !id.includes("/"));
     const id = uniqueName(slugify(name), taken);
     const text = newAgentText(id, name, instructions);
-    this.#parts.files.change(`Created agent ${name}`, { [`${folder}/${id}${agentSuffix}`]: text });
+    this.#parts.files.change(`Created agent ${name}`, {
+      ...hubFiles,
+      [`${folder}/${id}${agentSuffix}`]: text,
+    });
     this.#names.set(`${hubId}/${id}`, name);
     await this.#placeNew(id, text);
     return { hubId, id };

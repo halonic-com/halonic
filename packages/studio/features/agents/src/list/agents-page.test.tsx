@@ -94,13 +94,13 @@ verifies("agents.list.rows-and-states", () => {
     expect(openItem).toHaveBeenCalledWith({ kind: "agent", hub: "acme", id: "sorter" });
   });
 
-  it("offers no New agent while the agents load, or when the workspace has no hub", async () => {
+  it("offers no New agent while the agents load, and offers it once they have, even with no hub", async () => {
     const loading = { ...hostWith(), list: () => new Promise<never>(() => {}) };
     expect(buttonNamed(await show(<AgentsView host={loading} />), "New agent")).toBeUndefined();
     unmount();
 
     const page = await show(<AgentsView host={hostWith([], [])} />);
-    expect(buttonNamed(page, "New agent")).toBeUndefined();
+    expect(buttonNamed(page, "New agent")).toBeDefined();
   });
 
   it("shows only the empty state, with its one button, when there are no agents", async () => {
@@ -267,10 +267,10 @@ verifies("agents.list.rows-and-states", () => {
     expect(document.querySelector("dialog")).not.toBeNull();
   });
 
-  it("drops Ctrl K's New agent when there is no hub to put one in", async () => {
+  it("opens Ctrl K's New agent in a workspace with no hub, and only once", async () => {
     requestNewAgent();
-    await show(<AgentsView host={hostWith([sorter], [])} />);
-    expect(document.querySelector("dialog")).toBeNull();
+    await show(<AgentsView host={hostWith([], [])} />);
+    expect(document.querySelector("dialog")).not.toBeNull();
 
     unmount();
     await show(<AgentsView host={hostWith()} />);
