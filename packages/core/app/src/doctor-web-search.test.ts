@@ -25,6 +25,12 @@ const models = [
   "",
 ].join("\n");
 
+/** The pairs `harnessCallsProviderType` allows: Claude Code calls Anthropic's API, Codex OpenAI's. */
+function harnessCalls(harness: string, providerType: string): boolean {
+  if (harness === "claude-code") return providerType === "anthropic";
+  return harness === "codex" && (providerType === "openai" || providerType === "openai-compatible");
+}
+
 function agentFile(id: string, name: string, lines: readonly string[]): string {
   return [`id: ${id}`, `name: ${name}`, ...lines, ""].join("\n");
 }
@@ -45,11 +51,11 @@ verifies("app.doctor-harness-web-search", () => {
   it("names a harness agent whose alias resolves to a model in searchesWeb", async () => {
     const workspace = await acme({
       "agents/writer.agent.yaml": agentFile("writer", "Writer", [
-        "harness: claude-code",
+        "harness: codex",
         "model: research",
       ]),
     });
-    expect(webSearchingAgents(workspace)).toEqual([
+    expect(webSearchingAgents(workspace, harnessCalls)).toEqual([
       { agent: "Writer", alias: "research", model: "perplexity/sonar", provider: "OpenRouter" },
     ]);
   });
@@ -73,36 +79,48 @@ verifies("app.doctor-harness-web-search", () => {
         "model: research",
       ]),
     });
-    expect(webSearchingAgents(workspace).map((found) => found.agent)).toEqual(["Scout"]);
+    expect(webSearchingAgents(workspace, harnessCalls).map((found) => found.agent)).toEqual([
+      "Scout",
+    ]);
   });
 
   it("leaves out Halonic's own loop, a provider/model name, and an id that differs in case", async () => {
     const workspace = await acme({
       "agents/loop.agent.yaml": agentFile("loop", "Loop", ["model: research"]),
       "agents/direct.agent.yaml": agentFile("direct", "Direct", [
-        "harness: claude-code",
+        "harness: codex",
         "model: openrouter/perplexity/sonar",
       ]),
       "agents/upper.agent.yaml": agentFile("upper", "Upper", [
-        "harness: claude-code",
+        "harness: codex",
         "model: research-upper",
       ]),
       "agents/program.agent.yaml": agentFile("program", "Program", [
-        "harness: claude-code",
+        "harness: codex",
         "model: sonnet",
       ]),
     });
-    expect(webSearchingAgents(workspace)).toEqual([]);
+    expect(webSearchingAgents(workspace, harnessCalls)).toEqual([]);
   });
 
   it("leaves out an alias whose only fallback searches the web, as the bridge tries only the alias", async () => {
     const workspace = await acme({
-      "agents/coder.agent.yaml": agentFile("coder", "Coder", [
-        "harness: claude-code",
-        "model: coder",
-      ]),
+      "agents/coder.agent.yaml": agentFile("coder", "Coder", ["harness: codex", "model: coder"]),
     });
-    expect(webSearchingAgents(workspace)).toEqual([]);
+    expect(webSearchingAgents(workspace, harnessCalls)).toEqual([]);
+  });
+
+  it("leaves out an agent whose harness can't call the alias's provider, as its run stops first", async () => {
+    const workspace = await acme({
+      "agents/writer.agent.yaml": agentFile("writer", "Writer", [
+        "harness: claude-code",
+        "model: research",
+      ]),
+      "agents/scout.agent.yaml": agentFile("scout", "Scout", ["harness: codex", "model: research"]),
+    });
+    expect(webSearchingAgents(workspace, harnessCalls).map((found) => found.agent)).toEqual([
+      "Scout",
+    ]);
   });
 
   it("warns under the Harnesses line, one problem per agent, without failing it", () => {

@@ -5,6 +5,7 @@ export { engineLockFile, routineStateCollection, runTimerCollection } from "./en
 export {
   type HarnessAccessChecks,
   type HarnessModelAccess,
+  harnessCallsProviderType,
   harnessModelAccess,
   harnessProviderModel,
 } from "./harness-model-access.ts";

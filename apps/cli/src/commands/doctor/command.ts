@@ -174,6 +174,7 @@ async function withProviderKeyAgents(
   return {
     ...withHarnessProviderKeys(found, keyed.keys),
     agentsWithProviderKey: keyed.agents,
+    ...(keyed.refused.length === 0 ? {} : { refusedHarnessModels: keyed.refused }),
   };
 }
 

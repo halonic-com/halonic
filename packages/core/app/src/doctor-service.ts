@@ -12,6 +12,7 @@ import {
   type HarnessAgent,
   type HarnessesLine,
   harnessesLine,
+  type RefusedHarnessModel,
   type SignedOutAgent,
 } from "./doctor-checks.ts";
 import {
@@ -159,6 +160,13 @@ export interface DoctorWorkspace {
    * every one.
    */
   agentsWithProviderKey?: ReadonlySet<string>;
+  /**
+   * The harness agents whose runs stop on their model alias, as the host
+   * decides it for `run`. The Harnesses line names each with the refusal and
+   * doesn't ask about its own sign-in, because its runs never get that far
+   * (HAL-15332).
+   */
+  refusedHarnessModels?: readonly RefusedHarnessModel[];
 }
 
 /** What {@link DoctorService} needs from the host. */
@@ -303,6 +311,7 @@ export class DoctorService {
         harnessAgents(workspace),
         found.signedOut,
         workspace?.webSearching,
+        workspace?.refusedHarnessModels,
       ),
     );
     if (harnessLine !== undefined) report.harnesses = harnessLine;
@@ -406,7 +415,8 @@ function harnessAgents(workspace: DoctorWorkspace | null): HarnessAgent[] {
 
 /**
  * The harness agents with their settings folders, where the host gives them,
- * but those whose runs use a provider key: their own sign-in isn't used.
+ * but those whose runs use a provider key or stop on their model: their own
+ * sign-in isn't used.
  */
 function agentSettingsFolders(workspace: DoctorWorkspace | null): AgentSettingsFolder[] {
   const folderOf = workspace?.harnessSettingsFolder;
@@ -414,6 +424,9 @@ function agentSettingsFolders(workspace: DoctorWorkspace | null): AgentSettingsF
   return workspace.trust.agents.flatMap((agent) => {
     if (agent.harness === undefined || agent.harness === "halonic") return [];
     if (workspace.agentsWithProviderKey?.has(agent.id) === true) return [];
+    if (workspace.refusedHarnessModels?.some((each) => each.agentId === agent.id) === true) {
+      return [];
+    }
     const settingsFolder = folderOf(agent.id, agent.harness);
     if (settingsFolder === undefined) return [];
     return [{ agent: agent.name, harness: agent.harness, settingsFolder }];

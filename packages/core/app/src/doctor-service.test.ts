@@ -399,4 +399,35 @@ verifies("app.doctor-agent-sign-in", () => {
       expect.objectContaining({ problem: "signed-out", agent: "Reviewer" }),
     ]);
   });
+
+  it("names the refusal instead of the sign-in of an agent whose run stops on its model (HAL-15332)", async () => {
+    const { service } = doctor({
+      codexHarness: {
+        id: "codex",
+        name: "Codex",
+        signIn: { program: "codex", args: ["login"], folderVariable: "CODEX_HOME" },
+        detect: async (options) =>
+          options?.settingsFolder === undefined
+            ? { status: "ready", version: "0.9.2" }
+            : { status: "signed-out", version: "0.9.2" },
+      },
+    });
+    const refused = {
+      agentId: "writer",
+      agent: "Writer",
+      alias: "research",
+      reason: "Codex can't call provider zai, which has type anthropic: …",
+      fix: "Point the agent's model at an alias whose provider its harness can call, …",
+    };
+
+    const report = await service.check({
+      ...workspace({ agents: [agent("Writer", "codex")] }),
+      harnessSettingsFolder: (agentId, harnessId) => `/data/${agentId}/${harnessId}`,
+      refusedHarnessModels: [refused],
+    });
+
+    expect(report.harnesses?.status).toBe("warning");
+    expect(answered(report.harnesses).problems).toEqual([{ problem: "model-refused", ...refused }]);
+    expect(report.summary.needsFixing).toBe(false);
+  });
 });

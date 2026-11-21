@@ -6,7 +6,12 @@ import { type KeyOrigins, noKeyOrigins } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { type HarnessAccessChecks, harnessModelAccess, harnessProviderModel } from "./index.ts";
+import {
+  type HarnessAccessChecks,
+  harnessCallsProviderType,
+  harnessModelAccess,
+  harnessProviderModel,
+} from "./index.ts";
 
 let root: string;
 
@@ -217,5 +222,14 @@ verifies("cli.harness-model-access", () => {
 
       expect(error.code).toBe("no-provider");
     });
+  });
+
+  it("tells doctor which provider types each harness calls, as the access check refuses the rest", () => {
+    expect(harnessCallsProviderType("claude-code", "anthropic")).toBe(true);
+    expect(harnessCallsProviderType("claude-code", "openai-compatible")).toBe(false);
+    expect(harnessCallsProviderType("codex", "openai")).toBe(true);
+    expect(harnessCallsProviderType("codex", "openai-compatible")).toBe(true);
+    expect(harnessCallsProviderType("codex", "anthropic")).toBe(false);
+    expect(harnessCallsProviderType("codex", "ollama")).toBe(false);
   });
 });

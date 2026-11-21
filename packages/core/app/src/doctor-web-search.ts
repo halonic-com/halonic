@@ -19,21 +19,33 @@ export interface WebSearchingAgent {
 }
 
 /**
+ * Whether a harness's program can call a provider of this type through the
+ * bridge, as `harnessModelAccess` decides it: the host gives
+ * `harnessCallsProviderType`.
+ */
+export type HarnessCallsProviderType = (harness: string, providerType: string) => boolean;
+
+/**
  * The harness agents of the workspace whose model searches the web by
  * itself (requirement `app.doctor-harness-web-search`), in file order.
  *
  * Only what reaches the bridge counts, as `harnessModelAccess` decides it:
  * an agent whose harness isn't Halonic's own and whose `model` is an alias
- * its hub can use. A `provider/model` name or a name the program knows
- * itself never goes through the bridge, and neither do the alias's
- * fallbacks. The alias's `model` must match an entry of its provider's
- * `searchesWeb` exactly.
+ * its hub can use, at a provider whose type its harness's program calls. A
+ * `provider/model` name or a name the program knows itself never goes
+ * through the bridge, and neither do the alias's fallbacks. The alias's
+ * `model` must match an entry of its provider's `searchesWeb` exactly. An
+ * agent whose harness can't call the provider isn't named: its run stops
+ * before any call, and `doctor` says why (HAL-15332).
  *
  * @example
- * webSearchingAgents(workspace);
+ * webSearchingAgents(workspace, harnessCallsProviderType);
  * // [{ agent: "Writer", alias: "research", model: "perplexity/sonar", provider: "OpenRouter" }]
  */
-export function webSearchingAgents(workspace: LoadedWorkspace): WebSearchingAgent[] {
+export function webSearchingAgents(
+  workspace: LoadedWorkspace,
+  harnessCalls: HarnessCallsProviderType,
+): WebSearchingAgent[] {
   const providers = new Map(
     filesOf(workspace, "provider").map((file) => [file.value.id, file.value]),
   );
@@ -44,6 +56,7 @@ export function webSearchingAgents(workspace: LoadedWorkspace): WebSearchingAgen
     if (target === undefined) return [];
     const provider = providers.get(target.provider);
     if (provider?.searchesWeb?.includes(target.model) !== true) return [];
+    if (!harnessCalls(agent.harness, provider.type)) return [];
     return [
       {
         agent: agent.name,
