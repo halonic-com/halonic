@@ -2,6 +2,7 @@
 
 - Approval: HAL-15222, from Liam's review of #4502 on HAL-15117
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:AMaPeiM0IW3dkZ1Skr9/MNyqwZ4NBFv/Y0+SsVcPvud4dDktDGUl+tHYiiV+kWai35GPmfV9P0MY7tZARTl3CA==
 
 `apps/cli/src/commands/trust/command.test.ts` reached 500 lines, the file-size
 limit, so the next test added there would fail `pnpm check`. Its tests are
