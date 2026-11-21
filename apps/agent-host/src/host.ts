@@ -1,9 +1,7 @@
 import type { Readable, Writable } from "node:stream";
-import { NodeHarnessBridgeServer, providerHostClass } from "@halonicjs/adapter-harness-bridge";
+import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
-import { connectorHostClass } from "@halonicjs/adapter-http-kit";
-import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import {
   keptGrantsRecordFolder,
@@ -16,6 +14,7 @@ import type { GoogleSetupPorts } from "@halonicjs/host-server";
 import type { Harness } from "@halonicjs/ports";
 import type { ProfileFolder } from "@halonicjs/profile";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
+import { bridgeProviderFetches } from "./bridge/provider-fetches.ts";
 import { bridgeSocketFolder, sweepLeftOverBridges } from "./bridge/socket-folder.ts";
 import { hostConnectorRoutes } from "./connector/connector-factory.ts";
 import { connectorRoutes } from "./connector/connector-routes.ts";
@@ -331,16 +330,9 @@ function hostServices(
   const sessions = new SessionTable();
   const listeningPorts = new Set<number>();
   const bridges = new BridgeTable();
-  const providerHttp = createNodeHttpClient({ hostClass: providerHostClass, proxy: proxySetting });
-  const providerFetch = (url: string, init?: RequestInit) => providerHttp.fetch(url, init);
-  // A compatible provider's own `baseUrl` is checked as a connector's address
-  // is, as in the CLI's bridge, so a name can't lead the key onto the person's
-  // own network (HAL-13798).
-  const compatibleHttp = createNodeHttpClient({
-    hostClass: connectorHostClass,
-    proxy: proxySetting,
-  });
-  const compatibleFetch = (url: string, init?: RequestInit) => compatibleHttp.fetch(url, init);
+  // The ports the host and its bridges listen on, which no outbound call may reach.
+  const ownPorts = () => [...listeningPorts, ...bridges.ports()];
+  const providerFetches = bridgeProviderFetches(ownPorts, proxySetting);
   // Runs are recorded only when the gateway can show them to someone.
   const ledger = gateway.enabled ? new RunLedger() : undefined;
   const runs = new RunTable(ledger);
@@ -359,7 +351,7 @@ function hostServices(
     profile,
     relayPort,
     integration: (name) => plugins?.signIns(name),
-    ownPorts: () => [...listeningPorts, ...bridges.ports()],
+    ownPorts,
     log: logToError,
   });
   const plugins = hostPlugins(
@@ -390,8 +382,8 @@ function hostServices(
       (secrets) =>
         new NodeHarnessBridgeServer({
           secrets,
-          fetch: providerFetch,
-          compatibleFetch,
+          fetch: providerFetches.fetch,
+          compatibleFetch: providerFetches.compatibleFetch,
           ...(socketFolder === undefined ? {} : { socketFolder }),
         }),
       bridges,
@@ -412,7 +404,7 @@ function hostServices(
         profile,
         trustStore: connectors.trustStore,
         env: process.env,
-        ownPorts: () => [...listeningPorts, ...bridges.ports()],
+        ownPorts,
         log: logToError,
       }),
     ),
