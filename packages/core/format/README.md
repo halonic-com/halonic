@@ -177,6 +177,13 @@ keys in either block fail. A `cloudflare` block on a deployment whose `host` isn
 only warns (`cloudflare-settings-unused`). No account id, token or key goes in the file
 (requirement `deployments-cloudflare`).
 
+## Model call limit
+
+An agent's `maxSteps` is its model call limit: the most model calls it makes
+in one workflow step, 1 to 200, 6 by default. A step whose agent used them all
+and still calls tools fails, and `halonic run` says to raise `maxSteps` in the
+agent's file (requirement `engine.run-step-limit`).
+
 ## Harness agents
 
 Three optional agent fields say how an agent runs in another program

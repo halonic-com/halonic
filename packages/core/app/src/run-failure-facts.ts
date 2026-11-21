@@ -261,7 +261,12 @@ export function runFailureOf(
     case "budget":
       return budgetFailure(failed);
     case "error":
-      return knownCauseFailureOf(failed) ?? setupFailureOf(failed.cause) ?? generalFailure(failed);
+      return (
+        turnLimitFailureOf(failed.cause) ??
+        knownCauseFailureOf(failed) ??
+        setupFailureOf(failed.cause) ??
+        generalFailure(failed)
+      );
     case "instructions-not-trusted":
       return untrustedFailure(failed);
     case "harness-unavailable":
@@ -410,6 +415,23 @@ export function setupFailureOf(cause: RunFailureCause | undefined): RunFailure |
     default:
       return configFailureOf(code, detail);
   }
+}
+
+/**
+ * `turn-limit` from an `error` whose cause is the engine's
+ * `engine.turn-limit` (HAL-15331): the agent, its limit and its file, which
+ * is always `<agent>.agent.yaml`. Not setup: the run went wrong, so it keeps
+ * a failed run's exit code.
+ */
+function turnLimitFailureOf(cause: RunFailureCause | undefined): RunFailure | undefined {
+  if (cause?.code !== "engine.turn-limit") {
+    return undefined;
+  }
+  const { agent, turns } = cause.detail ?? {};
+  const count = Number(turns);
+  return agent === undefined || !Number.isInteger(count) || count < 1
+    ? undefined
+    : { reason: "turn-limit", agent, turns: count, agentFile: `${agent}.agent.yaml` };
 }
 
 /**

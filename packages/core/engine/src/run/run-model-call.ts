@@ -4,7 +4,7 @@
 // stopped while it ran is dropped.
 
 import type { ChatTurnRequest, Clock, ConnectorClient, Secrets } from "@halonicjs/ports";
-import type { StopSignal } from "@halonicjs/std";
+import { KindedError, type StopSignal } from "@halonicjs/std";
 import { runToolCheckOf } from "../agent/check-run-tool-call.ts";
 import type { ListedToolApproval } from "../agent/listed-tool-approval.ts";
 import type { ResolvedModel } from "../agent/model-chain.ts";
@@ -147,9 +147,24 @@ export async function runModelCall(input: RunModelCall): Promise<ModelCallResult
   if (outcome.kind === "stopped") return outcome.stop;
   // An answer cut off at the limit isn't the agent's answer: the state mustn't go on with it.
   if (outcome.result.atRoundLimit === true) {
-    throw new Error(
-      `Agent "${call.agent}" used all ${maxRounds} of its steps (maxSteps) and was still calling tools, so it gave no answer.`,
-    );
+    throw turnLimitError(call.agent, maxRounds);
   }
   return { type: "model", output: outcome.result.content };
+}
+
+/**
+ * The error of a call that used all its agent's `maxSteps` while the model
+ * still called tools (requirement `engine.run-step-limit`), in model call
+ * words. Its cause, `engine.turn-limit` with the agent and the limit, lets a
+ * host name the agent's file and the field to raise (HAL-15331).
+ */
+function turnLimitError(agent: string, limit: number): KindedError {
+  const used = limit === 1 ? "used its only model call" : `used all ${limit} of its model calls`;
+  return Object.assign(
+    new KindedError(
+      "limit_reached",
+      `Agent "${agent}" ${used} (maxSteps) and was still calling tools, so it gave no answer.`,
+    ),
+    { failureCause: { code: "engine.turn-limit", detail: { agent, turns: String(limit) } } },
+  );
 }
