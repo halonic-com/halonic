@@ -189,6 +189,27 @@ export class WatchedVersions implements WorkspaceVersions {
     return (await this.#versionAt(runVersionOfLive(live))).workspace;
   }
 
+  /**
+   * The live version as {@link live} reads it, only if a run could start
+   * from it: it keeps local only and passes the same trust check a run's
+   * version passes. A reader that decides where a key may go reads this, so
+   * a commit nobody trusted here changes nothing until someone does.
+   *
+   * @returns the live version, or `null` for one that may not run here
+   * @throws when the live version can't be read
+   */
+  async trustedLive(): Promise<LoadedWorkspace | null> {
+    const workspace = await this.live();
+    if (isLocalOnly(workspace) !== this.#localOnly) return null;
+    try {
+      await this.#checks.trust(workspace);
+    } catch {
+      // The trust check throws to say why nothing may start; here that is a refusal.
+      return null;
+    }
+    return workspace;
+  }
+
   /** Sets the checks each later run's version passes first; until then, none, and no grant. */
   checkWith(checks: VersionChecks): void {
     this.#checks = checks;

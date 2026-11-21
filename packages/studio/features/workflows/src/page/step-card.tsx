@@ -92,7 +92,7 @@ export function StepCard({
         {first && (
           <span
             id={part.start}
-            className="absolute -top-5 left-3 rounded-full border border-border bg-surface px-2 text-caption text-accent-text"
+            className="absolute bottom-full left-3 rounded-full border border-border bg-surface px-2 text-caption text-accent-text"
           >
             {pageWords.startChip}
           </span>
@@ -121,8 +121,13 @@ export function StepCard({
           // On the top edge at the right, as Start sits at the left, so the name keeps its line. The
           // dot's word already says "Failed" to a screen reader, so the chip is left out of the
           // card's name and said once (HAL-13100). Its fill is see-through, so it sits on the
-          // card's surface over the canvas.
-          <span aria-hidden="true" className="absolute -top-5 right-3 rounded-xs bg-surface">
+          // card's surface over the canvas. Both chips stand on the edge, their bottoms on it whatever
+          // their height, so they line up when the first step fails and stay clear of the kind label
+          // (HAL-14627).
+          <span
+            aria-hidden="true"
+            className="absolute right-3 bottom-full flex rounded-xs bg-surface"
+          >
             <StatusChip tone="danger">{startWords.failedChip}</StatusChip>
           </span>
         )}
@@ -142,8 +147,8 @@ export function StepCard({
   );
 }
 
-/** How far the Start chip rises above its card's top edge, in px: its `-top-5`. */
-const START_CHIP_RISE = 20;
+/** How far the Start chip rises above its card's top edge, in px: its 16 px height, as it stands on it. */
+const START_CHIP_RISE = 16;
 
 /** All that a card draws, its Start chip included, in the canvas surface's coordinates. */
 export function cardExtent(box: Box, first: boolean): Box {

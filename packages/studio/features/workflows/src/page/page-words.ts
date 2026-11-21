@@ -73,10 +73,19 @@ export const pageWords = {
     foreach: "FOR EACH STEP",
   } satisfies Record<WorkflowStepType, string>,
   /**
-   * The can't-run Callout's last line on the workflow page (microcopy 23.3, "Can't run, workflow"
-   * and "Phone"). Placeholders until HAL-1784 is approved: reviewers check the keys.
+   * The can't-run bands under the workflow page's header: the first lines of the problems and
+   * files bands, and the sandbox Callout's last line (microcopy 23.3, "Can't run, workflow" and
+   * "Phone"). Placeholders until HAL-1784 is approved: reviewers check the keys.
    */
   cantRun: {
+    /** The first line of the band for a workflow with errors (HAL-14739, decided by the team). */
+    problems: (name: string, errors: number) =>
+      `${name} can't run: it has ${errors} ${errors === 1 ? "problem" : "problems"}.`,
+    /**
+     * The first line of the band for a run the files say Studio can't start (C471-1). The reason
+     * starts with an agent's name, so it keeps its capital (E5).
+     */
+    refused: (name: string, reason: string) => `${name} can't run: ${reason}`,
     programStep: (step: string, program: string) => `The step ${step} uses ${program}.`,
     programSteps: (step: string, others: number) =>
       `The step ${step} and ${others} other ${others === 1 ? "step" : "steps"} use a program.`,

@@ -383,7 +383,7 @@ it("shows no path or stack when the check, a setup or a removal throws", async (
   expect(view.textContent).not.toMatch(/srv|ENOENT|host\.ts/);
 });
 
-it("offers Copy details, not Try again, when a check or a setup hits an internal error", async () => {
+it("offers Copy details, not Try again, when a check or a setup hits an internal error, and says Copied in place", async () => {
   const leak = new Error("spawn halonic-sandbox ENOENT");
   const writeClipboard = vi.fn(async (_text: string) => true);
   const { host } = fakeHost(needsSetup);
@@ -400,6 +400,8 @@ it("offers Copy details, not Try again, when a check or a setup hits an internal
       /^Couldn't check the sandbox: Halonic ran into .*\nError: spawn halonic-sandbox ENOENT/,
     ),
   );
+  // In place, not a toast, which would wait while the Settings dialog is open (C529-5).
+  expect(button(view, "Copied")).toBeDefined();
 
   host.check.mockResolvedValue(needsSetup);
   await click(button(view, "Check again"));
@@ -413,6 +415,7 @@ it("offers Copy details, not Try again, when a check or a setup hits an internal
       /^The sandbox isn't set up: Halonic ran into .*\nError: spawn halonic-sandbox ENOENT/,
     ),
   );
+  expect(button(view, "Copied")).toBeDefined();
 });
 
 it("shows a checking line, not an error, while the first check is out", async () => {

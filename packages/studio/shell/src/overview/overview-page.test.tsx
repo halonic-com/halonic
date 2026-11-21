@@ -1,10 +1,8 @@
 // @vitest-environment jsdom
 
-import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { PhoneTopBarSlot } from "../phone/phone-top-bar-actions.tsx";
 import { installFakePopover } from "../test-support/fake-popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import type { OverviewHub } from "./overview-model.ts";
@@ -354,140 +352,9 @@ verifies("shell.overview.used-by", () => {
     expect(text.indexOf("1 running")).toBeLessThan(text.indexOf("Used by 1 agent"));
   });
 
-  it("ends the line under the name with the used-by text on a phone, after the detail, and cuts only the detail", () => {
-    const page = render(
-      <PresentationProvider presentation="phone">
-        <OverviewPage
-          hubs={[
-            {
-              id: "acme",
-              name: "acme",
-              items: [
-                {
-                  id: "refunds",
-                  name: "Refund handling",
-                  detail: "When an email asks for a refund",
-                  usedBy: "Not used yet",
-                },
-                { id: "tone", name: "Tone of voice", usedBy: "Not used yet" },
-              ],
-            },
-          ]}
-          words={words}
-          onOpen={() => undefined}
-          onOpenInNewTab={() => undefined}
-          itemMenu={() => [{ id: "open", label: "Open", onSelect: () => undefined }]}
-        />
-      </PresentationProvider>,
-    );
-    const lineUnder = (name: string) =>
-      [...page.querySelectorAll("tr")]
-        .find((row) => row.textContent?.includes(name))
-        ?.querySelector(".text-small")?.textContent;
-    expect(lineUnder("Refund handling")).toBe("When an email asks for a refund · Not used yet");
-    expect(lineUnder("Tone of voice")).toBe("Not used yet");
-    const row = [...page.querySelectorAll("tr")].find((each) =>
-      each.textContent?.includes("Refund handling"),
-    );
-    const cut = [...(row?.querySelectorAll(".truncate") ?? [])].map((each) => each.textContent);
-    expect(cut).toContain("When an email asks for a refund");
-    const usedBy = [...(row?.querySelectorAll("span") ?? [])].find(
-      (each) => each.textContent === "Not used yet",
-    );
-    expect(usedBy?.className).not.toContain("truncate");
-    expect(usedBy?.className).toContain("whitespace-normal");
-  });
-
-  it("gives the used-by text the line alone on a narrow phone row, clipping the detail and its dot", () => {
-    // jsdom has no layout: e2e/overview-phone-row.spec.ts checks the boxes at 195px. Here, the
-    // classes that make it: the detail and its dot wrap away when they'd have less than 5rem, onto a
-    // 0px line that the reversed wrap puts below the used-by text, where the line clips it.
-    const page = render(
-      <PresentationProvider presentation="phone">
-        <OverviewPage
-          hubs={[
-            {
-              id: "acme",
-              name: "acme",
-              items: [
-                {
-                  id: "refunds",
-                  name: "Refund handling",
-                  detail: "When an email asks for a refund",
-                  usedBy: "Not used yet",
-                },
-              ],
-            },
-          ]}
-          words={words}
-          onOpen={() => undefined}
-          onOpenInNewTab={() => undefined}
-        />
-      </PresentationProvider>,
-    );
-    const line = page.querySelector(".text-small > span");
-    expect(line?.className).toContain("flex-wrap-reverse");
-    expect(line?.className).toContain("overflow-hidden");
-    const [detailAndDot, usedBy] = [...(line?.children ?? [])];
-    expect(detailAndDot?.textContent).toBe("When an email asks for a refund · ");
-    // 5rem is the basis, not the minimum, so `max-w-fit` can shrink a short detail's box to fit it.
-    expect(detailAndDot?.className).toContain("flex-[1_1_5rem]");
-    expect(detailAndDot?.className).toContain("max-w-fit");
-    expect(detailAndDot?.className).toContain("h-0");
-    // The detail itself keeps a line's height, or `truncate` would clip it inside the 0px box.
-    expect(detailAndDot?.firstElementChild?.className).toContain("h-lh");
-    expect(usedBy?.textContent).toBe("Not used yet");
-  });
-
   it("doesn't search the used-by text", () => {
     const page = show({ hubs: used });
     type(search(page), "agents");
     expect(page.textContent).not.toContain("Acme refunds");
-  });
-});
-
-verifies("shell.overview.phone-head", () => {
-  it("gives the search field the whole line and makes the create button 48px on a phone", () => {
-    const page = render(
-      <PresentationProvider presentation="phone">
-        <OverviewPage
-          hubs={hubs}
-          words={words}
-          onOpen={() => undefined}
-          onOpenInNewTab={() => undefined}
-          newButton={{ label: "New skill", onClick: () => undefined }}
-        />
-      </PresentationProvider>,
-    );
-    const button = [...page.querySelectorAll("button")].find(
-      (candidate) => candidate.textContent === "New skill",
-    );
-    expect(button?.className).toContain("min-h-touch");
-    expect(button?.parentElement?.className).toContain("flex-col");
-  });
-
-  it("puts the create button in the phone top bar as a 48px +, with nothing under the search field", () => {
-    const topBar = document.createElement("div");
-    document.body.append(topBar);
-    const onClick = vi.fn();
-    const page = render(
-      <PresentationProvider presentation="phone">
-        <PhoneTopBarSlot value={topBar}>
-          <OverviewPage
-            hubs={hubs}
-            words={words}
-            onOpen={() => undefined}
-            onOpenInNewTab={() => undefined}
-            newButton={{ label: "New skill", onClick }}
-          />
-        </PhoneTopBarSlot>
-      </PresentationProvider>,
-    );
-    const plus = topBar.querySelector<HTMLButtonElement>('button[aria-label="New skill"]');
-    expect(plus?.className).toContain("phone:size-touch");
-    expect(page.textContent).not.toContain("New skill");
-    act(() => plus?.click());
-    expect(onClick).toHaveBeenCalledOnce();
-    topBar.remove();
   });
 });

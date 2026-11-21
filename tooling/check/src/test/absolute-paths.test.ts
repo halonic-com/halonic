@@ -1,3 +1,4 @@
+import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { rulesHit } from "./fixture-repo.ts";
 
@@ -23,5 +24,15 @@ describe("tooling/check: absolute local paths", () => {
     const fine = "https://example.com/home/page and ~/.config/halonic/deny-terms\n";
     expect(rulesHit([], { extraFiles: { "docs/d.md": fine } })).toEqual([]);
     expect(rulesHit([], { extraFiles: { "tooling/e.test.ts": `"${linuxHome}";\n` } })).toEqual([]);
+  });
+});
+
+verifies("check.absolute-paths-inline-allow", () => {
+  it("allows a line with the leak guard's inline marker, and only that line", () => {
+    const marked = `${linuxHome} # leak-guard: allow absolute-path inside-the-image\n`;
+    expect(rulesHit([], { extraFiles: { "infra/f.sh": marked } })).toEqual([]);
+    expect(rulesHit([], { extraFiles: { "infra/g.sh": `${marked}${linuxHome}\n` } })).toEqual([
+      "absolute-paths",
+    ]);
   });
 });

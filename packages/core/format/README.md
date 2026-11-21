@@ -210,6 +210,23 @@ for Codex. That is how a harness agent runs an open model, such as GLM through
 Z.ai's Anthropic-compatible address. Only the alias's own target counts, not
 its fallbacks (requirement `cli.harness-model-access`).
 
+Some models search the web by themselves, such as `perplexity/sonar` at
+OpenRouter. That search happens at the provider, outside Halonic's tools and
+approvals. A provider file can list such models in an optional `searchesWeb`
+(requirement `provider-searches-web`), each model id once:
+
+```yaml
+id: openrouter
+type: openai-compatible
+baseUrl: https://openrouter.ai/api/v1
+secret: OPENROUTER_API_KEY
+searchesWeb: [perplexity/sonar, perplexity/sonar-pro]
+```
+
+An id counts only when it matches an alias's `model` exactly. A suffix that
+turns search on for any model, such as OpenRouter's `:online`, isn't detected
+yet.
+
 An optional `harnessLimits` block bounds one step of a harness agent
 (requirement `agent-harness-limits`): `maxSteps` (model calls, 1 to 10000),
 `maxMinutes` (1 to 1440, not counting waits for a person's answer) and
@@ -217,3 +234,11 @@ An optional `harnessLimits` block bounds one step of a harness agent
 count as 0). A limit left out doesn't apply. The agent's own `maxSteps`, 6 by
 default, is sized for Halonic's own loop and doesn't bound a harness step: a
 coding program makes hundreds of model calls in one.
+
+An optional `asks` field says when a Claude Code agent's own tools ask for a
+person's OK (requirement `agent-asks`): `always`, the default, or
+`in-sandbox`, where Halonic answers the calls that stay in the agent's working
+folder while the run is inside Halonic's sandbox. Only `harness: claude-code`
+takes it for now: on `codex`, `halonic` or no harness the file fails with
+`asks-needs-claude-code`, even for `always`, because Codex in the sandbox
+doesn't ask whatever the file says.

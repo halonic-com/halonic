@@ -39,7 +39,8 @@ export function useRunGate(
 }
 
 /**
- * Run's `unavailable` from every reason that holds, such as the sandbox's and the files' refusal
+ * Run's `unavailable` from every reason that holds, such as the workflow's errors, the sandbox's
+ * and the files' refusal
  * (`workflows.start.start-run`): unavailable while any holds, and described by each first line, in
  * the order the page shows them. `undefined` while none holds.
  */

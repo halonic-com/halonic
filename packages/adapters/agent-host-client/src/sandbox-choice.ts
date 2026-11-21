@@ -1,5 +1,6 @@
 import {
   limitCodes,
+  type SandboxBackendId,
   type SandboxChoice,
   sandboxBackendIds,
   sandboxBackendStates,
@@ -54,16 +55,32 @@ function readChoice(route: string, answer: AgentHostAnswer): SandboxChoice {
 }
 
 /**
+ * The shell's call that saves the person's sandbox choice in the profile, or removes it for `null`,
+ * and answers with the host's answer to choosing again (`agent_host_sandbox_choice_save`). A
+ * backend the shell refuses rejects with an {@link AgentHostError}.
+ */
+export type SandboxChoiceSave = (
+  backend: SandboxBackendId | "none" | null,
+) => Promise<AgentHostAnswer>;
+
+const choiceRoute = "GET /v1/sandbox/choice";
+const settingsChangedRoute = "POST /v1/sandbox/choice/settings-changed";
+
+/**
  * The page's way to ask the agent host which sandbox runs (HAL-10796). The host
  * chooses from the setting the shell saved in the profile; nothing here sends a
- * setting, so a page can't pick a backend by calling it. The answer is codes, as
- * the engine's `SandboxChoiceService` makes them: the page words them.
+ * setting to the host, so a page can't pick a backend by calling it. Saving goes
+ * through the shell (`saveChoice`), which checks the backend and writes the
+ * profile itself. The answer is codes, as the engine's `SandboxChoiceService`
+ * makes them: the page words them.
  */
 export class AgentHostSandboxChoice {
   readonly #transport: AgentHostTransport;
+  readonly #saveChoice: SandboxChoiceSave;
 
-  constructor(transport: AgentHostTransport) {
+  constructor(transport: AgentHostTransport, saveChoice: SandboxChoiceSave) {
     this.#transport = transport;
+    this.#saveChoice = saveChoice;
   }
 
   /**
@@ -72,8 +89,7 @@ export class AgentHostSandboxChoice {
    * @throws {@link AgentHostError} `sandbox_choice_failed` when the host can't read the saved setting, `answer_invalid` for an answer of another shape, or when the host can't be reached
    */
   async choice(): Promise<SandboxChoice> {
-    const route = "GET /v1/sandbox/choice";
-    return readChoice(route, await this.#transport.request(route));
+    return readChoice(choiceRoute, await this.#transport.request(choiceRoute));
   }
 
   /**
@@ -82,7 +98,20 @@ export class AgentHostSandboxChoice {
    * @throws {@link AgentHostError} as {@link AgentHostSandboxChoice.choice}
    */
   async settingsChanged(): Promise<SandboxChoice> {
-    const route = "POST /v1/sandbox/choice/settings-changed";
-    return readChoice(route, await this.#transport.request(route, {}));
+    return readChoice(
+      settingsChangedRoute,
+      await this.#transport.request(settingsChangedRoute, {}),
+    );
+  }
+
+  /**
+   * Saves `backend` as the person's choice, or removes the choice for `null`, and answers the
+   * choice after it. Asking the person to confirm `"none"` happens before this call, on the page.
+   *
+   * @throws {@link AgentHostError} with the shell's kind (`invalid_choice`, `io`, ...) when it refuses the save, or as {@link AgentHostSandboxChoice.choice} for the host's answer
+   */
+  async save(backend: SandboxBackendId | "none" | null): Promise<SandboxChoice> {
+    // The shell answers with the host's answer to choosing again.
+    return readChoice(settingsChangedRoute, await this.#saveChoice(backend));
   }
 }

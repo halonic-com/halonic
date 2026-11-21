@@ -53,10 +53,14 @@ export interface TrustReview {
   readonly footnote: string;
 }
 
-/** How a person's trust was saved, or why not. */
+/**
+ * How a person's trust was saved, or why not. `error` is the failure itself when one caused it,
+ * so a screen words it as everywhere else (`engineReasonFor`) and offers **Copy details** for an
+ * internal one (microcopy 22 F13); `reason` is then its raw message.
+ */
 export type TrustGrantResult =
   | { readonly ok: true }
-  | { readonly ok: false; readonly reason: string };
+  | { readonly ok: false; readonly reason: string; readonly error?: unknown };
 
 /**
  * What the workspace window needs of one workspace's trust: whether to show the badge, what the

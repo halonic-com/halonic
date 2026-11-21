@@ -10,6 +10,7 @@ import type { FailedModel, FailedStart, RunFailedEvent } from "./failed-model.ts
 import { budgetStopOf, nextMonthStart } from "./run-failure-budget.ts";
 import { type ConfigFailure, configFailureOf } from "./run-failure-config.ts";
 import { type ProxyFailure, proxyFailureOf } from "./run-failure-proxy.ts";
+import { type StartFailure, startFailureOf } from "./run-failure-start.ts";
 
 /** What both key failures name: the provider, the secret that holds its key, and the model or alias that uses it. */
 interface KeyFacts {
@@ -133,22 +134,6 @@ export type RunFailure =
       readonly alias: string;
     }
   | {
-      readonly reason: "sandbox-start-failed";
-      readonly agent: string;
-      /** The `Sandbox` port's reason code from the run log; left out when the log has none. */
-      readonly code?: string;
-    }
-  | {
-      readonly reason: "harness-start-failed";
-      readonly agent: string;
-      /** The harness program's id, such as "claude-code". */
-      readonly harness: string;
-      /** Why it didn't start, when the run log says. */
-      readonly cause?: "not-installed" | "signed-out";
-      /** How long the engine waited for its first event. */
-      readonly withinMs: number;
-    }
-  | {
       readonly reason: "instructions-not-trusted";
       /** The agent whose program didn't start. */
       readonly agent: string;
@@ -170,6 +155,7 @@ export type RunFailure =
       readonly hub: string;
     }
   | ConfigFailure
+  | StartFailure
   | {
       readonly reason: "secrets-file-readable";
       /** The secrets file group or others can read, as the run log names it. */
@@ -204,7 +190,8 @@ export type RunFailure =
  * `harness-bridge.socket-path-too-long` (HAL-13862).
  *
  * @param model - from `failedModelOf`; `undefined` when the run called no model
- * @param started - from `failedStartOf`; read for `sandbox-start-failed` and `harness-start-failed`
+ * @param started - from `failedStartOf`; read for `sandbox-start-failed`,
+ *   `this-computer-start-failed` and `harness-start-failed`
  * @returns `undefined` for a cancelled run, which isn't a failure
  *
  * @example
@@ -268,9 +255,9 @@ export function runFailureOf(
     case "model-out-of-memory":
       return outOfMemoryFailure(failed, model);
     case "sandbox-start-failed":
-      return sandboxFailure(failed, started);
+    case "this-computer-start-failed":
     case "harness-start-failed":
-      return harnessFailure(failed, started);
+      return startFailure(reason, failed, started);
     case "budget":
       return budgetFailure(failed);
     case "error":
@@ -320,30 +307,13 @@ function outOfMemoryFailure(failed: RunFailedEvent, model: FailedModel | undefin
   };
 }
 
-/** `sandbox-start-failed` for the agent of the step whose sandbox didn't start. */
-function sandboxFailure(failed: RunFailedEvent, started: FailedStart | undefined): RunFailure {
-  return started === undefined
-    ? generalFailure(failed)
-    : {
-        reason: "sandbox-start-failed",
-        agent: started.agent,
-        // Left out for a log from before the engine named it.
-        ...(failed.sandboxReason === undefined ? {} : { code: failed.sandboxReason }),
-      };
-}
-
-/** `harness-start-failed` for the program the step's `harness.started` names, and how long the engine waited for it. */
-function harnessFailure(failed: RunFailedEvent, started: FailedStart | undefined): RunFailure {
-  if (started?.harness === undefined) {
-    return generalFailure(failed);
-  }
-  return {
-    reason: "harness-start-failed",
-    agent: started.agent,
-    harness: started.harness.id,
-    withinMs: started.harness.timeoutMs,
-    ...(failed.harnessCause === undefined ? {} : { cause: failed.harnessCause }),
-  };
+/** Why the step's program didn't start; the general facts when the log doesn't hold its start. */
+function startFailure(
+  reason: StartFailure["reason"],
+  failed: RunFailedEvent,
+  started: FailedStart | undefined,
+): RunFailure {
+  return startFailureOf(reason, failed, started) ?? generalFailure(failed);
 }
 
 /** `key-refused` or `no-key`, which both name the secret; without one, the general facts. */

@@ -7,7 +7,7 @@ import { marksOf } from "../../src/start/run-strip.ts";
 /**
  * The workflow canvas with a made-up Review workflow (HAL-11974): `?run=` is what the shown run
  * went through. `none` shows no run, `mid` a run that has reached Review, `done` a run that went
- * straight to Publish, `failed` a run that failed in Publish, and `branch` a run that took "rejected", so the "approved" arrow stays grey.
+ * straight to Publish, `failed` a run that failed in Publish, `first` a run that failed in its first step, and `branch` a run that took "rejected", so the "approved" arrow stays grey.
  */
 const workflow: WorkflowView = {
   hubId: "my-notes",
@@ -43,6 +43,7 @@ const routes: Record<string, readonly string[]> = {
   done: ["summarise", "review", "publish", "end"],
   branch: ["summarise", "review", "rework", "review"],
   failed: ["summarise", "review", "publish"],
+  first: ["summarise"],
 };
 
 const standings = {
@@ -50,6 +51,7 @@ const standings = {
   done: "done",
   branch: "waiting",
   failed: "failed",
+  first: "failed",
 } as const;
 
 const run = new URLSearchParams(location.search).get("run") ?? "none";
@@ -67,7 +69,9 @@ if (root !== null) {
             : undefined
         }
         active={run === "mid" || run === "branch" ? routes[run]?.at(-1) : undefined}
-        failedStep={run === "failed" ? "publish" : undefined}
+        failedStep={
+          standings[run as keyof typeof standings] === "failed" ? routes[run]?.at(-1) : undefined
+        }
       />
     </StrictMode>,
   );

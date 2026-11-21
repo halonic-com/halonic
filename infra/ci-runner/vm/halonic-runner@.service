@@ -1,0 +1,19 @@
+[Unit]
+Description=halonic-ci runner slot %i (one JIT runner per job)
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+ConditionPathExists=!/etc/halonic-ci/paused
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/halonic-runner-slot.sh %i
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=0
+TimeoutStopSec=30
+ExecStopPost=-/usr/bin/docker rm -f hci-%i
+ExecStopPost=-/usr/local/sbin/halonic-runner-slot.sh %i --cleanup
+
+[Install]
+WantedBy=multi-user.target

@@ -7,8 +7,8 @@ Why the shell makes the call: most model providers send no CORS headers for the 
 The guard refuses a request before any network call, and the shell asks it again for every redirect hop and for every address a name resolves to:
 
 - only `http` and `https`, and no user name or password in the address;
-- plain `http` only to this computer or a private network, never to a public address;
-- never an unspecified, multicast, broadcast or link-local address (the last holds cloud metadata services);
+- plain `http` only to this computer or a private network (`100.64.0.0/10` included), never to a public address;
+- never an unspecified, multicast, broadcast or link-local address (the last holds cloud metadata services), nor `100.100.100.200` (Alibaba Cloud's metadata service) or `100.100.100.100` (Tailscale's own service address), the two `http-kit` also takes out of `100.64.0.0/10`;
 - a fixed list of methods, and no header that sets the connection itself (`Host`, `Content-Length`, `Connection`, …);
 - a body of at most 8 MiB, an answer of at most 32 MiB.
 

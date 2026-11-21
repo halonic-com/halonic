@@ -1,7 +1,13 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
 import { agentId, collectionId, id, ModelParams, version } from "../../shared/fields.ts";
 import { HarnessLimits } from "./harness-limits.ts";
-import { AgentHarness, AllowedSite, MAX_ALLOWED_SITES, WorkingFolder } from "./sandbox-fields.ts";
+import {
+  AgentAsks,
+  AgentHarness,
+  AllowedSite,
+  MAX_ALLOWED_SITES,
+  WorkingFolder,
+} from "./sandbox-fields.ts";
 
 /** The shape of an agent's reply: free text, one of a list of options, or JSON. */
 export const AgentOutput = s.discriminatedUnion("type", [
@@ -112,6 +118,12 @@ export const Agent = s
     allowedSites: s.array(AllowedSite).max(MAX_ALLOWED_SITES).optional(),
     /** The step, time and cost limits of one step in a harness program. */
     harnessLimits: HarnessLimits.optional(),
+    /**
+     * When a harness agent's own tools ask for a person's OK: `always`, the
+     * default, or `in-sandbox`, which lets Halonic answer the ones that stay
+     * in its working folder while it runs inside Halonic's sandbox.
+     */
+    asks: AgentAsks.optional(),
   })
   .strict();
 

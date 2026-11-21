@@ -242,6 +242,8 @@ export type ToolVerb = "sent" | "saved" | "created" | "updated" | "moved" | "dra
  * - `sandbox-not-ready`: the sandbox check failed, so the step that needs the sandbox didn't
  *   start; `run.failed` gives the check's reason code in `sandboxReason` and the refused agent in `agent`.
  * - `sandbox-start-failed`: the sandbox check had passed, but the sandbox didn't start for this run.
+ * - `this-computer-start-failed`: a person set the step's agent to run on this computer, without a
+ *   sandbox, and the launcher that starts it there didn't open; `error` is the launcher's own reason.
  * - `harness-start-failed`: the harness program failed to start for this run, or didn't send its
  *   first event within its time limit (60 s by default).
  * - `key-refused`: the model's provider didn't accept its key, or no key was stored for it.
@@ -271,6 +273,7 @@ export type RunFailureReason =
   | "interrupted"
   | "sandbox-not-ready"
   | "sandbox-start-failed"
+  | "this-computer-start-failed"
   | "harness-start-failed"
   | "key-refused"
   | "out-of-credit"

@@ -190,6 +190,7 @@ export function AgentScreen({
     selectView(next);
   };
   const ownCloseStack = useMemo(() => createCloseStack(), []);
+  const cardsCloseStack = closeStack ?? ownCloseStack;
   const [saveFailed, setSaveFailed] = useState<string>();
   const ids = useTabIds();
   // Resolves to whether the change was written, so a page can put its control back when it wasn't.
@@ -288,7 +289,7 @@ export function AgentScreen({
             itemPath={[hubName(host, hubId), name]}
             stack={cards.stack}
             onChange={cards.set}
-            closeStack={closeStack ?? ownCloseStack}
+            closeStack={cardsCloseStack}
             // No card on this page docks, so the panel's width doesn't change how they look.
             panelWidth={Number.POSITIVE_INFINITY}
             renderCard={(card) => (
@@ -309,6 +310,7 @@ export function AgentScreen({
                 agent={{ hubId, id }}
                 name={name}
                 openAsFile={trash.openAsFile}
+                closeStack={cardsCloseStack}
                 openAgentStep={cards.openAgentStep}
                 openSubagent={cards.openSubagent}
                 openAgent={openAgent}

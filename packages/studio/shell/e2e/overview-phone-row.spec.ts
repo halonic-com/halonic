@@ -20,24 +20,26 @@ interface LineBoxes {
   /** The part of the line that clips: what is outside it isn't shown. */
   readonly line: Box;
   readonly detail: Box;
+  /**
+   * The detail is drawn where its box says: it has a height, and the point in its middle hits it.
+   * A 0px high box still lies inside the line, so its box alone can't tell (HAL-14630).
+   */
+  readonly detailPainted: boolean;
   readonly dot: Box;
   readonly usedBy: Box;
   /** The used-by text is wider than its box, so part of it is cut off. */
   readonly usedByCut: boolean;
 }
 
-/** The detail of the "Refund handling" row: long enough to be cut on a phone. */
-const longDetail = "When an email asks for a refund";
-
 /** Reads the boxes of the line under `name`'s row. */
 async function lineUnder(
   page: Page,
   name: string,
+  detail: string,
   usedBy: string,
-  detail = longDetail,
 ): Promise<LineBoxes> {
   return page.evaluate(
-    ({ name, usedBy, detail }) => {
+    ({ name, detail, usedBy }) => {
       const row = [...document.querySelectorAll("tr")].find((each) =>
         each.textContent?.includes(name),
       );
@@ -54,19 +56,26 @@ async function lineUnder(
         return { left, right, top, bottom };
       };
       const usedBySpan = find(usedBy);
+      const detailSpan = find(detail);
+      const detailBox = detailSpan.getBoundingClientRect();
+      const detailHit = document.elementFromPoint(
+        detailBox.left + 1,
+        (detailBox.top + detailBox.bottom) / 2,
+      );
       const line = row?.querySelector(".text-small > span");
       if (line === null || line === undefined) {
         throw new Error(`The row of ${name} has no line under its name.`);
       }
       return {
         line: boxOf(line),
-        detail: boxOf(find(detail)),
+        detail: boxOf(detailSpan),
+        detailPainted: detailBox.height > 0 && detailHit === detailSpan,
         dot: boxOf(find(" · ")),
         usedBy: boxOf(usedBySpan),
         usedByCut: usedBySpan.scrollWidth > usedBySpan.clientWidth,
       };
     },
-    { name, usedBy, detail },
+    { name, detail, usedBy },
   );
 }
 
@@ -85,10 +94,16 @@ test("at 390px the line reads the cut detail, the dot and the whole used-by text
 }) => {
   await page.setViewportSize({ width: 390, height: 640 });
   await page.goto("/overview-phone-row.html");
-  const boxes = await lineUnder(page, "Refund handling", "Not used yet");
+  const boxes = await lineUnder(
+    page,
+    "Refund handling",
+    "When an email asks for a refund",
+    "Not used yet",
+  );
   expect(inside(boxes.dot, boxes.line)).toBe(true);
   expect(inside(boxes.usedBy, boxes.line)).toBe(true);
   expect(boxes.usedByCut).toBe(false);
+  expect(boxes.detailPainted).toBe(true);
   expect(boxes.detail.right).toBeLessThanOrEqual(boxes.dot.left + 0.5);
   expect(boxes.dot.top).toBeCloseTo(boxes.usedBy.top, 0);
   // The cut detail shows: its box is a line high and on the line, not clipped to nothing.
@@ -96,7 +111,29 @@ test("at 390px the line reads the cut detail, the dot and the whole used-by text
   expect(boxes.detail.right - boxes.detail.left).toBeGreaterThan(0);
   expect(inside(boxes.detail, boxes.line)).toBe(true);
   expect(boxes.detail.top).toBeCloseTo(boxes.usedBy.top, 0);
-  await expect(page.getByText(longDetail, { exact: true })).toBeVisible();
+  await expect(page.getByText("When an email asks for a refund", { exact: true })).toBeVisible();
+});
+
+test("at 390px a short detail reads straight on into the dot and the used-by text", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 640 });
+  await page.goto("/overview-phone-row.html");
+  const boxes = await lineUnder(page, "Tone of voice", "Friendly", "Used by Writer");
+  expect(boxes.detailPainted).toBe(true);
+  // No gap: "Friendly · Used by Writer", not "Friendly ·" and the used-by text far to the right.
+  expect(boxes.dot.left).toBeCloseTo(boxes.detail.right, 0);
+  expect(boxes.usedBy.left).toBeCloseTo(boxes.dot.right, 0);
+});
+
+test("at 390px a short detail's dot is right before the used-by text, with no gap", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 640 });
+  await page.goto("/overview-phone-row.html");
+  const boxes = await lineUnder(page, "Shop name", "Adds the shop's name", "Used by Sales");
+  expect(boxes.usedBy.left - boxes.dot.right).toBeCloseTo(0, 0);
+  expect(boxes.dot.top).toBeCloseTo(boxes.usedBy.top, 0);
 });
 
 test("at 195px the used-by text has the line alone and whole, with no stray dot", async ({
@@ -104,7 +141,12 @@ test("at 195px the used-by text has the line alone and whole, with no stray dot"
 }) => {
   await page.setViewportSize({ width: 195, height: 640 });
   await page.goto("/overview-phone-row.html");
-  const boxes = await lineUnder(page, "Refund handling", "Not used yet");
+  const boxes = await lineUnder(
+    page,
+    "Refund handling",
+    "When an email asks for a refund",
+    "Not used yet",
+  );
   expect(inside(boxes.usedBy, boxes.line)).toBe(true);
   expect(boxes.usedByCut).toBe(false);
   expect(boxes.usedBy.left).toBeCloseTo(boxes.line.left, 0);
@@ -114,22 +156,12 @@ test("at 195px the used-by text has the line alone and whole, with no stray dot"
   await expect(page.getByText("Not used yet", { exact: true })).toBeVisible();
 });
 
-test("at 390px a short detail's dot is right before the used-by text, with no gap", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 640 });
-  await page.goto("/overview-phone-row.html");
-  const boxes = await lineUnder(page, "Shop name", "Used by Sales", "Adds the shop's name");
-  expect(boxes.usedBy.left - boxes.dot.right).toBeCloseTo(0, 0);
-  expect(boxes.dot.top).toBeCloseTo(boxes.usedBy.top, 0);
-});
-
 test("at 390px a detail narrower than 5rem leaves no gap before the used-by text", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 640 });
   await page.goto("/overview-phone-row.html");
-  const boxes = await lineUnder(page, "Welcome email", "Used by Writer", "Draft");
+  const boxes = await lineUnder(page, "Welcome email", "Draft", "Used by Writer");
   expect(boxes.usedBy.left - boxes.dot.right).toBeCloseTo(0, 0);
   expect(boxes.dot.top).toBeCloseTo(boxes.usedBy.top, 0);
 });

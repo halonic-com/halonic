@@ -123,7 +123,7 @@ jobs:
             echo "full=true" | tee -a "$GITHUB_OUTPUT"
           fi
           areas=(
-            "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|tooling/check/licence-texts/crates/|packages/adapters/e2e-noise/src/noise\.wasm$)"
+            "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|tooling/check/licence-texts/crates/|packages/adapters/e2e-noise/src/noise\.wasm$|packages/adapters/remote-gateway/src/|packages/core/ports/src/remote-gateway-)"
             "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|harness-bridge|system-node|integration-runner|integration-kit|connector-stdio-sandbox|git)/|apps/cli/(fence/|src/(local-harness-host|open-local-integration|local-integration-machine|integration-connector-factory|workspace-engine))|packages/core/ports/|pnpm-lock\.yaml$)"
             "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node|git)/|packages/core/ports/)"
             "windows=^(\.github/workflows/ci\.yml$|\.github/actions/|pnpm-lock\.yaml$|apps/(cli|agent-host)/|packages/adapters/(fs-node|harness-kit|harness-claude-code|harness-codex|mcp|memory|system-node|http-kit|integration-kit)/|packages/core/(workspace|app|events|format|ports|profile|routines|schema-kit|std|workflow|yaml)/|packages/testing/(contracts|spec|parity|integration)/|tooling/(config|publish)/)"
@@ -261,8 +261,8 @@ jobs:
           pnpm check
       - name: Licences
         run: pnpm check:licences
-      - name: Infra tests (spend guard, turbo-cache)
-        run: node --test infra/spend-guard/test/guard.test.mjs infra/turbo-cache/test.mjs
+      - name: Infra tests (spend guard, turbo-cache, CI runner hook)
+        run: node --test infra/spend-guard/test/guard.test.mjs infra/turbo-cache/test.mjs infra/ci-runner/hook.test.mjs
       - name: Formatting
         run: pnpm exec biome ci --linter-enabled=false .
       - name: Feature list and generated files
@@ -1283,6 +1283,12 @@ jobs:
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Tests
         run: cargo test --locked --workspace
+      # The phone's end of the tunnel against the real remote gateway in
+      # Node (HAL-12244). Plain `cargo test` ignores it because it needs pnpm
+      # and the workspace's packages, which the setup step above installed.
+      - name: Phone against the remote gateway
+        timeout-minutes: 5
+        run: cargo test --locked -p halonic-tunnel --test gateway -- --ignored
       # The agent host's Noise session in WebAssembly (HAL-12236): clippy
       # for the target, since the exports only compile there, and the build
       # @halonicjs/adapter-e2e-noise ships. Paths are remapped so the file

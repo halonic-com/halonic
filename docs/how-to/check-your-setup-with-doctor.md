@@ -81,13 +81,14 @@ the command line, move it into your Linux home folder (`~`).
 
 ### Models
 
-**Checks:** the model providers that your workspace's model aliases use, and
-a provider an agent names directly, such as `claude/claude-sonnet-5-5`, when
-no alias uses it. For a model server on this computer, `doctor` asks whether
-it answers and which models it has loaded. For a cloud provider, it checks
-that the provider's API key is stored. It never reads or shows the key
-itself. Shown only inside a workspace whose aliases or agents use such a
-provider. The built-in test model needs nothing, so it isn't listed.
+**Checks:** that the workspace has the default model its agents need, and the
+model providers that your workspace's model aliases use, then any provider an
+agent names directly (such as `claude/claude-sonnet-5-5`). For a model server
+on this computer, `doctor` asks whether it answers and which models it has
+loaded. For a cloud provider, it checks that the provider's API key is stored.
+It never reads or shows the key itself. Shown inside a workspace that uses
+such a provider, or whose agents need a default model it doesn't have. The
+built-in test model needs nothing, so it isn't listed.
 
 | You see | Means | Fix |
 | --- | --- | --- |
@@ -95,6 +96,7 @@ provider. The built-in test model needs nothing, so it isn't listed.
 | ✓ "API key stored" | The key for this cloud provider is stored. | Nothing. |
 | ! an alias "needs an API key" | The aliases named on the line use a provider whose key isn't stored. Agents that use them won't run. For a provider an agent names directly, the line names that model instead, such as `claude/claude-sonnet-5-5 needs an API key for claude.` | Store the key with `halonic secret set <name>`, where `<name>` is the `secret` in the provider's file. |
 | ! "couldn't read" a key "from the secret store" | Halonic couldn't read this provider's key from the secrets file, for example because the file is damaged or other users can read it. The key may still be there. | Run `halonic secret list`: it says what's wrong with the file and how to fix it, such as `chmod 600 <file>`. Then run `halonic doctor` again. Don't set the key again until `doctor` says it isn't set. |
+| ✕ "no model alias default" | The workspace has no model alias `default`, and agents that don't name a model of their own need it. They won't run until it's added. `doctor` exits 1. | Copy `models.yaml` and `providers/mock.yaml` from Acme (`examples/acme`), or add your own alias `default`. |
 | ✕ "isn't answering" at an address | The model server on this computer doesn't answer. Every alias that uses it fails, and Halonic doesn't fall back to another model by itself. | Start the server (for example, open Ollama or LM Studio). Check that the address matches `baseUrl` in the provider's file. |
 
 Until you trust a workspace, `doctor` only asks servers on this computer. A

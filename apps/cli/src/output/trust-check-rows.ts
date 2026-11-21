@@ -231,7 +231,10 @@ function withInherited(detail: Phrase, names: readonly string[]): Phrase {
     : phrase`${detail} ${markPart("separator")} ${trustMessages.takesFromEnvironment(names).phrase}`;
 }
 
-/** The agent's id and program, then its sites, every one, and its folder when it isn't the default. */
+/**
+ * The agent's id and program, then its sites, every one, its folder when it
+ * isn't the default, and what it does without asking when it says `asks: in-sandbox`.
+ */
 export function agentRow(agent: AgentTrustContent): Phrase[] {
   const lines: LabelledLine[] = [
     ...siteLines(agent.allowedSites),
@@ -243,6 +246,9 @@ export function agentRow(agent: AgentTrustContent): Phrase[] {
             phrase`${dim(printable(agent.workingFolder))}`,
           ] as const,
         ]),
+    ...(agent.asks === "in-sandbox"
+      ? [[trustMessages.withoutAsking().phrase, trustMessages.inSandboxCalls().phrase] as const]
+      : []),
   ];
   return [
     row(printable(agent.id), trustMessages.harnessName(printable(agent.harness)).phrase),
@@ -270,7 +276,7 @@ function labelledLines(lines: readonly LabelledLine[]): Phrase[] {
   });
 }
 
-/** One Changed row per field that changed, harness first, then sites, then the folder. */
+/** One Changed row per field that changed, harness first, then sites, then the folder, then `asks`. */
 export function agentFieldChanges(agent: ChangedAgent): Phrase[] {
   const { before, after } = agent;
   const changes: Phrase[] = [];
@@ -290,6 +296,9 @@ export function agentFieldChanges(agent: ChangedAgent): Phrase[] {
       trustMessages.workingFolderChanged(printable(folder(before)), printable(folder(after)))
         .phrase,
     );
+  }
+  if (before.asks !== after.asks) {
+    changes.push(trustMessages.asksChanged(after.asks === "in-sandbox").phrase);
   }
   return changes;
 }

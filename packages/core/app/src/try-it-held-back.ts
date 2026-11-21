@@ -65,6 +65,7 @@ const agentParts: readonly HeldBackPart[] = [
   { path: ["harness"], group: "trust-and-sandbox" },
   { path: ["workingFolder"], group: "trust-and-sandbox" },
   { path: ["allowedSites"], group: "trust-and-sandbox" },
+  { path: ["asks"], group: "trust-and-sandbox" },
   { path: ["connectors"], group: "connections" },
 ];
 

@@ -1,3 +1,4 @@
+import { hasInlineAllow } from "../leaks/allow.ts";
 import type { CheckContext } from "../lib/context.ts";
 import { Report } from "../lib/problems.ts";
 import { isTestFile, isTextFile } from "../lib/source-files.ts";
@@ -21,7 +22,9 @@ function isExempt(file: string): boolean {
 /**
  * Fails on absolute local paths (such as a Windows user folder or a Linux
  * home folder) in docs, code and config. They leak who wrote the file and
- * where, and they never work on another machine.
+ * where, and they never work on another machine. A line with the leak
+ * guard's inline marker (`leak-guard: allow absolute-path <reason>`) passes
+ * here too, so one marker covers both checks.
  */
 export function checkAbsolutePaths(context: CheckContext): Report {
   const report = new Report("absolute-paths");
@@ -33,7 +36,7 @@ export function checkAbsolutePaths(context: CheckContext): Report {
       .read(file)
       .split("\n")
       .forEach((text, index) => {
-        if (machinePaths.some((pattern) => pattern.test(text))) {
+        if (!hasInlineAllow(text) && machinePaths.some((pattern) => pattern.test(text))) {
           report.error(
             file,
             "This line holds an absolute path from one machine. Use a path relative to the repo root, or a placeholder such as <workspace> or ~/.config/halonic.",

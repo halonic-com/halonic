@@ -127,6 +127,25 @@ verifies("app.change-line-important", () => {
     ]);
   });
 
+  it("marks asks important, as before → after with the default named", () => {
+    const claudeCode = lastVersion.replace(
+      "model: claude\n",
+      "model: claude\nharness: claude-code\n",
+    );
+    const inSandbox = claudeCode.replace(
+      "harness: claude-code\n",
+      "harness: claude-code\nasks: in-sandbox\n",
+    );
+    expect(described(claudeCode, inSandbox)).toEqual([
+      {
+        id: "field:asks",
+        sentence: "Asks before it acts: always → in-sandbox",
+        important: true,
+        parts: [["asks"]],
+      },
+    ]);
+  });
+
   it("marks run history access important", () => {
     const withRunLogs = `${lastVersion}runLogs: true\n`;
     expect(described(lastVersion, withRunLogs)).toEqual([

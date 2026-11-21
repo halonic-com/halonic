@@ -14,15 +14,23 @@ function addressOf(type: string, baseUrl: string | undefined): string | undefine
  * same type and calls that same address. A settings object without a secret
  * sends no key and passes. A hub the workspace doesn't have is refused.
  *
- * @param workspace the workspace served now, read on each call so a new version applies at once
+ * @param workspace reads the live version on each call, so a committed provider change applies
+ *   before any run starts from it; a chat turn has no run version of its own to keep. It gives
+ *   `null` for a version that fails the trust check a run's version passes, so a provider address
+ *   nobody trusted here gets no key, and every secret is refused until someone trusts it.
  */
-export function workspaceModelSettings(workspace: () => LoadedWorkspace): ModelSettingsGate {
+export function workspaceModelSettings(
+  workspace: () => Promise<LoadedWorkspace | null>,
+): ModelSettingsGate {
   return {
     allows: async (hubId, settings) => {
       if (settings.secret === undefined) return true;
+      // Outside the `try`: a version that can't be read is a failure, not a refusal.
+      const served = await workspace();
+      if (served === null) return false;
       let providers: ReturnType<typeof definitionsOf>["providers"];
       try {
-        providers = definitionsOf(workspace(), hubId).providers;
+        providers = definitionsOf(served, hubId).providers;
       } catch {
         return false;
       }

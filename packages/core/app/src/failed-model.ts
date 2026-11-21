@@ -173,13 +173,18 @@ export function failedStartOf(
   let start: FailedStart | undefined;
   for (const event of events) {
     if (!("state" in event) || event.state !== failed.state) continue;
-    if (event.type === "sandbox.started" && failed.reason === "sandbox-start-failed") {
+    if (event.type === "sandbox.started" && startsInSandboxStarted(failed.reason)) {
       start = { agent: event.agent };
     } else if (event.type === "harness.started" && failed.reason === "harness-start-failed") {
       start = { agent: event.agent, harness: { id: event.harness, timeoutMs: event.timeoutMs } };
     }
   }
   return start;
+}
+
+/** The reasons whose agent the step's `sandbox.started` names: a sandbox, or the launcher on this computer, that didn't open. */
+function startsInSandboxStarted(reason: RunFailedEvent["reason"]): boolean {
+  return reason === "sandbox-start-failed" || reason === "this-computer-start-failed";
 }
 
 /** The first alias that points at `model` at `provider`, or `<provider>/<model>` as the engine names it. */

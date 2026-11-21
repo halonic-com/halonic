@@ -50,6 +50,10 @@ export type ClaudeCodeFolders = Pick<SandboxProfile, "tempFolder" | "settingsFol
  * - `CLAUDE_CODE_TMPDIR`: the session's own temp folder, fresh per session.
  *   Without it, sessions share one folder under the system temp folder
  *   (HAL-1710, check 3).
+ * - `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`: `1`, so Claude Code sends no
+ *   telemetry, error reports or update checks of its own. Those go straight
+ *   to Anthropic, not through the bridge, so the sandbox's network fence
+ *   blocks them and fills the run's log with refused connections (HAL-14992).
  * - `HALONIC_RUN_TOKEN`: the run token again, for the bridge's MCP server.
  *   `ANTHROPIC_CUSTOM_HEADERS` covers only model requests, so the MCP
  *   settings name this variable in the server's header, and the token is
@@ -82,6 +86,7 @@ export function claudeCodeEnvironment(
     ANTHROPIC_CUSTOM_HEADERS: `${harnessBridgeTokenHeader}: ${bridge.token}`,
     CLAUDE_CONFIG_DIR: folders.settingsFolder,
     CLAUDE_CODE_TMPDIR: folders.tempFolder,
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
     [claudeCodeRunTokenVariable]: bridge.token,
     ...modelVariables(model),
     ...(bridge.keyProviders?.includes("anthropic") === true

@@ -24,8 +24,11 @@ export const checkGlyphs: Readonly<Record<CheckMark, string>> = {
 /** The lines' words. Disk uses `halonic doctor`'s own; the rest are the window's (section 9). */
 export const liteCheckWords = {
   title: "Check this computer",
-  intro:
-    "Checks what this window can while the engine isn't running. It changes nothing, and the report stays on this computer until you copy it.",
+  /** Once the start is ready the engine is running, so the intro no longer says it isn't (C525-1). */
+  intro: (ready: boolean) =>
+    ready
+      ? "Checks what this window can on its own. It changes nothing, and the report stays on this computer until you copy it."
+      : "Checks what this window can while the engine isn't running. It changes nothing, and the report stays on this computer until you copy it.",
   checking: "Checking this computer…",
   checkAgain: "Check again",
   copyReport: "Copy report",

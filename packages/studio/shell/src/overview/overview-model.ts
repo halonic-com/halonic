@@ -20,7 +20,10 @@ export interface OverviewItem {
   readonly pinned?: boolean;
   /** A 28px avatar before the name, such as a workflow's letter. Screen readers skip it. */
   readonly avatar?: ReactNode;
-  /** The row's chips, after the name: "1 needs you", "2 warnings". The feature words them. */
+  /**
+   * The row's chips, on its right, or on a phone on a line of their own under the text: "1 needs
+   * you", "2 warnings". The feature words them.
+   */
   readonly chips?: ReactNode;
 }
 

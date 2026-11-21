@@ -189,6 +189,22 @@ verifies("shell.welcome-lite-check", () => {
     expect(document.activeElement?.textContent).toContain("Open demo");
   });
 
+  it("stops saying the engine isn't running in its intro once the start is ready", async () => {
+    const root = renderWelcome();
+    start.answer({ state: "starting", seconds: 14 });
+    await act(async () => button(root, "Something wrong?").click());
+    const dialog = document.querySelector("dialog");
+    expect(dialog?.textContent).toContain(
+      "Checks what this window can while the engine isn't running. It changes nothing, and the report stays on this computer until you copy it.",
+    );
+
+    start.answer({ state: "ready", seconds: 15 });
+    expect(dialog?.textContent).toContain(
+      "Checks what this window can on its own. It changes nothing, and the report stays on this computer until you copy it.",
+    );
+    expect(dialog?.textContent).not.toContain("while the engine isn't running");
+  });
+
   it("says No problems found with the all-clear sentence, and counts a lone warning", async () => {
     const root = renderWelcome();
     start.answer({ state: "starting", seconds: 14 });

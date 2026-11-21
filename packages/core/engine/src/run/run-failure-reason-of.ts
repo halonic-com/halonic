@@ -3,6 +3,7 @@ import { isModelCallError, isRunFailureError, type ModelCallErrorReason } from "
 import { InstructionsNotTrustedError } from "../harness/check-instruction-trust.ts";
 import { SandboxNotReadyError } from "./sandbox-not-ready-error.ts";
 import { StartFailedError } from "./start-failed-error.ts";
+import { ThisComputerStartFailedError } from "./this-computer-start-failed-error.ts";
 
 /**
  * Why a run failed, as `run.failed` records it: the reason, the host for
@@ -48,6 +49,7 @@ const reasonOfModelCall = {
  * - a `RunFailureError` from an adapter gives its own failure;
  * - the engine's own `StartFailedError` gives its failure with the
  *   sandbox's reason code or the harness cause it found, when it found one;
+ * - the engine's own `ThisComputerStartFailedError` is `this-computer-start-failed`;
  * - the engine's own `SandboxNotReadyError` is `sandbox-not-ready`, with
  *   the check's reason code and the agent that didn't start;
  * - the engine's own `InstructionsNotTrustedError` is `instructions-not-trusted`,
@@ -75,6 +77,9 @@ export function runFailureReasonOf(error: unknown): RunFailure {
       ...(error.sandboxReason === undefined ? {} : { sandboxReason: error.sandboxReason }),
       ...(error.harnessCause === undefined ? {} : { harnessCause: error.harnessCause }),
     };
+  }
+  if (error instanceof ThisComputerStartFailedError) {
+    return { reason: "this-computer-start-failed" };
   }
   if (isRunFailureError(error)) {
     return { reason: error.failure };

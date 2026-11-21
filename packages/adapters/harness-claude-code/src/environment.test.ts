@@ -55,6 +55,7 @@ verifies("harness-claude-code.environment", () => {
         ANTHROPIC_CUSTOM_HEADERS: `x-halonic-run-token: ${bridge.token}`,
         CLAUDE_CONFIG_DIR: "/agents/writer/settings",
         CLAUDE_CODE_TMPDIR: "/sessions/one/temp",
+        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
         HALONIC_RUN_TOKEN: bridge.token,
       });
     });

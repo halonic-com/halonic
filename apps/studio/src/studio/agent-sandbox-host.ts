@@ -46,6 +46,9 @@ const REMOVAL_STILL_RUNNING =
 
 const needsRepair: readonly SandboxUnavailableReason[] = ["distro-missing", "setup-conflict"];
 
+/** The reason when the shell couldn't start the helper or wait for it (C525-7, HAL-15013). */
+const HELPER_DIDNT_START = "Windows couldn't start Halonic's sandbox helper.";
+
 /**
  * The agent host's sandbox as Settings › Agent sandbox reads it: the host's check becomes Ready,
  * Needs setting up (`setup-needed`), Needs repair (part of the setup is there but wrong), Restart
@@ -148,10 +151,15 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
         return { kind: "setup", how: "timed-out", repairing: false };
       case "still_running":
         return { kind: "setup", how: "still-running", repairing: false };
-      case "failed": {
-        const reason = `Windows couldn't start the sandbox helper: ${elevated.reason.replace(/\.+$/, "")}.`;
-        return { kind: "setup", how: "failed", reason };
-      }
+      case "failed":
+        // Windows' own message and code go only into Copy details (microcopy 1.6, 22 F13); the
+        // same line covers a wait that failed after the helper had started (C525-7, HAL-15013).
+        return {
+          kind: "setup",
+          how: "failed",
+          reason: HELPER_DIDNT_START,
+          details: elevated.reason,
+        };
     }
   }
 
