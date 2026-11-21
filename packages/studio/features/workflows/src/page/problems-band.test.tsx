@@ -192,4 +192,3 @@ verifies("workflows.start.start-run", () => {
     expect(page.textContent).toContain("START A RUN");
   });
 });
-
