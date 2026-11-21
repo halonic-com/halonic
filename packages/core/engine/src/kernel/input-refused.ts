@@ -4,6 +4,7 @@ export type RefusalCode =
   | "engine.run-unknown"
   | "engine.run-ended"
   | "engine.input-not-accepted"
+  | "engine.input-missing-field"
   | "engine.decision-callid-must-match"
   | "engine.decision-wait-must-match";
 

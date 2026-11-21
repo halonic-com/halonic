@@ -1,6 +1,6 @@
 import type { FileProblem } from "@halonicjs/format";
 import { CronError, checkTimeZone, parseCron, parseEvery } from "@halonicjs/routines";
-import { inputReads, nearName, readsWholeInput } from "@halonicjs/workflow";
+import { inputReads, missingStartFields, nearName, readsWholeInput } from "@halonicjs/workflow";
 import type { LoadedFileOf, WorkspaceIssue } from "../load-workspace.ts";
 import type { CheckContext } from "./check-context.ts";
 
@@ -28,6 +28,8 @@ interface RoutineProblem {
  *
  * A key of a workflow routine's input that no step of the workflow reads as
  * `input.<key>` is a warning, with "Did you mean" for a close one (HAL-14316).
+ * An input without a field the workflow's first step reads is an error: the
+ * run would start with nothing where that field goes (HAL-14777).
  */
 export function checkRoutines(context: CheckContext): WorkspaceIssue[] {
   const issues: WorkspaceIssue[] = [];
@@ -46,9 +48,36 @@ export function checkRoutines(context: CheckContext): WorkspaceIssue[] {
         issues.push(context.error(routine.path, problem.path, problem.code, message));
       }
     }
-    issues.push(...unreadInputIssues(context, routine));
+    issues.push(...unreadInputIssues(context, routine), ...startInputIssues(context, routine));
   }
   return issues;
+}
+
+/**
+ * An error when the routine's input lacks a field its workflow's first step
+ * reads by name: "Monday note starts announce without topic, which its
+ * first step reads." A key whose value is a `{{trigger.…}}` template counts
+ * as given.
+ */
+function startInputIssues(context: CheckContext, routine: Routine): WorkspaceIssue[] {
+  const run = routine.value.run;
+  if (!("workflow" in run)) {
+    return [];
+  }
+  const workflow = workflowOf(context, routine, run.workflow);
+  const lacks = workflow && missingStartFields(workflow, Object.keys(run.input));
+  if (!lacks) {
+    return [];
+  }
+  const fields = listed(lacks.missing);
+  const message = `${routine.value.name} starts ${run.workflow} without ${fields}, which its first step reads. Add ${fields} under run.input.`;
+  return [context.error(routine.path, ["run", "input"], "missing-routine-input", message)];
+}
+
+/** The workflow a routine runs, from its hub; `undefined` when there's none by that id. */
+function workflowOf(context: CheckContext, routine: Routine, id: string) {
+  return context.filesOf("workflow", hubOf(routine) ?? null).find((file) => file.value.id === id)
+    ?.value;
 }
 
 /**
@@ -62,9 +91,7 @@ function unreadInputIssues(context: CheckContext, routine: Routine): WorkspaceIs
   if (!("workflow" in run)) {
     return [];
   }
-  const workflow = context
-    .filesOf("workflow", hubOf(routine) ?? null)
-    .find((file) => file.value.id === run.workflow)?.value;
+  const workflow = workflowOf(context, routine, run.workflow);
   const states = Object.entries(workflow?.states ?? {});
   if (workflow === undefined || states.some(([, state]) => readsWholeInput(state))) {
     return [];
@@ -90,10 +117,14 @@ function unreadHint(key: string, read: readonly string[]): string {
   if (read.length === 0) {
     return `No step reads an input field: remove the key, or add input.${key} to the gets of the step that needs it.`;
   }
-  const fields = read.map((field) => `input.${field}`);
-  const listed =
-    fields.length === 1 ? fields[0] : `${fields.slice(0, -1).join(", ")} and ${fields.at(-1)}`;
-  return `Its steps read ${listed}: rename the key to one of those, or remove it.`;
+  return `Its steps read ${listed(read.map((field) => `input.${field}`))}: rename the key to one of those, or remove it.`;
+}
+
+/** `a`, `a and b`, `a, b and c`. */
+function listed(values: readonly string[]): string {
+  return values.length < 2
+    ? values.join("")
+    : `${values.slice(0, -1).join(", ")} and ${values.at(-1)}`;
 }
 
 /**

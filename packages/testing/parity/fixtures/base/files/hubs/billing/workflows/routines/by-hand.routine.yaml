@@ -3,3 +3,5 @@ trigger:
   manual: true
 run:
   workflow: batch
+  input:
+    lines: [paper]

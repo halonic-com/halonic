@@ -63,6 +63,38 @@ export function readsWholeInput(state: WorkflowState): boolean {
   return sendsInput || branchSendsInput || whole;
 }
 
+/** The fields a run's input lacks that the workflow's first step reads, and that step. */
+export interface MissingStartFields {
+  /** The first line of the step's description, or its id. */
+  readonly step: string;
+  readonly missing: readonly string[];
+}
+
+/**
+ * The fields the workflow's first step reads by name (`gets: [input.mail]`
+ * or `{{input.mail}}`) that `given`, the input's keys, lacks: the agent
+ * would get `(not set)` for them. `null` when nothing is missing, or when
+ * the first step sends its agent the whole input.
+ *
+ * @example
+ * missingStartFields(announce, []); // { step: "Write the note", missing: ["topic"] }
+ */
+export function missingStartFields(
+  workflow: Workflow,
+  given: readonly string[],
+): MissingStartFields | null {
+  const first = workflow.states[workflow.initial];
+  if (first === undefined || readsWholeInput(first)) {
+    return null;
+  }
+  const read = unique(inputReads(workflow.initial, first).map(({ field }) => field));
+  const missing = read.filter((field) => !given.includes(field));
+  if (missing.length === 0) {
+    return null;
+  }
+  return { step: first.description?.split("\n")[0]?.trim() || workflow.initial, missing };
+}
+
 /**
  * Input fields a step reads that the workflow's input doesn't have, and a
  * `start.field` that no step reads. The input's fields are `start.field` and

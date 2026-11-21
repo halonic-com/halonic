@@ -213,7 +213,12 @@ verifies("engine.run-harness-override", () => {
       },
     );
 
-    await executor.start({ hubId: "acme", workflowId: "onboard", input: {}, harness: "halonic" });
+    await executor.start({
+      hubId: "acme",
+      workflowId: "onboard",
+      input: { from: "ada@example.com" },
+      harness: "halonic",
+    });
     await scheduler.runDue();
 
     expect(runs.logs.get("run_1.2")?.[0]).toMatchObject({

@@ -90,11 +90,12 @@ verifies("cli.commands.routines.list", () => {
     const acme = join(acmeRuns.folder, "acme-example");
     await cp(acmeExample, acme, { recursive: true });
     await writeFiles(acme, {
+      // Acme's Support reply reads input.mail first, so the routine gives it one.
       "hubs/support/workflows/routines/weekly-report.routine.yaml": routine(
         "weekly-report",
         "Weekly report",
         '{ schedule: "0 9 * * 5" }',
-      ),
+      ).replace("support-reply }", 'support-reply, input: { mail: "{{trigger.at}}" } }'),
     });
     const args = ["routines"];
 
@@ -173,6 +174,44 @@ verifies("cli.commands.routines.list", () => {
         "! 1 routine has problems · halonic validate --dir .",
         "Friday digest   Fridays at 16:00   ✕ Won't start         Never ran",
         "Morning check   Daily at 08:00     Next tomorrow 08:00   Never ran",
+        hint,
+      ]);
+    });
+
+    it("says Won't start for a routine whose input lacks a field the first step reads", async () => {
+      await writeFiles(acmeRuns.acme, {
+        "hubs/support/workflows/announce.workflow.yaml": [
+          "id: announce",
+          "name: Announce",
+          "initial: write",
+          "states:",
+          "  write:",
+          "    type: task",
+          "    agent: writer",
+          '    input: "Write an announcement about: {{input.topic}}"',
+          "    on: [{ to: done, event: done }]",
+          "  done: { type: final }",
+          "",
+        ].join("\n"),
+        "hubs/support/agents/writer.agent.yaml": "id: writer\nname: Writer\nmodel: test\n",
+      });
+      await addRoutines({
+        monday: [
+          "id: monday",
+          "name: Monday note",
+          'trigger: { schedule: "0 8 * * 1" }',
+          "run: { workflow: announce }",
+          "",
+        ].join("\n"),
+      });
+
+      const { code, io } = await routinesIn("--dir", ".");
+
+      // C480 P5 (HAL-14777): the run would start with "Write an announcement about: ".
+      expect(code).toBe(exitCode.failed);
+      expect(io.stdout).toEqual([
+        "! 1 routine has problems · halonic validate --dir .",
+        "Monday note   Mondays at 08:00   ✕ Won't start   Never ran",
         hint,
       ]);
     });

@@ -6,7 +6,13 @@ export {
   revisedToolResult,
 } from "./approvals.ts";
 export { evaluateGuard } from "./guards.ts";
-export { type InputRead, inputReads, readsWholeInput } from "./input-checks.ts";
+export {
+  type InputRead,
+  inputReads,
+  type MissingStartFields,
+  missingStartFields,
+  readsWholeInput,
+} from "./input-checks.ts";
 export {
   childInput,
   contextBefore,

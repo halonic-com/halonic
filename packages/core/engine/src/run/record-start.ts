@@ -6,7 +6,7 @@ import type { DecideInput, RunDefinitions } from "../kernel/decide-types.ts";
 import { InputRefused } from "../kernel/input-refused.ts";
 import { keepDefinitions } from "../kernel/kept-definitions.ts";
 import type { RunsProposalFolders } from "./proposal-folders.ts";
-import { startInputOf } from "./start-request.ts";
+import { checkStartInput, startInputOf } from "./start-request.ts";
 
 /** What {@link recordStart} works with. */
 export interface RecordStartPorts {
@@ -22,6 +22,7 @@ export interface RecordStartPorts {
  * Keeps the definitions, opens the run's proposal folder and records the
  * start. A start repeated at the same moment records nothing: the other one did.
  *
+ * @throws InputRefused when the input lacks a field the first step reads; nothing is kept
  * @throws when the definitions can't be kept, the folder can't be opened or the start can't be recorded
  */
 export async function recordStart(
@@ -30,6 +31,7 @@ export async function recordStart(
   runId: string,
   definitions: RunDefinitions,
 ): Promise<void> {
+  checkStartInput(request, definitions.workflow);
   const { hubId, workflowId, harness, version } = request;
   const definitionsVersion = await keepDefinitions(ports.blobs, definitions);
   const folderRun = { runId, hubId, workflowId, version: version ?? null };
