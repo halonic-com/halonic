@@ -35,11 +35,7 @@ import {
   ProviderCheckService,
 } from "@halonicjs/studio-feature-models/api";
 import { RoutinesHostService } from "@halonicjs/studio-feature-routines/api";
-import {
-  InstructionTrustHostService,
-  RunStartHostService,
-  RunsSourceService,
-} from "@halonicjs/studio-feature-runs/api";
+import { InstructionTrustHostService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import { VersionDialogService } from "@halonicjs/studio-feature-source-control/api";
 import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
@@ -85,6 +81,7 @@ import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
 import { openStudioRunConnectors } from "./open-run-connectors.ts";
 import { focusOf, storageOf } from "./page-window.ts";
 import { provideEngineAutoOpen } from "./provide-engine-auto-open.ts";
+import { provideRunStart } from "./provide-run-start.ts";
 import { provideWorkspaceRuns } from "./provide-workspace-runs.ts";
 import { WorkspaceInstructionTrust } from "./workspace-instruction-trust.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -292,16 +289,7 @@ export function provideFolderServices(
       askTrust,
     }),
   );
-  // Run again on the run page starts a run the way the workflow page's Run does.
-  const { startRun } = workflows;
-  if (startRun !== undefined) {
-    services.provide(RunStartHostService, {
-      startRun: ({ hubId, workflowId }, input) =>
-        startRun.call(workflows, { hubId, id: workflowId }, input),
-      askTrust,
-      onTrusted,
-    });
-  }
+  provideRunStart(services, { workflows, engine, askTrust, trust });
   services.provide(
     InboxRequestsService,
     new WorkspaceRequests({

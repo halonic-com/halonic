@@ -35,6 +35,7 @@ import { StepEditDock } from "./docked-step-card.tsx";
 import { FlowView } from "./flow-view.tsx";
 import { insteadOfPage } from "./gone-state.tsx";
 import { GuideSlot } from "./guide-card.tsx";
+import { GuideScreen, useGuideScreen } from "./guide-screen.tsx";
 import { firstTestsPick, firstView, hasDockedCard, panelClass, stepNamesOf } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
 import { ProgramStepsLine } from "./program-steps-line.tsx";
@@ -256,6 +257,15 @@ export function WorkflowScreen({
   };
   const guideSlot = { guide, workflow: { hubId, id }, view, docked, phone, button: guideButton };
   const guidePage = { openRunForm: () => openStart("guide") };
+  const guideScreen = useGuideScreen(guide, { hubId, id });
+  // A run the guide's screen started shows here as one started from the Run form does.
+  const showRun = (runId: string) => {
+    setShownId(runId);
+    setPickedStep(undefined);
+    setRowCard(undefined);
+    showView("flow");
+    setDock({ runId });
+  };
   const trash = useWorkflowTrash(
     host,
     { hubId, id },
@@ -264,7 +274,7 @@ export function WorkflowScreen({
   );
   const instead = insteadOfPage(trash.strip, load, goToWorkflows);
   if (instead !== undefined) return instead;
-  return (
+  const page = (
     <div className="flex size-full min-h-0 flex-col">
       <header
         className={
@@ -475,5 +485,16 @@ export function WorkflowScreen({
         <GuideSlot {...guideSlot} page={guidePage} at="right" />
       </div>
     </div>
+  );
+  if (guideScreen === undefined) return page;
+  return (
+    <GuideScreen
+      screen={guideScreen}
+      workflow={{ hubId, id }}
+      phone={phone}
+      showRun={showRun}
+      announce={announce}
+      fallback={page}
+    />
   );
 }
