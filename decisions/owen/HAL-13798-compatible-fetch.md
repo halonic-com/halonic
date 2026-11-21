@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13798 (Liam, CTO; agreed on HAL-14917), security review on HAL-13798
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2W9V3Z0V92HQjtgeop+igd9TR1Qpts6hE1Ex76Hc6W1nLGntwaoluIOrZ0pTWhdzeYI6ptllIqCSKBWBMqiTAg==
 
 `studio.harness-provider-key` said Studio stops a sandboxed harness agent whose
 provider has its own address (`baseUrl`), because the agent host's bridge had no
