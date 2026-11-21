@@ -7,7 +7,7 @@ export type SqlRow = Record<string, SqlValue>;
 /**
  * The part of a Durable Object's SQLite storage the run object uses: plain
  * statements and a synchronous transaction. Durable Object storage is
- * wrapped to fit; Node tests give one over `node:sqlite`.
+ * wrapped to fit ({@link sqlOfStorage}).
  */
 export interface RunSql {
   /** Runs one statement. The rows come back as an array, empty for a statement that gives none. */
