@@ -279,9 +279,7 @@ function addressRow(connector: ConnectorTrustContent): TrustRowView {
  * either (C569).
  */
 function integrationConnectorRow(connector: ConnectorTrustContent): TrustRowView {
-  const picks = sameNamesFirst(secretPicks(connector)).map(({ secret, as }) =>
-    secret === as ? secret : `${secret} as ${as}`,
-  );
+  const picks = secretPicks(connector);
   return {
     id: connector.id,
     detail: `integrations/${text(connector.settings["folder"])}`,
@@ -414,16 +412,6 @@ function counted(count: number, noun: string): string {
   return `${count} ${plural}`;
 }
 
-/**
- * The picks whose workspace secret has the sheet's name, then the renamed ones,
- * each group in the order it came in: "sync-key, backup as api-key and
- * my-notes-key as notes-key" (C569).
- */
-function sameNamesFirst(picks: readonly SecretPick[]): SecretPick[] {
-  const isSameName = (pick: SecretPick) => pick.secret === pick.as;
-  return [...picks.filter(isSameName), ...picks.filter((pick) => !isSameName(pick))];
-}
-
 /** "A", "A and B", "A, B and C". */
 function listed(names: readonly string[]): string {
   const last = names.at(-1) ?? "";
@@ -458,22 +446,23 @@ function secretNames(connector: ConnectorTrustContent): string[] {
   return [...new Set(namesOf(references))].sort();
 }
 
-/** A workspace secret a local integration gets, and the name its sheet reads it as. */
-interface SecretPick {
-  readonly secret: string;
-  readonly as: string;
-}
-
 /**
  * The workspace secret each secret of a local integration's sheet gets,
- * sorted by the sheet's name. A connector's own `secret` keeps its name.
+ * sorted by the sheet's name. A connector's own `secret` keeps its name. The
+ * picks that keep their name come first, then the renamed ones, each group in
+ * its order: "sync-key, backup as api-key and my-notes-key as notes-key" (C569).
  */
-function secretPicks(connector: ConnectorTrustContent): SecretPick[] {
+function secretPicks(connector: ConnectorTrustContent): string[] {
   const own = namesOf([connector.secret]).map((name) => ({ secret: name, as: name }));
   const picks = Object.entries(record(connector.settings["secrets"]))
     .sort(([first], [second]) => first.localeCompare(second, "en"))
     .flatMap(([as, reference]) => namesOf([reference]).map((secret) => ({ secret, as })));
-  return [...own, ...picks];
+  const all = [...own, ...picks];
+  const kept = all.filter(({ secret, as }) => secret === as).map(({ secret }) => secret);
+  const renamed = all
+    .filter(({ secret, as }) => secret !== as)
+    .map(({ secret, as }) => `${secret} as ${as}`);
+  return [...kept, ...renamed];
 }
 
 /** The names in `‹secret NAME›` references, in their order. */
