@@ -96,7 +96,7 @@ export function trustReviewOf(check: TrustCheck, facts: TrustReviewFacts): Trust
     ...common,
     title: `Trust ${facts.name}?`,
     changed: false,
-    summary: startSummary(check.content),
+    summary: startSummary(check.content, facts.runs),
     sections: sectionsOf(
       [...programs(connectors).map((row) => programRow(row, unpinned))],
       integrations.map((row) => integrationRow(row, facts.runs)),
@@ -366,8 +366,12 @@ function shownSite(site: string): string {
   return [site, ...notes].join(" · ");
 }
 
-/** "Will start 2 programs and 1 agent, pass 3 secrets, list 2 addresses and allow 2 sites." */
-function startSummary(content: TrustCheck["content"]): string[] {
+/**
+ * "Will start 2 programs and 1 agent, pass 3 secrets, list 2 addresses and allow 2 sites." It
+ * counts what the check shows: each line under an integration's Reaches is an address, and an
+ * integration that doesn't start on this computer isn't one it will run (Sofia, HAL-15146).
+ */
+function startSummary(content: TrustCheck["content"], runs: IntegrationRuns): string[] {
   const agents = content.agents ?? [];
   const providers = content.providers ?? [];
   const started = [
@@ -385,12 +389,14 @@ function startSummary(content: TrustCheck["content"]): string[] {
   ]).size;
   const addressCount =
     addresses(content.connectors).length +
-    integrations.reduce((sum, integration) => sum + Object.keys(integration.addresses).length, 0) +
+    integrations.reduce((sum, integration) => sum + Object.keys(integration.hosts).length, 0) +
     providers.length;
   const sites = new Set(agents.flatMap((agent) => agent.allowedSites)).size;
   const clauses = [
     started.length > 0 ? `start ${started.join(" and ")}` : undefined,
-    integrations.length > 0 ? `run ${counted(integrations.length, "integration")}` : undefined,
+    integrations.length > 0 && runs?.state !== "not-fenced"
+      ? `run ${counted(integrations.length, "integration")}`
+      : undefined,
     secrets > 0 ? `pass ${counted(secrets, "secret")}` : undefined,
     addressCount > 0 ? `list ${counted(addressCount, "address")}` : undefined,
     sites > 0 ? `allow ${counted(sites, "site")}` : undefined,

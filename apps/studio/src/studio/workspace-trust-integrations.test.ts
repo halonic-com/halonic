@@ -64,7 +64,8 @@ verifies("studio.workspace-trust-integrations", () => {
   it("lists a local integration in its own section, with Folder, Runs, Reaches and Gets secrets", () => {
     const { review, section, row } = reviewOf({ state: "fenced" });
 
-    expect(review?.summary).toEqual(["Will run 1 integration and list 1 address."]);
+    // Each line under Reaches is an address: the fixed host and the setting's.
+    expect(review?.summary).toEqual(["Will run 1 integration and list 2 addresses."]);
     expect(review?.sections.map((each) => each.heading)).toEqual(["Integrations (1)"]);
     expect(section?.intro).toBe(integrationsIntro);
     expect(section?.open).toBe(false);
@@ -85,6 +86,8 @@ verifies("studio.workspace-trust-integrations", () => {
     const { review, section, row } = reviewOf({ state: "not-fenced", reason: "container" });
 
     expect(section?.open).toBe(true);
+    // The summary doesn't say it will run what Runs says doesn't start.
+    expect(review?.summary).toEqual(["Will list 2 addresses."]);
     expect(row?.lines[1]).toEqual(["Runs", integrationRunsOff]);
     expect(row?.lines[2]?.[1]).toMatch(/container/);
     expect(row?.lines[3]?.[0]).toBe("");
