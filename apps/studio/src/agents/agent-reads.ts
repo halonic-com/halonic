@@ -15,7 +15,7 @@ export function defaultModelOf(workspace: LoadedWorkspace, hubId: string): strin
     : undefined;
 }
 
-/** The workflows of the agent's hub that run it in a step, with how many steps; throws `not_found` when the agent isn't there. */
+/** The workflows of the agent's hub that run it in a step, with those steps' ids; throws `not_found` when the agent isn't there. */
 export function agentUsersOf(
   workspace: LoadedWorkspace,
   { hubId, id }: AgentRef,
@@ -29,7 +29,9 @@ export function agentUsersOf(
       hubId,
       id: file.value.id,
       name: file.value.name,
-      steps: Object.values(file.value.states).filter((state) => state.agent === id).length,
+      stepIds: Object.entries(file.value.states)
+        .filter(([, state]) => state.agent === id)
+        .map(([stepId]) => stepId),
     }))
-    .filter((user) => user.steps > 0);
+    .filter((user) => user.stepIds.length > 0);
 }

@@ -127,8 +127,8 @@ verifies("agents.list.row-menu", () => {
 
   it("counts the workflow steps that now show an error, as the toast's second line", async () => {
     const host = hostWith({
-      "acme/sorter": [{ hubId: "acme", id: "reply", name: "Reply", steps: 1 }],
-      "acme/writer": [{ hubId: "acme", id: "reply", name: "Reply", steps: 2 }],
+      "acme/sorter": [{ hubId: "acme", id: "reply", name: "Reply", stepIds: ["draft"] }],
+      "acme/writer": [{ hubId: "acme", id: "reply", name: "Reply", stepIds: ["sort", "reply"] }],
     });
     const { page, toasts } = await showList(host);
 

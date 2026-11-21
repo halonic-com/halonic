@@ -1,3 +1,6 @@
+/** Joins a workflow card's steps: "triage, draft and check". */
+const stepList = new Intl.ListFormat("en-GB", { type: "conjunction" });
+
 /** The agent map's words (flow-agents 6, microcopy 8.4 and 19.7). */
 export const mapWords = {
   tab: "Flow",
@@ -10,10 +13,11 @@ export const mapWords = {
   workflow: "Workflow",
   agent: "Agent",
   kinds: { skills: "Skill", knowledge: "Knowledge", connectors: "Connector" },
-  steps: (count: number) => (count === 1 ? "1 step" : `${count} steps`),
-  /** A workflow card's name, until the card names its steps (mc 19.7). */
-  workflowCard: (workflow: string, agent: string, steps: number) =>
-    `Workflow ${workflow}, uses ${agent} in ${steps === 1 ? "1 step" : `${steps} steps`}`,
+  /** A workflow card's detail line: the steps that call the agent, "triage, draft". */
+  steps: (stepIds: readonly string[]) => stepIds.join(", "),
+  /** A workflow card's name: "Workflow Support reply, uses Sorter in triage and draft" (mc 19.7). */
+  workflowCard: (workflow: string, agent: string, stepIds: readonly string[]) =>
+    `Workflow ${workflow}, uses ${agent} in ${stepList.format(stepIds)}`,
   /** A summary card's counts, the kinds with none left out: "2 workflows · 1 agent". */
   summary: {
     in: (workflows: number, agents: number) =>

@@ -85,7 +85,9 @@ const host = () =>
       connectors: [{ id: "acme-mail", name: "Acme mail" }],
     },
     users: {
-      "acme/triage": [{ hubId: "acme", id: "support-reply", name: "Support reply", steps: 2 }],
+      "acme/triage": [
+        { hubId: "acme", id: "support-reply", name: "Support reply", stepIds: ["sort", "reply"] },
+      ],
     },
   });
 

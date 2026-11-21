@@ -33,7 +33,7 @@ export interface TrashOptions {
 async function warningLine(host: AgentsHost, ref: AgentRef): Promise<string | undefined> {
   try {
     const users = await host.referencesTo(ref);
-    const steps = users.reduce((sum, user) => sum + user.steps, 0);
+    const steps = users.reduce((sum, user) => sum + user.stepIds.length, 0);
     return steps === 0 ? undefined : deleteWords.movedLine(steps);
   } catch {
     return undefined;

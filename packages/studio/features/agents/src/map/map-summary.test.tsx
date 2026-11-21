@@ -12,7 +12,7 @@ import { buttonNamed, openDialogsInJsdom, show, unmount } from "../test-support.
 beforeEach(openDialogsInJsdom);
 afterEach(unmount);
 
-const workflow = (id: string, name: string) => ({ hubId: "acme", id, name, steps: 1 });
+const workflow = (id: string, name: string) => ({ hubId: "acme", id, name, stepIds: ["draft"] });
 
 /** "Mail triage" with four subagents, four tools and three workflows, and "Small" with three of each. */
 const host = () =>

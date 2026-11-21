@@ -320,8 +320,8 @@ export interface AgentUser {
   readonly id: string;
   /** The workflow's display name. */
   readonly name: string;
-  /** How many of the workflow's steps run the agent: one or more. */
-  readonly steps: number;
+  /** The ids of the workflow's steps that run the agent, in the workflow's order: one or more. */
+  readonly stepIds: readonly string[];
 }
 
 /**
