@@ -115,10 +115,13 @@ function startRunHandler(
     }
     const harness = harnessById(body.harness);
     const session = sessions.get(body.session);
-    const bridge = bridges.get(body.bridge)?.bridge;
+    const open = bridges.get(body.bridge);
     if (harness === undefined) return sendUnknown(response, "harness");
     if (session === undefined) return sendUnknown(response, "session");
-    if (bridge === undefined) return sendUnknown(response, "bridge");
+    if (open === undefined) return sendUnknown(response, "bridge");
+    const { bridge } = open;
+    // The host's own session, so the bridge's approvals read the fence it really has.
+    open.sessionOpened(session);
 
     const stream = startNdjsonStream(response);
     let run: HarnessRun;

@@ -137,6 +137,7 @@ export class LocalBridgeHost implements HarnessBridgeHost {
       inner: services.approvals,
       recorder,
       paths: this.#paths,
+      scrub: this.#scrub,
       failed: (failure) =>
         this.#recordFailure(recorder, agent.agentId, {
           kind: failure.kind,

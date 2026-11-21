@@ -64,9 +64,15 @@ export interface OpeningAgent {
   readonly agentId: string;
   readonly harness: ProgramHarness;
   readonly hubId?: string;
-  /** The agent's file as the call reads it, whose `model` Studio is told. */
-  readonly file?: { readonly model?: string | undefined };
+  /**
+   * The agent's file as the call reads it: Studio is told its `model`, and the
+   * host its `asks`, which it answers the program's own calls by.
+   */
+  readonly file?: { readonly model?: string | undefined; readonly asks?: AgentAsks | undefined };
 }
+
+/** An agent file's `asks`: who answers its program's own calls (`format.agent-asks`). */
+type AgentAsks = "always" | "in-sandbox";
 
 /** What Studio serves one agent's bridge. */
 export interface BridgeServices extends BridgeCallServices {
@@ -164,6 +170,7 @@ export class AgentHostBridges {
       agentId: agent.agentId,
       providers: services.providers,
       prices: services.prices,
+      ...asksOf(agent),
     };
     const answer = await this.#transport.stream(openRoute, body, { signal: hangUp.signal });
     if (!answer.ok) throw answerError(openRoute, answer.answer);
@@ -403,6 +410,16 @@ export function fitsAnswerLimit(text: string): boolean {
   if (text.length > bridgeAnswerLimitBytes) return false;
   if (text.length * 3 <= bridgeAnswerLimitBytes) return true;
   return new TextEncoder().encode(text).byteLength <= bridgeAnswerLimitBytes;
+}
+
+/**
+ * The agent's `asks` and harness, for the host, which answers the program's
+ * own calls by them (requirement `agent-host.sandboxed-asks`); nothing when
+ * the file names no `asks`, so the host asks Studio for every call.
+ */
+function asksOf(agent: OpeningAgent): { asks?: AgentAsks; harness?: ProgramHarness } {
+  const asks = agent.file?.asks;
+  return asks === undefined ? {} : { asks, harness: agent.harness };
 }
 
 /** What `servicesFor` is told of the agent: only the fields it names, so nothing else of the engine's leaks in. */

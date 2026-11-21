@@ -2,6 +2,7 @@ import type { Readable, Writable } from "node:stream";
 import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
+import { resolveRealPath } from "@halonicjs/adapter-harness-kit";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import {
   keptGrantsRecordFolder,
@@ -329,6 +330,8 @@ function hostServices(
             ended: (callId, decision) =>
               ledger.bridgeApprovalEnded(runId, agentId, callId, decision),
           }),
+      // An agent with `asks: in-sandbox` runs its calls in its working folder without asking, fenced (HAL-15287).
+      { resolve: resolveRealPath, windows: process.platform === "win32" },
     ),
     ...harnessRoutes({ harnesses, sessions, bridges, runs }),
     ...folders.routes,

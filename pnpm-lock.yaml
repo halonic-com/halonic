@@ -382,6 +382,9 @@ importers:
       '@halonicjs/host-google-sign-in':
         specifier: workspace:*
         version: link:../../packages/host/google-sign-in
+      '@halonicjs/host-harness-host':
+        specifier: workspace:*
+        version: link:../../packages/host/harness-host
       '@halonicjs/host-integration-sign-in':
         specifier: workspace:*
         version: link:../../packages/host/integration-sign-in

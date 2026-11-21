@@ -1,5 +1,15 @@
 import { randomUUID } from "node:crypto";
-import type { HarnessBridgeServer, OpenHarnessBridge, Secrets } from "@halonicjs/ports";
+import {
+  type SandboxedAsksAgent,
+  type SandboxedAsksPaths,
+  sandboxedAsks,
+} from "@halonicjs/host-harness-host";
+import type {
+  HarnessBridgeServer,
+  OpenHarnessBridge,
+  SandboxSession,
+  Secrets,
+} from "@halonicjs/ports";
 import { SecretScrubber } from "@halonicjs/std";
 import { CallChannel } from "../server/call-channel.ts";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
@@ -38,6 +48,8 @@ interface OpenBridge {
   bridge: OpenHarnessBridge;
   channel: CallChannel;
   stream: NdjsonStream;
+  /** Gives the bridge the host's own session a run starts in, whose fence its approvals read. */
+  sessionOpened: (session: SandboxSession) => void;
 }
 
 /**
@@ -140,17 +152,26 @@ export class BridgeTable {
  * - `POST /v1/bridge/answer` with `{ bridge, call, result }` or
  *   `{ bridge, call, error }` answers one call.
  * - `POST /v1/bridge/close` with `{ bridge }` closes the bridge and ends its stream.
+ *
+ * With `asks: in-sandbox` and `harness: claude-code` in the open body, the
+ * bridge's approvals let the program's own calls in its working folder
+ * through while its session is fenced, and record each one (requirement
+ * `agent-host.sandboxed-asks`). The session is the host's own, which the run
+ * starts in, so Studio can't vouch for a fence.
+ *
+ * @param paths - how this computer resolves a program's paths; without it, nothing is let through
  */
 export function bridgeRoutes(
   serverFor: BridgeServerFactory,
   bridges: BridgeTable,
   observerFor?: ApprovalObserverFor,
+  paths?: SandboxedAsksPaths,
 ): HostRoute[] {
   return [
     {
       method: "POST",
       path: "/v1/bridge/open",
-      handle: openBridgeHandler(serverFor, bridges, observerFor),
+      handle: openBridgeHandler({ serverFor, bridges, observerFor, paths }),
     },
     {
       method: "POST",
@@ -181,12 +202,17 @@ export function bridgeRoutes(
   ];
 }
 
+/** What opening a bridge reaches: its server, the table, who hears its approvals, and the paths. */
+interface OpenBridgeDeps {
+  serverFor: BridgeServerFactory;
+  bridges: BridgeTable;
+  observerFor: ApprovalObserverFor | undefined;
+  paths: SandboxedAsksPaths | undefined;
+}
+
 /** Opens a bridge and keeps its stream open, carrying the bridge's calls, until it closes. */
-function openBridgeHandler(
-  serverFor: BridgeServerFactory,
-  bridges: BridgeTable,
-  observerFor: ApprovalObserverFor | undefined,
-): HostRoute["handle"] {
+function openBridgeHandler(deps: OpenBridgeDeps): HostRoute["handle"] {
+  const { bridges } = deps;
   return async (request, response) => {
     const body = await readCheckedBody(request, response, openBridgeBody);
     if (body === undefined) return;
@@ -198,7 +224,7 @@ function openBridgeHandler(
     const stream = startNdjsonStream(response);
     let opened: { id: string; channel: CallChannel } | undefined;
     try {
-      opened = await openBridge(serverFor, bridges, body, stream, observerFor);
+      opened = await openBridge(deps, body, stream);
     } finally {
       release();
     }
@@ -218,15 +244,27 @@ function openBridgeHandler(
  *   (the stream has then ended)
  */
 async function openBridge(
-  serverFor: BridgeServerFactory,
-  bridges: BridgeTable,
+  { serverFor, bridges, observerFor, paths }: OpenBridgeDeps,
   body: OpenBridgeBody,
   stream: NdjsonStream,
-  observerFor: ApprovalObserverFor | undefined,
 ): Promise<{ id: string; channel: CallChannel } | undefined> {
   const channel = new CallChannel(stream);
   // The keys Studio hands this bridge, so its failures are scrubbed of them.
   const keys = new SecretScrubber();
+  const reportError = studioFailureReport(
+    channel,
+    body.agentId,
+    (text) => process.stderr.write(text),
+    keys,
+  );
+  const services = studioServices(channel, observerFor?.(body.runId, body.agentId));
+  const asks = sandboxedAsks(asksAgentOf(body), {
+    inner: services.approvals,
+    recorder: services.recorder,
+    paths,
+    failed: reportError,
+    scrub: (text) => keys.scrub(text),
+  });
   let bridge: OpenHarnessBridge;
   try {
     bridge = await serverFor(studioSecrets(channel, body.providers, keys)).open({
@@ -234,13 +272,9 @@ async function openBridge(
       agentId: body.agentId,
       providers: body.providers,
       price: (provider, model) => priceIn(body.prices, provider, model),
-      ...studioServices(channel, observerFor?.(body.runId, body.agentId)),
-      reportError: studioFailureReport(
-        channel,
-        body.agentId,
-        (text) => process.stderr.write(text),
-        keys,
-      ),
+      ...services,
+      approvals: asks.approvals,
+      reportError,
     });
   } catch (error) {
     stream.send({
@@ -251,7 +285,7 @@ async function openBridge(
     stream.end();
     return undefined;
   }
-  const id = bridges.add({ bridge, channel, stream });
+  const id = bridges.add({ bridge, channel, stream, sessionOpened: asks.sessionOpened });
   const { url, token, socketPath } = bridge;
   stream.send({
     type: "opened",
@@ -261,4 +295,13 @@ async function openBridge(
     ...(socketPath === undefined ? {} : { socketPath }),
   });
   return { id, channel };
+}
+
+/** The agent as {@link sandboxedAsks} reads it: without a harness, its `asks` lets nothing through. */
+function asksAgentOf(body: OpenBridgeBody): SandboxedAsksAgent {
+  return {
+    agentId: body.agentId,
+    harness: body.harness,
+    file: body.asks === undefined ? {} : { asks: body.asks },
+  };
 }

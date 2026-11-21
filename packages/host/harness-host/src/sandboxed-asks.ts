@@ -30,6 +30,22 @@ export interface SandboxedAsksInput {
    * resolved or the run log couldn't take the call; it must not throw.
    */
   readonly failed: (failure: { kind: string; message: string }) => void;
+  /**
+   * Removes the values of the secrets the bridge read from the path or
+   * command a `harness.allowed` names, as from a `bridge.failed`'s message;
+   * none by default.
+   */
+  readonly scrub?: (text: string) => string;
+}
+
+/**
+ * The agent {@link sandboxedAsks} reads: its id, its harness (`undefined`
+ * when the caller wasn't told it) and its file's `asks`.
+ */
+export interface SandboxedAsksAgent {
+  readonly agentId: HarnessAgent["agentId"];
+  readonly harness: HarnessAgent["harness"] | undefined;
+  readonly file: Pick<HarnessAgent["file"], "asks">;
 }
 
 /** One bridge's approvals, and the hook the engine gives its session to. */
@@ -46,16 +62,14 @@ export interface SandboxedAsks {
  * log as `harness.allowed` first. The session is this bridge's own, so one
  * run's fence never answers for another's.
  */
-export function sandboxedAsks(
-  agent: Pick<HarnessAgent, "agentId" | "harness" | "file">,
-  input: SandboxedAsksInput,
-): SandboxedAsks {
+export function sandboxedAsks(agent: SandboxedAsksAgent, input: SandboxedAsksInput): SandboxedAsks {
   let session: SandboxSession | undefined;
   const sessionOpened = (opened: SandboxSession) => {
     session = opened;
   };
   const asksInSandbox = agent.harness === "claude-code" && agent.file.asks === "in-sandbox";
   const { inner, recorder, paths, failed } = input;
+  const scrub = input.scrub ?? ((text: string) => text);
   if (!asksInSandbox || paths === undefined) return { approvals: inner, sessionOpened };
   // The policy fails closed on a throw without saying why, so the cause is
   // told here before it goes on: the run log then shows why a person was asked.
@@ -81,7 +95,7 @@ export function sandboxedAsks(
           type: "harness.allowed",
           agent: agent.agentId,
           tool,
-          detail,
+          detail: scrub(detail),
           rule: "asks-in-sandbox",
         });
       } catch (error) {

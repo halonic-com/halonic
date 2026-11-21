@@ -63,6 +63,28 @@ verifies("runs.run-view.run-log", () => {
     });
   });
 
+  it("shows a call an agent's asks: in-sandbox let through as an event line with its tool and detail", () => {
+    const [, line] = runLogLines(
+      logOf("run_a_01jd8q", [
+        [
+          0,
+          {
+            type: "harness.allowed",
+            agent: "writer",
+            tool: "Bash",
+            detail: "npm test",
+            rule: "asks-in-sandbox",
+          },
+        ],
+      ]),
+    );
+    expect(line).toMatchObject({
+      kind: "event",
+      type: "harness.allowed",
+      fields: '{"agent":"writer","tool":"Bash","detail":"npm test","rule":"asks-in-sandbox"}',
+    });
+  });
+
   it("shows a step's blocked sites once, where its first was blocked", () => {
     const lines = runLogLines(
       logOf("run_a_01jd8q", [

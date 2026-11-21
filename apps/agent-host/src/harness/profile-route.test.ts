@@ -67,6 +67,7 @@ beforeEach(async () => {
     bridge: { url: "http://127.0.0.1:4100", token: bridgeToken, close: async () => {} },
     channel: new CallChannel(stream),
     stream,
+    sessionOpened: () => {},
   });
   server = await startHostServer(token, [profileRoute(profiles, bridges)]);
 });
@@ -200,6 +201,7 @@ verifies("agent-host.profile-route", () => {
       bridge: { url: "http://127.0.0.1:4100", token: bridgeToken, close: async () => {} },
       channel: new CallChannel(stream),
       stream,
+      sessionOpened: () => {},
     });
     const windows = await startHostServer(token, [
       profileRoute(hostProfiles("win32", {}), bridges),
