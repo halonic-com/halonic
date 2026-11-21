@@ -68,7 +68,10 @@ verifies("workflows.page.step-arrows", () => {
       to: "write",
     });
     expect(arrowsSection(page).rows[0]).toBe("1 → write on done");
-    expect(announce).toHaveBeenCalledWith("Arrow 2 is now first.");
+    // `write` has no condition, so first it always matches and `approve` is never taken.
+    expect(announce).toHaveBeenCalledWith(
+      "Arrow 2 is now first. Arrow 2 is never taken: arrow 1 always matches first.",
+    );
     expect(document.activeElement?.getAttribute("aria-label")).toBe("More actions for arrow 1");
   });
 
@@ -127,7 +130,10 @@ verifies("workflows.page.step-arrows", () => {
       to: "done",
     });
     expect(arrowsSection(page).rows[2]).toBe("3 → done on done");
-    expect(announce).toHaveBeenCalledWith("Arrow added: sort to done.");
+    // `write`, the arrow before it on done, has no condition, so the new arrow is never taken.
+    expect(announce).toHaveBeenCalledWith(
+      "Arrow added: sort to done. Arrow 3 is never taken: arrow 2 always matches first.",
+    );
     expect(picker?.value).toBe("");
   });
 
