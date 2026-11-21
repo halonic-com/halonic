@@ -33,6 +33,32 @@ function startedReading(version: RunVersion): RunEvent {
   };
 }
 
+/** The `stdio` connector `notes` and the `http` connector `crm` of the hub `support`. */
+const connectorFiles = {
+  "hubs/support/library/connectors/notes.connector.yaml":
+    "id: notes\nname: Notes\ntransport:\n  stdio:\n    command: notes-mcp\n",
+  "hubs/support/library/connectors/crm.connector.yaml":
+    "id: crm\nname: CRM\ntransport:\n  http:\n    url: https://crm.acme.example/mcp\n",
+};
+
+/** The service of a window whose agent host starts the runs' connectors. */
+function serviceWithAgentHost() {
+  const files = acmeFiles({}, connectorFiles);
+  return serviceOn(fakeShell(), files, {
+    openRunConnectors: async () => ({
+      connectors: { open: async () => [], end: async () => {}, closeAll: async () => {} },
+      listedToolApproval: await studioListedToolApproval({
+        definitions: files,
+        folder: { locationOf: async () => location },
+        approvals: new MemoryToolApprovalStore(),
+        digest: webCryptoDigest,
+        clock: { now: () => new Date("2026-11-21T09:00:00.000Z") },
+        reportWaiting: () => undefined,
+      }),
+    }),
+  });
+}
+
 verifies("studio.engine-service", () => {
   describe("an answer to a waiting run", () => {
     it("opens the engine and sends the answer, with the call it answers, to the executor", async () => {
@@ -116,21 +142,9 @@ verifies("studio.engine-service", () => {
     });
 
     it("where the agent host starts connectors, sends that Approve for a run on the saved files only", async () => {
-      const service = serviceOn(fakeShell(), acmeFiles(), {
-        openRunConnectors: async () => ({
-          connectors: { open: async () => [], end: async () => {}, closeAll: async () => {} },
-          listedToolApproval: await studioListedToolApproval({
-            definitions: acmeFiles(),
-            folder: { locationOf: async () => location },
-            approvals: new MemoryToolApprovalStore(),
-            digest: webCryptoDigest,
-            clock: { now: () => new Date("2026-11-21T09:00:00.000Z") },
-            reportWaiting: () => undefined,
-          }),
-        }),
-      });
+      const service = serviceWithAgentHost();
       const { executor } = await service.open();
-      vi.spyOn(TauriRunStore.prototype, "get").mockResolvedValue(waitingOn("github"));
+      vi.spyOn(TauriRunStore.prototype, "get").mockResolvedValue(waitingOn("notes"));
       vi.spyOn(TauriRunStore.prototype, "snapshot").mockResolvedValue(null);
       const events = vi.spyOn(TauriRunStore.prototype, "events");
       const send = vi.spyOn(executor, "send").mockResolvedValue({ id: "run1" } as never);
@@ -145,6 +159,28 @@ verifies("studio.engine-service", () => {
       ).rejects.toMatchObject({ kind: "unavailable", fix: "halonic runs send run1 approve" });
 
       expect(send).toHaveBeenCalledTimes(1);
+      vi.restoreAllMocks();
+      await service.close();
+    });
+
+    it("where the agent host starts connectors, refuses that Approve for a connector that isn't `stdio`, on the saved files too", async () => {
+      const service = serviceWithAgentHost();
+      const { executor } = await service.open();
+      const get = vi.spyOn(TauriRunStore.prototype, "get");
+      vi.spyOn(TauriRunStore.prototype, "snapshot").mockResolvedValue(null);
+      vi.spyOn(TauriRunStore.prototype, "events").mockResolvedValue([
+        startedReading({ reads: "saved-files" }),
+      ]);
+      const send = vi.spyOn(executor, "send");
+
+      for (const connector of ["crm", "github"]) {
+        get.mockResolvedValue(waitingOn(connector));
+        await expect(
+          service.send("run1", "approve", undefined, { callId: "c1" }),
+        ).rejects.toMatchObject({ kind: "unavailable", fix: "halonic runs send run1 approve" });
+      }
+
+      expect(send).not.toHaveBeenCalled();
       vi.restoreAllMocks();
       await service.close();
     });
