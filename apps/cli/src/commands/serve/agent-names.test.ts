@@ -2,14 +2,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
-import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
-import { testGit } from "@halonicjs/adapter-git/testing";
 import { verifies } from "@halonicjs/testing-spec";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { openGitHistory } from "../../run-workspace.ts";
-import { openWorkspaceDir } from "../../workspace-dir.ts";
-import { WatchedVersions } from "../routines/watch-versions.ts";
+import { committedVersions } from "../../test/committed-versions.ts";
 import { workspaceAgentNames } from "./agent-names.ts";
 
 let root: string;
@@ -22,7 +18,7 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-/** This test starts a real git repository and commits twice, which can take longer than 5 s on a busy runner. */
+/** This test starts a real git repository and commits twice (see `committedVersions`). */
 const slowTest = { timeout: 60_000 };
 
 const agent = (id: string, name: string) => `id: ${id}\nname: ${name}\ninstructions: Help Acme.\n`;
@@ -82,21 +78,7 @@ describe("the agents' names a served workspace gives its waiting list", () => {
           "hubs/support/hub.yaml": "id: support\nname: Support\n",
           "hubs/support/agents/writer.agent.yaml": agent("writer", "Writer"),
         });
-        const git = await testGit();
-        const vcs = new GitVcs(root, {
-          runner: await GitRunner.create({ git }),
-          author: { name: "Test", email: "test@example.com" },
-        });
-        await vcs.init();
-        const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: root });
-        const commitAll = async () => {
-          await vcs.stage(await dir.store.list());
-          await vcs.commit("A version");
-        };
-        await commitAll();
-        const versions = await WatchedVersions.open(dir, (folder) =>
-          openGitHistory(folder, { git }),
-        );
+        const { versions, commitAll } = await committedVersions(root);
         try {
           const names = workspaceAgentNames(() => versions.live());
           expect((await names()).get("writer")).toBe("Writer");

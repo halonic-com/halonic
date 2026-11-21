@@ -56,6 +56,7 @@ import { startsOnLiveVersion } from "./live-version-runs.ts";
 import { workspaceModelSettings } from "./model-settings-gate.ts";
 import { studioPageIsOutdated } from "./studio-page-age.ts";
 import { webhookRoutineLines } from "./webhook-routines.ts";
+import { servedWorkspaceFacts } from "./workspace-facts.ts";
 
 /** What `serve` uses on this computer, so tests can fix the password hasher and the network. */
 export interface ServeSetup extends RunSetup {
@@ -256,29 +257,27 @@ async function listenOnComputer(
     passwordHasher: setup.hasher ?? createScryptHasher(),
     coordination: parts.coordination,
     trust: workspaceTrustGate(dir, setup.trust()),
-    modelSettings: workspaceModelSettings(() => versions.latest()),
+    modelSettings: workspaceModelSettings(() => versions.live()),
     // Read only: a served window shows the Google setups, and its sign-in is finished on this computer (HAL-10697).
     googleRead: workspaceGoogleRead({
       setups: openGoogleHost({ profile: environment, clock: parts.clock }).setups,
       workspaceKey: folders.key,
       root,
-      workspace: () => versions.latest(),
+      workspace: () => versions.live(),
     }),
     webhooks: {
       find: async (key) =>
         (await versions.routines.list()).find((placed) => routineKey(placed) === key) ?? null,
     },
     workspace: {
-      // Read at every request, so a rename in `workspace.yaml` shows at once.
-      describe: async () => ({
-        name: workspaceNameOf(versions.latest(), dir),
-        // No workspace is marked as the sample yet: Welcome has none until HAL-9089 is decided.
-        sample: false,
+      // Both read at every request, from the live version as it is now: a rename shows once
+      // it is committed, before a run starts from that commit.
+      describe: servedWorkspaceFacts({
+        workspace: () => versions.live(),
+        dir,
         folder: root,
         home,
       }),
-      // Read at every request too, from the live version as it is now: a rename shows once
-      // it is committed, before a run starts from that commit.
       agentNames: workspaceAgentNames(() => versions.live()),
     },
     studioPage: openStudioPageFolder(studioFolderOf(setup)),
