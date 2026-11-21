@@ -1,0 +1,15 @@
+# cli.local-integration-unfenced-yes
+
+- Status: active
+- Since: unreleased
+- Source: HAL-15144 (HAL-3384 part 6, option B; plan approved by Liam with four conditions); the board's "Runs" line decisions on HAL-1949 (R-D1 A, R-D3 A) and microcopy 24.1 R18 and R19; Julian's condition (a) in the design on HAL-1873, section 11. The gate and the yes are `app.runner-start-gate` and `app.unfenced-runs`; the agent host saves the yes (`agent-host.unfenced-runs-routes`). The fix "To allow it, trust this workspace in Studio on this computer." is a team decision on R18's wording, signed by Liam on HAL-15144: R18 says "trust *Weather*", the plugin, and for an integration the workspace is what the person trusts.
+
+Where the fence isn't there, the `halonic` command shall start a local integration's runner in the launcher's sandbox only when the yes saved in the profile's `unfenced-runs` folder, the folder and file Studio's agent host writes, is for the reason at this start, read again at every start. With no yes, a yes for another reason, or a yes it can't read (not JSON, other fields, a time that doesn't parse, a link), it shall start nothing; the call that needed the integration shall fail with the reason and "To allow it, trust this workspace in Studio on this computer.", and an unreadable yes shall be named by its file. There is no check for Studio's install: on a computer without Studio nobody can give the yes, so integrations run only in the sandbox there. While such a runner runs, the command shall read the yes again about every second and stop the runner once the yes is gone or is another one, as after a Take back in Studio. The command shall never save a yes, and shall remove one only when the computer passes the sandbox check, as every host does. The first time in a run that an integration starts without the sandbox, the command shall warn on stderr, with or without `--json`: "Integration code runs without the sandbox on this computer, so it may be able to use your files, programs and sign-ins, and reach other addresses.", then the reason and its fix (`app.runner-unfenced-words`) and the docs link.
+
+## Examples
+
+- Given a container where the sandbox can't start and a yes for `container` saved by Studio, when a run calls a local integration's tool, then its runner starts once, in the launcher's sandbox, and stderr shows the warning once.
+- Given the same container with a yes for `windows`, or with none, when a run calls the tool, then no runner starts and the call fails with "… isn't allowed yet. To allow it, trust this workspace in Studio on this computer."
+- Given a yes file that isn't JSON, when a run calls the tool, then no runner starts and the call fails naming that file.
+- Given a runner started with the yes, when Studio takes the yes back, then the runner stops at the next read of the yes.
+- Given a computer where the sandbox starts and a saved yes, when a run asks the gate, then the code runs in the sandbox and the yes is removed, so a later failure asks again.

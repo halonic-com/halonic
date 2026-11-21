@@ -40,35 +40,36 @@ const savedConsent = s
  */
 export class FileUnfencedRunConsentStore implements UnfencedRunConsentStore {
   readonly #root: string;
-  readonly #file: string;
+  /** The file that holds the yes, for an error that names it. */
+  readonly file: string;
 
   /** @param root - the folder for the yes, such as `<profile>/unfenced-runs`; created on the first save */
   constructor(root: string) {
     this.#root = resolve(root);
-    this.#file = join(this.#root, consentFile);
+    this.file = join(this.#root, consentFile);
   }
 
   async get(): Promise<UnfencedRunConsent | null> {
     let text: string;
     try {
-      text = await readUnlinkedFile(this.#file);
+      text = await readUnlinkedFile(this.file);
     } catch (error) {
       if (isMissing(error)) return null;
       // The file system's errors name the file, never what it holds.
-      throw unreadable(this.#file, error);
+      throw unreadable(this.file, error);
     }
-    return parseConsent(this.#file, text);
+    return parseConsent(this.file, text);
   }
 
   async save(consent: UnfencedRunConsent): Promise<void> {
     // Only the fields of a yes are written, so `get` can read it back.
     const { reason, allowedAt } = consent;
     const text = `${JSON.stringify({ reason, allowedAt }, null, 2)}\n`;
-    const temporary = `${this.#file}.${randomUUID()}.tmp`;
+    const temporary = `${this.file}.${randomUUID()}.tmp`;
     await makePrivateFolder(this.#root);
     try {
       await writeFlushedFile(temporary, text, { mode: 0o600 });
-      await renameOver(temporary, this.#file);
+      await renameOver(temporary, this.file);
     } catch (error) {
       await rm(temporary, { force: true });
       throw error;
@@ -77,7 +78,7 @@ export class FileUnfencedRunConsentStore implements UnfencedRunConsentStore {
 
   async remove(): Promise<void> {
     // Deletes the file without reading it, so a damaged yes goes too.
-    await rm(this.#file, { force: true });
+    await rm(this.file, { force: true });
   }
 }
 

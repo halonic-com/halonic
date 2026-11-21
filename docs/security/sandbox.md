@@ -51,6 +51,15 @@ A plugin's local tools and local
 integration code don't start without the fence unless you said yes to that on
 this computer, and the agent host never starts a plugin's backend without it.
 
+You give that yes in Studio, in the trust check that asks for it, and Studio
+saves it in your profile on this computer, for the reason the sandbox can't
+start right then. The `halonic` command reads the same yes: it runs a
+workspace's local integrations without the sandbox only with it, checks it
+again at every start, and warns on stderr when it does. It never gives the yes
+itself, and it doesn't use it for plugin backends. On a computer without
+Studio, such as a server or a container, plugins and integrations run only in
+the sandbox.
+
 When the sandbox stops an agent, the CLI ends with exit 9 and names one reason
 code: `windows`, `container`, `not-supported`,
 `blocked-by-policy`, `virtualisation-off`, `wsl-missing`, `restart-needed`,

@@ -323,6 +323,16 @@ export const runMessages = defineMessages("run", {
     part.kind === "backend"
       ? phrase`The backend of the plugin ${plugin} didn't start, so its tools are off in this run.`
       : phrase`The program ${part.name} of the plugin ${plugin} didn't start, so its tools are off in this run.`,
+  /**
+   * Line 1 of the warning when a local integration starts without the
+   * sandbox, with the user's yes given in Studio (microcopy 24.1 R18, with
+   * "Integration code" for "Plugin code"; HAL-15144). The reason and its fix
+   * follow on line 2.
+   */
+  integrationUnfenced: () =>
+    phrase`Integration code runs without the sandbox on this computer, so it may be able to use your files, programs and sign-ins, and reach other addresses.`,
+  /** Line 2 of it: why the sandbox can't start here, and the fix, as `app.runner-unfenced-words` words them. */
+  integrationUnfencedWhy: (reason: string, fix: string) => phrase`${reason} ${fix}`,
   /** Line 2 for `sandbox-not-fenced`: the session opened, but not in a sandbox Halonic could confirm. */
   pluginPartNotConfirmed: () =>
     phrase`Halonic couldn't confirm that the sandbox limits this program on this computer.`,

@@ -48,6 +48,10 @@ export interface LocalIntegrationMachine {
   readonly digest: Digest;
   /** Picks the sandbox the runner starts in, at every start. */
   readonly gate: RunnerStartGate;
+  /** The saved yes's file when the gate's last read of it failed, so the refusal names it. */
+  unreadableYes?(): string | undefined;
+  /** Called when a runner started without the sandbox, with the user's yes for `reason`. */
+  startedUnfenced?(reason: string): void;
   /** Node and the built runner. */
   readonly runtime: RunnerRuntime;
   /** What the runner's requests go out through; the integration's own sheet limits the hosts. */
@@ -177,11 +181,23 @@ class LocalIntegrationOpening {
           secrets: bridge.secrets,
         }),
     );
+    if (gated.run === "unfenced") this.#machine.startedUnfenced?.(gated.reason);
     if (gated.run === "fenced" || gated.run === "unfenced") return gated.runner;
-    throw new Error(
-      gated.run === "needs-yes"
-        ? `the sandbox isn't available here (${gated.reason}) and running without it isn't allowed yet`
-        : "the sandbox failed its check, so nothing runs",
-    );
+    if (gated.run === "stopped") throw new Error("the sandbox failed its check, so nothing runs");
+    throw new Error(this.#needsYes(gated.reason));
+  }
+
+  /**
+   * Why a start that needs the user's yes started nothing, and where to give
+   * it (microcopy 24.1 R18, its fix decided by the team on HAL-15144). A
+   * saved yes that can't be read blocks the start too, and names its file.
+   */
+  #needsYes(reason: string): string {
+    const allow = "To allow it, trust this workspace in Studio on this computer.";
+    const unreadable = this.#machine.unreadableYes?.();
+    if (unreadable !== undefined) {
+      return `the sandbox isn't available here (${reason}) and the saved yes to run without it can't be read (${JSON.stringify(unreadable)}), so nothing runs. ${allow}`;
+    }
+    return `the sandbox isn't available here (${reason}) and running without it isn't allowed yet. ${allow}`;
   }
 }
