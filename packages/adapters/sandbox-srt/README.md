@@ -145,6 +145,17 @@ or gives `null` and says why when another live process holds it. While two
 sessions are open at once, srt still lets one read the other (known limit, `it.fails` in
 `fence/srt-kept-grants.windows.test.ts`).
 
+## Windows setup version
+
+srt's Windows install records a setup version, and a release of srt that raises it needs
+`windows-install` again (one administrator prompt). Going back to a release with a lower one needs
+`windows-uninstall` with the newer srt first. `windows-setup-version.json` records the pinned
+sandbox-runtime version and the setup version its `srt-win` needs (HAL-5404). The release writes
+that number into the updater's `latest.json` as `halonic.srtWindowsSetupVersion`, so the updater
+can tell when an update changes it. When you bump sandbox-runtime, update both fields: the unit
+test fails while the version differs from the pin, and the `sandbox-windows` CI job checks the
+setup version against what the real `srt-win` reports after its install.
+
 ## Exports
 
 | Export | What it is |

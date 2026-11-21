@@ -1,5 +1,5 @@
 name: Write the updater manifest
-description: Signs the final installer for the Tauri updater, writes latest.json with the signature inside and writes SHA256SUMS again. Runs after Authenticode signing, because that changes the installer's bytes. Needs the checkout and the setup action (the Tauri CLI comes from apps/studio).
+description: Signs the final installer for the Tauri updater, writes latest.json with the signature and srt's Windows setup version inside and writes SHA256SUMS again. Runs after Authenticode signing, because that changes the installer's bytes. Needs the checkout and the setup action (the Tauri CLI comes from apps/studio).
 inputs:
   dir:
     description: Folder with the release files. latest.json and SHA256SUMS are written here. No .sig file is left in it (HAL-1119).
@@ -82,7 +82,15 @@ runs:
         if ($keyId -ne (Get-KeyId (Get-Lines $pubkey)[1])) { throw "Signed with key $keyId, which is not the key the app trusts" }
         "Updater signature by key $keyId for version $env:VERSION"
 
+        # srt's Windows setup version for this release (HAL-5404): a newer
+        # Halonic with another one needs `windows-install` again, so the
+        # updater can say so before it installs. The sandbox-windows CI job
+        # checks the record against the real srt-win.
+        $setupVersion = (Get-Content -Raw packages/adapters/sandbox-srt/windows-setup-version.json | ConvertFrom-Json).setupVersion
+        if (-not ($setupVersion -is [long] -and $setupVersion -gt 0)) { throw "windows-setup-version.json has no setupVersion above zero" }
+
         # Tauri's static manifest. The url is the installer on this release.
+        # Tauri ignores keys it doesn't know, such as `halonic`.
         $manifest = [ordered]@{
           version = $env:VERSION
           notes = "https://github.com/$env:REPO/releases/tag/$env:TAG"
@@ -92,6 +100,9 @@ runs:
               url = "https://github.com/$env:REPO/releases/download/$env:TAG/$env:INSTALLER"
               signature = $signature
             }
+          }
+          halonic = [ordered]@{
+            srtWindowsSetupVersion = $setupVersion
           }
         }
         $json = ($manifest | ConvertTo-Json -Depth 5) -replace "`r`n", "`n"

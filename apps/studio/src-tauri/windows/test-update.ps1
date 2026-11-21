@@ -50,6 +50,8 @@ function Set-Manifest([string]$Version, [string]$FileName, [string]$Signature) {
     notes     = "Update test $Version"
     pub_date  = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     platforms = @{ 'windows-x86_64' = @{ url = "$address/$FileName"; signature = $Signature } }
+    # As the release's manifest has it (HAL-5404): the updater must still accept it.
+    halonic   = @{ srtWindowsSetupVersion = 3 }
   }
   $manifest | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $Serve 'latest.json') -Encoding utf8NoBOM
 }

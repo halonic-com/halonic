@@ -602,6 +602,7 @@ jobs:
           test -f latest.json || { echo "::error::No latest.json"; exit 1; }
           if ls -- *.sig >/dev/null 2>&1; then echo "::error::A .sig file would be published (HAL-1119)"; exit 1; fi
           jq -e --arg f "$INSTALLER" '.platforms["windows-x86_64"].url | endswith("/" + $f)' latest.json
+          jq -e '.halonic.srtWindowsSetupVersion | type == "number" and . > 0 and . == floor' latest.json
           sha256sum -c SHA256SUMS
       - name: Create the draft release
         env:
