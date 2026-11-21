@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-14860 (follow-up of HAL-14300, asked for by Liam when he approved halonic#4204)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WmWhmAFe8/AU1ObEfECh9ufpOl1oXntTlhAUYPIPGafpAZix2nguB6rb7Sy1xEVs+KVlAr5EINvi7szjmClNCw==
 
 ## What changes
 
