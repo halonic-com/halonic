@@ -27,7 +27,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends shellcheck
-          shellcheck infra/wsl-image/build.sh infra/wsl-image/customize.sh infra/wsl-image/check.sh
+          shellcheck infra/wsl-image/build.sh infra/wsl-image/customize.sh infra/wsl-image/check.sh infra/wsl-image/runtime-archive.sh
       # The build container is infra/wsl-image/Dockerfile: Debian pinned by
       # digest, which Dependabot keeps fresh (HAL-6181). Built without a
       # context, so it can't copy anything in.
