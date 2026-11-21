@@ -115,13 +115,18 @@ verifies("agents.page.frame", () => {
     expect(page.querySelector("h1")?.className).toContain("sr-only");
   });
 
-  it("lays the focusable title over the header's title on the desktop, its text unseen (AG4)", async () => {
+  it("lays the focusable title over the header's title on the desktop, its name for readers only (AG4)", async () => {
     const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
     const title = page.querySelector("h1") as HTMLElement;
     expect(title.className).not.toContain("sr-only");
     expect(title.className).toContain("absolute inset-0");
-    expect(title.className).toContain("text-transparent");
     expect(title.className).toContain("focus-ring");
+    // No visible text for high contrast to paint over the avatar: the name sits in an sr-only span.
+    expect(title.textContent).toBe("Sorter");
+    const texts = [...title.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE);
+    expect(texts).toHaveLength(0);
+    expect(title.children).toHaveLength(1);
+    expect(title.children[0]?.className).toBe("sr-only");
     expect(title.parentElement?.parentElement?.className).toContain("relative");
   });
 

@@ -245,7 +245,7 @@ export function AgentScreen({
               <p className="text-caption text-fg-muted">{pageWords.kind}</p>
               {/* On a phone the top bar already names the agent, so the page keeps only its type. */}
               <h1 ref={titleRef} tabIndex={-1} className={titleClasses(phone)}>
-                {name}
+                <span className="sr-only">{name}</span>
               </h1>
               {!phone && load.kind === "ready" && (
                 <RenameField
