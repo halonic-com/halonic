@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-15455 (words check C580 rows 10, 11 and 14, on HAL-15449); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gj58OxsPsxAwMezV3s0VgpXb4o+kuEp34dBPNIwIlQbBv0klcvl9S0qLRbN0iDS65tP+jDeWHfRqcdAAJWbQCQ==
 
 `app.secret-host-names` said the refusal names "Halonic's agent host". Microcopy
 1.6 E1 and G2 keep "agent host" out of user text, so the reason now says what
