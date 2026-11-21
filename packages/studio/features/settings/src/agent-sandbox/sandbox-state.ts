@@ -27,7 +27,11 @@ export type SandboxCheckFacts =
       /** The check saw Docker Desktop next to the sandbox (W6, HAL-12445): a warning, not a failure. */
       readonly dockerDesktopVisible?: boolean;
     }
-  | { readonly state: "needs-setup" }
+  | {
+      readonly state: "needs-setup";
+      /** The setup is on this computer, but for an older release of the sandbox (HAL-5404). */
+      readonly setupAgain?: true;
+    }
   | { readonly state: "needs-repair"; readonly reason: string }
   /**
    * The check ran and says the sandbox can't run now, for a reason a person or an administrator
@@ -171,6 +175,11 @@ export function sandboxView(facts: SandboxFacts, now: Date = new Date()): Sandbo
   };
 }
 
+/** The line under **Set up the sandbox**: a setup from an older release says it is needed again. */
+function setupLine(setupAgain: true | undefined): string {
+  return setupAgain === true ? text.SETUP_AGAIN : text.ADMIN_ONCE;
+}
+
 function checkedView(
   check: SandboxCheckFacts,
   viewOnly: boolean,
@@ -225,7 +234,7 @@ function checkedView(
         chip: { label: "Needs setting up", tone: "warning" },
         lead: text.NEEDS_SETUP,
         callout,
-        hint: hint(text.ADMIN_ONCE),
+        hint: hint(setupLine(check.setupAgain)),
         primary: viewOnly ? null : { action: "set-up", label: text.SET_UP, busy: false },
         secondary: ["check-again"],
       };

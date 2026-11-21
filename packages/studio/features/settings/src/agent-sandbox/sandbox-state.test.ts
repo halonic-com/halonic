@@ -258,3 +258,20 @@ verifies("settings.agent-sandbox-state", () => {
     });
   });
 });
+
+verifies("settings.agent-sandbox-setup-again", () => {
+  it("says the sandbox needs setting up again for a setup from an older release", () => {
+    const v = view({ check: { state: "needs-setup", setupAgain: true } });
+    expect(v.chip).toEqual({ label: "Needs setting up", tone: "warning" });
+    expect(v.primary).toEqual({ action: "set-up", label: "Set up the sandbox", busy: false });
+    expect(v.hint).toBe(
+      "This version of Halonic needs the sandbox set up again. Windows asks for administrator rights once.",
+    );
+  });
+
+  it("keeps the one-prompt line for a computer that was never set up", () => {
+    expect(view({ check: { state: "needs-setup" } }).hint).toBe(
+      "Windows asks for administrator rights once.",
+    );
+  });
+});

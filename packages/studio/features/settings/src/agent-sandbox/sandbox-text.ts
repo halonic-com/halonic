@@ -14,6 +14,9 @@ export const BUSY_SET_UP = "Setting up…";
 export const BUSY_REPAIR = "Repairing…";
 
 export const ADMIN_ONCE = "Windows asks for administrator rights once.";
+/** In place of {@link ADMIN_ONCE} when the setup is there but older (HAL-14804, Noah). */
+export const SETUP_AGAIN =
+  "This version of Halonic needs the sandbox set up again. Windows asks for administrator rights once.";
 export const REPAIR_HINT =
   "Windows asks for administrator rights once. Your agents and workspaces don't change.";
 export const VIEW_ONLY = "View only here. Set up the sandbox on the computer running Halonic.";
