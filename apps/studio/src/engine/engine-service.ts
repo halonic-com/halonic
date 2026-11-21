@@ -50,12 +50,10 @@ import {
   noListedToolApproval,
 } from "@halonicjs/engine";
 import type { RunVersion } from "@halonicjs/events";
-import type { Agent } from "@halonicjs/format";
 import { isAgentRunsNotAvailable, type RunExecutor } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import {
-  definitionsOf,
   filesOf,
   type LoadedWorkspace,
   loadWorkspace,
@@ -320,7 +318,10 @@ export class EngineService {
     }
   }
 
-  /** What the page can start: harness agents where an agent host runs, and its `stdio` connectors where it starts them. */
+  /**
+   * What the page can start: an agent in a harness program where an agent host runs, and a run's
+   * `stdio` connectors where the agent host starts them.
+   */
   get pageRuns(): PageRuns {
     return {
       runsHarnesses: this.#options.openHarnessHost !== undefined,

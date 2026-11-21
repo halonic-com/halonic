@@ -3,7 +3,6 @@ import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import {
   openModelsOf,
   RunsListService,
-  type RunsSource,
   RunsSourceService,
 } from "@halonicjs/studio-feature-runs/api";
 import {
@@ -16,7 +15,7 @@ import {
 } from "@halonicjs/studio-kit";
 import { engineWordsOf, type ItemViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useRef, useState } from "react";
-import { type WorkflowsHost, WorkflowsHostService } from "../api.ts";
+import { WorkflowsHostService } from "../api.ts";
 import type { View } from "../canvas/geometry.ts";
 import { Configuration } from "../configuration/configuration-page.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";

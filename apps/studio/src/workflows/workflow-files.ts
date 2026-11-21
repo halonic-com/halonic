@@ -1,3 +1,4 @@
+import type { DefinitionSource } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { WorkflowRef } from "@halonicjs/studio-feature-workflows/api";
 import { editYaml, readYaml, writeYamlFile } from "@halonicjs/yaml";
@@ -73,4 +74,24 @@ export function endedIn(runId: string, state: string | null): string {
     );
   }
   return state;
+}
+
+/**
+ * The workspace's hubs and its library as files, with unsaved changes applied. Only `hubs/` and
+ * `library/` are listed: a workflow is checked against the agents and workflows of its own hub,
+ * and its agents' connectors may sit in the workspace's library (HAL-13344).
+ */
+export function unsavedSource(files: {
+  read(path: string): Promise<string | null>;
+  list(dir: string): Promise<string[]>;
+}): DefinitionSource {
+  return {
+    location: "workspace:unsaved",
+    list: async () => {
+      const [hubs, library] = await Promise.all([files.list("hubs"), files.list("library")]);
+      return [...hubs, ...library];
+    },
+    read: (path) => files.read(path),
+    version: async () => "unsaved",
+  };
 }

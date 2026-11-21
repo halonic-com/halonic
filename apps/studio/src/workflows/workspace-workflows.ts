@@ -1,5 +1,4 @@
 import type { RunEvent, RunSummary } from "@halonicjs/events";
-import type { DefinitionSource } from "@halonicjs/ports";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import {
   type NewWorkflow,
@@ -21,6 +20,7 @@ import {
   endedIn,
   newWorkflowText,
   testFile,
+  unsavedSource,
   withTestCase,
   workflowFolder,
   workflowSuffix,
@@ -451,26 +451,12 @@ export class WorkspaceWorkflows implements WorkflowsHost {
 
   /** Loads the workspace from its files as they are now, and keeps its hubs for {@link WorkspaceWorkflows.hubs}. */
   async #load() {
-    const workspace = await loadWorkspace(this.#source());
+    const workspace = await loadWorkspace(unsavedSource(this.#parts.files));
     this.#hubs = filesOf(workspace, "hub").map((file) => ({
       id: file.value.id,
       name: file.value.name,
     }));
     return workspace;
-  }
-
-  /**
-   * The workspace's hubs as files, with unsaved changes applied. Only `hubs/` is listed: a workflow
-   * is checked against the agents and workflows of its own hub.
-   */
-  #source(): DefinitionSource {
-    const { files } = this.#parts;
-    return {
-      location: "workspace:unsaved",
-      list: async () => files.list("hubs"),
-      read: (path) => files.read(path),
-      version: async () => "unsaved",
-    };
   }
 }
 

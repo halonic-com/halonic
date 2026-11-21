@@ -9,10 +9,15 @@
 The requirement grows; nothing it gave before is removed and no test was weakened.
 `studio.workspace-workflow-read`: when the window has an engine, reading one workflow also says,
 from the same files with their unsaved changes, why the engine would refuse to start its run: an
-agent that lists a connector, or an agent in a harness program where no agent host runs (HAL-10849). It gives the same sentence and next
+agent that lists a connector the window can't start, or an agent in a harness program where no agent host runs (HAL-10849). It gives the same sentence and next
 step that `studio.engine-service` gives after **Run** is pressed: "Set Writer to Halonic on its
 Harness page to run it now." for a harness program, and "To start it, run this in a terminal:" with
 `halonic run reply` for a connector.
+
+Where the agent host starts a run's `stdio` connectors (HAL-13344), the check follows the engine:
+only a connector that isn't a `stdio` one of the agent's hub or the workspace's library stops the
+run, named in the reason. To see those connectors, the Workflows page's read of the files lists
+`library/` as well as `hubs/`.
 
 The harness case has no command: under rule N3 a step inside Studio wins over a terminal command
 (Sofia, UX check on HAL-12679, with Elena's words from HAL-12642).

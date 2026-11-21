@@ -13,7 +13,7 @@ verifies("studio.workspace-workflow-read", () => {
       [],
       {},
       {
-        runsHarnesses: false,
+        pageRuns: { runsHarnesses: false, startsConnectors: false },
         startRun: async (run, input) => {
           started.push({ run, input });
           return { id: "run_1" };
@@ -36,7 +36,7 @@ verifies("studio.workspace-workflow-read", () => {
       [],
       {},
       {
-        runsHarnesses: false,
+        pageRuns: { runsHarnesses: false, startsConnectors: false },
         startRun: async () => {
           order.push("started");
           return { id: "run-1" };
@@ -64,7 +64,7 @@ verifies("studio.workspace-workflow-read", () => {
       [],
       {},
       {
-        runsHarnesses: false,
+        pageRuns: { runsHarnesses: false, startsConnectors: false },
         startRun: async () => {
           started = true;
           return { id: "run-1" };
@@ -88,7 +88,7 @@ verifies("studio.workspace-workflow-read", () => {
       [],
       {},
       {
-        runsHarnesses: false,
+        pageRuns: { runsHarnesses: false, startsConnectors: false },
         startRun: async () => {
           seen = onDisk.has("hubs/acme/workflows/new-one.workflow.yaml");
           return { id: "run-2" };
@@ -108,7 +108,7 @@ verifies("studio.workspace-workflow-read", () => {
       [],
       {},
       {
-        runsHarnesses: false,
+        pageRuns: { runsHarnesses: false, startsConnectors: false },
         startRun: async () => {
           throw new Error("can't start yet");
         },
@@ -124,7 +124,10 @@ verifies("studio.workspace-workflow-read", () => {
     const { host, store } = setup(
       [],
       {},
-      { runsHarnesses: false, startRun: async () => ({ id: "run-1" }) },
+      {
+        pageRuns: { runsHarnesses: false, startsConnectors: false },
+        startRun: async () => ({ id: "run-1" }),
+      },
     );
     const ref = { hubId: "acme", id: "reply" };
     expect(await host.startRefusal?.(ref)).toBeUndefined();
@@ -144,13 +147,45 @@ verifies("studio.workspace-workflow-read", () => {
     const { host, store } = setup(
       [],
       {},
-      { runsHarnesses: true, startRun: async () => ({ id: "run-1" }) },
+      {
+        pageRuns: { runsHarnesses: true, startsConnectors: false },
+        startRun: async () => ({ id: "run-1" }),
+      },
     );
     store["hubs/acme/workflows/reply.workflow.yaml"] =
       "id: reply\nname: Reply\ninitial: write\nstates:\n  write:\n    agent: writer\n    on:\n      - to: done\n  done:\n    type: final\n";
     store["hubs/acme/agents/writer.agent.yaml"] = "id: writer\nname: Writer\nharness: codex\n";
 
     expect(await host.startRefusal?.({ hubId: "acme", id: "reply" })).toBeUndefined();
+  });
+
+  it("refuses only a connector the agent host can't start, where it starts connectors", async () => {
+    const { host, store } = setup(
+      [],
+      {},
+      {
+        pageRuns: { runsHarnesses: true, startsConnectors: true },
+        startRun: async () => ({ id: "run-1" }),
+      },
+    );
+    const ref = { hubId: "acme", id: "reply" };
+    store["hubs/acme/workflows/reply.workflow.yaml"] =
+      "id: reply\nname: Reply\ninitial: write\nstates:\n  write:\n    agent: writer\n    on:\n      - to: done\n  done:\n    type: final\n";
+    store["workspace.yaml"] = "id: acme\nname: Acme\n";
+    store["hubs/acme/agents/writer.agent.yaml"] = "id: writer\nname: Writer\nconnectors: [mail]\n";
+    store["library/connectors/mail.connector.yaml"] =
+      "name: Mail\ntransport:\n  stdio:\n    command: mail-mcp\n";
+
+    expect(await host.startRefusal?.(ref)).toBeUndefined();
+
+    store["library/connectors/mail.connector.yaml"] =
+      "name: Mail\ntransport:\n  http:\n    url: https://mail.example.com/mcp\n";
+
+    expect(await host.startRefusal?.(ref)).toEqual({
+      reason: 'Writer uses the connector "mail", which Studio can\'t start yet.',
+      fix: "To start it, run this in a terminal:",
+      command: "halonic run reply",
+    });
   });
 
   it("offers no startRefusal while the page has no engine", () => {
