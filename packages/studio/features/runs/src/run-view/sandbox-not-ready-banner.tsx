@@ -44,7 +44,7 @@ export function sandboxNotReadyAgent(log: readonly RunEvent[] | undefined): stri
 /**
  * The failed banner of a run the sandbox check refused (requirement
  * `runs.run-view.sandbox-not-ready`): what is wrong and the fix, from the one catalogue, then
- * "Nothing ran.", **Check again** and a link to the guide. A passing check says the sandbox works
+ * "Nothing ran.", **Check again** and a link to the guide named for the reason. A passing check says the sandbox works
  * and turns the button into **Run again**; nothing runs by itself. Without a `check` (a served
  * page) there is no button. The button stays, busy, while a check runs, so it keeps focus; the
  * answer is said through `announce`, and a passing check moves focus to the banner.
@@ -114,7 +114,7 @@ export function SandboxNotReadyBanner({
         ) : null}
         <span className="block">
           <ExternalLink href={`${runPageWords.sandboxDocsBase}/${words.docsKey}`}>
-            {runPageWords.sandboxDocs}
+            {words.docsName}
           </ExternalLink>
         </span>
       </Callout>

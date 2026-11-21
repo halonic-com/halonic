@@ -80,7 +80,7 @@ verifies("routines.page.cant-run", () => {
     ];
     expect(calloutControls.map((control) => control.textContent?.trim())).toEqual([
       expect.stringContaining("Check again"),
-      expect.stringContaining("Read the guide"),
+      expect.stringContaining("How to install bubblewrap"),
     ]);
   });
 

@@ -85,7 +85,7 @@ export function SandboxCantRunCallout({
           {cantRunWords.checkAgain}
         </Button>
         <ExternalLink href={`${cantRunWords.docsBase}/${words.docsKey}`}>
-          {cantRunWords.docs}
+          {words.docsName}
         </ExternalLink>
       </span>
       {children === undefined ? null : <span className="mt-2 block text-fg-muted">{children}</span>}

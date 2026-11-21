@@ -96,7 +96,7 @@ verifies("runs.sandbox-cant-run", () => {
       "Support reply can't run",
       words.cantRunFix,
       "Check again",
-      "Read the guide",
+      "How to install bubblewrap",
       "The step Draft uses Claude Code.",
     ].map((part) => text.indexOf(part));
     expect(order.every((at) => at >= 0)).toBe(true);
@@ -118,7 +118,7 @@ verifies("runs.sandbox-cant-run", () => {
     expect(controls).toEqual([
       "Run",
       expect.stringContaining("Check again"),
-      expect.stringContaining("Read the guide"),
+      expect.stringContaining("What the sandbox needs"),
     ]);
     expect(root.textContent).not.toMatch(/run anyway|skip|continue without/i);
     act(() => runOf(root).click());
