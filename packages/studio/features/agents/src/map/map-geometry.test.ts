@@ -1,6 +1,12 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { fitScale, MIN_FIT_SCALE, mapLines, PHONE_MIN_FIT_SCALE } from "./map-geometry.ts";
+import {
+  fitScale,
+  LEVEL_PX,
+  MIN_FIT_SCALE,
+  mapLines,
+  PHONE_MIN_FIT_SCALE,
+} from "./map-geometry.ts";
 
 const centre = { x: 400, y: 100, width: 200, height: 120 };
 const card = (x: number, y: number) => ({ x, y, width: 160, height: 40 });
@@ -73,5 +79,56 @@ verifies("agents.map.lines-and-fit", () => {
   it("turns a line below at square corners halfway down when the card is off to the side", () => {
     const [line] = mapLines(centre, { in: [], use: [card(600, 300)], out: [] });
     expect(line?.path).toBe("M 500 220 V 260 H 680 V 300");
+  });
+
+  // Mail triage: Inbox flow, Morning digest and Dispatcher on the left above + Add trigger, which
+  // ends at 272, lower than the centre card; Writer and Checker on the right; Tone, Refund policy
+  // and Acme mail below, under their heading at 312 (C560).
+  const left = [card(0, 40), card(0, 104), card(0, 168)];
+  const right = [card(800, 116), card(800, 184)];
+  const below = [card(24, 336), card(446, 336), card(840, 336)];
+  const band = { top: 272, bottom: 312 };
+
+  it("turns the lines below in the free space under the first row, clear of + Add trigger", () => {
+    const lines = mapLines(centre, { in: left, use: below, out: right }, band);
+    const tone = lines[3];
+    // Halfway between the ports would be (220 + 336) / 2 = 278, just under + Add trigger's edge.
+    expect(tone?.path).toBe("M 450 220 V 292 H 104 V 336");
+    for (const line of lines.slice(3, 6)) {
+      expect(line.path).toContain("V 292 H");
+    }
+    // Not measured yet: halfway between the ports.
+    expect(mapLines(centre, { in: [], use: [card(24, 336)], out: [] })[0]?.path).toBe(
+      "M 500 220 V 278 H 104 V 336",
+    );
+  });
+
+  it("draws one straight line when two ports are less than 8 px out of line", () => {
+    expect(LEVEL_PX).toBe(8);
+    const [writer, checker] = mapLines(centre, { in: [], use: [], out: right });
+    // Writer's middle is at 136 and Checker's at 204: 4 px off the centre's ports at 140 and 180
+    // would be a kink, so Writer's port moves to 140; Checker's 24 px still turns.
+    expect(writer?.to).toEqual({ x: 800, y: 140 });
+    expect(writer?.path).toBe("M 600 140 H 700 V 140 H 800");
+    expect(checker?.path).toBe("M 600 180 H 700 V 204 H 800");
+    const [sorter] = mapLines(centre, { in: [card(0, 136)], use: [], out: [] });
+    expect(sorter?.path).toBe("M 160 160 H 280 V 160 H 400");
+    const [apart] = mapLines(centre, { in: [card(0, 148)], use: [], out: [] });
+    expect(apart?.path).toBe("M 160 168 H 280 V 160 H 400");
+  });
+
+  it("puts the ports on whole pixels, so the middle line down has no 1 px jog", () => {
+    // A centre card 253 px wide puts its middle port at 526.5; Refund policy's middle is at 526.
+    const wide = { ...centre, width: 253 };
+    const lines = mapLines(wide, { in: left, use: below, out: right }, { top: 271.5, bottom: 312 });
+    const refund = lines[4];
+    expect(refund?.from).toEqual({ x: 527, y: 220 });
+    expect(refund?.to).toEqual({ x: 527, y: 336 });
+    expect(refund?.path).toBe("M 527 220 V 292 H 527 V 336");
+    for (const line of lines) {
+      for (const number of line.path.match(/[\d.]+/g) ?? []) {
+        expect(Number.isInteger(Number(number))).toBe(true);
+      }
+    }
   });
 });
