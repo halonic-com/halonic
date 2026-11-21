@@ -3,6 +3,7 @@
 - Task: HAL-14023
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14023 (Liam's follow-up from the review of #4117, HAL-13837)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ImpoR/5PPr1ffwCkO+zGQw9Y+fvRZWQ46H2En5WeCwgFOIw0/IQqfQ7Et01bYi0zUzfkRpd7PCrZCA8Xqh6ZDQ==
 
 ## What changes
 
