@@ -104,4 +104,57 @@ verifies("harness-host.provider-access", () => {
       ).toEqual({ kind: "sign-in", provider: "anthropic", reason: "no-keyed-provider" });
     });
   });
+
+  describe("an agent whose model is an alias", () => {
+    const zai: AccessProviderFile = {
+      id: "zai",
+      type: "anthropic",
+      secret: "zai-key",
+      baseUrl: "https://api.z.ai/api/anthropic",
+    };
+
+    it("gets the alias's provider's key on this computer too", () => {
+      expect(
+        providerAccessOf({
+          harness: "claude-code",
+          runsOn: "this-computer",
+          providers: [claude, zai],
+          modelProvider: "zai",
+          aliasProvider: "zai",
+        }),
+      ).toEqual({
+        kind: "key",
+        provider: "anthropic",
+        providerId: "zai",
+        secret: "zai-key",
+        baseUrl: "https://api.z.ai/api/anthropic",
+      });
+    });
+
+    it("gives Codex an openai-compatible alias's key", () => {
+      const deepseek = { id: "deepseek", type: "openai-compatible", secret: "deepseek-key" };
+
+      expect(
+        providerAccessOf({
+          harness: "codex",
+          runsOn: "this-computer",
+          providers: [gpt, deepseek],
+          aliasProvider: "deepseek",
+        }),
+      ).toMatchObject({ kind: "key", provider: "openai", providerId: "deepseek" });
+    });
+
+    it("leaves the choice to the other rules when the alias's provider has no secret or another type", () => {
+      for (const aliasProvider of ["keyless", "gpt"]) {
+        expect(
+          providerAccessOf({
+            harness: "claude-code",
+            runsOn: "this-computer",
+            providers: [keyless, gpt, claude],
+            aliasProvider,
+          }),
+        ).toEqual({ kind: "sign-in", provider: "anthropic", reason: "this-computer" });
+      }
+    });
+  });
 });
