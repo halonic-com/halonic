@@ -3,6 +3,7 @@
 - Task: HAL-15261
 - Approval: Liam approves this note in his review of this pull request on HAL-15261. A team decision with no board card (HAL-2282 rule): the Secrets line's and the CLI trust check's own words, no new wording.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:e2YTTUfIGQu3vsKv5aAeaIMOWtVY2BG5GL3zfqrnWZeJV4usFcVxJeXBbgRUqsZOyGyexkkbqQQU4Tal4ehBDg==
 
 ## What changes
 
