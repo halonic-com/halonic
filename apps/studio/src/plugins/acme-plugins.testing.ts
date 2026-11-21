@@ -4,7 +4,7 @@ import {
   MemoryRecordStore,
   MemoryTrustStore,
 } from "@halonicjs/adapter-memory";
-import { PluginService, TrustService } from "@halonicjs/app";
+import { PluginService, type PluginSignedOut, TrustService } from "@halonicjs/app";
 import type { Digest } from "@halonicjs/ports";
 
 /** SHA-256 over Web Crypto. */
@@ -37,8 +37,12 @@ ui:
   settings:
     key: { label: API key, type: secret, secret: example-key }`;
 
-/** The plugins `rain` and `weather`, and `broken` whose manifest isn't one. */
-export function acme() {
+/**
+ * The plugins `rain` and `weather`, and `broken` whose manifest isn't one.
+ *
+ * @param signedOut - what signing a plugin out gives back; none by default
+ */
+export function acme(signedOut: readonly PluginSignedOut[] = []) {
   const reader = new MemoryFolderReader("/profile/plugins");
   for (const id of ["rain", "weather"]) {
     reader.putFile(`${id}/plugin.yaml`, manifest(id));
@@ -59,7 +63,7 @@ export function acme() {
     trust,
     records: new MemoryRecordStore(),
     clock,
-    signOut: async () => [],
+    signOut: async () => signedOut,
   });
   return { service, reader };
 }

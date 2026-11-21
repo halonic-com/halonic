@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1740; plugin screens design section 7 (HAL-1739); microcopy 24 T11 to T13 (HAL-751); UX acceptance checklist 6.2 and 6.5, fallbacks G4 and G8 (HAL-1952); Liam's decision on HAL-4540; UX check L10 (HAL-12363)
+- Source: HAL-1740; plugin screens design section 7 (HAL-1739); microcopy 24 T11 to T13 (HAL-751); UX acceptance checklist 6.2 and 6.5, fallbacks G4 and G8 (HAL-1952); Liam's decision on HAL-4540; UX check L10 (HAL-12363); an unconfirmed sign-out after Remove trust and Remove from HAL-15238
 
-The Studio shall give a plugin's page a ⋮ named "More actions for *name*" with Open panel when the plugin has a panel, Open folder, Remove trust while the plugin is trusted, and "Remove plugin…" in `danger`. Remove trust shall turn the plugin off at once, with no dialog. "Remove plugin…" shall ask first, with "Remove *name*?", a sentence that names only what the plugin adds ("Its tools, command, card and panel go away on this computer.") followed, when a connector in any workspace on this computer uses the plugin, by "The *connector* connector in *workspace* stops working until you add the plugin again." (and "Halonic can't tell yet which connectors use it." when it can't tell), a sentence that names only what it keeps and is left out when it keeps nothing ("Its settings, sign-ins and the API key you entered are removed from this computer."), **Cancel** focused and **Remove plugin** in `danger`, which stays unavailable, with the line "Checking which connectors use it…", until Halonic has checked which connectors use the plugin; after it's removed, the toast "*name* removed". When one of its secrets can't be deleted, the dialog shall stay open and name that secret. A plugin that can't load shall have **Check again**, which reads the plugins folder again, and **Open folder** under its problems. When an action fails, the Studio shall say "Couldn't *action*: *reason*." in a toast.
+The Studio shall give a plugin's page a ⋮ named "More actions for *name*" with Open panel when the plugin has a panel, Open folder, Remove trust while the plugin is trusted, and "Remove plugin…" in `danger`. Remove trust shall turn the plugin off at once, with no dialog. "Remove plugin…" shall ask first, with "Remove *name*?", a sentence that names only what the plugin adds ("Its tools, command, card and panel go away on this computer.") followed, when a connector in any workspace on this computer uses the plugin, by "The *connector* connector in *workspace* stops working until you add the plugin again." (and "Halonic can't tell yet which connectors use it." when it can't tell), a sentence that names only what it keeps and is left out when it keeps nothing ("Its settings, sign-ins and the API key you entered are removed from this computer."), **Cancel** focused and **Remove plugin** in `danger`, which stays unavailable, with the line "Checking which connectors use it…", until Halonic has checked which connectors use the plugin; after it's removed, the toast "*name* removed". When Remove trust or removing signed out a sign-in whose provider didn't confirm the revoke, or that had no address to revoke at (`app.plugin-sign-out`), the Studio shall warn with **Sign out**'s words, "You're signed out here. *name* didn't confirm, so the token may still work there until it expires." ("the tokens may still work there until they expire" for several): Remove trust in a `warning` toast of its own, and removing under "*name* removed", which then is a `warning` toast. When one of its secrets can't be deleted, the dialog shall stay open and name that secret. A plugin that can't load shall have **Check again**, which reads the plugins folder again, and **Open folder** under its problems. When an action fails, the Studio shall say "Couldn't *action*: *reason*." in a toast.
 
 ## Examples
 
@@ -23,6 +23,12 @@ The Studio shall give a plugin's page a ⋮ named "More actions for *name*" with
 - Given the same,
   when the person presses **Remove plugin**,
   then the plugin is removed and the toast says "Weather removed".
+- Given the Weather plugin is signed in with `weather-account`, whose provider doesn't answer the revoke,
+  when the person picks Remove trust,
+  then a warning toast says "You're signed out here. Weather didn't confirm, so the token may still work there until it expires."
+- Given the same with two sign-ins,
+  when the person presses **Remove plugin**,
+  then the warning toast "Weather removed" says "You're signed out here. Weather didn't confirm, so the tokens may still work there until they expire."
 - Given the keychain can't delete the secret `api-key`,
   when the person presses **Remove plugin**,
   then the dialog stays open and says "Couldn't remove Weather: its secret api-key couldn't be deleted. The keychain is locked."

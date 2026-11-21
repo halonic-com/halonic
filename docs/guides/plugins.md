@@ -416,8 +416,8 @@ needs `--yes`), then removes the plugin with its trust, settings and the API
 key you entered. Both, and **Remove trust** in Studio, also sign you out of
 the plugin's sign-ins on this computer: each token is revoked at the provider
 where the sign-in has a revoke address, and forgotten here either way. When the
-provider doesn't confirm, the command says so, because the token may still
-work there until it expires.
+provider doesn't confirm, the command (or Studio) says so, because the token
+may still work there until it expires.
 
 In a script, `plugin add` and `trust --plugin` take
 `--yes --fingerprint <fingerprint>`; the fingerprint must match what the check
