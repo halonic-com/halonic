@@ -178,6 +178,32 @@ verifies("shell.stacked-cards", () => {
     });
   });
 
+  describe("a narrow card", () => {
+    // jsdom has no container queries: which header shows at which width is in the e2e test
+    // (e2e/stacked-cards.spec.ts). Here, what the named ← says and does.
+    it("names ← with the card under the top one, and goes back to it", () => {
+      const { container } = renderPage({ initial: stackOf("draft-reply", "Run r-42") });
+      const back = button(container, "Back to draft-reply");
+      expect(back.closest(".\\@max-\\[30rem\\]\\:flex")).not.toBeNull();
+      expect(
+        container
+          .querySelector('nav[aria-label="Card path"]')
+          ?.closest(".\\@max-\\[30rem\\]\\:hidden"),
+      ).not.toBeNull();
+      press(back);
+      expect(title(container)?.textContent).toBe("draft-reply");
+    });
+
+    it("names ← with the item on the first card, and closes it", () => {
+      const { container } = renderPage({ initial: stackOf("draft-reply") });
+      expect(title(container)?.getAttribute("aria-label")).toBe(
+        "draft-reply, in Acme Mail › Writer › draft-reply",
+      );
+      press(button(container, "Back to Writer"));
+      expect(title(container)).toBeNull();
+    });
+  });
+
   describe("a docked card", () => {
     it("sits at the right of a wide panel, the view usable and undimmed", () => {
       const { container, closeStack } = renderPage();
