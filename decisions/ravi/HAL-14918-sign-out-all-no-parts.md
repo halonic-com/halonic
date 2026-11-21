@@ -3,6 +3,7 @@
 - Approval: HAL-14918, from Liam's review of halonic#4307 (HAL-14850); Liam approves this note in his security review
 - Kind: internal
 - Task: HAL-14918
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:umu9/QCOaPQIc+/u/Tr/tSXfaXtGJko2GAJDLH9CTNQK1V93IiZS+lMFifsIOImeNKElZDR7u2HG8nRePj+5Dw==
 
 ## What changes
 
