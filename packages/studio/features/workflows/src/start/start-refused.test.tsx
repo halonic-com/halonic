@@ -48,7 +48,7 @@ function refusing(refused: StartRefused) {
 // When a run can't start: the card after Run is pressed says why and the next step, and, when the
 // files already say so, Run is unavailable (rule N5, HAL-12363).
 verifies("workflows.start.start-run", () => {
-  it("shows Run unavailable, with why and the command under it, when the files already say it can't start", async () => {
+  it("shows Run unavailable, with why and the command in the band under the header, when the files already say it can't start", async () => {
     const { host } = memoryHost([], [], [reply], [], {
       startRun: async () => ({ runId: "x" }),
       startRefusal: async () => ({
@@ -63,11 +63,13 @@ verifies("workflows.start.start-run", () => {
 
     const run = runButton(page);
     expect(run?.getAttribute("aria-disabled")).toBe("true");
-    const lines = page.querySelector(`[id="${run?.getAttribute("aria-describedby")}"]`);
-    expect(lines?.textContent).toContain(
-      "Reporter uses a connector, which Studio can't start yet. To start it, run this in a terminal:",
+    const firstLine = page.querySelector(`[id="${run?.getAttribute("aria-describedby")}"]`);
+    expect(firstLine?.textContent).toBe(
+      "Support reply can't run: Reporter uses a connector, which Studio can't start yet.",
     );
-    expect(lines?.querySelector("code")?.textContent).toBe("halonic run reply");
+    const band = page.querySelector("[data-testid='start-refusal']");
+    expect(band?.textContent).toContain("To start it, run this in a terminal:");
+    expect(band?.querySelector("code")?.textContent).toBe("halonic run reply");
     await click(run);
     expect(buttonNamed(page, "Start run")).toBeUndefined();
   });
@@ -86,11 +88,15 @@ verifies("workflows.start.start-run", () => {
 
     const run = runButton(page);
     expect(run?.getAttribute("aria-disabled")).toBe("true");
-    const lines = page.querySelector(`[id="${run?.getAttribute("aria-describedby")}"]`);
-    expect(lines?.textContent).toBe(
-      "Reporter runs in Claude Code, which Halonic can't start yet. Set Reporter to Halonic on its Harness page to run it now.",
+    const firstLine = page.querySelector(`[id="${run?.getAttribute("aria-describedby")}"]`);
+    expect(firstLine?.textContent).toBe(
+      "Support reply can't run: Reporter runs in Claude Code, which Halonic can't start yet.",
     );
-    expect(lines?.querySelector("code")).toBeNull();
+    const band = page.querySelector("[data-testid='start-refusal']");
+    expect(band?.textContent).toContain(
+      "Set Reporter to Halonic on its Harness page to run it now.",
+    );
+    expect(band?.querySelector("code")).toBeNull();
   });
 
   it("shows the command that starts it in a terminal, with no Try again, when only a terminal can", async () => {

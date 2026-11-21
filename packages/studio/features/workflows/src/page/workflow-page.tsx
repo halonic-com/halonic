@@ -37,7 +37,7 @@ import { pageWords } from "./page-words.ts";
 import { ProgramStepsLine } from "./program-steps-line.tsx";
 import { dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
 import { unavailableFor, useRunGate } from "./run-gate.ts";
-import { StartRow, useStartRefusal } from "./start-row.tsx";
+import { ProblemsBand, StartRow, useProblemsGate, useStartRefusal } from "./start-row.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
 import { useOpenProblems } from "./use-open-problems.ts";
@@ -132,7 +132,6 @@ export function WorkflowScreen({
     focusTitle,
   );
   const everyWorkflow = useHostRead(host, { hubId, id }, (one) => one.list(), focusTitle);
-  const cantStart = useStartRefusal(host, { hubId, id });
   const runsRead = useRuns(runs, focusTitle);
   const [view, setView] = useState<WorkflowView>(firstView(startOnTests));
   // The canvas unmounts on Configuration, so the page keeps its zoom and pan (D9). They belong to
@@ -172,6 +171,8 @@ export function WorkflowScreen({
   const dockStep = view === "flow" ? pickedStep : undefined;
   const errors =
     settings.load.kind === "ready" ? countProblems(settings.load.value.problems).errors : 0;
+  const problems = useProblemsGate(errors);
+  const cantStart = useStartRefusal(host, { hubId, id }, errors);
   // `halonic run reply` stops when two hubs have a `reply`, so the command then names the hub.
   const inSeveralHubs =
     everyWorkflow.load.kind === "ready" &&
@@ -189,8 +190,12 @@ export function WorkflowScreen({
   useAnnounceDockedRun(strip, typeof dock === "object", announceState);
   const { startRun } = host;
   const gate = useRunGate(load, startRun !== undefined, sandboxStartCheck);
-  // Described by both first lines when both hold, the sandbox's Callout first as on the page.
-  const runUnavailable = unavailableFor(gate.unavailable, cantStart.unavailable);
+  // Described by the first line of each band that holds, in the order the page shows them.
+  const runUnavailable = unavailableFor(
+    problems.unavailable,
+    gate.unavailable,
+    cantStart.unavailable,
+  );
   const saveAsTest = useSaveAsTest(host, { hubId, id }, (testName) => {
     testsMade.current += 1;
     setMadeTest({ name: testName, n: testsMade.current });
@@ -260,6 +265,7 @@ export function WorkflowScreen({
           </div>
         )}
       </header>
+      <ProblemsBand name={name} problems={problems} onOpen={problemsAsk.open} />
       <SandboxCantRunCallout
         name={name}
         start={gate.sandbox}
@@ -272,6 +278,7 @@ export function WorkflowScreen({
       </SandboxCantRunCallout>
       {/* With a Run button, the page starts it itself, so the terminal line would only repeat it. */}
       <StartRow
+        name={name}
         refusal={cantStart}
         startCommand={startCommand}
         showStartCommand={!startRun && settings.load.kind === "ready" && errors === 0}
