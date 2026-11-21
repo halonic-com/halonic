@@ -1,6 +1,7 @@
 import type { TrustRecord, TrustStore } from "@halonicjs/ports";
 import { type ErrorKind, KindedError } from "@halonicjs/std";
 import { isTrustRefusal, type TauriShell, type TrustRefusal, trustCommands } from "./shell.ts";
+import { dataFolderRefusal, noAnswer } from "./trust-errors.ts";
 
 /**
  * Trust records for the Studio desktop app: every call goes to one of the
@@ -51,7 +52,7 @@ export class TauriTrustStore implements TrustStore {
   async list(): Promise<TrustRecord[]> {
     const answer = await this.#call(trustCommands.list, {});
     if (!Array.isArray(answer)) {
-      throw noAnswer();
+      throw noAnswer("trust call");
     }
     return answer.map(checkedRecord);
   }
@@ -68,12 +69,12 @@ export class TauriTrustStore implements TrustStore {
     }
     const answer = await this.#call(trustCommands.foldersFound, { locations: [...locations] });
     if (typeof answer !== "object" || answer === null || Array.isArray(answer)) {
-      throw noAnswer();
+      throw noAnswer("trust call");
     }
     const found = new Map<string, boolean>();
     for (const [location, there] of Object.entries(answer)) {
       if (typeof there !== "boolean") {
-        throw noAnswer();
+        throw noAnswer("trust call");
       }
       found.set(location, there);
     }
@@ -109,20 +110,6 @@ const errorKinds: Readonly<Record<Exclude<TrustRefusal["kind"], "unreadable">, E
   exists: "conflict",
 };
 
-/**
- * A kinded error whose message is Halonic's own words for raw text it replaces, such as an OS
- * error with a path. The raw text goes only into `details`, which the Studio's **Copy details**
- * puts on the clipboard (`rawDetailsOf`, microcopy 22 F1); it never shows on screen.
- */
-class TrustStoreError extends KindedError {
-  /** The raw text the message replaces, for the clipboard only. */
-  readonly details: string;
-  constructor(kind: ErrorKind, message: string, details: string) {
-    super(kind, message);
-    this.details = details;
-  }
-}
-
 /** The commands that change the trust folder; the others only read it. */
 const writingCommands: readonly string[] = [trustCommands.grant, trustCommands.revoke];
 
@@ -139,13 +126,10 @@ const writingCommands: readonly string[] = [trustCommands.grant, trustCommands.r
  */
 function trustFailure(reason: unknown, command: string, asked: unknown): Error {
   if (!isTrustRefusal(reason)) {
-    return noAnswer(reason);
+    return noAnswer("trust call", reason);
   }
   if (reason.kind === "io") {
-    const words = writingCommands.includes(command)
-      ? "Halonic can't write to its data folder."
-      : "Halonic can't read its data folder.";
-    return new TrustStoreError("unavailable", words, reason.message);
+    return dataFolderRefusal(writingCommands.includes(command), reason.message);
   }
   if (reason.kind !== "unreadable") {
     return new KindedError(
@@ -166,30 +150,6 @@ function trustFailure(reason: unknown, command: string, asked: unknown): Error {
 }
 
 /**
- * A call the shell gave no usable answer to; `reason` is its rejection, when there was one. It
- * never says the desktop app didn't answer: the person is looking at it (C613 12).
- */
-function noAnswer(reason?: unknown): TrustStoreError {
-  const details = "The desktop shell gave no answer to the trust call.";
-  return new TrustStoreError(
-    "internal",
-    "Halonic ran into a problem it can't explain yet.",
-    reason === undefined ? details : `${details}\n${rejectionText(reason)}`,
-  );
-}
-
-/** A rejection as text: Tauri rejects with a string, a broken call with an `Error`. */
-function rejectionText(reason: unknown): string {
-  if (reason instanceof Error) return `${reason.name}: ${reason.message}`;
-  if (typeof reason === "string") return reason;
-  try {
-    return JSON.stringify(reason) ?? String(reason);
-  } catch {
-    return String(reason);
-  }
-}
-
-/**
  * A record from the shell, checked only as far as the adapter relies on it:
  * the shell reads the files with the same rules as `FileTrustStore`, and
  * `TrustService` checks the content against its fingerprint.
@@ -200,7 +160,7 @@ function checkedRecord(answer: unknown): TrustRecord {
     answer === null ||
     typeof (answer as { location?: unknown }).location !== "string"
   ) {
-    throw noAnswer();
+    throw noAnswer("trust call");
   }
   return answer as TrustRecord;
 }
