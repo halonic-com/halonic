@@ -1,6 +1,12 @@
 export { harnessEnvironments, studioHarnesses } from "./agent-host-harnesses.ts";
 export { AgentHostNotAnswering } from "./agent-host-not-answering.ts";
 export { TauriAgentHostTransport, tauriAgentHostTransport } from "./agent-host-transport.ts";
+export {
+  EngineCallRefused,
+  type EngineFetch,
+  engineBaseUrl,
+  tauriEngineFetch,
+} from "./engine-fetch.ts";
 export { hostSettingsStoreKey, provideShellHostSettings } from "./shell-host-settings.ts";
 export { ShellHttpClient, shellHttpClient } from "./shell-http-client.ts";
 export {

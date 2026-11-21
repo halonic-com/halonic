@@ -588,6 +588,9 @@ importers:
       '@halonicjs/adapter-coordination-node':
         specifier: workspace:*
         version: link:../../packages/adapters/coordination-node
+      '@halonicjs/adapter-executor-remote':
+        specifier: workspace:*
+        version: link:../../packages/adapters/executor-remote
       '@halonicjs/adapter-fs-tauri':
         specifier: workspace:*
         version: link:../../packages/adapters/fs-tauri
