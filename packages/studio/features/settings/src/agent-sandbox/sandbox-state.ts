@@ -216,14 +216,7 @@ function checkedView(
     case "checking":
       return { ...none, lead: text.CHECKING };
     case "unknown":
-      return {
-        ...none,
-        chip: null,
-        lead: text.cannotCheck(check.reason),
-        callout,
-        secondary: check.details === undefined ? ["check-again"] : ["check-again", "copy-details"],
-        details: check.details ?? null,
-      };
+      return cannotCheckView(check.reason, check.details, callout);
     case "needs-setup":
       return {
         ...none,
@@ -338,6 +331,31 @@ function calloutFor(outcome: SandboxOutcome): SandboxView["callout"] {
 /** Whether a setup that began at `startedAt` has run past the time limit. */
 export function setupTimedOut(startedAt: number, now: number): boolean {
   return now - startedAt >= SETUP_TIME_LIMIT_MS;
+}
+
+/**
+ * A check that couldn't run. An internal error puts its line in the same warning Callout, with
+ * **Copy details**, that a failed setup or removal uses (C446-2), unless a setup or removal Callout
+ * is already there; then the line stays the lead and Copy details sits next to **Check again**.
+ */
+function cannotCheckView(
+  reason: string,
+  details: string | undefined,
+  callout: SandboxView["callout"],
+): SandboxView {
+  const line = text.cannotCheck(reason);
+  const again: SandboxAction[] = ["check-again"];
+  if (details === undefined) return { ...none, lead: line, callout, secondary: again };
+  if (callout === null) {
+    return {
+      ...none,
+      lead: "",
+      callout: { line, action: "copy-details" },
+      secondary: again,
+      details,
+    };
+  }
+  return { ...none, lead: line, callout, secondary: [...again, "copy-details"], details };
 }
 
 /**

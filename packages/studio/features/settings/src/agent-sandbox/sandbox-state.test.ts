@@ -56,11 +56,25 @@ verifies("settings.agent-sandbox-state", () => {
     expect(v.details).toBeNull();
   });
 
-  it("offers Copy details when the check hit an internal error", () => {
+  it("puts an internal error's line in the warning Callout with Copy details (C446-2)", () => {
     const check = { state: "unknown", reason: "it broke.", details: "Error: boom" } as const;
     const v = view({ check });
-    expect(v.secondary).toEqual(["check-again", "copy-details"]);
+    expect(v.callout).toEqual({
+      line: "Couldn't check the sandbox: it broke.",
+      action: "copy-details",
+    });
+    expect(v.lead).toBe("");
+    expect(v.secondary).toEqual(["check-again"]);
     expect(v.details).toBe("Error: boom");
+  });
+
+  it("keeps a setup's Callout and puts Copy details next to Check again when the check also failed", () => {
+    const check = { state: "unknown", reason: "it broke.", details: "Error: boom" } as const;
+    const outcome = { kind: "setup", how: "check_failed", reason: "it was missing." } as const;
+    const v = view({ check, outcome });
+    expect(v.callout?.action).toBe("try-again");
+    expect(v.lead).toBe("Couldn't check the sandbox: it broke.");
+    expect(v.secondary).toEqual(["check-again", "copy-details"]);
   });
 
   it("words when it checked from the clock at drawing, not from when the check ran", () => {

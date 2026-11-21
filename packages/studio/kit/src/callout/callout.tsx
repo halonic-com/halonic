@@ -17,8 +17,17 @@ export interface CalloutAction {
   readonly label: string;
   /** The label while the promise runs: "Checking…". Without it the label stays. */
   readonly busyLabel?: string;
-  /** When it returns a promise, the button is busy until the promise settles. */
-  readonly onClick: () => void | Promise<void>;
+  /**
+   * When it returns a promise, the button is busy until the promise settles. A promise that gives
+   * `false` says the action didn't do its job, so `doneLabel` doesn't show.
+   */
+  readonly onClick: () => void | Promise<void | boolean>;
+  /**
+   * The label for 2 seconds once the returned promise settles, as the confirmation in place:
+   * "Copied" (`kit.callout-done-label`). Inside a Dialog or FormSheet, where toasts wait until it
+   * closes, it is also said through the modal's polite region. Without it the label stays.
+   */
+  readonly doneLabel?: string;
   /**
    * Where the action takes you when it leaves Studio: "Opens Google Cloud". The label then gets a
    * ↗, the same words are its tooltip, and screen readers hear them after the label.

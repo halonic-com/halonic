@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, OnTintContext } from "../button/button.tsx";
+import { useModalPolite } from "../dialog/modal-regions.tsx";
 import { Tooltip, type TooltipTriggerProps } from "../tooltip/tooltip.tsx";
 import type { CalloutAction } from "./callout.tsx";
 
@@ -11,6 +12,9 @@ import type { CalloutAction } from "./callout.tsx";
  * them is 38px with the border, under the phone's 40px minimum, so it doesn't change.
  */
 const labelClasses = "phone:text-start phone:py-1.5";
+
+/** How long `doneLabel` stands in for the label, as CommandBox's check in a modal. */
+export const DONE_LABEL_MS = 2000;
 
 /** Puts focus on an action that asks for it when it is drawn. */
 function focusOnMount(button: HTMLButtonElement | null): void {
@@ -27,7 +31,15 @@ export function CalloutButton({
   readonly describedBy: string | undefined;
 }) {
   const focused = action.focus === true;
+  const modal = useModalPolite();
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (!done) return;
+    const timer = setTimeout(() => setDone(false), DONE_LABEL_MS);
+    return () => clearTimeout(timer);
+  }, [done]);
 
   function run() {
     const result = action.onClick();
@@ -35,8 +47,15 @@ export function CalloutButton({
       return;
     }
     setBusy(true);
+    const { doneLabel } = action;
     // A rejection is the screen's to report; `finally` passes it on rather than hide it.
-    return result.finally(() => setBusy(false));
+    return result
+      .then((outcome) => {
+        if (doneLabel === undefined || outcome === false) return;
+        setDone(true);
+        modal?.say(doneLabel);
+      })
+      .finally(() => setBusy(false));
   }
 
   const button = (trigger: TooltipTriggerProps) => (
@@ -51,7 +70,7 @@ export function CalloutButton({
       {...trigger}
     >
       <span className={labelClasses}>
-        {action.label}
+        {done && action.doneLabel !== undefined ? action.doneLabel : action.label}
         {action.opens === undefined ? null : (
           <>
             <span aria-hidden="true"> ↗</span>

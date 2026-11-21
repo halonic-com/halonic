@@ -321,7 +321,7 @@ verifies("plugins.plugin-trust-check", () => {
     await settle();
 
     expect(dialog().querySelector('[role="alert"]')?.textContent).toContain(
-      "Couldn't save trust: The disk is full. Nothing was started.",
+      "Couldn't save trust: the disk is full. Nothing was started.",
     );
   });
 });

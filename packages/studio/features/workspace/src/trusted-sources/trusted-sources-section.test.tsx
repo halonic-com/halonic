@@ -281,5 +281,7 @@ verifies("workspace.trusted-sources", () => {
         /^Couldn't remove trust from pdf-tools: .*\nError: EACCES: trust\.json/,
       ),
     );
+    // C446-1: it confirms in place, since a toast would wait until the dialog closes.
+    expect(button("Copied", dialog ?? document)).toBeDefined();
   });
 });

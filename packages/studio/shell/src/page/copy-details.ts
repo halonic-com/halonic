@@ -38,3 +38,26 @@ export async function copyDetails(
       : { tone: "danger", title: copyDetailsWords.couldNotCopy },
   );
 }
+
+/**
+ * Copy details for a Dialog's or FormSheet's `errorAction`, which confirms in place with
+ * `doneLabel` {@link copyDetailsWords}`.done` (`kit.callout-done-label`), because toasts wait until
+ * the dialog closes: no toast when the copy works, the "Couldn't copy." toast when it doesn't. It
+ * gives whether the copy worked, so the action reads "Copied" only then.
+ *
+ * @example
+ * const copy = useCopyDetailsInPlace();
+ * <Dialog errorAction={{ label: copyDetailsWords.label, doneLabel: copyDetailsWords.done, onClick: () => copy(details) }} … />
+ */
+export function useCopyDetailsInPlace(): (details: string) => Promise<boolean> {
+  const writeClipboard = useWriteClipboard();
+  const toasts = useToastStore();
+  return useCallback(
+    async (details: string) => {
+      const copied = await writeClipboard(details);
+      if (!copied) toasts?.show({ tone: "danger", title: copyDetailsWords.couldNotCopy });
+      return copied;
+    },
+    [writeClipboard, toasts],
+  );
+}

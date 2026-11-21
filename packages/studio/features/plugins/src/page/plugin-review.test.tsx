@@ -136,7 +136,7 @@ verifies("plugins.plugin-review", () => {
         await new Promise((resolve) => requestAnimationFrame(resolve));
       });
       const text = document.querySelector('dialog [role="alert"]')?.textContent ?? "";
-      expect(text).toContain("Couldn't save trust: The store is locked. Nothing was started.");
+      expect(text).toContain("Couldn't save trust: the store is locked. Nothing was started.");
     });
   });
 });
