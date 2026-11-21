@@ -19,7 +19,7 @@ import { trustMessages } from "../../messages/trust.ts";
 import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import { shownDate } from "../../output/trust-check.ts";
-import { openPluginService, type PluginSetup } from "../../plugin-host.ts";
+import { openPluginService, type PluginSetup, programsRunFor } from "../../plugin-host.ts";
 import {
   askToTrustPlugin,
   brokenPluginError,
@@ -98,7 +98,7 @@ export async function trustPlugin(
   return await askToTrustPlugin(
     service,
     entry,
-    { context, yes, fingerprint },
+    { context, yes, fingerprint, programsRun: await programsRunFor(setup, [entry.content]) },
     {
       on: pluginMessages.trustedOn(name),
       off: pluginMessages.stillOff(name),

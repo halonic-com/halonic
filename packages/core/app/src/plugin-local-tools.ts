@@ -164,6 +164,24 @@ export function localToolConnectorId(set: LocalToolSet): string {
 }
 
 /**
+ * Whether local tools can run with `sandbox`, the host's sandbox or `null`
+ * for a host without one. {@link PluginLocalTools.state} says this, and a
+ * host that only shows the state, such as the CLI's trust check, asks it
+ * without opening any session. Never throws.
+ *
+ * @example
+ * await localToolStateOf(null);
+ * // { kind: "needs-desktop-app" }
+ */
+export async function localToolStateOf(
+  sandbox: Pick<Sandbox, "check"> | null,
+): Promise<LocalToolState> {
+  if (sandbox === null) return { kind: "needs-desktop-app" };
+  const check = await sandbox.check();
+  return check.ok ? { kind: "ready" } : { kind: "sandbox-unavailable", reason: check.reason };
+}
+
+/**
  * Runs a trusted plugin's local tools, each in a sandbox session of its own.
  *
  * @example
@@ -179,11 +197,8 @@ export class PluginLocalTools {
   }
 
   /** Whether local tools can run on this computer. Never throws. */
-  async state(): Promise<LocalToolState> {
-    const sandbox = this.#options.sandbox;
-    if (sandbox === null) return { kind: "needs-desktop-app" };
-    const check = await sandbox.check();
-    return check.ok ? { kind: "ready" } : { kind: "sandbox-unavailable", reason: check.reason };
+  state(): Promise<LocalToolState> {
+    return localToolStateOf(this.#options.sandbox);
   }
 
   /**

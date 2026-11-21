@@ -6,6 +6,8 @@ import {
   type LocalToolState,
   pluginTrustLocationHeadings,
   pluginTrustMoreFilesText,
+  pluginTrustRunsLabel,
+  pluginTrustRunsText,
   pluginTrustSectionHeadings,
   pluginTrustToolsIntro,
 } from "@halonicjs/app";
@@ -130,7 +132,7 @@ export const TOOLS_INTRO = pluginTrustToolsIntro;
 export const OUTSIDE_TEXT = "its answers aren't trusted as instructions";
 
 /** The labels of an open program (design section 5). A label shows only when it has a value. */
-export const RUNS = "Runs";
+export const RUNS = pluginTrustRunsLabel;
 export const VERSION = "Version";
 export const CAN_REACH = "Can reach";
 
@@ -141,19 +143,8 @@ export const CAN_REACH = "Can reach";
  */
 export type ProgramsRun = LocalToolState["kind"] | undefined;
 
-/** Where a program runs (T8, Mara's claims check item 2): one true line per case. */
-export function runsLine(state: ProgramsRun): string {
-  switch (state) {
-    case "ready":
-      return "In the agent sandbox, in its own empty folder";
-    case "needs-desktop-app":
-      return "Doesn't run here. Programs run only in the Halonic desktop app, in a sandbox";
-    case "sandbox-unavailable":
-      return "Doesn't run now. The sandbox can't start on this computer";
-    case undefined:
-      return "In a sandbox, in its own empty folder. Without a working sandbox it doesn't run";
-  }
-}
+/** Where a program runs (T8, Mara's claims check item 2), worded in core, which the CLI reads too. */
+export const runsLine: (state: ProgramsRun) => string = pluginTrustRunsText;
 
 /** The labels of a secret (design section 5). */
 export const GOES_ONLY_TO = "Goes only to";

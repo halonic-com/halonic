@@ -6,6 +6,7 @@
 // Sign-ins come after Secrets, so every address the plugin sends something
 // to is listed before the person trusts it (the designer, HAL-13419).
 
+import type { LocalToolState } from "./plugin-local-tools.ts";
 import type { PluginTrustContent } from "./plugin-trust-content.ts";
 
 /** One section of a plugin's trust check. */
@@ -88,6 +89,32 @@ function addsToStudio(content: PluginTrustContent): boolean {
  */
 export const pluginTrustToolsIntro =
   "Agents can use these through a connector. Each one asks a person first unless you change that.";
+
+/** The label of the line that says where a plugin's programs run (design section 5). */
+export const pluginTrustRunsLabel = "Runs";
+
+/**
+ * Where a plugin's programs run, as `PluginLocalTools.state()` says: one true line for each
+ * state (T8, Mara's claims check item 2). A program only ever starts in a working sandbox, so
+ * when the host doesn't say, the line holds in every case. Studio's trust check and the CLI's
+ * trust check and `plugin list` all show it.
+ *
+ * @example
+ * pluginTrustRunsText("sandbox-unavailable");
+ * // "Doesn't run now. The sandbox can't start on this computer"
+ */
+export function pluginTrustRunsText(state: LocalToolState["kind"] | undefined): string {
+  switch (state) {
+    case "ready":
+      return "In the agent sandbox, in its own empty folder";
+    case "needs-desktop-app":
+      return "Doesn't run here. Programs run only in the Halonic desktop app, in a sandbox";
+    case "sandbox-unavailable":
+      return "Doesn't run now. The sandbox can't start on this computer";
+    case undefined:
+      return "In a sandbox, in its own empty folder. Without a working sandbox it doesn't run";
+  }
+}
 
 /**
  * The headings of the two lines under the sections: where the plugin sits

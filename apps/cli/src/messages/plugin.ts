@@ -1,6 +1,10 @@
 import {
+  type LocalToolState,
   pluginTrustLocationHeadings,
   pluginTrustMoreFilesText,
+  pluginTrustRunsLabel,
+  pluginTrustRunsText,
+  pluginTrustSectionHeadings,
   pluginTrustToolsIntro,
 } from "@halonicjs/app";
 import { defineMessages } from "./define.ts";
@@ -72,6 +76,15 @@ export const pluginMessages = defineMessages("plugin", {
   /** The first line under Tools for agents, as the shared model words it: every tool asks first. */
   toolsIntro: () => phrase`${pluginTrustToolsIntro}`,
   programsHeading: () => phrase`Programs`,
+  /**
+   * Under each program, and on `plugin list` when programs can't run: where they run, in
+   * Studio's words (core's `pluginTrustRunsText`). Without a state, the line that holds either way.
+   */
+  programsRun: (state: LocalToolState["kind"] | undefined) =>
+    phrase`${pluginTrustRunsLabel}: ${pluginTrustRunsText(state)}`,
+  /** Under a plugin with programs on `plugin list`: "Programs: Doesn't run now. …", in Studio's words. */
+  listProgramsRun: (state: LocalToolState["kind"]) =>
+    phrase`${pluginTrustSectionHeadings.programs}: ${pluginTrustRunsText(state)}`,
   secretsHeading: () => phrase`Secrets`,
   /** After a backend secret's name: "goes only to api.weather.example". A program's says more (HAL-12638). */
   secretGoesTo: (host: string) => phrase`goes only to ${host}`,
