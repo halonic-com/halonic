@@ -3,6 +3,7 @@
 - Task: HAL-14241
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14241 (details of approved screens, "Decided by the team" in the task under the HAL-2282 rule, from the C332 a11y check in HAL-14215)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Dp8jAB5BRIG/zHC0YSE39FP76XI4/ZzCqPGlykBqBQviDWKE0DGVkzgqLxIyyje1jHIMIMvg5S+3IG60db5YDA==
 
 ## What changes
 
