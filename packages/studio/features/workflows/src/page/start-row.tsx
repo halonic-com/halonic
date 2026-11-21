@@ -64,9 +64,10 @@ export function missingAliasOf(problems: readonly WorkflowProblem[]): MissingAli
 /**
  * The band that says the workflow's errors stop it (HAL-14739), first under the header because
  * they stop every way to run it, a terminal's too: "*Support reply* can't run: it has 2 problems."
- * with **Open Problems**. When one of them is an agent's missing model alias, the next line names
- * the agent and the alias, with **Open *Writer*** (UX check S7, HAL-12412). Nothing while it has
- * none.
+ * then, as the start card says it, "Fix them before it can run." (C544-3), with **Open Problems**.
+ * When one of them is an agent's missing model alias, the next line names the agent and the alias,
+ * with **Open *Writer*** (UX check S7, HAL-12412). Only the first line describes **Run**. Nothing
+ * while it has none.
  */
 export function ProblemsBand({
   name,
@@ -90,6 +91,7 @@ export function ProblemsBand({
       firstLine={pageWords.cantRun.problems(name, errors)}
       action={{ label: startWords.openProblems, onClick: onOpen }}
     >
+      <span className="block">{startWords.fixProblems(errors)}</span>
       {missingAlias === undefined ? null : (
         <MissingAliasLine missingAlias={missingAlias} openAgent={openAgent} />
       )}
