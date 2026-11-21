@@ -13,7 +13,10 @@ verifies("cli.messages", () => {
         workflowMessages.seeWorkflows("acme", ["support-reply", "weekly-report", "support-reply"]),
       ),
       words(workflowMessages.seeWorkflows("acme", [])),
-    ]).toEqual(["Workflows in acme: support-reply, weekly-report.", "acme has no workflows yet."]);
+    ]).toEqual([
+      "Workflows in acme: support-reply, weekly-report.",
+      "acme has no workflows yet. Add one from a recipe: https://docs.halonic.dev/examples/",
+    ]);
   });
 
   it("counts the files the loader skipped and points at validate", () => {

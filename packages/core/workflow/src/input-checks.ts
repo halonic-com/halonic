@@ -134,18 +134,28 @@ function unreadStartField(start: string, readFields: readonly string[]): Workflo
   const hint =
     readFields.length === 0
       ? `Add input.${start} to the gets of the step that needs it.`
-      : `The steps read ${listed(readFields.map((field) => `input.${field}`))}: use one of those names as field, or add input.${start} to a step's gets.`;
+      : `The steps read ${listed(readFields.map((field) => `input.${field}`))}: use ${oneOf(readFields, "that name", "one of those names")} as field, or add input.${start} to a step's gets.`;
   const message = `start.field is ${start}, but no step reads input.${start}. ${hint}`;
   return issue("error", "unread-start-field", message, ["start", "field"]);
 }
 
-/** "Did you mean input.mail?" for a close name, or else the fields there are. */
+/**
+ * "Did you mean input.mail?" for a close name, or else the fields there are.
+ * The fields may come from tests, routines or `start.field`, so the hint
+ * names none of them.
+ */
 function fieldHint(field: string, known: readonly string[]): string {
   const near = nearName(field, known);
   if (near !== undefined) {
     return `Did you mean input.${near}?`;
   }
-  return `It has only ${listed(known)}: read one of those, or add ${field} to the input of the workflow's tests.`;
+  const has = known.length === 1 ? `Its only field is ${known[0]}` : `It has only ${listed(known)}`;
+  return `${has}: read ${oneOf(known, "that", "one of those")}, or add ${field} to the input you start the workflow with.`;
+}
+
+/** `one` for a single value, `many` for more. */
+function oneOf(values: readonly string[], one: string, many: string): string {
+  return values.length === 1 ? one : many;
 }
 
 /** `"mail"` for `"input.mail.from"`; `null` for a path outside the input, or the whole input. */

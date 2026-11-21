@@ -145,7 +145,7 @@ verifies("workspace.workflows", () => {
       [["unknown-gets", "states.read.gets.1", 6]],
     );
     expect(workspace.issues[0]?.message).toBe(
-      "\"read\" gets input.order, but the workflow's input has no field order. It has only mail and from: read one of those, or add order to the input of the workflow's tests.",
+      '"read" gets input.order, but the workflow\'s input has no field order. It has only mail and from: read one of those, or add order to the input you start the workflow with.',
     );
   });
 });
