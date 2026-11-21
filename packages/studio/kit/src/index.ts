@@ -138,6 +138,8 @@ export {
   type FieldAnnounce,
   FieldAnnounceProvider,
   type FieldAnnounceProviderProps,
+  useFieldAnnounce,
+  useFieldErrorAnnouncement,
 } from "./field/field-announce.tsx";
 export { FormRows, type FormRowsProps } from "./field/form-rows.tsx";
 export {

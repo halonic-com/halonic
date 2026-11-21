@@ -64,7 +64,7 @@ export function ItemHeader<Id extends string>({
         <h1
           ref={titleRef}
           tabIndex={-1}
-          className="flex min-w-0 items-center gap-1.5 rounded-xs focus-ring"
+          className="flex min-w-0 items-center gap-1.5 rounded-xs text-section focus-ring"
         >
           <span
             aria-hidden="true"

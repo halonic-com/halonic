@@ -44,6 +44,14 @@ export function FieldAnnounceProvider({ announce, children }: FieldAnnounceProvi
 }
 
 /**
+ * The shell's polite announcer for a field to read a line of its own through, as when Enter is
+ * pressed on a value that has a mistake; `null` outside a `FieldAnnounceProvider`.
+ */
+export function useFieldAnnounce(): FieldAnnounce | null {
+  return useContext(FieldAnnounceContext);
+}
+
+/**
  * Announces "Label: error" once when a Field's error appears or changes while focus is outside
  * the Field, as after Tab from a field that checks its value on blur. While focus is inside, the
  * screen reader already reads the error as the control's description, so nothing is said: that

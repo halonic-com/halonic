@@ -67,8 +67,9 @@ verifies("workflows.page.rename", () => {
     const input = field() as HTMLInputElement;
 
     await typeInto(input, "mail triage");
-    expect(page.textContent).toContain("A workflow called mail triage already exists.");
+    // Enter shows the reason at once, without waiting for the typing to pause.
     await press(input, "Enter");
+    expect(page.textContent).toContain("A workflow called mail triage already exists.");
     await act(async () => input.blur());
 
     expect(rename).not.toHaveBeenCalled();
