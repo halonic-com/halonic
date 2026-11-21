@@ -7,11 +7,11 @@ import {
 } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
 import { Callout, Dialog, Disclosure, StatusChip } from "@halonicjs/studio-kit";
-import type { ReactNode } from "react";
 import { originText, type PluginOrigin, RISK_WORDS } from "../page/page-text.ts";
 import { Quoted } from "../ui/quoted.tsx";
 import type { ChangeRow, PluginChangeSummary } from "./change-rows.ts";
-import { Labelled, Location } from "./plugin-location.tsx";
+import { Items, Labelled, Location } from "./plugin-location.tsx";
+import { ProgramsSection } from "./programs-section.tsx";
 import {
   addressesLine,
   type PluginCode,
@@ -25,7 +25,6 @@ import {
   ADDRESSES_SECTION,
   ARROW,
   AT,
-  CAN_REACH,
   CHANGED_INTRO,
   CHANGED_UNREADABLE,
   FROM,
@@ -37,10 +36,7 @@ import {
   keepButton,
   NOT_NOW,
   OUTSIDE_TEXT,
-  PROGRAMS_SECTION,
   type ProgramsRun,
-  RUNS,
-  runsLine,
   SECRETS_SECTION,
   type SecretKind,
   SIGN_INS_SECTION,
@@ -58,7 +54,6 @@ import {
   trustTitle,
   unchangedRow,
   updateNotSavedLine,
-  VERSION,
 } from "./trust-text.ts";
 
 /** The props of `PluginTrustDialog`. */
@@ -92,6 +87,11 @@ export interface PluginTrustDialogProps {
   readonly fence?: TrustFence;
   /** The yes to run without the sandbox saved on this computer, if any (R6). */
   readonly unfencedYes?: UnfencedYes | undefined;
+  /**
+   * R11b's **Set up the agent sandbox**: closes the check and opens Settings › Agent sandbox.
+   * Without it, R11b's fix shows without the link.
+   */
+  readonly onSetUpSandbox?: (() => void) | undefined;
   /**
    * **Trust**. With the checkbox ticked it gets the reason the person said yes for, which the
    * host saves through the engine's `UnfencedRuns.allow` before it trusts the plugin.
@@ -169,6 +169,7 @@ export function PluginTrustDialog(props: PluginTrustDialogProps) {
               programsRun={props.programsRun}
               fence={fence}
               code={code}
+              onSetUpSandbox={props.onSetUpSandbox}
             />
             <Location folder={props.folder} files={props.files} />
           </>
@@ -228,6 +229,7 @@ function Sections({
   programsRun,
   fence,
   code,
+  onSetUpSandbox,
 }: {
   readonly content: TrustCheckContent;
   readonly shown: readonly PluginTrustSection[];
@@ -235,6 +237,7 @@ function Sections({
   readonly programsRun: ProgramsRun;
   readonly fence: TrustFence;
   readonly code: PluginCode;
+  readonly onSetUpSandbox: (() => void) | undefined;
 }) {
   return (
     <div className="flex flex-col">
@@ -247,6 +250,7 @@ function Sections({
           programsRun={programsRun}
           fence={fence}
           code={code}
+          onSetUpSandbox={onSetUpSandbox}
         />
       ))}
     </div>
@@ -260,6 +264,7 @@ function Section({
   programsRun,
   fence,
   code,
+  onSetUpSandbox,
 }: {
   readonly section: PluginTrustSection;
   readonly content: TrustCheckContent;
@@ -267,6 +272,7 @@ function Section({
   readonly programsRun: ProgramsRun;
   readonly fence: TrustFence;
   readonly code: PluginCode;
+  readonly onSetUpSandbox: (() => void) | undefined;
 }) {
   const { tools, programs, secrets, signIns, addresses, inStudio, counts } = content;
   switch (section) {
@@ -296,26 +302,12 @@ function Section({
       );
     case "programs":
       return (
-        // Opens by itself when the plugin's code isn't in the sandbox (design section 3).
-        <Disclosure
-          summary={sectionRow(PROGRAMS_SECTION, programs.length)}
-          defaultOpen={fence?.state === "not-fenced"}
-        >
-          <Items>
-            {programs.map((program) => (
-              <li key={program.id} className="flex flex-col gap-1">
-                <code className="font-mono text-small wrap-anywhere">{program.command}</code>
-                <Labelled label={RUNS}>{runsLine(programsRun)}</Labelled>
-                {program.version === undefined ? null : (
-                  <Labelled label={VERSION}>{program.version}</Labelled>
-                )}
-                {program.canReach.length === 0 ? null : (
-                  <Labelled label={CAN_REACH}>{program.canReach.join(", ")}</Labelled>
-                )}
-              </li>
-            ))}
-          </Items>
-        </Disclosure>
+        <ProgramsSection
+          programs={programs}
+          programsRun={programsRun}
+          fence={fence}
+          onSetUpSandbox={onSetUpSandbox}
+        />
       );
     case "secrets":
       return (
@@ -370,7 +362,15 @@ function Section({
           <Items>
             {addresses.map((address) => (
               <li key={address.address} className="text-small wrap-anywhere">
-                <code className="font-mono">{address.address}</code>
+                {address.where === undefined ? (
+                  <code className="font-mono">{address.address}</code>
+                ) : (
+                  // R9: the row in `fg`, where the host may be in `fg-muted`.
+                  <>
+                    {address.address}
+                    <span className="text-fg-muted"> · {address.where}</span>
+                  </>
+                )}
                 {address.program ? <span className="text-fg-muted"> {THE_PROGRAM}</span> : null}
               </li>
             ))}
@@ -457,10 +457,6 @@ function ChangeLine({ row }: { readonly row: ChangeRow }) {
       )}
     </li>
   );
-}
-
-function Items({ children }: { readonly children: ReactNode }) {
-  return <ul className="mt-2 mb-3 flex list-none flex-col gap-3">{children}</ul>;
 }
 
 /** The kinds of secret the plugin has, backend first, each once. */

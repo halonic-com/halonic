@@ -173,7 +173,10 @@ verifies("plugins.plugin-trust-check", () => {
       "needs-desktop-app",
       "Runs Doesn't run here. Programs run only in the Halonic desktop app, in a sandbox",
     ],
-    ["sandbox-unavailable", "Runs Doesn't run now. The sandbox can't start on this computer"],
+    [
+      "sandbox-unavailable",
+      "Runs Doesn't start on this computer: the sandbox can't start here. The tool that uses it stays off.",
+    ],
   ] as const)("says what is true about the Runs line when programs are %s", (programsRun, line) => {
     open(weather, { programsRun });
 

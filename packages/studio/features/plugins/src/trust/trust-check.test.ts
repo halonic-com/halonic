@@ -98,6 +98,7 @@ verifies("plugins.plugin-trust-check", () => {
         command: "npx weather-mcp@1.2.3 --units metric",
         version: "1.2.3",
         canReach: ["radar.example.com", "api.example.com"],
+        tools: 1,
       },
     ]);
     expect(content.secrets).toEqual([

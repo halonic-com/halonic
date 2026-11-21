@@ -9,7 +9,7 @@ import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { PluginTrustDialog } from "./plugin-trust-dialog.tsx";
 import type { TrustFence, UnfencedYes } from "./runs-line.ts";
-import { TRUST_CHECK_LAST_LINE } from "./trust-text.ts";
+import { type ProgramsRun, TRUST_CHECK_LAST_LINE } from "./trust-text.ts";
 
 beforeEach(fakeModal);
 afterEach(() => {
@@ -241,5 +241,132 @@ verifies("plugins.plugin-trust-runs-line", () => {
     expect(lastLine().textContent).toBe(TRUST_CHECK_LAST_LINE);
     expect(box()).toBeNull();
     expect(dialog().textContent).not.toContain("The only addresses this plugin can reach.");
+  });
+});
+
+const twoTools = plugin(`id: maps
+version: 0.1.0
+sdk: 1
+name: Maps
+localTools:
+  - id: maps
+    start: { package: { runner: npx, name: maps-mcp, version: 1.0.0 } }
+    network: [maps.example.com]
+    tools:
+      - { name: route, description: A route., risk: read, untrusted: false }
+      - { name: places, description: Places., risk: read, untrusted: false }`);
+
+function openPrograms(
+  manifest: Plugin,
+  fence: TrustFence,
+  programsRun: ProgramsRun,
+  onSetUpSandbox?: () => void,
+): void {
+  render(
+    <PluginTrustDialog
+      manifest={manifest}
+      origin={undefined}
+      reason="add"
+      fence={fence}
+      programsRun={programsRun}
+      onSetUpSandbox={onSetUpSandbox}
+      onTrust={() => undefined}
+      onNotNow={() => undefined}
+    />,
+  );
+}
+
+const setUpLine = "Set it up in Settings › Agent sandbox, or use Halonic inside WSL 2.";
+const windowsAddresses =
+  "On Windows, the sandbox can't hold a program to the addresses it lists, so it may reach others.";
+
+function setUpLink(): HTMLButtonElement | undefined {
+  return [...dialog().querySelectorAll("button")].find(
+    (candidate) => candidate.textContent === "Set up the agent sandbox",
+  );
+}
+
+verifies("plugins.plugin-trust-program-rows", () => {
+  it("says a program is off until the agent sandbox is set up on Windows, with the fix and the link (R11b)", () => {
+    const opened: string[] = [];
+    openPrograms(weather, windows, "sandbox-unavailable", () => opened.push("agent-sandbox"));
+
+    expect(dialog().textContent).toContain(
+      "Runs Off on this computer until you set up the agent sandbox. The tool that uses it stays off.",
+    );
+    expect(textNode(dialog(), setUpLine)?.textContent).toBe(
+      `${setUpLine} Set up the agent sandbox`,
+    );
+    expect(dialog().textContent).not.toContain(windowsAddresses);
+    act(() => setUpLink()?.click());
+    expect(opened).toEqual(["agent-sandbox"]);
+  });
+
+  it("gives R11b's fix without the link where the window can't open Settings", () => {
+    openPrograms(weather, windows, "sandbox-unavailable");
+
+    expect(dialog().textContent).toContain(setUpLine);
+    expect(setUpLink()).toBeUndefined();
+  });
+
+  it("says a program doesn't start where the sandbox can't, and its tools stay off (R11)", () => {
+    openPrograms(twoTools, { state: "not-fenced", reason: "container" }, "sandbox-unavailable");
+
+    expect(dialog().textContent).toContain(
+      "Runs Doesn't start on this computer: the sandbox can't start here. The tools that use it stay off.",
+    );
+    expect(dialog().textContent).not.toContain(setUpLine);
+    expect(dialog().textContent).not.toContain(windowsAddresses);
+  });
+
+  it.each([
+    ["ready", true],
+    [undefined, true],
+    ["needs-desktop-app", false],
+  ] as const)(
+    "adds R10 in amber with the triangle under a Windows program that is %s, unless it only runs in the desktop app",
+    (programsRun, shown) => {
+      openPrograms(weather, windows, programsRun);
+
+      const line = textNode(dialog(), windowsAddresses);
+      expect(line !== null).toBe(shown);
+      if (line !== null) {
+        expect(line.closest(".text-attention")?.querySelector("svg")).not.toBeNull();
+      }
+    },
+  );
+
+  it("adds no R10 in the sandbox", () => {
+    openPrograms(weather, { state: "fenced" }, "ready");
+
+    expect(dialog().textContent).toContain("Runs In the agent sandbox, in its own empty folder");
+    expect(dialog().textContent).not.toContain(windowsAddresses);
+  });
+});
+
+const homeStation = plugin(`id: home-station
+version: 0.1.0
+sdk: 1
+name: Weather
+ui:
+  settings:
+    station: { type: url, label: Station address }
+backend:
+  hosts: [api.example.com, { fromSetting: station, class: private }, { fromSetting: hub, class: loopback }]
+  tools:
+    - { name: forecast, description: The forecast., risk: read, untrusted: false }`);
+
+verifies("plugins.plugin-trust-setting-address", () => {
+  it("lists a host from a setting as its own row, with the class the plugin declares (R9)", () => {
+    openPrograms(homeStation, { state: "fenced" }, undefined);
+
+    const rows = [...dialog().querySelectorAll("li")].map((row) => row.textContent);
+    expect(rows).toContain(
+      "The address you enter in Weather's settings, under Station address · only on your home network",
+    );
+    expect(rows).toContain(
+      "The address you enter in Weather's settings, under hub · only on this computer",
+    );
+    expect(dialog().textContent).toContain("Reaches 3 addresses.");
   });
 });

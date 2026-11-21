@@ -11,6 +11,7 @@ import {
   pluginTrustSectionHeadings,
   pluginTrustToolsIntro,
 } from "@halonicjs/app";
+import type { AddressClass } from "@halonicjs/format";
 import { hostFromSetting } from "../settings/settings-text.ts";
 
 /** Why the trust check opens: right after Add, or from **Review** on the plugin's page. */
@@ -167,6 +168,18 @@ export function secretValueLine(kind: SecretKind): string {
 
 /** After an address that only a program reaches (design section 5). */
 export const THE_PROGRAM = "(the program)";
+
+/** Addresses' row for a host the person types into a setting, before it's set (R9). */
+export function settingAddressRow(plugin: string, label: string): string {
+  return `The address you enter in ${plugin}'s settings, under ${label}`;
+}
+
+/** After R9's row: where that host may be, as the sheet declares it, always shown. */
+export const ADDRESS_CLASS_WORDS: Readonly<Record<AddressClass, string>> = {
+  private: "only on your home network",
+  loopback: "only on this computer",
+  public: "any public address",
+};
 
 /** The first line in In Studio (T8). */
 export const IN_STUDIO_LINE =
