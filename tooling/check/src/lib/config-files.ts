@@ -65,6 +65,8 @@ export interface Policy {
     readonly warnLines: number;
     readonly maxLines: number;
     readonly warnFunctionLines: number;
+    /** On a pull request, how far below `maxLines` a file it grows must stay; 0 (left out) turns it off. */
+    readonly pullRequestHeadroom: number;
   };
 }
 
@@ -81,11 +83,12 @@ export function parsePolicy(path: string, value: unknown): Policy {
     ["coreOrder", "published", "adapterGateways", "cloudRuntimes", "fileSize"],
     ["apiTypes", "extraExports"],
   );
-  const fileSize = at.object(policy["fileSize"], "fileSize", [
-    "warnLines",
-    "maxLines",
-    "warnFunctionLines",
-  ]);
+  const fileSize = at.object(
+    policy["fileSize"],
+    "fileSize",
+    ["warnLines", "maxLines", "warnFunctionLines"],
+    ["pullRequestHeadroom"],
+  );
   return {
     coreOrder: at.strings(policy["coreOrder"], "coreOrder"),
     apiTypes: policy["apiTypes"] === undefined ? [] : at.strings(policy["apiTypes"], "apiTypes"),
@@ -98,6 +101,10 @@ export function parsePolicy(path: string, value: unknown): Policy {
       warnLines: at.count(fileSize["warnLines"], "fileSize.warnLines"),
       maxLines: at.count(fileSize["maxLines"], "fileSize.maxLines"),
       warnFunctionLines: at.count(fileSize["warnFunctionLines"], "fileSize.warnFunctionLines"),
+      pullRequestHeadroom:
+        fileSize["pullRequestHeadroom"] === undefined
+          ? 0
+          : at.count(fileSize["pullRequestHeadroom"], "fileSize.pullRequestHeadroom"),
     },
   };
 }
