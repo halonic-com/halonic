@@ -1,6 +1,7 @@
 import type { Workflow } from "@halonicjs/format";
 import { inputIssues } from "./input-checks.ts";
 import { hasState } from "./machine.ts";
+import { likelyName } from "./near-name.ts";
 import { STATE_CHECKS } from "./state-checks.ts";
 import { issue, stateKey, type ValidateOptions, type WorkflowIssue } from "./workflow-issue.ts";
 
@@ -35,18 +36,27 @@ export function validateWorkflow(
   return issues;
 }
 
-/** States no path of transitions reaches from the initial state. Nothing is checked without one. */
+/**
+ * States no path of transitions reaches from the initial state. Nothing is
+ * checked without one. A transition to an unknown state counts as going to
+ * the state its "Did you mean" names: a misspelled `to:` already has its
+ * error, and the states after it aren't warned about too (HAL-14277).
+ */
 function unreachableStates(workflow: Workflow): WorkflowIssue[] {
   if (!hasState(workflow, workflow.initial)) {
     return [];
   }
+  const stateIds = Object.keys(workflow.states);
   const reached = new Set([workflow.initial]);
   const queue = [workflow.initial];
   for (let current = queue.shift(); current !== undefined; current = queue.shift()) {
     for (const transition of workflow.states[current]?.on ?? []) {
-      if (hasState(workflow, transition.to) && !reached.has(transition.to)) {
-        reached.add(transition.to);
-        queue.push(transition.to);
+      const to = hasState(workflow, transition.to)
+        ? transition.to
+        : likelyName(transition.to, stateIds);
+      if (to !== undefined && !reached.has(to)) {
+        reached.add(to);
+        queue.push(to);
       }
     }
   }
