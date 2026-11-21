@@ -54,6 +54,7 @@ export function TryItChatView(props: TryItChatViewProps) {
   const [heldForKey, setHeldForKey] = useState(false);
   const box = useRef<HTMLTextAreaElement>(null);
   const lineId = useId();
+  const noticeId = useId();
   const { turns } = chat.transcript;
   // Halonic's own loop starts no program, so only Claude Code and Codex need the sandbox.
   const sandbox = useSandboxStart(props.sandboxStartCheck, props.harness !== "halonic");
@@ -64,10 +65,20 @@ export function TryItChatView(props: TryItChatViewProps) {
     sandboxRefused: sandbox.refused !== undefined,
   });
 
-  const sendNow = () => {
-    chat.send(draft);
+  const sendNow = (message = draft) => {
+    chat.send(message, refused);
     setDraft("");
     setHeldForKey(false);
+  };
+  // The engine found the workspace isn't trusted: the message goes back in the box, unless the
+  // person already wrote another, and the trust gate opens; once trusted, it's sent (H16).
+  const refused = (message: string) => {
+    setDraft((current) => (current === "" ? message : current));
+    void chat.askTrust().then((trusted) => {
+      if (!trusted) return;
+      chat.send(message, refused);
+      setDraft((current) => (current === message ? "" : current));
+    });
   };
   const send = async () => {
     if (findSecretShape(draft) !== undefined) {
@@ -83,7 +94,7 @@ export function TryItChatView(props: TryItChatViewProps) {
   };
   // Try again puts focus in the box, as New chat does (a11y 6.2).
   const tryAgain = () => {
-    chat.tryAgain();
+    chat.tryAgain(refused);
     box.current?.focus();
   };
 
@@ -106,10 +117,19 @@ export function TryItChatView(props: TryItChatViewProps) {
         <TryItBoxLine
           problem={problem}
           name={name}
-          actions={{ ...props.ways, sendAnyway: sendNow }}
+          actions={{ ...props.ways, sendAnyway: () => sendNow() }}
         />
       </div>
     );
+  };
+
+  // While the engine isn't answering, Send waits with the transcript's line as its reason (H12).
+  // A program or a sandbox that isn't ready makes it wait with the line under the box (H27,
+  // HAL-4291).
+  const sendWait = () => {
+    if (chat.engineQuiet) return { reason: noticeId };
+    if (makesSendWait(problem)) return { reason: lineId };
+    return undefined;
   };
 
   return (
@@ -117,7 +137,11 @@ export function TryItChatView(props: TryItChatViewProps) {
       {turns.length === 0 ? (
         <ChatStart figure={figure} heading={tryItWords.heading(name)} description={description} />
       ) : (
-        <ChatTranscript label={tryItWords.transcript(name)}>
+        <ChatTranscript
+          label={tryItWords.transcript(name)}
+          notice={chat.engineQuiet ? tryItWords.engineNotAnswering : undefined}
+          noticeId={noticeId}
+        >
           {turns.map((turn, index) => (
             // Turns are only added or taken back at the end, so their place is their key.
             <Fragment key={index}>
@@ -125,7 +149,8 @@ export function TryItChatView(props: TryItChatViewProps) {
               <Reply
                 turn={turn}
                 name={name}
-                tryAgain={index === turns.length - 1 ? tryAgain : undefined}
+                // Try again waits until the engine answers again (H13).
+                tryAgain={index === turns.length - 1 && !chat.engineQuiet ? tryAgain : undefined}
               />
             </Fragment>
           ))}
@@ -140,9 +165,7 @@ export function TryItChatView(props: TryItChatViewProps) {
           onSend={() => void send()}
           onStop={chat.stop}
           answering={chat.answering}
-          // A program or a sandbox that isn't ready makes Send wait, with the line as its reason
-          // (H27, HAL-4291).
-          sendUnavailable={makesSendWait(problem) ? { reason: lineId } : undefined}
+          sendUnavailable={sendWait()}
           textRef={box}
           line={line()}
         />
