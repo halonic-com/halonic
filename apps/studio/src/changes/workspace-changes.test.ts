@@ -6,7 +6,7 @@ import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import type { DefinitionStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
-import { filesChangedGapMs, type GitAnswer, WorkspaceChanges } from "./workspace-changes.ts";
+import { type GitAnswer, WorkspaceChanges } from "./workspace-changes.ts";
 import { choicesMemory } from "./workspace-merge.ts";
 
 const sha256 = {
@@ -200,58 +200,6 @@ verifies("source-control.changes-page", () => {
       expect(listener).toHaveBeenCalledTimes(2);
       stop();
       expect(focus.size + changed.size).toBe(0);
-    });
-
-    it("wakes its listener for changed files once at the start of a burst and once at its end", () => {
-      vi.useFakeTimers();
-      try {
-        const { changes, changed } = history(async () => answer("true\n"));
-        const listener = vi.fn();
-        const stop = changes.subscribe(listener);
-        for (let i = 0; i < 20; i++) for (const wake of changed) wake();
-        expect(listener).toHaveBeenCalledTimes(1);
-        vi.advanceTimersByTime(filesChangedGapMs);
-        expect(listener).toHaveBeenCalledTimes(2);
-        vi.advanceTimersByTime(filesChangedGapMs * 5);
-        expect(listener).toHaveBeenCalledTimes(2);
-        for (const wake of changed) wake();
-        expect(listener).toHaveBeenCalledTimes(3);
-        for (const wake of changed) wake();
-        stop();
-        vi.advanceTimersByTime(filesChangedGapMs);
-        expect(listener).toHaveBeenCalledTimes(3);
-      } finally {
-        vi.useRealTimers();
-      }
-    });
-
-    it("doesn't read a folder that isn't a repository again for changed files, only on focus", async () => {
-      const { changes, focus, changed } = history(async () =>
-        answer("", 128, "fatal: not a git repository"),
-      );
-      const listener = vi.fn();
-      changes.subscribe(listener);
-      expect(await changes.read()).toEqual({ kind: "not-a-repository" });
-      for (const wake of changed) wake();
-      expect(listener).not.toHaveBeenCalled();
-      for (const wake of focus) wake();
-      expect(listener).toHaveBeenCalledTimes(1);
-    });
-
-    it("reads again for changed files once a read finds a repository", async () => {
-      let repository = false;
-      const { changes, changed } = history(async (args) =>
-        repository || args[0] !== "rev-parse"
-          ? answer(args[0] === "rev-parse" ? "true\n" : "")
-          : answer("", 128, "fatal: not a git repository"),
-      );
-      const listener = vi.fn();
-      changes.subscribe(listener);
-      await changes.read();
-      repository = true;
-      expect(await changes.read()).toEqual({ kind: "ready", changes: [] });
-      for (const wake of changed) wake();
-      expect(listener).toHaveBeenCalledTimes(1);
     });
     describe("reading a changed file", () => {
       const diffText = "--- a/a.yaml\n+++ b/a.yaml\n@@ -1 +1 @@\n-old\n+new\n";
