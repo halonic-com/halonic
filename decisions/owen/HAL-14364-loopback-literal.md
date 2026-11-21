@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-14364; a security change, so Liam reviews and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QvIxjlkSCuunhggtx1mM+8Kys9ZSrZO01UInRCnq7SgC71joPQUrKFqhcZDokyqXIiXOU5kcGZd15juK8IUSBg==
 
 ## What changes
 
