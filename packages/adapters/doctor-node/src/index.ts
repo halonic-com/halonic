@@ -7,6 +7,7 @@ export {
 export {
   type DoctorMachine,
   type DoctorOptions,
+  type DoctorServiceMachine,
   doctorService,
   type MachineWorkspace,
   trustedOnMachine,
@@ -27,5 +28,6 @@ export {
   readDoctorWorkspace,
 } from "./read-workspace.ts";
 export { studioWatchedFileLimit } from "./studio-watch-limit.ts";
+export { windowsDriveOf } from "./windows-drive.ts";
 export { workspaceIntegrations } from "./workspace-integrations.ts";
 export { fileProblemsOf } from "./workspace-problems.ts";

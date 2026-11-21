@@ -86,6 +86,16 @@ export interface MachineWorkspace {
   readonly providerFiles: ReadonlyMap<string, Provider>;
 }
 
+/**
+ * The parts of a machine the doctor service asks. The rest of
+ * {@link DoctorMachine} is for the words of the CLI's report, so a caller
+ * that answers with facts, such as the agent host, gives only these.
+ */
+export type DoctorServiceMachine = Pick<
+  DoctorMachine,
+  "profile" | "trustStore" | "sandbox" | "probe" | "harnesses" | "http" | "node" | "network"
+>;
+
 /** What the caller says about the Halonic that runs the doctor. */
 export interface DoctorOptions {
   /** Its version, as a trust check records it, such as "0.1.0". */
@@ -112,7 +122,7 @@ const runFolderNames = ["runs", "deployments", "blobs"];
  * It reads no run logs: `doctor` shows no waits in 0.1 (P6 on HAL-2264).
  */
 export async function doctorService(
-  machine: DoctorMachine,
+  machine: DoctorServiceMachine,
   secrets: Secrets,
   workspace: MachineWorkspace | null,
   options: DoctorOptions,
