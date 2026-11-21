@@ -30,7 +30,9 @@ function history(git: (args: readonly string[]) => Promise<GitAnswer>) {
 }
 
 verifies("source-control.get-updates", () => {
-  describe("WorkspaceChanges.getUpdates", () => {
+  // Most of these run real git: two clones and up to five pushes before the test itself, which takes
+  // over 5 s on a loaded machine (HAL-14641). Give them the 30 s that CI gives every test.
+  describe("WorkspaceChanges.getUpdates", { timeout: 30_000 }, () => {
     const real = (dir: string) =>
       history(async (args) => {
         const run = spawnSync(
