@@ -2,6 +2,7 @@
 
 - Approval: HAL-15083, the follow-up of HAL-14850 from the C540 walk (HAL-15074); Liam approves this note in his review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:navs9SLJ4cM3fOQCTI3qxiR7ks3axyEyRSbOGT0ijjsjVc6twaARm997TIExb8QwOcXxXjLvE5FuUymrQy+XCA==
 - Task: HAL-15083
 
 ## What changes
