@@ -43,7 +43,6 @@ import {
 import {
   idOf,
   mailboxesOf,
-  NEW_ROUTINE_PROMPT,
   nameKey,
   type PlacedFile,
   routineFiles,
@@ -125,6 +124,17 @@ type RoutineLiveness = Pick<RoutineView, "everLive" | "changesNotLive" | "liveSi
 
 /** How many of a routine's newest runs the Runs view lists. */
 const RUNS_SHOWN = 20;
+
+/**
+ * What a new routine made from `choice` runs. An agent's prompt is its real task, so an agent with
+ * no prompt is refused rather than written with a stand-in.
+ */
+function targetWithPrompt(choice: RoutineTargetChoice, prompt: string): RoutineTarget {
+  if (choice.kind === "agent" && prompt.trim() === "") {
+    throw new KindedError("invalid_input", `Say what ${choice.name} should do.`);
+  }
+  return targetFor(choice, prompt);
+}
 
 /**
  * The Routines feature's host (`studio.workspace-routines`), over the workspace's files: every
@@ -323,11 +333,7 @@ export class WorkspaceRoutines implements RoutinesHost {
     }
     const choice = await this.starterTarget(hubId);
     if (choice === undefined) throw new NothingToRun();
-    // An agent's prompt is its real task, so no stand-in is written for it.
-    if (choice.kind === "agent" && prompt.trim() === "") {
-      throw new KindedError("invalid_input", `Say what ${choice.name} should do.`);
-    }
-    return this.#write(name, hubId, targetFor(choice, prompt));
+    return this.#write(name, hubId, targetWithPrompt(choice, prompt));
   }
 
   async startingRoutines(owner: TriggerOwner): Promise<readonly TriggerRow[]> {
@@ -348,14 +354,22 @@ export class WorkspaceRoutines implements RoutinesHost {
       .sort((first, second) => first.name.localeCompare(second.name));
   }
 
-  async addTrigger(owner: TriggerOwner): Promise<RoutineRef> {
-    const workspace = await this.#load();
-    const choice = targetsOf(workspace, owner.hubId).find(
-      (one) => one.kind === owner.kind && one.id === owner.id,
-    );
+  async ownerName(owner: TriggerOwner): Promise<string | undefined> {
+    return (await this.#owner(owner))?.name;
+  }
+
+  async addTrigger(owner: TriggerOwner, prompt = ""): Promise<RoutineRef> {
+    const choice = await this.#owner(owner);
     if (choice === undefined)
       throw new Error(`The hub "${owner.hubId}" has no ${owner.kind} "${owner.id}".`);
-    return this.#write(choice.name, owner.hubId, targetFor(choice, NEW_ROUTINE_PROMPT));
+    return this.#write(choice.name, owner.hubId, targetWithPrompt(choice, prompt));
+  }
+
+  /** The workflow or agent a Triggers section is on, as its hub lists it. */
+  async #owner(owner: TriggerOwner): Promise<RoutineTargetChoice | undefined> {
+    return targetsOf(await this.#load(), owner.hubId).find(
+      (one) => one.kind === owner.kind && one.id === owner.id,
+    );
   }
 
   /** Writes a new manual routine that starts `target`, with an id taken from `name` (`-2` when the hub has it). */

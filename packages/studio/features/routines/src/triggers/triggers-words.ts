@@ -8,6 +8,7 @@ export const triggersWords = {
   loadFailedTitle: "Couldn't load triggers",
   tryAgain: "Try again",
   addTrigger: "Add trigger",
+  cancel: "Cancel",
   off: "Off",
   /** Said when nothing starts the owner on its own. */
   empty: (kind: TriggerOwner["kind"]) =>

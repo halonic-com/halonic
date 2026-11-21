@@ -328,6 +328,23 @@ verifies("studio.workspace-routines", () => {
     ).toHaveLength(1);
   });
 
+  it("adds a trigger on an agent only with the prompt the person typed", async () => {
+    const { host, store, changes } = setup();
+    const analyst = { kind: "agent", hubId: "acme", id: "analyst" } as const;
+    expect(await host.ownerName(analyst)).toBe("Analyst");
+    await expect(host.addTrigger(analyst)).rejects.toThrow("Say what Analyst should do.");
+    await expect(host.addTrigger(analyst, " ")).rejects.toThrow("Say what Analyst should do.");
+    expect(changes).toEqual([]);
+    const ref = await host.addTrigger(analyst, "Sum up the inbox");
+    expect(ref.id).toBe("analyst");
+    expect(store["hubs/acme/workflows/routines/analyst.routine.yaml"]).toBeDefined();
+    expect((await host.read(ref)).target).toMatchObject({
+      kind: "agent",
+      id: "analyst",
+      prompt: "Sum up the inbox",
+    });
+  });
+
   it("starts the target through the engine, and refuses what can't start", async () => {
     const started: unknown[] = [];
     const { host } = setup({
