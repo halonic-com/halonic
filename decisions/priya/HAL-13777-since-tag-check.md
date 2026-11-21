@@ -23,18 +23,19 @@ checkout) instead of skipping the rule, so a missing fetch fails loudly
 rather than turning the rule off. A clone without tags gets an error that
 says `git fetch --tags`.
 
-Nineteen requirements written after v0.1.0 still said `Since: 0.1.0` and now
-say `Since: unreleased`. Two are guard paths (`check.guard-dependency`,
+Twenty-one requirements written after v0.1.0 still said `Since: 0.1.0` and
+now say `Since: unreleased`. Two are guard paths (`check.guard-dependency`,
 `spec.verifies-counts-retries-once`), moved here from HAL-13752. One more,
 `integration.sheet-shows-everything`, said a guessed `Since: 0.1.2` and now
 says `Since: unreleased` too. The guard wants every edited active
-requirement named, so Covers lists all twenty by ID.
+requirement named, so Covers lists all twenty-two by ID.
 
 ## Covers
 
 - .github/
 - packages/testing/spec/
 - tooling/check/
+- agents.host-chat
 - app.doctor-time-limit
 - check.guard-dependency
 - engine.final-signal
@@ -50,6 +51,7 @@ requirement named, so Covers lists all twenty by ID.
 - routines.signal-loop
 - routines.signals-due
 - spec.verifies-counts-retries-once
+- studio.workspace-agents-chat
 - workflow.validate-choice-values
 - workflow.validate-template-names
 - workflow.validate-wait-signal
