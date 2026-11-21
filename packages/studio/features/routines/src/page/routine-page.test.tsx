@@ -438,7 +438,7 @@ verifies("routines.page.run-now", () => {
       // The sentence the list row and the Starts card give too (HAL-15082).
       [
         { reason: "target-not-found" },
-        "Can't start: briefing isn't in this workspace. Pick another workflow.",
+        "Not started: briefing isn't in this workspace. Pick another workflow.",
       ],
       [{ reason: "not-trusted" }, "Not started: Daily isn't trusted yet."],
       [

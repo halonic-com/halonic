@@ -12,7 +12,7 @@ Where the host can start a run, the routine page shall show **Run now** in its h
 - Given the host starts run "run_1" ending in "abc123", when **Run now** is pressed on "Daily", then a toast says "Run started · Daily · Run abc123" with **Open run**, and **Open run** opens that run.
 - Given the host is still answering the first press, then a second press starts no second run.
 - Given the routine is off, then **Run now** is still there and starts the run.
-- Given the host refuses because the workflow briefing isn't in the workspace, then a toast that stays says "Can't start: briefing isn't in this workspace. Pick another workflow.", the sentence the list row and the Starts card give.
+- Given the host refuses because the workflow briefing isn't in the workspace, then a toast that stays says "Not started: briefing isn't in this workspace. Pick another workflow.", the sentence the list row and the Starts card give.
 - Given the host refuses because the target isn't live yet, then a toast that stays says "Not started: Briefing isn't live yet."
 - Given the host refuses because the account is signed out, then a toast that stays says "Not started: fin@acme.example is signed out."
 - Given the engine isn't answering, then a toast that stays says "Couldn't start Daily." with the reason.

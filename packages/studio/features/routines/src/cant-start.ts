@@ -9,8 +9,8 @@ export const cantStartWords = {
   /** What it starts isn't in the workspace: never there, renamed or removed. */
   targetMissing: (target: string, kind: RoutineTarget["kind"]) =>
     `${target} isn't in this workspace. Pick another ${kind}.`,
-  /** Run now's toast: the same sentence, after the chip's word. */
-  refused: (reason: string) => `Can't start: ${reason}`,
+  /** Run now's toast: the same sentence, opened as Run now's other refusals are. */
+  refused: (reason: string) => `Not started: ${reason}`,
 } as const;
 
 /** The routine facts that decide whether it can start. */

@@ -101,8 +101,9 @@ verifies("studio.workspace-routines", () => {
 
     // C540 #4 (HAL-15082): `halonic routines` says it can't start, so the Studio list must too.
     expect(listed?.targetFound).toBe(true);
+    // The row names the routine already, so the line starts with the problem, not `Routine "<id>": `.
     expect(listed?.problems).toEqual([
-      expect.stringContaining("{{trigger.date}} isn't a trigger value"),
+      expect.stringMatching(/^\{\{trigger\.date\}\} isn't a trigger value/),
     ]);
   });
 

@@ -106,8 +106,8 @@ verifies("routines.list.rows-and-states", () => {
   });
 
   it("shows Can't start, the first error and no time for a routine whose file has errors", async () => {
-    const problem =
-      'Routine "monday": {{trigger.date}} isn\'t a trigger value. Use {{trigger.at}}.';
+    // The host gives `halonic validate`'s message without its `Routine "<id>": ` prefix.
+    const problem = "{{trigger.date}} isn't a trigger value. Use {{trigger.at}}.";
     const rows = [
       listing("acme", "monday", "Monday note", { problems: [problem], nextRun: tomorrow }),
     ];

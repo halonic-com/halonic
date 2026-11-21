@@ -56,9 +56,10 @@ export interface RoutineListing extends RoutineRef {
    */
   readonly targetFound: boolean;
   /**
-   * The errors the workspace's checks found in its file, as `halonic validate` gives them. Any one
-   * means it can't start, as `halonic routines` says, so the row shows "Can't start" and the first
-   * (HAL-15082).
+   * The errors the workspace's checks found in its file, as `halonic validate` gives them but
+   * without the `Routine "<id>": ` that starts each, since the row names the routine already. Any
+   * one means it can't start, as `halonic routines` says, so the row shows "Can't start" and the
+   * first (HAL-15082).
    */
   readonly problems: readonly string[];
   /** Held for a Google sign-in, which the row shows as "Needs sign-in again". */
