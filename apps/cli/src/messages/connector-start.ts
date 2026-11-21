@@ -16,8 +16,9 @@ export type ShownPart =
  * the secret as the connector's file writes it, never a secret's value or
  * the error's own text. Fix lines: Tomas with Sofia, HAL-13670.
  *
- * `halonic tools review | approve` stop with `cantListProgramMissing` or
- * `cantListSecretMissing` and their fix (decided on HAL-13829). `halonic
+ * `halonic tools review | approve` stop with `cantListProgramMissing`,
+ * `cantListProgramStopped` (HAL-13731) or `cantListSecretMissing` and their
+ * fix (decided on HAL-13829). `halonic
  * run` warns with `notStarted` (or `notListed` when it can't say why), then
  * `programMissing`, `secretMissing`, `pluginNotTrusted` or `pluginChanged`
  * and their fix, and goes on: the run had none of the connector's tools.
@@ -45,6 +46,17 @@ export const connectorStartMessages = defineMessages("connectorStart", {
     file === undefined
       ? phrase`Install it, or change the command in the ${connector} connector file.`
       : phrase`Install it, or change the command in ${file}.`,
+  /** HAL-13731: line 1 of `tools review | approve` for a connector whose program stopped by itself before it answered. */
+  cantListProgramStopped: (connector: string, program: string) =>
+    phrase`Couldn't list the tools from ${connector}: its program ${program} stopped right after it started.`,
+  /**
+   * `file` as for `cantListProgramMissingFix`. The command and args, not the program alone:
+   * `npx` on its own only prints its help (Sofia, HAL-13732).
+   */
+  cantListProgramStoppedFix: (connector: string, file: string | undefined) =>
+    file === undefined
+      ? phrase`To see why, run the command and args from the ${connector} connector file yourself.`
+      : phrase`To see why, run the command and args from ${file} yourself.`,
   /** HAL-13829: line 1 of `tools review | approve` for a connector that needs a secret that isn't set. */
   cantListSecretMissing: (connector: string, secret: string) =>
     phrase`Couldn't list the tools from ${connector}: it needs the secret ${secret}, which isn't set.`,

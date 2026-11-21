@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-13670 (from Nina's C207 note on HAL-13667: a missing program read as "a problem it can't explain yet"); the words of Studio's connector failures (UX check C2, HAL-12410); HAL-13714 (from the real-run QA pass on HAL-13712: a server that isn't running read the same way); the words for a missing program or secret decided on HAL-13829 (CN3 of the C248 check on HAL-13818)
+- Source: HAL-13670 (from Nina's C207 note on HAL-13667: a missing program read as "a problem it can't explain yet"); the words of Studio's connector failures (UX check C2, HAL-12410); HAL-13714 (from the real-run QA pass on HAL-13712: a server that isn't running read the same way); the words for a missing program or secret decided on HAL-13829 (CN3 of the C248 check on HAL-13818); HAL-13731 (Nina's C220 check on HAL-13670: a program that stops right after it starts read as "a problem it can't explain yet"; fix line by Sofia, HAL-13732)
 
-When the connector that `halonic tools review` or `halonic tools approve` starts to list its tools can't start because its program isn't on this computer, the command shall stop with line 1 "Couldn't list the tools from <connector>: its program <program> isn't on this computer." and the fix "Install it, or change the command in <file>.", with the connector's file named by its path, or as "the <connector> connector file" when it has no file in the workspace, and exit 9 (`unavailable`). When a secret the connector names isn't set, it shall stop with line 1 "Couldn't list the tools from <connector>: it needs the secret <name>, which isn't set." and the fix "Set it with: halonic secret set <name>", and exit 2 (`invalid_input`). It shall tell the two apart by the error's type, never show the error's own text, and give `--json` the cause and the name as `reason` with `program` or `secret`. When nothing answers at an `http` connector's address (Node's network codes, such as `ECONNREFUSED`), it shall stop with line 1 "Nothing answered at <address>.", the address without a user name, password, query or fragment, and a fix that says to start its server or change the address in the connector's file; when the server stopped, or didn't answer in time, before it listed its tools, line 1 shall be "The <connector> server stopped, or didn't answer in time, before it listed its tools." with a fix that says to check its server on its own. Both exit 9 (`unavailable`), and `--json` gets `reason` `nothing-answered` with `address`, or `stopped`.
+When the connector that `halonic tools review` or `halonic tools approve` starts to list its tools can't start because its program isn't on this computer, the command shall stop with line 1 "Couldn't list the tools from <connector>: its program <program> isn't on this computer." and the fix "Install it, or change the command in <file>.", with the connector's file named by its path, or as "the <connector> connector file" when it has no file in the workspace, and exit 9 (`unavailable`). When its program stops by itself right after it started, before it answered, the command shall stop with line 1 "Couldn't list the tools from <connector>: its program <program> stopped right after it started." and the fix "To see why, run the command and args from <file> yourself.", with the file named the same way, and exit 9 (`unavailable`). When a secret the connector names isn't set, it shall stop with line 1 "Couldn't list the tools from <connector>: it needs the secret <name>, which isn't set." and the fix "Set it with: halonic secret set <name>", and exit 2 (`invalid_input`). It shall tell the two apart by the error's type, never show the error's own text, and give `--json` the cause and the name as `reason` (`program-missing`, `program-stopped` or `secret-missing`) with `program` or `secret`. When nothing answers at an `http` connector's address (Node's network codes, such as `ECONNREFUSED`), it shall stop with line 1 "Nothing answered at <address>.", the address without a user name, password, query or fragment, and a fix that says to start its server or change the address in the connector's file; when the server stopped after it started, or didn't answer in time, before it listed its tools, line 1 shall be "The <connector> server stopped, or didn't answer in time, before it listed its tools." with a fix that says to check its server on its own. Both exit 9 (`unavailable`), and `--json` gets `reason` `nothing-answered` with `address`, or `stopped`.
 
 ## Examples
 
@@ -14,12 +14,21 @@ When the connector that `halonic tools review` or `halonic tools approve` starts
 - Given the same,
   when `halonic tools approve notes-mcp archive --json` runs,
   then the error has kind `unavailable`, `reason` `program-missing` and `program` `notes-nope`, and nothing is approved.
+- Given `notes-mcp`'s command names `notes-quits`, which exits as soon as it starts,
+  when `halonic tools review notes-mcp` runs,
+  then it prints "✕ Couldn't list the tools from notes-mcp: its program notes-quits stopped right after it started." and "To see why, run the command and args from library/connectors/notes-mcp.connector.yaml yourself." and exits 9.
+- Given the same,
+  when `halonic tools approve notes-mcp archive --json` runs,
+  then the error has kind `unavailable`, `reason` `program-stopped` and `program` `notes-quits`.
 - Given `notes-mcp` names the secret `notes-token` in `secretEnv`, and it isn't set,
   when `halonic tools review notes-mcp` runs,
   then it prints "✕ Couldn't list the tools from notes-mcp: it needs the secret notes-token, which isn't set." and "Set it with: halonic secret set notes-token", exits 2, and no program starts.
 - Given `notes-mcp` at `http://127.0.0.1:47998/mcp` with nothing listening there,
   when `halonic tools review notes-mcp` or `halonic tools approve notes-mcp --all` runs,
   then it prints "✕ Nothing answered at http://127.0.0.1:47998/mcp." and "Start its server, or change the address in library/connectors/notes-mcp.connector.yaml." and exits 9.
-- Given `notes-mcp`'s server stops before it answers,
+- Given `notes-mcp`'s server stops when it is asked for its tools, before it answers,
   when `halonic tools approve notes-mcp --all` runs,
+  then it prints "✕ The notes-mcp server stopped, or didn't answer in time, before it listed its tools." and exits 9.
+- Given `notes-mcp`'s server reads every message and answers none,
+  when `halonic tools review notes-mcp` runs and the time limit passes,
   then it prints "✕ The notes-mcp server stopped, or didn't answer in time, before it listed its tools." and exits 9.
