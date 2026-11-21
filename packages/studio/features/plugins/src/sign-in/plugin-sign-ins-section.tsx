@@ -1,6 +1,6 @@
 import type { Plugin } from "@halonicjs/format";
-import { Button, Callout, StatusChip, useOpenExternal } from "@halonicjs/studio-kit";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { Button, Callout, Spinner, StatusChip, useOpenExternal } from "@halonicjs/studio-kit";
+import { type Ref, useCallback, useEffect, useId, useRef, useState } from "react";
 import { messageOf } from "../message-of.ts";
 import type { PluginSettingsReader } from "../settings/plugin-settings-section.tsx";
 import {
@@ -11,12 +11,15 @@ import {
   tokenHostDiffers,
 } from "./sign-in-facts.ts";
 import {
+  CANCEL,
   CLIENT_SECRET_NOT_SET,
+  cancelFailed,
   outcomeLine,
   SETTINGS_NEEDED,
   SIGN_IN,
   SIGN_IN_AGAIN,
   SIGN_IN_CHANGED,
+  SIGN_IN_NOT_FINISHED,
   SIGN_IN_UNAVAILABLE_HERE,
   SIGN_INS_HEADING,
   SIGN_OUT,
@@ -29,6 +32,7 @@ import {
   signOutFailed,
   tokenHostWarning,
   trustLine,
+  waitingForBrowser,
 } from "./sign-in-text.ts";
 
 /** Where one sign-in stands, in the agent host's word (`IntegrationSignInState`). */
@@ -58,6 +62,8 @@ export interface PluginSignIns {
   status(plugin: string): Promise<readonly PluginSignInStatus[]>;
   /** Starts a sign-in and answers the address to open. Throws with the host's `kind` when it refuses. */
   start(plugin: string, signIn: string): Promise<string>;
+  /** Drops the pending sign-in, so the browser's answer that still arrives is refused. */
+  cancel(plugin: string, signIn: string): Promise<void>;
   signOut(plugin: string, signIn: string): Promise<PluginSignOutResult>;
 }
 
@@ -85,9 +91,10 @@ export interface PluginSignInsSectionProps {
  * A plugin's sign-ins (HAL-984 design section 6, approved on HAL-8619): one
  * block each, with its purpose, the trust check line, the token host warning
  * when the hosts differ, and **Sign in**, **Signed in** with **Sign out**, or
- * **Sign in again** with the reason. After the browser sign-in, the person
- * comes back to Halonic, and the section reads where the sign-ins stand again
- * when the window gets focus. A plugin without sign-ins shows nothing.
+ * **Sign in again** with the reason. While the browser sign-in is open the
+ * block waits, with **Cancel**. After the browser sign-in, the person comes
+ * back to Halonic, and the section reads where the sign-ins stand again when
+ * the window gets focus. A plugin without sign-ins shows nothing.
  *
  * @example
  * <PluginSignInsSection plugin={manifest} settings={pluginService} signIns={hostSignIns} />
@@ -177,6 +184,12 @@ function useSignIns(
   return { facts, statuses, problem, reload };
 }
 
+/**
+ * How long the host keeps a sign-in waiting for the browser (`pendingSignInLifetimeMs`, 10
+ * minutes). After it the host refuses the browser's answer, so the block stops waiting.
+ */
+const browserWaitMs = 10 * 60 * 1000;
+
 interface SignInBlockProps {
   readonly service: string;
   readonly plugin: string;
@@ -191,7 +204,13 @@ interface SignInBlockProps {
   readonly announceState: ((key: string, text: string) => void) | undefined;
 }
 
-/** One sign-in: what it does, where it stands, its one button and the line under it. */
+/**
+ * One sign-in: what it does, where it stands, its one button and the line under it. Once the
+ * browser opens, the block waits for it with **Cancel** in place of the button, until the host
+ * reports the sign-in differently from when it opened, the person cancels, or the host's wait
+ * ends. A sign-in that fails the same way twice in a row reads the same, so that wait ends only
+ * by **Cancel** or the host's wait.
+ */
 function SignInBlock({
   service,
   plugin,
@@ -207,7 +226,39 @@ function SignInBlock({
   const openExternal = useOpenExternal();
   const [busy, setBusy] = useState(false);
   const [line, setLine] = useState<string | undefined>(undefined);
+  // Set while the browser sign-in is open: where the sign-in stood when the browser opened.
+  const [waiting, setWaiting] = useState<
+    { readonly from: PluginSignInStatus | undefined } | undefined
+  >(undefined);
+  const block = useRef<HTMLLIElement>(null);
+  const waitingRow = useRef<HTMLDivElement>(null);
+  // The wait ended while the person was on its row, so focus goes to the button back in its place.
+  const refocus = useRef(false);
   const state = facts === undefined ? "cannotSignIn" : status?.state;
+  const announceKey = `sign-in:${plugin}:${name}`;
+
+  // A sign-in the browser finished, or ended without a grant, is reported differently.
+  useEffect(() => {
+    if (waiting === undefined || sameStatus(waiting.from, status)) return;
+    refocus.current = hasFocus(waitingRow.current);
+    setWaiting(undefined);
+  }, [waiting, status]);
+
+  useEffect(() => {
+    if (waiting === undefined) return;
+    const timer = setTimeout(() => {
+      refocus.current = hasFocus(waitingRow.current);
+      setWaiting(undefined);
+      setLine(SIGN_IN_NOT_FINISHED);
+    }, browserWaitMs);
+    return () => clearTimeout(timer);
+  }, [waiting]);
+
+  useEffect(() => {
+    if (waiting !== undefined || !refocus.current) return;
+    refocus.current = false;
+    block.current?.querySelector("button")?.focus();
+  }, [waiting]);
 
   async function signIn() {
     // No button offers a sign-in without the facts; the check below needs them.
@@ -219,8 +270,24 @@ function SignInBlock({
       // promise. It opens only the approved sign-in page (`signInPage`).
       const address = signIns.start(plugin, name).then((answered) => signInPage(answered, facts));
       await openExternal(address);
+      setWaiting({ from: status });
+      announceState?.(announceKey, waitingForBrowser(service));
     } catch (error) {
       setLine(startFailedLine(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function cancel() {
+    setBusy(true);
+    setLine(undefined);
+    try {
+      await signIns.cancel(plugin, name);
+      refocus.current = hasFocus(waitingRow.current);
+      setWaiting(undefined);
+    } catch (error) {
+      setLine(cancelFailed(messageOf(error)));
     } finally {
       setBusy(false);
     }
@@ -243,13 +310,14 @@ function SignInBlock({
   }
 
   const outcome = outcomeShown(service, status);
-  const shown = line ?? outcome;
+  // While it waits, how an earlier sign-in ended is no longer news.
+  const shown = line ?? (waiting === undefined ? outcome : undefined);
   // Until the host answered where the sign-in stands, the line isn't known yet.
   const known = line !== undefined || status !== undefined;
-  useAnnounceLineChanges(`sign-in:${plugin}:${name}`, known, shown, announceState);
+  useAnnounceLineChanges(announceKey, known, shown, announceState);
 
   return (
-    <li className="flex flex-col gap-2">
+    <li ref={block} className="flex flex-col gap-2">
       <p className="text-body-strong wrap-anywhere">{purpose}</p>
       {facts === undefined ? null : (
         <>
@@ -259,7 +327,17 @@ function SignInBlock({
           ) : null}
         </>
       )}
-      <StateRow state={state} busy={busy} actions={actions} onSignIn={signIn} onSignOut={signOut} />
+      {waiting !== undefined && actions ? (
+        <WaitingRow ref={waitingRow} service={service} busy={busy} onCancel={() => void cancel()} />
+      ) : (
+        <StateRow
+          state={state}
+          busy={busy}
+          actions={actions}
+          onSignIn={signIn}
+          onSignOut={signOut}
+        />
+      )}
       {shown === undefined ? null : (
         // Plain text: a status region made together with its text is often skipped, so the
         // announcer reads a new line (SN1).
@@ -286,6 +364,32 @@ function useAnnounceLineChanges(
     if (changed && shown !== undefined) announceState?.(key, shown);
     previous.current = { shown };
   }, [key, known, shown, announceState]);
+}
+
+interface WaitingRowProps {
+  readonly ref: Ref<HTMLDivElement>;
+  readonly service: string;
+  readonly busy: boolean;
+  readonly onCancel: () => void;
+}
+
+/**
+ * The browser sign-in is open: a spinner, "Waiting for Acme… Finish in your browser." and
+ * **Cancel**, as the Google setup waits. The window's announcer reads the line once when the wait
+ * starts, so it is plain text.
+ */
+function WaitingRow({ ref, service, busy, onCancel }: WaitingRowProps) {
+  return (
+    <div ref={ref} className="flex flex-wrap items-center gap-2">
+      <span className="size-4 text-fg-muted">
+        <Spinner />
+      </span>
+      <p className="text-small text-fg-muted wrap-anywhere">{waitingForBrowser(service)}</p>
+      <Button variant="ghost" size="sm" busy={busy} onClick={onCancel}>
+        {CANCEL}
+      </Button>
+    </div>
+  );
 }
 
 interface StateRowProps {
@@ -351,6 +455,22 @@ function outcomeShown(service: string, status: PluginSignInStatus | undefined): 
   if (lastOutcome === undefined) return undefined;
   if (status?.state === "approvalChanged" && lastOutcome.kind === "signInChanged") return undefined;
   return outcomeLine(service, lastOutcome);
+}
+
+/** Whether the person is on something inside `element`. */
+function hasFocus(element: HTMLElement | null): boolean {
+  return element?.contains(document.activeElement) ?? false;
+}
+
+/** Whether the host reports a sign-in as it did before: the same state and the same last outcome. */
+function sameStatus(
+  before: PluginSignInStatus | undefined,
+  now: PluginSignInStatus | undefined,
+): boolean {
+  return (
+    before?.state === now?.state &&
+    JSON.stringify(before?.lastOutcome) === JSON.stringify(now?.lastOutcome)
+  );
 }
 
 /** The line when **Sign in** couldn't start: the host's refusal in words, or the reason. */

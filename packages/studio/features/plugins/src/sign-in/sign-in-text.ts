@@ -80,6 +80,27 @@ export function signInPageNotApproved(approvedHost: string): string {
   return signInNotStarted(`the page to open isn't on ${approvedHost}.`);
 }
 
+/**
+ * While the browser sign-in is open, next to **Cancel** (team wording, HAL-15133, in the shape of
+ * the Google setup's "Waiting for Google… Finish in your browser.").
+ *
+ * @param service - the plugin's name
+ */
+export function waitingForBrowser(service: string): string {
+  return `Waiting for ${service}… Finish in your browser.`;
+}
+
+/** Ends the wait for the browser and drops the pending sign-in at the host. */
+export const CANCEL = "Cancel";
+
+/** **Cancel** failed; the host may still take the browser's answer (team wording, microcopy 1.1 "Action failed"). */
+export function cancelFailed(reason: string): string {
+  return `Couldn't cancel the sign-in: ${reason}`;
+}
+
+/** A sign-in that didn't finish: no answer came back, or it came back incomplete or too late. */
+export const SIGN_IN_NOT_FINISHED = "The sign-in didn't finish. Try again.";
+
 /** **Sign out** failed; nothing was removed (team wording, microcopy 1.1 "Action failed"). */
 export function signOutFailed(reason: string): string {
   return `Couldn't sign out: ${reason}`;
@@ -138,7 +159,7 @@ export function outcomeLine(service: string, outcome: SignInOutcome): string | u
       return CLIENT_SECRET_NOT_SET;
     case "incompleteCallback":
     case "linkNoLongerValid":
-      return "The sign-in didn't finish. Try again.";
+      return SIGN_IN_NOT_FINISHED;
     case "issuerMismatch":
     case "codeRefused":
     case "noRefreshToken":

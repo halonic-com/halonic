@@ -30,6 +30,7 @@ function hostOver(shell: TauriShell, signedOut: string[] = []) {
     signIns: {
       status: async () => [],
       start: async () => "https://auth.example.com/oauth/authorize",
+      cancel: async () => {},
       signOut: async () => ({ kind: "notSignedIn" }),
     },
     signOut: async (plugin) => void signedOut.push(plugin),

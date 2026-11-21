@@ -1,23 +1,13 @@
 // @vitest-environment jsdom
 
-import type { Plugin } from "@halonicjs/format";
-import { type ExternalAddress, OpenExternalProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { PluginSettingsReader } from "../settings/plugin-settings-section.tsx";
-import { acmeWithSignIn, noSettings, weather } from "../test-support/plugins.ts";
-import { render, unmountAll } from "../test-support/render.tsx";
-import {
-  type PluginSignInStatus,
-  type PluginSignIns,
-  PluginSignInsSection,
-  type PluginSignOutResult,
-} from "./plugin-sign-ins-section.tsx";
+import { acmeWithSignIn, weather } from "../test-support/plugins.ts";
+import { unmountAll } from "../test-support/render.tsx";
+import { authorizeUrl, button, FakeSignIns, press, show } from "../test-support/sign-ins.tsx";
 
 afterEach(unmountAll);
-
-const authorizeUrl = "https://auth.example.com/oauth/authorize?client_id=abc123";
 
 /** Answers from the host that aren't the approved sign-in page, each with what is wrong with it. */
 const wrongPages = [
@@ -27,81 +17,6 @@ const wrongPages = [
   ["the approved host as a user name", "https://auth.example.com@evil.example.net/oauth"],
   ["no address", "auth.example.com/oauth/authorize"],
 ] as const;
-
-/**
- * The host's sign-ins as a test sets them, with every call written down, and
- * the pages the browser opened.
- */
-class FakeSignIns implements PluginSignIns {
-  readonly calls: string[] = [];
-  readonly opened: string[] = [];
-  statuses: PluginSignInStatus[] = [{ signIn: "account", state: "signedOut" }];
-  startAnswer = authorizeUrl;
-  startError: unknown;
-  signOutResult: PluginSignOutResult = { kind: "signedOut", revoke: "revoked" };
-
-  async status(plugin: string) {
-    this.calls.push(`status ${plugin}`);
-    return this.statuses;
-  }
-  async start(plugin: string, signIn: string) {
-    this.calls.push(`start ${plugin} ${signIn}`);
-    if (this.startError !== undefined) throw this.startError;
-    return this.startAnswer;
-  }
-  async signOut(plugin: string, signIn: string) {
-    this.calls.push(`signOut ${plugin} ${signIn}`);
-    this.statuses = [{ signIn: "account", state: "signedOut" }];
-    return this.signOutResult;
-  }
-  /** The kit's `openExternal`, as the shell gives it: it opens the address once it arrives. */
-  readonly openExternal = async (address: ExternalAddress) => {
-    this.opened.push(await address);
-  };
-}
-
-/** Settings with the client ID set, unless the test leaves it out. */
-function settingsWith(values: Record<string, string>): PluginSettingsReader {
-  return { ...noSettings().settings, settings: async () => values };
-}
-
-async function show(
-  signIns: FakeSignIns,
-  options: {
-    readonly plugin?: Plugin;
-    readonly values?: Record<string, string>;
-    readonly off?: { readonly reason: string };
-    readonly viewOnly?: boolean;
-    readonly announced?: string[];
-  } = {},
-) {
-  const view = render(
-    <OpenExternalProvider openExternal={signIns.openExternal}>
-      <PluginSignInsSection
-        plugin={options.plugin ?? acmeWithSignIn()}
-        settings={settingsWith(options.values ?? { clientId: "abc123" })}
-        signIns={signIns}
-        off={options.off}
-        viewOnly={options.viewOnly ?? false}
-        announceState={(key, text) => options.announced?.push(`${key}: ${text}`)}
-      />
-    </OpenExternalProvider>,
-  );
-  await act(async () => {});
-  return view;
-}
-
-function button(name: string): HTMLButtonElement | undefined {
-  return [...document.querySelectorAll<HTMLButtonElement>("button")].find((candidate) =>
-    candidate.textContent?.startsWith(name),
-  );
-}
-
-async function press(name: string) {
-  const found = button(name);
-  if (found === undefined) throw new Error(`No button ${name}`);
-  await act(async () => found.click());
-}
 
 verifies("plugins.plugin-sign-ins", () => {
   describe("signed out", () => {
