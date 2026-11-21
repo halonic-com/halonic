@@ -139,6 +139,12 @@ export class PluginService {
    * It doesn't trust the plugin: the entry it gives is new, or changed when
    * it replaced one, until a person trusts it with {@link trust}.
    *
+   * Without `replace`, when no entry has the plugin's id, it first signs out
+   * any sign-ins left for that id, such as by a plugin whose folder was
+   * deleted by hand, so the new plugin isn't signed in as the old one. A
+   * sign-out that fails is thrown before anything is written, so adding
+   * again tries again.
+   *
    * @param source - the plugin's folder, read through its own `FolderReader`
    * A path the sandbox denies in a home folder, such as `.ssh`, is left out
    * of the copy at any depth, as a private name such as `.env` is, and the
@@ -169,6 +175,7 @@ export class PluginService {
     // A secret the version being replaced had stays in `Secrets` until the
     // plugin is removed, so its name stays in the install record too.
     const replacedSecretNames = options.replace ? await this.#replacedSecretNames(plugin.id) : {};
+    if (!options.replace) await this.#signOutLeftovers(plugin.id);
     const placement = await this.#options.writer.place(plugin.id, placed, {
       replace: options.replace,
     });
@@ -189,6 +196,16 @@ export class PluginService {
       return err({ kind: "broken", problems: entry.problems });
     }
     return ok({ ...entry, leftOut: snapshot.deniedLeftOut() });
+  }
+
+  /**
+   * Signs out the sign-ins left for the plugin `id` when no entry has that
+   * id, as `app.plugin-sign-out` asks. An entry that is there is left alone:
+   * it may be signed in now, and placing refuses it as `taken`.
+   */
+  async #signOutLeftovers(id: string): Promise<void> {
+    if ((await this.#topEntry(id)) !== undefined) return;
+    await this.#options.signOut(id);
   }
 
   /**

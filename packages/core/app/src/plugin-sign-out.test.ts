@@ -43,17 +43,18 @@ async function setup() {
     "plugin.yaml": weatherManifest,
     "backend/index.js": "export default {};\n",
   });
-  const added = await service.add(source, {
-    from: { kind: "folder", path: "/sources/weather" },
-    replace: false,
-  });
+  const add = (replace: boolean) =>
+    service.add(source, { from: { kind: "folder", path: "/sources/weather" }, replace });
+  const added = await add(false);
   if (!added.ok || added.value.status === "broken")
     throw new Error("expected the plugin to be added");
   await service.trust("weather", added.value.fingerprint, "prompt");
+  // The first add signed out what was left for `weather`; the tests look at what comes after.
+  signedOut.length = 0;
   const status = async () => (await service.load()).map((entry) => entry.status);
   const deleted: string[] = [];
   const deleteSecret = async (name: string) => void deleted.push(name);
-  return { service, store, folder, signedOut, host, status, deleted, deleteSecret };
+  return { service, store, folder, signedOut, host, status, deleted, deleteSecret, add };
 }
 
 verifies("app.plugin-sign-out", () => {
@@ -114,5 +115,27 @@ verifies("app.plugin-sign-out", () => {
       { id: "weather", trusted: false },
       { id: "weather", trusted: false },
     ]);
+  });
+
+  it("signs out what is left for an id whose folder was deleted by hand before a new plugin is placed", async () => {
+    const { signedOut, folder, host, add } = await setup();
+    folder.reader.remove("weather");
+    host.failing = true;
+
+    await expect(add(false)).rejects.toThrow("the agent host isn't running");
+    expect(await folder.reader.entries()).toEqual([]);
+
+    host.failing = false;
+    expect((await add(false)).ok).toBe(true);
+    expect(signedOut.map((each) => each.id)).toEqual(["weather", "weather"]);
+  });
+
+  it("leaves the sign-ins of a plugin that is there when it is added again or replaced", async () => {
+    const { signedOut, add } = await setup();
+
+    expect(await add(false)).toMatchObject({ ok: false, error: { kind: "taken" } });
+    expect((await add(true)).ok).toBe(true);
+
+    expect(signedOut).toEqual([]);
   });
 });

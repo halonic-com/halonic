@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FileRecordStore, FileTrustStore } from "@halonicjs/adapter-fs-node";
@@ -93,14 +93,20 @@ function grantRecords() {
   return { records, grants: createSignInGrants(tokens, webCryptoDigest) };
 }
 
-/** Adds Weather, trusts it and saves a grant for its sign-in and one for another plugin's. */
-async function addSignedInWeather(): Promise<void> {
+/** Adds Weather from its source folder with `halonic plugin add`, and gives what it printed. */
+async function addWeather() {
   const source = join(folder, "sources", "weather");
   await mkdir(join(source, "backend"), { recursive: true });
   await writeFile(join(source, "plugin.yaml"), manifest);
   await writeFile(join(source, "backend", "index.js"), "export default {};\n");
   const io = captureIo(folder);
-  await runCli(["plugin", "add", source], io, [pluginCommandWith(setup)]);
+  const code = await runCli(["plugin", "add", source], io, [pluginCommandWith(setup)]);
+  return { code, io };
+}
+
+/** Adds Weather, trusts it and saves a grant for its sign-in and one for another plugin's. */
+async function addSignedInWeather(): Promise<void> {
+  const { io } = await addWeather();
   const fingerprint = io.stdout.at(-1) ?? "";
   await trust(["--plugin", "weather", "--yes", "--fingerprint", fingerprint]);
   const { grants } = grantRecords();
@@ -158,6 +164,16 @@ describe("app.plugin-sign-out in the CLI", () => {
 
     expect(await trust(["--plugin", "weather", "--remove"])).toBe(exitCode.ok);
 
+    expect(await savedNames()).toEqual(["s4_rain_rain_account"]);
+  });
+
+  it("signs out what a plugin deleted by hand left before a new one is added under its id", async () => {
+    await addSignedInWeather();
+    await rm(join(folder, "profile", "plugins", "weather"), { recursive: true });
+
+    expect((await addWeather()).code).toBe(exitCode.ok);
+
+    expect(revoked).toHaveLength(1);
     expect(await savedNames()).toEqual(["s4_rain_rain_account"]);
   });
 });
