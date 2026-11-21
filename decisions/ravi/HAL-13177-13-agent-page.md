@@ -3,13 +3,12 @@
 - Task: HAL-13177
 - Approval: decided by the team on HAL-13177 (flow-agents 3.1 layout, approved by the board; the item page's header rules are `shell.item-page-header`). Liam signs on review.
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cdg593qbVMf6+iTZSOE54nkbLY/oTRhovYiQBevVxngzRamhnBzJYN4QnQdtJFdU3qYWxJNkduTxFQNkHvCJAA==
 
 ## What changes
 
 `agents.page.frame`: on desktop the agent page is now the shell's `ItemPage`. Its header shows the
 Agents icon, "Agent" and the name field, the Try it chat is on the left (`agents.chat.first-load`),
-and Configuration or Runs is in the panel beside it. The chat's **Open Harness settings ›** shows
+and Flow, Configuration or Runs is in the panel beside it. The chat's **Open Harness settings ›** shows
 Configuration › Harness through the item page's `show` (`shell.item-page-header`): a panel closed
 with ✕ opens again, a narrow tab opens the panel's screen, and focus goes to the Harness tab.
 **Check again** on the Harness page shows in the chat's line too. The phone keeps its own frame with the letter avatar.
@@ -30,6 +29,13 @@ name field and for the agent's read in the panel, since the chat has its own sta
 rename test checks that an empty name puts the old one back instead of the removed message. No
 test is removed; each requirement keeps its tests.
 
+After the rebase onto main, the agent map's Flow view (HAL-13180) is the panel's third view. Its
+add buttons (Add tool, Add subagent, Add trigger) open Configuration on their page through the same
+`show`, so they too reopen a closed panel; focus goes to the opened page's tab, or stays in the Add
+subagent dialog when that opens. `agent-map.test.tsx` now looks for the map's skeleton in the panel,
+since the chat has its own status lines, and the taken-name rename test presses Enter before it
+reads the reason, as the shell's name field now waits for the typing to pause (HAL-12216).
+
 ## Why
 
 flow-agents 3.1 puts the Try it chat beside the agent's views. `ItemPage` already draws that split,
@@ -44,3 +50,4 @@ second copy of the same layout. The empty-name rule comes with the shell's name 
 - agents.page.rename
 - packages/studio/features/agents/src/page/agent-page.test.tsx
 - packages/studio/features/agents/src/configuration/configuration.test.tsx
+- packages/studio/features/agents/src/map/agent-map.test.tsx
