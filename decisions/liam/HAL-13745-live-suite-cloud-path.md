@@ -3,6 +3,7 @@
 - Task: HAL-13745 (found on HAL-13741, under HAL-13615)
 - Approval: the task asks for this change; Julian signs this note in review on HAL-13745
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:Xh5OWx9AlcfXLs6M6E/TxlBs/T4MDbhIeYxceAluhq2+b9ZGO7k9UWdqFKLld0na8O0ZKOz6m9hjSs9dFPH0DA==
 
 ## What changes
 
