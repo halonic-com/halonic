@@ -2,7 +2,7 @@ import { isHostTooOld } from "@halonicjs/ports";
 import { markHiddenName } from "@halonicjs/std";
 import { Button, type ButtonUnavailable, type CalloutHandle, Tooltip } from "@halonicjs/studio-kit";
 import { engineWords } from "@halonicjs/studio-shell";
-import { type RefObject, useEffect, useId, useRef, useState } from "react";
+import { type RefCallback, type RefObject, useEffect, useId, useRef, useState } from "react";
 import { type AfterAnswer, afterAnswer, type InboxDecisions } from "../decide.ts";
 import type { WaitItem } from "../inbox-items.ts";
 import { decidedAt, movesOnLine, waitingSince } from "../plain/waiting-time.ts";
@@ -295,9 +295,20 @@ function AnswerBar({
   const unavailable = unavailableWhile(engine.answering ?? true, reasonId);
   const [first, ...others] = accepts;
   const failed = state.kind === "open" ? state.failed : null;
+  const buttons = useRef(new Map<string, HTMLButtonElement>());
+  // **Try again** leaves the alert slot while the answer is sent, so it hands focus to the
+  // answer's own button, busy until the answer comes back, rather than to the page (C560).
+  const retry = (event: string) => {
+    buttons.current.get(event)?.focus();
+    onAnswer(event);
+  };
   const answerButton = (event: string, primary: boolean) => (
     <AnswerButton
       key={event}
+      buttonRef={(element) => {
+        if (element === null) buttons.current.delete(event);
+        else buttons.current.set(event, element);
+      }}
       label={answerLabel(event, ownLabel(labels, event))}
       busyLabel={busyLabel(event, ownLabel(labels, event))}
       primary={primary}
@@ -315,7 +326,7 @@ function AnswerBar({
     >
       <NotAnsweringLine id={reasonId} {...engine} />
       <FailedLine
-        onRetry={failed === null ? null : () => onAnswer(failed)}
+        onRetry={failed === null ? null : () => retry(failed)}
         detail={state.kind === "open" ? state.detail : null}
         manual={state.kind === "open" ? state.manual : null}
         elsewhere={state.kind === "open" && state.elsewhere ? { openRun: onOpenRun } : null}
@@ -335,6 +346,8 @@ function AnswerBar({
 }
 
 interface AnswerButtonProps {
+  /** Given the button, so **Try again** can move focus to the answer it sends again. */
+  readonly buttonRef: RefCallback<HTMLButtonElement>;
   readonly label: string;
   readonly busyLabel: string;
   readonly primary: boolean;
@@ -348,6 +361,7 @@ const firstAnswerAttribute = "data-first-answer";
 
 /** One answer's button, whose tooltip shows the whole label only when the button cuts it off. */
 function AnswerButton({
+  buttonRef,
   label,
   busyLabel,
   primary,
@@ -372,6 +386,7 @@ function AnswerButton({
         {(tooltip) => (
           <Button
             {...tooltip}
+            ref={buttonRef}
             variant={primary ? "primary" : "secondary"}
             block
             unavailable={unavailable}
