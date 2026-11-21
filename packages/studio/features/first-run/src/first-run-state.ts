@@ -12,7 +12,8 @@ export type FirstRunStep = (typeof firstRunSteps)[number];
  *   (cancelled, or its reply rejected); both are at the `run` step;
  * - `paused`: the user left it with **Skip, I'll explore** or **Set up later**, at `step`, so the
  *   Inbox's setup item can continue it;
- * - `done`: the first win happened in `folder`.
+ * - `done`: the first win happened in `folder`;
+ * - `dismissed`: the user dismissed the Inbox's setup item of a paused first run in `folder`.
  */
 export type FirstRunState =
   | { readonly kind: "off" }
@@ -30,7 +31,8 @@ export type FirstRunState =
       readonly since: string;
       readonly step: FirstRunStep;
     }
-  | { readonly kind: "done"; readonly folder: string };
+  | { readonly kind: "done"; readonly folder: string }
+  | { readonly kind: "dismissed"; readonly folder: string };
 
 /**
  * What happens to the first run. A run event (`model-picking` to `first-win`) is about the folder
@@ -51,7 +53,9 @@ export type FirstRunEvent =
   /** **Skip, I'll explore** or **Set up later**. */
   | { readonly kind: "left" }
   /** **Continue** on the Inbox's setup item. */
-  | { readonly kind: "resumed" };
+  | { readonly kind: "resumed" }
+  /** **Dismiss** on the Inbox's setup item. */
+  | { readonly kind: "dismissed" };
 
 /** The state after `event`. An event that doesn't fit the state leaves it as it was. */
 export function nextFirstRun(state: FirstRunState, event: FirstRunEvent): FirstRunState {
@@ -65,6 +69,8 @@ export function nextFirstRun(state: FirstRunState, event: FirstRunEvent): FirstR
       return state.kind === "on" ? { ...where(state), kind: "paused", step: state.step } : state;
     case "resumed":
       return state.kind === "paused" ? { ...where(state), kind: "on", step: state.step } : state;
+    case "dismissed":
+      return state.kind === "paused" ? { kind: "dismissed", folder: state.folder } : state;
     case "first-win":
       return state.kind === "on" || state.kind === "paused"
         ? { kind: "done", folder: state.folder }
@@ -132,7 +138,7 @@ function isFirstRunState(value: unknown): value is FirstRunState {
   const { kind, folder, since, step } = value as Record<string, unknown>;
   if (kind === "off") return true;
   if (typeof folder !== "string") return false;
-  if (kind === "done") return true;
+  if (kind === "done" || kind === "dismissed") return true;
   return (kind === "on" || kind === "paused") && typeof since === "string" && isStep(step);
 }
 
