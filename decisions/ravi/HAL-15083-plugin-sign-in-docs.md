@@ -14,7 +14,7 @@
 
 ## Why
 
-Before this, the CLI signed a plugin out without saying so, and when the provider didn't confirm, the person wasn't told the token may still work. Studio already says both. The docs said sign-in wasn't supported, though `sdk: 2` sign-ins work on `main`.
+Before this, the CLI signed a plugin out without saying so, and when the provider didn't confirm, the person wasn't told the token may still work. Studio's **Sign out** already says both; Studio's **Remove trust** and remove don't show it yet (a follow-up on HAL-15083). The docs said sign-in wasn't supported, though `sdk: 2` sign-ins work on `main`.
 
 ## Covers
 
