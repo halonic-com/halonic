@@ -213,6 +213,30 @@ describe("a connector's secrets on its page", () => {
       expect(root.textContent).toContain("Not set");
     });
 
+    it("keeps Set when you save before the first check answers (HAL-15130)", async () => {
+      const store = keychain();
+      // A slow keychain: `has` reads when asked, but answers only once the test lets it.
+      const pending: (() => void)[] = [];
+      const slow: ConnectorSecrets = {
+        ...store,
+        has: (name) => {
+          const stored = store.values.has(name);
+          return new Promise((resolve) => pending.push(() => resolve(stored)));
+        },
+      };
+      const root = render(<ConnectorPage {...page({ secrets: slow })} />);
+      await settled();
+
+      await typeAndLeave(entry(root), typedValue);
+      expect(store.values.get("NOTES_TOKEN")).toBe(typedValue);
+      expect(pending).toHaveLength(1);
+      for (const answer of pending) answer();
+      await settled();
+
+      expect(root.textContent).not.toContain("Not set");
+      expect(entry(root).placeholder).toBe("Type a new value to replace it");
+    });
+
     it("says why a save failed, keeps the one saved before, and never shows the value", async () => {
       const store = keychain();
       store.values.set("NOTES_TOKEN", "acme-earlier-value");
