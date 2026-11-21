@@ -113,9 +113,10 @@ while kill -0 "$DPID" 2>/dev/null; do
       JOB_START=$(date +%s)
     fi
     # The event file is the job's to change (it could be a link to any VM file), so read it
-    # inside the container as the runner user, never as root here.
+    # inside the container as the runner user, never as root here. Both timeouts: a FIFO there
+    # mustn't stall the status feed or leave a stuck reader in the container.
     if [ "$JOB_START" != 0 ] && [ -z "$EV" ]; then
-      evj=$(docker exec "hci-$SLOT" head -c 1048576 "$JOB_WORK/_temp/_github_workflow/event.json" 2>/dev/null || true)
+      evj=$(timeout 10 docker exec "hci-$SLOT" timeout 5 head -c 1048576 "$JOB_WORK/_temp/_github_workflow/event.json" 2>/dev/null || true)
       if [ -n "$evj" ]; then
         if   jq -e 'has("merge_group")'  >/dev/null 2>&1 <<<"$evj"; then EV=merge_group; REF=$(jq -r '.merge_group.head_ref // ""' <<<"$evj"); SHA=$(jq -r '.merge_group.head_sha // ""' <<<"$evj")
         elif jq -e 'has("pull_request")' >/dev/null 2>&1 <<<"$evj"; then EV=pull_request; REF=$(jq -r '.pull_request.head.ref // ""' <<<"$evj"); SHA=$(jq -r '.pull_request.head.sha // ""' <<<"$evj")

@@ -91,6 +91,9 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
 - **Weekly** (`vm/halonic-ci-maint.timer`, Sunday 04:00): prunes images and stale work dirs. When
   `/cache` is over 75 %, it pauses the slots, lets running jobs finish (up to 2 hours), empties the
   shared caches and starts the slots again.
+- **Hourly** (`vm/halonic-ci-cache-check.timer`): the same pause-and-empty as soon as the shared
+  caches pass 80 % of their 20 GB quota (or `/cache` passes 75 %), so a full quota never fails
+  every install. It shares a lock with the weekly cleanup and skips its hour while that runs.
 - **Firewall first:** `host/halonic-ci-nft.service` is required by `libvirtd.service`. If the rules
   don't load (a missing `/etc/halonic-ci/site.nft`, say), libvirtd and the CI VM don't start.
   The unit has no stop command: stopping it leaves the rules in place, because the VM keeps
