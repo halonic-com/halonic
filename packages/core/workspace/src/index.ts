@@ -57,6 +57,8 @@ export {
   type LoadedFileOf,
   type LoadedWorkspace,
   loadWorkspace,
+  unreadableFileError,
+  unreadableFolderError,
   type WorkspaceIssue,
 } from "./load-workspace.ts";
 export { misplacedFileCode } from "./misplaced-files.ts";

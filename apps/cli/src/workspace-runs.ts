@@ -14,6 +14,7 @@ import {
   profileFolder,
   workspaceFolders,
 } from "@halonicjs/profile";
+import { checkProfileHome } from "./profile-home.ts";
 
 /**
  * The profile's system name for a Node `process.platform`: `win32` is
@@ -29,13 +30,19 @@ export function profilePlatformOf(platform: NodeJS.Platform): ProfilePlatform {
   return "linux";
 }
 
-/** What `profileFolder` reads, from this process: its system, home folder and environment. */
+/**
+ * What `profileFolder` reads, from this process: its system, home folder and
+ * environment.
+ *
+ * @throws KindedError `invalid_input` when `HALONIC_HOME` isn't an absolute
+ *   folder (see {@link checkProfileHome})
+ */
 export function nodeProfileEnvironment(): ProfileEnvironment {
-  return {
+  return checkProfileHome({
     platform: profilePlatformOf(process.platform),
     homeFolder: homedir(),
     variables: process.env,
-  };
+  });
 }
 
 /** The `Digest` port over Web Crypto, which Node has built in. */
