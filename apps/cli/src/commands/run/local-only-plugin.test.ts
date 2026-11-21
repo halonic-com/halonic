@@ -45,21 +45,46 @@ afterEach(async () => {
 
 /** Installs the plugin acme-orders, whose backend may reach `hosts`. */
 async function installOrders(hosts: readonly string[]): Promise<void> {
-  const plugin = join(pluginsFolder(profileFolder(profile)), "acme-orders");
-  await mkdir(join(plugin, "backend"), { recursive: true });
-  const manifest = [
-    "id: acme-orders",
-    "version: 1.0.0",
-    "sdk: 1",
-    "name: Acme orders",
-    "backend:",
+  await installPlugin(["backend:", ...backendLines(hosts)]);
+}
+
+/**
+ * Installs the plugin acme-orders with a local tool that may reach
+ * `network`, and a backend that may reach `backend` when it's given.
+ */
+async function installOrdersWithLocalTool(
+  network: readonly string[],
+  backend?: readonly string[],
+): Promise<void> {
+  await installPlugin([
+    ...(backend === undefined ? [] : ["backend:", ...backendLines(backend)]),
+    "localTools:",
+    "  - id: lister",
+    "    start: { script: { program: node, path: tools/server.js } }",
+    `    network: [${network.join(", ")}]`,
+    "    tools:",
+    "      - { name: list-files, description: Lists the files., risk: read, untrusted: true }",
+  ]);
+}
+
+/** A backend's lines under `backend:`, reaching `hosts`. */
+function backendLines(hosts: readonly string[]): string[] {
+  return [
     `  hosts: [${hosts.join(", ")}]`,
     "  tools:",
     "    - { name: find-order, description: Finds an order., risk: read, untrusted: true }",
-    "",
-  ].join("\n");
-  await writeFile(join(plugin, "plugin.yaml"), manifest);
+  ];
+}
+
+/** Installs the plugin acme-orders with these parts, and the files they start. */
+async function installPlugin(parts: readonly string[]): Promise<void> {
+  const plugin = join(pluginsFolder(profileFolder(profile)), "acme-orders");
+  await mkdir(join(plugin, "backend"), { recursive: true });
+  await mkdir(join(plugin, "tools"), { recursive: true });
+  const manifest = ["id: acme-orders", "version: 1.0.0", "sdk: 1", "name: Acme orders", ...parts];
+  await writeFile(join(plugin, "plugin.yaml"), `${manifest.join("\n")}\n`);
   await writeFile(join(plugin, "backend/index.js"), "export default {};\n");
+  await writeFile(join(plugin, "tools/server.js"), "console.log('lister');\n");
 }
 
 verifies("workspace.local-only-sheet-hosts", () => {
@@ -94,6 +119,33 @@ verifies("workspace.local-only-sheet-hosts", () => {
 
   it("passes validate when the plugin reaches no outside host", async () => {
     await installOrders([]);
+    const io = captureIo(acme);
+
+    expect(await runCli(["validate"], io, [validateCommand])).toBe(exitCode.ok);
+  });
+
+  it("fails validate and refuses the run when only a local tool reaches an outside site", async () => {
+    await installOrdersWithLocalTool(["api.acme.example"], []);
+
+    const validating = captureIo(acme);
+    const validated = await runCli(["validate"], validating, [validateCommand]);
+    const running = captureIo(acme);
+    const ran = await runCli(["run", "support-reply"], running, [
+      runCommandWith(testRunSetup(folder, profile)),
+    ]);
+
+    expect(validated).toBe(exitCode.failed);
+    expect(validating.stdout.join("\n")).toContain(
+      "The plugin acme-orders reaches api.acme.example, so it isn't local",
+    );
+    expect(ran).toBe(exitCode.usage);
+    expect(running.stderr[0]).toBe(
+      "✕ Couldn't run support-reply: Acme has 1 problem in its files. Nothing ran.",
+    );
+  });
+
+  it("passes validate when the plugin has only a local tool that reaches nothing", async () => {
+    await installOrdersWithLocalTool([]);
     const io = captureIo(acme);
 
     expect(await runCli(["validate"], io, [validateCommand])).toBe(exitCode.ok);

@@ -1,26 +1,31 @@
 // The hosts the sheets of a workspace's runner connectors list (HAL-14300): the
-// backend of each plugin installed in the profile, and each local integration
-// in the workspace. `privacy.localOnly` counts them in `validate`, `run` and
+// backend and local tools of each plugin installed in the profile (HAL-15094),
+// and each local integration in the workspace. `privacy.localOnly` counts them in `validate`, `run` and
 // the run's connectors, so `local: true` never makes code that reaches an
 // outside host count as local (requirement `workspace.local-only-sheet-hosts`).
 // The trust check shows a plugin connector's hosts from the same list (HAL-14860).
 
 import { readIntegrationSheets } from "@halonicjs/app";
-import type { IntegrationHost, IntegrationSheet, SheetHosts } from "@halonicjs/format";
+import {
+  type IntegrationHost,
+  type IntegrationSheet,
+  pluginHosts,
+  type SheetHosts,
+} from "@halonicjs/format";
 import type { DefinitionSource } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import { openPluginService } from "./plugin-host.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 import { workspaceIntegrations } from "./workspace-trust.ts";
 
-/** The hosts each installed plugin's backend lists, by the plugin's id. */
+/** The hosts each installed plugin may reach, its backend's and its local tools', by the plugin's id. */
 export type PluginHosts = SheetHosts["plugins"];
 
 /**
- * The hosts of the installed plugins' backends and of the local
- * integrations in the workspace folder `root`. A plugin that can't be read
- * or checked, or has no backend, is left out, and so is every plugin when
- * the plugins folder can't be read: a connector to it then isn't local.
+ * The hosts of the installed plugins and of the local integrations in the
+ * workspace folder `root`. A plugin that can't be read or checked is left
+ * out, and so is every plugin when the plugins folder can't be read: a
+ * connector to it then isn't local.
  *
  * @param root - the workspace folder, or a copy of it at a run's commit
  * @param shown - the folder as the user typed it, such as `./acme`
@@ -55,8 +60,10 @@ export async function versionSheetHosts(
 }
 
 /**
- * The `backend.hosts` of each installed plugin that was read and checked,
- * by its id; none when the plugins folder can't be read.
+ * The hosts each installed plugin that was read and checked may reach, as
+ * `pluginHosts` gives them, by its id; none when the plugins folder can't be
+ * read. A plugin with only local tools is in it too, so one that reaches
+ * nothing counts as local.
  */
 export async function installedPluginHosts(
   profile: ProfileEnvironment = nodeProfileEnvironment(),
@@ -66,8 +73,8 @@ export async function installedPluginHosts(
     .catch(() => []);
   const hosts = new Map<string, readonly IntegrationHost[]>();
   for (const entry of entries) {
-    if (entry.status === "broken" || entry.plugin.backend === undefined) continue;
-    hosts.set(entry.plugin.id, entry.plugin.backend.hosts);
+    if (entry.status === "broken") continue;
+    hosts.set(entry.plugin.id, pluginHosts(entry.plugin));
   }
   return hosts;
 }
