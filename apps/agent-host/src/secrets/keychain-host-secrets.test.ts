@@ -4,7 +4,11 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { FrameDecoder } from "../stdio/frame-codec.ts";
 import { FakeKeychainShell } from "./fake-keychain-shell.test-helper.ts";
-import { KeychainHostSecrets, SecretMoveConflict } from "./keychain-host-secrets.ts";
+import {
+  KeychainHostSecrets,
+  KeychainUndoFailed,
+  SecretMoveConflict,
+} from "./keychain-host-secrets.ts";
 import { KeychainError, ShellKeychainSecretStore } from "./shell-keychain-secret-store.ts";
 import { ShellSecretsChannel } from "./shell-secrets-channel.ts";
 
@@ -119,6 +123,8 @@ verifies("agent-host.keychain-secrets", () => {
       );
       expect(await file.get("remote-host-key")).toBe(fileValue);
       expect(shell.stored.get("remote_host_key")).toBe(keychainValue);
+      // Tried again on each use, but said once.
+      expect(log).toHaveLength(1);
 
       const said = log.join("");
       for (const value of [fileValue, keychainValue]) {
@@ -128,12 +134,41 @@ verifies("agent-host.keychain-secrets", () => {
       }
     });
 
-    it("keeps the file's copy when the keychain gives back another value than it was given", async () => {
-      const { shell, file, secrets } = setUp();
+    it("keeps the file's copy and empties the keychain again when the keychain gives back another value than it was given", async () => {
+      const { shell, file, log, secrets } = setUp();
       await file.set("remote-host-key", fileValue);
       shell.keepInstead = keychainValue;
       await expect(secrets.moveOutOfFile()).rejects.toThrow(/stays in the secrets file/);
       expect(await file.get("remote-host-key")).toBe(fileValue);
+      expect(shell.stored.size).toBe(0);
+
+      // The next try starts from an empty keychain, not from a conflict.
+      shell.keepInstead = undefined;
+      expect(await secrets.get("remote-host-key")).toBe(fileValue);
+      expect(await file.get("remote-host-key")).toBeNull();
+      expect(log.join("")).not.toMatch(/keychain's value wins/);
+    });
+
+    it("says the file's copy is the right one when the keychain's wrong value can't be removed", async () => {
+      const { shell, file, log, secrets } = setUp();
+      await file.set("remote-host-key", fileValue);
+      shell.keepInstead = keychainValue;
+      shell.failDeleteWith = "denied";
+      const moving = secrets.moveOutOfFile();
+      await expect(moving).rejects.toBeInstanceOf(KeychainUndoFailed);
+      await expect(moving).rejects.toThrow(
+        /The secrets file's copy of remote-host-key is the right one and stays; the keychain's is not/,
+      );
+      expect(await file.get("remote-host-key")).toBe(fileValue);
+
+      // Tried again, it would read as a conflict telling the user to drop the file's good copy.
+      const asked = shell.asked.length;
+      await expect(secrets.get("remote-host-key")).rejects.toBeInstanceOf(KeychainUndoFailed);
+      expect(shell.asked).toHaveLength(asked);
+      const said = log.join("");
+      expect(said).not.toMatch(/remove remote-host-key from the secrets file/);
+      expect(said).not.toContain(fileValue);
+      expect(said).not.toContain(keychainValue);
     });
 
     it("never falls back to the file when the keychain can't be used, and tries the move again on the next use", async () => {
