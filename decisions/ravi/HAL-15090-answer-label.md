@@ -3,6 +3,7 @@
 - Task: HAL-15090, from Sofia's UX check C539 (HAL-15073, points R2 and R3)
 - Approval: decided by the team on HAL-15090, following the HAL-12745 decision (wording on an approved screen). Liam signs on review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iZcbD6zJ39EkSKJnsKfn6CKtPD6+0Vok5KHWS5KHwU0OyeMBz5CYJvZwQL+8FVuFFcTtSib9qOsTlxNrIB8zBg==
 
 ## What changes
 
