@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-14841 (Liam's decisions of 21 Nov), HAL-14812
+- Source: HAL-14841 (Liam's decisions of 21 Nov), HAL-14812, HAL-15097
 
-When Studio's shell removes the sandbox through Halonic's signed helper with its own administrator prompt, the sandbox-srt adapter shall first do the user's half without administrator rights: on Windows it shall take back the grants srt kept for this user, and fail with why when one stays recorded, so the shell asks Windows nothing; a process with administrator rights shall skip that and log that it did; other systems have nothing to do. After the helper it shall say how the removal ended from the helper's exit code: done for 0, `cancelled` for the helper's cancelled code, and `failed` with the helper's reason sentence and its code for any other code.
+When Studio's shell removes the sandbox through Halonic's signed helper with its own administrator prompt, the sandbox-srt adapter shall first do the user's half without administrator rights: on Windows it shall take back the grants srt kept for this user, and fail with why when one stays recorded, so the shell asks Windows nothing; a process with administrator rights shall skip that and log that it did; other systems have nothing to do. After the helper it shall say how the removal ended from the helper's exit code: done for 0, `cancelled` for the helper's cancelled code, and `failed` with the helper's reason sentence and its code for any other code. A removal done for 0 on Windows by a process with administrator rights shall also log that the user's kept grants stayed recorded, as the removal without the shell does.
 
 ## Examples
 
@@ -14,3 +14,5 @@ When Studio's shell removes the sandbox through Halonic's signed helper with its
   then the removal failed with why, before any prompt.
 - Given the helper exited with 36,
   then the removal ended `failed`, with the sentence that says the sandbox program couldn't start, and the code 36.
+- Given the host runs with administrator rights and the helper exited with 0,
+  then the removal is done, and the host logs that it removed the sandbox but kept the grants recorded.

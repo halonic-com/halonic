@@ -15,7 +15,7 @@ export interface ShellRemoval {
   /** Takes back the grants srt kept for this user, before the prompt. */
   before(): Promise<SandboxRemoval>;
   /** How the removal ended, from the helper's exit code. */
-  after(exitCode: number): SandboxRemoval;
+  after(exitCode: number): Promise<SandboxRemoval>;
 }
 
 const emptyBody = s.object({}).strict();
@@ -56,7 +56,7 @@ export function removeThroughShellRoutes(
       handle: async (request, response) => {
         const body = await readCheckedBody(request, response, elevatedBody);
         if (body === undefined || refusedBusy(jobs, response)) return;
-        sendJson(response, 200, removal.after(body.exitCode));
+        sendJson(response, 200, await removal.after(body.exitCode));
       },
     },
   ];
