@@ -64,6 +64,7 @@ import {
   shellKeyOrigins,
   type TauriIpc,
   tauriAgentHostTransport,
+  tokenStoreKey,
 } from "@halonicjs/studio-services";
 import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
@@ -96,6 +97,7 @@ import { providePlugins } from "../plugins/provide-plugins.ts";
 import { WorkspaceRoutines } from "../routines/workspace-routines.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
+import { openStudioRunConnectors } from "./open-run-connectors.ts";
 import { WorkspaceInstructionTrust } from "./workspace-instruction-trust.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
 
@@ -225,6 +227,15 @@ export function provideFolderServices(
                 instructionTrust,
                 ...decisions,
                 reportError: (error) => console.error("The harness host", error),
+              }),
+            openRunConnectors: () =>
+              openStudioRunConnectors({
+                ipc,
+                files,
+                location,
+                transport,
+                trust,
+                tokens: services.get(tokenStoreKey),
               }),
           }),
     }),

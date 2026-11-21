@@ -1,4 +1,5 @@
 import type { SetTimer } from "@halonicjs/adapter-scheduler-node";
+import type { assembleEngine, ListedToolApprovalStore } from "@halonicjs/engine";
 import type {
   Clock,
   DefinitionStore,
@@ -68,4 +69,23 @@ export interface EngineServiceOptions {
    * harness is refused.
    */
   openHarnessHost?(decisions: EngineDecisions): Promise<StudioHarnessHost>;
+  /**
+   * Builds the runs' connectors on the agent host, when one runs (`studioRunConnectors`), and
+   * the approvals their listed tools are checked against, once per engine. Without it, a
+   * workflow with an agent that lists a connector is refused.
+   */
+  openRunConnectors?(): Promise<StudioRunConnectors>;
+}
+
+/** What a run needs to start its connectors and to offer their tools. */
+export interface StudioRunConnectors {
+  /** The runs' connectors, as the executor takes them, and their close once it has closed. */
+  readonly connectors: NonNullable<
+    NonNullable<Parameters<typeof assembleEngine>[0]["executor"]["runs"]>["runConnectors"]
+  > & { closeAll(): Promise<void> };
+  /**
+   * The approvals a person gave in the Library (`studio.workspace-listed-tools`): a listed tool
+   * is offered to the model only once approved, and the others wait.
+   */
+  readonly listedToolApproval: ListedToolApprovalStore;
 }

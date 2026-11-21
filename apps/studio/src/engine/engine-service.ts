@@ -13,10 +13,13 @@
 // `http`), not its own `fetch`, which the window's content policy stops. The
 // shell checks every address and every redirect hop, and a key never goes
 // through the webview's network layer (the page still reads it from `secrets`).
-// The page starts no connector: a workflow with an agent that lists one is
-// refused as `unavailable` before the engine opens. Agents in a harness run in
-// the agent host's sandbox (`openHarnessHost`, HAL-10849); where no agent host
-// runs, a workflow with one is refused the same way.
+// A run starts its `stdio` connectors on the agent host (`openRunConnectors`,
+// HAL-13344), as the Library's listing does, and offers the tools approved
+// there; agents in a harness run in the agent host's sandbox
+// (`openHarnessHost`, HAL-10849). Where no agent host runs, a workflow with an
+// agent that lists a connector or runs in a harness is refused as
+// `unavailable` before the engine opens, as is one whose agent lists a
+// connector that isn't `stdio` where it does.
 // Nothing starts from a workspace that isn't trusted, unless it reaches only
 // the test model, the CLI's rule (HAL-1984, HAL-12409): the engine checks it
 // on the workspace it loaded, when it opens and before each start, and it
@@ -47,16 +50,19 @@ import {
   type LocalExecutor,
   noListedToolApproval,
 } from "@halonicjs/engine";
+import type { RunVersion } from "@halonicjs/events";
 import type { Agent } from "@halonicjs/format";
 import { isAgentRunsNotAvailable, type RunExecutor } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import {
+  definitionsOf,
   filesOf,
   type LoadedWorkspace,
   loadWorkspace,
   runDefinitionsOf,
 } from "@halonicjs/workspace";
+import { studioConnectorCalls } from "../connect/studio-run-connectors.ts";
 import { type EngineLockHold, holdEngineLock } from "./engine-lock.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
 import {
@@ -89,7 +95,10 @@ export interface AgentRef {
 export const engineServiceKey: ServiceKey<EngineService> =
   serviceKey<EngineService>("studio.engine");
 
-export type { EngineServiceOptions } from "./engine-service-options.ts";
+export type { EngineServiceOptions, StudioRunConnectors } from "./engine-service-options.ts";
+
+/** The page runs the workspace's files as they are saved: it makes no copy at a commit. */
+const savedFiles: RunVersion = { reads: "saved-files" };
 
 /** An open engine and the workspace it was built on. */
 interface OpenEngine {
@@ -172,7 +181,7 @@ export class EngineService {
     const workspace = await loadWorkspace(this.#options.definitions);
     runDefinitionsOf(workspace, run.hubId, run.workflowId);
     for (const { value: agent } of workflowAgentsOf(workspace, run)) {
-      const refusal = this.#whyThePageCantStart(agent);
+      const refusal = this.#whyThePageCantStart(workspace, run.hubId, agent);
       if (refusal !== undefined) throw startRefusal(refusal, runCommandOf(workspace, run));
     }
   }
@@ -192,7 +201,7 @@ export class EngineService {
     if (file === undefined) {
       throw new RangeError(`The hub "${hubId}" has no agent "${agentId}".`);
     }
-    const refusal = this.#whyThePageCantStart(file.value);
+    const refusal = this.#whyThePageCantStart(workspace, hubId, file.value);
     if (refusal !== undefined) throw new WindowCantStart(refusal.reason);
   }
 
@@ -217,7 +226,7 @@ export class EngineService {
     // A run started from the window is the person's own, so it names a trigger: with none, the
     // Runs list says it was started in the terminal.
     const trigger = { type: from, at: this.#options.clock.now().toISOString() };
-    const { id } = await engine.executor.start({ ...run, input, trigger });
+    const { id } = await engine.executor.start({ ...run, input, trigger, version: savedFiles });
     return { id };
   }
 
@@ -240,7 +249,11 @@ export class EngineService {
       const { hubId, workflowId } = start.workflow;
       await this.check({ hubId, workflowId });
       const { executor } = await this.openForStart();
-      const { id } = await executor.start({ ...start.workflow, trigger: runTrigger });
+      const { id } = await executor.start({
+        ...start.workflow,
+        trigger: runTrigger,
+        version: savedFiles,
+      });
       return { id };
     }
     await this.checkAgent(start.agent);
@@ -317,11 +330,26 @@ export class EngineService {
   }
 
   /**
-   * Why the page can't start an agent: it lists a connector, or it runs in a harness program
-   * when no agent host runs. `undefined` when the page can start it.
+   * Why the page can't start an agent: it runs in a harness program when no agent host runs, or
+   * it lists a connector the agent host can't start, which is every connector when none runs and
+   * any but a `stdio` one of its hub when it does. `undefined` when the page can start it.
    */
-  #whyThePageCantStart(agent: Agent): PageRefusal | undefined {
-    return whyThePageCantStart(agent, this.#options.openHarnessHost !== undefined);
+  #whyThePageCantStart(
+    workspace: LoadedWorkspace,
+    hubId: string,
+    agent: Agent,
+  ): PageRefusal | undefined {
+    const { connectors } = definitionsOf(workspace, hubId);
+    return whyThePageCantStart(agent, {
+      runsHarnesses: this.#options.openHarnessHost !== undefined,
+      startsConnector:
+        this.#options.openRunConnectors === undefined
+          ? undefined
+          : (id) => {
+              const connector = Object.hasOwn(connectors, id) ? connectors[id] : undefined;
+              return connector !== undefined && "stdio" in connector.transport;
+            },
+    });
   }
 
   /**
@@ -354,6 +382,8 @@ export class EngineService {
       // Before the scheduler and the harness host start, so an untrusted workspace's
       // routines don't fire and its open harness runs don't resume either.
       await this.#refuseUntrusted(workspace);
+      const runConnectors = await this.#options.openRunConnectors?.();
+      const connectors = runConnectors?.connectors;
       const runStore = new TauriRunStore(ipc, location);
       // Set once the engine is built; a bridge opens only during a run, so after that.
       let executor: LocalExecutor | undefined;
@@ -378,8 +408,9 @@ export class EngineService {
             clock,
             isTrusted: () => this.#options.isTrusted(workspace),
             keyOrigins: this.#options.keyOrigins,
-            // Until Studio has its approval store (HAL-850 step 6), no listed tool is offered.
-            listedToolApproval: noListedToolApproval,
+            // The approvals given in the Library, read at the start of every turn. Without an
+            // agent host no connector starts, so no listed tool is offered.
+            listedToolApproval: runConnectors?.listedToolApproval ?? noListedToolApproval,
           }),
           runs: {
             store: runStore,
@@ -393,6 +424,12 @@ export class EngineService {
             // itself, not `mayStart`: a resumed run's step runs from its kept definitions, which
             // can have a harness agent the loaded workspace no longer has.
             mayStartHarness: () => this.#options.isTrusted(workspace).catch(() => false),
+            ...(connectors === undefined
+              ? {}
+              : {
+                  runConnectors: connectors,
+                  connectorCalls: studioConnectorCalls(location, reportError),
+                }),
             ...(harnessHost === undefined
               ? {}
               : {
@@ -407,6 +444,8 @@ export class EngineService {
           clock,
           newToken: this.#options.newToken,
         }),
+        // After the executor and the scheduler, so no step calls a connector that has closed.
+        closers: connectors === undefined ? [] : [() => connectors.closeAll()],
         // Last, so no other engine starts while this one still delivers a timer.
         release: async () => {
           if (!lock.kept) await lock.held.release();
