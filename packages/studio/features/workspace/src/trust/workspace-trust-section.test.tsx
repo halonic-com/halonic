@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import { createToastStore, type ToastStore } from "@halonicjs/studio-kit";
+import { KindedError } from "@halonicjs/std";
+import { ClipboardProvider, createToastStore, type ToastStore } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -91,10 +92,19 @@ function control(status: Status, remove?: () => Promise<TrustGrantResult>) {
   return { value, removed: () => removed, retried: () => retried };
 }
 
-function show(trust: WorkspaceTrustControl, toasts: ToastStore = createToastStore()) {
+function show(
+  trust: WorkspaceTrustControl,
+  toasts: ToastStore = createToastStore(),
+  writeClipboard = async (_text: string) => true,
+) {
   root = createRoot(element);
   act(() => {
-    root?.render(createElement(WorkspaceTrustSection, { trust, name: "Acme", toasts }));
+    root?.render(
+      createElement(ClipboardProvider, {
+        writeClipboard,
+        children: createElement(WorkspaceTrustSection, { trust, name: "Acme", toasts }),
+      }),
+    );
   });
   return toasts;
 }
@@ -217,5 +227,47 @@ verifies("workspace.trust-section", () => {
     });
     const dialog = document.querySelector("dialog[open]");
     expect(dialog?.textContent).toContain("Couldn't remove trust from Acme: the disk is full.");
+  });
+
+  it("words an internal error as Trusted sources does, with Copy details that confirms in place (C529-4)", async () => {
+    vi.useFakeTimers();
+    const writeClipboard = vi.fn(async (_text: string) => true);
+    const internal = new KindedError(
+      "internal",
+      "The trust store refused the call: location is not absolute.",
+    );
+    const declined = new KindedError("denied", "Halonic can't change the trust store right now");
+    const results = [internal, declined].map(
+      (error): TrustGrantResult => ({ ok: false, reason: error.message, error }),
+    );
+    const trust = control("trusted", async () => results.shift() ?? { ok: true });
+    show(trust.value, createToastStore(), writeClipboard);
+    act(() => button("Remove trust")?.click());
+    const confirm = async () => {
+      await act(async () => dialogButton("Remove trust")?.click());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(50);
+      });
+      return document.querySelector("dialog[open]");
+    };
+
+    const dialog = await confirm();
+    expect(dialog?.textContent).toContain(
+      "Couldn't remove trust from Acme: Halonic ran into a problem it can't explain yet.",
+    );
+    expect(dialog?.textContent).not.toContain("location is not absolute");
+    await act(async () => dialogButton("Copy details")?.click());
+    expect(writeClipboard).toHaveBeenCalledWith(
+      expect.stringMatching(/^Couldn't remove trust from Acme: .*\n.*location is not absolute/su),
+    );
+    expect(dialogButton("Copied")).toBeDefined();
+
+    // A refusal that names the problem keeps its words, and has no details to copy.
+    const again = await confirm();
+    expect(again?.textContent).toContain(
+      "Couldn't remove trust from Acme: Halonic can't change the trust store right now.",
+    );
+    expect(dialogButton("Copy details")).toBeUndefined();
+    expect(dialogButton("Copied")).toBeUndefined();
   });
 });
