@@ -182,6 +182,11 @@ describe("demuxFrames", () => {
     ],
     ["an open for a lower id", [encodeFrame(2, FrameKind.open), encodeFrame(1, FrameKind.open)]],
     ["a frame for an id never opened", [encodeFrame(5, FrameKind.data, Buffer.from("x"))]],
+    [
+      "a frame on the host's own id 0 when it has no connection there",
+      [encodeFrame(0, FrameKind.data)],
+    ],
+    ["an open for id 0", [encodeFrame(0, FrameKind.open)]],
     ["an unknown kind", [Buffer.from([0, 0, 0, 1, 0, 0, 0, 0, 0])]],
   ])("breaks on %s, and drops every connection", async (_name, frames) => {
     const { relay, accepted, ended } = demuxed();
@@ -189,6 +194,32 @@ describe("demuxFrames", () => {
     for (const frame of frames) relay.send(frame);
     expect(await ended).toBeInstanceOf(FrameStreamError);
     expect(accepted[0]?.destroyed).toBe(true);
+  });
+
+  it("hands the frames on id 0 to the host's own connection, and closes it when the stream ends", async () => {
+    const relay = new TestRelay();
+    const taken: Frame[] = [];
+    const closed: Error[] = [];
+    let opened = false;
+    const host = {
+      open: () => {
+        opened = true;
+      },
+      receive: (frame: Frame) => taken.push(frame),
+      close: (reason: Error) => closed.push(reason),
+    };
+    const ended = demuxFrames(relay.streams, () => {}, 4, host);
+    expect(opened).toBe(true);
+    relay.sendFrame(0, FrameKind.data, Buffer.from("answer"));
+    relay.sendFrame(0, FrameKind.open);
+    await settle();
+    expect(kinds(taken)).toEqual([
+      [0, FrameKind.data],
+      [0, FrameKind.open],
+    ]);
+    relay.streams.input.end();
+    expect(await ended).toBeUndefined();
+    expect(closed).toHaveLength(1);
   });
 
   it("breaks when the input ends in the middle of a frame", async () => {
