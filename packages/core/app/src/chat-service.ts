@@ -3,6 +3,7 @@ import type {
   ChatTurnRefusal,
   ChatTurnRequest,
   ChatTurnResponse,
+  ChatTurnToolFailure,
   ChatTurnWaiting,
   RunExecutor,
   ToolCall,
@@ -73,6 +74,15 @@ export interface ChatAnswerListener {
    * status only. The refusal text never goes back to the model.
    */
   onRefusals?(refusals: readonly ChatTurnRefusal[]): void;
+  /**
+   * A model turn's calls to connectors' tools that failed for a reason a run
+   * would name, such as `tool-timeout`, so the chat can say why (requirement
+   * `app.chat-tool-failure`). Called once per turn that had any. The model
+   * already got each error as the call's result, and the answer goes on.
+   * Without its `toolCallId`, a failure is the `RunFailure` a run that
+   * failed the same way gives, so the chat can say a run's sentence for it.
+   */
+  onToolFailures?(failures: readonly ChatTurnToolFailure[]): void;
   /**
    * A model turn left out listed tools that wait for a person's approval.
    * Called after every turn, with an empty list when none waits, so the

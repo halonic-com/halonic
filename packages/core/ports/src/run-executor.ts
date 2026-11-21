@@ -174,6 +174,25 @@ export interface ChatTurnWaiting {
 }
 
 /**
+ * A call a chat turn made to a connector's tool that failed for a reason a
+ * run would name, as data a chat can say (requirement
+ * `ports.chat-turn-tool-failure`). Only `tool-timeout` for now: the tool
+ * didn't answer within the time its connector allows. The model still gets
+ * the error as the call's result, and the turn goes on.
+ */
+export interface ChatTurnToolFailure {
+  /** The id the model gave the call. */
+  toolCallId: string;
+  reason: "tool-timeout";
+  /** The name the connector's server lists the tool under. */
+  tool: string;
+  /** The connector's id. */
+  connector: string;
+  /** How long the connector waited for the answer, in milliseconds. */
+  withinMs: number;
+}
+
+/**
  * A model alias a chat turn skipped before calling it. It is what an
  * `llm.skipped` run log event says, for a turn that has no run log.
  */
@@ -213,6 +232,11 @@ export interface ChatTurnResponse extends ChatResponse {
   waiting?: ChatTurnWaiting[];
   /** The model aliases skipped before any call, in order. Absent or empty when none was. */
   skipped?: ChatTurnSkip[];
+  /**
+   * The calls to connectors' tools that failed for a reason a run would
+   * name, in the order they were made. Absent or empty when none did.
+   */
+  toolFailures?: ChatTurnToolFailure[];
 }
 
 /** Receives a run's events from {@link RunExecutor.subscribe}. */

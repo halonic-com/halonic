@@ -39,3 +39,41 @@ export function isConnectorToolError(value: unknown): value is ConnectorToolErro
   if (!(value instanceof Error) || value.name !== "ConnectorToolError") return false;
   return typeof (value as { toolText?: unknown }).toolText === "string";
 }
+
+/**
+ * A connector's tool that didn't answer within the time its connector
+ * allows a call, so the connector gave up on it (requirement
+ * `ports.connector-tool-timeout`). The engine gives the model the error as
+ * the call's result, as for any failed call, and also reports the call's
+ * cause, `tool-timeout`, so a chat can say that the connector timed out.
+ *
+ * The message is Halonic's. Check for it with {@link isConnectorToolTimeout},
+ * not `instanceof`: an adapter may be built against its own copy of this package.
+ *
+ * @example
+ * throw new ConnectorToolTimeoutError(`The tool "search" didn't answer within 60 seconds.`, 60_000);
+ */
+export class ConnectorToolTimeoutError extends Error {
+  override readonly name = "ConnectorToolTimeoutError";
+  /** How long the connector waited for the answer, in milliseconds. */
+  readonly withinMs: number;
+
+  constructor(message: string, withinMs: number) {
+    super(message);
+    this.withinMs = withinMs;
+  }
+}
+
+/**
+ * Whether `value` is a {@link ConnectorToolTimeoutError}: an `Error` named
+ * "ConnectorToolTimeoutError" with a positive `withinMs`. It works across
+ * copies of this package, where `instanceof` doesn't.
+ *
+ * @example
+ * const seconds = isConnectorToolTimeout(error) ? error.withinMs / 1000 : undefined;
+ */
+export function isConnectorToolTimeout(value: unknown): value is ConnectorToolTimeoutError {
+  if (!(value instanceof Error) || value.name !== "ConnectorToolTimeoutError") return false;
+  const withinMs = (value as { withinMs?: unknown }).withinMs;
+  return typeof withinMs === "number" && Number.isFinite(withinMs) && withinMs > 0;
+}
