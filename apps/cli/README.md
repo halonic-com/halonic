@@ -92,8 +92,8 @@ and Studio share it, so set it in your shell's startup file (such as `~/.zshrc`)
 Halonic after you change it.
 
 To move your data, for example when a run says the bridge's socket path is too long (Linux takes
-at most 107 bytes, macOS 103), move the folder to a short path and point `HALONIC_HOME` at it. On Linux with zsh, for
-example:
+at most 107 bytes, macOS 103), move the folder to a short path and point `HALONIC_HOME` at it.
+On Linux with zsh, for example:
 
 ```sh
 mv ~/.local/share/halonic ~/.halonic
