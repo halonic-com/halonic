@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14711 (decided by Sofia with Noah on HAL-14707, after Noah's C462 on HAL-14703: a detail of the approved flow-agents 7 screen, HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iNY0hArr01rUYQXFx3iSc6iB8v6twYap2XTj8+d1rG2oFdMYIq0/ed/3IngLL8C09CBDUzlxMr3xDs2NJAf8Cg==
 
 At 390px a stacked card's header row held ←, the whole path and ✕, so every part of the path was
 cut ("Acme M… › Writ… › draft-re…") and the last part repeated the title under it. Where the card
