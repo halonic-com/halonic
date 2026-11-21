@@ -353,6 +353,21 @@ export class EngineNotAnswering extends KindedError {
   }
 }
 
+const agentCantRunWhy = "Halonic can't run an agent on its own yet, only as a step in a workflow.";
+const agentCantRunInstead = "Make a workflow, then pick it under Starts";
+
+/**
+ * Why a routine can't start an agent yet (C52 claim 1.6) and what to do instead, written once for
+ * the New routine dialog, the Starts card and Run now's refusal (HAL-14647).
+ */
+export const agentCantRunWords = {
+  why: agentCantRunWhy,
+  /** Names Starts with no full stop, so the New routine dialog can add where Starts is. */
+  instead: agentCantRunInstead,
+  /** Both as one line, for the routine's own page, where Starts is. */
+  line: `${agentCantRunWhy} ${agentCantRunInstead}.`,
+} as const;
+
 /** What {@link RoutinesHost.create} rejects with when the hub has no workflow and no agent to run. */
 export class NothingToRun extends KindedError {
   constructor() {

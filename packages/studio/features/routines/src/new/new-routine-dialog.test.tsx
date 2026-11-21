@@ -106,6 +106,33 @@ verifies("routines.new.create", () => {
     expect(description()).toContain("It runs Briefing when you press Run now.");
   });
 
+  it("reads the new line when the hub changes, from a live region that was there before it", async () => {
+    const researcher: RoutineTargetChoice = { ...analyst, hubId: "beta", name: "Researcher" };
+    await show(
+      dialog({
+        hubs: [acme, beta],
+        starterTarget: async (hubId) => (hubId === "acme" ? briefing : researcher),
+      }).node,
+    );
+    await settle();
+    const region = document.querySelector("dialog [aria-live=polite]");
+    expect(region?.textContent).toContain("It runs Briefing when you press Run now.");
+
+    await act(async () => {
+      const hub = document.querySelector("dialog select") as HTMLSelectElement;
+      hub.value = "beta";
+      hub.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await settle();
+
+    // The same element, so a screen reader hears the change rather than a region that just appeared.
+    expect(document.querySelector("dialog [aria-live=polite]")).toBe(region);
+    expect(region?.textContent).toContain(
+      "This routine starts Researcher, but Halonic can't run an agent on its own yet",
+    );
+    expect(description()).toContain("This routine starts Researcher");
+  });
+
   it("names the hub's first agent, says Halonic can't run an agent on its own yet, and asks what it should do", async () => {
     await show(dialog({ starterTarget: async () => analyst }).node);
 
