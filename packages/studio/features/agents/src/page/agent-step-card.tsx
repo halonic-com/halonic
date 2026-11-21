@@ -21,8 +21,8 @@ export function AgentStepCard({
   readonly agent: AgentSettings;
 }) {
   const rows: readonly [string, string][] = [
-    [words.agentStepInstructions, step.instructions],
-    [words.model, step.model ?? words.agentStepModelAgent],
+    [words.instructions, step.instructions],
+    [words.model, step.model ?? words.agentStepModelAgent(agent.model)],
     [words.turnLimit, step.maxSteps?.toString() ?? words.agentStepLimitAgent(agent.maxSteps)],
   ];
   return (
