@@ -55,7 +55,8 @@ commit. A `baseline-walked-back` warning names it.
   changed between the two, so it doesn't blame the pull request for what
   `main` changed in between (HAL-7660).
 - Every other job still runs the pull request's own code, so a pull request
-  that doesn't fix the break stays red in `Typecheck, lint, test, build`.
+  that doesn't fix the break stays red in a `Typecheck, lint, test, build (<shard>)`
+  job.
 
 If no commit within 20 has a green `push` run, or the green commit's tests
 fail when they run again here, the job fails with a message pointing here.

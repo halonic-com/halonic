@@ -5,11 +5,11 @@ import { parseArgs } from "node:util";
 import {
   type AreaReport,
   areaReports,
-  everyPackageJobs,
   issueBody,
   type Job,
   parseAreaTable,
   type Run,
+  testsEveryPackage,
 } from "../lib/main-failures.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
 
@@ -100,7 +100,7 @@ function workflowAsJob(workflow: string, summary: RunSummary | undefined): Job[]
 function logsOf(repo: string, runs: readonly Run[]): Map<number, string> {
   const logs = new Map<number, string>();
   for (const job of runs.flatMap((run) => run.jobs)) {
-    if (everyPackageJobs.includes(job.name) && job.conclusion === "failure") {
+    if (testsEveryPackage(job.name) && job.conclusion === "failure") {
       try {
         logs.set(job.id, gh("api", `repos/${repo}/actions/jobs/${job.id}/logs`));
       } catch {
