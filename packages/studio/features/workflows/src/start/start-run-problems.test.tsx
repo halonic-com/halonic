@@ -39,25 +39,41 @@ const click = (button: HTMLButtonElement | undefined) =>
     button?.click();
   });
 
-/** The page of a workflow whose checks found `problems`, with a host that starts runs. */
+/**
+ * The page of a workflow whose checks found `problems`, with a host that starts runs. `edit` gives
+ * it new problems and tells the page, as an edit of a file does: errors make Run unavailable up
+ * front, so the card only shows them when they come while it's open.
+ */
 async function openWithProblems(problems: readonly WorkflowProblem[]) {
   const started = vi.fn(async (_input: Record<string, unknown>) => ({ runId: "x" }));
-  const configuration = {
-    hubId: "acme",
-    id: "reply",
-    name: "Support reply",
-    initial: "read",
-    stepIds: ["read", "draft", "done"],
-    file: "hubs/acme/workflows/reply.workflow.yaml",
-    problems,
-  };
-  const { host } = memoryHost([], [], [reply], [configuration], {
+  let found = problems;
+  const { host, change } = memoryHost([], [], [reply], [], {
+    configuration: async () => ({
+      hubId: "acme",
+      id: "reply",
+      name: "Support reply",
+      initial: "read",
+      stepIds: ["read", "draft", "done"],
+      file: "hubs/acme/workflows/reply.workflow.yaml",
+      problems: found,
+    }),
     startRun: async (_ref, input) => started(input),
   });
   const page = await show(
     <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
   );
-  return { page, started };
+  const edit = (next: readonly WorkflowProblem[]) =>
+    act(async () => {
+      found = next;
+      change([]);
+    });
+  return { page, started, edit };
+}
+
+/** The start card's own **Open Problems**, not the one in the band under the header. */
+function openProblemsInCard(page: HTMLElement): HTMLButtonElement | undefined {
+  const card = page.querySelector<HTMLElement>("aside[aria-label='Start run']");
+  return card === null ? undefined : buttonNamed(card, "Open Problems");
 }
 
 const unknownAlias: WorkflowProblem = {
@@ -79,9 +95,10 @@ const unreachable: WorkflowProblem = {
 };
 
 verifies("workflows.start.start-run", () => {
-  it("says how many errors stop the run in place of Start run, and Open Problems shows them", async () => {
-    const { page, started } = await openWithProblems([unknownAlias, deadEnd, unreachable]);
+  it("says how many errors stop the run in place of Start run when an edit makes them while the card is open, and Open Problems shows them", async () => {
+    const { page, started, edit } = await openWithProblems([]);
     await click(runButton(page));
+    await edit([unknownAlias, deadEnd, unreachable]);
 
     const card = page.querySelector("aside[aria-label='Start run']");
     expect(card?.textContent).toContain(
@@ -89,16 +106,17 @@ verifies("workflows.start.start-run", () => {
     );
     expect(buttonNamed(page, "Start run")).toBeUndefined();
 
-    await click(buttonNamed(page, "Open Problems"));
+    await click(openProblemsInCard(page));
     expect(page.querySelector("aside[aria-label='Start run']")).toBeNull();
     expect(page.textContent).toContain('Agent "writer" uses unknown model alias "smrt"');
     expect(started).not.toHaveBeenCalled();
   });
 
   it("puts the focus on Problems once Open Problems closed the card", async () => {
-    const { page } = await openWithProblems([unknownAlias]);
+    const { page, edit } = await openWithProblems([]);
     await click(runButton(page));
-    await click(buttonNamed(page, "Open Problems"));
+    await edit([unknownAlias]);
+    await click(openProblemsInCard(page));
     await act(() => vi.advanceTimersByTimeAsync(1));
 
     const focused = document.activeElement;
@@ -108,8 +126,9 @@ verifies("workflows.start.start-run", () => {
   });
 
   it("says one error in the singular", async () => {
-    const { page } = await openWithProblems([unknownAlias]);
+    const { page, edit } = await openWithProblems([]);
     await click(runButton(page));
+    await edit([unknownAlias]);
 
     expect(page.textContent).toContain("Support reply has 1 problem. Fix it before it can run.");
   });
