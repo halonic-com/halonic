@@ -24,8 +24,12 @@ import { useRememberedView } from "./remembered-view.ts";
 export interface ItemPageChat {
   /** Open from the start (agents, workflows); otherwise the header offers "Ask about this <kind>…". */
   readonly startsOpen: boolean;
-  /** Draws the chat. `close` hides it again, back to "Ask about this <kind>…". */
-  readonly render: (close: () => void) => ReactNode;
+  /**
+   * Draws the chat. `close` hides it again, back to "Ask about this <kind>…". `panelShown` says
+   * whether the panel shows beside the chat, so a chat can leave a state the panel already shows,
+   * such as the item's loading, to the panel.
+   */
+  readonly render: (close: () => void, panelShown: boolean) => ReactNode;
 }
 
 /** What a page can ask of its {@link ItemPage}, through `handle`. */
@@ -254,7 +258,7 @@ export function ItemPage<Id extends string>({
             inert={maximised}
             className={chatClasses(layout)}
           >
-            {chat.render(() => change({ chatOpen: false }, "ask"))}
+            {chat.render(() => change({ chatOpen: false }, "ask"), shown.panel)}
           </section>
         )}
         {maximised ? (

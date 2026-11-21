@@ -1,14 +1,18 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import type { AgentsHost, HarnessReadiness } from "../api.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { buttonNamed, show, unmount, viewPanel } from "../test-support.tsx";
 import { AgentScreen } from "./agent-page.tsx";
 
-afterEach(unmount);
+afterEach(() => {
+  unmount();
+  vi.useRealTimers();
+});
 
 /** Sorter runs in Claude Code, which the host finds as `readiness` says. */
 function hostWhere(readiness: () => HarnessReadiness): AgentsHost {
@@ -93,5 +97,62 @@ verifies("agents.page.frame", () => {
     await act(async () => buttonNamed(viewPanel(page), "Check again")?.click());
 
     expect(chat(page)?.textContent).not.toContain(notInstalled);
+  });
+});
+
+/** Sorter's host, whose reads of the agent and its settings fail while `failing.now` is true. */
+function hostFailingWhile(failing: { now: boolean }): AgentsHost {
+  const base = hostWhere(() => ({ status: "ready", version: "2.1.0" }));
+  const unless = <Value,>(read: () => Promise<Value>) => {
+    if (failing.now)
+      return Promise.reject(new KindedError("unavailable", "The engine isn't answering."));
+    return read();
+  };
+  return {
+    ...base,
+    read: (ref) => unless(() => base.read(ref)),
+    settings: (ref) => unless(() => base.settings(ref)),
+  };
+}
+
+const count = (page: HTMLElement, text: string) => page.textContent?.split(text).length ?? 1;
+
+verifies("agents.chat.first-load", () => {
+  it("shows one Couldn't load, in the panel, whose Try again reads both and focuses the name", async () => {
+    const failing = { now: true };
+    const page = await show(
+      <AgentScreen host={hostFailingWhile(failing)} hubId="acme" id="sorter" />,
+    );
+    expect(count(page, "Couldn't load")).toBe(2);
+    expect(viewPanel(page).textContent).toContain("Couldn't load this agent");
+    expect(chat(page)?.textContent).toBe("");
+
+    failing.now = false;
+    await act(async () => buttonNamed(viewPanel(page), "Try again")?.click());
+    expect(chat(page)?.querySelector("textarea")).not.toBeNull();
+    expect(document.activeElement).toBe(page.querySelector("h1"));
+  });
+
+  it("shows that state in the chat while the panel doesn't show beside it", async () => {
+    const page = await show(
+      <AgentScreen host={hostFailingWhile({ now: true })} hubId="acme" id="sorter" />,
+    );
+    await act(async () =>
+      page.querySelector<HTMLElement>('button[aria-label="Close Configuration"]')?.click(),
+    );
+    expect(chat(page)?.textContent).toContain("Couldn't load this agent");
+    expect(buttonNamed(chat(page) as HTMLElement, "Try again")).toBeDefined();
+  });
+
+  it("names the agent as the host knows it while it is read, in one skeleton", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const base = hostWhere(() => ({ status: "ready", version: "2.1.0" }));
+    const slow: AgentsHost = { ...base, read: () => new Promise(() => {}) };
+    const page = await show(<AgentScreen host={slow} hubId="acme" id="sorter" />);
+    await act(async () => vi.advanceTimersByTime(10_300));
+    const nameField = page.querySelector<HTMLInputElement>('input[aria-label="Agent name"]');
+    expect(nameField?.value).toBe("Sorter");
+    expect(viewPanel(page).textContent).toContain("Loading Sorter");
+    expect(count(page, "Still loading")).toBe(2);
   });
 });
