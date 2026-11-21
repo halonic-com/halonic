@@ -1,7 +1,7 @@
 # Decision: halonic routines says when a routine's changes aren't live, and that the Studio starts routines too
 
 - Task: HAL-15204
-- Approval: <Liam signs on HAL-15204 after review>
+- Approval: HAL-15204; Liam reviewed this pull request and signs this note as the CTO
 - Kind: user-visible
 
 ## What changes
