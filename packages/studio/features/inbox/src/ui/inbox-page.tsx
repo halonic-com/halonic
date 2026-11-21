@@ -4,6 +4,7 @@ import {
   type EngineWords,
   engineWords,
   engineWordsOf,
+  type ItemRef,
   type PlaceViewProps,
 } from "@halonicjs/studio-shell";
 import {
@@ -88,6 +89,7 @@ export function InboxPage({ context }: PlaceViewProps) {
       trust={trust}
       {...(openItem && {
         openRun: (hubId: string, runId: string) => openItem({ kind: "run", hub: hubId, id: runId }),
+        openPage: openItem,
       })}
     />
   );
@@ -113,6 +115,8 @@ export interface InboxViewProps {
   readonly openBudget?: (() => void) | undefined;
   /** Opens a run's page, for **Open run** on the toast that says a request started. */
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
+  /** Opens an item's page, for a setup item's own buttons, such as the first run's **Continue**. */
+  readonly openPage?: ((item: ItemRef) => void) | undefined;
   /**
    * The workspace's trust, for a card whose answer was refused because the workspace isn't
    * trusted: **Review**, and the line goes once it is. Without it that line has no button.
@@ -160,6 +164,7 @@ export function InboxView({
   openBudget,
   openRun,
   trust,
+  openPage,
   runFacts,
   runs,
   announce,
@@ -287,6 +292,7 @@ export function InboxView({
               openNewConnector={openNewConnector}
               openRun={openRun}
               trust={trust}
+              openPage={openPage}
               runFacts={runFacts}
               announce={announce}
               now={now}
@@ -357,6 +363,7 @@ function OpenCard({
   openNewConnector,
   openRun,
   trust,
+  openPage,
   runFacts,
   announce,
 }: {
@@ -368,6 +375,7 @@ function OpenCard({
   readonly openNewConnector: (() => void) | undefined;
   readonly openRun: ((hubId: string, runId: string) => void) | undefined;
   readonly trust: TrustReview | undefined;
+  readonly openPage: ((item: ItemRef) => void) | undefined;
   readonly runFacts: RunFactsOf | undefined;
   readonly announce: ((line: string) => void) | undefined;
   readonly next: NextItem | null;
@@ -412,6 +420,7 @@ function OpenCard({
         close={close}
         focus={focus}
         openRun={openRun}
+        openItem={openPage}
         announce={announce}
       />
     );

@@ -2,7 +2,7 @@ import type { ProposedRecord } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
 import type { RunExecutor } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
-import type { EngineWords, PlaceSignal, ViewRef } from "@halonicjs/studio-shell";
+import type { EngineWords, ItemRef, PlaceSignal, ViewRef } from "@halonicjs/studio-shell";
 import { type InboxDecisions, inboxDecisions, wasDecidedElsewhere } from "./decide.ts";
 import { inboxSignal } from "./inbox-count.ts";
 import {
@@ -129,6 +129,11 @@ export interface SetupViewProps {
   readonly focus?: SetupFocus | undefined;
   /** Opens a run's page, for a view that lists runs; left out where the page can't open one. */
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
+  /**
+   * Opens an item's page, such as the first run's **Continue** opening Support reply
+   * (`inbox.setup-item-open`); left out where the page can't open one.
+   */
+  readonly openItem?: ((item: ItemRef) => void) | undefined;
   /** Says a line to a screen reader, for the answer to a press; left out where nothing listens. */
   readonly announce?: ((line: string) => void) | undefined;
 }
