@@ -165,20 +165,20 @@ verifies("settings.agent-sandbox-section", () => {
     expect(button(view, "Check again")).toBeDefined();
   });
 
-  it("says a setup took 3 minutes and leaves it running", async () => {
+  it("says a setup took 5 minutes and leaves it running", async () => {
     vi.useFakeTimers();
     const { host } = fakeHost(needsSetup);
     const { view } = await show(host);
     await click(button(view, "Set up the sandbox"));
     await act(async () => {
-      vi.advanceTimersByTime(3 * 60 * 1000 - 1);
+      vi.advanceTimersByTime(5 * 60 * 1000 - 1);
     });
-    expect(view.textContent).not.toContain("didn't finish within 3 minutes");
+    expect(view.textContent).not.toContain("didn't finish within 5 minutes");
     await act(async () => {
       vi.advanceTimersByTime(1);
     });
     expect(view.textContent).toContain(
-      "The sandbox isn't set up: the setup didn't finish within 3 minutes.",
+      "The sandbox isn't set up: the setup didn't finish within 5 minutes.",
     );
     expect(host.setUp).toHaveBeenCalledTimes(1);
     await click(button(view, "Try again"));
@@ -200,7 +200,7 @@ verifies("settings.agent-sandbox-section", () => {
     const { view } = await show(host);
     await click(button(view, "Set up the sandbox"));
     await act(async () => {
-      vi.advanceTimersByTime(3 * 60 * 1000);
+      vi.advanceTimersByTime(5 * 60 * 1000);
     });
     await click(button(view, "Try again"));
     expect(signals.map((signal) => signal?.aborted)).toEqual([true, false]);
@@ -219,17 +219,29 @@ verifies("settings.agent-sandbox-section", () => {
     expect(view.textContent).toContain("Ready");
   });
 
-  it("says a repair took 3 minutes in the words of a repair", async () => {
+  it("says a repair took 5 minutes in the words of a repair", async () => {
     vi.useFakeTimers();
     const { host } = fakeHost({ state: "needs-repair", reason: "the image is missing." });
     const { view } = await show(host);
     await click(button(view, "Repair the sandbox"));
     await act(async () => {
-      vi.advanceTimersByTime(3 * 60 * 1000);
+      vi.advanceTimersByTime(5 * 60 * 1000);
     });
     expect(view.textContent).toContain(
-      "The sandbox isn't repaired: the repair didn't finish within 3 minutes.",
+      "The sandbox isn't repaired: the repair didn't finish within 5 minutes.",
     );
+  });
+
+  it("says an earlier repair still runs in the words of a repair, as a note", async () => {
+    const { host, end } = fakeHost({ state: "needs-repair", reason: "the image is missing." });
+    const { view } = await show(host);
+    await click(button(view, "Repair the sandbox"));
+    // The shell can't tell a repair from a setup; the press can.
+    await end({ kind: "setup", how: "still-running", repairing: false });
+    expect(view.textContent).toContain(
+      "The earlier repair is still running. Wait a minute, then try again.",
+    );
+    expect(button(view, "Try again")).toBeDefined();
   });
 
   it("asks before removing: Cancel removes nothing, Remove sandbox does", async () => {

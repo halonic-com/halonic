@@ -71,6 +71,7 @@ import { provideFolderServices } from "./provide-folder-services.ts";
 import { restartRunsOfWindow } from "./restart-runs.ts";
 import { sampleHostOf } from "./sample-host.ts";
 import { sampleWorkspaceOf } from "./sample-workspace.ts";
+import { elevateSetupOf } from "./sandbox-elevate-shell.ts";
 import { startServedStudio } from "./served-studio.ts";
 import { watchStart } from "./start-watch.ts";
 
@@ -453,6 +454,7 @@ async function provideAgentSandbox(
         undefined,
         () => transport.securityUpdates(),
         ipc === undefined ? undefined : await wslBackupOf(ipc),
+        ipc === undefined ? undefined : await elevateSetupOf(ipc),
       ),
     );
 }

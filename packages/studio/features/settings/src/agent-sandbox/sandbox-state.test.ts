@@ -184,10 +184,21 @@ verifies("settings.agent-sandbox-state", () => {
 
     it("says the time-out", () => {
       expect(callout({ kind: "setup", how: "timed-out", repairing: false })?.line).toBe(
-        "The sandbox isn't set up: the setup didn't finish within 3 minutes.",
+        "The sandbox isn't set up: the setup didn't finish within 5 minutes.",
       );
       expect(callout({ kind: "setup", how: "timed-out", repairing: true })?.line).toBe(
-        "The sandbox isn't repaired: the repair didn't finish within 3 minutes.",
+        "The sandbox isn't repaired: the repair didn't finish within 5 minutes.",
+      );
+    });
+
+    it("says an earlier setup or repair still running as a note, with Try again", () => {
+      expect(callout({ kind: "setup", how: "still-running", repairing: false })).toEqual({
+        line: "The earlier setup is still running. Wait a minute, then try again.",
+        action: "try-again",
+        note: true,
+      });
+      expect(callout({ kind: "setup", how: "still-running", repairing: true })?.line).toBe(
+        "The earlier repair is still running. Wait a minute, then try again.",
       );
     });
 
@@ -241,9 +252,10 @@ verifies("settings.agent-sandbox-state", () => {
     expect(ready.secondary).toEqual(["check-again"]);
   });
 
-  it("times a setup out after 3 minutes", () => {
+  it("times a setup out after 5 minutes", () => {
     expect(setupTimedOut(0, SETUP_TIME_LIMIT_MS - 1)).toBe(false);
     expect(setupTimedOut(0, SETUP_TIME_LIMIT_MS)).toBe(true);
+    expect(SETUP_TIME_LIMIT_MS).toBe(5 * 60 * 1000);
   });
 
   it("turns a failed check into Needs repair, and leaves other failures alone", () => {

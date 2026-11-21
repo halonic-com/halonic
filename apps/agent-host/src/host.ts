@@ -7,6 +7,7 @@ import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import {
   keptGrantsRecordFolder,
   SrtSandbox,
+  setupAfterHelper,
   WSL_SHARED_FOLDERS,
 } from "@halonicjs/adapter-sandbox-srt";
 import type { SandboxChoiceService } from "@halonicjs/app";
@@ -370,7 +371,12 @@ function hostServices(
     // A session's temp folder, made with its harness profile, goes when the session closes.
     ...sandboxRoutes(folders.profiles?.removingTempFolders(sandbox) ?? sandbox, sessions),
     ...(choice === undefined ? [] : sandboxChoiceRoutes(choice)),
-    ...setupRoutes(new SetupJobs(sandbox, undefined, wslRemover), sessions),
+    ...setupRoutes(
+      new SetupJobs(sandbox, undefined, wslRemover, (exitCode) =>
+        setupAfterHelper(exitCode, () => sandbox.check()),
+      ),
+      sessions,
+    ),
     ...bridgeRoutes(
       (secrets) =>
         new NodeHarnessBridgeServer({

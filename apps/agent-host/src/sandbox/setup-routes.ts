@@ -20,10 +20,19 @@ export interface SandboxSetter {
 /** The WSL setup's removal, when this host can do it (HAL-10974). */
 export type WslRemoval = WslRemover;
 
+/**
+ * How a setup ended that Studio's shell ran through the signed helper, from the helper's exit
+ * code and this host's unelevated check (`setupAfterHelper`, HAL-14841).
+ */
+export type AfterHelper = (exitCode: number) => Promise<SandboxSetup>;
+
 type Verb = "setup" | "remove" | "remove-wsl";
 
 /** Both POSTs take an empty object: nothing about the setup comes from the caller. */
 const emptyBody = s.object({}).strict();
+
+/** The helper's exit code, as Windows gives it: a 32-bit unsigned number. Nothing else. */
+const elevatedBody = s.object({ exitCode: s.number().int().min(0).max(0xffff_ffff) }).strict();
 
 /**
  * What `POST /v1/sandbox/remove-wsl` takes: the user's explicit choice for the
@@ -56,11 +65,19 @@ export class SetupJobs {
   #last: FinishedSetup | null = null;
 
   readonly #wsl: WslRemoval | undefined;
+  /** How a setup the shell ran through the helper ended, when this host can say. */
+  readonly afterHelper: AfterHelper | undefined;
 
-  constructor(setter: SandboxSetter, now: () => Date = () => new Date(), wsl?: WslRemoval) {
+  constructor(
+    setter: SandboxSetter,
+    now: () => Date = () => new Date(),
+    wsl?: WslRemoval,
+    afterHelper?: AfterHelper,
+  ) {
     this.#setter = setter;
     this.#now = now;
     this.#wsl = wsl;
+    this.afterHelper = afterHelper;
   }
 
   /** Whether this host can remove the WSL setup. */
@@ -158,6 +175,10 @@ function answerJob(
  * - `POST /v1/sandbox/remove` does the same for the removal, but refuses
  *   with 409 `sandbox_in_use` and `runs`, before any prompt, while a
  *   sandboxed program runs here. It doesn't stop them (checklist 1.6, D5);
+ * - `POST /v1/sandbox/setup/elevated` takes `{ exitCode }` after Studio's shell ran the signed
+ *   helper with its own administrator prompt (HAL-14841), and answers 200 with how the setup
+ *   ended: done only when the code is 0 and this host's unelevated check passes. It refuses with
+ *   409 `sandbox_busy` while a setup or removal runs here. It is served only by a host that can say;
  * - `POST /v1/sandbox/remove-wsl` takes `{ choice: "export-then-remove", file }`
  *   or `{ choice: "remove-only" }` and removes Halonic's WSL distro, with the
  *   same 202, job slot and 409s. A failed export removes nothing. It is served
@@ -195,8 +216,32 @@ export function setupRoutes(jobs: SetupJobs, sessions: SessionTable): HostRoute[
         answerJob(jobs, "remove", response);
       },
     },
+    ...(jobs.afterHelper === undefined ? [] : [elevatedRoute(jobs, jobs.afterHelper)]),
     ...(jobs.canRemoveWsl ? [removeWslRoute(jobs, sessions)] : []),
   ];
+}
+
+function elevatedRoute(jobs: SetupJobs, afterHelper: AfterHelper): HostRoute {
+  return {
+    method: "POST",
+    path: "/v1/sandbox/setup/elevated",
+    handle: async (request, response) => {
+      const body = await readCheckedBody(request, response, elevatedBody);
+      if (body === undefined) return;
+      const running = jobs.status().running;
+      if (running !== null) {
+        const doing = running === "setup" ? "being set up" : "being removed";
+        sendJson(response, 409, {
+          error: {
+            kind: "sandbox_busy",
+            message: `The sandbox is ${doing}. Wait until that ends.`,
+          },
+        });
+        return;
+      }
+      sendJson(response, 200, await afterHelper(body.exitCode));
+    },
+  };
 }
 
 function removeWslRoute(jobs: SetupJobs, sessions: SessionTable): HostRoute {

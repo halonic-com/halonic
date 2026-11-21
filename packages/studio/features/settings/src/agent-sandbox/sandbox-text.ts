@@ -3,6 +3,8 @@
  * (HAL-1444, section 1) quotes them. The reasons after a colon are sentences from the host or the
  * check; an exit code never stands alone.
  */
+import { SETUP_LIMIT_MINUTES } from "./setup-limit.ts";
+
 export const SECTION_TITLE = "Agent sandbox";
 
 export const SET_UP = "Set up the sandbox";
@@ -55,10 +57,16 @@ export const STEP_REMOVING = "Removing the agent sandbox…";
 
 export const DENIED =
   "The sandbox isn't set up: Windows didn't give Halonic administrator rights. If you don't have an administrator password, ask whoever manages this computer.";
-export const REPAIR_TOOK_TOO_LONG =
-  "The sandbox isn't repaired: the repair didn't finish within 3 minutes.";
+export const REPAIR_TOOK_TOO_LONG = `The sandbox isn't repaired: the repair didn't finish within ${SETUP_LIMIT_MINUTES} minutes.`;
 export const failedSetUp = (reason: string) => `The sandbox isn't set up: ${reason}`;
-export const TOOK_TOO_LONG = "The sandbox isn't set up: the setup didn't finish within 3 minutes.";
+export const TOOK_TOO_LONG = `The sandbox isn't set up: the setup didn't finish within ${SETUP_LIMIT_MINUTES} minutes.`;
+/**
+ * Try again while the helper from an earlier press still runs: Windows isn't asked again (HAL-14841).
+ * A note, not a failure, in the tone of {@link UAC_WAITING}; Noah's lines (HAL-14863).
+ */
+export const STILL_RUNNING = "The earlier setup is still running. Wait a minute, then try again.";
+export const REPAIR_STILL_RUNNING =
+  "The earlier repair is still running. Wait a minute, then try again.";
 export const failedCheck = (reason: string) =>
   `The sandbox was set up, but didn't pass its check: ${reason}`;
 
@@ -87,7 +95,9 @@ export const TOAST_SETTING_UP = "Setting up the agent sandbox…";
 export const SET_UP_COMMAND = "Set up the agent sandbox";
 export const OPEN_SETTINGS = "Open Settings";
 export const DENIED_CAUSE = "Windows didn't give Halonic administrator rights.";
-export const TIMED_OUT_CAUSE = "the setup didn't finish within 3 minutes.";
+export const TIMED_OUT_CAUSE = `the setup didn't finish within ${SETUP_LIMIT_MINUTES} minutes.`;
+export const STILL_RUNNING_CAUSE =
+  "the earlier setup is still running. Wait a minute, then try again.";
 export const RESTART_CAUSE = "Windows needs to restart to finish the setup.";
 
 /** When the check after a setup still doesn't pass and the host gave no reason. */

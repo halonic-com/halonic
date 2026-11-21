@@ -26,5 +26,6 @@ function causeOf(outcome: SandboxOutcome): string {
   if (outcome.kind !== "setup") return text.STILL_NEEDS_SETUP;
   if (outcome.how === "cancelled") return text.DENIED_CAUSE;
   if (outcome.how === "timed-out") return text.TIMED_OUT_CAUSE;
+  if (outcome.how === "still-running") return text.STILL_RUNNING_CAUSE;
   return outcome.reason;
 }

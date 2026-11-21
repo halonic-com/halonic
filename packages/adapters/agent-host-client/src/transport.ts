@@ -15,6 +15,7 @@ export const agentHostRequestRoutes = [
   "POST /v1/sandbox/choice/settings-changed",
   "GET /v1/sandbox/setup",
   "POST /v1/sandbox/setup",
+  "POST /v1/sandbox/setup/elevated",
   "POST /v1/sandbox/remove",
   "POST /v1/sandbox/remove-wsl",
   "POST /v1/bridge/answer",

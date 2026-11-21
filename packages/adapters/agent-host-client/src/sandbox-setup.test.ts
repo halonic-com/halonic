@@ -47,6 +47,16 @@ describe("AgentHostSandboxSetup", () => {
     expect(await new AgentHostSandboxSetup(restarted, noPause).ended("setup")).toBeUndefined();
   });
 
+  it("sends only the helper's exit code after the shell's setup, and reads how it ended", async () => {
+    const result = { ok: false, outcome: "check_failed", reason: "the sandbox account" };
+    const host = new FakeHost().answer("POST /v1/sandbox/setup/elevated", ok(result));
+    expect(await new AgentHostSandboxSetup(host).afterHelper(0)).toEqual(result);
+    expect(host.calls).toContainEqual({
+      route: "POST /v1/sandbox/setup/elevated",
+      body: { exitCode: 0 },
+    });
+  });
+
   it("answers how many runs use the sandbox when the host refuses to remove it", async () => {
     const host = new FakeHost().answer("POST /v1/sandbox/remove", {
       status: 409,

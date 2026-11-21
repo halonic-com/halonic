@@ -167,6 +167,18 @@ export class AgentHostSandboxSetup {
   }
 
   /**
+   * Says how a setup ended that the shell ran through the signed helper with its own
+   * administrator prompt (HAL-14841): the host words the helper's `exitCode` and, for 0, runs
+   * its unelevated check. Done only when that check passes.
+   *
+   * @throws {@link AgentHostError} `sandbox_busy` while the host runs a setup or removal itself, or when the host can't be reached
+   */
+  async afterHelper(exitCode: number): Promise<SandboxSetupResult> {
+    const route = "POST /v1/sandbox/setup/elevated";
+    return readAnswer(route, await this.#transport.request(route, { exitCode }), resultSchema);
+  }
+
+  /**
    * Starts the removal, or joins the one that runs. While sandboxed runs go
    * on, the host refuses before any prompt, and this answers how many.
    *

@@ -75,6 +75,16 @@ verifies("settings.sandbox-commands", () => {
     expect(openSettings).toHaveBeenCalledWith("agent-sandbox");
   });
 
+  it("says an earlier setup is still running", async () => {
+    const { context, toasts } = setup({
+      setUp: { kind: "setup", how: "still-running", repairing: false },
+    });
+    await act(async () => void sandboxCommands(context)[0]?.run(context));
+    expect(toasts.list()[0]?.title).toBe(
+      "The agent sandbox isn't set up: the earlier setup is still running. Wait a minute, then try again.",
+    );
+  });
+
   it("never shows a system message as the cause, and gives a kinded error's own sentence", async () => {
     const { context, host, toasts } = setup();
     host.setUp = vi.fn(async () => {

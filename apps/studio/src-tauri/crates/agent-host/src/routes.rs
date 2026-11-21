@@ -84,6 +84,12 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/sandbox/setup",
         route(Method::Post, "/v1/sandbox/setup", Answer::Json),
     ),
+    // How a setup ended that the shell ran through the helper with its own
+    // prompt (HAL-14841): the host words the exit code and checks.
+    (
+        "POST /v1/sandbox/setup/elevated",
+        route(Method::Post, "/v1/sandbox/setup/elevated", Answer::Json),
+    ),
     (
         "POST /v1/sandbox/remove",
         route(Method::Post, "/v1/sandbox/remove", Answer::Json),

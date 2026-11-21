@@ -7,6 +7,7 @@ import { sandboxStartWords } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
+import type { ShellElevation } from "./sandbox-elevate-shell.ts";
 import { agentSandboxOffered } from "./start-studio.ts";
 
 /** A host that answers each route with what the test gives it, and keeps the routes it was asked. */
@@ -239,6 +240,78 @@ verifies("studio.agent-sandbox-host", () => {
     it("doesn't offer the sandbox until the board decides D44 (a)", () => {
       expect(agentSandboxOffered).toBe(false);
     });
+  });
+});
+
+verifies("studio.sandbox-setup-through-shell", () => {
+  const elevating = (elevation: ShellElevation) => async () => elevation;
+
+  it("sends only the helper's exit code to the host and takes the host's answer", async () => {
+    const { transport, asked } = host({
+      "POST /v1/sandbox/setup/elevated": { status: 200, body: { ok: true } },
+    });
+    const facts = new AgentHostSandboxFacts(
+      transport,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      elevating({ outcome: "exited", exitCode: 0 }),
+    );
+    expect(await facts.setUp()).toBeNull();
+    expect(asked).toEqual(["POST /v1/sandbox/setup/elevated"]);
+  });
+
+  it("reads a check that fails after the helper as a failed check", async () => {
+    const { transport } = host({
+      "POST /v1/sandbox/setup/elevated": {
+        status: 200,
+        body: { ok: false, outcome: "check_failed", reason: "the sandbox account is missing" },
+      },
+    });
+    const facts = new AgentHostSandboxFacts(
+      transport,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      elevating({ outcome: "exited", exitCode: 0 }),
+    );
+    expect(await facts.setUp()).toEqual({
+      kind: "setup",
+      how: "check_failed",
+      reason: "the sandbox account is missing.",
+    });
+  });
+
+  it.each([
+    [{ outcome: "cancelled" } as const, { kind: "setup", how: "cancelled" }],
+    [{ outcome: "timed_out" } as const, { kind: "setup", how: "timed-out", repairing: false }],
+    [
+      { outcome: "still_running" } as const,
+      { kind: "setup", how: "still-running", repairing: false },
+    ],
+    [
+      { outcome: "failed", reason: "The system cannot find the file specified." } as const,
+      {
+        kind: "setup",
+        how: "failed",
+        reason:
+          "Windows couldn't start the sandbox helper: The system cannot find the file specified.",
+      },
+    ],
+  ])("ends the shell's %o without asking the host", async (elevation, outcome) => {
+    const { transport, asked } = host({});
+    const facts = new AgentHostSandboxFacts(
+      transport,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      elevating(elevation),
+    );
+    expect(await facts.setUp()).toEqual(outcome);
+    expect(asked).toEqual([]);
   });
 });
 
