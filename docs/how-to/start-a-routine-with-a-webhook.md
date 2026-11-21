@@ -3,7 +3,7 @@
 A routine with a `webhook` trigger starts when another program sends it a
 signed web request, such as a shop that posts each new order. `halonic serve`
 receives the request, checks its signature, and starts the routine's workflow
-or agent with the request's body.
+with the request's body.
 
 ## Set up the routine
 
@@ -49,7 +49,8 @@ or agent with the request's body.
    The address ends with the routine's hub and the routine's id. A routine
    in the workspace itself, not in a hub, has `@workspace` in place of the
    hub, such as `/api/webhooks/@workspace/new-order`. A ✕ line
-   under it says why the routine won't start, such as a secret that isn't set.
+   under it says why the routine won't start, such as a secret that isn't set
+   or a routine that starts an agent.
 
 ## Sign a request
 
@@ -91,6 +92,7 @@ Here `ORDERS_HOOK` holds the secret's value in the sender's environment.
 | 403 | The workspace changed since it was trusted. Run `halonic trust`. |
 | 409 | This delivery id was already received. A resend with the same id starts nothing. |
 | 429 | A run of the routine is still going and its `overlap` is `queue`. Send it again after the time in `Retry-After`. |
+| 501 | The routine starts an agent, and Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then start that. |
 
 When the server refuses a signed request with a 400, or fails it, the
 terminal that runs `halonic serve` prints a line such as:

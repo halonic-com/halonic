@@ -1,5 +1,6 @@
 import { defineMessages } from "./define.ts";
-import { dim, markPart, phrase } from "./phrase.ts";
+import { errorMessages, issuesLink } from "./general.ts";
+import { markPart, phrase } from "./phrase.ts";
 
 /**
  * The sentences `halonic serve` gives a caller of the served workspace. They
@@ -64,9 +65,28 @@ export const serveMessages = defineMessages("serve", {
    */
   webhookRefused: (name: string, reason: string) =>
     phrase`${markPart("failed")} ${name} didn't start on a web request: ${reason}`,
-  /** A web request for a routine that failed with a 500; its cause shows with `--debug`, as `requestFailed`. */
+  /**
+   * The line under {@link webhookRoutine} when the routine starts an agent,
+   * which the server answers with 501 until agent runs are built (HAL-15277),
+   * in the words Studio's Starts card uses (microcopy 1.5 L2).
+   */
+  webhookRoutineAgent: (name: string) =>
+    phrase`${markPart("failed")} ${name} won't start: Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then start that.`,
+  /**
+   * Line 1 of a web request for a routine that failed with a 500: a bug, so
+   * the error shape's F16 line 1 (microcopy 25.1 L4, HAL-15277).
+   */
   webhookFailed: (name: string) =>
-    phrase`${markPart("failed")} ${name} didn't start on a web request ${markPart("separator")} ${dim("see why with --debug")}`,
+    phrase`${markPart("failed")} ${name} didn't start on a web request: ${errorMessages.internal().phrase}`,
+  /**
+   * Line 2 under {@link webhookFailed}, indented. `--debug` is a start flag, so
+   * it says to start serve again; with `--debug` on, the cause is already
+   * printed above it, so it only asks for the report (HAL-6613).
+   */
+  webhookFailedFix: (debugging: boolean) =>
+    debugging
+      ? phrase`  Report it with the details above: ${issuesLink}`
+      : phrase`  Start halonic serve again with --debug to see the details, and report it: ${issuesLink}`,
   /** The runtime's own line with the address for the phone, as it words it. */
   address: (line: string) => phrase`${line}`,
   /** The line under {@link serving} when the sign-in password is not set, so only this computer can open it. */

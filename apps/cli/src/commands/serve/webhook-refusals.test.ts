@@ -18,11 +18,13 @@ function answering(status: number, message = reason): Server {
 async function printedFor(
   server: Server,
   path: string,
+  debugging = false,
 ): Promise<{ lines: string[]; response: Response }> {
   const printed: Phrase[] = [];
   const reported = reportWebhookRefusals(server, {
     routineName: async (key) => (key === "reports/weekly-report" ? "Weekly report" : null),
     print: (line) => printed.push(line),
+    debugging,
   });
   const response = await reported.handle(
     new Request(`http://localhost:4747${path}`, { method: "POST", body: "{}" }),
@@ -43,12 +45,25 @@ verifies("cli.commands.serve.webhook-refusals", () => {
       expect(((await response.json()) as { message: string }).message).toBe(reason);
     });
 
-    it("points to --debug for a 500", async () => {
+    it("gives a 500 F16's two lines, with serve started again with --debug", async () => {
       const { lines } = await printedFor(answering(500), "/api/webhooks/reports/weekly-report");
 
       expect(lines).toEqual([
-        "✕ Weekly report didn't start on a web request · see why with --debug",
+        "✕ Weekly report didn't start on a web request: Halonic ran into a problem it can't explain yet.",
+        "  Start halonic serve again with --debug to see the details, and report it: https://github.com/halonic-com/halonic/issues",
       ]);
+    });
+
+    it("asks only for the report of a 500 when --debug is on", async () => {
+      const { lines } = await printedFor(
+        answering(500),
+        "/api/webhooks/reports/weekly-report",
+        true,
+      );
+
+      expect(lines[1]).toBe(
+        "  Report it with the details above: https://github.com/halonic-com/halonic/issues",
+      );
     });
 
     it("names the address when no routine is there", async () => {
@@ -64,6 +79,7 @@ verifies("cli.commands.serve.webhook-refusals", () => {
           throw new Error("routines folder unreadable");
         },
         print: (line) => printed.push(line),
+        debugging: false,
       });
 
       const response = await reported.handle(

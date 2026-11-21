@@ -2,9 +2,10 @@
 // (HAL-14299): one per webhook routine that is on, with the address it
 // listens at, and a ✕ line when its secret isn't set or names a secret that
 // belongs to Halonic or a plugin, or when the routine has a trigger value
-// `halonic validate` reports (HAL-15084), since the server then refuses every
-// request for it. Without them, nothing said why a webhook routine never
-// started.
+// `halonic validate` reports (HAL-15084), or when it starts an agent, which
+// the server answers with 501 until agent runs are built (HAL-15277), since
+// the server then refuses every request for it. Without them, nothing said
+// why a webhook routine never started.
 
 import { webhookPathPrefix } from "@halonicjs/host-server";
 import { type Secrets, workspaceSecrets } from "@halonicjs/ports";
@@ -46,6 +47,9 @@ export async function webhookRoutineLines(
     const problem = triggerValueProblems(routine)[0];
     if (problem !== undefined) {
       lines.push(serveMessages.webhookRoutineInvalid(name, printable(problem.message)).phrase);
+    }
+    if ("agent" in routine.run) {
+      lines.push(serveMessages.webhookRoutineAgent(name).phrase);
     }
   }
   return lines;

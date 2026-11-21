@@ -303,6 +303,7 @@ async function listenOnComputer(
         {
           routineName: async (key) => (await findWebhookRoutine(key))?.routine.name ?? null,
           print: (line) => context.printAhead(line),
+          debugging: context.debugging === true,
         },
       ),
     port: listen.port,
