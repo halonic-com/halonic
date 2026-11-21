@@ -22,5 +22,13 @@ verifies("sandbox-srt.windows-setup-version", () => {
       expect(Number.isInteger(record.setupVersion)).toBe(true);
       expect(record.setupVersion).toBeGreaterThan(0);
     });
+
+    it("isn't raised past 3 before a release with the installer's rollback guard", () => {
+      // Installers before HAL-5404 S3 go back across a raise unchecked.
+      expect(
+        record.setupVersion,
+        "srt raises its Windows setup version past 3: ship a release with the installer's rollback guard first (decisions/maya/HAL-5404-06-rollback-guard.md), then change this test with a decision note",
+      ).toBeLessThanOrEqual(3);
+    });
   });
 });

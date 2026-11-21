@@ -126,6 +126,13 @@ if ($env:HALONIC_SANDBOX_SIGNER) {
   }
 }
 
+# The installer's rollback guard (HAL-5404 S3) needs the Windows setup version
+# its srt needs, from the one record, and packs setup-guard.ps1.
+$setupVersion = [string](Get-Content (Join-Path $repo 'packages/adapters/sandbox-srt/windows-setup-version.json') -Raw | ConvertFrom-Json).setupVersion
+if ($setupVersion -notmatch '^[1-9][0-9]*$') { throw "srt's Windows setup version '$setupVersion' isn't a whole number above zero" }
+$env:HALONIC_SRT_SETUP_VERSION = $setupVersion
+$env:HALONIC_SETUP_GUARD = Join-Path $PSScriptRoot 'setup-guard.ps1'
+
 Push-Location $shell
 try {
   pnpm exec tauri bundle @configs --bundles nsis --target $triple

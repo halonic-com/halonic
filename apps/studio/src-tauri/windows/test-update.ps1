@@ -235,6 +235,11 @@ try {
   Wait-Until { Test-Path (Join-Path $updates 'started-0.1.1') } 120 '0.1.1 proving it starts'
   if (Test-Path (Join-Path $updates 'installers\Halonic-0.1.0-windows-x64-setup.exe')) { throw "0.1.0's kept installer wasn't removed" }
   if (-not (Test-Path (Join-Path $updates 'installers\Halonic-0.1.1-windows-x64-setup.exe'))) { throw "0.1.1's installer wasn't kept" }
+  # Beside it, the setup version its srt needs, for the rollback guard (HAL-5404 S3).
+  $setupVersion = (Get-Content -Raw (Join-Path $PSScriptRoot '../../../../packages/adapters/sandbox-srt/windows-setup-version.json') | ConvertFrom-Json).setupVersion
+  $kept = Get-Content (Join-Path $updates 'installers\Halonic-0.1.1.srt-setup') -Raw -ErrorAction SilentlyContinue
+  if ("$kept".Trim() -ne "$setupVersion") { throw "0.1.1's kept setup version is '$kept', not $setupVersion" }
+  if (Test-Path (Join-Path $updates 'installers\Halonic-0.1.0.srt-setup')) { throw "0.1.0's kept setup version wasn't removed" }
   Assert-UserData $before
   Stop-Halonic
 
@@ -290,6 +295,8 @@ try {
   }
   $log = Get-Content (Join-Path $updates 'updates.log') -Raw
   if ($log -notmatch 'Installing 0\.1\.2 over 0\.1\.1\. If 0\.1\.2 doesn''t start, run .+Halonic-0\.1\.1-windows-x64-setup\.exe to go back') { throw "updates.log doesn't say how to go back: $log" }
+  # The rollback guard let it go back: same setup version, so nothing refused.
+  if ($log -match 'installer: ') { throw "the installer logged a rollback guard line: $log" }
   Assert-UserData $before
   Write-Output 'update test passed'
 } finally {
