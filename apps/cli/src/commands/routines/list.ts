@@ -4,8 +4,8 @@
 // nothing and writes nothing, so it needs no trust, as `halonic runs`. A
 // routine whose file has errors shows "Can't start", and the list exits 1,
 // so "will it run?" is answered where people look for it (HAL-14299). A
-// routine whose saved changes aren't live yet gets a line under the list,
-// since it runs as last committed until then (HAL-15204).
+// routine whose saved changes aren't live yet is listed as it runs, as last
+// committed (HAL-15485), with a line under the list saying so (HAL-15204).
 
 import { type ListedRoutine, RoutineList } from "@halonicjs/app/routines";
 import { loadWorkspace } from "@halonicjs/workspace";
@@ -22,14 +22,14 @@ import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
 import type { RunListSetup } from "../runs/list.ts";
 import { listedStatus } from "../runs/listed-run.ts";
-import { type NotLiveRoutines, notLiveRoutines } from "./not-live.ts";
+import { type NotLiveRoutines, notLiveRoutines, runningWorkspace } from "./not-live.ts";
 
 /**
  * Lists the workspace's routines, one lined-up row each: the name, what
  * starts it, its next run and its last run. No routines says so, and exits 0.
  * Routines whose files have errors are counted above the list, which then
- * exits 1. Routines with saved changes that aren't live yet get a line each
- * under it.
+ * exits 1. Routines with saved changes that aren't live yet are listed as
+ * they run until then, and get a line each under it.
  *
  * @throws NoWorkspaceError when the folder holds no workspace
  */
@@ -42,7 +42,12 @@ export async function listRoutines(
   const clock = setup.clock();
   const list = new RoutineList(await openWorkspaceRuns(workspace.root, setup.profile));
   const loaded = await loadWorkspace(workspace.store);
-  const routines = await list.listRoutines(loaded, clock.now, clock.timeZone ?? computerTimeZone());
+  const notLive = await notLiveRoutines(workspace, loaded, setup.history);
+  const routines = await list.listRoutines(
+    runningWorkspace(loaded, notLive),
+    clock.now,
+    clock.timeZone ?? computerTimeZone(),
+  );
   const json = { routines: routines.map(routineJson) };
   if (routines.length === 0) {
     // The workspace's name is outside text (cli-output section 5).
@@ -58,7 +63,6 @@ export async function listRoutines(
     withProblems === 0
       ? []
       : [routinesMessages.routinesCantStart(withProblems, givenDir(input, workspace)).phrase];
-  const notLive = await notLiveRoutines(workspace, loaded, setup.history);
   return {
     exitCode: withProblems === 0 ? exitCode.ok : exitCode.failed,
     lines: [
@@ -91,7 +95,7 @@ function notLiveLines(routines: readonly ListedRoutine[], notLive: NotLiveRoutin
     ];
   }
   return routines
-    .filter((each) => notLive.keys.has(each.key))
+    .filter((each) => notLive.routines.has(each.key))
     .map((each) => routinesMessages.changesNotLive(printable(each.name)).phrase);
 }
 

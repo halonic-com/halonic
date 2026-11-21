@@ -66,7 +66,7 @@ async function routinesIn(opener = history): Promise<{ code: number; io: Capture
 
 verifies("cli.commands.routines.list", () => {
   it(
-    "says a routine whose saved changes aren't committed isn't live yet",
+    "lists a routine whose saved changes aren't committed as it runs, and says they aren't live yet",
     async () => {
       await writeFiles(acmeRuns.acme, { [routinePath]: morning("0 8 * * *") });
       await makeLive();
@@ -75,11 +75,34 @@ verifies("cli.commands.routines.list", () => {
       const { code, io } = await routinesIn();
 
       expect(code).toBe(exitCode.ok);
+      // The watch and the Studio start it at 08:00, as committed, so the row says so (HAL-15485).
       expect(io.stdout).toEqual([
-        "Morning check   Daily at 07:00   Next tomorrow 07:00   Never ran",
+        "Morning check   Daily at 08:00   Next tomorrow 08:00   Never ran",
         "! Morning check has changes that aren't live yet. It runs as last committed until you commit them.",
         hint,
       ]);
+    },
+    gitTimeout,
+  );
+
+  it(
+    "gives --json the trigger and next run that are live, with the saved name and On or Off",
+    async () => {
+      await writeFiles(acmeRuns.acme, { [routinePath]: morning("0 8 * * *") });
+      await makeLive();
+      const renamed = morning("0 7 * * *").replace("Morning check", "Early check");
+      await writeFiles(acmeRuns.acme, { [routinePath]: `${renamed}enabled: false\n` });
+
+      const io = captureIo(acmeRuns.acme);
+      const command = routinesCommandWith({ ...acmeRunsSetup(acmeRuns), history });
+      await runCli(["routines", "--json"], io, [command]);
+
+      expect(JSON.parse(io.stdout.join("\n")).routines[0]).toMatchObject({
+        name: "Early check",
+        enabled: false,
+        trigger: "Daily at 08:00",
+        nextRun: null,
+      });
     },
     gitTimeout,
   );
