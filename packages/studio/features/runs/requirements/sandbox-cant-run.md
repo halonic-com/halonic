@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-4291 (checklist 3.1 to 3.3, 3.9, 3.10); microcopy 23.3; `app.sandbox-start-words`; `app.sandbox-start-check`. The words are placeholders until HAL-1784 is approved: reviewers check the keys.
+- Source: HAL-4291 (checklist 3.1 to 3.3, 3.9, 3.10); microcopy 23.3; `app.sandbox-start-words`; `app.sandbox-start-check`.
 
 The runs feature shall give the pages that start runs one Callout, and one check behind it, for a sandbox that can't start. A page shall check once when it opens, where it has a control that would start a program in the sandbox and the workspace provides `sandboxStartCheckKey`. Only a check that refuses shall disable anything: before it answers, where nothing can check, and when the check itself can't run, the controls stay as they are.
 
