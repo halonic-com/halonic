@@ -62,6 +62,7 @@ import {
 } from "@halonicjs/studio-shell";
 import { showEngineLockLost } from "../engine/engine-lock-lost-toast.ts";
 import { openShellEngine } from "../engine/remote-engine.ts";
+import { provideRemoteControl } from "../remote/provide-remote.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import { desktopFeatures } from "./desktop-features.ts";
@@ -321,6 +322,7 @@ export async function openFolder(
   provideShellHostSettings(services, window);
   services.provide(HostSettingsService, await hostSettingsOf(services, window));
   await provideAgentSandbox(services, window, ipc);
+  provideRemoteControl(services, tauriAgentHostTransport(window));
   if (ipc !== undefined) {
     services.provide(UpdaterService, updaterOf(ipc));
     services.provide(RestartRunsService, restartRunsOfWindow);

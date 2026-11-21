@@ -51,6 +51,7 @@ export { AgentHostPluginRunStates, type PluginRunState } from "./plugin-run-stat
 export { AgentHostPluginSecrets } from "./plugin-secrets.ts";
 export { AgentHostPluginToolCaller, type PluginToolArgs } from "./plugins.ts";
 export { AgentHostProposalFolders, type ProposalFolderRun } from "./proposal-folders.ts";
+export { AgentHostRemoteControl } from "./remote-control.ts";
 export {
   AgentHostInstructions,
   type AgentHostInstructionsOptions,
