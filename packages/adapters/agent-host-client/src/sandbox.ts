@@ -6,9 +6,11 @@ import {
   type SandboxCheck,
   type SandboxCommand,
   type SandboxFence,
+  type SandboxFix,
   type SandboxProcess,
   type SandboxProfile,
   type SandboxSession,
+  sandboxPackageManagers,
   sandboxResiduals,
   sandboxUnavailableReasons,
 } from "@halonicjs/ports";
@@ -22,6 +24,24 @@ const capabilitiesSchema = s
     strength: s.enum(["os", "vm", "remote", "none"]),
   })
   .strict() satisfies Schema<SandboxCapabilities>;
+
+const fixSchema = s.discriminatedUnion("kind", [
+  s
+    .object({
+      kind: s.literal("install"),
+      packageManager: s.enum(sandboxPackageManagers).nullable(),
+      packages: s.array(s.string()),
+    })
+    .strict(),
+  s
+    .object({
+      kind: s.literal("apparmor-profile"),
+      program: s.string(),
+      path: s.string(),
+      profile: s.string(),
+    })
+    .strict(),
+]) satisfies Schema<SandboxFix>;
 
 const checkSchema = s.discriminatedUnion("ok", [
   s
@@ -37,6 +57,8 @@ const checkSchema = s.discriminatedUnion("ok", [
       ok: s.literal(false),
       reason: s.enum(sandboxUnavailableReasons),
       missing: s.array(s.string()),
+      fix: fixSchema.optional(),
+      setupAgain: s.literal(true).optional(),
     })
     .strict(),
 ]) as Schema<SandboxCheck>; // `as`: an optional key reads as `| undefined` to the compiler.

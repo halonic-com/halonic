@@ -17,8 +17,10 @@
  * (docs/adr/2026-11-11-sandbox-bridge-on-a-socket.md).
  * 8: the reason code `not-offered`, for a backend the app doesn't offer here
  * (docs/adr/2026-11-18-sandbox-reason-not-offered.md).
+ * 9: `SandboxCheck.setupAgain`, for a one-time setup done for an older
+ * release of the backend (docs/adr/2026-11-21-sandbox-check-setup-again.md).
  */
-export const sandboxVersion = 8;
+export const sandboxVersion = 9;
 
 /**
  * How files reach the sandbox. `shared`: the program sees the same folders as
@@ -111,10 +113,20 @@ export type SandboxUnavailableReason = (typeof sandboxUnavailableReasons)[number
  *   HAL-5393; optional, so the port stays at its version). See {@link SandboxFix}.
  * - `residuals`, on an `ok` check, are limits that hold on this machine only
  *   (HAL-5398; optional). See {@link SandboxResidual}.
+ * - `setupAgain`, only with `setup-needed`, says the one-time setup was done
+ *   on this machine, but for an older release of the backend than this one
+ *   needs (since version 9; optional). Without it, `setup-needed` may also
+ *   mean the setup was never done. Studio words the two apart.
  */
 export type SandboxCheck =
   | { ok: true; reason: null; missing: []; residuals?: SandboxResidual[] }
-  | { ok: false; reason: SandboxUnavailableReason; missing: string[]; fix?: SandboxFix };
+  | {
+      ok: false;
+      reason: SandboxUnavailableReason;
+      missing: string[];
+      fix?: SandboxFix;
+      setupAgain?: true;
+    };
 
 /**
  * Every limit an `ok` check can find on this machine that isn't a fact of the backend:

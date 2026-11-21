@@ -63,6 +63,37 @@ verifies("agent-host-client.sandbox", () => {
       expect(await sandbox.check()).toEqual(check);
     });
 
+    it("answers a refusal with the fix the host names, and refuses a fix it doesn't know", async () => {
+      const check = {
+        ok: false,
+        reason: "bubblewrap-missing",
+        missing: ["bubblewrap is not installed"],
+        fix: { kind: "install", packageManager: "apt", packages: ["bubblewrap"] },
+      };
+      const host = hostWithSession().answer("GET /v1/sandbox/check", ok(check));
+      const sandbox = await AgentHostSandbox.connect(host);
+      expect(await sandbox.check()).toEqual(check);
+      host.answer(
+        "GET /v1/sandbox/check",
+        ok({ ...check, fix: { kind: "command", text: "sudo apt install bubblewrap" } }),
+      );
+      await expect(sandbox.check()).rejects.toMatchObject({ kind: "answer_invalid" });
+    });
+
+    it("answers a setup for an older release as the host does", async () => {
+      const check = {
+        ok: false,
+        reason: "setup-needed",
+        missing: ["srt's Windows setup is for an older release"],
+        setupAgain: true,
+      };
+      const host = hostWithSession().answer("GET /v1/sandbox/check", ok(check));
+      const sandbox = await AgentHostSandbox.connect(host);
+      expect(await sandbox.check()).toEqual(check);
+      host.answer("GET /v1/sandbox/check", ok({ ...check, setupAgain: "yes" }));
+      await expect(sandbox.check()).rejects.toMatchObject({ kind: "answer_invalid" });
+    });
+
     it("opens a session in the host with the profile unchanged", async () => {
       const host = hostWithSession();
       const session = await (await AgentHostSandbox.connect(host)).open(profile);
