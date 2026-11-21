@@ -3,6 +3,7 @@
 - Task: HAL-15118
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15118 (a team decision with no board card, HAL-2282 rule: wording on the approved sandbox-not-ready banner, from Iris's flow check C544, item 7)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nPhDYSIKBr+DYE+CQ4GeEls72WDdoDRVOFtcknzCgCj/THXpXgb8LWWFT6WcAoZnqa+8stO7x4hOK67++JDTBA==
 
 ## What changes
 
