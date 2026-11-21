@@ -21,6 +21,8 @@
     "vitest": "catalog:"
   },
   "devDependencies": {
+    "@halonicjs/adapter-remote-gateway": "workspace:*",
+    "@halonicjs/studio-feature-remote": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",

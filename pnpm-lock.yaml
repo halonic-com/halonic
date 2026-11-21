@@ -4092,6 +4092,12 @@ importers:
         specifier: workspace:*
         version: link:../../core/schema-kit
     devDependencies:
+      '@halonicjs/adapter-remote-gateway':
+        specifier: workspace:*
+        version: link:../../adapters/remote-gateway
+      '@halonicjs/studio-feature-remote':
+        specifier: workspace:*
+        version: link:../../studio/features/remote
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../spec
