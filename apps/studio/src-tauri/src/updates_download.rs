@@ -12,7 +12,7 @@ use tauri::{AppHandle, Runtime};
 use tauri_plugin_updater::{Error as UpdaterError, Update};
 
 use super::lock;
-use super::proxy::updater_on_proxy_rules;
+use super::proxy::{ProxyFault, proxy_fault, updater_on_proxy_rules};
 
 /// Starts downloading what the last check found, unless a download runs,
 /// one is ready, or this version's signature failed too often.
@@ -111,7 +111,7 @@ async fn download<R: Runtime>(app: &AppHandle<R>, found: &Update) {
                 format!("the download of {version} failed: {error}"),
             );
             inner.state = Some(UpdateState::DownloadFailed {
-                reason: download_failure(&error),
+                reason: download_failure(app, &error),
                 version,
             });
         }
@@ -130,7 +130,14 @@ fn bad_signature(error: &UpdaterError) -> bool {
     )
 }
 
-fn download_failure(error: &UpdaterError) -> DownloadFailure {
+/// Why a download stopped, by the proxy setting and the updater's error
+/// type, never by its message.
+fn download_failure<R: Runtime>(app: &AppHandle<R>, error: &UpdaterError) -> DownloadFailure {
+    match proxy_fault(app, error) {
+        Some(ProxyFault::Setting) => return DownloadFailure::ProxySetting,
+        Some(ProxyFault::Unreachable) => return DownloadFailure::Proxy,
+        None => {}
+    }
     match error {
         UpdaterError::Reqwest(error) if error.is_connect() => DownloadFailure::Offline,
         UpdaterError::Reqwest(error) if error.is_timeout() => DownloadFailure::Stalled,

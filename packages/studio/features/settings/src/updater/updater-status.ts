@@ -5,10 +5,16 @@
  */
 
 /** Why a check got no usable answer. */
-export type CheckFailure = "offline" | "no-answer" | "unreadable";
+export type CheckFailure = "offline" | "no-answer" | "unreadable" | "proxy-setting" | "proxy";
 
 /** Why a download stopped. */
-export type DownloadFailure = "offline" | "no-answer" | "stalled" | "disk";
+export type DownloadFailure =
+  | "offline"
+  | "no-answer"
+  | "stalled"
+  | "disk"
+  | "proxy-setting"
+  | "proxy";
 
 /** Where the updater is. One state per row of flow-install-update 4.3. */
 export type UpdateState =

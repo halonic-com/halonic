@@ -12,9 +12,10 @@ use std::time::Duration;
 use halonic_http_guard::ProxySetting;
 use reqwest::ClientBuilder;
 use tauri::test::{MockRuntime, mock_builder};
+use tauri_plugin_updater::Error as UpdaterError;
 use url::Url;
 
-use super::{on_proxy_rules, updater_on_proxy_rules, usable};
+use super::{ProxyFault, fault_of, on_proxy_rules, updater_on_proxy_rules, usable};
 use crate::http_fetch::HttpFetchState;
 
 /// A loopback server that answers each connection with the next canned
@@ -273,4 +274,40 @@ fn updates_proxy_test_updater_with_an_unusable_setting_is_refused() {
         !message.contains("made") && !message.contains(":up"),
         "{message}"
     );
+}
+
+/// A loopback address nothing listens on any more.
+fn closed_url() -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("a loopback port");
+    let port = listener.local_addr().expect("its address").port();
+    drop(listener);
+    format!("http://127.0.0.1:{port}")
+}
+
+#[test]
+fn updates_proxy_test_blames_an_unusable_setting() {
+    let unusable = proxy_setting("socks5://127.0.0.1:1080");
+    let error = usable(&unusable).expect_err("refused");
+    assert_eq!(fault_of(&unusable, &error), Some(ProxyFault::Setting));
+}
+
+#[test]
+fn updates_proxy_test_blames_a_proxy_nobody_answers_for_a_tunnelled_call() {
+    let setting = proxy_setting(&closed_url());
+    let error = get(&setting, "https://updates.test/latest.json").expect_err("no proxy");
+    assert!(error.is_connect(), "{error}");
+    let error = UpdaterError::Reqwest(error);
+    assert_eq!(fault_of(&setting, &error), Some(ProxyFault::Unreachable));
+}
+
+#[test]
+fn updates_proxy_test_does_not_blame_the_proxy_for_a_direct_call() {
+    let proxy = Server::serve(vec![no_tunnel()]);
+    let setting = proxy_setting(&proxy.url(""));
+    let error = get(&setting, &format!("{}/latest.json", closed_url())).expect_err("no server");
+    assert!(error.is_connect(), "{error}");
+    let error = UpdaterError::Reqwest(error);
+    assert_eq!(fault_of(&setting, &error), None);
+    assert_eq!(fault_of(&ProxySetting::None, &error), None);
+    assert!(!proxy.was_asked());
 }

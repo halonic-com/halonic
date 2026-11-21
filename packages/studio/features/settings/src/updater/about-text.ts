@@ -64,10 +64,17 @@ export const ready = (version: string) =>
 export const didNotInstall = (version: string, current: string) =>
   `Halonic ${version} didn't install. You're still on ${current}.`;
 
+/** When the proxy stopped a check or a download, not the network (HAL-12966, C461). */
+const proxyReasons = {
+  "proxy-setting": "Halonic can't use your proxy setting HTTPS_PROXY, so nothing was sent",
+  proxy: "Halonic couldn't reach the update server through your proxy",
+} as const;
+
 export const checkReasons = {
   offline: "you're offline",
   "no-answer": "the update server didn't answer",
   unreadable: "the update server sent something Halonic couldn't read",
+  ...proxyReasons,
 } as const;
 
 export const downloadReasons = {
@@ -76,6 +83,7 @@ export const downloadReasons = {
   stalled: "the download stalled",
   /** Every IO error maps to `disk`, and the download goes into memory (HAL-12642). */
   disk: "something went wrong",
+  ...proxyReasons,
 } as const;
 
 /** What the announcer says after Check now (mc 20.5): with the version, also when nothing changed. */
