@@ -22,6 +22,15 @@ already hides `node_modules` (`files.tree.folders-closed-no-local-data`), so nob
 the watch no longer reports. `list()` and `version()` without options still give those files, so a
 run's copy of the workspace is unchanged.
 
+## A new skip on Windows
+
+`packages/adapters/fs-node/src/definition-store-left-out.test.ts` is a new file. Two of its tests
+lock a folder with `chmod` to prove the walk never steps into a left-out folder, and Windows ignores
+those permission bits (HAL-4365). They skip on Windows only, with `[platform:win32]` in their names,
+as the store's other `chmod` tests already do. They run on Linux and macOS, and the rest of the file
+runs everywhere. No existing test is skipped.
+
 ## Covers
 
 - fs-node.watch-folder
+- packages/adapters/fs-node/src/definition-store-left-out.test.ts
