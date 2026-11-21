@@ -37,6 +37,7 @@ import { useRunFacts } from "./use-run-facts.ts";
 import { useRunReview } from "./use-run-review.ts";
 import { useSentRequestCard } from "./use-sent-request-card.ts";
 import { WaitCard } from "./wait-card.tsx";
+import { type TrustReview, useTrustReview } from "./workspace-trust.ts";
 
 /** The Library's command that opens New connector; the Inbox can't import the Library, so it runs it by id. */
 const newConnectorCommand = "library.new-connector";
@@ -64,6 +65,7 @@ export function InboxPage({ context }: PlaceViewProps) {
   );
   const runs = context.services.find(RunsListService);
   const runFacts = useRunFacts(runs);
+  const trust = useTrustReview(context);
   // Effects run children first, so the view below already listens for the item this opens.
   useRunReview(inbox, runs);
   return (
@@ -81,6 +83,7 @@ export function InboxPage({ context }: PlaceViewProps) {
             openNewConnector: () => context.runCommand?.(newConnectorCommand),
             openBudget: () => context.runCommand?.(openBudgetCommand),
           })}
+      trust={trust}
       {...(openItem && {
         openRun: (hubId: string, runId: string) => openItem({ kind: "run", hub: hubId, id: runId }),
       })}
@@ -108,6 +111,11 @@ export interface InboxViewProps {
   readonly openBudget?: (() => void) | undefined;
   /** Opens a run's page, for **Open run** on the toast that says a request started. */
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
+  /**
+   * The workspace's trust, for a card whose answer was refused because the workspace isn't
+   * trusted: **Review**, and the line goes once it is. Without it that line has no button.
+   */
+  readonly trust?: TrustReview | undefined;
   /**
    * The workflow and starter of a run: the row says the workflow, and the card says what started
    * the run and has **Open run** (with `openRun`). Without it the Inbox says neither.
@@ -149,6 +157,7 @@ export function InboxView({
   openNewConnector,
   openBudget,
   openRun,
+  trust,
   runFacts,
   runs,
   announce,
@@ -275,6 +284,7 @@ export function InboxView({
               focus={focus}
               openNewConnector={openNewConnector}
               openRun={openRun}
+              trust={trust}
               runFacts={runFacts}
               announce={announce}
               now={now}
@@ -344,6 +354,7 @@ function OpenCard({
   focus,
   openNewConnector,
   openRun,
+  trust,
   runFacts,
   announce,
 }: {
@@ -354,6 +365,7 @@ function OpenCard({
   readonly focus: SetupFocus | undefined;
   readonly openNewConnector: (() => void) | undefined;
   readonly openRun: ((hubId: string, runId: string) => void) | undefined;
+  readonly trust: TrustReview | undefined;
   readonly runFacts: RunFactsOf | undefined;
   readonly announce: ((line: string) => void) | undefined;
   readonly next: NextItem | null;
@@ -419,6 +431,7 @@ function OpenCard({
         words={words}
         {...(somewhereToGo ? { onGoToSecret: goToSecret } : {})}
         secretPlace={target.kind}
+        trust={trust}
       />
     );
   }
@@ -435,6 +448,7 @@ function OpenCard({
       signedOut={signedOut}
       words={words}
       waiting={items.some((waiting) => waiting.key === item.key)}
+      trust={trust}
     />
   );
 }
