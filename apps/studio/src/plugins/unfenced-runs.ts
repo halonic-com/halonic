@@ -28,7 +28,8 @@ export interface DesktopUnfencedRuns extends PluginUnfencedRuns {
  * await unfencedRuns.allow("windows"); // null while a Take back is under way
  */
 export function desktopUnfencedRuns(routes: UnfencedRunsRoutes): DesktopUnfencedRuns {
-  let allowing: Promise<unknown> | undefined;
+  // Every yes on its way, not only the latest: two trust checks may save at once (Liam, HAL-3384).
+  const allowing = new Set<Promise<unknown>>();
   let takingBack: Promise<void> | undefined;
   return {
     status: async () => {
@@ -39,16 +40,16 @@ export function desktopUnfencedRuns(routes: UnfencedRunsRoutes): DesktopUnfenced
     allow: async (reason) => {
       if (takingBack !== undefined) return null;
       const run = routes.allow(reason);
-      allowing = run;
+      allowing.add(run);
       try {
         return await run;
       } finally {
-        if (allowing === run) allowing = undefined;
+        allowing.delete(run);
       }
     },
     takeBack: () => {
-      // A yes already on its way is saved first, so the Take back removes it too.
-      const before = allowing?.catch(() => undefined);
+      // Every yes already on its way is saved first, so the Take back removes it too.
+      const before = Promise.allSettled([...allowing]);
       const run = (async () => {
         await before;
         await routes.takeBack();

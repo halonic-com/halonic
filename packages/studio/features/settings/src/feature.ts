@@ -10,6 +10,7 @@ import {
   HalonicVersionService,
   HostSettingsService,
   RestartRunsService,
+  UnfencedYesService,
   UpdaterService,
 } from "./api.ts";
 import { agentCharactersPref, themePref } from "./appearance/appearance-prefs.ts";
@@ -113,6 +114,8 @@ export const settingsFeature = defineFeature({
     UpdaterService,
     RestartRunsService,
     AgentSandboxService,
+    // Settings › Agent sandbox's "Plugins and integrations" and its Take back (R16).
+    UnfencedYesService,
     AssistantWorkspaceService,
     // Says why the sandbox can't start, under Settings › Agent sandbox's Not available.
     sandboxStartCheckKey,

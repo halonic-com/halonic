@@ -7,23 +7,27 @@ import {
 } from "@halonicjs/adapter-agent-host-client";
 import type { ServiceRegistry, SignOutPlugin } from "@halonicjs/app";
 import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
+import { UnfencedYesService } from "@halonicjs/studio-feature-settings/api";
 import { shellKeychain, type TauriIpc } from "@halonicjs/studio-services";
 import type { KeyboardPlatform } from "@halonicjs/studio-shell";
 import { type DesktopPluginsHost, desktopPluginsHost } from "./desktop-plugins-host.ts";
 import { desktopProgramsRun } from "./programs-run.ts";
-import { desktopUnfencedRuns } from "./unfenced-runs.ts";
+import { type DesktopUnfencedRuns, desktopUnfencedRuns } from "./unfenced-runs.ts";
 
 /**
  * The plugins are the profile's, not a folder's, so a window has one host that every open
  * folder shares; a second host would read the plugins folder again and keep a second feed.
  */
-const hosts = new WeakMap<object, DesktopPluginsHost>();
+const hosts = new WeakMap<
+  object,
+  { readonly plugins: DesktopPluginsHost; readonly unfencedRuns: DesktopUnfencedRuns }
+>();
 
 /**
  * Gives the open folder the plugins feature's host (`studio.desktop-plugins-host`). Tool calls and
  * sign-ins go through the agent host, which refuses tool calls where plugins can't run fenced unless
  * the person's saved yes is for the reason at that start; the trust check reads and saves that yes
- * there too. The plugins folder is read again whenever the window comes to the front, so a plugin
+ * there too, and Settings › Agent sandbox takes it back through the same object. The plugins folder is read again whenever the window comes to the front, so a plugin
  * added with `halonic plugin add` shows up without a restart. Without the agent host's transport there is no host to give, and
  * nothing is provided.
  *
@@ -46,12 +50,14 @@ export function providePlugins(
 ): void {
   const known = hosts.get(parts.window);
   if (known !== undefined) {
-    services.provide(PluginsHostService, known.host);
+    services.provide(PluginsHostService, known.plugins.host);
+    services.provide(UnfencedYesService, known.unfencedRuns);
     return;
   }
   const { transport } = parts;
   if (transport === undefined) return;
   const signIns = new AgentHostIntegrationSignIns(transport);
+  const unfencedRuns = desktopUnfencedRuns(new AgentHostUnfencedRuns(transport));
   const plugins = desktopPluginsHost({
     ipc: parts.ipc,
     secrets: shellKeychain(parts.ipc),
@@ -60,16 +66,17 @@ export function providePlugins(
     signIns,
     signOut: agentHostPluginSignOut(transport),
     onReloadFailed: parts.onReloadFailed,
-    unfencedRuns: desktopUnfencedRuns(new AgentHostUnfencedRuns(transport)),
+    unfencedRuns,
     programs: desktopProgramsRun(transport, parts.platform),
   });
-  hosts.set(parts.window, plugins);
+  hosts.set(parts.window, { plugins, unfencedRuns });
   const reload = (): void => {
     plugins.reload().catch(parts.onReloadFailed);
   };
   reload();
   parts.onFocus(reload);
   services.provide(PluginsHostService, plugins.host);
+  services.provide(UnfencedYesService, unfencedRuns);
 }
 
 /**

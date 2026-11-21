@@ -121,6 +121,28 @@ export interface AgentSandboxHost {
 export const AgentSandboxService: ServiceKey<AgentSandboxHost> =
   serviceKey<AgentSandboxHost>("settings.agent-sandbox");
 
+/**
+ * The host's yes to run plugin and integration code without the sandbox, as Settings › Agent
+ * sandbox shows it and takes it back (R16, HAL-3384). `status` is the engine's
+ * `UnfencedRunDecision` as codes; only `allowed` carries the saved yes.
+ */
+export interface UnfencedYesHost {
+  /** What a plugin start would decide now. It throws when the host can't say. */
+  status(): Promise<
+    | { readonly run: "allowed"; readonly reason: string; readonly allowedAt: string }
+    | { readonly run: "fenced" | "needs-yes" | "stopped"; readonly reason?: string }
+  >;
+  /** Removes the saved yes and stops every plugin running without the sandbox before it answers. */
+  takeBack(): Promise<void>;
+}
+
+/**
+ * The window's yes to run without the sandbox: the same one the plugin trust check saves through,
+ * so a Take back here and a yes there never cross. Only the desktop app gives it.
+ */
+export const UnfencedYesService: ServiceKey<UnfencedYesHost> =
+  serviceKey<UnfencedYesHost>("settings.unfenced-yes");
+
 /** What Settings › Assistant needs to know of the workspace open in the window. */
 export interface AssistantWorkspaceFacts {
   /** The workspace's name, as its heading says it. */
