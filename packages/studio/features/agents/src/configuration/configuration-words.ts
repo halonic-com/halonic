@@ -132,7 +132,7 @@ export const configurationWords = {
     saving: "Saving…",
     /** Microcopy 23.4, "File changed, Harness page": the Callout while the choice is on hold. */
     onHold: (agent: string) =>
-      `${agent}'s file changed since you chose On this computer, so it won't run until you confirm again.`,
+      `${agent}'s file changed since you chose On this computer, so it runs in the sandbox until you confirm again.`,
     reviewAndConfirm: "Review and confirm",
     /** The file changed while the warning was open, so nothing was saved; the warning stays for the new file. */
     changedWhileOpen: (agent: string) =>
