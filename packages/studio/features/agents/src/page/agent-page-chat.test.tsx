@@ -138,7 +138,7 @@ verifies("agents.chat.first-load", () => {
       <AgentScreen host={hostFailingWhile({ now: true })} hubId="acme" id="sorter" />,
     );
     await act(async () =>
-      page.querySelector<HTMLElement>('button[aria-label="Close Configuration"]')?.click(),
+      page.querySelector<HTMLElement>('button[aria-label="Close Flow"]')?.click(),
     );
     expect(chat(page)?.textContent).toContain("Couldn't load this agent");
     expect(buttonNamed(chat(page) as HTMLElement, "Try again")).toBeDefined();
