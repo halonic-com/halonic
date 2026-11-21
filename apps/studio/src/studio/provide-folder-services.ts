@@ -33,6 +33,7 @@ import {
   NewCollectionHostService,
   NewConnectorHostService,
   NewSkillHostService,
+  RefusalsFeed,
   SkillHostService,
 } from "@halonicjs/studio-feature-library/api";
 import {
@@ -73,7 +74,8 @@ import { versionHistoryOf } from "../changes/version-history.ts";
 import { WatchedChanges } from "../changes/watched-changes.ts";
 import type { GitAnswer } from "../changes/workspace-changes.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
-import { answerChatOn, EngineService, engineServiceKey } from "../engine/engine-service.ts";
+import { answerChatOn } from "../engine/answer-chat-on.ts";
+import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
 import { openStudioHarnessHost } from "../engine/studio-harness-host.ts";
 import { provideFilesServices } from "../files/provide-files-services.ts";
@@ -100,6 +102,7 @@ import { WorkspaceRoutines } from "../routines/workspace-routines.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
 import { openStudioRunConnectors } from "./open-run-connectors.ts";
+import { focusOf, storageOf } from "./page-window.ts";
 import { WorkspaceInstructionTrust } from "./workspace-instruction-trust.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
 
@@ -192,6 +195,7 @@ export function provideFolderServices(
     events: scope.events,
   });
   const transport = tauriAgentHostTransport(window);
+  const refusals = new RefusalsFeed();
   const engine =
     remoteEngine ??
     services.provide(
@@ -241,6 +245,7 @@ export function provideFolderServices(
                   transport,
                   trust,
                   tokens: services.get(tokenStoreKey),
+                  onWaiting: refusals.recordWaitingOf,
                 }),
             }),
       }),
@@ -252,7 +257,7 @@ export function provideFolderServices(
       onChange: onLivenessChange,
       liveness: async (path) => (await liveness.liveState(path)).state,
       // The background engine has no chat route yet, so its window answers "not answering".
-      ...(engine instanceof EngineService ? { answerChat: answerChatOn(engine) } : {}),
+      ...(engine instanceof EngineService ? { answerChat: answerChatOn(engine, refusals) } : {}),
       ...(transport === undefined
         ? {}
         : {
@@ -416,6 +421,7 @@ export function provideFolderServices(
     files,
     transport,
     trust,
+    refusals,
     google: services.get(GoogleSetupAccountsService),
     location,
     onFocus: (listener) => focusOf(window, listener),
@@ -462,20 +468,4 @@ function provideWorkspaceRuns(
       now: () => new Date(),
     }),
   );
-}
-
-/** Calls `listener` whenever the page's window comes to the front; returns a function that stops it. */
-function focusOf(window: object, listener: () => void): () => void {
-  if (!(window instanceof EventTarget)) return () => {};
-  window.addEventListener("focus", listener);
-  return () => window.removeEventListener("focus", listener);
-}
-
-/** The window's local storage, or `undefined` when it has none or won't give it. */
-function storageOf(window: object): Storage | undefined {
-  try {
-    return "localStorage" in window ? (window.localStorage as Storage) : undefined;
-  } catch {
-    return undefined;
-  }
 }

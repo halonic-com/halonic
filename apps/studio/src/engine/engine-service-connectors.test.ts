@@ -6,10 +6,14 @@ import type { SetTimer } from "@halonicjs/adapter-scheduler-node";
 import { approveAllShown, checkConnectorTools } from "@halonicjs/app/listed-tools";
 import type { AssembledEngine, ConnectorsRun } from "@halonicjs/engine";
 import type { ChatTurnWaiting, ConnectorClient } from "@halonicjs/ports";
+import { RefusalsFeed } from "@halonicjs/studio-feature-library/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { studioListedToolApproval } from "../connect/studio-run-connectors.ts";
+import {
+  libraryWaitingReporter,
+  studioListedToolApproval,
+} from "../connect/studio-run-connectors.ts";
 import { acmeFiles, fakeShell, location, lockCalls, serviceOn } from "./engine-service.testing.ts";
 import type { StudioRunConnectors } from "./engine-service.ts";
 
@@ -77,8 +81,10 @@ function runConnectors(
   definitions: ReturnType<typeof acmeFiles>,
   connectors: StudioRunConnectors["connectors"],
   approvals = new MemoryToolApprovalStore(),
+  record?: (connector: string, waiting: readonly ChatTurnWaiting[]) => void,
 ) {
   const heard: { connector: string; waiting: readonly ChatTurnWaiting[] }[] = [];
+  const report = libraryWaitingReporter(() => undefined, record);
   const open = async (): Promise<StudioRunConnectors> => ({
     connectors,
     listedToolApproval: await studioListedToolApproval({
@@ -87,7 +93,10 @@ function runConnectors(
       approvals,
       digest: webCryptoDigest,
       clock,
-      reportWaiting: (connector, waiting) => void heard.push({ connector, waiting }),
+      reportWaiting: (connector, waiting) => {
+        heard.push({ connector, waiting });
+        report(connector, waiting);
+      },
     }),
   });
   return { open, heard };
@@ -199,6 +208,26 @@ verifies("studio.engine-service", () => {
       expect(heard).toEqual([
         { connector: "mail", waiting: [expect.objectContaining({ name: "lookup" })] },
       ]);
+      await service.close();
+    });
+
+    it("put a tool that waits on the Library's refusals list", async () => {
+      const definitions = writerWithMail();
+      const refusals = new RefusalsFeed();
+      const { open } = runConnectors(
+        definitions,
+        recordedConnectors([mailServer().client]).connectors,
+        new MemoryToolApprovalStore(),
+        refusals.recordWaitingOf,
+      );
+      const service = serviceOn(fakeShell(), definitions, {
+        setTimer: pageTimers,
+        openRunConnectors: open,
+      });
+
+      const { id } = await service.startRun(reply, {});
+      expect(await settle(await service.open(), id)).toBe("completed");
+      expect(refusals.waiting("mail")).toEqual([expect.objectContaining({ name: "lookup" })]);
       await service.close();
     });
 

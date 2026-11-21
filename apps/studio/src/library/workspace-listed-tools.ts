@@ -62,6 +62,8 @@ export interface WorkspaceListedToolsOptions {
   readonly http: HttpClient;
   /** Starts a connector and reads its tools. */
   readonly listTools: ToolLister;
+  /** Hears the tools an approval saved, so what a run left waiting comes off the Library's list. */
+  readonly onApproved?: (connectorId: string, names: readonly string[]) => void;
 }
 
 /** One connector of the workspace, from the single read that trust is checked on and that starts it. */
@@ -125,7 +127,10 @@ export class WorkspaceListedTools implements ListedToolsHost {
       await this.#approveAll(check, picks, approved, changed);
     } finally {
       // Picks saved before a refusal still changed what is approved.
-      if (approved.length > 0) this.#changed();
+      if (approved.length > 0) {
+        this.#options.onApproved?.(connectorId, approved);
+        this.#changed();
+      }
     }
     return { approved, changed };
   }
