@@ -58,11 +58,24 @@ verifies("workflow.validate-input", () => {
       {
         code: "unknown-gets",
         message:
-          "\"read\" gets input.order, but the workflow's input has no field order. It has only mail and from: read one of those, or add order to the input of the workflow's tests.",
+          '"read" gets input.order, but the workflow\'s input has no field order. It has only mail and from: read one of those, or add order to the input you start the workflow with.',
         path: ["states", "read", "gets", 0],
       },
     ]);
     expect(inputIssues(supportReply({ gets: ["input.from"] }), options)).toEqual([]);
+  });
+
+  it("names a single field as the only one, whether it comes from tests or not", () => {
+    expect(inputIssues(supportReply({ gets: ["input.order"] }), { inputFields: ["mail"] })).toEqual(
+      [
+        {
+          code: "unknown-gets",
+          message:
+            '"read" gets input.order, but the workflow\'s input has no field order. Its only field is mail: read that, or add order to the input you start the workflow with.',
+          path: ["states", "read", "gets", 0],
+        },
+      ],
+    );
   });
 
   it("reports a start.field no step reads once, not each step that reads another field", () => {
@@ -71,7 +84,7 @@ verifies("workflow.validate-input", () => {
       {
         code: "unread-start-field",
         message:
-          "start.field is email, but no step reads input.email. The steps read input.mail: use one of those names as field, or add input.email to a step's gets.",
+          "start.field is email, but no step reads input.email. The steps read input.mail: use that name as field, or add input.email to a step's gets.",
         path: ["start", "field"],
       },
     ]);
