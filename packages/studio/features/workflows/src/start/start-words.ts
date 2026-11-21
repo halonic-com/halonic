@@ -1,3 +1,8 @@
+/** "Fix it before it can run.", or "Fix them …" for more than one. */
+function fixProblems(errors: number): string {
+  return errors === 1 ? "Fix it before it can run." : "Fix them before it can run.";
+}
+
 /** The words of starting a run and of the strip that shows one (microcopy 9.6 and 9.7; states C18, C19, C25, C26, D7, D8). */
 export const startWords = {
   run: "Run",
@@ -13,8 +18,13 @@ export const startWords = {
   /** X2 (HAL-14323, decided by the team from c343): in place of Start run while the workflow has errors. */
   hasProblems: (name: string, errors: number) =>
     errors === 1
-      ? `${name} has 1 problem. Fix it before it can run.`
-      : `${name} has ${errors} problems. Fix them before it can run.`,
+      ? `${name} has 1 problem. ${fixProblems(errors)}`
+      : `${name} has ${errors} problems. ${fixProblems(errors)}`,
+  /**
+   * The next step for a workflow's errors, on the start card and as the second line of the page's
+   * problems band (C544-3, HAL-15119, decided by the team), so both say to fix them.
+   */
+  fixProblems: (errors: number) => fixProblems(errors),
   openProblems: "Open Problems",
   starting: "Starting…",
   /** Decided by the team (HAL-10225): the card between Start run and the run showing in the runs. */

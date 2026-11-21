@@ -1,6 +1,11 @@
 import { KindedError } from "@halonicjs/std";
 import type { WorkflowRef } from "@halonicjs/studio-feature-workflows/api";
-import type { LoadedFileOf, LoadedWorkspace, WorkspaceIssue } from "@halonicjs/workspace";
+import {
+  errorsStoppingRun,
+  type LoadedFileOf,
+  type LoadedWorkspace,
+  type WorkspaceIssue,
+} from "@halonicjs/workspace";
 import { editYaml, readYaml, writeYamlFile } from "@halonicjs/yaml";
 
 /** Where the workflow files of a hub are kept. */
@@ -82,27 +87,23 @@ export function endedIn(runId: string, state: string | null): string {
 }
 
 /**
- * What the checks found in the workflow's file, and the errors in the files of the agents its steps
- * name: such an agent can't run, so neither can the workflow. A workflow names only its own hub's
- * agents. The agents' warnings stay on their own files, as they don't stop a run.
+ * What the checks found in the workflow's file, and the errors elsewhere that stop its run, as the
+ * CLI's refusal decides it (`errorsStoppingRun`, HAL-15127): in the agents and workflows it uses,
+ * and in any file every run depends on, such as `workspace.yaml` or a provider. Warnings outside its
+ * own file stay on their files, as they don't stop a run.
+ *
+ * @param issues - every problem `halonic validate` lists, from {@link workspaceProblemsOf}
  */
 export function problemsOf(
   workspace: LoadedWorkspace,
+  issues: readonly WorkspaceIssue[],
   file: LoadedFileOf<"workflow">,
 ): WorkspaceIssue[] {
-  const agentFiles = new Set(
-    agentsNamed(file.value).map((agent) => `hubs/${file.hub}/agents/${agent}.agent.yaml`),
-  );
-  return workspace.issues.filter(
-    (issue) =>
-      issue.file === file.path || (issue.severity === "error" && agentFiles.has(issue.file)),
-  );
-}
-
-/** The agents a workflow's steps run: a task's or a for-each's `agent`, and each parallel branch's. */
-function agentsNamed(workflow: LoadedFileOf<"workflow">["value"]): string[] {
-  return Object.values(workflow.states).flatMap((state) => [
-    ...(state.agent === undefined ? [] : [state.agent]),
-    ...Object.values(state.branches ?? {}).map((branch) => branch.agent),
-  ]);
+  const own = issues.filter((issue) => issue.file === file.path);
+  if (file.hub === null) return own;
+  const stopping = errorsStoppingRun(workspace, issues, {
+    hubId: file.hub,
+    workflowId: file.value.id,
+  });
+  return [...own, ...stopping.filter((issue) => issue.file !== file.path)];
 }

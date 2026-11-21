@@ -75,6 +75,17 @@ export {
   type ResolvedModelTarget,
   resolveModel,
 } from "./resolve-model.ts";
+export {
+  errorsStoppingRun,
+  namedInStep,
+  type StepName,
+  startsAProgram,
+  unknownDefaultModelCode,
+  usesDefaultModel,
+  type WorkflowRef,
+  type WorkflowUses,
+  workflowUses,
+} from "./run-problems.ts";
 export { type AgentTrustContent, agentsTrustContent } from "./trust-agents.ts";
 export {
   type ChangedAgent,

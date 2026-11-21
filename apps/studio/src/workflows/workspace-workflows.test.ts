@@ -78,6 +78,9 @@ verifies("studio.workspace-workflows", () => {
 
   it("gives a new workflow's start the hub's first agent by id, so it has no problems", async () => {
     const { host, store } = setup();
+    // The agents name no model, so the default alias must be there (HAL-15127).
+    store["models.yaml"] = "aliases:\n  default:\n    provider: mock\n    model: echo\n";
+    store["providers/mock.yaml"] = "id: mock\nname: Test model\ntype: mock\nlocal: true\n";
     store["hubs/acme/agents/writer.agent.yaml"] = "id: writer\nname: Writer\n";
     store["hubs/acme/agents/reviewer.agent.yaml"] = "id: reviewer\nname: Reviewer\n";
 
@@ -92,7 +95,9 @@ verifies("studio.workspace-workflows", () => {
 
   it("leaves start without an agent in a folder with no hub, so the new Default hub's workflow has the one error", async () => {
     const { host, store } = setup();
-    for (const path of Object.keys(store)) delete store[path];
+    for (const path of Object.keys(store)) {
+      if (path !== "workspace.yaml") delete store[path];
+    }
 
     await host.create({ name: "Daily summary", hubId: "default" });
 

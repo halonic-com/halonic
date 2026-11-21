@@ -1,4 +1,4 @@
-import { stateAgentsOf } from "@halonicjs/adapter-workspace-models";
+import { stateAgentsOf, workspaceProblemsOf } from "@halonicjs/adapter-workspace-models";
 import type { RunSummary } from "@halonicjs/events";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import {
@@ -121,9 +121,10 @@ export class WorkspaceWorkflows implements WorkflowsHost {
 
   async list(): Promise<readonly WorkflowListing[]> {
     const [workspace, runs] = await Promise.all([this.#load(), this.#parts.runs.list()]);
+    const workspaceIssues = workspaceProblemsOf(workspace);
     const listings = filesOf(workspace, "workflow").flatMap((file) => {
       if (file.hub === null) return [];
-      const issues = problemsOf(workspace, file);
+      const issues = problemsOf(workspace, workspaceIssues, file);
       const own = runs.filter(
         ({ summary }) =>
           summary.kind === "run" &&

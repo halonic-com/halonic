@@ -155,6 +155,7 @@ verifies("cli.run", () => {
     // As a workspace made with plain `halonic init`, which has no models.yaml yet.
     // `validate` names the missing default alias in each hub that uses it, so
     // the run stops before its first step instead of failing there with exit 4.
+    // Only the support hub's stops support-reply (HAL-15127).
     await rm(join(acme, "models.yaml"));
 
     const { code, io } = await run("support-reply", ...samsEmail);
@@ -162,7 +163,7 @@ verifies("cli.run", () => {
     expect(code).toBe(exitCode.usage);
     expect(io.stdout).toEqual([]);
     expect(io.stderr).toEqual([
-      "✕ Couldn't run support-reply: Acme has 2 problems in its files. Nothing ran.",
+      "✕ Couldn't run support-reply: Acme has 1 problem in hubs/support/agents/sorter.agent.yaml. Nothing ran.",
       "  See them with: halonic validate",
     ]);
     expect(io.stderr.join("\n")).not.toContain("report it");
@@ -272,7 +273,7 @@ verifies("cli.json-lines", () => {
       error: {
         kind: "invalid_input",
         code: "workspace-file-problems",
-        message: "Acme has 2 problems in its files. Nothing ran.",
+        message: "Acme has 1 problem in hubs/support/agents/sorter.agent.yaml. Nothing ran.",
         fix: "See them with: halonic validate",
       },
     });

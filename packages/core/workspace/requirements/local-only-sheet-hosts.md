@@ -8,7 +8,7 @@ When `loadWorkspace` is given the hosts of the installed plugins and of the loca
 
 ## Examples
 
-- Given `privacy.localOnly: true`, a connector with `local: true` to the plugin `acme-orders`, whose backend lists `api.acme.example`, when `halonic validate` runs, then it fails with `The plugin acme-orders reaches api.acme.example, so it isn't local: set privacy.localOnly: false in workspace.yaml to use it` at the connector's `local` key, and `halonic run` refuses the workspace before trust with `Acme has 1 problem in its files. Nothing ran.`
+- Given `privacy.localOnly: true`, a connector with `local: true` to the plugin `acme-orders`, whose backend lists `api.acme.example`, when `halonic validate` runs, then it fails with `The plugin acme-orders reaches api.acme.example, so it isn't local: set privacy.localOnly: false in workspace.yaml to use it` at the connector's `local` key, and `halonic run` refuses the workspace before trust with `Acme has 1 problem in library/connectors/orders.connector.yaml. Nothing ran.`
 - Given the same plugin listing only `orders.localhost`, when `halonic validate` runs, then it fails with `The plugin acme-orders reaches orders.localhost, …`: a fixed host never reaches this computer.
 - Given the same plugin listing no hosts, when `halonic validate` runs, then it finds no problems.
 - Given the same plugin listing no hosts, with a local tool whose `network` is `api.acme.example`, when `halonic validate` runs, then it fails with `The plugin acme-orders reaches api.acme.example, …`.

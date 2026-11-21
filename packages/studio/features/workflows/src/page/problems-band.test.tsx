@@ -140,6 +140,7 @@ verifies("workflows.start.start-run", () => {
     expect(run.getAttribute("aria-disabled")).toBe("true");
     expect(run.disabled).toBe(false);
     expect(describing(page)).toEqual(["Support reply can't run: it has 2 problems."]);
+    expect(page.textContent).toContain("Fix them before it can run.");
     await act(async () => run.click());
     expect(page.textContent).not.toContain("START A RUN");
   });
@@ -149,6 +150,7 @@ verifies("workflows.start.start-run", () => {
 
     expect(runOf(page)?.getAttribute("aria-disabled")).toBe("true");
     expect(describing(page)).toEqual(["Support reply can't run: it has 1 problem."]);
+    expect(page.textContent).toContain("Fix it before it can run.");
   });
 
   it("opens Configuration's Problems from the band, with the focus on Problems", async () => {
