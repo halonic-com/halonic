@@ -13,16 +13,34 @@ verifies("app.sandbox-start-check", () => {
     expect(await check.check()).toEqual({ ok: false, reason: "bubblewrap-missing" });
   });
 
-  it("never lets the check's own sentence through for other", async () => {
+  it("lets the check's own sentences through for other only as details", async () => {
     const check = sandboxStartCheck(async () => ({
       ok: false,
       reason: "other",
-      missing: ["Cannot open the acme secret file: denied"],
+      missing: ["No seccomp filter", "Cannot mount /proc"],
       fix: { kind: "install" },
     }));
+    expect(await check.check()).toEqual({
+      ok: false,
+      reason: "other",
+      details: "No seccomp filter\nCannot mount /proc",
+    });
+  });
+
+  it("never lets the check's own sentence through for any other reason", async () => {
+    const check = sandboxStartCheck(async () => ({
+      ok: false,
+      reason: "bubblewrap-missing",
+      missing: ["Cannot open the acme secret file: denied"],
+    }));
     const answer = await check.check();
-    expect(answer).toEqual({ ok: false, reason: "other" });
+    expect(answer).toEqual({ ok: false, reason: "bubblewrap-missing" });
     expect(JSON.stringify(answer)).not.toContain("acme");
+  });
+
+  it("gives other no details when the check says nothing", async () => {
+    const check = sandboxStartCheck(async () => ({ ok: false, reason: "other", missing: [] }));
+    expect(await check.check()).toEqual({ ok: false, reason: "other" });
   });
 
   it("reads a code from a newer version, or none, as other", async () => {

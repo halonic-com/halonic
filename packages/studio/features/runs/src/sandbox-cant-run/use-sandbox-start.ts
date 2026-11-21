@@ -1,4 +1,4 @@
-import type { SandboxStartCheck } from "@halonicjs/app";
+import type { SandboxStartCheck, SandboxStartResult } from "@halonicjs/app";
 import { useCallback, useEffect, useState } from "react";
 
 /** What a press of **Check again** came to: ready, still refused and why, or no answer. */
@@ -13,12 +13,14 @@ export type CheckOutcome =
  * - `refused`: the reason code while the sandbox can't start; `undefined` while it can, before the
  *   first check answers, and where nothing can check. Only a refusal disables a control: a check
  *   that can't run leaves the controls as they are, and the engine still refuses the run itself.
+ * - `details`: for `other`, the check's own sentences, for **Copy details** only; never shown.
  * - `checking`: a press of **Check again** is waiting for its answer.
  * - `checkFailed`: the last press couldn't check at all.
  * - `checkAgain`: asks the check now. It never runs anything and never changes a setting.
  */
 export interface SandboxStart {
   readonly refused: string | undefined;
+  readonly details: string | undefined;
   readonly checking: boolean;
   readonly checkFailed: boolean;
   readonly checkAgain: () => Promise<CheckOutcome>;
@@ -38,19 +40,19 @@ export function useSandboxStart(
   check: SandboxStartCheck | undefined,
   needed: boolean,
 ): SandboxStart {
-  const [refused, setRefused] = useState<string>();
+  const [refusal, setRefusal] = useState<Refusal>();
   const [checking, setChecking] = useState(false);
   const [checkFailed, setCheckFailed] = useState(false);
 
   useEffect(() => {
     if (check === undefined || !needed) {
-      setRefused(undefined);
+      setRefusal(undefined);
       return;
     }
     let current = true;
     check.check().then(
       (result) => {
-        if (current) setRefused(result.ok ? undefined : result.reason);
+        if (current) setRefusal(refusalOf(result));
       },
       // The first check couldn't run: nothing is disabled on a guess.
       () => undefined,
@@ -66,7 +68,7 @@ export function useSandboxStart(
     try {
       const result = await check.check();
       setCheckFailed(false);
-      setRefused(result.ok ? undefined : result.reason);
+      setRefusal(refusalOf(result));
       return result.ok ? { kind: "ready" } : { kind: "refused", reason: result.reason };
     } catch {
       setCheckFailed(true);
@@ -76,5 +78,18 @@ export function useSandboxStart(
     }
   }, [check]);
 
-  return { refused, checking, checkFailed, checkAgain };
+  return {
+    refused: refusal?.reason,
+    details: refusal?.details,
+    checking,
+    checkFailed,
+    checkAgain,
+  };
+}
+
+/** What a refused check said: the reason code, and for `other` the check's own sentences. */
+type Refusal = { readonly reason: string; readonly details: string | undefined };
+
+function refusalOf(result: SandboxStartResult): Refusal | undefined {
+  return result.ok ? undefined : { reason: result.reason, details: result.details };
 }
