@@ -1,3 +1,8 @@
+import type { ReplyEnd } from "./transcript.ts";
+
+/** A reply end that gets a `danger` line. */
+type BadEnd = Extract<ReplyEnd, { readonly kind: "failed" | "engine-stopped" }>;
+
 /**
  * The Try it chat's words (microcopy 8.3, 14.1 and 19.5; states H2, H7, H9, H11, H12, H13, H16,
  * H23, H24). The agent's name is the one it has now.
@@ -26,6 +31,15 @@ export const tryItWords = {
   toolsRan: "Some tool calls already ran. Send a new message to continue.",
   /** H13: the engine stopped while it answered. */
   engineStopped: "Stopped when Halonic's engine stopped.",
+  /**
+   * The whole line for a reply that failed or stopped with the engine: its cause, then H24's
+   * sentence once a tool ran. The screen and the announcement say the same (C505-4).
+   */
+  endedBadly: (agent: string, end: BadEnd): string => {
+    const cause =
+      end.kind === "failed" ? tryItWords.replyFailed(agent, end.reason) : tryItWords.engineStopped;
+    return end.toolsRan ? `${cause} ${tryItWords.toolsRan}` : cause;
+  },
   /** H12: the line at the top while the engine doesn't answer. */
   engineNotAnswering: "The engine isn't answering. Showing what it said last.",
   /** After v0.1 a turn limit is a run's; until then a chat that runs out says so plainly. */
