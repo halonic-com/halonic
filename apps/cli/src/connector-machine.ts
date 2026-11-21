@@ -20,7 +20,7 @@ import {
   type ProgramStarter,
 } from "@halonicjs/adapter-mcp";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
-import { ConnectorFactories, type PluginConnectorSources } from "@halonicjs/app";
+import { ConnectorFactories } from "@halonicjs/app";
 import type { ConnectorFactory, HttpClient, Sandbox, TokenStore } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
@@ -29,7 +29,7 @@ import {
   IntegrationConnectorFactory,
   type OpenIntegration,
 } from "./integration-connector-factory.ts";
-import { PluginConnectorFactory } from "./plugin-connector-factory.ts";
+import type { PluginConnectorFactory } from "./plugin-connector-factory.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { nodeSandboxWorks } from "./sandbox-works.ts";
 import { installedPluginHosts } from "./sheet-hosts.ts";
@@ -90,9 +90,9 @@ const connectorCallLimitMs = 5 * 60_000;
 
 /**
  * The CLI's `stdio` and `http` factories, `integration` when it is given
- * `openIntegration`, and `plugin` when it is given `plugins`
- * (`pluginConnectorSources`). A `stdio` program starts with
- * `starter`, inheriting `env`; a pinned one is found in `env` too.
+ * `openIntegration`, and `plugin` when it is given `plugins`. A `stdio`
+ * program starts with `starter`, inheriting `env`; a pinned one is found in
+ * `env` too.
  *
  * With a `fence`, a program starts in a sandbox session of its own while the
  * sandbox works, and on this computer, as before, while it doesn't
@@ -103,7 +103,7 @@ export function cliConnectorFactories(
   env: Readonly<Record<string, string | undefined>>,
   fence?: ConnectorFence,
   openIntegration?: OpenIntegration,
-  plugins?: PluginConnectorSources,
+  plugins?: PluginConnectorFactory,
 ): ConnectorFactories {
   const clientInfo = { name: "halonic", version: halonicVersion };
   const runners = createRunnerSearch(env);
@@ -119,7 +119,7 @@ export function cliConnectorFactories(
     new McpHttpConnectorFactory({ clientInfo }),
     // Only with a way to open one in the runner: no in-process start for a local integration or a plugin's backend.
     ...(openIntegration === undefined ? [] : [new IntegrationConnectorFactory(openIntegration)]),
-    ...(plugins === undefined ? [] : [new PluginConnectorFactory(plugins)]),
+    ...(plugins === undefined ? [] : [plugins]),
   ]);
 }
 

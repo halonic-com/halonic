@@ -106,6 +106,7 @@ export function localRunConnectors(
     factories: given.factories,
     programFolders: engine.programFolders,
     // A workspace names the secrets its connectors get, so never Halonic's own or a plugin's.
+    // A plugin's connector reads its own from the store instead (`PluginConnectorFactory`).
     context: { ...given.context, secrets: workspaceSecrets(engine.secrets) },
     versionOf: async (run) => {
       const read = await versionRead(given, engine, run);

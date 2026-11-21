@@ -8,7 +8,7 @@
 // it (Liam, HAL-4349).
 
 import { nodeProgramStarter } from "@halonicjs/adapter-mcp";
-import type { ChatTurnWaiting, HttpClient, TrustGrant } from "@halonicjs/ports";
+import type { ChatTurnWaiting, HttpClient, Secrets, TrustGrant } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
@@ -37,7 +37,7 @@ import { markPart, type Phrase, phrase } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { openLocalIntegration } from "./open-local-integration.ts";
 import { printable } from "./output/printable.ts";
-import { pluginConnectorSources } from "./plugin-connector-factory.ts";
+import { PluginConnectorFactory, pluginConnectorSources } from "./plugin-connector-factory.ts";
 import { pluginPartReporter, type RunConnectorLines } from "./plugin-part-warnings.ts";
 import { checkRunSandbox, type SandboxGateRun, type UnsandboxedAgent } from "./sandbox-gate.ts";
 import {
@@ -209,6 +209,7 @@ export async function openWorkspaceEngine(
           trust,
           target,
           { warn: (line) => context.warn(line), debug: (line) => context.debug(line) },
+          context.secrets,
           setup.profile,
         ))
     )(target.trust, target),
@@ -288,11 +289,15 @@ export async function checkEngineRuns(
  * {@link WorkspaceEngineSetup.runConnectors}. A local integration starts in
  * the runner, behind the trust check and the start gate; so does a plugin's
  * backend, and each of its local tools starts in a sandbox session of its own.
+ * A plugin's connector reads its own secrets from `secrets`, the store itself
+ * (`PluginConnectorFactory`); every other connector reads the workspace's
+ * picks (`localRunConnectors`).
  */
 function computerRunConnectors(
   trust: TrustGrant | null,
   target: Pick<WorkspaceEngineTarget, "dir" | "workspace">,
   lines: RunConnectorLines,
+  secrets: Secrets,
   environment: ProfileEnvironment = nodeProfileEnvironment(),
 ): LocalRunConnectorsInput {
   const profile = profileFolder(environment);
@@ -325,7 +330,7 @@ function computerRunConnectors(
       process.env,
       fence,
       openLocalIntegration(integrations),
-      pluginSources,
+      new PluginConnectorFactory(pluginSources, secrets),
     ),
     // The CLI connects no built-in Google connector yet, the only kind that reads sign-ins.
     context: { http: machine.http, tokens: machine.tokens },

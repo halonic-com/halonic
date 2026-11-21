@@ -15,11 +15,12 @@ import {
   readPluginFolder,
   UnfencedRuns,
 } from "@halonicjs/app";
-import type {
-  ConnectorFactoryContext,
-  IntegrationTool,
-  Sandbox,
-  SandboxCheck,
+import {
+  type ConnectorFactoryContext,
+  type IntegrationTool,
+  type Sandbox,
+  type SandboxCheck,
+  workspaceSecrets,
 } from "@halonicjs/ports";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
@@ -170,8 +171,10 @@ async function setup(
       return runner;
     },
   };
+  const stored = new MemorySecrets(secrets);
+  // As a run gives every factory the secrets: the workspace's picks, which refuse a plugin's name.
   const context = {
-    secrets: new MemorySecrets(secrets),
+    secrets: workspaceSecrets(stored),
     tokens: new MemoryTokenStore(),
     workspaceRoot: root,
     trust: null,
@@ -191,6 +194,7 @@ async function setup(
       },
       { name: "halonic", version: "0.0.0-test" },
     ),
+    stored,
   );
   const client = () =>
     factory.create(
@@ -268,7 +272,7 @@ verifies("cli.open-plugin-backend", () => {
       expect(seen.starts).toBe(0);
     });
 
-    it("gives the runner the plugin's secrets, read from where the plugin's secrets are stored", async () => {
+    it("gives the runner the plugin's secrets from the store, though the run's own secrets refuse a plugin's name (HAL-15079)", async () => {
       const secretValue = "weather-key-value-1234";
       await put({
         "weather/plugin.yaml": manifest.replace(
