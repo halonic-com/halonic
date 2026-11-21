@@ -7,6 +7,12 @@ export {
   type WslRemoveResult,
 } from "./remove.ts";
 export {
+  currentRuntime,
+  RUNTIME_UPDATER,
+  type WslRuntime,
+  type WslRuntimeFailure,
+} from "./runtime.ts";
+export {
   type WslResidual,
   WslSetup,
   type WslSetupFailureCode,

@@ -8,6 +8,7 @@
  * - `restart-needed`: WSL is installed and Windows must restart before the next step.
  * - `importing-distro`: `wsl --import` of Halonic's distro (no administrator).
  * - `checking`: the distro starts, its kernel is new enough and nothing leaks into it.
+ * - `installing-runtime`: the runtime Studio ships goes into `/opt/halonic`, unless that version is already current (HAL-14644).
  * - `done`: the setup is finished.
  */
 export const wslSetupSteps = [
@@ -16,6 +17,7 @@ export const wslSetupSteps = [
   "restart-needed",
   "importing-distro",
   "checking",
+  "installing-runtime",
   "done",
 ] as const;
 
