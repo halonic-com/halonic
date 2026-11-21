@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-3278; Changes design, save model 2.6 ("Important settings first")
 
-When a describer describes a change to an agent's instructions, to what it may use or reach (skills, connections, collections, agents it can hand tasks to, run history access), to its sandbox (what it runs in, its working folder, the sites it can reach), to a method's instructions or tools, or to what a routine runs, it shall mark that line important and give it as before → after, or as what was added and removed.
+When a describer describes a change to an agent's instructions, to what it may use or reach (skills, connections, collections, agents it can hand tasks to, run history access), to its sandbox (what it runs in, its working folder, the sites it can reach, when it asks before it acts), to a method's instructions or tools, or to what a routine runs, it shall mark that line important and give it as before → after, or as what was added and removed.
 
 ## Examples
 

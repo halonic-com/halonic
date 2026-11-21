@@ -7,7 +7,7 @@
 When Try it or Test asks the review service for its source, the service shall give the workspace's files with the baseline's value, until the person accepts the change, for each change to review that touches:
 
 - **permissions**: an agent's or a method's tools and step limit, an agent's harness limits, the run logs, collections and subagents it may use, and the budget in `workspace.yaml`;
-- **trust and sandbox**: an agent's harness, working folder and allowed sites, a runtime, the default runtime in `workspace.yaml` or a hub, and the privacy settings in `workspace.yaml`;
+- **trust and sandbox**: an agent's harness, working folder, allowed sites and `asks`, a runtime, the default runtime in `workspace.yaml` or a hub, and the privacy settings in `workspace.yaml`;
 - **connections**: the connectors an agent, a hub or a routine uses, a connector with its address, command, environment, secrets and tools, and a knowledge provider and its settings;
 - **models and providers**: `models.yaml`, a provider and a hub's own model aliases.
 

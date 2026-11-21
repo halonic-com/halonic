@@ -4,6 +4,7 @@ import { printable } from "../output/printable.ts";
 import { counted, listInWords, timesInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { oldestSupported } from "./doctor.ts";
+import { harnessNames } from "./harness-names.ts";
 import { dim, joinedFacts, lineOfFacts, markPart, type Phrase, phrase } from "./phrase.ts";
 import { sendsInWords } from "./sends.ts";
 import { suggestedCommand } from "./suggested-command.ts";
@@ -142,6 +143,15 @@ export const runMessages = defineMessages("run", {
   /** Its fix. */
   uncheckedHarnessFieldsFix: (agent: string) =>
     phrase`Name a harness in ${printable(agent)}'s file and trust the workspace again, or remove allowed sites and the working folder from it.`,
+  /**
+   * `--harness` would start an agent whose file names `asks` in a program
+   * other than Claude Code, which doesn't follow it (exit 2, HAL-14992).
+   */
+  asksOnlyInClaudeCode: (agent: string, harness: string, ending: Phrase) =>
+    phrase`${printable(agent)}'s file uses asks, which only Claude Code follows, but this run starts ${printable(agent)} in ${harnessNames.get(harness) ?? printable(harness)}. ${ending}`,
+  /** Its fix. It names no `--harness`: `runs send` has none (HAL-12597). */
+  asksOnlyInClaudeCodeFix: (agent: string) =>
+    phrase`Run it in Claude Code, or remove asks from ${printable(agent)}'s file.`,
   /** No workflow, or more than one, on the command line (exit 2). */
   takesOneWorkflow: (given: readonly string[]) =>
     given.length === 0

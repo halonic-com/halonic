@@ -300,3 +300,47 @@ verifies("cli.run-harness", () => {
     });
   });
 });
+
+verifies("cli.run-harness-asks", () => {
+  const codexReady = programs({ status: "missing" }, { status: "ready", version: "0.50.0" });
+
+  /** Writer runs in Claude Code and says `asks: <asks>`; Acme isn't local only, so it may. */
+  async function writerAsks(asks: string): Promise<void> {
+    const writer = join(acme, writerPath);
+    const text = await readFile(writer, "utf8");
+    await writeFile(writer, `${text}harness: claude-code\nasks: ${asks}\n`);
+    const workspace = join(acme, "workspace.yaml");
+    const settings = await readFile(workspace, "utf8");
+    await writeFile(workspace, settings.replace("localOnly: true", "localOnly: false"));
+  }
+
+  it.each(["always", "in-sandbox"])(
+    "refuses to start an agent with asks: %s in Codex, before the sandbox",
+    async (asks) => {
+      await writerAsks(asks);
+      await trustAcme();
+      const { code, stderr } = await run(codexReady, sandboxReady, "--harness", "codex");
+
+      expect(code).toBe(exitCode.usage);
+      expect(stderr).toEqual([
+        "✕ Couldn't run support-reply: Writer's file uses asks, which only Claude Code follows, but this run starts Writer in Codex. Nothing ran.",
+        "  Run it in Claude Code, or remove asks from Writer's file.",
+      ]);
+      expect(checks).toBe(0);
+      expect(await startedRuns()).toEqual([]);
+    },
+  );
+
+  it("lets --harness claude-code and halonic past this check", async () => {
+    await writerAsks("in-sandbox");
+    await trustAcme();
+
+    expect((await run(claudeCodeReady, bubblewrapMissing, "--harness", "claude-code")).code).toBe(
+      exitCode.unavailable,
+    );
+    expect(checks).toBe(1);
+    expect((await run(claudeCodeReady, bubblewrapMissing, "--harness", "halonic")).code).toBe(
+      exitCode.ok,
+    );
+  });
+});

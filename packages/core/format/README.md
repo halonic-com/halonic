@@ -217,3 +217,11 @@ An optional `harnessLimits` block bounds one step of a harness agent
 count as 0). A limit left out doesn't apply. The agent's own `maxSteps`, 6 by
 default, is sized for Halonic's own loop and doesn't bound a harness step: a
 coding program makes hundreds of model calls in one.
+
+An optional `asks` field says when a Claude Code agent's own tools ask for a
+person's OK (requirement `agent-asks`): `always`, the default, or
+`in-sandbox`, where Halonic answers the calls that stay in the agent's working
+folder while the run is inside Halonic's sandbox. Only `harness: claude-code`
+takes it for now: on `codex`, `halonic` or no harness the file fails with
+`asks-needs-claude-code`, even for `always`, because Codex in the sandbox
+doesn't ask whatever the file says.
