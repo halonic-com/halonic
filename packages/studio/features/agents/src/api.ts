@@ -378,6 +378,13 @@ export interface AgentsHost {
    */
   answer(ref: AgentRef, request: AgentChatRequest): Promise<ChatAnswer>;
   /**
+   * Makes the agent live: opens Create version with only this agent's file, and answers `"made"`
+   * once the version is created, `"cancelled"` when the person closed it. Absent while the app
+   * can't offer that, so the "Changes not live yet" line has no **Review and make live**. Rejects
+   * with the reason the version couldn't be made, and like {@link AgentsHost.read}.
+   */
+  makeLive?(ref: AgentRef): Promise<"made" | "cancelled">;
+  /**
    * The path of the agent's file from the workspace folder, for **Open as file**. Rejects like
    * {@link AgentsHost.read}.
    */

@@ -4,8 +4,8 @@ import type { AgentPlacementStore, Digest } from "@halonicjs/ports";
 import { encodeUtf8 } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import type { NewAgentsParts } from "./new-agent-placing.ts";
 import { setup } from "./workspace-agents.test-helper.ts";
-import type { NewAgentsParts } from "./workspace-agents.ts";
 
 const digest: Digest = {
   async sha256(data) {

@@ -8,7 +8,10 @@ const replyFile =
 
 /** A `WorkspaceAgents` over an in-memory workspace with hubs `acme` and `beta`, with the changes it made. */
 export function setup(
-  extra: Pick<WorkspaceAgentsParts, "newAgents" | "liveness" | "answerChat" | "detectHarness"> = {},
+  extra: Pick<
+    WorkspaceAgentsParts,
+    "newAgents" | "liveness" | "answerChat" | "detectHarness" | "versionDialog"
+  > = {},
 ) {
   const store: Record<string, string> = {
     "models.yaml":
