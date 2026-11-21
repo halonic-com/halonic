@@ -1,0 +1,68 @@
+import { KindedError } from "@halonicjs/std";
+import type { WorkflowArrowChange } from "@halonicjs/studio-feature-workflows/api";
+import type { YamlEdit } from "@halonicjs/yaml";
+
+/**
+ * The step's arrows as its file writes them, from the file's data as read (no defaults filled in),
+ * or `undefined` when the step has no `on` list.
+ */
+export function writtenArrows(data: unknown, stepId: string): readonly unknown[] | undefined {
+  const states = recordAt(data, "states");
+  const on = recordAt(states, stepId)?.["on"];
+  return Array.isArray(on) ? on : undefined;
+}
+
+/**
+ * The edits of the workflow's file that make one change of the arrows out of `stepId`: a new arrow
+ * `{ to }` (on done, the format's default) after the others, or one arrow moved one place up or
+ * down, together with its comments.
+ *
+ * @param stepIds - the workflow's steps, which a new arrow must go to
+ * @param written - the step's arrows as its file writes them (see {@link writtenArrows})
+ * @throws `invalid_input` for an arrow to a step the workflow doesn't have, an arrow that isn't
+ *   there or can't move that way, and one that no longer goes to the move's `to`
+ */
+export function arrowEdits(
+  stepId: string,
+  stepIds: readonly string[],
+  written: readonly unknown[] | undefined,
+  change: WorkflowArrowChange,
+): readonly YamlEdit[] {
+  const path = ["states", stepId, "on"];
+  if (change.kind === "add") {
+    if (!stepIds.includes(change.to)) {
+      throw new KindedError("invalid_input", `This workflow has no step "${change.to}".`);
+    }
+    const arrow = { to: change.to };
+    return written === undefined
+      ? [{ kind: "set", path, value: [arrow] }]
+      : [{ kind: "insert", path: [...path, written.length], value: arrow }];
+  }
+  const arrows = written ?? [];
+  const { index } = change;
+  const place = index + change.by;
+  const inList = (at: number) => Number.isInteger(at) && at >= 0 && at < arrows.length;
+  if (!inList(index) || !inList(place)) {
+    throw new KindedError("invalid_input", "This arrow can't move that way.");
+  }
+  if (recordOf(arrows[index])?.["to"] !== change.to) {
+    throw new KindedError(
+      "invalid_input",
+      "This step's arrows changed in the meantime. Look at them again, then move the arrow.",
+    );
+  }
+  return [{ kind: "move", path: [...path, index], to: place }];
+}
+
+/** The map at `key` of `value`, or `undefined` when there is none. */
+function recordAt(value: unknown, key: string): Record<string, unknown> | undefined {
+  const map = recordOf(value);
+  return map !== undefined && Object.hasOwn(map, key) ? recordOf(map[key]) : undefined;
+}
+
+/** `value` as a map, or `undefined` when it isn't one. */
+function recordOf(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
