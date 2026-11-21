@@ -6,7 +6,8 @@ import type { WorkspaceContext } from "../workspace-context.ts";
 
 /**
  * The Help menu's entries (`shell.help-menu`): each group's items in the groups' order, under the
- * group's title when it has one, with a divider between groups. A group with no items now is left
+ * group's title when it has one, with a divider between groups, and an item's description wrapped
+ * under its label. A group with no items now is left
  * out, so an empty list means the sidebar shows no Help row. A group whose `items` throws is
  * reported and left out too, so one feature's mistake doesn't take the window down.
  */
@@ -28,7 +29,14 @@ export function helpMenuEntries(
     }
     for (const item of items) {
       // Item ids are unique per group, so the menu's ids carry the group's too.
-      entries.push({ id: `${group.id}:${item.id}`, label: item.label, onSelect: () => item.run() });
+      entries.push({
+        id: `${group.id}:${item.id}`,
+        label: item.label,
+        ...(item.description === undefined
+          ? {}
+          : { detail: item.description, detailCut: "wrap" as const }),
+        onSelect: () => item.run(),
+      });
     }
   }
   return entries;

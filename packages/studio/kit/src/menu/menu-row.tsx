@@ -120,7 +120,7 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
 
 /**
  * The line under the label, out of the item's name, which stays the label: a screen reader reads
- * it as its description. It ends in "…", or is cut in the middle when the item says so.
+ * it as its description. It ends in "…", or is cut in the middle or wraps when the item says so.
  */
 function ItemDetail({
   id,
@@ -140,11 +140,13 @@ function ItemDetail({
       </span>
     );
   }
+  // Wrapped, at most 300px wide like the menu's description (component specs 20.2).
+  const fit = item.detailCut === "wrap" ? "max-w-75" : "truncate";
   return (
     <span
       id={id}
       aria-hidden="true"
-      className={`truncate text-caption text-fg-subtle ${faded}`.trim()}
+      className={`${fit} text-caption text-fg-subtle ${faded}`.trim()}
     >
       {detail}
     </span>

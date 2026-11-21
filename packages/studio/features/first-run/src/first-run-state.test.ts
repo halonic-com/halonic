@@ -69,8 +69,18 @@ verifies("first-run.state", () => {
     expect(parseFirstRun(serializeFirstRun(dismissed))).toEqual(dismissed);
   });
 
-  it("begins again at the demo of a new folder on Start over, whatever it was", () => {
-    const again = { kind: "started-over", folder: "/docs/Acme sample 2", at: "later" } as const;
+  it("goes off on Start over, so the fresh copy starts it when it opens", () => {
+    const done: FirstRunState = { kind: "done", folder: demo.folder };
+    const reset = after(done, { kind: "reset" });
+    expect(reset).toEqual(off);
+    expect(after(reset, { kind: "demo-opened", folder: "/docs/Acme sample 2", at })).toEqual({
+      ...demo,
+      folder: "/docs/Acme sample 2",
+    });
+  });
+
+  it("begins again at the demo on Show the guide, whatever it was", () => {
+    const again = { kind: "guide-reopened", folder: "/docs/Acme sample 2", at: "later" } as const;
     for (const state of [off, demo, { kind: "done", folder: demo.folder } as const]) {
       expect(after(state, again)).toEqual({
         kind: "on",

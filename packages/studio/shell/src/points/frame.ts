@@ -39,6 +39,11 @@ export interface HelpItem {
   /** Unique in its group. */
   readonly id: string;
   readonly label: string;
+  /**
+   * A sentence under the label that says what the item does, such as Start over's "Copies Acme to
+   * a new folder…". The menu wraps it rather than cutting it, and the phone's More page shows it too.
+   */
+  readonly description?: string | undefined;
   /** Called when the item is picked. */
   run(): void;
 }

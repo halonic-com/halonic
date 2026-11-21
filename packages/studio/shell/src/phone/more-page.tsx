@@ -49,7 +49,8 @@ export interface MorePageProps {
   readonly onSettings?: (() => void) | undefined;
   /**
    * The Help menu's entries, from `helpMenuEntries` (`shell.help-menu`): each group shows as its own
-   * list under the lists, headed by its title, or "Help" without one. Left out, nothing shows.
+   * list under the lists, headed by its title, or "Help" without one, and an item's description
+   * wraps under it. Left out, nothing shows.
    */
   readonly help?: readonly MenuEntry[] | undefined;
   /**
@@ -128,7 +129,7 @@ export function MorePage({
           <ListHeading name={group.name} />
           <List
             label={group.name}
-            rows={group.items.map((item) => ({ id: item.id, title: item.label }))}
+            rows={group.items.map(helpRow)}
             flush
             onOpen={(id) => group.items.find((item) => item.id === id)?.onSelect()}
           />
@@ -172,6 +173,13 @@ function helpGroups(entries: readonly MenuEntry[]): readonly HelpGroup[] {
     }
   }
   return groups.filter((group) => group.items.length > 0);
+}
+
+/** A Help item as a More row: its description, when it has one, wraps under the title and describes it. */
+function helpRow(item: MenuItem): ListRow {
+  return item.detail === undefined
+    ? { id: item.id, title: item.label }
+    : { id: item.id, title: item.label, meta: item.detail, wrap: true, metaDescribes: true };
 }
 
 const settingsRowId = "settings";
