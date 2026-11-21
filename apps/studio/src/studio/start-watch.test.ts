@@ -101,9 +101,51 @@ verifies("studio.start-watch", () => {
     expect(calls).toEqual(["engine_ready", "start_status", "engine_ready", "start_status"]);
   });
 
-  it("reads as ready when the window can't say, so Welcome is never held up", async () => {
+  it("reads as ready when the window can't say twice in a row, so Welcome is never held up", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const ipc = { invoke: vi.fn(async () => Promise.reject(new Error("not granted"))) };
+    const clock = handTimers();
+    const start = watchStart(ipc, "macos", "0.1.0", clock.timers);
+    await settled();
+    expect(start.report).toBeUndefined();
+    expect(clock.waiting).toBe(true);
+
+    await clock.fire();
+    expect(start.report?.state).toBe("ready");
+    expect(clock.waiting).toBe(false);
+  });
+
+  it("asks on after one failed call, so a passing hiccup doesn't end the watch", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const answers: (() => unknown)[] = [
+      () => report("starting", 0),
+      () => {
+        throw new Error("busy");
+      },
+      () => report("starting", 2),
+      () => {
+        throw new Error("busy");
+      },
+      () => report("ready", 4),
+    ];
+    const ipc = {
+      invoke: vi.fn(async (command: string) =>
+        command === "start_status" ? answers.shift()?.() : undefined,
+      ),
+    };
+    const clock = handTimers();
+    const start = watchStart(ipc, "macos", "0.1.0", clock.timers);
+    const seen: (string | undefined)[] = [];
+    start.subscribe(() => seen.push(start.report?.state));
+    await settled();
+
+    for (let ask = 0; ask < 4; ask += 1) await clock.fire();
+    expect(seen).toEqual(["starting", "starting", "ready"]);
+    expect(clock.waiting).toBe(false);
+  });
+
+  it("reads as ready at once when the window answers something else", async () => {
+    const { ipc } = windowOf([{ unexpected: true }]);
     const clock = handTimers();
     const start = watchStart(ipc, "macos", "0.1.0", clock.timers);
     await settled();

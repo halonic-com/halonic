@@ -1080,13 +1080,15 @@ reasons in `cantOpenWords`), and **Copy details** when Halonic can't explain it
 
 Give `Welcome` the app's `start` (a `WelcomeStart`) and it shows how far Halonic's start has got
 (`shell.welcome-start`). `startView` reads the window's `StartReport`: from 2 seconds the kit's
-waiting line "Starting Halonic…" with **Open demo** and **Open folder** off, and a failed start as
+waiting line "Starting Halonic…" with **Open demo** and **Open folder** off, keeping room for its
+10 s and 30 s sentences and **Something wrong?** so nothing moves, and a failed start as
 "Halonic's engine didn't start" with the cause's sentence (`welcome-start-words.ts`), **Try again**,
 **Check this computer** and **Copy report**. A sandbox that isn't set up yet counts as ready.
 **Check this computer** runs the window's lite check (`LiteCheckResult`) in `LiteCheckDialog`, with
-the engine's own checks as "Not checked" (`shell.welcome-lite-check`). The desktop app's
-`watchStart` calls `engine_ready` once and polls `start_status` until the start is ready
-(`studio.start-watch`).
+the engine's own checks as "Not checked" (`shell.welcome-lite-check`). It opens on its title, and on
+close gives focus back to its link, or to Welcome's leading button when that link has gone. The
+desktop app's `watchStart` calls `engine_ready` once and polls `start_status` until the start is
+ready, and reads it as ready after two failed calls in a row (`studio.start-watch`).
 
 `StudioWorkspace` is the window's state for one workspace: its `tabs`, `recent` (Ctrl K's Recent),
 `saving` and `services`. Create one when the workspace opens and `dispose()` it when it closes.

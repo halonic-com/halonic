@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { ClipboardProvider } from "@halonicjs/studio-kit";
+import { ClipboardProvider, CloseIcon } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
@@ -42,13 +42,21 @@ function button(root: ParentNode, label: string): HTMLButtonElement {
   return found;
 }
 
-/** Welcome after a failed start, with Check this computer open and its check answered. */
-async function openCheck(): Promise<HTMLDialogElement> {
-  const root = render(
+function renderWelcome(): HTMLElement {
+  return render(
     <ClipboardProvider writeClipboard={writeClipboard}>
-      <Welcome onOpenFolder={async () => undefined} start={start} />
+      <Welcome
+        onOpenFolder={async () => undefined}
+        onTrySample={async () => undefined}
+        start={start}
+      />
     </ClipboardProvider>,
   );
+}
+
+/** Welcome after a failed start, with Check this computer open and its check answered. */
+async function openCheck(): Promise<HTMLDialogElement> {
+  const root = renderWelcome();
   start.answer({ state: "failed", seconds: 60, cause: "timed_out" });
   await act(async () => button(root, "Check this computer").click());
   const dialog = document.querySelector("dialog");
@@ -132,7 +140,7 @@ verifies("shell.welcome-lite-check", () => {
       mark: "info",
       text: "Not set up yet. The demo doesn't need the sandbox.",
     });
-    expect(checkHeading(lines)).toBe("No problems");
+    expect(checkHeading(lines)).toBe("No problems found");
   });
 
   it.each([
@@ -163,6 +171,74 @@ verifies("shell.welcome-lite-check", () => {
     });
     expect(lines[2]).toMatchObject({ mark: "warning", text: "Low on disk space: 0.6 GB free" });
     expect(checkHeading(lines)).toBe("1 problem · 1 warning");
+  });
+
+  it("takes focus on its title, and gives it to the leading button when its opener went", async () => {
+    const root = renderWelcome();
+    start.answer({ state: "starting", seconds: 14 });
+    const somethingWrong = button(root, "Something wrong?");
+    somethingWrong.focus();
+    await act(async () => somethingWrong.click());
+    expect(document.activeElement?.tagName).toBe("H2");
+    expect(document.activeElement?.textContent).toBe("Check this computer");
+
+    start.answer({ state: "ready", seconds: 15 });
+    expect(somethingWrong.isConnected).toBe(false);
+    await act(async () => button(root, "Close").click());
+    expect(document.querySelector("dialog")).toBeNull();
+    expect(document.activeElement?.textContent).toContain("Open demo");
+  });
+
+  it("says No problems found with the all-clear sentence, and counts a lone warning", async () => {
+    const root = renderWelcome();
+    start.answer({ state: "starting", seconds: 14 });
+    await act(async () => button(root, "Something wrong?").click());
+    const dialog = document.querySelector("dialog");
+    expect(dialog?.textContent).toContain("No problems found");
+    expect(dialog?.textContent).toContain(
+      "If something still doesn't work, copy the report and send it with your question. It has no keys, no file contents and no run data.",
+    );
+
+    const lowDisk = checkLines({ kind: "ready" }, [
+      { id: "disk_space", fact: "low", freeBytes: 600_000_000 },
+    ]);
+    expect(checkHeading(lowDisk)).toBe("1 warning");
+  });
+
+  it("leaves out the all-clear sentence when a line is a problem", async () => {
+    const dialog = await openCheck();
+    expect(dialog.textContent).not.toContain("If something still doesn't work");
+  });
+
+  it("names the report's fold by what it does, with the note on what the report holds", async () => {
+    const dialog = await openCheck();
+    const summary = dialog.querySelector("summary");
+    expect(summary?.textContent).toBe("Show the reportHide the report");
+    expect(summary?.querySelector(".hidden")?.textContent).toBe("Hide the report");
+    expect(dialog.querySelector("details")?.textContent).toContain(
+      "This is all the report holds. No keys, no file contents, no run data. Folder paths show as ~.",
+    );
+  });
+
+  it("marks a problem with the report's cross", async () => {
+    const dialog = await openCheck();
+    const cross = render(<CloseIcon />).innerHTML;
+    const problem = dialog.querySelector("li [aria-hidden='true']");
+    expect(problem?.innerHTML).toBe(cross);
+  });
+
+  it("keeps both Not checked lines when the check can't run, each with its own key", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    start.check = async () => {
+      throw new Error("not granted");
+    };
+    const dialog = await openCheck();
+    const notChecked = [...dialog.querySelectorAll("li")].filter((each) =>
+      each.textContent?.startsWith("Not checked"),
+    );
+    expect(notChecked).toHaveLength(2);
+    expect(errors.mock.calls.flat().join(" ")).not.toContain("same key");
+    errors.mockRestore();
   });
 
   it("builds the report from named fields only", () => {

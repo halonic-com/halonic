@@ -6,6 +6,8 @@ import type { ConfirmingDialogProps, DialogProps } from "./dialog-props.ts";
 export interface DialogHeaderProps {
   readonly props: DialogProps;
   readonly titleId: string;
+  /** Takes focus with `focusTitle`, so it is focusable from script only. */
+  readonly titleRef: RefObject<HTMLHeadingElement | null>;
   readonly confirmId: string;
   /** No ✕ on a phone when Cancel is right there; a footerless Dialog keeps it. */
   readonly closeButton: boolean;
@@ -17,6 +19,7 @@ export interface DialogHeaderProps {
 export function DialogHeader({
   props,
   titleId,
+  titleRef,
   confirmId,
   closeButton,
   closeButtonRef,
@@ -28,7 +31,12 @@ export function DialogHeader({
     <header
       className={`flex items-start gap-2 px-6 pt-5 pb-1${props.flush ? " border-b border-border" : ""}`}
     >
-      <h2 id={titleId} className="min-w-0 flex-1 text-heading wrap-break-word">
+      <h2
+        ref={titleRef}
+        id={titleId}
+        tabIndex={props.focusTitle === true ? -1 : undefined}
+        className="min-w-0 flex-1 text-heading wrap-break-word"
+      >
         {props.title}
       </h2>
       {showClose ? (

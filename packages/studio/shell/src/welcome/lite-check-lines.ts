@@ -30,6 +30,12 @@ export const liteCheckWords = {
   checkAgain: "Check again",
   copyReport: "Copy report",
   showReport: "Show the report",
+  hideReport: "Hide the report",
+  reportNote:
+    "This is all the report holds. No keys, no file contents, no run data. Folder paths show as ~.",
+  noProblems: "No problems found",
+  allClear:
+    "If something still doesn't work, copy the report and send it with your question. It has no keys, no file contents and no run data.",
   close: "Close",
   engine: "Engine",
   running: "Running",
@@ -163,13 +169,25 @@ export function checkLines(
   ];
 }
 
-/** "1 problem", "No problems · 1 warning": counts of causes, as the crosses on screen. */
+/** How many lines have `mark`: "1 problem", "2 warnings", or nothing for none. */
+function markCount(lines: readonly CheckLine[], mark: "problem" | "warning"): string[] {
+  const count = lines.filter((line) => line.mark === mark).length;
+  if (count === 0) return [];
+  return [`${count} ${mark}${count === 1 ? "" : "s"}`];
+}
+
+/**
+ * "1 problem", "1 problem · 1 warning", "1 warning", "No problems found": counts of causes, as the
+ * marks on screen (4.2).
+ */
 export function checkHeading(lines: readonly CheckLine[]): string {
-  const problems = lines.filter((line) => line.mark === "problem").length;
-  const warnings = lines.filter((line) => line.mark === "warning").length;
-  const head =
-    problems === 0 ? "No problems" : `${problems} ${problems === 1 ? "problem" : "problems"}`;
-  return warnings === 0 ? head : `${head} · ${warnings} ${warnings === 1 ? "warning" : "warnings"}`;
+  const counts = [...markCount(lines, "problem"), ...markCount(lines, "warning")];
+  return counts.length === 0 ? liteCheckWords.noProblems : counts.join(" · ");
+}
+
+/** Whether no line is a problem, so the dialog adds the all-clear sentence under them. */
+export function allClear(lines: readonly CheckLine[]): boolean {
+  return lines.every((line) => line.mark !== "problem");
 }
 
 /** The labels are padded to this width in the report, so the facts line up. */

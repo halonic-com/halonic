@@ -353,6 +353,7 @@ export {
   type WaitingLineAction,
   type WaitingLinePlacement,
   type WaitingLineProps,
+  type WaitingLineRoom,
   waitedTime,
 } from "./waiting-line/waiting-line.tsx";
 export { Window, WindowBar, type WindowBarProps, type WindowProps } from "./window/window.tsx";

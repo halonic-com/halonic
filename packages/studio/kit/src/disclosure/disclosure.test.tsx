@@ -141,6 +141,23 @@ verifies("kit.disclosure", () => {
     expect(css.search(forcedColourRule)).toBeGreaterThan(subtleColour);
   });
 
+  it("swaps the summary for openSummary while open, in CSS, so the browser still opens it", async () => {
+    const { container } = render(
+      <Disclosure summary="Show the report" openSummary="Hide the report">
+        Text
+      </Disclosure>,
+    );
+    const words = parts(container).summary.firstElementChild as HTMLElement;
+    const [shut, open] = [...words.children] as HTMLElement[];
+    expect(shut?.textContent).toBe("Show the report");
+    expect(shut?.className).toBe("group-open/disclosure:hidden");
+    expect(open?.textContent).toBe("Hide the report");
+    expect(open?.className).toBe("hidden group-open/disclosure:inline");
+    const css = await buildCss(["group-open/disclosure:hidden", "group-open/disclosure:inline"]);
+    expect(css).toMatch(/\[open\][^{]*\{\s*display:\s*none;/);
+    expect(css).toMatch(/\[open\][^{]*\{\s*display:\s*inline;/);
+  });
+
   it("treats an empty label as none", () => {
     const { container } = render(
       <Disclosure label="" summary="Budget">

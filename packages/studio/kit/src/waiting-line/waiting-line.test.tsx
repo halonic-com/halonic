@@ -78,6 +78,50 @@ verifies("kit.waiting-line", () => {
     expect(pick).toHaveBeenCalledOnce();
   });
 
+  it("keeps room for every reason and action it will show, unseen and unspoken, from 2 seconds", () => {
+    const later = "Still starting. The first start unpacks Halonic's files.";
+    const { container, rerender } = render(
+      <WaitingLine
+        what="Starting Halonic…"
+        waitedMs={3_000}
+        reason="The first start takes longer."
+        keepRoomFor={{
+          reasons: ["The first start takes longer.", later],
+          actions: ["Something wrong?"],
+        }}
+      />,
+    );
+    // jsdom has no layout: the classes that make it. The status region and an unseen copy with
+    // each reason share one grid cell, as do the actions and their unseen labels, so each cell is
+    // as high as the tallest at any width.
+    const unseen = [...container.querySelectorAll('[aria-hidden="true"].invisible')];
+    expect(unseen.map((each) => each.textContent)).toEqual([
+      "Starting Halonic…The first start takes longer.",
+      `Starting Halonic…${later}`,
+      "Something wrong?",
+    ]);
+    for (const each of unseen) {
+      expect(each.parentElement?.className).toContain("grid *:col-start-1 *:row-start-1");
+    }
+    expect(statusOf(container).textContent).toBe("Starting Halonic…");
+    expect(container.querySelector("button")).toBeNull();
+
+    rerender(
+      <WaitingLine
+        what="Starting Halonic…"
+        waitedMs={34_000}
+        reason={later}
+        actions={[{ label: "Something wrong?", onClick: () => undefined }]}
+        keepRoomFor={{
+          reasons: ["The first start takes longer.", later],
+          actions: ["Something wrong?"],
+        }}
+      />,
+    );
+    expect(statusOf(container).textContent).toBe(`Starting Halonic…${later}`);
+    expect(container.querySelector("button")?.closest('[aria-hidden="true"]')).toBeNull();
+  });
+
   describe("placements", () => {
     const lineIn = (placement: "inline" | "row" | "banner") =>
       render(<WaitingLine what="Starting Halonic…" waitedMs={5_000} placement={placement} />)

@@ -6,8 +6,9 @@ import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { FakeWelcomeStart } from "../test-support/fake-welcome-start.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { startView } from "./start-status.ts";
+import { startView, type WelcomeStart } from "./start-status.ts";
 import { Welcome } from "./welcome.tsx";
+import { useWelcomeStart, type WelcomeStartState } from "./welcome-start.tsx";
 
 let start: FakeWelcomeStart;
 let writeClipboard: ReturnType<typeof vi.fn<(text: string) => Promise<boolean>>>;
@@ -39,8 +40,20 @@ function button(root: HTMLElement, label: string): HTMLButtonElement {
   return found;
 }
 
+/** Hidden from screen readers: the unseen lines that keep the waiting line's room. */
+const unseen = '[aria-hidden="true"]';
+
 function statusTexts(root: HTMLElement): string[] {
-  return [...root.querySelectorAll('[role="status"]')].map((each) => each.textContent ?? "");
+  return [...root.querySelectorAll('[role="status"]')]
+    .filter((each) => each.closest(unseen) === null)
+    .map((each) => each.textContent ?? "");
+}
+
+/** The text a screen reader can reach: without the unseen lines. */
+function spokenText(root: HTMLElement): string {
+  const copy = root.cloneNode(true) as HTMLElement;
+  for (const each of copy.querySelectorAll(unseen)) each.remove();
+  return copy.textContent ?? "";
 }
 
 verifies("shell.welcome-start", () => {
@@ -67,26 +80,34 @@ verifies("shell.welcome-start", () => {
     }
   });
 
-  it("keeps room for the 10 s sentence from the moment the line shows", () => {
+  it("keeps room for both sentences and Something wrong? from the moment the line shows", () => {
     const root = renderWelcome();
     start.answer({ state: "starting", seconds: 3 });
-    const box = root.querySelector(".min-h-21");
-    expect(box?.textContent).toContain("Starting Halonic…");
+    // jsdom has no layout: the kit's WaitingLine keeps room for what it's told, unseen, in grid
+    // cells as high as the tallest at any width (C513 M11; the kit's test checks the cells).
+    const unseenParts = [...root.querySelectorAll(`${unseen}.invisible`)];
+    const box = unseenParts[0]?.parentElement;
+    expect(unseenParts.map((each) => each.textContent)).toEqual([
+      "Starting Halonic…The first start takes longer than the next ones.",
+      "Starting Halonic…Still starting. The first start unpacks Halonic's files, which can take up to a minute.",
+      "Something wrong?",
+    ]);
+    expect(spokenText(root)).not.toContain("The first start takes longer");
 
     start.answer({ state: "starting", seconds: 12 });
-    expect(root.querySelector(".min-h-21")).toBe(box);
-    expect(box?.textContent).toContain("The first start takes longer than the next ones.");
-    expect(button(root, "Something wrong?")).toBeDefined();
+    expect(root.querySelector(`${unseen}.invisible`)?.parentElement).toBe(box);
+    expect(spokenText(root)).toContain("The first start takes longer than the next ones.");
+    expect(button(root, "Something wrong?").closest(unseen)).toBeNull();
   });
 
   it("says Still starting from the shell's still_starting", () => {
     const root = renderWelcome();
     start.answer({ state: "still_starting", seconds: 34 });
 
-    expect(root.textContent).toContain(
+    expect(spokenText(root)).toContain(
       "Still starting. The first start unpacks Halonic's files, which can take up to a minute.",
     );
-    expect(root.textContent).not.toContain("The first start takes longer");
+    expect(spokenText(root)).not.toContain("The first start takes longer");
   });
 
   it("shows why it failed, focuses the failure and keeps the cause id and exit code off screen", async () => {
@@ -162,6 +183,22 @@ verifies("shell.welcome-start", () => {
     await act(async () => start.answer({ state: "failed", seconds: 60, cause: "timed_out" }));
     expect(onOpenFolder).not.toHaveBeenCalled();
     expect(button(root, "Open folder").getAttribute("aria-busy")).not.toBe("true");
+  });
+
+  it("ends a held press without running it when Welcome goes away", async () => {
+    let state: WelcomeStartState | undefined;
+    function Holder({ watched }: { readonly watched: WelcomeStart }) {
+      state = useWelcomeStart(watched);
+      return null;
+    }
+    render(<Holder watched={start} />);
+    start.answer({ state: "starting", seconds: 1 });
+    const task = vi.fn(async () => "opened");
+    const held = state?.afterStart(task);
+
+    unmountAll();
+    await expect(held).resolves.toBeUndefined();
+    expect(task).not.toHaveBeenCalled();
   });
 
   it("says Halonic is ready once, only after the line showed", () => {
