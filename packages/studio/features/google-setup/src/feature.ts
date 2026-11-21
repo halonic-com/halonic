@@ -30,6 +30,7 @@ export const googleSetupFeature = defineFeature({
     studio.itemPage.addSection({
       on: "connector",
       id: "google-setup.connector",
+      title: "Google",
       order: 20,
       view: "ConnectorSection",
       load: () => import("./ui/connector-section.tsx"),

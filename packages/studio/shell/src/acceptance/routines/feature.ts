@@ -14,6 +14,7 @@ export const routinesFeature = defineFeature({
     studio.itemPage.addSection({
       on: "agent",
       id: "triggers",
+      title: "Triggers",
       order: 30,
       view: "AgentTriggersSection",
       load: () => import("./ui/agent-triggers-section.ts"),

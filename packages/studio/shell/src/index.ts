@@ -320,8 +320,8 @@ export {
 } from "./welcome/welcome-recent.tsx";
 export { cantCreateSampleLine, type WelcomeSampleProblem } from "./welcome/welcome-sample.tsx";
 export { WelcomeWindow, type WelcomeWindowProps } from "./welcome/welcome-window.tsx";
-export type { ItemPageSectionViewProps } from "./window/item-page-sections.tsx";
-export type { ItemViewProps } from "./window/item-view.tsx";
+export type { ItemPageSectionViewProps, SectionsProps } from "./window/item-page-sections.tsx";
+export type { ItemPageSectionListing, ItemViewProps } from "./window/item-view.tsx";
 export {
   type MountedStudioWindow,
   mountStudioWindow,

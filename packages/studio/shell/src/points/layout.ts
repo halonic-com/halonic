@@ -31,4 +31,9 @@ export interface ExplorerSectionContribution extends Ordered, ViewRef {
 export interface ItemPageSectionContribution extends Ordered, ViewRef {
   /** The item kind whose page shows the section. */
   readonly on: string;
+  /**
+   * The section's name, such as "Triggers", for a page that lists its sections as pages, as the
+   * agent's and the workflow's Configuration do (flow-agents 5.1).
+   */
+  readonly title: string;
 }

@@ -1204,6 +1204,7 @@ const routinesFeature = defineFeature({
     studio.itemPage.addSection({
       on: "agent",
       id: "triggers",
+      title: "Triggers",
       order: 30,
       view: "AgentTriggersSection",
       load: async () => ({ AgentTriggersSection: () => "triggers" }),

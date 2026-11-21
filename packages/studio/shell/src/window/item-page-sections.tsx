@@ -12,6 +12,15 @@ export interface ItemPageSectionViewProps {
   readonly context: WorkspaceContext;
 }
 
+/** What `<Sections />` takes. */
+export interface SectionsProps {
+  /**
+   * The id of the one section to draw, for a page that shows each section as a page of its own
+   * (see `ItemViewProps.sections`); without it, every section is drawn, in order.
+   */
+  readonly only?: string;
+}
+
 /**
  * The component an item page places where its sections go
  * (`shell.item-page-sections`). It is the same component for as long as the item's sections and
@@ -21,7 +30,7 @@ export function useSectionsComponent(
   item: ItemRef,
   sections: readonly Registered<ItemPageSectionContribution>[],
   contextFor: (featureId: string) => WorkspaceContext,
-): ComponentType {
+): ComponentType<SectionsProps> {
   // `sectionsFor` gives a new array each call, so the component is kept by what the sections are.
   const latest = useRef({ sections, contextFor });
   latest.current = { sections, contextFor };
@@ -29,11 +38,14 @@ export function useSectionsComponent(
   const { kind, hub, id } = item;
   return useMemo(
     () =>
-      function Sections() {
+      function Sections({ only }: SectionsProps) {
         const shown = { kind, hub, id };
+        const drawn = latest.current.sections.filter(
+          (section) => only === undefined || section.id === only,
+        );
         return (
           <>
-            {latest.current.sections.map((section) => (
+            {drawn.map((section) => (
               <ItemPageSection
                 key={section.id}
                 section={section}

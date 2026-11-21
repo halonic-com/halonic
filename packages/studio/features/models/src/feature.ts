@@ -1,6 +1,6 @@
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { defineFeature, type WorkspaceContext } from "@halonicjs/studio-shell";
-import { ALIAS_KIND, ALIAS_KIND_LABEL, aliasTitle } from "./aliases/alias-text.ts";
+import { ALIAS_KIND, ALIAS_KIND_LABEL, aliasTitle, MODELS_HEADING } from "./aliases/alias-text.ts";
 import { readModels, subscribeProviderNames } from "./aliases/read-models.ts";
 import {
   ModelKeysService,
@@ -9,7 +9,11 @@ import {
   ProviderCheckService,
 } from "./api.ts";
 import { providerTabTitle } from "./providers/provider-names.ts";
-import { PROVIDER_KIND, PROVIDER_KIND_LABEL } from "./providers/provider-text.ts";
+import {
+  PROVIDER_KIND,
+  PROVIDER_KIND_LABEL,
+  PROVIDERS_HEADING,
+} from "./providers/provider-text.ts";
 import { modelsSummary } from "./settings/settings-text.ts";
 import { hasProblems } from "./settings/use-problems.ts";
 
@@ -81,6 +85,7 @@ export const modelsFeature = defineFeature({
     studio.itemPage.addSection({
       on: "workspace",
       id: "providers",
+      title: PROVIDERS_HEADING,
       order: 30,
       view: "ProvidersSection",
       load: () => import("./providers/providers-section.tsx"),
@@ -88,6 +93,7 @@ export const modelsFeature = defineFeature({
     studio.itemPage.addSection({
       on: "workspace",
       id: "models",
+      title: MODELS_HEADING,
       order: 20,
       view: "ModelsSection",
       load: () => import("./aliases/models-section.tsx"),

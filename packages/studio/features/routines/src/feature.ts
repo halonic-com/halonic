@@ -3,6 +3,7 @@ import { defineFeature } from "@halonicjs/studio-shell";
 import { RoutinesHostService } from "./api.ts";
 import { listWords, searchWords } from "./list/list-words.ts";
 import { requestNewRoutine } from "./list/new-request.ts";
+import { triggersWords } from "./triggers/triggers-words.ts";
 
 /**
  * The Routines feature: the Routines list with its New routine dialog, and the `routine` item kind
@@ -40,6 +41,7 @@ export const routinesFeature = defineFeature({
       studio.itemPage.addSection({
         on,
         id: "triggers",
+        title: triggersWords.heading,
         order: 30,
         view: "TriggersSection",
         load: () => import("./triggers/triggers-section.tsx"),

@@ -186,3 +186,42 @@ verifies("agents.configuration.pages-narrow", () => {
     expect(pageList(page).querySelector("[aria-selected=true]")?.textContent).toBe("Model");
   });
 });
+
+verifies("agents.configuration.section-pages", () => {
+  /** The shell's `Sections`, as far as the page sees it: draws the section it's asked for. */
+  function Sections({ only }: { readonly only?: string }) {
+    return <p className="section">{`section ${only ?? "all"}`}</p>;
+  }
+
+  async function openWithTriggers() {
+    const page = await show(
+      <AgentScreen
+        host={host()}
+        hubId="acme"
+        id="sorter"
+        sections={[{ id: "triggers", title: "Triggers" }]}
+        Sections={Sections}
+      />,
+    );
+    await act(async () => buttonNamed(page, "Configuration")?.click());
+    return page;
+  }
+
+  it("lists another feature's section as a page after the agent's own", async () => {
+    const page = await openWithTriggers();
+    const list = page.querySelector('[role=tablist][aria-label="Configuration pages"]');
+    expect([...(list?.querySelectorAll("[role=tab]") ?? [])].map((tab) => tab.textContent)).toEqual(
+      ["Behaviour", "Model", "Harness", "Tools", "Subagents", "Agent steps", "Triggers"],
+    );
+    expect(page.querySelector("p.section")).toBeNull();
+  });
+
+  it("draws only that section when its page is picked", async () => {
+    const page = await openWithTriggers();
+    await act(async () => buttonNamed(page, "Triggers")?.click());
+
+    expect([...page.querySelectorAll("p.section")].map((one) => one.textContent)).toEqual([
+      "section triggers",
+    ]);
+  });
+});

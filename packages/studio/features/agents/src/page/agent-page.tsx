@@ -16,13 +16,15 @@ import {
   createCloseStack,
   dropGoneCards,
   ItemGone,
+  type ItemPageSectionListing,
   type ItemViewProps,
   noCards,
   openCard,
   type SaveState,
+  type SectionsProps,
   StackedCards,
 } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type AgentChange,
   type AgentListing,
@@ -57,7 +59,7 @@ const libraryTabCommands: Readonly<Record<AgentToolList, string>> = {
 };
 
 /** The agent's page in its tab: `item` names the agent, the host reads its row. */
-export function AgentPage({ item, context }: ItemViewProps) {
+export function AgentPage({ item, context, Sections, sections }: ItemViewProps) {
   const { openPlace, openItem, runCommand, closeStack, announcer } = context;
   const announce = useCallback((text: string) => announcer.announce(text), [announcer]);
   return (
@@ -66,6 +68,8 @@ export function AgentPage({ item, context }: ItemViewProps) {
       saving={context.saving}
       hubId={item.hub}
       id={item.id}
+      sections={sections}
+      Sections={Sections}
       {...(openPlace && {
         goToAgents: () => openPlace("agents"),
         openRuns: () => openPlace("runs"),
@@ -101,6 +105,10 @@ export interface AgentScreenProps extends AgentRef {
   readonly announce?: ((text: string) => void) | undefined;
   /** Opens another agent's page, from a card's team chart; absent where the app can't. */
   readonly openAgent?: ((agent: AgentRef) => void) | undefined;
+  /** The sections other features add to the page, such as Triggers; Configuration lists them as pages. */
+  readonly sections?: readonly ItemPageSectionListing[] | undefined;
+  /** The shell's component that draws them; absent where there's no window. */
+  readonly Sections?: ComponentType<SectionsProps> | undefined;
 }
 
 /**
@@ -121,6 +129,8 @@ export function AgentScreen({
   closeStack,
   announce,
   openAgent,
+  sections,
+  Sections,
 }: AgentScreenProps) {
   // After a Try again reads, the agent's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -300,6 +310,8 @@ export function AgentScreen({
               reportNotSaved={reportNotSaved}
               announce={announce}
               openAgentStep={cards.openAgentStep}
+              sections={sections}
+              Sections={Sections}
             />
           </StackedCards>
         )}
