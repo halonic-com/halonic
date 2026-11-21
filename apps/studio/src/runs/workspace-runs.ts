@@ -6,6 +6,7 @@ import {
   hubWorkflows,
   isWindowsFolder,
   lookUpWorkflow,
+  type ProposedRecord,
   shortRunId,
   workflowIn,
 } from "@halonicjs/app";
@@ -20,7 +21,11 @@ import type {
   RunStore,
   SendOptions,
 } from "@halonicjs/ports";
-import { AnswerElsewhere, type InboxRuns } from "@halonicjs/studio-feature-inbox/api";
+import {
+  AnswerElsewhere,
+  type InboxRuns,
+  type RunProposalEntry,
+} from "@halonicjs/studio-feature-inbox/api";
 import type {
   ProviderKind,
   RunnableWorkflow,
@@ -67,6 +72,11 @@ export interface WorkspaceRunsOptions {
    * read again then too (K5); returns a function that stops it.
    */
   readonly onFocus?: (listener: () => void) => () => void;
+  /**
+   * The workspace's open run proposals, newest first, as the agent host lists them. Left out,
+   * {@link WorkspaceRuns.proposals} lists none.
+   */
+  readonly proposals?: () => Promise<readonly ProposedRecord[]>;
 }
 
 /** What the workspace's files say about its runs. */
@@ -157,6 +167,17 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     return this.#facts?.agentNames.get(agentId);
   }
 
+  /** An item's name as its file says, for an agent, a workflow or a hub; `undefined` for any other. */
+  itemName(itemId: string): string | undefined {
+    const facts = this.#facts;
+    if (facts === undefined) return undefined;
+    return (
+      facts.agentNames.get(itemId) ??
+      facts.workflows.find(({ workflow }) => workflow.id === itemId)?.workflow.name ??
+      facts.hubNames.get(itemId)
+    );
+  }
+
   hubName(hubId: string): string | undefined {
     return this.#facts?.hubNames.get(hubId);
   }
@@ -207,6 +228,18 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
 
   waiting(): Promise<RunSummary[]> {
     return this.#options.waiting?.() ?? this.#options.runs.list({ status: ["waiting"] });
+  }
+
+  /**
+   * The open run proposals, each with its run's record (`studio.workspace-run-proposals`). The
+   * runs are read only when there is a proposal; a run whose log is gone gives `undefined`.
+   */
+  async proposals(): Promise<readonly RunProposalEntry[]> {
+    const records = (await this.#options.proposals?.()) ?? [];
+    if (records.length === 0) return [];
+    await this.#readFacts();
+    const runs = new Map((await this.#options.runs.list()).map((run) => [run.id, run]));
+    return records.map((record) => ({ record, run: runs.get(record.proposal.runId) }));
   }
 
   subscribe(listener: () => void): () => void {

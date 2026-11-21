@@ -31,6 +31,7 @@ export const agentHostRequestRoutes = [
   "POST /v1/proposals/folder-of",
   "POST /v1/proposals/end",
   "POST /v1/proposals/start",
+  "POST /v1/proposals/list",
   "POST /v1/placements/get",
   "POST /v1/placements/save",
   "POST /v1/placements/remove",

@@ -49,7 +49,31 @@ async function setup() {
     runs.change([waitingRun(id, { state: "review", accepts: ["approve", "reject"] })]);
     await settled();
   };
-  return { root, announce, arrive };
+  /** The run the request started ends with a proposal of `notes/a.md`, and waits for nobody. */
+  const propose = async (runId = "r9") => {
+    const path = "notes/a.md";
+    runs.runs.proposals = async () => [
+      {
+        record: {
+          state: "proposed",
+          proposal: {
+            runId,
+            history: "off",
+            base: null,
+            ref: null,
+            files: [{ path, change: "added", base: "absent" }],
+            items: [],
+          },
+          finishedAt: "2026-11-10T09:00:00.000Z",
+          decisions: { [path]: "undecided" },
+        },
+        run: undefined,
+      },
+    ];
+    runs.change([]);
+    await settled();
+  };
+  return { root, announce, arrive, propose };
 }
 
 async function sendRequest(root: HTMLElement) {
@@ -93,6 +117,14 @@ verifies("inbox.request-card", () => {
       expect(announce).toHaveBeenCalledOnce();
       expect(announce.mock.calls[0]?.[0]).toMatch(/^New in Needs you: /);
     });
+  });
+
+  it("opens no card for the proposal of a run sent as a request: only a run's card is the request's", async () => {
+    const { root, announce, propose } = await setup();
+    await sendRequest(root);
+    await propose();
+    expect(root.querySelector('[data-pane="item"] form[data-request-form]')).not.toBeNull();
+    expect(announce).not.toHaveBeenCalled();
   });
 
   it("opens no card for a run that wasn't sent as a request", async () => {
