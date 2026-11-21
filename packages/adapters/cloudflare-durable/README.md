@@ -146,13 +146,16 @@ coverage. The only cases left in Node are the two of `napFor` in
 `timer-delivery.test.ts`, which spy on `setTimeout`.
 
 The specs of the parts of the run object (its log, timers, outbox and alarm
-logic) run each case inside a Durable Object of its own, `StateHostObject`, with
-that object's own `ctx.storage` (`inObjectState` in `src/test/state-host.ts`).
-That relies on workerd running the object in the suite's isolate, so these
-specs run locally only.
+logic) and of the routines' tick run each case inside a Durable Object of its
+own, `StateHostObject`, with that object's own `ctx.storage` (`inObjectState` in
+`src/test/state-host.ts`). The case's body is handed to that object in the
+suite's isolate, which only works locally, so these specs run locally only.
 
-The contract specs run on a real Cloudflare account too, where every Durable Object has an
-isolate of its own. So the test objects (`TestRunObject`, `TestRoutinesObject`,
+Five specs also run on a real Cloudflare account, through `pnpm test:live`
+(`packages/testing/cloudflare-live/live/adapters.live.test.ts`): `live-alarm`,
+`coordination`, `run-store`, `run-watch` and `scheduler`. Every other spec runs
+locally only. On the account every Durable
+Object has an isolate of its own. So the test objects (`TestRunObject`, `TestRoutinesObject`,
 `TestCoordinationObject`, exported from `./testing`) keep nothing in the suite's isolate: the
 suite's `SuiteCase` gives each object its clock over RPC (`setCase`), which the object keeps in its
 own storage, and an RPC stub of the suite's listener and run list, which the object holds in memory.
