@@ -28,7 +28,7 @@ import type {
   NewAgentStep,
   TrashedAgent,
 } from "@halonicjs/studio-feature-agents/api";
-import { alreadyHandsWork, handOffPath } from "@halonicjs/studio-feature-agents/api";
+import { loopRefusal } from "@halonicjs/studio-feature-agents/api";
 import { filesOf, loadWorkspace, modelAliases, settingsPath } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
 import {
@@ -358,14 +358,8 @@ export class WorkspaceAgents implements AgentsHost {
 
   /** Throws `conflict` when one of the subagents `next` adds would hand work back to the agent. */
   async #refuseLoops(ref: AgentRef, now: readonly string[], next: readonly string[]) {
-    const team = await this.#team(ref.hubId);
-    for (const id of next.filter((each) => !now.includes(each))) {
-      const way = handOffPath(team, id, ref.id);
-      if (way !== undefined) {
-        const names = way.map((each) => team.find((member) => member.id === each)?.name ?? each);
-        throw new KindedError("conflict", `${alreadyHandsWork(names)}; that would be a loop.`);
-      }
-    }
+    const refusal = loopRefusal(await this.#team(ref.hubId), ref.id, now, next);
+    if (refusal !== undefined) throw new KindedError("conflict", refusal);
   }
 
   /** Whether the agent's saved file is live; throws `not_found` when the agent isn't there. */

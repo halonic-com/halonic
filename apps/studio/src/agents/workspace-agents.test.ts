@@ -311,6 +311,22 @@ verifies("studio.workspace-agents", () => {
       expect(changes).toHaveLength(1);
     });
 
+    it("adds the first agent step to a file without methods by making the map in place", async () => {
+      const { host, store } = setup();
+      const ref = { hubId: "acme", id: "writer" };
+      store["hubs/acme/agents/writer.agent.yaml"] = "id: writer\nname: Writer # who writes\n";
+      expect((await host.settings(ref)).agentSteps).toEqual([]);
+
+      expect(await host.addAgentStep(ref, { name: "Draft reply", instructions: "Write it." })).toBe(
+        "draft-reply",
+      );
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toContain("name: Writer # who writes");
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toContain("methods:");
+      expect((await host.settings(ref)).agentSteps).toMatchObject([
+        { id: "draft-reply", instructions: "Write it." },
+      ]);
+    });
+
     it("answers whether a harness can run: Halonic always, the others as the host finds, a failed check as failed", async () => {
       const { host } = setup();
       const ref = { hubId: "acme", id: "writer" };

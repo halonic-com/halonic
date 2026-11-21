@@ -163,10 +163,7 @@ export function SubagentsPage({ host, settings, openSubagent, announce }: Subage
           )}
           {looping.map(({ member, reason }) => (
             <li key={member.id} className="flex flex-wrap items-center gap-2">
-              <span
-                aria-disabled="true"
-                className="inline-flex h-7 items-center rounded-full border border-border px-3 text-body text-fg-subtle"
-              >
+              <span className="inline-flex h-7 items-center rounded-full border border-border px-3 text-body text-fg-subtle">
                 {member.name}
               </span>
               <span className="text-small text-fg-muted">{reason}</span>
