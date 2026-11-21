@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { KindedError } from "@halonicjs/std";
 import type { ViewRef } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useEffect, useRef } from "react";
@@ -140,6 +141,17 @@ verifies("inbox.setup-pane", () => {
     expect(root.textContent).toContain("The engine isn't answering. Showing what it said last.");
     expect(button(root, "Check again").getAttribute("aria-disabled")).toBe("true");
     expect(button(root, "Not now").getAttribute("aria-disabled")).toBeNull();
+  });
+
+  it("says to sign in again, not that the engine isn't answering, once the sign-in ended (HAL-13809)", async () => {
+    const loader = controlledView();
+    const { root, inbox, runs } = await openFirst({ view: loader.view });
+    await loader.finish();
+    runs.fail(new KindedError("unauthenticated", "Sign in again to list what waits for you."));
+    await act(() => inbox.refresh());
+    const pane = root.querySelector('[data-pane="item"]') as HTMLElement;
+    expect(pane.textContent).toContain("Sign in again to see where the setup stands.");
+    expect(pane.textContent).not.toContain("isn't answering");
   });
 
   it("shows the latest step, and stays open once the setup is done", async () => {
