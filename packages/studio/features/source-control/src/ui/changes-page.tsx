@@ -12,6 +12,8 @@ import {
   type ChangesRead,
   type DeveloperView,
   DeveloperViewService,
+  type ShareChoice,
+  ShareChoiceService,
   type Version,
 } from "../api.ts";
 import type { ChangeItem } from "../change-items.ts";
@@ -48,6 +50,7 @@ export function ChangesPage(props: PlaceViewProps) {
     <ChangesView
       list={context.services.get(ChangesListService)}
       developerView={context.services.find(DeveloperViewService)}
+      shareChoice={context.services.find(ShareChoiceService)}
       openItem={context.openItem}
       phonePages={phonePages}
     />
@@ -67,6 +70,8 @@ export interface ChangesViewProps {
    * the list with Back to Changes, and a version's details show under History.
    */
   readonly phonePages?: ChangesPhonePages | undefined;
+  /** Create version's remembered "Share with your team right away"; without it the box starts off. */
+  readonly shareChoice?: ShareChoice | undefined;
 }
 
 /**
@@ -83,7 +88,13 @@ export interface ChangesViewProps {
  *
  * Not here yet: the sharing strip's teammate-versions state.
  */
-export function ChangesView({ list, developerView, openItem, phonePages }: ChangesViewProps) {
+export function ChangesView({
+  list,
+  developerView,
+  openItem,
+  phonePages,
+  shareChoice,
+}: ChangesViewProps) {
   const phone = usePresentation() === "phone";
   const pages = phone ? phonePages : undefined;
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
@@ -138,6 +149,8 @@ export function ChangesView({ list, developerView, openItem, phonePages }: Chang
         list={list}
         state={state}
         opener="page"
+        canShare={state.hasRemote && !phone}
+        shareChoice={shareChoice}
         returnFocus={() => heading.current}
         onCreated={focusNewVersion}
       />

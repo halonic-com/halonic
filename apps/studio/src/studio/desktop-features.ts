@@ -41,7 +41,10 @@ import {
   HostSettingsService,
 } from "@halonicjs/studio-feature-settings/api";
 import { sourceControlFeature } from "@halonicjs/studio-feature-source-control";
-import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/api";
+import {
+  ChangesSourceService,
+  ShareChoiceService,
+} from "@halonicjs/studio-feature-source-control/api";
 import { workflowsFeature } from "@halonicjs/studio-feature-workflows";
 import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
 import { workspaceFeature } from "@halonicjs/studio-feature-workspace";
@@ -89,6 +92,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     InboxRequestsService,
     RunsSourceService,
     ChangesSourceService,
+    ShareChoiceService,
     AgentsHostService,
     WorkflowsHostService,
     RoutinesHostService,

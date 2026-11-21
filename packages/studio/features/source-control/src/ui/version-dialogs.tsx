@@ -1,3 +1,4 @@
+import type { ShareChoice } from "../api.ts";
 import type { ChangesList, ChangesListState, VersionOpener } from "../changes-list.ts";
 import { CreateVersionDialog } from "./create-version-dialog.tsx";
 import { IdentityDialog } from "./identity-dialog.tsx";
@@ -12,6 +13,13 @@ export interface VersionDialogsProps {
   readonly returnFocus: () => HTMLElement | null;
   /** Called once the version is made and the list has read again. */
   readonly onCreated: () => void;
+  /**
+   * Whether Create version offers "Share with your team right away"; off by default. Never on a
+   * phone: sharing is the computer's, as on the sharing strip (552 5.4).
+   */
+  readonly canShare?: boolean;
+  /** The remembered "Share with your team right away"; without it the box starts off. */
+  readonly shareChoice?: ShareChoice | undefined;
 }
 
 /**
@@ -26,6 +34,8 @@ export function VersionDialogs({
   opener,
   returnFocus,
   onCreated,
+  canShare = false,
+  shareChoice,
 }: VersionDialogsProps) {
   if (state.version?.opener !== opener) return null;
   // Another feature may open it before the first read: the offered name needs the files.
@@ -42,6 +52,8 @@ export function VersionDialogs({
       first={hasNoVersions(state.history)}
       returnFocus={returnFocus}
       onCreated={onCreated}
+      canShare={canShare}
+      shareChoice={shareChoice}
     />
   );
 }

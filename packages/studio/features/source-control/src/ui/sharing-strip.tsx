@@ -1,6 +1,7 @@
 import { DashedRingIcon, LineFrame, useToastStore } from "@halonicjs/studio-kit";
 import type { ChangesList } from "../changes-list.ts";
 import { phoneWords, shareWords } from "../changes-words.ts";
+import { shareAndSay } from "./share-toasts.ts";
 
 /**
  * The sharing strip's one state so far (checklist part 2, 2.3): a folder with no share address
@@ -42,21 +43,7 @@ export function SharingStrip({
 export function NotSharedStrip({ list }: { readonly list: ChangesList }) {
   const toasts = useToastStore();
   const { unshared, sharing } = list.state;
-  const share = async (): Promise<void> => {
-    const outcome = await list.share();
-    // A second press while a share runs is dropped without a word.
-    if (outcome === undefined) return;
-    if ("sent" in outcome) {
-      toasts?.show({ tone: "success", title: shareWords.shared(outcome.sent) });
-      return;
-    }
-    toasts?.show({
-      tone: "danger",
-      title: shareWords.shareFailed,
-      text: `${outcome.failed} ${shareWords.nothingSent}`,
-      action: { label: shareWords.tryAgain, onClick: () => void share() },
-    });
-  };
+  const share = (): Promise<void> => shareAndSay(list, toasts);
   if (sharing) {
     return (
       <LineFrame muted icon={<DashedRingIcon />}>

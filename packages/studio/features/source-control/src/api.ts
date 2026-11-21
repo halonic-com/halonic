@@ -283,3 +283,19 @@ export interface DeveloperView {
 export const DeveloperViewService: ServiceKey<DeveloperView> = serviceKey<DeveloperView>(
   "source-control.developer-view",
 );
+
+/**
+ * Whether Create version also shares the version, as the person last chose it in this workspace
+ * (checklist part 2, 2.6). It starts off, since a shared version can't be taken back.
+ */
+export interface ShareChoice {
+  /** Whether "Share with your team right away" is ticked now. */
+  readonly read: () => boolean;
+  /** Remembers the person's choice for the next Create version. */
+  readonly write: (shareRightAway: boolean) => void;
+}
+
+/** The workspace's remembered choice, when the app provides it; without it the box starts off. */
+export const ShareChoiceService: ServiceKey<ShareChoice> = serviceKey<ShareChoice>(
+  "source-control.share-choice",
+);

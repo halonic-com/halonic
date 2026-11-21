@@ -196,6 +196,13 @@ export const versionWords = {
   tryAgain: "Try again",
   nothingToCreate: "Nothing has changed since your last version.",
   created: (name: string) => `Created version "${name}"`,
+  /** The box under What's in it, shown only when a share address is set. */
+  shareRightAway: "Share with your team right away",
+  shareRightAwayCaption:
+    "Your team can get it straight away. Sharing can't be taken back, but you can share a newer version.",
+  createdAndShared: (name: string) => `Created and shared version "${name}"`,
+  /** After "Couldn't share" and the reason, when the version was created but not shared. */
+  savedHere: "Your version is saved here.",
   /** Under the list of the first version: Halonic made the file, not the person. */
   addedByHistory: "Halonic added this when you turned on history.",
   /** The name offered for the first version of a workspace. */
