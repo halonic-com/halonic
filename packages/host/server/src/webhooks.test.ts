@@ -397,6 +397,20 @@ verifies("server.webhooks", () => {
       expect(started).toHaveLength(1);
     });
 
+    it("answers 400 with validate's reason for an input that names no trigger value, without using the delivery id", async () => {
+      const run = { workflow: "handle-order", input: { day: "{{trigger.date}}" } };
+      const { send, started, coordination } = setup({ placed: routine({ run }) });
+      const response = await send();
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        code: "invalid_input",
+        message:
+          "{{trigger.date}} isn't a trigger value. Use {{trigger.at}}, {{trigger.lastRun}}, {{trigger.body}} or {{trigger.headers.<name>}}.",
+      });
+      expect(started).toEqual([]);
+      expect(coordination.leases.size).toBe(0);
+    });
+
     it("answers 500 for a routine that runs outside a hub and starts nothing", async () => {
       const workspaceLevel = { ...routine(), hub: null } as PlacedRoutine;
       const { send, started } = setup({ placed: workspaceLevel });

@@ -1,10 +1,4 @@
-import {
-  CronError,
-  nextRun,
-  type PlacedRoutine,
-  routineKey,
-  routineStart,
-} from "@halonicjs/routines";
+import { CronError, nextRun, type PlacedRoutine, routineKey } from "@halonicjs/routines";
 import type { ServerPorts } from "./api.ts";
 import type {
   EngineRoutines,
@@ -13,7 +7,7 @@ import type {
   RoutineRunBody,
 } from "./engine-api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
-import { startRoutineRun } from "./routine-run-start.ts";
+import { routineStartOrRefusal, startRoutineRun } from "./routine-run-start.ts";
 import { isJsonRequest } from "./run-routes.ts";
 import { refuseUnlessTrusted, startFailureResponse } from "./trust-routes.ts";
 
@@ -82,7 +76,10 @@ export function createRoutineRoutes(ports: RoutineRoutePorts): RoutineRoutes {
       }
       const at = clock.now();
       // A manual start has no earlier run to name, so `{{trigger.lastRun}}` is null.
-      const start = routineStart(placed, { at, lastRun: null });
+      const start = routineStartOrRefusal(placed, { at, lastRun: null });
+      if (start instanceof Response) {
+        return start;
+      }
       // A routine at the workspace root that names no hub has nowhere to run, as if its hub were gone.
       if (start.hub === null) {
         return errorResponse(serverErrors.hubNotFound);
