@@ -3,7 +3,6 @@
 - Task: HAL-14813
 - Approval: asked for by Liam in his review of #4236 on HAL-14581; decided by the team on HAL-14813 (HAL-2282: it builds on the untrusted line the team decided on HAL-13973 and adds no new words)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DWxn8G1S8TFPaHSPhxqFuVy20PAA16T5Z5l8AIEPDOUjcQ5MYaFzNvRmXhV1iEvTeDFzUYzF+ze7TOkhjiy5CQ==
 
 ## What changes
 
