@@ -277,7 +277,7 @@ overrides:
   '@anthropic-ai/sandbox-runtime>zod': 4.6.7
 
 patchedDependencies:
-  '@anthropic-ai/sandbox-runtime@0.0.82': f644cdac2fe8312bef2173b99fdebcc0c7fe31049c8d6e58c13616e7ea83e535
+  '@anthropic-ai/sandbox-runtime@0.0.82': dd29d5e45f64f3e38a0efbbbf315e1151cac75153022bdc320d9a3874cce4bff
 
 importers:
 
@@ -1758,7 +1758,7 @@ importers:
     dependencies:
       '@anthropic-ai/sandbox-runtime':
         specifier: 'catalog:'
-        version: 0.0.82(patch_hash=f644cdac2fe8312bef2173b99fdebcc0c7fe31049c8d6e58c13616e7ea83e535)
+        version: 0.0.82(patch_hash=dd29d5e45f64f3e38a0efbbbf315e1151cac75153022bdc320d9a3874cce4bff)
       '@halonicjs/adapter-fs-node':
         specifier: workspace:*
         version: link:../fs-node
@@ -6877,7 +6877,7 @@ ignoredOptionalDependencies:
 
 snapshots:
 
-  '@anthropic-ai/sandbox-runtime@0.0.82(patch_hash=f644cdac2fe8312bef2173b99fdebcc0c7fe31049c8d6e58c13616e7ea83e535)':
+  '@anthropic-ai/sandbox-runtime@0.0.82(patch_hash=dd29d5e45f64f3e38a0efbbbf315e1151cac75153022bdc320d9a3874cce4bff)':
     dependencies:
       '@pondwader/socks5-server': 1.0.10
       commander: 12.1.0

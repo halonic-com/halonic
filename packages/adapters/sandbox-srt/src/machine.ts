@@ -164,7 +164,7 @@ async function succeeds(file: string, args: string[]): Promise<boolean> {
  */
 function failure(file: string, args: string[]): Promise<string | null> {
   return new Promise((resolve) => {
-    execFile(file, args, { timeout: 5000 }, (error, _stdout, stderr) => {
+    execFile(file, args, { timeout: 5000, windowsHide: true }, (error, _stdout, stderr) => {
       if (error === null) resolve(null);
       else resolve(firstLine(String(stderr ?? "")) ?? firstLine(error.message) ?? "it failed");
     });
