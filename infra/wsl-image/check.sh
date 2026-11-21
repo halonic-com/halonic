@@ -147,7 +147,7 @@ cmp -s "$packed/a/halonic-runtime.tar.gz" "$packed/b/halonic-runtime.tar.gz" || 
   "$(printf '%s\n' 'drwxr-xr-x 0/0 bin/' '-rwxr-xr-x 0/0 bin/halonic-agent-host')" ] ||
   fail "the runtime archive holds other files, owners or modes"
 code=0; "$(dirname "$0")/runtime-archive.sh" "$packed/host" ../x "$packed/c" 2>/dev/null || code=$?
-[ "$code" -eq 1 ] && [ ! -e "$packed/c" ] || fail "runtime-archive.sh took a version the updater refuses"
+if [ "$code" -ne 1 ] || [ -e "$packed/c" ]; then fail "runtime-archive.sh took a version the updater refuses"; fi
 sum="$(sed -n 's/.*"sha256":"\([0-9a-f]*\)".*/\1/p' "$packed/a/halonic-runtime.json")"
 [ "$sum" = "$(sha256sum "$packed/a/halonic-runtime.tar.gz" | cut -d' ' -f1)" ] || fail "halonic-runtime.json has the wrong SHA-256"
 chroot "$root" "$updater" install 1.4.0+0123abcd "$sum" < "$packed/a/halonic-runtime.tar.gz" >/dev/null

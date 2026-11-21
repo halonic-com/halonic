@@ -13,7 +13,7 @@ set -euo pipefail
 fail() { echo "runtime-archive: $*" >&2; exit 1; }
 [ $# -eq 3 ] || fail "usage: runtime-archive.sh <halonic-agent-host> <version> <out-dir>"
 exe="$1" version="$2" out="$3"
-[ -f "$exe" ] && [ ! -L "$exe" ] || fail "not a file: $exe"
+if [ ! -f "$exe" ] || [ -L "$exe" ]; then fail "not a file: $exe"; fi
 # The updater's rule for a version (valid_version in files/halonic-runtime).
 case "$version" in
   "" | current | previous | .* | *[!0-9A-Za-z.+_-]*) fail "not a version: $version" ;;
