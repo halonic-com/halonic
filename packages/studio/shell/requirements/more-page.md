@@ -4,13 +4,13 @@
 - Since: 0.1.0
 - Source: HAL-1290 (T2, PR 14c); component specs 15.2 "The More page" (HAL-175); phone layout 2 (HAL-330); visual review kit T2-F11 (HAL-1115); HAL-12962
 
-Where the Studio shows the phone layout and the app has a workspace picker, the More page shall show the workspace switcher as its first row, a button named with the workspace's name followed by "Change workspace", and shall pass a tap on it on. A folder too long for the row shall be cut in the middle as in the sidebar's switcher, so its end stays. Where the app has no workspace picker, the page shall show no switcher row. Where a header badge is given, the page shall show it on its own line under the switcher row. The page shall then list the places that live under More, Agents, Workflows, Routines, Library and Changes, in that order and only where a feature added them, each with its icon and a chevron, and a place with a count shall show the count in place of the chevron. When a listed place is tapped, the shell shall pass that place on. The page shall end with the line "Editing workflows is easier on a computer.", or, in the desktop app, "Editing workflows is easier in a wider window.", and shall have an `h1` "More" for screen readers.
+Where the Studio shows the phone layout and the app has a workspace picker, the More page shall show the workspace switcher as its first row, a button named with the workspace's name followed by "Change workspace" and described by its whole folder, and shall pass a tap on it on. A folder too long for the row shall be cut in the middle as in the sidebar's switcher, so its end stays. Where the app has no workspace picker, the page shall show no switcher row. Where a header badge is given, the page shall show it on its own line under the switcher row. The page shall then list the places that live under More, Agents, Workflows, Routines, Library and Changes, in that order and only where a feature added them, each with its icon and a chevron, and a place with a count shall show the count in place of the chevron. When a listed place is tapped, the shell shall pass that place on. The page shall end with the line "Editing workflows is easier on a computer.", or, in the desktop app, "Editing workflows is easier in a wider window.", and shall have an `h1` "More" for screen readers.
 
 ## Examples
 
 - Given the workspace "Acme" in "~/Work/acme",
   when the More page renders,
-  then its first control is a button named "Workspace: Acme. Change workspace" showing "Acme" over "~/Work/acme".
+  then its first control is a button named "Workspace: Acme. Change workspace", described by "~/Work/acme", showing "Acme" over "~/Work/acme".
 - Given the places Home, Inbox, Workflows, Runs, Agents and Changes added,
   when the More page renders,
   then it lists Agents, Workflows and Changes, in that order.

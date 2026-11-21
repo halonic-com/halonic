@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-1291 (T3); microcopy 4.1 "The workspace menu" (revision 27, g5-frames T3-F26); component specs 24.4 (the workspace switcher, "Group labels")
 
-The kit's `Menu` shall take a heading entry, `{ heading }`, that names the items under it up to the next divider or heading. The kit shall draw the heading in the caption-caps label style (`text-label`, uppercase, `fg-subtle`) and shall put it and its items in a `group` named by the heading. The heading shall not be an item: it shall not be focusable, and the arrow keys, Home, End and type-to-find shall pass it by. A heading with no items under it shall not be drawn. A menu item shall take an optional `detail`, a second line under its label in `text-caption` `fg-subtle`, one line ending in "…", which describes the item (`aria-describedby`) while the item's name stays its label.
+The kit's `Menu` shall take a heading entry, `{ heading }`, that names the items under it up to the next divider or heading. The kit shall draw the heading in the caption-caps label style (`text-label`, uppercase, `fg-subtle`) and shall put it and its items in a `group` named by the heading. The heading shall not be an item: it shall not be focusable, and the arrow keys, Home, End and type-to-find shall pass it by. A heading with no items under it shall not be drawn. A menu item shall take an optional `detail`, a second line under its label in `text-caption` `fg-subtle`, one line ending in "…" or, with `detailCut: "middle"`, cut in the middle so its end stays, which describes the item (`aria-describedby`) while the item's name stays its label.
 
 ## Examples
 
@@ -23,3 +23,6 @@ The kit's `Menu` shall take a heading entry, `{ heading }`, that names the items
 - Given a Menu with the heading Recent followed straight by a divider and Open a folder…,
   when it renders,
   then there is no heading and no group.
+- Given the item Q3 with the detail "/work/projects/Customer Support/Halonic Workspaces/Q3 Renewals" and `detailCut: "middle"`,
+  when it renders,
+  then the detail's start is cut with "…", its end "/Q3 Renewals" stays, and the item is described by the whole folder.

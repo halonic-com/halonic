@@ -1,6 +1,5 @@
-import { ChevronDownIcon, Menu, type MenuEntry, Spinner } from "@halonicjs/studio-kit";
-import type { MouseEvent } from "react";
-import { MiddleCut } from "../cut-text/middle-cut.tsx";
+import { ChevronDownIcon, Menu, type MenuEntry, MiddleCut, Spinner } from "@halonicjs/studio-kit";
+import { type MouseEvent, useId } from "react";
 
 /** The open workspace, as its switcher shows it. */
 export interface SwitcherWorkspace {
@@ -25,14 +24,15 @@ export interface WorkspaceSwitcherProps {
 /**
  * The sidebar's first block (component specs 24.4): the workspace's letter mark, its name over its
  * folder, each one line, the name ending in "…" and the folder cut in the middle so its end stays
- * (`…\Documents\Acme sample`), and a chevron. It is one button, named "Workspace: Acme", that
- * opens the workspace menu. While {@link WorkspaceSwitcherProps.busy} it keeps focus and
+ * (`…\Documents\Acme sample`), and a chevron. It is one button, named "Workspace: Acme" and
+ * described by its whole folder, that opens the workspace menu. While {@link WorkspaceSwitcherProps.busy} it keeps focus and
  * ignores presses, as a busy kit `Button` does.
  *
  * @example
  * <WorkspaceSwitcher workspace={{ name: "Acme", folder: "~/Work/acme" }} menu={workspaceMenu} />
  */
 export function WorkspaceSwitcher({ workspace, menu, busy = false }: WorkspaceSwitcherProps) {
+  const folderId = useId();
   const ignoreWhileBusy = (event: MouseEvent<HTMLButtonElement>) => {
     if (busy) {
       // Also stops the native popover target from opening the menu.
@@ -47,6 +47,7 @@ export function WorkspaceSwitcher({ workspace, menu, busy = false }: WorkspaceSw
           {...props}
           type="button"
           aria-label={`Workspace: ${workspace.name}`}
+          aria-describedby={folderId}
           aria-busy={busy || undefined}
           className={switcherClasses}
           onClick={ignoreWhileBusy}
@@ -59,7 +60,7 @@ export function WorkspaceSwitcher({ workspace, menu, busy = false }: WorkspaceSw
           </span>
           <span className="flex min-w-0 flex-1 flex-col text-start">
             <span className="truncate text-body-strong text-fg">{workspace.name}</span>
-            <MiddleCut text={workspace.folder} />
+            <MiddleCut id={folderId} text={workspace.folder} />
           </span>
           <span aria-hidden="true" className="size-icon-sm shrink-0 text-fg-subtle *:size-full">
             {busy ? <Spinner /> : <ChevronDownIcon />}

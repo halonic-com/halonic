@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
+import { MiddleCut, middleCutAt } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { MiddleCut, middleCutAt } from "./middle-cut.tsx";
 
 afterEach(unmountAll);
 
@@ -38,6 +38,16 @@ verifies("shell.welcome-recent", () => {
   it("keeps a short folder whole in its end", () => {
     expect(middleCutAt("~/Work/acme")).toBe(0);
     expect(middleCutAt("~/Documents/Acme Support")).toBe(0);
+  });
+
+  it("leaves a cut start 2em, its first letter and a whole …, and a whole folder no start", () => {
+    const cut = render(
+      <MiddleCut text="/work/projects/customer-support-automation-for-the-benelux-region" />,
+    );
+    expect(cut.querySelector(".shrink-0")?.className).toContain("max-w-[calc(100%-2em)]");
+    const whole = render(<MiddleCut text="~/Work/acme" />);
+    expect(whole.querySelector(".truncate")).toBeNull();
+    expect(whole.firstElementChild?.children).toHaveLength(1);
   });
 
   it("cuts mid-name when there is no separator to cut at", () => {

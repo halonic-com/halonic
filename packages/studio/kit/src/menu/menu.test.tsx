@@ -93,7 +93,9 @@ verifies("kit.menu", () => {
     expect(trigger.getAttribute("popovertarget")).toBe(menu.id);
     expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
-    expect(menu.className).toContain("min-w-45 overflow-y-auto rounded-md");
+    expect(menu.className).toContain(
+      "min-w-45 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-md",
+    );
     expect(menu.className).toContain("bg-surface-raised text-fg shadow-2");
     expect(menu.className).toContain("starting:opacity-0");
     expect(labels(items)).toEqual(["Open", "Rename…", "Copy path", "Run now", "Delete agent"]);

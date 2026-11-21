@@ -4,10 +4,12 @@ import { isMenuItem, type MenuEntry, type MenuItem } from "./menu.tsx";
 import { findIndex, isTypedLetter, nextIndex, TYPE_TO_FIND_MS } from "./menu-keys.ts";
 import { MenuRow } from "./menu-row.tsx";
 
-// The menu itself takes focus when the mouse opens it, without a ring: no item is active yet.
-// Exported for the states page's static copy.
+// The menu itself takes focus when the mouse opens it, without a ring: no item is active yet. It
+// is never wider than the window less its 8px edge gap on each side (`EDGE_GAP` in
+// popover/place-popover.ts: change both together), so a long item wraps or cuts rather than
+// pushing its key and check off the screen. Exported for the states page's static copy.
 export const menuClasses = [
-  "m-0 inset-auto outline-none min-w-45 overflow-y-auto rounded-md border border-transparent p-1",
+  "m-0 inset-auto outline-none min-w-45 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-md border border-transparent p-1",
   "bg-surface-raised text-fg shadow-2",
   "transition-opacity duration-(--duration-fast) ease-enter starting:opacity-0",
 ].join(" ");
