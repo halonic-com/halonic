@@ -20,6 +20,7 @@ import type { PairAdvert } from "./pair-advert.ts";
 import type { PairedPhones } from "./paired-phones.ts";
 import type { PairingDesk } from "./pairing-desk.ts";
 import type { DeskEndReason, OpenPairing, PairingWatcher } from "./pairing-types.ts";
+import { RemoteRefusal } from "./remote-refusal.ts";
 import type { RemoteSettings } from "./remote-settings.ts";
 import type { RemoteTime } from "./remote-time.ts";
 
@@ -200,7 +201,7 @@ export class HostRemoteControl implements RemoteControl {
     this.#closeCode(pairing);
     const code: ShownCode = { desk: undefined, closedByHost: false };
     const desk = this.#options.desk.open(this.#watcherFor(pairing, code));
-    if (desk === undefined) throw new Error("A phone's Allow is still being saved.");
+    if (desk === undefined) throw new RemoteRefusal("A phone's Allow is still being saved.");
     code.desk = desk;
     pairing.code = code;
     const { hostName } = this.#options;
@@ -243,7 +244,7 @@ export class HostRemoteControl implements RemoteControl {
   async #decide(session: HostPairingSession, allow: boolean): Promise<void> {
     const pairing = this.#pairingOf(session);
     const desk = pairing.code?.desk;
-    if (desk === undefined) throw new Error("No phone waits for an answer.");
+    if (desk === undefined) throw new RemoteRefusal("No phone waits for an answer.");
     if (!allow) {
       desk.deny();
       return;
@@ -320,12 +321,12 @@ export class HostRemoteControl implements RemoteControl {
 
   #pairingOf(session: HostPairingSession): Pairing {
     const pairing = this.#pairing;
-    if (pairing?.session !== session) throw new Error("This pairing has ended.");
+    if (pairing?.session !== session) throw new RemoteRefusal("This pairing has ended.");
     return pairing;
   }
 
   #requireAvailable(): void {
-    if (!this.#options.available) throw new Error("This host doesn't offer remote.");
+    if (!this.#options.available) throw new RemoteRefusal("This host doesn't offer remote.");
   }
 
   #snapshot(): RemoteState {

@@ -34,6 +34,9 @@ import { modelRoutes } from "./model/model-routes.ts";
 import { hostPluginRoutes, hostPlugins } from "./plugin/host-plugins.ts";
 import { optionalProfileOf, profileGoogleSetup, profileTrustStore } from "./profile-folder.ts";
 import { proxySetting } from "./proxy-setting.ts";
+import { RemoteNotOffered } from "./remote/remote-not-offered.ts";
+import { remoteRoutes } from "./remote/remote-routes.ts";
+import { systemTime } from "./remote/remote-time.ts";
 import { hostSandboxChoice } from "./sandbox/choice-host.ts";
 import { sandboxChoiceRoutes } from "./sandbox/choice-routes.ts";
 import { removeThroughShellRoutes } from "./sandbox/remove-through-shell-routes.ts";
@@ -437,6 +440,8 @@ function hostServices(
     ...hostPluginRoutes(plugins, logToError),
     ...signIns.routes,
     signInRoute({ harnesses, openTerminal: (command) => openTerminal(command) }),
+    // Remote isn't offered until the gateway takes pairings (B3) and passes its attacks (B8).
+    ...remoteRoutes(new RemoteNotOffered(systemTime)),
   ];
   const stop = async () => {
     // Close the gateway first, so nothing remote reaches a run that is being stopped.

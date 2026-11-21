@@ -116,6 +116,10 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `POST /v1/harnesses/runs/start` | an NDJSON stream: the run's id, then its events (below) |
 | `POST /v1/harnesses/runs/send` with `{"run","input"}` | `{"sent":true}`, or `409 send_failed` when the run refuses the input |
 | `POST /v1/harnesses/runs/cancel` with `{"run"}` | `{"cancelled":true}` |
+| `GET /v1/remote/state` | an NDJSON stream of the `RemoteState`, the current one first, then each change. Until the gateway takes pairings (B3, B8) every launch answers `"available":false` and never changes it |
+| `POST /v1/remote/on` with `{"on"}`, `…/allow-risky` with `{"allow"}`, `…/revoke` with `{"phone"}`, `…/revoke-all` with `{}` | `{"ok":true}`; `409 remote_refused` when remote's rules refuse the step now (remote isn't offered), `500 remote_failed` when it fails |
+| `POST /v1/remote/pairing` with `{}` | an NDJSON stream: `{"type":"opened","pairing"}`, then the pairing's `PairingEvent`s until `paired` or `ended`. Leaving the stream closes the pairing, so closing the dialog ends its code; `409 remote_refused` while remote isn't offered |
+| `POST /v1/remote/pairing/answer` with `{"pairing","allow"}`, `…/new-code` and `…/close` with `{"pairing"}` | `{"ok":true}`; `404 unknown_pairing` once the pairing's stream has ended, `409 remote_refused` when no phone waits for Allow |
 
 ## Serving over standard input and output
 
