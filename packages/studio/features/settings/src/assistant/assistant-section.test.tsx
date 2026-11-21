@@ -43,7 +43,7 @@ async function typeInTextArea(area: HTMLTextAreaElement, typed: string) {
 }
 
 verifies("settings.ai-agent-section", () => {
-  it("opens Not set up, with the turn limit empty and connector tools on", async () => {
+  it("opens Not set up, with the model call limit empty and connector tools on", async () => {
     const { view, store } = await setup();
     expect(view.textContent).toContain("Assistant model");
     expect(view.textContent).toContain("Answers");
@@ -110,7 +110,7 @@ verifies("settings.ai-agent-section", () => {
     expect(view.textContent).not.toContain("Enter a model name");
   });
 
-  it("saves a turn limit, refuses a wrong one, and clears back to the default", async () => {
+  it("saves a model call limit, refuses a wrong one, and clears back to the default", async () => {
     const { view, settings } = await setup();
     await typeAndLeave(turnLimitBox(view), "70");
     expect(view.textContent).toContain("Enter a whole number from 1 to 64.");

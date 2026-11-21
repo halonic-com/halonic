@@ -15,7 +15,7 @@ async function settingsWith(saved: Record<string, unknown> = {}): Promise<HostSe
 }
 
 verifies("settings.ai-agent-prefs", () => {
-  it("starts Not set up, turn limit 16 and connector tools on when nothing is saved", async () => {
+  it("starts Not set up, model call limit 16 and connector tools on when nothing is saved", async () => {
     const settings = await settingsWith();
     expect(settings.get(assistantPrefs.provider)).toBe("not-set-up");
     expect(settings.get(assistantPrefs.model)).toBe("");
@@ -42,12 +42,17 @@ verifies("settings.ai-agent-prefs", () => {
     expect(settings.get(assistantPrefs.connectorTools)).toBe(true);
   });
 
-  it.each([1, 16, 64])("accepts the turn limit %i and refuses 0, 65 and 2.5", async (limit) => {
-    const settings = await settingsWith();
-    await settings.set(assistantPrefs.turnLimit, limit);
-    expect(settings.get(assistantPrefs.turnLimit)).toBe(limit);
-    for (const bad of [0, 65, 2.5]) {
-      await expect(settings.set(assistantPrefs.turnLimit, bad)).rejects.toBeInstanceOf(RangeError);
-    }
-  });
+  it.each([1, 16, 64])(
+    "accepts the model call limit %i and refuses 0, 65 and 2.5",
+    async (limit) => {
+      const settings = await settingsWith();
+      await settings.set(assistantPrefs.turnLimit, limit);
+      expect(settings.get(assistantPrefs.turnLimit)).toBe(limit);
+      for (const bad of [0, 65, 2.5]) {
+        await expect(settings.set(assistantPrefs.turnLimit, bad)).rejects.toBeInstanceOf(
+          RangeError,
+        );
+      }
+    },
+  );
 });

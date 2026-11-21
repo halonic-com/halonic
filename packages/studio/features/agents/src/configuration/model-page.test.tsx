@@ -145,7 +145,7 @@ verifies("agents.configuration.model", () => {
     expect(page.textContent).not.toContain("isn't a model alias");
   });
 
-  it("saves a turn limit after a pause, and 6 when it is emptied", async () => {
+  it("saves a model call limit after a pause, and 6 when it is emptied", async () => {
     const { agents, limit } = await openModel();
     await typeInto(limit, "25");
     await act(async () => vi.advanceTimersByTime(SAVE_PAUSE_MS));
@@ -171,7 +171,7 @@ verifies("agents.configuration.model", () => {
     expect((limit.parentElement as HTMLElement).className.split(" ")).not.toContain("w-full");
   });
 
-  it("shows a turn limit's mistake after the pause or when the field is left, not on every key", async () => {
+  it("shows a model call limit's mistake after the pause or when the field is left, not on every key", async () => {
     const { page, limit } = await openModel();
     await typeInto(limit, "2.");
     expect(page.textContent).not.toContain("Enter a whole number from 1 to 200.");
@@ -186,7 +186,7 @@ verifies("agents.configuration.model", () => {
     expect(page.textContent).toContain("Enter a whole number from 1 to 200.");
   });
 
-  it("reads a turn limit's mistake once when it shows after the pause, and not again on leaving", async () => {
+  it("reads a model call limit's mistake once when it shows after the pause, and not again on leaving", async () => {
     const announced: string[] = [];
     const { limit } = await openModel(undefined, undefined, undefined, { announced });
     limit.focus();
@@ -201,7 +201,7 @@ verifies("agents.configuration.model", () => {
     expect(announced).toHaveLength(1);
   });
 
-  it("counts a turn limit with a mistake as a field not saved, until it is fixed", async () => {
+  it("counts a model call limit with a mistake as a field not saved, until it is fixed", async () => {
     const { counts, saving } = fieldCounts();
     const { limit } = await openModel(undefined, undefined, undefined, { saving });
     await typeInto(limit, "500");
@@ -212,7 +212,7 @@ verifies("agents.configuration.model", () => {
     expect(counts.at(-1)).toBe(0);
   });
 
-  it("counts a turn limit whose save failed as a field not saved, and 0 when the page goes", async () => {
+  it("counts a model call limit whose save failed as a field not saved, and 0 when the page goes", async () => {
     const { counts, saving } = fieldCounts();
     const { page, limit } = await openModel(undefined, undefined, undefined, {
       saving,
@@ -231,7 +231,7 @@ verifies("agents.configuration.model", () => {
     expect(counts.at(-1)).toBe(0);
   });
 
-  it("stops counting a turn limit whose save failed once it says what the file holds again", async () => {
+  it("stops counting a model call limit whose save failed once it says what the file holds again", async () => {
     const { counts, saving } = fieldCounts();
     const { limit } = await openModel(undefined, undefined, undefined, {
       saving,
@@ -246,7 +246,7 @@ verifies("agents.configuration.model", () => {
     expect(counts.at(-1)).toBe(0);
   });
 
-  it("doesn't save a turn limit outside 1 to 200, and says why", async () => {
+  it("doesn't save a model call limit outside 1 to 200, and says why", async () => {
     const { page, agents, limit } = await openModel();
     for (const bad of ["500", "0", "2.5", "many"]) {
       await typeInto(limit, bad);
