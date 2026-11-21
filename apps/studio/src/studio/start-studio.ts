@@ -58,6 +58,7 @@ import {
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
 import { showEngineLockLost } from "../engine/engine-lock-lost-toast.ts";
+import { openShellEngine } from "../engine/remote-engine.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import { desktopFeatures } from "./desktop-features.ts";
@@ -342,6 +343,7 @@ export async function openFolder(
       platform: device.platform ?? "linux",
       name,
       scope,
+      remoteEngine: await openShellEngine(ipc),
       // Run waits through the workspace's own save, which is made below, once the workspace is.
       settle: async () => {
         if (!((await saving?.saveNow()) ?? true))

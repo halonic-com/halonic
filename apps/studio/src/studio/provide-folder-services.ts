@@ -73,6 +73,7 @@ import { versionHistoryOf } from "../changes/version-history.ts";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
 import { answerChatOn, EngineService, engineServiceKey } from "../engine/engine-service.ts";
+import type { RemoteEngine } from "../engine/remote-engine.ts";
 import { openStudioHarnessHost } from "../engine/studio-harness-host.ts";
 import { WorkspaceFilesHost } from "../files/workspace-files-host.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
@@ -123,6 +124,11 @@ export interface FolderServiceParts {
   readonly settle?: () => Promise<void>;
   /** Hears when another process took the workspace's engine lock over (`studio.engine-lock-lost-toast`). */
   readonly onEngineLockLost?: () => void;
+  /**
+   * The engine that runs the workspace in the background, when the shell reported one as the
+   * folder opened. Then the page opens no engine of its own: no engine lock, no routine timers.
+   */
+  readonly remoteEngine?: RemoteEngine | undefined;
 }
 
 /** Gives the folder in `location` the services its features read through the shell. */
@@ -140,6 +146,7 @@ export function provideFolderServices(
     scope,
     settle,
     onEngineLockLost,
+    remoteEngine,
   }: FolderServiceParts,
 ): void {
   services.provide(
@@ -170,7 +177,7 @@ export function provideFolderServices(
   provideModelChoice(services, { ipc, trust, keys, settle });
   services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
   services.provide(ProviderCheckService, new WorkspaceProviderCheck(new ShellHttpClient(ipc)));
-  provideWorkspaceRuns(services, { ipc, files, window }, location);
+  provideWorkspaceRuns(services, { ipc, files, window, remoteEngine }, location);
   // One service for both ends: the run page saves a person's trust, and the engine checks it.
   const instructionTrust = new InstructionTrustService({
     store: new TauriInstructionTrustStore(ipc),
@@ -195,62 +202,65 @@ export function provideFolderServices(
   services.provide(VersionHistoryHostService, versionHistoryOf(changes));
   services.provide(ShareChoiceService, shareChoiceMemory(storageOf(window), location));
   const transport = tauriAgentHostTransport(window);
-  const engine = services.provide(
-    engineServiceKey,
-    new EngineService({
-      ipc,
-      lock: new TauriEngineLock(files, location),
-      location,
-      name,
-      definitions: new TauriDefinitionStore(files, location),
-      secrets: shellKeychain(ipc),
-      keyOrigins: shellKeyOrigins(ipc),
-      http: new ShellHttpClient(ipc),
-      clock: systemClock,
-      isTrusted: async (workspace) => (await trust.checkLoaded(workspace)).status === "trusted",
-      mayStart: (workspace) => trust.mayStart(workspace),
-      // Removing the trust here or in Settings › Trusted sources checks it again.
-      onTrustChange: (listener) => trust.subscribe(listener),
-      ids: randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), systemClock),
-      setTimer: (callback, delayMs) => {
-        const timer = setTimeout(callback, delayMs);
-        return () => clearTimeout(timer);
-      },
-      newToken: () => crypto.randomUUID(),
-      reportError: (error) => console.error("The engine", error),
-      ...(onEngineLockLost === undefined ? {} : { onLockLost: onEngineLockLost }),
-      ...(transport === undefined
-        ? {}
-        : {
-            openHarnessHost: (decisions) =>
-              openStudioHarnessHost({
-                transport,
-                location,
-                definitions: new TauriDefinitionStore(files, location),
-                digest: webCryptoDigest,
-                clock: systemClock,
-                instructionTrust,
-                ...decisions,
-                reportError: (error) => console.error("The harness host", error),
-              }),
-            openRunConnectors: () =>
-              openStudioRunConnectors({
-                ipc,
-                files,
-                location,
-                transport,
-                trust,
-                tokens: services.get(tokenStoreKey),
-              }),
-          }),
-    }),
-  );
+  const engine =
+    remoteEngine ??
+    services.provide(
+      engineServiceKey,
+      new EngineService({
+        ipc,
+        lock: new TauriEngineLock(files, location),
+        location,
+        name,
+        definitions: new TauriDefinitionStore(files, location),
+        secrets: shellKeychain(ipc),
+        keyOrigins: shellKeyOrigins(ipc),
+        http: new ShellHttpClient(ipc),
+        clock: systemClock,
+        isTrusted: async (workspace) => (await trust.checkLoaded(workspace)).status === "trusted",
+        mayStart: (workspace) => trust.mayStart(workspace),
+        // Removing the trust here or in Settings › Trusted sources checks it again.
+        onTrustChange: (listener) => trust.subscribe(listener),
+        ids: randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), systemClock),
+        setTimer: (callback, delayMs) => {
+          const timer = setTimeout(callback, delayMs);
+          return () => clearTimeout(timer);
+        },
+        newToken: () => crypto.randomUUID(),
+        reportError: (error) => console.error("The engine", error),
+        ...(onEngineLockLost === undefined ? {} : { onLockLost: onEngineLockLost }),
+        ...(transport === undefined
+          ? {}
+          : {
+              openHarnessHost: (decisions) =>
+                openStudioHarnessHost({
+                  transport,
+                  location,
+                  definitions: new TauriDefinitionStore(files, location),
+                  digest: webCryptoDigest,
+                  clock: systemClock,
+                  instructionTrust,
+                  ...decisions,
+                  reportError: (error) => console.error("The harness host", error),
+                }),
+              openRunConnectors: () =>
+                openStudioRunConnectors({
+                  ipc,
+                  files,
+                  location,
+                  transport,
+                  trust,
+                  tokens: services.get(tokenStoreKey),
+                }),
+            }),
+      }),
+    );
   services.provide(
     AgentsHostService,
     new WorkspaceAgents({
       files: services.get(workspaceFilesKey),
       onChange: (listener) => scope.events.on("files.changed", listener),
-      answerChat: answerChatOn(engine),
+      // The background engine has no chat route yet, so its window answers "not answering".
+      ...(engine instanceof EngineService ? { answerChat: answerChatOn(engine) } : {}),
       ...(transport === undefined
         ? {}
         : {
@@ -425,7 +435,17 @@ export function provideFolderServices(
  */
 function provideWorkspaceRuns(
   services: ServiceRegistry,
-  { ipc, files, window }: { ipc: TauriIpc; files: TauriFileShell; window: object },
+  {
+    ipc,
+    files,
+    window,
+    remoteEngine,
+  }: {
+    ipc: TauriIpc;
+    files: TauriFileShell;
+    window: object;
+    remoteEngine?: RemoteEngine | undefined;
+  },
   location: string,
 ): void {
   const runs = new WorkspaceRuns({
@@ -433,8 +453,9 @@ function provideWorkspaceRuns(
     definitions: new TauriDefinitionStore(files, location),
     folder: location,
     onFocus: (listener) => focusOf(window, listener),
-    // Looked up on the first answer: the engine is provided after the runs.
-    send: (...answer) => services.get(engineServiceKey).send(...answer),
+    // Looked up on the first answer: the page's engine is provided after the runs.
+    send: (...answer) => (remoteEngine ?? services.get(engineServiceKey)).send(...answer),
+    ...(remoteEngine === undefined ? {} : { waiting: () => remoteEngine.waiting() }),
   });
   services.provide(RunsSourceService, runs);
   services.provide(InboxRunsService, runs);

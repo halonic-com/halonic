@@ -56,6 +56,8 @@ export interface WorkspaceRunsOptions {
    * {@link WorkspaceRuns.send} fails as `AnswerElsewhere` with the CLI line to copy.
    */
   readonly send?: RunExecutor["send"];
+  /** The runs that wait now, from the engine that runs them; read from the run logs when absent. */
+  readonly waiting?: () => Promise<RunSummary[]>;
   /** The workspace folder's absolute path, which the commands to copy name (D1, HAL-12725). */
   readonly folder?: string;
   /** Defaults to `setInterval`. */
@@ -204,7 +206,7 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
   }
 
   waiting(): Promise<RunSummary[]> {
-    return this.#options.runs.list({ status: ["waiting"] });
+    return this.#options.waiting?.() ?? this.#options.runs.list({ status: ["waiting"] });
   }
 
   subscribe(listener: () => void): () => void {

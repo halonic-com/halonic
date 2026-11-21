@@ -14,6 +14,7 @@
   "dependencies": {
     "@halonicjs/adapter-agent-host-client": "workspace:*",
     "@halonicjs/adapter-coordination-node": "workspace:*",
+    "@halonicjs/adapter-executor-remote": "workspace:*",
     "@halonicjs/adapter-fs-tauri": "workspace:*",
     "@halonicjs/adapter-harness-claude-code": "workspace:*",
     "@halonicjs/adapter-harness-codex": "workspace:*",
