@@ -18,3 +18,5 @@ The CLI refuses in `openWorkspaceDir`, `halonic init` and `halonic extract` in t
 
 - profile.profile-outside-workspace
 - cli.profile-outside-workspace
+- apps/cli/src/profile-place.test.ts
+- packages/core/profile/src/golden/profile-places.json

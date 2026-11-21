@@ -52,19 +52,22 @@ verifies("cli.profile-outside-workspace", () => {
       expect(JSON.parse(io.stdout.join("\n")).error.code).toBe("profile-in-workspace");
     });
 
-    it.skipIf(process.platform === "win32")("is refused through a link to it", async () => {
-      const elsewhere = join(folder, "elsewhere");
-      mkdirSync(elsewhere);
-      symlinkSync(acme, join(elsewhere, "link"), "dir");
-      vi.stubEnv("HALONIC_HOME", join(elsewhere, "link", "profile"));
+    it.skipIf(process.platform === "win32")(
+      "[platform:win32] needs POSIX links: is refused through a link to it",
+      async () => {
+        const elsewhere = join(folder, "elsewhere");
+        mkdirSync(elsewhere);
+        symlinkSync(acme, join(elsewhere, "link"), "dir");
+        vi.stubEnv("HALONIC_HOME", join(elsewhere, "link", "profile"));
 
-      const { code } = await validateIn(acme);
+        const { code } = await validateIn(acme);
 
-      expect(code).toBe(exitCode.usage);
-    });
+        expect(code).toBe(exitCode.usage);
+      },
+    );
 
     it.runIf(process.platform === "linux")(
-      "names XDG_DATA_HOME when it moved the profile",
+      "[platform:win32] reads XDG_DATA_HOME only on Linux: names XDG_DATA_HOME when it moved the profile",
       async () => {
         vi.stubEnv("XDG_DATA_HOME", join(acme, ".data"));
 
