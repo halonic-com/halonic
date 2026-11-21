@@ -1,6 +1,6 @@
 import type { ShownRuns } from "@halonicjs/studio-feature-inbox/api";
 import type { RunRow, RunsSource } from "@halonicjs/studio-feature-runs/api";
-import { Button, CloseIcon } from "@halonicjs/studio-kit";
+import { Button, type ButtonUnavailable, CloseIcon } from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowRef, WorkflowsHost } from "../api.ts";
 import { RunCard } from "../runs/run-card.tsx";
@@ -78,6 +78,8 @@ interface RunDockProps {
   /** The workflow's errors, which the start card shows in place of **Start run**. */
   readonly problems: StartProblems;
   readonly notAnswering: string;
+  /** Run's `unavailable`, which the start card's **Start run** takes too while it is open. */
+  readonly startUnavailable: ButtonUnavailable | undefined;
   readonly shown: ReturnType<typeof useShownRun>;
   /** Where the run card notes its run, so the Inbox leaves it out of its news; see `ShownRuns`. */
   readonly shownRuns?: ShownRuns | undefined;
@@ -150,6 +152,7 @@ export function RunDock({
   workflowName,
   problems,
   notAnswering,
+  startUnavailable,
   shown,
   shownRuns,
   onDock,
@@ -195,6 +198,7 @@ export function RunDock({
         {...trustAsker(host)}
         notAnswering={notAnswering}
         problems={problems}
+        unavailable={startUnavailable}
         onStarted={started}
         onClose={onClose}
       />

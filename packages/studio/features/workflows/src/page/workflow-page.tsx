@@ -186,6 +186,8 @@ export function WorkflowScreen({
   useAnnounceDockedRun(strip, typeof dock === "object", announceState);
   const { startRun } = host;
   const gate = useRunGate(load, startRun !== undefined, sandboxStartCheck);
+  // Described by both first lines when both hold, the sandbox's Callout first as on the page.
+  const runUnavailable = unavailableFor(gate.unavailable, cantStart.unavailable);
   const saveAsTest = useSaveAsTest(host, { hubId, id }, (testName) => {
     testsMade.current += 1;
     setMadeTest({ name: testName, n: testsMade.current });
@@ -239,8 +241,7 @@ export function WorkflowScreen({
               ref={runButton}
               variant="primary"
               size="sm"
-              // Described by both first lines when both hold, the sandbox's Callout first as on the page.
-              unavailable={unavailableFor(gate.unavailable, cantStart.unavailable)}
+              unavailable={runUnavailable}
               onClick={() => {
                 setRowCard(undefined);
                 setDock("start");
@@ -347,6 +348,7 @@ export function WorkflowScreen({
           workflowName={name}
           problems={{ errors, onOpen: problemsAsk.open }}
           notAnswering={notAnswering}
+          startUnavailable={runUnavailable}
           shown={shown}
           shownRuns={shownRuns}
           onDock={setDock}
