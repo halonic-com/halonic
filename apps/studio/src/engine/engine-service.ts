@@ -52,9 +52,8 @@ import {
   noListedToolApproval,
 } from "@halonicjs/engine";
 import type { RunSummary, RunVersion } from "@halonicjs/events";
-import { isAgentRunsNotAvailable, type RunExecutor, type SendOptions } from "@halonicjs/ports";
+import type { RunExecutor, SendOptions } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
-import { agentCantRunWords } from "@halonicjs/studio-feature-routines/api";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import {
   filesOf,
@@ -68,8 +67,8 @@ import { answerRefusalOf, refuseConnectorApprove } from "./engine-refusals.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
 import {
   agentRefusalOf,
+  agentStartRefusalOf,
   type PageRuns,
-  WindowCantStart,
   workflowRefusalOf,
 } from "./page-refusal.ts";
 import type { EngineDecisions, StudioHarnessHost } from "./studio-harness-host.ts";
@@ -238,9 +237,7 @@ export class EngineService {
    * @param trigger the routine's key and the time the person asked for the run
    * @returns the new run's id
    * @throws WindowCantStart when the target is an agent, because agent runs aren't built yet
-   *   (`ports.agent-runs-not-available`): the routine's page says why in the New routine dialog's
-   *   words, not that the engine isn't answering (HAL-14647). Or what {@link EngineService.startRun}
-   *   throws
+   *   ({@link agentStartRefusalOf}), or what {@link EngineService.startRun} throws
    */
   async startRoutine(
     start: RoutineRunStart,
@@ -265,8 +262,7 @@ export class EngineService {
       const { id } = await executor.startAgent({ ...start.agent, trigger: runTrigger });
       return { id };
     } catch (error) {
-      if (!isAgentRunsNotAvailable(error)) throw error;
-      throw new WindowCantStart(agentCantRunWords.line);
+      throw agentStartRefusalOf(error);
     }
   }
 

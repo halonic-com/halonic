@@ -11,7 +11,9 @@ import {
   workflowAgentsOf,
 } from "@halonicjs/adapter-workspace-models";
 import type { Agent } from "@halonicjs/format";
+import { isAgentRunsNotAvailable } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
+import { agentCantRunWords } from "@halonicjs/studio-feature-routines/api";
 import { StartRefused } from "@halonicjs/studio-feature-workflows/api";
 import { definitionsOf, filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { harnessName } from "../studio/harness-name.ts";
@@ -75,6 +77,17 @@ export class WindowCantStart extends KindedError {
   constructor(reason: string, fix?: string) {
     super("unavailable", reason, fix === undefined ? {} : { fix });
   }
+}
+
+/**
+ * What a routine's Run now throws when its agent couldn't start: while agent runs aren't built
+ * (`ports.agent-runs-not-available`), the window's refusal in the New routine dialog's words, so
+ * the page doesn't say the engine isn't answering (HAL-14647); any other error as it is.
+ *
+ * @param error what the executor's `startAgent` threw
+ */
+export function agentStartRefusalOf(error: unknown): unknown {
+  return isAgentRunsNotAvailable(error) ? new WindowCantStart(agentCantRunWords.line) : error;
 }
 
 /**
