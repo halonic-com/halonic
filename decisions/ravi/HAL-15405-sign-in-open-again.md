@@ -2,6 +2,7 @@
 
 - Approval: HAL-15405, the team's words check C571 (HAL-15387, rows 36 and 38), decided by the team under HAL-2282
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:y4XsRINQclKggbGgTMpxmnjY6DM4yv61828pzhu9oPqKN6C1wj6FNvOgRKwoDOBPgeEpfv74oHu2npvxKExEAQ==
 - Task: HAL-15405, with HAL-15249 (Liam's review note on #4509)
 
 ## What changes
