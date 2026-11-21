@@ -86,7 +86,7 @@ verifies("studio.workspace-workflow-arrows", () => {
     ]);
   });
 
-  it("moves an arrow one place up or down, keeping the keys its file gives it", async () => {
+  it("moves an arrow one place up or down, keeping its keys", async () => {
     const { host, store, changes } = setup();
     store[path] = sortFile;
 
@@ -100,6 +100,28 @@ verifies("studio.workspace-workflow-arrows", () => {
     expect(sortArrows.map((arrow) => arrow.to)).toEqual(["approve", "draft"]);
     expect(changes).toHaveLength(2);
     expect(store[path]).not.toContain("event: done");
+  });
+
+  it("moves an arrow's comments with it and changes no other line", async () => {
+    const { host, store } = setup();
+    store[path] = sortFile.replace(
+      "      - to: draft\n  approve:",
+      "      - to: draft # Most replies.\n  approve:",
+    );
+
+    await host.changeArrows(reply, "sort", { kind: "move", index: 0, by: 1, to: "approve" });
+
+    expect(store[path]).toContain(
+      [
+        "    on:",
+        "      - to: draft # Most replies.",
+        "      # Refunds need a person.",
+        "      - to: approve",
+        "        when: { equals: ['{{context.category}}', refund] }",
+        "  approve:",
+      ].join("\n"),
+    );
+    expect(store[path]?.split("\n")).toHaveLength(sortFile.split("\n").length);
   });
 
   it("refuses a step or a target that isn't there, an end step and a move off the list, writing nothing", async () => {
