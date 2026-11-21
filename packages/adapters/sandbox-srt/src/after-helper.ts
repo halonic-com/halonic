@@ -5,7 +5,9 @@ import {
   helperFailure,
   type RemovalSteps,
 } from "./elevate-helper.ts";
+import { KeptGrants } from "./kept-grants.ts";
 import { systemRemovalSteps } from "./machine.ts";
+import { grantsKeptLine } from "./orphaned-grants.ts";
 import { promptCancelled, type SandboxRemoval, type SandboxSetup } from "./srt-sandbox.ts";
 
 /**
@@ -69,17 +71,28 @@ export async function removalBeforeHelper(
  * How a removal ended that Studio's shell ran through the signed helper, from
  * the helper's `exitCode`: done for 0, `cancelled` for the helper's cancelled
  * code, and `failed` with the helper's reason sentence and its code for any
- * other code, as {@link SrtSandbox.remove}'s do.
+ * other code, as {@link SrtSandbox.remove}'s do. A removal done on Windows by
+ * a process with administrator rights left the user's kept grants recorded,
+ * so it logs that, as {@link SrtSandbox.remove} does (HAL-7585). Never throws.
  */
-export function removalAfterHelper(exitCode: number): SandboxRemoval {
-  if (exitCode === 0) return { ok: true };
+export async function removalAfterHelper(
+  exitCode: number,
+  platform: NodeJS.Platform = process.platform,
+  steps: RemovalSteps & Pick<KeptGrants, "orphaned"> = {
+    ...systemRemovalSteps,
+    orphaned: () => new KeptGrants().orphaned(),
+  },
+  warn: (message: string) => void = (message) => void process.stderr.write(`${message}\n`),
+): Promise<SandboxRemoval> {
   if (exitCode === HELPER_CANCELLED) {
     return { ok: false, outcome: "cancelled", reason: promptCancelled };
   }
-  return {
-    ok: false,
-    outcome: "failed",
-    reason: helperFailure("remove", exitCode, ""),
-    code: exitCode,
-  };
+  if (exitCode !== 0) {
+    const reason = helperFailure("remove", exitCode, "");
+    return { ok: false, outcome: "failed", reason, code: exitCode };
+  }
+  if (platform === "win32" && (await steps.elevated().catch(() => true))) {
+    warn(await grantsKeptLine(steps));
+  }
+  return { ok: true };
 }

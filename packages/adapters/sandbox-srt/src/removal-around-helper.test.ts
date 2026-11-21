@@ -3,12 +3,14 @@ import { describe, expect, it } from "vitest";
 import { removalAfterHelper, removalBeforeHelper } from "./after-helper.ts";
 import type { RemovalSteps } from "./elevate-helper.ts";
 import { HELPER_CANCELLED } from "./elevate-helper.ts";
+import { grantsKeptLine } from "./orphaned-grants.ts";
 
 /** The user's half of a removal, with what it was asked kept. */
 function steps(elevated: boolean, failed: string[] = []) {
   const asked = { forgetAll: 0 };
-  const given: RemovalSteps = {
+  const given: RemovalSteps & { orphaned(): Promise<boolean> } = {
     elevated: async () => elevated,
+    orphaned: async () => false,
     forgetAll: async () => {
       asked.forgetAll++;
       return failed;
@@ -52,25 +54,43 @@ verifies("sandbox-srt.removal-around-helper", () => {
   });
 
   describe("how the removal ended, from the helper's exit code", () => {
-    it("is done for 0", () => {
-      expect(removalAfterHelper(0)).toEqual({ ok: true });
-    });
-
-    it("says the prompt was cancelled for the helper's cancelled code", () => {
-      expect(removalAfterHelper(HELPER_CANCELLED)).toMatchObject({
-        ok: false,
-        outcome: "cancelled",
+    it("is done for 0", async () => {
+      const logged: string[] = [];
+      const { given } = steps(false);
+      expect(await removalAfterHelper(0, "win32", given, (line) => logged.push(line))).toEqual({
+        ok: true,
       });
+      expect(logged).toEqual([]);
     });
 
-    it("gives the helper's reason sentence and code for any other code", () => {
-      expect(removalAfterHelper(36)).toEqual({
+    it("is done for 0 with administrator rights, and logs that the grants stayed recorded", async () => {
+      const logged: string[] = [];
+      const { given } = steps(true);
+      expect(await removalAfterHelper(0, "win32", given, (line) => logged.push(line))).toEqual({
+        ok: true,
+      });
+      expect(logged).toEqual([await grantsKeptLine({ orphaned: async () => false })]);
+    });
+
+    it("says the prompt was cancelled for the helper's cancelled code, and logs nothing", async () => {
+      const logged: string[] = [];
+      const { given } = steps(true);
+      const result = await removalAfterHelper(HELPER_CANCELLED, "win32", given, (line) =>
+        logged.push(line),
+      );
+      expect(result).toMatchObject({ ok: false, outcome: "cancelled" });
+      expect(logged).toEqual([]);
+    });
+
+    it("gives the helper's reason sentence and code for any other code", async () => {
+      const { given } = steps(false);
+      expect(await removalAfterHelper(36, "win32", given, quiet)).toEqual({
         ok: false,
         outcome: "failed",
         reason: "the sandbox program couldn't start",
         code: 36,
       });
-      expect(removalAfterHelper(99)).toEqual({
+      expect(await removalAfterHelper(99, "win32", given, quiet)).toEqual({
         ok: false,
         outcome: "failed",
         reason: "the sandbox removal stopped with an error",

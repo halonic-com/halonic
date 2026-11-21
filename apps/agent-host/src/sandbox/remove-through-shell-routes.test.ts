@@ -31,7 +31,7 @@ function removal(before: SandboxRemoval = { ok: true }) {
       asked.before++;
       return before;
     },
-    after: (exitCode) => {
+    after: async (exitCode) => {
       asked.after.push(exitCode);
       return exitCode === 0
         ? { ok: true }

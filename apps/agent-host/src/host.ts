@@ -319,7 +319,7 @@ function hostServices(
     ...setupRoutes(setupJobs, sessions),
     ...removeThroughShellRoutes(setupJobs, sessions, {
       before: () => removalBeforeHelper(),
-      after: removalAfterHelper,
+      after: (exitCode) => removalAfterHelper(exitCode),
     }),
     ...bridgeRoutes(
       (secrets) =>
