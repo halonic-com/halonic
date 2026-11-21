@@ -16,7 +16,8 @@ use windows_sys::Win32::System::Com::{
 };
 use windows_sys::Win32::System::Threading::{GetExitCodeProcess, INFINITE, WaitForSingleObject};
 use windows_sys::Win32::UI::Shell::{
-    SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW, ShellExecuteExW,
+    SEE_MASK_FLAG_NO_UI, SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW,
+    ShellExecuteExW,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::SW_HIDE;
 
@@ -60,7 +61,9 @@ fn start(program: &Path, argument: &OsStr, owner: isize) -> Result<Process, Star
     // SAFETY: an all-zero SHELLEXECUTEINFOW is valid: null pointers and handles, no flags.
     let mut info: SHELLEXECUTEINFOW = unsafe { std::mem::zeroed() };
     info.cbSize = size_of::<SHELLEXECUTEINFOW>() as u32;
-    info.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NOASYNC;
+    // No UI: Windows' own error box (a missing helper, say) would wait for a
+    // click; Studio says what went wrong itself.
+    info.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI;
     info.hwnd = owner as *mut c_void;
     info.lpVerb = verb.as_ptr();
     info.lpFile = file.as_ptr();
