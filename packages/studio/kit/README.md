@@ -597,7 +597,7 @@ hold no chat logic: each feature turns its `ChatService` answer into these rows 
 
 | Part | What it is |
 | --- | --- |
-| `ChatTranscript` | The scrolling column, reading width, newest at the bottom. It stays at the end while a reply grows, unless the reader scrolled up. `notice` is a line at the top, such as "The engine isn't answering. Showing what it said last." |
+| `ChatTranscript` | The scrolling column, reading width, newest at the bottom. It stays at the end while a reply grows, unless the reader scrolled up. `notice` is a line above the messages, outside the part that scrolls, such as "The engine isn't answering. Showing what it said last." |
 | `ChatMessage` | One row: `from="you"` on the right in a tinted box, or `from="reply"` across the column under a hidden heading ("Sorter said") |
 | `ChatText` | A text step of a reply, in `text-reading`, keeping its line breaks |
 | `ChatToolLine` | One quiet line per tool call: spinner while `running`, tick when `done`, alert mark in `danger` when `failed` |
