@@ -13,8 +13,15 @@ import type {
   WorkflowView,
 } from "@halonicjs/studio-feature-workflows/api";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
-import { editYaml, readYaml, writeYamlFile, type YamlEdit } from "@halonicjs/yaml";
-import { newWorkflowText, testFile, workflowFolder, workflowSuffix } from "./workflow-files.ts";
+import { editYaml, type YamlEdit } from "@halonicjs/yaml";
+import {
+  endedIn,
+  newWorkflowText,
+  testFile,
+  withTestCase,
+  workflowFolder,
+  workflowSuffix,
+} from "./workflow-files.ts";
 
 /** What {@link WorkspaceWorkflows} needs of the workspace's files, events and runs. */
 export interface WorkspaceWorkflowsParts {
@@ -266,34 +273,11 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     if (summary.hubId !== ref.hubId || summary.workflowId !== ref.id) {
       throw new Error(`The run ${runId} is not a run of the workflow "${ref.id}".`);
     }
-    if (summary.state === null) {
-      throw new KindedError(
-        "invalid_input",
-        `The run ${runId} ended in no step, so it can't say what to expect.`,
-      );
-    }
-    const testCase = { name, input: started.input, expect: { final: summary.state } };
+    const final = endedIn(runId, summary.state);
+    const testCase = { name, input: started.input, expect: { final } };
     const path = testFile(ref);
-    const text = await this.#parts.files.read(path);
-    if (text === null) {
-      this.#parts.files.change(`Saved a run as the test ${name}`, {
-        [path]: writeYamlFile({ version: 1, workflow: ref.id, cases: [testCase] }),
-      });
-      return;
-    }
-    const read = readYaml(text);
-    if (!read.ok) throw new Error(`The test file ${path} can't be read: ${read.error.message}`);
-    const cases = (read.value.data as { cases?: unknown } | null)?.cases;
-    if (!Array.isArray(cases)) throw new Error(`The test file ${path} has no list of cases.`);
-    if (cases.some((one) => (one as { name?: unknown } | null)?.name === name)) {
-      throw new Error(`The workflow already has a test case called "${name}".`);
-    }
-    const edited = editYaml(text, [
-      { kind: "insert", path: ["cases", cases.length], value: testCase },
-    ]);
-    if (!edited.ok)
-      throw new Error(`The test file ${path} can't be changed: ${edited.error.message}`);
-    this.#parts.files.change(`Saved a run as the test ${name}`, { [path]: edited.value.text });
+    const text = withTestCase(path, await this.#parts.files.read(path), ref.id, testCase);
+    this.#parts.files.change(`Saved a run as the test ${name}`, { [path]: text });
   }
 
   /**
