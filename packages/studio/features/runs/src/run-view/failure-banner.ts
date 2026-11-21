@@ -252,8 +252,9 @@ function proxyBanner(
 /**
  * A setup cause the engine names (`setupFailureOf`): the CLI's first line, then the fix in Studio,
  * which is Open Models rather than a file. A phone says to fix it on the computer. A secrets file
- * other users can read keeps the CLI's own fix, chmod 600, with no button; a phone says to run it
- * on the computer (HAL-14122). Any other cause keeps the page's other banners.
+ * other users can read keeps the CLI's own fix, chmod 600, in a terminal with Copy command (F24);
+ * a phone says to run it on the computer, with no button (HAL-14122). Any other cause keeps the
+ * page's other banners.
  */
 function setupBanner(
   summary: RunSummary,
@@ -279,9 +280,15 @@ function setupBanner(
         ],
         phone,
       );
-    case "secrets-file-readable":
+    case "secrets-file-readable": {
       // The engine's reason is `error`: only the cause tells this setup problem from a bug.
-      return danger([failureWords.secretsFileReadable(workflow, step, failure.file, phone)]);
+      const line = failureWords.secretsFileReadable(workflow, step, failure.file, phone);
+      const copy: BannerFix = {
+        kind: "copy-command",
+        command: failureWords.secretsFileCommand(failure.file),
+      };
+      return danger([line], phone ? {} : { fixes: [copy] });
+    }
     default:
       return undefined;
   }

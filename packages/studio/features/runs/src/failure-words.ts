@@ -97,6 +97,11 @@ function asSentence(sentence: string): string {
   return /[.!?]$/.test(sentence) ? sentence : `${sentence}.`;
 }
 
+/** The CLI's fix for a secrets file other users can read: only its owner may read it. */
+function secretsFileCommand(file: string): string {
+  return `chmod 600 ${file}`;
+}
+
 /**
  * The failed banners by cause (microcopy 22 F6, F7, F8, F10, F15, F20, F21). The reason the engine
  * gives never shows: it goes into Copy details, which the banner doesn't have yet.
@@ -230,9 +235,14 @@ export const failureWords = {
     phone: boolean,
   ) =>
     `${workflow} stopped in the step ${step}: the path to Halonic's data is too long for the bridge's socket${limit === undefined ? "" : ` (${limit.bytes} bytes, and ${limit.system} takes at most ${limit.most})`}. ${phone ? "On your computer, move" : "Move"} Halonic's data folder to a shorter path, such as ~/.halonic, set HALONIC_HOME to that path and reopen Halonic, then run again.`,
-  /** The cause and fix the CLI says for the same run (HAL-12569, HAL-14122); a phone adds where to run it. */
+  /**
+   * The cause and fix the CLI says for the same run (HAL-12569, HAL-14122), F24 (microcopy 22): the
+   * desktop runs the command in a terminal, which Copy command gives; a phone runs it on the computer.
+   */
   secretsFileReadable: (workflow: string, step: string, file: string, phone: boolean) =>
-    `${workflow} stopped in the step ${step}: the secrets file ${file} can be read by other users. Run chmod 600 ${file}${phone ? " on your computer" : ""}, then run again.`,
+    `${workflow} stopped in the step ${step}: the secrets file ${file} can be read by other users. Run ${secretsFileCommand(file)} ${phone ? "on your computer" : "in a terminal"}, then run again.`,
+  /** The command Copy command copies for a secrets file other users can read (F24). */
+  secretsFileCommand,
   engineStopped: (workflow: string, step: string) =>
     `${workflow} stopped because Halonic's engine stopped during the step ${step}. Nothing after that step ran.`,
   engineStoppedBeforeFirstStep: (workflow: string) =>
