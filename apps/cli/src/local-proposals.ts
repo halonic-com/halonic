@@ -31,6 +31,7 @@ import {
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
+import { workspaceStore } from "./workspace-store.ts";
 
 /** What the proposal parts are built from. */
 export interface LocalProposalPartsInput {
@@ -105,7 +106,8 @@ export async function openLocalProposals(
   });
   const parts = localProposalParts({
     folders,
-    store: new FolderDefinitionStore(location),
+    // Accept and Undo never write the profile, even when the workspace holds it (HAL-15201).
+    store: workspaceStore(location, location, profile),
     digest: webCryptoDigest,
     vcs: git.vcs,
     // Only a run's end reports here, and the command ends no run.

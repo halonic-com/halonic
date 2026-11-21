@@ -23,6 +23,7 @@ import {
 } from "@halonicjs/ports";
 import { KeyedQueue, matchesExpected } from "@halonicjs/std";
 import { writeFlushedFile } from "./flushed-write.ts";
+import { checkFence, type FolderFence, fenceAround, fenceHolds } from "./folder-fence.ts";
 import { type FolderEvents, folderWatchEvents, nodeFolderEvents } from "./folder-watch.ts";
 import { entryAt, isMissing } from "./links.ts";
 import { renameOver } from "./rename-over.ts";
@@ -66,6 +67,17 @@ export interface FolderStoreWatchOptions {
   readonly quietMs?: number;
 }
 
+/** Options for a {@link FolderDefinitionStore}. */
+export interface FolderStoreOptions extends FolderStoreWatchOptions {
+  /**
+   * A folder the store never serves, even when the root holds it: the
+   * profile, for a store over a workspace (HAL-15201). Paths in it are
+   * refused as private and left out of lists, as the shell's `Fence` does
+   * in Studio. Without it, every path the port allows is served.
+   */
+  readonly fence?: string;
+}
+
 /**
  * Workspace files as plain files under a root folder: what the CLI and
  * `halonic serve` read on a machine. Paths are checked like every other
@@ -80,6 +92,9 @@ export interface FolderStoreWatchOptions {
  * store. A program outside Halonic can still change the file between the
  * check and the rename; that gap is a few milliseconds and the watcher
  * reports such a change.
+ *
+ * Given a `fence`, it serves nothing in that folder: a run's proposal that
+ * adds a file under the profile can't be accepted into it.
  */
 export class FolderDefinitionStore implements DefinitionStore {
   readonly location: string;
@@ -87,19 +102,35 @@ export class FolderDefinitionStore implements DefinitionStore {
   readonly #writes = new KeyedQueue();
   readonly #watches = new Set<DigestWatch>();
   readonly #watchOptions: Required<FolderStoreWatchOptions>;
+  readonly #fenced: string | undefined;
+  #fence: Promise<FolderFence> | undefined;
 
   /**
    * @param root - the workspace folder; a relative one is resolved against the working directory
    * @param location - shown to people as where the files live; the root by default
-   * @param watchOptions - how `watch()` hears about the folder and batches what it hears
+   * @param options - the folder it never serves, and how `watch()` hears about the folder and batches what it hears
    */
-  constructor(root: string, location?: string, watchOptions: FolderStoreWatchOptions = {}) {
+  constructor(root: string, location?: string, options: FolderStoreOptions = {}) {
     this.#root = resolve(root);
     this.location = location ?? root;
     this.#watchOptions = {
-      events: watchOptions.events ?? nodeFolderEvents,
-      quietMs: watchOptions.quietMs ?? defaultQuietMs,
+      events: options.events ?? nodeFolderEvents,
+      quietMs: options.quietMs ?? defaultQuietMs,
     };
+    this.#fenced = options.fence;
+  }
+
+  /** Where the fenced folder is under the root, worked out once, on first use. */
+  #fenceOf(): Promise<FolderFence> {
+    if (this.#fenced === undefined) return Promise.resolve({ kind: "outside" });
+    this.#fence ??= fenceAround(this.#root, this.#fenced);
+    return this.#fence;
+  }
+
+  /** Refuses an unsafe or private path, and one in the fence. */
+  async #checkPath(path: string): Promise<void> {
+    checkPublicWorkspacePath(path);
+    checkFence(await this.#fenceOf(), path);
   }
 
   /**
@@ -115,9 +146,10 @@ export class FolderDefinitionStore implements DefinitionStore {
       return true;
     };
     if (dir === undefined) {
+      checkFence(await this.#fenceOf(), "");
       await this.#walk(this.#root, "", add, leaveOut);
     } else {
-      checkPublicWorkspacePath(dir);
+      await this.#checkPath(dir);
       if (!isLeftOut(dir, leaveOut) && (await entryAt(this.#root, dir))?.isDirectory()) {
         await this.#walk(join(this.#root, dir), dir, add, leaveOut);
       }
@@ -134,6 +166,7 @@ export class FolderDefinitionStore implements DefinitionStore {
    * await store.hasMoreFilesThan(50_000); // false for a workspace of hubs and agents
    */
   async hasMoreFilesThan(limit: number): Promise<boolean> {
+    checkFence(await this.#fenceOf(), "");
     let count = 0;
     await this.#walk(this.#root, "", () => {
       count += 1;
@@ -143,7 +176,7 @@ export class FolderDefinitionStore implements DefinitionStore {
   }
 
   async read(path: string): Promise<string | null> {
-    checkPublicWorkspacePath(path);
+    await this.#checkPath(path);
     if (!(await entryAt(this.#root, path))?.isFile()) {
       return null;
     }
@@ -151,7 +184,7 @@ export class FolderDefinitionStore implements DefinitionStore {
   }
 
   async write(path: string, content: string, options: WriteOptions = {}): Promise<WriteResult> {
-    checkPublicWorkspacePath(path);
+    await this.#checkPath(path);
     return await this.#writes.run(path, async () => {
       const { expected } = options;
       if (expected !== undefined) {
@@ -194,7 +227,7 @@ export class FolderDefinitionStore implements DefinitionStore {
   }
 
   async remove(path: string, options: RemoveOptions = {}): Promise<RemoveResult> {
-    checkPublicWorkspacePath(path);
+    await this.#checkPath(path);
     return await this.#writes.run(path, async () => {
       const { expected } = options;
       if (expected !== undefined) {
@@ -221,12 +254,18 @@ export class FolderDefinitionStore implements DefinitionStore {
    * moment (100 ms by default), so a checkout comes as one batch.
    */
   async watch(listener: DefinitionWatchListener): Promise<DefinitionWatch> {
+    const fence = await this.#fenceOf();
+    const events = folderWatchEvents(this.#root, this.#watchOptions.events);
     // The watch adds itself to `#watches` once open and takes itself out when it closes or fails.
     return await DigestWatch.open(
       {
         files: this,
         digest: webCryptoDigest,
-        events: folderWatchEvents(this.#root, this.#watchOptions.events),
+        // A change in the fence is never workspace content, as a private entry's isn't.
+        events: (noticed, failed) =>
+          events((name) => {
+            if (!fenceHolds(fence, name)) noticed(name);
+          }, failed),
         quietMs: this.#watchOptions.quietMs,
         isScratch: isTemporaryWrite,
         leaveOut: watchLeavesOut,
@@ -262,9 +301,9 @@ export class FolderDefinitionStore implements DefinitionStore {
 
   /**
    * Gives `visit` the workspace path of each file under `folder`, whose
-   * workspace path is `prefix`, leaving out links, private entries and what
-   * `leaveOut` names, without stepping into a left-out folder. The
-   * shell's folder watch leaves out the same (`walk` in the
+   * workspace path is `prefix`, leaving out links, private entries, the
+   * fence and what `leaveOut` names, without stepping into a left-out
+   * folder. The shell's folder watch leaves out the same (`walk` in the
    * `workspace-files` crate), so the doctor counts the files Studio would
    * watch.
    *
@@ -279,10 +318,11 @@ export class FolderDefinitionStore implements DefinitionStore {
     visit: (path: string) => boolean,
     leaveOut?: LeaveOut,
   ): Promise<boolean> {
+    const fence = await this.#fenceOf();
     const entries = await entriesOf(folder, prefix);
     for (const entry of entries) {
       const path = prefix === "" ? entry.name : `${prefix}/${entry.name}`;
-      if (isNeverListed(entry) || isLeftOut(path, leaveOut)) {
+      if (isNeverListed(entry) || isLeftOut(path, leaveOut) || fenceHolds(fence, path)) {
         continue;
       }
       if (entry.isDirectory()) {

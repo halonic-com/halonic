@@ -129,7 +129,8 @@ export class HostProposalFolders {
     const { profile, digest, onEndFailed } = this.#options;
     const folders = await workspaceFolders(profile, workspace, digest);
     await makePrivateFolder(folders.proposalRecordsFolder());
-    const store = new FolderDefinitionStore(workspace);
+    // Accept and Undo never write the profile, even when the workspace holds it (HAL-15201).
+    const store = new FolderDefinitionStore(workspace, workspace, { fence: profile.root });
     const git = lazyGitVcs({ location: workspace, worktrees: folders.proposalWorktreesFolder() });
     const proposals = new RunProposals({
       vcs: git.vcs,

@@ -1,6 +1,5 @@
 import { readFile, realpath } from "node:fs/promises";
 import { join } from "node:path";
-import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import type { DoctorReport, DoctorWorkspace } from "@halonicjs/app";
 import { type Secrets, workspaceSecrets } from "@halonicjs/ports";
 import { filesOf, type LoadedWorkspace, loadWorkspace, settingsPath } from "@halonicjs/workspace";
@@ -28,6 +27,7 @@ import {
   type WorkspaceDir,
   workspaceDir,
 } from "../../workspace-dir.ts";
+import { workspaceStore } from "../../workspace-store.ts";
 import { workspaceIntegrations } from "../../workspace-trust.ts";
 
 /** What tests change about `halonic doctor`, besides the computer. */
@@ -116,7 +116,7 @@ async function readWorkspace(
   computer: DoctorMachine,
   secrets: Secrets,
 ): Promise<MachineWorkspace | null> {
-  const store = new FolderDefinitionStore(dir.root, dir.shown);
+  const store = workspaceStore(dir.root, dir.shown, computer.profile);
   if ((await store.read(settingsPath)) === null) {
     if (dirGiven) throw new NoWorkspaceError();
     return null;
