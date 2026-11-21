@@ -167,3 +167,14 @@ export const OPENS_IN_A_TAB = "opens in a tab";
 export function quoted(text: string): string {
   return `“${text}”`;
 }
+
+/**
+ * The plugin page while a trusted plugin with a backend waits for the person's yes to run without
+ * the sandbox (microcopy 24.1 R13, approved on HAL-1949).
+ */
+export function offUntilAllowed(name: string): string {
+  return `${name} is off on this computer until you allow plugins and integrations to run without the sandbox.`;
+}
+
+/** R13 on a phone or a served browser, where the yes can't be given: in place of **Review**. */
+export const ALLOW_ON_COMPUTER = "Allow this on your computer.";
