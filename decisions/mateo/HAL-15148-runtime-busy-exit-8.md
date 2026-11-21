@@ -3,6 +3,7 @@
 - Task: HAL-15148
 - Approval: Paperclip task HAL-15148 (split from Liam's security review of the updater's lock, HAL-15134); Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ZCi7AHEoToQYvEyHj1VBh0y9Q10kixRAdEkDGnj09LMm/+2o9mxiCHI2+qn6gOcFRVYdlipXeWVWsX0ZwSf+Bw==
 
 ## What changes
 
