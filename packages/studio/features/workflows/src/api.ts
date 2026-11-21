@@ -373,7 +373,10 @@ export interface WorkflowGuideLine {
 
 /** What the guide card's one button can ask of the workflow's page. */
 export interface WorkflowGuidePage {
-  /** Opens the page's Run form at the right, as the page's own **Run** does. */
+  /**
+   * Opens the page's Run form at the right, as the page's own **Run** does, and like it does nothing
+   * while the workflow can't run (no Run, the sandbox can't start, or the files refuse the run).
+   */
   openRunForm(): void;
 }
 
@@ -391,7 +394,7 @@ export interface WorkflowGuideCard {
 
 /**
  * A card another feature shows at the right of a workflow's canvas, such as the first run's guide
- * card (first-run-flow 3.2). The page shows it on Flow while no run or step card is docked there,
+ * card (first-run-flow 3.2). The page shows it on Flow while no start, run or step card is docked there,
  * and above the canvas on a phone. It has no ✕: the feature that gives it decides when it goes.
  */
 export interface WorkflowGuide {

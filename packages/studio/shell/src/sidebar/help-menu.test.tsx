@@ -3,7 +3,7 @@
 import type { MenuEntry } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createAnnouncer } from "../announcer/announcer.ts";
 import { defineFeature } from "../feature.ts";
 import type { HelpContribution } from "../points/frame.ts";
@@ -14,7 +14,7 @@ import { installFakePopover } from "../test-support/fake-popover.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
-import { helpMenuEntries } from "./help-menu.ts";
+import { helpMenuEntries, useHelpMenu } from "./help-menu.ts";
 import { PlacesList } from "./places-list.tsx";
 
 let uninstallPopover: () => void;
@@ -112,6 +112,54 @@ verifies("shell.help-menu", () => {
       },
     ]);
     expect(entries).toEqual([]);
+  });
+
+  it("reports a group whose items can't be read and leaves it out, keeping the others", () => {
+    const reported = vi.spyOn(console, "error").mockImplementation(() => {});
+    const entries = entriesFor([
+      firstRun([]),
+      {
+        featureId: "doctor",
+        id: "doctor.help",
+        order: 10,
+        items: () => {
+          throw new Error("The check isn't ready.");
+        },
+      },
+    ]);
+    expect(reported).toHaveBeenCalledWith(
+      'The Help group "doctor.help" couldn\'t list its items.',
+      expect.any(Error),
+    );
+    reported.mockRestore();
+    expect(shown(entries)).toEqual(["# First run", "Show the guide", "Start over"]);
+  });
+
+  it("reads a group's items again when it says they changed", () => {
+    let items = [{ id: "guide", label: "Show the guide", run: () => {} }];
+    const listeners = new Set<() => void>();
+    const group: HelpContribution = {
+      id: "first-run.help",
+      order: 20,
+      items: () => items,
+      subscribe: (_context, listener) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    const help = { list: () => [{ ...group, featureId: "first-run" }] };
+    function Sidebar() {
+      return <p>{shown(useHelpMenu(help, contextFor)).join(", ")}</p>;
+    }
+    const container = render(<Sidebar />);
+    expect(container.textContent).toBe("Show the guide");
+    items = [...items, { id: "start-over", label: "Start over", run: () => {} }];
+    act(() => {
+      for (const listener of listeners) listener();
+    });
+    expect(container.textContent).toBe("Show the guide, Start over");
+    unmountAll();
+    expect(listeners.size).toBe(0);
   });
 
   it("shows Help just above Settings, and picking an item runs it", () => {

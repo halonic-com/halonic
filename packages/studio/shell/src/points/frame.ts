@@ -52,6 +52,11 @@ export interface HelpContribution extends Ordered {
   readonly title?: string;
   /** The group's items now, read each time the sidebar draws; none leaves the group out. */
   items(context: WorkspaceContext): readonly HelpItem[];
+  /**
+   * Calls `listener` whenever the items may have changed, so the sidebar reads them again. Returns
+   * a function that stops the calls. Left out, the items are read again only when the window redraws.
+   */
+  subscribe?(context: WorkspaceContext, listener: () => void): () => void;
 }
 
 /** An entry in the phone's bottom bar. */

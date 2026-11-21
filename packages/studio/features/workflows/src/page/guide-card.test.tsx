@@ -4,8 +4,15 @@ import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { WorkflowGuide, WorkflowGuideCard, WorkflowRef } from "../api.ts";
-import { buttonNamed, memoryHost, memoryRuns, show, unmount } from "../test-support.tsx";
+import type { WorkflowGuide, WorkflowGuideCard, WorkflowRef, WorkflowsHost } from "../api.ts";
+import {
+  buttonNamed,
+  memoryHost,
+  memoryRuns,
+  runSummary,
+  show,
+  unmount,
+} from "../test-support.tsx";
 import { reply, settings } from "./page-fixtures.ts";
 import { WorkflowScreen } from "./workflow-page.tsx";
 
@@ -44,14 +51,21 @@ function guideFor(card: WorkflowGuideCard | undefined) {
   };
 }
 
-function screen(guide: WorkflowGuide) {
-  const { host } = memoryHost([], [], [reply], [settings], {
-    startRun: async () => ({ runId: "run_mfx3k2a1_01jd8q" }),
-  });
-  return (
-    <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" guide={guide} />
-  );
+const startRun = async () => ({ runId: "run_mfx3k2a1_01jd8q" });
+
+function screen(
+  guide: WorkflowGuide,
+  overrides: Partial<WorkflowsHost> = { startRun },
+  runs = memoryRuns(),
+) {
+  const { host } = memoryHost([], [], [reply], [settings], overrides);
+  return <WorkflowScreen host={host} runs={runs.source} hubId="acme" id="reply" guide={guide} />;
 }
+
+const press = (button: HTMLButtonElement | null | undefined) =>
+  act(async () => {
+    button?.click();
+  });
 
 const guideCardOf = (page: HTMLElement) => page.querySelector<HTMLElement>("[data-guide-card]");
 
@@ -73,6 +87,48 @@ verifies("workflows.page.guide-card", () => {
     const page = await show(screen(guideFor(firstRunCard).guide));
     await act(async () => buttonNamed(page, "Run your first workflow")?.click());
     expect(page.textContent).toContain("START A RUN");
+    expect(guideCardOf(page)).toBeNull();
+  });
+
+  it("doesn't open the Run form while the files refuse the run, as Run doesn't", async () => {
+    const refusal = {
+      reason: "Reporter uses a connector, which Studio can't start yet.",
+      fix: "To start it, run this in a terminal:",
+      command: "halonic run reply",
+    };
+    const page = await show(
+      screen(guideFor(firstRunCard).guide, { startRun, startRefusal: async () => refusal }),
+    );
+    await press(buttonNamed(page, "Run your first workflow"));
+    expect(page.textContent).not.toContain("START A RUN");
+    expect(guideCardOf(page)).not.toBeNull();
+  });
+
+  it("doesn't open the Run form on a page that has no Run", async () => {
+    const page = await show(screen(guideFor(firstRunCard).guide, {}));
+    await press(buttonNamed(page, "Run your first workflow"));
+    expect(page.textContent).not.toContain("START A RUN");
+  });
+
+  it("is gone while a run's card is docked", async () => {
+    const runs = memoryRuns();
+    const page = await show(screen(guideFor(firstRunCard).guide, { startRun }, runs));
+    await press(buttonNamed(page, "Run your first workflow"));
+    await press(buttonNamed(page, "Start run"));
+    await act(async () => runs.change([runSummary({ status: "running", state: "start" })]));
+    expect(page.querySelector("aside[aria-label='Run 01jd8q']")).not.toBeNull();
+    expect(guideCardOf(page)).toBeNull();
+  });
+
+  it("is gone while a picked step's card is docked", async () => {
+    const page = await show(
+      screen(guideFor(firstRunCard).guide, { startRun, changeStep: async () => {} }),
+    );
+    const write = [...page.querySelectorAll<HTMLButtonElement>("button[aria-pressed]")].find(
+      (card) => card.querySelector("[title]")?.textContent === "write",
+    );
+    await press(write);
+    expect(page.querySelector("aside h2")?.textContent).toBe("Step write");
     expect(guideCardOf(page)).toBeNull();
   });
 

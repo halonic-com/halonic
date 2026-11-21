@@ -29,7 +29,7 @@ import { SettingsDialog } from "../settings/settings-dialog.tsx";
 import { listedSections, settingsGroups } from "../settings/settings-groups.ts";
 import { useSettingsOpening } from "../settings/settings-opening.ts";
 import type { Shell } from "../shell.ts";
-import { helpMenuEntries } from "../sidebar/help-menu.ts";
+import { useHelpMenu } from "../sidebar/help-menu.ts";
 import { studioTab } from "../sidebar/sidebar-views.tsx";
 import type { WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
 import { usePageHeadingFocus, usePageHeadingFocusAfterDialog } from "../tabs/history-moves.ts";
@@ -331,6 +331,7 @@ function StudioWindowBody(props: StudioWindowProps) {
       {props.badges}
     </>
   );
+  const help = useHelpMenu(contributions.help, contextFor);
 
   return (
     <ShellFrame
@@ -366,7 +367,7 @@ function StudioWindowBody(props: StudioWindowProps) {
           contextFor={contextFor}
           onSearch={palette.show}
           onSettings={() => openSettings()}
-          help={helpMenuEntries(contributions.help.list(), contextFor)}
+          help={help}
           switcher={sidebarSwitcher}
         />
       }

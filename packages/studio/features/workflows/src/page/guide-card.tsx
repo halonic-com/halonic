@@ -12,7 +12,15 @@ export function useGuideCard(
   workflow: WorkflowRef,
 ): WorkflowGuideCard | undefined {
   const [, setChanges] = useState(0);
-  useEffect(() => guide?.subscribe(() => setChanges((count) => count + 1)), [guide]);
+  useEffect(() => {
+    if (guide === undefined) return;
+    const changed = () => setChanges((count) => count + 1);
+    const stop = guide.subscribe(changed);
+    // A change between the first read and this subscription would go unseen, so read once more.
+    // (`useSyncExternalStore` would need `card` to return the same object until it changes.)
+    changed();
+    return stop;
+  }, [guide]);
   return guide?.card(workflow);
 }
 
@@ -68,8 +76,9 @@ export function GuideCard({ card, page, phone }: GuideCardProps) {
       <h2 id={headingId} className="text-body-strong">
         {card.title}
       </h2>
-      {card.lines.map((line) => (
-        <p key={`${line.label ?? ""}${line.text}`} className="text-body text-fg-muted">
+      {card.lines.map((line, index) => (
+        // Two lines may read the same, so the place keeps the key unique.
+        <p key={`${index}:${line.label ?? ""}${line.text}`} className="text-body text-fg-muted">
           {line.label === undefined ? null : (
             <span className="text-body-strong text-fg">{line.label} </span>
           )}

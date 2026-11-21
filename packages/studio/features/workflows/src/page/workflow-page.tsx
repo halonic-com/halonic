@@ -199,19 +199,14 @@ export function WorkflowScreen({
   });
   const canvasEdit = useCanvasEdit(host, { hubId, id }, name, phone);
   const rename = useRename(host, { hubId, id }, name, everyWorkflow.load, announce);
-  const guideSlot = {
-    guide,
-    workflow: { hubId, id },
-    view,
-    docked,
-    phone,
-    page: {
-      openRunForm: () => {
-        setRowCard(undefined);
-        setDock("start");
-      },
-    },
+  // Run and a guide's button open the start form the same way, and neither while Run can't start.
+  const openStart = () => {
+    if (startRun === undefined || runUnavailable !== undefined) return;
+    setRowCard(undefined);
+    setDock("start");
   };
+  const guideSlot = { guide, workflow: { hubId, id }, view, docked, phone };
+  const guidePage = { openRunForm: openStart };
   const gone = goneState(load, goToWorkflows);
   if (gone !== undefined) return gone;
   return (
@@ -258,10 +253,7 @@ export function WorkflowScreen({
               variant="primary"
               size="sm"
               unavailable={runUnavailable}
-              onClick={() => {
-                setRowCard(undefined);
-                setDock("start");
-              }}
+              onClick={openStart}
             >
               {startWords.run}
             </Button>
@@ -284,7 +276,7 @@ export function WorkflowScreen({
         startCommand={startCommand}
         showStartCommand={!startRun && settings.load.kind === "ready" && errors === 0}
       />
-      <GuideSlot {...guideSlot} at="top" />
+      <GuideSlot {...guideSlot} page={guidePage} at="top" />
       <div className="flex min-h-0 flex-1">
         <TabPanel
           ids={ids}
@@ -393,7 +385,7 @@ export function WorkflowScreen({
           saving={saving}
           onClose={() => setPickedStep(undefined)}
         />
-        <GuideSlot {...guideSlot} at="right" />
+        <GuideSlot {...guideSlot} page={guidePage} at="right" />
       </div>
     </div>
   );
