@@ -73,6 +73,20 @@ verifies("studio.undoable-delete", () => {
     expect(labels).toEqual(["Deleted notes.md"]);
   });
 
+  it("writes back only the missing files when some are back with their old text", async () => {
+    const { store, labels, files } = memoryFiles({ "a/agent.md": "# A\n", "a/tools.md": "- x\n" });
+    const agent = { paths: ["a/agent.md", "a/tools.md"], what: "agent A", name: "A" } as const;
+
+    const deleted = await deleteWithUndo(files, agent);
+    files.change("Created a/agent.md", { "a/agent.md": "# A\n" });
+    await deleted.undo();
+
+    expect(store).toEqual({ "a/agent.md": "# A\n", "a/tools.md": "- x\n" });
+    expect(labels).toEqual(["Deleted agent A", "Created a/agent.md", "Put back agent A"]);
+    await files.undo();
+    expect(store).toEqual({ "a/agent.md": "# A\n" });
+  });
+
   it("refuses, names the new file and writes nothing when a file took their place", async () => {
     const { store, labels, files } = memoryFiles({ "notes.md": "# Notes\n" });
 

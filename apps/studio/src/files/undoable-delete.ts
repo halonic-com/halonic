@@ -31,8 +31,9 @@ export interface UndoableDelete {
  * Deletes the item's files as one change, and gives the way back. While the delete is still the
  * newest change, the way back is the workspace's undo. After another change it writes the files back
  * as they were, as a change of its own, so a later edit doesn't lose the item for good. When they
- * are back already, undone some other way, it does nothing. It refuses, and writes nothing, only
- * when a file has since taken one of their places, and names that file.
+ * are back already, undone some other way, it does nothing, and when only some are back with their
+ * old text, it writes only the missing ones. It refuses, and writes nothing, only when a file with
+ * other text has since taken one of their places, and names that file.
  */
 export async function deleteWithUndo(
   files: UndoableDeleteFiles,
@@ -58,14 +59,18 @@ export async function deleteWithUndo(
         back = true;
         return;
       }
-      const taken = Object.keys(kept).find((path) => now[path] !== undefined);
+      // A file that is back with the same text, in a partly restored item, is the item's own.
+      const taken = Object.keys(kept).find(
+        (path) => now[path] !== undefined && now[path] !== kept[path],
+      );
       if (taken !== undefined) {
         throw new KindedError(
           "conflict",
           `${name} can't be put back, because there is a new ${taken}. Rename or move it, then undo again.`,
         );
       }
-      files.change(`Put back ${what}`, kept);
+      const missing = Object.entries(kept).filter(([path]) => now[path] === undefined);
+      files.change(`Put back ${what}`, Object.fromEntries(missing));
       back = true;
     },
   };

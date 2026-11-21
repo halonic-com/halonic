@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-15120 (C544 finding 9, HAL-15101)
+- Source: HAL-15120 (C544 finding 9, HAL-15101); HAL-15138 (a partly restored item)
 
-When a host of the desktop app deletes an item's files, it shall delete them as one undoable change of the workspace's files and keep their text, and the delete's way back shall put them back as they were: by the workspace's undo while the delete is still the newest change, and after any other change by writing them back as a change of its own named "Put back *item*", keeping the other changes. When the files are back already, undone some other way, the way back shall do nothing. When a file has taken the place of one of them since the delete, the way back shall reject with `conflict`, write nothing, and name that file and what to do: "*name* can't be put back, because there is a new *path*. Rename or move it, then undo again."
+When a host of the desktop app deletes an item's files, it shall delete them as one undoable change of the workspace's files and keep their text, and the delete's way back shall put them back as they were: by the workspace's undo while the delete is still the newest change, and after any other change by writing them back as a change of its own named "Put back *item*", keeping the other changes. When the files are back already, undone some other way, the way back shall do nothing; when only some are back with the text they had, it shall write back only the missing ones. When a file with other text has taken the place of one of them since the delete, the way back shall reject with `conflict`, write nothing, and name that file and what to do: "*name* can't be put back, because there is a new *path*. Rename or move it, then undo again."
 
 ## Examples
 
