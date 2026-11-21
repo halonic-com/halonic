@@ -2,6 +2,7 @@
 
 - Approval: HAL-14649 (found in the C442 check on HAL-14638); HAL-14995 (Liam's decision, option 4); the CTO, Liam, approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/3I7GMkVhZiEAWAHRtZNvfHnDmc8c7mMsjSQtqEoIIqhLaRjL1bei+5c3IdLLf3c9+pjxAUXq4K5vbQUMdb+BQ==
 
 The `halonic tools review` command on the page of an MCP server over HTTP now
 names the workspace folder with `--dir`, as every other command Studio shows to
