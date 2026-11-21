@@ -20,6 +20,9 @@ export const fileCommands = {
    * `{ dir }` → every file under `dir` (`null` for the whole workspace),
    * recursively and sorted, relative to the workspace. A missing `dir` gives
    * `[]`. Private entries, links and temporary write files are left out.
+   * With `{ leaveOut }` (`LeaveOut` in `@halonicjs/ports`), so is every file
+   * in a left-out folder or under a left-out name, and the shell never steps
+   * into one; a bad one is refused as `unsafe_path`.
    */
   list: "fs_list",
   /** `{ path }` → the file's text, or `null` when there is no file. */

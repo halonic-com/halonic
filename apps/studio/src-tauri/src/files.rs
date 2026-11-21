@@ -36,7 +36,8 @@ use serde::{Deserialize, Serialize};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime, Webview};
 
-use crate::file_answers::{RemoveAnswer, WriteAnswer};
+use crate::file_answers::{RemoveAnswer, WatchEvent, WatchStart, WriteAnswer};
+use crate::file_arguments::LeaveOutArg;
 use crate::git::GitState;
 use crate::profile::cli_profile;
 
@@ -78,34 +79,6 @@ impl From<FileError> for FileRefusal {
             kind: error.kind(),
             path: error.folder().map(str::to_owned),
             message: error.to_string(),
-        }
-    }
-}
-
-/// What `fs_watch` answers: `{ watchId }`.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WatchStart {
-    watch_id: u32,
-}
-
-/// A watch's message on its channel: `{ type: "changed", paths }`, or once
-/// `{ type: "failed", kind, message }` when it stops (`kind` names the error).
-#[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub enum WatchEvent {
-    Changed { paths: Vec<String> },
-    Failed { kind: &'static str, message: String },
-}
-
-impl From<WatchMessage> for WatchEvent {
-    fn from(message: WatchMessage) -> Self {
-        match message {
-            WatchMessage::Changed(paths) => Self::Changed { paths },
-            WatchMessage::Failed(error) => Self::Failed {
-                kind: error.kind(),
-                message: error.to_string(),
-            },
         }
     }
 }
@@ -230,6 +203,7 @@ where
 
 /// Every file under `dir` (`null` for the whole workspace), sorted. `source`
 /// goes with the `"tool-approvals"` folder, and is ignored for the others.
+/// With `leaveOut`, the walk never steps into a left-out folder.
 #[tauri::command]
 pub async fn fs_list<R: Runtime>(
     app: AppHandle<R>,
@@ -237,16 +211,18 @@ pub async fn fs_list<R: Runtime>(
     folder: Option<FileFolder>,
     source: Option<String>,
     dir: Option<String>,
+    leave_out: Option<LeaveOutArg>,
 ) -> Result<Vec<String>, FileRefusal> {
     kept_copies::only_writes(folder)?;
     tool_approvals::check_list(folder, dir.as_deref())?;
+    let leave_out = LeaveOutArg::checked(leave_out)?;
     in_workspace(
         app,
         workspace,
         folder,
         source,
         Making::Nothing,
-        move |files| files.list(dir.as_deref()),
+        move |files| files.list_leaving_out(dir.as_deref(), &leave_out),
     )
     .await
 }

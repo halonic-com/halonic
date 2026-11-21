@@ -6,6 +6,7 @@ use sha2::{Digest, Sha256};
 
 use crate::error::FileError;
 use crate::fence::Fence;
+use crate::leave_out::LeaveOut;
 use crate::links::{entry_at, is_missing, native_path};
 use crate::temporary_write::{is_temporary_write, temporary_write_name};
 use crate::workspace_path::{check_public_workspace_path, is_private_workspace_path};
@@ -81,20 +82,38 @@ impl<'a> WorkspaceFolder<'a> {
     /// write files are left out, with everything under them, and so is the
     /// fence.
     pub fn list(&self, dir: Option<&str>) -> Result<Vec<String>, FileError> {
+        self.list_leaving_out(dir, &LeaveOut::default())
+    }
+
+    /// What [`WorkspaceFolder::list`] gives, leaving out `leave_out` too.
+    /// The walk never steps into a left-out folder, so nothing under it is
+    /// read, and a folder in it the account may not read fails nothing. A
+    /// left-out `dir` gives none.
+    pub fn list_leaving_out(
+        &self,
+        dir: Option<&str>,
+        leave_out: &LeaveOut,
+    ) -> Result<Vec<String>, FileError> {
         let mut paths = Vec::new();
         let mut add = |path: String, _: &DirEntry| {
             paths.push(path);
             Ok::<(), FileError>(())
         };
+        let skip = Skip {
+            fence: &self.fence,
+            leave_out,
+        };
         match dir {
             None => {
                 self.fence.check("")?;
-                walk(&self.root, "", &self.fence, &mut add)?;
+                walk(&self.root, "", &skip, &mut add)?;
             }
             Some(dir) => {
                 self.check(dir)?;
-                if entry_at(&self.root, dir)?.is_some_and(|entry| entry.is_dir()) {
-                    walk(&native_path(&self.root, dir), dir, &self.fence, &mut add)?;
+                if !leave_out.holds(dir)
+                    && entry_at(&self.root, dir)?.is_some_and(|entry| entry.is_dir())
+                {
+                    walk(&native_path(&self.root, dir), dir, &skip, &mut add)?;
                 }
             }
         }
@@ -316,15 +335,28 @@ fn write_flushed(
     Ok(())
 }
 
+/// What a walk steps over besides private entries, links and temporary
+/// write files: the fence, and what the caller leaves out.
+pub(crate) struct Skip<'a> {
+    pub(crate) fence: &'a Fence,
+    pub(crate) leave_out: &'a LeaveOut,
+}
+
+impl Skip<'_> {
+    fn holds(&self, path: &str) -> bool {
+        self.fence.holds(path) || self.leave_out.holds(path)
+    }
+}
+
 /// Calls `visit` with the workspace path and entry of every file under
 /// `folder`, whose workspace path is `prefix`, as `#collect` in `fs-node`
-/// walks it, leaving out `fence`. A folder that is gone gives nothing; one
-/// the account may not read is `FolderUnreadable`, naming it (`""` for the
-/// root).
+/// walks it, leaving out what `skip` holds without stepping into it. A
+/// folder that is gone gives nothing; one the account may not read is
+/// `FolderUnreadable`, naming it (`""` for the root).
 pub(crate) fn walk(
     folder: &Path,
     prefix: &str,
-    fence: &Fence,
+    skip: &Skip<'_>,
     visit: &mut dyn FnMut(String, &DirEntry) -> Result<(), FileError>,
 ) -> Result<(), FileError> {
     let entries = match fs::read_dir(folder) {
@@ -356,10 +388,10 @@ pub(crate) fn walk(
         } else {
             format!("{prefix}/{name}")
         };
-        if kind.is_symlink() || fence.holds(&path) {
+        if kind.is_symlink() || skip.holds(&path) {
             continue;
         } else if kind.is_dir() {
-            walk(&entry.path(), &path, fence, visit)?;
+            walk(&entry.path(), &path, skip, visit)?;
         } else if kind.is_file() {
             visit(path, &entry)?;
         }
