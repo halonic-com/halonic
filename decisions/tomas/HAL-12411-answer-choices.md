@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this note in his review of this pull request on HAL-12411 (R7 of Sofia's UX check on HAL-12390, a team decision with no board card under HAL-2282; Liam's yes on HAL-12464 to the step's choices as facts, each follow-up in its own PR)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2XHGghYtDTCjibZVQboNuOoia7r1SjLRuTqi+Oxh5hxgGfBI6Rm72EBydx6Dqo5MVSVcJP/zPtCFSREVGIz6Dw==
 - Task: HAL-12411
 
 ## What changes
