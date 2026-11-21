@@ -27,6 +27,12 @@ export type SampleStepId = (typeof sampleSteps)[number];
 export interface SampleWorkspace {
   /** Whether this device remembers the folder as created from the Acme sample. Read each time. */
   isSample(): boolean;
+  /**
+   * Calls `listener` when the device starts remembering the folder as the demo while it is open,
+   * as **Open demo** does for a folder that is open already. Returns a function that stops the
+   * calls. Absent where the app can't tell.
+   */
+  onMarkedSample?(listener: () => void): () => void;
   /** The steps done in this folder, as saved on this device: a step stays done. */
   doneSteps(): readonly SampleStepId[];
   /** Saves that a step is done in this folder. */
