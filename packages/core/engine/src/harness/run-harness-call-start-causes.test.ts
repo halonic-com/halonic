@@ -80,3 +80,34 @@ verifies("engine.run-harness-failures", () => {
     expect(runFailureReasonOf(error)).toEqual({ reason: "harness-start-failed" });
   });
 });
+
+verifies("engine.this-computer-start-failed", () => {
+  it("fails with this-computer-start-failed and the launcher's reason when the launcher doesn't open", async () => {
+    const ports = harnessPorts();
+    ports.placeOnThisComputer();
+    ports.thisComputer.openError = new Error(
+      "a program started without a fence can't reach a bridge on a Unix socket\nat checkBridge",
+    );
+
+    const { error, written } = await runOn(ports);
+
+    expect(runFailureReasonOf(error)).toEqual({ reason: "this-computer-start-failed" });
+    expect(error).toMatchObject({
+      message: "a program started without a fence can't reach a bridge on a Unix socket",
+    });
+    // Nothing asks a sandbox why: there is none in this run.
+    expect(written.map((event) => event.type)).toEqual(["sandbox.started"]);
+    expect(ports.steps).toEqual(["bridge.open", "bridge.close"]);
+  });
+
+  it("logs a fixed text, not the launcher's message, when that holds something shaped like a key", async () => {
+    const ports = harnessPorts();
+    ports.placeOnThisComputer();
+    ports.thisComputer.openError = new Error(`can't start with the key sk-${"aB3".repeat(8)}`);
+
+    const { error } = await runOn(ports);
+
+    expect(runFailureReasonOf(error)).toEqual({ reason: "this-computer-start-failed" });
+    expect(error).toMatchObject({ message: "Halonic can't tell why" });
+  });
+});

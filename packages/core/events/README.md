@@ -41,7 +41,10 @@ optional and come with a requirement.
   that doesn't know a code reads it as `other`. `sandbox-start-failed` gives
   `sandboxReason` too when the check fails once the sandbox didn't open, and
   `harness-start-failed` gives `harnessCause` (`not-installed` or `signed-out`)
-  when the engine knows (requirement `run-failed-harness-cause`). `local-only` means the
+  when the engine knows (requirement `run-failed-harness-cause`).
+  `this-computer-start-failed` is for an agent a person set to run on this
+  computer, without a sandbox, whose launcher didn't open; its `error` is the
+  launcher's own reason (requirement `run-failed-this-computer-start-failed`). `local-only` means the
   workspace is local only and no model the step could use is local; the
   `llm.skipped` events with that reason name them (requirement
   `run-failed-local-only`). `instructions-not-trusted` means a harness step
