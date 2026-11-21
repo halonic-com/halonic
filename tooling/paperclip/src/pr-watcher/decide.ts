@@ -48,6 +48,8 @@ export interface Memory {
   readonly reported: ReadonlySet<string>;
   /** The newest of the watcher's last comment and the author's last comment. */
   readonly seenUntil: string | undefined;
+  /** The author's newest comment on the task says more pull requests are coming. */
+  readonly held: boolean;
 }
 
 /** The outcome for one task. */
@@ -139,6 +141,9 @@ export function decide(
     return { kind: "skip", why: "its author is already running on it" };
   }
   const closed = closedOutcome(pulls);
+  if (closed?.kind === "done" && memory.held) {
+    return { kind: "skip", why: "its author said more pull requests are coming" };
+  }
   if (closed !== undefined) {
     return closed;
   }

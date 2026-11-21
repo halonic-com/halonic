@@ -8,6 +8,7 @@ import {
   task,
   watcherId,
 } from "./fakes.test-helper.ts";
+import { asksForChanges } from "./github.ts";
 import { tick } from "./watch.ts";
 
 function run(github: ReturnType<typeof fakeGitHub>, paperclip: ReturnType<typeof fakePaperclip>) {
@@ -47,6 +48,26 @@ verifies("paperclip.pr-watcher-done", () => {
     expect(await summary).toEqual({ checked: 1, done: 0, woken: 0, failed: [] });
     expect(lines[0]).toContain("waiting for a green ci-ok");
     expect(paperclip.comments).toEqual({});
+  });
+
+  test("keeps the task open while the author's newest comment says more PRs are coming", async () => {
+    const hold = {
+      authorAgentId: agents.priya,
+      createdAt: "2026-11-21T20:00:00Z",
+      body: "First PR is in.\n\nPR watcher: more PRs to come",
+    };
+    const paperclip = fakePaperclip([task(4485, agents.priya)], { "task-4485": [hold] });
+    const github = fakeGitHub(recording("merged-green"));
+    const { summary, lines } = run(github, paperclip);
+    expect(await summary).toEqual({ checked: 1, done: 0, woken: 0, failed: [] });
+    expect(lines[0]).toContain("more pull requests are coming");
+    // A newer comment from the author without the line lifts the hold.
+    paperclip.comments["task-4485"]?.push({
+      authorAgentId: agents.priya,
+      createdAt: "2026-11-21T21:00:00Z",
+      body: "Last PR is linked.",
+    });
+    expect((await run(github, paperclip).summary).done).toBe(1);
   });
 
   test("leaves a task alone until every linked pull request is closed", async () => {
@@ -101,6 +122,44 @@ verifies("paperclip.pr-watcher-wake", () => {
     };
     const paperclip = fakePaperclip([task(4588, agents.priya)], { "task-4588": [author] });
     expect((await run(fakeGitHub(recording("review-finding")), paperclip).summary).woken).toBe(0);
+  });
+
+  test("ignores an approval, a nit and a negated or answered changes requested", async () => {
+    const pulls = "/repos/halonic-com/halonic/pulls/4588";
+    const head = "7651f8c1e4af38752f56d353156c5dd19ff54984";
+    const quiet = {
+      [`${pulls}/reviews?per_page=100&page=1`]: [
+        {
+          id: 1,
+          commit_id: head,
+          state: "COMMENTED",
+          submitted_at: "2026-11-21T21:10:00Z",
+          body: "LGTM",
+        },
+      ],
+      "/repos/halonic-com/halonic/issues/4588/comments?per_page=100&page=1": [
+        {
+          id: 2,
+          created_at: "2026-11-21T21:11:00Z",
+          body: "Julian: approved. No changes requested.",
+        },
+        { id: 3, created_at: "2026-11-21T21:12:00Z", body: "- [nit] a word" },
+        { id: 4, created_at: "2026-11-21T21:13:00Z", body: "Addressed the changes requested." },
+      ],
+    };
+    const paperclip = fakePaperclip([task(4588, agents.priya)]);
+    const github = fakeGitHub(recording("review-finding"), quiet);
+    expect((await run(github, paperclip).summary).woken).toBe(0);
+  });
+
+  test("tells a verdict that asks for changes from one that doesn't", () => {
+    expect(asksForChanges("Liam: changes requested on head `0cebc4e`.")).toBe(true);
+    expect(asksForChanges("**Changes requested**")).toBe(true);
+    expect(asksForChanges("Intro.\n- [minor] fix the regex")).toBe(true);
+    expect(asksForChanges("No changes requested.")).toBe(false);
+    expect(asksForChanges("Liam: no changes requested, approved.")).toBe(false);
+    expect(asksForChanges("I addressed the changes requested.")).toBe(false);
+    expect(asksForChanges("LGTM")).toBe(false);
   });
 
   test("does nothing while the reviewer holds the task or the author is running", async () => {

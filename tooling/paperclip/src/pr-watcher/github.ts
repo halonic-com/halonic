@@ -105,21 +105,28 @@ async function everyPage(get: GitHubGet, path: string): Promise<unknown[]> {
 }
 
 /**
- * A conversation comment that asks the author for something: a finding
- * tagged `[blocker]`, `[major]` or `[minor]` (docs/guides/review.md) or
- * "changes requested". Approvals and `[nit]`s don't wake anyone.
+ * A review or conversation comment that asks the author for something: a
+ * finding tagged `[blocker]`, `[major]` or `[minor]` (docs/guides/review.md),
+ * or a verdict "changes requested" at the start of a line or right after a
+ * `Name:` lead-in ("Liam: changes requested on head …"). Approvals, `[nit]`s,
+ * "No changes requested" and "addressed the changes requested" don't wake anyone.
  */
 export function asksForChanges(body: string): boolean {
   return (
-    /^\s*(?:[-*]\s+)?\[(?:blocker|major|minor)\]/im.test(body) || /changes requested/i.test(body)
+    /^\s*(?:[-*]\s+)?\[(?:blocker|major|minor)\]/im.test(body) ||
+    /^[ \t]*(?:[-*>][ \t]+)?(?:[^\n]{0,80}?:[ \t]*)?(?:\*\*|_)?changes requested\b/im.test(body)
   );
 }
 
 /**
- * The newest review comment the author may not have seen: a review with
- * words (or changes requested) or an inline comment on the head commit, or a
- * conversation comment that asks for changes. Our reviewers post most
- * reviews as conversation comments, since every agent shares one GitHub account.
+ * The newest review comment the author may not have seen: a review on the
+ * head commit that requests changes or asks for them in words, an inline
+ * comment on the head commit, or a conversation comment that asks for
+ * changes. Our reviewers post most reviews as conversation comments, since
+ * every agent shares one GitHub account. Conversation comments have no
+ * commit, so after a push an older finding comes back under the new head's
+ * key; only the `seenUntil` check in `newReasons` keeps it quiet, which
+ * holds as long as the author comments on the task after each run.
  */
 export async function latestReview(
   get: GitHubGet,
@@ -135,7 +142,7 @@ export async function latestReview(
   const found = [
     ...reviews
       .filter((review) => review.commit_id === head)
-      .filter((review) => review.state === "CHANGES_REQUESTED" || (review.body ?? "").trim() !== "")
+      .filter((review) => review.state === "CHANGES_REQUESTED" || asksForChanges(review.body ?? ""))
       .map((review) => ({ id: `r${review.id}`, at: review.submitted_at ?? "" })),
     ...inline
       .filter((comment) => (comment.original_commit_id ?? comment.commit_id) === head)

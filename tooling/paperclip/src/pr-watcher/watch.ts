@@ -1,6 +1,7 @@
 import {
   branchOwner,
   candidates,
+  closedOutcome,
   type Decision,
   decide,
   type Memory,
@@ -31,6 +32,9 @@ export interface TickSummary {
 
 const markerPattern = /<!-- pr-watcher: (.+?) -->/g;
 
+/** The line an author puts in a task comment to keep the task open after a merge. */
+const holdPattern = /^[ \t]*PR watcher: more PRs to come[ \t.]*$/im;
+
 /** The hidden line that lets the watcher recognise a state it already reported. */
 export function marker(key: string): string {
   return `<!-- pr-watcher: ${key} -->`;
@@ -55,7 +59,14 @@ export function readMemory(
       seenUntil = comment.createdAt;
     }
   }
-  return { reported, seenUntil };
+  const authorLast = comments
+    .filter((comment) => comment.authorAgentId === ownerId)
+    .reduce<CommentRow | undefined>(
+      (newest, comment) =>
+        newest === undefined || comment.createdAt > newest.createdAt ? comment : newest,
+      undefined,
+    );
+  return { reported, seenUntil, held: holdPattern.test(authorLast?.body ?? "") };
 }
 
 const reasonText: Record<Reason["kind"], (head: string) => string> = {
@@ -100,11 +111,15 @@ async function decideTask(
   const pulls = await Promise.all(refs.map((ref) => pullFacts(options.get, ref, greenSince)));
   const ownerKey = branchOwner(pulls[0]?.branch ?? "");
   const ownerId = ownerKey === undefined ? undefined : owners.get(ownerKey);
+  // Comments are read only when a decision depends on them: a wake, or a done the author may hold.
   const needsMemory =
-    ownerId !== undefined && ownerId === task.assigneeAgentId && candidates(pulls).length > 0;
+    ownerId !== undefined &&
+    ownerId === task.assigneeAgentId &&
+    !task.running &&
+    (candidates(pulls).length > 0 || closedOutcome(pulls)?.kind === "done");
   const memory = needsMemory
     ? readMemory(await options.paperclip.comments(task.id), options.selfId, ownerId)
-    : { reported: new Set<string>(), seenUntil: undefined };
+    : { reported: new Set<string>(), seenUntil: undefined, held: false };
   return decide(task, ownerId, pulls, memory);
 }
 

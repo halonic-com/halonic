@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-15359; the PR watcher rules in the seat plan on HAL-15298 (section 3, item 2), approved by the board on 21 Nov
 
-When the PR watcher checks an open task whose author holds it and whose linked pull requests are all closed, the PR watcher shall mark the task done with a comment only if at least one of them merged and every merged one has `ci-ok` passed on its merge commit or is included in the commit of its base branch's newest successful CI push run.
+When the PR watcher checks an open task whose author holds it and whose linked pull requests are all closed and whose author's newest comment on the task doesn't hold it open, the PR watcher shall mark the task done with a comment only if at least one of them merged and every merged one has `ci-ok` passed on its merge commit or is included in the commit of its base branch's newest successful CI push run.
 
 ## Examples
 
@@ -17,3 +17,6 @@ When the PR watcher checks an open task whose author holds it and whose linked p
 - Given pull request 4574, merged with its `ci-ok` on `main` still queued and the newest green CI run older than its merge,
   when the watcher runs,
   then it leaves the task as it is.
+- Given pull request 4485, merged green, and the author's newest comment on the task has the line `PR watcher: more PRs to come`,
+  when the watcher runs,
+  then it leaves the task open, and closes it on a later run once the author's newest comment no longer has that line.

@@ -14,6 +14,9 @@ When the PR watcher checks an open task whose author holds it and has no run goi
 - Given a conversation comment with a `[major]` finding, newer than the author's last comment on the task,
   when the watcher runs,
   then it comments that there is a new review comment.
+- Given a GitHub review that only says "LGTM", a `[nit]`, and conversation comments saying "No changes requested" or "Addressed the changes requested",
+  when the watcher runs,
+  then it does nothing.
 - Given the task is held by its reviewer, not the agent the branch names,
   when the watcher runs,
   then it does nothing.

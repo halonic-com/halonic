@@ -24,10 +24,23 @@ author already has a run going, it does nothing.
 
 | What it sees | What it does |
 | --- | --- |
-| Every linked pull request is closed, at least one merged, and each merged one has `ci-ok` passed on its merge commit (the merge-group run) or is included in the base branch's newest green CI push run | Comments and marks the task `done` |
+| Every linked pull request is closed, at least one merged, and each merged one has `ci-ok` passed on its merge commit (the merge-group run) or is included in the base branch's newest green CI push run, and the author hasn't held the task (below) | Comments and marks the task `done` |
 | `ci-ok` failed on an open pull request's own head | Comments, which wakes the author |
 | It conflicts with its base branch and isn't in the merge queue | Comments |
-| A review comment newer than the watcher's and the author's last comment on the task: a GitHub review with words, an inline comment on the head, or a conversation comment with a `[blocker]`, `[major]` or `[minor]` finding or "changes requested" | Comments |
+| A review comment newer than the watcher's and the author's last comment on the task: a GitHub review that requests changes, an inline comment on the head, or a review or conversation comment with a `[blocker]`, `[major]` or `[minor]` finding or a "changes requested" verdict ("No changes requested" and approvals don't count) | Comments |
+
+**More PRs to come.** A task that delivers several pull requests one after
+another would otherwise be closed after its first merge. To hold it open,
+put this line in your task comment when you link a pull request that isn't
+the last one:
+
+```text
+PR watcher: more PRs to come
+```
+
+The watcher reads only your newest comment on the task: the hold lasts until
+you comment again without the line. Leave it out of the comment for the last
+pull request.
 
 A failed merge group isn't the author's: the queue session finds the
 culprit. Each comment carries a hidden marker per pull request, head and
