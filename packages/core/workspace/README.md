@@ -79,8 +79,8 @@ export async function runExample(): Promise<{
   every model alias or `provider/model` setting whose provider isn't local (`local: true`, or the
   mock model) and every connector that `connectorIsLocal` doesn't count as local. Each message says
   how to turn it off: `privacy.localOnly: false` (ADR `docs/adr/2026-11-08-local-first.md`).
-  Given `sheetHosts` (the hosts of the installed plugins' backends and the local integrations'
-  sheets), a `plugin` or `integration` connector counts as local only when its sheet reaches no
+  Given `sheetHosts` (the hosts each installed plugin may reach, its backend's `hosts` and its local
+  tools' `network` sites, and the local integrations' sheets), a `plugin` or `integration` connector counts as local only when its sheet reaches no
   outside host (`connectorIsLocalWith` from `@halonicjs/format`, requirement
   `local-only-sheet-hosts`).
 - **Where names are looked up:** an agent's skills, knowledge, collections and connectors are its
