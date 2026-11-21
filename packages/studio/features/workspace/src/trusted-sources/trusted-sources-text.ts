@@ -18,11 +18,22 @@ export const REMOVE_BODY =
   "Halonic will ask again before running anything from this workspace, and runs in progress stop.";
 export const REMOVE_PLUGIN_BODY = "Its tools won't run until you trust it again.";
 export const FOLDER_NOT_FOUND = "Folder not found";
+/** A plugin row whose trust is gone but whose sign-out failed (C544-1, HAL-15116). */
+export const NOT_SIGNED_OUT = "Trust removed, not signed out";
+/** What a row trusts, beside its name, so plugin and workspace rows differ (C544). */
+export const KIND = { plugin: "Plugin", workspace: "Workspace" } as const;
 export const LOAD_FAILED = "Couldn't load trusted sources";
 export const TRY_AGAIN = "Try again";
 
 export { trustedOn };
 export const removeTitle = (name: string) => `Remove trust from ${name}?`;
-export const removedLine = (name: string) => `Removed trust from ${name}`;
+/** The rest of a row's **Remove** for screen readers, so each row's button has its own name. */
+export const removeSpoken = (name: string) => ` trust from ${name}`;
+/** A plugin is signed out before its record goes, so its line says so (C544-1). */
+export const removedLine = (name: string, kind: "plugin" | "workspace") =>
+  kind === "plugin" ? `Removed trust from ${name} and signed it out` : `Removed trust from ${name}`;
 export const removeFailed = (name: string, reason: string) =>
   `Couldn't remove trust from ${name}: ${reason}.`;
+/** The record is gone but the plugin's sign-ins are left; removing again tries the sign-out again. */
+export const signOutFailed = (name: string, reason: string) =>
+  `Removed trust from ${name}, but couldn't sign it out: ${reason}. Remove trust again to try the sign-out again.`;

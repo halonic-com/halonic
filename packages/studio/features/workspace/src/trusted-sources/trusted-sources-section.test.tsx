@@ -6,7 +6,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { TrustedSource, TrustedSourcesHost } from "../api.ts";
+import { SignOutFailedError, type TrustedSource, type TrustedSourcesHost } from "../api.ts";
 import { TrustedSourcesView } from "./trusted-sources-section.tsx";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -72,7 +72,14 @@ async function show(
 }
 
 function button(label: string, within: ParentNode = document): HTMLButtonElement | undefined {
-  return [...within.querySelectorAll("button")].find((one) => one.textContent?.trim() === label);
+  return [...within.querySelectorAll("button")].find((one) => shownText(one) === label);
+}
+
+/** A button's words as shown, without what only screen readers hear. */
+function shownText(one: HTMLElement): string {
+  const copy = one.cloneNode(true) as HTMLElement;
+  for (const hidden of copy.querySelectorAll(".sr-only")) hidden.remove();
+  return copy.textContent?.trim() ?? "";
 }
 
 function confirm(): HTMLButtonElement | undefined {
@@ -162,6 +169,59 @@ verifies("workspace.trusted-sources", () => {
     );
     expect(element.textContent).toContain("inbox-helper");
     expect(announce).not.toHaveBeenCalled();
+  });
+
+  it("names each row's Remove for screen readers, and says what each row trusts", async () => {
+    await show(hostOf([inbox, { ...pdf, kind: "plugin" }]));
+    const rows = [...element.querySelectorAll("li")];
+    expect(rows.map((row) => row.querySelector("button")?.textContent)).toEqual([
+      "Remove trust from pdf-tools",
+      "Remove trust from inbox-helper",
+    ]);
+    expect(rows[0]?.textContent).toContain("Plugin");
+    expect(rows[1]?.textContent).toContain("Workspace");
+  });
+
+  it("says a plugin is signed out once its trust is removed", async () => {
+    const announce = await show(hostOf([{ ...inbox, kind: "plugin" }]));
+    act(() => button("Remove")?.click());
+    await act(async () => confirm()?.click());
+    expect(announce).toHaveBeenCalledWith("Removed trust from inbox-helper and signed it out");
+  });
+
+  it("keeps a plugin's row when its sign-out fails, saying so, and removing again finishes", async () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
+    let signOutWorks = false;
+    const host = hostOf([{ ...inbox, kind: "plugin" }], async () => {
+      if (signOutWorks) return;
+      throw new SignOutFailedError({
+        cause: new KindedError("unavailable", "The agent host isn't running"),
+      });
+    });
+    const announce = await show(host);
+    act(() => button("Remove")?.click());
+    await act(async () => confirm()?.click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50);
+    });
+    expect(document.querySelector("dialog")?.textContent).toContain(
+      "Removed trust from inbox-helper, but couldn't sign it out: The agent host isn't running. Remove trust again to try the sign-out again.",
+    );
+    expect(element.querySelector("li")?.textContent).toContain("Trust removed, not signed out");
+    expect(announce).not.toHaveBeenCalled();
+
+    signOutWorks = true;
+    await act(async () => confirm()?.click());
+    expect(host.remove).toHaveBeenCalledTimes(2);
+    expect(element.querySelector("li")).toBeNull();
+    expect(announce).toHaveBeenCalledWith("Removed trust from inbox-helper and signed it out");
+  });
+
+  it("says a listed plugin isn't signed out yet", async () => {
+    await show(hostOf([{ ...inbox, kind: "plugin", signOutPending: true }]));
+    const row = element.querySelector("li")?.textContent;
+    expect(row).toContain("Trust removed, not signed out");
+    expect(row).not.toContain("Trusted on");
   });
 
   it("is read-only when served, with the server's words", async () => {

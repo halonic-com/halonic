@@ -1,7 +1,11 @@
 import { TauriTrustStore } from "@halonicjs/adapter-fs-tauri";
 import { pluginTrustFingerprintPrefix, type SignOutPlugin } from "@halonicjs/app";
 import type { TrustRecord, TrustStore } from "@halonicjs/ports";
-import type { TrustedSource, TrustedSourcesHost } from "@halonicjs/studio-feature-workspace/api";
+import {
+  SignOutFailedError,
+  type TrustedSource,
+  type TrustedSourcesHost,
+} from "@halonicjs/studio-feature-workspace/api";
 import { tauriAgentHostTransport, tauriChannelIpc } from "@halonicjs/studio-services";
 import { agentHostPluginSignOut } from "../plugins/provide-plugins.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -38,7 +42,9 @@ export interface TrustedSourcesParts {
  *
  * Removing a plugin's record signs the plugin out first, as removing its trust on its own page
  * does, also when its folder is gone. The record is removed whether or not the sign-out worked,
- * and then the sign-out's error is thrown, so the dialog says why and removing again finishes.
+ * so its tools stop either way. When the sign-out failed, the plugin waits for one: its row stays,
+ * saying so, the removal rejects with a {@link SignOutFailedError}, and removing it again tries the
+ * sign-out again although the record is gone. The wait lasts while Studio runs.
  *
  * @example
  * const host = trustedSourcesOf({ store, signOutPlugin, afterRemove, foldersFound });
@@ -49,34 +55,60 @@ export function trustedSourcesOf({
   afterRemove = async () => undefined,
   foldersFound,
 }: TrustedSourcesParts): TrustedSourcesHost {
+  // The removed records of plugins whose sign-out failed, by location, until a sign-out works.
+  const waitingForSignOut = new Map<string, TrustRecord>();
   return {
     async list(): Promise<TrustedSource[]> {
       const records = await store.list();
+      const kept = new Set(records.map((record) => record.location));
+      const waiting = [...waitingForSignOut.values()].filter(
+        (record) => !kept.has(record.location),
+      );
       const found = await foundOf(
         foldersFound,
-        records.map((record) => record.location),
+        [...records, ...waiting].map((record) => record.location),
       );
-      return records.map((record) => ({
+      const rowOf = (record: TrustRecord, signOutPending: boolean): TrustedSource => ({
         location: record.location,
         name: nameOf(record.location),
         trustedAt: record.grantedAt,
         found: found.get(record.location),
         // A plugin's record has its own fingerprint kind; the Remove dialog says its tools stop.
         kind: isPluginRecord(record) ? "plugin" : "workspace",
-      }));
+        ...(signOutPending ? { signOutPending } : {}),
+      });
+      return [
+        ...records.map((record) => rowOf(record, false)),
+        ...waiting.map((record) => rowOf(record, true)),
+      ];
     },
     async remove(location): Promise<void> {
-      const record = await store.get(location);
-      try {
-        // A plugin's id is its folder's name, and its sign-ins are signed in under its id.
-        if (record !== null && isPluginRecord(record)) await signOutPlugin(nameOf(location));
-      } finally {
-        // A sign-in that couldn't be signed out never keeps a plugin trusted.
-        await store.revoke(location);
-        await afterRemove();
+      const record = (await store.get(location)) ?? waitingForSignOut.get(location) ?? null;
+      const failed =
+        record !== null && isPluginRecord(record) ? await signOutOf(record) : undefined;
+      // A sign-in that couldn't be signed out never keeps a plugin trusted.
+      await store.revoke(location);
+      await afterRemove();
+      if (failed !== undefined) {
+        throw new SignOutFailedError({ cause: failed.reason });
       }
     },
   };
+
+  /**
+   * Signs a plugin out by its id, its folder's name, and gives why when it couldn't; a failure
+   * leaves the plugin waiting for a sign-out.
+   */
+  async function signOutOf(record: TrustRecord): Promise<{ readonly reason: unknown } | undefined> {
+    try {
+      await signOutPlugin(nameOf(record.location));
+    } catch (reason) {
+      waitingForSignOut.set(record.location, record);
+      return { reason };
+    }
+    waitingForSignOut.delete(record.location);
+    return undefined;
+  }
 }
 
 function isPluginRecord(record: TrustRecord): boolean {

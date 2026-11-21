@@ -7,6 +7,7 @@ import { MemoryTrustStore } from "@halonicjs/adapter-memory";
 import { TrustService } from "@halonicjs/app";
 import type { TrustRecord } from "@halonicjs/ports";
 import { fixedClock } from "@halonicjs/std";
+import { SignOutFailedError } from "@halonicjs/studio-feature-workspace/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { trustedSourcesOf } from "./trusted-sources.ts";
@@ -162,7 +163,7 @@ verifies("app.plugin-sign-out", () => {
     expect(await host.list()).toEqual([]);
   });
 
-  it("removes a plugin's record when its sign-out fails, and gives the error", async () => {
+  it("removes a plugin's record when its sign-out fails, and keeps its row as not signed out", async () => {
     const store = new MemoryTrustStore();
     await store.grant(record("/profile/plugins/weather", "hpf1:a"));
     let refreshed = false;
@@ -176,12 +177,49 @@ verifies("app.plugin-sign-out", () => {
       },
     });
 
-    await expect(host.remove("/profile/plugins/weather")).rejects.toThrow(
-      "the agent host isn't running",
+    const failure = await host.remove("/profile/plugins/weather").catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(SignOutFailedError);
+    expect((failure as SignOutFailedError).cause).toEqual(
+      new Error("the agent host isn't running"),
+    );
+    expect(await store.list()).toEqual([]);
+    expect(refreshed).toBe(true);
+    expect(await host.list()).toEqual([
+      {
+        location: "/profile/plugins/weather",
+        name: "weather",
+        trustedAt: "2026-11-03T12:00:00.000Z",
+        found: undefined,
+        kind: "plugin",
+        signOutPending: true,
+      },
+    ]);
+  });
+
+  it("tries the sign-out again when the plugin is removed again, although its record is gone", async () => {
+    const store = new MemoryTrustStore();
+    await store.grant(record("/profile/plugins/weather", "hpf1:a"));
+    const tries: string[] = [];
+    let signOutWorks = false;
+    const host = trustedSourcesOf({
+      store,
+      signOutPlugin: async (id) => {
+        tries.push(id);
+        if (!signOutWorks) throw new Error("the agent host isn't running");
+      },
+    });
+    await expect(host.remove("/profile/plugins/weather")).rejects.toBeInstanceOf(
+      SignOutFailedError,
     );
 
+    signOutWorks = true;
+    await host.remove("/profile/plugins/weather");
+
+    expect(tries).toEqual(["weather", "weather"]);
     expect(await host.list()).toEqual([]);
-    expect(refreshed).toBe(true);
+    await host.remove("/profile/plugins/weather");
+    expect(tries).toEqual(["weather", "weather"]);
   });
 
   it("signs out no plugin when a workspace's record is removed", async () => {

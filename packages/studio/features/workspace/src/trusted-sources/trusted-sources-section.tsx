@@ -14,7 +14,12 @@ import {
   useCopyDetailsInPlace,
 } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type TrustedSource, type TrustedSourcesHost, TrustedSourcesService } from "../api.ts";
+import {
+  SignOutFailedError,
+  type TrustedSource,
+  type TrustedSourcesHost,
+  TrustedSourcesService,
+} from "../api.ts";
 import * as text from "./trusted-sources-text.ts";
 
 /** Settings › Trusted sources as the settings container shows it. */
@@ -129,10 +134,11 @@ export function TrustedSourcesView({
       await host.remove(source.location);
     } catch (reason) {
       if (!alive.current) return;
-      const line = text.removeFailed(source.name, reasonOf(reason, notAnswering));
+      const failure = removalFailure(source, reason, notAnswering);
       setBusy(false);
-      setError(line);
-      setDetails(isUnexplained(reason) ? detailsOf(line, reason) : undefined);
+      setError(failure.line);
+      setDetails(failure.details);
+      if (failure.signOutPending) markSignOutPending(source.location);
       return;
     }
     if (!alive.current) return;
@@ -147,7 +153,20 @@ export function TrustedSourcesView({
         ? { state: "ready", sources: now.sources.filter((one) => one.location !== source.location) }
         : now,
     );
-    announce(text.removedLine(source.name));
+    announce(text.removedLine(source.name, source.kind ?? "workspace"));
+  };
+
+  const markSignOutPending = (location: string) => {
+    setLoaded((now) =>
+      now.state === "ready"
+        ? {
+            state: "ready",
+            sources: now.sources.map((one) =>
+              one.location === location ? { ...one, signOutPending: true } : one,
+            ),
+          }
+        : now,
+    );
   };
 
   if (loaded.state === "failed") {
@@ -178,38 +197,20 @@ export function TrustedSourcesView({
     return (
       <ul className="m-0 flex list-none flex-col p-0">
         {loaded.sources.map((source) => (
-          <li
+          <SourceRow
             key={source.location}
-            className="flex items-center gap-3 border-b border-border py-2 last:border-b-0"
-          >
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="text-body-strong">{source.name}</span>
-              <span className="break-all font-mono text-small text-fg-muted">
-                {source.location}
-              </span>
-            </span>
-            <span className="text-small text-fg-muted">
-              {source.found === false ? text.FOLDER_NOT_FOUND : text.trustedOn(source.trustedAt)}
-            </span>
-            {readOnly ? null : (
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label={text.removeTitle(source.name).replace(/\?$/u, "")}
-                ref={(node) => {
-                  if (node) removeButtons.current.set(source.location, node);
-                  else removeButtons.current.delete(source.location);
-                }}
-                onClick={() => {
-                  setError(undefined);
-                  setDetails(undefined);
-                  setRemoving(source);
-                }}
-              >
-                {text.REMOVE}
-              </Button>
-            )}
-          </li>
+            source={source}
+            readOnly={readOnly}
+            buttonRef={(node) => {
+              if (node) removeButtons.current.set(source.location, node);
+              else removeButtons.current.delete(source.location);
+            }}
+            onRemove={() => {
+              setError(undefined);
+              setDetails(undefined);
+              setRemoving(source);
+            }}
+          />
         ))}
       </ul>
     );
@@ -254,6 +255,67 @@ export function TrustedSourcesView({
       )}
     </div>
   );
+}
+
+/** One record's row: its name and kind, its location, its state and, unless served, **Remove**. */
+function SourceRow({
+  source,
+  readOnly,
+  buttonRef,
+  onRemove,
+}: {
+  readonly source: TrustedSource;
+  readonly readOnly: boolean;
+  readonly buttonRef: (node: HTMLButtonElement | null) => void;
+  readonly onRemove: () => void;
+}) {
+  return (
+    <li className="flex items-center gap-3 border-b border-border py-2 last:border-b-0">
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="flex items-baseline gap-2">
+          <span className="text-body-strong">{source.name}</span>
+          <span className="text-small text-fg-muted">{text.KIND[source.kind ?? "workspace"]}</span>
+        </span>
+        <span className="break-all font-mono text-small text-fg-muted">{source.location}</span>
+      </span>
+      <span className="text-small text-fg-muted">{rowState(source)}</span>
+      {readOnly ? null : (
+        <Button variant="ghost" size="sm" ref={buttonRef} onClick={onRemove}>
+          {text.REMOVE}
+          {/* Names the row for a screen reader, so each row's Remove differs. */}
+          <span className="sr-only">{text.removeSpoken(source.name)}</span>
+        </Button>
+      )}
+    </li>
+  );
+}
+
+/**
+ * What the Remove trust dialog says when a removal failed, with **Copy details** for an internal
+ * error, and whether the row now waits for a sign-out: a plugin whose record is gone but whose
+ * sign-out failed keeps its row, saying so.
+ */
+function removalFailure(
+  source: TrustedSource,
+  error: unknown,
+  notAnswering: string,
+): { readonly line: string; readonly details?: string; readonly signOutPending: boolean } {
+  const signOutPending = error instanceof SignOutFailedError;
+  const why = signOutPending ? error.cause : error;
+  const reason = reasonOf(why, notAnswering);
+  const line = signOutPending
+    ? text.signOutFailed(source.name, reason)
+    : text.removeFailed(source.name, reason);
+  return isUnexplained(why)
+    ? { line, details: detailsOf(line, why), signOutPending }
+    : { line, signOutPending };
+}
+
+/** What a row says at its end: whether its sign-out is still to do, its folder is gone, or when it was trusted. */
+function rowState(source: TrustedSource): string {
+  if (source.signOutPending === true) return text.NOT_SIGNED_OUT;
+  if (source.found === false) return text.FOLDER_NOT_FOUND;
+  return text.trustedOn(source.trustedAt);
 }
 
 /** Why a read or a removal failed, without its closing full stop; the raw error never shows. */
