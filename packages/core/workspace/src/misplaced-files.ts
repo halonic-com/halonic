@@ -13,6 +13,11 @@ const yamlExtension = /\.ya?ml$/;
 const ymlExtension = ".yml";
 /** The hub's own file, which makes its folder a hub. */
 const hubFileName = "hub.yaml";
+/**
+ * The folders of the layout from before the renames: `projects/<id>/` for a
+ * hub and `flows/` for workflows. Files there stay quiet (HAL-2299).
+ */
+const oldLayoutFolder = /^projects\/|(^|\/)flows\//;
 
 /**
  * A warning for a file no kind places but that is plainly meant as one: a
@@ -95,9 +100,12 @@ function wrongScope(path: string): string | undefined {
  * (or the same with `.yml`), in a folder that kind isn't read from: where
  * it goes. A kind whose files are named only `<id>.yaml`, such as a
  * provider, isn't told apart from any other YAML file, so it gets no warning
- * here.
+ * here, and neither does a file in an old layout's folder.
  */
 function wrongFolder(path: string): string | undefined {
+  if (oldLayoutFolder.test(path)) {
+    return undefined;
+  }
   const slash = path.lastIndexOf("/");
   const folder = slash < 0 ? "" : path.slice(0, slash);
   const fileName = path.slice(slash + 1).replace(yamlExtension, ".yaml");

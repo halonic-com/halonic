@@ -137,7 +137,15 @@ verifies("workspace.misplaced-files", () => {
   });
 
   it("gives no warning for a file not meant as a kind's", async () => {
-    const others = ["notes/README.md", "agents/README.md", "hubs/billing/flows/archive.flow.yaml"];
+    const others = [
+      "notes/README.md",
+      "agents/README.md",
+      "hubs/billing/flows/archive.flow.yaml",
+      // The layout from before the renames (HAL-2299).
+      "projects/p/agents/a.agent.yaml",
+      "projects/p/flows/greet.test.yaml",
+      "flows/greet.test.yaml",
+    ];
     const files = Object.fromEntries(others.map((path) => [path, "text\n"]));
     const workspace = await loadWorkspace(new MemorySource({ ...settings, ...files }));
     expect(workspace.ignored).toEqual([...others].sort());

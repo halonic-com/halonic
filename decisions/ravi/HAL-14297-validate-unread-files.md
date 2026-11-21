@@ -22,8 +22,10 @@ files, its second line says how many and points at `halonic validate`.
 
 One parity fixture changes: `agent/not-read-nested` (`hubs/billing/agents/old/spare.agent.yaml`)
 was skipped in silence by the old loader and now gets the warning. The new allowed difference
-`kind-file-in-wrong-folder-warned` is `proposed`; signing this note signs it off. Old layouts
-(`projects/`, `flows/`, `org.yaml`) use other file names, so they stay quiet as HAL-2299 decided.
+`kind-file-in-wrong-folder-warned` is `proposed`; signing this note signs it off. Files of the
+layout from before the renames (`org.yaml`, anything in `projects/` or a `flows/` folder) stay
+quiet as HAL-2299 decided, even when named like a kind's, such as
+`projects/p/agents/a.agent.yaml`.
 
 ## Why
 
