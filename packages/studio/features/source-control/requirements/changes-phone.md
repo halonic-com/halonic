@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1302 (T9), HAL-10667, HAL-12860; ux-checklists-t8-t9 (HAL-1360) part 2, 2.12 and 2.14 (T9-F8 to F13); design-phone (HAL-552) 5.1, 5.3, 5.7
+- Source: HAL-1302 (T9), HAL-10667, HAL-12860; ux-checklists-t8-t9 (HAL-1360) part 2, 2.12 and 2.14 (T9-F8 to F13); design-phone (HAL-552) 5.1, 5.3, 5.7; HAL-9756
 
-When the screen is a phone, the Changes page shall be the same page in one column with a 16px inset. The top bar says "Changes", so the page's heading shall be for screen readers only. Create version shall be a secondary, full-width, 48px button under "Since your last version" and its count, shown only while something has changed. Create version shall open as a full-screen form sheet. Where the page names git, it shall say "your computer", because git runs there: "Halonic needs git on your computer to keep versions." and, when git doesn't answer, "Halonic on your computer isn't answering." as the reason under "Couldn't load changes", with Try again.
+When the screen is a phone, the Changes page shall be the same page in one column with a 16px inset. The top bar says "Changes", so the page's heading shall be for screen readers only. Create version shall be a secondary, full-width, 48px button under "Since your last version" and its count, shown only while something has changed. Create version shall open as a full-screen form sheet. Where the page names git, it shall say "your computer", because git runs there: "Halonic needs git on your computer to keep versions." and, when git doesn't answer, "Halonic on your computer isn't answering." as the reason under "Couldn't load changes", with Try again. A folder inside a larger git repository shall say "Your folder is part of a larger git repository, so Halonic can't show its changes here.", without "See them with git", since a phone can't offer that.
 
 On a phone, the sharing strip shall say "Only on your computer." with the hint "Add where to share on a computer." and no action, Get updates shall be a 48px button at the end of the header, History shall show the newest 5 versions and then a full-width 48px row, See all history, that shows the rest, History's Show more shall be a full-width 48px button after that, and its Try again a 48px button.
 
@@ -35,6 +35,8 @@ When the screen is a phone and Get updates opens the choices, they shall open as
   then History shows all 5 and no See all history.
 - Given a phone and git that doesn't answer,
   then the page says "Couldn't load changes", "Halonic on your computer isn't answering." and Try again.
+- Given a phone and a workspace folder inside a larger git repository,
+  then the page says "Your folder is part of a larger git repository, so Halonic can't show its changes here." with no button.
 - Given a phone and 3 versions,
   when the person opens "Version 2",
   then the top bar and the page's heading say "Version 2", the heading has focus, the page says who made it, its notes and its items, and the top bar's Back puts focus on its row.
