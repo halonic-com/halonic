@@ -1,6 +1,7 @@
 import { realpath } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { FileTrustStore, FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import { resolveRealPath } from "@halonicjs/adapter-harness-kit";
 import { pluginTrustFingerprintPrefix } from "@halonicjs/app";
 import { parseFile } from "@halonicjs/format";
 import type { Clock, KeyOrigins, TrustRecord, TrustStore } from "@halonicjs/ports";
@@ -343,7 +344,9 @@ async function removeTrust(
   plugins: PluginSetup,
 ): Promise<CommandResult> {
   const dir = workspaceDir(input, context.cwd);
-  const location = await realpath(dir.root).catch(() => resolve(dir.root));
+  // A gone folder keeps its parent's real path, as the record has it, so a
+  // Windows short name such as `RUNNER~1` still finds the record.
+  const location = (await resolveRealPath(resolve(dir.root)))?.real ?? resolve(dir.root);
   if (await isPluginFolderRecord(machine.store, location, plugins)) {
     // The folder's name in the plugins folder is the plugin's id. `--dir`
     // named the folder, and `--plugin` refuses it, so only `--remove` goes on.

@@ -432,6 +432,27 @@ verifies("cli.commands.trust.review-and-trust", () => {
     expect(code).toBe(exitCode.ok);
     expect(io.stdout[0]).toContain(`Removed trust for .${sep}acme.`);
   });
+
+  it("removes the trust of a gone folder named through a link to its parent", async () => {
+    writeAcme();
+    const fingerprint = await fingerprintOfAcme();
+    await runCli(
+      ["trust", "--dir", "acme", "--yes", "--fingerprint", fingerprint],
+      captureIo(folder),
+      commands(),
+    );
+    rmSync(join(folder, "acme"), { recursive: true });
+    // A link stands in for a Windows short name such as `RUNNER~1`: the parent
+    // is still there under another path, so the record's real path is found.
+    const link = join(folder, "link");
+    symlinkSync(folder, link, "junction");
+    const io = captureIo(link);
+
+    const code = await runCli(["trust", "--dir", "acme", "--remove"], io, commands());
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout[0]).toContain(`Removed trust for .${sep}acme.`);
+  });
 });
 
 /** Trusts Acme as {@link writeAcme} writes it, then adds the connector `notes` and changes `mail`'s args. */
