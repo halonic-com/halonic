@@ -1,5 +1,5 @@
 ---
-"@halonicjs/app-studio": minor
+"@halonicjs/app-studio": patch
 ---
 
 The Library can open **New connector** with a name and a way already filled in, for the run banner's "Add connector" to ask for.
