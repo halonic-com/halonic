@@ -4,6 +4,7 @@
 - Task: HAL-14523, follow-ups from Ravi's review of #4080 (HAL-13840)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14523 (Liam reviews and signs; Julian wrote it, Mateo carries it)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:VbMZCzsIHLEohTJhrj3GcmfLui0VRm74THYJGW+cLm+hRWF9G9ycUsfzc7mUH80QxfVjo/jneZV56vdu5VX5Bw==
 
 ## What changes
 
