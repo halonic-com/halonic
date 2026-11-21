@@ -73,6 +73,20 @@ verifies("plugins.plugin-list", () => {
     }
   });
 
+  // jsdom lays nothing out, so this holds the classes that do it: under 24rem the chip and the
+  // version line stack, so the date isn't cut off at 320 CSS px (C564).
+  it("puts the version line under the off chip when the window is narrow", async () => {
+    const view = await show([weather("on")], host({ run: "needs-yes", reason: "container" }));
+    const offChip = Array.from(view.querySelectorAll("span")).find(
+      (span) => span.textContent === chip,
+    );
+    const line = offChip?.closest(".max-\\[24rem\\]\\:flex-col");
+
+    expect(line).not.toBeNull();
+    expect(line?.textContent).toContain("trusted");
+    expect(line?.className).toContain("max-[24rem]:items-end");
+  });
+
   it("doesn't ask the host when no plugin that is on has a backend", async () => {
     const unfencedRuns = host({ run: "needs-yes", reason: "container" });
     const view = await show([weather("not-trusted")], unfencedRuns);
