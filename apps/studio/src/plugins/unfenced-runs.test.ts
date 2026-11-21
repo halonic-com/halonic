@@ -162,3 +162,37 @@ verifies("studio.desktop-unfenced-runs", () => {
     expect(routes).toContain("GET /v1/unfenced-runs");
   });
 });
+
+verifies("studio.desktop-plugin-run-states", () => {
+  it("gives the plugin page the agent host's run-state routes, by the plugin's id", async () => {
+    const calls: { route: string; body: unknown }[] = [];
+    const transport = {
+      request: async (route: string, body: unknown) => {
+        calls.push({ route, body });
+        return { status: 200, body: { stopped: false } };
+      },
+    } as unknown as AgentHostTransport;
+    const ipc: TauriIpc = { invoke: async () => [] };
+    const services = new ServiceRegistry();
+    providePlugins(services, {
+      ipc,
+      window: {},
+      transport,
+      platform: "linux",
+      onFocus: () => () => {},
+      onReloadFailed: () => {},
+    });
+
+    const runStates = services.get(PluginsHostService).actions.runStates;
+    expect(await runStates?.runState("weather")).toEqual({ stopped: false });
+    expect(await runStates?.checkAgain("weather")).toEqual({ stopped: false });
+    expect(calls).toContainEqual({
+      route: "POST /v1/plugins/run-state",
+      body: { plugin: "weather" },
+    });
+    expect(calls).toContainEqual({
+      route: "POST /v1/plugins/run-state/check-again",
+      body: { plugin: "weather" },
+    });
+  });
+});

@@ -6,6 +6,7 @@
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { PluginsHost, StudioPlugins } from "./plugins-service.ts";
 
+export type { PluginRunState, PluginRunStates } from "./page/stopped-status.tsx";
 export type { PluginsHost, StudioPlugins } from "./plugins-service.ts";
 export type { PluginUnfencedRuns, UnfencedRunStatus } from "./trust/unfenced-status.ts";
 export { PluginResult, type PluginResultProps, type ResultShow } from "./ui/plugin-result.tsx";

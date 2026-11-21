@@ -1,5 +1,6 @@
 import {
   AgentHostIntegrationSignIns,
+  AgentHostPluginRunStates,
   AgentHostPluginSecrets,
   AgentHostPluginToolCaller,
   type AgentHostTransport,
@@ -67,6 +68,7 @@ export function providePlugins(
     signOut: agentHostPluginSignOut(transport),
     onReloadFailed: parts.onReloadFailed,
     unfencedRuns,
+    runStates: new AgentHostPluginRunStates(transport),
     programs: desktopProgramsRun(transport, parts.platform),
   });
   hosts.set(parts.window, { plugins, unfencedRuns });
