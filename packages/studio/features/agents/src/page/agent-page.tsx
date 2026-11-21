@@ -125,7 +125,7 @@ export interface AgentScreenProps extends AgentRef {
 
 /**
  * The agent page's frame (`agents.page.frame`): the letter avatar, "AGENT" and the name, then the
- * agent's Flow (the agent map), Runs and Configuration in its tabs. The page is a skeleton when the
+ * agent's Flow (the agent map), Runs and Configuration in its tabs, open on Flow. The page is a skeleton when the
  * read takes over 300 ms, and says why when the agent can't be read. The Try it chat joins it in a
  * later pull request.
  */
@@ -412,10 +412,10 @@ type AgentView = "flow" | "configuration" | "runs";
 const cardViews: ReadonlySet<AgentView | "read"> = new Set(["flow", "configuration"]);
 
 /**
- * The view the page shows. Runs can't list anything in 0.1 (R9), so the page opens where the agent
- * is finished, on Configuration (HAL-12399). An agent just made with nothing written opens there
- * on Behaviour with Instructions focused (`agents.page.new-agent`); once the person picks a view,
- * it is a page like any other, so coming back to Behaviour doesn't take the focus again.
+ * The view the page shows. It opens on Flow, the agent map (flow-agents 2.2, HAL-119 U10). An
+ * agent just made with nothing written opens on Configuration › Behaviour with Instructions focused
+ * instead (`agents.page.new-agent`); once the person picks a view, it is a page like any other, so
+ * coming back to Behaviour doesn't take the focus again.
  *
  * Each request to open at the model shows Configuration again if the person left it. The request
  * waits until Configuration has shown its Model page, so coming back to Configuration by hand later
@@ -424,7 +424,9 @@ const cardViews: ReadonlySet<AgentView | "read"> = new Set(["flow", "configurati
 function useAgentView(hubId: string, id: string, modelRequest: string | undefined) {
   const [fresh, setFresh] = useState(() => isFreshAgent(hubId, id));
   useEffect(() => forgetFreshAgent(hubId, id), [hubId, id]);
-  const [view, setView] = useState<AgentView>("configuration");
+  const [view, setView] = useState<AgentView>(() =>
+    isFreshAgent(hubId, id) ? "configuration" : "flow",
+  );
   const [shownFor, setShownFor] = useState<string>();
   const [modelWaiting, setModelWaiting] = useState(false);
   if (modelRequest !== undefined && modelRequest !== shownFor) {

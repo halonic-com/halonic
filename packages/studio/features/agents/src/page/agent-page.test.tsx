@@ -29,12 +29,13 @@ const sorter: AgentListing = { hubId: "acme", id: "sorter", name: "Sorter" };
 const hostWith = () => memoryAgentsHost({ hubs: [{ id: "acme", name: "acme" }], agents: [sorter] });
 
 verifies("agents.page.frame", () => {
-  it("shows AGENT and the name at once, and opens on Configuration", async () => {
+  it("shows AGENT and the name at once, and opens on Flow", async () => {
     const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
 
     expect(page.textContent).toContain("AGENT");
     expect(page.querySelector("h1")?.textContent).toBe("Sorter");
-    expect(buttonNamed(page, "Configuration")?.getAttribute("aria-selected")).toBe("true");
+    expect(buttonNamed(page, "Flow")?.getAttribute("aria-selected")).toBe("true");
+    expect(buttonNamed(page, "Configuration")?.getAttribute("aria-selected")).toBe("false");
     expect(page.querySelector("[role=status]")).toBeNull();
     const views = page.querySelector("[role=tablist][aria-label='Agent views']");
     expect([...(views?.querySelectorAll("[role=tab]") ?? [])].map((tab) => tab.id)).toHaveLength(3);
@@ -437,7 +438,7 @@ verifies("agents.page.menu", () => {
 verifies("agents.page.new-agent", () => {
   const instructionsBox = (page: HTMLElement) => page.querySelector("textarea");
 
-  it("focuses Instructions on Behaviour for a just-made agent, and not when it opens later", async () => {
+  it("focuses Instructions on Behaviour for a just-made agent, and opens it on Flow later", async () => {
     markFreshAgent("acme", "sorter");
     const first = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
 
@@ -447,16 +448,16 @@ verifies("agents.page.new-agent", () => {
     unmount();
 
     const later = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
-    expect(instructionsBox(later)).not.toBeNull();
-    expect(document.activeElement).not.toBe(instructionsBox(later));
+    expect(buttonNamed(later, "Flow")?.getAttribute("aria-selected")).toBe("true");
+    expect(instructionsBox(later)).toBeNull();
   });
 
-  it("opens other agents on Behaviour without taking the focus", async () => {
+  it("opens other agents on Flow without taking the focus", async () => {
     markFreshAgent("acme", "someone-else");
     const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
 
-    expect(instructionsBox(page)).not.toBeNull();
-    expect(document.activeElement).not.toBe(instructionsBox(page));
+    expect(buttonNamed(page, "Flow")?.getAttribute("aria-selected")).toBe("true");
+    expect(instructionsBox(page)).toBeNull();
   });
 
   it("doesn't take the focus again when the person leaves Behaviour and comes back", async () => {

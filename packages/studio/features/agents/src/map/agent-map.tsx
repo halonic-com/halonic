@@ -10,6 +10,8 @@ import {
   type AgentUser,
   agentToolLists,
 } from "../api.ts";
+import { MapFrame } from "./map-frame.tsx";
+import type { MapSide } from "./map-geometry.ts";
 import { mapWords as words } from "./map-words.ts";
 
 /** Props for {@link AgentMap}. */
@@ -47,7 +49,8 @@ const addClasses =
  * hand it work), below what it can use (skills, knowledge, connectors, three a row), and on the
  * right who it hands work to. Each side is a group named by its heading and ends in its add
  * button (`agents.map.add-button-per-side`). The DOM order is the reading order, left, centre,
- * below, right, so Tab goes card to card that way.
+ * below, right, so Tab goes card to card that way. Its frame fits it to the panel and joins the
+ * cards to the centre with curved lines (`agents.map.lines-and-fit`).
  */
 export function AgentMap(props: AgentMapProps) {
   const { settings, team, users, openAgentStep, openSubagent, openAgent, openWorkflow } = props;
@@ -57,13 +60,10 @@ export function AgentMap(props: AgentMapProps) {
   const subagents = settings.subagents.flatMap((id) => team.filter((member) => member.id === id));
   const workIn = users.length + handsWork.length > 0 || props.addTrigger !== undefined;
   return (
-    <section
-      aria-label={words.map(settings.name)}
-      className="mx-auto grid max-w-4xl grid-cols-[1fr_minmax(12rem,auto)_1fr] items-start gap-x-10 gap-y-6 p-6"
-    >
+    <MapFrame label={words.map(settings.name)}>
       <div className="col-start-1 row-start-1">
         {workIn && (
-          <Side heading={words.workIn}>
+          <Side heading={words.workIn} side="in">
             {users.map((user) => (
               <Card
                 key={`${user.hubId}/${user.id}`}
@@ -84,20 +84,20 @@ export function AgentMap(props: AgentMapProps) {
       </div>
       <CentreCard settings={settings} openAgentStep={openAgentStep} />
       <div className="col-span-3 row-start-2">
-        <Side heading={words.canUse} columns>
+        <Side heading={words.canUse} side="use" columns>
           <ToolCards {...props} />
           <AddButton label={words.addTool} onAdd={props.addTool} />
         </Side>
       </div>
       <div className="col-start-3 row-start-1">
-        <Side heading={words.workOut}>
+        <Side heading={words.workOut} side="out">
           {subagents.map((member) => (
             <AgentCard key={member.id} agent={member} onOpen={openSubagent} />
           ))}
           <AddButton label={words.addSubagent} onAdd={props.addSubagent} />
         </Side>
       </div>
-    </section>
+    </MapFrame>
   );
 }
 
@@ -108,7 +108,10 @@ function CentreCard({
 }: Pick<AgentMapProps, "settings" | "openAgentStep">) {
   const stepsId = useId();
   return (
-    <div className="col-start-2 row-start-1 flex flex-col gap-2 rounded-lg border border-border-strong bg-surface-raised p-4">
+    <div
+      data-map-centre=""
+      className="col-start-2 row-start-1 flex flex-col gap-2 rounded-lg border border-border-strong bg-surface-raised p-4"
+    >
       <p className="flex items-center gap-2 text-body-strong text-fg">
         <LetterTile name={settings.name} />
         {settings.name}
@@ -153,10 +156,13 @@ function ToolCards({ settings, tools, openTool }: AgentMapProps) {
 /** One side of the map: a group named by its heading, its cards in a list. */
 function Side({
   heading,
+  side,
   columns = false,
   children,
 }: {
   readonly heading: string;
+  /** Which side it is, for the lines to its cards. */
+  readonly side: MapSide;
   /** Three a row, for what it can use; one under the other otherwise. */
   readonly columns?: boolean;
   readonly children: ReactNode;
@@ -164,7 +170,12 @@ function Side({
   const headingId = useId();
   return (
     // biome-ignore lint/a11y/useSemanticElements: a side of cards, not form fields, so not a fieldset.
-    <div role="group" aria-labelledby={headingId} className="flex flex-col gap-2">
+    <div
+      role="group"
+      aria-labelledby={headingId}
+      data-map-side={side}
+      className="flex flex-col gap-2"
+    >
       <h2 id={headingId} className="text-caption text-fg-muted uppercase">
         {heading}
       </h2>
@@ -185,10 +196,20 @@ function Card({
   readonly children: ReactNode;
 }) {
   if (onOpen === undefined) {
-    return <div className={cardClasses}>{children}</div>;
+    return (
+      <div data-map-card="" className={cardClasses}>
+        {children}
+      </div>
+    );
   }
   return (
-    <button type="button" aria-label={label} className={pressableClasses} onClick={onOpen}>
+    <button
+      type="button"
+      data-map-card=""
+      aria-label={label}
+      className={pressableClasses}
+      onClick={onOpen}
+    >
       {children}
     </button>
   );
