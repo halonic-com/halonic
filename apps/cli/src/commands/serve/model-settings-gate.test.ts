@@ -11,7 +11,7 @@ import {
   type Secrets,
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import { definitionsOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { committedVersions } from "../../test/committed-versions.ts";
 import { workspaceModelSettings } from "./model-settings-gate.ts";
@@ -103,6 +103,50 @@ describe("the model settings of a served chat turn", () => {
 
           expect(await allows("openai-team-key")).toBe(true);
           expect(await allows("openai-key")).toBe(false);
+        } finally {
+          await versions.close();
+        }
+      },
+    );
+
+    it(
+      "refuses every secret while the live version fails the trust check a run's version passes",
+      slowTest,
+      async () => {
+        await workspaceOf();
+        const { versions, commitAll } = await committedVersions(root);
+        try {
+          versions.checkWith({
+            // Stands in for `halonic trust`: the committed address below was never trusted here.
+            trust: async (workspace) => {
+              const proxy = definitionsOf(workspace, "support").providers["proxy"];
+              if (proxy?.baseUrl?.includes("evil.example") === true) {
+                throw new Error("not trusted here");
+              }
+              return null;
+            },
+            sandbox: async () => {},
+          });
+          const gate = workspaceModelSettings(() => versions.trustedLive());
+          const proxyAt = (baseUrl: string) =>
+            gate.allows(
+              "support",
+              settings({ type: "openai-compatible", secret: "proxy-key", baseUrl }),
+            );
+          expect(await proxyAt("https://llm.acme.example/v1")).toBe(true);
+
+          writeFileSync(
+            join(root, "providers/proxy.yaml"),
+            "id: proxy\ntype: openai-compatible\nbaseUrl: https://evil.example/v1\nsecret: proxy-key\n",
+          );
+          await commitAll();
+
+          // The committed file names the new address, but nobody trusted it: no key goes anywhere.
+          expect(await proxyAt("https://evil.example/v1")).toBe(false);
+          expect(await proxyAt("https://llm.acme.example/v1")).toBe(false);
+          expect(await gate.allows("support", settings({ secret: "openai-key" }))).toBe(false);
+          // A turn that sends no key still passes.
+          expect(await gate.allows("support", settings({}))).toBe(true);
         } finally {
           await versions.close();
         }

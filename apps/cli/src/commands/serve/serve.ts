@@ -257,7 +257,7 @@ async function listenOnComputer(
     passwordHasher: setup.hasher ?? createScryptHasher(),
     coordination: parts.coordination,
     trust: workspaceTrustGate(dir, setup.trust()),
-    modelSettings: workspaceModelSettings(() => versions.live()),
+    modelSettings: workspaceModelSettings(() => versions.trustedLive()),
     // Read only: a served window shows the Google setups, and its sign-in is finished on this computer (HAL-10697).
     googleRead: workspaceGoogleRead({
       setups: openGoogleHost({ profile: environment, clock: parts.clock }).setups,
