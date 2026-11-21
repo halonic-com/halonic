@@ -3,6 +3,7 @@
 - Task: HAL-12528
 - Approval: a team decision with no board card (HAL-2282 rule), the team's HAL-12461 decision (option a) on Sofia's a11y check Q1 (HAL-12426); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:OqlZcybOPvp98n3VaZZAYX9ZaMy7jzBtisfTTvY91xsRSeJeZlPNmu2qGYkdZ4YL4Zm6vi0fUDYPca5+0mqdBA==
 
 ## What changes
 
