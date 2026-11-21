@@ -3,6 +3,7 @@
 - Task: HAL-14883
 - Approval: raised by Julian in his review of #4213 on HAL-14298; the change is the task's description on HAL-14883, so the reviewer of this pull request approves it by signing.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zJgaE+AgLok/S3+InkFGPTbBmmXEC19gGi9EutuIjpnxhRRGdJJ6BLpipdZmm3iX91Pl+unGobdsOrOSlatxDQ==
 
 ## What changes
 
