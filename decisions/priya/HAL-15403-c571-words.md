@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15403
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Dv4kgpTVX8ByGQXVxoqWeaWl/N51zlbEp+RuTlxJwYzIOB3Xfo+Qz3cDudedIAo0cZrNOVzmrDGcWk/NT1FeBA==
 
 Words check C571 (HAL-15387, rows 50 and 51) found two things in the last
 line of `halonic runs`. "Estimated spend this month: about €0.42" says the
