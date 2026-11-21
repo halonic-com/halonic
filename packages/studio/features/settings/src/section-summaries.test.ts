@@ -29,13 +29,13 @@ verifies("settings.section-summaries", () => {
     expect(assistantSummary(await contextWith({}))).toBe("Not set up");
   });
 
-  it("says the model and the turn limit for the Assistant", async () => {
+  it("says the model and the model call limit for the Assistant", async () => {
     const context = await contextWith({
       "assistant.provider": "anthropic",
       "assistant.model": "smart",
       "assistant.turn-limit": 16,
     });
-    expect(assistantSummary(context)).toBe("smart · turn limit 16");
+    expect(assistantSummary(context)).toBe("smart · model call limit 16");
   });
 
   it("names the provider when the Assistant has no model", async () => {
@@ -43,7 +43,7 @@ verifies("settings.section-summaries", () => {
       "assistant.provider": "anthropic",
       "assistant.turn-limit": 8,
     });
-    expect(assistantSummary(context)).toBe("Anthropic · turn limit 8");
+    expect(assistantSummary(context)).toBe("Anthropic · model call limit 8");
   });
 
   it("says the sandbox chip's words once the check answers", async () => {

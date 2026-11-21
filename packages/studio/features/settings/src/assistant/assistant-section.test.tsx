@@ -53,7 +53,7 @@ verifies("settings.ai-agent-section", () => {
     );
     expect(turnLimitBox(view).value).toBe("");
     expect(view.textContent).toContain(
-      "Model turns, tool calls included, before it stops and asks to continue.",
+      "The most model calls in one answer before it stops and asks to continue.",
     );
     expect(control<HTMLInputElement>(view, '[role="switch"]').checked).toBe(true);
     expect(store.stored.size).toBe(0);
@@ -169,7 +169,7 @@ verifies("settings.ai-agent-section", () => {
       );
       await typeAndLeave(turnLimitBox(view), "30");
       expect(turnLimitBox(view).value).toBe("30");
-      expect(view.textContent).toContain("Couldn't save the turn limit on this computer.");
+      expect(view.textContent).toContain("Couldn't save the model call limit on this computer.");
     });
 
     it("keeps the old provider and its fields when a later write of the pick fails", async () => {

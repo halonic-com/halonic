@@ -188,7 +188,7 @@ function useOpenWorkspace(
 }
 
 /**
- * Settings → Assistant (flow-settings 7): the Provider, Model, Turn limit, Connector tools and
+ * Settings → Assistant (flow-settings 7): the Provider, Model, Model call limit, Connector tools and
  * Instructions of the assistant used for new chats in every workspace on this computer, each saved
  * by itself. A pick or switch that fails to save goes back and says so under the control and in
  * the dialog; a typed value stays in its field (`settings.ai-agent-section`).
@@ -453,8 +453,8 @@ function AssistantEditor({
         placeholder={String(turnLimitRange.fallback)}
         stored={turnLimitText}
         check={checkTurnLimit}
-        save={(value) => saveTyped("the turn limit", turnLimit, value)}
-        saveError={failedLine("the turn limit", turnLimit.failed)}
+        save={(value) => saveTyped("the model call limit", turnLimit, value)}
+        saveError={failedLine("the model call limit", turnLimit.failed)}
       />
       <Field
         label={text.CONNECTOR_TOOLS}
