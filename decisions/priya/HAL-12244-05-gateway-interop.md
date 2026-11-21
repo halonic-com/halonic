@@ -3,6 +3,7 @@
 - Task: HAL-12244
 - Approval: Liam approves and signs this note in review, on the pull request's security review task
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QHIxeJ8FE7R48tHrRYeUTWYoCCP6GtcrUv+/ThPDEr50e4tHzAcsalzstewUs8r1yOx/DyDrYtixzOrvW+8sBQ==
 
 ## What changes
 
