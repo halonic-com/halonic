@@ -50,6 +50,7 @@ import {
   noListedToolApproval,
 } from "@halonicjs/engine";
 import type { RunVersion } from "@halonicjs/events";
+import type { Agent } from "@halonicjs/format";
 import type { RunExecutor } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
@@ -182,7 +183,21 @@ export class EngineService {
    *   harness
    * @throws RangeError when the hub has no such agent
    */
-  async checkAgent({ hubId, agentId }: AgentRef): Promise<void> {
+  async checkAgent(ref: AgentRef): Promise<void> {
+    const { workspace, agent } = await this.#agentOf(ref);
+    const refusal = agentRefusalOf(workspace, ref.hubId, agent, this.pageRuns);
+    if (refusal !== undefined) throw refusal;
+  }
+
+  /**
+   * The agent, read from the workspace's saved files.
+   *
+   * @throws RangeError when the hub has no such agent
+   */
+  async #agentOf({ hubId, agentId }: AgentRef): Promise<{
+    readonly workspace: LoadedWorkspace;
+    readonly agent: Agent;
+  }> {
     const workspace = await loadWorkspace(this.#options.definitions);
     const file = filesOf(workspace, "agent").find(
       (agent) => agent.hub === hubId && agent.value.id === agentId,
@@ -190,8 +205,7 @@ export class EngineService {
     if (file === undefined) {
       throw new RangeError(`The hub "${hubId}" has no agent "${agentId}".`);
     }
-    const refusal = agentRefusalOf(workspace, hubId, file.value, this.pageRuns);
-    if (refusal !== undefined) throw refusal;
+    return { workspace, agent: file.value };
   }
 
   /**
@@ -221,7 +235,8 @@ export class EngineService {
 
   /**
    * Starts what a routine runs, for its Run now: a workflow is checked as {@link EngineService.startRun}
-   * checks it, an agent as {@link EngineService.checkAgent} checks it, both before the engine opens. The run records a manual trigger that names the routine, so the routine finds its own
+   * checks it before the engine opens, and an agent goes to the executor, which refuses it until
+   * agent runs are built. The run records a manual trigger that names the routine, so the routine finds its own
    * runs again.
    *
    * @param trigger the routine's key and the time the person asked for the run
@@ -245,9 +260,12 @@ export class EngineService {
       });
       return { id };
     }
-    await this.checkAgent(start.agent);
+    await this.#agentOf(start.agent);
     // As the port: the local executor's own `startAgent` takes no request until agent runs are built,
-    // and its refusal goes to the Routines page as it is, which says it in its own words.
+    // and its refusal goes to the Routines page as it is, which says it in its own words. It comes
+    // before the page's own refusal of the agent ({@link EngineService.checkAgent}), whatever the
+    // agent's harness or connectors: a person sent to the agent's Harness page would only meet it
+    // next (HAL-12367). Once agent runs are built, that check comes first again.
     const executor: RunExecutor = (await this.openForStart()).executor;
     const { id } = await executor.startAgent({ ...start.agent, trigger: runTrigger });
     return { id };

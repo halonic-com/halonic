@@ -313,36 +313,27 @@ verifies("studio.engine-service", () => {
     });
 
     it.each([
-      [
-        "in a harness, with its Harness page step,",
-        "harness: claude-code\n",
-        {
-          message: "writer runs in Claude Code, which Halonic can't start yet.",
-          fix: "Set writer to Halonic on its Harness page to run it now.",
-        },
-      ],
-      [
-        // `halonic run` starts no single agent, so there is no command to give.
-        "that lists a connector, with no next step,",
-        "connectors: [mail]\n",
-        { message: "writer uses a connector, which Studio can't start yet.", fix: undefined },
-      ],
-    ])("refuses a routine's agent %s before the lock is taken", async (_, writer, words) => {
-      const shell = fakeShell();
-      const service = serviceOn(shell, acmeFiles({ writer }));
+      ["in a harness", "harness: claude-code\n"],
+      ["that lists a connector", "connectors: [mail]\n"],
+    ])(
+      "passes the executor's refusal of a routine's agent %s on, before the page's own",
+      async (_, writer) => {
+        // No agent runs on its own yet, whatever its harness: the Harness page step would only lead
+        // to this refusal next (HAL-12367).
+        const service = serviceOn(fakeShell(), acmeFiles({ writer }));
 
-      const refusal = await service
-        .startRoutine(
-          { agent: { hubId: "support", agentId: "writer", prompt: "Go." } },
-          { routineKey: "support/weekly", at: "2026-11-15T10:00:00.000Z" },
-        )
-        .catch((error: unknown) => error);
+        const refusal = await service
+          .startRoutine(
+            { agent: { hubId: "support", agentId: "writer", prompt: "Go." } },
+            { routineKey: "support/weekly", at: "2026-11-15T10:00:00.000Z" },
+          )
+          .catch((error: unknown) => error);
 
-      expect(refusal).toBeInstanceOf(WindowCantStart);
-      expect(refusal).toMatchObject({ kind: "unavailable", ...words });
-      expect(refusal).not.toHaveProperty("command");
-      expect(lockCalls(shell)).toEqual([]);
-    });
+        expect(refusal).toMatchObject({ name: "AgentRunsNotAvailable" });
+        expect(refusal).not.toBeInstanceOf(WindowCantStart);
+        await service.close();
+      },
+    );
 
     it("says so when the routine's agent doesn't exist, before the lock is taken", async () => {
       const shell = fakeShell();

@@ -10,6 +10,7 @@ A routine whose Starts is an agent can't run in 0.1: the local executor refuses 
 
 - The engine now passes the executor's own `AgentRunsNotAvailable` through, and Run now answers it as its own refusal, `agent-runs-not-available`.
 - The toast (danger, stays) reads "Not started: Halonic can't run an agent on its own yet, only as a step in a workflow." with **Pick what it runs** and no **Try again**.
+- This refusal comes before the page's own refusal of an agent in a harness or with a connector, because no agent runs on its own yet whatever its harness: otherwise "Set Reporter to Halonic on its Harness page to run it now." would only lead to this refusal next (Noah's design check C471-2 on HAL-14728).
 
 The requirement `studio.workspace-routines` gains this refusal in its text and one example, with a new test. No test was skipped, and every changed test still checks what the app does.
 
