@@ -9,6 +9,8 @@ root="$1"
 install -m 0644 "$here/files/wsl.conf" "$root/etc/wsl.conf"
 install -d -m 0755 "$root/opt/halonic"
 install -m 0644 "$here/files/opt-halonic-README" "$root/opt/halonic/README"
+# Root's alone: the updater replaces itself there (HAL-15161).
+install -d -o root -g root -m 0755 "$root/usr/local/sbin"
 install -o root -g root -m 0755 "$here/files/halonic-runtime" "$root/usr/local/sbin/halonic-runtime"
 install -d -m 0755 "$root/usr/share/doc/halonic-image"
 install -m 0644 "$here/files/NOTICE" "$root/usr/share/doc/halonic-image/NOTICE"

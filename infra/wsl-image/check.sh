@@ -80,8 +80,12 @@ chroot "$root" su halonic -s /bin/sh -c 'id -un' | grep -qx halonic || fail "can
 # root's and not writable by halonic, after an update and after a rollback.
 updater=/usr/local/sbin/halonic-runtime
 [ "$(stat -c '%U %a' "$root$updater")" = "root 755" ] || fail "$updater must be root's, mode 755"
-runtime() { # <version> [<link target>]: a runtime archive owned by uid 1000, with a setuid
-  # and a group-writable file, and lib/link pointing at <link target> (lib/data's name by default)
+[ "$(stat -c '%U %a' "$root/usr/local/sbin")" = "root 755" ] || fail "/usr/local/sbin must be root's, mode 755"
+image_updater="$canary/updater.image"
+cp "$root$updater" "$image_updater"
+runtime() { # <version> [<link target>] [<updater>]: a runtime archive owned by uid 1000, with a setuid
+  # and a group-writable file, and lib/link pointing at <link target> (lib/data's name by default);
+  # with <updater>, that file as sbin/halonic-runtime ("link" makes it a link into bin)
   local dir; dir="$(mktemp -d)"
   mkdir -p "$dir/bin" "$dir/lib"
   printf '#!/bin/sh\necho %s\n' "$1" > "$dir/bin/engine"
@@ -89,6 +93,13 @@ runtime() { # <version> [<link target>]: a runtime archive owned by uid 1000, wi
   echo data > "$dir/lib/data"
   chmod 0666 "$dir/lib/data"
   ln -s "${2:-data}" "$dir/lib/link"
+  if [ "${3:-}" = link ]; then
+    mkdir "$dir/sbin"
+    ln -s ../bin/engine "$dir/sbin/halonic-runtime"
+  elif [ -n "${3:-}" ]; then
+    mkdir "$dir/sbin"
+    install -m 0755 "$3" "$dir/sbin/halonic-runtime"
+  fi
   tar -czf "$root/tmp/$1.tar.gz" -C "$dir" --owner=1000 --group=1000 .
   rm -rf "$dir"
   sha256sum "$root/tmp/$1.tar.gz" | cut -d' ' -f1
@@ -144,8 +155,11 @@ printf '#!/bin/sh\necho packed\n' > "$packed/host"
 "$(dirname "$0")/runtime-archive.sh" "$packed/host" 1.4.0+0123abcd "$packed/b" >/dev/null
 cmp -s "$packed/a/halonic-runtime.tar.gz" "$packed/b/halonic-runtime.tar.gz" || fail "the runtime archive is not reproducible"
 [ "$(tar -tvzf "$packed/a/halonic-runtime.tar.gz" --numeric-owner | awk '{ print $1, $2, $6 }')" = \
-  "$(printf '%s\n' 'drwxr-xr-x 0/0 bin/' '-rwxr-xr-x 0/0 bin/halonic-agent-host')" ] ||
+  "$(printf '%s\n' 'drwxr-xr-x 0/0 bin/' '-rwxr-xr-x 0/0 bin/halonic-agent-host' \
+    'drwxr-xr-x 0/0 sbin/' '-rwxr-xr-x 0/0 sbin/halonic-runtime')" ] ||
   fail "the runtime archive holds other files, owners or modes"
+tar -xzOf "$packed/a/halonic-runtime.tar.gz" sbin/halonic-runtime | cmp -s - "$image_updater" ||
+  fail "the runtime archive's updater isn't files/halonic-runtime"
 code=0; "$(dirname "$0")/runtime-archive.sh" "$packed/host" ../x "$packed/c" 2>/dev/null || code=$?
 if [ "$code" -ne 1 ] || [ -e "$packed/c" ]; then fail "runtime-archive.sh took a version the updater refuses"; fi
 sum="$(sed -n 's/.*"sha256":"\([0-9a-f]*\)".*/\1/p' "$packed/a/halonic-runtime.json")"
@@ -185,6 +199,37 @@ for version in 1.5.0 1.6.0; do
   [ "$(chroot "$root" "/opt/halonic/$version/bin/engine")" = "$version" ] || fail "an overlapping install left $version incomplete"
 done
 [ -z "$(find "$root/opt/halonic" -maxdepth 1 -name '.incoming-*')" ] || fail "an install left its unpack folder"
+owned_by_root
+# The updater travels with the runtime (HAL-15161): install puts the version's
+# sbin/halonic-runtime in place, root's, and keeps the image's copy once; a
+# version without one gets the image's copy back, and so does a rollback to
+# it, so the updater always matches `current` (1.7.0 with one, 1.8.0 without,
+# then back to 1.7.0). An updater that is a link, or doesn't start, is refused
+# before anything changes.
+cmp -s "$root$updater" "$image_updater" || fail "an archive without sbin/halonic-runtime changed the updater"
+newer="$canary/updater.newer"
+{ cat "$image_updater"; echo "# 1.7.0"; } > "$newer"
+seventh="$(runtime 1.7.0 data "$newer")"
+install_runtime 1.7.0 "$seventh" >/dev/null
+cmp -s "$root$updater" "$newer" || fail "install didn't put the version's updater in place"
+[ "$(stat -c '%U %a' "$root$updater")" = "root 755" ] || fail "the new updater isn't root's, mode 755"
+cmp -s "$root/usr/local/sbin/.halonic-runtime.image" "$image_updater" || fail "the image's updater wasn't kept"
+eighth="$(runtime 1.8.0)"
+install_runtime 1.8.0 "$eighth" >/dev/null
+cmp -s "$root$updater" "$image_updater" || fail "a version without sbin/halonic-runtime kept another's updater"
+chroot "$root" "$updater" rollback >/dev/null
+[ "$(links)" = "1.7.0 1.8.0" ] || fail "after rolling back to 1.7.0: $(links)"
+cmp -s "$root$updater" "$newer" || fail "rollback didn't bring back 1.7.0's updater"
+if chroot "$root" su halonic -s /bin/sh -c "touch /usr/local/sbin/x" 2>/dev/null; then fail "halonic can write /usr/local/sbin"; fi
+printf '#!/bin/sh\nexit 1\n' > "$canary/updater.failing"
+for bad in link "$canary/updater.failing"; do
+  sum="$(runtime 1.9.0 data "$bad")"
+  code=0; install_runtime 1.9.0 "$sum" 2>/dev/null || code=$?
+  [ "$code" -eq 5 ] || fail "an archive whose updater is ${bad##*/} gave exit $code, not 5"
+  cmp -s "$root$updater" "$newer" || fail "an archive whose updater is ${bad##*/} replaced it"
+  [ "$(links)" = "1.7.0 1.8.0" ] || fail "an archive whose updater is ${bad##*/} switched current: $(links)"
+done
+[ -z "$(find "$root/usr/local/sbin" -name '.halonic-runtime.??????')" ] || fail "a refused updater left its copy"
 owned_by_root
 # An update Studio's time limit cut off inside dpkg (HAL-12672): socat is left
 # half-configured, and its package script sets a file capability. Offline, so

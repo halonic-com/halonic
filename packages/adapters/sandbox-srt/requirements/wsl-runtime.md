@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-14644, HAL-5396 (the runtime updater), HAL-14642, HAL-15148 (the updater's lock)
+- Source: HAL-14644, HAL-5396 (the runtime updater), HAL-14642, HAL-15148 (the updater's lock), HAL-15161 (the updater travels with the runtime)
 
-When the `checking` step has passed, the WSL setup shall run an `installing-runtime` step that puts the runtime Studio ships (its version, SHA-256 and archive) in Halonic's distro through the host's `installRuntime`, which runs the image's updater as root, only when `halonic-runtime status` in the distro doesn't name that version as current, so that running the setup again repairs a missing or other runtime without importing the distro again and changes nothing when the runtime is in place. It shall count the updater's exit 0, or exit 2 when the version has become current, as installed, and then finish the setup. It shall fail with `runtime-busy` when the updater says a sandbox session runs (exit 3) or another install, rollback or security update holds its lock (exit 8), keeping the step so the next run tries again, and with `runtime-install-failed` on any other exit code or when the updater didn't start.
+When the `checking` step has passed, the WSL setup shall run an `installing-runtime` step that puts the runtime Studio ships (its version, SHA-256 and archive) in Halonic's distro through the host's `installRuntime`, which runs the distro's updater as root (the image's, or the one the current runtime brought), only when `halonic-runtime status` in the distro doesn't name that version as current, so that running the setup again repairs a missing or other runtime without importing the distro again and changes nothing when the runtime is in place. It shall count the updater's exit 0, or exit 2 when the version has become current, as installed, and then finish the setup. It shall fail with `runtime-busy` when the updater says a sandbox session runs (exit 3) or another install, rollback or security update holds its lock (exit 8), keeping the step so the next run tries again, and with `runtime-install-failed` on any other exit code or when the updater didn't start.
 
 ## Examples
 

@@ -153,7 +153,7 @@ jobs:
             "windows=^(\.github/workflows/ci\.yml$|\.github/actions/|pnpm-lock\.yaml$|apps/(cli|agent-host)/|packages/adapters/(fs-node|harness-kit|harness-claude-code|harness-codex|mcp|memory|system-node|http-kit|integration-kit)/|packages/core/(workspace|app|events|format|ports|profile|routines|schema-kit|std|workflow|yaml)/|packages/testing/(contracts|spec|parity|integration)/|tooling/(config|publish)/)"
             "sandbox-mxc=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/sandbox-mxc/|packages/adapters/integration-runner/|packages/core/app/(src|requirements)/sandbox-|packages/core/ports/|pnpm-lock\.yaml$)"
             "android=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|apps/studio/src/connect/|apps/studio/connect\.html$|apps/studio/vite\.config\.ts$|apps/studio/package\.json$|pnpm-lock\.yaml$|tooling/check/(licences\.json$|licence-texts/[^/]+\.txt$|src/(cli/sbom|lib/(gradle-notices|sbom|licences))\.ts$))"
-            "agent_host=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/agent-host/|infra/wsl-image/runtime-archive\.sh$|packages/adapters/e2e-noise/|package\.json$)"
+            "agent_host=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/agent-host/|infra/wsl-image/(runtime-archive\.sh|files/halonic-runtime)$|packages/adapters/e2e-noise/|package\.json$)"
             "studio=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/|packages/studio/)"
             "docs=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/docs/|docs/)"
             "workflows=^\.github/"
