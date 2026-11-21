@@ -3,6 +3,7 @@
 - Task: HAL-13177
 - Approval: decided by the team on HAL-13177 (states H12 and H13 of HAL-5896, approved by the board; Noah's design check C446 on HAL-14656 asks for them). Liam signs on review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:h46P5710dPRAvdThNDkxRJtjWuzIjamB5wGMpcgB2NhDxz2VBZdIYWMzxjf5Yx13v5QnT8Qb26uTmbaNkPBgAw==
 
 ## What changes
 
