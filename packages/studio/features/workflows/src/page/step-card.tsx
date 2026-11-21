@@ -76,6 +76,7 @@ export function StepCard({
         ref={button}
         type="button"
         aria-pressed={selected}
+        data-step={step.id}
         aria-labelledby={nameParts.join(" ")}
         aria-describedby={waysOn === undefined ? undefined : part.waysOn}
         onClick={onSelect}
@@ -145,6 +146,15 @@ export function StepCard({
       )}
     </>
   );
+}
+
+/** The canvas's card for `stepId` inside `within`, so the page can hand it focus back. */
+export function stepCardIn(
+  within: HTMLElement | null,
+  stepId: string,
+): HTMLButtonElement | undefined {
+  const cards = within?.querySelectorAll<HTMLButtonElement>("button[data-step]") ?? [];
+  return [...cards].find((card) => card.getAttribute("data-step") === stepId);
 }
 
 /** How far the Start chip rises above its card's top edge, in px: its 16 px height, as it stands on it. */
