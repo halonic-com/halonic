@@ -1,15 +1,23 @@
 //! The start on Windows, through `windows-sys`: `ShellExecuteExW` with the
-//! `runas` verb, as the installer does (HAL-14812).
+//! `runas` verb, as the installer does (HAL-14812), of a helper opened
+//! without sharing write or delete and checked through that handle
+//! (HAL-14958).
 
 use crate::{Launch, StartError, Verb, Wait};
-use std::ffi::{OsStr, c_void};
+use std::ffi::{OsStr, OsString, c_void};
+use std::fs::{File, OpenOptions};
 use std::io;
-use std::os::windows::ffi::OsStrExt;
-use std::path::Path;
+use std::os::windows::ffi::{OsStrExt, OsStringExt};
+use std::os::windows::fs::OpenOptionsExt;
+use std::os::windows::io::AsRawHandle;
+use std::path::{Path, PathBuf};
 use std::ptr;
 use std::time::Duration;
 use windows_sys::Win32::Foundation::{
     CloseHandle, ERROR_CANCELLED, GetLastError, HANDLE, WAIT_OBJECT_0, WAIT_TIMEOUT,
+};
+use windows_sys::Win32::Storage::FileSystem::{
+    FILE_NAME_NORMALIZED, FILE_SHARE_READ, GetFinalPathNameByHandleW, VOLUME_NAME_DOS,
 };
 use windows_sys::Win32::System::Com::{
     COINIT_APARTMENTTHREADED, COINIT_DISABLE_OLE1DDE, CoInitializeEx, CoUninitialize,
@@ -23,6 +31,15 @@ use windows_sys::Win32::UI::WindowsAndMessaging::SW_HIDE;
 
 /// The real Windows.
 pub struct Windows;
+
+/// The helper's file, open for reading and shared for reading and running
+/// only: until it is dropped, Windows refuses to write, rename or delete it,
+/// or to rename a folder it is in. `path` is where that file really is,
+/// with no link or junction left in it.
+pub struct Opened {
+    _file: File,
+    path: PathBuf,
+}
 
 /// A started helper: its process handle, closed when dropped. Closing it
 /// doesn't stop the helper.
@@ -40,10 +57,25 @@ impl Drop for Process {
 }
 
 impl Launch for Windows {
+    type Opened = Opened;
     type Process = Process;
 
-    fn start(&self, helper: &Path, verb: Verb, owner: isize) -> Result<Process, StartError> {
-        start(helper, OsStr::new(verb.argument()), owner)
+    fn open(&self, helper: &Path) -> Result<(Opened, Option<String>), String> {
+        let file = OpenOptions::new()
+            .read(true)
+            .share_mode(FILE_SHARE_READ)
+            .open(helper)
+            .map_err(|error| format!("Windows couldn't open the sandbox helper: {error}"))?;
+        let path = final_path(&file)
+            .map_err(|error| format!("Windows didn't say where the sandbox helper is: {error}"))?;
+        let signer = halonic_publisher::signer_of_open(&path, &file);
+        Ok((Opened { _file: file, path }, signer))
+    }
+
+    fn start(&self, helper: &Opened, verb: Verb, owner: isize) -> Result<Process, StartError> {
+        // Started by the file's real path: a junction in the path the
+        // shell was given could be pointed elsewhere after the check.
+        start(&helper.path, OsStr::new(verb.argument()), owner)
     }
 
     fn wait(&self, process: &Process, limit: Duration) -> Result<Wait, String> {
@@ -130,6 +162,55 @@ fn wait(process: &Process, limit: Duration) -> Result<Wait, String> {
     Ok(Wait::Exited(code))
 }
 
+/// Where `file` really is, without the `\\?\` prefix Windows gives it:
+/// `ShellExecuteExW` doesn't take that form.
+fn final_path(file: &File) -> io::Result<PathBuf> {
+    let mut buffer = vec![0u16; 512];
+    let length = loop {
+        // SAFETY: the handle is open while `file` lives; `buffer` and its
+        // length in units outlive the call, which writes at most that many.
+        let length = unsafe {
+            GetFinalPathNameByHandleW(
+                file.as_raw_handle(),
+                buffer.as_mut_ptr(),
+                buffer.len() as u32,
+                FILE_NAME_NORMALIZED | VOLUME_NAME_DOS,
+            )
+        } as usize;
+        if length == 0 {
+            return Err(io::Error::last_os_error());
+        }
+        if length < buffer.len() {
+            break length;
+        }
+        // Too small: `length` is the size it needs, its NUL included.
+        buffer.resize(length, 0);
+    };
+    let plain = plain_path(&buffer[..length]);
+    Ok(PathBuf::from(OsString::from_wide(&plain)))
+}
+
+/// `path` without the `\\?\` prefix: dropped in front of a drive letter,
+/// and `\\?\UNC\server\a` becomes `\\server\a`. Any other form is left as
+/// it is.
+fn plain_path(path: &[u16]) -> std::borrow::Cow<'_, [u16]> {
+    let units = |text: &str| text.encode_utf16().collect::<Vec<u16>>();
+    if let Some(rest) = path.strip_prefix(units(r"\\?\UNC\").as_slice()) {
+        return [units(r"\\").as_slice(), rest].concat().into();
+    }
+    match path.strip_prefix(units(r"\\?\").as_slice()) {
+        Some(rest @ [drive, colon, slash, ..])
+            if *drive < 128
+                && (*drive as u8).is_ascii_alphabetic()
+                && *colon == u16::from(b':')
+                && *slash == u16::from(b'\\') =>
+        {
+            rest.into()
+        }
+        _ => path.into(),
+    }
+}
+
 /// `text` as a null-terminated UTF-16 string.
 fn wide(text: &OsStr) -> Vec<u16> {
     text.encode_wide().chain(std::iter::once(0)).collect()
@@ -137,16 +218,69 @@ fn wide(text: &OsStr) -> Vec<u16> {
 
 #[cfg(test)]
 mod tests {
-    //! On a real Windows, ignored in plain `cargo test`: `runas` would ask
-    //! the person at the keyboard. The `tauri-windows` CI job runs them,
-    //! where the runner's user is an administrator with UAC off, so Windows
-    //! starts the program elevated with no prompt.
+    //! On a real Windows. The starts are ignored in plain `cargo test`:
+    //! `runas` would ask the person at the keyboard. The `tauri-windows` CI
+    //! job runs them, where the runner's user is an administrator with UAC
+    //! off, so Windows starts the program elevated with no prompt.
 
-    use super::{start, wait};
-    use crate::Wait;
+    use super::{Windows, plain_path, start, wait};
+    use crate::{Launch, Wait};
     use std::ffi::OsStr;
+    use std::fs::{self, OpenOptions};
     use std::path::PathBuf;
     use std::time::Duration;
+
+    #[test]
+    fn elevate_start_holds_the_helper_against_a_swap_until_it_starts() {
+        let folder = std::env::temp_dir().join("halonic-elevate-start-open");
+        let _ = fs::remove_dir_all(&folder);
+        fs::create_dir_all(&folder).expect("a scratch folder");
+        let helper = folder.join("helper.exe");
+        fs::write(&helper, b"not a program").expect("a file");
+        let (opened, signer) = Windows.open(&helper).expect("it opens");
+        // A file of ours isn't signed.
+        assert_eq!(signer, None);
+        assert_eq!(opened.path.file_name(), helper.file_name());
+        assert!(!opened.path.to_string_lossy().starts_with(r"\\?\"));
+        assert!(OpenOptions::new().write(true).open(&helper).is_err());
+        assert!(fs::rename(&helper, folder.join("other.exe")).is_err());
+        assert!(fs::remove_file(&helper).is_err());
+        let moved = folder.with_extension("moved");
+        assert!(fs::rename(&folder, &moved).is_err());
+        // Reading it, as Windows does to start it, still works.
+        assert_eq!(fs::read(&helper).expect("it reads"), b"not a program");
+        drop(opened);
+        assert!(fs::rename(&helper, folder.join("other.exe")).is_ok());
+        let _ = fs::remove_dir_all(&folder);
+    }
+
+    #[test]
+    fn elevate_start_starts_the_helper_by_a_plain_path() {
+        let plain = |path: &str| {
+            let units: Vec<u16> = path.encode_utf16().collect();
+            String::from_utf16(&plain_path(&units)).expect("text")
+        };
+        let drive = r"\\?\C:\Halonic\a.exe";
+        assert_eq!(plain(drive), drive["\\\\?\\".len()..]);
+        assert_eq!(
+            plain(r"\\?\UNC\server\share\a.exe"),
+            r"\\server\share\a.exe"
+        );
+        // Anything else stays as Windows gave it.
+        let volume = r"\\?\Volume{0}\a.exe";
+        assert_eq!(plain(volume), volume);
+    }
+
+    /// Run by CI with a signed file and the publisher PowerShell reads from
+    /// it, so the shell reads it through its own handle as the helper does.
+    #[test]
+    #[ignore = "needs HALONIC_SIGNED_FILE and HALONIC_SIGNED_PUBLISHER"]
+    fn elevate_start_reads_the_helpers_publisher_through_its_handle() {
+        let signed = PathBuf::from(std::env::var_os("HALONIC_SIGNED_FILE").expect("a signed file"));
+        let publisher = std::env::var("HALONIC_SIGNED_PUBLISHER").expect("its publisher");
+        let (_opened, signer) = Windows.open(&signed).expect("it opens");
+        assert_eq!(signer.as_deref(), Some(publisher.as_str()));
+    }
 
     fn system32(program: &str) -> PathBuf {
         let root = std::env::var_os("SystemRoot").expect("Windows' folder");

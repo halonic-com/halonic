@@ -1,7 +1,9 @@
 //! Who signed a file, as the UAC prompt shows the publisher.
 
-use super::wide;
-use std::ffi::c_void;
+use std::ffi::{OsStr, c_void};
+use std::fs::File;
+use std::os::windows::ffi::OsStrExt;
+use std::os::windows::io::AsRawHandle;
 use std::path::Path;
 use std::ptr;
 use windows_sys::Win32::Foundation::HANDLE;
@@ -17,11 +19,24 @@ use windows_sys::Win32::Security::WinTrust::{
 
 /// The publisher `file`'s signature names, if Windows trusts it.
 pub fn signer(file: &Path) -> Option<String> {
+    verify(file, ptr::null_mut())
+}
+
+/// The publisher the signature of `open`, the file opened at `file`, names,
+/// if Windows trusts it. Windows reads the bytes through `open`, not by the
+/// name, so what is checked is the file that handle holds, whatever has the
+/// name by then.
+pub fn signer_of_open(file: &Path, open: &File) -> Option<String> {
+    verify(file, open.as_raw_handle())
+}
+
+/// `WinVerifyTrust` on `file`, read through `handle` unless it is null.
+fn verify(file: &Path, handle: HANDLE) -> Option<String> {
     let path = wide(file.as_os_str());
     let mut file_info = WINTRUST_FILE_INFO {
         cbStruct: size_of::<WINTRUST_FILE_INFO>() as u32,
         pcwszFilePath: path.as_ptr(),
-        hFile: ptr::null_mut(),
+        hFile: handle,
         pgKnownSubject: ptr::null_mut(),
     };
     // No revocation check: it would go online from an elevated process,
@@ -40,7 +55,8 @@ pub fn signer(file: &Path) -> Option<String> {
     let mut action = WINTRUST_ACTION_GENERIC_VERIFY_V2;
     // SAFETY: `data`, `file_info`, `path` and `action` outlive the call;
     // `data` points at `file_info`, which points at the NUL-terminated
-    // `path`. A null window means no UI.
+    // `path` and, unless null, the open `handle` the caller holds. A null
+    // window means no UI.
     let trusted = unsafe {
         WinVerifyTrust(
             ptr::null_mut(),
@@ -112,4 +128,9 @@ unsafe fn publisher(state: HANDLE) -> Option<String> {
         return None;
     }
     String::from_utf16(&name[..length - 1]).ok()
+}
+
+/// `text` as a NUL-terminated wide string.
+fn wide(text: &OsStr) -> Vec<u16> {
+    text.encode_wide().chain(Some(0)).collect()
 }

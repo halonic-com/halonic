@@ -52,17 +52,17 @@ pub const TEMP: &str = "tmp";
 pub const UNINSTALL_KEY: &str =
     r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\HalonicAgentSandbox";
 
-/// The publisher a signed release's helper shows in the UAC prompt: its
-/// signing certificate's name, as Windows displays it. The release build
-/// sets `HALONIC_SANDBOX_SIGNER` (HAL-1197); dev and CI builds and an
-/// unsigned release leave it out, and leave no copy of the helper and no
-/// Installed apps entry.
+/// The publisher a signed release's helper shows in the UAC prompt, from
+/// `HALONIC_SANDBOX_SIGNER` (HAL-1197). Dev and CI builds and an unsigned
+/// release have none, and leave no copy of the helper and no Installed apps
+/// entry.
 ///
 /// It is built in, not read from the helper's own file: that file is in the
 /// user's app folder, and while the helper runs it can be renamed and
 /// another put in its place, which is the very swap this check is for
-/// (HAL-7385, S-4).
-pub const SIGNER: Option<&str> = option_env!("HALONIC_SANDBOX_SIGNER");
+/// (HAL-7385, S-4). The Studio shell checks the helper against the same one
+/// before it starts it (HAL-14958).
+pub const SIGNER: Option<&str> = halonic_publisher::SIGNER;
 
 /// The SHA-256 of the `srt-win.exe` sandbox-runtime 0.0.82 ships for this
 /// computer's architecture. `tests/srt_win_hash.rs` checks it against the

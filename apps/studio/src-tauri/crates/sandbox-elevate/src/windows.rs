@@ -1,7 +1,5 @@
 //! The helper's [`Machine`] on Windows, through `windows-sys`.
 
-mod signer;
-
 use crate::{Machine, UNINSTALL_KEY, Value};
 use halonic_file_identity::file_identity;
 use std::ffi::{OsStr, OsString, c_void};
@@ -200,7 +198,7 @@ impl Machine for Windows {
     }
 
     fn signer(&self, file: &Path) -> Option<String> {
-        signer::signer(file)
+        halonic_publisher::signer(file)
     }
 
     fn read(&self, file: &Path) -> io::Result<Vec<u8>> {
@@ -390,6 +388,6 @@ fn known_folder(id: &GUID) -> io::Result<PathBuf> {
 }
 
 /// `text` as a NUL-terminated wide string.
-pub(crate) fn wide(text: &OsStr) -> Vec<u16> {
+fn wide(text: &OsStr) -> Vec<u16> {
     text.encode_wide().chain(Some(0)).collect()
 }

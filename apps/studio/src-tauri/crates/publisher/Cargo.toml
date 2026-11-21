@@ -1,0 +1,32 @@
+[package]
+name = "halonic-publisher"
+description = "Who signed a file, as Windows' administrator prompt shows the publisher, and the publisher a signed release is built for."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# `WinVerifyTrust` needs `unsafe`. As in sandbox-elevate, where this check
+# came from (HAL-7385, S-4), this crate turns the workspace's
+# `unsafe_code = "forbid"` off in its own Cargo.toml, every block has a
+# `// SAFETY:` comment, and nothing unsafe leaves the `windows` module.
+# These are the workspace lints with that one change.
+[lints.rust]
+unsafe_code = "allow"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+undocumented_unsafe_blocks = "deny"
+
+# Pinned to the version already in Cargo.lock, so this crate adds no new
+# code to the build. Only the windows-sys features it calls are turned on.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.61.2", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_Security_Cryptography",
+  "Win32_Security_Cryptography_Catalog",
+  "Win32_Security_Cryptography_Sip",
+  "Win32_Security_WinTrust",
+] }

@@ -59,6 +59,7 @@ impl Default for ElevateState {
     fn default() -> Self {
         ElevateState(halonic_elevate_start::Starts::new(
             halonic_elevate_start::Windows,
+            halonic_elevate_start::SIGNER,
         ))
     }
 }
