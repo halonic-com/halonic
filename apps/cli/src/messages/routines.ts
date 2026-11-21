@@ -22,6 +22,8 @@ import { trustMessages } from "./trust.ts";
  */
 export const routinesMessages = defineMessages("routines", {
   summary: () => phrase`List the workspace's routines, or start them on time`,
+  /** `list`'s line in `halonic routines --help`: the same list as `halonic routines` (HAL-15082). */
+  listSummary: () => phrase`List the workspace's routines`,
   /** What the list was doing, for "✕ Couldn't list the routines in acme: …". */
   action: (place: string) => phrase`list the routines in ${place}`,
 
@@ -33,15 +35,18 @@ export const routinesMessages = defineMessages("routines", {
    * "Next 16:00 (Europe/Amsterdam)".
    */
   nextIn: (due: DueAt, timeZone: string) => phrase`Next ${dueInWords(due)} ${dim(`(${timeZone})`)}`,
-  /** The Next column of a routine whose file has errors: it won't start until they are fixed (HAL-14299). */
-  wontStart: () => phrase`${markPart("failed")} Won't start`,
+  /**
+   * The Next column of a routine whose file has errors: it can't start until
+   * they are fixed (HAL-14299), in the Studio's word for it (HAL-15082).
+   */
+  cantStart: () => phrase`${markPart("failed")} Can't start`,
   /**
    * The line above the list when routines have errors, which exits 1
-   * (HAL-14299): "! 1 routine has problems · halonic validate". `dir` is
-   * the user's own `--dir`.
+   * (HAL-14299): "! 1 routine can't start · halonic validate", which shows
+   * why. `dir` is the user's own `--dir`.
    */
-  routinesWithProblems: (count: number, dir?: string) =>
-    phrase`${markPart("needsYou")} ${counted(count, "routine has", "routines have")} problems ${markPart("separator")} ${suggestedCommand("validate", dir)}`,
+  routinesCantStart: (count: number, dir?: string) =>
+    phrase`${markPart("needsYou")} ${counted(count, "routine", "routines")} can't start ${markPart("separator")} ${suggestedCommand("validate", dir)}`,
   /** The Next column of a routine that is off. */
   off: () => phrase`Off`,
   /** The Next column of a routine no clock starts: manual, a signal, mail, or a schedule that doesn't parse. */

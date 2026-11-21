@@ -2,7 +2,7 @@
 // thin command over `RoutineList`: this file opens the workspace and its
 // runs, asks the service, and turns its answer into rows. Listing starts
 // nothing and writes nothing, so it needs no trust, as `halonic runs`. A
-// routine whose file has errors shows "Won't start", and the list exits 1,
+// routine whose file has errors shows "Can't start", and the list exits 1,
 // so "will it run?" is answered where people look for it (HAL-14299).
 
 import { type ListedRoutine, RoutineList } from "@halonicjs/app/routines";
@@ -52,7 +52,7 @@ export async function listRoutines(
   const problemsLine =
     withProblems === 0
       ? []
-      : [routinesMessages.routinesWithProblems(withProblems, givenDir(input, workspace)).phrase];
+      : [routinesMessages.routinesCantStart(withProblems, givenDir(input, workspace)).phrase];
   return {
     exitCode: withProblems === 0 ? exitCode.ok : exitCode.failed,
     lines: [
@@ -95,13 +95,13 @@ function spansHubs(routines: readonly ListedRoutine[]): boolean {
 }
 
 /**
- * The Next column. A routine with errors won't start, even when it is on
+ * The Next column. A routine with errors can't start, even when it is on
  * or has a next time. A schedule in a zone other than this computer's is
  * written in its own zone, and says which, so its time matches its file.
  */
 function nextCell(routine: ListedRoutine, clock: RunClock): Phrase {
   if (routine.problems > 0) {
-    return routinesMessages.wontStart().phrase;
+    return routinesMessages.cantStart().phrase;
   }
   if (!routine.enabled) {
     return routinesMessages.off().phrase;
@@ -129,11 +129,13 @@ function lastCell(routine: ListedRoutine, clock: RunClock): Phrase {
 /**
  * A routine as `--json` gives it: the service's fields, with the last run
  * cut to its id, status and start, which `halonic runs show` takes further.
+ * A routine with errors can't start, so it has no next run (HAL-15082).
  */
 function routineJson(routine: ListedRoutine): Record<string, unknown> {
   const { lastRun, ...rest } = routine;
   return {
     ...rest,
+    nextRun: routine.problems > 0 ? null : routine.nextRun,
     lastRun:
       lastRun === null
         ? null

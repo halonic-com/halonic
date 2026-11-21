@@ -20,7 +20,23 @@ export function routinesCommandWith(setup: RunSetup): CliCommand {
     action: (input, context) =>
       routinesMessages.action(printable(workspaceDir(input, context.cwd).name)),
     options: { dir: dirOption },
-    subcommands: [watchCommandWith(setup)],
+    subcommands: [listCommandWith(setup), watchCommandWith(setup)],
+    run: (input, context) => listRoutines(input, context, setup),
+  };
+}
+
+/**
+ * `halonic routines list`: the same list as `halonic routines`, for people
+ * who type it as they do `halonic plugin list` (HAL-15082).
+ */
+function listCommandWith(setup: RunSetup): CliCommand {
+  return {
+    name: "list",
+    usage: "[--dir <folder>]",
+    summary: routinesMessages.listSummary(),
+    action: (input, context) =>
+      routinesMessages.action(printable(workspaceDir(input, context.cwd).name)),
+    options: { dir: dirOption },
     run: (input, context) => listRoutines(input, context, setup),
   };
 }

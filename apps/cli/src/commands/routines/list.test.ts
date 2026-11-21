@@ -26,7 +26,7 @@ const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import
 const hint = "Routines start on time only while `halonic routines watch` is running.";
 const golden = (name: string) => join(import.meta.dirname, "golden", name);
 const problemsLine = (count: number) =>
-  `! ${count} ${count === 1 ? "routine has" : "routines have"} problems · halonic validate`;
+  `! ${count} ${count === 1 ? "routine" : "routines"} can't start · halonic validate`;
 
 let acmeRuns: AcmeRuns;
 
@@ -149,12 +149,12 @@ verifies("cli.commands.routines.list", () => {
       expect(code).toBe(exitCode.failed);
       expect(io.stdout).toEqual([
         problemsLine(1),
-        'broken   Invalid file, line 3: use a number and a unit, e.g. "15m", "1h", "1d" (runs are placed from midnight UTC)   ✕ Won\'t start   Never ran',
+        'broken   Invalid file, line 3: use a number and a unit, e.g. "15m", "1h", "1d" (runs are placed from midnight UTC)   ✕ Can\'t start   Never ran',
         hint,
       ]);
     });
 
-    it("says Won't start for a routine whose file has errors, counts them above the list, and exits 1", async () => {
+    it("says Can't start for a routine whose file has errors, counts them above the list, and exits 1", async () => {
       await addRoutines({
         digest: [
           "id: digest",
@@ -171,14 +171,14 @@ verifies("cli.commands.routines.list", () => {
       // The support hub has no workflow weekly-digest, so the routine's start would fail.
       expect(code).toBe(exitCode.failed);
       expect(io.stdout).toEqual([
-        "! 1 routine has problems · halonic validate --dir .",
-        "Friday digest   Fridays at 16:00   ✕ Won't start         Never ran",
+        "! 1 routine can't start · halonic validate --dir .",
+        "Friday digest   Fridays at 16:00   ✕ Can't start         Never ran",
         "Morning check   Daily at 08:00     Next tomorrow 08:00   Never ran",
         hint,
       ]);
     });
 
-    it("says Won't start for a routine whose input lacks a field the first step reads", async () => {
+    it("says Can't start for a routine whose input lacks a field the first step reads", async () => {
       await writeFiles(acmeRuns.acme, {
         "hubs/support/workflows/announce.workflow.yaml": [
           "id: announce",
@@ -210,8 +210,8 @@ verifies("cli.commands.routines.list", () => {
       // C480 P5 (HAL-14777): the run would start with "Write an announcement about: ".
       expect(code).toBe(exitCode.failed);
       expect(io.stdout).toEqual([
-        "! 1 routine has problems · halonic validate --dir .",
-        "Monday note   Mondays at 08:00   ✕ Won't start   Never ran",
+        "! 1 routine can't start · halonic validate --dir .",
+        "Monday note   Mondays at 08:00   ✕ Can't start   Never ran",
         hint,
       ]);
     });
@@ -369,6 +369,34 @@ verifies("cli.commands.routines.list", () => {
         },
       ],
     });
+  });
+
+  it("gives no next run with --json for a routine that can't start", async () => {
+    await addRoutines({
+      digest: routine("digest", "Friday digest", '{ schedule: "0 16 * * 5" }').replace(
+        "support-reply",
+        "weekly-digest",
+      ),
+    });
+
+    const { code, io } = await routinesIn("--json");
+
+    // C540 #4 (HAL-15082): the support hub has no workflow weekly-digest, so it never starts.
+    expect(code).toBe(exitCode.failed);
+    const [digest] = JSON.parse(io.stdout.join("\n")).routines;
+    expect(digest).toMatchObject({ key: "support/digest", nextRun: null, problems: 1 });
+  });
+
+  it("lists the same routines as `routines list`", async () => {
+    await addRoutines({
+      morning: routine("morning", "Morning check", '{ schedule: "0 8 * * *" }'),
+    });
+
+    const listed = await routinesIn("list");
+
+    // C540 #4 (HAL-15082): `list` gave "There's no command", as `plugin list` exists.
+    expect(listed.code).toBe(exitCode.ok);
+    expect(listed.io.stdout).toEqual((await routinesIn()).io.stdout);
   });
 
   it("stops in a folder without a workspace", async () => {
