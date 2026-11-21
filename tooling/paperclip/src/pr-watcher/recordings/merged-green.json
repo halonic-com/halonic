@@ -1,0 +1,27 @@
+{
+  "/repos/halonic-com/halonic/pulls/4485": {
+    "html_url": "https://github.com/halonic-com/halonic/pull/4485",
+    "state": "closed",
+    "merged_at": "2026-11-21T20:48:17Z",
+    "merge_commit_sha": "ebcd1fab9b028303a9c73e882b58b2811f9c4beb",
+    "mergeable": null,
+    "head": {
+      "sha": "c0f13fae92570e7a349ca2c9b2d74b057a8808e5",
+      "ref": "priya/HAL-15121-month-spend-where"
+    },
+    "base": {
+      "ref": "main"
+    }
+  },
+  "/repos/halonic-com/halonic/commits/ebcd1fab9b028303a9c73e882b58b2811f9c4beb/check-runs?check_name=ci-ok&per_page=100": {
+    "total_count": 1,
+    "check_runs": [
+      {
+        "name": "ci-ok",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-21T20:47:54Z"
+      }
+    ]
+  }
+}

@@ -1,0 +1,167 @@
+import type { CheckState, PullFacts } from "./decide.ts";
+
+/**
+ * Reads what the PR watcher needs from the GitHub REST API. Read-only: it
+ * only sends GET requests, and only to the API's own origin, so the token
+ * never goes anywhere else.
+ */
+
+/** The part of `fetch` the readers use, so tests can answer from recordings. */
+export type Fetch = (
+  url: string,
+  init: { method: string; headers: Record<string, string>; body?: string },
+) => Promise<Pick<Response, "ok" | "status" | "json">>;
+
+/** Sends one GET and returns the parsed JSON body. */
+export type GitHubGet = (path: string) => Promise<unknown>;
+
+/** The GitHub API's origin. */
+export const gitHubApi = "https://api.github.com";
+
+/** A GET-only reader for the GitHub API, with the token when there is one. */
+export function gitHubReader(options: { fetch: Fetch; token?: string | undefined }): GitHubGet {
+  const headers: Record<string, string> = {
+    accept: "application/vnd.github+json",
+    "x-github-api-version": "2022-11-28",
+  };
+  if (options.token !== undefined && options.token !== "") {
+    headers["authorization"] = `Bearer ${options.token}`;
+  }
+  return async (path) => {
+    const url = new URL(path, gitHubApi);
+    if (url.origin !== gitHubApi) {
+      throw new Error(`GitHub: refusing to send the token to ${url.origin}.`);
+    }
+    const response = await options.fetch(url.href, { method: "GET", headers });
+    if (!response.ok) {
+      throw new Error(`GitHub: GET ${url.pathname} answered ${response.status}.`);
+    }
+    return response.json();
+  };
+}
+
+/** A pull request link from a work product: `https://github.com/<owner>/<repo>/pull/<n>`. */
+export function parsePullUrl(url: string): { repo: string; number: number } | undefined {
+  const match = /^https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/pull\/(\d+)\/?(?:[?#].*)?$/.exec(url);
+  if (match?.[1] === undefined || match[2] === undefined) {
+    return undefined;
+  }
+  return { repo: match[1], number: Number(match[2]) };
+}
+
+interface CheckRun {
+  readonly status?: string;
+  readonly conclusion?: string | null;
+  readonly started_at?: string | null;
+}
+
+/** The newest `ci-ok` run's result on a commit. A cancelled run isn't red. */
+export async function ciOk(get: GitHubGet, repo: string, sha: string): Promise<CheckState> {
+  const body = (await get(
+    `/repos/${repo}/commits/${sha}/check-runs?check_name=ci-ok&per_page=100`,
+  )) as {
+    check_runs?: CheckRun[];
+  };
+  const runs = [...(body.check_runs ?? [])].sort((a, b) =>
+    (b.started_at ?? "").localeCompare(a.started_at ?? ""),
+  );
+  const newest = runs[0];
+  if (newest === undefined) {
+    return "missing";
+  }
+  if (newest.status !== "completed") {
+    return "pending";
+  }
+  if (newest.conclusion === "success") {
+    return "success";
+  }
+  return newest.conclusion === "cancelled" || newest.conclusion === "skipped"
+    ? "pending"
+    : "failure";
+}
+
+interface Review {
+  readonly id?: number;
+  readonly commit_id?: string;
+  readonly original_commit_id?: string;
+  readonly submitted_at?: string;
+  readonly created_at?: string;
+  readonly state?: string;
+  readonly body?: string | null;
+}
+
+/** Every item of a list endpoint that lists oldest first, page by page. */
+async function everyPage(get: GitHubGet, path: string): Promise<unknown[]> {
+  const items: unknown[] = [];
+  for (let page = 1; ; page += 1) {
+    const list = (await get(
+      `${path}${path.includes("?") ? "&" : "?"}per_page=100&page=${page}`,
+    )) as unknown[];
+    items.push(...list);
+    if (list.length < 100) {
+      return items;
+    }
+  }
+}
+
+/**
+ * A review or conversation comment that asks the author for something: a
+ * finding tagged `[blocker]`, `[major]` or `[minor]` (docs/guides/review.md),
+ * or a verdict "changes requested" at the start of a line or right after a
+ * `Name:` lead-in ("Liam: changes requested on head …"). Approvals, `[nit]`s,
+ * "No changes requested" and "addressed the changes requested" don't wake anyone.
+ */
+export function asksForChanges(body: string): boolean {
+  return (
+    /^\s*(?:[-*]\s+)?\[(?:blocker|major|minor)\]/im.test(body) ||
+    /^[ \t]*(?:[-*>][ \t]+)?(?:[^\n]{0,80}?:[ \t]*)?(?:\*\*|_)?changes requested\b/im.test(body)
+  );
+}
+
+/**
+ * The newest review comment the author may not have seen: a review on the
+ * head commit that requests changes or asks for them in words, an inline
+ * comment on the head commit, or a conversation comment that asks for
+ * changes. Our reviewers post most reviews as conversation comments, since
+ * every agent shares one GitHub account. Conversation comments have no
+ * commit, so after a push an older finding comes back under the new head's
+ * key; only the `seenUntil` check in `newReasons` keeps it quiet, which
+ * holds as long as the author comments on the task after each run.
+ */
+export async function latestReview(
+  get: GitHubGet,
+  repo: string,
+  number: number,
+  head: string,
+): Promise<PullFacts["latestReview"]> {
+  const [reviews, inline, conversation] = (await Promise.all([
+    everyPage(get, `/repos/${repo}/pulls/${number}/reviews`),
+    get(`/repos/${repo}/pulls/${number}/comments?sort=created&direction=desc&per_page=100`),
+    everyPage(get, `/repos/${repo}/issues/${number}/comments`),
+  ])) as [Review[], Review[], Review[]];
+  const found = [
+    ...reviews
+      .filter((review) => review.commit_id === head)
+      .filter((review) => review.state === "CHANGES_REQUESTED" || asksForChanges(review.body ?? ""))
+      .map((review) => ({ id: `r${review.id}`, at: review.submitted_at ?? "" })),
+    ...inline
+      .filter((comment) => (comment.original_commit_id ?? comment.commit_id) === head)
+      .map((comment) => ({ id: `c${comment.id}`, at: comment.created_at ?? "" })),
+    ...conversation
+      .filter((comment) => asksForChanges(comment.body ?? ""))
+      .map((comment) => ({ id: `i${comment.id}`, at: comment.created_at ?? "" })),
+  ].sort((a, b) => b.at.localeCompare(a.at));
+  return found[0];
+}
+
+/** Whether the pull request's last merge-queue event put it in the queue. */
+export async function inMergeQueue(get: GitHubGet, repo: string, number: number): Promise<boolean> {
+  // The timeline runs oldest first, so it reads every page for the newest event.
+  const events = (await everyPage(get, `/repos/${repo}/issues/${number}/timeline`)) as {
+    event?: string;
+  }[];
+  const queueEvents = events
+    .map((item) => item.event)
+    .filter((event) => event === "added_to_merge_queue" || event === "removed_from_merge_queue");
+  return queueEvents.at(-1) === "added_to_merge_queue";
+}
