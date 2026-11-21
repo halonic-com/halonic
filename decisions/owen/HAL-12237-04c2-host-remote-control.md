@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12237 (for Liam, CTO, to sign with the review of B2 PR 4c-2)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Xvd+h6TIxYmT/ut9GeWs+ZBtU2iyNZGYSegZXLnbPvJ6PETfcm61zBgHufchpHgR9Y8f9Cpxnszck5tJ2YURAQ==
 
 The `RemoteControl` contract asked that Allow pair the phone "connected": the `paired` event's phone had `connected: true`. The fake did that because it had no session to wait for. The agent host can't: by the ADR "Pairing and the end-to-end session" and `agent-host.remote-paired-phones`, a phone counts as connected only once its first transport message decrypts, which comes after the host has sent `paired`. Saying `connected` before that would show a phone as connected whose session may never open.
 
