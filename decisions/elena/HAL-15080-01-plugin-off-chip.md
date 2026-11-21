@@ -3,6 +3,7 @@
 - Task: HAL-15080
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15080 (found in check C540 #2 on HAL-15074; a chip and a line in the words of R13, which the board approved on HAL-1949, so a team decision under the HAL-2282 rule; Sofia confirms the words on the task; Liam's code review signs this note)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:tnx9atCCaQ4i11/FduNC2xuW6ulIZX7+VVCB7RegDJwhICkwqpZUpJT378hRQf5DL8NrO2jGJcGoYKXYcU25Bw==
 
 ## What changes
 
