@@ -95,9 +95,12 @@ verifies("routines.list.rows-and-states", () => {
       span.className.includes("text-danger"),
     );
 
+    // One text for screen readers, so Chromium can't put a space before its colon (C538-4).
     expect(chip?.querySelector(".sr-only")?.textContent).toBe(
-      ": support-reply isn't in this workspace",
+      "Can't start: support-reply isn't in this workspace",
     );
+    expect(chip?.querySelector('[aria-hidden="true"]')?.textContent).toBe("Can't start");
+    expect(chip?.childNodes).toHaveLength(2);
     expect(row.textContent).toContain("Can't start: support-reply isn't in this workspace");
     expect(row.textContent).not.toContain("next ");
     expect(rowOf(page, "Weekend").textContent).toContain("Can't start");
