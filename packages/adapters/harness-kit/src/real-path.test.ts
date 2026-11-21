@@ -5,6 +5,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { resolveRealPath } from "./real-path.ts";
 
+const windows = process.platform === "win32";
+
 let base: string;
 let worktree: string;
 let outside: string;
@@ -46,12 +48,12 @@ verifies("harness-kit.real-path", () => {
     );
   });
 
-  it("resolves `..` after a link, as the system does, not by name", async () => {
+  it("resolves `..` as the system does: after a link on Linux and macOS, by name on Windows", async () => {
     await symlink(outside, join(worktree, "keys"));
 
     // Joined by hand: `join` would fold `..` by name, to the worktree's own `config`.
     expect((await resolveRealPath(`${worktree}/keys/../config`))?.real).toBe(
-      join(base, "home", "config"),
+      windows ? join(worktree, "config") : join(base, "home", "config"),
     );
   });
 
@@ -61,8 +63,11 @@ verifies("harness-kit.real-path", () => {
     expect(await resolveRealPath(join(worktree, "dangling"))).toBeNull();
   });
 
-  it("gives nothing for `..` in the part that isn't there", async () => {
-    expect(await resolveRealPath(`${worktree}/missing/../../x`)).toBeNull();
+  it("gives nothing for `..` in the part that isn't there, except on Windows, which folds it by name", async () => {
+    const resolved = await resolveRealPath(`${worktree}/missing/../../x`);
+
+    if (windows) expect(resolved).toEqual({ real: join(base, "x"), linked: false });
+    else expect(resolved).toBeNull();
   });
 
   it("says a file with a second name is linked", async () => {

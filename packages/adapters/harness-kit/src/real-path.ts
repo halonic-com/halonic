@@ -22,9 +22,11 @@ const maxDepth = 4096;
  * existing parent's real path plus the rest, so a new file under a linked
  * folder resolves to where the write would land. It gives `null` when it
  * can't say where the path is: a dangling link, a `.` or `..` in the part
- * that isn't there (the system resolves those after the links, so folding
+ * that isn't there (Linux and macOS resolve those after the links, so folding
  * them by name could point inside while the write lands outside), or any
- * error other than "not there".
+ * error other than "not there". Windows folds `..` by name before it follows
+ * links, and `realpath` there does the same, so the answer is still where
+ * the write would land.
  */
 export async function resolveRealPath(path: string): Promise<ResolvedRealPath | null> {
   const rest: string[] = [];
