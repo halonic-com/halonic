@@ -22,6 +22,12 @@ export interface OverviewItem {
   readonly avatar?: ReactNode;
   /** The row's chips, after the name: "1 needs you", "2 warnings". The feature words them. */
   readonly chips?: ReactNode;
+  /**
+   * A file that can't be read as its kind (C348): the row takes the kit's error state, with
+   * `chip` in a danger chip ("1 problem") in place of the chips and `reason` in danger text in
+   * place of the detail ("Line 2: …"). The feature words both.
+   */
+  readonly error?: { readonly chip: string; readonly reason: string };
 }
 
 /** A hub and the items of one kind in it. */

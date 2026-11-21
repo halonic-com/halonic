@@ -194,6 +194,7 @@ function rowsOf(
       ...(meta === undefined ? {} : { meta }),
       ...(item.avatar === undefined ? {} : { avatar: item.avatar }),
       ...(trailing === undefined ? {} : { trailing }),
+      ...(item.error === undefined ? {} : { error: item.error }),
       ...(menuOf === undefined || menuOf(item).length === 0
         ? {}
         : {
