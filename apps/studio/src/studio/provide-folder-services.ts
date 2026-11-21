@@ -8,7 +8,6 @@ import {
   TauriRunStore,
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
-import { workspaceProvider } from "@halonicjs/adapter-workspace-models";
 import {
   AgentPlacement,
   InstructionTrustService,
@@ -19,7 +18,6 @@ import {
 import { randomIds, systemClock } from "@halonicjs/std";
 import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
-import { ModelChoiceHostService } from "@halonicjs/studio-feature-first-run/api";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import {
   InboxNoticesService,
@@ -39,7 +37,6 @@ import {
   SkillHostService,
 } from "@halonicjs/studio-feature-library/api";
 import {
-  type ModelKeys,
   ModelKeysService,
   ModelsFilesService,
   NoLimitMemoryService,
@@ -89,7 +86,7 @@ import { WorkspaceNewCollection } from "../library/workspace-new-collection.ts";
 import { WorkspaceNewConnector } from "../library/workspace-new-connector.ts";
 import { WorkspaceNewSkill } from "../library/workspace-new-skill.ts";
 import { WorkspaceSkills } from "../library/workspace-skills.ts";
-import { FirstRunModelChoice } from "../models/first-run-model-choice.ts";
+import { provideModelChoice } from "../models/provide-model-choice.ts";
 import { WorkspaceModelKeys } from "../models/workspace-model-keys.ts";
 import { WorkspaceModelsFiles } from "../models/workspace-models-files.ts";
 import { WorkspaceNoLimit } from "../models/workspace-no-limit.ts";
@@ -164,7 +161,7 @@ export function provideFolderServices(
     }),
   );
   const keys = services.provide(ModelKeysService, new WorkspaceModelKeys(shellKeychain(ipc)));
-  provideModelChoice(services, { ipc, trust, keys, ...(settle === undefined ? {} : { settle }) });
+  provideModelChoice(services, { ipc, trust, keys, settle });
   services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
   services.provide(ProviderCheckService, new WorkspaceProviderCheck(new ShellHttpClient(ipc)));
   provideWorkspaceRuns(services, { ipc, files, window }, location);
@@ -410,34 +407,6 @@ export function provideFolderServices(
     location,
     onFocus: (listener) => focusOf(window, listener),
   });
-}
-
-/** Gives the first run's model choice: its test call goes the way a run's calls go. */
-function provideModelChoice(
-  services: ServiceRegistry,
-  parts: Pick<FolderServiceParts, "ipc" | "trust" | "settle"> & { keys: ModelKeys },
-): void {
-  const { ipc, trust, keys, settle } = parts;
-  services.provide(
-    ModelChoiceHostService,
-    new FirstRunModelChoice({
-      files: services.get(ModelsFilesService),
-      change: (label, changes) => services.get(workspaceFilesKey).change(label, changes),
-      // Without a save to wait for, the trust check reads the old files and trusts nothing.
-      settle: settle ?? (async () => {}),
-      keys,
-      trust,
-      digest: webCryptoDigest,
-      // The test call goes the way a run's calls go, with only the pasted key as its secrets.
-      provider: (file, secrets) =>
-        workspaceProvider(file, { secrets, http: new ShellHttpClient(ipc) }),
-      setTimer: (callback, delayMs) => {
-        const timer = setTimeout(callback, delayMs);
-        return () => clearTimeout(timer);
-      },
-      newTestId: () => crypto.randomUUID(),
-    }),
-  );
 }
 
 /**

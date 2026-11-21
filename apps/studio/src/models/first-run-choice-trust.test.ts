@@ -159,7 +159,7 @@ verifies("studio.first-run-choice-order", () => {
     ]);
   });
 
-  it("says the key was saved when the files fail to save, and trusts nothing", async () => {
+  it("says the key was saved when the files fail to save, takes the edits back, and trusts nothing", async () => {
     const folder = acmeFolder();
     const testId = await passed(folder, anthropic);
     const preview = await folder.service.preview(testId);
@@ -171,7 +171,22 @@ verifies("studio.first-run-choice-order", () => {
       keySaved: true,
       reason: "The disk is full.",
     });
+    expect(folder.steps.slice(-2)).toEqual(["settle", "undo: Updated model alias default"]);
+    expect(folder.unsaved.size).toBe(0);
     expect(folder.steps).not.toContain("grant");
+  });
+
+  it("changes and saves nothing where nothing saves the files", async () => {
+    const folder = acmeFolder({ saves: false });
+    const testId = await passed(folder, anthropic);
+
+    expect(await folder.service.continue(testId, undefined)).toMatchObject({
+      ok: false,
+      failed: "no-save",
+      keySaved: false,
+    });
+    expect(folder.steps).toEqual([]);
+    expect(folder.stored.size).toBe(0);
   });
 
   it("changes no file when the key store fails", async () => {

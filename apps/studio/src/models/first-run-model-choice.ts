@@ -4,6 +4,7 @@ import {
   choiceEdits,
   choiceProvider,
   keyProblem,
+  type LocalModels,
   type ModelChoice,
   modelTestRequest,
   type TestResult,
@@ -26,10 +27,17 @@ import { choicePreview } from "./first-run-choice-trust.ts";
 /** What the first run's model choice reads and writes, all for the one open folder. */
 export interface FirstRunModelChoiceParts {
   readonly files: Pick<ModelsFiles, "readModels" | "readWorkspace" | "readProvider">;
-  /** Changes files as one undo step, without saving them. */
-  readonly change: (label: string, changes: Record<string, string>) => void;
-  /** Saves what is waiting; rejects when the save fails. */
-  readonly settle: () => Promise<void>;
+  /**
+   * Changes files as one undo step, without saving them. Returns the way to take that step back,
+   * which does nothing once a newer step was made.
+   */
+  readonly change: (label: string, changes: Record<string, string>) => () => void;
+  /**
+   * Saves everything that is waiting, this choice and any other unsaved edit, as autosave would a
+   * second later; rejects when the save fails. `undefined` where nothing saves the files, such as
+   * the browser demo: Continue then changes nothing.
+   */
+  readonly settle: (() => Promise<void>) | undefined;
   readonly keys: Pick<ModelKeys, "save">;
   readonly trust: Pick<
     WorkspaceTrust,
@@ -41,6 +49,8 @@ export interface FirstRunModelChoiceParts {
   /** Calls `callback` after `delayMs`; returns the way to cancel it. */
   readonly setTimer: (callback: () => void, delayMs: number) => () => void;
   readonly newTestId: () => string;
+  /** Which models Ollama on this computer has downloaded (`detectLocalModels`). */
+  readonly localModels: () => Promise<LocalModels>;
 }
 
 /** A passed test, the one way to continue: the key lives here, in memory, until Continue. */
@@ -82,11 +92,16 @@ export class FirstRunModelChoice implements ModelChoiceService {
     const edits = await this.#edits(choice);
     if (!edits.ok) return { kind: "files", problem: edits.problem };
     const outcome = testOutcome(choice, await this.#call(choice, edits, tested));
-    if (outcome !== "ok") return { kind: "tested", outcome };
+    // Failed or passed: the screen waits for the newer test, so this one's outcome is old news.
     if (mine !== this.#latest) return { kind: "superseded" };
+    if (outcome !== "ok") return { kind: "tested", outcome };
     const id = this.#parts.newTestId();
     this.#passed = { id, choice, key: tested };
     return { kind: "tested", outcome, testId: id };
+  }
+
+  localModels(): Promise<LocalModels> {
+    return this.#parts.localModels();
   }
 
   async preview(testId: string): Promise<ModelChoicePreview | undefined> {
@@ -125,6 +140,10 @@ export class FirstRunModelChoice implements ModelChoiceService {
         reason: "No passed test has this id.",
       };
     }
+    const { settle } = this.#parts;
+    if (settle === undefined) {
+      return { ok: false, failed: "no-save", keySaved: false, reason: "Nothing saves files here." };
+    }
     const edits = await this.#edits(passed.choice);
     if (!edits.ok) {
       return { ok: false, failed: "files", keySaved: false, reason: problemReason(edits.problem) };
@@ -146,16 +165,29 @@ export class FirstRunModelChoice implements ModelChoiceService {
         };
       }
     }
-    try {
-      if (files.length > 0) {
-        const texts = Object.fromEntries(files.map((file) => [file.path, file.text]));
-        this.#parts.change("Updated model alias default", texts);
-        await this.#parts.settle();
-      }
-    } catch (error) {
-      return { ok: false, failed: "write", keySaved, reason: reasonOf(error) };
-    }
+    const written = await this.#write(files, settle);
+    if (written !== undefined) return { ok: false, failed: "write", keySaved, reason: written };
     return { ok: true, changes, trusted: await this.#trust(fingerprint) };
+  }
+
+  /**
+   * Changes the files as one undo step and saves them. When the save fails, it takes the step back,
+   * so the choice isn't left waiting for autosave. Returns why it failed, or `undefined`.
+   */
+  async #write(
+    files: ChoiceEdits["files"],
+    settle: () => Promise<void>,
+  ): Promise<string | undefined> {
+    if (files.length === 0) return undefined;
+    const texts = Object.fromEntries(files.map((file) => [file.path, file.text]));
+    const undo = this.#parts.change("Updated model alias default", texts);
+    try {
+      await settle();
+      return undefined;
+    } catch (error) {
+      undo();
+      return reasonOf(error);
+    }
   }
 
   /** Trusts the folder when its files now lead to the fingerprint the line showed; never another. */

@@ -17,6 +17,7 @@
     "@halonicjs/adapter-fs-tauri": "workspace:*",
     "@halonicjs/adapter-harness-claude-code": "workspace:*",
     "@halonicjs/adapter-harness-codex": "workspace:*",
+    "@halonicjs/adapter-http-kit": "workspace:*",
     "@halonicjs/adapter-memory": "workspace:*",
     "@halonicjs/adapter-scheduler-node": "workspace:*",
     "@halonicjs/adapter-workspace-models": "workspace:*",

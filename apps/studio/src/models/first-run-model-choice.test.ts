@@ -135,6 +135,23 @@ verifies("studio.first-run-key-after-test", () => {
     if (second.kind !== "tested" || second.outcome !== "ok") throw new Error("no id");
     expect(await folder.service.continue(second.testId, undefined)).toMatchObject({ ok: true });
   });
+
+  it("gives no outcome for a test that fails after a newer one started", async () => {
+    const folder = acmeFolder();
+    let failFirst: () => void = () => {};
+    folder.state.answer = () =>
+      new Promise((_, reject) => {
+        failFirst = () => reject(new ModelCallError("offline", "No network."));
+      });
+    const first = folder.service.test(anthropic, key());
+    await vi.waitFor(() => expect(folder.calls).toHaveLength(1));
+    folder.state.answer = async () => replyOf("refund");
+    const second = await folder.service.test(anthropic, key());
+    failFirst();
+
+    expect(await first).toEqual({ kind: "superseded" });
+    expect(second).toMatchObject({ outcome: "ok" });
+  });
 });
 
 verifies("studio.first-run-key-never-shown", () => {
