@@ -405,7 +405,9 @@ export function accessReporter(
  * instead: it is clean-up, nothing tries it again, and it must never stop the command,
  * however often it happens in a `routines watch` (Liam, HAL-7171). So does a
  * harness bridge failure the run log couldn't record: the program already got
- * its answer, and the run goes on.
+ * its answer, and the run goes on. So does why the harness sandbox doesn't
+ * sweep kept grants under the profile's host lock, in its own words: it
+ * isn't a clean-up that failed (HAL-15428).
  *
  * @example
  * const reportError = engineErrorReporter(stuck, (line) => context.debug(line));
@@ -419,6 +421,10 @@ export function engineErrorReporter(
   return (error, source) => {
     if (source === "run-connectors" || source === "program-copies" || source === "harness-host") {
       debug(runMessages.cleanUpFailed(source, reasonOf(error)).phrase);
+      return;
+    }
+    if (source === "host-lock") {
+      debug(runMessages.hostLockNote(reasonOf(error)).phrase);
       return;
     }
     if (source === "harness-bridge") {

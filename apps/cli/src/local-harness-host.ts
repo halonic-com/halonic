@@ -133,6 +133,8 @@ export interface LocalHarnessInput {
   reportError(error: unknown): void;
   /** Hears of a harness bridge failure the run log couldn't record (requirement `harness-host.bridge-failures`). */
   reportBridgeError(error: unknown): void;
+  /** Hears why the harness sandbox doesn't sweep kept Windows grants under the profile's host lock, or stopped. */
+  reportHostLock(error: unknown): void;
   /** The CLI's remembered secrets, which a sandboxed agent's provider key is read from. */
   readonly secrets: Secrets;
   /** The addresses each saved key may be sent to. */
@@ -202,7 +204,7 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
           platform,
           profile,
           sweepRoots: [tempRoot, folders.proposalWorktreesFolder(), folders.runCopiesFolder()],
-          warn: (message) => input.reportError(new Error(message.trim())),
+          warn: (message) => input.reportHostLock(new Error(message.trim())),
         })
       : withoutHostLock(parts.fenced);
   const git = lazyGitVcs({

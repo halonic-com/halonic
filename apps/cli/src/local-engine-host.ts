@@ -100,7 +100,8 @@ export { engineLockFile, routineStateCollection, runTimerCollection };
 /**
  * What an error the engine handles itself came from: the scheduler, the
  * engine's lock, a leftover program copy it couldn't sweep, what a harness
- * run left, or a harness bridge failure the run log couldn't record.
+ * run left, a harness bridge failure the run log couldn't record, or why the
+ * harness sandbox doesn't sweep under the profile's host lock.
  */
 export type EngineErrorSource =
   | SchedulerErrorSource
@@ -108,7 +109,8 @@ export type EngineErrorSource =
   | "program-copies"
   | "run-connectors"
   | "harness-host"
-  | "harness-bridge";
+  | "harness-bridge"
+  | "host-lock";
 
 export type { RoutineEngine, RoutineTicks };
 
@@ -312,6 +314,7 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
       openRuns: () => openRunsOf(new FolderRunStore(folders.runsFolder())),
       reportError: (error) => input.reportError(error, "harness-host"),
       reportBridgeError: (error) => input.reportError(error, "harness-bridge"),
+      reportHostLock: (error) => input.reportError(error, "host-lock"),
       secrets: input.secrets,
       keyOrigins: input.keyOrigins,
       trusted: input.trusted,
