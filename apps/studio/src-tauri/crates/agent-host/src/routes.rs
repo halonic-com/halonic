@@ -303,6 +303,21 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/plugins/secrets",
         route(Method::Post, "/v1/plugins/secrets", Answer::Json),
     ),
+    // Whether a plugin's runner stopped because the sandbox failed while it
+    // ran, and Check again (HAL-15113): codes only, kept in the host's
+    // memory; the page sends only the plugin's id, and nothing starts.
+    (
+        "POST /v1/plugins/run-state",
+        route(Method::Post, "/v1/plugins/run-state", Answer::Json),
+    ),
+    (
+        "POST /v1/plugins/run-state/check-again",
+        route(
+            Method::Post,
+            "/v1/plugins/run-state/check-again",
+            Answer::Json,
+        ),
+    ),
     // The yes to run plugins without the sandbox (HAL-3384): the host saves it
     // only for the reason that holds now; the page sends only that reason.
     (

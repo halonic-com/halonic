@@ -110,6 +110,10 @@ async function setup(
     afterTrust?: () => Promise<void>;
     /** Runs at the first start, before the trust check's second read. */
     beforeStart?: () => Promise<void>;
+    /** The fence proof the started runner reports; `fenced` unless a test fails it. */
+    proof?: StartedRunner["fence"];
+    /** Makes the machine's `onStart` throw after it noted the start. */
+    hookThrows?: boolean;
   } = {},
 ) {
   const { check = passes, runnerBuilt = true, trusted = true, secrets = {} } = options;
@@ -129,6 +133,7 @@ async function setup(
     entries: [] as string[],
     settings: [] as unknown[],
     secretTexts: [] as (readonly string[])[],
+    told: [] as string[],
   };
   const machine: PluginBackendMachine = {
     plugins,
@@ -153,13 +158,17 @@ async function setup(
       return runnerMachine;
     },
     runnerExists: () => runnerBuilt,
+    onStart: (plugin, run) => {
+      seen.told.push(`${plugin}: ${run}`);
+      if (options.hookThrows === true) throw new Error("the hook broke");
+    },
     startRunner: async (start) => {
       seen.starts += 1;
       seen.entries.push(`${start.entry.file}#${start.entry.exportName}`);
       seen.settings.push(start.settings);
       seen.secretTexts.push(start.secrets().texts);
       const runner: StartedRunner = {
-        fence: { state: "fenced" },
+        fence: options.proof ?? { state: "fenced" },
         declaration: { name: "weather", version: "1.2.0", tools: [getForecast] },
         stopped: new Promise(() => {}),
         callTool: async (name) => `answer from ${name}`,
@@ -328,6 +337,34 @@ verifies("cli.plugin-connector-factory", () => {
       await put({ "weather/backend/index.js": "export default {};\n" });
       expect(await opened.callTool("get-forecast", {})).toBe("answer from get-forecast");
       expect(seen.starts).toBe(1);
+    });
+  });
+});
+
+verifies("cli.plugin-backend-start-told", () => {
+  describe("openPluginBackend's onStart", () => {
+    it("tells the machine what came of each gated start, by the plugin's id", async () => {
+      const fenced = await setup();
+      await fenced.client().callTool("get-forecast", {});
+      expect(fenced.seen.told).toEqual(["weather: fenced"]);
+      const windows = await setup({ check: onWindows });
+      await expect(windows.client().callTool("get-forecast", {})).rejects.toThrow(/didn't start/);
+      expect(windows.seen.told).toEqual(["weather: needs-yes"]);
+    });
+
+    it("tells the machine `stopped` when the fence fails though the computer passed, and nothing runs (A23)", async () => {
+      const { seen, client } = await setup({ proof: { state: "stopped" } });
+      await expect(client().callTool("get-forecast", {})).rejects.toThrow(
+        /the sandbox failed its check, so nothing runs/,
+      );
+      expect(seen.told).toEqual(["weather: stopped"]);
+      expect(seen.stops).toBe(1);
+    });
+
+    it("keeps the start as it came out when `onStart` throws", async () => {
+      const { seen, client } = await setup({ hookThrows: true });
+      expect(await client().callTool("get-forecast", {})).toBe("answer from get-forecast");
+      expect(seen.told).toEqual(["weather: fenced"]);
     });
   });
 });
