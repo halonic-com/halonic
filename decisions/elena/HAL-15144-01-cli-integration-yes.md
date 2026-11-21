@@ -3,6 +3,7 @@
 - Task: HAL-15144
 - Approval: Liam approved the plan on HAL-15144 (https://paperclip.halonic.com/HAL/issues/HAL-15144#document-plan) with four conditions, after his option B on HAL-3384 part 6. It builds the board's approved "Runs" line decisions on HAL-1949 (R-D1 A, R-D3 A), microcopy 24.1 R18 and R19, and Julian's condition (a) in the design on HAL-1873, section 11.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:IkLOg1j++GFDVxLe4Wd+HoPFJVQw/nw+TSIQKayUq0gyc84UUNXUogyV2etI6LUPpu3h3EVjxhdUUXESb/1rCA==
 
 ## What changes
 
