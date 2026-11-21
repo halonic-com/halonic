@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this change on HAL-15394 (https://paperclip.halonic.com/HAL/issues/HAL-15394), from Nina's check C567 (HAL-15383). A follow-up to HAL-14277 (#4423); a team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2L1qgKjYel+lwmCYlSN4EeeqSgpJsYvtcQtCshASMV1z2uQoh7GDQhABPuG/ZTACbfVhDapMY2m52p8zVltZDw==
 
 ## What changes
 
