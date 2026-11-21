@@ -2,6 +2,7 @@
 
 - Approval: HAL-14850, from Liam's security review of halonic#4276 (PR 5b on HAL-8613); Liam approves this note in his security review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hrE381zqP1ZPYbS7dMQSGamxydf6m8duhWs+Hj+I5trmTq/8wrx8pC8GdeeR6gtu/6cCQ25tgBZsEghiv2PSAA==
 - Task: HAL-14850
 
 ## What changes
