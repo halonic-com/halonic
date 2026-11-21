@@ -1,9 +1,11 @@
 import {
+  createContext,
   type FocusEvent,
   type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
   type RefCallback,
+  type RefObject,
   useCallback,
   useEffect,
   useId,
@@ -33,6 +35,12 @@ export interface TooltipOptions {
    * then isn't described by it too, which a screen reader would read twice.
    */
   readonly isName?: boolean;
+  /**
+   * Screen readers already hear the text another way, as an unavailable Button's reason, which
+   * describes it through `aria-describedby`. The control then isn't described by the tooltip, and
+   * screen readers skip the tooltip, so nothing is read twice.
+   */
+  readonly visualOnly?: boolean;
   /**
    * Asked each time the tooltip would show; it stays hidden when this says no. For a tooltip that
    * only helps sometimes, such as the full title of a title that may be cut with "…".
@@ -71,6 +79,13 @@ export interface TooltipParts {
   readonly popover: ReactNode;
 }
 
+/**
+ * Set by a `Tooltip` round its control. A control with a tooltip of its own, as an unavailable
+ * Button has for its reason, sets it to `true` while it has one, and the Tooltip round it then
+ * stays hidden: one tooltip at a time, and the reason wins (HAL-15253).
+ */
+export const OwnTooltipContext = createContext<RefObject<boolean> | null>(null);
+
 /** The tooltip sits this far below (or above) its control. */
 const CONTROL_GAP = 4;
 
@@ -103,13 +118,17 @@ export const tooltipClasses = [
  *   {(props) => <Button {...props} variant="ghost" icon={<PlusIcon />} label="New tab" />}
  * </Tooltip>
  */
-export function Tooltip({ children, ...options }: TooltipProps) {
-  const { anchor, trigger, popover } = useTooltip(options);
+export function Tooltip({ children, showIf, ...options }: TooltipProps) {
+  const controlHasOwn = useRef(false);
+  const { anchor, trigger, popover } = useTooltip({
+    ...options,
+    showIf: () => !controlHasOwn.current && (showIf === undefined || showIf()),
+  });
   return (
     <>
       {/* biome-ignore lint/a11y/noStaticElementInteractions: it only hears its control's pointer, focus and keys; the control is what you use */}
       <span className="inline-flex" {...anchor}>
-        {children(trigger)}
+        <OwnTooltipContext value={controlHasOwn}>{children(trigger)}</OwnTooltipContext>
       </span>
       {popover}
     </>
@@ -124,16 +143,29 @@ export function Tooltip({ children, ...options }: TooltipProps) {
  * const { anchor, trigger, popover } = useTooltip({ text: "Workflows / Support reply" });
  * return <><div role="tab" {...anchor} {...trigger}>Support reply</div>{popover}</>;
  */
-export function useTooltip({ text, keys, isName = false, showIf }: TooltipOptions): TooltipParts {
+export function useTooltip({
+  text,
+  keys,
+  isName = false,
+  visualOnly = false,
+  showIf,
+}: TooltipOptions): TooltipParts {
   const id = useId();
   const anchor = useRef<HTMLElement | null>(null);
-  const tooltip = useRef<HTMLDivElement>(null);
+  const tooltip = useRef<HTMLDivElement | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const shown = useRef(false);
   /** The control was pressed and the pointer hasn't left it since (component specs 14, C27). */
   const pressed = useRef(false);
   const setAnchor = useCallback((element: HTMLElement | null) => {
     anchor.current = element;
+  }, []);
+  const setTooltip = useCallback((element: HTMLDivElement | null) => {
+    tooltip.current = element;
+    // A tooltip taken away while shown goes with it, so the next one can show.
+    if (element === null) {
+      shown.current = false;
+    }
   }, []);
 
   function show(): void {
@@ -197,11 +229,18 @@ export function useTooltip({ text, keys, isName = false, showIf }: TooltipOption
   return {
     anchor: anchorProps,
     trigger: {
-      ...(isName ? {} : { "aria-describedby": id }),
+      ...(isName || visualOnly ? {} : { "aria-describedby": id }),
       ...(keys === undefined ? {} : { "aria-keyshortcuts": keyShortcutsLabel(keys) }),
     },
     popover: (
-      <div id={id} ref={tooltip} popover="manual" role="tooltip" className={tooltipClasses}>
+      <div
+        id={id}
+        ref={setTooltip}
+        popover="manual"
+        role="tooltip"
+        aria-hidden={visualOnly || undefined}
+        className={tooltipClasses}
+      >
         <TooltipBody text={text} keys={keys} />
       </div>
     ),

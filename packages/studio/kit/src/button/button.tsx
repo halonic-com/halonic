@@ -4,8 +4,11 @@ import {
   type MouseEvent,
   type ReactNode,
   type Ref,
+  useCallback,
   useContext,
 } from "react";
+import { assignRef } from "../field/control.ts";
+import { useReasonTooltip } from "./reason-tooltip.ts";
 import { Spinner } from "./spinner.tsx";
 
 /**
@@ -20,7 +23,10 @@ export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger-outline"
  */
 export type ButtonSize = "xs" | "sm" | "md" | "lg" | "touch";
 
-/** Why a button can't be used right now, written as visible text next to it. */
+/**
+ * Why a button can't be used right now, written as visible text next to it. The text's first line
+ * is also the button's tooltip.
+ */
 export interface ButtonUnavailable {
   /** The `id` of the visible text that says why: "Finish getting updates first." */
   readonly reason: string;
@@ -40,8 +46,9 @@ interface ButtonBase {
    */
   readonly ring?: "outside" | "inset";
   /**
-   * The button can't be used now. It stays focusable, ignores clicks and points screen readers
-   * at the reason. There's no `disabled` prop on purpose (component specs 23, A1).
+   * The button can't be used now. It stays focusable, ignores clicks, points screen readers at the
+   * reason and shows the reason's first line as its tooltip. There's no `disabled` prop on purpose
+   * (component specs 23, A1).
    */
   readonly unavailable?: ButtonUnavailable | undefined;
   /** `submit` only for a form's confirming button. */
@@ -236,6 +243,25 @@ export function Button(props: ButtonProps) {
   const isIconButton = props.label !== undefined;
   const inFieldBox = useContext(InFieldBoxContext) && isIconButton;
   const onTint = useContext(OnTintContext) && variant === "ghost";
+  const reasonTooltip = useReasonTooltip(unavailable?.reason);
+  const { ref: callerRef, onFocus: callerOnFocus } = props;
+  const {
+    ref: setTooltipAnchor,
+    onFocus: tooltipOnFocus,
+    ...tooltipHandlers
+  } = reasonTooltip.anchor;
+  const ref = useCallback(
+    (element: HTMLButtonElement | null) => {
+      setTooltipAnchor(element);
+      assignRef(callerRef, element);
+    },
+    [setTooltipAnchor, callerRef],
+  );
+
+  function handleFocus(event: FocusEvent<HTMLButtonElement>) {
+    tooltipOnFocus(event);
+    callerOnFocus?.(event);
+  }
 
   function handleClick(event: MouseEvent<HTMLButtonElement>) {
     if (busy || unavailable !== undefined) {
@@ -258,26 +284,30 @@ export function Button(props: ButtonProps) {
   const iconClasses = isIconButton && !inFieldBox ? `${iconSlot} ${largeIconSlot}` : iconSlot;
 
   return (
-    <button
-      ref={props.ref}
-      id={props.id}
-      type={props.type ?? "button"}
-      className={classes.trim()}
-      aria-label={busy ? (props.busyName ?? props.label) : (props.label ?? props.name)}
-      aria-busy={busy || undefined}
-      aria-disabled={unavailable === undefined ? undefined : true}
-      aria-haspopup={props["aria-haspopup"]}
-      aria-expanded={props["aria-expanded"]}
-      aria-controls={props["aria-controls"]}
-      popoverTarget={props.popoverTarget}
-      aria-describedby={describedBy(unavailable?.reason, props["aria-describedby"])}
-      aria-keyshortcuts={props["aria-keyshortcuts"]}
-      tabIndex={props.tabIndex}
-      onClick={handleClick}
-      onFocus={props.onFocus}
-    >
-      <ButtonBody props={props} busy={busy} iconClasses={iconClasses} />
-    </button>
+    <>
+      <button
+        {...tooltipHandlers}
+        ref={ref}
+        id={props.id}
+        type={props.type ?? "button"}
+        className={classes.trim()}
+        aria-label={busy ? (props.busyName ?? props.label) : (props.label ?? props.name)}
+        aria-busy={busy || undefined}
+        aria-disabled={unavailable === undefined ? undefined : true}
+        aria-haspopup={props["aria-haspopup"]}
+        aria-expanded={props["aria-expanded"]}
+        aria-controls={props["aria-controls"]}
+        popoverTarget={props.popoverTarget}
+        aria-describedby={describedBy(unavailable?.reason, props["aria-describedby"])}
+        aria-keyshortcuts={props["aria-keyshortcuts"]}
+        tabIndex={props.tabIndex}
+        onClick={handleClick}
+        onFocus={handleFocus}
+      >
+        <ButtonBody props={props} busy={busy} iconClasses={iconClasses} />
+      </button>
+      {reasonTooltip.popover}
+    </>
   );
 }
 
