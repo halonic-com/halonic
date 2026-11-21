@@ -3,7 +3,7 @@
 - Task: HAL-14323
 - Approval: team decision under the HAL-2282 rule for a fix and a fallback state on approved Studio screens (Liam, on HAL-14323; wording from Sofia's c343 check on HAL-14274, rows S12 and X2); Liam reviews the pull request on HAL-14323 and signs this note
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:h5yR9GNhUDaYgoJ2Xq4aBIz+Ue6lZa+2J99FOspyMFwMgA1/M+UhFiHeJyIvxXsaTPseRr2UwcgNv1X9dWKgCg==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SCSjM6pt86fDte0pmkhRj/9QYtXvBrkx8dXsXG9mWqiHtsWjvQSuDYvahv+6kx+GOCHWC2Te5/pbs2fiC7hPAw==
 
 ## What changes
 
