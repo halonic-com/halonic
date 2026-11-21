@@ -3,6 +3,7 @@
 - Task: HAL-12216
 - Approval: T7b scope on HAL-12216 (UX checklist 10.8, flow-workflows 5.2); Type's six names, "No agent" and "a new kind changes only `type`" agreed by Liam in review on HAL-12216 (19 Nov); C285 TY1 and NA1, decided by the team on HAL-14002 and checked by Sofia in C296 (HAL-14032); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:MsjPTqoiHwAhX2/gzBwBxZW3YCBoEwLmb71hsdVvtYwH1SfAJ7LQhbBM/6cNHAzYaz3n9Fi7VewXDRwrX71+AA==
 
 ## What changes
 
