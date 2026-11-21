@@ -282,6 +282,19 @@ verifies("secrets-file.private", () => {
       },
     );
 
+    it("quotes a file in a folder with a space, as macOS's Application Support, in the fix", async () => {
+      const folder = await mkdtemp(join(tmpdir(), "halonic-secrets-"));
+      made.push(folder);
+      const file = join(folder, "Application Support", "halonic", "secrets", "secrets.json");
+      const store = new FileSecretStore(file);
+      await store.set("openai-key", "sk-kept");
+      await chmod(file, 0o644);
+      await expect(store.names()).rejects.toMatchObject({
+        fix: `Run chmod 600 "${file}", then run again.`,
+        failureCause: { code: "secrets.file-readable", detail: { file } },
+      });
+    });
+
     it("reads a file with mode 0400 and 0600", async () => {
       const file = await freshFile();
       const store = new FileSecretStore(file);
