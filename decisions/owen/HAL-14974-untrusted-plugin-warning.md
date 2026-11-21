@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-14974 (Kim's C522 finding on HAL-14972: a run with a plugin added but not trusted warned only "couldn't list its tools"); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:rk23+vbtUdy7DX2jQ852P45XXsdN8PrQXVMoDea9vYEuYJi25f3OktzKE3tg+4Qt1ByL3L/bs+efJTpw57qBDg==
 
 A plugin's connector that the person hasn't trusted yet, or whose plugin changed since they
 trusted it, refuses to open as a whole. That isn't one part being off, so the log had no
