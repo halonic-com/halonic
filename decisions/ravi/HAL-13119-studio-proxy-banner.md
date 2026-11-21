@@ -3,7 +3,6 @@
 - Task: HAL-13119
 - Approval: decided by the team on HAL-13119 (error text on an approved screen that builds on the CLI's approved `cli.run-failed-proxy` lines, HAL-2282 rule; agreed by Liam in his review on HAL-12606). Liam signs on review.
 - Kind: user-visible
-- Signature:
 
 A run that failed at the proxy in the CLI carries a typed `proxy.*` cause from the CLI's HTTP
 client with the proxy, the variable it came from and the host, but no sentence of its own. The
