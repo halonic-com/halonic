@@ -50,6 +50,12 @@ verifies("ports.connector-tool-timeout", () => {
     expect(isConnectorToolError(error)).toBe(false);
   });
 
+  it("keeps the connector's own error as its cause", () => {
+    const stopped = new Error("The program didn't answer tools/call within 60 seconds.");
+    const error = new ConnectorToolTimeoutError("It timed out.", 60_000, { cause: stopped });
+    expect(error.cause).toBe(stopped);
+  });
+
   it("recognises the error from another copy of the package by name and time", () => {
     const fromOtherCopy = Object.assign(new Error("from another copy"), {
       name: "ConnectorToolTimeoutError",

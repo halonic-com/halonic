@@ -58,8 +58,12 @@ export class ConnectorToolTimeoutError extends Error {
   /** How long the connector waited for the answer, in milliseconds. */
   readonly withinMs: number;
 
-  constructor(message: string, withinMs: number) {
-    super(message);
+  /**
+   * @param withinMs - how long the connector waited, in milliseconds
+   * @param options - `cause`: the connector's own error, kept for code that reads it
+   */
+  constructor(message: string, withinMs: number, options?: { readonly cause?: unknown }) {
+    super(message, options);
     this.withinMs = withinMs;
   }
 }
