@@ -26,10 +26,9 @@ verifies("library.listed-tools-waiting", () => {
         { text: ", which isn't on this computer. Install it, then try again." },
       ]);
       expect(line).toMatchObject({ button: "try-again", copyDetails: false });
-      expect(line.command).toBeUndefined();
     });
 
-    it("names a secret that isn't set and gives the command that sets it", () => {
+    it("names a secret that isn't set, with no command, which couldn't set it for Studio", () => {
       const line = loadFailureLine(
         new ConnectorCouldntList({ reason: "secret-missing", secret: "NOTES_TOKEN" }),
         "notes-mcp",
@@ -37,13 +36,12 @@ verifies("library.listed-tools-waiting", () => {
       );
 
       expect(refusalLineText(line.parts)).toBe(
-        "Couldn't list the tools: notes-mcp needs the secret NOTES_TOKEN, which isn't set on this computer. Set it in a terminal, then try again:",
+        "Couldn't list the tools: notes-mcp needs the secret NOTES_TOKEN, which isn't set for Studio. Studio can't set a connector's secrets yet.",
       );
-      expect(line.command).toBe("halonic secret set NOTES_TOKEN");
       expect(line).toMatchObject({ button: "try-again", copyDetails: false });
     });
 
-    it("names a connector's one refused secret and gives the command that sets it", () => {
+    it("names a connector's one refused secret, with no command", () => {
       const line = loadFailureLine(
         new ConnectorCouldntList({ reason: "secret-refused", secrets: ["NOTES_TOKEN"] }),
         "notes-mcp",
@@ -51,9 +49,8 @@ verifies("library.listed-tools-waiting", () => {
       );
 
       expect(refusalLineText(line.parts)).toBe(
-        "Couldn't list the tools: notes-mcp didn't accept the secret NOTES_TOKEN. Set it again in a terminal, then try again:",
+        "Couldn't list the tools: notes-mcp didn't accept the secret NOTES_TOKEN. Studio can't set a connector's secrets yet.",
       );
-      expect(line.command).toBe("halonic secret set NOTES_TOKEN");
       expect(line).toMatchObject({ button: "try-again", copyDetails: false });
     });
 
@@ -67,10 +64,8 @@ verifies("library.listed-tools-waiting", () => {
 
       const two = refusedOneOf(["NOTES_TOKEN", "NOTES_SPACE"]);
       expect(refusalLineText(two.parts)).toBe(
-        "Couldn't list the tools: notes-mcp didn't accept one of its secrets, NOTES_TOKEN or NOTES_SPACE. Set the right one again in a terminal with halonic secret set, then try again.",
+        "Couldn't list the tools: notes-mcp didn't accept one of its secrets, NOTES_TOKEN or NOTES_SPACE. Studio can't set a connector's secrets yet.",
       );
-      expect(two.parts).toContainEqual({ text: "halonic secret set", code: true });
-      expect(two.command).toBeUndefined();
       expect(two).toMatchObject({ button: "try-again", copyDetails: false });
 
       expect(refusalLineText(refusedOneOf(["A", "B", "C"]).parts)).toContain(
@@ -88,7 +83,6 @@ verifies("library.listed-tools-waiting", () => {
       expect(refusalLineText(line.parts)).toBe(
         "Couldn't list the tools: the server for notes-mcp asked for a secret, and notes-mcp doesn't send one.",
       );
-      expect(line.command).toBeUndefined();
       expect(line).toMatchObject({ button: "try-again", copyDetails: true });
     });
 

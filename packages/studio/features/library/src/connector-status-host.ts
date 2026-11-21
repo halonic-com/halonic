@@ -46,6 +46,11 @@ export interface RecordedRefusal {
 
 /** The connectors and what they refused. The app provides it. */
 export interface ConnectorStatusHost {
+  /**
+   * The workspace folder's absolute path, which the command to copy names with `--dir` (D1,
+   * HAL-12725); absent where the app gives none, and the command then names no folder.
+   */
+  readonly folder?: string | undefined;
   /** Every connector of the open workspace. */
   list(): Promise<readonly ConnectorStatus[]>;
   /** What the engine refused since Halonic started, newest first. Never more than 20 rows per connector. */

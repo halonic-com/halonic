@@ -52,6 +52,7 @@ export function provideLibraryServices(
       definitions: new TauriDefinitionStore(parts.files, parts.location),
       refusals: parts.refusals,
       google: parts.google,
+      folder: parts.location,
       onFocus: parts.onFocus,
       onWatchError: (error) => console.error(error),
     }),

@@ -1,4 +1,4 @@
-import { Button, Callout, CommandBox, SkeletonBar } from "@halonicjs/studio-kit";
+import { Button, Callout, SkeletonBar } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import { useEffect, useId, useState } from "react";
 import { type LoadFailureLine, loadFailureLine } from "../listed-tools-load-failure.ts";
@@ -85,9 +85,8 @@ export interface ListedToolsFallbackBodyProps {
 }
 
 /**
- * Why the tools couldn't be listed, with a command to run when one helps. The review has no way to
- * the trust check, so in a workspace that isn't trusted it offers no button; the connector page
- * offers **Review**.
+ * Why the tools couldn't be listed. The review has no way to the trust check, so in a workspace
+ * that isn't trusted it offers no button; the connector page offers **Review**.
  */
 function LoadFailedCallout({
   line,
@@ -96,11 +95,6 @@ function LoadFailedCallout({
   return (
     <Callout tone="danger" action={useLoadFailedActions(line, handlers)}>
       <LoadFailedText line={line} />
-      {line.command === undefined ? null : (
-        <div className="mt-2">
-          <CommandBox command={line.command} />
-        </div>
-      )}
     </Callout>
   );
 }

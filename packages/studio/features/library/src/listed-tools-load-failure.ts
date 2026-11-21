@@ -13,8 +13,6 @@ import type { RefusalLinePart } from "./refusal-line.ts";
 export interface LoadFailureLine {
   /** The line, in parts so a program's name can be set in code type. */
   readonly parts: readonly RefusalLinePart[];
-  /** A command to run in a terminal, shown in a command box under the line. */
-  readonly command?: string;
   /** **Review** opens the trust check, where trying again can't help; else **Try again**. */
   readonly button: "try-again" | "review";
   /** **Copy details** follows, when the line can't say all that went wrong. */
@@ -56,7 +54,7 @@ function causeLine({ failure }: ConnectorCouldntList, source: string): LoadFailu
         copyDetails: false,
       };
     case "secret-missing":
-      return withSetSecret(words.secretMissing(source, failure.secret), failure.secret);
+      return plainLine(words.secretMissing(source, failure.secret), false);
     case "secret-refused":
       return secretRefusedLine(failure.secrets, source);
     case "stopped":
@@ -67,29 +65,21 @@ function causeLine({ failure }: ConnectorCouldntList, source: string): LoadFailu
 }
 
 /**
- * The server doesn't say which secret it refused: one declared secret is named with the command
- * that sets it, several are all named, and none means setting a secret can't help.
+ * The server doesn't say which secret it refused: one declared secret is named, several are all
+ * named, and none means setting a secret can't help.
  */
 function secretRefusedLine(secrets: readonly string[], source: string): LoadFailureLine {
   const words = listedToolsWords.couldntList;
   const [only] = secrets;
   if (secrets.length === 0) return plainLine(words.secretRefusedNoneSent(source), true);
   if (secrets.length === 1 && only !== undefined) {
-    return withSetSecret(words.secretRefused(source, only), only);
+    return plainLine(words.secretRefused(source, only), false);
   }
-  return {
-    parts: words.secretRefusedOneOf(source, secrets),
-    button: "try-again",
-    copyDetails: false,
-  };
+  return plainLine(words.secretRefusedOneOf(source, secrets), false);
 }
 
 function plainLine(text: string, copyDetails: boolean): LoadFailureLine {
   return { parts: [{ text }], button: "try-again", copyDetails };
-}
-
-function withSetSecret(text: string, secret: string): LoadFailureLine {
-  return { ...plainLine(text, false), command: listedToolsWords.setSecret(secret) };
 }
 
 /** A failure with no reason of its own to show: its detail goes only to **Copy details**. */
