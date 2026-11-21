@@ -63,12 +63,20 @@ export interface ConfigurationProps {
   readonly sections?: readonly ItemPageSectionListing[] | undefined;
   /** Draws a section of {@link sections}; the shell's, absent where there's no window. */
   readonly Sections?: ComponentType<SectionsProps> | undefined;
+  /**
+   * The page shown, for an agent page that opens one itself, such as the Try it chat's
+   * **Open harness**; without it Configuration keeps its own, starting on Behaviour.
+   */
+  readonly page?: ConfigurationPage | undefined;
+  /** Hears the page the person picks in the list. */
+  readonly onPickPage?: ((page: ConfigurationPage) => void) | undefined;
 }
 
 type BuiltPageId = "behaviour" | "model" | "harness" | "tools" | "subagents" | "agentSteps";
 
-/** A page: one of the agents feature's own, or a section another feature adds, by its id. */
-type PageId = BuiltPageId | `section:${string}`;
+/** Configuration's pages: one of the agents feature's own, or a section another feature adds, by its id. */
+export type ConfigurationPage = BuiltPageId | `section:${string}`;
+type PageId = ConfigurationPage;
 
 /** The pages that are built, in the order of flow-agents 5.1. */
 const builtPages: readonly Tab<PageId>[] = (
@@ -90,6 +98,22 @@ function pageTabs(
 /** The picked page, or Behaviour when it's a section's page that is gone because its feature went. */
 function shownPage(pages: readonly Tab<PageId>[], picked: PageId): PageId {
   return pages.some((one) => one.id === picked) ? picked : "behaviour";
+}
+
+/**
+ * The picked page: the one the agent page opened, when it opens one itself, else Configuration's
+ * own, starting on Behaviour. Picking a page keeps it and tells the agent page.
+ */
+function usePickedPage(
+  opened: PageId | undefined,
+  onPick: ((page: PageId) => void) | undefined,
+): readonly [PageId, (page: PageId) => void] {
+  const [own, setOwn] = useState<PageId>("behaviour");
+  const pick = (page: PageId) => {
+    setOwn(page);
+    onPick?.(page);
+  };
+  return [opened ?? own, pick];
 }
 
 /** The page of a section another feature adds; nothing for one of the agents feature's own pages. */
@@ -130,9 +154,11 @@ export function Configuration({
   announce,
   sections = [],
   Sections,
+  page: openedPage,
+  onPickPage,
 }: ConfigurationProps) {
-  const [picked, setPage] = useState<PageId>("behaviour");
   const pages = pageTabs(sections, Sections);
+  const [picked, setPicked] = usePickedPage(openedPage, onPickPage);
   const page = shownPage(pages, picked);
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
@@ -142,7 +168,7 @@ export function Configuration({
   // Instructions takes the focus once; going to another page and back leaves it alone.
   const [focusInstructions, setFocusInstructions] = useState(startOnInstructions === true);
   const pickPage = (id: PageId) => {
-    setPage(id);
+    setPicked(id);
     setFocusInstructions(false);
   };
   if (load.kind === "failed") {
