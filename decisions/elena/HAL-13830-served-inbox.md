@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13830 (HM1, decided by the team and confirmed in the C255 check on HAL-13849; OH1 from the C415 check and NM1 from the C422 check, decided by the team)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+OQgfaPyNKYQYfRStskh7eEk7zoUVgz0FWn0JtOvs9uzJDfT/Q5M0/vMULuT8GWKlBvmVLImgUb21i/HFJI+Cg==
 
 ## What changes
 
