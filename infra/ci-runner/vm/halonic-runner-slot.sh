@@ -104,6 +104,7 @@ docker run --rm --name "hci-$SLOT" --hostname "$NAME" --init \
   -v /run/halonic-ci-gate:/run/halonic-ci-gate:ro \
   -v "$WORK:$JOB_WORK" \
   -v "$TRUSTED/pnpm-store:/cache/pnpm-store" \
+  -v "$TRUSTED/turbo:/cache/turbo" \
   -v "$TRUSTED/ms-playwright:/cache/ms-playwright" \
   "$IMAGE" &
 DPID=$!

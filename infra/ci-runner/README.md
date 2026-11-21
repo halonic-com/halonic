@@ -53,17 +53,17 @@ it in the `fast` job).
 | VM | Docker with `userns-remap`. One systemd unit per slot (`vm/halonic-runner@.service`). |
 | VM | `/etc/halonic-ci/app.pem`: the GitHub App's key (only permission: self-hosted runners), root-only `0400`. Never in the image, a container or a backup that leaves the VM. |
 | VM | Queue gate (C7): `vm/halonic-ci-gate.socket` listens on `/run/halonic-ci-gate/gate.sock`, which every container gets read-only. Each connection starts `vm/halonic-ci-gate@.service` (`vm/halonic-ci-gate.sh`), which takes no input and answers one fixed GraphQL query: `main`'s merge queue. Its token is `/etc/halonic-ci/queue-token`, root-only `0400`, handed to the service as a systemd credential under a throwaway user. |
-| VM | `/cache/trusted/{pnpm-store,ms-playwright}`: package and browser caches, no secrets, shared by all slots and kept between jobs, capped together at 20 GB (XFS project 300). `/cache/work/<slot>`: the job's work dir, quota-capped and wiped after every job. |
+| VM | `/cache/trusted/{pnpm-store,turbo,ms-playwright}`: package, Turbo and browser caches, no secrets, shared by all slots and kept between jobs, capped together at 20 GB (XFS project 300). `/cache/work/<slot>`: the job's work dir, quota-capped and wiped after every job. |
 
 Site data stays out of this repo: `/etc/halonic-ci/pool.env` (see `vm/pool.env.example`),
 `/etc/halonic-ci/slots` (the list of slot units) and `/etc/halonic-ci/site.nft` (the server's
 public range for the nftables rules).
 
 **The shared caches are writable from every job that runs here.** Every container mounts
-`/cache/trusted/pnpm-store` and `/cache/trusted/ms-playwright` read-write, so a job can change
+`/cache/trusted/pnpm-store`, `/cache/trusted/turbo` and `/cache/trusted/ms-playwright` read-write, so a job can change
 what later jobs read from them. That's acceptable only because the hook admits nothing but reviewed
 code (pushes to `main`, later merge groups). pnpm checks each package against the lockfile's
-integrity hash; the Playwright browsers aren't checked. A pool for pull requests would get a
+integrity hash; the Turbo cache and the Playwright browsers aren't checked. A pool for pull requests would get a
 read-only snapshot instead (C2, C8), never these folders.
 
 ## One job, one container
