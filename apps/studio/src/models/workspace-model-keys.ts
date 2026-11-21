@@ -4,8 +4,9 @@ import {
   type Secrets,
   type TokenStore,
 } from "@halonicjs/ports";
-import type { KeyEntry, ModelKeys } from "@halonicjs/studio-feature-models/api";
+import type { KeyAddresses, KeyEntry, ModelKeys } from "@halonicjs/studio-feature-models/api";
 import type { SecretText } from "@halonicjs/studio-kit";
+import { type KeyOriginStore, WorkspaceKeyAddresses } from "./workspace-key-addresses.ts";
 
 /**
  * The OS keychain as the keys use it: `has` tells whether a key is there
@@ -24,11 +25,19 @@ const desktopEntry: KeyEntry = { kind: "field", keptOn: "this-computer", offHost
  */
 export class WorkspaceModelKeys implements ModelKeys {
   readonly entry: KeyEntry = desktopEntry;
+  readonly addresses: KeyAddresses | undefined;
   readonly #keychain: Keychain;
 
-  /** @param keychain - the OS keychain, before the workspace's name rule */
-  constructor(keychain: Keychain) {
+  /**
+   * @param keychain - the OS keychain, before the workspace's name rule
+   * @param origins - where the keychain keeps each key's addresses, when it does
+   */
+  constructor(keychain: Keychain, origins?: KeyOriginStore) {
     this.#keychain = keychain;
+    this.addresses =
+      origins === undefined
+        ? undefined
+        : new WorkspaceKeyAddresses(origins, (name) => this.#picked(name));
   }
 
   async stored(secretName: string): Promise<boolean> {
