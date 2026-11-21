@@ -394,12 +394,17 @@ export class WorkspaceWorkflows implements WorkflowsHost {
   }
 
   /** Takes one arrow out of the step's `on` list in place, as one undoable change. */
-  async removeArrow(ref: WorkflowRef, stepId: string, index: number): Promise<WorkflowRemoval> {
+  async removeArrow(
+    ref: WorkflowRef,
+    stepId: string,
+    index: number,
+    to: string,
+  ): Promise<WorkflowRemoval> {
     const { file, text } = await this.#fileOf(ref);
     if (!Object.hasOwn(file.value.states, stepId)) throw stepGone(stepId);
     const read = readYaml(text);
     if (!read.ok) throw cantChange();
-    const edits = arrowRemovalEdits(stepId, writtenArrows(read.value.data, stepId), index);
+    const edits = arrowRemovalEdits(stepId, writtenArrows(read.value.data, stepId), index, to);
     const label = `Removed an arrow of step ${stepId} in workflow ${file.value.name}`;
     this.#edit(file.path, text, label, edits);
     return { undo: undoWhileNewest(this.#parts.files, cantPutBack("The arrow")) };

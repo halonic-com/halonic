@@ -1,6 +1,6 @@
 import { KindedError } from "@halonicjs/std";
 import type { YamlEdit } from "@halonicjs/yaml";
-import { writtenArrows } from "./workflow-arrow-edits.ts";
+import { checkStillGoesTo, writtenArrows } from "./workflow-arrow-edits.ts";
 
 /** The edits that take a step out of a workflow's file, and how many arrows go with it. */
 export interface StepRemoval {
@@ -39,17 +39,21 @@ export function stepRemovalEdits(
  * The edits of the workflow's file that take the arrow at `index` out of the step `stepId`.
  *
  * @param written - the step's arrows as its file writes them
- * @throws `invalid_input` for an arrow that isn't there
+ * @param to - where that arrow goes as the card showed it, so a card that is out of date can't
+ *   remove another arrow
+ * @throws `invalid_input` for an arrow that isn't there or no longer goes to `to`
  */
 export function arrowRemovalEdits(
   stepId: string,
   written: readonly unknown[] | undefined,
   index: number,
+  to: string,
 ): readonly YamlEdit[] {
   const count = written?.length ?? 0;
   if (!Number.isInteger(index) || index < 0 || index >= count) {
     throw new KindedError("invalid_input", "This arrow isn't there.");
   }
+  checkStillGoesTo(written?.[index], to, "remove");
   return arrowsOut(stepId, count, [index]);
 }
 

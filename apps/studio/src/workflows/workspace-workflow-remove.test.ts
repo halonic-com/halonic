@@ -95,7 +95,7 @@ verifies("studio.workspace-workflow-remove", () => {
     const { host, store, changes } = setup();
     store[path] = sortFile;
 
-    const removed = await host.removeArrow(reply, "sort", 1);
+    const removed = await host.removeArrow(reply, "sort", 1, "draft");
 
     expect(changes.map((one) => one.label)).toEqual([
       "Removed an arrow of step sort in workflow Reply",
@@ -110,7 +110,7 @@ verifies("studio.workspace-workflow-remove", () => {
     const { host, store } = setup();
     store[path] = sortFile;
 
-    await host.removeArrow(reply, "draft", 0);
+    await host.removeArrow(reply, "draft", 0, "done");
 
     expect(store[path]).toContain("  draft: {}\n  done:");
   });
@@ -119,8 +119,25 @@ verifies("studio.workspace-workflow-remove", () => {
     const { host, store, changes } = setup();
     store[path] = sortFile;
 
-    await expect(host.removeArrow(reply, "sort", 2)).rejects.toThrow("This arrow isn't there.");
-    await expect(host.removeArrow(reply, "done", 0)).rejects.toThrow("This arrow isn't there.");
+    await expect(host.removeArrow(reply, "sort", 2, "done")).rejects.toThrow(
+      "This arrow isn't there.",
+    );
+    await expect(host.removeArrow(reply, "done", 0, "done")).rejects.toThrow(
+      "This arrow isn't there.",
+    );
     expect(changes).toEqual([]);
+  });
+
+  it("refuses an arrow that no longer goes where the card showed it, and writes nothing", async () => {
+    const { host, store, changes } = setup();
+    store[path] = sortFile;
+
+    await expect(host.removeArrow(reply, "sort", 0, "draft")).rejects.toMatchObject({
+      kind: "invalid_input",
+      message:
+        "This step's arrows changed in the meantime. Look at them again, then remove the arrow.",
+    });
+    expect(changes).toEqual([]);
+    expect(store[path]).toBe(sortFile);
   });
 });

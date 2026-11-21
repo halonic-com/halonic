@@ -95,7 +95,7 @@ verifies("workflows.page.remove", () => {
 
     await press(page, "Remove arrow 1");
 
-    expect(removeArrow).toHaveBeenCalledWith(expect.anything(), "sort", 0);
+    expect(removeArrow).toHaveBeenCalledWith(expect.anything(), "sort", 0, "approve");
     expect(arrowsSection(page).rows).toEqual(["1 → write on done"]);
     expect(toasts.list()).toEqual([
       expect.objectContaining({ title: "Removed the arrow from sort to approve" }),

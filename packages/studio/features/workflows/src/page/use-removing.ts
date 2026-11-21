@@ -46,7 +46,7 @@ export function useRemoving(
     },
     arrow: async (stepId, index, arrow) => {
       try {
-        const removed = await removeArrow.call(host, ref, stepId, index);
+        const removed = await removeArrow.call(host, ref, stepId, index, arrow.to);
         removedToast(toasts, words.arrow(stepId, arrow.to), removed, () =>
           words.couldntPutBackArrow(stepId, arrow.to),
         );

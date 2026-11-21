@@ -431,11 +431,17 @@ export interface WorkflowsHost {
   removeStep?(ref: WorkflowRef, stepId: string): Promise<RemovedStep>;
   /**
    * Takes the arrow at `index` (in file order, from 0) out of the step `stepId`, as one undoable
-   * change that saves itself; the file keeps its comments. Present whenever
-   * {@link WorkflowsHost.changeStep} is. Rejects a step or an arrow that isn't there, or with the
-   * reason the file couldn't be changed.
+   * change that saves itself; the file keeps its comments. `to` is where that arrow goes as the
+   * card showed it, so a card that is out of date can't remove another arrow. Present whenever
+   * {@link WorkflowsHost.changeStep} is. Rejects a step or an arrow that isn't there, one that no
+   * longer goes to `to`, or with the reason the file couldn't be changed.
    */
-  removeArrow?(ref: WorkflowRef, stepId: string, index: number): Promise<WorkflowRemoval>;
+  removeArrow?(
+    ref: WorkflowRef,
+    stepId: string,
+    index: number,
+    to: string,
+  ): Promise<WorkflowRemoval>;
   /**
    * Makes the workflow `start → done` in the hub, with the id taken from its name (`-2` when the
    * id is taken), and returns where it is. Rejects with the reason it couldn't be written.
