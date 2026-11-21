@@ -35,8 +35,10 @@ export function checkWorkflows(context: CheckContext): WorkspaceIssue[] {
  * unknown: that file's own errors say what to fix.
  */
 function staticIssues(context: CheckContext, workflow: Workflow): WorkspaceIssue[] {
+  const agents = context.nameableIds("agent", workflow.hub);
   const options = {
-    agents: [...context.nameableIds("agent", workflow.hub)],
+    agents: [...agents],
+    agentHubs: otherHubsAgents(context, agents),
     workflows: [...context.nameableIds("workflow", workflow.hub)],
     choices: choiceOptions(context, workflow.hub),
     inputFields: inputFieldsOf(context, workflow),
@@ -44,6 +46,21 @@ function staticIssues(context: CheckContext, workflow: Workflow): WorkspaceIssue
   return validateWorkflow(workflow.value, options).map((found) =>
     context.issue(found.severity, workflow.path, found.path, found.code, found.message),
   );
+}
+
+/**
+ * The hub each agent of another hub is in, by agent id, leaving out the ids
+ * the workflow's own hub has. An agent in two other hubs gets the first.
+ */
+function otherHubsAgents(context: CheckContext, own: ReadonlySet<string>): Record<string, string> {
+  const hubs: Record<string, string> = {};
+  for (const agent of context.filesOf("agent")) {
+    const id = agent.value.id;
+    if (agent.hub !== null && !own.has(id) && !Object.hasOwn(hubs, id)) {
+      hubs[id] = agent.hub;
+    }
+  }
+  return hubs;
 }
 
 /** The options of each agent of a hub whose reply is a choice, by agent id. */

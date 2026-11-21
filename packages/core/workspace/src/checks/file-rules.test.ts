@@ -16,15 +16,17 @@ verifies("workspace.file-rules", () => {
   );
 
   it(
-    "puts a repeated id on the later file by path, and names the first",
+    "fails a copy whose id is another file's for its id, not as a repeated id",
     async () => {
-      // "mock-copy.yaml" sorts before "mock.yaml", so the copy is the first here.
+      // mock-copy.yaml says id: mock; the old loader called mock.yaml a duplicate
+      // (parity difference id-differs-from-place, HAL-14277).
       expect(await errorsOf("provider/duplicate-id")).toEqual([
         {
-          file: "providers/mock.yaml",
+          file: "providers/mock-copy.yaml",
           path: "id",
           line: 1,
-          message: 'Duplicate id "mock" (also in providers/mock-copy.yaml)',
+          message:
+            "The id is mock, but the file is mock-copy.yaml. Use the same name in both, or leave id out.",
         },
       ]);
     },

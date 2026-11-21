@@ -23,23 +23,25 @@ type KindWithId = {
 }[KindName];
 
 /**
- * The id a file that failed its own checks would have had, as the parser
- * gives it: its own `id:` when the kind lets a file name itself and the text
- * still reads, otherwise the id its file name gives. A `writer.agent.yaml`
- * with `id: author` is the agent `author`, not `writer`.
+ * The ids a file that failed its own checks answers to: the id its place
+ * gives, and its own `id:` when the kind lets a file name itself and the text
+ * still reads. A `writer.agent.yaml` with `id: author` fails for the
+ * mismatch, and neither `writer` nor `author` is unknown elsewhere: its own
+ * error says which to change (HAL-14277).
  */
-function failedFileId(file: ReadFile): string | undefined {
+function failedFileIds(file: ReadFile): string[] {
   const { idFromPlace, syntax } = fileKinds[file.kind];
   const placeId = placeOf(file.path)?.placeId;
+  const ids = idFromPlace !== "none" && placeId !== undefined ? [placeId] : [];
   if (idFromPlace === "always" || syntax !== "yaml") {
-    return placeId;
+    return ids;
   }
   const yaml = readYaml(file.text);
   const data = yaml.ok ? yaml.value.data : undefined;
   if (typeof data === "object" && data !== null && !Array.isArray(data) && "id" in data) {
-    return typeof data.id === "string" ? data.id : undefined;
+    return typeof data.id === "string" ? [...ids, data.id] : ids;
   }
-  return idFromPlace === "fallback" ? placeId : undefined;
+  return ids;
 }
 
 /**
@@ -136,8 +138,7 @@ export class CheckContext {
       if (file.kind !== kind || parsed.has(file.path) || placeOf(file.path)?.hub !== hub) {
         continue;
       }
-      const id = failedFileId(file);
-      if (id !== undefined) {
+      for (const id of failedFileIds(file)) {
         ids.add(id);
       }
     }

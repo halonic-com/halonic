@@ -133,6 +133,7 @@ export type { WorkflowTest, WorkflowTestCase } from "./kinds/workflow-test/schem
 export type { SessionAssistant, WorkspaceSettings } from "./kinds/workspace/schema.ts";
 export {
   type FileProblem,
+  type IdSource,
   type ParsedFile,
   type ParseFileOptions,
   parseFile,
