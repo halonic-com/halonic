@@ -3,7 +3,7 @@
 // receipt (cli-output 3.4): how it stands, what it sent, how often it asked
 // the user, and its estimated cost.
 
-import { moneyAmount, runStanding, runWait } from "@halonicjs/app";
+import { answerLabel, moneyAmount, runStanding, runWait } from "@halonicjs/app";
 import type {
   ApprovalResolver,
   RunEvent,
@@ -223,7 +223,7 @@ function waitStepText(
   );
   if (end?.type === "event.received") {
     // The same words the Inbox card offered for that answer (`events.answer-labels`).
-    const answer = waiting.labels?.[end.event] ?? end.event;
+    const answer = answerLabel(waiting, end.event) ?? end.event;
     return receiptWords.waitAnswerLine(step, end.event, answer, clockTime(new Date(end.at)));
   }
   return end?.type === "timer.fired" || ended

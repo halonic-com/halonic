@@ -132,6 +132,34 @@ verifies("app.run-steps", () => {
     ]);
   });
 
+  it("gives an answer the label its step gave it, and none from Object.prototype (HAL-15090)", () => {
+    const labelled: RunEventBody = {
+      type: "run.waiting",
+      state: "review",
+      events: ["escalate", "constructor"],
+      labels: { escalate: "Send to a manager" },
+    };
+    const answeredWith = (event: string) =>
+      stepsOf([
+        ...upToReview,
+        ["14:02:10", labelled],
+        ["14:02:30", { type: "event.received", event }],
+        ...finishedAt("14:02:30"),
+      ])[2]?.end;
+
+    expect(answeredWith("escalate")).toEqual({
+      kind: "answered",
+      event: "escalate",
+      at: "2026-11-10T14:02:30.000Z",
+      label: "Send to a manager",
+    });
+    expect(answeredWith("constructor")).toEqual({
+      kind: "answered",
+      event: "constructor",
+      at: "2026-11-10T14:02:30.000Z",
+    });
+  });
+
   it("ends a failed run's steps with the step it failed in", () => {
     const steps = stepsOf([
       ["14:00:00", entered("read")],

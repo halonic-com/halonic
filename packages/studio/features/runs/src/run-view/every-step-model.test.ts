@@ -106,4 +106,24 @@ verifies("runs.every-step", () => {
     ])[0];
     expect(answered?.line).toBe("You answered hold at 10:42");
   });
+
+  it("names the answer by the label its step gave it, as the receipt does (HAL-15090)", () => {
+    const answeredWith = (event: string) =>
+      stepsOf([
+        [0, entered("review")],
+        [
+          0,
+          {
+            type: "run.waiting",
+            state: "review",
+            events: ["escalate", "constructor"],
+            labels: { escalate: "Send to a manager" },
+          },
+        ],
+        [2, { type: "event.received", event }],
+        [2, entered("draft")],
+      ])[0]?.line;
+    expect(answeredWith("escalate")).toBe("You answered Send to a manager at 10:42");
+    expect(answeredWith("constructor")).toBe("You answered constructor at 10:42");
+  });
 });

@@ -2,11 +2,11 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1301 (T8); cli-output revision 31, 3.4; ux-checklists-t8-t9 revision 10, 1.10 (HAL-1360)
+- Source: HAL-1301 (T8); cli-output revision 31, 3.4; ux-checklists-t8-t9 revision 10, 1.10 (HAL-1360); answer labels from HAL-15090
 
 The app shall read the steps a run reached from its run log, in the order it reached them: each step's state, the agent the step ran, and how the step ended or where it is now. The command line's step lines and the Studio's Every step shall both read them from the app, so the two say the same about a run.
 
-A step shall be done or failed with how long it took, or answered with the event the user sent and when. Only a step the workflow itself entered shall be a step: the events of a parallel branch or a for-each item shall belong to their step. The end state the run finished in shall not be a step.
+A step shall be done or failed with how long it took, or answered with the event the user sent, the label the wait step gave that event when it gave one of its own, and when. Only a step the workflow itself entered shall be a step: the events of a parallel branch or a for-each item shall belong to their step. The end state the run finished in shall not be a step.
 
 When the log hasn't ended the last step, the step shall take where the run is, the first that applies: waiting for the user's OK on a tool call, with the subagent that asked; waiting for a child run; waiting for the user's answer, since when; waiting until a time; else running, since the step started.
 
@@ -15,6 +15,9 @@ When the log hasn't ended the last step, the step shall take where the run is, t
 - Given a run that read, drafted, waited for an answer and was approved,
   when its steps are read,
   then they are read and draft, done with how long each took, then review, answered with `approve` and its time, and not the end state.
+- Given a run whose wait step labels `escalate` "Send to a manager" and was answered with `escalate`,
+  when its steps are read,
+  then review is answered with `escalate`, the label "Send to a manager" and its time; answered with `constructor`, which the step gave no label, it has no label.
 - Given a run that failed in its second step,
   when its steps are read,
   then the first is done and the second failed.
