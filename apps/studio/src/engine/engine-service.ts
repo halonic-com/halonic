@@ -67,7 +67,7 @@ import { studioConnectorCalls } from "../connect/studio-run-connectors.ts";
 import { openEngineHarnessHost } from "./engine-harness-host.ts";
 import { type EngineLockHold, holdEngineLock } from "./engine-lock.ts";
 import { answerRefusalOf, refuseConnectorApprove } from "./engine-refusals.ts";
-import { pageRoutines } from "./engine-routines.ts";
+import { pageRoutines, routineSkipsOf } from "./engine-routines.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
 import {
   agentRefusalOf,
@@ -118,6 +118,9 @@ export class EngineService {
   /** Ending the runs an engine closed for a removed trust stopped; the next engine opens after it. */
   #ending: Promise<void> = Promise.resolve();
   readonly #stopHearingTrust: (() => void) | undefined;
+  /** A routine's skip records while the engine is open (`routineSkipsOf`); none before. */
+  readonly routineSkips = (key: string) =>
+    routineSkipsOf(this.#opening, this.#options.location, key);
 
   constructor(options: EngineServiceOptions) {
     this.#options = options;

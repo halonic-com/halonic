@@ -164,6 +164,30 @@ verifies("routines.runs.view", () => {
     expect(row?.querySelector("button")).toBeNull();
   });
 
+  it("shows a refused start as a quiet row that a screen reader hears as Couldn't start", async () => {
+    vi.setSystemTime(new Date(2026, 10, 3, 12, 0));
+    const at = (minute: number) => new Date(2026, 10, 3, 8, minute).toISOString();
+    const noField = "The input has no field mail, which the step Read the email reads.";
+    const skips = [
+      { reason: "start-refused" as const, sentence: noField, from: at(1), to: at(1), count: 1 },
+      { reason: "start-refused" as const, from: at(0), to: at(0), count: 1 },
+    ];
+    const page = await openRuns(hostWith(async () => ({ runs: [], skips })));
+
+    const [refused, unexplained] = sectionOf(page, "Earlier")?.querySelectorAll("li") ?? [];
+    expect(refused?.querySelector("[aria-hidden=true]")?.textContent).toBe(
+      `08:01 Tue: couldn't start. ${noField}`,
+    );
+    expect(refused?.querySelector(".sr-only")?.textContent).toBe(
+      `Couldn't start at 08:01 Tue. ${noField}`,
+    );
+    expect(refused?.querySelector("button")).toBeNull();
+    expect(unexplained?.querySelector(".sr-only")?.textContent).toBe(
+      "Couldn't start at 08:00 Tue. Halonic ran into a problem it can't explain yet.",
+    );
+    expect(page.textContent).not.toContain("No runs yet");
+  });
+
   it("says a range of skipped times within one day with the day once", async () => {
     vi.setSystemTime(new Date(2026, 10, 3, 12, 0));
     const skips = [

@@ -1,4 +1,5 @@
 import { createRemoteExecutor, RemoteHostError } from "@halonicjs/adapter-executor-remote";
+import type { SkipRecord } from "@halonicjs/app/routines";
 import type { RunSummary } from "@halonicjs/events";
 import type { RunExecutor, SendOptions } from "@halonicjs/ports";
 import { type ErrorKind, KindedError } from "@halonicjs/std";
@@ -90,6 +91,11 @@ export class RemoteEngine {
       throw new KindedError("unavailable", "The engine's answer to Run now named no run.");
     }
     return { id: runId };
+  }
+
+  /** A routine's skip records: none, as the engine's API doesn't serve them yet (HAL-15068). */
+  async routineSkips(_routineKey: string): Promise<readonly SkipRecord[]> {
+    return [];
   }
 
   /** Sends `event` to a waiting run (`RunExecutor.send`); the engine decides which answer was first. */

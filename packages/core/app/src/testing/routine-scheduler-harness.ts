@@ -29,7 +29,7 @@ export interface TestRoutine {
 type Policy = "all" | "last";
 
 /** A due run of a {@link TestRoutine}. */
-type TestRun = ScheduledRun & { routine: TestRoutine };
+export type TestRun = ScheduledRun & { routine: TestRoutine };
 
 const hourMs = 3_600_000;
 

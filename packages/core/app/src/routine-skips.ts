@@ -11,8 +11,15 @@ import { deleteValue } from "./routine-last-runs.ts";
  * queued time whose routine was turned off or rescheduled before it started.
  * `target-unavailable`: the workflow or agent it starts can't be started,
  * for the reason in `why` (see {@link TargetUnavailableWhy}).
+ * `start-refused`: the scheduler asked for the run and the start was refused,
+ * with the refusal's own sentence in `sentence` when it has one.
  */
-export type SkipReason = CatchUpReason | "busy" | "changed" | "target-unavailable";
+export type SkipReason =
+  | CatchUpReason
+  | "busy"
+  | "changed"
+  | "target-unavailable"
+  | "start-refused";
 
 /**
  * Why a routine's target can't be started (flow-routines 3.9): it isn't in
@@ -28,6 +35,8 @@ export interface SkippedTimes {
   reason: SkipReason;
   /** For `target-unavailable` only: why the target can't be started. */
   why?: TargetUnavailableWhy;
+  /** For `start-refused` only: the refusal's sentence, absent when the error has no kind. */
+  sentence?: string;
   /** The oldest dropped time. */
   from: Date;
   /** The newest dropped time. */
@@ -43,6 +52,8 @@ export interface SkipRecord {
   reason: SkipReason;
   /** For `target-unavailable` only: why the target can't be started. */
   why?: TargetUnavailableWhy;
+  /** For `start-refused` only: the refusal's sentence, absent when the error has no kind. */
+  sentence?: string;
   /** ISO time of the oldest skipped time. */
   from: string;
   /** ISO time of the newest skipped time. */
@@ -89,9 +100,19 @@ export function addSkips(
   return next.slice(0, MAX_SKIP_RECORDS);
 }
 
-/** Whether a row and a skip are for the same reason, and the same `why` (two texts make two rows). */
+/** Whether a row and a skip are for the same reason, `why` and sentence (two texts make two rows). */
 function sameReason(row: SkipRecord, skip: SkippedTimes): boolean {
-  return row.reason === skip.reason && row.why === skip.why;
+  return row.reason === skip.reason && row.why === skip.why && row.sentence === skip.sentence;
+}
+
+/** The `why` and `sentence` of a skip or a row, for a row made from it. */
+function detailOf(
+  skip: Pick<SkippedTimes, "why" | "sentence">,
+): Pick<SkipRecord, "why" | "sentence"> {
+  return {
+    ...(skip.why === undefined ? {} : { why: skip.why }),
+    ...(skip.sentence === undefined ? {} : { sentence: skip.sentence }),
+  };
 }
 
 function holds(row: SkipRecord, skip: SkippedTimes): boolean {
@@ -116,7 +137,7 @@ function merged(row: SkipRecord, skip: SkippedTimes, decidedAt: Date): SkipRecor
   const countIsMinimum = row.countIsMinimum === true || skip.countIsMinimum === true;
   return {
     reason: row.reason,
-    ...(row.why === undefined ? {} : { why: row.why }),
+    ...detailOf(row),
     from: row.from,
     to: skip.to.toISOString(),
     count: row.count + skip.count,
@@ -128,7 +149,7 @@ function merged(row: SkipRecord, skip: SkippedTimes, decidedAt: Date): SkipRecor
 function recordOf(skip: SkippedTimes, decidedAt: Date): SkipRecord {
   return {
     reason: skip.reason,
-    ...(skip.why === undefined ? {} : { why: skip.why }),
+    ...detailOf(skip),
     from: skip.from.toISOString(),
     to: skip.to.toISOString(),
     count: skip.count,
@@ -221,6 +242,7 @@ const knownReasons: Record<SkipReason, true> = {
   busy: true,
   changed: true,
   "target-unavailable": true,
+  "start-refused": true,
 };
 const reasons: ReadonlySet<string> = new Set(Object.keys(knownReasons));
 
@@ -256,6 +278,9 @@ function isRecord(value: unknown): value is SkipRecord {
     (row.reason === "target-unavailable"
       ? typeof row.why === "string" && whys.has(row.why)
       : row.why === undefined) &&
+    (row.reason === "start-refused"
+      ? row.sentence === undefined || typeof row.sentence === "string"
+      : row.sentence === undefined) &&
     isTime(row.from) &&
     isTime(row.to) &&
     isTime(row.decidedAt) &&

@@ -100,8 +100,11 @@ export function timeRange(from: string, to: string, now: Date): string {
 
 const missed = "missed while Halonic was closed or asleep";
 
+/** What a refused start says when the refusal has no sentence of its own (microcopy 22 F13). */
+const unexplained = "Halonic ran into a problem it can't explain yet.";
+
 const skipReasons: Record<
-  Exclude<RoutineSkipReason, "target-never-live" | "target-in-trash">,
+  Exclude<RoutineSkipReason, "target-never-live" | "target-in-trash" | "start-refused">,
   string
 > = {
   busy: "the last run was still busy",
@@ -120,9 +123,22 @@ export function skipSentence(skip: RoutineSkip, targetName: string, now: Date): 
       return `${when}: ${targetName} isn't live yet`;
     case "target-in-trash":
       return `${when}: ${targetName} was deleted`;
+    case "start-refused":
+      return `${when}: couldn't start. ${skip.sentence ?? unexplained}`;
     default:
       return `${when}: ${skipReasons[skip.reason]}`;
   }
+}
+
+/**
+ * What a screen reader hears for a skipped row, when it isn't its text: a refused start leads with
+ * what happened, "Couldn't start at 17:27 Sat. *reason*" ("from 17:27 to 17:29 Sat" for a range).
+ */
+export function skipName(skip: RoutineSkip, now: Date): string | undefined {
+  if (skip.reason !== "start-refused") return undefined;
+  const when = timeRange(skip.from, skip.to, now);
+  const at = skip.from === skip.to ? `at ${when}` : `from ${when}`;
+  return `Couldn't start ${at}. ${skip.sentence ?? unexplained}`;
 }
 
 /** The line of times waiting for the previous run to end (busy rule "Queue it"). */

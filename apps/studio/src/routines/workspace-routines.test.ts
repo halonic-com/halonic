@@ -199,6 +199,14 @@ verifies("studio.workspace-routines", () => {
             to: "2026-11-02T08:00:00Z",
             count: 1,
           },
+          {
+            reason: "start-refused",
+            sentence: "This window can't run Briefing.",
+            from: "2026-11-01T08:00:00Z",
+            to: "2026-11-01T08:00:00Z",
+            count: 1,
+          },
+          { reason: "start-refused", from: "2026-10-31T08:00Z", to: "2026-10-31T08:00Z", count: 1 },
         ],
       },
       [
@@ -212,7 +220,12 @@ verifies("studio.workspace-routines", () => {
       ["new", "failed", "schedule"],
       ["old", "completed", "schedule"],
     ]);
-    expect(skips.map((skip) => skip.reason)).toEqual(["missed", "target-in-trash"]);
+    expect(skips.map(({ reason, sentence }) => [reason, sentence])).toEqual([
+      ["missed", undefined],
+      ["target-in-trash", undefined],
+      ["start-refused", "This window can't run Briefing."],
+      ["start-refused", undefined],
+    ]);
   });
 
   it("deletes a routine into the trash as one change", async () => {

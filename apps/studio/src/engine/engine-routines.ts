@@ -10,8 +10,8 @@
 // goes through the page's own checks first, as Run does.
 
 import { LiveRoutines, workspaceRoutineScheduler } from "@halonicjs/app";
-import type { RoutineTickResult } from "@halonicjs/app/routines";
-import type { RoutineEngine, RoutineTicks } from "@halonicjs/engine";
+import { type RoutineTickResult, type SkipRecord, SkipRecords } from "@halonicjs/app/routines";
+import type { AssembledEngine, RoutineEngine, RoutineTicks } from "@halonicjs/engine";
 import type { DefinitionSource, RunExecutor, StartRunRequest } from "@halonicjs/ports";
 import { DEFAULT_TICK_POLICY } from "@halonicjs/routines";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
@@ -105,6 +105,24 @@ function checkedExecutor(
 function reportFailures(result: RoutineTickResult, reportError: (error: unknown) => void): void {
   for (const failure of [...result.failed, ...result.lastRunNotSaved]) reportError(failure.error);
   for (const failure of result.skipsNotSaved) reportError(failure.error);
+}
+
+/**
+ * A routine's skip records (`app.skip-records`) from the engine's own `Coordination`, for the Runs
+ * view; none while no engine is open (or it fails to), since a second `Coordination` on that store
+ * would compact it under the engine or the CLI.
+ */
+export async function routineSkipsOf(
+  open:
+    | Promise<{ readonly engine: AssembledEngine; readonly workspace: LoadedWorkspace }>
+    | undefined,
+  location: string,
+  routineKey: string,
+): Promise<SkipRecord[]> {
+  const opened = await open?.catch(() => undefined);
+  if (opened === undefined) return [];
+  const workspaceId = workspaceIdOf(opened.workspace, location);
+  return new SkipRecords(opened.engine.coordination, workspaceId).read(routineKey);
 }
 
 /**

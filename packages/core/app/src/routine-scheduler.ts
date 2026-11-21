@@ -298,7 +298,8 @@ export class RoutineScheduler<
     skips.addTimes(plan.skip, "busy");
     targets.sortOldestFirst();
     for (const time of targets.unavailable) {
-      skips.addTimes([{ key: time.key, at: new Date(time.at) }], "target-unavailable", time.why);
+      const at = new Date(time.at);
+      skips.addTimes([{ key: time.key, at }], "target-unavailable", { why: time.why });
     }
     const result: RoutineTickResult = {
       ...nothing(),
@@ -309,14 +310,16 @@ export class RoutineScheduler<
       // Before the starts, so a skip after this tick's run starts a row of its own.
       skipsNotSaved: await skips.record(this.skipRecords, this.lastRuns, now),
     };
+    const refused = new TickSkips(); // Recorded after the starts, as a run of this tick ends a row.
     for (const run of plan.start) {
       if (this.disposed) {
         // Not stored and not sent as `routines.ticked`: the workspace is
         // closing, so start failures from earlier in this tick go unreported.
         return result;
       }
-      await this.startAndRecord(run, result);
+      await this.startAndRecord(run, result, refused);
     }
+    result.skipsNotSaved.push(...(await refused.record(this.skipRecords, this.lastRuns, now)));
     // Stored after the starts: a crash in between repeats them, and the run ids make that harmless.
     // The queue goes first, so a crash before the last tick asks for the same times again and
     // they queue once. A lost race means another instance ticked too; its values stay.
@@ -440,9 +443,9 @@ export class RoutineScheduler<
    * Starts a due run and stores its due time as the routine's last run,
    * adding the outcome to `result`. A failed store is not a failed start:
    * the run exists, and reporting it as failed would make a retry look like
-   * a second start.
+   * a second start. A start that fails is a `start-refused` skip in `refused` too.
    */
-  private async startAndRecord(run: Run, result: RoutineTickResult): Promise<void> {
+  private async startAndRecord(run: Run, result: RoutineTickResult, refused: TickSkips) {
     const time = timeOf(run);
     let lastRun: StoredLastRun;
     try {
@@ -450,6 +453,7 @@ export class RoutineScheduler<
       result.started.push(await this.start(run, lastRun.at));
     } catch (error) {
       result.failed.push({ ...time, error: asError(error) });
+      refused.addRefused(run, error);
       return;
     }
     try {
@@ -487,10 +491,7 @@ function oldestFirst(a: ScheduledRun, b: ScheduledRun): number {
 }
 
 function compare(a: string, b: string): number {
-  if (a === b) {
-    return 0;
-  }
-  return a < b ? -1 : 1;
+  return Number(a > b) - Number(a < b);
 }
 
 function timeOf(run: ScheduledRun): RoutineTime {

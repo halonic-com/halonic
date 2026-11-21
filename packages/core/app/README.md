@@ -26,7 +26,7 @@ Device-wide settings such as the theme live outside any scope.
 | `RoutineScheduler` | starts due routine runs on each `Scheduler` tick, idempotently, with catch-up | `app.routine-scheduler` |
 | `RoutineOverlap` | what a routine does with a due time while its run is going: skip, queue or allow | `app.routine-overlap` |
 | `QueuedTimes` | a routine's queued due times (count, first, last), read with `RoutineScheduler.queuedTimes()` without a tick | `app.scheduler-reads-queue` |
-| `SkipRecord` | a routine's skipped due times with the reason, read with `RoutineScheduler.skippedTimes(key)`; late runs get `trigger.catchUp`; a target that can't start is `target-unavailable` with `why`, checked before the overlap rule (`app.scheduler-skip-target-unavailable`) | `app.scheduler-keeps-skips` |
+| `SkipRecord` | a routine's skipped due times with the reason, read with `RoutineScheduler.skippedTimes(key)`; late runs get `trigger.catchUp`; a target that can't start is `target-unavailable` with `why`, checked before the overlap rule (`app.scheduler-skip-target-unavailable`); a refused start is `start-refused` with the refusal's `sentence` (`app.scheduler-keeps-refused-starts`); `SkipRecords` reads them from a host's `Coordination` | `app.scheduler-keeps-skips` |
 | `workspaceRoutineScheduler` | a `RoutineScheduler` on the real routines tick, filling `{{trigger.at}}` and `{{trigger.lastRun}}` | `app.workspace-routines` |
 | `placedRoutines` | every routine file of a loaded workspace with its hub, for the routine scheduler's `routines` | `app.placed-routines` |
 | `liveVersionOf` | a workspace's live version: `history-off` without version control, `none-yet` without a commit, else the latest commit on the current branch | `app.live-version` |

@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-1306 (T12 PR 14); flow-routines 3.1 and 3.9; microcopy 12.3
+- Source: HAL-1306 (T12 PR 14); flow-routines 3.1 and 3.9 (rev 23, refused starts, C533-5 on HAL-15068); microcopy 12.3
 
-The routine page shall have the tabs Schedule and Runs, with the Runs tab showing the number of runs that wait for a person in amber, else a still dot while one runs; the Runs view shall list **Now** (runs that are running or wait for a person, then one quiet row for queued times) and **Earlier** (the other runs and the times that didn't start, newest first), each run with its status, short id, what started it and when, named for screen readers as "Run *id*, *outcome*. Started: *how*, *time*." (HAL-14241), and opening the run's page; a time that didn't start shall be one quiet row that says the times and why, which isn't a link, and a view with nothing to show shall say "No runs yet." with when the routine runs next, or "Press Run now to start one."
+The routine page shall have the tabs Schedule and Runs, with the Runs tab showing the number of runs that wait for a person in amber, else a still dot while one runs; the Runs view shall list **Now** (runs that are running or wait for a person, then one quiet row for queued times) and **Earlier** (the other runs and the times that didn't start, newest first), each run with its status, short id, what started it and when, named for screen readers as "Run *id*, *outcome*. Started: *how*, *time*." (HAL-14241), and opening the run's page; a time that didn't start shall be one quiet row that says the times and why, which isn't a link, with a refused start reading "*times*: couldn't start. *reason*" (the refusal's own sentence, or "Halonic ran into a problem it can't explain yet.") and named "Couldn't start at *time*. *reason*" ("from *range*" for several times), not announced, and a view with nothing to show shall say "No runs yet." with when the routine runs next, or "Press Run now to start one."
 
 ## Examples
 
@@ -12,6 +12,8 @@ The routine page shall have the tabs Schedule and Runs, with the Runs tab showin
 - Given a running run and a run that waits, then both are under Now and the Runs tab says "1 needs you".
 - Given a skipped range "busy" at 08:00 Tue, then Earlier has the quiet row "08:00 Tue: the last run was still busy" with no button.
 - Given three skipped times from 07:00 to 09:00 on one day, then the row reads "07:00 to 09:00 Tue: …".
+- Given a start refused at 08:01 Tue with "The input has no field mail, which the step Read the email reads.", then Earlier has the quiet row "08:01 Tue: couldn't start. The input has no field mail, which the step Read the email reads.", named "Couldn't start at 08:01 Tue. The input has no field mail, which the step Read the email reads."
+- Given a start refused without a sentence, then its row ends "couldn't start. Halonic ran into a problem it can't explain yet."
 - Given queued times that are 99 long, then Now has the row "… 99 times waiting to start, one after another", read as "Queued, …".
 - Given no runs and a schedule that is on, then the view says "No runs yet." and "It runs next on Fri 6 Nov at 07:30, or press Run now."
 - Given the host can't read the runs, then the view says "Couldn't load runs" with **Try again**.

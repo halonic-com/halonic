@@ -1,0 +1,74 @@
+import { KindedError } from "@halonicjs/std";
+import { verifies } from "@halonicjs/testing-spec";
+import { describe, expect, it } from "vitest";
+import type { RoutineStart } from "./routine-scheduler.ts";
+import { setUp, type TestRun } from "./testing/routine-scheduler-harness.ts";
+
+const noField = "The input has no field mail, which the step Read the email reads.";
+
+/** A routine whose start throws `refusal` while it is set, as the window's checks refuse a run. */
+function refusing() {
+  const state: { refusal: Error | null } = { refusal: null };
+  const startOf = (run: TestRun): RoutineStart => {
+    if (state.refusal !== null) throw state.refusal;
+    return { workflow: { hubId: "p", workflowId: "f", input: { at: run.at.toISOString() } } };
+  };
+  const setup = setUp([{ key: "p/hourly", minute: 0 }], { startOf });
+  return { ...setup, state };
+}
+
+verifies("app.scheduler-keeps-refused-starts", () => {
+  describe("a refused start", () => {
+    it("is a start-refused row with the refusal's sentence, one range until a run starts", async () => {
+      const { scheduler, executor, at, state } = refusing();
+      await scheduler.tick();
+      state.refusal = new KindedError("invalid_input", noField);
+      at("2026-11-03T08:00:20Z");
+      const first = await scheduler.tick();
+      expect(first.failed.map((failure) => failure.error.message)).toEqual([noField]);
+      at("2026-11-03T09:00:20Z");
+      await scheduler.tick();
+      expect(await scheduler.skippedTimes("p/hourly")).toEqual([
+        {
+          reason: "start-refused",
+          sentence: noField,
+          from: "2026-11-03T08:00:00.000Z",
+          to: "2026-11-03T09:00:00.000Z",
+          count: 2,
+          decidedAt: "2026-11-03T09:00:20.000Z",
+        },
+      ]);
+      state.refusal = null;
+      at("2026-11-03T10:00:20Z");
+      expect((await scheduler.tick()).started).toHaveLength(1);
+      state.refusal = new KindedError("invalid_input", noField);
+      at("2026-11-03T11:00:20Z");
+      await scheduler.tick();
+      expect(executor.requests).toHaveLength(1);
+      expect(await scheduler.skippedTimes("p/hourly")).toMatchObject([
+        { reason: "start-refused", from: "2026-11-03T11:00:00.000Z", count: 1 },
+        { reason: "start-refused", from: "2026-11-03T08:00:00.000Z", count: 2 },
+      ]);
+    });
+
+    it("keeps no sentence for an error without a kind or an internal one, and makes a row per sentence", async () => {
+      const { scheduler, at, state } = refusing();
+      await scheduler.tick();
+      state.refusal = new Error("EIO: i/o error, read");
+      at("2026-11-03T08:00:20Z");
+      await scheduler.tick();
+      state.refusal = new KindedError("internal", "A bug in the step graph.");
+      at("2026-11-03T09:00:20Z");
+      await scheduler.tick();
+      state.refusal = new KindedError("unavailable", "This window can't run Briefing.");
+      at("2026-11-03T10:00:20Z");
+      await scheduler.tick();
+      const rows = await scheduler.skippedTimes("p/hourly");
+      expect(rows.map(({ reason, sentence, count }) => ({ reason, sentence, count }))).toEqual([
+        { reason: "start-refused", sentence: "This window can't run Briefing.", count: 1 },
+        { reason: "start-refused", sentence: undefined, count: 2 },
+      ]);
+      expect(rows[1]).not.toHaveProperty("sentence");
+    });
+  });
+});

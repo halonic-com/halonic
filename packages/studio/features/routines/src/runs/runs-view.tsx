@@ -8,6 +8,7 @@ import {
   queuedSentence,
   runsWords,
   runTime,
+  skipName,
   skipSentence,
   startedByWords,
 } from "./runs-words.ts";
@@ -27,7 +28,7 @@ export interface RunsViewProps {
 /** One row of the Earlier list: a run, or a range of times that didn't start. */
 type Entry =
   | { readonly kind: "run"; readonly at: string; readonly run: RoutineRun }
-  | { readonly kind: "skip"; readonly at: string; readonly text: string };
+  | { readonly kind: "skip"; readonly at: string; readonly text: string; readonly name?: string };
 
 /** Whether a run still goes or waits for a person: those sit under Now. */
 const isNow = (run: RoutineRun): boolean => run.outcome === "running" || run.outcome === "waiting";
@@ -77,13 +78,15 @@ function RunsLists({
     ...runs.runs
       .filter((run) => !isNow(run))
       .map((run): Entry => ({ kind: "run", at: run.startedAt, run })),
-    ...runs.skips.map(
-      (skip): Entry => ({
+    ...runs.skips.map((skip): Entry => {
+      const name = skipName(skip, now);
+      return {
         kind: "skip",
         at: skip.to,
         text: skipSentence(skip, routine.targetName, now),
-      }),
-    ),
+        ...(name === undefined ? {} : { name }),
+      };
+    }),
   ].sort((first, second) => second.at.localeCompare(first.at));
   const empty = going.length === 0 && earlier.length === 0 && runs.queued === undefined;
   if (empty) return <NoRuns host={host} routine={routine} />;
@@ -105,7 +108,7 @@ function RunsLists({
             entry.kind === "run" ? (
               <RunRow key={entry.run.runId} run={entry.run} openRun={openRun} now={now} />
             ) : (
-              <QuietRow key={`${entry.at}-${entry.text}`} text={entry.text} />
+              <QuietRow key={`${entry.at}-${entry.text}`} text={entry.text} name={entry.name} />
             ),
           )}
         </Section>
@@ -208,12 +211,30 @@ function RunRow({
   );
 }
 
-/** A time that didn't start, or a queue: plain muted text, not a link, no id or chip. */
-function QuietRow({ text, hidden }: { readonly text: string; readonly hidden?: string }) {
+/**
+ * A time that didn't start, or a queue: plain muted text, not a link, no id or chip. `name`, when
+ * given, is what a screen reader hears instead of the text.
+ */
+function QuietRow({
+  text,
+  hidden,
+  name,
+}: {
+  readonly text: string;
+  readonly hidden?: string;
+  readonly name?: string | undefined;
+}) {
   return (
     <li className="min-h-control-md px-2 py-1 text-small text-fg-muted">
       {hidden !== undefined && <span className="sr-only">{hidden}</span>}
-      {text}
+      {name === undefined ? (
+        text
+      ) : (
+        <>
+          <span aria-hidden="true">{text}</span>
+          <span className="sr-only">{name}</span>
+        </>
+      )}
     </li>
   );
 }
