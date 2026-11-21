@@ -3,7 +3,7 @@
 - Task: HAL-14734
 - Approval: the team's call on HAL-14734, a follow-up to Nina's review of halonic#4144 (C469 N1); the words are Mara's on HAL-14737. A team decision with no board card (HAL-2282 rule): it extends the trust check's approved "gets the secret" wording to one more kind of row, no new screen or flow.
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:97Z5KSwfLzMcvweQbc3NEWxWrfZW21sNUirG3Qz+Y32kl98p64r2oEE2WSyfH26fucPikT0Bv9Q9VFJA4xQtBQ==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:chUG5jIaJ+csr5l0EmRq/3ozOxwIdVFXwxVX868rFWNVnk66C/d92KokVqNHh/VJ5DBnzBeWknn0Q70UfPR6Cg==
 
 ## What changes
 
