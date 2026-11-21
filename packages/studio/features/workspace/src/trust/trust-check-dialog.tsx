@@ -123,7 +123,7 @@ function TrustRow({ row }: { readonly row: TrustRowView }) {
       )}
       {row.lines.map(([label, value]) => (
         <p key={`${label}:${value}`} className="m-0 text-small">
-          <span className="text-fg-muted">{label}</span> {value}
+          <span className="text-fg-muted">{label}:</span> {value}
         </p>
       ))}
     </div>

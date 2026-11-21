@@ -14,6 +14,9 @@ The `halonic trust [--dir <folder>]` command shall show the trust check of the w
 - Given the same Acme and no terminal,
   when `halonic trust --dir acme` runs,
   then stderr has the check and "✕ Acme isn't trusted on this computer yet, and there's no terminal to ask you.", then "Read the list above, then run: halonic trust --dir acme --yes --fingerprint " and that fingerprint, the last stdout line matches `^hfp1:[0-9a-f]{64}$`, nothing is saved and it exits with 3.
+- Given Acme, trusted and then changed, and no terminal,
+  when `halonic trust --dir acme` runs,
+  then the reason under what changed reads "✕ Acme changed since you trusted it, and there's no terminal to ask you to trust it again." (HAL-15117), and the rest is as above.
 - Given that fingerprint,
   when `halonic trust --dir acme --yes --fingerprint <fingerprint>` runs,
   then it asks nothing, prints "✓ Acme can run now." and exits with 0; run again, it prints "✓ Acme is already trusted on this computer. Nothing changed since 3 Nov.".

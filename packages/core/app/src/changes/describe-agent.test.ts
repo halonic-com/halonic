@@ -139,7 +139,7 @@ verifies("app.change-line-important", () => {
     expect(described(claudeCode, inSandbox)).toEqual([
       {
         id: "field:asks",
-        sentence: "Asks before it acts: always → in-sandbox",
+        sentence: "Asks: always → in-sandbox",
         important: true,
         parts: [["asks"]],
       },

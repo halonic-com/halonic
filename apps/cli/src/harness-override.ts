@@ -47,7 +47,7 @@ export function checkHarnessOverride(
       throw new KindedError(
         "invalid_input",
         plainText(runMessages.asksOnlyInClaudeCode(agent.name, harness, ending.phrase).phrase),
-        { fix: plainText(runMessages.asksOnlyInClaudeCodeFix(agent.name).phrase) },
+        { fix: plainText(runMessages.asksOnlyInClaudeCodeFix(agent.name, harness).phrase) },
       );
     }
   }

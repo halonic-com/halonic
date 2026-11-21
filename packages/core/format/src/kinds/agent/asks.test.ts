@@ -21,9 +21,9 @@ verifies("format.agent-asks", () => {
 
   describe("refuses asks on any harness but Claude Code, even always", () => {
     it.each([
-      ["codex", ["harness: codex"]],
-      ["halonic", ["harness: halonic"]],
-      ["halonic", []],
+      ["Codex", ["harness: codex"]],
+      ["Halonic's own loop", ["harness: halonic"]],
+      ["Halonic's own loop", []],
     ])("%s", (harness, lines) => {
       for (const asks of ["always", "in-sandbox"]) {
         const problems = problemsOf("agent", agent(...lines, `asks: ${asks}`));

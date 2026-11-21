@@ -313,7 +313,7 @@ verifies("cli.run-harness-asks", () => {
     expect(code).toBe(exitCode.usage);
     expect(io.stderr).toEqual([
       "✕ Couldn't send approve to run 01jd8q: Writer's file uses asks, which only Claude Code follows, but this run starts Writer in Codex. Nothing was sent.",
-      "  Run it in Claude Code, or remove asks from Writer's file.",
+      "  Start the run again without --harness codex, so Writer runs in Claude Code, or remove asks from Writer's file.",
     ]);
     expect(await eventsOfTheRun()).toEqual(before);
   });
