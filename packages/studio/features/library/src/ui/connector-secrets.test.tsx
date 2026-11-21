@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { workspaceSecretWriter } from "@halonicjs/ports";
 import { type ItemViewProps, limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -204,7 +205,9 @@ describe("a connector's secrets on its page", () => {
       const readable = Object.assign(store, { get });
       const root = render(<ConnectorPage {...page({ secrets: readable })} />);
       await settled();
-      expect(root.textContent).toContain("Stored in your secrets on this computer.");
+      expect(root.textContent).toContain(
+        "Kept in your system keychain, never in files. Notes gives it to the program it starts.",
+      );
       expect(root.textContent).not.toContain("Not set");
       expect(get).not.toHaveBeenCalled();
 
@@ -246,11 +249,47 @@ describe("a connector's secrets on its page", () => {
 
       await typeAndLeave(entry(root), typedValue);
       expect(root.textContent).toContain(
-        "Couldn't save the secret. The keychain is locked. The one you saved before is still in use.",
+        "Couldn't save the secret: the keychain is locked. The one you saved before is still in use.",
       );
       expect(root.textContent).not.toContain(typedValue);
       expect(store.values.get("NOTES_TOKEN")).toBe("acme-earlier-value");
     });
+
+    it("says why a remove failed, after a colon", async () => {
+      const store = keychain();
+      store.values.set("NOTES_TOKEN", "acme-earlier-value");
+      const root = render(<ConnectorPage {...page({ secrets: store })} />);
+      await settled();
+      store.failWith = lockedKeychain();
+
+      await press(root, "Remove");
+      expect(root.textContent).toContain("Couldn't remove the secret: the keychain is locked.");
+      expect(store.values.get("NOTES_TOKEN")).toBe("acme-earlier-value");
+    });
+
+    it.each([
+      ["serve-password", "Halonic"],
+      ["plugin__weather__key", "a plugin"],
+    ])(
+      "refuses %s, says whose it is and to rename it in the file, and empties the entry",
+      async (name, owner) => {
+        const store = keychain();
+        const set = vi.spyOn(store, "set");
+        const root = render(
+          <ConnectorPage {...page({ secrets: workspaceSecretWriter(store), names: [name] })} />,
+        );
+        const error = vi.spyOn(console, "error").mockImplementation(() => {});
+        await settled();
+        error.mockRestore();
+
+        await typeAndLeave(entry(root), typedValue);
+        expect(root.textContent).toContain(
+          `Couldn't save the secret: a workspace can't pick a secret that belongs to ${owner}. Give it another name in the connector's file.`,
+        );
+        expect(set).not.toHaveBeenCalled();
+        expect(everythingShown(root)).not.toContain(typedValue);
+      },
+    );
 
     it("says Can't check when the keychain can't say", async () => {
       const store = keychain();

@@ -2,6 +2,8 @@
 // in Settings (plugin screens design section 7, microcopy 10.3 "Key saving / failed"): the state
 // next to the name, a line about where it's kept, and never the value.
 
+import { reasonAfterColon } from "@halonicjs/studio-shell";
+
 /** What the keychain said about a secret: a value, none, or nothing (it couldn't be read). */
 export type ConnectorSecretState = "set" | "not-set" | "unknown";
 
@@ -15,24 +17,41 @@ export const connectorSecretWords = {
     unknown: "Can't check",
   } satisfies Record<ConnectorSecretState, string>,
   /**
-   * Under the name: where it's kept and where it goes. It doesn't say "only": another connector
-   * or a model may name the same secret.
+   * Under the name: where it's kept and where it goes, in the approved key hint's words (microcopy
+   * rev 96, as on the Models page). It names the keychain, not "your secrets", because the CLI
+   * reads the profile's secrets file, not this store (C553 row 26). It doesn't say "only": another
+   * connector or a model may name the same secret.
    */
   storedLine: (source: string) =>
-    `Stored in your secrets on this computer. ${source} gives it to the program it starts.`,
+    `Kept in your system keychain, never in files. ${source} gives it to the program it starts.`,
   /** In the empty entry once a value is stored: typing one replaces it. */
   replacePlaceholder: "Type a new value to replace it",
   remove: "Remove",
-  /** Saving failed. The second sentence only when one was stored. The value is never in it. */
+  /**
+   * Saving failed, in 1.1's form: the reason after a colon. The second sentence only when one was
+   * stored. The value is never in it.
+   *
+   * @example
+   * connectorSecretWords.notSaved("The keychain is locked.", true);
+   * // "Couldn't save the secret: the keychain is locked. The one you saved before is still in use."
+   */
   notSaved: (reason: string, wasSet: boolean) => {
-    const first = `Couldn't save the secret. ${sentence(reason)}`;
+    const first = `Couldn't save the secret: ${reasonAfterColon(reason)}.`;
     return wasSet ? `${first} The one you saved before is still in use.` : first;
   },
-  notRemoved: (reason: string) => `Couldn't remove the secret. ${sentence(reason)}`,
+  notRemoved: (reason: string) => `Couldn't remove the secret: ${reasonAfterColon(reason)}.`,
+  /**
+   * The connector's file names a secret that belongs to Halonic or to a plugin, which no workspace
+   * may pick, so nothing was saved. The next step is in the file, not on this page (C553 row 29).
+   */
+  refusedName: (owner: ReservedSecretOwner) =>
+    `Couldn't save the secret: a workspace can't pick a secret that belongs to ${reservedOwnerWords[owner]}. Give it another name in the connector's file.`,
 };
 
-/** "the keychain is locked" as "The keychain is locked." */
-function sentence(reason: string): string {
-  const capitalized = reason.charAt(0).toUpperCase() + reason.slice(1);
-  return /[.!?]$/u.test(capitalized) ? capitalized : `${capitalized}.`;
-}
+/** Who a secret name a workspace may not pick belongs to. */
+export type ReservedSecretOwner = "halonic" | "plugin";
+
+const reservedOwnerWords = {
+  halonic: "Halonic",
+  plugin: "a plugin",
+} satisfies Record<ReservedSecretOwner, string>;

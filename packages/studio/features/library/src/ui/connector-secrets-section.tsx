@@ -1,8 +1,10 @@
+import { isHalonicSecretName, isPluginSecretName } from "@halonicjs/ports";
 import { Button, Field, Input, StatusChip } from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState } from "react";
 import {
   type ConnectorSecretState,
+  type ReservedSecretOwner,
   connectorSecretWords as words,
 } from "../connector-secret-words.ts";
 import type { ConnectorSecrets } from "../connector-secrets-host.ts";
@@ -93,6 +95,14 @@ function SecretRow({ name, sourceName, secrets, state, onState }: SecretRowProps
 
   async function save() {
     if (draft === "") return;
+    // The store refuses this name too, but with no reason Studio may show; the page says whose it
+    // is and what to do instead. No value can be saved under it, so the entry lets go of this one.
+    const owner = reservedOwner(name);
+    if (owner !== null) {
+      setDraft("");
+      setError(words.refusedName(owner));
+      return;
+    }
     try {
       await secrets.set(name, draft);
       setDraft("");
@@ -162,6 +172,20 @@ function answersStillCurrent(
     if (change > startedAfter && kept !== undefined) states[name] = kept;
   }
   return states;
+}
+
+/**
+ * Who a name no workspace may pick belongs to, or `null` when the workspace may pick it. A name
+ * that breaks the secret name rule is `null` here, and the store gives the reason.
+ */
+function reservedOwner(name: string): ReservedSecretOwner | null {
+  try {
+    if (isHalonicSecretName(name)) return "halonic";
+    if (isPluginSecretName(name)) return "plugin";
+  } catch {
+    // Not a secret name at all: the store refuses it with its own reason.
+  }
+  return null;
 }
 
 /**
