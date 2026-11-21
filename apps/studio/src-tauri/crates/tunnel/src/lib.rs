@@ -16,6 +16,7 @@ mod error;
 mod frames;
 mod handshake;
 mod keys;
+mod pairing_run;
 mod phone;
 mod session;
 mod transport;
@@ -38,6 +39,10 @@ pub use handshake::{
     PhoneDetails, Platform, RECONNECT_PATTERN, Reconnect,
 };
 pub use keys::{KEY_BYTES, PhoneKeys};
+pub use pairing_run::{
+    ALLOW_TIMEOUT, Paired, PairingAtCheck, PairingOptions, PairingProblem, PairingRequest,
+    start_pairing,
+};
 pub use phone::{
     HANDSHAKE_TIMEOUT, PairedComputer, PhoneConnection, PhoneEvent, PhoneOptions, PhoneStatus,
 };
