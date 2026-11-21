@@ -292,13 +292,6 @@ async function followWithEvents(
   return { run, unusedEvents: ended ? events.slice(used) : [] };
 }
 
-/**
- * The hub and the workflow `typed` names, and the harness for all its
- * agents, before the engine opens, so the sandbox is checked for the run
- * that starts.
- *
- * @throws OwnLineError when no hub, or more than one, has the workflow
- */
 /** The one hub's workflow the user typed, or `undefined` when no hub, or more than one, has it. */
 function foundWorkflow(workspace: LoadedWorkspace, typed: string): WorkflowRef | undefined {
   const lookup = lookUpWorkflow(hubWorkflows(workspace), typed);
@@ -307,6 +300,13 @@ function foundWorkflow(workspace: LoadedWorkspace, typed: string): WorkflowRef |
     : undefined;
 }
 
+/**
+ * The hub and the workflow `typed` names, and the harness for all its
+ * agents, before the engine opens, so the sandbox is checked for the run
+ * that starts.
+ *
+ * @throws OwnLineError when no hub, or more than one, has the workflow
+ */
 function workflowToRun(
   workspace: LoadedWorkspace,
   typed: string,

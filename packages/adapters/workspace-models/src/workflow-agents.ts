@@ -20,7 +20,8 @@ export { startsAProgram, type WorkflowRef } from "@halonicjs/workspace";
 /**
  * The agents of the hub's workflow, and of every workflow it starts, each
  * once, in the order the workflow first names them. An agent with no file in
- * the hub is left out.
+ * the hub is left out, and so are their subagents: the sandbox gate reads
+ * this, and widening it is a security change of its own.
  *
  * @example
  * workflowAgentsOf(workspace, { hubId: "support", workflowId: "support-reply" }); // [agent file of "writer"]

@@ -25,6 +25,7 @@ export const workspaceMessages = defineMessages("workspace", {
    * "Couldn't run support-reply: Acme has 1 problem in
    * hubs/support/workflows/weekly-report.workflow.yaml. Nothing ran."
    * Two files are both named; from three on, the first and how many others.
+   * With no file to name, as for an error in no file, "in its files".
    * `nothingDone` is "Nothing ran." or "Nothing was sent.".
    */
   fileProblems: (workspace: string, count: number, files: readonly string[], nothingDone: Phrase) =>
@@ -59,11 +60,13 @@ export const workspaceMessages = defineMessages("workspace", {
  * and a count, so the line stays readable when a whole folder is broken.
  *
  * @example
+ * filesInWords([]); // "its files"
  * filesInWords(["workspace.yaml"]); // "workspace.yaml"
  * filesInWords(["providers/mock.yaml", "workspace.yaml"]); // "providers/mock.yaml and workspace.yaml"
  * filesInWords(["a.yaml", "b.yaml", "c.yaml"]); // "a.yaml and 2 other files"
  */
 function filesInWords(files: readonly string[]): string {
+  if (files.length === 0) return "its files";
   if (files.length <= 2) return listInWords(files);
   const [first] = files;
   return `${first} and ${counted(files.length - 1, "other file", "other files")}`;

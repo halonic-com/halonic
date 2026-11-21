@@ -1,8 +1,9 @@
 // Which errors in a workspace's files stop a run of one workflow (Liam,
 // HAL-15127). The loader leaves a file with an error out, so a run that
 // loads it isn't what the user wrote (HAL-6613). A run of workflow W loads
-// its own file, the agents and workflows its steps name, and every file that
-// isn't a workflow, agent or test, so an error in any of those stops it. A
+// its own file, the agents and workflows its steps name, those agents'
+// subagents, and every file that isn't a workflow, agent or test, so an error
+// in any of those stops it. A
 // broken draft workflow or an agent W doesn't use stops only its own runs.
 // The CLI's refusal and Studio's Run both ask this one function, so they
 // can't drift apart again.
@@ -22,12 +23,18 @@ export interface WorkflowRef {
   readonly workflowId: string;
 }
 
-/** The ids a workflow's steps name, and those of every workflow it calls, each once. */
+/** The ids a workflow's steps name, those of every workflow it calls, and their agents' subagents, each once. */
 export interface WorkflowUses {
   /** The workflow itself, then each workflow its steps call, in the order they are first named. */
   readonly workflows: readonly string[];
   /** The agents those workflows' steps name, in the order they are first named. */
   readonly agents: readonly string[];
+  /**
+   * The subagents of those agents, and theirs, in the order they are first
+   * named; an agent that a step names too is among `agents` only. A run loads
+   * them and hands them tasks, but no step starts them.
+   */
+  readonly subagents: readonly string[];
 }
 
 /**
@@ -70,13 +77,15 @@ export function namedInStep(state: Workflow["states"][string]): StepName[] {
 
 /**
  * What the hub's workflow uses: the workflows and agents its steps name, and
- * those of every workflow it calls, followed all the way down. A name counts
- * even when its file didn't load, so a broken agent or called workflow is
- * still among them; what a workflow that didn't load calls is unknown.
+ * those of every workflow it calls, followed all the way down, then the
+ * subagents of those agents, and theirs. A name counts even when its file
+ * didn't load, so a broken agent, subagent or called workflow is still among
+ * them; what a workflow calls, or an agent hands tasks to, is unknown when
+ * its file didn't load. That file's own error stops the run then.
  *
  * @example
  * workflowUses(workspace, { hubId: "support", workflowId: "reply" });
- * // { workflows: ["reply", "triage"], agents: ["writer", "sorter"] }
+ * // { workflows: ["reply", "triage"], agents: ["writer", "sorter"], subagents: ["checker"] }
  */
 export function workflowUses(
   workspace: LoadedWorkspace,
@@ -95,25 +104,51 @@ export function workflowUses(
     }
   };
   visit(workflowId);
-  return { workflows: [...seen], agents: [...agents] };
+  return {
+    workflows: [...seen],
+    agents: [...agents],
+    subagents: subagentsOf([...agents], agentsById(workspace, hubId)),
+  };
+}
+
+/**
+ * The subagents of `agents`, and theirs, all the way down, each once and none
+ * of `agents` itself. An agent with no loaded file adds none.
+ */
+function subagentsOf(
+  agents: readonly string[],
+  files: ReadonlyMap<string, LoadedFileOf<"agent">>,
+): string[] {
+  const reached = new Set(agents);
+  const subagents: string[] = [];
+  const toExpand = [...agents];
+  for (let next = toExpand.shift(); next !== undefined; next = toExpand.shift()) {
+    for (const subagent of files.get(next)?.value.subagents ?? []) {
+      if (reached.has(subagent)) continue;
+      reached.add(subagent);
+      subagents.push(subagent);
+      toExpand.push(subagent);
+    }
+  }
+  return subagents;
 }
 
 /**
  * The errors among `issues` that stop a run of the hub's workflow, in their
  * order. Warnings never do. An error stops it when it is in:
  *
- * - the workflow's own file, or the file of an agent or a workflow it uses
- *   ({@link workflowUses});
+ * - the workflow's own file, or the file of an agent, a subagent or a
+ *   workflow it uses ({@link workflowUses});
  * - any other file that isn't a workflow, agent or test file, such as
  *   `workspace.yaml`, a hub file, a provider or `models.yaml`, or no file at
  *   all: every run can depend on those;
- * - for the default model problem, the hub's agents, when an agent the
- *   workflow uses calls the default model.
+ * - for the default model problem, the hub's agents, when an agent or a
+ *   subagent the workflow uses calls the default model.
  *
  * A file's kind, hub and id come from its path, as a broken file often didn't
  * load. Where that can't tell, the error stops the run: a path no kind places,
- * a workflow that didn't load (its uses are unknown), or an agent it uses
- * that didn't load, for the default model problem.
+ * a workflow that didn't load (its uses are unknown), or an agent or
+ * subagent it uses that didn't load, for the default model problem.
  *
  * @param issues - every problem `halonic validate` lists, the loader's and the checks' after it
  * @example
@@ -144,7 +179,7 @@ function stopsRun(
   if (place.kind !== "workflow" && place.kind !== "agent") return true;
   if (place.hub !== hubId) return false;
   if (issue.code === unknownDefaultModelCode) return callsDefaultModel(workspace, hubId, uses);
-  const used = place.kind === "workflow" ? uses.workflows : uses.agents;
+  const used = place.kind === "workflow" ? uses.workflows : [...uses.agents, ...uses.subagents];
   return idsAt(workspace, issue.file, place.placeId).some((id) => used.includes(id));
 }
 
@@ -159,16 +194,22 @@ function idsAt(workspace: LoadedWorkspace, path: string, placeId: string | undef
   return [placeId, loaded?.id].filter((id): id is string => typeof id === "string");
 }
 
-/** Whether an agent the run uses calls the hub's default model, or one of them didn't load. */
+/** Whether an agent or a subagent the run uses calls the hub's default model, or one of them didn't load. */
 function callsDefaultModel(workspace: LoadedWorkspace, hubId: string, uses: WorkflowUses): boolean {
-  const agents = new Map<string, LoadedFileOf<"agent">>();
-  for (const agent of filesOf(workspace, "agent")) {
-    if (agent.hub === hubId && !agents.has(agent.value.id)) agents.set(agent.value.id, agent);
-  }
-  return uses.agents.some((id) => {
+  const agents = agentsById(workspace, hubId);
+  return [...uses.agents, ...uses.subagents].some((id) => {
     const agent = agents.get(id);
     return agent === undefined || usesDefaultModel(agent);
   });
+}
+
+/** The hub's agents by id; the first by path wins, as in `definitionsOf`. */
+function agentsById(workspace: LoadedWorkspace, hubId: string): Map<string, LoadedFileOf<"agent">> {
+  const byId = new Map<string, LoadedFileOf<"agent">>();
+  for (const agent of filesOf(workspace, "agent")) {
+    if (agent.hub === hubId && !byId.has(agent.value.id)) byId.set(agent.value.id, agent);
+  }
+  return byId;
 }
 
 /** The hub's workflows by id; the first by path wins, as in `definitionsOf`. */

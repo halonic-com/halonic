@@ -56,6 +56,7 @@ verifies("workspace.run-problems", () => {
     expect(workflowUses(workspace, supportReply)).toEqual({
       workflows: ["support-reply", "triage"],
       agents: ["writer", "sorter"],
+      subagents: [],
     });
   });
 
@@ -120,6 +121,60 @@ verifies("workspace.run-problems", () => {
 
     it("any file, when the problem is only a warning", async () => {
       expect(await stopping([{ ...errorIn("workspace.yaml"), severity: "warning" }])).toEqual([]);
+    });
+  });
+
+  // Liam's review of #4496: a run loads the subagents of its agents and hands them tasks.
+  describe("through subagents", () => {
+    const checkerPath = "hubs/support/agents/checker.agent.yaml";
+    const writerHandsToChecker = {
+      "hubs/support/agents/writer.agent.yaml":
+        "id: writer\nname: Writer\ninstructions: Write.\nsubagents: [checker]\n",
+      "hubs/support/agents/checker.agent.yaml":
+        "id: checker\nname: Checker\ninstructions: Check.\nsubagents: [proofer]\n",
+      "hubs/support/agents/proofer.agent.yaml":
+        "id: proofer\nname: Proofer\ninstructions: Proof.\n",
+    };
+
+    it("finds the subagents of its agents, all the way down", async () => {
+      const workspace = await loadWorkspace(new MemorySource({ ...acme, ...writerHandsToChecker }));
+
+      expect(workflowUses(workspace, supportReply).subagents).toEqual(["checker", "proofer"]);
+    });
+
+    it.each([
+      ["a subagent of an agent it runs", checkerPath],
+      ["a subagent of that subagent", "hubs/support/agents/proofer.agent.yaml"],
+    ])("is stopped by an error in %s", async (_, file) => {
+      expect(await stopping([errorIn(file)], writerHandsToChecker)).toEqual([errorIn(file)]);
+    });
+
+    it("is stopped by a subagent whose file doesn't load", async () => {
+      const found = await stopping([], { ...writerHandsToChecker, [checkerPath]: "id: [\n" });
+
+      expect(found.map((issue) => issue.file)).toContain(checkerPath);
+    });
+
+    it("isn't stopped by an agent that is nobody's subagent", async () => {
+      const alone = { [checkerPath]: "id: checker\nname: Checker\ninstructions: Check.\n" };
+
+      expect(await stopping([errorIn(checkerPath)], alone)).toEqual([]);
+    });
+
+    it("is stopped by the default model problem when only a subagent names no model", async () => {
+      const onClerk = errorIn("hubs/support/agents/clerk.agent.yaml", "unknown-default-model");
+      const found = await stopping([onClerk], {
+        ...writerHandsToChecker,
+        "providers/mock.yaml": "id: mock\nname: Test model\ntype: mock\nlocal: true\n",
+        "hubs/support/agents/writer.agent.yaml":
+          "id: writer\nname: Writer\nmodel: mock/echo\ninstructions: Write.\nsubagents: [checker]\n",
+        "hubs/support/agents/sorter.agent.yaml":
+          "id: sorter\nname: Sorter\nmodel: mock/echo\ninstructions: Sort.\n",
+        "hubs/support/agents/checker.agent.yaml":
+          "id: checker\nname: Checker\nmodel: mock/echo\ninstructions: Check.\nsubagents: [proofer]\n",
+      });
+
+      expect(found).toEqual([onClerk]);
     });
   });
 

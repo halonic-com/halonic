@@ -96,7 +96,9 @@ export function refuseFileProblems(
       : errorsStoppingRun(workspace, workspaceProblemsOf(workspace), run);
   if (errors.length === 0) return;
   const name = printable(workspaceNameOf(workspace, dir));
-  // A file name is the user's own text, so it is shown as safely as the workspace's name.
-  const files = [...new Set(errors.map((issue) => printable(issue.file)))];
+  // A file name is the user's own text, so it is shown as safely as the
+  // workspace's name. An error in no file has no name to show.
+  const named = errors.map((issue) => issue.file).filter((file) => file !== "");
+  const files = [...new Set(named.map(printable))];
   throw new WorkspaceFileProblemsError(name, errors.length, files, nothingDone, typedDir);
 }
