@@ -3,6 +3,7 @@
 - Task: HAL-14831 (the board's decision of 21 Nov 18:20 and the out-of-memory note of 18:50)
 - Approval: the board decided the shard split, the move of `fast` and the push concurrency (Timothy, 21 Nov, HAL-14831), and asked for the memory fix in the same pull request; Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aULKToxtxTso0hA8qPXC1uWtQZpmR0t6Ms7VDOmPBiQxZC3fABHBGGBXt3EeXgsW790bwRnF+w++yxomZitiBg==
 
 ## What changes
 
