@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-15396 asks for these changes, from flow check C570 #6 and #7 and its doctor note (HAL-15386). The team decides them under the HAL-2282 rule, since they reword messages that are already there. Liam signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:eVw8kK0mWOAJyOB2JhOLIPRDtK4aDfwrXHbBmlH8aPaVXx14GKTai4i+qyU7JqreY3qdGTZErbMa8YUEfysWDg==
 
 ## What changes
 
