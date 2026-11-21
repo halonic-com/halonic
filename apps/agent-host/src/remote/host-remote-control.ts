@@ -265,8 +265,9 @@ export class HostRemoteControl implements RemoteControl {
     this.#stopAdvert();
     pairing.session.end(reason, tunnelReason ?? reasonOf(this.#tunnelStatus));
     this.#publish();
-    const noPhone = this.#options.phones.phones.length === 0;
-    if (pairing.turnedOn && reason !== "remote-off" && noPhone) await this.#turnOff();
+    // Only this pairing's own phone keeps remote on; phones paired before don't.
+    const pairedNothing = pairing.phone === undefined;
+    if (pairing.turnedOn && reason !== "remote-off" && pairedNothing) await this.#turnOff();
   }
 
   /** Ends the code shown at the desk, if any, without a `code-ended`; a phone at `check` hears `denied`. */

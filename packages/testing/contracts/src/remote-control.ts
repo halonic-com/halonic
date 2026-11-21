@@ -184,6 +184,19 @@ function pairingCases(make: MakeRemoteControl): void {
     expect(await stateOf(harness.control)).toMatchObject({ on: false, phones: [] });
   });
 
+  it("turns remote off again when a pairing closes unpaired, though a phone was paired before", async () => {
+    const harness = await make();
+    await pairPhone(harness, "Pixel 8");
+    await harness.control.setRemote(false);
+    const { session, next } = await openPairing(harness.control);
+    await session.close();
+    expect(await next()).toEqual({ type: "ended", reason: "closed" });
+    const state = await stateOf(harness.control);
+    expect(state).toMatchObject({ on: false, pairing: false });
+    expect(state.tunnel).toMatchObject({ state: "down", reason: "stopped" });
+    expect(state.phones.map((phone) => phone.name)).toEqual(["Pixel 8"]);
+  });
+
   it("ends an open pairing with remote-off when remote is turned off", async () => {
     const { control } = await make();
     const { next } = await openPairing(control);
