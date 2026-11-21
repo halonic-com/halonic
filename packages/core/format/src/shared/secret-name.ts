@@ -1,4 +1,9 @@
-import { isSecretName, maxSecretNameLength } from "@halonicjs/ports";
+import {
+  isHalonicSecretName,
+  isPluginSecretName,
+  isSecretName,
+  maxSecretNameLength,
+} from "@halonicjs/ports";
 import type { Path } from "@halonicjs/schema-kit";
 import { findSecretShape } from "@halonicjs/std";
 import type { KindCheckProblem } from "../kind.ts";
@@ -117,4 +122,27 @@ export function checkSecretName(name: string, path: Path): KindCheckProblem | un
     path,
     message: badNameMessage(name),
   };
+}
+
+/**
+ * Refuses a secret's name that belongs to Halonic (`token-key`,
+ * `serve-password`) or to a plugin (`secret-name-reserved`). A file is the
+ * workspace's, and the secret it names reaches a program or a server, so it
+ * may only name a secret of its own. Ask it after {@link checkSecretName}
+ * found nothing.
+ *
+ * @param name - the value from the file
+ * @param path - where it sits in the file
+ * @param message - what the caller says, in its own terms: what can't use the name, and a name of its own to use instead
+ * @returns the problem, or `undefined` for a name of the workspace's own
+ */
+export function checkReservedSecretName(
+  name: string,
+  path: Path,
+  message: string,
+): KindCheckProblem | undefined {
+  if (!isHalonicSecretName(name) && !isPluginSecretName(name)) {
+    return undefined;
+  }
+  return { severity: "error", code: "secret-name-reserved", path, message };
 }
