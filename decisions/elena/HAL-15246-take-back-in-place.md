@@ -3,6 +3,7 @@
 - Task: HAL-15246, from the design check C551 (HAL-15217, points U2, U3 and U5)
 - Approval: the designer's decision on HAL-15246, within the board-approved R16 (HAL-2282); Liam signs in the review of HAL-15246
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:f/DY/RtS3Q2wuIe4e7iVyPUevuRVIJoVHpBYZ3DyfGmUkqkGSLibHvrv/bi8hfC56uBV3XZ3pZUtEnbzgj0pBw==
 
 ## What changes
 
