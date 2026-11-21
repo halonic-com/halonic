@@ -5,7 +5,7 @@
 
 import type { IntegrationTool, PluginUi } from "@halonicjs/format";
 import type { TrustGrant } from "@halonicjs/ports";
-import type { PluginEntry, ReadPlugin } from "./plugin-service.ts";
+import type { PluginEntry, ReadPlugin } from "./plugin-service-types.ts";
 import { localPart, type PluginPart } from "./plugin-trust-content.ts";
 
 /**

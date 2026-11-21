@@ -1,7 +1,8 @@
 import type { Clock, Digest } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { type PluginEntry, PluginService } from "./plugin-service.ts";
+import { PluginService } from "./plugin-service.ts";
+import type { PluginEntry } from "./plugin-service-types.ts";
 import { weatherManifest } from "./testing/plugin-fixtures.ts";
 import { TestFolderReader } from "./testing/test-folder-reader.ts";
 import { TestPluginFolder } from "./testing/test-plugin-folder.ts";
