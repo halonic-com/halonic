@@ -14,9 +14,29 @@ export const mapWords = {
   /** A workflow card's name, until the card names its steps (mc 19.7). */
   workflowCard: (workflow: string, agent: string, steps: number) =>
     `Workflow ${workflow}, uses ${agent} in ${steps === 1 ? "1 step" : `${steps} steps`}`,
+  /** A summary card's counts, the kinds with none left out: "2 workflows · 1 agent". */
+  summary: {
+    in: (workflows: number, agents: number) =>
+      counts([workflows, "workflow", "workflows"], [agents, "agent", "agents"]),
+    use: (skills: number, knowledge: number, connectors: number) =>
+      counts(
+        [skills, "skill", "skills"],
+        [knowledge, "knowledge", "knowledge"],
+        [connectors, "connector", "connectors"],
+      ),
+    out: (subagents: number) => counts([subagents, "subagent", "subagents"]),
+  },
   addTrigger: "Add trigger",
   addTool: "Add a tool",
   addSubagent: "Add subagent",
   loadFailed: (name: string) => `Couldn't show ${name}'s map`,
   tryAgain: "Try again",
 } as const;
+
+/** "2 workflows · 1 agent": each count with its word, leaving out the ones at nought. */
+function counts(...parts: readonly (readonly [number, string, string])[]): string {
+  return parts
+    .filter(([count]) => count > 0)
+    .map(([count, one, many]) => `${count} ${count === 1 ? one : many}`)
+    .join(" · ");
+}

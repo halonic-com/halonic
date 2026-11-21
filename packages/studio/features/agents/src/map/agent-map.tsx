@@ -1,5 +1,6 @@
 import { LetterTile } from "@halonicjs/studio-kit";
-import { type ReactNode, useId } from "react";
+import type { CloseStack } from "@halonicjs/studio-shell";
+import { type ReactNode, useId, useRef, useState } from "react";
 import {
   type AgentListing,
   type AgentSettings,
@@ -12,6 +13,7 @@ import {
 } from "../api.ts";
 import { MapFrame } from "./map-frame.tsx";
 import type { MapSide } from "./map-geometry.ts";
+import { MAX_SIDE_CARDS, SummaryCard, SummaryDrawer } from "./map-summary.tsx";
 import { mapWords as words } from "./map-words.ts";
 
 /** Props for {@link AgentMap}. */
@@ -35,6 +37,8 @@ export interface AgentMapProps {
   readonly addTrigger?: (() => void) | undefined;
   readonly addTool: () => void;
   readonly addSubagent: () => void;
+  /** The window's close stack, which Esc on a summary drawer goes through. */
+  readonly closeStack: CloseStack;
 }
 
 const cardClasses =
@@ -49,56 +53,129 @@ const addClasses =
  * hand it work), below what it can use (skills, knowledge, connectors, three a row), and on the
  * right who it hands work to. Each side is a group named by its heading and ends in its add
  * button (`agents.map.add-button-per-side`). The DOM order is the reading order, left, centre,
- * below, right, so Tab goes card to card that way. Its frame fits it to the panel and joins the
- * cards to the centre with curved lines (`agents.map.lines-and-fit`).
+ * below, right, so Tab goes card to card that way. A side with more than three cards shows one
+ * summary card instead, which opens a drawer with all of them (`agents.map.side-summary-card`,
+ * `agents.map.summary-drawer`). Its frame fits it to the panel and joins the cards to the centre
+ * with curved lines (`agents.map.lines-and-fit`).
  */
 export function AgentMap(props: AgentMapProps) {
-  const { settings, team, users, openAgentStep, openSubagent, openAgent, openWorkflow } = props;
+  const { settings, openAgentStep } = props;
+  const [drawer, setDrawer] = useState<MapSide>();
+  const opener = useRef<HTMLButtonElement | null>(null);
+  const sides = mapSides(props);
+  // Shown only while its side still has too many cards; a change to the file can take that away.
+  const open =
+    drawer !== undefined && sides[drawer].items.length > MAX_SIDE_CARDS ? drawer : undefined;
+  const close = () => {
+    setDrawer(undefined);
+    opener.current?.focus();
+  };
+  const side = (key: MapSide) => (
+    <Side
+      side={key}
+      columns={key === "use"}
+      summary={
+        sides[key].items.length > MAX_SIDE_CARDS && (
+          <SummaryCard
+            counts={sides[key].counts}
+            heading={sides[key].heading}
+            open={open === key}
+            onOpen={(card) => {
+              opener.current = card;
+              setDrawer(key);
+            }}
+          />
+        )
+      }
+      content={sides[key]}
+    />
+  );
+  return (
+    <MapFrame
+      label={words.map(settings.name)}
+      onCanvasPress={open === undefined ? undefined : close}
+      drawer={
+        open !== undefined && (
+          // Keyed by its side, so another summary card's drawer takes the focus to its own title.
+          <SummaryDrawer
+            key={open}
+            title={sides[open].heading}
+            closeStack={props.closeStack}
+            onClose={close}
+          >
+            {sides[open].items}
+            {sides[open].add}
+          </SummaryDrawer>
+        )
+      }
+    >
+      <div className="col-start-1 row-start-1">
+        {(sides.in.items.length > 0 || sides.in.add) && side("in")}
+      </div>
+      <CentreCard settings={settings} openAgentStep={openAgentStep} />
+      <div className="col-span-3 row-start-2">{side("use")}</div>
+      <div className="col-start-3 row-start-1">{side("out")}</div>
+    </MapFrame>
+  );
+}
+
+/** What one side of the map holds: its heading, its cards and their counts, and its add button. */
+interface SideContent {
+  readonly heading: string;
+  readonly counts: string;
+  readonly items: readonly ReactNode[];
+  /** Absent for Add trigger until a feature adds Triggers. */
+  readonly add: ReactNode;
+}
+
+/** Each side's heading, cards, counts and add button, from what the map shows. */
+function mapSides(props: AgentMapProps): Record<MapSide, SideContent> {
+  const { settings, team, users, openSubagent, openAgent, openWorkflow } = props;
   const handsWork = team.filter(
     (member) => member.id !== settings.id && member.subagents.includes(settings.id),
   );
   const subagents = settings.subagents.flatMap((id) => team.filter((member) => member.id === id));
-  const workIn = users.length + handsWork.length > 0 || props.addTrigger !== undefined;
-  return (
-    <MapFrame label={words.map(settings.name)}>
-      <div className="col-start-1 row-start-1">
-        {workIn && (
-          <Side heading={words.workIn} side="in">
-            {users.map((user) => (
-              <Card
-                key={`${user.hubId}/${user.id}`}
-                label={words.workflowCard(user.name, settings.name, user.steps)}
-                onOpen={openWorkflow && (() => openWorkflow(user))}
-              >
-                <Kind>{words.workflow}</Kind>
-                <span>{user.name}</span>
-                <span className="text-caption text-fg-muted">{words.steps(user.steps)}</span>
-              </Card>
-            ))}
-            {handsWork.map((member) => (
-              <AgentCard key={member.id} agent={member} onOpen={openAgent} />
-            ))}
-            {props.addTrigger && <AddButton label={words.addTrigger} onAdd={props.addTrigger} />}
-          </Side>
-        )}
-      </div>
-      <CentreCard settings={settings} openAgentStep={openAgentStep} />
-      <div className="col-span-3 row-start-2">
-        <Side heading={words.canUse} side="use" columns>
-          <ToolCards {...props} />
-          <AddButton label={words.addTool} onAdd={props.addTool} />
-        </Side>
-      </div>
-      <div className="col-start-3 row-start-1">
-        <Side heading={words.workOut} side="out">
-          {subagents.map((member) => (
-            <AgentCard key={member.id} agent={member} onOpen={openSubagent} />
-          ))}
-          <AddButton label={words.addSubagent} onAdd={props.addSubagent} />
-        </Side>
-      </div>
-    </MapFrame>
-  );
+  return {
+    in: {
+      heading: words.workIn,
+      counts: words.summary.in(users.length, handsWork.length),
+      items: [
+        ...users.map((user) => (
+          <Card
+            key={`${user.hubId}/${user.id}`}
+            label={words.workflowCard(user.name, settings.name, user.steps)}
+            onOpen={openWorkflow && (() => openWorkflow(user))}
+          >
+            <Kind>{words.workflow}</Kind>
+            <span>{user.name}</span>
+            <span className="text-caption text-fg-muted">{words.steps(user.steps)}</span>
+          </Card>
+        )),
+        ...handsWork.map((member) => (
+          <AgentCard key={member.id} agent={member} onOpen={openAgent} />
+        )),
+      ],
+      add: props.addTrigger && <AddButton label={words.addTrigger} onAdd={props.addTrigger} />,
+    },
+    use: {
+      heading: words.canUse,
+      counts: words.summary.use(
+        settings.skills.length,
+        settings.knowledge.length,
+        settings.connectors.length,
+      ),
+      items: toolCards(props),
+      add: <AddButton label={words.addTool} onAdd={props.addTool} />,
+    },
+    out: {
+      heading: words.workOut,
+      counts: words.summary.out(subagents.length),
+      items: subagents.map((member) => (
+        <AgentCard key={member.id} agent={member} onOpen={openSubagent} />
+      )),
+      add: <AddButton label={words.addSubagent} onAdd={props.addSubagent} />,
+    },
+  };
 }
 
 /** The agent itself: its avatar and name, which open nothing, and its agent steps, each a card. */
@@ -142,7 +219,7 @@ function CentreCard({
 }
 
 /** The skills, knowledge and connectors it uses, by name, in the Tools page's order. */
-function ToolCards({ settings, tools, openTool }: AgentMapProps) {
+function toolCards({ settings, tools, openTool }: AgentMapProps): readonly ReactNode[] {
   return agentToolLists.flatMap((list) =>
     settings[list].map((id) => (
       <Card key={`${list}/${id}`} onOpen={openTool && (() => openTool(list))}>
@@ -153,19 +230,23 @@ function ToolCards({ settings, tools, openTool }: AgentMapProps) {
   );
 }
 
-/** One side of the map: a group named by its heading, its cards in a list. */
+/**
+ * One side of the map: a group named by its heading, its cards in a list, or its summary card when
+ * it has more than {@link MAX_SIDE_CARDS}, then its add button.
+ */
 function Side({
-  heading,
   side,
   columns = false,
-  children,
+  summary,
+  content,
 }: {
-  readonly heading: string;
   /** Which side it is, for the lines to its cards. */
   readonly side: MapSide;
   /** Three a row, for what it can use; one under the other otherwise. */
   readonly columns?: boolean;
-  readonly children: ReactNode;
+  /** The summary card that stands for its cards, when it has too many. */
+  readonly summary: ReactNode;
+  readonly content: SideContent;
 }) {
   const headingId = useId();
   return (
@@ -177,9 +258,12 @@ function Side({
       className="flex flex-col gap-2"
     >
       <h2 id={headingId} className="text-caption text-fg-muted uppercase">
-        {heading}
+        {content.heading}
       </h2>
-      <div className={columns ? "grid grid-cols-3 gap-2" : "flex flex-col gap-2"}>{children}</div>
+      <div className={columns ? "grid grid-cols-3 gap-2" : "flex flex-col gap-2"}>
+        {summary || content.items}
+        {content.add}
+      </div>
     </div>
   );
 }
