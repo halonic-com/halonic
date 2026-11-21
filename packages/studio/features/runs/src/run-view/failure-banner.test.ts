@@ -280,19 +280,43 @@ verifies("runs.run-view.failure-banners", () => {
     const readable = (detail: Record<string, string>) =>
       failed("error", { cause: { kind: "denied", code: "secrets.file-readable", detail } });
 
-    it("names the file and says to chmod 600 it, with no button", () => {
+    const fixes = (banner: ReturnType<typeof causeBanner>) =>
+      banner?.kind === "callout" ? banner.fixes : undefined;
+
+    it("names the file and says to chmod 600 it in a terminal (F24)", () => {
       const banner = causeBanner(readable({ file }), undefined, context, false);
       expect(lines(banner)).toEqual([
-        "Support reply stopped in the step Draft: the secrets file /profile/secrets/secrets.json can be read by other users. Run chmod 600 /profile/secrets/secrets.json, then run again.",
+        "Support reply stopped in the step Draft: the secrets file /profile/secrets/secrets.json can be read by other users. Run chmod 600 /profile/secrets/secrets.json in a terminal, then run again.",
       ]);
       expect(banner).toMatchObject({ tone: "danger" });
-      expect(banner?.kind === "callout" ? banner.fixes : undefined).toBeUndefined();
     });
 
-    it("says to run it on the computer on a phone", () => {
-      expect(lines(causeBanner(readable({ file }), undefined, context, true))).toEqual([
+    it("offers the command to copy before Run again (F24, rule E2)", () => {
+      const banner = causeBanner(readable({ file }), undefined, context, false);
+      expect(fixes(banner)).toEqual([
+        { kind: "copy-command", command: "chmod 600 '/profile/secrets/secrets.json'" },
+      ]);
+    });
+
+    it("quotes the path in the copied command, so a space or a ' doesn't break it", () => {
+      // A macOS profile folder has a space in it; the sentence keeps the CLI's words.
+      const odd = "/profile/Application Support/it's/secrets.json";
+      const banner = causeBanner(readable({ file: odd }), undefined, context, false);
+      expect(fixes(banner)).toEqual([
+        {
+          kind: "copy-command",
+          command: "chmod 600 '/profile/Application Support/it'\\''s/secrets.json'",
+        },
+      ]);
+      expect(lines(banner)?.[0]).toContain(`Run chmod 600 ${odd} in a terminal`);
+    });
+
+    it("says to run it on the computer on a phone, with no button", () => {
+      const banner = causeBanner(readable({ file }), undefined, context, true);
+      expect(lines(banner)).toEqual([
         "Support reply stopped in the step Draft: the secrets file /profile/secrets/secrets.json can be read by other users. Run chmod 600 /profile/secrets/secrets.json on your computer, then run again.",
       ]);
+      expect(fixes(banner)).toBeUndefined();
     });
 
     it("keeps the general banner for a cause that doesn't name the file", () => {

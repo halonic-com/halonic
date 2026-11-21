@@ -1,6 +1,7 @@
 import type { RunSummary } from "@halonicjs/events";
+import { failureWords } from "../failure-words.ts";
 import { runPageWords } from "../run-words.ts";
-import type { RunBanner } from "./run-page-model.ts";
+import type { BannerFix, RunBanner } from "./run-page-model.ts";
 
 /** The buttons a failed run's banner may carry around **Run again**. */
 export type DangerButtons = Pick<
@@ -27,4 +28,14 @@ export function withDetails(
     details: [line, `Run ${summary.id}`, message].filter((part) => part !== "").join("\n"),
     ...buttons,
   });
+}
+
+/** **Open Models** at the Models page, for a banner whose fix is a model or a provider. */
+export const openModels: BannerFix = { kind: "open-models" };
+
+/** A banner whose fix is in Models: Open Models, or on a phone a line saying to fix it on the computer. */
+export function fixInModels(lines: readonly string[], phone: boolean): RunBanner {
+  return phone
+    ? danger([...lines, failureWords.fixOnComputer(failureWords.modelsPlace)])
+    : danger(lines, { fixes: [openModels] });
 }

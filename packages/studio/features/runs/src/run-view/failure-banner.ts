@@ -3,14 +3,14 @@
 // the model and its provider from the last model call, the agent from the last agent that started
 // or the branch whose answer wasn't an option, and the harness program and its limit from the last
 // `harness.started`. A setup cause the engine names, such as a provider type Halonic can't call, is
-// read from the summary's cause with the CLI's own facts (`setupFailureOf`), and a sandboxed
+// read from the summary's cause with the CLI's own facts (`setup-cause-banner.ts`), and a sandboxed
 // harness agent's key Studio refused from its own cause (`harness-key-banners.ts`), as is a launcher
 // on this computer that didn't start, from the step's own start (`this-computer-start-banner.ts`).
 // Run again is the banner's button (`run-again.ts`); a banner adds the fixes that come before it
 // (Copy command, Open Models where the cause is fixed in Models, or See the step) and the links
 // after it (Open Models, Copy details).
 
-import { proxyFailureOf, setupFailureOf } from "@halonicjs/app/run-failure";
+import { proxyFailureOf } from "@halonicjs/app/run-failure";
 import {
   answerChoicesOf,
   type RunEvent,
@@ -23,9 +23,10 @@ import { providerNameOf } from "../provider-name.ts";
 import { capitalised } from "../run-words.ts";
 import { accountBanner } from "./account-banners.ts";
 import { apiOffOf } from "./api-off.ts";
-import { danger, withDetails } from "./danger-banner.ts";
+import { danger, fixInModels, openModels, withDetails } from "./danger-banner.ts";
 import { harnessKeyBanner } from "./harness-key-banners.ts";
 import type { BannerFix, RunBanner, RunPageContext } from "./run-page-model.ts";
+import { setupBanner } from "./setup-cause-banner.ts";
 import { thisComputerStartBanner } from "./this-computer-start-banner.ts";
 
 /** The cause code the Studio gives a run it stopped because the workspace's trust was removed (`trustRemovedCause`). */
@@ -250,44 +251,6 @@ function proxyBanner(
 }
 
 /**
- * A setup cause the engine names (`setupFailureOf`): the CLI's first line, then the fix in Studio,
- * which is Open Models rather than a file. A phone says to fix it on the computer. A secrets file
- * other users can read keeps the CLI's own fix, chmod 600, with no button; a phone says to run it
- * on the computer (HAL-14122). Any other cause keeps the page's other banners.
- */
-function setupBanner(
-  summary: RunSummary,
-  workflow: string,
-  step: string,
-  phone: boolean,
-): RunBanner | undefined {
-  const failure = setupFailureOf(summary.cause);
-  switch (failure?.reason) {
-    case "unknown-provider-type":
-      return fixInModels(
-        [
-          failureWords.unknownProviderType(workflow, step, failure.provider, failure.type),
-          failureWords.unknownProviderTypeFix(failure.provider),
-        ],
-        phone,
-      );
-    case "unknown-model-alias":
-      return fixInModels(
-        [
-          failureWords.unknownModelAlias(workflow, step, failure.hub, failure.alias),
-          failureWords.unknownModelAliasFix,
-        ],
-        phone,
-      );
-    case "secrets-file-readable":
-      // The engine's reason is `error`: only the cause tells this setup problem from a bug.
-      return danger([failureWords.secretsFileReadable(workflow, step, failure.file, phone)]);
-    default:
-      return undefined;
-  }
-}
-
-/**
  * F7: the cloud sentence names the internet, the local one the program that isn't running and
  * offers Open Models. A phone says the program is on the computer and says to fix it there. An
  * address without a host can't be reached whatever runs, so that sentence points to the address.
@@ -435,18 +398,9 @@ function harnessStartFailed(
   );
 }
 
-const openModels: BannerFix = { kind: "open-models" };
-
 /** Open Models at the alias's tab, for a banner whose fix is the alias's model; the page without one. */
 function openModelsAt(alias: string | undefined): BannerFix {
   return alias === undefined ? openModels : { kind: "open-models", alias };
-}
-
-/** A banner whose fix is in Models: Open Models, or on a phone a line saying to fix it on the computer. */
-function fixInModels(lines: readonly string[], phone: boolean): RunBanner {
-  return phone
-    ? danger([...lines, failureWords.fixOnComputer(failureWords.modelsPlace)])
-    : danger(lines, { fixes: [openModels] });
 }
 
 /**
