@@ -184,6 +184,54 @@ verifies("routines.when.when-card", () => {
     expect(said[0]).toMatch(/^Daily is on\. Next: \w{3} 6 Nov \d\d:\d\d\.$/);
   });
 
+  it("promises no times for a routine whose workflow isn't there, and points to Starts", async () => {
+    const { host } = hostWith(times("2026-11-23T08:00:00Z", "2026-11-30T08:00:00Z"));
+    const page = await show(
+      <WhenCard host={host} routine={{ ...daily, targetState: "not-found" }} announce={() => {}} />,
+    );
+
+    expect(page.textContent).toContain("Can't start until the problem under Starts is fixed.");
+    expect(page.textContent).not.toContain("Next");
+    expect(page.textContent).not.toContain("Starts on time while Halonic is open.");
+  });
+
+  it("promises no times for a routine whose file has an error, and announces no next time", async () => {
+    const { host } = hostWith(times("2026-11-23T08:00:00Z"));
+    const said: string[] = [];
+    const page = await show(
+      <WhenCard
+        host={host}
+        routine={{ ...daily, enabled: false, problems: ["Unknown variable trigger.date."] }}
+        announce={(t) => said.push(t)}
+      />,
+    );
+
+    await act(async () => toggle(page).click());
+
+    expect(page.textContent).toContain("Can't start until the problem under Starts is fixed.");
+    expect(page.textContent).not.toContain("Next");
+    expect(said).toEqual(["Daily is on."]);
+  });
+
+  it("says a manual or mail routine that can't start can't start, not that Run now starts it", async () => {
+    const { host } = hostWith(times());
+    for (const trigger of [
+      { kind: "manual" },
+      { kind: "mail", connector: "acme-gmail", query: "in:inbox", every: "2m" },
+    ] as const) {
+      const page = await show(
+        <WhenCard
+          host={host}
+          routine={{ ...daily, trigger, targetState: "not-found" }}
+          announce={() => {}}
+        />,
+      );
+      expect(page.textContent).toContain("Can't start until the problem under Starts is fixed.");
+      expect(page.textContent).not.toContain("Run now");
+      unmount();
+    }
+  });
+
   it("shows why a change couldn't be saved and keeps the switch as saved", async () => {
     const { host } = hostWith(times(), async () => {
       throw new KindedError("unavailable", "The file is read-only.");
