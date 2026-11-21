@@ -90,17 +90,17 @@ const lineOne = {
         : phrase`this month's estimated spend reached its budget of ${moneyAmount(failure.budget, failure.currency, afterOf)}.`
     }`,
   "turn-limit": (run, failure) => {
-    // "used all 1 turn" reads like a bug (HAL-2745).
+    // "used all 1 model call" reads like a bug (HAL-2745).
     const usedUp =
       failure.turns === 1
-        ? phrase`${failure.agent} used its only turn without finishing.`
-        : phrase`${failure.agent} used all ${counted(failure.turns, "turn", "turns")} without finishing.`;
+        ? phrase`${failure.agent} used its only model call without finishing.`
+        : phrase`${failure.agent} used all ${counted(failure.turns, "model call", "model calls")} without finishing.`;
     // The second sentence only when the run log has the last calls, as in Studio's banner.
     return failedIn(
       run,
       failure.emptyCallsTo === undefined
         ? usedUp
-        : phrase`${usedUp} Its last turns were calls to ${failure.emptyCallsTo} that returned nothing.`,
+        : phrase`${usedUp} Its last calls to ${failure.emptyCallsTo} returned nothing.`,
     );
   },
   "tool-timeout": (run, failure) =>
@@ -257,7 +257,7 @@ const lineTwo = {
       ? phrase`Raise budget.perRun in workspace.yaml.`
       : phrase`Raise budget.monthly in workspace.yaml, or wait until it resets on ${dayAndMonth(failure.resetsOn)}.`,
   "turn-limit": (run, failure) =>
-    phrase`See what ${failure.agent} did with ${suggestedCommand("runs show", run.dir, run.runId)}. Raise its turn limit in ${failure.agentFile} if it needs more turns.`,
+    phrase`See what ${failure.agent} did with ${suggestedCommand("runs show", run.dir, run.runId)}. Raise its model call limit in ${failure.agentFile} if it needs more.`,
   "tool-timeout": () => tryLater(),
   "local-only": (_run, failure) =>
     phrase`Point ${failure.agent}'s model alias ${failure.alias} at a local model in models.yaml, or set privacy.localOnly: false in workspace.yaml.`,

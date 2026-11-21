@@ -28,9 +28,9 @@ export const tryItWords = {
   engineStopped: "Stopped when Halonic's engine stopped.",
   /** H12: the line at the top while the engine doesn't answer. */
   engineNotAnswering: "The engine isn't answering. Showing what it said last.",
-  /** After v0.1 a turn limit is a run's; until then a chat that runs out says so plainly. */
+  /** After v0.1 a model call limit is a run's; until then a chat that runs out says so plainly. */
   turnLimit: (agent: string, turns: number) =>
-    `${agent} used all ${turns} turns without finishing.`,
+    `${agent} used all ${turns} model calls without finishing.`,
   tryAgain: "Try again",
   /** H16: the toast after Not now in the trust gate, or where there is no gate to open. */
   notTrusted: (workspace: string | undefined) =>

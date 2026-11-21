@@ -214,7 +214,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
     ]);
   });
 
-  it("adds the turn limit's last calls only when the run log has them, with the user's --dir", () => {
+  it("adds the model call limit's last calls only when the run log has them, with the user's --dir", () => {
     const failure: RunFailure = {
       reason: "turn-limit",
       agent: "Sorter",
@@ -222,14 +222,14 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
       agentFile: "sorter.agent.yaml",
     };
     expect(lines(failure, "Classify", "./acme")).toEqual([
-      "Support reply failed in the step Classify: Sorter used all 6 turns without finishing.",
-      "See what Sorter did with halonic runs show --dir ./acme 01JD8Q. Raise its turn limit in sorter.agent.yaml if it needs more turns.",
+      "Support reply failed in the step Classify: Sorter used all 6 model calls without finishing.",
+      "See what Sorter did with halonic runs show --dir ./acme 01JD8Q. Raise its model call limit in sorter.agent.yaml if it needs more.",
     ]);
     expect(lines({ ...failure, emptyCallsTo: "search_docs" }, "Classify")[0]).toBe(
-      "Support reply failed in the step Classify: Sorter used all 6 turns without finishing. Its last turns were calls to search_docs that returned nothing.",
+      "Support reply failed in the step Classify: Sorter used all 6 model calls without finishing. Its last calls to search_docs returned nothing.",
     );
     expect(lines({ ...failure, turns: 1 }, "Classify")[0]).toBe(
-      "Support reply failed in the step Classify: Sorter used its only turn without finishing.",
+      "Support reply failed in the step Classify: Sorter used its only model call without finishing.",
     );
   });
 

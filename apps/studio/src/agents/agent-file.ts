@@ -17,7 +17,7 @@ export function changeProblem(change: AgentChange): string | undefined {
   if (change.name !== undefined && change.name.trim() === "") return "An agent needs a name.";
   const { maxSteps } = change;
   if (maxSteps !== undefined && !(Number.isInteger(maxSteps) && maxSteps >= 1 && maxSteps <= 200)) {
-    return "The turn limit is a whole number from 1 to 200.";
+    return "The model call limit is a whole number from 1 to 200.";
   }
   if (change.output?.type === "choice" && change.output.options.length === 0) {
     return "A list of options needs at least one.";

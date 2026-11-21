@@ -20,9 +20,9 @@ export const MODEL_GROUP = "Assistant model";
 export const ANSWERS_GROUP = "Answers";
 export const PROVIDER = "Provider";
 export const MODEL = "Model";
-export const TURN_LIMIT = "Turn limit";
+export const TURN_LIMIT = "Model call limit";
 export const TURN_LIMIT_HINT =
-  "Model turns, tool calls included, before it stops and asks to continue.";
+  "The most model calls in one answer before it stops and asks to continue.";
 export const CONNECTOR_TOOLS = "Connector tools";
 export const CONNECTOR_TOOLS_SENTENCE = "Let the assistant use the open workspace's connectors.";
 export const INSTRUCTIONS = "Instructions";
