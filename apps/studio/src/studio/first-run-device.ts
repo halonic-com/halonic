@@ -26,8 +26,9 @@ export function firstRunDeviceOf(location: string, storage: RecentStorage): Firs
     write: (text) => {
       try {
         storage.setItem(FIRST_RUN_STATE, text);
-      } catch {
+      } catch (error) {
         // Storage is full or blocked: the window goes on with the new state, and the next change tries again.
+        console.warn("The first run's state couldn't be saved on this device.", error);
       }
     },
   };

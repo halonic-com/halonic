@@ -162,6 +162,31 @@ verifies("first-run.state", () => {
     expect(firstRun.state).toMatchObject({ kind: "done" });
   });
 
+  it("drops a log read that a newer run overtook while it was read", async () => {
+    let finishRead: (log: RunEvent[]) => void = () => undefined;
+    const slow = () =>
+      new Promise<RunEvent[]>((resolve) => {
+        finishRead = resolve;
+      });
+    const { firstRun, runs } = started(runsList({ run_1: slow }));
+    runs.show(supportRun({ status: "completed" }));
+    await settle();
+    const newer = supportRun({
+      id: "run_2",
+      status: "waiting",
+      startedAt: "2026-11-21T09:05:00.000Z",
+    });
+    runs.show(newer, supportRun({ status: "completed" }));
+    await settle();
+    expect(firstRun.state).toMatchObject({ kind: "on", step: "approve" });
+    const heard: FirstRunState[] = [];
+    firstRun.subscribe(() => heard.push(firstRun.state));
+    finishRead([{ type: "event.received", event: "reject" } as unknown as RunEvent]);
+    await settle();
+    expect(heard).toEqual([]);
+    expect(firstRun.state).toMatchObject({ kind: "on", step: "approve" });
+  });
+
   it("catches up with the runs when Continue takes it up again", async () => {
     const { firstRun, runs } = started();
     firstRun.send({ kind: "left" });
