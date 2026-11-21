@@ -3,6 +3,14 @@ import { describe, expect, it } from "vitest";
 import { createWorkspace, initWorkspace } from "./index.ts";
 import { MemoryStore } from "./test/memory-store.ts";
 
+/** The files a new workspace gets besides `.gitignore`, in the order they are written. */
+const afterGitIgnore = [
+  "hubs/default/hub.yaml",
+  "models.yaml",
+  "providers/mock.yaml",
+  "workspace.yaml",
+];
+
 verifies("workspace.create", () => {
   it("writes the same files as initWorkspace into an empty store", async () => {
     const created = new MemoryStore();
@@ -17,7 +25,7 @@ verifies("workspace.create", () => {
         location: "memory:acme",
         id: "acme",
         name: "Acme",
-        written: [".gitignore", "workspace.yaml"],
+        written: [".gitignore", ...afterGitIgnore],
         skipped: [],
         amended: [],
       },
@@ -25,11 +33,11 @@ verifies("workspace.create", () => {
     expect(created.files).toEqual(initialised.files);
   });
 
-  it("writes only the file that is missing and leaves a .gitignore that keeps .env out as it is", async () => {
+  it("writes only the files that are missing and leaves a .gitignore that keeps .env out as it is", async () => {
     const store = new MemoryStore({ ".gitignore": ".env\n.env.*\nnode_modules/\n" });
     const result = await createWorkspace(store, { name: "Acme" });
 
-    expect(result.ok && result.value.written).toEqual(["workspace.yaml"]);
+    expect(result.ok && result.value.written).toEqual(afterGitIgnore);
     expect(result.ok && result.value.skipped).toEqual([".gitignore"]);
     expect(result.ok && result.value.amended).toEqual([]);
     expect(store.files.get(".gitignore")).toBe(".env\n.env.*\nnode_modules/\n");
@@ -39,7 +47,7 @@ verifies("workspace.create", () => {
     const store = new MemoryStore({ ".gitignore": "node_modules/" });
     const result = await createWorkspace(store, { name: "Acme" });
 
-    expect(result.ok && result.value.written).toEqual(["workspace.yaml"]);
+    expect(result.ok && result.value.written).toEqual(afterGitIgnore);
     expect(result.ok && result.value.skipped).toEqual([]);
     expect(result.ok && result.value.amended).toEqual([".gitignore"]);
     expect(store.files.get(".gitignore")).toBe("node_modules/\n.env\n.env.*\n");
@@ -56,7 +64,42 @@ verifies("workspace.create", () => {
     expect(result.ok && result.value.skipped).toEqual([".gitignore"]);
   });
 
-  it("adds both files beside files that are not part of the template", async () => {
+  it("leaves out the test model when the store has a models.yaml, and changes nothing of it", async () => {
+    const store = new MemoryStore({ "models.yaml": "aliases: {}\n" });
+    const result = await createWorkspace(store, { name: "Acme" });
+
+    expect(result.ok && result.value.written).toEqual([
+      ".gitignore",
+      "hubs/default/hub.yaml",
+      "workspace.yaml",
+    ]);
+    expect(result.ok && result.value.skipped).toEqual(["models.yaml", "providers/mock.yaml"]);
+    expect(store.files.get("models.yaml")).toBe("aliases: {}\n");
+    expect(store.files.has("providers/mock.yaml")).toBe(false);
+  });
+
+  it("leaves out the test model when the store has a providers folder", async () => {
+    const store = new MemoryStore({ "providers/ollama.yaml": "id: ollama\n" });
+    const result = await createWorkspace(store, { name: "Acme" });
+
+    expect(result.ok && result.value.skipped).toEqual(["models.yaml", "providers/mock.yaml"]);
+    expect(store.files.has("models.yaml")).toBe(false);
+  });
+
+  it("leaves out the Default hub when the store has a hubs folder", async () => {
+    const store = new MemoryStore({ "hubs/billing/hub.yaml": "id: billing\nname: Billing\n" });
+    const result = await createWorkspace(store, { name: "Acme" });
+
+    expect(result.ok && result.value.written).toEqual([
+      ".gitignore",
+      "models.yaml",
+      "providers/mock.yaml",
+      "workspace.yaml",
+    ]);
+    expect(result.ok && result.value.skipped).toEqual(["hubs/default/hub.yaml"]);
+  });
+
+  it("adds every template file beside files that are not part of the template", async () => {
     const store = new MemoryStore({ "notes.txt": "mine\n" });
     const result = await createWorkspace(store, { name: "Acme" });
 

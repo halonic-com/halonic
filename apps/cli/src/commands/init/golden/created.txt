@@ -2,6 +2,7 @@
 exit 0
 stdout:
   \e[32m✓\e[39m Created the workspace acme in \e[1m./acme\e[22m.
+    \e[2mDefault hub\e[22m \e[2m·\e[22m \e[2mtest model, no key needed\e[22m
   
   Next:
     cd acme
@@ -14,6 +15,7 @@ stderr:
 exit 0
 stdout:
   ✓ Created the workspace acme in ./acme.
+    Default hub · test model, no key needed
   
   Next:
     cd acme
@@ -35,10 +37,13 @@ stdout:
     "example": null,
     "created": [
       ".gitignore",
+      "hubs/default/hub.yaml",
+      "models.yaml",
+      "providers/mock.yaml",
       "workspace.yaml"
     ],
     "counts": {
-      "hubs": 0,
+      "hubs": 1,
       "agents": 0,
       "workflows": 0,
       "routines": 0

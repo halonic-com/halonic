@@ -22,6 +22,12 @@ verifies("cli.messages", () => {
     );
   });
 
+  it("has plain init's line for what a new workspace starts with, dimmed like the example's", () => {
+    const contents = initMessages.starterContents("Default");
+    expect(words(contents)).toBe("Default hub · test model, no key needed");
+    expect(contents.phrase[0]).toEqual(dim("Default hub"));
+  });
+
   it("keys init's sentences under init", () => {
     expect(initMessages.notEmpty().key).toBe("init.notEmpty");
     expect(fileMessages.diskFull().key).toBe("files.diskFull");

@@ -118,6 +118,15 @@ verifies("workspace.new-workspace-dialog", () => {
     expect(seen.created).toEqual(["~/Documents/Acme Support"]);
   });
 
+  it("says a new folder starts with a Default hub and the built-in test model", async () => {
+    await show();
+    await type("Acme Support");
+    expect(document.body.textContent).toContain(
+      "Starts local only, with a Default hub and the built-in test model, which repeats your message back. No key, no cost. To use cloud models, turn off localOnly in workspace.yaml.",
+    );
+    expect(document.body.textContent).not.toContain("Ollama");
+  });
+
   it("keeps Name where it is: the box sits at the top and the note reserves 3 lines", async () => {
     await show({ state: "not-empty" });
     await type("Quarterly Review of Escalations and Refunds");

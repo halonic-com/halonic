@@ -3,6 +3,7 @@ import type { DefinitionStore } from "@halonicjs/ports";
 import { err, ok, type Result, slugify } from "@halonicjs/std";
 import { writeYamlFile } from "@halonicjs/yaml";
 import { settingsPath } from "./places.ts";
+import { starterFiles } from "./workspace-template.ts";
 
 /** What a new workspace is called. */
 export interface InitWorkspaceOptions {
@@ -40,8 +41,10 @@ export const gitIgnoreLines: readonly string[] = [".env", ".env.*"];
 
 /**
  * Lays out a new workspace in an empty {@link DefinitionStore}: a
- * `workspace.yaml` with its id and name, and a `.gitignore` that keeps
- * `.env` files out of git. A new workspace is local only
+ * `workspace.yaml` with its id and name, a `.gitignore` that keeps
+ * `.env` files out of git, a hub named Default with no agents or workflows,
+ * and the built-in test model as the alias `default`, so a first agent runs
+ * with no key (the board on HAL-12723). A new workspace is local only
  * (`privacy.localOnly: true`): until the person turns that off, the engine
  * uses only local models and connectors and refuses harness agents (ADR
  * `docs/adr/2026-11-08-local-first.md`, requirement `engine.local-only`).
@@ -53,8 +56,8 @@ export const gitIgnoreLines: readonly string[] = [".env", ".env.*"];
  * private, such as `.git` and `.env`, don't count, so a folder fresh from
  * `git init` can become a workspace.
  *
- * The `.gitignore` is written first and `workspace.yaml` last. If writing
- * `workspace.yaml` fails, the `.gitignore` is removed again, so the store is
+ * The `.gitignore` is written first and `workspace.yaml` last. If a write
+ * fails, the files written before it are removed again, so the store is
  * empty once more and the call can be repeated.
  *
  * The check that the store is empty and the writes that follow are not one
@@ -123,18 +126,22 @@ export type CreateWorkspaceError =
 /**
  * Lays out a new workspace through a {@link DefinitionStore}: the one
  * template behind `halonic init` and the Studio's New workspace dialog (flow
- * 2.3). It writes a `.gitignore` that keeps `.env` files out of git and a
- * `workspace.yaml` with the id, the name and `privacy.localOnly: true`.
+ * 2.3). It writes a `.gitignore` that keeps `.env` files out of git, the
+ * Default hub (`hubs/default/hub.yaml`), the test model (`models.yaml` and
+ * `providers/mock.yaml`) and, last, a `workspace.yaml` with the id, the name
+ * and `privacy.localOnly: true`.
  *
  * With `ifNotEmpty: "add-missing"` (the default) a folder that already holds
  * files is fine: a template file that is there is left untouched and listed
  * in `skipped`; the caller decides what that means (no trust record when
- * anything was skipped, HAL-65 decision 1). A folder that already holds a
+ * anything was skipped, HAL-65 decision 1). The Default hub is also skipped
+ * when there is a `hubs/` folder, and the test model when there is a
+ * `models.yaml` or a `providers/` folder, so a person's own models are never
+ * pointed at it. A folder that already holds a
  * `workspace.yaml` is never touched: that is `already_workspace`, so the
  * Studio can offer to open it. The settings are checked before anything is
- * written, and a failed write of `workspace.yaml` removes the files this
- * call wrote and puts back the `.gitignore` it amended, so the call can be
- * repeated.
+ * written, and a failed write removes the files this call wrote and puts
+ * back the `.gitignore` it amended, so the call can be repeated.
  *
  * The same caveat as {@link initWorkspace} holds: the listing and the writes
  * are not one step.
@@ -165,8 +172,12 @@ export async function createWorkspace(
     return err({ kind: "already_workspace", location: store.location });
   }
 
+  const starter = starterFiles(existing);
+  // workspace.yaml goes last: until it is there the folder isn't a workspace, so a failed call
+  // leaves nothing that opens as half of one.
   const template: ReadonlyArray<readonly [string, string]> = [
     [gitIgnorePath, `${gitIgnoreLines.join("\n")}\n`],
+    ...starter.files,
     [settingsPath, settings],
   ];
   const written: string[] = [];
@@ -189,6 +200,7 @@ export async function createWorkspace(
     await undoWrites(store, written, before);
     throw error;
   }
+  skipped.push(...starter.leftOut);
   return ok({ location: store.location, id, name: options.name, written, skipped, amended });
 }
 

@@ -160,18 +160,24 @@ data, so `halonic init` and the Studio can each say it their own way:
 
 - a `workspace.yaml` with the name and an id, made from the name unless one is given
   (`Acme Billing` gives `acme-billing`), checked with the workspace kind's own schema first;
-- a `.gitignore` that lists `.env` and `.env.*`.
+- a `.gitignore` that lists `.env` and `.env.*`;
+- a hub, `hubs/default/hub.yaml`, named Default, with no agents or workflows;
+- the built-in test model: a `models.yaml` whose alias `default` is the test model, with a comment
+  to change `default` to your own model, and `providers/mock.yaml`, which is local and echoes the
+  prompt, so a first agent runs with no key.
 
 It writes only into an empty store, meaning one whose `list()` returns no file. The port never lists
 private entries such as `.git`, `.studio` and `.env`, so a folder fresh from `git init` counts as
 empty. Any other store is left alone and `initWorkspace` returns `{ kind: "not_empty" }`.
-`workspace.yaml` is written last; if that write fails, the `.gitignore` is removed again, so the
-store is empty once more and `initWorkspace` can simply run again.
+`workspace.yaml` is written last; if a write fails, the files written before it are removed again,
+so the store is empty once more and `initWorkspace` can simply run again.
 
 `createWorkspace(store, { name, id?, ifNotEmpty? })` is the template behind `initWorkspace` and the Studio's
 New workspace dialog (requirement [`workspace.create`](requirements/create.md)). It writes the same
-`.gitignore` and `workspace.yaml`, but with `ifNotEmpty: "add-missing"` (the default) a folder that already
-has files is fine: it writes only the template files the store lacks and changes nothing that is there.
+files, but with `ifNotEmpty: "add-missing"` (the default) a folder that already has files is fine: it writes
+only the template files the store lacks and changes nothing that is there. It leaves out the Default hub
+when the folder has a `hubs/` folder, and the test model when it has a `models.yaml` or a `providers/`
+folder, so a person's own models never point at it; what it leaves out is listed in `skipped`.
 `ifNotEmpty: "refuse"` gives `initWorkspace`'s rule (`not_empty`). A success is a `CreatedWorkspace`: the
 `location`, `id`, `name`, the paths `written`, the paths `skipped` and the paths `amended`, so a caller can decide what that
 means (the Studio makes no trust record when anything was skipped). The errors, `CreateWorkspaceError`, are
@@ -183,6 +189,9 @@ A `!.env` line already there doesn't count as keeping `.env` out: the lines are 
 
 `gitIgnorePath` and `gitIgnoreLines` are that file's name and its lines, and `settingsPath` is where a
 workspace's own settings live (`workspace.yaml`).
+`defaultHub` is the hub a new workspace starts with (id `default`, name `Default`), and `defaultHubPath`
+and `defaultHubText()` are where its `hub.yaml` goes and what it holds, for a caller that writes the
+same hub in a workspace that has none.
 
 `copyWorkspace(source, target)` lays out a copy of a workspace, such as the Acme example that
 `halonic init --example acme` copies, under the same rules: it writes only into an empty store and

@@ -34,6 +34,11 @@ export const initMessages = defineMessages("init", {
     phrase`Created a copy of the Acme example in ${bold(folder)}. ${existing} was already there.`,
   /** The dimmed line under the example's ✓ line. */
   exampleContents: (contents: ExampleContents) => contentsLine(contents),
+  /**
+   * The dimmed line under a plain `init`'s ✓ line: what the template starts with besides the
+   * settings (the board on HAL-12723), in the example's words.
+   */
+  starterContents: (hub: string) => factsLine([`${hub} hub`, testModelFact]),
 
   nextHeading: () => phrase`Next:`,
   /** The `cd` that comes first in `Next:` when the workspace is in a new folder. */
@@ -68,19 +73,25 @@ export const initMessages = defineMessages("init", {
     phrase`halonic init takes one folder name, and you gave ${countInWords(folders.length)}: ${folders.join(", ")}.`,
 });
 
-/**
- * "2 hubs · 3 agents · 2 workflows · 1 routine · test model, no key needed", all
- * dimmed, with the separator as a mark so it falls back to `-`
- * where the output isn't UTF-8.
- */
+/** The last fact of both contents lines: the workspace runs on the test model. */
+const testModelFact = "test model, no key needed";
+
+/** "2 hubs · 3 agents · 2 workflows · 1 routine · test model, no key needed". */
 function contentsLine(contents: ExampleContents): Phrase {
-  const facts = [
+  return factsLine([
     counted(contents.hubs, "hub", "hubs"),
     counted(contents.agents, "agent", "agents"),
     counted(contents.workflows, "workflow", "workflows"),
     counted(contents.routines, "routine", "routines"),
-    "test model, no key needed",
-  ];
+    testModelFact,
+  ]);
+}
+
+/**
+ * Facts in a row, all dimmed, with the separator as a mark so it falls back to `-` where the
+ * output isn't UTF-8.
+ */
+function factsLine(facts: readonly string[]): Phrase {
   return facts.flatMap((fact, index) =>
     index === 0 ? [dim(fact)] : [" ", markPart("separator"), " ", dim(fact)],
   );
