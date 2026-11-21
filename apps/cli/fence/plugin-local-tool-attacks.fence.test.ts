@@ -116,7 +116,8 @@ beforeEach(async () => {
       "",
     ].join("\n"),
     "hubs/reports/agents/reporter.agent.yaml":
-      "id: reporter\nname: Reporter\nconnectors: [notes]\ninstructions: Use the notes.\n",
+      // Room for every call the first test makes, past the default of 6 model calls.
+      "id: reporter\nname: Reporter\nconnectors: [notes]\nmaxSteps: 12\ninstructions: Use the notes.\n",
   });
 });
 
