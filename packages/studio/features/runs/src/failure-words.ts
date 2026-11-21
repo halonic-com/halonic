@@ -205,10 +205,11 @@ export const failureWords = {
     `${workflow} stopped in the step ${step}: the disk is full, so Halonic couldn't write the run log. Free some space, then run again.`,
   /**
    * `answer-not-an-option` with the choices from the run's cause (UX check R7): names the agent and
-   * the step's choices, never its answer, which is the model's own text (microcopy 1.4).
+   * the step's choices, never its answer, which is the model's own text (microcopy 1.4), and ends
+   * with the same fix as an older log's line (microcopy 22 F22, revision 121).
    */
   answerNotAChoice: (workflow: string, step: string, agent: string, options: readonly string[]) =>
-    `${workflow} failed in the step ${step}: ${capitalised(agent)}'s answer wasn't one of the step's choices (${choiceList.format(options)}).`,
+    `${workflow} stopped in the step ${step}: ${capitalised(agent)}'s answer wasn't one of the step's choices (${choiceList.format(options)}). Make its instructions stricter, or pick a larger model, then run again.`,
   /** `answer-not-an-option` in an older log, whose cause doesn't give the choices. */
   answerNotAnOption: (workflow: string, step: string, agent: string) =>
     `${workflow} stopped in the step ${step}: ${capitalised(agent)} answered with something that isn't one of its options. Make its instructions stricter, or pick a larger model, then run again.`,
