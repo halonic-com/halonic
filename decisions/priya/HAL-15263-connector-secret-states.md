@@ -2,6 +2,7 @@
 
 - Approval: HAL-15263 (flow check C552, findings 1 and 6, a team decision on an approved screen under HAL-2282); the CTO, Liam, approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:n/XNTzlJxgB91ILg0VYuxEoidzjj79C4Rac2b1CPp2dY7d0+0USz99XVaNVNlUhJNXbx5oX90yEiI24HOG9+Aw==
 
 `library.connector-secrets` and `library.connection-summary` change three things.
 With the Secrets section on the page, "How it connects" no longer has its own
