@@ -206,7 +206,7 @@ describe("a connector's secrets on its page", () => {
       const root = render(<ConnectorPage {...page({ secrets: readable })} />);
       await settled();
       expect(root.textContent).toContain(
-        "Kept in your system keychain, never in files. Notes gives it to the program it starts.",
+        "Kept in your system keychain, never in files. Notes gives it to the program it starts. It's Studio's own: halonic secret set doesn't reach it.",
       );
       expect(root.textContent).not.toContain("Not set");
       expect(get).not.toHaveBeenCalled();
@@ -240,7 +240,7 @@ describe("a connector's secrets on its page", () => {
       expect(entry(root).placeholder).toBe("Type a new value to replace it");
     });
 
-    it("says why a save failed, keeps the one saved before, and never shows the value", async () => {
+    it("says why a save failed, keeps the one saved before, and lets go of the value", async () => {
       const store = keychain();
       store.values.set("NOTES_TOKEN", "acme-earlier-value");
       store.failWith = lockedKeychain();
@@ -251,8 +251,17 @@ describe("a connector's secrets on its page", () => {
       expect(root.textContent).toContain(
         "Couldn't save the secret: the keychain is locked. The one you saved before is still in use.",
       );
-      expect(root.textContent).not.toContain(typedValue);
+      // Not even masked in the entry (C552 finding 6).
+      expect(everythingShown(root)).not.toContain(typedValue);
       expect(store.values.get("NOTES_TOKEN")).toBe("acme-earlier-value");
+    });
+
+    it("lists the secret once, in the Secrets section, not again under How it connects", async () => {
+      const root = render(<ConnectorPage {...page({ secrets: keychain() })} />);
+      await settled();
+      const rows = [...root.querySelectorAll("dl dt")].map((label) => label.textContent);
+      expect(rows).not.toContain("Secrets");
+      expect(root.querySelectorAll('input[type="password"]')).toHaveLength(1);
     });
 
     it("says why a remove failed, after a colon", async () => {

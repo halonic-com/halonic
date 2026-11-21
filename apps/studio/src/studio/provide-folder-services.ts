@@ -319,6 +319,11 @@ export function provideFolderServices(
       startRun: ({ hubId, workflowId }, input) =>
         startRun.call(workflows, { hubId, id: workflowId }, input),
       askTrust,
+      // The status bar's Review trusts the workspace too; the page's refusal then goes (C552).
+      onTrusted: (listener) =>
+        trust.subscribe(() => {
+          if (trust.mayStartNow()) listener();
+        }),
     });
   }
   services.provide(

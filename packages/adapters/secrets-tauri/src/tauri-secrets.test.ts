@@ -123,6 +123,18 @@ verifies("secrets-tauri.refusals", () => {
       });
     }
 
+    it("keeps the shell's message as its own, so a screen can show it as the reason", async () => {
+      const secrets = new TauriSecrets({
+        invoke: async () => {
+          throw { kind: "denied", message: "The keychain is locked." };
+        },
+      });
+      const error = await rejection(secrets.set("token", "kept"));
+      expect(error).toBeInstanceOf(KeychainError);
+      expect((error as KeychainError).message).toBe("The keychain is locked.");
+      expect((error as KeychainError).refusal).toBe("denied");
+    });
+
     it("turns a refused name into a RangeError, should the shell's rule ever be stricter", async () => {
       const shell = new FakeShell();
       shell.refuseNext("invalid_name");

@@ -194,7 +194,10 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
       )}
       <SecretsPart section={secretsSection} sourceName={name} />
       {connector?.connection === undefined ? null : (
-        <ConnectorConnectionSummary connection={connector.connection} />
+        <ConnectorConnectionSummary
+          connection={connector.connection}
+          secretsOnPage={secretsSection !== undefined}
+        />
       )}
       <ConnectorStatusSection
         model={model}

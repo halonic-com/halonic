@@ -8,8 +8,10 @@ import { ConnectorConnectionSummary } from "./connector-connection-summary.tsx";
 afterEach(unmountAll);
 
 /** The summary's rows as "label: value" text. */
-function rowsOf(connection: ConnectorConnection): string[] {
-  const root = render(<ConnectorConnectionSummary connection={connection} />);
+function rowsOf(connection: ConnectorConnection, secretsOnPage = false): string[] {
+  const root = render(
+    <ConnectorConnectionSummary connection={connection} secretsOnPage={secretsOnPage} />,
+  );
   return [...root.querySelectorAll("dl > div")].map(
     (row) => `${row.querySelector("dt")?.textContent}: ${row.querySelector("dd")?.textContent}`,
   );
@@ -61,6 +63,12 @@ verifies("library.connection-summary", () => {
       "Transport: Plugin",
       "Name: Acme Notes",
     ]);
+  });
+
+  it("shows no Secrets row when the page's Secrets section lists them with their state", () => {
+    expect(
+      rowsOf({ kind: "stdio", command: "npx -y @acme/files-mcp", secrets: ["files-token"] }, true),
+    ).toEqual(["Transport: Local program (stdio)", "Command: npx -y @acme/files-mcp"]);
   });
 
   it("draws the heading and no landmark", () => {

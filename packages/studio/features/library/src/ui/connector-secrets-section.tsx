@@ -109,7 +109,9 @@ function SecretRow({ name, sourceName, secrets, state, onState }: SecretRowProps
       setError(null);
       onState("set");
     } catch (failure) {
+      // The value isn't kept on the page, even masked, so the entry lets go of it (C552 finding 6).
       // The reason is the store's, whose messages never repeat the value.
+      setDraft("");
       setError(words.notSaved(errorReasonFor(failure), state === "set"));
     }
   }

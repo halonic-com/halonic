@@ -214,6 +214,12 @@ export interface RunStartHost {
    * now. Absent where there is no folder to trust, so the refusal has no **Review**.
    */
   readonly askTrust?: () => Promise<"trusted" | "declined">;
+  /**
+   * Calls `listener` whenever the workspace may run now, wherever the person trusted it (the
+   * status bar's **Review**, too, not only the refusal's), and returns how to stop. Absent where
+   * there is no folder to trust.
+   */
+  readonly onTrusted?: (listener: () => void) => () => void;
 }
 
 /** The open workspace's way to start a run. Absent where there is no engine to start it. */
