@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14842 (team decision on the C52 Studio claims check, HAL-12644 item 1: the full wording comes back once HAL-12409 lands)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:z8zkTsMWPBqK6NyWjR3Q7SAVlAWjBgRZ5+4lBonaJ109QjGH9MCRe2p+KA8ezOirj0FkSYbZ1sfIKyy94wylAg==
 
 The stopgap of HAL-12646 (`decisions/elena/HAL-12646-trust-delete-words.md`) said only what trust
 gated before Studio runs checked it. That has ended: since HAL-12409 (#3756) the engine checks trust
