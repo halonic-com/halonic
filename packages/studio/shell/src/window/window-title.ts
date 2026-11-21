@@ -44,3 +44,14 @@ export function useWindowTitle(page: string, workspace?: string): void {
     document.title = windowTitle(page, workspace);
   }, [page, workspace]);
 }
+
+/**
+ * The active tab and the place it shows, as one key that changes when another page shows: an
+ * opened place or item, a tab switch, Back and Forward. Renames don't change it.
+ */
+export function useActiveTabPage(tabs: TabSet): string {
+  return useSyncExternalStore(
+    (onChange) => tabs.subscribe(onChange),
+    () => `${tabs.state.activeId}/${currentLocation(tabs.active).key}`,
+  );
+}

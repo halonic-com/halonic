@@ -28,13 +28,21 @@ export interface PlacesDrawerState {
   readonly drawerId: string;
 }
 
-/** Whether the sidebar is the Places drawer now, and whether that drawer is open. */
+/**
+ * Whether the sidebar is the Places drawer now, and whether that drawer is open.
+ *
+ * `shownPage` names the page the window shows. When it changes, a place or a file was picked, from
+ * the drawer or anywhere else, and the drawer closes in that same render: the page stops being
+ * inert before the new page's `h1` is asked to take the focus, which an inert page refuses.
+ */
 export function usePlacesDrawer(
   hasSidebar: boolean,
   buttonRef?: RefObject<HTMLButtonElement | null>,
+  shownPage?: string,
 ): PlacesDrawerState {
   const narrow = useNarrowWindow() && hasSidebar;
   const [open, setOpen] = useState(false);
+  const [pageBefore, setPageBefore] = useState(shownPage);
   const ownButton = useRef<HTMLButtonElement>(null);
   const drawerId = useId();
   const button = buttonRef ?? ownButton;
@@ -42,6 +50,10 @@ export function usePlacesDrawer(
   const close = useCallback(() => setOpen(false), []);
   if (!narrow && open) {
     // Widened past 900px: the sidebar docks again, and the next narrow window starts closed.
+    setOpen(false);
+  }
+  if (shownPage !== pageBefore) {
+    setPageBefore(shownPage);
     setOpen(false);
   }
   return { narrow, open: narrow && open, toggle, close, button, drawerId };
@@ -99,6 +111,8 @@ export interface SidebarSlotProps {
   readonly button: RefObject<HTMLButtonElement | null>;
   /** The drawer's `id`, for the Places button's `aria-controls`. */
   readonly id: string;
+  /** The page the window shows; a change while the drawer is open is a pick. */
+  readonly shownPage?: string | undefined;
   /** The sidebar. */
   readonly children: ReactNode;
 }
@@ -113,12 +127,13 @@ export interface SidebarSlotProps {
  * page is inert while it's open. There's no close button and no slide.
  *
  * When it opens, focus goes to the current place's item, or the first item when no place is
- * current. A pick closes it, and the place's page takes the focus on its `h1`. Esc, a click on the
- * scrim or the Places button closes it too, and focus goes back to the button. Focus moving on to
- * something else outside it closes it and leaves the focus there.
+ * current. A pick closes it, and the place's page takes the focus on its `h1`: a click on a place's
+ * link, or anything in it that opens another page, such as a file in the Files tree. Esc, a click
+ * on the scrim or the Places button closes it too, and focus goes back to the button. Focus moving
+ * on to something else outside it closes it and leaves the focus there.
  */
 export function SidebarSlot(props: SidebarSlotProps) {
-  const { narrow, open, closeStack, onClose, button, id, children } = props;
+  const { narrow, open, closeStack, onClose, button, id, shownPage, children } = props;
   const drawer = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -134,7 +149,7 @@ export function SidebarSlot(props: SidebarSlotProps) {
     });
   }, [open, closeStack, onClose]);
 
-  useFocusOnOpenAndClose(open, drawer, button);
+  useFocusOnOpenAndClose(open, drawer, button, shownPage);
 
   // A pick is a click on a link: the place opens and the drawer gets out of the way.
   const onClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -185,30 +200,60 @@ const drawerClasses =
   "absolute inset-y-0 start-0 z-20 flex w-sidebar bg-surface-subtle shadow-3 *:w-full!";
 
 /**
- * On open, focus goes to the current place's item (`aria-current="page"`), else the first link. On
- * close, focus goes back to the button only when it was left in the drawer or dropped to the body:
- * a pick already moved it to the new page's `h1`, and that runs first, in the list's own effect.
+ * On open, focus goes to the current place's item (`aria-current="page"`), else the first link.
+ *
+ * On close, a pick that opened another page leaves the focus to that page's `h1`. The `h1` may not
+ * be drawn yet, as a place's view loads when it first shows, so focus waits for it on the body: it
+ * mustn't stay on the hidden link, nor go to the button, or the wait stops (`focusPageHeading`).
+ * Any other close gives the focus back to the button when it was left in the drawer or dropped to
+ * the body; a pick of the place already shown moved it to the page's `h1` first.
  */
 function useFocusOnOpenAndClose(
   open: boolean,
   drawer: RefObject<HTMLDivElement | null>,
   button: RefObject<HTMLButtonElement | null>,
+  shownPage: string | undefined,
 ): void {
   const wasOpen = useRef(open);
+  const pageWhenOpened = useRef(shownPage);
   useLayoutEffect(() => {
     const element = drawer.current;
     if (open && !wasOpen.current && element !== null) {
-      const place =
-        element.querySelector<HTMLElement>('[aria-current="page"]') ??
-        element.querySelector<HTMLElement>("a[href]");
-      place?.focus();
+      pageWhenOpened.current = shownPage;
+      focusPlace(element);
     }
     if (!open && wasOpen.current && element !== null) {
-      const focused = document.activeElement;
-      if (focused === null || focused === document.body || element.contains(focused)) {
-        button.current?.focus();
-      }
+      focusAfterClose(element, button, shownPage !== pageWhenOpened.current);
     }
     wasOpen.current = open;
-  }, [open, drawer, button]);
+  }, [open, drawer, button, shownPage]);
+}
+
+/** Focuses the current place's item in the drawer, else its first link. */
+function focusPlace(drawer: HTMLElement): void {
+  const place =
+    drawer.querySelector<HTMLElement>('[aria-current="page"]') ??
+    drawer.querySelector<HTMLElement>("a[href]");
+  place?.focus();
+}
+
+/**
+ * After a pick that opened another page, focus left in the drawer drops to the body, where the
+ * new page's `h1` takes it. After any other close, focus left in the drawer or dropped to the body
+ * goes back to the button.
+ */
+function focusAfterClose(
+  drawer: HTMLElement,
+  button: RefObject<HTMLButtonElement | null>,
+  picked: boolean,
+): void {
+  const focused = document.activeElement;
+  const leftInDrawer = focused instanceof HTMLElement && drawer.contains(focused);
+  if (picked) {
+    if (leftInDrawer) {
+      focused.blur();
+    }
+  } else if (focused === null || focused === document.body || leftInDrawer) {
+    button.current?.focus();
+  }
 }

@@ -2,12 +2,13 @@
 
 import { createToastStore } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
-import { act, type MouseEvent } from "react";
+import { act, type MouseEvent, useEffect, useState } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { createAnnouncer } from "../announcer/announcer.ts";
 import { createCloseStack } from "../close-stack/close-stack.ts";
 import { createShellEngine } from "../engine/engine-connection.ts";
 import { usePageHeadingFocus } from "../tabs/history-moves.ts";
+import { installFakeInert } from "../test-support/fake-inert.ts";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { installFakePopover } from "../test-support/fake-popover.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
@@ -17,17 +18,20 @@ import { ShellFrame } from "./shell-frame.tsx";
 let media: FakeMediaQueries;
 let uninstall: () => void;
 let uninstallPopover: () => void;
+let uninstallInert: () => void;
 
 beforeEach(() => {
   media = new FakeMediaQueries(800);
   uninstall = media.install();
   uninstallPopover = installFakePopover();
+  uninstallInert = installFakeInert();
 });
 
 afterEach(() => {
   unmountAll();
   uninstall();
   uninstallPopover();
+  uninstallInert();
 });
 
 /**
@@ -60,19 +64,27 @@ function Sidebar({
   );
 }
 
+/** What every frame here needs: its announcer, close stack, engine, toasts and language. */
+function frameServices() {
+  const timers = new FakeTimers();
+  const announcer = createAnnouncer({ timers });
+  return {
+    announcer,
+    closeStack: createCloseStack(),
+    engine: createShellEngine(announcer, timers),
+    toasts: createToastStore(),
+    language: "en",
+  };
+}
+
 function renderFrame(
   options: { current?: "home" | "none"; sidebar?: boolean; width?: number } = {},
 ) {
-  const timers = new FakeTimers();
-  const announcer = createAnnouncer({ timers });
-  const closeStack = createCloseStack();
+  const services = frameServices();
+  const { closeStack } = services;
   const container = render(
     <ShellFrame
-      announcer={announcer}
-      closeStack={closeStack}
-      engine={createShellEngine(announcer, timers)}
-      toasts={createToastStore()}
-      language="en"
+      {...services}
       titleBar={<button type="button">Back</button>}
       sidebar={
         options.sidebar === false ? undefined : (
@@ -90,6 +102,99 @@ function renderFrame(
     Array.from(container.querySelectorAll("a")).find((a) => a.textContent === name) as HTMLElement;
   const openDrawer = () => act(() => placesButton()?.click());
   return { container, closeStack, placesButton, drawer, link, openDrawer };
+}
+
+type Page = "home" | "agents" | "file";
+
+/**
+ * A window that knows which page it shows, as `StudioWindow` does. A file opened from the tree asks
+ * for the page's `h1` here, as the window's `openHere` does: after the drawer's own effect.
+ */
+function PickingWindow() {
+  const [services] = useState(frameServices);
+  const [page, setPage] = useState<Page>("home");
+  const focusNewPage = usePageHeadingFocus();
+  return (
+    <ShellFrame
+      {...services}
+      shownPage={page}
+      sidebar={
+        <PickingSidebar
+          page={page}
+          onPlace={setPage}
+          onFile={() => {
+            setPage("file");
+            focusNewPage();
+          }}
+        />
+      }
+    >
+      {page === "agents" ? <LoadingPage title="Agents" /> : <h1>{page}</h1>}
+    </ShellFrame>
+  );
+}
+
+/**
+ * Agents is a link that asks for the page's `h1` itself, as `PlacesList` does: before the drawer's
+ * own effect. The Files tree's `workspace.yaml` and `docs` are rows, not links: the file opens, the
+ * folder only opens in the tree.
+ */
+function PickingSidebar({
+  page,
+  onPlace,
+  onFile,
+}: {
+  readonly page: Page;
+  readonly onPlace: (place: Page) => void;
+  readonly onFile: () => void;
+}) {
+  const focusNewPage = usePageHeadingFocus();
+  return (
+    <nav aria-label="Places">
+      <a href="/home" aria-current={page === "home" ? "page" : undefined}>
+        Home
+      </a>
+      <a
+        href="/agents"
+        onClick={(event) => {
+          event.preventDefault();
+          onPlace("agents");
+          focusNewPage();
+        }}
+      >
+        Agents
+      </a>
+      <div role="tree" aria-label="Files">
+        <button type="button" role="treeitem" onClick={onFile}>
+          workspace.yaml
+        </button>
+        <button type="button" role="treeitem" aria-expanded="false">
+          docs
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+/** A page whose view is still loading when it opens: its `h1` shows in a later commit. */
+function LoadingPage({ title }: { readonly title: string }) {
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    void Promise.resolve().then(() => setLoaded(true));
+  }, []);
+  return loaded ? <h1>{title}</h1> : null;
+}
+
+function renderPickingWindow() {
+  const container = render(<PickingWindow />);
+  const named = (selector: string, name: string) =>
+    Array.from(container.querySelectorAll<HTMLElement>(selector)).find(
+      (element) => element.textContent === name,
+    ) as HTMLElement;
+  const drawer = () => container.querySelector("nav")?.parentElement as HTMLElement;
+  const openDrawer = () =>
+    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Places"]')?.click());
+  return { container, named, drawer, openDrawer };
 }
 
 function pressEscape() {
@@ -167,6 +272,30 @@ verifies("shell.places-drawer", () => {
     expect(drawer().hidden).toBe(true);
     expect(container.querySelector("main")?.hasAttribute("inert")).toBe(false);
     expect(document.activeElement).toBe(container.querySelector("main h1"));
+  });
+
+  it("closes on a pick of a place still loading, and its h1 takes the focus once drawn", async () => {
+    const { container, named, drawer, openDrawer } = renderPickingWindow();
+    openDrawer();
+
+    await act(async () => named("a", "Agents").click());
+    expect(drawer().hidden).toBe(true);
+    expect(container.querySelector("main")?.hasAttribute("inert")).toBe(false);
+    expect(document.activeElement).toBe(container.querySelector("main h1"));
+    expect(document.activeElement?.textContent).toBe("Agents");
+  });
+
+  it("closes when a file opens from the Files tree, with the focus on its h1, and not on moves in the tree", () => {
+    const { container, named, drawer, openDrawer } = renderPickingWindow();
+    openDrawer();
+
+    act(() => named("[role=treeitem]", "docs").click());
+    expect(drawer().hidden).toBe(false);
+
+    act(() => named("[role=treeitem]", "workspace.yaml").click());
+    expect(drawer().hidden).toBe(true);
+    expect(document.activeElement).toBe(container.querySelector("main h1"));
+    expect(document.activeElement?.textContent).toBe("file");
   });
 
   it("closes on a click on the scrim or on the Places button", () => {
