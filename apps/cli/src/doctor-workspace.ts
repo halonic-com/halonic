@@ -223,7 +223,8 @@ function usedProviderFiles(
  * once, with what uses it (HAL-14269):
  *
  * - **Connectors** an agent can use (see {@link usedConnectors}): an HTTP
- *   connector's `secret` and a program's `secretEnv`. One no agent uses
+ *   connector's `secret`, a program's `secretEnv` and a local integration's
+ *   secret picks. One no agent uses
  *   never needs its secret, so it isn't checked.
  * - **Providers** the aliases use whose `secret` the Models line doesn't ask
  *   about, such as the test model or a server on this computer.
@@ -300,13 +301,17 @@ function usedConnectors(workspace: LoadedWorkspace): Connector[] {
 }
 
 /**
- * The secrets a connector reads when it starts, each once. A Google
- * connector's `secret` names none, and a local integration or a plugin gets
- * its secrets from its permission sheet, so they have none here.
+ * The secrets a connector reads when it starts, each once: an HTTP
+ * connector's `secret`, a program's `secretEnv` and the workspace secrets a
+ * local integration's connector picks for its sheet's secrets (C552). A
+ * Google connector's `secret` names none, and a plugin's sheet names its own.
  */
 function connectorSecrets(connector: Connector): string[] {
   const { transport } = connector;
   if ("http" in transport) return connector.secret === undefined ? [] : [connector.secret];
   if ("stdio" in transport) return [...new Set(Object.values(transport.stdio.secretEnv ?? {}))];
+  if ("integration" in transport) {
+    return [...new Set(Object.values(transport.integration.secrets ?? {}))];
+  }
   return [];
 }

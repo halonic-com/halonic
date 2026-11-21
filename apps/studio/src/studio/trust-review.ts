@@ -93,11 +93,18 @@ export function trustReviewOf(check: TrustCheck, facts: TrustReviewFacts): Trust
       agents.map(agentRow),
       [
         ...addresses(connectors).map((row) => addressRow(row)),
-        ...integrations.flatMap((row) => integrationRows(row)),
+        // As in the CLI, a local integration has its own row only for the
+        // addresses its settings hold: its connector's row names its folder (C552).
+        ...integrations.filter(readsAnAddress).flatMap((row) => integrationRows(row)),
         ...providers.map(providerRow),
       ],
     ),
   };
+}
+
+/** Whether a local integration's sheet reads an address from one of its settings. */
+function readsAnAddress(integration: IntegrationTrustContent): boolean {
+  return Object.keys(integration.addresses).length > 0;
 }
 
 function changesView(
@@ -249,8 +256,9 @@ function addressRow(connector: ConnectorTrustContent): TrustRowView {
 /**
  * A local integration's connector: the folder it runs, then the workspace
  * secret each secret of the integration's sheet gets, by name only, as
- * "my-notes-key as notes-key" when the names differ (HAL-14734, words from
- * HAL-14737).
+ * "my-notes-key as notes-key and sync-key" when the names differ (HAL-14734,
+ * words from HAL-14737). Joined with "and", as the CLI does: a comma would
+ * read as two names for the secret before it (C552).
  */
 function integrationConnectorRow(connector: ConnectorTrustContent): TrustRowView {
   const picks = secretPicks(connector).map(({ secret, as }) =>
@@ -259,7 +267,7 @@ function integrationConnectorRow(connector: ConnectorTrustContent): TrustRowView
   return {
     id: connector.id,
     detail: `integrations/${text(connector.settings["folder"])}`,
-    lines: picks.length === 0 ? [] : [["Gets secrets", picks.join(", ")]],
+    lines: picks.length === 0 ? [] : [["Gets secrets", listed(picks)]],
   };
 }
 
