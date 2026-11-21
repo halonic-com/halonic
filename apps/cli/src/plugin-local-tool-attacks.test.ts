@@ -6,7 +6,13 @@ import type { PluginBackendMachine } from "@halonicjs/adapter-integration-runner
 import { nodeLaunchFolders } from "@halonicjs/adapter-mcp";
 import { MemorySecrets, MemoryTokenStore, MemoryTrustStore } from "@halonicjs/adapter-memory";
 import { type PluginPartUnavailable, readPluginFolder } from "@halonicjs/app";
-import type { ConnectorFactoryContext, Sandbox, SandboxFence } from "@halonicjs/ports";
+import {
+  type ConnectorFactoryContext,
+  type Sandbox,
+  type SandboxFence,
+  type SandboxProfile,
+  workspaceSecrets,
+} from "@halonicjs/ports";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -18,11 +24,15 @@ import { cliTrustService } from "./workspace-trust.ts";
 // Attacks on a plugin's local tool through the CLI's plugin connector that
 // need no real fence (HAL-13056): the plugin's files change while its session
 // is prepared, a session opens without a proven fence, and a manifest names
-// a variable Halonic sets itself. The sandbox only records what reached it.
+// a variable Halonic sets itself, from a setting or from a stored secret. The
+// sandbox only records what reached it.
 // The attacks that need the real fence are in
 // `fence/plugin-local-tool-attacks.fence.test.ts`.
 
 const clock = fixedClock(Date.UTC(2026, 10, 21, 9));
+
+/** The value stored for the plugin's own secret `acme-key`. */
+const acmeKey = "acme-key-value-1234";
 
 const manifest = (env = "") => `id: files
 version: 1.0.0
@@ -61,13 +71,15 @@ async function put(files: Record<string, string>): Promise<void> {
   }
 }
 
-/** A sandbox that opens sessions with `fence` and counts what reached it; no program ever starts. */
+/** A sandbox that opens sessions with `fence`, counts what reached it and keeps each profile; no program ever starts. */
 function recordingSandbox(fence: SandboxFence) {
   const seen = { opens: 0, starts: 0, closes: 0 };
+  const profiles: SandboxProfile[] = [];
   const sandbox: Pick<Sandbox, "check" | "open"> = {
     check: async () => ({ ok: true, reason: null, missing: [] }),
     open: async (profile) => {
       seen.opens += 1;
+      profiles.push(profile);
       return {
         profile,
         fence,
@@ -82,7 +94,7 @@ function recordingSandbox(fence: SandboxFence) {
       };
     },
   };
-  return { sandbox, seen };
+  return { sandbox, seen, profiles };
 }
 
 /** The CLI's connector for the trusted plugin `files`; `beforeFolder` runs before each session folder is made. */
@@ -115,14 +127,17 @@ async function setUp(sandbox: Pick<Sandbox, "check" | "open">, beforeFolder = as
     },
     { name: "halonic", version: "0.0.0-test" },
   );
+  // As `halonic run` hands them out: the store to the plugin's factory, the
+  // workspace's picks, which refuse every plugin's name, to the connector.
+  const stored = new MemorySecrets({ "plugin__files__acme-key": acmeKey });
   const context = {
-    secrets: new MemorySecrets({}),
+    secrets: workspaceSecrets(stored),
     tokens: new MemoryTokenStore(),
     http: {},
     workspaceRoot: root,
     trust: null,
   } as unknown as ConnectorFactoryContext;
-  const connector = new PluginConnectorFactory(sources).create(
+  const connector = new PluginConnectorFactory(sources, stored).create(
     { id: "my-files", transport: { kind: "plugin", id: "files" }, secretEnv: {} },
     context,
   );
@@ -180,26 +195,56 @@ verifies("cli.plugin-local-tools", () => {
   });
 
   describe("a local tool's env naming a variable", () => {
-    /** Whether the plugin reads, as `halonic trust --plugin` reads it, with `variable` taking the setting `root`. */
-    async function readsWith(variable: string): Promise<boolean> {
-      await put({
-        "plugins/files/plugin.yaml": manifest(`    env:\n      ${variable}: { setting: root }\n`),
-      });
+    /** The local tool's lines that give `variable` the setting `root` or the stored secret `acme-key`. */
+    const envLines = (variable: string, from: "setting" | "secret") =>
+      from === "setting"
+        ? `    env:\n      ${variable}: { setting: root }\n`
+        : "    network: [api.acme.com]\n" +
+          "    secrets: { acme-key: { purpose: The key., hosts: [api.acme.com] } }\n" +
+          `    env:\n      ${variable}: { secret: acme-key }\n`;
+
+    /** Writes the manifest with `variable`, then whether the plugin reads, as `halonic trust --plugin` reads it. */
+    async function readsWith(variable: string, from: "setting" | "secret"): Promise<boolean> {
+      await put({ "plugins/files/plugin.yaml": manifest(envLines(variable, from)) });
       const plugins = new FileSystemFolderReader(join(root, "plugins"), join(root, "plugins"));
       return (await readPluginFolder(plugins, webCryptoDigest, "files")).ok;
     }
 
-    it("of its own reads, so the refusals below are for the name", async () => {
-      expect(await readsWith("ACME_ROOT")).toBe(true);
+    it.each(["setting", "secret"] as const)(
+      "of its own, from a %s, reads, so the refusals below are for the name",
+      async (from) => {
+        expect(await readsWith("ACME_ROOT", from)).toBe(true);
+      },
+    );
+
+    it("of its own gets the plugin's stored secret, and never moves Halonic's HOME", async () => {
+      expect(await readsWith("ACME_KEY", "secret")).toBe(true);
+      const { sandbox, profiles } = recordingSandbox(fenced);
+      const { connector } = await setUp(sandbox);
+
+      await expect(connector.listTools()).rejects.toThrow();
+
+      expect(profiles).toHaveLength(1);
+      expect(profiles[0]?.env["ACME_KEY"]).toBe(acmeKey);
+      expect(profiles[0]?.env["HOME"]).toBe(profiles[0]?.workingFolder);
+      await connector.close();
     });
 
-    it.each(["HOME", "PATH", "TMPDIR", "Path", "home"])(
-      "that Halonic sets, %s, can never be trusted, and starts nothing once changed to it",
-      async (variable) => {
+    const reserved = ["HOME", "PATH", "TMPDIR", "Path", "home"];
+    it.each(
+      reserved.flatMap((variable) => [
+        [variable, "setting"] as const,
+        [variable, "secret"] as const,
+      ]),
+    )(
+      "that Halonic sets, %s, from a %s, fails the plugin check, so it can never be trusted",
+      async (variable, from) => {
         const { sandbox, seen } = recordingSandbox(fenced);
         const { connector } = await setUp(sandbox);
 
-        expect(await readsWith(variable)).toBe(false);
+        // The read proves the name rule. A trusted plugin edited to it also
+        // starts nothing, but that is the trust re-check, which any edit trips.
+        expect(await readsWith(variable, from)).toBe(false);
         await expect(connector.listTools()).rejects.toThrow();
         expect(seen.opens).toBe(0);
         await connector.close();
