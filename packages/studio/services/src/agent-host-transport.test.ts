@@ -210,3 +210,35 @@ verifies("services.agent-host-not-answering", () => {
     await expect(refused).rejects.toBeInstanceOf(EngineNotAnswering);
   });
 });
+
+verifies("services.shell-sandbox-choice-save", () => {
+  const save = "agent_host_sandbox_choice_save";
+
+  it("sends the backend, or null to remove the choice, and returns the host's answer", async () => {
+    const answer = { status: 200, body: { active: "srt" } };
+    const shell = new FakeShell().answer(save, () => answer);
+    const transport = new TauriAgentHostTransport(shell);
+
+    await expect(transport.saveSandboxChoice("srt")).resolves.toEqual(answer);
+    await expect(transport.saveSandboxChoice(null)).resolves.toEqual(answer);
+    expect(shell.callsOf(save)).toEqual([{ backend: "srt" }, { backend: null }]);
+  });
+
+  it("rejects with the shell's kind when it refuses the backend", async () => {
+    const shell = new FakeShell().answer(save, () => {
+      throw { kind: "invalid_choice", message: "not a sandbox backend" };
+    });
+
+    await expect(new TauriAgentHostTransport(shell).saveSandboxChoice("odd")).rejects.toMatchObject(
+      { status: 0, kind: "invalid_choice" },
+    );
+  });
+
+  it("refuses an answer that isn't the host's answer", async () => {
+    const shell = new FakeShell().answer(save, () => ({ saved: true }));
+
+    await expect(new TauriAgentHostTransport(shell).saveSandboxChoice("srt")).rejects.toMatchObject(
+      { kind: "answer_invalid" },
+    );
+  });
+});

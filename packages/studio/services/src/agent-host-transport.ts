@@ -73,6 +73,17 @@ export class TauriAgentHostTransport implements AgentHostTransport {
     throw invalid("agent_host_security_updates");
   }
 
+  /**
+   * Saves the person's sandbox choice in the profile, or removes it for `null`, through the shell's
+   * `agent_host_sandbox_choice_save`, and returns the host's answer to choosing again. The shell
+   * checks the backend itself; its refusal (`invalid_choice`, `io`, ...) rejects as
+   * {@link shellRefusal} says.
+   */
+  async saveSandboxChoice(backend: string | null): Promise<AgentHostAnswer> {
+    const command = "agent_host_sandbox_choice_save";
+    return hostAnswer(command, await this.#invoke(command, { backend }));
+  }
+
   async stream(
     route: AgentHostStreamRoute,
     body: unknown,
