@@ -1,9 +1,11 @@
 import type { RunnerUnfencedReason } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
 import { useState } from "react";
+import type { PluginSettingsReader } from "../settings/plugin-settings-section.tsx";
 import { changeSummary } from "../trust/change-rows.ts";
 import { PluginTrustDialog } from "../trust/plugin-trust-dialog.tsx";
 import { useProgramsRun } from "../trust/programs-run.ts";
+import { useSettingValues } from "../trust/setting-values.ts";
 import type { ProgramsRun, TrustCheckReason } from "../trust/trust-text.ts";
 import {
   type PluginUnfencedRuns,
@@ -22,6 +24,8 @@ export interface ReviewPluginDialogProps {
   readonly trust: PluginActions["trust"];
   /** Whether the plugins' programs can run here, read when the check opens (`PluginActions.programs`). */
   readonly programs?: (() => Promise<ProgramsRun>) | undefined;
+  /** The plugin's saved settings, read when the check opens, so R9 shows a value that's set. */
+  readonly settings?: Pick<PluginSettingsReader, "settings"> | undefined;
   /** The host's sandbox status and saved yes, read when the check opens; without it, T9. */
   readonly unfencedRuns?: PluginUnfencedRuns | undefined;
   /** After **Trust** is saved, and on **Not now** and Escape. */
@@ -52,6 +56,7 @@ export function ReviewPluginDialog({
   manifest,
   trust,
   programs,
+  settings,
   unfencedRuns,
   onClose,
   onTrusted,
@@ -63,6 +68,7 @@ export function ReviewPluginDialog({
   const [failure, setFailure] = useState<string | undefined>(undefined);
   const status = useTrustStatus(unfencedRuns);
   const programsRun = useProgramsRun(programs);
+  const settingValues = useSettingValues(settings, manifest);
 
   async function confirm(allow: RunnerUnfencedReason | undefined) {
     setBusy(true);
@@ -93,6 +99,7 @@ export function ReviewPluginDialog({
       changes={changes !== undefined ? changeSummary(manifest, changes) : undefined}
       trustedOn={trustedDay(plugin.trustedAt, new Date())}
       programsRun={programsRun}
+      settingValues={settingValues}
       fence={status.fence}
       unfencedYes={status.yes}
       busy={busy}
