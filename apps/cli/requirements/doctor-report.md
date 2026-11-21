@@ -20,6 +20,9 @@ The `halonic doctor` command shall print its heading, an empty line, one line pe
 - Given the aliases smart and writer on Anthropic with no key stored,
   when the report is printed,
   then the Models line is "! Models smart and writer need an API key for Anthropic.".
+- Given the alias smart on Anthropic, whose secret anthropic-key the store couldn't be asked about,
+  when the report is printed,
+  then the Models line is "! Models couldn't read anthropic-key from the secret store (provider anthropic)", the Secrets line's words, with no `halonic secret set` command, because the key may be there (HAL-14629).
 - Given Ollama doesn't answer and Anthropic has no key,
   when the report is printed,
   then the Models line is ✕ with Ollama's line first and the no-key line under it, and the summary is "1 problem. Agents that use Ollama won't run until it answers.", because the line counts once.

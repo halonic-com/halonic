@@ -298,18 +298,17 @@ export class DoctorService {
   }
 
   /**
-   * The providers whose key is stored, by id. Each key is read and dropped
-   * at once. A key the store couldn't be asked about counts as not stored,
-   * so the Models line warns about it instead of `doctor` failing.
+   * Whether each provider's key is stored, by provider id. Each key is read
+   * and dropped at once. A key the store couldn't be asked about is
+   * "unreadable", so the Models line warns about it, without calling it
+   * missing, instead of `doctor` failing (HAL-14629).
    */
-  private async storedKeys(providers: readonly DoctorProvider[]): Promise<Set<string>> {
-    const stored = new Set<string>();
+  private async storedKeys(providers: readonly DoctorProvider[]): Promise<StoredKeys> {
+    const stored: StoredKeys = new Map();
     await Promise.all(
       providers.map(async (provider) => {
         if (provider.runs !== "with-a-key") return;
-        if ((await this.isSet(provider.secret)) === true) {
-          stored.add(provider.provider);
-        }
+        stored.set(provider.provider, await this.isSet(provider.secret));
       }),
     );
     return stored;
@@ -338,6 +337,9 @@ export class DoctorService {
   }
 }
 
+/** Whether each provider's key is stored, by provider id, as {@link DoctorService} found it. */
+type StoredKeys = Map<string, boolean | "unreadable">;
+
 /** The Workspace line by the trust check's status, or ✓ when it wasn't read. */
 function trustLine(workspace: DoctorWorkspace, trust: TrustCheck["status"] | null): WorkspaceLine {
   return workspaceLine(workspace.name, trust ?? "not-needed", {
@@ -355,7 +357,7 @@ function trustLine(workspace: DoctorWorkspace, trust: TrustCheck["status"] | nul
 function workspaceModels(
   workspace: DoctorWorkspace,
   resources: Resources | typeof timedOut,
-  keys: ReadonlySet<string> | typeof timedOut,
+  keys: ReadonlyMap<string, boolean | "unreadable"> | typeof timedOut,
 ): ModelsLine | TimedOutLine<"models"> | undefined {
   if (workspace.aliases.length === 0) return undefined;
   const local = workspace.providers.some((provider) => provider.runs === "on-this-computer");
@@ -369,7 +371,7 @@ function workspaceModels(
 function providerState(
   provider: DoctorProvider,
   loaded: readonly ProviderModels[],
-  keys: ReadonlySet<string>,
+  keys: ReadonlyMap<string, boolean | "unreadable">,
 ): ModelProviderState {
   const { provider: id, name } = provider;
   switch (provider.runs) {
@@ -389,7 +391,13 @@ function providerState(
       };
     }
     case "with-a-key":
-      return { provider: id, name, runs: provider.runs, keyStored: keys.has(id) };
+      return {
+        provider: id,
+        name,
+        runs: provider.runs,
+        secret: provider.secret,
+        keyStored: keys.get(id) ?? false,
+      };
     case "without-a-key":
       return { provider: id, name, runs: provider.runs };
   }

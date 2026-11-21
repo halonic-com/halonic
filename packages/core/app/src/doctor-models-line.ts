@@ -24,8 +24,13 @@ export type ModelProviderState =
       provider: string;
       name: string;
       runs: "with-a-key";
-      /** Whether the secret that holds its key is set. The key itself never reaches `doctor`. */
-      keyStored: boolean;
+      /** The name of the secret that holds its key, such as "anthropic-key". */
+      secret: string;
+      /**
+       * Whether that secret is set, or "unreadable" when the store couldn't
+       * be asked, such as with a locked keychain. The key itself never reaches `doctor`.
+       */
+      keyStored: boolean | "unreadable";
     }
   | {
       provider: string;
@@ -53,14 +58,22 @@ export type ModelProblem =
   /** ! "smart needs an API key for Anthropic." One per alias, so each alias that can't run is named. */
   | { problem: "no-key"; alias: string; provider: string; name: string }
   /** ✕ "Ollama isn't answering at localhost:11434." (model-unreachable's sentence) */
-  | { problem: "unreachable"; provider: string; name: string; address: string };
+  | { problem: "unreachable"; provider: string; name: string; address: string }
+  /**
+   * ! "couldn't read anthropic-key from the secret store (provider anthropic)".
+   * One per provider, and no command that sets the key: it may be there (HAL-14629).
+   */
+  | { problem: "key-unreadable"; provider: string; name: string; secret: string };
 
 /** The Models line of `halonic doctor`. */
 export interface ModelsLine extends DoctorLine {
   check: "models";
   /** The providers that are ready, in the order given. */
   ready: ProviderReport[];
-  /** Unreachable providers first, in the order given, then the aliases without a key. */
+  /**
+   * Unreachable providers first, in the order given, then the aliases without
+   * a key, then the providers whose key couldn't be read.
+   */
   problems: ModelProblem[];
 }
 
@@ -70,7 +83,9 @@ export interface ModelsLine extends DoctorLine {
  * A provider on this computer that doesn't answer is ✕: every alias that
  * uses it fails, and nothing falls back to the internet by itself. An alias
  * whose provider's key isn't stored is a warning, as an agent's harness that
- * isn't installed is: it stops only what uses that alias. A workspace with
+ * isn't installed is: it stops only what uses that alias. So is a provider
+ * whose key the store couldn't be asked about, such as with a locked
+ * keychain: the key may be there, so it isn't called missing. A workspace with
  * no aliases, or no workspace, has no line, and neither has one whose
  * aliases all use a provider that needs no key, because it would name nothing.
  *
@@ -80,7 +95,7 @@ export interface ModelsLine extends DoctorLine {
  *
  * @example
  * modelsLine(
- *   [{ provider: "anthropic", name: "Anthropic", runs: "with-a-key", keyStored: false }],
+ *   [{ provider: "anthropic", name: "Anthropic", runs: "with-a-key", secret: "anthropic-key", keyStored: false }],
  *   [{ alias: "smart", provider: "anthropic" }],
  * );
  * // { check: "models", status: "warning", ready: [],
@@ -99,7 +114,11 @@ export function modelsLine(
   }
   if (aliases.length === 0) return undefined;
 
-  const problems = [...unreachableProblems(providers), ...noKeyProblems(byId, aliases)];
+  const problems = [
+    ...unreachableProblems(providers),
+    ...noKeyProblems(byId, aliases),
+    ...unreadableKeyProblems(providers),
+  ];
   const ready = providers.flatMap(providerReport);
   // Only providers that need no key, such as the mock: a line would name nothing.
   if (ready.length === 0 && problems.length === 0) return undefined;
@@ -115,7 +134,7 @@ function providerReport(state: ModelProviderState): ProviderReport[] {
   const { provider, name } = state;
   if (state.runs === "without-a-key") return [];
   if (state.runs === "with-a-key") {
-    return state.keyStored ? [{ provider, name, keyStored: true }] : [];
+    return state.keyStored === true ? [{ provider, name, keyStored: true }] : [];
   }
   if (!state.models.ok) return [];
   return [
@@ -146,8 +165,23 @@ function noKeyProblems(
   const problems: ModelProblem[] = [];
   for (const { alias, provider } of aliases) {
     const state = byId.get(provider);
-    if (state?.runs !== "with-a-key" || state.keyStored) continue;
+    if (state?.runs !== "with-a-key" || state.keyStored !== false) continue;
     problems.push({ problem: "no-key", alias, provider, name: state.name });
+  }
+  return problems;
+}
+
+/** One problem per provider whose key the store couldn't be asked about. */
+function unreadableKeyProblems(providers: readonly ModelProviderState[]): ModelProblem[] {
+  const problems: ModelProblem[] = [];
+  for (const state of providers) {
+    if (state.runs !== "with-a-key" || state.keyStored !== "unreadable") continue;
+    problems.push({
+      problem: "key-unreadable",
+      provider: state.provider,
+      name: state.name,
+      secret: state.secret,
+    });
   }
   return problems;
 }

@@ -16,8 +16,14 @@ const ollama: ModelProviderState = {
 
 const ollamaDown: ModelProviderState = { ...ollama, models: err(new Error("ECONNREFUSED")) };
 
-function anthropic(keyStored: boolean): ModelProviderState {
-  return { provider: "anthropic", name: "Anthropic", runs: "with-a-key", keyStored };
+function anthropic(keyStored: boolean | "unreadable"): ModelProviderState {
+  return {
+    provider: "anthropic",
+    name: "Anthropic",
+    runs: "with-a-key",
+    secret: "anthropic-key",
+    keyStored,
+  };
 }
 
 verifies("app.doctor-models", () => {
@@ -65,6 +71,28 @@ verifies("app.doctor-models", () => {
     expect(line && doctorSummary([line]).needsFixing).toBe(false);
   });
 
+  it("warns once for a provider whose key couldn't be read, without calling it missing", () => {
+    const line = modelsLine(
+      [anthropic("unreadable")],
+      [
+        { alias: "smart", provider: "anthropic" },
+        { alias: "writer", provider: "anthropic" },
+      ],
+    );
+
+    expect(line?.status).toBe("warning");
+    expect(line?.ready).toEqual([]);
+    expect(line?.problems).toEqual([
+      {
+        problem: "key-unreadable",
+        provider: "anthropic",
+        name: "Anthropic",
+        secret: "anthropic-key",
+      },
+    ]);
+    expect(line && doctorSummary([line]).needsFixing).toBe(false);
+  });
+
   it("fails when a provider on this computer doesn't answer, so doctor exits 1", () => {
     const line = modelsLine([ollamaDown], [{ alias: "fast", provider: "ollama" }]);
 
@@ -99,6 +127,7 @@ verifies("app.doctor-models", () => {
       provider: "anthropic",
       name: "Anthropic",
       runs: "with-a-key",
+      secret: "anthropic-key",
       keyStored: true,
     };
 
