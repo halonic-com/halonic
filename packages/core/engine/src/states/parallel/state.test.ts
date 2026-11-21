@@ -344,7 +344,7 @@ verifies("engine.task-choice-answer", () => {
       riskAgents,
     );
     const error =
-      'Agent "searcher" answered "medium", which isn\'t one of its options: "low", "high". ' +
+      'The agent searcher answered "medium", which isn\'t one of its options (low, high). ' +
       "Tighten the agent's instructions or use a larger model.";
     expect(decisions[1]?.events).toEqual([
       {

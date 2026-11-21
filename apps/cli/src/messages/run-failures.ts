@@ -10,6 +10,7 @@ import { harnessNames } from "./harness-names.ts";
 import { type Phrase, phrase } from "./phrase.ts";
 import { proxyFixInWords, proxyProblemInWords } from "./proxy-failures.ts";
 import { sandboxMessages } from "./sandbox.ts";
+import { asSentence } from "./sentence.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
 /** The run that failed, as line 1 names it and line 2's commands need it. */
@@ -289,11 +290,6 @@ function failedIn(run: FailedRun, reason: Phrase): Phrase {
 /** "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet." */
 function cantTellCause(run: FailedRun, end: "." | ":" = "."): Phrase {
   return phrase`${run.title} failed in the step ${run.step}. Halonic can't tell the cause yet${end}`;
-}
-
-/** The text as a sentence: it keeps its own ".", "?" or "!", and gets a full stop if it has none. */
-function asSentence(text: string): string {
-  return /[.?!]$/.test(text) ? text : `${text}.`;
 }
 
 /**

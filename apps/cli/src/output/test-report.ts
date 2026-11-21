@@ -12,7 +12,7 @@ import { columns } from "../messages/columns.ts";
 import type { Message } from "../messages/define.ts";
 import { markPart, type Phrase, phrase, plainText } from "../messages/phrase.ts";
 import { stepName } from "../messages/step-name.ts";
-import { testMessages, unknownStep } from "../messages/test.ts";
+import { type RunOutcome, testMessages, unknownStep } from "../messages/test.ts";
 import { printable } from "./printable.ts";
 
 /** How the lines are shown. */
@@ -132,12 +132,7 @@ function failureSentence(failure: TestFailure, steps: WorkflowSteps): Message {
     case "states":
       return statesSentence(failure.expected, failure.actual, steps);
     case "status":
-      return testMessages.endedOtherwise(
-        failure.expected,
-        failure.step === undefined
-          ? { status: failure.actual }
-          : { status: failure.actual, step: step(failure.step) },
-      );
+      return testMessages.endedOtherwise(failure.expected, outcomeOf(failure, step));
     case "context":
       return failure.set
         ? testMessages.otherValue(printable(failure.path), failure.expected, failure.actual)
@@ -163,6 +158,24 @@ function failureSentence(failure: TestFailure, steps: WorkflowSteps): Message {
     case "error":
       return testMessages.runError(printable(failure.message));
   }
+}
+
+/** How the run ended, with its step by name and, for a failed run, its error as printable text. */
+function outcomeOf(
+  failure: Extract<TestFailure, { kind: "status" }>,
+  step: (stateId: string) => string,
+): RunOutcome {
+  const where = failure.step === undefined ? {} : { step: step(failure.step) };
+  if (failure.actual === "failed") {
+    return {
+      status: "failed",
+      ...where,
+      ...(failure.error === undefined ? {} : { error: printable(failure.error) }),
+    };
+  }
+  return failure.actual === "completed" || failure.actual === "running"
+    ? { status: failure.actual }
+    : { status: failure.actual, ...where };
 }
 
 /** The steps of the test's workflow, to name them in a failure. */

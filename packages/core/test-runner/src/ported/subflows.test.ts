@@ -124,7 +124,7 @@ cases:
         { kind: "context", path: "verdict", expected: "fine", set: false },
         {
           kind: "error",
-          message: expect.stringMatching(/^Workflow "draft" failed: .*"yes", "no"/),
+          message: expect.stringMatching(/^Workflow "draft" failed: .*\(yes, no\)/),
         },
       ]);
       expect(test?.runs.map((run) => run.summary.status)).toEqual(["failed", "failed"]);

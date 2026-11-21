@@ -81,10 +81,10 @@ function quoted(answer: unknown): string {
   );
 }
 
+/** "The agent sorter answered "questions", which isn't one of its options (refund, question, spam). …" (C337 C17). */
 function notAnOptionError(agentId: string, options: readonly string[], answer: unknown): string {
-  const listed = options.map((option) => JSON.stringify(option)).join(", ");
   return (
-    `Agent "${agentId}" answered ${quoted(answer)}, which isn't one of its options: ${listed}. ` +
+    `The agent ${agentId} answered ${quoted(answer)}, which isn't one of its options (${options.join(", ")}). ` +
     "Tighten the agent's instructions or use a larger model."
   );
 }
