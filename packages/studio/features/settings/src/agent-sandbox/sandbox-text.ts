@@ -177,3 +177,19 @@ export const WSL_REFUSED_MISSING =
 export const WSL_REFUSED_FILE =
   "That backup location can't be used. Nothing was removed. Choose another location.";
 export const WSL_DETAILS = "Details";
+
+// Plugins and integrations without the sandbox: microcopy 24.1 R16 (HAL-1949, built on HAL-3384).
+export const UNFENCED_TITLE = "Plugins and integrations";
+export const UNFENCED_LINE =
+  "The agent sandbox runs agents' programs. On Windows, plugin and integration code can't run in it yet, so it needs your yes.";
+export const UNFENCED_ALLOWED = "Allowed without the sandbox";
+export const unfencedAllowedOn = (day: string) => `Allowed on ${day}.`;
+export const TAKE_BACK = "Take back";
+export const BUSY_TAKE_BACK = "Taking back…";
+export const TAKE_BACK_HINT =
+  "Taking it back stops plugins and integrations that run without the sandbox. Halonic asks again the next time one starts.";
+export const TAKEN_BACK_TITLE = "Taken back.";
+export const TAKEN_BACK_TEXT =
+  "Plugins and integrations won't start without the sandbox until you allow it again.";
+/** A Take back the host refused; the toast's text is the host's reason (team decision, HAL-3384). */
+export const TAKE_BACK_FAILED_TITLE = "Couldn't take it back";

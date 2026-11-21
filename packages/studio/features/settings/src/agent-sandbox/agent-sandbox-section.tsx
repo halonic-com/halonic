@@ -15,7 +15,13 @@ import {
   useCopyDetails,
 } from "@halonicjs/studio-shell";
 import { type ReactNode, useState } from "react";
-import { type AgentSandboxHost, AgentSandboxService, HostSettingsService } from "../api.ts";
+import {
+  type AgentSandboxHost,
+  AgentSandboxService,
+  HostSettingsService,
+  type UnfencedYesHost,
+  UnfencedYesService,
+} from "../api.ts";
 import { NewAgentsRunControl } from "./new-agents-run.tsx";
 import { NotAvailableLines } from "./not-available-lines.tsx";
 import {
@@ -25,16 +31,19 @@ import {
   sandboxView,
 } from "./sandbox-state.ts";
 import * as text from "./sandbox-text.ts";
+import { UnfencedYesBlock } from "./unfenced-yes.tsx";
 import { useAgentSandbox } from "./use-agent-sandbox.ts";
 import { WslRemoveDialog } from "./wsl-remove-dialog.tsx";
 
 /** Settings › Agent sandbox as the settings container shows it. Without a host it reads Not available. */
-export function AgentSandboxSection({ context, place }: SettingsSectionProps) {
+export function AgentSandboxSection({ context, place, surface }: SettingsSectionProps) {
   const host = hostOf(context);
   return (
     <AgentSandboxHostView
       host={host}
       place={place}
+      surface={surface}
+      unfencedYes={context.services.find(UnfencedYesService)}
       settings={context.services.get(HostSettingsService)}
       announce={(line) => context.announcer.announce(line)}
       startCheck={context.services.find(sandboxStartCheckKey)}
@@ -55,6 +64,12 @@ export interface AgentSandboxHostViewProps {
    * without it the section has 13.1's one line there.
    */
   readonly startCheck?: SandboxStartCheck | undefined;
+  /**
+   * The window's yes to run plugin and integration code without the sandbox (R16); without it
+   * (served Studio, the demo) the section has no "Plugins and integrations".
+   */
+  readonly unfencedYes?: UnfencedYesHost | undefined;
+  readonly surface?: SettingsSectionProps["surface"] | undefined;
 }
 
 /** The section over a host: its state, its buttons and the Remove dialog. */
@@ -64,6 +79,8 @@ export function AgentSandboxHostView({
   settings,
   announce,
   startCheck,
+  unfencedYes,
+  surface,
 }: AgentSandboxHostViewProps) {
   const sandbox = useAgentSandbox(host, place, announce);
   const start = useSandboxStart(startCheck, !sandbox.facts.available);
@@ -116,6 +133,9 @@ export function AgentSandboxHostView({
           <>
             {wslRemoval}
             {newAgents}
+            {unfencedYes ? (
+              <UnfencedYesBlock host={unfencedYes} surface={surface} announce={announce} />
+            ) : null}
           </>
         }
       />
