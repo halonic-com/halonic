@@ -237,11 +237,29 @@ function programRow(connector: ConnectorTrustContent, unpinned: ReadonlySet<stri
 }
 
 function addressRow(connector: ConnectorTrustContent): TrustRowView {
+  if (connector.transport === "integration") return integrationConnectorRow(connector);
   const secrets = secretNames(connector);
   return {
     id: connector.id,
     detail: connector.transport === "http" ? text(connector.settings["url"]) : connector.transport,
     lines: secrets.length === 0 ? [] : [["Gets secrets", secrets.join(", ")]],
+  };
+}
+
+/**
+ * A local integration's connector: the folder it runs, then the workspace
+ * secret each secret of the integration's sheet gets, by name only, as
+ * "my-notes-key as notes-key" when the names differ (HAL-14734, words from
+ * HAL-14737).
+ */
+function integrationConnectorRow(connector: ConnectorTrustContent): TrustRowView {
+  const picks = secretPicks(connector).map(({ secret, as }) =>
+    secret === as ? secret : `${secret} as ${as}`,
+  );
+  return {
+    id: connector.id,
+    detail: `integrations/${text(connector.settings["folder"])}`,
+    lines: picks.length === 0 ? [] : [["Gets secrets", picks.join(", ")]],
   };
 }
 
@@ -389,13 +407,36 @@ function secretName(reference: string): string {
   return /^‹secret (.+)›$/u.exec(reference)?.[1] ?? reference;
 }
 
+/** The secrets a connector gets, by name: its own, its program's and its integration's picks. */
 function secretNames(connector: ConnectorTrustContent): string[] {
-  const references = [connector.secret, ...Object.values(record(connector.settings["secretEnv"]))];
-  const names = references
+  const references = [
+    connector.secret,
+    ...Object.values(record(connector.settings["secretEnv"])),
+    ...(connector.transport === "integration"
+      ? Object.values(record(connector.settings["secrets"]))
+      : []),
+  ];
+  return [...new Set(namesOf(references))].sort();
+}
+
+/**
+ * The workspace secret each secret of a local integration's sheet gets,
+ * sorted by the sheet's name. A connector's own `secret` keeps its name.
+ */
+function secretPicks(connector: ConnectorTrustContent): { secret: string; as: string }[] {
+  const own = namesOf([connector.secret]).map((name) => ({ secret: name, as: name }));
+  const picks = Object.entries(record(connector.settings["secrets"]))
+    .sort(([first], [second]) => first.localeCompare(second, "en"))
+    .flatMap(([as, reference]) => namesOf([reference]).map((secret) => ({ secret, as })));
+  return [...own, ...picks];
+}
+
+/** The names in `‹secret NAME›` references, in their order. */
+function namesOf(references: readonly unknown[]): string[] {
+  return references
     .filter((value) => typeof value === "string")
     .map((reference) => /^‹secret (.+)›$/u.exec(reference)?.[1])
     .filter((name) => name !== undefined);
-  return [...new Set(names)].sort();
 }
 
 /** PyPI for `uvx`, `uv tool run` and `pipx run`; npm for every other package runner. */
