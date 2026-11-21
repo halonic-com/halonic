@@ -130,8 +130,7 @@ verifies("agents.page.frame", () => {
     expect(title.className).toContain("focus-ring");
     // No visible text for high contrast to paint over the avatar: the name sits in an sr-only span.
     expect(title.textContent).toBe("Sorter");
-    const texts = [...title.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE);
-    expect(texts).toHaveLength(0);
+    expect([...title.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE)).toEqual([]);
     expect(title.children).toHaveLength(1);
     expect(title.children[0]?.className).toBe("sr-only");
     expect(title.parentElement?.parentElement?.className).toContain("relative");
