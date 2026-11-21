@@ -26,7 +26,8 @@ interface Fit {
  * and again {@link FIT_DELAY_MS} after the panel or the map stops changing size, centred, never
  * larger than its natural size and with no zoom buttons; on a phone it never shrinks it, and the
  * panel scrolls. In the gaps it draws the straight lines
- * from each side's cards to the centre card, each ending in a ring-and-dot port; the lines are a
+ * from each side's cards to the centre card, each ending in a ring-and-dot port; the lines below
+ * turn in the free space between the first row and what it can use (C560 a). The lines are a
  * picture only, hidden from screen readers and the pointer, so the cards and the add buttons stay
  * the only things to press. Its children are the grid's cells: left, centre and right in the first
  * row, what it can use across the second. The cards mark themselves with `data-map-centre` and,
@@ -180,11 +181,24 @@ function measureLines(map: HTMLElement): readonly MapLine[] {
     [...map.querySelectorAll<HTMLElement>(`[data-map-side="${side}"] [data-map-card]`)].map(
       (card) => boxWithin(card, map),
     );
-  return mapLines(boxWithin(centre, map), {
-    in: cards("in"),
-    use: cards("use"),
-    out: cards("out"),
-  });
+  const side = (name: MapSide) => map.querySelector<HTMLElement>(`[data-map-side="${name}"]`);
+  const bottom = (element: HTMLElement | null) => {
+    if (element === null) return 0;
+    const box = boxWithin(element, map);
+    return box.y + box.height;
+  };
+  const centreBox = boxWithin(centre, map);
+  const use = side("use");
+  return mapLines(
+    centreBox,
+    { in: cards("in"), use: cards("use"), out: cards("out") },
+    use === null
+      ? undefined
+      : {
+          top: Math.max(centreBox.y + centreBox.height, bottom(side("in")), bottom(side("out"))),
+          bottom: boxWithin(use, map).y,
+        },
+  );
 }
 
 /**
