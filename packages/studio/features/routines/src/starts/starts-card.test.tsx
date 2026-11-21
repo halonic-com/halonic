@@ -244,7 +244,7 @@ verifies("routines.starts.starts-card", () => {
   it("says why a target can't be started", async () => {
     const ghost = { ...briefing, id: "ghost" };
     expect((await card(routineStarting(ghost, "not-found"))).page.textContent).toContain(
-      "not found",
+      "ghost isn't in this workspace. Pick another workflow.",
     );
     unmount();
     expect((await card(routineStarting(briefing, "never-live"))).page.textContent).toContain(

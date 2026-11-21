@@ -1,6 +1,7 @@
 import { LetterTile, StatusChip } from "@halonicjs/studio-kit";
 import type { OverviewHub, OverviewItem } from "@halonicjs/studio-shell";
 import type { RoutineHub, RoutineListing, RoutineRef } from "../api.ts";
+import { cantStartReason, cantStartWords } from "../cant-start.ts";
 import { listWords, nextWhen } from "./list-words.ts";
 
 /** The row id of a routine: unique across hubs, because two hubs can both have a `daily`. */
@@ -12,24 +13,12 @@ export function rowId(ref: RoutineRef): string {
  * The one chip a row shows (flow-routines 2.1): "Can't start", else "Off", else "Paused until
  * trusted", else "Needs sign-in", else "Needs you"; a routine that is fine and on has none. "Can't
  * start" comes first because turning the routine on or trusting the workspace wouldn't help: only
- * picking another workflow or agent does (HAL-14940).
+ * picking another workflow or agent, or fixing its file, does (HAL-14940). The row's detail line
+ * says which (HAL-15082).
  */
 function Chip({ listing }: { readonly listing: RoutineListing }) {
-  if (!listing.targetFound) {
-    return (
-      <StatusChip tone="danger">
-        {/*
-         * The row's name is its text, so screen readers hear "… Can't start: support-reply isn't in
-         * this workspace". The words and the reason are one text: the chip is a flex box and the
-         * reason is positioned out of it, so Chromium puts a space between two parts, which a
-         * braille display shows as "Can't start :" (C538-4).
-         */}
-        <span aria-hidden="true">{listWords.cantStart}</span>
-        <span className="sr-only">
-          {`${listWords.cantStart}: ${listWords.cantStartWhy(listing.targetName)}`}
-        </span>
-      </StatusChip>
-    );
+  if (cantStartReason(listing) !== undefined) {
+    return <StatusChip tone="danger">{cantStartWords.chip}</StatusChip>;
   }
   if (!listing.enabled) return <StatusChip tone="neutral">{listWords.off}</StatusChip>;
   if (listing.pausedUntilTrusted) {
@@ -47,21 +36,27 @@ function Chip({ listing }: { readonly listing: RoutineListing }) {
 }
 
 function hasChip(listing: RoutineListing): boolean {
-  const { targetFound, enabled, pausedUntilTrusted, needsSignIn, needsYou } = listing;
-  return !targetFound || !enabled || pausedUntilTrusted || needsSignIn || needsYou > 0;
+  const { enabled, pausedUntilTrusted, needsSignIn, needsYou } = listing;
+  const cantStart = cantStartReason(listing) !== undefined;
+  return cantStart || !enabled || pausedUntilTrusted || needsSignIn || needsYou > 0;
 }
 
 /** Whether the row shows when the routine next starts: not when it is off or can't start. */
 function showsNextRun(listing: RoutineListing): listing is RoutineListing & { nextRun: string } {
-  return listing.enabled && listing.targetFound && listing.nextRun !== undefined;
+  const canStart = cantStartReason(listing) === undefined;
+  return listing.enabled && canStart && listing.nextRun !== undefined;
 }
 
+/**
+ * A row. Its line under the name is what the routine does, or, when it can't start, why and what to
+ * do, so the reason isn't left to screen readers (HAL-15082); the search still reads what it does.
+ */
 function itemOf(listing: RoutineListing, now: Date): OverviewItem {
   return {
     id: rowId(listing),
     name: listing.name,
     description: listing.summary,
-    detail: listing.summary,
+    detail: cantStartReason(listing) ?? listing.summary,
     ...(showsNextRun(listing) ? { usedBy: nextWhen(listing.nextRun, now) } : {}),
     avatar: <LetterTile name={listing.name} />,
     ...(hasChip(listing) ? { chips: <Chip listing={listing} /> } : {}),

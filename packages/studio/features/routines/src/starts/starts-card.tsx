@@ -9,6 +9,7 @@ import {
   type RoutineTrigger,
   type RoutineView,
 } from "../api.ts";
+import { cantStartWords } from "../cant-start.ts";
 import { failureReason } from "../page/page-words.ts";
 import { startsWords as words } from "./starts-words.ts";
 import { useTargets } from "./use-targets.ts";
@@ -122,10 +123,10 @@ export function StartsCard({ host, routine }: StartsCardProps) {
 function TargetState({ routine, name }: { readonly routine: RoutineView; readonly name: string }) {
   switch (routine.targetState) {
     case "not-found":
+      // The sentence the list row and Run now's toast give too (HAL-15082).
       return (
-        <p className="text-small">
-          <span className="text-danger">{routine.target.id}</span>{" "}
-          <span className="text-fg-muted">{words.notFound}</span>
+        <p className="text-small text-danger">
+          {cantStartWords.targetMissing(routine.target.id, routine.target.kind)}
         </p>
       );
     case "never-live":

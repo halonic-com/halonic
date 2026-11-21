@@ -76,9 +76,34 @@ verifies("studio.workspace-routines", () => {
     const listed = await host.list();
     const row = (id: string) => listed.find((each) => each.id === id);
 
-    expect(row("weekly-report")?.targetFound).toBe(true);
-    expect(row("no-agent")).toMatchObject({ targetFound: false, targetName: "nobody" });
-    expect(row("no-workflow")).toMatchObject({ targetFound: false, targetName: "support-reply" });
+    expect(row("weekly-report")).toMatchObject({ targetFound: true, problems: [] });
+    expect(row("no-agent")).toMatchObject({
+      targetKind: "agent",
+      targetFound: false,
+      targetName: "nobody",
+    });
+    expect(row("no-workflow")).toMatchObject({
+      targetKind: "workflow",
+      targetFound: false,
+      targetName: "support-reply",
+    });
+  });
+
+  it("lists the errors in a routine's file, such as a value its trigger doesn't have", async () => {
+    const { host } = setup({}, [], {
+      "hubs/acme/workflows/routines/weekly-report.routine.yaml": weeklyFile.replace(
+        "Write the report.",
+        "Write the report for {{trigger.date}}.",
+      ),
+    });
+
+    const [listed] = await host.list();
+
+    // C540 #4 (HAL-15082): `halonic routines` says it can't start, so the Studio list must too.
+    expect(listed?.targetFound).toBe(true);
+    expect(listed?.problems).toEqual([
+      expect.stringContaining("{{trigger.date}} isn't a trigger value"),
+    ]);
   });
 
   it("reads a routine as the page draws it", async () => {

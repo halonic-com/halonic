@@ -147,6 +147,16 @@ export function targetFound(workspace: LoadedWorkspace, target: RoutineTarget): 
 }
 
 /**
+ * The errors the workspace's checks found in a routine's file, in `halonic validate`'s words. Any
+ * one means the routine can't start, as `halonic routines` counts them (HAL-15082).
+ */
+export function errorsOf(workspace: LoadedWorkspace, file: PlacedFile): readonly string[] {
+  return workspace.issues
+    .filter((issue) => issue.file === file.path && issue.severity === "error")
+    .map((issue) => issue.message);
+}
+
+/**
  * Whether what a routine starts runs an agent in a program of its own (Claude Code or Codex), which
  * needs the sandbox: any agent of the workflow and the workflows it starts.
  *

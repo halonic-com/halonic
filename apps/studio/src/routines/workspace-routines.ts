@@ -42,6 +42,7 @@ import {
 } from "./routine-files.ts";
 import { livenessOf, runningOf } from "./routine-liveness.ts";
 import {
+  errorsOf,
   idOf,
   mailboxesOf,
   nameKey,
@@ -195,6 +196,7 @@ export class WorkspaceRoutines implements RoutinesHost {
       routineFiles(workspace).map(async (file): Promise<RoutineListing> => {
         const own = runsOf(runs, routineKeyOf(file));
         const routine = await this.#running(file);
+        const target = targetOfFile(file.value.run, file.hub);
         return {
           hubId: file.hub,
           id: idOf(file),
@@ -203,7 +205,9 @@ export class WorkspaceRoutines implements RoutinesHost {
           summary: summaryOf(workspace, routine, file.hub),
           targetName: targetName(workspace, file),
           nextRun: this.#nextRunOf(routine, now),
-          targetFound: targetFound(workspace, targetOfFile(file.value.run, file.hub)),
+          targetKind: target.kind,
+          targetFound: targetFound(workspace, target),
+          problems: errorsOf(workspace, file),
           needsSignIn: false,
           needsYou: own.filter((run) => run.status === "waiting").length,
           pausedUntilTrusted: !trusted,
