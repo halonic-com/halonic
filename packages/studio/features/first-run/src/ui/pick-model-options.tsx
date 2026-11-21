@@ -201,7 +201,7 @@ export function KeyBody(props: {
           <span aria-hidden="true">·</span>
           <button
             type="button"
-            className="text-link underline focus-ring"
+            className="text-accent-text underline focus-ring"
             onClick={() => pick.replaceKey()}
           >
             {words.replace}
