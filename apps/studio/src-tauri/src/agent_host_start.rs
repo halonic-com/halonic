@@ -117,8 +117,8 @@ pub(super) fn chosen_host<R: Runtime>(
 }
 
 /// Installs the runtime beside the shell into the distro (HAL-14644) before
-/// anything runs the distro's host, refusing the start only when the distro
-/// is left with no runtime at all. The refusal has no `reason` yet: the
+/// anything runs the distro's host, refusing the start only when the install
+/// failed and `status` answered that the distro has no runtime. The refusal has no `reason` yet: the
 /// port's `runtime-missing` comes later.
 fn install_runtime_beside_shell(wsl: &Path) -> Result<(), HostRefusal> {
     let shell = std::env::current_exe().map_err(|error| HostRefusal::new("io", error))?;

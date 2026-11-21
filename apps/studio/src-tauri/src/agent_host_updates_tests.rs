@@ -193,7 +193,7 @@ fn shipped() -> BundledRuntime {
 #[test]
 fn the_runtime_install_logs_what_it_did_and_lets_the_host_start() {
     let installed = runtime_ending(
-        Some("0.1.0"),
+        Ok(Some("0.1.0")),
         Ok(Some((shipped(), RuntimeUpdate::Installed))),
     );
     assert_eq!(
@@ -204,14 +204,14 @@ fn the_runtime_install_logs_what_it_did_and_lets_the_host_start() {
         )
     );
     let current = runtime_ending(
-        Some("0.1.1+0123456789ab"),
+        Ok(Some("0.1.1+0123456789ab")),
         Ok(Some((shipped(), RuntimeUpdate::AlreadyCurrent))),
     );
     assert_eq!(
         current,
         ("runtime: 0.1.1+0123456789ab is current".to_owned(), Ok(()))
     );
-    let none_shipped = runtime_ending(Some("0.1.0"), Ok(None));
+    let none_shipped = runtime_ending(Ok(Some("0.1.0")), Ok(None));
     assert_eq!(
         none_shipped,
         (
@@ -222,19 +222,36 @@ fn the_runtime_install_logs_what_it_did_and_lets_the_host_start() {
 }
 
 /// Requirement `distro-runtime`: a failed install refuses the start only
-/// when the distro has no runtime to start.
+/// when `status` answered that the distro has no runtime to start.
 #[test]
 fn a_failed_runtime_install_refuses_the_start_only_with_no_runtime_left() {
-    let (line, outcome) = runtime_ending(Some("0.1.0"), Err(WslError::TimedOut));
+    let (line, outcome) = runtime_ending(Ok(Some("0.1.0")), Err(WslError::TimedOut));
     assert_eq!(
         line,
-        "runtime: couldn't install this build's, starting 0.1.0: The step took too long and was stopped."
+        "runtime: couldn't install this build's, starting the distro's (0.1.0): \
+         The step took too long and was stopped."
     );
     assert_eq!(outcome, Ok(()));
 
-    let (line, outcome) = runtime_ending(None, Err(WslError::ChecksumDiffers));
+    let (line, outcome) = runtime_ending(Ok(None), Err(WslError::ChecksumDiffers));
     let reason = "the runtime couldn't be installed in Halonic's WSL distro: \
                   The runtime archive isn't the one this release expects.";
     assert_eq!(line, format!("runtime: {reason}"));
     assert_eq!(outcome, Err(reason.to_owned()));
+}
+
+/// Requirement `distro-runtime`: a `status` that couldn't be read doesn't
+/// say the distro has no runtime, so a failed install still lets the host
+/// start, and the log says why (HAL-15147).
+#[test]
+fn a_failed_runtime_install_starts_the_host_when_status_couldnt_be_read() {
+    let unread = WslError::TimedOut;
+    let (line, outcome) = runtime_ending(Err(&unread), Err(WslError::ChecksumDiffers));
+    assert_eq!(
+        line,
+        "runtime: couldn't install this build's, starting the distro's \
+         (unknown, its status couldn't be read: The step took too long and was stopped.): \
+         The runtime archive isn't the one this release expects."
+    );
+    assert_eq!(outcome, Ok(()));
 }
