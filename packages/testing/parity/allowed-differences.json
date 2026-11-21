@@ -2522,5 +2522,126 @@
         "new": []
       }
     ]
+  },
+  {
+    "id": "routine-in-failed-hub-not-unknown",
+    "requirement": "workspace.routines",
+    "area": "routines: a root routine whose hub or root agent failed",
+    "old": "A root routine whose run.hub named a hub whose hub.yaml failed its own checks got 'unknown hub \"billing\"' on top of hub.yaml's error. A root routine without run.hub got 'workspace-level routines need run.hub' when the root's only agent or workflow failed its own checks.",
+    "new": "Only the failed file has an error. The root routine gets nothing for the hub or agent it names; its trigger is still checked. A run.hub naming a hub with no hub.yaml at all is still 'unknown hub', and a root with no agent or workflow files still needs run.hub.",
+    "why": "The hub and the agent are there; their own errors say what to fix. A second error on the routine sends the user to the wrong file, the same as the unknown-agent case in failed-file-not-unknown (HAL-14277, HAL-15207).",
+    "status": "proposed",
+    "checks": [
+      {
+        "case": "hub/bad-id-in-uses",
+        "file": "workflows/routines/hourly-check.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"hourly-check\": unknown hub \"billing\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "hub/bad-id-in-uses",
+        "file": "workflows/routines/on-paid.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"on-paid\": unknown hub \"billing\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "hub/deep-nesting",
+        "file": "workflows/routines/hourly-check.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"hourly-check\": unknown hub \"billing\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "hub/deep-nesting",
+        "file": "workflows/routines/on-paid.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"on-paid\": unknown hub \"billing\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "hub/missing-required",
+        "file": "workflows/routines/hourly-check.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"hourly-check\": unknown hub \"billing\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "hub/missing-required",
+        "file": "workflows/routines/on-paid.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"on-paid\": unknown hub \"billing\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "hub/unknown-key",
+        "file": "workflows/routines/hourly-check.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"hourly-check\": unknown hub \"billing\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "hub/unknown-key",
+        "file": "workflows/routines/on-paid.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"on-paid\": unknown hub \"billing\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "hub/wrong-type",
+        "file": "workflows/routines/hourly-check.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"hourly-check\": unknown hub \"billing\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "hub/wrong-type",
+        "file": "workflows/routines/on-paid.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"on-paid\": unknown hub \"billing\""
+          }
+        ],
+        "new": []
+      }
+    ]
   }
 ]
