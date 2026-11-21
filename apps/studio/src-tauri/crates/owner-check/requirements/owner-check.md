@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-15194, board decision 4b (HAL-5276), D7 section 2 (HAL-15159)
 
-Before the phone sends an answer to an approval, the shell shall ask the person for a strong (Class 3) biometric in a new prompt for that one answer, with words the shell picks from the decision (approve or deny) and no text from a page or a host, and shall send the answer only when the prompt reports a pass. If the phone runs an Android older than 11, has no strong biometric, has none enrolled, is locked out, or the platform's answer is anything other than a pass, then the shell shall send nothing. A pass shall never cover a later answer. Only the shell shall ask for the prompt; no page shall be granted the commands.
+When the phone is about to send an answer to an approval, the shell shall first ask the person for a strong (Class 3) biometric in a new prompt for that one answer, with words the shell picks from the decision (approve or deny) and no text from a page or a host, and shall send the answer only when the prompt reports a pass. If the phone runs an Android older than 11, has no strong biometric, has none enrolled, is locked out, or the platform's answer is anything other than a pass, then the shell shall send nothing. A pass shall never cover a later answer. Only the shell shall ask for the prompt; no page shall be granted the commands.
 
 ## Examples
 
