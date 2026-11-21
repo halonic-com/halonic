@@ -1,7 +1,7 @@
 # Decision: a task step without an agent is an error, and the template check reads a signal's data
 
 - Approval: HAL-14303
-- Kind: internal
+- Kind: user-visible
 
 ## What changes
 
