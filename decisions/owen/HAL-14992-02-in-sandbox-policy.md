@@ -2,6 +2,7 @@
 
 - Approval: HAL-14992, Owen's plan approved with changes by Liam; security sign-off by Julian
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:Pf5kPFgwm7NDqdmeIcS6+8WH6hFSUwlwOZANikk6vDqWRDhHbMSh6JbYzPhHpMHo7cukLbpdmckbrAdVkpi7CA==
 
 This changes what a run may do. Today every Edit, Write and Bash call of a
 Claude Code agent goes to a person: in Studio a card, in a headless
