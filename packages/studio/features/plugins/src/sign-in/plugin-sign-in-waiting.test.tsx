@@ -109,6 +109,19 @@ verifies("plugins.plugin-sign-in-waiting", () => {
     expect(document.activeElement).toBe(button("Sign in"));
   });
 
+  it("shows the sign-in the browser finished just before Cancel, without waiting for focus", async () => {
+    const signIns = new FakeSignIns();
+    const view = await show(signIns);
+    await press("Sign in");
+    signIns.statuses = [{ signIn: "account", state: "signedIn" }];
+
+    await press("Cancel");
+
+    expect(view.textContent).not.toContain(waitingLine);
+    expect(view.textContent).toContain("Signed in");
+    expect(button("Sign out")).toBeDefined();
+  });
+
   it("keeps waiting and says why when Cancel fails", async () => {
     const signIns = new FakeSignIns();
     signIns.cancelError = new Error("The agent host isn't running.");

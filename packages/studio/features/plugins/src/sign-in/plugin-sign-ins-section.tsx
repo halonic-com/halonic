@@ -297,6 +297,9 @@ function SignInBlock({
       await signIns.cancel(plugin, name);
       refocus.current = hasFocus(waitingRow.current);
       setWaiting(undefined);
+      // The browser may have finished just before Cancel, so read where the sign-in stands now
+      // rather than when the window next gets focus.
+      await onChanged();
     } catch (error) {
       setLine(cancelFailed(messageOf(error)));
     } finally {
