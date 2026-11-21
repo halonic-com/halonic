@@ -2,6 +2,7 @@
 
 - Approval: HAL-15362, row 11 of the words check C566 on HAL-15352; wording on an approved screen, decided by the team under HAL-2282
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:m56fPAP5G7N2w0/z49m05FOa87TceqxmmeDRJtuTmyXsRBRyVJSppCgx3QFGgn8G39CqqHLCUCR3i5rnHLDVCg==
 - Task: HAL-15362
 
 ## What changes
