@@ -8,6 +8,7 @@ import { ChangesList } from "../changes-list.ts";
 import { fakeSource, settle } from "../source.test-helper.ts";
 import { buttonsNamed } from "../test-support/buttons.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
+import { PhoneStack, topBarBack, topBarTitle } from "../test-support/phone-stack.tsx";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ChangesView } from "./changes-page.tsx";
 
@@ -28,9 +29,10 @@ const manyVersions = (count: number): Version[] =>
   }));
 
 async function openPhonePage(fake: ReturnType<typeof fakeSource>) {
+  const list = new ChangesList(fake.source);
   const root = render(
     <PresentationProvider presentation="phone">
-      <ChangesView list={new ChangesList(fake.source)} />
+      <PhoneStack>{(pages) => <ChangesView list={list} phonePages={pages} />}</PhoneStack>
     </PresentationProvider>,
   );
   await act(settle);
@@ -67,7 +69,9 @@ verifies("source-control.changes-phone", () => {
       const heading = root.querySelector("h1");
       expect(heading?.textContent).toBe("Changes");
       expect(heading?.className).toContain("sr-only");
-      expect(root.firstElementChild?.className).toContain("p-4");
+      expect(root.querySelector('[data-part="page"]')?.firstElementChild?.className).toContain(
+        "p-4",
+      );
     });
 
     it("draws Create version as a full-width button that opens the form sheet", async () => {
@@ -176,15 +180,19 @@ verifies("source-control.changes-phone", () => {
         historyRow(root, "Version 2").click();
         await settle();
       });
+      expect(topBarTitle(root)).toBe("Version 2");
       const heading = root.querySelector("h1");
       expect(heading?.textContent).toBe("Version 2");
+      expect(heading?.className).toContain("sr-only");
       expect(document.activeElement).toBe(heading);
+      expect(buttonsNamed(root, "Back to History")).toHaveLength(0);
       expect(root.textContent).toContain("Sam Lee · ");
       expect(root.textContent).toContain("Sorter replies in Dutch");
       expect(root.textContent).toContain("What's in it · 1 item");
       expect(root.textContent).toContain("sorter.yaml");
       expect(root.textContent).not.toContain("Create version");
-      act(() => buttonsNamed(root, "Back to History")[0]?.click());
+      act(() => topBarBack(root)?.click());
+      expect(topBarTitle(root)).toBe("Changes");
       expect(root.querySelector("h1")?.textContent).toBe("Changes");
       expect(document.activeElement?.closest("[data-row-id]")?.getAttribute("data-row-id")).toBe(
         "v2",
@@ -197,14 +205,17 @@ verifies("source-control.changes-phone", () => {
       fake.setHistory(versions);
       const root = await openPhonePage(fake);
       act(() => historyRow(root, "Version 2").click());
+      expect(topBarTitle(root)).toBe("Version 2");
       expect(root.querySelector("h1")?.textContent).toBe("Version 2");
       fake.setHistory(versions.filter((version) => version.id !== "v2"));
       fake.wake();
       await act(settle);
+      expect(topBarTitle(root)).toBe("Changes");
       expect(root.querySelector("h1")?.textContent).toBe("Changes");
       fake.setHistory(versions);
       fake.wake();
       await act(settle);
+      expect(topBarTitle(root)).toBe("Changes");
       expect(root.querySelector("h1")?.textContent).toBe("Changes");
     });
 
@@ -214,7 +225,7 @@ verifies("source-control.changes-phone", () => {
       const root = await openPhonePage(fake);
       act(() => buttonsNamed(root, "See all history")[0]?.click());
       act(() => historyRow(root, "Version 18").click());
-      act(() => buttonsNamed(root, "Back to History")[0]?.click());
+      act(() => topBarBack(root)?.click());
       expect(root.textContent).not.toContain("See all history");
       expect(document.activeElement?.closest("[data-row-id]")?.getAttribute("data-row-id")).toBe(
         "v18",

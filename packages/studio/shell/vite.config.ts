@@ -27,6 +27,7 @@ export default defineConfig({
         "overview-phone-row": `${import.meta.dirname}/e2e/pages/overview-phone-row.html`,
         "workspace-switcher": `${import.meta.dirname}/e2e/pages/workspace-switcher.html`,
         "toast-placement": `${import.meta.dirname}/e2e/pages/toast-placement.html`,
+        "kept-scroll": `${import.meta.dirname}/e2e/pages/kept-scroll.html`,
       },
     },
   },

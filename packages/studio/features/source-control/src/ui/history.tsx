@@ -7,7 +7,6 @@ import { groupByDay, timeOfDay } from "../history-days.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { GoBackButton, GoBackPartialCallout } from "./go-back.tsx";
 import { useGoBack } from "./use-go-back.ts";
-import type { OpenVersion } from "./use-open-version.ts";
 import { VersionFacts } from "./version-page.tsx";
 
 /** How many versions a phone shows before "See all history". */
@@ -26,8 +25,10 @@ export interface HistoryProps {
   readonly now?: Date;
   /** On a phone Show more and Try again are 48px touch buttons, and git's words say "your computer". */
   readonly phone?: boolean;
-  /** On a phone a version opens as its own page; without it the details show beside the list. */
-  readonly versionPage?: OpenVersion | undefined;
+  /** On a phone a version opens as its own page through this; without it the details show beside the list. */
+  readonly onOpenVersion?: ((id: string) => void) | undefined;
+  /** The version whose page was just left, on a phone: its row takes focus, unfolded if need be. */
+  readonly returnTo?: string | undefined;
 }
 
 /**
@@ -37,9 +38,9 @@ export interface HistoryProps {
  * in it. Focus moves to the details' title, so a screen reader reads them, and Escape there puts
  * focus back on the version's row. No branch graph.
  *
- * On a phone (2.14) a version opens as its own page through `versionPage`, and coming back puts
- * focus on its row, unfolding See all history if the row is past the newest 5. There (2.12) each
- * row ends in a chevron, and a version the shared copy lacks carries "Not shared yet".
+ * On a phone (2.14) a version opens as its own page through `onOpenVersion`, and coming back puts
+ * focus on its row (`returnTo`), unfolding See all history if the row is past the newest 5. There
+ * (2.12) each row ends in a chevron, and a version the shared copy lacks carries "Not shared yet".
  *
  * Each item of a version has Restore just this in its ⋮, and a version has Go back to this version.
  */
@@ -49,12 +50,13 @@ export function History({
   unshared = NONE_UNSHARED,
   now = new Date(),
   phone = false,
-  versionPage,
+  onOpenVersion,
+  returnTo,
 }: HistoryProps) {
   const headingId = useId();
   const [pickedId, setPickedId] = useState<string>();
   const picked =
-    versionPage === undefined
+    onOpenVersion === undefined
       ? history.versions.find((version) => version.id === pickedId)
       : undefined;
   const listRegion = useRef<HTMLDivElement>(null);
@@ -82,9 +84,8 @@ export function History({
             now={now}
             phone={phone}
             pickedId={picked?.id}
-            onPick={versionPage?.show ?? pick}
-            returnTo={versionPage?.returnTo}
-            onReturned={versionPage?.focusPlaced}
+            onPick={onOpenVersion ?? pick}
+            returnTo={returnTo}
           />
         </div>
         {picked === undefined ? null : (
@@ -109,7 +110,6 @@ function HistoryBody({
   pickedId,
   onPick,
   returnTo,
-  onReturned,
 }: {
   readonly list: ChangesList;
   readonly history: HistoryState;
@@ -120,13 +120,12 @@ function HistoryBody({
   readonly onPick: (id: string) => void;
   /** The version whose page was just left: its row takes focus, unfolded if need be. */
   readonly returnTo?: string | undefined;
-  readonly onReturned?: (() => void) | undefined;
 }) {
   const [busy, setBusy] = useState(false);
   const [seeAll, setSeeAll] = useState(
     () => history.versions.findIndex((version) => version.id === returnTo) >= PHONE_HISTORY_ROWS,
   );
-  const focusRow = useFocusRow(returnTo, onReturned);
+  const focusRow = useFocusRow(returnTo);
   const failed = history.error !== undefined && (
     <div role="alert" className="flex flex-col items-start gap-2">
       <p className="text-body text-danger">
@@ -207,13 +206,11 @@ function HistoryBody({
  * Puts focus on a version's row once it is drawn. Pressing See all history removes the button
  * that had focus, so focus moves to the first version the unfolded list shows instead of dropping
  * to the page. Coming back from a version's page, focus starts on that version's row
- * (`initialId`), and `onPlaced` says it is done.
+ * (`initialId`).
  */
-function useFocusRow(initialId: string | undefined, onPlaced: (() => void) | undefined) {
+function useFocusRow(initialId: string | undefined) {
   const region = useRef<HTMLDivElement>(null);
   const [pendingId, setPendingId] = useState(initialId);
-  const placed = useRef(onPlaced);
-  placed.current = onPlaced;
   useEffect(() => {
     if (pendingId === undefined) return;
     const cell = region.current?.querySelector<HTMLElement>(
@@ -221,7 +218,6 @@ function useFocusRow(initialId: string | undefined, onPlaced: (() => void) | und
     );
     cell?.focus();
     setPendingId(undefined);
-    placed.current?.();
   }, [pendingId]);
   return { region, request: setPendingId };
 }

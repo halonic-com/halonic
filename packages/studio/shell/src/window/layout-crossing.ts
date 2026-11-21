@@ -15,9 +15,9 @@ export type DesktopPage =
 
 /**
  * The desktop's page for the page the phone shows. Most pages are the same on both, and open in
- * a tab. Settings' list and its sections are the Settings dialog on the desktop. A list a place
- * pushed (`place/sub`) has no desktop page, so its place opens instead. The More page has none
- * either: the desktop's sidebar does its work, so the desktop keeps the tab it had.
+ * a tab. Settings' list and its sections are the Settings dialog on the desktop. A list or a page
+ * a place pushed (`place/sub`) has no desktop page, so its place opens instead. The More page has
+ * none either: the desktop's sidebar does its work, so the desktop keeps the tab it had.
  */
 export function desktopPageOf(location: TabLocation): DesktopPage {
   if (location.key === "more") {

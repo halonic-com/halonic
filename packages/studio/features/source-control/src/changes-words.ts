@@ -318,8 +318,6 @@ export const historyWords = {
   showMore: "Show more",
   /** On a phone the newest few show first; this row shows the rest (552 5.1). */
   seeAll: "See all history",
-  /** A version's page on a phone goes back to History (552 5.6). */
-  back: "Back to History",
   /** On a phone, the chip on a version the shared copy lacks (611 3). */
   notShared: "Not shared yet",
   today: "Today",

@@ -855,8 +855,10 @@ The phone's own section pages (HAL-7919) and chips under a summary come later.
 
 `usePhonePlaces()` keeps the place stacks and gives what the bars need (`shell.phone-back`): the
 top bar's title and Back (only under a place's top), the bottom navigation's props (or `undefined`
-on an opened item, where it hides), and `open`, `openPlace`, `openIn`, `show` and `back`. Every move that
-changes the page takes focus to the new page's `h1`, as on the desktop.
+on an opened item, where it hides), and `open`, `openPlace`, `openIn`, `show`, `back` and `backFrom`
+(Back only while the page with that key shows). Every move that changes the page takes focus to the
+new page's `h1`, as on the desktop. Each page in a stack keeps a `PhonePageMemory` while pages above
+it are open: `KeptScroll` keeps its scroll there, and its view the row it pushed a page from.
 
 `usePhoneBackButton(enabled, closeStack, places)` handles Android's back, and the browser's when
 the Studio is served on a phone. The press arrives as a step back in the page's history, so the

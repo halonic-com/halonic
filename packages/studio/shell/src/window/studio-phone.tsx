@@ -2,6 +2,7 @@ import type { ReactNode, RefCallback, RefObject } from "react";
 import { PageErrorBoundary } from "../page/page-error-boundary.tsx";
 import type { ShellPhoneSearchProps } from "../palette/shell-phone-search.tsx";
 import { MorePage, type MorePageSwitcher } from "../phone/more-page.tsx";
+import { KeptScroll } from "../phone/page-memory.tsx";
 import { PhoneSearchButton } from "../phone/phone-search-button.tsx";
 import { PhoneTopBar } from "../phone/phone-top-bar.tsx";
 import { settingsLocation } from "../phone/place-stacks.ts";
@@ -85,7 +86,8 @@ export interface StudioPhonePageProps extends Omit<StudioPageProps, "location"> 
  * The page the phone shows (`shell.studio-phone`): the More page at the top of More, Settings' list
  * and its sections' pages (`shell.settings-list-page`), else the
  * same page a desktop tab would show for that place, Home or a place's view. Each page is drawn
- * fresh, as the place stacks keep where the user is, not the page's own state.
+ * fresh, as the place stacks keep where the user is, not the page's own state: what a page needs
+ * back after Back, its scroll and the row it pushed a page from, is in its `PhonePageMemory`.
  *
  * As a desktop tab's page, it sits in a `PageErrorBoundary`: a page that throws or fails to load
  * shows "This page stopped working", and the top bar and the bottom navigation keep working.
@@ -170,5 +172,9 @@ function PhonePageBody({
       </div>
     );
   }
-  return <StudioPage location={location} {...page} />;
+  return (
+    <KeptScroll memory={places.memory}>
+      <StudioPage location={location} memory={places.memory} {...page} />
+    </KeptScroll>
+  );
 }

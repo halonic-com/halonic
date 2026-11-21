@@ -44,6 +44,19 @@ export interface WorkspaceContext {
    */
   readonly openPlaceList?: (place: SidebarPlace, sub: string, title: string) => void;
   /**
+   * Pushes a page under a place's page, as the phone's Changes does with an item's What changed:
+   * like `openPlaceList`, but the page is no list, so the bottom navigation hides and the page owns
+   * the bottom edge. Back leads to the page it was pushed from, which gets its `memory` back
+   * (`PlaceViewProps`). It does nothing on the desktop; a context built without a window has none.
+   */
+  readonly openPlacePage?: (place: SidebarPlace, sub: string, title: string) => void;
+  /**
+   * Goes back from a page `openPlacePage` pushed, as Back does, for a page that closes itself, such
+   * as What changed after **Undo these changes**. Only while that page shows: once the user has
+   * left it, nothing moves. Given with `openPlacePage`.
+   */
+  readonly closePlacePage?: (place: SidebarPlace, sub: string) => void;
+  /**
    * The window's header badges, so a feature can show a state of its own, such as a connector that
    * needs a sign-in. It is the window's one registry, not the workspace's, and the window gives it
    * to the views it draws; a context built without a window has none.

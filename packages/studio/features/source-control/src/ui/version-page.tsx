@@ -1,8 +1,6 @@
-import { Button } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef } from "react";
 import type { Version } from "../api.ts";
 import type { ChangesList } from "../changes-list.ts";
-import { historyWords } from "../changes-words.ts";
 import { fullDate } from "../history-days.ts";
 import { GoBackBar, GoBackPartialCallout } from "./go-back.tsx";
 import { useGoBack } from "./use-go-back.ts";
@@ -12,16 +10,15 @@ import { VersionItems } from "./version-items.tsx";
 export interface VersionPageProps {
   readonly version: Version;
   readonly list: ChangesList;
-  readonly onBack: () => void;
 }
 
 /**
- * A version on a phone, as its own page (checklist part 2, 2.14): Back to History, the version's
- * name as the `h1`, who and when, the notes and what's in it, each item with Restore just this,
- * and the bottom bar's Go back to this version. Focus starts on the heading, so a screen reader
- * says where it is.
+ * A version on a phone, as its own page on the phone's stack (checklist part 2, 2.14): who made it
+ * and when, the notes and what's in it, each item with Restore just this, and the bottom bar's Go
+ * back to this version. The top bar names the version and has Back, so the page's `h1` is for
+ * screen readers only. Focus starts on it, so a screen reader says where it is.
  */
-export function VersionPage({ version, list, onBack }: VersionPageProps) {
+export function VersionPage({ version, list }: VersionPageProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
   const headingId = useId();
@@ -29,13 +26,8 @@ export function VersionPage({ version, list, onBack }: VersionPageProps) {
   return (
     <section aria-labelledby={headingId} className="flex min-h-full flex-col">
       <div className="flex flex-1 flex-col gap-4 p-4">
-        <span className="self-start">
-          <Button variant="ghost" size="touch" onClick={onBack}>
-            {historyWords.back}
-          </Button>
-        </span>
         <GoBackPartialCallout going={going} />
-        <h1 id={headingId} ref={heading} tabIndex={-1} className="text-title">
+        <h1 id={headingId} ref={heading} tabIndex={-1} className="sr-only">
           {version.name}
         </h1>
         <VersionFacts version={version} list={list} level="page" />

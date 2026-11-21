@@ -17,7 +17,11 @@ export interface WhatChangedPageProps {
   readonly developer: boolean;
   /** Opens the item itself; without it the page has no Open button. */
   readonly openItem?: ((item: ItemRef) => void) | undefined;
-  readonly onBack: () => void;
+  /**
+   * Back to Changes, above the page. Without it, as on a phone page whose top bar names the item
+   * and has Back, the page has none and its `h1` is for screen readers only.
+   */
+  readonly onBack?: (() => void) | undefined;
   /** On a phone (2.13) the page is pushed, with Open as a row and Undo in the bottom bar. */
   readonly phone?: boolean;
 }
@@ -28,7 +32,8 @@ export interface WhatChangedPageProps {
  * of its files. Focus starts on the heading, so a screen reader says where it is.
  *
  * On a phone (2.13) the changes are in words only, **Open Sorter** is a 48px row under them and
- * **Undo these changes** is the bottom bar; a failed roll-back's Callout comes first.
+ * **Undo these changes** is the bottom bar; a failed roll-back's Callout comes first. It is a page
+ * of its own on the phone's stack, so the top bar names the item and has the one Back.
  */
 export function WhatChangedPage({
   list,
@@ -49,7 +54,12 @@ export function WhatChangedPage({
       ? () => openItem({ kind: item.kind ?? "", hub: item.hub, id: item.itemId })
       : undefined;
   const title = (
-    <h1 id={headingId} ref={heading} tabIndex={-1} className="text-title flex-1">
+    <h1
+      id={headingId}
+      ref={heading}
+      tabIndex={-1}
+      className={onBack === undefined ? "sr-only" : "text-title flex-1"}
+    >
       {item.name}
     </h1>
   );
@@ -57,7 +67,7 @@ export function WhatChangedPage({
     return (
       <section aria-labelledby={headingId} className="flex min-h-full flex-col">
         <div className="flex flex-1 flex-col gap-4 p-4">
-          <BackButton onBack={onBack} phone />
+          {onBack === undefined ? null : <BackButton onBack={onBack} phone />}
           <UndoPartialCallout undoing={undoing} />
           {title}
           <ItemChanges list={list} item={item} developer={false} phone />
@@ -71,7 +81,7 @@ export function WhatChangedPage({
   }
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
-      <BackButton onBack={onBack} phone={false} />
+      {onBack === undefined ? null : <BackButton onBack={onBack} phone={false} />}
       <header className="flex items-center gap-3">
         {title}
         {open === undefined ? null : (

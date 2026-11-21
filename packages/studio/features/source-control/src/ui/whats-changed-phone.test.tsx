@@ -9,6 +9,7 @@ import { ChangesList } from "../changes-list.ts";
 import { fakeSource, settle } from "../source.test-helper.ts";
 import { buttonsNamed } from "../test-support/buttons.ts";
 import { openItem } from "../test-support/open-item.ts";
+import { PhoneStack, topBarBack, topBarTitle } from "../test-support/phone-stack.tsx";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ChangesView } from "./changes-page.tsx";
 
@@ -35,10 +36,13 @@ async function openPhonePage(openItemOf?: (item: ItemRef) => void) {
     fake.setTexts(path, { before: "Be brief.\n", after: "Be kind.\n" });
   fake.setTexts(otherPath, { before: "one\n", after: "two\n" });
   const toasts = createToastStore();
+  const list = new ChangesList(fake.source);
   const root = render(
     <PresentationProvider presentation="phone">
       <ToastStoreProvider store={toasts}>
-        <ChangesView list={new ChangesList(fake.source)} openItem={openItemOf} />
+        <PhoneStack>
+          {(pages) => <ChangesView list={list} openItem={openItemOf} phonePages={pages} />}
+        </PhoneStack>
       </ToastStoreProvider>
     </PresentationProvider>,
   );
@@ -73,6 +77,21 @@ verifies("source-control.whats-changed-phone", () => {
       expect(undoButtons(bar)).toHaveLength(1);
       expect(undoButtons(page)).toHaveLength(1);
       expect(buttons(page, "Open agent")).toHaveLength(0);
+    });
+
+    it("names the item in the top bar, whose one Back goes to the list and the row", async () => {
+      const { root } = await openPhonePage(vi.fn());
+      const page = openItem(root, "Triage");
+      expect(topBarTitle(root)).toBe("Triage");
+      expect(buttons(page, "Back to Changes")).toHaveLength(0);
+      const heading = page.querySelector("h1");
+      expect(heading?.className).toContain("sr-only");
+      expect(document.activeElement).toBe(heading);
+
+      await act(async () => topBarBack(root)?.click());
+      expect(topBarTitle(root)).toBe("Changes");
+      expect(root.textContent).toContain("Since your last version");
+      expect(document.activeElement?.textContent).toContain("Triage");
     });
 
     it("opens the item from its 48px Open row", async () => {
@@ -121,6 +140,7 @@ verifies("source-control.whats-changed-phone", () => {
         await settle();
       });
       expect(root.textContent).toContain("Since your last version");
+      expect(topBarTitle(root)).toBe("Changes");
       expect(toasts.list()[0]?.title).toBe("Undid changes to tone.");
       expect(document.activeElement?.textContent).toContain("plan.bin");
     });
