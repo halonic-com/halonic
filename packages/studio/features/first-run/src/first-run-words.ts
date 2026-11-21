@@ -41,9 +41,16 @@ export const setupWords = {
   dismiss: "Dismiss",
 } as const;
 
-/** The first run's group in the Help menu (first-run-flow 5 and 10.2 R8, decided by the team). */
+/**
+ * The first run's group in the Help menu (first-run-flow 5 and 10.2 R8, decided by the team), with
+ * the line under each item from Noah's drawn Help sheet (the board, C520-9 on HAL-14977). Start
+ * over's "Your old copy stays where it is." stays word for word.
+ */
 export const helpWords = {
   title: "First run",
   showGuide: "Show the guide",
+  showGuideAbout: "Brings back the first-run bar and the guide card where you left off.",
   startOver: "Start over",
+  startOverAbout:
+    "Copies Acme to a new folder and begins again at the first step. Your old copy stays where it is.",
 } as const;

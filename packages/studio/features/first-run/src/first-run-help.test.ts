@@ -47,6 +47,14 @@ verifies("first-run.help", () => {
     expect(labels(firstRunOf(undefined, { sample: false }))).toEqual([]);
   });
 
+  it("says under each item what it does, and that Start over leaves the old copy where it is", () => {
+    const items = firstRunHelpItems(firstRunOf(undefined, { startOver: () => {} }), undefined);
+    expect(items.map((item) => item.description)).toEqual([
+      "Brings back the first-run bar and the guide card where you left off.",
+      "Copies Acme to a new folder and begins again at the first step. Your old copy stays where it is.",
+    ]);
+  });
+
   it("begins the first run again at Demo after the win, and opens Support reply", () => {
     const firstRun = firstRunOf({ kind: "done", folder });
     const opened: ItemRef[] = [];

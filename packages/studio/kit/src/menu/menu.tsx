@@ -14,9 +14,11 @@ export interface MenuItem {
   readonly detail?: string | undefined;
   /**
    * `middle` cuts the detail in the middle so its end stays, as a folder's line is cut elsewhere
-   * (`…\Documents\Acme sample`). By default it ends in "…".
+   * (`…\Documents\Acme sample`). `wrap` cuts nothing: the detail wraps onto more lines, at most
+   * 300px wide, as Help › First run's sentences under Show the guide and Start over. By default
+   * it ends in "…".
    */
-  readonly detailCut?: "end" | "middle" | undefined;
+  readonly detailCut?: "end" | "middle" | "wrap" | undefined;
   /**
    * A fact about the item as an outline tag after its label, read after its name: the "Demo"
    * of the Acme sample in the workspace menu (flow-first-run 8).

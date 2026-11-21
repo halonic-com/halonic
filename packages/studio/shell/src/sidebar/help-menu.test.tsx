@@ -101,6 +101,30 @@ verifies("shell.help-menu", () => {
     ]);
   });
 
+  it("wraps an item's description under its label, and leaves an item without one a single line", () => {
+    const entries = entriesFor([
+      {
+        featureId: "first-run",
+        id: "first-run.help",
+        order: 20,
+        title: "First run",
+        items: () => [
+          { id: "guide", label: "Show the guide", run: () => {} },
+          {
+            id: "start-over",
+            label: "Start over",
+            description: "Your old copy stays where it is.",
+            run: () => {},
+          },
+        ],
+      },
+    ]);
+    expect(entries.slice(1).map((entry) => typeof entry === "object" && entry)).toEqual([
+      expect.not.objectContaining({ detail: expect.anything() }),
+      expect.objectContaining({ detail: "Your old copy stays where it is.", detailCut: "wrap" }),
+    ]);
+  });
+
   it("leaves out a group with no items now", () => {
     const entries = entriesFor([
       {

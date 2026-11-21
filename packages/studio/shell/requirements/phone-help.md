@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-13433 (first-run build 5); first-run-progress 6, Sofia's UX check C509 ("put Help on the phone's More page")
 
-Where the Help menu (`shell.help-menu`) has items, the More page on a phone shall list each Help group after its other lists as a list of its own, under the group's title, or "Help" for a group without one, and picking an item shall call its `run`. Where the Help menu has no items, the More page shall show no Help list.
+Where the Help menu (`shell.help-menu`) has items, the More page on a phone shall list each Help group after its other lists as a list of its own, under the group's title, or "Help" for a group without one, with an item's description, when it has one, wrapped under its name and describing it, and picking an item shall call its `run`. Where the Help menu has no items, the More page shall show no Help list.
 
 ## Examples
 
@@ -14,6 +14,9 @@ Where the Help menu (`shell.help-menu`) has items, the More page on a phone shal
 - Given that page,
   when the user picks **Start over**,
   then First Run's **Start over** runs.
+- Given **Start over** has the description "Copies Acme to a new folder and begins again at the first step. Your old copy stays where it is.",
+  when the user opens More on a phone,
+  then the sentence shows in full under **Start over**.
 - Given no Help group has items,
   when the user opens More,
   then there is no Help list.

@@ -118,6 +118,18 @@ verifies("kit.menu-groups", () => {
     expect(detail?.querySelector(".shrink-0")?.textContent).toBe("/Q3 Renewals");
   });
 
+  it("wraps a detail that says what the item does, at most 300px wide, and cuts nothing", () => {
+    const sentence =
+      "Copies Acme to a new folder and begins again at the first step. Your old copy stays where it is.";
+    const { items } = renderMenu([
+      { id: "over", label: "Start over", detail: sentence, detailCut: "wrap", onSelect: vi.fn() },
+    ]);
+    const detail = document.getElementById(items[0]?.getAttribute("aria-describedby") ?? "");
+    expect(detail?.textContent).toBe(sentence);
+    expect(detail?.className).toContain("max-w-75 text-caption text-fg-subtle");
+    expect(detail?.className).not.toContain("truncate");
+  });
+
   it("is never wider than the window less its 8px edge gap on each side", () => {
     const { menu } = renderMenu();
     expect(menu.className).toContain("max-w-[calc(100vw-1rem)]");

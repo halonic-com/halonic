@@ -39,6 +39,26 @@ verifies("shell.phone-help", () => {
     expect(picked).toEqual(["over"]);
   });
 
+  it("shows an item's description in full under its name, and describes the row with it", () => {
+    const sentence =
+      "Copies Acme to a new folder and begins again at the first step. Your old copy stays where it is.";
+    const help: MenuEntry[] = [
+      { heading: "First run" },
+      {
+        id: "first-run.help:start-over",
+        label: "Start over",
+        detail: sentence,
+        detailCut: "wrap",
+        onSelect: () => {},
+      },
+    ];
+    const page = render(<MorePage places={[]} onOpen={() => {}} help={help} />);
+    const cell = page.querySelector("[role=gridcell]") as HTMLElement;
+    expect(cell.textContent).toContain(sentence);
+    const describedBy = cell.getAttribute("aria-describedby");
+    expect(document.getElementById(describedBy ?? "")?.textContent).toBe(sentence);
+  });
+
   it("shows no Help lists without entries", () => {
     const page = render(<MorePage places={[]} onOpen={() => {}} />);
     expect(page.querySelectorAll("h2")).toHaveLength(0);
