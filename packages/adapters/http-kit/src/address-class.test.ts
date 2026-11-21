@@ -16,8 +16,7 @@ verifies("http-kit.address-classes", () => {
       ["64:ff9b::a9fe:a9fe", "reserved"],
       ["fe80::1", "link-local"],
       ["febf:ffff::1", "link-local"],
-      ["100.64.0.1", "reserved"],
-      ["100.127.255.255", "reserved"],
+      ["100.100.100.100", "reserved"],
       ["0.0.0.0", "unspecified"],
       ["::", "unspecified"],
     ])("puts %s in %s", (address, expected) => {
@@ -29,6 +28,8 @@ verifies("http-kit.address-classes", () => {
     "93.184.215.14",
     "8.8.8.8",
     "172.32.0.1",
+    "100.63.255.255",
+    "100.128.0.0",
     "100.128.0.1",
     "2606:2800:21f:cb07:6820:80da:af6b:8b2c",
     "64:ff9b::5db8:d70e",
@@ -53,6 +54,9 @@ verifies("http-kit.address-classes", () => {
     ["172.31.255.255", "private"],
     ["fc00::1", "private"],
     ["fd12:3456::1", "private"],
+    ["100.64.0.0", "private"],
+    ["100.116.12.34", "private"],
+    ["100.127.255.255", "private"],
     ["127.255.0.1", "loopback"],
     ["169.254.0.1", "link-local"],
     ["0.1.2.3", "unspecified"],
@@ -105,15 +109,20 @@ verifies("http-kit.host-class-rule", () => {
     ]);
   });
 
-  it.each(["93.184.215.14", "169.254.10.1", "fe80::1", "127.0.0.1", "169.254.169.254"])(
-    "refuses %s for a home-network host (A9)",
-    (address) => {
-      expect(addressAllowedFor("private", address)).toBe(false);
-    },
-  );
+  it.each([
+    "93.184.215.14",
+    "169.254.10.1",
+    "fe80::1",
+    "127.0.0.1",
+    "169.254.169.254",
+    "100.100.100.100",
+    "100.100.100.200",
+  ])("refuses %s for a home-network host (A9)", (address) => {
+    expect(addressAllowedFor("private", address)).toBe(false);
+  });
 
-  it.each(["192.168.1.20", "10.1.2.3", "fd00::20"])(
-    "allows %s for a home-network host",
+  it.each(["192.168.1.20", "10.1.2.3", "fd00::20", "100.116.12.34"])(
+    "allows %s for a home-network host, Tailscale's 100.64/10 included",
     (address) => {
       expect(addressAllowedFor("private", address)).toBe(true);
     },

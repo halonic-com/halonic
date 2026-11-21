@@ -303,8 +303,15 @@ verifies("format.integration-host-class", () => {
     ],
     [
       "private",
-      ["http://192.168.1.5:8123", "https://[fd12::1]"],
-      ["http://localhost:8123", "https://nas.example.com", "https://[fe80::1]"],
+      ["http://192.168.1.5:8123", "https://[fd12::1]", "https://100.116.12.34"],
+      [
+        "http://localhost:8123",
+        "https://nas.example.com",
+        "https://[fe80::1]",
+        "https://100.100.100.100",
+        "https://100.100.100.200",
+        "https://100.128.0.1",
+      ],
     ],
     [
       "public",
@@ -337,22 +344,25 @@ verifies("format.integration-host-class", () => {
     ]);
   });
 
-  it.each(["https://169.254.169.254", "https://[::]"])("refuses %s under every class", (url) => {
-    for (const addressClass of ADDRESS_CLASSES) {
-      expect(problems(fromSetting(addressClass, true), { url })).toEqual([
-        "hosts.0 setting-outside-class",
-        "secrets.mcp-key.hosts.0 setting-outside-class",
-      ]);
-    }
-  });
+  it.each(["https://169.254.169.254", "https://[::]", "https://100.100.100.100"])(
+    "refuses %s under every class",
+    (url) => {
+      for (const addressClass of ADDRESS_CLASSES) {
+        expect(problems(fromSetting(addressClass, true), { url })).toEqual([
+          "hosts.0 setting-outside-class",
+          "secrets.mcp-key.hosts.0 setting-outside-class",
+        ]);
+      }
+    },
+  );
 
   it("says what the class allows and the host it got", () => {
     const resolved = integrationPolicy(fromSetting("private", true), {
       url: "http://localhost:8123",
     });
     expect(resolved.ok ? [] : resolved.error.map((problem) => problem.message)).toEqual([
-      'mcp: the setting "url" must hold a URL with a private network address (10/8, 172.16/12, 192.168/16 or fc00::/7), not localhost:8123',
-      'mcp: the setting "url" must hold a URL with a private network address (10/8, 172.16/12, 192.168/16 or fc00::/7), not localhost:8123',
+      'mcp: the setting "url" must hold a URL with a private network address (10/8, 172.16/12, 192.168/16, 100.64/10 or fc00::/7), not localhost:8123',
+      'mcp: the setting "url" must hold a URL with a private network address (10/8, 172.16/12, 192.168/16, 100.64/10 or fc00::/7), not localhost:8123',
     ]);
   });
 });

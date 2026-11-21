@@ -23,6 +23,7 @@ verifies("integration-kit.local-http-hosts", () => {
     "http://192.168.1.5/",
     "http://[fd00::1]/",
     "http://[fc12:3456::1]/",
+    "http://100.116.12.34/",
   ])("counts %s as the local network, not this machine", (url) => {
     expect(isLoopback(hostname(url))).toBe(false);
     expect(isLocalAddress(hostname(url))).toBe(true);
@@ -36,7 +37,9 @@ verifies("integration-kit.local-http-hosts", () => {
     "http://[fe80::1]/",
     "http://[::ffff:127.0.0.1]/",
     "http://[fd00:ec2::254]/",
-    "http://100.64.0.1/",
+    "http://100.100.100.100/",
+    "http://100.100.100.200/",
+    "http://100.128.0.1/",
     "http://localhost.evil.example/",
     "http://my-nas.local/",
   ])("doesn't count %s", (url) => {
