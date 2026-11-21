@@ -615,17 +615,17 @@ jobs:
           # Give each test and hook 30 s on a loaded runner, as the other jobs
           # do (HAL-4241); this job had left it at Vitest's 5 s (HAL-12081).
           HALONIC_TEST_TIMEOUT: "30000"
-          # On our own CI server a slot has 12 CPUs in the same 16 GB as a
-          # GitHub runner's 4, and Vitest starts one worker per CPU: 10
-          # packages at once with about 11 workers each ran out of memory
-          # (HAL-15167: tsc and a test worker killed in studio-features).
-          # There at most 6 tasks with 3 test workers each, at most 18
-          # workers, fewer than GitHub's 10 packages with 3. The repo
-          # variables CI_SELF_HOSTED_TURBO_CONCURRENCY and
-          # CI_SELF_HOSTED_TEST_WORKERS change them without a pull request.
-          # GitHub's runners keep 10 and Vitest's defaults.
-          TURBO_CONCURRENCY: ${{ runner.environment == 'self-hosted' && (vars.CI_SELF_HOSTED_TURBO_CONCURRENCY || '6') || env.TURBO_CONCURRENCY }}
-          HALONIC_TEST_WORKERS: ${{ runner.environment == 'self-hosted' && (vars.CI_SELF_HOSTED_TEST_WORKERS || '3') || '' }}
+          # On our own CI server a large slot has 6 CPUs in 10 GB, against a
+          # GitHub runner's 4 CPUs in 16 GB, and Vitest starts one worker per
+          # CPU. At 12 CPUs, 10 packages at once with about 11 workers each
+          # ran out of memory (HAL-15167: tsc and a test worker killed in
+          # studio-features). There at most 4 tasks with 2 test workers
+          # each, at most 8 workers (HAL-15357). The repo variables
+          # CI_SELF_HOSTED_TURBO_CONCURRENCY and CI_SELF_HOSTED_TEST_WORKERS
+          # change them without a pull request. GitHub's runners keep 10 and
+          # Vitest's defaults.
+          TURBO_CONCURRENCY: ${{ runner.environment == 'self-hosted' && (vars.CI_SELF_HOSTED_TURBO_CONCURRENCY || '4') || env.TURBO_CONCURRENCY }}
+          HALONIC_TEST_WORKERS: ${{ runner.environment == 'self-hosted' && (vars.CI_SELF_HOSTED_TEST_WORKERS || '2') || '' }}
         run: |
           if [ -z "$TURBO_TOKEN" ] || [ -z "$TURBO_REMOTE_CACHE_SIGNATURE_KEY" ]; then
             if [ -n "$TURBO_TOKEN" ]; then
