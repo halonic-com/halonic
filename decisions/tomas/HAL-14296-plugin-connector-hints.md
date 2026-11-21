@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-14296 (from Nina's C340 check on HAL-14271, rows 20–23, code row C41; a team decision by Liam on the approved C336/C337 wording); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BzRICuR7ndxmzYoN+QVxE3nVIgcuLcogxipOd+7Hmsyi4/vJ0L/fsiwLmQS6zd6n1knzU6Qqi3YpNS9pvYqUDw==
 
 `halonic tools review` and `approve` on a plugin's connector said "Its tools need no approval:
 trusting the plugin covers them." and exited 0, also when the plugin was off, so the agent silently
