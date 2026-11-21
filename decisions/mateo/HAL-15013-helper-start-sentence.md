@@ -2,6 +2,7 @@
 
 - Approval: HAL-15013 (Sofia's wording decision C525-7 of 21 Nov, from her design check of #4303 on HAL-14999)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LnR4G91s8wZch8uTGFXW3QGBy65u4W2U8BEoYdbc21klr2x6L1eEia8Ax6AhUVB/c1VVLL3vK61wE/NobiDeCQ==
 - Task: HAL-15013; Liam signs this note in review
 
 When the shell couldn't start the sandbox helper, or couldn't wait for it once it had started, Settings › Agent sandbox read "The sandbox isn't set up: Windows couldn't start the sandbox helper: Access is denied. (os error 5)." and the Inbox toast said the same. The part after the second colon is Rust's `io::Error` text. That breaks the approved rule (microcopy 1.6 and 22 F13): one reason after the colon, an error code never stands alone, and a raw message goes only into **Copy details**. HAL-14863 decided the refused, time-out and still-running lines, not this one; Sofia decided it as the designer, a line on an approved screen (HAL-2282).
