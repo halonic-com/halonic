@@ -7,8 +7,11 @@ export const deleteWords = {
   delete: "Delete",
   undo: "Undo",
   tryAgain: "Try again",
-  /** The strip that stands in the page after Delete; a sentence when a second line follows. */
-  deleted: (withLine: boolean) => `This workflow was deleted${withLine ? "." : ""}`,
+  /**
+   * The strip that stands in the page after Delete; a sentence when a second line follows. It names
+   * the workflow, because the page with its name is gone (C544, HAL-15120).
+   */
+  deleted: (name: string, withLine: boolean) => `${name} was deleted${withLine ? "." : ""}`,
   /**
    * The second line, when routines or other workflows' steps run the workflow: one sentence that
    * says what breaks and how to fix it, naming only the parts that apply (microcopy 8.1, HAL-3276).

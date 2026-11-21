@@ -275,9 +275,8 @@ export interface WorkflowTests {
 /** A workflow that was moved to the trash, and the way to bring it back. */
 export interface TrashedWorkflow {
   /**
-   * Puts the workflow and its tests back. It is the workspace's undo, so it works only while the
-   * delete is still the newest change; after any other change it rejects with `conflict` and
-   * undoes nothing.
+   * Puts the workflow and its tests back, after later changes too. It rejects with `conflict`, and
+   * undoes nothing, when a file has taken their place since.
    */
   undo(): Promise<void>;
 }

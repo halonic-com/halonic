@@ -1,10 +1,10 @@
-import { KindedError } from "@halonicjs/std";
 import type {
   TrashedWorkflow,
   WorkflowRef,
   WorkflowUsers,
 } from "@halonicjs/studio-feature-workflows/api";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import { deleteWithUndo } from "../files/undoable-delete.ts";
 import type { WorkspaceWorkflowsParts } from "./workspace-workflows-parts.ts";
 
 /** The workflow's display name and the files its delete moves to the trash. */
@@ -58,24 +58,13 @@ function runsAWorkflow(type: string | undefined): boolean {
 }
 
 /**
- * Moves the workflow's files to the trash as one change. Undo is the workspace's undo, so it puts
- * them back only while the delete is still the newest step: after any other change it rejects and
- * undoes nothing.
+ * Moves the workflow's files to the trash as one change, with the way back of
+ * {@link deleteWithUndo}: it puts them back after later changes too, unless a file has taken
+ * their place.
  */
-export function trashWorkflowFiles(
+export async function trashWorkflowFiles(
   files: WorkspaceWorkflowsParts["files"],
   { name, paths }: WorkflowFiles,
-): TrashedWorkflow {
-  files.change(`Deleted workflow ${name}`, Object.fromEntries(paths.map((path) => [path, null])));
-  const afterDelete = files.step;
-  return {
-    undo: async () => {
-      if (files.step !== afterDelete || !files.undo()) {
-        throw new KindedError(
-          "conflict",
-          `${name} can't be put back, because the workspace changed after it was deleted.`,
-        );
-      }
-    },
-  };
+): Promise<TrashedWorkflow> {
+  return deleteWithUndo(files, { paths, what: `workflow ${name}`, name });
 }

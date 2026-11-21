@@ -151,7 +151,7 @@ export function useWorkflowTrash(
     removed === undefined ? null : (
       <div className="pt-4">
         <TrashStrip
-          text={deleteWords.deleted(removed.line !== undefined)}
+          text={deleteWords.deleted(removed.name, removed.line !== undefined)}
           detail={removed.line}
           undoLabel={deleteWords.undo}
           onUndo={onUndo}

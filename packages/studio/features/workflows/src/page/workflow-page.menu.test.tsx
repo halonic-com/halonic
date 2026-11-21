@@ -155,8 +155,8 @@ verifies("workflows.page.menu", () => {
     await pickDelete(page);
 
     expect(trash).toHaveBeenCalledWith({ hubId: "acme", id: "reply" });
-    expect(page.textContent).toContain("This workflow was deleted");
-    expect(page.textContent).not.toContain("This workflow was deleted.");
+    expect(page.textContent).toContain("Support reply was deleted");
+    expect(page.textContent).not.toContain("Support reply was deleted.");
     expect(page.querySelector("header")).toBeNull();
     expect(document.activeElement).toBe(buttonNamed(page, "Undo"));
     expect(toasts.list()).toEqual([]);
@@ -167,7 +167,7 @@ verifies("workflows.page.menu", () => {
 
     await pickDelete(page);
 
-    expect(page.textContent).toContain("This workflow was deleted.");
+    expect(page.textContent).toContain("Support reply was deleted.");
     expect(page.textContent).toContain(
       "1 routine and 2 workflow steps now show an error until you pick another workflow.",
     );
@@ -205,7 +205,7 @@ verifies("workflows.page.menu", () => {
     await settled();
 
     expect(undo).toHaveBeenCalledOnce();
-    expect(page.textContent).not.toContain("This workflow was deleted");
+    expect(page.textContent).not.toContain("Support reply was deleted");
     expect(document.activeElement).toBe(page.querySelector("h1"));
   });
 
@@ -215,7 +215,7 @@ verifies("workflows.page.menu", () => {
 
     await undoInWorkspace();
 
-    expect(page.textContent).not.toContain("This workflow was deleted");
+    expect(page.textContent).not.toContain("Support reply was deleted");
     expect(page.querySelector("h1")?.textContent).toContain("Support reply");
     expect(document.activeElement).toBe(page.querySelector("h1"));
   });
@@ -237,7 +237,7 @@ verifies("workflows.page.menu", () => {
     await settled();
 
     expect(trash).toHaveBeenCalledOnce();
-    expect(page.textContent).toContain("This workflow was deleted");
+    expect(page.textContent).toContain("Support reply was deleted");
   });
 
   it("puts the ⋮ in a phone's top bar and deletes from there", async () => {
@@ -250,7 +250,7 @@ verifies("workflows.page.menu", () => {
 
     await pickDelete(topBar);
 
-    expect(page.textContent).toContain("This workflow was deleted");
+    expect(page.textContent).toContain("Support reply was deleted");
     expect(menuIn(topBar)).toBeNull();
     expect(document.activeElement).toBe(buttonNamed(page, "Undo"));
     topBar.remove();
@@ -269,7 +269,7 @@ verifies("workflows.page.menu", () => {
 
     expect(toastTitles(toasts)).toEqual(["Couldn't put Support reply back"]);
     expect(toasts.list()[0]?.text).toBe("The workspace changed after it was deleted.");
-    expect(page.textContent).toContain("This workflow was deleted");
+    expect(page.textContent).toContain("Support reply was deleted");
   });
 
   it("says why a delete failed in a toast that stays, with Try again", async () => {
@@ -315,7 +315,7 @@ verifies("workflows.page.menu", () => {
     await pickDelete(page);
 
     expect(trash).toHaveBeenCalledTimes(2);
-    expect(page.textContent).toContain("This workflow was deleted");
+    expect(page.textContent).toContain("Support reply was deleted");
     expect(toasts.list()).toEqual([]);
   });
 });

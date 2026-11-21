@@ -44,21 +44,24 @@ verifies("studio.workspace-workflow-trash", () => {
     expect(store[testPath]).toBe(testText);
   });
 
-  it("refuses its undo after another change, and undoes nothing", async () => {
-    const { host, store } = setup();
+  it("puts both files back with its undo after another change, and keeps that change", async () => {
+    const { host, store, changes } = setup();
+    store[testPath] = testText;
     store["hubs/acme/workflows/triage.workflow.yaml"] = replyFile
       .replace("id: reply", "id: triage")
       .replace("name: Reply", "name: Triage");
 
     const trashed = await host.trash(reply);
     await host.rename({ hubId: "acme", id: "triage" }, "Mail triage");
+    await trashed.undo();
 
-    await expect(trashed.undo()).rejects.toMatchObject({
-      kind: "conflict",
-      message: "Reply can't be put back, because the workspace changed after it was deleted.",
-    });
-    expect(store[replyPath]).toBeUndefined();
+    expect(store[replyPath]).toBe(replyFile);
+    expect(store[testPath]).toBe(testText);
     expect(store["hubs/acme/workflows/triage.workflow.yaml"]).toContain("name: Mail triage");
+    expect(changes.at(-1)).toEqual({
+      label: "Put back workflow Reply",
+      changes: { [replyPath]: replyFile, [testPath]: testText },
+    });
   });
 
   it("refuses a workflow the hub doesn't have and writes nothing", async () => {

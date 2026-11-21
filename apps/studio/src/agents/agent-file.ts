@@ -5,6 +5,7 @@ import type {
   AgentOutput,
   TrashedAgent,
 } from "@halonicjs/studio-feature-agents/api";
+import { deleteWithUndo, type UndoableDeleteFiles } from "../files/undoable-delete.ts";
 import { paramsProblem } from "./agent-params.ts";
 
 /** The `output` as the file writes it: a JSON reply without a schema has no `schema` key. */
@@ -57,29 +58,14 @@ export function newAgentText(id: string, name: string, instructions: string): st
   ].join("\n");
 }
 
-/** What {@link trashAgentFile} needs of the kernel's `WorkspaceFiles`. */
-interface TrashFiles {
-  change(label: string, changes: Record<string, string | null>): void;
-  undo(): boolean;
-  readonly step: number;
-}
-
 /**
- * Moves the agent's file to the trash as one change. Undo is the workspace's undo, so it puts the
- * agent back only while the delete is still the newest step: after any other change it rejects
- * and undoes nothing.
+ * Moves the agent's file to the trash as one change, with the way back of {@link deleteWithUndo}:
+ * it puts the agent back after later changes too, unless a file has taken its place.
  */
-export function trashAgentFile(files: TrashFiles, path: string, name: string): TrashedAgent {
-  files.change(`Deleted agent ${name}`, { [path]: null });
-  const afterDelete = files.step;
-  return {
-    undo: async () => {
-      if (files.step !== afterDelete || !files.undo()) {
-        throw new KindedError(
-          "conflict",
-          `${name} can't be put back, because the workspace changed after it was deleted.`,
-        );
-      }
-    },
-  };
+export async function trashAgentFile(
+  files: UndoableDeleteFiles,
+  path: string,
+  name: string,
+): Promise<TrashedAgent> {
+  return deleteWithUndo(files, { paths: [path], what: `agent ${name}`, name });
 }
