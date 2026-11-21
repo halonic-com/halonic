@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this change (HAL-5404, from the design on HAL-3779, section 4); Liam approves this note in review on HAL-5404
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xL+eeQ7udVpmvu0GzaE46JJ6W2SlsT5Pkv9UwUK1svaAYLs2len9AShPRg4JA8r+Bl1mdmG+KRBnkYDsBzDcBA==
 
 ## What changes
 
