@@ -9,7 +9,7 @@ import { profileFolder, tokenFolders } from "@halonicjs/profile";
 import { encodeBase64url } from "@halonicjs/std";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { pluginCommandWith } from "./commands/plugin/command.ts";
-import { createTrustCommand } from "./commands/trust/command.ts";
+import { createTrustCommand, type TrustMachine } from "./commands/trust/command.ts";
 import { exitCode } from "./exit-code.ts";
 import type { PluginSetup } from "./plugin-host.ts";
 import { runCli } from "./run-cli.ts";
@@ -114,13 +114,17 @@ async function addSignedInWeather(): Promise<void> {
   await grants.save("rain", "rain-account", { refreshToken, approved });
 }
 
-async function trust(args: readonly string[]) {
-  const io = captureIo(folder);
-  const machine = () => ({
+/** The trust records `trust` keeps, in the test's profile. */
+function machine(): TrustMachine {
+  return {
     store: new FileTrustStore(join(folder, "profile", "trust")),
     clock,
     commandSearch: { path: undefined, endings: [] },
-  });
+  };
+}
+
+async function trust(args: readonly string[]) {
+  const io = captureIo(folder);
   return await runCli(["trust", ...args], io, [createTrustCommand(machine, setup)]);
 }
 
@@ -136,6 +140,21 @@ describe("app.plugin-sign-out in the CLI", () => {
     expect(revoked[0]?.url).toBe("https://auth.weather.example/oauth/revoke");
     expect(revoked[0]?.body).toContain(`client_secret=${clientSecret}`);
     expect(await savedNames()).toEqual(["s4_rain_rain_account"]);
+  });
+
+  it("signs out the plugin's sign-ins when its trust is removed in its folder, without --plugin", async () => {
+    await addSignedInWeather();
+    const io = captureIo(join(folder, "profile", "plugins", "weather"));
+
+    const code = await runCli(["trust", "--remove"], io, [createTrustCommand(machine, setup)]);
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout).toEqual([
+      "✓ Removed trust for Weather. Nothing from this plugin runs until you trust it.",
+    ]);
+    expect(revoked).toHaveLength(1);
+    expect(await savedNames()).toEqual(["s4_rain_rain_account"]);
+    expect(await machine().store.list()).toEqual([]);
   });
 
   it("signs out the plugin's sign-ins when it is removed", async () => {
