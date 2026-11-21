@@ -185,11 +185,12 @@ Halonic has one firm rule: **nothing that works may break.**
   `fix(routines): fire interval triggers at the right time`.
 - **Fill in the template:** what and why, the requirement IDs, how you tested
   it, docs, a changeset sentence and AI assistance.
-- **The `built-on` label is a maintainer's job.** The `built-on-label` check
-  needs a `built-on:paperclip` or `built-on:halonic` label that outside
-  contributors can't add. A maintainer adds it during review, so a red
-  `built-on-label` before then is expected. Leave the template's `Built-on:`
-  line empty.
+- **The `built-on` label:** the `built-on-label` check needs a
+  `built-on:paperclip` or `built-on:halonic` label. The Halonic team adds it
+  when opening the pull request, for example with
+  `gh pr create --label built-on:paperclip`. Outside contributors can't add
+  labels, so a maintainer adds it during review, and a red `built-on-label`
+  before then is expected. Leave the template's `Built-on:` line empty.
 - **Write a changeset** if users will notice the change: one sentence a user
   would understand, in the template's Changeset section and as a changeset file
   (`pnpm changeset`, pick `@halonicjs/app-studio`, also for the CLI). A change
@@ -203,8 +204,8 @@ Halonic has one firm rule: **nothing that works may break.**
   [`tooling/check/src/lib/cloud-paths.ts`](tooling/check/src/lib/cloud-paths.ts))
   must pass the live suites before it merges, once they are switched on.
   Until CI has a Cloudflare test token (HAL-198), they don't run and nothing
-  is required. A fork never gets the test account's token, so a maintainer
-  reviews the change and pushes your branch into this repository to run them.
+  is required. A fork never gets the test account's token, so the reviewer
+  reads the change and pushes your branch into this repository to run them.
 - **Rebase on `main`** rather than merging `main` into your branch.
 - **Two pull requests adding features at once?** After rebasing, run
   `pnpm discover --fix`.
@@ -282,12 +283,16 @@ As described above, AI tools are welcome here, with these rules:
 
 1. The automated checks run.
 2. A reviewer reads the change. Changes to tests, requirements, security, build
-   or docs also get a review from the owner of that area.
+   or docs also get a review from that area's reviewer: the security reviewer
+   for tests, requirements, security and dependencies, the CI reviewer for
+   build and CI, and the docs reviewer for docs.
    Every finding starts with a severity tag: `[blocker]`, `[major]`,
    `[minor]` or `[nit]`. The tags and the reviewer's checklist are in
    [docs/guides/review.md](docs/guides/review.md).
-3. The reviewer approves and merges. Pull requests merge one at a time, so
-   `main` always passes its checks.
+3. The reviewer approves and merges. Pull requests merge one at a time
+   through a merge queue that runs the Linux checks. The macOS and Windows
+   checks run on the pull request and on every push to `main`, and a failure
+   there goes to the area's owner to fix or revert.
 
 We aim to give a first response within 2 working days. If you haven't heard
 from us, a friendly comment on the pull request is welcome.
