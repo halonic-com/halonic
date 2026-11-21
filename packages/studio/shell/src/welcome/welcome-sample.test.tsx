@@ -248,13 +248,13 @@ verifies("shell.welcome-sample", () => {
 
     const phone = row("phone");
     const nameLine = phone.querySelector(".text-body");
-    expect(nameLine?.textContent).toBe("AcmeSample");
+    expect(nameLine?.textContent).toBe("AcmeDemo");
     // Only the name and the folder's column: no tag at the right.
     expect(phone.children).toHaveLength(1);
 
     const desktop = row("desktop");
     expect(desktop.querySelector(".text-body")?.textContent).toBe("Acme");
-    expect(desktop.lastElementChild?.textContent).toBe("Sample");
+    expect(desktop.lastElementChild?.textContent).toBe("Demo");
     expect(desktop.getAttribute("aria-label")).toBe(phone.getAttribute("aria-label"));
   });
 });

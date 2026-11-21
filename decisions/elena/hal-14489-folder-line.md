@@ -13,7 +13,7 @@
   shell's switcher, Welcome's Recent and More import it from there.
 - **MC3:** when a folder is cut, its end stops 2em short of the row (was 1.25em), so the start keeps
   its first letter and a whole "…". A folder that isn't cut has no start at all.
-- **RT1:** on a phone, a sample's **Sample** tag on Welcome's Recent sits on the name's line, right
+- **RT1:** on a phone, a sample's **Demo** tag on Welcome's Recent sits on the name's line, right
   after the name; on desktop it stays at the row's right. The row's name is unchanged.
 - **WN1:** the sidebar's switcher and More's workspace row keep their names and are described by
   their whole folder (`aria-describedby` on the folder line), as a menu item's detail already is.
