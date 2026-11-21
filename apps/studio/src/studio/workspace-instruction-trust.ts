@@ -1,5 +1,6 @@
 import type { InstructionTrustService } from "@halonicjs/app";
 import type { LoggedInstructionPin } from "@halonicjs/events";
+import { instructionTrustKey } from "@halonicjs/ports";
 import { type ErrorKind, errorKindOf } from "@halonicjs/std";
 import type {
   InstructionTrustAnswer,
@@ -24,9 +25,13 @@ export class WorkspaceInstructionTrust implements InstructionTrustHost {
     this.#location = location;
   }
 
-  async trust(agent: string, pin: LoggedInstructionPin): Promise<InstructionTrustAnswer> {
+  async trust(
+    hub: string,
+    agent: string,
+    pin: LoggedInstructionPin,
+  ): Promise<InstructionTrustAnswer> {
     try {
-      await this.#trust.trust({ location: this.#location, agent }, pin);
+      await this.#trust.trust(instructionTrustKey(this.#location, hub, agent), pin);
       return "trusted";
     } catch (error) {
       return answerOfRefusal(errorKindOf(error));

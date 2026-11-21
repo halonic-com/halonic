@@ -45,7 +45,7 @@ function skill(body: string): string {
 async function trustedForCoder() {
   return await instructionStore.get({
     location: await realpath(join(folder, "acme")),
-    agent: "coder",
+    agent: "lab/coder",
   });
 }
 

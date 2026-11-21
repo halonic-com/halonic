@@ -37,11 +37,11 @@ export function InstructionsRefusalBanner({
 }) {
   const [answer, setAnswer] = useState<InstructionTrustAnswer>();
   const banner = useRef<CalloutHandle>(null);
-  const { agent, pin, changed } = refusal;
+  const { hub, agent, pin, changed } = refusal;
 
   const review = async () => {
     if (host === undefined) return;
-    const given = await host.trust(agent, pin);
+    const given = await host.trust(hub, agent, pin);
     setAnswer(given);
     announce?.(answerLine(given));
   };

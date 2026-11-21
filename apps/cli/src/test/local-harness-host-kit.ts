@@ -111,7 +111,7 @@ async function addLab(): Promise<void> {
 
 /** Records, as a person's yes, that the coder's instructions are `text`. */
 export function trustCoderInstructions(text: string): Promise<void> {
-  return trustInstructions({ profile, workspace: acme, agent: "coder", text });
+  return trustInstructions({ profile, workspace: acme, hub: "lab", agent: "coder", text });
 }
 
 /** Puts the workspace in git with one commit, and gives that version. */

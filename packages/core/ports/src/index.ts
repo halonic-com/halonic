@@ -157,6 +157,7 @@ export {
   type InstructionTrustKey,
   type InstructionTrustRecord,
   type InstructionTrustStore,
+  instructionTrustKey,
   instructionTrustStoreVersion,
   isInstructionTrustFor,
 } from "./instruction-trust-store.ts";

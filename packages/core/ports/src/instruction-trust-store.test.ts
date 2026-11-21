@@ -4,6 +4,7 @@ import {
   type InstructionTrustKey,
   type InstructionTrustRecord,
   type InstructionTrustStore,
+  instructionTrustKey,
   isInstructionTrustFor,
 } from "./index.ts";
 
@@ -42,6 +43,15 @@ verifies("ports.instruction-trust-store", () => {
   });
 
   const key: InstructionTrustKey = { location: record.location, agent: record.agent };
+
+  it("keys an agent by its hub and id, so the same id in two hubs gets two keys", () => {
+    const support = instructionTrustKey("/workspaces/acme", "support", "coder");
+    const sales = instructionTrustKey("/workspaces/acme", "sales", "coder");
+
+    expect(support).toEqual({ location: "/workspaces/acme", agent: "support/coder" });
+    expect(sales).toEqual({ location: "/workspaces/acme", agent: "sales/coder" });
+    expect(isInstructionTrustFor(sales, { ...record, ...support })).toBe(false);
+  });
 
   it("accepts a record for the key it is asked about", () => {
     expect(isInstructionTrustFor(key, structuredClone(record))).toBe(true);

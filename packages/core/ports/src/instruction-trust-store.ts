@@ -16,12 +16,32 @@ export interface InstructionChanges {
   readonly changed: readonly string[];
 }
 
-/** Which agent's instructions a trusted pin is for. */
+/** Which agent's instructions a trusted pin is for; {@link instructionTrustKey} makes one. */
 export interface InstructionTrustKey {
   /** The workspace's resolved real path, as in a `TrustRecord`. */
   location: string;
-  /** The agent's id in the workspace. */
+  /** The agent's hub and id, as `support/coder`. */
   agent: string;
+}
+
+/**
+ * The key of one agent's trusted instructions: the workspace, and the agent's
+ * hub and id together, so two hubs that each have an agent `coder` each have
+ * their own pin (HAL-14875). Every place that checks or trusts a pin makes its
+ * key here. A pin saved under the bare id, before the hub was part of the key,
+ * matches no key, so it counts as not trusted and a person is asked again.
+ * Hub and agent ids have no `/`, so no two agents share a key.
+ *
+ * @example
+ * instructionTrustKey("/workspaces/acme", "support", "coder");
+ * // { location: "/workspaces/acme", agent: "support/coder" }
+ */
+export function instructionTrustKey(
+  location: string,
+  hub: string,
+  agent: string,
+): InstructionTrustKey {
+  return { location, agent: `${hub}/${agent}` };
 }
 
 /**

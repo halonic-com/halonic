@@ -4,6 +4,7 @@
 
 import type { InstructionTrustCheck } from "@halonicjs/app";
 import type { InstructionsRefusal } from "@halonicjs/events";
+import { instructionTrustKey } from "@halonicjs/ports";
 import { escapeHidden } from "@halonicjs/std";
 import type {
   HarnessAgent,
@@ -57,7 +58,8 @@ export async function checkInstructionTrust(
   { limits, timeoutMs }: TrustCheckLimit,
 ): Promise<void> {
   if (trust === undefined || pin === null) return;
-  const key = { location: trust.location, agent: agent.agentId };
+  // The hub is in the key, so an agent of the same id in another hub has its own pin.
+  const key = instructionTrustKey(trust.location, agent.hubId, agent.agentId);
   const current = {
     digest: pin.sha256,
     files: Object.fromEntries(pin.files.map((file) => [file.path, file.sha256])),

@@ -172,6 +172,7 @@ function trustCoder(): Promise<void> {
   return trustInstructions({
     profile: acmeRuns.profile,
     workspace: acmeRuns.acme,
+    hub: "lab",
     agent: "coder",
     text: "Write the change.",
   });

@@ -1,8 +1,9 @@
 import type { InstructionTrustCheck } from "@halonicjs/app";
+import type { InstructionPin, InstructionTrustKey } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { InstructionsNotTrustedError } from "./check-instruction-trust.ts";
-import { runCallOn } from "./harness-call-test-kit.test-helper.ts";
+import { runCallOn, writerCall } from "./harness-call-test-kit.test-helper.ts";
 import { finished, harnessPorts, startLimits, stillOpen } from "./harness-test-kit.test-helper.ts";
 
 const digest = (character: string) => `sha256:${character.repeat(64)}`;
@@ -14,7 +15,7 @@ function runWith(
 ) {
   const ports = harnessPorts();
   ports.harness.events = [finished("ok")];
-  const asked: unknown[] = [];
+  const asked: { key: InstructionTrustKey; pin: InstructionPin }[] = [];
   ports.options = {
     ...ports.options,
     instructions: {
@@ -60,11 +61,24 @@ verifies("engine.harness-instructions-trust", () => {
       expect(error).toBeUndefined();
       expect(asked).toEqual([
         {
-          key: { location: "/workspaces/acme", agent: "writer" },
+          key: { location: "/workspaces/acme", agent: "acme/writer" },
           pin: { digest: digest("b"), files: { "AGENTS.md": digest("a") } },
         },
       ]);
       expect(written.map((event) => event.type)).toContain("harness.started");
+    });
+
+    it("asks about each hub's agent of the same id under its own key", async () => {
+      const { ports, asked } = runWith({ kind: "trusted" });
+      const inHub = (hubId: string) => ({ ...writerCall, hubId });
+
+      await runCallOn(ports, startLimits().limits, undefined, undefined, inHub("support"));
+      await runCallOn(ports, startLimits().limits, undefined, undefined, inHub("sales"));
+
+      expect(asked.map((question) => question.key)).toEqual([
+        { location: "/workspaces/acme", agent: "support/writer" },
+        { location: "/workspaces/acme", agent: "sales/writer" },
+      ]);
     });
 
     it("refuses a start for new instructions, names them, and closes what it opened", async () => {
