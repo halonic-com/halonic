@@ -408,7 +408,9 @@ verifies("shell.overview.used-by", () => {
     expect(line?.className).toContain("overflow-hidden");
     const [detailAndDot, usedBy] = [...(line?.children ?? [])];
     expect(detailAndDot?.textContent).toBe("When an email asks for a refund · ");
-    expect(detailAndDot?.className).toContain("min-w-20");
+    // 5rem is the basis, not the minimum, so `max-w-fit` can shrink a short detail's box to fit it.
+    expect(detailAndDot?.className).toContain("flex-[1_1_5rem]");
+    expect(detailAndDot?.className).toContain("max-w-fit");
     expect(detailAndDot?.className).toContain("h-0");
     // The detail itself keeps a line's height, or `truncate` would clip it inside the 0px box.
     expect(detailAndDot?.firstElementChild?.className).toContain("h-lh");

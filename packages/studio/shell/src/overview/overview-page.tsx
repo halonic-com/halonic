@@ -136,7 +136,8 @@ function metaOf(item: OverviewItem, usedByPlace: UsedByPlace): ReactNode {
 
 /**
  * A phone row's "detail · used-by" line. It is a wrapping flex line in which the detail and its dot
- * need at least 5rem; when the used-by text leaves less, the detail wraps onto a line of its own.
+ * ask for 5rem, or their own width when that is less; when the used-by text leaves less, the detail
+ * wraps onto a line of its own.
  * `flex-wrap-reverse` puts that line below the used-by text, and the detail's box is 0px high, so
  * the line is 0px high too and `overflow-hidden` clips it: the row shows the used-by text alone,
  * never a stray " · ". The text stays in the DOM in reading order, so a screen reader still hears
@@ -152,8 +153,10 @@ function DetailThenUsedBy({
   return (
     <span className="flex min-w-0 flex-wrap-reverse overflow-hidden">
       {/* In a reversed wrap `self-end` is the line's top, so the 0px box's text hangs into the line.
-          `max-w-fit` stops `flex-1` growing the box past a short detail, which left a gap after the dot. */}
-      <span className="flex h-0 min-w-20 max-w-fit flex-1 self-end">
+          The 5rem is the box's basis, not its minimum: `max-w-fit` then caps a short detail at its
+          own width, so its dot sits right before the used-by text (a minimum would win over the cap
+          and leave a gap). A long detail still needs 5rem before it wraps away. */}
+      <span className="flex h-0 min-w-0 max-w-fit flex-[1_1_5rem] self-end">
         {/* `h-lh`: stretched to the 0px box, `truncate`'s overflow would clip the detail to nothing. */}
         <span className="h-lh min-w-0 truncate">{detail}</span>
         {/* `whitespace-pre` keeps the spaces round the dot: a flex item would drop them. */}
