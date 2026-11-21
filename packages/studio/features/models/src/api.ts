@@ -3,6 +3,7 @@
  * other only through this file. Settings › Assistant and the status bar
  * reach the Models feature through `ModelsService`.
  */
+import type { Provider } from "@halonicjs/format";
 import type { SecretText } from "@halonicjs/studio-kit";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
@@ -93,8 +94,47 @@ export interface ModelKeys {
   stored(secretName: string): Promise<boolean>;
   /** Stores the key under the secret name, replacing any. It rejects when it can't; the key is never in the error. */
   save(secretName: string, key: SecretText): Promise<void>;
-  /** Deletes the key under the secret name. It rejects when it can't. */
+  /** Deletes the key under the secret name, and the addresses it may go to. It rejects when it can't. */
   remove(secretName: string): Promise<void>;
+  /**
+   * The addresses each key may be sent to, where this Studio's key store keeps them (the desktop
+   * keychain). `undefined` where it can't, and the page then shows no addresses.
+   */
+  readonly addresses?: KeyAddresses | undefined;
+}
+
+/** Why an address can't be one a key may go to: it isn't an `http` or `https` address, or it holds a user name or password. */
+export type KeyAddressProblem = "not-an-address" | "has-user-info";
+
+/**
+ * What allowing an address for a key did. `added` and `already-allowed` give the address as it
+ * is kept: its scheme, host and port, as `new URL(…).origin` writes them. `no-key`: no key is
+ * stored under the name. `full`: the key can't take another address.
+ */
+export type AllowAddressResult =
+  | { readonly result: "added" | "already-allowed"; readonly origin: string }
+  | { readonly result: "no-key" | "full" }
+  | { readonly result: "bad-address"; readonly problem: KeyAddressProblem };
+
+/**
+ * The addresses each stored key may be sent to (HAL-11871), kept beside the key. The model
+ * resolver sends a key with addresses only to one of them; a key saved before addresses existed
+ * has none and keeps the older trust rule.
+ */
+export interface KeyAddresses {
+  /**
+   * The key's addresses, or `undefined` when none is recorded. It rejects when they can't be
+   * read, which a caller must never show as none: the resolver refuses such a key.
+   */
+  allowed(secretName: string): Promise<readonly string[] | undefined>;
+  /** Adds the address' scheme, host and port to the key's addresses, keeping the others. */
+  allow(secretName: string, address: string): Promise<AllowAddressResult>;
+  /**
+   * The address the provider sends its key to when that is its type's own, such as
+   * `https://api.anthropic.com`, written as it would be kept. `undefined` for a provider with an
+   * address of its own or a type with none, so nothing is guessed.
+   */
+  usualAddress(provider: Pick<Provider, "id" | "type" | "baseUrl" | "secret">): string | undefined;
 }
 
 /** The workspace's API keys, provided by the app for each open folder. It is optional. */

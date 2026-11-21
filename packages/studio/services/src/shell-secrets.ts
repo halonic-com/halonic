@@ -73,10 +73,11 @@ export function shellKeychain(
 
 /**
  * The origins each key in the OS keychain may be sent to, kept beside the key by the shell
- * (HAL-11887). The model resolver asks it on every call with a key.
+ * (HAL-11887). The model resolver asks it on every call with a key, and the Models page adds the
+ * address a person types (HAL-11872).
  *
  * @param ipc - the shell's IPC, from `tauriIpc`
  */
-export function shellKeyOrigins(ipc: TauriIpc): KeyOrigins {
+export function shellKeyOrigins(ipc: TauriIpc): KeyOrigins & Pick<TauriKeyOrigins, "allowOrigin"> {
   return new TauriKeyOrigins(ipc);
 }

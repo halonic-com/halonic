@@ -162,7 +162,10 @@ export function provideFolderServices(
     }),
   );
   provideFilesServices(services, { files, location, scope, platform });
-  const keys = services.provide(ModelKeysService, new WorkspaceModelKeys(shellKeychain(ipc)));
+  const keys = services.provide(
+    ModelKeysService,
+    new WorkspaceModelKeys(shellKeychain(ipc), shellKeyOrigins(ipc)),
+  );
   provideModelChoice(services, { ipc, trust, keys, settle });
   services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
   services.provide(ProviderCheckService, new WorkspaceProviderCheck(new ShellHttpClient(ipc)));
