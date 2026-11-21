@@ -36,6 +36,13 @@ fed made-up data, so the spacing under each section's name is the app's. The Age
 `load…` function in their `api.ts`, which loads the view only when called. The phone's Settings
 sheet isn't taken yet.
 
+## Agent map
+
+`agent-map-<light|dark>.png` is an agent's page on Flow, with a card on each side of the map, from
+made-up agents (HAL-13180). The unit tests fake the map panel's size, so `e2e/agent-map.spec.ts`
+also fails when the panel has no room or a card sits outside it. The page loads through
+`loadAgentScreen` in the agents feature's `api.ts`.
+
 ## Welcome
 
 `welcome-<new|recent|failed>-<1440|360>-<light|dark>.png` shows the shell's real Welcome screen
