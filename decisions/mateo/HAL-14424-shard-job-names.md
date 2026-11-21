@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this change (HAL-14424, from Liam's review of #4151); Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jW52qGeRls699lEhP/bufLDO/bFm3/yMjvcc7dSPYUdQKHXD7oZTzfkswwyVVX6LQYToLoIRqXH8q64BhJtjAQ==
 
 #4151 (HAL-14115) splits "Typecheck, lint, test, build" into one job per
 shard, named "Typecheck, lint, test, build (<shard>)". The nightly's
