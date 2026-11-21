@@ -25,6 +25,7 @@ import { runsWords } from "../runs/runs-words.ts";
 import { type RoutineRunsLoad, useRoutineRuns } from "../runs/use-routine-runs.ts";
 import { StartsCard } from "../starts/starts-card.tsx";
 import { WhenCard } from "../when/when-card.tsx";
+import { NotLiveLine } from "./not-live-line.tsx";
 import { failureReason, pageWords } from "./page-words.ts";
 import { RunDialog, runDialogReason } from "./run-dialog.tsx";
 import { runRoutineNow } from "./run-now.ts";
@@ -107,7 +108,7 @@ export function RoutineScreen({
   // After a Try again reads, the routine's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
   const focusTitle = useCallback(() => title.current?.focus(), []);
-  const { load, retry } = useRoutine(host, { hubId, id }, focusTitle);
+  const { load, retry, readAgain } = useRoutine(host, { hubId, id }, focusTitle);
   const [view, setView] = useState<RoutineViewId>("schedule");
   // Asked for its Trigger picker, the page shows the Schedule view and the picker takes the focus
   // once the card is drawn, whether the page was just opened or already open.
@@ -160,6 +161,8 @@ export function RoutineScreen({
               addConnector={addConnector}
               focusTrigger={trigger.focusTrigger}
               onTriggerFocused={trigger.done}
+              readAgain={readAgain}
+              focusTitle={focusTitle}
             />
           )}
           {view === "runs" && (
@@ -202,7 +205,7 @@ export function RoutineScreen({
   );
 }
 
-/** The Schedule view: the summary, then the When card, the Starts card and the Rules. */
+/** The Schedule view: the summary and the not-live line, then the When card, the Starts card and the Rules. */
 function ScheduleView({
   host,
   routine,
@@ -210,6 +213,8 @@ function ScheduleView({
   addConnector,
   focusTrigger,
   onTriggerFocused,
+  readAgain,
+  focusTitle,
 }: {
   readonly host: RoutinesHost;
   readonly routine: RoutineView;
@@ -217,10 +222,14 @@ function ScheduleView({
   readonly addConnector: (() => void) | undefined;
   readonly focusTrigger: boolean;
   readonly onTriggerFocused: () => void;
+  /** Reads the routine again, for the not-live line once a version is made. */
+  readonly readAgain: () => void;
+  /** Gives the routine's name the focus, once the not-live line has gone. */
+  readonly focusTitle: () => void;
 }) {
   return (
     <>
-      <Summary routine={routine} />
+      <Summary host={host} routine={routine} readAgain={readAgain} focusTitle={focusTitle} />
       <WhenCard
         host={host}
         routine={routine}
@@ -263,9 +272,19 @@ function routineTabs(runs: RoutineRunsLoad): readonly Tab<RoutineViewId>[] {
  * What sits under the header once the routine is read: its one-line summary (muted, with "Off · "
  * in front, when it is off), then at most one note about what is live. A routine that is on but
  * has never been live has the notice and nothing else, since "Changes not live yet" would be a
- * second reason for the same thing.
+ * second reason for the same thing. The "Changes not live yet" line can make the routine live.
  */
-function Summary({ routine }: { readonly routine: RoutineView }) {
+function Summary({
+  host,
+  routine,
+  readAgain,
+  focusTitle,
+}: {
+  readonly host: RoutinesHost;
+  readonly routine: RoutineView;
+  readonly readAgain: () => void;
+  readonly focusTitle: () => void;
+}) {
   const neverLive = routine.enabled && !routine.everLive;
   return (
     <>
@@ -273,8 +292,8 @@ function Summary({ routine }: { readonly routine: RoutineView }) {
         {routine.enabled ? routine.summary : `${pageWords.off} · ${routine.summary}`}
       </p>
       {neverLive && <Callout tone="info">{pageWords.neverLive}</Callout>}
-      {!neverLive && routine.changesNotLive && (
-        <p className="text-small text-fg-muted">{pageWords.changesNotLive}</p>
+      {!neverLive && (
+        <NotLiveLine host={host} routine={routine} readAgain={readAgain} onMadeLive={focusTitle} />
       )}
     </>
   );
