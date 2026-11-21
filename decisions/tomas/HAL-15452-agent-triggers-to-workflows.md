@@ -3,7 +3,6 @@
 - Task: HAL-15452
 - Approval: a detail of an approved screen (the Triggers section, flow-routines 2.3), decided by the team under the HAL-2282 rule from flow check C579 findings 1 and 2 (HAL-15448), confirmed by Sofia on HAL-15460. Liam signs this note at code review.
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ceCAfN+BKkNWqHjv4tohXYTE9+pckcmPO1o50Ml0oqZvjNFxhHz1x7HrU3CGXvE40qdw+ru6x/vWIADGOkUsCw==
 
 ## What changes
 
