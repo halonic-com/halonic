@@ -1,3 +1,4 @@
+import type { MenuEntry } from "@halonicjs/studio-kit";
 import type { ReactNode, RefCallback, RefObject } from "react";
 import { PageErrorBoundary } from "../page/page-error-boundary.tsx";
 import type { ShellPhoneSearchProps } from "../palette/shell-phone-search.tsx";
@@ -70,6 +71,8 @@ export interface StudioPhonePageProps extends Omit<StudioPageProps, "location"> 
   readonly desktopBadges?: ReactNode;
   /** The window's `openSettings`: with it, More ends with a Settings row. */
   readonly onSettings?: (() => void) | undefined;
+  /** The Help menu's entries, which More lists after Settings. */
+  readonly help?: readonly MenuEntry[] | undefined;
   /** In the desktop app, or in a browser, as Settings words its saved lines. */
   readonly settingsPlace: SettingsPlace;
   /** The Settings sections the window has, as Settings' list and its pages show them. */
@@ -111,6 +114,7 @@ function PhonePageBody({
   badge,
   desktopBadges,
   onSettings,
+  help,
   settingsPlace,
   settingsSections,
   regionFormat,
@@ -128,6 +132,7 @@ function PhonePageBody({
         places={shown}
         onOpen={(place) => places.openPlace(place)}
         onSettings={onSettings}
+        help={help}
         inDesktopApp={settingsPlace === "app"}
       />
     );

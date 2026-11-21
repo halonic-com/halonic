@@ -4,7 +4,10 @@ import {
   HeaderBadgeSheetDialog,
   isMenuItem,
   List,
+  ListHeading,
   type ListRow,
+  type MenuEntry,
+  type MenuItem,
   PlaceIcon,
   SettingsIcon,
   StatusChip,
@@ -45,6 +48,11 @@ export interface MorePageProps {
    */
   readonly onSettings?: (() => void) | undefined;
   /**
+   * The Help menu's entries, from `helpMenuEntries` (`shell.help-menu`): each group shows as its own
+   * list under the lists, headed by its title, or "Help" without one. Left out, nothing shows.
+   */
+  readonly help?: readonly MenuEntry[] | undefined;
+  /**
    * A header badge (component specs 20.1), such as the sample workspace's, shown on its own line
    * under the switcher row. Left out when there is none, and then it takes no room.
    */
@@ -68,7 +76,8 @@ export interface MorePageProps {
  * - **The lists**: a flush List of Agents, Workflows, Routines, Library and Changes, in that order
  *   and only where a feature added them, each with its icon and a chevron. Changes shows its count
  *   in place of the chevron. **Settings** ends the list, with its icon and a chevron, once the
- *   window has `openSettings` (it opens the Settings list page).
+ *   window has `openSettings` (it opens the Settings list page). The Help menu's groups follow,
+ *   each a flush List under its heading.
  * - **The footer line**: "Editing workflows is easier on a computer.", or in the desktop app
  *   "Editing workflows is easier in a wider window."
  *
@@ -88,6 +97,7 @@ export function MorePage({
   places,
   onOpen,
   onSettings,
+  help = [],
   badge,
   inDesktopApp = false,
 }: MorePageProps) {
@@ -113,6 +123,17 @@ export function MorePage({
           />
         </div>
       )}
+      {helpGroups(help).map((group) => (
+        <div key={group.items[0]?.id} className="mt-4">
+          <ListHeading name={group.name} />
+          <List
+            label={group.name}
+            rows={group.items.map((item) => ({ id: item.id, title: item.label }))}
+            flush
+            onOpen={(id) => group.items.find((item) => item.id === id)?.onSelect()}
+          />
+        </div>
+      ))}
       <p className="px-4 py-3 text-small text-fg-subtle">
         {inDesktopApp ? footerLines.desktopApp : footerLines.phone}
       </p>
@@ -125,6 +146,33 @@ const footerLines = {
   phone: "Editing workflows is easier on a computer.",
   desktopApp: "Editing workflows is easier in a wider window.",
 } as const;
+
+/** One group of the Help menu, as More lists it: its heading's name and its items. */
+interface HelpGroup {
+  readonly name: string;
+  readonly items: readonly MenuItem[];
+}
+
+/** The Help menu's entries as groups: a heading starts one, a divider ends one; "Help" names one without a heading. */
+function helpGroups(entries: readonly MenuEntry[]): readonly HelpGroup[] {
+  const groups: { name: string; items: MenuItem[] }[] = [];
+  let current: { name: string; items: MenuItem[] } | undefined;
+  for (const entry of entries) {
+    if (entry === "divider") {
+      current = undefined;
+    } else if (!isMenuItem(entry)) {
+      current = { name: entry.heading, items: [] };
+      groups.push(current);
+    } else {
+      if (current === undefined) {
+        current = { name: "Help", items: [] };
+        groups.push(current);
+      }
+      current.items.push(entry);
+    }
+  }
+  return groups.filter((group) => group.items.length > 0);
+}
 
 const settingsRowId = "settings";
 
