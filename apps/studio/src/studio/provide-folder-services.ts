@@ -101,6 +101,7 @@ import { WorkspaceRoutines } from "../routines/workspace-routines.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
 import { openStudioRunConnectors } from "./open-run-connectors.ts";
+import { provideEngineAutoOpen } from "./provide-engine-auto-open.ts";
 import { WorkspaceInstructionTrust } from "./workspace-instruction-trust.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
 
@@ -261,6 +262,16 @@ export function provideFolderServices(
             }),
       }),
     );
+  // A background engine runs the routines itself, so only the page's own engine opens for them.
+  if (remoteEngine === undefined) {
+    provideEngineAutoOpen(services, services.get(engineServiceKey), {
+      ipc,
+      files,
+      trust,
+      location,
+      scope,
+    });
+  }
   services.provide(
     AgentsHostService,
     new WorkspaceAgents({
