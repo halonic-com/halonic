@@ -1,6 +1,6 @@
 /**
- * Stands in for `cloudflare:workers` when Node runs the Durable Object
- * classes' tests (see `vitest.config.ts`). It has only what the classes use
+ * Stands in for `cloudflare:workers` when Node runs the Worker's wiring tests
+ * (see `vitest.config.ts`). It has only what the Durable Object classes use
  * of `DurableObject`: they keep `ctx` and `env`.
  */
 export class DurableObject<Env = unknown> {

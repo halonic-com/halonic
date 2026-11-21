@@ -13,9 +13,16 @@ import type { RunListSink } from "../run-state.ts";
 import type { CaseHooks, CaseObject } from "./object-case.ts";
 import type { TestRunObject } from "./test-run-object.ts";
 
-/** A clock that only moves when the suite moves it. Objects read it once the suite pushes it. */
+/**
+ * A clock that only moves when the suite moves it. Objects read it once the suite pushes it. It
+ * starts ten years ahead unless told otherwise, so an alarm set by its time never fires by itself.
+ */
 export class SuiteClock implements Clock {
-  #now = Date.now() + 10 * 365 * 24 * 60 * 60 * 1000;
+  #now: number;
+
+  constructor(startMs: number = Date.now() + 10 * 365 * 24 * 60 * 60 * 1000) {
+    this.#now = startMs;
+  }
 
   now(): Date {
     return new Date(this.#now);
