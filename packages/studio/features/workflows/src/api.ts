@@ -221,6 +221,11 @@ export interface WorkflowProblem {
    * file: another file whose error stops the workflow's run, such as an agent's it uses.
    */
   readonly file?: string | undefined;
+  /**
+   * The step's arrow it is in, by its place among the step's arrows (the file's order, from 0, as
+   * `arrows` lists them); absent when it isn't in one of the step's arrows.
+   */
+  readonly arrowIndex?: number | undefined;
 }
 
 /**

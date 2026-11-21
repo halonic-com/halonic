@@ -3,7 +3,7 @@ import { useEffect, useId, useRef } from "react";
 import type { WorkflowStep } from "../api.ts";
 import type { Box } from "../canvas/geometry.ts";
 import { configurationWords } from "../configuration/configuration-words.ts";
-import type { CardProblems } from "../configuration/problem-lines.ts";
+import type { ProblemMark } from "../configuration/problem-lines.ts";
 import type { StepMark } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import type { ConnectTarget } from "./connect-port.tsx";
@@ -24,7 +24,7 @@ export interface StepCardProps {
   /** How the step stands in the shown run: draws its status dot; absent when it was not reached. */
   readonly mark?: StepMark | undefined;
   /** What the checks found in the step: its border and problem line (flow-workflows 4.4). */
-  readonly problems?: CardProblems | undefined;
+  readonly problems?: ProblemMark | undefined;
   /** Take focus on mount, for the card a problem's link opened. */
   readonly focusOnMount?: boolean;
   /** Where the step leads, for a screen reader that can't see the arrows; absent for an end step. */
@@ -275,7 +275,7 @@ function outlineOf(connectTarget: ConnectTarget | undefined): string {
  * leave; its words are cut short there, never its glyph (Noah, HAL-15171). A screen reader hears
  * the whole line in the card's name, after "Error" or "Warning".
  */
-function ProblemLine({ id, problems }: { readonly id: string; readonly problems: CardProblems }) {
+function ProblemLine({ id, problems }: { readonly id: string; readonly problems: ProblemMark }) {
   return (
     <span
       id={id}
@@ -300,7 +300,7 @@ function ProblemLine({ id, problems }: { readonly id: string; readonly problems:
 function ringOf(
   failed: boolean,
   selected: boolean,
-  problem: CardProblems["severity"] | undefined,
+  problem: ProblemMark["severity"] | undefined,
   outlined: boolean,
 ): string {
   if (failed) return "border-danger ring-2 ring-danger";

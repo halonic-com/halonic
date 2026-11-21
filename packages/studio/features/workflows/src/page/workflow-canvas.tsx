@@ -264,7 +264,13 @@ export function WorkflowCanvas({
         }}
         className="absolute left-0 top-0"
       >
-        <Arrows arrows={workflow.arrows} boxes={boxes} route={route} />
+        <Arrows
+          arrows={workflow.arrows}
+          boxes={boxes}
+          route={route}
+          problems={problems}
+          stepName={stepName}
+        />
         {workflow.steps.map((step) => {
           const box = boxes.get(step.id);
           const first = step.id === workflow.initial;

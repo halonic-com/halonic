@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import type { WorkflowProblem } from "../api.ts";
 import {
+  arrowProblems,
   cardProblems,
   cardSummary,
   countProblems,
@@ -165,5 +166,30 @@ verifies("workflows.page.step-problems", () => {
     ];
     expect(cardProblems(arrows, "first")).toBeUndefined();
     expect(cardProblems([], "first")).toBeUndefined();
+  });
+  it("marks an arrow's plate with that arrow's problems only, the worst first", () => {
+    const onArrow = (code: string, severity: WorkflowProblem["severity"], arrowIndex: number) => ({
+      ...problem(code, severity, "review"),
+      message: `"review" ${code}`,
+      arrowIndex,
+    });
+    const problems = [
+      onArrow("unguarded-shadow", "warning", 1),
+      onArrow("unknown-target", "error", 1),
+      onArrow("unknown-target", "error", 2),
+      { ...problem("dead-end", "error", "review"), arrowIndex: 1 },
+    ];
+
+    expect(arrowProblems(problems, "review", 1, () => "Check")).toEqual({
+      severity: "error",
+      glyph: "✕",
+      line: "Goes to a missing step",
+      detail: '"Check" unknown-target\n"Check" unguarded-shadow',
+    });
+    expect(arrowProblems(problems, "review", 2)).toMatchObject({
+      line: "Goes to a missing step",
+    });
+    expect(arrowProblems(problems, "review", 0)).toBeUndefined();
+    expect(arrowProblems(problems, "other", 1)).toBeUndefined();
   });
 });

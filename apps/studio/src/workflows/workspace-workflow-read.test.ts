@@ -95,7 +95,7 @@ verifies("studio.workspace-workflow-read", () => {
     );
   });
 
-  it("gives a workflow's settings and the problems of its file, each with its step", async () => {
+  it("gives a workflow's settings and the problems of its file, each with its step and arrow", async () => {
     const { host, store } = setup();
     store["hubs/acme/workflows/reply.workflow.yaml"] =
       "id: reply\nname: Reply\ndescription: Answers\ninitial: first\nstates:\n  first:\n    on:\n      - to: nowhere\n";
@@ -109,10 +109,9 @@ verifies("studio.workspace-workflow-read", () => {
       stepIds: ["first"],
       file: "hubs/acme/workflows/reply.workflow.yaml",
     });
-    expect(settings.problems.map(({ code, stepId }) => ({ code, stepId }))).toContainEqual({
-      code: "unknown-target",
-      stepId: "first",
-    });
+    expect(
+      settings.problems.map(({ code, stepId, arrowIndex }) => ({ code, stepId, arrowIndex })),
+    ).toContainEqual({ code: "unknown-target", stepId: "first", arrowIndex: 0 });
   });
 
   it("gives the request form's one field by name only, without a made-up type or flag", async () => {

@@ -7,14 +7,15 @@ import {
   type WorkspaceIssue,
 } from "@halonicjs/workspace";
 import { problemsOf } from "./workflow-files.ts";
+import { arrowIndexOf } from "./workflow-view.ts";
 
 type Agent = LoadedFileOf<"agent">;
 
 /**
  * The problems of one workflow as its page shows them (`studio.workflow-problem-agent`): its own
- * file's, with the step each is about, and the errors elsewhere that stop its run, with the file
- * they are in (HAL-15343) and, for an agent its steps name, the agent and, for the agent's own model
- * alias the workspace doesn't have, that alias (UX check S7, HAL-12412).
+ * file's, with the step and the arrow each is about, and the errors elsewhere that stop its run,
+ * with the file they are in (HAL-15343) and, for an agent its steps name, the agent and, for the
+ * agent's own model alias the workspace doesn't have, that alias (UX check S7, HAL-12412).
  */
 export function workflowProblemsOf(
   workspace: LoadedWorkspace,
@@ -23,14 +24,15 @@ export function workflowProblemsOf(
   const agents = filesOf(workspace, "agent").filter((one) => one.hub === file.hub);
   return problemsOf(workspace, workspaceProblemsOf(workspace), file).map((issue) => {
     const agent = agents.find((one) => one.path === issue.file);
+    const ownFile = issue.file === file.path;
     return {
       severity: issue.severity,
       code: issue.code,
       message: issue.message,
-      // A called workflow's file has steps too, but they aren't this workflow's.
-      stepId:
-        issue.file === file.path && issue.path[0] === "states" ? String(issue.path[1]) : undefined,
-      ...(issue.file !== "" && issue.file !== file.path && { file: issue.file }),
+      // A called workflow's file has steps and arrows too, but they aren't this workflow's.
+      stepId: ownFile && issue.path[0] === "states" ? String(issue.path[1]) : undefined,
+      arrowIndex: ownFile ? arrowIndexOf(issue.path) : undefined,
+      ...(issue.file !== "" && !ownFile && { file: issue.file }),
       ...(agent && agentFacts(agent, issue)),
     };
   });
