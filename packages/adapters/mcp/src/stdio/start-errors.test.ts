@@ -11,7 +11,11 @@ import { McpStoppedError } from "../protocol/errors.ts";
 import { McpSession } from "../protocol/session.ts";
 import { contractServer, FakeProgram, FakeStarter, unusedFolders } from "./fake-program.spec.ts";
 import { nodeProgramStarter } from "./node-program-starter.ts";
-import { ProgramNotFoundError, SecretNotSetError } from "./start-errors.ts";
+import {
+  ProgramNotFoundError,
+  ProgramStoppedAtStartError,
+  SecretNotSetError,
+} from "./start-errors.ts";
 import { McpStdioConnectorFactory } from "./stdio-connector.ts";
 import { StdioTransport } from "./stdio-transport.ts";
 
@@ -25,6 +29,30 @@ function silentTransport() {
   const program = new FakeProgram(launch, () => undefined);
   const limits = { requestTimeoutMs: 5000, maxMessageBytes: 1024, stopGraceMs: 100 };
   return { program, transport: new StdioTransport(program, limits) };
+}
+
+/** A trusted `notes` connector whose programs `starter` starts. */
+function notesConnector(starter: FakeStarter, secretEnv: Record<string, string> = {}) {
+  const config: ConnectorConfig = {
+    id: "notes",
+    transport: { kind: "stdio", command: "notes-mcp", args: [], env: {} },
+    secretEnv,
+  };
+  const factory = new McpStdioConnectorFactory({
+    starter,
+    folders: unusedFolders,
+    runners: unusedRunners,
+    inheritedEnv: { PATH: "/usr/bin" },
+    clientInfo: { name: "halonic", version: "0.1.0" },
+    limits: { requestTimeoutMs: 5000, maxMessageBytes: 1024, stopGraceMs: 100 },
+  });
+  return factory.create(config, {
+    secrets: new MemorySecrets(),
+    tokens: new MemoryTokenStore(),
+    http: { fetch: async () => new Response("unused") },
+    workspaceRoot: resolve("/workspaces/acme"),
+    trust: contractGrant,
+  });
 }
 
 verifies("mcp.connector-start-errors", () => {
@@ -61,28 +89,41 @@ verifies("mcp.connector-start-errors", () => {
   });
 
   it("names a secret that isn't set, never a value", async () => {
-    const config: ConnectorConfig = {
-      id: "notes",
-      transport: { kind: "stdio", command: "notes-mcp", args: [], env: {} },
-      secretEnv: { NOTES_TOKEN: "notes-token" },
-    };
-    const factory = new McpStdioConnectorFactory({
-      starter: new FakeStarter(contractServer([])),
-      folders: unusedFolders,
-      runners: unusedRunners,
-      inheritedEnv: { PATH: "/usr/bin" },
-      clientInfo: { name: "halonic", version: "0.1.0" },
-    });
-    const client = factory.create(config, {
-      secrets: new MemorySecrets(),
-      tokens: new MemoryTokenStore(),
-      http: { fetch: async () => new Response("unused") },
-      workspaceRoot: resolve("/workspaces/acme"),
-      trust: contractGrant,
+    const client = notesConnector(new FakeStarter(contractServer([])), {
+      NOTES_TOKEN: "notes-token",
     });
     const refused = await client.listTools().catch((error: unknown) => error);
     expect(refused).toBeInstanceOf(SecretNotSetError);
     expect(refused).toMatchObject({ secretName: "notes-token" });
+    await client.close();
+  });
+
+  it("names a program that stopped right after it started, never its output", async () => {
+    const client = notesConnector(
+      new FakeStarter((_message, program) => {
+        program.writeError("notes-mcp: no such option\n");
+        program.exit(1);
+      }),
+    );
+    const refused = await client.listTools().catch((error: unknown) => error);
+    expect(refused).toBeInstanceOf(ProgramStoppedAtStartError);
+    expect(refused).toBeInstanceOf(McpStoppedError);
+    expect(refused).toMatchObject({
+      program: "notes-mcp",
+      code: "unavailable",
+      message:
+        "The program notes-mcp stopped right after it started, before it answered initialize.",
+    });
+    await client.close();
+  });
+
+  it("keeps a program that doesn't answer initialize in time a plain stop", async () => {
+    vi.useFakeTimers();
+    const client = notesConnector(new FakeStarter(() => undefined));
+    const refused = client.listTools().catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(await refused).toBeInstanceOf(McpStoppedError);
+    expect(await refused).not.toBeInstanceOf(ProgramStoppedAtStartError);
     await client.close();
   });
 

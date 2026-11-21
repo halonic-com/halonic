@@ -19,7 +19,8 @@ export interface ListedMcpTool {
  * Stdio MCP servers in this process: each program started answers
  * `initialize` and lists {@link FakeMcpServers.tools} as they are when it is
  * asked, so a test can change a tool between two listings. A program
- * named in {@link FakeMcpServers.missing} isn't on this computer.
+ * named in {@link FakeMcpServers.missing} isn't on this computer, and one
+ * named in {@link FakeMcpServers.stopsAtStart} exits as soon as it starts.
  */
 export class FakeMcpServers implements ProgramStarter {
   /** Every program started, in order. */
@@ -30,8 +31,15 @@ export class FakeMcpServers implements ProgramStarter {
   tools: ListedMcpTool[];
   /** The programs that aren't on this computer: starting one fails as the real starter does. */
   readonly missing = new Set<string>();
-  /** When true, a program ends at its first message, before it answers it (HAL-13714). */
+  /** The programs that exit as soon as they start, as `false` does (HAL-13731). */
+  readonly stopsAtStart = new Set<string>();
+  /**
+   * When true, a program answers `initialize` but ends when it is asked for
+   * its tools, before it answers (HAL-13714).
+   */
   stopsWithoutAnswering = false;
+  /** When true, a program reads every message and answers none, so each request runs out of time. */
+  answersNothing = false;
 
   constructor(tools: ListedMcpTool[]) {
     this.tools = tools;
@@ -54,14 +62,19 @@ export class FakeMcpServers implements ProgramStarter {
       stdout.end();
       resolveExit();
     };
+    if (this.stopsAtStart.has(launch.program)) end();
     return {
       write: async (text) => {
-        if (this.stopsWithoutAnswering) {
-          end();
-          return;
-        }
+        // As a real pipe does once the program has exited.
+        if (ended) throw new Error("write after end");
+        if (this.answersNothing) return;
         for (const line of text.split("\n").filter((part) => part !== "")) {
-          const answer = this.answerTo(JSON.parse(line) as { id?: number; method?: string });
+          const message = JSON.parse(line) as { id?: number; method?: string };
+          if (this.stopsWithoutAnswering && message.method === "tools/list") {
+            end();
+            return;
+          }
+          const answer = this.answerTo(message);
           if (answer !== undefined) stdout.write(`${JSON.stringify(answer)}\n`);
         }
       },

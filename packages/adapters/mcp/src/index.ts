@@ -53,7 +53,11 @@ export {
   RestartLimit,
   type RestartLimits,
 } from "./stdio/restart-limit.ts";
-export { ProgramNotFoundError, SecretNotSetError } from "./stdio/start-errors.ts";
+export {
+  ProgramNotFoundError,
+  ProgramStoppedAtStartError,
+  SecretNotSetError,
+} from "./stdio/start-errors.ts";
 export { McpStdioConnectorFactory, type McpStdioOptions } from "./stdio/stdio-connector.ts";
 // The transport, restart limit and tool mapping are shared with
 // `@halonicjs/adapter-connector-stdio-sandbox`, which starts the program in a
