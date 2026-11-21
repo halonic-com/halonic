@@ -90,6 +90,17 @@ verifies("studio.workspace-workflows", () => {
     expect(created?.problems).toEqual({ errors: 0, warnings: 0 });
   });
 
+  it("leaves start without an agent in a folder with no hub, so the new Default hub's workflow has the one error", async () => {
+    const { host, store } = setup();
+    for (const path of Object.keys(store)) delete store[path];
+
+    await host.create({ name: "Daily summary", hubId: "default" });
+
+    expect(store["hubs/default/workflows/daily-summary.workflow.yaml"]).not.toContain("agent:");
+    const [created] = await host.list();
+    expect(created).toMatchObject({ id: "daily-summary", problems: { errors: 1, warnings: 0 } });
+  });
+
   it("knows a workflow's name once it has read or made it, for the tab and the page title", async () => {
     const { host } = setup();
     expect(host.nameOf({ hubId: "acme", id: "invoice-intake" })).toBeUndefined();
