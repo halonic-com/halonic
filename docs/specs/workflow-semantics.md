@@ -131,8 +131,9 @@ that go to the same state, one with the event and one with the timer.
   workspace: the Studio's, or the CLI's while `halonic run` or
   `halonic routines watch` runs. It keeps its timers in the profile, so a
   timer missed while nothing was running fires as soon as an engine opens.
-- **Task states have no timeout.** An agent is limited by `maxSteps`. An
-  agent that uses all its steps and is still calling tools gave no answer,
+- **Task states have no timeout.** An agent is limited by its model call
+  limit, `maxSteps` (6 model calls by default). An agent that uses all its
+  model calls and is still calling tools gave no answer,
   so its state fails rather than going on with an unfinished one. An agent
   that runs in Claude Code or Codex is limited by its `harnessLimits`
   instead: model calls, minutes (not counting waits for a person's answer)

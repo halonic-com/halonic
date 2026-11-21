@@ -223,7 +223,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
     };
     expect(lines(failure, "Classify", "./acme")).toEqual([
       "Support reply failed in the step Classify: Sorter used all 6 model calls without finishing.",
-      "See what Sorter did with halonic runs show --dir ./acme 01JD8Q. Raise its model call limit in sorter.agent.yaml if it needs more.",
+      "See what Sorter did with halonic runs show --dir ./acme 01JD8Q. Raise its model call limit (maxSteps) in sorter.agent.yaml if it needs more.",
     ]);
     expect(lines({ ...failure, emptyCallsTo: "search_docs" }, "Classify")[0]).toBe(
       "Support reply failed in the step Classify: Sorter used all 6 model calls without finishing. Its last calls to search_docs returned nothing.",

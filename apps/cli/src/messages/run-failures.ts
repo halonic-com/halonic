@@ -257,7 +257,7 @@ const lineTwo = {
       ? phrase`Raise budget.perRun in workspace.yaml.`
       : phrase`Raise budget.monthly in workspace.yaml, or wait until it resets on ${dayAndMonth(failure.resetsOn)}.`,
   "turn-limit": (run, failure) =>
-    phrase`See what ${failure.agent} did with ${suggestedCommand("runs show", run.dir, run.runId)}. Raise its model call limit in ${failure.agentFile} if it needs more.`,
+    phrase`See what ${failure.agent} did with ${suggestedCommand("runs show", run.dir, run.runId)}. Raise its model call limit (maxSteps) in ${failure.agentFile} if it needs more.`,
   "tool-timeout": () => tryLater(),
   "local-only": (_run, failure) =>
     phrase`Point ${failure.agent}'s model alias ${failure.alias} at a local model in models.yaml, or set privacy.localOnly: false in workspace.yaml.`,
