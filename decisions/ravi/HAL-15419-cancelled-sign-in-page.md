@@ -2,6 +2,7 @@
 
 - Approval: HAL-15419 (split out of HAL-15398, Iris's flow check C570, item 5, part 4); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:A/1B3z2GQCzp4fYUkae48aZ3vD2zhf34x0ZVt/h2mIz3Y7QQ2PbEknFgmEOOdmGKKqPwoyzuYVl9bF0rgINdAQ==
 
 ## What changes
 
