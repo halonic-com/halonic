@@ -10,6 +10,9 @@ import { buttonNamed, show, unmount } from "../test-support.tsx";
 import { Chat, said, scriptedHost, sendMessage, sorter } from "./try-it-test-support.tsx";
 import { ASK_ENGINE_EVERY_MS } from "./use-try-it-chat.ts";
 
+/** Text shaped like a key, so Send holds it and offers Send anyway. */
+const key = `sk-${"a1B2".repeat(6)}`;
+
 afterEach(() => {
   unmount();
   vi.clearAllMocks();
@@ -115,6 +118,15 @@ verifies("agents.chat.not-trusted", () => {
     expect(box()).toBe("Sort this mail");
     expect(toasts.list()[0]?.title).toBe("Not started: Acme isn't trusted yet");
   });
+
+  it("holds Send anyway as it holds Send", async () => {
+    const { page, requests, toasts, box } = await untrusted();
+    await sendMessage(page, `My key is ${key}`);
+    await act(async () => buttonNamed(page, "Send anyway")?.click());
+    expect(requests).toHaveLength(0);
+    expect(box()).toBe(`My key is ${key}`);
+    expect(toasts.list()[0]?.title).toBe("Not started: Acme isn't trusted yet");
+  });
 });
 
 verifies("agents.chat.engine-quiet", () => {
@@ -146,6 +158,22 @@ verifies("agents.chat.engine-quiet", () => {
     await act(async () => window.dispatchEvent(new Event("focus")));
     expect(page.textContent).not.toContain(line);
     await sendMessage(page, "And this one?");
+    expect(requests).toHaveLength(2);
+  });
+
+  it("sends nothing on Send anyway once the engine stops answering", async () => {
+    const { host, requests, finish } = scriptedHost();
+    const page = await show(<Chat host={host} announce={vi.fn()} />);
+    await sendMessage(page, "Sort this mail");
+    await finish(new Error("The model didn't answer."));
+    // The held message stays while Try again finds the engine gone.
+    await sendMessage(page, `My key is ${key}`);
+    await act(async () => buttonNamed(page, "Try again")?.click());
+    await finish(new KindedError("unavailable", "The engine isn't answering."));
+    expect(page.textContent).toContain(line);
+    const anyway = buttonNamed(page, "Send anyway");
+    expect(anyway).toBeDefined();
+    await act(async () => anyway?.click());
     expect(requests).toHaveLength(2);
   });
 
