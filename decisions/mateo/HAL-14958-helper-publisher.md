@@ -2,6 +2,7 @@
 
 - Approval: HAL-14958 (Julian's security review of #4298 on HAL-14841)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gWVJSoRMLzJKtZBoB0FDWrUFiX3qmFVY0rr0QePArL3JNwEIwpUGL9Qc4kDP5mbnprziA86VIp5pMCAhiiQzCA==
 
 `sandbox_elevate` (#4298) started the `halonic-sandbox-elevate.exe` beside the app with `runas` without checking who signed it. Studio installs per user, so any program of the user's can write to that folder and put another program in the helper's place. Windows' prompt would still name that program's publisher, but a person who has seen "Halonic" there before may not read it again.
 
