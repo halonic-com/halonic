@@ -6,8 +6,8 @@ const revisionPattern = /^(?!-)[\w./~^-]+$/;
 /**
  * The commit a pull request's file sizes are compared with: `SIZE_BASE`,
  * which CI sets to the main commit a pull request's run is merged onto, and
- * `pnpm check` sets to `origin/main` outside CI. Undefined when it isn't set,
- * as in the merge queue and on `main`, which keep the plain limit.
+ * `pnpm check` sets to {@link branchPoint} outside CI. Undefined when it isn't
+ * set, as in the merge queue and on `main`, which keep the plain limit.
  *
  * @throws when it is set to something that isn't a revision
  */
@@ -20,6 +20,23 @@ export function sizeBase(): string | undefined {
     throw new Error(`SIZE_BASE must be a commit, got "${base}".`);
   }
   return base;
+}
+
+/**
+ * Where the branch left `main` (`git merge-base <main> HEAD`), for a local
+ * run. Not `main`'s tip: on a branch behind `main`, a file `main` shrank since
+ * would look grown by the branch. Undefined when there is no such commit.
+ */
+export function branchPoint(root: string, main = "origin/main"): string | undefined {
+  try {
+    return execFileSync("git", ["merge-base", main, "HEAD"], {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return undefined;
+  }
 }
 
 /** The number of lines of a text, not counting an empty line after the last newline. */

@@ -10,7 +10,8 @@ On a pull request, the `file-size` rule also fails a file the change grows to mo
 lines, 20 under the limit of 500 (`prHeadroomLines` in
 `tooling/check/src/rules/file-size.ts`). CI compares
 each file with the main commit the merge ref is built on (`SIZE_BASE`, set only for
-`pull_request` runs); a local `pnpm check` compares with `origin/main`. A file the pull request
+`pull_request` runs); a local `pnpm check` compares with where the branch left `origin/main`
+(`git merge-base`), so a branch behind `main` isn't blamed for files `main` shrank. A file the pull request
 doesn't grow passes, so a small fix never forces a split. The merge queue and `main` keep the
 plain 500-line limit, so nothing already on `main` turns red.
 

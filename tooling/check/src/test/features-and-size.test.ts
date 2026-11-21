@@ -3,6 +3,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { loadContext } from "../lib/context.ts";
+import { branchPoint } from "../lib/size-base.ts";
 import { checkFileSize } from "../rules/file-size.ts";
 import {
   feature,
@@ -28,6 +29,38 @@ function headroomErrors(before: number, after: number, base: string | undefined)
     return checkFileSize(loadContext(root), base)
       .problems.filter((problem) => problem.severity === "error")
       .map((problem) => problem.message);
+  } finally {
+    removeFixtureRepo(root);
+  }
+}
+
+/**
+ * A branch at 490 lines that is behind `upstream`, which shrank the file to
+ * 400 since: the file-size errors measured from `upstream`'s tip and from the
+ * branch point.
+ */
+function behindMainErrors(): { fromTip: string[]; fromBranchPoint: string[] } {
+  const root = writeFixtureRepo([{ ...std, files: { "src/index.ts": linesOf(490) } }], {
+    coreOrder: ["@halonicjs/std"],
+  });
+  try {
+    const git = (...args: string[]) =>
+      execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.com", ...args], {
+        cwd: root,
+        stdio: "ignore",
+      });
+    const file = "packages/core/std/src/index.ts";
+    git("add", "-A");
+    git("commit", "-qm", "base");
+    git("checkout", "-qb", "upstream");
+    writeFileSync(join(root, file), linesOf(400));
+    git("commit", "-qam", "main shrinks the file");
+    git("checkout", "-q", "-");
+    const errors = (base: string | undefined) =>
+      checkFileSize(loadContext(root), base)
+        .problems.filter((problem) => problem.severity === "error")
+        .map((problem) => problem.file);
+    return { fromTip: errors("upstream"), fromBranchPoint: errors(branchPoint(root, "upstream")) };
   } finally {
     removeFixtureRepo(root);
   }
@@ -87,6 +120,12 @@ describe("tooling/check: features and size", () => {
     expect(headroomErrors(470, 480, "HEAD")).toEqual([]);
     expect(headroomErrors(495, 495, "HEAD")).toEqual([]);
     expect(headroomErrors(495, 490, "HEAD")).toEqual([]);
+  });
+
+  it("doesn't blame a branch behind main for a file main shrank since", () => {
+    const { fromTip, fromBranchPoint } = behindMainErrors();
+    expect(fromTip).toEqual(["packages/core/std/src/index.ts"]);
+    expect(fromBranchPoint).toEqual([]);
   });
 
   it("keeps the plain limit without a base commit, as in the merge queue", () => {

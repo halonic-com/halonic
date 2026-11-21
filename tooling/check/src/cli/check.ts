@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { type CheckContext, loadContext } from "../lib/context.ts";
@@ -8,6 +7,7 @@ import {
   renderRequirementReport,
   requirementReportFile,
 } from "../lib/requirement-report.ts";
+import { branchPoint } from "../lib/size-base.ts";
 import { buildTraceModel } from "../lib/trace-model.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
 import { rules, rulesAfterTests, selectRules } from "../rules/all.ts";
@@ -27,8 +27,9 @@ import { dcoRange } from "../rules/dco.ts";
  * packages in those folders, for a run that tested only them. With --report it also writes each package's requirement report to
  * test-results/requirements.md. The personal-terms guard has its own
  * command, `pnpm check:leaks`, because CI runs it with a secret.
- * Outside CI, a file your branch grows is compared with `origin/main` for
- * the file-size headroom, as CI does for a pull request (`SIZE_BASE`).
+ * Outside CI, a file your branch grows is compared with where the branch
+ * left `origin/main` for the file-size headroom, as CI does for a pull
+ * request (`SIZE_BASE`). Untracked files count only once you `git add` them.
  */
 function parseArguments(
   argv: readonly string[],
@@ -107,8 +108,9 @@ function main(argv: readonly string[]): number {
 }
 
 /**
- * Outside CI, sets `SIZE_BASE` to `origin/main`, so a local run fails a file
- * your branch grows into the headroom, as the pull request's CI will.
+ * Outside CI, sets `SIZE_BASE` to where the branch left `origin/main`, so a
+ * local run fails a file your branch grows into the headroom, as the pull
+ * request's CI will.
  */
 function compareSizesWithMain(toRun: readonly string[]): void {
   if (
@@ -118,12 +120,12 @@ function compareSizesWithMain(toRun: readonly string[]): void {
   ) {
     return;
   }
-  try {
-    execFileSync("git", ["rev-parse", "--verify", "--quiet", "origin/main"], { stdio: "ignore" });
-    process.env["SIZE_BASE"] = "origin/main";
-  } catch {
+  const base = branchPoint(process.cwd());
+  if (base === undefined) {
     console.log("file-size: no origin/main here, so the headroom of grown files isn't checked.");
+    return;
   }
+  process.env["SIZE_BASE"] = base;
 }
 
 function writeRequirementReports(context: CheckContext): void {
