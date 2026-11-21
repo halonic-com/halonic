@@ -151,6 +151,11 @@ export interface LocalEngineInput {
   /** What the model providers call their servers with. */
   readonly http: HttpClient;
   /**
+   * Halonic's other ports on this computer, which a harness run's bridge
+   * never calls a provider on: `serve`'s, where it runs. Read on every call.
+   */
+  readonly ownPorts?: () => Iterable<number>;
+  /**
    * Whether the command's trust check granted trust, so a provider's stored key may go to a
    * non-default address (HAL-11342). A run that can only reach the test model has none.
    */
@@ -310,7 +315,7 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
       secrets: input.secrets,
       keyOrigins: input.keyOrigins,
       trusted: input.trusted,
-      http: input.http,
+      ...(input.ownPorts === undefined ? {} : { ownPorts: input.ownPorts }),
       ...(input.reportAccess === undefined ? {} : { reportAccess: input.reportAccess }),
       ...(input.git === undefined ? {} : { git: input.git }),
       ...(input.harnessParts === undefined ? {} : { parts: input.harnessParts }),

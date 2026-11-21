@@ -118,6 +118,8 @@ export interface WorkspaceEngineTarget {
    * agent (HAL-6580): the engine then doesn't ask the sandbox again.
    */
   readonly sandboxChecked?: readonly UnsandboxedAgent[];
+  /** Halonic's other ports on this computer, which a harness run's bridge never calls: `serve`'s. */
+  readonly ownPorts?: () => Iterable<number>;
   /** The routine scheduler on the engine's tick, for `routines watch`; none for a single run. */
   readonly routines?: (engine: RoutineEngine) => RoutineTicks;
   /**
@@ -216,6 +218,7 @@ export async function openWorkspaceEngine(
     secrets: context.secrets,
     keyOrigins: profileKeyOrigins(() => setup.profile ?? nodeProfileEnvironment()),
     http: setup.http,
+    ...(target.ownPorts === undefined ? {} : { ownPorts: target.ownPorts }),
     trusted: target.trust !== null,
     // The scheduler retries a failed step; one that keeps failing stops the command with its
     // error, or goes to `onStuck`, and after an hour to `onGaveUp`. A failed clean-up is only

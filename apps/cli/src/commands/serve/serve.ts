@@ -168,6 +168,8 @@ async function serveVersions(
     },
   } satisfies VersionChecks);
 
+  // The port the server takes, then the one it got: a run's bridge never calls it (HAL-15251).
+  let servePort = listen.port;
   const engine = await openWorkspaceEngine(context, setup, {
     holder: "serve",
     dir,
@@ -177,11 +179,13 @@ async function serveVersions(
     // Each served run is checked as it starts, in `versions`; none is known before.
     runs: [],
     ending: serveMessages.nothingServed(),
+    ownPorts: () => [servePort],
   });
   try {
     // The server takes the engine's own parts, the ones a webhook starts runs with. The webhook
     // routines are read live from `versions`; none runs on a clock.
     const server = await listenOnComputer(context, setup, dir, versions, engine, listen);
+    servePort = server.port;
     try {
       const name = printable(workspaceNameOf(workspace, dir));
       const address = `http://localhost:${server.port}`;
