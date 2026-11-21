@@ -4,6 +4,7 @@ import {
   type EngineWords,
   engineWords,
   engineWordsOf,
+  type ItemRef,
   type PlaceViewProps,
 } from "@halonicjs/studio-shell";
 import {
@@ -29,6 +30,7 @@ import { ApprovalCard } from "./approval-card.tsx";
 import type { NextItem } from "./card-parts.tsx";
 import { countDetail, inboxRow, itemTitle, lateCount } from "./inbox-row.tsx";
 import { failureReason, isSignedOut, loadFailed, StaleLine } from "./load-lines.tsx";
+import { NothingOpen, nothingWaiting } from "./nothing-open.tsx";
 import { NoticesSection } from "./notices-section.tsx";
 import { ProposalCard } from "./proposal-card.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
@@ -44,16 +46,6 @@ import { type TrustReview, useTrustReview } from "./workspace-trust.ts";
 /** The Library's command that opens New connector; the Inbox can't import the Library, so it runs it by id. */
 const newConnectorCommand = "library.new-connector";
 const openBudgetCommand = "workspace.open-budget";
-
-/**
- * The Inbox's empty state (microcopy 10.1). The desktop list says the short line and the right pane
- * only the description, so the title shows once; a phone has no pane beside the list, so the list
- * shows both in full.
- */
-const nothingWaiting = {
-  title: "Nothing is waiting for you",
-  description: "Approvals and questions from your runs show up here.",
-};
 
 /** The Inbox place's page: the open workspace's Inbox, from `InboxService`. */
 export function InboxPage({ context }: PlaceViewProps) {
@@ -88,6 +80,7 @@ export function InboxPage({ context }: PlaceViewProps) {
       trust={trust}
       {...(openItem && {
         openRun: (hubId: string, runId: string) => openItem({ kind: "run", hub: hubId, id: runId }),
+        openPage: openItem,
       })}
     />
   );
@@ -113,6 +106,8 @@ export interface InboxViewProps {
   readonly openBudget?: (() => void) | undefined;
   /** Opens a run's page, for **Open run** on the toast that says a request started. */
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
+  /** Opens an item's page, for a setup item's own buttons, such as the first run's **Continue**. */
+  readonly openPage?: ((item: ItemRef) => void) | undefined;
   /**
    * The workspace's trust, for a card whose answer was refused because the workspace isn't
    * trusted: **Review**, and the line goes once it is. Without it that line has no button.
@@ -160,6 +155,7 @@ export function InboxView({
   openBudget,
   openRun,
   trust,
+  openPage,
   runFacts,
   runs,
   announce,
@@ -287,6 +283,7 @@ export function InboxView({
               openNewConnector={openNewConnector}
               openRun={openRun}
               trust={trust}
+              openPage={openPage}
               runFacts={runFacts}
               announce={announce}
               now={now}
@@ -357,6 +354,7 @@ function OpenCard({
   openNewConnector,
   openRun,
   trust,
+  openPage,
   runFacts,
   announce,
 }: {
@@ -368,6 +366,7 @@ function OpenCard({
   readonly openNewConnector: (() => void) | undefined;
   readonly openRun: ((hubId: string, runId: string) => void) | undefined;
   readonly trust: TrustReview | undefined;
+  readonly openPage: ((item: ItemRef) => void) | undefined;
   readonly runFacts: RunFactsOf | undefined;
   readonly announce: ((line: string) => void) | undefined;
   readonly next: NextItem | null;
@@ -412,6 +411,7 @@ function OpenCard({
         close={close}
         focus={focus}
         openRun={openRun}
+        openItem={openPage}
         announce={announce}
       />
     );
@@ -463,32 +463,5 @@ function OpenCard({
       waiting={items.some((waiting) => waiting.key === item.key)}
       trust={trust}
     />
-  );
-}
-
-/**
- * The right pane with nothing open (UX checklist 2.3): the request form when the workspace offers
- * one (`form`), else a line.
- */
-function NothingOpen({
-  loaded,
-  waiting,
-  children: form,
-}: {
-  readonly loaded: boolean;
-  readonly waiting: number;
-  readonly children: ReactNode;
-}) {
-  if (!loaded) return null;
-  if (form !== null) return form;
-  if (waiting > 0) {
-    return (
-      <p className="m-auto p-6 text-center text-body text-fg-muted">
-        Pick something on the left to see it here.
-      </p>
-    );
-  }
-  return (
-    <p className="m-auto p-6 text-center text-body text-fg-muted">{nothingWaiting.description}</p>
   );
 }

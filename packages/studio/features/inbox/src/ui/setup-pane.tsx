@@ -35,6 +35,7 @@ export function SetupPane({
   close,
   focus,
   openRun,
+  openItem,
   announce,
 }: SetupPaneProps) {
   const onKeyDown = (event: KeyboardEvent) => {
@@ -49,6 +50,7 @@ export function SetupPane({
     close,
     focus,
     openRun,
+    openItem,
     announce,
   };
 

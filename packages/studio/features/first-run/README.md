@@ -15,6 +15,9 @@ explore**. It also gives Support reply's page the guide card through the Workflo
 `WorkflowGuideService` (`first-run.guide-card`). The app gives it the open folder's sample facts with
 `SampleWorkspaceService` and a place for the state with `FirstRunDeviceService`.
 
+A paused first run has a setup item in the Inbox (`first-run.setup-item`): "Finish your first run" at its step,
+with **Continue**, which takes it up again and opens Support reply, and **Dismiss**.
+
 `ModelChoiceHostService` is the engine side of the Pick a model screen's **Test and continue**: the app
 provides it for each open folder. `test` makes one tiny call through the adapter a run uses, with only the
 pasted key in memory, and gives the outcome; a passed test gives a `testId`. `preview` gives the trust line's

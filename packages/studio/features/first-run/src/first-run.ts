@@ -12,6 +12,9 @@ import {
 /** The demo's one workflow of the first run, as its id is in Acme. */
 export const SUPPORT_WORKFLOW = "support-reply";
 
+/** The hub of Acme that holds {@link SUPPORT_WORKFLOW}. */
+export const SUPPORT_HUB = "support";
+
 /** What the first run reads of the runs list: its runs, and a finished run's log. */
 export type FirstRunRuns = Pick<RunsList, "state" | "subscribe"> & {
   readonly source: Pick<RunsList["source"], "log">;
@@ -60,6 +63,11 @@ export class FirstRun {
   /** The first run on this device now. */
   get state(): FirstRunState {
     return this.#state;
+  }
+
+  /** Whether the first run is paused in the open folder, so the Inbox lists its setup item. */
+  get isPausedHere(): boolean {
+    return this.#state.kind === "paused" && this.#state.folder === this.#device.folder;
   }
 
   /** Whether the first run is going on in the open folder, so the bar and the guide card show. */

@@ -61,6 +61,14 @@ verifies("first-run.state", () => {
     expect(after(paused, { kind: "resumed" })).toEqual({ ...demo, step: "model" });
   });
 
+  it("leaves a paused first run for good when its setup item is dismissed", () => {
+    const dismissed = after(demo, { kind: "left" }, { kind: "dismissed" });
+    expect(dismissed).toEqual({ kind: "dismissed", folder: demo.folder });
+    expect(after(dismissed, { kind: "resumed" }, { kind: "first-win" })).toEqual(dismissed);
+    expect(after(demo, { kind: "dismissed" })).toEqual(demo);
+    expect(parseFirstRun(serializeFirstRun(dismissed))).toEqual(dismissed);
+  });
+
   it("begins again at the demo of a new folder on Start over, whatever it was", () => {
     const again = { kind: "started-over", folder: "/docs/Acme sample 2", at: "later" } as const;
     for (const state of [off, demo, { kind: "done", folder: demo.folder } as const]) {
