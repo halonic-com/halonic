@@ -53,6 +53,8 @@ mod lite_check;
 mod local_network;
 mod native_dialogs;
 mod navigation;
+#[cfg(target_os = "android")]
+mod owner_check;
 mod page_streams;
 mod pair_scan;
 mod plugin_folder;
@@ -136,6 +138,11 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     // Keystore. Used from Rust only: no capability grants its commands.
     #[cfg(target_os = "android")]
     let builder = builder.plugin(device_keys::plugin());
+    // The owner check before the phone answers an approval (HAL-15194):
+    // Android's own biometric prompt. Used from Rust only: no capability
+    // grants its commands, so no page can call it or pick its words.
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(owner_check::plugin());
     builder
         // The navigation guard hands outside links to the browser with the
         // opener. Its click script stays off. That script would run in

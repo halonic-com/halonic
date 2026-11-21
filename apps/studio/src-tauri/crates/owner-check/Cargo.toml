@@ -1,0 +1,14 @@
+[package]
+name = "halonic-owner-check"
+description = "The phone's owner check before it answers an approval (board decision 4b): the OwnerCheck port, its answers, the prompt's fixed words and a fake."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# No dependencies: the prompt itself is Android's own BiometricPrompt,
+# reached through the shell's `owner_check` module and OwnerCheckPlugin.kt.

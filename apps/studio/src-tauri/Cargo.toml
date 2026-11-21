@@ -111,6 +111,11 @@ tauri-plugin-barcode-scanner = "=2.5.3"
 # Android Keystore through the shell's `device_keys` module.
 halonic-device-keys = { path = "crates/device-keys" }
 
+# The owner check before the phone answers an approval (HAL-15194, board
+# decision 4b): Android's own BiometricPrompt, strong biometrics only,
+# through the shell's `owner_check` module. No plugin from outside.
+halonic-owner-check = { path = "crates/owner-check" }
+
 # Tauri's mock runtime, for the test that every command is refused from the
 # served page.
 [dev-dependencies]

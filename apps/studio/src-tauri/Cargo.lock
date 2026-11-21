@@ -1691,6 +1691,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-owner-check"
+version = "0.1.0"
+
+[[package]]
 name = "halonic-process-probe"
 version = "0.1.0"
 dependencies = [
@@ -1791,6 +1795,7 @@ dependencies = [
  "halonic-http-guard",
  "halonic-keychain",
  "halonic-login-shell",
+ "halonic-owner-check",
  "halonic-process-probe",
  "halonic-profile",
  "halonic-record-store",
