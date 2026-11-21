@@ -74,13 +74,23 @@ const notMadeKeys: Readonly<Record<ToolNotMadeReason, FailedCallKey>> = {
 
 /**
  * The line for a connector that didn't start: the program or the secret it missed when the cause
- * names it, else only that it didn't start.
+ * names it, else only that it didn't start. A plugin that isn't trusted yet, or changed since,
+ * gets only that too: the plugin's own page says why and lets the person trust it.
  */
 function connectorStartKey(
   cause: Extract<ToolFailureCause, { code: "connector-not-started" }>,
 ): FailedCallKey {
-  if (cause.name === undefined || cause.why === "other") return "notStarted";
-  return cause.why === "program-missing" ? "programMissing" : "secretNotSet";
+  if (cause.name === undefined) return "notStarted";
+  switch (cause.why) {
+    case "program-missing":
+      return "programMissing";
+    case "secret-not-set":
+      return "secretNotSet";
+    case "plugin-not-trusted":
+    case "plugin-changed":
+    case "other":
+      return "notStarted";
+  }
 }
 
 /** "60 seconds", or "1 second". */

@@ -146,8 +146,18 @@ export type ToolOutcome = "ok" | "error" | "unknown";
  */
 export type ToolNotMadeReason = "not-connected" | "tool-gone" | "sending-off" | "bad-arguments";
 
-/** Why a run's connectors didn't start, when the engine knows (requirement `events.tool-result-cause`). */
-export type ConnectorStartReason = "program-missing" | "secret-not-set" | "other";
+/**
+ * Why a run's connectors didn't start, when the engine knows (requirement
+ * `events.tool-result-cause`): `plugin-not-trusted` and `plugin-changed` are
+ * for a connector from a plugin the person hasn't trusted yet, or that
+ * changed since they trusted it.
+ */
+export type ConnectorStartReason =
+  | "program-missing"
+  | "secret-not-set"
+  | "plugin-not-trusted"
+  | "plugin-changed"
+  | "other";
 
 /**
  * Why a tool call failed, when the engine knows (requirement
@@ -157,8 +167,8 @@ export type ConnectorStartReason = "program-missing" | "secret-not-set" | "other
  * - `engine-stopped`: the engine stopped while the call was going.
  * - `not-made`: the engine didn't make the call, for the reason in `why`.
  * - `connector-not-started`: the run's connectors didn't start. `name` is
- *   the program or the secret's name as the connector's file writes it,
- *   never a secret's value or a program's output.
+ *   the program or the secret's name as the connector's file writes it, or
+ *   the plugin's id, never a secret's value or a program's output.
  *
  * Read it with `toolFailureCauseOf`: a cause it doesn't know reads as absent.
  */

@@ -58,7 +58,10 @@ async function writerWithMissingProgram(): Promise<void> {
 /** A `connector.listing-failed` event of the Writer, at `seq`. */
 function listingFailed(
   seq: number,
-  cause: { why: "other" | "secret-not-set" | "program-missing"; name?: string },
+  cause: {
+    why: Extract<RunEvent, { type: "connector.listing-failed" }>["cause"]["why"];
+    name?: string;
+  },
 ): RunEvent {
   return {
     seq,
@@ -138,6 +141,24 @@ verifies("cli.run-connector-warning", () => {
     expect(other).toEqual([
       "! handbook couldn't list its tools, so they are off in this run.",
       "  To see why, run halonic tools review --dir acme handbook",
+    ]);
+  });
+
+  it("says a plugin isn't trusted yet, or changed since, with halonic trust --plugin as the fix", () => {
+    const lines: string[] = [];
+    const warnings = (dir: string | undefined) =>
+      connectorWarnings({ warn: (line) => lines.push(plainText(line)) }, dir, () => undefined);
+
+    warnings("acme")(listingFailed(4, { why: "plugin-not-trusted", name: "files" }));
+    warnings(undefined)(listingFailed(4, { why: "plugin-changed", name: "files" }));
+
+    expect(lines).toEqual([
+      "! handbook didn't start, so its tools are off in this run.",
+      "  The plugin files isn't trusted yet.",
+      "  Review and trust it with halonic trust --plugin files.",
+      "! handbook didn't start, so its tools are off in this run.",
+      "  The plugin files changed since you trusted it.",
+      "  Review what changed and trust it again with halonic trust --plugin files.",
     ]);
   });
 

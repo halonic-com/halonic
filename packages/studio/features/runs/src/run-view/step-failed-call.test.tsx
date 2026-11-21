@@ -160,6 +160,13 @@ verifies("runs.run-view.step-failed-call", () => {
     expect(lineFor({ code: "connector-not-started", why: "program-missing" })).toBe(plain);
   });
 
+  it("says only that the connector didn't start for a plugin that isn't trusted or changed", () => {
+    const plain = "✕ Didn't work: the connector notes-mcp didn't start.";
+    for (const why of ["plugin-not-trusted", "plugin-changed"] as const) {
+      expect(lineFor({ code: "connector-not-started", why, name: "files" })).toBe(plain);
+    }
+  });
+
   it("names the connector by its tool when the log doesn't name it", () => {
     const shown = lines([
       [0, called("read_note")],

@@ -14,9 +14,11 @@ import { suggestedCommand } from "./suggested-command.ts";
  * `halonic tools review | approve` stop with `cantListProgramMissing` or
  * `cantListSecretMissing` and their fix (decided on HAL-13829). `halonic
  * run` warns with `notStarted` (or `notListed` when it can't say why), then
- * `programMissing` or `secretMissing` and their fix, and goes on: the run
- * had none of the connector's tools. Its line 1 already says the connector
- * didn't start, so its cause line doesn't say it again.
+ * `programMissing`, `secretMissing`, `pluginNotTrusted` or `pluginChanged`
+ * and their fix, and goes on: the run had none of the connector's tools.
+ * Its line 1 already says the connector didn't start, so its cause line
+ * doesn't say it again. The plugin lines use `plugin list`'s words for the
+ * plugin's state, and their fix is `pluginMessages`' (HAL-14974).
  */
 export const connectorStartMessages = defineMessages("connectorStart", {
   programMissing: (program: string) => phrase`The program ${program} isn't on this computer.`,
@@ -26,6 +28,10 @@ export const connectorStartMessages = defineMessages("connectorStart", {
       ? phrase`Install ${program}, or change the command in the ${connector} connector file.`
       : phrase`Install ${program}, or change the command in ${file}.`,
   secretMissing: (secret: string) => phrase`The secret ${secret} isn't set on this computer.`,
+  /** `plugin` is the plugin's id; its fix is `pluginMessages.startNotTrustedFix`. */
+  pluginNotTrusted: (plugin: string) => phrase`The plugin ${plugin} isn't trusted yet.`,
+  /** `plugin` is the plugin's id; its fix is `pluginMessages.startChangedFix`. */
+  pluginChanged: (plugin: string) => phrase`The plugin ${plugin} changed since you trusted it.`,
   /** HAL-13829: line 1 of `tools review | approve` for a connector whose program isn't on this computer. */
   cantListProgramMissing: (connector: string, program: string) =>
     phrase`Couldn't list the tools from ${connector}: its program ${program} isn't on this computer.`,

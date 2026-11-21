@@ -2,14 +2,14 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-12471, plan approved by Liam on HAL-12575; follow-up to HAL-12429; the start causes in PR 2 of that plan; the approved call whose connector didn't start in HAL-13829 (CN1 of the C248 check on HAL-13818)
+- Source: HAL-12471, plan approved by Liam on HAL-12575; follow-up to HAL-12429; the start causes in PR 2 of that plan; the approved call whose connector didn't start in HAL-13829 (CN1 of the C248 check on HAL-13818); the plugin reasons from HAL-14974 (Kim's C522 finding on HAL-14972: a run with a plugin added but not trusted warned only "couldn't list its tools")
 
 When a connector call a run recorded fails and the engine knows why, the engine shall log the reason in the `cause` of its `tool.result` (`events.tool-result-cause`), and shall leave the text the model hears as it was:
 
 - a call whose time limit ran out gets `time-limit`, with the limit in `seconds`; any other failure of the call keeps `outcome: "unknown"` and gets no cause;
 - a call the engine was making when it stopped gets `engine-stopped`;
 - a call the engine didn't make gets `not-made`, with `not-connected` when the agent's connector isn't among the run's or the engine makes no connector calls, `tool-gone` when the connector no longer offers the tool, `sending-off` when the tool sends and the "allow sending" check refused it, and `bad-arguments` when the arguments aren't an object;
-- a call whose run's connectors couldn't start, or whose connector couldn't list its tools, gets `connector-not-started`: with `why: "program-missing"` or `"secret-not-set"` and the program or the secret's name in `name`, cut to `maxCauseNameLength`, when the error is one `connectorStartFailureOf` reads (`ports.connector-start-failure`), else with `why: "other"` and no `name`; never any part of the error's message.
+- a call whose run's connectors couldn't start, or whose connector couldn't list its tools, gets `connector-not-started`: with `why: "program-missing"`, `"secret-not-set"`, `"plugin-not-trusted"` or `"plugin-changed"` and the program's or the secret's name or the plugin's id in `name`, cut to `maxCauseNameLength`, when the error is one `connectorStartFailureOf` reads (`ports.connector-start-failure`), else with `why: "other"` and no `name`; never any part of the error's message.
 
 A call a person approved, whose connector couldn't list its tools when the agent went on after the approval, so the call isn't made, gets its `tool.result` with `outcome: "error"` and the same `connector-not-started` cause, and no `tool.called`; the model hears that the call wasn't made because the connector didn't start. The connector is the one the call's `approval.requested` names (`events.approval-requested-connector`). Other calls inside a model's turn and calls of harness tools get no cause.
 

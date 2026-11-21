@@ -1,8 +1,9 @@
-import type {
-  ConnectorClient,
-  ConnectorConfig,
-  ConnectorFactory,
-  ConnectorFactoryContext,
+import {
+  type ConnectorClient,
+  type ConnectorConfig,
+  type ConnectorFactory,
+  type ConnectorFactoryContext,
+  connectorStartFailureOf,
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -121,6 +122,18 @@ verifies("app.plugin-connector-opening", () => {
     expect((error as Error).cause).toMatchObject({ reason: "changed" });
     expect(backendRequests).toEqual([]);
     expect(localToolSets).toEqual([]);
+  });
+
+  it("throws what the engine reads as a plugin not trusted yet, or changed since", async () => {
+    const refusalOf = async (status: PluginTrustCheck["status"]) =>
+      connectorStartFailureOf(
+        await setUp({ status })
+          .open()
+          .listTools()
+          .catch((caught: unknown) => caught),
+      );
+    expect(await refusalOf("new")).toEqual({ reason: "plugin-not-trusted", plugin: "weather" });
+    expect(await refusalOf("changed")).toEqual({ reason: "plugin-changed", plugin: "weather" });
   });
 
   it("gives each connector local tools of its own", async () => {
