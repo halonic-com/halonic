@@ -192,15 +192,26 @@ export async function removeThroughHelper(
   spawn: Spawn,
   steps: RemovalSteps,
 ): Promise<"removed" | "grants_kept" | "cancelled"> {
-  const elevated = await steps.elevated();
-  if (!elevated) {
-    const failed = await steps.forgetAll();
-    if (failed.length > 0) {
-      throw new Error(
-        `not all the access it kept on your folders could be taken back (${failed.join("; ")}); close what runs in the sandbox and remove it again`,
-      );
-    }
-  }
+  const before = await forgetBeforeHelper(steps);
   if ((await throughHelper(helper, "remove", spawn)) === "cancelled") return "cancelled";
-  return elevated ? "grants_kept" : "removed";
+  return before === "skipped" ? "grants_kept" : "removed";
+}
+
+/**
+ * The user's half of a removal, before the helper's machine-wide half: takes
+ * back the grants srt kept for this user, as {@link removeThroughHelper}
+ * says, or skips that in a process with administrator rights.
+ *
+ * @returns `forgotten`, or `skipped` for a process with administrator rights
+ * @throws when a grant stays recorded, with why
+ */
+export async function forgetBeforeHelper(steps: RemovalSteps): Promise<"forgotten" | "skipped"> {
+  if (await steps.elevated()) return "skipped";
+  const failed = await steps.forgetAll();
+  if (failed.length > 0) {
+    throw new Error(
+      `not all the access it kept on your folders could be taken back (${failed.join("; ")}); close what runs in the sandbox and remove it again`,
+    );
+  }
+  return "forgotten";
 }

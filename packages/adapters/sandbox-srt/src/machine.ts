@@ -262,7 +262,7 @@ const whoamiGroups = (): Promise<string | null> =>
   });
 
 /** What a removal through the helper asks of this process (HAL-7544, HAL-7585). */
-const removalSteps: RemovalSteps = {
+export const systemRemovalSteps: RemovalSteps = {
   elevated: async () => listsElevated(await whoamiGroups()),
   forgetAll: () => new KeptGrants().forgetAll(),
 };
@@ -351,7 +351,7 @@ export const systemMachine: Machine = {
   },
   async uninstallWindowsSandbox() {
     const helper = findHelper("remove");
-    if (helper !== null) return removeThroughHelper(helper, spawnHelper, removalSteps);
+    if (helper !== null) return removeThroughHelper(helper, spawnHelper, systemRemovalSteps);
     const { uninstallWindowsSandbox, resolveSrtWin, VENDORED_SRT_WIN_EXE } = await import(
       "@anthropic-ai/sandbox-runtime"
     );

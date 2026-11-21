@@ -113,6 +113,7 @@ verifies("sandbox-srt.check", () => {
         "cgroupNamesContainer",
         "procVersionIsWsl1",
         "systemMachine",
+        "systemRemovalSteps",
       ]);
     });
   });
