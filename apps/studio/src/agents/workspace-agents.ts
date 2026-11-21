@@ -414,8 +414,8 @@ export class WorkspaceAgents implements AgentsHost {
    * `not_found` for any other hub the workspace doesn't have, so no stray folder is made.
    */
   async create({ name, hubId, instructions = "" }: NewAgent): Promise<AgentRef> {
-    await this.#load();
-    const hubFiles = hubFilesFor(this.#hubs, hubId);
+    const workspace = await this.#load();
+    const hubFiles = hubFilesFor(workspace.issues, this.#hubs, hubId);
     const folder = agentFolder(hubId);
     const taken = (await this.#parts.files.list(folder))
       .filter((path) => path.startsWith(`${folder}/`) && path.endsWith(agentSuffix))
