@@ -77,6 +77,12 @@ interface ButtonWithLabel extends ButtonBase {
   readonly busyLabel?: string | undefined;
   /** What screen readers hear while `busy`, when it differs from `busyLabel`: "Checking for updates". */
   readonly busyName?: string | undefined;
+  /**
+   * What screen readers hear when the words leave something out: "Next: Approve this reply?, 2
+   * left" for "Next: Approve this reply? · 2 left". It starts with the words you see, so a voice
+   * command that says them still finds the button. Read while not `busy`.
+   */
+  readonly name?: string | undefined;
   readonly label?: never;
   readonly round?: never;
 }
@@ -94,6 +100,7 @@ interface IconButton extends ButtonBase {
   readonly children?: never;
   readonly busyLabel?: never;
   readonly busyName?: never;
+  readonly name?: never;
 }
 
 /** The props of `Button`. */
@@ -256,7 +263,7 @@ export function Button(props: ButtonProps) {
       id={props.id}
       type={props.type ?? "button"}
       className={classes.trim()}
-      aria-label={busy ? (props.busyName ?? props.label) : props.label}
+      aria-label={busy ? (props.busyName ?? props.label) : (props.label ?? props.name)}
       aria-busy={busy || undefined}
       aria-disabled={unavailable === undefined ? undefined : true}
       aria-haspopup={props["aria-haspopup"]}

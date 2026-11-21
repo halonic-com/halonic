@@ -68,7 +68,7 @@ export function StaleLine({
   return (
     <div role="status">
       {error === undefined ? null : (
-        <p className={`px-4 pb-2 text-small text-fg-muted${phone ? " pt-4" : ""}`}>
+        <p className={`px-4 pb-2 text-small text-fg-muted ${phone ? "pt-4" : ""}`}>
           {staleReason(error, words)}
         </p>
       )}

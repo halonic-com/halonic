@@ -109,3 +109,34 @@ describe("the Studio's colour and type classes", () => {
     expect(unknown).toEqual([]);
   });
 });
+
+/**
+ * Every word written right before a `${` in a template, with its `file:line` places:
+ * `text-heading leading-5.5${phone ? …}` gives `leading-5.5`.
+ */
+function wordsBeforeExpressions(): Map<string, string[]> {
+  const places = new Map<string, string[]>();
+  for (const file of sourceFiles(studioFolder)) {
+    const lines = withoutComments(readFileSync(file, "utf8")).split("\n");
+    lines.forEach((line, index) => {
+      for (const [, word = ""] of line.matchAll(/(?<=[`\s])([\w:./[\]-]+)\$\{/g)) {
+        const where = `${path.relative(studioFolder, file)}:${index + 1}`;
+        places.set(word, [...(places.get(word) ?? []), where]);
+      }
+    });
+  }
+  return places;
+}
+
+describe("the Studio's class lists", () => {
+  // Tailwind's scanner reads `leading-5.5${` as one word and skips it, so the class is only in
+  // the CSS when another file names it (HAL-15105). A space before the `${` keeps it whole.
+  it("don't run a class into a `${`, which Tailwind's scanner would skip", async () => {
+    const places = wordsBeforeExpressions();
+    const classes = classesIn(await buildStudioCss([...places.keys()]));
+    const glued = [...places]
+      .filter(([word]) => classes.has(word))
+      .map(([word, where]) => `${word} (${where.join(", ")})`);
+    expect(glued).toEqual([]);
+  });
+});

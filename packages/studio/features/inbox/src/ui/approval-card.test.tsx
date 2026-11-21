@@ -282,10 +282,12 @@ verifies("inbox.approval-card", () => {
         "Rejected by you at 10:44. This tool call didn't run. The agent is told, and the run continues.",
       );
       const next = button(root, "Next");
-      expect(next.textContent).toBe("Next: Approve this reply? ·\u00a02\u00a0left, 2 left");
+      expect(next.textContent).toBe("Next: Approve this reply? ·\u00a02\u00a0left");
       // One inline label, so the count wraps with the title (HAL-14489 IX1).
       expect(next.children).toHaveLength(1);
       expect(next.children[0]?.textContent).toBe(next.textContent);
+      // The name is given whole, so Chromium reads no space before its comma (HAL-15105).
+      expect(next.getAttribute("aria-label")).toBe("Next: Approve this reply?, 2 left");
       await press(next);
       expect(open).toHaveBeenCalledOnce();
     });
@@ -312,7 +314,7 @@ verifies("inbox.approval-card", () => {
       const labels = [...root.querySelectorAll("button")].map((b) => b.textContent);
       expect(labels.slice(-2)).toEqual([
         "Back to the chat with Mailbot",
-        "Next: Approve this reply? ·\u00a02\u00a0left, 2 left",
+        "Next: Approve this reply? ·\u00a02\u00a0left",
       ]);
       await press(button(root, "Back to the chat"));
       expect(back).toHaveBeenCalledOnce();

@@ -210,7 +210,7 @@ function Value({
     <div className="flex min-w-0 flex-col">
       <span className="text-small text-fg-muted">{title}</span>
       <pre
-        className={`text-small whitespace-pre-wrap break-words${old ? " text-fg-muted line-through" : ""}`}
+        className={`text-small whitespace-pre-wrap break-words ${old ? "text-fg-muted line-through" : ""}`}
       >
         {shownValue(value)}
       </pre>

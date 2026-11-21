@@ -81,7 +81,7 @@ export function SidePanel(props: SidePanelProps) {
       />
       <div
         aria-busy={props.loading === undefined ? undefined : true}
-        className={`min-h-0 flex-1 overflow-y-auto px-4 py-3${props.halo === true ? " bg-halo-wash" : ""}`}
+        className={`min-h-0 flex-1 overflow-y-auto px-4 py-3 ${props.halo === true ? "bg-halo-wash" : ""}`}
       >
         {props.loading === undefined ? props.children : <LoadingLines />}
       </div>

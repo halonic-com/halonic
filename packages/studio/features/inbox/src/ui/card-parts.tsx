@@ -186,16 +186,13 @@ export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps)
             variant="primary"
             size={phone ? "touch" : "md"}
             block={phone}
+            name={`Next: ${next.title}, ${next.left} left`}
             onClick={() => openAtTop(bar.current, next.open)}
           >
             {/* One run of text, so a phone wraps it between words as a sentence (HAL-13830 IN2);
-                no-break spaces keep "· 3 left" together. The spoken count is inside it too, so the
-                name has no stray space before its comma (HAL-14489 IX1). */}
-            <span>
-              {`Next: ${next.title}`}
-              <span aria-hidden="true">{` ·\u00a0${next.left}\u00a0left`}</span>
-              <span className="sr-only">{`, ${next.left} left`}</span>
-            </span>
+                no-break spaces keep "· 3 left" together. The name is given whole: a hidden span
+                for the count got a space before its comma in Chromium (HAL-15105). */}
+            <span>{`Next: ${next.title} ·\u00a0${next.left}\u00a0left`}</span>
           </Button>
         )}
       </div>
