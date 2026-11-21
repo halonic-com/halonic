@@ -216,7 +216,7 @@ verifies("words.doctor-lines", () => {
         "fix: Fix: update Codex, then run halonic doctor again.",
         "Halonic found Claude Code but couldn't ask its version: exit 1",
         "Claude Code isn't signed in for Writer.",
-        "fix: Fix: sign in for Writer with CLAUDE_CONFIG_DIR='/data/harness-settings/writer/claude-code' claude auth login",
+        "fix: Fix: sign in for Writer with mkdir -p -m 700 '/data/harness-settings/writer/claude-code' && CLAUDE_CONFIG_DIR='/data/harness-settings/writer/claude-code' claude auth login",
       ],
     });
     const none: HarnessesLine = {
