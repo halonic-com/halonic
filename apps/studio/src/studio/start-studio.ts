@@ -442,9 +442,13 @@ async function provideAgentSandbox(
   );
   services.provide(sandboxStartCheckKey, check);
   services.provide(SandboxPassesService, passes);
-  // The engine's choice only reads, like the start check. Nothing shows it until the real canary
-  // lands (HAL-10552, UX W3): until then every backend's trust check fails closed.
-  services.provide(SandboxChoiceHostService, new AgentHostSandboxChoice(transport));
+  // The host only reads the choice; saving it goes through the shell, which checks the backend and
+  // writes the profile (HAL-14510). Nothing shows it until the real canary lands (HAL-10552, UX W3):
+  // until then every backend's trust check fails closed.
+  services.provide(
+    SandboxChoiceHostService,
+    new AgentHostSandboxChoice(transport, (backend) => transport.saveSandboxChoice(backend)),
+  );
   if (agentSandboxOffered)
     services.provide(
       AgentSandboxService,
