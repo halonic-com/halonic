@@ -27,6 +27,8 @@ export interface StoredSkip {
   readonly sentence?: string;
   /** For `start-refused`: the refusal's next step, absent when it has none. */
   readonly fix?: string;
+  /** For `start-refused`: set when the next step leads to a command, which a row can't show. */
+  readonly toCommand?: true;
   readonly from: string;
   readonly to: string;
   readonly count: number;
@@ -78,8 +80,16 @@ export function skipOf(stored: StoredSkip): RoutineSkip {
     };
   }
   if (stored.reason === "start-refused" && stored.sentence !== undefined) {
-    const { reason, sentence, fix } = stored;
-    return { reason, sentence, ...(fix === undefined ? {} : { fix }), from, to, count };
+    const { reason, sentence, fix, toCommand } = stored;
+    return {
+      reason,
+      sentence,
+      ...(fix === undefined ? {} : { fix }),
+      ...(toCommand === undefined ? {} : { toCommand }),
+      from,
+      to,
+      count,
+    };
   }
   return { reason: stored.reason, from, to, count };
 }

@@ -108,10 +108,16 @@ const missed = "missed while Halonic was closed or asleep";
 const unexplained =
   "Halonic ran into a problem it can't explain yet. Press Run now to see the details.";
 
-/** A refused start's reason, then its next step when it has one (rule E4, C553 row 9). */
+/**
+ * A refused start's reason, then its next step when it has one (rule E4, C553 row 9). A step that
+ * leads to a command needs the Run panel's CommandBox, so the row points to **Run now** instead
+ * (microcopy 12.3).
+ */
 function refusal(skip: RoutineSkip): string {
   if (skip.sentence === undefined) return unexplained;
-  return skip.fix === undefined ? skip.sentence : `${skip.sentence} ${withFullStop(skip.fix)}`;
+  if (skip.fix === undefined) return skip.sentence;
+  const step = skip.toCommand ? "Press Run now to see the command." : withFullStop(skip.fix);
+  return `${skip.sentence} ${step}`;
 }
 
 const skipReasons: Record<

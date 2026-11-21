@@ -13,7 +13,7 @@ import { deleteValue } from "./routine-last-runs.ts";
  * for the reason in `why` (see {@link TargetUnavailableWhy}).
  * `start-refused`: the scheduler asked for the run and the start was refused,
  * with the refusal's own sentence in `sentence` and its next step in `fix`
- * when it has them.
+ * when it has them, and `toCommand` when that step leads to a command.
  */
 export type SkipReason =
   | CatchUpReason
@@ -40,6 +40,8 @@ export interface SkippedTimes {
   sentence?: string;
   /** For `start-refused` only: the refusal's next step, absent when it has none or no sentence. */
   fix?: string;
+  /** For `start-refused` only: set when the next step leads to a command, which a row can't show. */
+  toCommand?: true;
   /** The oldest dropped time. */
   from: Date;
   /** The newest dropped time. */
@@ -59,6 +61,8 @@ export interface SkipRecord {
   sentence?: string;
   /** For `start-refused` only: the refusal's next step, absent when it has none or no sentence. */
   fix?: string;
+  /** For `start-refused` only: set when the next step leads to a command, which a row can't show. */
+  toCommand?: true;
   /** ISO time of the oldest skipped time. */
   from: string;
   /** ISO time of the newest skipped time. */
@@ -111,18 +115,20 @@ function sameReason(row: SkipRecord, skip: SkippedTimes): boolean {
     row.reason === skip.reason &&
     row.why === skip.why &&
     row.sentence === skip.sentence &&
-    row.fix === skip.fix
+    row.fix === skip.fix &&
+    row.toCommand === skip.toCommand
   );
 }
 
-/** The `why`, `sentence` and `fix` of a skip or a row, for a row made from it. */
+/** The `why`, `sentence`, `fix` and `toCommand` of a skip or a row, for a row made from it. */
 function detailOf(
-  skip: Pick<SkippedTimes, "why" | "sentence" | "fix">,
-): Pick<SkipRecord, "why" | "sentence" | "fix"> {
+  skip: Pick<SkippedTimes, "why" | "sentence" | "fix" | "toCommand">,
+): Pick<SkipRecord, "why" | "sentence" | "fix" | "toCommand"> {
   return {
     ...(skip.why === undefined ? {} : { why: skip.why }),
     ...(skip.sentence === undefined ? {} : { sentence: skip.sentence }),
     ...(skip.fix === undefined ? {} : { fix: skip.fix }),
+    ...(skip.toCommand === undefined ? {} : { toCommand: skip.toCommand }),
   };
 }
 
@@ -293,6 +299,7 @@ function isRecord(value: unknown): value is SkipRecord {
       ? row.sentence === undefined || typeof row.sentence === "string"
       : row.sentence === undefined) &&
     (row.fix === undefined || (typeof row.fix === "string" && typeof row.sentence === "string")) &&
+    (row.toCommand === undefined || (row.toCommand === true && typeof row.fix === "string")) &&
     isTime(row.from) &&
     isTime(row.to) &&
     isTime(row.decidedAt) &&

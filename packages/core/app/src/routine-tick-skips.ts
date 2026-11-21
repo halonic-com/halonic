@@ -15,8 +15,8 @@ interface DueTime {
   at: Date;
 }
 
-/** What a skip carries besides its reason: `why` for `target-unavailable`, `sentence` and `fix` for `start-refused`. */
-type SkipDetail = Pick<SkippedTimes, "why" | "sentence" | "fix">;
+/** What a skip carries besides its reason: `why` for `target-unavailable`, `sentence`, `fix` and `toCommand` for `start-refused`. */
+type SkipDetail = Pick<SkippedTimes, "why" | "sentence" | "fix" | "toCommand">;
 
 /** Single times of one routine dropped for one reason and detail. */
 interface SingleTimes extends SkipDetail {
@@ -43,7 +43,13 @@ export class TickSkips {
    * of a routine for one reason and detail make one range.
    */
   addTimes(times: readonly DueTime[], reason: SkipReason, detail: SkipDetail = {}): void {
-    const group = JSON.stringify([reason, detail.why, detail.sentence, detail.fix]);
+    const group = JSON.stringify([
+      reason,
+      detail.why,
+      detail.sentence,
+      detail.fix,
+      detail.toCommand,
+    ]);
     for (const { key, at } of times) {
       const reasons = this.singles.get(key) ?? new Map<string, SingleTimes>();
       const single = reasons.get(group) ?? { reason, ...detail, times: [] };
@@ -57,7 +63,8 @@ export class TickSkips {
    * A due time whose start was refused, as `start-refused` with the error's
    * message as its sentence and its `fix` as the next step when the error has
    * a kind: a `KindedError`'s message and fix are safe to show, and an
-   * `internal` one's are not.
+   * `internal` one's are not. A step that leads to a command (the error's
+   * `command`, which the Run panel shows in a CommandBox) sets `toCommand`.
    */
   addRefused(time: DueTime, error: unknown): void {
     if (errorKindOf(error) === "internal" || !(error instanceof Error)) {
@@ -65,9 +72,15 @@ export class TickSkips {
       return;
     }
     const fix = "fix" in error && typeof error.fix === "string" ? error.fix : undefined;
+    const toCommand =
+      fix !== undefined &&
+      "command" in error &&
+      typeof error.command === "string" &&
+      error.command !== "";
     this.addTimes([time], "start-refused", {
       sentence: error.message,
       ...(fix === undefined ? {} : { fix }),
+      ...(toCommand ? { toCommand: true as const } : {}),
     });
   }
 

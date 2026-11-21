@@ -173,6 +173,8 @@ export interface RoutineSkip {
   readonly sentence?: string;
   /** For `start-refused`: the refusal's next step, after its sentence; absent when it has none. */
   readonly fix?: string;
+  /** For `start-refused`: set when the next step leads to a command, which only the Run panel shows. */
+  readonly toCommand?: true;
   /** ISO times of the oldest and the newest skipped time. */
   readonly from: string;
   readonly to: string;

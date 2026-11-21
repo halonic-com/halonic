@@ -49,6 +49,18 @@ it("says a refused start with its sentence and next step, or that Halonic can't 
   expect(skipName(withStep, now)).toBe(
     `Couldn't start at 08:00 Tue. ${running} Stop that one, then try again.`,
   );
+  const toCommand = {
+    ...one,
+    sentence,
+    fix: "Run it in a terminal:",
+    toCommand: true as const,
+  };
+  expect(skipSentence(toCommand, "Briefing", now)).toBe(
+    `08:00 Tue: couldn't start. ${sentence} Press Run now to see the command.`,
+  );
+  expect(skipName(toCommand, now)).toBe(
+    `Couldn't start at 08:00 Tue. ${sentence} Press Run now to see the command.`,
+  );
   expect(skipName({ ...one, sentence }, now)).toBe(
     "Couldn't start at 08:00 Tue. This window can't run Briefing.",
   );
