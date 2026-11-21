@@ -3,6 +3,7 @@
 - Task: HAL-15339
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15339 (row RT15 of Sofia's Routines UX check on HAL-15304; the behaviour the board approved in flow-routines 3.8 and HAL-119: Run now always works, Off only stops the automatic starts; Liam's code review signs this note)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oMKW7EWqH7bTO6Btb0HzyuWGpPzQ0McVFWFDGdy1SXvp//FNM17TrkP3Er1O9P2NsAW//70xKIl95o9L7dGRDA==
 
 ## What changes
 
