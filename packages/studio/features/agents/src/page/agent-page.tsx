@@ -31,11 +31,13 @@ import {
 import { Configuration, type ConfigurationStart } from "../configuration/configuration.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
 import { useConfigurationLoads } from "../configuration/use-configuration-loads.ts";
+import { PlacementProvider } from "../configuration/use-placement.ts";
 import { FlowView } from "../map/flow-view.tsx";
 import { mapWords } from "../map/map-words.ts";
 import { fileItemOf } from "../trash/file-item.ts";
 import { useAgentTrash } from "../trash/use-agent-trash.tsx";
 import { forgetFreshAgent, isFreshAgent } from "./fresh-agents.ts";
+import { FullAccessChip } from "./full-access-chip.tsx";
 import { NotLiveLine } from "./not-live-line.tsx";
 import { PageCard } from "./page-card.tsx";
 import { pageWords } from "./page-words.ts";
@@ -64,31 +66,36 @@ export const MODEL_STEP = "model";
 export function AgentPage({ item, context, step, asked, Sections, sections }: ItemViewProps) {
   const { openPlace, openItem, runCommand, closeStack, announcer } = context;
   const announce = useCallback((text: string) => announcer.announce(text), [announcer]);
+  const host = context.services.get(AgentsHostService);
+  // One read of where the agent runs, so the header's chip follows a choice in Where it runs.
   return (
-    <AgentScreen
-      host={context.services.get(AgentsHostService)}
-      saving={context.saving}
-      hubId={item.hub}
-      id={item.id}
-      sections={sections}
-      Sections={Sections}
-      {...(step === MODEL_STEP && { modelRequest: `${item.id}/${asked ?? 0}` })}
-      {...(openPlace && {
-        goToAgents: () => openPlace("agents"),
-        openRuns: () => openPlace("runs"),
-      })}
-      {...(openItem && { openFile: (path: string) => openItem(fileItemOf(path)) })}
-      {...(runCommand && {
-        openLibrary: (list: AgentToolList) => runCommand(libraryTabCommands[list]),
-      })}
-      closeStack={closeStack}
-      announce={announce}
-      {...(openItem && {
-        openAgent: (agent: AgentRef) => openItem({ kind: "agent", hub: agent.hubId, id: agent.id }),
-        openWorkflow: (workflow: AgentRef) =>
-          openItem({ kind: "workflow", hub: workflow.hubId, id: workflow.id }),
-      })}
-    />
+    <PlacementProvider host={host} hubId={item.hub} id={item.id}>
+      <AgentScreen
+        host={host}
+        saving={context.saving}
+        hubId={item.hub}
+        id={item.id}
+        sections={sections}
+        Sections={Sections}
+        {...(step === MODEL_STEP && { modelRequest: `${item.id}/${asked ?? 0}` })}
+        {...(openPlace && {
+          goToAgents: () => openPlace("agents"),
+          openRuns: () => openPlace("runs"),
+        })}
+        {...(openItem && { openFile: (path: string) => openItem(fileItemOf(path)) })}
+        {...(runCommand && {
+          openLibrary: (list: AgentToolList) => runCommand(libraryTabCommands[list]),
+        })}
+        closeStack={closeStack}
+        announce={announce}
+        {...(openItem && {
+          openAgent: (agent: AgentRef) =>
+            openItem({ kind: "agent", hub: agent.hubId, id: agent.id }),
+          openWorkflow: (workflow: AgentRef) =>
+            openItem({ kind: "workflow", hub: workflow.hubId, id: workflow.id }),
+        })}
+      />
+    </PlacementProvider>
   );
 }
 
@@ -257,7 +264,12 @@ export function AgentScreen({
               )}
             </div>
           </div>
-          {load.kind === "ready" && trash.menu}
+          {load.kind === "ready" && (
+            <>
+              <FullAccessChip host={host} agent={{ hubId, id }} />
+              {trash.menu}
+            </>
+          )}
         </div>
         <TabList
           label={pageWords.views}

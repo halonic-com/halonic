@@ -5,6 +5,7 @@ import {
   List,
   type ListColumn,
   NoteLines,
+  ShieldIcon,
   usePresentation,
   WarningIcon,
 } from "@halonicjs/studio-kit";
@@ -17,7 +18,6 @@ import { RunLog } from "./run-log.tsx";
 import { runLogLines } from "./run-log-model.ts";
 import { stepSandboxes } from "./sandbox-model.ts";
 import { sandboxLineText, sayText } from "./sandbox-panel.tsx";
-import { ShieldIcon } from "./shield-icon.tsx";
 import { stepBlockedSites } from "./step-events-model.ts";
 
 const timelineColumns: readonly ListColumn[] = [{ kind: "main" }, { kind: "time", key: "time" }];

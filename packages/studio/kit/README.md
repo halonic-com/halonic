@@ -2510,7 +2510,7 @@ group, so a long action ("Sign in with Google") goes under the text and lines up
 The icons `AlertIcon`, `BackIcon`, `ForwardIcon`, `HelpIcon` (a circled ?, the sidebar's Help row,
 drawn like the place icons), `InfoIcon`, `MaximiseIcon` (⤢), `RefreshIcon`
 (a circle arrow, the ↻ of a plugin card), `RestoreIcon` (the restore mark), `SettingsIcon` (a gear, the sidebar's Settings row, drawn like
-the place icons) and `WarningIcon` are outline icons in `currentColor`, hidden from screen readers; the slot
+the place icons), `ShieldIcon` (the sandbox's shield) and `WarningIcon` are outline icons in `currentColor`, hidden from screen readers; the slot
 they sit in gives them their size.
 `useOpenExternal()` reads the `openExternal` service in force, and `placeIconNames` lists the
 names a `PlaceIcon` knows. `inlineLinkClasses` is the inline link style (accent text, underlined: a

@@ -132,6 +132,14 @@ export const configurationWords = {
     onHold: (agent: string) =>
       `${agent}'s file changed since you chose On this computer, so it won't run until you confirm again.`,
     reviewAndConfirm: "Review and confirm",
+    /**
+     * The chip in the agent page's header while On this computer is chosen, on hold or not
+     * (checklist 3.8); a screen reader hears the spoken line instead, as with the run page's chip
+     * (microcopy 23.1).
+     */
+    fullAccess: "Full access",
+    fullAccessSpoken: "Runs without the sandbox",
+    fullAccessOnHoldSpoken: "Runs without the sandbox once you confirm again",
     /** The file changed while the warning was open, so nothing was saved; the warning stays for the new file. */
     changedWhileOpen: (agent: string) =>
       `${agent}'s file changed while this was open, so nothing was saved. Read this again, then confirm.`,

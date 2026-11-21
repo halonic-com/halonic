@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  createElement,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import type { AgentPlacementState, AgentRef, AgentsHost } from "../api.ts";
 
 /** What the host said of where the agent runs, or that it couldn't say. */
@@ -25,7 +34,13 @@ function reasonOf(error: unknown): string {
  * Where the agent runs on this computer, read when the page opens and again after each change of
  * the workspace's files, since saving the agent's file can put the choice on hold.
  */
-export function usePlacement(host: AgentsHost, hubId: string, id: string): PlacementState {
+function useOwnPlacement(
+  host: AgentsHost,
+  hubId: string,
+  id: string,
+  // False while a shared read for the same agent answers instead, so the host isn't read twice.
+  active = true,
+): PlacementState {
   const [load, setLoad] = useState<PlacementLoad>({ kind: "loading" });
   // Counts the reads, so only the newest one's answer is used: a slow answer for another agent,
   // or one that arrives after the page is left, is dropped.
@@ -43,6 +58,7 @@ export function usePlacement(host: AgentsHost, hubId: string, id: string): Place
     if (mine === newestRead.current) setLoad(next);
   }, [host, hubId, id]);
   useEffect(() => {
+    if (!active) return;
     setLoad({ kind: "loading" });
     void reload();
     const stop = host.subscribe(() => void reload());
@@ -50,6 +66,44 @@ export function usePlacement(host: AgentsHost, hubId: string, id: string): Place
       stop();
       newestRead.current += 1;
     };
-  }, [host, reload]);
+  }, [host, reload, active]);
   return { load, reload };
+}
+
+/** The read an agent page shares, with the agent it is for. */
+interface SharedPlacement {
+  readonly hubId: string;
+  readonly id: string;
+  readonly state: PlacementState;
+}
+
+const SharedPlacementContext = createContext<SharedPlacement | undefined>(undefined);
+
+/** Props for {@link PlacementProvider}. */
+export interface PlacementProviderProps {
+  readonly host: AgentsHost;
+  readonly hubId: string;
+  readonly id: string;
+  readonly children: ReactNode;
+}
+
+/**
+ * Reads where the agent runs once for everything under it, so the header's `Full access` chip
+ * follows a choice made in Where it runs at once: a choice changes no file, so the host's
+ * file-change signal alone wouldn't tell the chip.
+ */
+export function PlacementProvider({ host, hubId, id, children }: PlacementProviderProps) {
+  const state = useOwnPlacement(host, hubId, id);
+  return createElement(SharedPlacementContext.Provider, { value: { hubId, id, state } }, children);
+}
+
+/**
+ * Where the agent runs on this computer: the agent page's shared read when it is for the same
+ * agent, otherwise a read of its own.
+ */
+export function usePlacement(host: AgentsHost, hubId: string, id: string): PlacementState {
+  const shared = useContext(SharedPlacementContext);
+  const sameAgent = shared !== undefined && shared.hubId === hubId && shared.id === id;
+  const own = useOwnPlacement(host, hubId, id, !sameAgent);
+  return sameAgent ? shared.state : own;
 }
