@@ -65,6 +65,22 @@ verifies("agents.page.frame", () => {
     ).toContain("Harness");
   });
 
+  it("reopens a closed panel for Open Harness settings ›, with focus on the Harness page's tab", async () => {
+    const page = await show(
+      <AgentScreen host={hostWhere(() => ({ status: "missing" }))} hubId="acme" id="sorter" />,
+    );
+    await act(async () =>
+      page.querySelector<HTMLElement>('button[aria-label="Close Configuration"]')?.click(),
+    );
+    expect(viewPanel(page).closest("[hidden]")).not.toBeNull();
+
+    await act(async () => buttonNamed(chat(page) as HTMLElement, "Open Harness settings")?.click());
+
+    expect(viewPanel(page).closest("[hidden]")).toBeNull();
+    expect(document.activeElement?.getAttribute("role")).toBe("tab");
+    expect(document.activeElement?.textContent).toBe("Harness");
+  });
+
   it("drops the chat's line once Check again on the Harness page finds the harness", async () => {
     let readiness: HarnessReadiness = { status: "missing" };
     const page = await show(

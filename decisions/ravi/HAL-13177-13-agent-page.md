@@ -9,8 +9,9 @@
 `agents.page.frame`: on desktop the agent page is now the shell's `ItemPage`. Its header shows the
 Agents icon, "Agent" and the name field, the Try it chat is on the left (`agents.chat.first-load`),
 and Configuration or Runs is in the panel beside it. The chat's **Open Harness settings ›** shows
-Configuration › Harness, and **Check again** on the Harness page shows in the chat's line too. The
-phone keeps its own frame with the letter avatar.
+Configuration › Harness through the item page's `show` (`shell.item-page-header`): a panel closed
+with ✕ opens again, a narrow tab opens the panel's screen, and focus goes to the Harness tab.
+**Check again** on the Harness page shows in the chat's line too. The phone keeps its own frame with the letter avatar.
 
 `agents.page.rename`: the header's name field is the shell's. An empty name now puts the old one
 back without a message, as on every item page, instead of saying "Give it a name.". A taken name
