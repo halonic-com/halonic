@@ -29,8 +29,8 @@ function runsOnByJob(text: string): Map<string, string> {
   return result;
 }
 
-const large = ["build", "e2e", "scaffold"];
-const small = ["changes", "fast", "trace", "policy-base", "docs"];
+const large = ["build", "e2e", "scaffold", "fast"];
+const small = ["changes", "trace", "policy-base", "docs"];
 // Docker (gitleaks), a Python venv (zizmor) and a secret (leaks) aren't on the server.
 const kept = [
   "leaks",
