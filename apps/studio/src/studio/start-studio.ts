@@ -171,6 +171,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
   const device: DeviceMemory = {
     recent: new RecentWorkspaces(page.storage ?? noStorage),
     storage: page.storage ?? noStorage,
+    platform,
     ...(newWorkspace.newWorkspace === undefined
       ? {}
       : { startOwnWorkspace: () => newWorkspaceAsks.ask() }),
@@ -256,6 +257,8 @@ export interface DeviceMemory {
   readonly storage: RecentStorage;
   /** Opens the New workspace dialog; `undefined` when the window has none. */
   readonly startOwnWorkspace?: () => void;
+  /** The computer's operating system; left out, the Studio's words name no program of one. */
+  readonly platform?: KeyboardPlatform;
 }
 
 /**
@@ -332,6 +335,7 @@ export async function openFolder(
       trust,
       askTrust: () => trustView?.asks.ask() ?? Promise.resolve("declined"),
       location,
+      platform: device.platform ?? "linux",
       name,
       scope,
       // Run waits through the workspace's own save, which is made below, once the workspace is.

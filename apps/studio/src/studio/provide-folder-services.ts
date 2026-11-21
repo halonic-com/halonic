@@ -64,7 +64,7 @@ import {
   tauriAgentHostTransport,
   tokenStoreKey,
 } from "@halonicjs/studio-services";
-import { EngineNotAnswering } from "@halonicjs/studio-shell";
+import { EngineNotAnswering, type KeyboardPlatform } from "@halonicjs/studio-shell";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
@@ -110,6 +110,8 @@ export interface FolderServiceParts {
   /** Opens the window's trust check for a start it refused, and says how the person answered. */
   readonly askTrust: () => Promise<"trusted" | "declined">;
   readonly location: string;
+  /** The computer's operating system, which names its file manager in the Files host's refusals. */
+  readonly platform: KeyboardPlatform;
   /** The workspace's name, as the window shows it. */
   readonly name: string;
   /** The open workspace, whose files and events the Models feature reads. */
@@ -133,6 +135,7 @@ export function provideFolderServices(
     trust,
     askTrust,
     location,
+    platform,
     name,
     scope,
     settle,
@@ -160,6 +163,7 @@ export function provideFolderServices(
           for (const stop of stops) stop();
         };
       },
+      platform,
     }),
   );
   const keys = services.provide(ModelKeysService, new WorkspaceModelKeys(shellKeychain(ipc)));

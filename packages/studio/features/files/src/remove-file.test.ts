@@ -90,7 +90,7 @@ verifies("files.ui.delete-file", () => {
   it("says what to do instead, with no Try again, when trying again can't help", async () => {
     const refusal = Object.assign(
       kinded("unavailable", "Studio can't delete a skill that has other files in its folder yet."),
-      { fix: "To delete pdf, delete the folder skills/pdf in File Explorer." },
+      { fix: "To delete pdf, delete the folder skills/pdf in Finder." },
     );
     const { show, store } = toastsOf();
 
@@ -100,7 +100,7 @@ verifies("files.ui.delete-file", () => {
     expect(toast).toEqual({
       tone: "danger",
       title: "Studio can't delete a skill that has other files in its folder yet.",
-      text: "To delete pdf, delete the folder skills/pdf in File Explorer.",
+      text: "To delete pdf, delete the folder skills/pdf in Finder.",
       sticky: true,
     });
   });
