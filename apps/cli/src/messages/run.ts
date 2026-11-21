@@ -1,4 +1,4 @@
-import { moneyAmount, type PluginPartUnavailableReason } from "@halonicjs/app";
+import { moneyAmount } from "@halonicjs/app";
 import type { RunSends } from "@halonicjs/events";
 import { printable } from "../output/printable.ts";
 import { counted, listInWords, timesInWords } from "./counts.ts";
@@ -28,6 +28,11 @@ export interface RunReceipt {
   /** The estimated cost in euros; left out for a run on the test model. */
   readonly estimatedCost?: number;
 }
+
+/** A part of a plugin as a run's warning names it: the backend, or a program by its escaped name. */
+export type PluginPartShown =
+  | { readonly kind: "backend" }
+  | { readonly kind: "program"; readonly name: string };
 
 /**
  * The sentences of `halonic run <workflow>` (cli-output 1.9 and 3.4): the
@@ -295,24 +300,29 @@ export const runMessages = defineMessages("run", {
   harnessSignedOut: (agent: string, type: string) =>
     phrase`${agent} runs in the sandbox, where its program can't use your own sign-in. If it fails as signed out, add a provider of type ${type} with a secret, and save the key with halonic secret set.`,
   /**
-   * The tools of one part of a plugin, its backend or one of its programs,
-   * that are off for this run because the part can't start (HAL-12343). The
-   * plugin's other parts keep working. `reason` is the code the plugin's
-   * connector gives; for `not-trusted` and `failed`, `error` says what to do.
-   * The names and the error arrive escaped.
+   * Line 1 of the warning for one part of a plugin, its backend or one of
+   * its programs, that can't start (HAL-12343), in the shape of
+   * `connectorStart.notStarted`. The plugin's other parts keep working. The
+   * reason follows on line 2 (C484-1, HAL-12343). The names arrive escaped.
    */
-  pluginPartOff: (
-    plugin: string,
-    part: { readonly kind: "backend" } | { readonly kind: "program"; readonly name: string },
-    reason: PluginPartUnavailableReason,
-    error: string,
-  ) => {
-    const whose =
-      part.kind === "backend"
-        ? phrase`The tools of the backend of the plugin ${plugin}`
-        : phrase`The tools of the program ${part.name} of the plugin ${plugin}`;
-    return phrase`${whose} are off for this run: ${pluginPartWhy(reason, error)}`;
-  },
+  pluginPartOff: (plugin: string, part: PluginPartShown) =>
+    part.kind === "backend"
+      ? phrase`The backend of the plugin ${plugin} didn't start, so its tools are off in this run.`
+      : phrase`The program ${part.name} of the plugin ${plugin} didn't start, so its tools are off in this run.`,
+  /** Line 2 for `sandbox-not-fenced`: the session opened, but not in a sandbox Halonic could confirm. */
+  pluginPartNotConfirmed: () =>
+    phrase`Halonic couldn't confirm that the sandbox limits this program on this computer.`,
+  /** The `--debug` line under it: the fence state the session reported, for an engineer. */
+  pluginPartFence: (fence: string) =>
+    phrase`the program's sandbox session opened with its fence ${fence}, so the program didn't start`,
+  /** Line 2 for `network-needs-srt`. */
+  pluginPartNetwork: () =>
+    phrase`It reaches the network, and the Windows 11 sandbox can't limit a program to single sites yet.`,
+  /** Line 2 for `settings-not-set`, with the settings' names escaped. No command sets them yet, so no fix line. */
+  pluginPartSettings: (settings: readonly string[]) =>
+    phrase`These settings of the plugin have no value: ${settings.join(", ")}.`,
+  /** Line 2 for `not-trusted` and `failed`: the error's own text, escaped, which says what to do. */
+  pluginPartError: (error: string) => phrase`${error}`,
   /** The same when a stopped command gave up waiting for the engine to close (HAL-6677). */
   closeAbandoned: (seconds: number) =>
     phrase`the engine didn't close within ${seconds} s of the stop; released its lock and ending without it`,
@@ -412,23 +422,4 @@ function inputHas(given: readonly string[] | undefined): string {
     return "Your input has no fields.";
   }
   return `Your input has: ${given.map(printable).join(", ")}.`;
-}
-
-/** Why a part of a plugin can't start, after "are off for this run:". */
-function pluginPartWhy(reason: PluginPartUnavailableReason, error: string): Phrase {
-  switch (reason.kind) {
-    case "needs-desktop-app":
-      return phrase`programs run only in the Halonic desktop app, in a sandbox.`;
-    case "sandbox-unavailable":
-      return phrase`the sandbox can't start on this computer (${reason.reason}).`;
-    case "sandbox-not-fenced":
-      return phrase`its sandbox session couldn't show that it is fenced (${reason.fence}), so the program didn't start.`;
-    case "network-needs-srt":
-      return phrase`it reaches the network, and the Windows 11 sandbox can't limit a program to single sites yet.`;
-    case "settings-not-set":
-      return phrase`these settings of the plugin have no value: ${reason.settings.map(printable).join(", ")}.`;
-    case "not-trusted":
-    case "failed":
-      return phrase`${error}`;
-  }
 }

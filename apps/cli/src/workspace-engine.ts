@@ -8,7 +8,6 @@
 // it (Liam, HAL-4349).
 
 import { nodeProgramStarter } from "@halonicjs/adapter-mcp";
-import type { PluginPartUnavailable } from "@halonicjs/app";
 import type { ChatTurnWaiting, HttpClient, TrustGrant } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
@@ -38,6 +37,7 @@ import { runMessages } from "./messages/run.ts";
 import { openLocalIntegration } from "./open-local-integration.ts";
 import { printable } from "./output/printable.ts";
 import { pluginConnectorSources } from "./plugin-connector-factory.ts";
+import { pluginPartReporter, type RunConnectorLines } from "./plugin-part-warnings.ts";
 import { checkRunSandbox, type SandboxGateRun, type UnsandboxedAgent } from "./sandbox-gate.ts";
 import {
   nodeSandboxGateHost,
@@ -278,12 +278,6 @@ export async function checkEngineRuns(
   return [...unsandboxed.values()];
 }
 
-/** Where the run's connectors tell the person about a plugin part that can't start, and log a failed clean-up. */
-interface RunConnectorLines {
-  warn(line: Phrase): void;
-  debug(line: Phrase): void;
-}
-
 /**
  * This computer's connector programs, `PATH` and network, for
  * {@link WorkspaceEngineSetup.runConnectors}. A local integration starts in
@@ -311,7 +305,7 @@ function computerRunConnectors(
       ...fence,
       env: process.env,
       timeLimitMs: connectorSessionLimitMs,
-      onUnavailable: pluginPartReporter((line) => lines.warn(line)),
+      onUnavailable: pluginPartReporter(lines, process.env["WSL_DISTRO_NAME"]),
       onReleaseFailed: (error) =>
         lines.debug(runMessages.cleanUpFailed("program-folders", reasonOf(error)).phrase),
     },
@@ -380,33 +374,6 @@ export function accessReporter(
     } else if (choice.reason === "no-keyed-provider") {
       context.warn(runMessages.harnessSignedOut(name, choice.provider).phrase);
     }
-  };
-}
-
-/**
- * The plugin connectors' `onUnavailable`: a warning naming the part of a
- * plugin whose tools are off and why, shown with or without `--debug`, so a
- * run never leaves them out silently. Each is written once for each
- * connector, part and reason.
- *
- * @example
- * const onUnavailable = pluginPartReporter((line) => context.warn(line));
- * // ! The tools of the program lister of the plugin files are off for this run: the sandbox can't start on this computer (bubblewrap-missing).
- */
-export function pluginPartReporter(
-  warn: (line: Phrase) => void,
-): (connector: string, unavailable: PluginPartUnavailable) => void {
-  const told = new Set<string>();
-  return (connector, { plugin, part, reason, error }) => {
-    const key = `${connector}\n${part}\n${reason.kind}`;
-    if (told.has(key)) return;
-    told.add(key);
-    const shown =
-      part === "backend"
-        ? ({ kind: "backend" } as const)
-        : ({ kind: "program", name: printable(part.slice("local:".length)) } as const);
-    const line = runMessages.pluginPartOff(printable(plugin), shown, reason, reasonOf(error));
-    warn(phrase`${markPart("needsYou")} ${line.phrase}`);
   };
 }
 

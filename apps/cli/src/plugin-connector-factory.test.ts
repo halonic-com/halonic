@@ -12,8 +12,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { plainText } from "./messages/phrase.ts";
 import { PluginConnectorFactory, pluginConnectorSources } from "./plugin-connector-factory.ts";
+import { pluginPartReporter } from "./plugin-part-warnings.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
-import { pluginPartReporter } from "./workspace-engine.ts";
 import { webCryptoDigest } from "./workspace-runs.ts";
 import { cliTrustService } from "./workspace-trust.ts";
 
@@ -126,9 +126,8 @@ verifies("cli.plugin-local-tools", () => {
     await connector.close();
   });
 
-  it("warns once for each connector, part and reason, naming the plugin, the program and why", () => {
-    const lines: string[] = [];
-    const report = pluginPartReporter((line) => lines.push(plainText(line)));
+  it("warns once for each connector, part and reason, then why on the lines under it", () => {
+    const { lines, report } = reporter();
     const part: PluginPartUnavailable = {
       plugin: "files",
       part: "local:lister",
@@ -139,8 +138,79 @@ verifies("cli.plugin-local-tools", () => {
     report("my-files", part);
     report("my-files", { ...part, part: "backend", reason: { kind: "failed" } });
     expect(lines).toEqual([
-      "! The tools of the program lister of the plugin files are off for this run: the sandbox can't start on this computer (bubblewrap-missing).",
-      "! The tools of the backend of the plugin files are off for this run: bwrap: command not found",
+      "warn ! The program lister of the plugin files didn't start, so its tools are off in this run.",
+      "warn   bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.",
+      "warn   More: https://docs.halonic.dev/security/sandbox/#bubblewrap (bubblewrap-missing)",
+      "warn ! The backend of the plugin files didn't start, so its tools are off in this run.",
+      "warn   bwrap: command not found",
+    ]);
+  });
+
+  it("warns again for the same part when the reason's details differ", () => {
+    const { lines, report } = reporter();
+    const part: PluginPartUnavailable = {
+      plugin: "files",
+      part: "local:lister",
+      reason: { kind: "sandbox-unavailable", reason: "container" },
+      error: new Error("in a container"),
+    };
+    report("my-files", part);
+    report("my-files", {
+      ...part,
+      reason: { kind: "sandbox-unavailable", reason: "bubblewrap-missing" },
+    });
+    expect(lines.filter((line) => line.startsWith("warn !"))).toHaveLength(2);
+    expect(lines[1]).toBe(
+      "warn   Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. halonic validate and halonic test work in a container.",
+    );
+  });
+
+  it("words a reason code it doesn't know as other's, never the code alone", () => {
+    const { lines, report } = reporter();
+    report("my-files", {
+      plugin: "files",
+      part: "local:lister",
+      reason: { kind: "sandbox-unavailable", reason: "from-a-newer-port" as "other" },
+      error: new Error("unknown"),
+    });
+    expect(lines.slice(1)).toEqual([
+      "warn   Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer, then run it again.",
+      "warn   More: https://docs.halonic.dev/security/sandbox/#other (from-a-newer-port)",
+    ]);
+  });
+
+  it("says a session it couldn't confirm in a sandbox in words, with its fence only under --debug", () => {
+    const { lines, report } = reporter();
+    const part = { plugin: "files", part: "local:lister" } as const;
+    report("my-files", {
+      ...part,
+      reason: { kind: "sandbox-not-fenced", fence: "not-fenced" },
+      error: null,
+    });
+    report("my-files", { ...part, reason: { kind: "network-needs-srt" }, error: null });
+    report("my-files", {
+      ...part,
+      reason: { kind: "settings-not-set", settings: ["root", "api_key"] },
+      error: null,
+    });
+    expect(lines).toEqual([
+      "warn ! The program lister of the plugin files didn't start, so its tools are off in this run.",
+      "warn   Halonic couldn't confirm that the sandbox limits this program on this computer.",
+      "debug the program's sandbox session opened with its fence not-fenced, so the program didn't start",
+      "warn ! The program lister of the plugin files didn't start, so its tools are off in this run.",
+      "warn   It reaches the network, and the Windows 11 sandbox can't limit a program to single sites yet.",
+      "warn ! The program lister of the plugin files didn't start, so its tools are off in this run.",
+      "warn   These settings of the plugin have no value: root, api_key.",
     ]);
   });
 });
+
+/** A reporter whose warnings and `--debug` lines are kept as plain text, each after its kind. */
+function reporter() {
+  const lines: string[] = [];
+  const report = pluginPartReporter({
+    warn: (line) => lines.push(`warn ${plainText(line)}`),
+    debug: (line) => lines.push(`debug ${plainText(line)}`),
+  });
+  return { lines, report };
+}
