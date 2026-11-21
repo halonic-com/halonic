@@ -81,7 +81,7 @@ export function StepCard({
     if (focusOnMount) button.current?.focus();
   }, [focusOnMount]);
   const ring = ringOf(failed === true, selected, problems?.severity);
-  const outline = connectTarget === undefined ? "" : CONNECT_OUTLINE[connectTarget];
+  const outline = outlineOf(connectTarget);
   return (
     <>
       <button
@@ -205,6 +205,10 @@ const CONNECT_OUTLINE: Record<ConnectTarget, string> = {
   can: "outline-1 outline-offset-4 outline-accent outline-dashed",
   over: "outline-2 outline-offset-4 outline-accent",
 };
+
+function outlineOf(connectTarget: ConnectTarget | undefined): string {
+  return connectTarget === undefined ? "" : CONNECT_OUTLINE[connectTarget];
+}
 
 /**
  * The problem line (flow-workflows 4.4): "✕ Uses a missing agent" in the colour of the worst
