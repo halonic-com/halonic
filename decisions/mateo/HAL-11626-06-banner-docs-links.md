@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11626 (row R9 of the UX check on HAL-11613, against microcopy 23.3; RQ1 of Sofia's C430 check on HAL-14597, decided by the team with Sofia; Liam approves this note in review)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ofIsnQeYBvD3NM5gscwC94PtRXJtMVZHfgcKBH4zWUnTNpfU4XC+7//p97x/qeNrJCHUA1le+7BvBWFwp27tBg==
 
 Four requirements change to match the approved words:
 
