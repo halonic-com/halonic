@@ -13,6 +13,8 @@ Seven runs of a fresh `halonic init` workspace stopped with "Halonic can't tell 
 - `app.run-failure`: these become `unknown-provider`, `items-not-a-list`, `no-transition` and `task-without-agent`, which count as the workspace's setup. `answer.not-json` says its cause is known.
 - `cli.run-failure`: each gets a line 1 and a line 2 fix, with no report line. A run stopped by one exits with its cause's kind (`cli.run`, unchanged): 2, or 4 for a missing provider. `answer.not-json` joins the known causes, whose line 1 gives the engine's message after the step instead of "Halonic can't tell the cause yet: …" (#4086, HAL-13862).
 
+- `allowed-differences.json` gets `failed-run-names-its-cause` (`events.run-failed-cause`), whose CLI rule `run-failed-cause` takes `cause` out of the new `run.failed`, as `run-failed-reason` does for `reason`. The CLI parity calls for an echo model's answer that isn't JSON now carry `answer.not-json`, which the old CLI had no field for; the error and everything else are still compared.
+
 ## Why
 
 "Report it" sends a user with a typo to open an issue, and "can't tell the cause" is untrue when the engine knows it. The fix line is the shortest path back to a working run.
@@ -34,3 +36,4 @@ No test was weakened or skipped. Engine tests check each cause on `run.failed`; 
 - engine.task-json-answer
 - app.run-failure
 - cli.run-failure
+- packages/testing/parity/allowed-differences.json

@@ -198,6 +198,21 @@ verifies("parity.compare-cli-calls", () => {
         type: "run.failed",
         error: "x",
       });
+      const cause = { kind: "invalid_input", code: "answer.not-json" };
+      const withCause = {
+        ...failed("x"),
+        runs: [
+          {
+            summary: { id: "run_1" },
+            events: [{ type: "run.failed", error: "x", reason: "error", cause }],
+          },
+        ],
+      };
+      expect(cliRule("run-failed-cause")?.new?.(withCause).runs[0]?.events[0]).toEqual({
+        type: "run.failed",
+        error: "x",
+        reason: "error",
+      });
     });
 
     it("takes version out of the new run.started only", () => {

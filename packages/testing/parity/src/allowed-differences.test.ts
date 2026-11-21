@@ -208,6 +208,7 @@ verifies("parity.allowed-differences-checked", () => {
       "cli.exit-codes",
       "cli.commands.test.run-tests",
       "events.run-failed-reason",
+      "events.run-failed-cause",
       "engine.task-json-answer",
       "engine.budget-composite-stops",
       "workspace.references",
