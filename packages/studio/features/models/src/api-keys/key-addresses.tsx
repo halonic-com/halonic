@@ -11,9 +11,10 @@ import {
   ADDRESS_UNENCRYPTED,
   ADDRESSES_RECOVERY,
   ADDRESSES_UNREADABLE,
-  allowedAddressLine,
+  ALLOWED_ADDRESS_LEAD,
   moreAddresses,
   NOT_BOUND_YET,
+  ONLY_ADDRESS_PART_KEPT,
 } from "./key-text.ts";
 
 /**
@@ -75,8 +76,10 @@ export function AddressLine({
         </p>
       );
     case "none":
+      // The neutral chip's fill is the page's own colour, so it takes the kit's step for a
+      // neutral fill on a muted one, or it reads as loose grey text (design check C564).
       return (
-        <p>
+        <p data-fill="muted">
           <StatusChip tone="neutral">{NOT_BOUND_YET}</StatusChip>
         </p>
       );
@@ -178,7 +181,10 @@ export function AddressField({
       <div aria-live="polite">
         {shown?.kind === "address" ? (
           <>
-            <p>{allowedAddressLine(shown.address, shown.partDropped)}</p>
+            <p className="text-small">
+              {ALLOWED_ADDRESS_LEAD} <code className="break-all">{shown.address}</code>
+              {shown.partDropped ? `. ${ONLY_ADDRESS_PART_KEPT}` : null}
+            </p>
             {shown.unencrypted ? <p className="text-fg-muted">{ADDRESS_UNENCRYPTED}</p> : null}
           </>
         ) : null}

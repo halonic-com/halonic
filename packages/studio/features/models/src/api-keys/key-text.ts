@@ -123,11 +123,12 @@ export const ADDRESS_PROBLEM = {
   scheme: "Use an address that starts with https:// or http://.",
 } as const;
 
-/** The line under the field once the typed text reads as an address. */
-export function allowedAddressLine(address: string, partDropped: boolean): string {
-  const line = `Allowed address: ${address}`;
-  return partDropped ? `${line}. Only the address part is kept.` : line;
-}
+/**
+ * The line under the field once the typed text reads as an address: the lead, the address as
+ * code, and the note when a path or query was dropped.
+ */
+export const ALLOWED_ADDRESS_LEAD = "Allowed address:";
+export const ONLY_ADDRESS_PART_KEPT = "Only the address part is kept.";
 
 /** The line after a save that kept an address: with a new key, or for the stored one. */
 export function addressSavedLine(address: string, withKey: boolean): string {
