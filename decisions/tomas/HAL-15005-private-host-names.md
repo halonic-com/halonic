@@ -2,6 +2,7 @@
 
 - Approval: Liam decided option 1 on HAL-15005 (21 Nov, 16:28 UTC), and approves this note in his review of this pull request; Julian checks it as the second reviewer of a security change
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:YSmPrNveZW3RaCE+9yd4rEYCojgNPniYEs5x67tp+ULolNcnYmgwLlG/QnGotoDN3pQdsnA7j1EPMhiAw8/RDQ==
 - Task: HAL-15005
 
 ## What changes
