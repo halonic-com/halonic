@@ -1,17 +1,13 @@
 // The keys Studio serves a sandboxed harness agent's bridge (HAL-13795): the
 // CLI's `ProviderKeyServices`, on the workspace the engine loaded, the
 // keychain and the model calls' own check before a key is sent, with
-// Studio's words for a missing key.
-//
-// The agent host's bridge can't reach a provider's own address (`baseUrl`)
-// yet (HAL-13798), so Studio refuses such a provider before the key is read
-// or the program starts, and says so plainly, rather than let the bridge
-// refuse every call of a program that already runs.
+// Studio's words for a missing key. A provider with its own address
+// (`baseUrl`) gets the same check, and the agent host's bridge reaches that
+// address through a client that checks it as a connector's (HAL-13798).
 
 import type { Provider } from "@halonicjs/format";
 import { type ModelAliasRules, ProviderKeyServices } from "@halonicjs/host-harness-host";
 import type { Secrets } from "@halonicjs/ports";
-import { KindedError } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 
 /** What the engine gives for a sandboxed agent's provider key. */
@@ -42,37 +38,9 @@ export function studioProviderKeys(parts: StudioKeyParts): ProviderKeyServices {
   return new ProviderKeyServices({
     workspace: parts.workspace,
     secrets: parts.secrets,
-    requireKeyMayGo: async (file) => {
-      refuseOwnAddress(file);
-      await parts.requireKeyMayGo(file);
-    },
+    requireKeyMayGo: parts.requireKeyMayGo,
     missingKeyText: (secret, providerId) =>
       `The secret "${secret}" that holds provider ${providerId}'s key isn't saved on this computer, so the sandboxed agent can't call its model. Save it in Settings › Models.`,
     aliases: parts.aliases,
-  });
-}
-
-/** The cause code a run logs when Studio refuses a provider with its own address (C503 M3). */
-const baseUrlCauseCode = "studio.harness-base-url";
-
-/**
- * Refuses a provider with its own address, which the agent host's bridge
- * can't send calls to yet (HAL-13798). Its `failureCause` names the provider,
- * so the run page says so and gives the `halonic run` command, rather than
- * say it can't tell the cause.
- *
- * @throws KindedError `invalid_input` naming the provider and saying what works instead
- */
-function refuseOwnAddress(file: Pick<Provider, "id" | "baseUrl">): void {
-  if (file.baseUrl === undefined) return;
-  const refusal = new KindedError(
-    "invalid_input",
-    `Studio can't send a sandboxed agent's calls to provider ${file.id}'s own address (${file.baseUrl}) yet, so its key isn't used.`,
-    {
-      fix: `Run this workflow with halonic run, or point the agent's model at a provider without its own address.`,
-    },
-  );
-  throw Object.assign(refusal, {
-    failureCause: { code: baseUrlCauseCode, detail: { provider: file.id } },
   });
 }

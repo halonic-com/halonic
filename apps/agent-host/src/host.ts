@@ -2,6 +2,7 @@ import type { Readable, Writable } from "node:stream";
 import { NodeHarnessBridgeServer, providerHostClass } from "@halonicjs/adapter-harness-bridge";
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
+import { connectorHostClass } from "@halonicjs/adapter-http-kit";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import {
@@ -335,6 +336,14 @@ function hostServices(
   const bridges = new BridgeTable();
   const providerHttp = createNodeHttpClient({ hostClass: providerHostClass, proxy: proxySetting });
   const providerFetch = (url: string, init?: RequestInit) => providerHttp.fetch(url, init);
+  // A compatible provider's own `baseUrl` is checked as a connector's address
+  // is, as in the CLI's bridge, so a name can't lead the key onto the person's
+  // own network (HAL-13798).
+  const compatibleHttp = createNodeHttpClient({
+    hostClass: connectorHostClass,
+    proxy: proxySetting,
+  });
+  const compatibleFetch = (url: string, init?: RequestInit) => compatibleHttp.fetch(url, init);
   // Runs are recorded only when the gateway can show them to someone.
   const ledger = gateway.enabled ? new RunLedger() : undefined;
   const runs = new RunTable(ledger);
@@ -387,6 +396,7 @@ function hostServices(
         new NodeHarnessBridgeServer({
           secrets,
           fetch: providerFetch,
+          compatibleFetch,
           ...(socketFolder === undefined ? {} : { socketFolder }),
         }),
       bridges,
