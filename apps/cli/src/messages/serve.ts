@@ -39,6 +39,12 @@ export const serveMessages = defineMessages("serve", {
    */
   webhookRoutine: (name: string, address: string) =>
     phrase`${name} starts on a web request at ${address}`,
+  /**
+   * The line in place of {@link webhookRoutine} when a ✕ line follows it: the
+   * address only, so it doesn't promise a start the ✕ line takes back (C570).
+   */
+  webhookRoutineAddress: (name: string, address: string) =>
+    phrase`${name} has the web address ${address}`,
   /** The line under {@link webhookRoutine} when its secret isn't set, so every request is refused. */
   webhookSecretNotSet: (name: string, secret: string) =>
     phrase`${markPart("failed")} ${name} can't start: its secret ${secret} isn't set. Set it with: halonic secret set ${secret}`,
@@ -65,6 +71,18 @@ export const serveMessages = defineMessages("serve", {
    */
   webhookRefused: (name: string, reason: string) =>
     phrase`${markPart("failed")} ${name} didn't start on a web request: ${reason}`,
+  /**
+   * A signed web request that started a run while it serves, with the run's
+   * short id, so the terminal shows that the webhook worked (C570).
+   */
+  webhookStarted: (name: string, runId: string) =>
+    phrase`${markPart("done")} ${name} started on a web request ${markPart("separator")} run ${runId}`,
+  /**
+   * A signed web request that started nothing because a run of the routine
+   * is still going and its `overlap` is `skip` (C570).
+   */
+  webhookSkipped: (name: string) =>
+    phrase`${name} skipped a web request: a run of it is still going, and its overlap is skip.`,
   /**
    * The line under {@link webhookRoutine} when the routine starts an agent,
    * which the server answers with 501 until agent runs are built (HAL-15277),

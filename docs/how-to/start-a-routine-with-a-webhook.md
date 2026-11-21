@@ -48,9 +48,16 @@ with the request's body.
 
    The address ends with the routine's hub and the routine's id. A routine
    in the workspace itself, not in a hub, has `@workspace` in place of the
-   hub, such as `/api/webhooks/@workspace/new-order`. A ✕ line
-   under it says why the routine can't start, such as a secret that isn't set
-   or a routine that starts an agent.
+   hub, such as `/api/webhooks/@workspace/new-order`. When the routine can't
+   start, the line gives only its address, and a ✕ line under it says why,
+   such as a secret that isn't set or a routine that starts an agent:
+
+   ```text
+   New order has the web address http://localhost:4747/api/webhooks/shop/new-order
+   ✕ New order can't start: its secret orders-hook isn't set. Set it with: halonic secret set orders-hook
+   ```
+
+   `halonic routines` marks the same routines "✕ Can't start".
 
 ## Sign a request
 
@@ -92,10 +99,16 @@ Here `ORDERS_HOOK` holds the secret's value in the sender's environment.
 | 403 | The workspace changed since it was trusted. Run `halonic trust`. |
 | 409 | This delivery id was already received. A resend with the same id starts nothing. |
 | 429 | A run of the routine is still going and its `overlap` is `queue`. Send it again after the time in `Retry-After`. |
-| 501 | The routine starts an agent, and Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then start that. |
+| 501 | The routine starts an agent. The answer says "Halonic can't run an agent on its own yet, only as a step in a workflow." Make a workflow with the agent as a step, then start that. |
 
-When the server refuses a signed request with a 400, or fails it, the
-terminal that runs `halonic serve` prints a line such as:
+The terminal that runs `halonic serve` prints a line for each signed
+request, except a 401. A started run gets its short id:
+
+```text
+✓ New order started on a web request · run 17c592
+```
+
+A 400, a 501 or a failure gets the reason:
 
 ```text
 ✕ New order didn't start on a web request: {{trigger.date}} isn't a trigger value. Use {{trigger.at}}, {{trigger.lastRun}}, {{trigger.body}} or {{trigger.headers.<name>}}.

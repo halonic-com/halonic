@@ -5,7 +5,8 @@
 // `halonic validate` reports (HAL-15084), or when it starts an agent, which
 // the server answers with 501 until agent runs are built (HAL-15277), since
 // the server then refuses every request for it. Without them, nothing said
-// why a webhook routine never started.
+// why a webhook routine never started. `halonic routines list` asks the same
+// check, so it says "Can't start" of the routines serve marks with ✕ (C570).
 
 import { webhookPathPrefix } from "@halonicjs/host-server";
 import { type Secrets, workspaceSecrets } from "@halonicjs/ports";
@@ -15,13 +16,15 @@ import { serveMessages } from "../../messages/serve.ts";
 import { printable } from "../../output/printable.ts";
 
 /**
- * The lines for the webhook routines among `routines`, in their order.
+ * The lines for the webhook routines among `routines`, in their order: the
+ * address a web request starts it at, or, when ✕ lines follow, only the
+ * address, so the first line doesn't promise a start they take back (C570).
  *
  * @param address - where the server listens, such as `http://localhost:4747`
  *
  * @example
  * await webhookRoutineLines(routines, secrets, "http://localhost:4747");
- * // "Friday digest starts on a web request at http://localhost:4747/api/webhooks/notes/friday-digest"
+ * // "Friday digest has the web address http://localhost:4747/api/webhooks/notes/friday-digest"
  * // "✕ Friday digest can't start: its secret friday-hook isn't set. Set it with: halonic secret set friday-hook"
  */
 export async function webhookRoutineLines(
@@ -34,25 +37,48 @@ export async function webhookRoutineLines(
     const { routine } = placed;
     if (!routine.enabled || !("webhook" in routine.trigger)) continue;
     const name = printable(routine.name);
-    const url = `${address}${webhookPathPrefix}${routineKey(placed)}`;
-    lines.push(serveMessages.webhookRoutine(name, printable(url)).phrase);
-    const secret = routine.trigger.webhook.secret;
-    const state = await secretState(secrets, secret);
-    if (state === "unset") {
-      lines.push(serveMessages.webhookSecretNotSet(name, printable(secret)).phrase);
-    } else if (state === "reserved") {
-      lines.push(serveMessages.webhookSecretNotOwn(name, printable(secret)).phrase);
-    }
-    // The first one only, as a start stops at it (`routineStart`).
-    const problem = triggerValueProblems(routine)[0];
-    if (problem !== undefined) {
-      lines.push(serveMessages.webhookRoutineInvalid(name, printable(problem.message)).phrase);
-    }
-    if ("agent" in routine.run) {
-      lines.push(serveMessages.webhookRoutineAgent(name).phrase);
-    }
+    const url = printable(`${address}${webhookPathPrefix}${routineKey(placed)}`);
+    const blocks = await webhookStartBlocks(placed, secrets);
+    lines.push(
+      blocks.length === 0
+        ? serveMessages.webhookRoutine(name, url).phrase
+        : serveMessages.webhookRoutineAddress(name, url).phrase,
+      ...blocks,
+    );
   }
   return lines;
+}
+
+/**
+ * Why a webhook routine won't start, one ✕ line each, the ones
+ * `halonic serve` prints under its address; none when a signed request
+ * would start it. `halonic routines list` asks the same, so both say
+ * "can't start" of the same routines (C570).
+ */
+export async function webhookStartBlocks(
+  placed: PlacedRoutine,
+  secrets: Secrets,
+): Promise<Phrase[]> {
+  const { routine } = placed;
+  if (!("webhook" in routine.trigger)) return [];
+  const blocks: Phrase[] = [];
+  const name = printable(routine.name);
+  const secret = routine.trigger.webhook.secret;
+  const state = await secretState(secrets, secret);
+  if (state === "unset") {
+    blocks.push(serveMessages.webhookSecretNotSet(name, printable(secret)).phrase);
+  } else if (state === "reserved") {
+    blocks.push(serveMessages.webhookSecretNotOwn(name, printable(secret)).phrase);
+  }
+  // The first one only, as a start stops at it (`routineStart`).
+  const problem = triggerValueProblems(routine)[0];
+  if (problem !== undefined) {
+    blocks.push(serveMessages.webhookRoutineInvalid(name, printable(problem.message)).phrase);
+  }
+  if ("agent" in routine.run) {
+    blocks.push(serveMessages.webhookRoutineAgent(name).phrase);
+  }
+  return blocks;
 }
 
 /**

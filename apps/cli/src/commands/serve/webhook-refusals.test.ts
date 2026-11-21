@@ -14,6 +14,11 @@ function answering(status: number, message = reason): Server {
   };
 }
 
+/** A server that answers every request with 202 and the run it started. */
+function started(runId: string): Server {
+  return { handle: async () => Response.json({ runId }, { status: 202 }) };
+}
+
 /** The lines printed while `server` answers one POST to `path`, and that answer. */
 async function printedFor(
   server: Server,
@@ -95,14 +100,52 @@ verifies("cli.commands.serve.webhook-refusals", () => {
       expect(response.status).toBe(400);
     });
 
-    it("prints nothing for an unsigned request, a start, or a refusal outside webhooks", async () => {
+    it("names the routine and the server's reason for a 501, a routine that starts an agent", async () => {
+      const agent = "Halonic can't run an agent on its own yet, only as a step in a workflow.";
+      const { lines, response } = await printedFor(
+        answering(501, agent),
+        "/api/webhooks/reports/weekly-report",
+      );
+
+      expect(lines).toEqual([`✕ Weekly report didn't start on a web request: ${agent}`]);
+      expect(response.status).toBe(501);
+    });
+
+    it("prints nothing for an unsigned request, or an answer outside webhooks", async () => {
       const quiet = [
         await printedFor(answering(401), "/api/webhooks/reports/weekly-report"),
-        await printedFor(answering(202), "/api/webhooks/reports/weekly-report"),
         await printedFor(answering(400), "/api/runs"),
+        await printedFor(started("run_mfx3k2a1_a1b2c3d4"), "/api/runs"),
       ];
 
       expect(quiet.flatMap(({ lines }) => lines)).toEqual([]);
+    });
+  });
+});
+
+verifies("cli.commands.serve.webhook-refusals", () => {
+  describe("a webhook delivery that the server took", () => {
+    it("says a started run with its short id, and passes the answer on", async () => {
+      const { lines, response } = await printedFor(
+        started("webhook-5d41402abc4b2a76b9719d911017c592"),
+        "/api/webhooks/reports/weekly-report",
+      );
+
+      expect(lines).toEqual(["✓ Weekly report started on a web request · run 17c592"]);
+      expect(response.status).toBe(202);
+      expect(await response.json()).toEqual({ runId: "webhook-5d41402abc4b2a76b9719d911017c592" });
+    });
+
+    it("says a delivery skipped because a run of the routine is still going", async () => {
+      const skipped: Server = {
+        handle: async () => Response.json({ skipped: true }, { status: 202 }),
+      };
+
+      const { lines } = await printedFor(skipped, "/api/webhooks/reports/weekly-report");
+
+      expect(lines).toEqual([
+        "Weekly report skipped a web request: a run of it is still going, and its overlap is skip.",
+      ]);
     });
   });
 });

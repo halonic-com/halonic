@@ -47,6 +47,13 @@ export const routinesMessages = defineMessages("routines", {
    */
   routinesCantStart: (count: number, dir?: string) =>
     phrase`${markPart("needsYou")} ${counted(count, "routine", "routines")} can't start ${markPart("separator")} ${suggestedCommand("validate", dir)}`,
+  /**
+   * The line above the list when webhook routines that are on won't start,
+   * which exits 1 (C570): "! 1 routine can't start on a web request ·
+   * halonic serve", which says why under each one's address.
+   */
+  webhookRoutinesCantStart: (count: number, dir?: string) =>
+    phrase`${markPart("needsYou")} ${counted(count, "routine", "routines")} can't start on a web request ${markPart("separator")} ${suggestedCommand("serve", dir)}`,
   /** The Next column of a routine that is off. */
   off: () => phrase`Off`,
   /** The Next column of a routine no clock starts: manual, a signal, mail, or a schedule that doesn't parse. */
