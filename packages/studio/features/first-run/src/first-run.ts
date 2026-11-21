@@ -96,13 +96,12 @@ export class FirstRun {
     return this.#device.startOver !== undefined;
   }
 
-  /** **Show the guide**: takes a paused first run up again here, else begins it again at Demo. */
+  /**
+   * **Show the guide**: takes a first run paused or dismissed here up again at its step, else
+   * begins it again at Demo.
+   */
   showGuide(): void {
     if (this.isOnHere) return;
-    if (this.#state.kind === "paused" && this.#state.folder === this.#device.folder) {
-      this.send({ kind: "resumed" });
-      return;
-    }
     this.send({
       kind: "guide-reopened",
       folder: this.#device.folder,

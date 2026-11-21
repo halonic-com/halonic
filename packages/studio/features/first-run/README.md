@@ -18,9 +18,9 @@ explore**. It also gives Support reply's page the guide card through the Workflo
 A paused first run has a setup item in the Inbox (`first-run.setup-item`): "Finish your first run" at its step,
 with **Continue**, which takes it up again and opens Support reply, and **Dismiss**.
 
-**Help › First run** (`first-run.help`) has **Show the guide** in the demo and **Start over**, which turns the
-first run off and asks the app for a fresh copy of the demo through the device's `startOver`. The copy starts
-the first run when it opens.
+**Help › First run** (`first-run.help`) shows only in the demo. **Show the guide** takes a paused or dismissed
+first run up again at its step, and **Start over** turns the first run off and asks the app for a fresh copy of
+the demo through the device's `startOver`. The copy starts the first run when it opens.
 
 `ModelChoiceHostService` is the engine side of the Pick a model screen's **Test and continue**: the app
 provides it for each open folder. `test` makes one tiny call through the adapter a run uses, with only the

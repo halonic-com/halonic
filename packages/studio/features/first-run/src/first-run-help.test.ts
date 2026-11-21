@@ -47,6 +47,10 @@ verifies("first-run.help", () => {
     expect(labels(firstRunOf(undefined, { sample: false }))).toEqual([]);
   });
 
+  it("offers neither in a folder that isn't the demo, even where the app can copy it", () => {
+    expect(labels(firstRunOf(undefined, { sample: false, startOver: () => {} }))).toEqual([]);
+  });
+
   it("says under each item what it does, and that Start over leaves the old copy where it is", () => {
     const items = firstRunHelpItems(firstRunOf(undefined, { startOver: () => {} }), undefined);
     expect(items.map((item) => item.description)).toEqual([
@@ -76,6 +80,13 @@ verifies("first-run.help", () => {
     const on = firstRunOf(running);
     pick(on, "Show the guide");
     expect(on.state).toEqual(running);
+  });
+
+  it("takes a first run paused at Model, its setup item dismissed, up again at Model", () => {
+    const paused = firstRunOf({ kind: "paused", folder, since: "", step: "model" });
+    paused.send({ kind: "dismissed" });
+    pick(paused, "Show the guide");
+    expect(paused.state).toEqual({ kind: "on", folder, since: "", step: "model" });
   });
 
   it("turns the first run off and asks for a fresh copy on Start over", () => {

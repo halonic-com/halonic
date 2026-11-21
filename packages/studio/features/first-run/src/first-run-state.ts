@@ -13,7 +13,9 @@ export type FirstRunStep = (typeof firstRunSteps)[number];
  * - `paused`: the user left it with **Skip, I'll explore** or **Set up later**, at `step`, so the
  *   Inbox's setup item can continue it;
  * - `done`: the first win happened in `folder`;
- * - `dismissed`: the user dismissed the Inbox's setup item of a paused first run in `folder`.
+ * - `dismissed`: the user dismissed the Inbox's setup item of a first run paused in `folder` at
+ *   `step`, so **Show the guide** can take it up again there. A state saved before the step was
+ *   kept has neither `since` nor `step`.
  */
 export type FirstRunState =
   | { readonly kind: "off" }
@@ -32,7 +34,12 @@ export type FirstRunState =
       readonly step: FirstRunStep;
     }
   | { readonly kind: "done"; readonly folder: string }
-  | { readonly kind: "dismissed"; readonly folder: string };
+  | {
+      readonly kind: "dismissed";
+      readonly folder: string;
+      readonly since?: string;
+      readonly step?: FirstRunStep;
+    };
 
 /**
  * What happens to the first run. A run event (`model-picking` to `first-win`) is about the folder
@@ -41,7 +48,10 @@ export type FirstRunState =
 export type FirstRunEvent =
   /** **Open demo** opened a copy of Acme, at the ISO time `at`. */
   | { readonly kind: "demo-opened"; readonly folder: string; readonly at: string }
-  /** **Show the guide** in Help: the first run begins again at Demo in `folder`. */
+  /**
+   * **Show the guide** in Help: a first run paused or dismissed in `folder` is on again at its
+   * step; any other begins again at Demo there.
+   */
   | { readonly kind: "guide-reopened"; readonly folder: string; readonly at: string }
   /** **Start over** in Help: it is off, so the fresh copy of the demo starts it when it opens. */
   | { readonly kind: "reset" }
@@ -66,7 +76,7 @@ export function nextFirstRun(state: FirstRunState, event: FirstRunEvent): FirstR
       // Only the first demo starts it: a later copy, or the demo after a win, doesn't.
       return state.kind === "off" ? begun(event) : state;
     case "guide-reopened":
-      return begun(event);
+      return leftAt(state, event.folder) ?? begun(event);
     case "reset":
       return off;
     case "left":
@@ -74,7 +84,9 @@ export function nextFirstRun(state: FirstRunState, event: FirstRunEvent): FirstR
     case "resumed":
       return state.kind === "paused" ? { ...where(state), kind: "on", step: state.step } : state;
     case "dismissed":
-      return state.kind === "paused" ? { kind: "dismissed", folder: state.folder } : state;
+      return state.kind === "paused"
+        ? { ...where(state), kind: "dismissed", step: state.step }
+        : state;
     case "first-win":
       return state.kind === "on" || state.kind === "paused"
         ? { kind: "done", folder: state.folder }
@@ -87,6 +99,15 @@ export function nextFirstRun(state: FirstRunState, event: FirstRunEvent): FirstR
 /** A first run that begins at the demo, in the event's folder, from its time on. */
 function begun(event: { readonly folder: string; readonly at: string }): FirstRunState {
   return { kind: "on", folder: event.folder, since: event.at, step: "demo" };
+}
+
+/** A first run the user left in `folder`, paused or dismissed, on again at its step. */
+function leftAt(state: FirstRunState, folder: string): FirstRunState | undefined {
+  if (state.kind !== "paused" && state.kind !== "dismissed") return undefined;
+  if (state.folder !== folder || state.since === undefined || state.step === undefined) {
+    return undefined;
+  }
+  return { kind: "on", folder, since: state.since, step: state.step };
 }
 
 /** Where a first run is going on: its folder and since when. */
@@ -142,7 +163,13 @@ function isFirstRunState(value: unknown): value is FirstRunState {
   const { kind, folder, since, step } = value as Record<string, unknown>;
   if (kind === "off") return true;
   if (typeof folder !== "string") return false;
-  if (kind === "done" || kind === "dismissed") return true;
+  if (kind === "done") return true;
+  // A dismissed first run saved before its step was kept has neither.
+  if (kind === "dismissed") {
+    return (
+      (since === undefined || typeof since === "string") && (step === undefined || isStep(step))
+    );
+  }
   return (kind === "on" || kind === "paused") && typeof since === "string" && isStep(step);
 }
 
