@@ -3,7 +3,6 @@ import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import {
   openModelsOf,
   RunsListService,
-  type RunsSource,
   RunsSourceService,
 } from "@halonicjs/studio-feature-runs/api";
 import {
@@ -16,7 +15,7 @@ import {
 } from "@halonicjs/studio-kit";
 import { engineWordsOf, type ItemViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useRef, useState } from "react";
-import { type WorkflowsHost, WorkflowsHostService } from "../api.ts";
+import { WorkflowsHostService } from "../api.ts";
 import type { View } from "../canvas/geometry.ts";
 import { Configuration } from "../configuration/configuration-page.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
@@ -34,7 +33,7 @@ import { goneState } from "./gone-state.tsx";
 import { firstTestsPick, firstView, panelClass } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
 import { dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
-import { StartCommand } from "./start-command.tsx";
+import { StartRow, useStartRefusal } from "./start-row.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
 import { useRename } from "./use-rename.ts";
@@ -122,6 +121,7 @@ export function WorkflowScreen({
     focusTitle,
   );
   const everyWorkflow = useHostRead(host, { hubId, id }, (one) => one.list(), focusTitle);
+  const cantStart = useStartRefusal(host, { hubId, id });
   const runsRead = useRuns(runs, focusTitle);
   const [view, setView] = useState<WorkflowView>(firstView(startOnTests));
   // The canvas unmounts on Configuration, so the page keeps its zoom and pan (D9). They belong to
@@ -229,6 +229,7 @@ export function WorkflowScreen({
               ref={runButton}
               variant="primary"
               size="sm"
+              unavailable={cantStart.unavailable}
               onClick={() => {
                 setRowCard(undefined);
                 setDock("start");
@@ -240,9 +241,11 @@ export function WorkflowScreen({
         )}
       </header>
       {/* With a Run button, the page starts it itself, so the terminal line would only repeat it. */}
-      {!startRun && settings.load.kind === "ready" && errors === 0 && (
-        <StartCommand command={startCommand} />
-      )}
+      <StartRow
+        refusal={cantStart}
+        startCommand={startCommand}
+        showStartCommand={!startRun && settings.load.kind === "ready" && errors === 0}
+      />
       <div className="flex min-h-0 flex-1">
         <TabPanel
           ids={ids}

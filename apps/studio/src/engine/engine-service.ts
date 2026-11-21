@@ -33,7 +33,6 @@ import {
   routineStateCollection,
   runTimerCollection,
   type WorkflowRef,
-  workflowAgentsOf,
   workspaceBudget,
   workspaceExecutorOptions,
 } from "@halonicjs/adapter-workspace-models";
@@ -51,12 +50,10 @@ import {
   noListedToolApproval,
 } from "@halonicjs/engine";
 import type { RunVersion } from "@halonicjs/events";
-import type { Agent } from "@halonicjs/format";
 import { isAgentRunsNotAvailable, type RunExecutor } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import {
-  definitionsOf,
   filesOf,
   type LoadedWorkspace,
   loadWorkspace,
@@ -65,13 +62,7 @@ import {
 import { studioConnectorCalls } from "../connect/studio-run-connectors.ts";
 import { type EngineLockHold, holdEngineLock } from "./engine-lock.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
-import {
-  type PageRefusal,
-  runCommandOf,
-  startRefusal,
-  WindowCantStart,
-  whyThePageCantStart,
-} from "./page-refusal.ts";
+import { agentRefusalOf, type PageRuns, workflowRefusalOf } from "./page-refusal.ts";
 import type { EngineDecisions, StudioHarnessHost } from "./studio-harness-host.ts";
 
 export type { PageEngineLock } from "./engine-lock.ts";
@@ -172,25 +163,23 @@ export class EngineService {
    * an agent that lists a connector, or an agent in a harness when no agent
    * host runs.
    *
-   * @throws KindedError `unavailable` naming the agent in a harness, with its Harness page step
-   * @throws StartInTerminal naming the agent with a connector, with the command that starts the
-   *   run in a terminal
+   * @throws StartRefused naming the agent, with the next step: the Harness page, or the command
+   *   that starts the run in a terminal
    * @throws RangeError when the hub or the workflow doesn't exist
    */
   async check(run: WorkflowRef): Promise<void> {
     const workspace = await loadWorkspace(this.#options.definitions);
     runDefinitionsOf(workspace, run.hubId, run.workflowId);
-    for (const { value: agent } of workflowAgentsOf(workspace, run)) {
-      const refusal = this.#whyThePageCantStart(workspace, run.hubId, agent);
-      if (refusal !== undefined) throw startRefusal(refusal, runCommandOf(workspace, run));
-    }
+    const refusal = workflowRefusalOf(workspace, run, this.pageRuns);
+    if (refusal !== undefined) throw refusal;
   }
 
   /**
    * Refuses an agent a routine starts on its own that the page can't run, before the engine
    * opens, as {@link EngineService.check} refuses a workflow's agents.
    *
-   * @throws KindedError `unavailable` naming the agent
+   * @throws WindowCantStart naming the agent, with the Harness page step for an agent in a
+   *   harness
    * @throws RangeError when the hub has no such agent
    */
   async checkAgent({ hubId, agentId }: AgentRef): Promise<void> {
@@ -201,8 +190,8 @@ export class EngineService {
     if (file === undefined) {
       throw new RangeError(`The hub "${hubId}" has no agent "${agentId}".`);
     }
-    const refusal = this.#whyThePageCantStart(workspace, hubId, file.value);
-    if (refusal !== undefined) throw new WindowCantStart(refusal.reason);
+    const refusal = agentRefusalOf(workspace, hubId, file.value, this.pageRuns);
+    if (refusal !== undefined) throw refusal;
   }
 
   /**
@@ -330,26 +319,14 @@ export class EngineService {
   }
 
   /**
-   * Why the page can't start an agent: it runs in a harness program when no agent host runs, or
-   * it lists a connector the agent host can't start, which is every connector when none runs and
-   * any but a `stdio` one of its hub when it does. `undefined` when the page can start it.
+   * What the page can start: an agent in a harness program where an agent host runs, and a run's
+   * `stdio` connectors where the agent host starts them.
    */
-  #whyThePageCantStart(
-    workspace: LoadedWorkspace,
-    hubId: string,
-    agent: Agent,
-  ): PageRefusal | undefined {
-    const { connectors } = definitionsOf(workspace, hubId);
-    return whyThePageCantStart(agent, {
+  get pageRuns(): PageRuns {
+    return {
       runsHarnesses: this.#options.openHarnessHost !== undefined,
-      startsConnector:
-        this.#options.openRunConnectors === undefined
-          ? undefined
-          : (id) => {
-              const connector = Object.hasOwn(connectors, id) ? connectors[id] : undefined;
-              return connector !== undefined && "stdio" in connector.transport;
-            },
-    });
+      startsConnectors: this.#options.openRunConnectors !== undefined,
+    };
   }
 
   /**

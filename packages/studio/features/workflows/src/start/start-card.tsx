@@ -11,7 +11,7 @@ import {
 } from "@halonicjs/studio-kit";
 import { errorReasonFor, lowerAfterColon } from "@halonicjs/studio-shell";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
-import { EngineNotAnswering, terminalStartOf } from "../api.ts";
+import { EngineNotAnswering, startRefusalOf } from "../api.ts";
 import { startWords as words } from "./start-words.ts";
 
 /** Props for {@link StartRunCard}. */
@@ -78,10 +78,10 @@ interface StartFailure {
 function failureOf(error: unknown, notAnswering: string, canAskTrust: boolean): StartFailure {
   const line = words.couldntStart(withFullStop(reasonOf(error, notAnswering)));
   const untrusted = canAskTrust && errorKindOf(error) === "denied";
-  const terminal = terminalStartOf(error);
-  return terminal === undefined
+  const refusal = startRefusalOf(error);
+  return refusal === undefined
     ? { line, fix: fixOf(error), command: undefined, untrusted }
-    : { line, fix: terminal.lead, command: terminal.command, untrusted };
+    : { line, fix: refusal.fix, command: refusal.command, untrusted };
 }
 
 /**
