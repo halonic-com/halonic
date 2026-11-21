@@ -40,8 +40,9 @@ type FieldName = (typeof fieldNames)[number];
 const earsOpenings = ["The ", "When ", "While ", "If ", "Where "];
 
 /** What `Since` says until the release that ships the requirement is cut. */
-const unreleased = "unreleased";
-const versionPattern = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+export const unreleased = "unreleased";
+/** A version `Since` may name: `0.1.0`, or a pre-release such as `0.2.0-beta.1`. */
+export const versionPattern = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 
 /** True for a Markdown file directly inside a `requirements/` folder. */
 export function isRequirementFile(file: string): boolean {

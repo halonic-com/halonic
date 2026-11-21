@@ -181,6 +181,7 @@ Plain `pnpm check` leaves it out for that reason; it runs only when named.
   collect its file, or a package with tests has no result file or one that
   can't be read
 - an active requirement has no test that ran and passed
+- a requirement's `Since` names a release that doesn't hold it (see below)
 
 `pnpm check trace --report` also writes each package's requirement report
 to `test-results/requirements.md`: every requirement, its status, its
@@ -201,6 +202,17 @@ board's release scope. The release checklist replaces every
 `Since: unreleased` with the version being released, in the release's own
 pull request. The check accepts `unreleased` or a version such as `0.1.0`
 and nothing else.
+
+A version must also be true (`check.trace-since-is-released`): the tag
+`v<version>` exists and holds the requirement, under its path or its ID.
+Otherwise trace fails with "No tag v0.3.0" or "`<id>` isn't in v0.1.0", and
+the fix is `Since: unreleased`. The one exception is the release pull
+request: the app version in `apps/studio/package.json` passes before its tag
+exists, because the release bot tags the commit only after the merge. Trace
+reads the tags from the checkout's git objects, never the network; CI's
+checkouts fetch them. A local clone without them gets one error that says
+`git fetch --tags` and checks no version, not even the app version, until
+it has them.
 
 ## Requirement guard: nothing that works may break
 

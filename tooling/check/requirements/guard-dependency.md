@@ -1,7 +1,7 @@
 # check.guard-dependency
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-7719
 
 If a pull request changes the entry for `@typescript/typescript6` in the `catalog` of `pnpm-workspace.yaml`, or the lines of `pnpm-lock.yaml` that resolve it for `tooling/check` (its importer entry, its package and snapshot entries, and those of its own dependencies), then the requirement guard shall report the file, and the note check shall pass it with a decision note of either kind that lists that file under Covers and whose signature verifies. Any other change to those two files is not reported.

@@ -1,7 +1,7 @@
 # routines.signal-loop
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: new (HAL-14305); before it, no routine started on a signal
 
 When asked whether a signal may start a routine, the routines package shall refuse two kinds of loop, and allow every other start. **Itself:** a signal sent by a run that the routine itself started never starts that routine again; a run started by a `workflow` step counts as the top-level run above it. **Chain:** following each signal start back from the run that sent the signal to the run whose signal started it, a chain of up to 4 signal starts may run, and the start that would be the fifth is refused, whichever routines take part, two routines that start each other included. A run the store no longer has ends the chain there. A run met twice on the way back is refused as a chain. The guard reads one run per step, and never more runs than the chain has.

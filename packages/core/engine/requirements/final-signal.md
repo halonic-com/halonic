@@ -1,7 +1,7 @@
 # engine.final-signal
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-14310, PR 1 of the signal-routine plan on HAL-14305
 
 When a run enters a `final` state with a `signal`, the engine shall record `signal.sent` with the state, the signal's name and its data before `run.completed`, so `run.completed` stays the run's last event. Each value of the data shall be rendered as a template with the run's input and its context as the run ends, in the same way as a `task` state's signal (`engine.step-signal`). A signal with no data shall send an empty object, and a `final` state without `signal` shall send none.

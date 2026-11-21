@@ -1,7 +1,7 @@
 # workspace.test-references
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: Nina's config-mistakes check on HAL-14257 (C337 rows 12–14, code row C18), HAL-14270
 
 When `loadWorkspace` has parsed a workspace's files, the workspace package shall check each case of a workflow test against the workflow it targets, with the key path and line of what it is about:

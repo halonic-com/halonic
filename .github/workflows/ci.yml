@@ -460,11 +460,14 @@ jobs:
       TURBO_CACHE_DIR: ${{ github.workspace }}/.turbo/cache
       SHARD: ${{ matrix.shard }}
     steps:
+      # The release tags too: trace checks that a requirement's `Since`
+      # names a release that holds it (HAL-13777).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           # A pull request's merge ref with its parents, for affected-tests.
           fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
+          fetch-tags: true
       - uses: $/.github/actions/setup
       # The shards together must run exactly what one job would: every
       # package in exactly one shard, and one shard per line of BUILD_SHARDS.
@@ -697,9 +700,12 @@ jobs:
     permissions:
       contents: read
     steps:
+      # The release tags too: trace checks that a requirement's `Since`
+      # names a release that holds it (HAL-13777).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-tags: true
       - uses: $/.github/actions/setup
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -967,12 +973,14 @@ jobs:
             exit 1
           fi
       # The same commit the build job tested, with its first parent, the
-      # commit affected-tests compares it with.
+      # commit affected-tests compares it with, and the release tags trace
+      # reads `Since` against (HAL-13777).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           path: head
           fetch-depth: 2
+          fetch-tags: true
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false

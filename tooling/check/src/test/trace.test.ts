@@ -11,7 +11,7 @@ function requirementText(id: string, status = "active"): string {
   return `# ${id}
 
 - Status: ${status}
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-107
 
 When the delay has passed, the engine shall fire the timer.

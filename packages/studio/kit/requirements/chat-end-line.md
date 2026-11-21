@@ -1,7 +1,7 @@
 # kit.chat-end-line
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-13177; states (HAL-5896) section 4, H13, H22 to H24, H26; microcopy 8.3 and 14.1; HAL-11705
 
 The kit's `ChatEndLine` shall show the line that ends a reply: its whole sentence, wrapped and never shortened, in `danger` with the alert mark first for a failure, or in `fg-muted` without a mark for a reply that ended another way. Under the sentence it shall show the line's actions in the order given: an action that does something here as a `secondary` `sm` button, and a way to another place as an inline link. A line without actions shall show no action row. It shall not be a live region.

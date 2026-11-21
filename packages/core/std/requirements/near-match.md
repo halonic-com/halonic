@@ -1,7 +1,7 @@
 # std.near-match
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-14270, "Did you mean" for the names `validate` checks in a workflow test (C337 C18 on HAL-14257); the same rule as `cli.near-match`
 
 The near-match function shall give, for a name that was typed and a list of names that exist, the one name within an edit distance of 2 of it, counting a swap of two neighbouring characters as one edit. When no name is that close, or two or more are, it shall give none.
