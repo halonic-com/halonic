@@ -250,10 +250,8 @@ function announceEnd(
       announce(tryItWords.turnLimit(name, end.turns));
       return;
     case "failed":
-      announce(tryItWords.replyFailed(name, end.reason), "assertive");
-      return;
     case "engine-stopped":
-      announce(tryItWords.engineStopped, "assertive");
+      announce(tryItWords.endedBadly(name, end), "assertive");
       return;
   }
 }
