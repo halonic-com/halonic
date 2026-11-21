@@ -26,7 +26,18 @@ makes **Run** unavailable and shows the reason and the next step under it, linke
 The run-starting tests moved from `workspace-workflows.test.ts` to `workspace-workflows-start.test.ts`
 to keep the file under 500 lines, so the first file has fewer tests. None were dropped.
 
+In the same way, the tests for a run that can't start (the card after **Run** is pressed, and **Run**
+unavailable) moved from `start-run.test.tsx` to `start-refused.test.tsx`, so `start-run.test.tsx` has
+one test fewer.
+
+`studio.engine-service` makes fewer `expect` calls but checks more: the test of a routine's own
+agent now matches the whole refusal (its sentence and its next step) in one `toMatchObject`, where it
+checked the kind and a word of the message in two calls; and the harness refusal checks
+`command: undefined` inside its `toEqual` instead of a separate `not.toHaveProperty`.
+
 ## Covers
 
 - `studio.workspace-workflow-read`
+- `studio.engine-service`
 - `apps/studio/src/workflows/workspace-workflows.test.ts`
+- `packages/studio/features/workflows/src/start/start-run.test.tsx`
