@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-When `halonic trust --list` or `halonic trust --remove` can't run, its error now starts with "Couldn't list what's trusted on this computer" or "Couldn't remove the trust for …" instead of "Couldn't trust this folder".
+A `HALONIC_HOME` that isn't a full path is now refused in plainer words, on Windows with your own home folder as the example, and `halonic trust --list` and `--remove` say what they were doing instead of "Couldn't trust this folder".

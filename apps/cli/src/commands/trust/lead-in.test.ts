@@ -26,25 +26,25 @@ async function refusal(args: readonly string[]) {
   return { code, stderr: io.stderr };
 }
 
-const reason = 'HALONIC_HOME must be an absolute folder, not "~/.halonic".';
+const reason = 'HALONIC_HOME must be a full path, not "~/.halonic".';
 const fix =
-  '  Use $HOME instead of ~, which the shell leaves as it is inside quotes: HALONIC_HOME="$HOME/.halonic".';
+  '  Inside quotes the shell doesn\'t turn ~ into your home folder. Use $HOME instead: HALONIC_HOME="$HOME/.halonic".';
 
 verifies("cli.profile-home", () => {
   it("says --list was listing, not trusting (HAL-15427)", async () => {
     expect(await refusal(["--list"])).toEqual({
       code: exitCode.usage,
-      stderr: [`✕ Couldn't list what's trusted on this computer: ${reason}`, fix],
+      stderr: [`✕ Couldn't list the trusted workspaces and plugins: ${reason}`, fix],
     });
   });
 
   it("says --remove was removing the trust, for the folder as typed (HAL-15427)", async () => {
     expect(await refusal(["--remove"])).toEqual({
       code: exitCode.usage,
-      stderr: [`✕ Couldn't remove the trust for this folder: ${reason}`, fix],
+      stderr: [`✕ Couldn't remove the trust from this folder: ${reason}`, fix],
     });
     expect((await refusal(["--dir", "acme", "--remove"])).stderr[0]).toBe(
-      `✕ Couldn't remove the trust for acme: ${reason}`,
+      `✕ Couldn't remove the trust from acme: ${reason}`,
     );
   });
 

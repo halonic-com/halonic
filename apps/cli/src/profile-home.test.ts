@@ -25,14 +25,14 @@ function refusalOf(environment: ProfileEnvironment): unknown {
 }
 
 verifies("cli.profile-home", () => {
-  describe("a HALONIC_HOME that isn't an absolute folder", () => {
+  describe("a HALONIC_HOME that isn't a full path", () => {
     it("says the profile's own sentence and to use $HOME for a ~ left in quotes", () => {
       const error = refusalOf(linux({ HALONIC_HOME: "~/.halonic" }));
       expect(error).toBeInstanceOf(KindedError);
       expect(error).toMatchObject({
         kind: "invalid_input",
-        message: 'HALONIC_HOME must be an absolute folder, not "~/.halonic".',
-        fix: 'Use $HOME instead of ~, which the shell leaves as it is inside quotes: HALONIC_HOME="$HOME/.halonic".',
+        message: 'HALONIC_HOME must be a full path, not "~/.halonic".',
+        fix: 'Inside quotes the shell doesn\'t turn ~ into your home folder. Use $HOME instead: HALONIC_HOME="$HOME/.halonic".',
       });
       expect((error as Error).cause).toBeInstanceOf(RangeError);
     });
@@ -43,27 +43,29 @@ verifies("cli.profile-home", () => {
         lines.push(plainText(line)),
       );
       expect(lines).toEqual([
-        '✕ HALONIC_HOME must be an absolute folder, not "~/.halonic".',
-        '  Use $HOME instead of ~, which the shell leaves as it is inside quotes: HALONIC_HOME="$HOME/.halonic".',
+        '✕ HALONIC_HOME must be a full path, not "~/.halonic".',
+        '  Inside quotes the shell doesn\'t turn ~ into your home folder. Use $HOME instead: HALONIC_HOME="$HOME/.halonic".',
       ]);
     });
 
     it("says to set a full path for any other relative folder", () => {
       expect(refusalOf(linux({ HALONIC_HOME: "profile" }))).toMatchObject({
-        message: 'HALONIC_HOME must be an absolute folder, not "profile".',
+        message: 'HALONIC_HOME must be a full path, not "profile".',
         fix: "Set HALONIC_HOME to a full path, such as $HOME/.halonic.",
       });
     });
 
-    it("joins the example the Windows way on Windows", () => {
-      const environment: ProfileEnvironment = {
-        platform: "windows",
-        homeFolder: `${drive}\\people\\acme`,
-        variables: { HALONIC_HOME: "profile" },
-      };
-      expect(refusalOf(environment)).toMatchObject({
-        fix: "Set HALONIC_HOME to a full path, such as $HOME\\.halonic.",
-      });
+    it("names the real home folder on Windows, also for a ~, since Windows doesn't expand $HOME there", () => {
+      for (const home of ["profile", "~/.halonic"]) {
+        const environment: ProfileEnvironment = {
+          platform: "windows",
+          homeFolder: `${drive}\\people\\acme`,
+          variables: { HALONIC_HOME: home },
+        };
+        expect(refusalOf(environment)).toMatchObject({
+          fix: `Set HALONIC_HOME to a full path, such as ${drive}\\people\\acme\\.halonic.`,
+        });
+      }
     });
   });
 

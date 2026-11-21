@@ -80,6 +80,9 @@ verifies("profile.profile-folder", () => {
 
   it("refuses a relative HALONIC_HOME", () => {
     expect(() => profileFolder(linux({ HALONIC_HOME: "profile" }))).toThrow(RangeError);
+    expect(() => profileFolder(linux({ HALONIC_HOME: "profile" }))).toThrow(
+      'HALONIC_HOME must be a full path, not "profile".',
+    );
     const windows: ProfileEnvironment = {
       platform: "windows",
       homeFolder: windowsHome,

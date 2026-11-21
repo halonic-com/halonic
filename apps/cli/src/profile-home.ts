@@ -1,4 +1,4 @@
-// A `HALONIC_HOME` that isn't an absolute folder is the person's to fix,
+// A `HALONIC_HOME` that isn't a full path is the person's to fix,
 // most often a quoted `export HALONIC_HOME="~/.halonic"`, which the shell
 // leaves as it is. The profile package refuses it with a `RangeError`, a
 // bug to `printError`; here it becomes an `invalid_input` error with that
@@ -20,7 +20,7 @@ import { profileMessages } from "./messages/profile.ts";
  *
  * @example
  * checkProfileHome({ platform: "linux", homeFolder: "/srv/acme", variables: { HALONIC_HOME: "~/.halonic" } });
- * // throws: HALONIC_HOME must be an absolute folder, not "~/.halonic".
+ * // throws: HALONIC_HOME must be a full path, not "~/.halonic".
  */
 export function checkProfileHome(environment: ProfileEnvironment): ProfileEnvironment {
   const home = environment.variables["HALONIC_HOME"];
@@ -41,10 +41,17 @@ export function checkProfileHome(environment: ProfileEnvironment): ProfileEnviro
   return environment;
 }
 
-/** The fix, with `$HOME/.halonic` joined the system's way. */
+/**
+ * The fix. On Windows it names the person's own home folder, also for a `~`:
+ * the README says to set `HALONIC_HOME` as a user environment variable, and
+ * Windows doesn't expand `$HOME` there, so `$HOME\.halonic` would be refused
+ * again (HAL-15429).
+ */
 function fixFor(home: string, environment: ProfileEnvironment) {
-  const example = environment.platform === "windows" ? "$HOME\\.halonic" : "$HOME/.halonic";
+  if (environment.platform === "windows") {
+    return profileMessages.homeRelativeFix(`${environment.homeFolder}\\.halonic`);
+  }
   return home.startsWith("~")
-    ? profileMessages.homeTildeFix(example)
-    : profileMessages.homeRelativeFix(example);
+    ? profileMessages.homeTildeFix("$HOME/.halonic")
+    : profileMessages.homeRelativeFix("$HOME/.halonic");
 }

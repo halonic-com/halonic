@@ -106,9 +106,7 @@ export function profileFolder(environment: ProfileEnvironment): ProfileFolder {
   const chosen = variableOf(environment, "HALONIC_HOME");
   if (chosen !== undefined) {
     if (!isAbsolutePath(platform, chosen)) {
-      throw new RangeError(
-        `HALONIC_HOME must be an absolute folder, not ${JSON.stringify(chosen)}.`,
-      );
+      throw new RangeError(`HALONIC_HOME must be a full path, not ${JSON.stringify(chosen)}.`);
     }
     return {
       platform,
