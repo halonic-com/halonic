@@ -14,13 +14,15 @@ runs:
     # merge-queue entry's copy is scoped to its own ref, so nothing else
     # could read it, and every queue entry is a new ref: saving there filled
     # the repo's cache with copies nobody read again and evicted main's.
+    # On our own CI server pnpm uses the store the runner image points it at,
+    # on the server's cache disk, so GitHub's cache is skipped (HAL-14831).
     - id: store
-      if: inputs.cache == 'true'
+      if: inputs.cache == 'true' && runner.environment != 'self-hosted'
       name: Find the pnpm store
       shell: bash
       run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
     - id: restore
-      if: inputs.cache == 'true'
+      if: inputs.cache == 'true' && runner.environment != 'self-hosted'
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.store.outputs.path }}
@@ -29,7 +31,7 @@ runs:
     - name: Install
       shell: bash
       run: pnpm install --frozen-lockfile
-    - if: inputs.cache == 'true' && github.ref == 'refs/heads/main' && steps.restore.outputs.cache-hit != 'true'
+    - if: inputs.cache == 'true' && runner.environment != 'self-hosted' && github.ref == 'refs/heads/main' && steps.restore.outputs.cache-hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.store.outputs.path }}

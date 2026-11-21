@@ -11,11 +11,20 @@
 # nightly:<area> issue for each failing job, which the area's owner gets as a
 # task. A skipped job counts as passed for ci-ok.
 #
-# With the repo variable MERGE_QUEUE_RUNNER set (for example `large-runner`,
-# the org's 8-core runner in group merge-queue-large), every Linux job of a
-# merge group runs on that runner instead of `ubuntu-24.04` (board decision on
-# HAL-14115, 20 Nov). Pull requests and pushes keep the standard runners.
-# Unset, everything runs on `ubuntu-24.04` as before.
+# Our own CI server (board decision, HAL-14831, 21 Nov; plan and Julian's
+# security review on that task): the jobs with the long `runs-on` below run
+# there when three repo variables say so. CI_RUNNER_LARGE and CI_RUNNER_SMALL
+# name the runner group and label (for example
+# {"group":"halonic-ci","labels":["halonic-ci-large"]}), and
+# CI_SELF_HOSTED_EVENTS lists the events that use it (["push"], later
+# ["push","merge_group"]). Only merge groups and pushes to main can ever go
+# there; pull requests, release branches and forks stay on `ubuntu-24.04`.
+# This routing isn't the security boundary: a fork's pull request runs its
+# own copy of this file, so a hook in the runner image refuses every job that
+# isn't one of ours (infra/ci-runner/). Clear CI_RUNNER_LARGE and
+# CI_RUNNER_SMALL and every job is back on `ubuntu-24.04` on its next run.
+# Every copy of the expression must stay identical; tooling/check tests that.
+# It replaces MERGE_QUEUE_RUNNER (HAL-14115), which was never set.
 
 name: CI
 
@@ -69,7 +78,7 @@ env:
 jobs:
   changes:
     name: Changed areas
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 5
     permissions:
       contents: read
@@ -172,10 +181,13 @@ jobs:
               echo "$name=false" | tee -a "$GITHUB_OUTPUT"
             fi
           done
+      # Peak memory and CPU time on our own CI server (HAL-14831).
+      - if: always() && runner.environment == 'self-hosted'
+        uses: $/.github/actions/runner-usage
 
   fast:
     name: Fast gates
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
     permissions:
@@ -265,6 +277,9 @@ jobs:
       # Last step of the job: it edits the checkout, which is thrown away.
       - name: Changesets can be versioned
         run: pnpm version-packages && pnpm check versions
+      # Peak memory and CPU time on our own CI server (HAL-14831).
+      - if: always() && runner.environment == 'self-hosted'
+        uses: $/.github/actions/runner-usage
 
   leaks:
     # The leak guard: the same rules as the local git hooks (secrets, keys,
@@ -272,7 +287,7 @@ jobs:
     # third-party code: only the repo's own script on Node, so the secret is
     # never near a dependency. Prints locations, never a term or a secret.
     name: Leak guard
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ubuntu-24.04
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
     # The personal terms live in the environment `leak-terms`, which only
@@ -385,7 +400,7 @@ jobs:
 
   gitleaks:
     name: Secret scan (gitleaks)
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -411,7 +426,7 @@ jobs:
     name: Workflow lint (zizmor)
     needs: changes
     if: github.event_name != 'merge_group' || needs.changes.outputs.workflows == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -429,7 +444,7 @@ jobs:
 
   build:
     name: Typecheck, lint, test, build (${{ matrix.shard }})
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     # The longest shard since the split took 7.3 minutes (20 Nov, 244 runs).
     timeout-minutes: 15
     # One job took 14-17 minutes in the merge queue and up to 24 on a cold
@@ -685,6 +700,9 @@ jobs:
         with:
           path: ${{ env.TURBO_CACHE_DIR }}
           key: ${{ steps.turbo-cache.outputs.cache-primary-key }}
+      # Peak memory and CPU time on our own CI server (HAL-14831).
+      - if: always() && runner.environment == 'self-hosted'
+        uses: $/.github/actions/runner-usage
 
   # In the merge queue and on a push the change checks itself: trace reads
   # the result files every shard's tests wrote, also when a test failed (a
@@ -695,7 +713,7 @@ jobs:
     name: Requirements and their tests (trace)
     needs: build
     if: ${{ !cancelled() && github.event_name != 'pull_request' }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -723,6 +741,9 @@ jobs:
           done
       - name: Requirements and their tests (trace)
         run: pnpm check trace --report
+      # Peak memory and CPU time on our own CI server (HAL-14831).
+      - if: always() && runner.environment == 'self-hosted'
+        uses: $/.github/actions/runner-usage
 
   # A pull request can't weaken the checks that judge it. The
   # merge base's test results are the guard's baseline, so they come from a
@@ -1148,7 +1169,7 @@ jobs:
     name: Empty package and feature pass every check
     needs: changes
     if: needs.changes.outputs.scaffold == 'true' && needs.changes.outputs.full == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     timeout-minutes: 35
     permissions:
       contents: read
@@ -1187,6 +1208,9 @@ jobs:
             --only packages/studio/features/ci-example \
             --also @halonicjs/app-studio \
             --also halonic
+      # Peak memory and CPU time on our own CI server (HAL-14831).
+      - if: always() && runner.environment == 'self-hosted'
+        uses: $/.github/actions/runner-usage
 
   # Conditional jobs. Each runs only when its area changes, and ci-ok
   # accepts "skipped". docs is a stub until the code it checks exists.
@@ -1197,7 +1221,7 @@ jobs:
     name: Tauri shell (Rust checks)
     needs: changes
     if: needs.changes.outputs.tauri == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -1763,7 +1787,7 @@ jobs:
     name: Sandbox fence (bubblewrap)
     needs: changes
     if: needs.changes.outputs.sandbox-fence == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -2150,7 +2174,7 @@ jobs:
     name: Agent host executable (${{ matrix.name }})
     needs: changes
     if: needs.changes.outputs.agent_host == 'true' && needs.changes.outputs.full == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || matrix.os }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     permissions:
       contents: read
@@ -2454,7 +2478,7 @@ jobs:
     name: Android shell (debug APK)
     needs: changes
     if: needs.changes.outputs.android == 'true' && needs.changes.outputs.full == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     permissions:
       contents: read
@@ -2621,7 +2645,7 @@ jobs:
     name: Studio end-to-end (Playwright)
     needs: changes
     if: needs.changes.outputs.studio == 'true' && needs.changes.outputs.full == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -2651,10 +2675,24 @@ jobs:
           fi
           echo "packages=$packages" >> "$GITHUB_OUTPUT"
       - name: Install the Linux libraries Playwright needs
+        if: runner.environment != 'self-hosted'
         timeout-minutes: 8
         uses: $/.github/actions/apt-install
         with:
           packages: ${{ steps.playwright-deps.outputs.packages }}
+      # Our own server's image has no sudo and comes with these libraries
+      # (HAL-14831). If a Playwright update needs one it lacks, say which,
+      # so the image gets rebuilt, rather than failing deep in a test.
+      - name: Check the runner image has the Linux libraries Playwright needs
+        if: runner.environment == 'self-hosted'
+        env:
+          PACKAGES: ${{ steps.playwright-deps.outputs.packages }}
+        run: |
+          missing=$(for p in $PACKAGES; do dpkg-query -W -f='${Status}\n' "$p" 2>/dev/null | grep -q '^install ok installed$' || echo "$p"; done)
+          if [ -n "$missing" ]; then
+            echo "::error::The runner image lacks these packages; rebuild it (infra/ci-runner/): $(echo $missing)"
+            exit 1
+          fi
       # Downloaded from Playwright's CDN, usually in 10 s (HAL-5958).
       - name: Install Chromium and WebKit for Playwright
         timeout-minutes: 5
@@ -2690,12 +2728,15 @@ jobs:
             packages/studio/features/plugins/test-results/screenshots/*.png
           if-no-files-found: ignore
           retention-days: 7
+      # Peak memory and CPU time on our own CI server (HAL-14831).
+      - if: always() && runner.environment == 'self-hosted'
+        uses: $/.github/actions/runner-usage
 
   docs:
     name: Docs build and link check
     needs: changes
     if: needs.changes.outputs.docs == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 2
     permissions: {}
     steps:
@@ -2714,7 +2755,7 @@ jobs:
     # LIVE_CLOUD_ENABLED is "true".
     name: Live cloud suites passed
     if: github.event_name != 'push'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 50
     permissions:
       contents: read
@@ -2826,7 +2867,7 @@ jobs:
   fail-fast:
     name: Cancel the run on the first failure
     if: github.event_name == 'merge_group'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 90 # costs nothing when the run ends early; ci-ok doesn't wait for it
     permissions:
       actions: write # to list the run's jobs and cancel the run
@@ -2883,7 +2924,7 @@ jobs:
     # the pull request's lists.
     name: Policy rules (base commit's copy)
     if: ${{ github.event_name != 'push' }}
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -2940,6 +2981,9 @@ jobs:
             # shellcheck disable=SC2086
             "$base_node" "$script" $rules
           fi
+      # Peak memory and CPU time on our own CI server (HAL-14831).
+      - if: always() && runner.environment == 'self-hosted'
+        uses: $/.github/actions/runner-usage
 
   ci-ok:
     name: ci-ok
@@ -2983,7 +3027,7 @@ jobs:
         docs,
         live-cloud,
       ]
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions: {}
     steps:

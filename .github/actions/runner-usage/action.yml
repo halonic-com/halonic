@@ -1,0 +1,17 @@
+name: Runner usage
+description: On our own CI server, writes the job's peak memory and CPU time to the job summary, so the shadow week can size the runner slots (HAL-14831).
+runs:
+  using: composite
+  steps:
+    # Each job runs in its own container, so the cgroup files here are the
+    # job's own. memory.peak is what decides a slot's memory limit.
+    - name: Write peak memory and CPU time to the summary
+      shell: bash
+      run: |
+        {
+          echo "### Runner usage ($RUNNER_NAME)"
+          echo "memory.peak: $(numfmt --to=iec "$(cat /sys/fs/cgroup/memory.peak)" 2>/dev/null || echo unknown)"
+          echo '```'
+          cat /sys/fs/cgroup/cpu.stat 2>/dev/null || echo "cpu.stat: unknown"
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
