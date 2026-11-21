@@ -136,6 +136,24 @@ done
   '{"current":"1.2.0","previous":"1.0.0","securityUpdated":""}' ] || fail "status is wrong"
 code=0; chroot "$root" su halonic -s /bin/sh -c "$updater rollback" 2>/dev/null || code=$?
 [ "$code" -eq 2 ] || fail "halonic could roll back (exit $code)"
+# The archive runtime-archive.sh packs (HAL-14644): the same bytes from the same
+# input, root's files only, and the updater installs it and it starts.
+packed="$(mktemp -d)"
+printf '#!/bin/sh\necho packed\n' > "$packed/host"
+"$(dirname "$0")/runtime-archive.sh" "$packed/host" 1.4.0+0123abcd "$packed/a" >/dev/null
+"$(dirname "$0")/runtime-archive.sh" "$packed/host" 1.4.0+0123abcd "$packed/b" >/dev/null
+cmp -s "$packed/a/halonic-runtime.tar.gz" "$packed/b/halonic-runtime.tar.gz" || fail "the runtime archive is not reproducible"
+[ "$(tar -tvzf "$packed/a/halonic-runtime.tar.gz" --numeric-owner | awk '{ print $1, $2, $6 }')" = \
+  "$(printf '%s\n' 'drwxr-xr-x 0/0 bin/' '-rwxr-xr-x 0/0 bin/halonic-agent-host')" ] ||
+  fail "the runtime archive holds other files, owners or modes"
+code=0; "$(dirname "$0")/runtime-archive.sh" "$packed/host" ../x "$packed/c" 2>/dev/null || code=$?
+if [ "$code" -ne 1 ] || [ -e "$packed/c" ]; then fail "runtime-archive.sh took a version the updater refuses"; fi
+sum="$(sed -n 's/.*"sha256":"\([0-9a-f]*\)".*/\1/p' "$packed/a/halonic-runtime.json")"
+[ "$sum" = "$(sha256sum "$packed/a/halonic-runtime.tar.gz" | cut -d' ' -f1)" ] || fail "halonic-runtime.json has the wrong SHA-256"
+chroot "$root" "$updater" install 1.4.0+0123abcd "$sum" < "$packed/a/halonic-runtime.tar.gz" >/dev/null
+[ "$(chroot "$root" /opt/halonic/current/bin/halonic-agent-host)" = packed ] || fail "the packed runtime doesn't start"
+owned_by_root
+rm -rf "$packed"
 # An update Studio's time limit cut off inside dpkg (HAL-12672): socat is left
 # half-configured, and its package script sets a file capability. Offline, so
 # a stand-in apt-get fails on update: the next security-update still finishes

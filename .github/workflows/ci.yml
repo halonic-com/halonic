@@ -129,7 +129,7 @@ jobs:
             "windows=^(\.github/workflows/ci\.yml$|\.github/actions/|pnpm-lock\.yaml$|apps/(cli|agent-host)/|packages/adapters/(fs-node|harness-kit|harness-claude-code|harness-codex|mcp|memory|system-node|http-kit|integration-kit)/|packages/core/(workspace|app|events|format|ports|profile|routines|schema-kit|std|workflow|yaml)/|packages/testing/(contracts|spec|parity|integration)/|tooling/(config|publish)/)"
             "sandbox-mxc=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/sandbox-mxc/|packages/adapters/integration-runner/|packages/core/app/(src|requirements)/sandbox-|packages/core/ports/|pnpm-lock\.yaml$)"
             "android=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|apps/studio/src/connect/|apps/studio/connect\.html$|apps/studio/vite\.config\.ts$|apps/studio/package\.json$|pnpm-lock\.yaml$|tooling/check/(licences\.json$|licence-texts/[^/]+\.txt$|src/(cli/sbom|lib/(gradle-notices|sbom|licences))\.ts$))"
-            "agent_host=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/agent-host/|packages/adapters/e2e-noise/|package\.json$)"
+            "agent_host=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/agent-host/|infra/wsl-image/runtime-archive\.sh$|packages/adapters/e2e-noise/|package\.json$)"
             "studio=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/|packages/studio/)"
             "docs=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/docs/|docs/)"
             "workflows=^\.github/"
@@ -2214,6 +2214,27 @@ jobs:
           echo "$out" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Build time: ${BUILD_SECONDS} s" >> "$GITHUB_STEP_SUMMARY"
+      # The runtime Studio installs in Halonic's WSL distro (HAL-14644): the
+      # Linux executable packed for the distro's runtime updater, kept for 7
+      # days like the WSL image. Build only: nothing is published.
+      - name: Pack the WSL runtime
+        if: matrix.name == 'Linux' && github.event_name != 'merge_group'
+        run: |
+          version="$(jq -r .version apps/studio/package.json)+$(git rev-parse --short=12 HEAD)"
+          infra/wsl-image/runtime-archive.sh apps/agent-host/dist/halonic-agent-host "$version" "$RUNNER_TEMP/wsl-runtime"
+          {
+            echo "### WSL runtime"
+            echo
+            echo '```json'
+            cat "$RUNNER_TEMP/wsl-runtime/halonic-runtime.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - if: matrix.name == 'Linux' && github.event_name != 'merge_group'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: halonic-wsl-runtime
+          path: ${{ runner.temp }}/wsl-runtime/*
+          retention-days: 7
 
   installer-windows:
     # The Windows installer (HAL-1202): built with the custom NSIS template,

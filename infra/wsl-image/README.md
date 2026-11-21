@@ -13,6 +13,9 @@ release and needs the board's yes.
 - `check.sh <image>`: checks config, packages, licence notice, that no setuid or
   setgid file and no file capability is left, that the tools start, and the
   runtime updater (below).
+- `runtime-archive.sh <halonic-agent-host> <version> <dir>`: packs the runtime
+  (below) as `halonic-runtime.tar.gz`, and writes `halonic-runtime.json` with its
+  version, SHA-256 and size.
 - `Dockerfile`: the build container, `debian:trixie` pinned by digest. Dependabot
   proposes new digests.
 - `files/`: `/etc/wsl.conf` (interop off, automount and `/etc/fstab` mounts off, user `halonic`, systemd off),
@@ -54,6 +57,20 @@ leave the version folder, and runs `security-update` with a stand-in `apt-get`
 that brings a new setuid program, a setgid program of another system user and a
 program with a file capability, and checks that a setuid file in `halonic`'s home
 folder is left alone: the updater only looks under `/usr`. With an offline stand-in, it checks that a half-configured package is finished and its package script's file capability dropped, even though the update fails, and that a package script that sets a capability and then fails, in `dpkg --configure -a` or in the upgrade, leaves no setuid bit or capability behind. It also runs `import-mount` with a stand-in `mount` (the chroot has no `drvfs`): with good and bad folders, two folders, a folder on the command line, a failed mount, and with `/mnt/halonic` missing, a link or writable by others; `import-unmount` with names that aren't one; and `cleanup-import-mounts` with no `/mnt/halonic`, with a matching mount point, a project's folder, a wrong name, a link and a folder that holds a file. `halonic` can run none of the three.
+
+## The runtime archive
+
+The runtime is the Linux agent host executable (`apps/agent-host`, `pnpm build:sea`),
+which carries Node, the engine and srt. `runtime-archive.sh` packs it as
+`bin/halonic-agent-host`, the path the shell starts (`DISTRO_HOST` in
+`apps/studio/src-tauri/crates/agent-host/src/wsl.rs`), and checks the version
+with the updater's rule. The archive is reproducible: the same executable and
+version give the same bytes, so the SHA-256 Studio pins can be checked by
+building again. CI's Linux agent host job packs it on every pull request that
+changes the host, with the version `<Studio version>+<12-digit commit>`, and
+keeps it for 7 days (`halonic-wsl-runtime`). Build only: Studio doesn't bundle
+or install it yet (HAL-14644), and publishing it is a release. `check.sh`
+packs a stand-in host twice, compares the bytes and installs it with the updater.
 
 Locally (Debian or Ubuntu, as root): `apt-get install mmdebstrap libcap2-bin` then
 `sudo infra/wsl-image/build.sh out && sudo infra/wsl-image/check.sh out/halonic-wsl.tar.gz`.
