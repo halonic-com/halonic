@@ -174,10 +174,28 @@ export function stepCardIn(
 /** How far the Start chip rises above its card's top edge, in px: its 16 px height, as it stands on it. */
 const START_CHIP_RISE = 16;
 
-/** All that a card draws, its Start chip included, in the canvas surface's coordinates. */
-export function cardExtent(box: Box, first: boolean): Box {
-  if (!first) return box;
-  return { ...box, y: box.y - START_CHIP_RISE, height: box.height + START_CHIP_RISE };
+/**
+ * How far the problem line hangs below its card's bottom edge, in px: the status chip's 20 px
+ * least height (`min-h-5`).
+ */
+const PROBLEM_LINE_DROP = 20;
+
+/** What hangs off a card's edges besides the card itself. */
+export interface CardParts {
+  /** The first step's Start chip, which stands on its top edge. */
+  readonly start: boolean;
+  /** A step with a problem's line, which hangs from its bottom edge. */
+  readonly problem: boolean;
+}
+
+/**
+ * All that a card draws, its Start chip and its problem line included, in the canvas surface's
+ * coordinates: what panning a card into view has to show (`workflows.canvas.focus-in-view`).
+ */
+export function cardExtent(box: Box, parts: CardParts): Box {
+  const rise = parts.start ? START_CHIP_RISE : 0;
+  const drop = parts.problem ? PROBLEM_LINE_DROP : 0;
+  return { ...box, y: box.y - rise, height: box.height + rise + drop };
 }
 
 /** The status dot's size and its centre's distance from the card's top-right corner, in px. */

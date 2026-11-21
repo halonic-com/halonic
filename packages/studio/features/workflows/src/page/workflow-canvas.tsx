@@ -200,7 +200,11 @@ export function WorkflowCanvas({
     if (picked === undefined || !docked) return;
     const box = boxes.get(picked);
     if (box === undefined) return;
-    setView((now) => panToShow(now, cardExtent(box, picked === workflow.initial), room()));
+    const parts = {
+      start: picked === workflow.initial,
+      problem: cardProblems(problems, picked) !== undefined,
+    };
+    setView((now) => panToShow(now, cardExtent(box, parts), room()));
   }, [picked, docked]);
   return (
     // A group, not an application: the canvas has no keys of its own, so a screen reader stays in
@@ -263,6 +267,7 @@ export function WorkflowCanvas({
           const first = step.id === workflow.initial;
           // An end step has no way on, so no port to drag one from.
           const port = step.type === "final" ? undefined : connecting.portOf?.(step.id);
+          const stepProblems = cardProblems(problems, step.id, stepName);
           return box === undefined ? null : (
             <Fragment key={step.id}>
               <StepCard
@@ -272,14 +277,19 @@ export function WorkflowCanvas({
                 selected={selected === step.id}
                 failed={failedStep === step.id}
                 mark={marks?.[step.id]}
-                problems={cardProblems(problems, step.id, stepName)}
+                problems={stepProblems}
                 focusOnMount={selectedStep === step.id}
                 waysOn={waysOnFrom(step.id, workflow, boxes)}
                 onSelect={() => {
                   setSelected(step.id);
                   onSelectStep?.(step.id);
                 }}
-                onFocus={(event) => showFocused(event, cardExtent(box, first))}
+                onFocus={(event) =>
+                  showFocused(
+                    event,
+                    cardExtent(box, { start: first, problem: stepProblems !== undefined }),
+                  )
+                }
                 connectTarget={connecting.targetOf(step.id)}
               />
               {port !== undefined && <ConnectPort stepId={step.id} box={box} handlers={port} />}

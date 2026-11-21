@@ -3,8 +3,9 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it } from "vitest";
+import type { WorkflowProblem } from "../api.ts";
 import { memoryHost, memoryRuns, show, unmount } from "../test-support.tsx";
-import { reply } from "./page-fixtures.ts";
+import { reply, settings } from "./page-fixtures.ts";
 import { WorkflowScreen } from "./workflow-page.tsx";
 
 afterEach(unmount);
@@ -59,9 +60,24 @@ async function clickOn(card: HTMLElement) {
   });
 }
 
-/** The page at 200 %; `canChangeSteps` docks a picked step's card. */
-async function zoomedToTwoHundred({ canChangeSteps = false } = {}) {
-  const { host } = memoryHost([], [], [reply], [], {
+/** A problem in the last step, so its card has a problem line hanging below it. */
+const doneProblem: WorkflowProblem = {
+  severity: "warning",
+  code: "unreachable",
+  message: '"done" is never reached',
+  stepId: "done",
+};
+
+/**
+ * The page at 200 %; `canChangeSteps` docks a picked step's card, and `problems` are what the
+ * checks found in the workflow.
+ */
+async function zoomedToTwoHundred({
+  canChangeSteps = false,
+  problems = [] as readonly WorkflowProblem[],
+} = {}) {
+  const configurations = problems.length > 0 ? [{ ...settings, problems }] : [];
+  const { host } = memoryHost([], [], [reply], configurations, {
     ...(canChangeSteps ? { changeStep: async () => {} } : {}),
   });
   const page = await show(
@@ -103,6 +119,17 @@ verifies("workflows.canvas.focus-in-view", () => {
     await tabTo(last);
 
     expect(shownBox(page, last, false).bottom).toBe(CANVAS.bottom - 16);
+  });
+
+  it("pans a card below the view up until its problem line shows too", async () => {
+    const page = await zoomedToTwoHundred({ problems: [doneProblem] });
+    const last = cards(page).at(-1);
+    if (last === undefined) throw new Error("no card");
+
+    await tabTo(last);
+
+    // The line hangs 20 pixels (the chip's height) below the card, at 200 %.
+    expect(shownBox(page, last, false).bottom).toBe(CANVAS.bottom - 16 - 20 * 2);
   });
 
   it("doesn't move the view for a card that already shows", async () => {
