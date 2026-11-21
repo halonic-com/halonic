@@ -85,7 +85,10 @@ verifies("kit.waiting-line", () => {
         what="Starting Halonic…"
         waitedMs={3_000}
         reason="The first start takes longer."
-        keepRoomFor={{ reasons: ["The first start takes longer.", later], actions: ["Something wrong?"] }}
+        keepRoomFor={{
+          reasons: ["The first start takes longer.", later],
+          actions: ["Something wrong?"],
+        }}
       />,
     );
     // jsdom has no layout: the classes that make it. The status region and an unseen copy with
@@ -109,7 +112,10 @@ verifies("kit.waiting-line", () => {
         waitedMs={34_000}
         reason={later}
         actions={[{ label: "Something wrong?", onClick: () => undefined }]}
-        keepRoomFor={{ reasons: ["The first start takes longer.", later], actions: ["Something wrong?"] }}
+        keepRoomFor={{
+          reasons: ["The first start takes longer.", later],
+          actions: ["Something wrong?"],
+        }}
       />,
     );
     expect(statusOf(container).textContent).toBe(`Starting Halonic…${later}`);
