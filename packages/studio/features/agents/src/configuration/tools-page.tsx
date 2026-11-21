@@ -68,7 +68,7 @@ export function ToolsPage({
   const focused = useEffectEvent(() => onFocused?.());
   useEffect(() => {
     if (!focusHeading || !read) return;
-    lists.current?.querySelector<HTMLElement>("section h3")?.focus();
+    lists.current?.querySelector<HTMLElement>("section h2")?.focus();
     focused();
   }, [focusHeading, read]);
   if (options.load.kind === "loading") {

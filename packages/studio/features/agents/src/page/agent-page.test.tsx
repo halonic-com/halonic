@@ -124,16 +124,9 @@ verifies("agents.page.frame", () => {
 
   it("lays the focusable title over the header's title on the desktop, its name for readers only (AG4)", async () => {
     const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
-    const title = page.querySelector("h1") as HTMLElement;
-    expect(title.className).not.toContain("sr-only");
-    expect(title.className).toContain("absolute inset-0");
-    expect(title.className).toContain("focus-ring");
-    // No visible text for high contrast to paint over the avatar: the name sits in an sr-only span.
-    expect(title.textContent).toBe("Sorter");
-    expect([...title.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE)).toEqual([]);
-    expect(title.children).toHaveLength(1);
-    expect(title.children[0]?.className).toBe("sr-only");
-    expect(title.parentElement?.parentElement?.className).toContain("relative");
+    const title = page.querySelector("h1");
+    expect(title?.className).toBe("pointer-events-none absolute inset-0 rounded-xs focus-ring");
+    expect(title?.innerHTML).toBe('<span class="sr-only">Sorter</span>');
   });
 
   it("shows a skeleton only after 300 ms, and Still loading with Try again after 10 s", async () => {
