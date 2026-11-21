@@ -24,8 +24,7 @@ permissions: {}
 jobs:
   built-on-label:
     name: built-on-label
-    # MERGE_QUEUE_RUNNER: see the top of ci.yml (HAL-14115).
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions:
       pull-requests: read
