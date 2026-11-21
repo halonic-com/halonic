@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12237 (Liam, CTO, 20 Nov: the wiring items from the security review of #4139 on HAL-14098)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jxWfOW/XaTLJMiRervmCmQKqOQFOrxtZ6Bt3mVG5BrLYYtzjv+s4dI8jGW5Bb4TTzLJ5yRK6u+8sCZR/jXBMDg==
 
 The security review of the pairing advertisement (#4139, HAL-14098) left three items for the wiring: drop queries whose source isn't on the computer's local subnet (RFC 6762 section 11), advertise and join the group only on the interface the phone shares, and make `start` and `stop` safe in any order.
 
