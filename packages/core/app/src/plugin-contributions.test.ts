@@ -64,6 +64,7 @@ async function loadedPlugins(): Promise<{ service: PluginService; entries: Plugi
     trust,
     records: new TestRecordStore(),
     clock,
+    signOut: async () => undefined,
   });
   for (const entry of await service.load()) {
     if (entry.status === "new" && entry.folder !== "rain") {

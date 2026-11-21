@@ -68,6 +68,7 @@ function installer(installed: Record<string, string> = {}) {
     trust: new TrustService({ store: new MemoryTrustStore(), digest, clock, appVersion: "0.1.0" }),
     records: new MemoryRecordStore(),
     clock,
+    signOut: async () => undefined,
   });
   const reloads: unknown[] = [];
   const add = desktopPluginInstaller({

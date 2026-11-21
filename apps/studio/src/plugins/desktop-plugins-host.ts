@@ -7,7 +7,7 @@ import {
   TauriTrustStore,
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
-import { PluginService, TrustService } from "@halonicjs/app";
+import { PluginService, type SignOutPlugin, TrustService } from "@halonicjs/app";
 import type { Secrets } from "@halonicjs/ports";
 import { systemClock } from "@halonicjs/std";
 import type { PluginsHost, PluginUnfencedRuns } from "@halonicjs/studio-feature-plugins/api";
@@ -29,6 +29,8 @@ export interface DesktopPluginsParts {
   readonly handOver: PluginSecretHandOver;
   /** The agent host's integration sign-ins, for the Sign-ins section of a plugin's page. */
   readonly signIns: NonNullable<PluginsHost["signIns"]>;
+  /** Signs out every sign-in of a plugin at the agent host, when its trust is removed or it is removed. */
+  readonly signOut: SignOutPlugin;
   /** Told when a change was saved but reading the plugins folder again failed. */
   readonly onReloadFailed: (error: unknown) => void;
   /** The agent host's sandbox status and the yes to run without it, which the trust check reads. */
@@ -50,10 +52,11 @@ export interface DesktopPluginsHost {
  * Its installer adds a plugin from a folder the person picks or a git repository, not trusted
  * (`desktopPluginInstaller`). It never runs plugin code: tool calls go through `caller`, each
  * after `handOver` gave the agent host the plugin's own secrets (`secretHandingCaller`), and
- * sign-ins go through `signIns`, both to the agent host.
+ * sign-ins go through `signIns`, both to the agent host. Removing a plugin's trust or the plugin
+ * signs out its sign-ins there first (`signOut`).
  *
  * @example
- * const { host, reload } = desktopPluginsHost({ ipc, secrets, caller, handOver, signIns, onReloadFailed });
+ * const { host, reload } = desktopPluginsHost({ ipc, secrets, caller, handOver, signIns, signOut, onReloadFailed });
  * await reload();
  */
 export function desktopPluginsHost({
@@ -62,6 +65,7 @@ export function desktopPluginsHost({
   caller,
   handOver,
   signIns,
+  signOut,
   onReloadFailed,
   unfencedRuns,
 }: DesktopPluginsParts): DesktopPluginsHost {
@@ -77,6 +81,7 @@ export function desktopPluginsHost({
     }),
     records: new TauriRecordStore(ipc, { scope: "plugins" }),
     clock: systemClock,
+    signOut,
   });
   const feed = new PluginFeed(service);
   const actions = {

@@ -126,6 +126,15 @@ export interface PluginRemoveRefusal {
   readonly reason: string;
 }
 
+/**
+ * Signs out every sign-in of the plugin `id` that has a saved grant: revokes
+ * each where its approved sign-in has a revoke address, and removes its grant
+ * also when the revoke fails. The grants live with the host, so the host
+ * passes it. A plugin with no grant must succeed, so a remove that stopped
+ * part way can run again.
+ */
+export type SignOutPlugin = (id: string) => Promise<void>;
+
 /** What {@link PluginService} needs from the host. */
 export interface PluginServiceOptions {
   /** The profile's plugin folder, which holds one folder per plugin, named by its id. */
@@ -141,6 +150,11 @@ export interface PluginServiceOptions {
   /** Dates each saved setting value. */
   readonly clock: Clock;
   /**
+   * Signs out the plugin's sign-ins when its trust is forgotten or it is
+   * removed, so a plugin added later under the same id isn't signed in.
+   */
+  readonly signOut: SignOutPlugin;
+  /**
    * Halonic's own data folders on this computer that a plugin's source must
    * stay clear of, each absolute and in every spelling the host knows (as
    * written, with links resolved): the profile folder, and the open
@@ -154,7 +168,7 @@ export interface PluginServiceOptions {
  * Finds, checks and trusts the plugins in the profile's plugin folder.
  *
  * @example
- * const plugins = new PluginService({ plugins: folderReader, writer, digest, trust, records, clock });
+ * const plugins = new PluginService({ plugins: folderReader, writer, digest, trust, records, clock, signOut });
  * const entries = await plugins.load();
  * for (const entry of entries) {
  *   if (entry.status === "broken") showProblems(entry.folder, entry.problems);
@@ -302,16 +316,26 @@ export class PluginService {
 
   /**
    * Forgets the trust in the plugin `id`, so it gives no tools and no UI
-   * until a person trusts it again. Its settings and secrets stay: only
-   * removing the plugin deletes them. Nothing happens when its folder is
-   * gone, so removing a plugin forgets its trust before its folder.
+   * until a person trusts it again, and signs out each of its sign-ins first,
+   * while the plugin can still read its client secret for the revoke. Its
+   * settings and secrets stay: only removing the plugin deletes them. The
+   * trust is forgotten also when the sign-out fails, and then the sign-out's
+   * error is thrown, so running it again finishes the job. When its folder
+   * is gone only the sign-out runs, so removing a plugin forgets its trust
+   * before its folder.
    *
    * @param id - the plugin's id, which is its folder's name
-   * @throws a `RangeError` when `id` isn't a single folder name
+   * @throws a `RangeError` when `id` isn't a single folder name, and what the sign-out throws
    */
   async revoke(id: string): Promise<void> {
-    const location = await this.#options.plugins.locationOf(pluginFolderOf(id));
-    if (location !== null) await this.#options.trust.revoke(location);
+    const folder = pluginFolderOf(id);
+    try {
+      await this.#options.signOut(folder);
+    } finally {
+      // A sign-in that couldn't be signed out never keeps a plugin trusted.
+      const location = await this.#options.plugins.locationOf(folder);
+      if (location !== null) await this.#options.trust.revoke(location);
+    }
   }
 
   /**
@@ -381,10 +405,11 @@ export class PluginService {
 
   /**
    * Removes the plugin `id` and everything kept for it, in this order, so a
-   * folder is never gone while its trust, secrets or settings are left:
+   * folder is never gone while its trust, sign-ins, secrets or settings are left:
    *
-   * 1. its trust, when its entry is a real folder (a link is never trusted,
-   *    and is never followed);
+   * 1. its sign-ins, signed out with `signOut`, and then its trust, when its
+   *    entry is a real folder (a link is never trusted, and is never
+   *    followed); a sign-out that fails is thrown once the trust is gone;
    * 2. every secret it declares now or declared when it was added, with
    *    `deleteSecret`; at the first that fails it stops, naming it;
    * 3. its settings and its install record;
@@ -396,7 +421,7 @@ export class PluginService {
    *
    * @param id - the plugin's id, which is its folder's name
    * @throws a `RangeError` when `id` isn't a single folder name, and what
-   *   the trust store, the records or the plugins folder throw
+   *   the sign-out, the trust store, the records or the plugins folder throw
    */
   async remove(
     id: string,
@@ -405,6 +430,7 @@ export class PluginService {
     const folder = pluginFolderOf(id);
     const entry = await this.#topEntry(folder);
     if (entry?.kind === "folder") await this.revoke(folder);
+    else await this.#options.signOut(folder);
     for (const [secret, storedName] of Object.entries(
       await this.#storedSecretNames(entry, folder),
     )) {

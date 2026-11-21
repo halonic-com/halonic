@@ -9,13 +9,14 @@ function emptyShell(revealed: boolean) {
   const shell: TauriShell = {
     async invoke(command, args) {
       calls.push({ command, args });
-      return command === "plugin_folder_reveal" ? revealed : [];
+      if (command === "plugin_folder_reveal") return revealed;
+      return command === "plugin_folder_location" ? null : [];
     },
   };
   return { shell, calls };
 }
 
-function hostOver(shell: TauriShell) {
+function hostOver(shell: TauriShell, signedOut: string[] = []) {
   return desktopPluginsHost({
     ipc: shell,
     secrets: {
@@ -31,6 +32,7 @@ function hostOver(shell: TauriShell) {
       start: async () => "https://auth.example.com/oauth/authorize",
       signOut: async () => ({ kind: "notSignedIn" }),
     },
+    signOut: async (plugin) => void signedOut.push(plugin),
     onReloadFailed: () => {},
   });
 }
@@ -51,6 +53,15 @@ verifies("studio.desktop-plugins-host", () => {
     await expect(
       hostOver(emptyShell(false).shell).host.actions.openFolder("acme-weather"),
     ).rejects.toThrow("isn't there");
+  });
+
+  it("signs out a plugin's sign-ins at the agent host when its trust is removed", async () => {
+    const signedOut: string[] = [];
+    const { host } = hostOver(emptyShell(true).shell, signedOut);
+
+    await host.actions.revoke("acme-weather");
+
+    expect(signedOut).toEqual(["acme-weather"]);
   });
 
   it("says it can't tell which connectors use a plugin rather than naming none", async () => {

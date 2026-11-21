@@ -282,7 +282,7 @@ export {
   PluginLocalTools,
   type PluginLocalToolsOptions,
 } from "./plugin-local-tools.ts";
-export { pluginSecretNames } from "./plugin-secret-names.ts";
+export { pluginSecretName, pluginSecretNames } from "./plugin-secret-names.ts";
 export {
   type AddedPluginEntry,
   type AddPluginOptions,
@@ -295,6 +295,7 @@ export {
   type PluginServiceOptions,
   type PluginTrustRefusal,
   type ReadPlugin,
+  type SignOutPlugin,
 } from "./plugin-service.ts";
 export {
   type PluginSettingProblem,

@@ -41,6 +41,7 @@ function setup() {
     trust: new TrustService({ store, digest, clock, appVersion: "0.1.0" }),
     records: new TestRecordStore(),
     clock,
+    signOut: async () => undefined,
   });
   const deleted: string[] = [];
   const scope = new WorkspaceScope({

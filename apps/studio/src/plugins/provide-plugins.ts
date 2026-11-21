@@ -47,12 +47,15 @@ export function providePlugins(
   }
   const { transport } = parts;
   if (transport === undefined) return;
+  const signIns = new AgentHostIntegrationSignIns(transport);
   const plugins = desktopPluginsHost({
     ipc: parts.ipc,
     secrets: shellKeychain(parts.ipc),
     caller: new AgentHostPluginToolCaller(transport),
     handOver: new AgentHostPluginSecrets(transport),
-    signIns: new AgentHostIntegrationSignIns(transport),
+    signIns,
+    // A plugin's sign-ins are signed in under its id.
+    signOut: async (plugin) => void (await signIns.signOutAll(plugin)),
     onReloadFailed: parts.onReloadFailed,
     unfencedRuns: desktopUnfencedRuns(new AgentHostUnfencedRuns(transport)),
   });

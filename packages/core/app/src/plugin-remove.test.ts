@@ -52,6 +52,7 @@ async function setup() {
     trust,
     records: new TestRecordStore(),
     clock,
+    signOut: async () => undefined,
   });
   const added = await service.add(weatherSource(), { from, replace: false });
   if (!added.ok || added.value.status !== "new") throw new Error("expected a new plugin");

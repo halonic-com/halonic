@@ -53,7 +53,15 @@ function setup(reader = plugins(), store = new TestTrustStore()) {
   const trust = new TrustService({ store, digest, clock, appVersion: "0.1.0" });
   const records = new TestRecordStore();
   const writer = new TestPluginFolder(reader);
-  const service = new PluginService({ plugins: reader, writer, digest, trust, records, clock });
+  const service = new PluginService({
+    plugins: reader,
+    writer,
+    digest,
+    trust,
+    records,
+    clock,
+    signOut: async () => undefined,
+  });
   return { trust, service };
 }
 
