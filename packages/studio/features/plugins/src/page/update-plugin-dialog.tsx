@@ -2,6 +2,7 @@ import type { RunnerUnfencedReason } from "@halonicjs/app";
 import { useState } from "react";
 import { changeSummary } from "../trust/change-rows.ts";
 import { PluginTrustDialog } from "../trust/plugin-trust-dialog.tsx";
+import { useProgramsRun } from "../trust/programs-run.ts";
 import type { ProgramsRun } from "../trust/trust-text.ts";
 import {
   type PluginUnfencedRuns,
@@ -18,7 +19,8 @@ export interface UpdatePluginDialogProps {
   /** What the check found: the newer version. */
   readonly found: Extract<PluginUpdateCheck, { kind: "available" }>;
   readonly applyUpdate: NonNullable<PluginActions["applyUpdate"]>;
-  readonly programsRun?: ProgramsRun;
+  /** Whether the plugins' programs can run here, read when the check opens (`PluginActions.programs`). */
+  readonly programs?: (() => Promise<ProgramsRun>) | undefined;
   /** The host's sandbox status and saved yes, read when the check opens; without it, T9. */
   readonly unfencedRuns?: PluginUnfencedRuns | undefined;
   /** After **Trust and update** is saved. */
@@ -41,7 +43,7 @@ export function UpdatePluginDialog({
   plugin,
   found,
   applyUpdate,
-  programsRun,
+  programs,
   unfencedRuns,
   onUpdated,
   onKeep,
@@ -49,6 +51,7 @@ export function UpdatePluginDialog({
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | undefined>(undefined);
   const status = useTrustStatus(unfencedRuns);
+  const programsRun = useProgramsRun(programs);
 
   async function confirm(allow: RunnerUnfencedReason | undefined) {
     setBusy(true);

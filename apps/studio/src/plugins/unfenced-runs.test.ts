@@ -121,6 +121,7 @@ verifies("studio.desktop-unfenced-runs", () => {
       ipc,
       window: {},
       transport,
+      platform: "linux",
       onFocus: () => () => {},
       onReloadFailed: () => {},
     });
