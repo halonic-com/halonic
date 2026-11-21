@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12411 (C457-1 from the design check of #4162 on HAL-14694 and BN1 from the access check C461 on HAL-14702; small changes to an approved screen, a team decision under HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Kcc/U8QclaKJnRTAZM+Y3mOSBBwG2i/3khnJiIg1USsX8Cj8Ljgil0VGD+1dsYNXNWEjZH+70Kx5HzK0gdM0DQ==
 - Task: HAL-12411
 
 When a key was missing or refused for a model no alias points at, the shared facts named the
