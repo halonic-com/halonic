@@ -53,7 +53,7 @@ async function saved(connector: string) {
 }
 
 verifies("cli.commands.google.allow-sending", () => {
-  it("switches sending on for a Google connection, and says so", async () => {
+  it("switches sending on for a Google connector, and says so", async () => {
     const { code, io } = await google(["allow-sending", "mailbox", "on"]);
 
     expect(code).toBe(exitCode.ok);
@@ -104,7 +104,7 @@ verifies("cli.commands.google.allow-sending", () => {
     const { code, io } = await google(["allow-sending", "mailbox2", "on"]);
 
     expect(code).toBe(exitCode.notFound);
-    expect(io.stderr[0]).toBe('✕ There\'s no connection called "mailbox2" in Acme.');
+    expect(io.stderr[0]).toBe('✕ There\'s no connector called "mailbox2" in Acme.');
     expect(io.stderr[1]).toContain("Did you mean mailbox?");
     expect(await saved("mailbox2")).toBeNull();
   });
@@ -113,7 +113,7 @@ verifies("cli.commands.google.allow-sending", () => {
     const { code, io } = await google(["allow-sending", "bank", "on"]);
 
     expect(code).toBe(exitCode.usage);
-    expect(io.stderr[0]).toBe('✕ "bank" isn\'t a Google connection.');
+    expect(io.stderr[0]).toBe('✕ "bank" isn\'t a Google connector.');
     expect(await saved("bank")).toBeNull();
   });
 
@@ -124,7 +124,7 @@ verifies("cli.commands.google.allow-sending", () => {
     expect(await saved("mailbox")).toBeNull();
   });
 
-  it("needs a connection and on or off, and saves nothing otherwise", async () => {
+  it("needs a connector and on or off, and saves nothing otherwise", async () => {
     for (const args of [
       ["allow-sending"],
       ["allow-sending", "mailbox"],

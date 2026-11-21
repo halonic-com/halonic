@@ -4,8 +4,8 @@ import { markPart, phrase } from "./phrase.ts";
 /** The sentences of `halonic google`. */
 export const googleMessages = defineMessages("google", {
   summary: () =>
-    phrase`Save a Google account's secret, sign it in, switch sending for a connection, or reset Google on this computer`,
-  allowSendingSummary: () => phrase`Switch sending on or off for one Google connection`,
+    phrase`Save a Google account's secret, sign it in, switch sending for a connector, or reset Google on this computer`,
+  allowSendingSummary: () => phrase`Switch sending on or off for one Google connector`,
   /** What `allow-sending` was doing, for "✕ Couldn't change the setting: …". */
   allowSendingAction: () => phrase`change the setting`,
 
@@ -15,16 +15,16 @@ export const googleMessages = defineMessages("google", {
     phrase`${markPart("done")} Sending is off for ${connection} in ${workspace}.`,
 
   allowSendingNeedsMore: () =>
-    phrase`halonic google allow-sending needs a connection and on or off.`,
+    phrase`halonic google allow-sending needs a connector and on or off.`,
   allowSendingUsage: () =>
-    phrase`halonic google allow-sending <connection> on|off [--dir <folder>]`,
+    phrase`halonic google allow-sending <connector> on|off [--dir <folder>]`,
   unknownConnection: (typed: string, workspace: string) =>
-    phrase`There's no connection called "${typed}" in ${workspace}.`,
+    phrase`There's no connector called "${typed}" in ${workspace}.`,
   /** Line 2 under {@link unknownConnection} when no id is close. */
-  seeConnections: () => phrase`Use the connection's file name, without .connector.yaml.`,
+  seeConnections: () => phrase`Use the connector's file name, without .connector.yaml.`,
   didYouMean: (name: string) => phrase`Did you mean ${name}?`,
-  notGoogle: (connection: string) => phrase`"${connection}" isn't a Google connection.`,
-  notGoogleFix: () => phrase`Only a Google connection has this setting.`,
+  notGoogle: (connection: string) => phrase`"${connection}" isn't a Google connector.`,
+  notGoogleFix: () => phrase`Only a Google connector has this setting.`,
 
   secretSummary: () => phrase`Save the client secret of a Google account`,
   /** What `secret` was doing, for "✕ Couldn't save the client secret: …". */
@@ -42,7 +42,7 @@ export const googleMessages = defineMessages("google", {
   secretSaved: () => phrase`${markPart("done")} Saved.`,
   unknownAccount: () => phrase`There's no Google account set up under that name.`,
   unknownAccountFix: () =>
-    phrase`The command takes the setup's ref, not an e-mail address. Start the setup in the Studio, whose sign-in step shows the command with its ref.`,
+    phrase`The command takes the setup's ref, not an e-mail address. Start the setup in Studio, whose sign-in step shows the command with its ref.`,
   /** The profile's token key is gone while secrets it sealed remain, so a new one isn't made. */
   tokenKeyMissing: () =>
     phrase`The token key that sealed this profile's saved secrets is missing, so they can't be opened.`,
@@ -69,11 +69,11 @@ export const googleMessages = defineMessages("google", {
   resetNothingThere: () =>
     phrase`Nothing to remove: this computer has no Google accounts or saved sign-ins.`,
   resetDone: () =>
-    phrase`${markPart("done")} Removed. Set up Google again in the Studio. You can save the client secret and sign in there, or with halonic google secret <account> and halonic google sign-in <account>.`,
+    phrase`${markPart("done")} Removed. Set up Google again in Studio. You can save the client secret and sign in there, or with halonic google secret <account> and halonic google sign-in <account>.`,
   /** The account has signed in, or shares its client: a new secret has to be checked first. */
   secretNeedsStaging: () =>
     phrase`This account has signed in, so its secret can't be replaced here.`,
-  secretNeedsStagingFix: () => phrase`Replace it in the Studio, which checks it with Google first.`,
+  secretNeedsStagingFix: () => phrase`Replace it in Studio, which checks it with Google first.`,
 
   signInSummary: () => phrase`Sign a Google account in, in the browser of this computer`,
   /** What `sign-in` was doing, for "✕ Couldn't sign in: …". */
@@ -90,7 +90,7 @@ export const googleMessages = defineMessages("google", {
   signInOtherConnectionFix: () =>
     phrase`Leave out --connection, or name the connection the account was set up for.`,
   signInNoClientId: () => phrase`This account has no client ID yet.`,
-  signInNoClientIdFix: () => phrase`Finish the client step of the setup in the Studio first.`,
+  signInNoClientIdFix: () => phrase`Finish the client step of the setup in Studio first.`,
   signInNoSecret: () => phrase`This account has no client secret yet.`,
   signInNoSecretFix: () => phrase`Run halonic google secret <account> first.`,
   signInNoServices: (workspace: string) =>

@@ -1,5 +1,5 @@
-// `halonic google allow-sending <connection> on|off`: switches sending on or
-// off for one Google connection of the workspace. A thin command over
+// `halonic google allow-sending <connector> on|off`: switches sending on or
+// off for one Google connector of the workspace. A thin command over
 // `ConnectionSettings.setAllowSending`: it finds the connection, the
 // service saves the person's choice, and this file says what happened.
 // Nothing here switches sending on by itself.

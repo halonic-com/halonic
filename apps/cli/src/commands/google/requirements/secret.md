@@ -15,7 +15,7 @@ The `halonic google secret <account>` command shall save the Google client secre
   then it exits 2, prompts for nothing, saves nothing and prints no `fake-secret-value`.
 - Given an account that has signed in,
   when a new secret is typed,
-  then the saved one stays and the command says to replace it in the Studio.
+  then the saved one stays and the command says to replace it in Studio.
 - Given a fresh profile with no `token-key`,
   when a secret is typed,
   then it prints "✓ Saved.", and the profile's secrets file holds a `token-key` that opens the sealed secret.

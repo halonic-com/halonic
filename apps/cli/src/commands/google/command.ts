@@ -23,7 +23,7 @@ export function googleCommandWith(
     subcommands: [
       {
         name: "allow-sending",
-        usage: "<connection> on|off [--dir <folder>]",
+        usage: "<connector> on|off [--dir <folder>]",
         takesArguments: true,
         summary: googleMessages.allowSendingSummary(),
         action: () => googleMessages.allowSendingAction(),
