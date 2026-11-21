@@ -2,6 +2,7 @@
 
 - Approval: Liam's answer of 17 Nov on HAL-11873 (Paperclip task): the small option, a host-side wrapper around the resolver, with its pause rules
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:MKXaivXKcg5gWmk4lbkrCrtK6t3pezuoZ6gamJMY+XUpc8UccQ1bjcALoPqqAoEkHAMStKIMR4t16aqAE3xlDQ==
 
 ## What changes
 
