@@ -167,6 +167,26 @@ verifies("fs-tauri.trust-commands", () => {
       );
     });
 
+    it("puts any other rejection's text in the details, even one JSON can't write", async () => {
+      const circular: { self?: unknown } = {};
+      circular.self = circular;
+      const rejections: [unknown, string][] = [
+        ["no IPC", "no IPC"],
+        [new TypeError("bad call"), "TypeError: bad call"],
+        [{ code: 7 }, '{"code":7}'],
+        [Symbol("gone"), "Symbol(gone)"],
+        [circular, "[object Object]"],
+      ];
+      for (const [reason, text] of rejections) {
+        const store = new TauriTrustStore({ invoke: async () => Promise.reject(reason) });
+        const error = await rejection(store.revoke("/a"));
+        expect(error).toMatchObject({ message: "Halonic's desktop app didn't answer." });
+        expect((error as { details: string }).details).toBe(
+          `The desktop shell gave no answer to the trust call.\n${text}`,
+        );
+      }
+    });
+
     it("rejects an answer that isn't a record as unavailable", async () => {
       const answers: unknown[] = [{ location: 7 }, "record", { list: [] }];
       for (const answer of answers) {
