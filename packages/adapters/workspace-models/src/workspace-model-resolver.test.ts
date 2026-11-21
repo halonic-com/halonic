@@ -268,7 +268,25 @@ verifies("cli.workspace-models", () => {
       await expect(resolve(callOf({ alias: "gone/acme-1" }))).rejects.toMatchObject({
         code: "no-provider",
         kind: "not_found",
+        message: "model gone/acme-1 names provider gone, which the workspace doesn't have.",
         fix: "Add providers/gone.yaml, then run again.",
+        failureCause: {
+          code: "models.no-provider",
+          detail: { provider: "gone", model: "gone/acme-1" },
+        },
+      });
+    });
+
+    it("names the alias whose provider the workspace doesn't have, for the run's cause (HAL-14301)", async () => {
+      const { "providers/anthropic.yaml": _, ...withoutAnthropic } = acmeFiles;
+      const resolve = await resolverFor(withoutAnthropic);
+
+      await expect(resolve(callOf({ alias: "smart" }))).rejects.toMatchObject({
+        code: "no-provider",
+        failureCause: {
+          code: "models.no-provider",
+          detail: { provider: "anthropic", alias: "smart" },
+        },
       });
     });
 

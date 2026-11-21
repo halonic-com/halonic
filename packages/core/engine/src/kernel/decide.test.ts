@@ -133,6 +133,11 @@ verifies("engine.task-state", () => {
       state: "draft",
       error: 'State "draft" has no transition for "done".',
       reason: "error",
+      cause: {
+        kind: "invalid_input",
+        code: "workflow.no-transition",
+        detail: { state: "draft", event: "done" },
+      },
     });
     expect(run?.status).toBe("failed");
   });
@@ -146,6 +151,11 @@ verifies("engine.task-state", () => {
     expect(log.at(-1)).toMatchObject({
       type: "run.failed",
       error: 'Task state "draft" names no agent.',
+      cause: {
+        kind: "invalid_input",
+        code: "workflow.task-without-agent",
+        detail: { state: "draft" },
+      },
     });
   });
 });

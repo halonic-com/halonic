@@ -83,7 +83,12 @@ function checkJson(agentId: string, answer: unknown): CheckedAnswer {
   try {
     return { output: JSON.parse(json) as unknown };
   } catch {
-    return { error: notJsonError(agentId, answer), reason: "error" };
+    // The error already says the fix, so a host knows the cause (HAL-14301).
+    return {
+      error: notJsonError(agentId, answer),
+      reason: "error",
+      cause: { kind: "invalid_input", code: "answer.not-json", detail: { agent: agentId } },
+    };
   }
 }
 

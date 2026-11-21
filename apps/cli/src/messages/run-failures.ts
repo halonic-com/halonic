@@ -130,6 +130,22 @@ const lineOne = {
   // The same words as `halonic secret list` for the same file (HAL-12569).
   "secrets-file-readable": (run, failure) =>
     failedIn(run, phrase`the secrets file ${failure.file} can be read by other users.`),
+  "unknown-provider": (run, failure) =>
+    failedIn(
+      run,
+      phrase`${modelNamed(failure)} names the provider ${failure.provider}, which the workspace doesn't have.`,
+    ),
+  // Nina's C340 wording: what the items are instead, with the template the step wrote (HAL-14301).
+  "items-not-a-list": (run, failure) =>
+    failedIn(
+      run,
+      failure.gives === "nothing"
+        ? phrase`its items (${failure.items}) give nothing.`
+        : phrase`its items (${failure.items}) are ${aKind(failure.gives)}, not a list.`,
+    ),
+  // Worded like `validate`'s no-done-transition, which catches most of these first (HAL-14313).
+  "no-transition": (run, failure) => failedIn(run, noTransitionReason(failure)),
+  "task-without-agent": (run) => failedIn(run, phrase`the step names no agent.`),
   "model-no-tools": (run, failure) =>
     failedIn(
       run,
@@ -252,6 +268,42 @@ const lineTwo = {
     phrase`Add ${failure.alias} to models.yaml, or set a model on the agent. For a test model with no key, copy models.yaml and providers/mock.yaml from the Acme example.`,
   "secrets-file-readable": (_run, failure) =>
     phrase`Run chmod 600 ${failure.file}, then run again.`,
+  "unknown-provider": (_run, failure) =>
+    "alias" in failure
+      ? phrase`Add providers/${failure.provider}.yaml, or point the model alias ${failure.alias} at a provider the workspace has.`
+      : phrase`Add providers/${failure.provider}.yaml, or change ${failure.model} to a provider the workspace has.`,
+  // The same fixes as `validate`'s items-not-a-list; only a list the run's input or
+  // context gives as something else is left to the run (HAL-14313).
+  "items-not-a-list": (_run, failure) => {
+    const path = placeholderPath(failure.items);
+    if (path === undefined) {
+      return phrase`Write one placeholder, such as "{{context.topics}}".`;
+    }
+    if (!/^(input|context)\./.test(path)) {
+      return phrase`Read the list from input or context, such as "{{context.${path}}}".`;
+    }
+    return failure.gives === "nothing"
+      ? phrase`Check the name in ${failure.items}, and pass a JSON list there, such as ["Monday", "Tuesday"].`
+      : phrase`Pass a JSON list, such as ["Monday", "Tuesday"].`;
+  },
+  // The same fixes as `validate`'s no-done-transition: a transition without event takes done (HAL-14313).
+  "no-transition": (_run, failure) => {
+    if (failure.guarded) {
+      return phrase`Add a transition for ${failure.event} without when, as the last one, so the run always has somewhere to go.`;
+    }
+    if (failure.event !== "done") {
+      return phrase`Add a transition with event: ${failure.event}.`;
+    }
+    if (failure.takes.length === 0) {
+      return phrase`Add a transition without event.`;
+    }
+    const [only, ...more] = failure.takes;
+    return only !== undefined && more.length === 0
+      ? phrase`Remove event: ${only}, or add a transition without event.`
+      : phrase`Remove their event, or add a transition without event.`;
+  },
+  // The same fix as `validate`'s task-without-agent (HAL-14313).
+  "task-without-agent": () => phrase`Give it an agent (agent: <id>), or make it a wait step.`,
   // "In models.yaml" first, so it can't read as where the tools are.
   "model-no-tools": (_run, failure) =>
     phrase`In models.yaml, point the model alias ${failure.alias} at a model that can use tools.`,
@@ -307,6 +359,33 @@ function bugFix(run: FailedRun): Phrase {
 
 function failedIn(run: FailedRun, reason: Phrase): Phrase {
   return phrase`${run.title} failed in the step ${run.step}: ${reason}`;
+}
+
+/** Why the step can't go on from the event it ended with. */
+function noTransitionReason(failure: Extract<RunFailure, { reason: "no-transition" }>): Phrase {
+  if (failure.guarded) {
+    return phrase`its transitions for ${failure.event} all have a when that didn't pass.`;
+  }
+  return failure.takes.length === 0
+    ? phrase`it ended with the event ${failure.event}, and it has no transition.`
+    : phrase`it ended with the event ${failure.event}, but its transitions only take ${listInWords(failure.takes, "or")}.`;
+}
+
+/** "the model alias smart", or "the model mok/echo" for an agent's shorthand. */
+function modelNamed(failure: Extract<RunFailure, { reason: "unknown-provider" }>): Phrase {
+  return "alias" in failure
+    ? phrase`the model alias ${failure.alias}`
+    : phrase`the model ${failure.model}`;
+}
+
+/** The path of items that are one placeholder and nothing else, such as "input.topics". */
+function placeholderPath(items: string): string | undefined {
+  return /^\{\{\s*([^{}\s]+)\s*\}\}$/.exec(items.trim())?.[1];
+}
+
+/** "a text", "an object", "a number". */
+function aKind(kind: string): string {
+  return kind === "object" ? "an object" : `a ${kind}`;
 }
 
 /** "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet." */

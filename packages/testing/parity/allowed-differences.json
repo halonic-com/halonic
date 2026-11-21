@@ -788,6 +788,18 @@
     ]
   },
   {
+    "id": "failed-run-names-its-cause",
+    "requirement": "events.run-failed-cause",
+    "area": "CLI calls: run.failed",
+    "old": "784f78d wrote run.failed with the state and the error only.",
+    "new": "run.failed also carries a typed cause when the engine knows it, such as answer.not-json with the agent for an answer that isn't JSON. The compare leaves it out of the new events.",
+    "why": "The CLI and Studio say the cause and its fix from the cause, not by parsing the error text (HAL-14301). It is an added, optional field: logs without it read as before, and the error is still compared.",
+    "status": "signed-off",
+    "cliRules": [
+      "run-failed-cause"
+    ]
+  },
+  {
     "id": "not-json-answer-quotes-it",
     "requirement": "engine.task-json-answer",
     "area": "CLI calls: an agent's answer that isn't JSON",

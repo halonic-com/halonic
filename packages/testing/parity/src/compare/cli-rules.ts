@@ -115,6 +115,16 @@ export const cliRules: readonly CliRule[] = [
       }),
   },
   {
+    id: "run-failed-cause",
+    does: "takes cause out of the new run.failed",
+    new: (call) =>
+      eachEvent(call, (event) => {
+        if (event["type"] !== "run.failed") return event;
+        const { cause: _cause, ...rest } = event;
+        return rest;
+      }),
+  },
+  {
     id: "not-json-words",
     does: "gives an agent's answer that isn't JSON one plain form in run.failed and workflow.finished errors, on both sides",
     old: errorsBy(notJson),

@@ -167,6 +167,7 @@ verifies("engine.task-json-answer", () => {
           `Agent "triage" answered ${quoted}, which isn't the JSON its output asks for. ` +
           "Tighten the agent's instructions or use a larger model.",
         reason: "error",
+        cause: { kind: "invalid_input", code: "answer.not-json", detail: { agent: "triage" } },
       },
     ]);
     expect(run?.status).toBe("failed");

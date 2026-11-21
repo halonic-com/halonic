@@ -6,7 +6,7 @@ import type {
   RunStatus,
 } from "@halonicjs/events";
 import type { Agent, Workflow } from "@halonicjs/format";
-import { getState, type Scope, selectTransition } from "@halonicjs/workflow";
+import { acceptedEvents, getState, type Scope, selectTransition } from "@halonicjs/workflow";
 import { states } from "../generated/states.ts";
 import type {
   DecidedEvent,
@@ -347,7 +347,31 @@ function settle(draft: Draft, stateId: string, step: StateStep): void {
 function follow(draft: Draft, from: string, event: string): void {
   const transition = selectTransition(draft.workflow, from, event, scopeOf(draft));
   if (transition === null) {
-    fail(draft, from, `State "${from}" has no transition for "${event}".`);
+    // The workflow file's own mistake, so a host can say so, with the events
+    // the step does take, comma-separated, as `validate` names them (HAL-14301).
+    // When it does take this event but no `when` of those transitions passed,
+    // it says `guarded` instead, and leaves the event out of `takes`.
+    const accepted = acceptedEvents(draft.workflow, from);
+    const guarded = accepted.includes(event);
+    const takes = accepted.filter((accepts) => accepts !== event).join(",");
+    fail(
+      draft,
+      from,
+      `State "${from}" has no transition for "${event}".`,
+      "error",
+      undefined,
+      undefined,
+      {
+        kind: "invalid_input",
+        code: "workflow.no-transition",
+        detail: {
+          state: from,
+          event,
+          ...(guarded ? { guarded: "true" } : {}),
+          ...(takes === "" ? {} : { takes }),
+        },
+      },
+    );
     return;
   }
   move(draft, from, transition.to, event);
