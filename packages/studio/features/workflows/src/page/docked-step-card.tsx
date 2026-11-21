@@ -15,21 +15,29 @@ import {
   useAutoSaved,
   useReportNotSaved,
 } from "@halonicjs/studio-shell";
-import { type KeyboardEvent, useCallback, useState } from "react";
+import { type KeyboardEvent, useCallback, useId, useState } from "react";
 import type {
   WorkflowAgentChoice,
   WorkflowArrow,
   WorkflowArrowChange,
+  WorkflowProblem,
   WorkflowStep,
   WorkflowStepChange,
   WorkflowStepType,
   WorkflowsHost,
 } from "../api.ts";
+import {
+  type ProblemRow,
+  type StepNames,
+  stepProblemRows,
+} from "../configuration/problem-lines.ts";
+import { AgentField } from "./agent-field.tsx";
 import { keyCheck, noCheck, pickNow } from "./field-saving.ts";
 import { pageWords } from "./page-words.ts";
 import type { Dock } from "./run-dock.tsx";
 import { ArrowsIn, StepArrows } from "./step-arrows.tsx";
 import type { NamedStep } from "./step-names.ts";
+import { missingAgentSentence, StepProblemsCallout } from "./step-problems-callout.tsx";
 import type { WorkflowLoad } from "./use-workflow.ts";
 
 const words = pageWords.stepCard;
@@ -41,6 +49,8 @@ export interface DockedStepCardProps {
   readonly workflowName: string;
   /** The agents of the workflow's hub, for the Agent picker. */
   readonly agents: readonly WorkflowAgentChoice[];
+  /** What the checks found in the step, as Configuration › Problems says it; empty when nothing. */
+  readonly problems: readonly ProblemRow[];
   /** Saves one change of the step; resolves to whether it was written. */
   readonly save: (change: WorkflowStepChange) => Promise<boolean>;
   /** Every step of the workflow, in the file's order, which the step's arrows can go to. */
@@ -75,24 +85,6 @@ const typeOptions: readonly SelectOption[] = Object.entries(words.types).map(([v
   label,
 }));
 
-/**
- * The Agent picker: "No agent" first, then the hub's agents. An agent the file names that the hub
- * doesn't have stays in the list by its id, so it isn't lost; the canvas says it's missing.
- */
-function agentOptions(
-  agents: readonly WorkflowAgentChoice[],
-  picked: string,
-): readonly SelectOption[] {
-  const options = [
-    { value: "", label: pageWords.noAgent },
-    ...agents.map((one) => ({ value: one.id, label: one.name })),
-  ];
-  if (picked !== "" && !agents.some((one) => one.id === picked)) {
-    options.push({ value: picked, label: picked });
-  }
-  return options;
-}
-
 /** The steps with an arrow to `stepId`, each once, for **Arrows in**; a step's arrow to itself isn't a way in. */
 function stepsInto(stepId: string, arrows: readonly WorkflowArrow[]): readonly string[] {
   const from = arrows.filter((arrow) => arrow.to === stepId && arrow.from !== stepId);
@@ -109,6 +101,7 @@ export function DockedStepCard({
   step,
   workflowName,
   agents,
+  problems,
   save,
   steps,
   arrows,
@@ -136,6 +129,7 @@ export function DockedStepCard({
   // the file, as with a change of kind, so picking an agent again brings it back.
   const hasPrompt = kind === "task" && agent.value !== "" && step.promptIsData !== true;
   const hasOutput = writesOutput.has(kind);
+  const problemsId = useId();
   // The expanded arrow's fields count with the card's own.
   const [arrowFieldsNotSaved, setArrowFieldsNotSaved] = useState(0);
   const reportCard = useCallback(
@@ -175,17 +169,17 @@ export function DockedStepCard({
       >
         <div className="flex flex-col gap-4">
           <p className="text-caption text-fg-muted">{words.breadcrumb(workflowName, step.id)}</p>
+          <StepProblemsCallout id={problemsId} rows={problems} />
           <Field label={words.type}>
             <Select options={typeOptions} value={type.value} onChange={pickNow(type)} />
           </Field>
           {hasAgent && (
-            <Field label={words.agent} hint={agent.value === "" ? words.noAgent : undefined}>
-              <Select
-                options={agentOptions(agents, agent.value)}
-                value={agent.value}
-                onChange={pickNow(agent)}
-              />
-            </Field>
+            <AgentField
+              agent={agent}
+              saved={step.agent ?? ""}
+              agents={agents}
+              problem={missingAgentSentence(problems, problemsId)}
+            />
           )}
           {hasPrompt && (
             <Field
@@ -285,6 +279,10 @@ export interface StepEditDockProps {
   readonly runShown: boolean;
   readonly phone: boolean;
   readonly saving: Pick<SaveState, "setFieldsNotSaved"> | undefined;
+  /** What the checks found in the workflow; the card shows its step's. */
+  readonly problems: readonly WorkflowProblem[];
+  /** How a problem names a step: as its card on the canvas does. */
+  readonly stepName: StepNames;
   /** Opens another step's card, from **Arrows in**. */
   readonly onOpenStep: (stepId: string) => void;
   readonly announce?: ((line: string) => void) | undefined;
@@ -325,6 +323,8 @@ export function StepEditDock({
   runShown,
   phone,
   saving,
+  problems,
+  stepName,
   onOpenStep,
   announce,
   onClose,
@@ -358,6 +358,7 @@ export function StepEditDock({
       step={step}
       workflowName={view.name}
       agents={view.agents ?? []}
+      problems={stepProblemRows(problems, step.id, stepName)}
       save={save}
       steps={view.steps}
       arrows={view.arrows}

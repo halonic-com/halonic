@@ -55,6 +55,8 @@ export const pageWords = {
     } satisfies Record<WorkflowStepType, string>,
     agent: "Agent",
     noAgent: "No agent: this step passes the data straight on.",
+    /** Under the Agent picker while it shows an agent the hub doesn't have; the card's top says which. */
+    agentNotInHub: "Pick one of this hub's agents.",
     prompt: "Prompt",
     promptEmpty: "The agent gets the run input.",
     output: "Save output as",
