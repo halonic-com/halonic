@@ -1,6 +1,7 @@
 import {
   type DefinitionWatch,
   type DefinitionWatchListener,
+  isLeftOut,
   isPrivateWorkspacePath,
 } from "@halonicjs/ports";
 import { KnownFiles, type KnownFilesOptions, type OwnChange } from "./known-files.ts";
@@ -150,8 +151,9 @@ export class DigestWatch implements DefinitionWatch {
 
   #notice(path: string): void {
     // A private entry (`.git`, the Studio's run logs) is never workspace
-    // content, so it doesn't start a batch or read the workspace.
-    if (this.#stopping || isPrivateWorkspacePath(path)) {
+    // content, and a left-out one is never watched, so neither starts a batch
+    // or reads the workspace.
+    if (this.#stopping || isPrivateWorkspacePath(path) || isLeftOut(path, this.#options.leaveOut)) {
       return;
     }
     this.#noticed.add(path);

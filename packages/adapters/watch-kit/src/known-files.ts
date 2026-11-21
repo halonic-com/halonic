@@ -1,4 +1,10 @@
-import type { DefinitionSource, WorkspaceFileChange } from "@halonicjs/ports";
+import {
+  type DefinitionSource,
+  isLeftOut,
+  type LeaveOut,
+  type ListOptions,
+  type WorkspaceFileChange,
+} from "@halonicjs/ports";
 import { contentDigest, type Sha256 } from "@halonicjs/std";
 
 /** What the store is about to leave at a path: the new text's digest, or `absent` for a remove. */
@@ -15,6 +21,11 @@ export interface KnownFilesOptions {
    * workspace content. None by default.
    */
   readonly isScratch?: (name: string) => boolean;
+  /**
+   * What the watch never reads or reports, such as `node_modules`, as
+   * `DefinitionSource.list` leaves it out. Nothing by default.
+   */
+  readonly leaveOut?: LeaveOut;
 }
 
 /**
@@ -24,6 +35,8 @@ export interface KnownFilesOptions {
  */
 export class KnownFiles {
   readonly #options: KnownFilesOptions;
+  /** What the store's `list()` is asked to leave out. */
+  readonly #listOptions: ListOptions;
   /** The digest of every file as last seen, by path. */
   readonly #digests = new Map<string, string>();
   /** The store's own changes still in progress, by path. */
@@ -31,11 +44,12 @@ export class KnownFiles {
 
   constructor(options: KnownFilesOptions) {
     this.#options = options;
+    this.#listOptions = options.leaveOut === undefined ? {} : { leaveOut: options.leaveOut };
   }
 
   /** Reads the digest of every file the store lists. */
   async rememberAll(): Promise<void> {
-    for (const path of await this.#options.files.list()) {
+    for (const path of await this.#options.files.list(undefined, this.#listOptions)) {
       await this.remember(path);
     }
   }
@@ -140,18 +154,18 @@ export class KnownFiles {
    * as a folder, so a changed file costs the store one call.
    */
   async #listUnder(name: string, reads: BatchReads): Promise<string[]> {
-    const { files, isScratch } = this.#options;
+    const { files, isScratch, leaveOut } = this.#options;
     if (name === "") {
-      return await files.list();
+      return await files.list(undefined, this.#listOptions);
     }
-    if (isScratch?.(name) === true) {
+    if (isScratch?.(name) === true || isLeftOut(name, leaveOut)) {
       return [];
     }
     try {
       if ((await reads.read(name)) !== null) {
         return [name];
       }
-      return await files.list(name);
+      return await files.list(name, this.#listOptions);
     } catch (error) {
       // A private entry, a link or a name a workspace path can't hold: not workspace content.
       if (error instanceof RangeError) {
