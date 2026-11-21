@@ -3,6 +3,7 @@
 - Task: HAL-15082
 - Approval: HAL-15082; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zPL2vLCk6qcD9bveyonEM7r+2cQIeGL+UuvDZZaPHhVSKLD93XzunuILdkkR7jOBrMwnW0HQ1LbuIk2+qHVeCg==
 
 ## What changes
 
