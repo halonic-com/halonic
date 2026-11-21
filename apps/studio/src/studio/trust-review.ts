@@ -317,7 +317,7 @@ function agentChangeRows(agent: ChangedAgent): TrustRowView[] {
   if (before.asks !== after.asks) {
     lines.push(
       after.asks === "in-sandbox"
-        ? ["Now without asking", "edits and runs commands in its working folder"]
+        ? ["Now without asking", inSandboxCalls]
         : ["Asks again", "before it edits or runs a command"],
     );
   }

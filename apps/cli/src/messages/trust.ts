@@ -121,7 +121,7 @@ export const trustMessages = defineMessages("trust", {
   /** A changed agent's `asks`: it turned `in-sandbox` on, or off again. */
   asksChanged: (inSandbox: boolean) =>
     inSandbox
-      ? phrase`now edits and runs commands in its working folder without asking`
+      ? phrase`now edits and runs commands in its working folder without asking, inside the sandbox`
       : phrase`asks again before it edits or runs a command`,
   /** After a wildcard site, `*.example.com`. */
   everySiteUnder: (domain: string) => phrase`every site under ${domain}`,
