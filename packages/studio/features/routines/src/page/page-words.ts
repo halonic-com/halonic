@@ -47,6 +47,8 @@ export const runNowWords = {
   targetNeverLive: (target: string) => `Not started: ${target} isn't live yet.`,
   targetInTrash: (target: string) => `Not started: ${target} was deleted.`,
   couldntStart: (name: string) => `Couldn't start ${name}.`,
+  tryAgain: "Try again",
+  copyCommand: "Copy command",
   signIn: "Sign in with Google",
   couldntSignIn: (account: string) => `Couldn't start the sign-in for ${account}.`,
 } as const;
