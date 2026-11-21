@@ -13,6 +13,7 @@ import type { CommandContext } from "./command.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { stuckTimerWatch } from "./stuck-timers.ts";
+import { noSheetHosts } from "./test/no-sheet-hosts.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import {
@@ -78,6 +79,7 @@ verifies("cli.local-engine", () => {
             factories: new ConnectorFactories([]),
             context: { http: setup().http, tokens: new MemoryTokenStore() },
             trust: grant,
+            sheetHostsOf: noSheetHosts,
           };
         },
       },
@@ -217,6 +219,7 @@ async function runReportWithNotes(trust: TrustGrant | null): Promise<NotesRun> {
         factories: new ConnectorFactories([stdio]),
         context: { http: setup().http, tokens: new MemoryTokenStore() },
         trust: grant,
+        sheetHostsOf: noSheetHosts,
       }),
     },
     {

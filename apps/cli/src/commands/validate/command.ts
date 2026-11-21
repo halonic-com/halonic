@@ -8,13 +8,16 @@ import {
   validateLines,
   validateReport,
 } from "../../output/validate-report.ts";
+import { computerSheetHosts } from "../../sheet-hosts.ts";
 import { dirOption, givenDir, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
 import { workspaceProblemsOf } from "../../workspace-problems.ts";
 
 /**
  * `halonic validate [--dir <folder>] [--all] [--strict]`: checks every file of
  * the workspace and lists what to fix, grouped by file (cli-output 3.2). It
- * starts nothing, so it needs no trust and no sandbox.
+ * starts nothing, so it needs no trust and no sandbox. It reads the installed
+ * plugins and the local integrations, so `privacy.localOnly` counts the hosts
+ * their sheets list.
  */
 export const validateCommand: CliCommand = {
   name: "validate",
@@ -30,7 +33,8 @@ export const validateCommand: CliCommand = {
   async run(input, context) {
     const workspace = await openWorkspaceDir(input, context);
     const strict = input.options["strict"] === true;
-    const loaded = await loadWorkspace(workspace.store);
+    const sheetHosts = await computerSheetHosts(workspace.root, workspace.shown);
+    const loaded = await loadWorkspace(workspace.store, { sheetHosts });
     const report = validateReport({
       ...loaded,
       issues: workspaceProblemsOf(loaded),

@@ -1,3 +1,4 @@
+import type { SheetHosts } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { loadWorkspace } from "../index.ts";
@@ -23,9 +24,14 @@ const local = {
 };
 
 /** The issues of a workspace with these files, as `file key.path: message`. */
-async function issuesIn(localOnly: boolean, files: Record<string, string>): Promise<string[]> {
+async function issuesIn(
+  localOnly: boolean,
+  files: Record<string, string>,
+  sheetHosts?: SheetHosts,
+): Promise<string[]> {
   const settings = `id: acme\nname: Acme\nprivacy: { localOnly: ${localOnly} }\n`;
-  const workspace = await loadWorkspace(new MemorySource({ "workspace.yaml": settings, ...files }));
+  const source = new MemorySource({ "workspace.yaml": settings, ...files });
+  const workspace = await loadWorkspace(source, sheetHosts === undefined ? {} : { sheetHosts });
   return workspace.issues.map(
     (issue) => `${issue.severity} ${issue.file} ${issue.path.join(".")}: ${issue.message}`,
   );
@@ -90,5 +96,52 @@ verifies("workspace.local-only-harness", () => {
   it("lets a harness agent run in a workspace that isn't local only", async () => {
     const writer = "name: Writer\nmodel: ollama/llama3.2\nharness: claude-code\n";
     expect(await issuesIn(false, { ...local, "agents/writer.agent.yaml": writer })).toEqual([]);
+  });
+});
+
+verifies("workspace.local-only-sheet-hosts", () => {
+  const runners = {
+    "library/connectors/orders.connector.yaml":
+      "name: Orders\nlocal: true\ntransport:\n  plugin: { id: acme-orders }\n",
+    "library/connectors/notes.connector.yaml":
+      "name: Notes\nlocal: true\ntransport:\n  integration: { folder: notes }\n",
+  };
+  const outside: SheetHosts = {
+    plugins: new Map([["acme-orders", ["api.acme.example"]]]),
+    integrations: new Map([["notes", [{ fromSetting: "server", class: "public" }]]]),
+  };
+  const inside: SheetHosts = {
+    plugins: new Map([["acme-orders", [{ fromSetting: "shop", class: "loopback" }]]]),
+    integrations: new Map([["notes", [{ fromSetting: "server", class: "private" }]]]),
+  };
+  const fix = "so it isn't local: set privacy.localOnly: false in workspace.yaml to use it";
+
+  it("doesn't count local: true when the sheet reaches outside hosts, and names them", async () => {
+    expect(await issuesIn(true, { ...local, ...runners }, outside)).toEqual([
+      `error library/connectors/notes.connector.yaml local: The integration in integrations/notes reaches the address in its server setting, ${fix}`,
+      `error library/connectors/orders.connector.yaml local: The plugin acme-orders reaches api.acme.example, ${fix}`,
+    ]);
+  });
+
+  it("counts local: true when the sheet's hosts are all local", async () => {
+    expect(await issuesIn(true, { ...local, ...runners }, inside)).toEqual([]);
+  });
+
+  it("doesn't count local: true for a sheet it wasn't given", async () => {
+    const none: SheetHosts = { plugins: new Map(), integrations: new Map() };
+    const message = `isn't local, and the workspace is local only: set privacy.localOnly: false in workspace.yaml to use it`;
+    expect(await issuesIn(true, { ...local, ...runners }, none)).toEqual([
+      `error library/connectors/notes.connector.yaml local: Connector "notes" ${message}`,
+      `error library/connectors/orders.connector.yaml local: Connector "orders" ${message}`,
+    ]);
+  });
+
+  it("offers no local: true for a plugin's connector", async () => {
+    const orders = "name: Orders\ntransport:\n  plugin: { id: acme-orders }\n";
+    expect(
+      await issuesIn(true, { ...local, "library/connectors/orders.connector.yaml": orders }),
+    ).toEqual([
+      `error library/connectors/orders.connector.yaml transport: Connector "orders" isn't local, and the workspace is local only: set privacy.localOnly: false in workspace.yaml to use it`,
+    ]);
   });
 });

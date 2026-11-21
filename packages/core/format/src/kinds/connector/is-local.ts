@@ -1,3 +1,4 @@
+import type { IntegrationHost } from "../integration/schema.ts";
 import type { Connector } from "./schema.ts";
 
 /**
@@ -5,10 +6,25 @@ import type { Connector } from "./schema.ts";
  * `local` setting when it has one, otherwise true for a program on this
  * machine (stdio) and for an HTTP server on a loopback address.
  *
+ * A plugin's backend or a local integration runs code whose sheet says
+ * which hosts it may reach. Give those `hosts` for such a connector: when
+ * one of them is outside this computer and its network
+ * ({@link outsideHosts}), the connector isn't local, whatever its `local`
+ * setting says.
+ *
+ * @param hosts - the `hosts` of the plugin's backend or the integration's sheet
+ *
  * @example
  * connectorIsLocal(connector); // true for { transport: { http: { url: "http://127.0.0.1:3000" } } }
+ * connectorIsLocal(pluginConnector, ["api.acme.example"]); // false, even with local: true
  */
-export function connectorIsLocal(connector: Connector): boolean {
+export function connectorIsLocal(
+  connector: Connector,
+  hosts: readonly IntegrationHost[] = [],
+): boolean {
+  if (outsideHosts(hosts).length > 0) {
+    return false;
+  }
   if (connector.local !== undefined) {
     return connector.local;
   }
@@ -20,9 +36,28 @@ export function connectorIsLocal(connector: Connector): boolean {
     return false;
   }
   const host = hostOf(transport.http.url);
-  if (host === undefined) {
-    return false;
-  }
+  return host !== undefined && isLoopbackHost(host);
+}
+
+/**
+ * The hosts of a sheet's `hosts` that are outside this computer and its
+ * network: every fixed host, and a host from a setting whose class is
+ * `public`. A fixed host is a name, and the runner sends a name only to a
+ * public address, whatever the name looks like (`*.localhost` or `127.*`
+ * included). Only a `loopback` or `private` setting, whose address the
+ * runner checks on every request, stays on this computer or the home
+ * network, as `local: true` means.
+ *
+ * @example
+ * outsideHosts(["api.acme.example", { fromSetting: "station", class: "private" }]);
+ * // ["api.acme.example"]
+ */
+export function outsideHosts(hosts: readonly IntegrationHost[]): IntegrationHost[] {
+  return hosts.filter((host) => typeof host === "string" || host.class === "public");
+}
+
+/** Whether a lowercased host without port or brackets is this computer. */
+function isLoopbackHost(host: string): boolean {
   return (
     host === "localhost" || host.endsWith(".localhost") || host === "::1" || /^127\./.test(host)
   );

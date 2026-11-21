@@ -12,6 +12,7 @@ import {
   type LocalExecutorOptions,
   type RunProgramFolders,
 } from "@halonicjs/engine";
+import type { SheetHosts } from "@halonicjs/format";
 import {
   type ChatTurnWaiting,
   type Clock,
@@ -27,6 +28,9 @@ import {
 import { definitionsOf, filesOf, harnessWorkingFolders, loadWorkspace } from "@halonicjs/workspace";
 import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
 import { agentHostConnectorFactory } from "./agent-host-tool-lister.ts";
+
+/** The sheet hosts of a page's run: none, since the page starts no runner connector. */
+const NO_SHEET_HOSTS: SheetHosts = { plugins: new Map(), integrations: new Map() };
 
 /** What the window's runs start their connectors with. */
 export interface StudioRunConnectorsInput {
@@ -77,6 +81,10 @@ export function studioRunConnectors(input: StudioRunConnectorsInput): FolderRunC
         trust: checked.status === "trusted" ? checked.grant : null,
         workingFoldersOf: (root) =>
           resolveWorkingFolders(input.folder, root, harnessWorkingFolders(workspace)),
+        // The agent host starts only `stdio` connectors, never a plugin's backend or a local
+        // integration, so the page lists no sheet hosts: such a connector isn't local here
+        // (`workspace.local-only-sheet-hosts`).
+        sheetHostsOf: async () => NO_SHEET_HOSTS,
       };
     },
     // The page keeps nothing per run beyond the connectors themselves.

@@ -44,7 +44,8 @@ const sheet = `id: notes
 version: 1.0.0
 kit: 1
 provides: [connector]
-hosts: [api.example.com]
+# The backend answers a fixed line and reaches no host, so the connector counts as local.
+hosts: []
 tools:
   - { name: read-note, description: Reads a note., risk: read, untrusted: true }
 `;

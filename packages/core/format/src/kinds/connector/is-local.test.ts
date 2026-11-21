@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { connectorIsLocal } from "../../index.ts";
+import { connectorIsLocal, outsideHosts } from "../../index.ts";
 import { parsedValue, yaml } from "../../test/parse.spec.ts";
 
 function httpConnector(url: string, local?: boolean) {
@@ -47,5 +47,32 @@ verifies("format.connector-is-local", () => {
   it("follows the connector's own setting over its address", () => {
     expect(connectorIsLocal(httpConnector("https://tracker.example.com", true))).toBe(true);
     expect(connectorIsLocal(httpConnector("http://localhost", false))).toBe(false);
+  });
+
+  it("doesn't count local: true when the sheet's hosts reach outside this computer", () => {
+    const plugin = parsedValue(
+      "connector",
+      yaml("id: orders", "transport: { plugin: { id: acme-orders } }", "local: true"),
+    );
+    expect(connectorIsLocal(plugin, ["api.acme.example"])).toBe(false);
+    expect(connectorIsLocal(plugin, [{ fromSetting: "shop", class: "public" }])).toBe(false);
+    expect(connectorIsLocal(plugin, [{ fromSetting: "tools", class: "loopback" }])).toBe(true);
+    expect(connectorIsLocal(plugin, [{ fromSetting: "station", class: "private" }])).toBe(true);
+    expect(connectorIsLocal(plugin, [])).toBe(true);
+  });
+
+  it("lists the hosts outside this computer and its network", () => {
+    const shop = { fromSetting: "shop", class: "public" } as const;
+    const station = { fromSetting: "station", class: "loopback" } as const;
+    expect(outsideHosts(["api.acme.example:8443", shop, station])).toEqual([
+      "api.acme.example:8443",
+      shop,
+    ]);
+  });
+
+  it("counts every fixed host as outside, even one named like this computer", () => {
+    // The runner sends a fixed host's name only to a public address.
+    const named = ["orders.localhost", "tools.localhost:8080", "127.collect.example.net"];
+    expect(outsideHosts(named)).toEqual(named);
   });
 });

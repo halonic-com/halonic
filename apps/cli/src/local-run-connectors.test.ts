@@ -16,6 +16,7 @@ import {
   localRunConnectors,
   type RunConnectorsEngine,
 } from "./local-run-connectors.ts";
+import { noSheetHosts } from "./test/no-sheet-hosts.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
 
 const acmeExample = fileURLToPath(new URL("../../../examples/acme", import.meta.url));
@@ -67,6 +68,7 @@ function connectorsOn(
         tokens: new MemoryTokenStore(),
       },
       trust: null,
+      sheetHostsOf: noSheetHosts,
     },
     {
       workspace: { files: [] } as unknown as LoadedWorkspace,

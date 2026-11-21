@@ -22,7 +22,7 @@ export {
 } from "./kinds/agent/working-folder-start.ts";
 export type { Collection, CollectionField, CollectionView } from "./kinds/collection/schema.ts";
 export { FIELD_TYPES } from "./kinds/collection/schema.ts";
-export { connectorIsLocal } from "./kinds/connector/is-local.ts";
+export { connectorIsLocal, outsideHosts } from "./kinds/connector/is-local.ts";
 export {
   approveAll,
   asksBeforeEachUse,
@@ -30,6 +30,12 @@ export {
   marksRead,
   needsApproval,
 } from "./kinds/connector/schema.ts";
+export {
+  connectorIsLocalWith,
+  runsInRunner,
+  type SheetHosts,
+  sheetHostsOf,
+} from "./kinds/connector/sheet-hosts.ts";
 export type {
   CloudflareSettings,
   Deployment,
