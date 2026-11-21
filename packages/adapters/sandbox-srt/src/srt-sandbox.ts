@@ -59,7 +59,7 @@ export type SandboxRemoval =
   | { ok: false; outcome: "cancelled" | "failed"; reason: string; code?: number };
 
 /** Why a setup or a removal didn't happen when the administrator prompt was turned down. */
-const promptCancelled = "the administrator prompt was cancelled; nothing changed";
+export const promptCancelled = "the administrator prompt was cancelled; nothing changed";
 
 /** The log line for a removal that ran with administrator rights, so it left the user's kept grants recorded (HAL-7585). */
 const grantsKeptElevated =

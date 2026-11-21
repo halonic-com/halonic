@@ -326,3 +326,55 @@ verifies("agent-host.wsl-remove-route", () => {
     });
   });
 });
+
+verifies("agent-host.setup-elevated-route", () => {
+  describe("POST /v1/sandbox/setup/elevated", () => {
+    async function startedWith(
+      afterHelper: (exitCode: number) => Promise<SandboxSetup>,
+      setter = heldSetter().setter,
+    ): Promise<string> {
+      const jobs = new SetupJobs(setter, () => at, undefined, afterHelper);
+      server = await startHostServer(token, setupRoutes(jobs, new SessionTable()));
+      return server.url;
+    }
+
+    it("answers how the setup ended from the helper's exit code", async () => {
+      const codes: number[] = [];
+      const url = await startedWith(async (exitCode) => {
+        codes.push(exitCode);
+        return { ok: true };
+      });
+      const answer = await post(url, "/v1/sandbox/setup/elevated", { exitCode: 0 });
+      expect(answer.status).toBe(200);
+      expect(await answer.json()).toEqual({ ok: true });
+      expect(codes).toEqual([0]);
+    });
+
+    it("takes only a whole exit code Windows can give", async () => {
+      const url = await startedWith(async () => ({ ok: true }));
+      for (const body of [{}, { exitCode: -1 }, { exitCode: 1.5 }, { exitCode: 0, path: "a" }]) {
+        expect((await post(url, "/v1/sandbox/setup/elevated", body)).status).toBe(400);
+      }
+    });
+
+    it("answers 409 busy while the host runs a setup itself", async () => {
+      const held = heldSetter();
+      let asked = false;
+      const url = await startedWith(async () => {
+        asked = true;
+        return { ok: true };
+      }, held.setter);
+      await post(url, "/v1/sandbox/setup");
+      const answer = await post(url, "/v1/sandbox/setup/elevated", { exitCode: 0 });
+      expect(answer.status).toBe(409);
+      expect(asked).toBe(false);
+      held.endSetUp({ ok: true });
+      await settle();
+    });
+
+    it("is not served by a host that can't say", async () => {
+      const url = await started(heldSetter().setter);
+      expect((await post(url, "/v1/sandbox/setup/elevated", { exitCode: 0 })).status).toBe(404);
+    });
+  });
+});

@@ -14,6 +14,7 @@ import type {
   WslRemoveRequest,
   WslRemoveResult,
 } from "@halonicjs/studio-feature-settings";
+import type { ElevateSetup, ShellElevation } from "./sandbox-elevate-shell.ts";
 
 /**
  * Setting up fixes `setup-needed`; a repair fixes the two that say part of the setup is there but
@@ -47,6 +48,7 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
   readonly #transport: AgentHostTransport;
   readonly #setup: AgentHostSandboxSetup;
   readonly #now: () => Date;
+  readonly #elevate: ElevateSetup | undefined;
   readonly securityUpdates?: () => Promise<SecurityUpdatesFacts | null>;
   readonly removeWslSetup?: NonNullable<AgentSandboxHost["removeWslSetup"]>;
   readonly chooseBackupFile?: NonNullable<AgentSandboxHost["chooseBackupFile"]>;
@@ -54,7 +56,9 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
 
   /**
    * `wslBackup` is given only where the shell offers the removal of the WSL setup (HAL-10974);
-   * without it the section has no **Remove sandbox setup**.
+   * without it the section has no **Remove sandbox setup**. `elevate` is given only where the
+   * shell starts the setup's helper itself, from Studio's window (HAL-14841); without it the host
+   * runs the setup.
    */
   constructor(
     transport: AgentHostTransport,
@@ -62,6 +66,7 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
     now: () => Date = () => new Date(),
     securityUpdates?: () => Promise<SecurityUpdatesFacts | null>,
     wslBackup?: WslBackupShell,
+    elevate?: ElevateSetup,
   ) {
     if (securityUpdates !== undefined) this.securityUpdates = securityUpdates;
     if (wslBackup !== undefined) {
@@ -72,6 +77,7 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
     this.#transport = transport;
     this.#setup = setup;
     this.#now = now;
+    this.#elevate = elevate;
   }
 
   async check(): Promise<SandboxCheckFacts> {
@@ -98,6 +104,7 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
   }
 
   async setUp(options: { readonly signal?: AbortSignal } = {}): Promise<SandboxOutcome | null> {
+    if (this.#elevate !== undefined) return this.#setUpThroughShell(await this.#elevate());
     const started = await this.#setup.startSetUp();
     if (started.running === null) {
       return started.last?.verb === "setup" ? outcomeOf("setup", started.last.result) : null;
@@ -112,6 +119,28 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
       return started.last?.verb === "remove" ? outcomeOf("remove", started.last.result) : null;
     }
     return outcomeOf("remove", (await this.#setup.ended("remove", options))?.result);
+  }
+
+  /**
+   * How a setup the shell started ended. Only an exit code goes to the host, which checks the
+   * sandbox itself: the code alone never counts as set up. Until the section has its own words for
+   * them (HAL-14863), the 5-minute limit and an earlier helper still running read as a setup that
+   * didn't finish, which is what they are.
+   */
+  async #setUpThroughShell(elevated: ShellElevation): Promise<SandboxOutcome | null> {
+    switch (elevated.outcome) {
+      case "exited":
+        return outcomeOf("setup", await this.#setup.afterHelper(elevated.exitCode));
+      case "cancelled":
+        return { kind: "setup", how: "cancelled" };
+      case "timed_out":
+      case "still_running":
+        return { kind: "setup", how: "timed-out", repairing: false };
+      case "failed": {
+        const reason = `Windows couldn't start the sandbox helper: ${elevated.reason.replace(/\.+$/, "")}.`;
+        return { kind: "setup", how: "failed", reason };
+      }
+    }
   }
 
   /**
