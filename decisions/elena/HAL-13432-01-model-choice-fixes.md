@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13432 (Liam's post-merge review of #3960 on HAL-13431, asked for in this build)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+mzDpht62so5FzT8d+Ir8bFMLD1lje333Qjhdu2JyzjBPgm9CvMHYyaoUGGAmAKJiwp7Ds64s0Vy8PrvmaAXCA==
 
 ## What changes
 
