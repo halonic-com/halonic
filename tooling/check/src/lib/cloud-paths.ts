@@ -14,6 +14,7 @@ export const cloudPathPatterns: readonly RegExp[] = [
   /^packages\/host\//,
   /^packages\/core\/ports\//,
   /^packages\/testing\/contracts\/(src\/)?target\//,
+  /^packages\/testing\/cloudflare-live\//,
   /^apps\/cli\/src\/commands\/deploy\//,
   /^\.github\/workflows\/live-cloud\.yml$/,
   /^tooling\/check\/src\/(cli|lib)\/(cloud-affected|cloud-paths|live-sweep|live-resources|live-probe)\.ts$/,
