@@ -3,6 +3,7 @@
 - Task: HAL-14708
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14708 (follow-up of Noah's design check C462-6 on HAL-14703: the approved agent step card, flow-agents 7, shows output and tools); Liam reviews the pull request on HAL-14708 and signs this note as the CTO
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FhMTZCZz6fAfGW/UB/QHNUDMAN/F4nRmAs03qE95dTETAVepzLob71O4kgCqaLfZVeYvyjVu3oEDvuva6qrSBg==
 
 ## What changes
 
