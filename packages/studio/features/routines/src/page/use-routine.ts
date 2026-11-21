@@ -30,13 +30,14 @@ type Answer = Exclude<RoutineLoad, { readonly kind: "loading" }>;
  * read after the first keeps the routine on screen, so a refresh never shows a skeleton, and a
  * failed refresh keeps what is shown, unless the routine is gone. **Try again** after a failure keeps the failure on screen
  * with `retrying` true and calls `onRetried` once the read works, so the page can move focus off
- * the button that is gone.
+ * the button that is gone. `readAgain` reads it as a change would, for what changes no file, such
+ * as a new version.
  */
 export function useRoutine(
   host: RoutinesHost,
   ref: RoutineRef,
   onRetried: () => void,
-): { readonly load: RoutineLoad; readonly retry: () => void } {
+): { readonly load: RoutineLoad; readonly retry: () => void; readonly readAgain: () => void } {
   const [answer, setAnswer] = useState<Answer | undefined>();
   const [waited, setWaited] = useState({ skeleton: false, slow: false });
   const newestRead = useRef(0);
@@ -110,5 +111,5 @@ export function useRoutine(
     read();
   }, [read, failed]);
 
-  return { load: answer ?? { kind: "loading", ...waited }, retry };
+  return { load: answer ?? { kind: "loading", ...waited }, retry, readAgain: read };
 }

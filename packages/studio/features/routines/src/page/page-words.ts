@@ -9,6 +9,7 @@ export const pageWords = {
   tryAgain: "Try again",
   off: "Off",
   changesNotLive: "Changes not live yet",
+  reviewAndMakeLive: "Review and make live",
   nameLabel: "Routine name",
   more: (name: string) => `More actions for ${name}`,
   openAsFile: "Open as file",
