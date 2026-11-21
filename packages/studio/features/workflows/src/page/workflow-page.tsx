@@ -37,7 +37,13 @@ import { pageWords } from "./page-words.ts";
 import { ProgramStepsLine } from "./program-steps-line.tsx";
 import { type DockOpener, dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
 import { unavailableFor, useRunGate } from "./run-gate.ts";
-import { ProblemsBand, StartRow, useProblemsGate, useStartRefusal } from "./start-row.tsx";
+import {
+  missingAliasOf,
+  ProblemsBand,
+  StartRow,
+  useProblemsGate,
+  useStartRefusal,
+} from "./start-row.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
 import { useOpenProblems } from "./use-open-problems.ts";
@@ -171,8 +177,8 @@ export function WorkflowScreen({
   const phone = usePresentation() === "phone";
   // A step picked on the canvas is the dock's business only while the canvas shows.
   const dockStep = view === "flow" ? pickedStep : undefined;
-  const errors =
-    settings.load.kind === "ready" ? countProblems(settings.load.value.problems).errors : 0;
+  const fileProblems = settings.load.kind === "ready" ? settings.load.value.problems : [];
+  const errors = countProblems(fileProblems).errors;
   const problems = useProblemsGate(errors);
   const cantStart = useStartRefusal(host, { hubId, id }, errors);
   // `halonic run reply` stops when two hubs have a `reply`, so the command then names the hub.
@@ -274,7 +280,13 @@ export function WorkflowScreen({
           </div>
         )}
       </header>
-      <ProblemsBand name={name} problems={problems} onOpen={problemsAsk.open} />
+      <ProblemsBand
+        name={name}
+        problems={problems}
+        missingAlias={missingAliasOf(fileProblems)}
+        onOpen={problemsAsk.open}
+        openAgent={openAgent}
+      />
       <SandboxCantRunCallout
         name={name}
         start={gate.sandbox}

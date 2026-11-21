@@ -1,9 +1,15 @@
 // The bands under a workflow page's header that say why **Run** is unavailable, and the row with
 // the command that starts the workflow in a terminal (rule N5, HAL-12363; C471-1 and HAL-14739).
 
-import { Callout, CommandBox } from "@halonicjs/studio-kit";
+import { Callout, CommandBox, inlineLinkClasses } from "@halonicjs/studio-kit";
 import { type ReactNode, useId } from "react";
-import type { StartRefusal, WorkflowRef, WorkflowsHost } from "../api.ts";
+import type {
+  StartRefusal,
+  WorkflowAgentChoice,
+  WorkflowProblem,
+  WorkflowRef,
+  WorkflowsHost,
+} from "../api.ts";
 import { startWords } from "../start/start-words.ts";
 import { pageWords } from "./page-words.ts";
 import { StartCommand } from "./start-command.tsx";
@@ -39,20 +45,43 @@ export function useStartRefusal(host: WorkflowsHost, ref: WorkflowRef, errors: n
   };
 }
 
+/** An agent a step names that uses a model alias the workspace doesn't have (UX check S7). */
+export interface MissingAlias {
+  readonly agent: WorkflowAgentChoice;
+  readonly alias: string;
+}
+
+/** The first of the workflow's errors that is an agent's missing model alias, if any. */
+export function missingAliasOf(problems: readonly WorkflowProblem[]): MissingAlias | undefined {
+  for (const { severity, agent, modelAlias } of problems) {
+    if (severity === "error" && agent !== undefined && modelAlias !== undefined) {
+      return { agent, alias: modelAlias };
+    }
+  }
+  return undefined;
+}
+
 /**
  * The band that says the workflow's errors stop it (HAL-14739), first under the header because
  * they stop every way to run it, a terminal's too: "*Support reply* can't run: it has 2 problems."
- * with **Open Problems**. Nothing while it has none.
+ * with **Open Problems**. When one of them is an agent's missing model alias, the next line names
+ * the agent and the alias, with **Open *Writer*** (UX check S7, HAL-12412). Nothing while it has
+ * none.
  */
 export function ProblemsBand({
   name,
   problems: { id, errors },
+  missingAlias,
   onOpen,
+  openAgent,
 }: {
   readonly name: string;
   readonly problems: { readonly id: string; readonly errors: number };
+  readonly missingAlias?: MissingAlias | undefined;
   /** Shows Configuration's Problems, with the focus on Problems in its page list. */
   readonly onOpen: () => void;
+  /** Opens the agent's page; without it the line names the agent with no link. */
+  readonly openAgent?: ((agentId: string) => void) | undefined;
 }) {
   if (errors === 0) return null;
   return (
@@ -60,7 +89,37 @@ export function ProblemsBand({
       firstLineId={id}
       firstLine={pageWords.cantRun.problems(name, errors)}
       action={{ label: startWords.openProblems, onClick: onOpen }}
-    />
+    >
+      {missingAlias === undefined ? null : (
+        <MissingAliasLine missingAlias={missingAlias} openAgent={openAgent} />
+      )}
+    </CantRunBand>
+  );
+}
+
+/** "*Writer* uses the model alias `smrt`, which this workspace doesn't have. …" · **Open *Writer***. */
+function MissingAliasLine({
+  missingAlias: { agent, alias },
+  openAgent,
+}: {
+  readonly missingAlias: MissingAlias;
+  readonly openAgent: ((agentId: string) => void) | undefined;
+}) {
+  const words = pageWords.cantRun;
+  return (
+    <span className="block" data-testid="missing-alias">
+      {words.missingAlias.before(agent.name)}
+      <code className="font-mono">{alias}</code>
+      {words.missingAlias.after(agent.name)}
+      {openAgent === undefined ? null : (
+        <>
+          {" "}
+          <button type="button" className={inlineLinkClasses} onClick={() => openAgent(agent.id)}>
+            {words.openAgent(agent.name)}
+          </button>
+        </>
+      )}
+    </span>
   );
 }
 
