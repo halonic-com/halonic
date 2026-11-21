@@ -6,7 +6,7 @@ import type { ConnectorPartOffReason, RunEvent } from "@halonicjs/events";
 import { connectorStartMessages, type ShownPart } from "../../messages/connector-start.ts";
 import { type Phrase, phrase } from "../../messages/phrase.ts";
 import { printable } from "../../output/printable.ts";
-import { connectorWarnings } from "../run/connector-warnings.ts";
+import { connectorWarnings, type WarnedConnectors } from "../run/connector-warnings.ts";
 
 type PartOff = Extract<RunEvent, { type: "connector.part-off" }>;
 
@@ -19,20 +19,22 @@ type PartOff = Extract<RunEvent, { type: "connector.part-off" }>;
  * instead, since that is the warning `halonic run` gave for it.
  *
  * @param dir - the user's own `--dir`, for the command it suggests
- * @param fileOf - the path of a connector's file in the workspace, or
- *   `undefined` when it has none
+ * @param connectors - what the workspace says about the run's connectors
  * @example
- * connectorNotStartedLines(run.events, undefined, () => undefined).map(plainText);
+ * connectorNotStartedLines(run.events, undefined, {
+ *   fileOf: () => undefined,
+ *   isIntegration: () => false,
+ * }).map(plainText);
  * // ["", "! The backend of orders didn't start, so its tools are off in this run.",
  * //  "  To see why, run halonic tools review orders"]
  */
 export function connectorNotStartedLines(
   events: readonly RunEvent[],
   dir: string | undefined,
-  fileOf: (connector: string) => string | undefined,
+  connectors: WarnedConnectors,
 ): Phrase[] {
   const lines: Phrase[] = [];
-  const warnListing = connectorWarnings({ warn: (line) => lines.push(line) }, dir, fileOf);
+  const warnListing = connectorWarnings({ warn: (line) => lines.push(line) }, dir, connectors);
   const told = new Set<string>();
   for (const event of events) {
     warnListing(event);
