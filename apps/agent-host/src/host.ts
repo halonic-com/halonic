@@ -6,6 +6,8 @@ import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import {
   keptGrantsRecordFolder,
+  removalAfterHelper,
+  removalBeforeHelper,
   SrtSandbox,
   setupAfterHelper,
   WSL_SHARED_FOLDERS,
@@ -33,6 +35,7 @@ import { optionalProfileOf, profileGoogleSetup, profileTrustStore } from "./prof
 import { proxySetting } from "./proxy-setting.ts";
 import { hostSandboxChoice } from "./sandbox/choice-host.ts";
 import { sandboxChoiceRoutes } from "./sandbox/choice-routes.ts";
+import { removeThroughShellRoutes } from "./sandbox/remove-through-shell-routes.ts";
 import { sandboxCommand } from "./sandbox/sandbox-commands.ts";
 import { sandboxRoutes } from "./sandbox/sandbox-routes.ts";
 import { SessionTable } from "./sandbox/session-table.ts";
@@ -366,17 +369,19 @@ function hostServices(
     bridges,
     logToError,
   );
+  const setupJobs = new SetupJobs(sandbox, undefined, wslRemover, (exitCode) =>
+    setupAfterHelper(exitCode, () => sandbox.check()),
+  );
   const routes = [
     healthRoute(version),
     // A session's temp folder, made with its harness profile, goes when the session closes.
     ...sandboxRoutes(folders.profiles?.removingTempFolders(sandbox) ?? sandbox, sessions),
     ...(choice === undefined ? [] : sandboxChoiceRoutes(choice)),
-    ...setupRoutes(
-      new SetupJobs(sandbox, undefined, wslRemover, (exitCode) =>
-        setupAfterHelper(exitCode, () => sandbox.check()),
-      ),
-      sessions,
-    ),
+    ...setupRoutes(setupJobs, sessions),
+    ...removeThroughShellRoutes(setupJobs, sessions, {
+      before: () => removalBeforeHelper(),
+      after: removalAfterHelper,
+    }),
     ...bridgeRoutes(
       (secrets) =>
         new NodeHarnessBridgeServer({

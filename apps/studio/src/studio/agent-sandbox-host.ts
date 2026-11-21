@@ -14,7 +14,7 @@ import type {
   WslRemoveRequest,
   WslRemoveResult,
 } from "@halonicjs/studio-feature-settings";
-import type { ElevateSetup, ShellElevation } from "./sandbox-elevate-shell.ts";
+import type { ElevateHelper, ShellElevation } from "./sandbox-elevate-shell.ts";
 
 /**
  * Setting up fixes `setup-needed`; a repair fixes the two that say part of the setup is there but
@@ -33,6 +33,17 @@ export interface WslBackupShell {
   reveal(): Promise<void>;
 }
 
+/**
+ * Why a removal through the shell didn't happen, after "The sandbox wasn't removed: ", in the
+ * words of the setup's lines (HAL-14863): the helper still ran at the shell's limit and was left
+ * to finish, or the helper of an earlier press still runs, so Windows wasn't asked again. The
+ * minutes are the shell's `LIMIT` (`apps/studio/src-tauri/src/sandbox_elevate.rs`) and the
+ * section's `SETUP_LIMIT_MINUTES`: change them together.
+ */
+const REMOVAL_TIMED_OUT = "Windows didn't finish removing it within 5 minutes.";
+const REMOVAL_STILL_RUNNING =
+  "the earlier removal is still running. Wait a minute, then try again.";
+
 const needsRepair: readonly SandboxUnavailableReason[] = ["distro-missing", "setup-conflict"];
 
 /**
@@ -48,7 +59,7 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
   readonly #transport: AgentHostTransport;
   readonly #setup: AgentHostSandboxSetup;
   readonly #now: () => Date;
-  readonly #elevate: ElevateSetup | undefined;
+  readonly #elevate: ElevateHelper | undefined;
   readonly securityUpdates?: () => Promise<SecurityUpdatesFacts | null>;
   readonly removeWslSetup?: NonNullable<AgentSandboxHost["removeWslSetup"]>;
   readonly chooseBackupFile?: NonNullable<AgentSandboxHost["chooseBackupFile"]>;
@@ -57,8 +68,8 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
   /**
    * `wslBackup` is given only where the shell offers the removal of the WSL setup (HAL-10974);
    * without it the section has no **Remove sandbox setup**. `elevate` is given only where the
-   * shell starts the setup's helper itself, from Studio's window (HAL-14841); without it the host
-   * runs the setup.
+   * shell starts the helper itself, from Studio's window (HAL-14841); without it the host runs the
+   * setup and the removal.
    */
   constructor(
     transport: AgentHostTransport,
@@ -66,7 +77,7 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
     now: () => Date = () => new Date(),
     securityUpdates?: () => Promise<SecurityUpdatesFacts | null>,
     wslBackup?: WslBackupShell,
-    elevate?: ElevateSetup,
+    elevate?: ElevateHelper,
   ) {
     if (securityUpdates !== undefined) this.securityUpdates = securityUpdates;
     if (wslBackup !== undefined) {
@@ -104,7 +115,7 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
   }
 
   async setUp(options: { readonly signal?: AbortSignal } = {}): Promise<SandboxOutcome | null> {
-    if (this.#elevate !== undefined) return this.#setUpThroughShell(await this.#elevate());
+    if (this.#elevate !== undefined) return this.#setUpThroughShell(await this.#elevate("setup"));
     const started = await this.#setup.startSetUp();
     if (started.running === null) {
       return started.last?.verb === "setup" ? outcomeOf("setup", started.last.result) : null;
@@ -113,6 +124,7 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
   }
 
   async remove(options: { readonly signal?: AbortSignal } = {}): Promise<SandboxOutcome | null> {
+    if (this.#elevate !== undefined) return this.#removeThroughShell(this.#elevate);
     const started = await this.#setup.startRemove();
     if ("inUse" in started) return { kind: "remove", how: "in-use", runs: started.inUse };
     if (started.running === null) {
@@ -139,6 +151,33 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
       case "failed": {
         const reason = `Windows couldn't start the sandbox helper: ${elevated.reason.replace(/\.+$/, "")}.`;
         return { kind: "setup", how: "failed", reason };
+      }
+    }
+  }
+
+  /**
+   * Removes the sandbox through the shell (HAL-14841). The host does its half first, before any
+   * prompt: it refuses while runs use the sandbox and takes back the access the sandbox kept on
+   * the person's folders. Only then does the shell start the helper, and only its exit code goes
+   * back to the host, which says how the removal ended.
+   */
+  async #removeThroughShell(elevate: ElevateHelper): Promise<SandboxOutcome | null> {
+    const before = await this.#setup.beforeRemoveHelper();
+    if ("inUse" in before) return { kind: "remove", how: "in-use", runs: before.inUse };
+    if (!before.ok) return outcomeOf("remove", before);
+    const elevated = await elevate("remove");
+    switch (elevated.outcome) {
+      case "exited":
+        return outcomeOf("remove", await this.#setup.afterRemoveHelper(elevated.exitCode));
+      case "cancelled":
+        return { kind: "remove", how: "cancelled" };
+      case "timed_out":
+        return { kind: "remove", how: "failed", reason: REMOVAL_TIMED_OUT };
+      case "still_running":
+        return { kind: "remove", how: "failed", reason: REMOVAL_STILL_RUNNING };
+      case "failed": {
+        const reason = `Windows couldn't start the sandbox helper: ${elevated.reason.replace(/\.+$/, "")}.`;
+        return { kind: "remove", how: "failed", reason };
       }
     }
   }

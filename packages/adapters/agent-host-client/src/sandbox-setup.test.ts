@@ -57,6 +57,33 @@ describe("AgentHostSandboxSetup", () => {
     });
   });
 
+  it("asks the host's half of a removal through the shell, and reads how it went", async () => {
+    const host = new FakeHost().answer("POST /v1/sandbox/remove/before", ok({ ok: true }));
+    expect(await new AgentHostSandboxSetup(host).beforeRemoveHelper()).toEqual({ ok: true });
+    expect(host.calls).toContainEqual({ route: "POST /v1/sandbox/remove/before", body: {} });
+  });
+
+  it("answers how many runs use the sandbox when the host refuses its half of a removal", async () => {
+    const host = new FakeHost().answer("POST /v1/sandbox/remove/before", {
+      status: 409,
+      body: {
+        error: { kind: "sandbox_in_use", message: "2 runs are using the sandbox." },
+        runs: 2,
+      },
+    });
+    expect(await new AgentHostSandboxSetup(host).beforeRemoveHelper()).toEqual({ inUse: 2 });
+  });
+
+  it("sends only the helper's exit code after the shell's removal, and reads how it ended", async () => {
+    const result = { ok: false, outcome: "failed", reason: "no", code: 36 };
+    const host = new FakeHost().answer("POST /v1/sandbox/remove/elevated", ok(result));
+    expect(await new AgentHostSandboxSetup(host).afterRemoveHelper(36)).toEqual(result);
+    expect(host.calls).toContainEqual({
+      route: "POST /v1/sandbox/remove/elevated",
+      body: { exitCode: 36 },
+    });
+  });
+
   it("answers how many runs use the sandbox when the host refuses to remove it", async () => {
     const host = new FakeHost().answer("POST /v1/sandbox/remove", {
       status: 409,

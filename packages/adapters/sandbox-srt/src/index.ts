@@ -1,4 +1,4 @@
-export { setupAfterHelper } from "./after-helper.ts";
+export { removalAfterHelper, removalBeforeHelper, setupAfterHelper } from "./after-helper.ts";
 export { recoverGitFolders } from "./git-folder-check.ts";
 export { hostLockFile, takeHostLock } from "./host-lock.ts";
 export { keptGrantsRecordFolder } from "./kept-grants.ts";
