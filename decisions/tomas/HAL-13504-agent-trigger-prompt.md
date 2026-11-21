@@ -2,7 +2,7 @@
 
 - Approval: follow-up to HAL-13498, found in its fix; same wording as HAL-13498 (the HAL-12401 team decision, Sofia's N1 to N7 on HAL-12363) under the HAL-2282 rule; the reviewer (Liam) approves this note in review
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JH5fvTAbi3yt7g+MzjRqvANAilR756i0kKonusOgepMq5nPW6mVVrNU5LJeseh6xj6J7AuEdzsk6yTSbeg+LDw==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vQp5EYkS1AkzsgyHTGJjyYCh2mTXmOHb9eEjbqwRmMfIpgUZv1up+/QuWg6PQ8Xyn/TDTiE+bpb5MZFlBTjxCQ==
 - Task: HAL-13504
 
 ## What changes
