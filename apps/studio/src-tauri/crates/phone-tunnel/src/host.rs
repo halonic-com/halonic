@@ -1,0 +1,75 @@
+//! What the service needs from the app around it: Android's local network
+//! question, a way to tell the page a status, and the shell's log.
+
+use std::future::Future;
+use std::net::IpAddr;
+use std::pin::Pin;
+
+use halonic_connect::{Reach, reach};
+use halonic_device_keys::ComputerId;
+use halonic_tunnel::{Endpoint, MAX_NAME_BYTES, PhoneDetails};
+
+use crate::status::PageStatus;
+
+/// Android's answer to its local network question.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalNetwork {
+    Allowed,
+    /// Turned down; `ask_again` says whether Android will ask next time.
+    TurnedDown {
+        ask_again: bool,
+    },
+}
+
+/// The local network answer, still to come.
+pub type LocalNetworkAnswer<'a> = Pin<Box<dyn Future<Output = LocalNetwork> + Send + 'a>>;
+
+/// The phone's name and platform, still to come.
+pub type PhoneAnswer<'a> = Pin<Box<dyn Future<Output = PhoneDetails> + Send + 'a>>;
+
+/// The app around the service: the shell on the phone, a recording fake in
+/// the tests.
+pub trait TunnelHost: Send + Sync + 'static {
+    /// Asks Android's local network question when the person hasn't
+    /// answered it yet. The service asks before anything reaches an address
+    /// on the Wi-Fi: from Android 17 a blocked connection only times out.
+    fn allow_local_network(&self) -> LocalNetworkAnswer<'_>;
+
+    /// What the phone tells the computer about itself in pairing message
+    /// 3: its name, as the person named the phone, and its platform. The
+    /// computer shows it next to the check code.
+    fn phone(&self) -> PhoneAnswer<'_>;
+
+    /// A paired computer's status changed. The shell passes it on to the
+    /// app's own page only (H1 on HAL-15181).
+    fn status_changed(&self, computer: &ComputerId, status: &PageStatus);
+
+    /// Something failed that no page waits for, such as noting a
+    /// connection in the paired-computer list. The line never holds a key
+    /// or a code.
+    fn log(&self, line: &str);
+}
+
+/// Whether reaching `endpoint` needs Android's local network permission:
+/// an address on the home network that isn't this phone, or a `.local`
+/// name, which Android looks up on the Wi-Fi. Tailscale's `100.x`
+/// addresses and other names don't, as for the connect page's own check.
+pub fn needs_local_network(endpoint: &Endpoint) -> bool {
+    let host = endpoint.host();
+    match host.parse::<IpAddr>() {
+        Ok(ip) => reach(ip) == Reach::HomeNetwork && !ip.to_canonical().is_loopback(),
+        Err(_) => host.to_ascii_lowercase().ends_with(".local"),
+    }
+}
+
+/// The phone's name as pairing message 3 carries it: trimmed, cut at a
+/// whole character to [`MAX_NAME_BYTES`], and `fallback` when it is empty.
+pub fn phone_name(name: &str, fallback: &str) -> String {
+    let name = name.trim();
+    let name = if name.is_empty() { fallback } else { name };
+    let mut end = name.len().min(MAX_NAME_BYTES);
+    while !name.is_char_boundary(end) {
+        end -= 1;
+    }
+    name[..end].to_owned()
+}

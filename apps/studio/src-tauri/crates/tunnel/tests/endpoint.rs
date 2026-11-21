@@ -47,3 +47,25 @@ fn gateway_endpoint_refuses_anything_else() {
         assert_eq!(Endpoint::parse(url), None, "{url}");
     }
 }
+
+#[test]
+fn gateway_endpoint_is_kept_as_a_url_that_reads_back_the_same() {
+    for (url, kept) in [
+        ("tcp:192.168.1.20:4100", "tcp://192.168.1.20:4100"),
+        ("tcp://192.168.1.20:4100/", "tcp://192.168.1.20:4100"),
+        (
+            "wss:tims-laptop.tail1234.ts.net:4100",
+            "wss://tims-laptop.tail1234.ts.net:4100",
+        ),
+        ("https://host.example.ts.net", "wss://host.example.ts.net"),
+        ("wss://host.example.ts.net:443", "wss://host.example.ts.net"),
+        (
+            "tcp:[fd7a:115c:a1e0::1]:4100",
+            "tcp://[fd7a:115c:a1e0::1]:4100",
+        ),
+    ] {
+        let endpoint = Endpoint::parse(url).expect(url);
+        assert_eq!(endpoint.to_string(), kept, "{url}");
+        assert_eq!(Endpoint::parse(kept), Some(endpoint), "{kept}");
+    }
+}

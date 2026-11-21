@@ -1,0 +1,38 @@
+[package]
+name = "halonic-phone-tunnel"
+description = "The phone's tunnel service: pairing, the paired computers and their connections, with the typed answers the phone's own page sees."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# The QR code's host key arrives as base64url, the same rules as
+# @halonicjs/std.
+halonic-blob-store = { path = "../blob-store" }
+# Which addresses are on the home network, for Android's local network
+# question, as the connect page's own check decides it.
+halonic-connect = { path = "../connect" }
+halonic-device-keys = { path = "../device-keys" }
+halonic-tunnel = { path = "../tunnel" }
+serde = { version = "1", features = ["derive"] }
+# Already in the app through Tauri and the tunnel crate.
+tokio = { version = "1", default-features = false, features = ["rt", "sync", "time"] }
+
+[dev-dependencies]
+# The tunnel crate's fake host (tests/support), which the tests here run
+# the service against, built on the same crates as there.
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+serde_json = { version = "1", default-features = false, features = ["std"] }
+snow = { version = "=0.10.0", default-features = false, features = [
+  "use-curve25519",
+  "use-chacha20poly1305",
+  "use-sha2",
+  "use-getrandom",
+] }
+tokio = { version = "1", default-features = false, features = ["macros", "net", "rt-multi-thread", "time"] }
+tokio-tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"] }
