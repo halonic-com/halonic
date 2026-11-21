@@ -219,6 +219,11 @@ test("the image runs the hook and has no Docker or sudo (C5)", () => {
   assert.match(dockerfile, /--chown=root:root --chmod=0555 job-started\.sh/);
   assert.match(dockerfile, /sha256sum -c/);
   assert.match(dockerfile, /^USER runner$/m);
+  // Node on PATH for steps that run `node` directly, checked like every other download.
+  assert.match(
+    dockerfile,
+    /tar -xJf node-v\$\{CI_NODE_VERSION\}-linux-x64\.tar\.xz -C \/usr\/local/,
+  );
   const instructions = dockerfile.replace(/^#.*$/gm, "");
   assert.doesNotMatch(instructions, /\bsudo\b|docker\.io|docker-ce/);
 });
@@ -235,6 +240,9 @@ test("each job container is capped and unprivileged (C5)", () => {
     assert.ok(slot.includes(flag), `slot script lacks ${flag}`);
   }
   assert.doesNotMatch(slot, /--privileged|--cap-add|docker\.sock|--device/);
+  // Each job sees only its own CPUs, or test runners size their workers for the whole VM.
+  assert.ok(slot.includes('--cpuset-cpus "$CPUSET"'), "slot script lacks --cpuset-cpus");
+  assert.match(slot, /--tmpfs "\/tmp:rw,exec,nosuid,nodev,/);
   // The pool config is mounted read-only, the work dir is the one the hook expects.
   assert.ok(slot.includes("-v /etc/halonic-ci/pool:/etc/halonic-ci:ro"));
   assert.match(slot, /^JOB_WORK=\/home\/runner\/actions-runner\/_work /m);
