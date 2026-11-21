@@ -42,6 +42,7 @@ const host = () =>
       { hubId: "acme", id: "translator", name: "Translator" },
       { hubId: "acme", id: "filer", name: "Filer" },
       { hubId: "acme", id: "sorter", name: "Sorter", subagents: ["triage"] },
+      { hubId: "acme", id: "routed", name: "Routed" },
     ],
     toolOptions: {
       skills: [
@@ -58,6 +59,13 @@ const host = () =>
         workflow("digest", "Digest"),
       ],
       "acme/small": [workflow("support-reply", "Support reply")],
+      "acme/routed": [workflow("support-reply", "Support reply"), workflow("refunds", "Refunds")],
+    },
+    routines: {
+      "acme/routed": [
+        { hubId: "acme", id: "morning", name: "Morning sort" },
+        { hubId: "acme", id: "evening", name: "Evening sort" },
+      ],
     },
   });
 
@@ -108,6 +116,13 @@ verifies("agents.map.side-summary-card", () => {
     const summary = buttonNamed(page, "4 subagents");
     expect(summary?.hasAttribute("data-map-card")).toBe(true);
     expect(summary?.getAttribute("aria-haspopup")).toBe("dialog");
+  });
+
+  it("counts the routines that start it after its workflows", async () => {
+    const page = await openFlow("routed");
+    expect(side(page, "What brings it work")).toEqual([
+      "2 workflows · 2 routineswhat brings it work",
+    ]);
   });
 
   it("keeps the cards of a side with three", async () => {

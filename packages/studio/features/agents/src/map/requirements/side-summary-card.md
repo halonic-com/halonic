@@ -9,6 +9,7 @@ When a side of the agent map has more than three items, the agents feature shall
 ## Examples
 
 - Given the agent "Mail triage" run by 3 workflows and handed work by "Sorter", then its left side shows one card "3 workflows · 1 agent" over "what brings it work".
+- Given it is run by 2 workflows and started by 2 routines, then its left side shows "2 workflows · 2 routines".
 - Given it uses 2 skills, 1 knowledge source and 1 connector, then below it shows "2 skills · 1 knowledge · 1 connector" over "what it can use", then "Add a tool".
 - Given it hands work to 4 agents, then on the right it shows "4 subagents" over "who it hands work to", then "Add subagent".
 - Given an agent that hands work to 3 agents, then the right side shows the 3 cards.

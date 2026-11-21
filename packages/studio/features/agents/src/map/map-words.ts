@@ -11,6 +11,7 @@ export const mapWords = {
   workOut: "Who it hands work to",
   agentSteps: "Agent steps",
   workflow: "Workflow",
+  routine: "Routine",
   agent: "Agent",
   kinds: { skills: "Skill", knowledge: "Knowledge", connectors: "Connector" },
   /** A workflow card's detail line: the steps that call the agent, "triage, draft". */
@@ -18,10 +19,19 @@ export const mapWords = {
   /** A workflow card's name: "Workflow Support reply, uses Sorter in triage and draft" (mc 19.7). */
   workflowCard: (workflow: string, agent: string, stepIds: readonly string[]) =>
     `Workflow ${workflow}, uses ${agent} in ${stepList.format(stepIds)}`,
+  /** A connector card's words by its hand: "1 tool asks first", "every tool asks first" (mc 19.7). */
+  asksFirst: (tools: number | "all") =>
+    tools === "all"
+      ? "every tool asks first"
+      : `${tools} ${tools === 1 ? "tool asks" : "tools ask"} first`,
   /** A summary card's counts, the kinds with none left out: "2 workflows · 1 agent". */
   summary: {
-    in: (workflows: number, agents: number) =>
-      counts([workflows, "workflow", "workflows"], [agents, "agent", "agents"]),
+    in: (workflows: number, routines: number, agents: number) =>
+      counts(
+        [workflows, "workflow", "workflows"],
+        [routines, "routine", "routines"],
+        [agents, "agent", "agents"],
+      ),
     use: (skills: number, knowledge: number, connectors: number) =>
       counts(
         [skills, "skill", "skills"],

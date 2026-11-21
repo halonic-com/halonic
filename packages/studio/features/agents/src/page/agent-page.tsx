@@ -24,6 +24,7 @@ import {
   type AgentChange,
   type AgentListing,
   type AgentRef,
+  type AgentRoutine,
   type AgentsHost,
   AgentsHostService,
   type AgentToolList,
@@ -93,6 +94,10 @@ export function AgentPage({ item, context, step, asked, Sections, sections }: It
             openItem({ kind: "agent", hub: agent.hubId, id: agent.id }),
           openWorkflow: (workflow: AgentRef) =>
             openItem({ kind: "workflow", hub: workflow.hubId, id: workflow.id }),
+          openRoutine: ({ hubId: hub, id: routine }: AgentRoutine) => {
+            // A routine at the workspace's root has no page of its own yet, as on the Routines list.
+            if (hub !== null) openItem({ kind: "routine", hub, id: routine });
+          },
         })}
       />
     </PlacementProvider>
@@ -119,6 +124,8 @@ export interface AgentScreenProps extends AgentRef {
   readonly openAgent?: ((agent: AgentRef) => void) | undefined;
   /** Opens a workflow's page, from its card on the agent map; absent where the app can't. */
   readonly openWorkflow?: ((workflow: AgentRef) => void) | undefined;
+  /** Opens a routine's page, from its card on the agent map; absent where the app can't. */
+  readonly openRoutine?: ((routine: AgentRoutine) => void) | undefined;
   /** The sections other features add to the page, such as Triggers; Configuration lists them as pages. */
   readonly sections?: readonly ItemPageSectionListing[] | undefined;
   /** The shell's component that draws them; absent where there's no window. */
@@ -149,6 +156,7 @@ export function AgentScreen({
   announce,
   openAgent,
   openWorkflow,
+  openRoutine,
   sections,
   Sections,
   modelRequest,
@@ -329,6 +337,7 @@ export function AgentScreen({
                 openSubagent={cards.openSubagent}
                 openAgent={openAgent}
                 openWorkflow={openWorkflow}
+                openRoutine={openRoutine}
                 openTool={openLibrary}
                 {...mapAdds(sections, Sections, showView)}
               />

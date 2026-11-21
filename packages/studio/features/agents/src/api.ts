@@ -266,6 +266,11 @@ export const agentToolLists: readonly AgentToolList[] = ["skills", "knowledge", 
 export interface AgentToolOption {
   readonly id: string;
   readonly name: string;
+  /**
+   * For a connector: how many of its tools wait for a person's approval before they run, or `all`
+   * when its file says every one does (`tools.approve`). Absent or 0 when none does.
+   */
+  readonly asksFirst?: number | "all" | undefined;
 }
 
 /** A change to an agent's settings; a field left out stays as it is. */
@@ -336,6 +341,16 @@ export interface AgentUser {
   readonly name: string;
   /** The ids of the workflow's steps that run the agent, in the workflow's order: one or more. */
   readonly stepIds: readonly string[];
+}
+
+/** A routine that starts an agent by itself, not through a workflow. */
+export interface AgentRoutine {
+  /** The routine's hub; `null` for one at the workspace's root. */
+  readonly hubId: string | null;
+  /** The routine's id. */
+  readonly id: string;
+  /** The routine's display name. */
+  readonly name: string;
 }
 
 /**
@@ -472,6 +487,11 @@ export interface AgentsHost {
    * before a delete. Empty when none does. Rejects with the reason it couldn't read the workflows.
    */
   referencesTo(ref: AgentRef): Promise<readonly AgentUser[]>;
+  /**
+   * The routines that start this agent, in the workspace's order, for the agent map. Absent where
+   * the app has no routines, which shows none. Rejects with the reason it couldn't read them.
+   */
+  routinesOf?(ref: AgentRef): Promise<readonly AgentRoutine[]>;
   /**
    * Calls `listener` each time the list may have changed (a file saved); returns the way to stop.
    */
