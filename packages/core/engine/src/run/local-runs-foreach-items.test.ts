@@ -1,3 +1,4 @@
+import { parentEndedCause } from "@halonicjs/events";
 import type { Workflow } from "@halonicjs/format";
 import type { ConnectorTool, ToolRisk } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
@@ -132,6 +133,8 @@ verifies("engine.child-runs-end-with-run", () => {
         reason: "cancelled",
         error: cancelledError,
       });
+      // A cancel says so itself: the child has no parent-ended cause.
+      expect((await runs.get(child))?.cause).toBeUndefined();
     }
   });
 
@@ -149,6 +152,7 @@ verifies("engine.child-runs-end-with-run", () => {
       status: "failed",
       reason: "cancelled",
       error: parentEndedError,
+      cause: parentEndedCause,
     });
   });
 });

@@ -1,4 +1,10 @@
-import { type RunEvent, type RunEventBody, type RunSummary, summarize } from "@halonicjs/events";
+import {
+  parentEndedCause,
+  type RunEvent,
+  type RunEventBody,
+  type RunSummary,
+  summarize,
+} from "@halonicjs/events";
 import type { AppendResult, RunFilter, RunSnapshot, RunStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -194,6 +200,7 @@ verifies("engine.end-orphaned-child-runs", () => {
       state: "approve",
       error: parentEndedError,
       reason: "cancelled",
+      cause: parentEndedCause,
     });
     expect((await store.get("run_5.2"))?.status).toBe("waiting");
   });

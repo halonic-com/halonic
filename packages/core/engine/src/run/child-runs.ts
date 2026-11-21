@@ -2,12 +2,14 @@
 // the start of a child run, how a child is now for its parent, and which run
 // an event sent to a parent belongs to.
 
+import { parentEndedCause } from "@halonicjs/events";
 import type { BlobStore, RunStore } from "@halonicjs/ports";
 import type { ChildRunNow, StartChildEffect, StartInput } from "../kernel/decide-types.ts";
 import { definitionsOf, keepDefinitions } from "../kernel/kept-definitions.ts";
 import type { RunState } from "../kernel/run-state.ts";
 import { readRun } from "../kernel/step.ts";
 import { maxChildDepth } from "../states/workflow/state.ts";
+import type { Failure } from "./append-failed.ts";
 
 /**
  * The start of the child run a parent's `workflow` state asked for: in the
@@ -98,6 +100,9 @@ export async function receiverOf(
 
 /** The `error` of a child run that was going on when the run that started it ended. */
 export const parentEndedError = "The run that started this one ended, so this one was cancelled.";
+
+/** How a child run going on ends when the run that started it ended for any reason but a cancel. */
+export const parentEnded: Failure = { error: parentEndedError, cause: parentEndedCause };
 
 /**
  * Ends the child runs a run started and hasn't heard end, all the way down,
