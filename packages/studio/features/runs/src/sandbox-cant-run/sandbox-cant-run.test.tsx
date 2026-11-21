@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { type SandboxStartCheck, type SandboxStartResult, sandboxStartWords } from "@halonicjs/app";
-import { Button, PresentationProvider } from "@halonicjs/studio-kit";
+import { Button, ClipboardProvider, PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useId, useRef } from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -119,6 +119,7 @@ verifies("runs.sandbox-cant-run", () => {
       "Run",
       expect.stringContaining("Check again"),
       expect.stringContaining("Read the guide"),
+      "Copy details",
     ]);
     expect(root.textContent).not.toMatch(/run anyway|skip|continue without/i);
     act(() => runOf(root).click());
@@ -138,6 +139,34 @@ verifies("runs.sandbox-cant-run", () => {
     const words = sandboxStartWords("bubblewrap-missing");
     expect(root.textContent).toContain(words.cantRunPhoneFix);
     expect(root.textContent).not.toContain(words.phoneFix);
+  });
+
+  it("copies the check's own sentence for other, and never shows it (HAL-2089)", async () => {
+    const writeClipboard = vi.fn(async (_text: string) => true);
+    const check = checkSaying({ ok: false, reason: "other", details: "No seccomp filter here" });
+    const root = await open(
+      <ClipboardProvider writeClipboard={writeClipboard}>
+        <Page check={check} />
+      </ClipboardProvider>,
+    );
+    expect(document.body.textContent).not.toContain("No seccomp filter here");
+    const copy = [...root.querySelectorAll("button")].find(
+      (one) => one.textContent === "Copy details",
+    );
+    await act(async () => copy?.click());
+    expect(writeClipboard).toHaveBeenCalledWith(
+      [
+        "Support reply can't run: the sandbox can't start on this computer.",
+        "Halonic can't tell what the sandbox is missing.",
+        "No seccomp filter here",
+      ].join("\n"),
+    );
+    expect(document.body.textContent).not.toContain("No seccomp filter here");
+  });
+
+  it("offers Copy details only for other", async () => {
+    const root = await open(<Page check={checkSaying(refused("bubblewrap-missing"))} />);
+    expect(root.textContent).not.toContain("Copy details");
   });
 
   it("removes the Callout, says so and gives Run focus once Check again finds it ready", async () => {
