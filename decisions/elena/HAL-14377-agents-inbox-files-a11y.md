@@ -2,7 +2,7 @@
 
 - Approval: HAL-14377 (C357 on HAL-14363, C361 on HAL-14382, C367 on HAL-14404; each fix decided by the team on the task); Liam approves this note in review
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:R8z13rMfNjeJkvd3GIUzBROq5QJfmB24vDRwv2NdHlub8jDH4eNueDIrkI6CvlmsVqXsa/wPqKN049mi1syxCA==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:YvksUGjijp3WbwCskpsE2aJgyX476sSZVK2VSaBcPFJafCihPtc060tRHtYnxn1x04K7KdJ2PnXlsyWF5MilCQ==
 
 ## What changes
 
