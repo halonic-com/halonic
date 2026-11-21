@@ -89,6 +89,8 @@ The smaller exports:
   function `Emitter.on` takes. `SecretShape` names the kinds `findSecretShape` answers with.
 - `parseAmount` reads a receipt-style amount (`3.00`, `15,00`) and gives `undefined` for grouping, signs and other text.
 - `bytesToHex` writes bytes as lowercase hex.
+- `findCause(error, type)` gives the first error of `type` in an error's chain of `cause`s, the error
+  itself included, for code that reacts to an error a wrapper kept as its cause.
 - `formatVersion` writes a `Version` from `readVersion` back as text.
 - `errorKinds` lists the eight kinds and `isErrorKind` tells whether a value is one of them.
 - `fixedClockStart` is the time `fixedClock()` starts at (2026-01-01 UTC).

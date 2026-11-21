@@ -1,7 +1,11 @@
+import { homedir } from "node:os";
 import { isSea } from "node:sea";
 
+import { pluginLocalToolsSource } from "@halonicjs/adapter-connector-stdio-sandbox";
 import { FileUnfencedRunConsentStore } from "@halonicjs/adapter-fs-node";
+import { homeDeniedPaths, realPathOnDisk } from "@halonicjs/adapter-harness-kit";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
+import { createRunnerSearch, nodeLaunchFolders } from "@halonicjs/adapter-mcp";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
 import type { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
@@ -13,7 +17,7 @@ import { systemClock } from "@halonicjs/std";
 import { proxySetting } from "../proxy-setting.ts";
 import type { HostRoute } from "../server/host-server.ts";
 import { hostPluginBackends, unavailablePluginBackends } from "./host-plugin-backends.ts";
-import { hostPluginMachine } from "./host-plugin-machine.ts";
+import { hostPluginMachine, runnerTimeLimitMs } from "./host-plugin-machine.ts";
 import { pluginRoutes } from "./plugin-routes.ts";
 import { PluginSecretValues } from "./plugin-secret-values.ts";
 import { pluginSignIns } from "./plugin-sign-ins.ts";
@@ -70,9 +74,10 @@ export function hostUnfencedRuns(
 }
 
 /**
- * The table of plugin runners, started in the host's own sandbox, or without
- * it only with the user's yes for the reason at that start. `stop` stops
- * every runner and removes the temp folders of their starts.
+ * The table of plugin runners and local tool sessions. A runner starts in the
+ * host's own sandbox, or without it only with the user's yes for the reason
+ * at that start; a local tool always starts in the sandbox. `stop` stops
+ * every runner and session and removes the temp folders of their starts.
  *
  * @param signInTokens - the host's sign-in tokens for a plugin, which its backend places
  *
@@ -106,7 +111,29 @@ export function hostPlugins(
     http: createNodeHttpClient({ hostClass: () => "public", proxy: proxySetting }),
     trust: null,
   };
-  const table = new PluginTable(hostPluginBackends(machine, context, logToError), {
+  // Each local tool runs in a sandbox session of its own, from a copy of the files the person trusted,
+  // and never reaches the person's credential folders or Halonic's profile, which holds every plugin.
+  const localTools = pluginLocalToolsSource({
+    sandbox,
+    folders: nodeLaunchFolders,
+    runners: createRunnerSearch(process.env),
+    deniedPaths: async () => [
+      profile.root,
+      ...(await homeDeniedPaths(homedir(), process.platform, { realPath: realPathOnDisk })),
+    ],
+    // The host gives a local tool no Halonic bridge yet, as the CLI doesn't.
+    bridge: null,
+    path: process.env["PATH"] ?? "",
+    timeLimitMs: runnerTimeLimitMs,
+    clientInfo: { name: "halonic", version },
+    startTrust: { plugins: machine.plugins, digest: machine.digest, trust: machine.trust },
+    settings: (plugin) => machine.settings(plugin),
+    onReleaseFailed: (error) =>
+      logToError(
+        `The agent host could not remove a local tool's session folders (${errorName(error)}).\n`,
+      ),
+  });
+  const table = new PluginTable(hostPluginBackends(machine, context, localTools, logToError), {
     secretValues,
   });
   return {
@@ -135,4 +162,8 @@ export function hostPluginRoutes(
 
 function logToError(text: string): void {
   process.stderr.write(text);
+}
+
+function errorName(error: unknown): string {
+  return error instanceof Error ? error.name : "Error";
 }

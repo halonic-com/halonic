@@ -27,6 +27,7 @@ export {
   PluginLocalToolSessions,
   type PluginLocalToolSessionsOptions,
 } from "./plugin-local-tool-sessions.ts";
+export { type PluginLocalToolsHost, pluginLocalToolsSource } from "./plugin-local-tools-source.ts";
 export {
   type ConnectorBlock,
   type LocalToolSetup,

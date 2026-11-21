@@ -28,8 +28,8 @@ import {
 import { systemClock } from "@halonicjs/std";
 import { proxySetting } from "../proxy-setting.ts";
 
-/** How long one runner may live, in milliseconds; a start after it asks the trust check and the gate again. */
-const runnerTimeLimitMs = 10 * 60 * 1000;
+/** How long one runner or local tool session may live, in milliseconds; a start after it asks the trust check again. */
+export const runnerTimeLimitMs = 10 * 60 * 1000;
 
 /** What the host's plugin machine needs: the gate its starts go through, and where its files are. */
 export interface HostPluginMachineOptions {

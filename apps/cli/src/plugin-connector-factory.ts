@@ -9,11 +9,8 @@
 // start leaves out only its own tools, and the run says which and why.
 
 import { homedir } from "node:os";
-import {
-  PluginLocalToolSessions,
-  SandboxStdioConnectorFactory,
-} from "@halonicjs/adapter-connector-stdio-sandbox";
-import { homeDeniedGroups, realPathOnDisk } from "@halonicjs/adapter-harness-kit";
+import { pluginLocalToolsSource } from "@halonicjs/adapter-connector-stdio-sandbox";
+import { homeDeniedPaths, realPathOnDisk } from "@halonicjs/adapter-harness-kit";
 import {
   type OpenPluginBackend,
   type OpenPluginBackendRequest,
@@ -24,7 +21,6 @@ import { createRunnerSearch, type LaunchFolders, nodeLaunchFolders } from "@halo
 import {
   openPluginConnector,
   type PluginConnectorSources,
-  PluginLocalTools,
   type PluginPartUnavailable,
 } from "@halonicjs/app";
 import type {
@@ -64,7 +60,7 @@ export class PluginConnectorFactory implements ConnectorFactory {
 }
 
 /** What the CLI's plugin connectors use on this computer, besides the backend's machine. */
-export interface PluginLocalToolsHost {
+export interface CliPluginHost {
   /** The sandbox each local tool's session opens in. */
   readonly sandbox: Pick<Sandbox, "check" | "open">;
   /** What a local tool's program may never reach besides the person's credential folders: Halonic's profile. */
@@ -90,72 +86,39 @@ type ClientInfo = { readonly name: string; readonly version: string };
  * The sources a {@link PluginConnectorFactory} opens plugins from on this
  * computer: the backend through `openPluginBackend`, and each connector's
  * local tools with a new session setup of their own, so two runs never
- * share one.
+ * share one (`pluginLocalToolsSource`).
  */
 export function pluginConnectorSources(
   machine: PluginBackendMachine,
-  host: PluginLocalToolsHost,
+  host: CliPluginHost,
   clientInfo: ClientInfo,
 ): PluginConnectorSources {
   const startTrust = { plugins: machine.plugins, digest: machine.digest, trust: machine.trust };
   const openBackend = openPluginBackend(machine);
+  const home = host.home ?? homedir();
   return {
     startTrust,
     // Not pinned to the fingerprint the connector found: a connector lasts the whole run, and the
     // backend checks the trust again at every start, refusing a plugin changed since the run began
     // with "Start the run again" rather than asking for a trust the person already gave.
     openBackend: ({ fingerprint: _found, ...request }) => openBackend(request),
-    localTools: async (context) => {
-      const sessions = new PluginLocalToolSessions({
-        folders: host.folders ?? nodeLaunchFolders,
-        runners: createRunnerSearch(host.env),
-        deniedPaths: await localToolDeniedPaths(host),
-        // The CLI gives a local tool no Halonic bridge yet.
-        bridge: null,
-        path: host.env["PATH"] ?? "",
-        timeLimitMs: host.timeLimitMs,
-        http: context.http,
-        secrets: context.secrets,
-        settings: (plugin) => machine.settings(plugin),
-      });
-      return new PluginLocalTools({
-        sandbox: host.sandbox,
-        factory: new SandboxStdioConnectorFactory({
-          clientInfo: { ...clientInfo },
-          localTools: sessions.localTools,
-          // The CLI shows a blocked access in the run's own events, not from a connector.
-          onBlocked: () => undefined,
-          onUndeclaredTool: () => undefined,
-        }),
-        context,
-        startTrust,
-        prepare: async (set, trusted) => {
-          const opening = await sessions.prepare(set, trusted);
-          return { ...opening, release: () => releaseLogged(opening.release, host) };
-        },
-      });
-    },
+    localTools: pluginLocalToolsSource({
+      sandbox: host.sandbox,
+      folders: host.folders ?? nodeLaunchFolders,
+      runners: createRunnerSearch(host.env),
+      deniedPaths: async () => [
+        ...host.deniedPaths,
+        ...(await homeDeniedPaths(home, process.platform, { realPath: realPathOnDisk })),
+      ],
+      // The CLI gives a local tool no Halonic bridge yet.
+      bridge: null,
+      path: host.env["PATH"] ?? "",
+      timeLimitMs: host.timeLimitMs,
+      clientInfo,
+      startTrust,
+      settings: (plugin) => machine.settings(plugin),
+      onReleaseFailed: (error) => host.onReleaseFailed(error),
+    }),
     onUnavailable: (connector, unavailable) => host.onUnavailable(connector, unavailable),
   };
-}
-
-/** Halonic's profile and the person's credential folders, such as SSH keys, each at its real place. */
-async function localToolDeniedPaths(host: PluginLocalToolsHost): Promise<string[]> {
-  const groups = await homeDeniedGroups(host.home ?? homedir(), process.platform, {
-    realPath: realPathOnDisk,
-  });
-  return [...new Set([...host.deniedPaths, ...groups.flatMap((group) => group.paths)])];
-}
-
-/** Removes a session's folders, telling the host when that fails, as `PluginLocalTools` ignores the failure. */
-async function releaseLogged(
-  release: (() => Promise<void>) | undefined,
-  host: Pick<PluginLocalToolsHost, "onReleaseFailed">,
-): Promise<void> {
-  try {
-    await release?.();
-  } catch (error) {
-    host.onReleaseFailed(error);
-    throw error;
-  }
 }

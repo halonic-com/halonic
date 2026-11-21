@@ -21,7 +21,8 @@ const pluginFailedMessage =
 /**
  * The plugin tool calls of Studio's desktop app, over loopback. Plugin code
  * never runs in the page or in the host: the host runs a trusted plugin's
- * backend in a sandboxed runner of its own.
+ * backend in a sandboxed runner of its own, and each local tool in a sandbox
+ * session of its own.
  *
  * `POST /v1/plugins/call` with `{ plugin, tool, args }` answers `{ text }`.
  * The request names the plugin by id only: the host reads the plugin's
