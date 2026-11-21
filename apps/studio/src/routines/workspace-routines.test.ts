@@ -294,24 +294,18 @@ verifies("studio.workspace-routines", () => {
     );
   });
 
-  it("creates a routine that runs the first agent with its prompt when the hub has no workflow", async () => {
-    const { host, store } = setup();
+  it("creates a routine that runs the first agent only with a prompt when the hub has no workflow", async () => {
+    const { host, store, changes } = setup();
     delete store["hubs/acme/workflows/reply.workflow.yaml"];
+    const refused = "Say what Analyst should do.";
+    await expect(host.create({ name: "Check", hubId: "acme" })).rejects.toThrow(refused);
+    await expect(host.create({ name: "Check", hubId: "acme", prompt: "  " })).rejects.toThrow(
+      refused,
+    );
+    expect(changes).toEqual([]);
     const ref = await host.create({ name: "Check", hubId: "acme", prompt: "Sum up the inbox" });
     const view = await host.read(ref);
     expect(view.target).toMatchObject({ kind: "agent", prompt: "Sum up the inbox" });
-  });
-
-  it("writes no routine for the first agent without a prompt", async () => {
-    const { host, store, changes } = setup();
-    delete store["hubs/acme/workflows/reply.workflow.yaml"];
-    await expect(host.create({ name: "Check", hubId: "acme" })).rejects.toThrow(
-      "Say what Analyst should do.",
-    );
-    await expect(host.create({ name: "Check", hubId: "acme", prompt: "  " })).rejects.toThrow(
-      "Say what Analyst should do.",
-    );
-    expect(changes).toEqual([]);
   });
 
   it("names what a new routine would run: the first workflow, else the first agent, else nothing", async () => {
