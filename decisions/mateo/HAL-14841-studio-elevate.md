@@ -2,6 +2,7 @@
 
 - Approval: HAL-14841 (Liam's decisions of 21 Nov)
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:oobF2n1mXQNc0QfJk+K9OSEbes5sEEzDhrLynM2KvuZ8+nHH/g7d5cGfl4sH4ifyXtdmrbPRtD856rr0lfCfAQ==
 
 On a tester's PC the 21 Nov preview asked for the sandbox's administrator rights from a hidden, non-interactive PowerShell under the agent host (`Start-Process -Verb RunAs -WindowStyle Hidden`), and no prompt and no `consent.exe` ever showed: the setup waited for ever (HAL-14812). The installer was fixed in #4275. This does the same for Studio.
 
