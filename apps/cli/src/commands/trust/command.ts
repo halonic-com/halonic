@@ -253,7 +253,7 @@ async function askToTrust(context: CommandContext, about: TrustQuestion): Promis
   const { name, check, lines, yes, dir, changes } = about;
   const refusal = () =>
     new NotTrustedError({
-      problem: trustMessages.noTerminal(name),
+      problem: trustMessages.noTerminal(name, changes !== undefined),
       fix: trustMessages.noTerminalFix(check.fingerprint, dir),
       fingerprint: check.fingerprint,
       check: lines,

@@ -13,6 +13,15 @@ export const agentKind: FileKind<Agent> = {
 };
 
 /**
+ * The program an agent runs in, as the CLI and Studio name it, for the
+ * message below: never the lower-case id (HAL-15117).
+ */
+const programNames: Readonly<Record<"codex" | "halonic", string>> = {
+  codex: "Codex",
+  halonic: "Halonic's own loop",
+};
+
+/**
  * `asks` only on a Claude Code agent (requirement `format.agent-asks`).
  * Codex inside the sandbox doesn't ask today whatever the file says, and
  * Halonic's own loop has no program tools to ask about, so on either one
@@ -23,7 +32,7 @@ function checkAsks(agent: Agent): KindCheckProblem[] {
   if (agent.asks === undefined || agent.harness === "claude-code") {
     return [];
   }
-  const harness = agent.harness ?? "halonic";
+  const harness = programNames[agent.harness ?? "halonic"];
   return [
     {
       severity: "error",

@@ -90,3 +90,23 @@ verifies("workspace.trust-check-reflow", () => {
     }
   });
 });
+
+verifies("workspace.trust-check-lines", () => {
+  it("puts a colon after a line's label, so the label and its text read apart", () => {
+    act(() =>
+      root.render(
+        <TrustCheckDialog
+          review={review}
+          shown={review.fingerprint}
+          busy={false}
+          error={undefined}
+          onNotNow={() => {}}
+          onTrust={() => {}}
+          returnFocus={() => null}
+        />,
+      ),
+    );
+
+    expect(shown(`Gets secrets: ${secretName}`)).toBeDefined();
+  });
+});

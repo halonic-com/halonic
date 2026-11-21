@@ -134,12 +134,18 @@ export const trustMessages = defineMessages("trust", {
    * trust screen.
    */
   withoutAsking: () => phrase`Without asking`,
-  /** What an agent with `asks: in-sandbox` does without asking, under {@link withoutAsking}. */
-  inSandboxCalls: () => phrase`edits and runs commands in its working folder, inside the sandbox`,
+  /**
+   * What an agent with `asks: in-sandbox` will do without asking, under
+   * {@link withoutAsking}. Said as what will happen: nothing answers its
+   * calls in this version yet (HAL-15117), and the trust check never states
+   * behaviour that doesn't exist.
+   */
+  inSandboxCalls: () =>
+    phrase`will edit and run commands in its working folder, inside the sandbox; this version still asks first`,
   /** A changed agent's `asks`: it turned `in-sandbox` on, or off again. */
   asksChanged: (inSandbox: boolean) =>
     inSandbox
-      ? phrase`now edits and runs commands in its working folder without asking, inside the sandbox`
+      ? phrase`will edit and run commands in its working folder without asking, inside the sandbox; this version still asks first`
       : phrase`asks again before it edits or runs a command`,
   /** After a wildcard site, `*.example.com`. */
   everySiteUnder: (domain: string) => phrase`every site under ${domain}`,
@@ -242,9 +248,15 @@ export const trustMessages = defineMessages("trust", {
     phrase`That fingerprint doesn't match ${name} as it is now.`,
   fingerprintNotCurrentFix: (dir?: string) =>
     phrase`Run ${suggestedCommand("trust", dir)} again to review it as it is now.`,
-  /** No terminal, or `CI` set, and no flags that answer: exit 3 (F6), in F16's two lines (D4). */
-  noTerminal: (name: string) =>
-    phrase`${name} isn't trusted on this computer yet, and there's no terminal to ask you.`,
+  /**
+   * No terminal, or `CI` set, and no flags that answer: exit 3 (F6), in F16's
+   * two lines (D4). After a change it says so: "yet" would contradict the
+   * "What changed … since you trusted it" heading above it (HAL-15117).
+   */
+  noTerminal: (name: string, changed = false) =>
+    changed
+      ? phrase`${name} changed since you trusted it, and there's no terminal to ask you to trust it again.`
+      : phrase`${name} isn't trusted on this computer yet, and there's no terminal to ask you.`,
   /**
    * Under {@link noTerminal}: the command that trusts what the check above
    * showed, with its fingerprint filled in, ready to copy (HAL-14262).

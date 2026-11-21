@@ -169,6 +169,18 @@ verifies("cli.commands.trust.review-and-trust", () => {
     expect(await store.list()).toEqual([]);
   });
 
+  it("without a terminal, says a changed workspace changed since it was trusted, not 'yet' (HAL-15117)", async () => {
+    await trustAcmeThenChangeIt();
+    const io = captureIo(folder);
+
+    const code = await runCli(["trust", "--dir", "acme"], io, commands());
+
+    expect(code).toBe(exitCode.notTrusted);
+    expect(io.stderr.slice(-2)[0]).toBe(
+      "✕ Acme changed since you trusted it, and there's no terminal to ask you to trust it again.",
+    );
+  });
+
   it("trusts with --yes and the fingerprint the check printed, asking nothing, then says it's already trusted", async () => {
     writeAcme();
     const fingerprint = await fingerprintOfAcme();

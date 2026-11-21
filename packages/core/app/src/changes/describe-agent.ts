@@ -31,7 +31,8 @@ export const AGENT_FIELDS: Readonly<Record<string, string>> = {
   harness: "Runs in",
   workingFolder: "Working folder",
   allowedSites: "Sites it can reach",
-  asks: "Asks before it acts",
+  // The field's own name: its values, `always` and `in-sandbox`, are the file's words (HAL-15117).
+  asks: "Asks",
   output: "Reply format",
   maxSteps: "Most model calls",
   harnessLimits: "Harness limits",

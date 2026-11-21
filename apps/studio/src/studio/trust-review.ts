@@ -204,7 +204,9 @@ function sectionsOf(
       heading: heading("Agents", agentRows),
       intro: "Agents in this workspace that run in Claude Code or Codex.",
       rows: agentRows,
-      open: changed,
+      // Open when an agent acts without asking, so the line isn't folded away (HAL-15117).
+      open:
+        changed || agentRows.some((row) => row.lines.some(([label]) => label === withoutAsking)),
     },
     {
       heading: heading("Addresses", addressRows),
@@ -308,13 +310,21 @@ function agentRow(agent: AgentTrustContent): TrustRowView {
       ...(agent.workingFolder === undefined
         ? []
         : [["Working folder", agent.workingFolder] as const]),
-      ...(agent.asks === "in-sandbox" ? [["Without asking", inSandboxCalls] as const] : []),
+      ...(agent.asks === "in-sandbox" ? [[withoutAsking, inSandboxCalls] as const] : []),
     ],
   };
 }
 
-/** What an agent with `asks: in-sandbox` does without a person's OK (team wording, HAL-14992). */
-const inSandboxCalls = "edits and runs commands in its working folder, inside the sandbox";
+/** The label over what an agent with `asks: in-sandbox` does without a person's OK. */
+const withoutAsking = "Without asking";
+
+/**
+ * What it does (team wording, HAL-14992), said as what will happen: nothing
+ * answers its calls in this version yet, and the review never states
+ * behaviour that doesn't exist (HAL-15117).
+ */
+const inSandboxCalls =
+  "will edit and run commands in its working folder, inside the sandbox; this version still asks first";
 
 /** One Changed row per agent, saying what is different. */
 function agentChangeRows(agent: ChangedAgent): TrustRowView[] {
@@ -335,7 +345,7 @@ function agentChangeRows(agent: ChangedAgent): TrustRowView[] {
   if (before.asks !== after.asks) {
     lines.push(
       after.asks === "in-sandbox"
-        ? ["Now without asking", inSandboxCalls]
+        ? [withoutAsking, inSandboxCalls]
         : ["Asks again", "before it edits or runs a command"],
     );
   }

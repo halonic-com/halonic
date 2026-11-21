@@ -11,10 +11,15 @@ const noChanges = { added: [], changed: [], removed: [], unchanged: 0 };
 const coder: AgentTrustContent = { id: "coder", harness: "claude-code", allowedSites: [] };
 const inSandbox: AgentTrustContent = { ...coder, asks: "in-sandbox" };
 
+/** The review's Agents section. */
+function agentsSection(check: TrustCheck) {
+  const review = trustReviewOf(check, facts);
+  return review?.sections.find((section) => section.heading.startsWith("Agents"));
+}
+
 /** The rows of the review's Agents section. */
 function agentRows(check: TrustCheck) {
-  const review = trustReviewOf(check, facts);
-  return review?.sections.find((section) => section.heading.startsWith("Agents"))?.rows;
+  return agentsSection(check)?.rows;
 }
 
 function newCheck(agent: AgentTrustContent): TrustCheck {
@@ -41,7 +46,10 @@ verifies("studio.trust-review-asks", () => {
         id: "coder",
         detail: "Claude Code",
         lines: [
-          ["Without asking", "edits and runs commands in its working folder, inside the sandbox"],
+          [
+            "Without asking",
+            "will edit and run commands in its working folder, inside the sandbox; this version still asks first",
+          ],
         ],
       },
     ]);
@@ -51,9 +59,17 @@ verifies("studio.trust-review-asks", () => {
     expect(agentRows(newCheck(coder))?.[0]?.lines).toEqual([]);
   });
 
+  it("opens the Agents section when an agent acts without asking, and only then", () => {
+    expect(agentsSection(newCheck(inSandbox))?.open).toBe(true);
+    expect(agentsSection(newCheck(coder))?.open).toBe(false);
+  });
+
   it("says so in its Changed row when an agent turns in-sandbox on, or off again", () => {
     expect(agentRows(asksChange(coder, inSandbox))?.[0]?.lines).toEqual([
-      ["Now without asking", "edits and runs commands in its working folder, inside the sandbox"],
+      [
+        "Without asking",
+        "will edit and run commands in its working folder, inside the sandbox; this version still asks first",
+      ],
     ]);
     expect(agentRows(asksChange(inSandbox, coder))?.[0]?.lines).toEqual([
       ["Asks again", "before it edits or runs a command"],
