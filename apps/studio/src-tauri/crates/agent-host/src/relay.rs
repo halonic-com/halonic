@@ -15,6 +15,10 @@
 //! queues each connection's bytes, so a client that reads slowly never holds
 //! up the others. What it holds at most is in [`limits`], what it waits for
 //! at most in [`deadlines`]. Only std, so it builds and tests anywhere.
+//!
+//! Id 0 is never a client's: when the shell lets it, the host sends its
+//! secret requests on it and gets their answers there (`host_secrets.rs`,
+//! [`secrets`]).
 
 use std::io::{self, Read, Write};
 use std::net::{Ipv4Addr, Shutdown, SocketAddr, TcpListener, TcpStream};
@@ -26,6 +30,7 @@ use std::time::{Duration, Instant};
 
 use connections::{Connection, Connections, Mode};
 use deadlines::{Deadline, Due};
+use halonic_secrets::SecretBackend;
 use limits::{Limits, QUEUED_FRAMES, QUEUED_FRAMES_PER_CONNECTION, Quota};
 use token::TokenCheck;
 
@@ -35,6 +40,7 @@ mod connections;
 mod deadlines;
 mod from_host;
 mod limits;
+mod secrets;
 mod token;
 
 /// The most bytes one frame carries.
@@ -81,6 +87,8 @@ pub(crate) struct Relay {
     /// The listener, the host's frames and the connections' deadlines until
     /// [`Relay::serve`] starts.
     waiting: Option<(TcpListener, Receiver<ToHost>, Receiver<Deadline>)>,
+    /// Where the host's secret requests are answered; `None` refuses them.
+    host_secrets: Option<Arc<dyn SecretBackend>>,
 }
 
 impl Relay {
@@ -111,12 +119,19 @@ impl Relay {
         Ok(Self {
             shared,
             waiting: Some((listener, frames, deadlines_to_keep)),
+            host_secrets: None,
         })
     }
 
     /// The port the relay listens on.
     pub(crate) fn port(&self) -> u16 {
         self.shared.port
+    }
+
+    /// Answers the host's secret requests on id 0 with `backend`, once
+    /// [`Relay::serve`] starts. Without it, a frame on id 0 stops the relay.
+    pub(crate) fn answer_host_secrets(&mut self, backend: Arc<dyn SecretBackend>) {
+        self.host_secrets = Some(backend);
     }
 
     /// Starts passing connections to the host: frames go to `input`, the
@@ -139,8 +154,14 @@ impl Relay {
         });
         let shared = Arc::clone(&self.shared);
         spawn("relay-deadlines", move || shared.keep_deadlines(&deadlines));
+        let secrets = self
+            .host_secrets
+            .take()
+            .map(|backend| self.shared.start_answering_secrets(backend));
         let shared = Arc::clone(&self.shared);
-        spawn("relay-from-host", move || shared.pass_host_frames(output));
+        spawn("relay-from-host", move || {
+            shared.pass_host_frames(output, secrets.as_ref());
+        });
         self.shared.accepting.store(true, Ordering::SeqCst);
         let shared = Arc::clone(&self.shared);
         let token = token.to_owned();

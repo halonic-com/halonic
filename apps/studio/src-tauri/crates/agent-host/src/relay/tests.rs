@@ -71,7 +71,11 @@ pub(super) fn relay() -> (Relay, StandIn) {
 }
 
 pub(super) fn relay_with_limits(limits: Limits) -> (Relay, StandIn) {
-    let mut relay = Relay::bind_with_limits(limits).expect("bind the relay");
+    serve_stand_in(Relay::bind_with_limits(limits).expect("bind the relay"))
+}
+
+/// Starts serving a stand-in host with `relay`, set up as the test needs.
+pub(super) fn serve_stand_in(mut relay: Relay) -> (Relay, StandIn) {
     let (mut input, relay_input) = io::pipe().expect("a pipe");
     let (relay_output, output) = io::pipe().expect("a pipe");
     relay.serve(relay_input, relay_output, TOKEN);
