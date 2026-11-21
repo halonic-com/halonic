@@ -4,10 +4,11 @@
 // or the branch whose answer wasn't an option, and the harness program and its limit from the last
 // `harness.started`. A setup cause the engine names, such as a provider type Halonic can't call, is
 // read from the summary's cause with the CLI's own facts (`setupFailureOf`), and a sandboxed
-// harness agent's key Studio refused from its own cause (`harness-key-banners.ts`). Run again is
-// the banner's button (`run-again.ts`); a banner adds the fixes that come before it (Copy command,
-// Open Models where the cause is fixed in Models, or See the step) and the links after it (Open
-// Models, Copy details).
+// harness agent's key Studio refused from its own cause (`harness-key-banners.ts`), as is a launcher
+// on this computer that didn't start, from the step's own start (`this-computer-start-banner.ts`).
+// Run again is the banner's button (`run-again.ts`); a banner adds the fixes that come before it
+// (Copy command, Open Models where the cause is fixed in Models, or See the step) and the links
+// after it (Open Models, Copy details).
 
 import { proxyFailureOf, setupFailureOf } from "@halonicjs/app/run-failure";
 import {
@@ -22,9 +23,10 @@ import { providerNameOf } from "../provider-name.ts";
 import { capitalised } from "../run-words.ts";
 import { accountBanner } from "./account-banners.ts";
 import { apiOffOf } from "./api-off.ts";
-import { danger } from "./danger-banner.ts";
+import { danger, withDetails } from "./danger-banner.ts";
 import { harnessKeyBanner } from "./harness-key-banners.ts";
 import type { BannerFix, RunBanner, RunPageContext } from "./run-page-model.ts";
+import { thisComputerStartBanner } from "./this-computer-start-banner.ts";
 
 /** The cause code the Studio gives a run it stopped because the workspace's trust was removed (`trustRemovedCause`). */
 const trustRemovedCode = "workspace.trust-removed";
@@ -114,6 +116,8 @@ export function causeBanner(
       return modelNoTools(facts, step, phone);
     case "harness-start-failed":
       return harnessStartFailed(facts, step, summary);
+    case "this-computer-start-failed":
+      return thisComputerStartBanner(summary, log, context, workflow, step);
     default:
       return undefined;
   }
@@ -443,17 +447,6 @@ function fixInModels(lines: readonly string[], phone: boolean): RunBanner {
   return phone
     ? danger([...lines, failureWords.fixOnComputer(failureWords.modelsPlace)])
     : danger(lines, { fixes: [openModels] });
-}
-
-/**
- * F6 and F21: **Run again** · link **Copy details**. Nothing in Studio fixes the cause, and Copy
- * details carries the engine's or the program's own message, which never shows on screen.
- */
-function withDetails(line: string, summary: RunSummary): RunBanner {
-  const message = summary.error?.trim() ?? "";
-  return danger([line], {
-    details: [line, `Run ${summary.id}`, message].filter((part) => part !== "").join("\n"),
-  });
 }
 
 /**
