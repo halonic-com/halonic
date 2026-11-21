@@ -3,6 +3,7 @@
 - Task: HAL-15481
 - Approval: team decision under the HAL-2282 rule for small wording on approved screens and command output (C584 rows 18–21 on HAL-15471); the reviewer of the pull request on HAL-15481 signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:57CAZ4968QyajRuCC65tugEa/7SrWm2dRw2xnQPMfyGN8Urxf4Ea/xwjcnU8/DojfOFr8ULm56UBxcAvuXKxBg==
 
 ## What changes
 
