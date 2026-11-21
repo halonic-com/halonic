@@ -198,6 +198,13 @@ export * from "./phone-exports.ts";
 // biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
 export * from "./points-exports.ts";
 export {
+  FilesWithErrorsService,
+  type FilesWithErrorsSource,
+  type FileWithErrors,
+  type FileWithErrorsKind,
+  fileWithErrorsKinds,
+} from "./problems/files-with-errors.ts";
+export {
   type ChildProcessUsage,
   type EngineResourceReport,
   type LoadedModel,

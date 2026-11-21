@@ -17,7 +17,6 @@ import {
 } from "@halonicjs/app";
 import { randomIds, systemClock } from "@halonicjs/std";
 import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
-import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import {
   InboxNoticesService,
@@ -77,7 +76,7 @@ import { choicesMemory } from "../changes/workspace-merge.ts";
 import { answerChatOn, EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
 import { openStudioHarnessHost } from "../engine/studio-harness-host.ts";
-import { WorkspaceFilesHost } from "../files/workspace-files-host.ts";
+import { provideFilesServices } from "../files/provide-files-services.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
 import { WorkspaceNotices } from "../inbox/workspace-notices.ts";
 import { WorkspaceRequests } from "../inbox/workspace-requests.ts";
@@ -158,23 +157,7 @@ export function provideFolderServices(
       onChange: (listener) => scope.events.on("files.changed", listener),
     }),
   );
-  services.provide(
-    FilesHostService,
-    new WorkspaceFilesHost({
-      store: new TauriDefinitionStore(files, location),
-      files: services.get(workspaceFilesKey),
-      onChange: (listener) => {
-        const stops = [
-          scope.events.on("files.changed", listener),
-          scope.events.on("files.saved", listener),
-        ];
-        return () => {
-          for (const stop of stops) stop();
-        };
-      },
-      platform,
-    }),
-  );
+  provideFilesServices(services, { files, location, scope, platform });
   const keys = services.provide(ModelKeysService, new WorkspaceModelKeys(shellKeychain(ipc)));
   provideModelChoice(services, { ipc, trust, keys, settle });
   services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
