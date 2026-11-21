@@ -1,0 +1,6 @@
+[Unit]
+Description=halonic-ci weekly cleanup
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/halonic-ci-maint.sh
+TimeoutStartSec=3h

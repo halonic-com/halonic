@@ -1,0 +1,37 @@
+#!/usr/sbin/nft -f
+# CI VM network rules (host). Own table; never flushes ufw/docker/libvirt rules.
+# The CI VM (bridge virbr-ci, 10.77.0.0/24) may reach only the internet on TCP 80/443,
+# DNS on 1.1.1.1/1.0.0.1 and NTP. It can't reach the host (incl. public IP), Paperclip,
+# Docker bridges, private/link-local/CGNAT ranges, or the Worldstream /24 (IPMI etc.).
+# The server's own public /24 (Worldstream: the host's public IP, IPMI) is site data,
+# kept out of this public repo: /etc/halonic-ci/site.nft holds one line,
+#   define site_net4 = <the server's public /24>
+include "/etc/halonic-ci/site.nft"
+table inet halonic_ci
+delete table inet halonic_ci
+table inet halonic_ci {
+  set blocked4 {
+    type ipv4_addr; flags interval
+    elements = { 0.0.0.0/8, 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16,
+                 172.16.0.0/12, 192.0.0.0/24, 192.168.0.0/16, 198.18.0.0/15,
+                 224.0.0.0/3, $site_net4 }
+  }
+  chain input {
+    type filter hook input priority -10; policy accept;
+    iifname "virbr-ci" ct state established,related accept
+    iifname "virbr-ci" counter drop
+  }
+  chain forward {
+    type filter hook forward priority -10; policy accept;
+    oifname "virbr-ci" ct state established,related accept
+    oifname "virbr-ci" counter drop
+    iifname "virbr-ci" meta nfproto ipv6 counter drop
+    iifname "virbr-ci" ip saddr != 10.77.0.0/24 counter drop
+    iifname "virbr-ci" ct state established,related accept
+    iifname "virbr-ci" ip daddr @blocked4 counter drop
+    iifname "virbr-ci" ip daddr { 1.1.1.1, 1.0.0.1 } meta l4proto { tcp, udp } th dport 53 accept
+    iifname "virbr-ci" udp dport 123 accept
+    iifname "virbr-ci" tcp dport { 80, 443 } accept
+    iifname "virbr-ci" counter drop
+  }
+}
