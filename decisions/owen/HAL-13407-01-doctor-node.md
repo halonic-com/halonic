@@ -2,6 +2,7 @@
 
 - Approval: HAL-13407, Liam's plan (two pull requests, this one a move)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:J/T+zptWfo/lnohrdulToUwzNd1MPwy2kmISM3EbH3zksNeGBnHQPSE5Fuo22ePs8KMBlL1mZxB5yE8C/1/XCQ==
 
 The doctor's machine checks that need Node (command paths, the network, the
 workspace, local model servers, the Studio watch limit) move out of the CLI into
