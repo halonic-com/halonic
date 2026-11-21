@@ -23,11 +23,14 @@ const stepLines: Readonly<Record<string, string>> = {
   "parallel-without-branches": "Has no branches",
   "unknown-agent": "Uses a missing agent",
   "final-has-transitions": "Is an end, but has arrows",
-  "task-without-agent": "No agent, passes through",
+  "task-without-agent": "Has no agent",
   "wait-without-events": "Has no events to wait for",
   "unguarded-shadow": "Never fires",
   "not-a-choice": "Compares with a non-option",
   "ignored-key": "Has a key it ignores",
+  "unknown-item-name": "Uses a name its items lack",
+  "items-not-a-list": "Its items aren't a list",
+  "no-done-transition": "Never moves on when done",
   unreachable: "Can't be reached",
 };
 

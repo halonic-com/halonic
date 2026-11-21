@@ -101,6 +101,29 @@ verifies("workflow.validate-template-names", () => {
     ]);
   });
 
+  it("checks a signal's data after its own step wrote its keys (C340 C10+)", () => {
+    const replied = (text: string) =>
+      supportReply({
+        draft: {
+          agent: "writer",
+          output: "reply",
+          signal: { name: "replied", data: { text } },
+          on: [{ to: "review" }],
+        },
+      });
+    expect(found(validateWorkflow(replied("{{context.reply}}")), "unknown-template-name")).toEqual(
+      [],
+    );
+    expect(found(validateWorkflow(replied("{{context.rpely}}")), "unknown-template-name")).toEqual([
+      {
+        severity: "error",
+        message:
+          '"draft" uses {{context.rpely}}, but no earlier step writes context.rpely. Did you mean context.reply?',
+        path: ["states", "draft", "signal", "data"],
+      },
+    ]);
+  });
+
   it("says to write a name first when no earlier step writes any, and leaves input names alone", () => {
     const first = supportReply({
       classify: {
@@ -174,5 +197,53 @@ verifies("workflow.validate-choice-values", () => {
       });
       expect(found(validateWorkflow(notChoice, sorter), "not-a-choice")).toEqual([]);
     }
+  });
+});
+
+/** Acme's support reply with a for-each step `each` after `classify`, its keys given. */
+function withForeach(each: Record<string, unknown>) {
+  return supportReply({
+    classify: { agent: "sorter", output: "kind", on: [{ to: "each" }] },
+    each: {
+      type: "foreach",
+      items: "{{input.topics}}",
+      agent: "writer",
+      ...each,
+      on: [{ to: "draft" }],
+    },
+  });
+}
+
+verifies("workflow.validate-item-names", () => {
+  it("refuses {{item}} when the step names its items with as, and says which name to write", () => {
+    const issues = validateWorkflow(withForeach({ as: "topic", input: "Announce {{item}}" }));
+    expect(found(issues, "unknown-item-name")).toEqual([
+      {
+        severity: "error",
+        message:
+          '"each" uses {{item}}, but its items are named topic (as: topic). Write {{topic}}, or remove as: topic.',
+        path: ["states", "each", "input"],
+      },
+    ]);
+  });
+
+  it("says which name is near for a misspelled item name in with", () => {
+    const issues = validateWorkflow(withForeach({ as: "topic", with: { text: "{{topc}}" } }));
+    expect(found(issues, "unknown-item-name")).toEqual([
+      {
+        severity: "error",
+        message:
+          '"each" uses {{topc}}, but each item is named topic; a for-each step can read {{topic}}, {{index}}, input and context. Did you mean {{topic}}?',
+        path: ["states", "each", "with"],
+      },
+    ]);
+  });
+
+  it("accepts the item, its place, the run's input and the context", () => {
+    const issues = validateWorkflow(
+      withForeach({ input: "{{item.title}} ({{index}}) for {{input.team}}: {{context.kind}}" }),
+    );
+    expect(found(issues, "unknown-item-name")).toEqual([]);
+    expect(found(issues, "unknown-template-name")).toEqual([]);
   });
 });

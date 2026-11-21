@@ -1,8 +1,14 @@
 import type { StateType, Workflow, WorkflowState } from "@halonicjs/format";
 import { contextBefore } from "./inputs.ts";
 import { hasState } from "./machine.ts";
+import { foreachItems, noDoneTransition, taskWithoutAgent } from "./run-failure-checks.ts";
 import { type StateKey, typesUsing, usesKey } from "./state-keys.ts";
-import { contextKey, notAChoice, unknownTemplateNames } from "./template-checks.ts";
+import {
+  contextKey,
+  notAChoice,
+  unknownItemNames,
+  unknownTemplateNames,
+} from "./template-checks.ts";
 import { issue, stateKey, type ValidateOptions, type WorkflowIssue } from "./workflow-issue.ts";
 
 // The checks validateWorkflow runs on each state, one function per rule, in
@@ -69,19 +75,6 @@ const unknownGets: StateCheck = ({ workflow, id, state }) => {
     return [issue("error", "unknown-gets", message, stateKey(id, "gets", index), id)];
   });
 };
-
-const taskWithoutAgent: StateCheck = ({ id, state }) =>
-  state.type === "task" && !state.agent
-    ? [
-        issue(
-          "warning",
-          "task-without-agent",
-          `Task "${id}" has no agent; it passes straight through`,
-          stateKey(id),
-          id,
-        ),
-      ]
-    : [];
 
 const timersOutsideWait: StateCheck = ({ id, state }) =>
   state.type === "wait"
@@ -333,4 +326,7 @@ export const STATE_CHECKS: readonly StateCheck[] = [
   ignoredKeys,
   withWithoutMethod,
   continueOnErrorWithAny,
+  unknownItemNames,
+  foreachItems,
+  noDoneTransition,
 ];

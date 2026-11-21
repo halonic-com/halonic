@@ -421,10 +421,8 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     this.#learnNames([{ hubId: ref.hubId, id: ref.id, name: trimmed }]);
   }
 
-  /**
-   * Creates the workflow in `hubId`, with the Default hub when the workspace has no hub yet; throws
-   * `not_found` for any other hub the workspace doesn't have, so no stray folder is made.
-   */
+  /** Creates the workflow in `hubId` (the Default hub too when there is none yet), its `start` running
+   * the hub's first agent by id; throws `not_found` for any other hub, so no stray folder is made. */
   async create({ name, hubId }: NewWorkflow): Promise<WorkflowRef> {
     const workspace = await this.#load();
     const hubFiles = hubFilesFor(workspace.issues, this.#hubs, hubId);
@@ -434,9 +432,13 @@ export class WorkspaceWorkflows implements WorkflowsHost {
       .map((path) => path.slice(folder.length + 1, -workflowSuffix.length))
       .filter((id) => !id.includes("/"));
     const id = uniqueName(slugify(name), taken);
+    const [agentId] = filesOf(workspace, "agent")
+      .filter((file) => file.hub === hubId)
+      .map((file) => file.value.id)
+      .sort();
     this.#parts.files.change(`Created workflow ${name}`, {
       ...hubFiles,
-      [`${folder}/${id}${workflowSuffix}`]: newWorkflowText(id, name),
+      [`${folder}/${id}${workflowSuffix}`]: newWorkflowText(id, name, agentId),
     });
     this.#names.set(`${hubId}/${id}`, name);
     return { hubId, id };

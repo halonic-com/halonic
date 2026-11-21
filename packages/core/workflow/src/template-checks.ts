@@ -5,23 +5,26 @@ import type { StateCheck } from "./state-checks.ts";
 import { placeholderPaths } from "./template.ts";
 import { issue, stateKey, type WorkflowIssue } from "./workflow-issue.ts";
 
-// The checks of the `{{context.<key>}}` names in a state's templates and
-// conditions (C337 C10–C11, HAL-14268). A misspelled name renders as empty
-// text and a condition with it never holds, so the run takes the wrong
-// branch or shows an empty card without saying why.
+// The checks of the names in a state's templates and conditions (C337
+// C10–C11, HAL-14268, and C340 C10+, HAL-14303). A misspelled name renders
+// as empty text and a condition with it never holds, so the run takes the
+// wrong branch or shows an empty card without saying why.
 
 /** A key of a state whose value is a template or a condition, and the paths it reads. */
 export interface TemplatePlace {
   readonly keys: readonly (string | number)[];
   readonly paths: readonly string[];
-  /** A transition's `when`: it is checked after the state wrote its own keys. */
-  readonly condition: boolean;
+  /**
+   * A transition's `when` or the signal's `data`: it is read after the state
+   * wrote its own keys.
+   */
+  readonly afterOwnKeys: boolean;
 }
 
 /** The keys of a state that are rendered as templates or checked as conditions. */
 export function templatePlaces(state: WorkflowState): TemplatePlace[] {
   const template = (keys: (string | number)[], value: unknown): TemplatePlace[] =>
-    value === undefined ? [] : [{ keys, paths: placeholderPaths(value), condition: false }];
+    value === undefined ? [] : [{ keys, paths: placeholderPaths(value), afterOwnKeys: false }];
   const branches = Object.entries(state.branches ?? {}).flatMap(([name, branch]) => [
     ...template(["branches", name, "input"], branch.input),
     ...template(["branches", name, "with"], branch.with),
@@ -29,8 +32,18 @@ export function templatePlaces(state: WorkflowState): TemplatePlace[] {
   const conditions = state.on.flatMap(({ when }, index) =>
     when === undefined
       ? []
-      : [{ keys: ["on", index, "when"], paths: conditionPaths(when), condition: true }],
+      : [{ keys: ["on", index, "when"], paths: conditionPaths(when), afterOwnKeys: true }],
   );
+  const signal =
+    state.signal === undefined
+      ? []
+      : [
+          {
+            keys: ["signal", "data"],
+            paths: placeholderPaths(state.signal.data),
+            afterOwnKeys: true,
+          },
+        ];
   return [
     ...template(["input"], state.input),
     ...template(["description"], state.description),
@@ -38,14 +51,15 @@ export function templatePlaces(state: WorkflowState): TemplatePlace[] {
     ...template(["items"], state.items),
     ...branches,
     ...conditions,
+    ...signal,
   ];
 }
 
 /**
  * A `{{context.<key>}}` in a template or a condition must name a key of the
  * initial context or one a state that runs earlier writes, like a picked
- * `context.<key>` (`unknown-gets`). A condition can also read what its own
- * state wrote.
+ * `context.<key>` (`unknown-gets`). A condition and the signal's data can
+ * also read what their own state wrote.
  */
 export const unknownTemplateNames: StateCheck = ({ workflow, id, state }) => {
   const places = templatePlaces(state);
@@ -55,7 +69,7 @@ export const unknownTemplateNames: StateCheck = ({ workflow, id, state }) => {
   const before = contextBefore(workflow, id);
   const after = [...new Set([...before, ...contextWrittenBy(state)])].sort();
   return places.flatMap((place) => {
-    const known = place.condition ? after : before;
+    const known = place.afterOwnKeys ? after : before;
     const unknown = new Set(
       place.paths
         .map((path) => contextKey(path))
@@ -67,6 +81,51 @@ export const unknownTemplateNames: StateCheck = ({ workflow, id, state }) => {
     });
   });
 };
+
+/** The names every template can start with, besides a for-each step's item and its place. */
+export const SCOPE_ROOTS = ["input", "context"];
+
+/** The name of a for-each item in templates when the step has no `as` (the engine's `defaultItemName`). */
+const DEFAULT_ITEM_NAME = "item";
+
+/** The name of a for-each item's place in the list, in templates (the engine's `index`). */
+const INDEX_NAME = "index";
+
+/**
+ * In a for-each step, the templates that run once per item (`input` and
+ * `with`) can read the item by its name, `item` or the `as:` name, and its
+ * place, `index`. Any other name renders as empty text, so each item's
+ * agent would get a prompt with a hole in it.
+ */
+export const unknownItemNames: StateCheck = ({ id, state }) => {
+  if (state.type !== "foreach") {
+    return [];
+  }
+  const itemName = state.as ?? DEFAULT_ITEM_NAME;
+  const roots = [itemName, INDEX_NAME, ...SCOPE_ROOTS];
+  const places = templatePlaces(state).filter(
+    ({ keys }) => keys.length === 1 && (keys[0] === "input" || keys[0] === "with"),
+  );
+  return places.flatMap((place) => {
+    const unknown = new Set(
+      place.paths.map((path) => path.split(".")[0] ?? "").filter((root) => !roots.includes(root)),
+    );
+    return [...unknown].map((root) => {
+      const message = `"${id}" uses {{${root}}}, but ${itemNameHint(root, itemName, state.as)}`;
+      return issue("error", "unknown-item-name", message, stateKey(id, ...place.keys), id);
+    });
+  });
+};
+
+/** Why a name isn't the item's, and what to write instead. */
+function itemNameHint(root: string, itemName: string, as: string | undefined): string {
+  if (root === DEFAULT_ITEM_NAME && as !== undefined) {
+    return `its items are named ${as} (as: ${as}). Write {{${as}}}, or remove as: ${as}.`;
+  }
+  const near = nearName(root, [itemName, INDEX_NAME, ...SCOPE_ROOTS]);
+  const hint = near === undefined ? "" : ` Did you mean {{${near}}}?`;
+  return `each item is named ${itemName}; a for-each step can read {{${itemName}}}, {{${INDEX_NAME}}}, input and context.${hint}`;
+}
 
 /** What to write instead of an unknown key: the near one, or the ones there are. */
 function namesHint(key: string, known: readonly string[]): string {
@@ -176,7 +235,7 @@ export function contextKey(path: string): string | null {
 }
 
 /** "a", "a or b", "a, b or c". */
-function orList(items: readonly string[]): string {
+export function orList(items: readonly string[]): string {
   return items.length <= 1
     ? (items[0] ?? "")
     : `${items.slice(0, -1).join(", ")} or ${items.at(-1)}`;

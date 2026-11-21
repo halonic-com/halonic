@@ -28,7 +28,10 @@ export type WorkflowIssueCode =
   | "unknown-template-name"
   | "not-a-choice"
   | "unread-start-field"
-  | "ignored-key";
+  | "ignored-key"
+  | "unknown-item-name"
+  | "items-not-a-list"
+  | "no-done-transition";
 
 /** The keys and list indexes to a value in a workflow file; `[]` for the whole file. */
 export type WorkflowPath = FileProblem["path"];
