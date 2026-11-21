@@ -483,7 +483,9 @@ for a status the user didn't see, and checks it again at every start.
 `POST /v1/unfenced-runs/take-back` removes it and stops this host's runners
 without the sandbox before it answers. The `halonic` command offers no yes and
 never saves one. For local integrations it reads the host's yes from the same
-folder, at every start, and starts the runner in the launcher's sandbox only
+folder, at every start (on Windows with the default WSL sandbox the host keeps
+its profile in the distro, so a command in a Windows terminal never sees that
+yes and runs integrations only in the sandbox), and starts the runner in the launcher's sandbox only
 when the yes is for the reason at that start (`cli.local-integration-unfenced-yes`,
 HAL-15144); a yes it can't read starts nothing. It doesn't look for Studio's
 install: on a computer without Studio nobody can give the yes, so integrations
