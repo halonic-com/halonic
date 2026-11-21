@@ -1,18 +1,14 @@
-import type { Readable, Writable } from "node:stream";
+import { encodeFrame, type Frame, FrameKind, FrameStreamError } from "./frame-codec.ts";
 import {
-  encodeFrame,
-  type Frame,
-  FrameDecoder,
-  FrameKind,
-  FrameStreamError,
-} from "./frame-codec.ts";
-import { FramedConnection, type FrameSink } from "./framed-connection.ts";
+  endedReason,
+  type FrameStreams,
+  type HostConnection,
+  hostConnectionId,
+  runFrameStream,
+} from "./frame-stream.ts";
+import { FramedConnection } from "./framed-connection.ts";
 
-/** The two ends of the frame stream: standard input and output in `--stdio` mode. */
-export interface FrameStreams {
-  input: Readable;
-  output: Writable;
-}
+export type { FrameStreams } from "./frame-stream.ts";
 
 /**
  * Turns the frame stream into connections and hands each one to `accept`,
@@ -20,6 +16,10 @@ export interface FrameStreams {
  * up (1, 2, 3, …), never reused. So a frame for an id it opened before but
  * that has closed since (the relay sent it before it saw the host's `reset`)
  * is dropped, while one for an id it never opened breaks the stream.
+ *
+ * Id 0 is the host's own, never a client's: its frames go to `host` when
+ * the host has one (its secrets channel, `--keychain-relay`), and break the
+ * stream when it doesn't.
  *
  * At most `maxConnections` are open at once: `node:http` only counts the
  * sockets of `listen()`, so the cap is kept here. An `open` past the cap is
@@ -38,19 +38,10 @@ export function demuxFrames(
   streams: FrameStreams,
   accept: (connection: FramedConnection) => void,
   maxConnections: number,
+  host?: HostConnection,
 ): Promise<Error | undefined> {
-  const { input, output } = streams;
-  const decoder = new FrameDecoder();
   const connections = new Map<number, FramedConnection>();
-  let lastOpened = 0;
-  let stopped = false;
-
-  const sink: FrameSink = {
-    send(frame, done) {
-      if (stopped) done?.(new Error("The frame stream has ended."));
-      else output.write(frame, done);
-    },
-  };
+  let lastOpened = hostConnectionId;
 
   function open(id: number): void {
     if (id <= lastOpened) throw new FrameStreamError(`Connection ${id} isn't new.`);
@@ -66,42 +57,25 @@ export function demuxFrames(
   }
 
   function handle(frame: Frame): void {
+    if (frame.connection === hostConnectionId && host !== undefined) {
+      host.receive(frame);
+      return;
+    }
     if (frame.kind === FrameKind.open) {
       open(frame.connection);
       return;
     }
     const connection = connections.get(frame.connection);
     if (connection !== undefined) connection.receive(frame.kind, frame.bytes);
-    else if (frame.connection > lastOpened) {
+    else if (frame.connection > lastOpened || frame.connection === hostConnectionId) {
       throw new FrameStreamError(`Connection ${frame.connection} was never opened.`);
     }
   }
 
-  return new Promise((resolve) => {
-    function stop(error?: Error): void {
-      if (stopped) return;
-      stopped = true;
-      input.off("data", onData);
-      for (const connection of connections.values()) connection.destroy();
-      resolve(error);
-    }
-    function onData(chunk: Buffer): void {
-      try {
-        for (const frame of decoder.push(chunk)) handle(frame);
-      } catch (error) {
-        stop(error instanceof Error ? error : new Error(String(error)));
-      }
-    }
-    input.on("data", onData);
-    input.once("end", () =>
-      stop(
-        decoder.midFrame
-          ? new FrameStreamError("The input ended in the middle of a frame.")
-          : undefined,
-      ),
-    );
-    input.once("close", () => stop());
-    input.on("error", (error) => stop(new Error(`The input failed: ${error.message}`)));
-    output.on("error", (error) => stop(new Error(`The output failed: ${error.message}`)));
+  const { sink, ended } = runFrameStream(streams, handle, (reason) => {
+    for (const connection of connections.values()) connection.destroy();
+    host?.close(reason ?? endedReason);
   });
+  host?.open(sink);
+  return ended;
 }
