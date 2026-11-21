@@ -185,7 +185,7 @@ export function provideFolderServices(
   services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
   services.provide(ProviderCheckService, new WorkspaceProviderCheck(new ShellHttpClient(ipc)));
   const transport = tauriAgentHostTransport(window);
-  provideWorkspaceRuns(services, { ipc, files, window, remoteEngine, transport }, location);
+  provideWorkspaceRuns(services, { ipc, files, window, remoteEngine, transport, trust }, location);
   // One service for both ends: the run page saves a person's trust, and the engine checks it.
   const instructionTrust = new InstructionTrustService({
     store: new TauriInstructionTrustStore(ipc),
@@ -455,12 +455,14 @@ function provideWorkspaceRuns(
     window,
     remoteEngine,
     transport,
+    trust,
   }: {
     ipc: TauriIpc;
     files: TauriFileShell;
     window: object;
     remoteEngine?: RemoteEngine | undefined;
     transport: AgentHostTransport | undefined;
+    trust: WorkspaceTrust;
   },
   location: string,
 ): void {
@@ -472,8 +474,11 @@ function provideWorkspaceRuns(
     // Looked up on the first answer: the page's engine is provided after the runs.
     send: (...answer) => (remoteEngine ?? services.get(engineServiceKey)).send(...answer),
     ...(remoteEngine === undefined ? {} : { waiting: () => remoteEngine.waiting() }),
-    // Run proposals live in the agent host's records (HAL-10916); without the host there are none.
-    ...(transport === undefined ? {} : { proposals: hostProposalsOf(transport, location) }),
+    // Run proposals live in the agent host's records (HAL-10916); without the host there are none,
+    // and an untrusted folder asks the host nothing.
+    ...(transport === undefined
+      ? {}
+      : { proposals: hostProposalsOf(transport, location, () => trust.mayStartNow()) }),
   });
   services.provide(RunsSourceService, runs);
   services.provide(InboxRunsService, runs);

@@ -84,11 +84,26 @@ verifies("studio.workspace-run-proposals", () => {
       },
     });
     for (const kind of ["not_found", "unknown_workspace"]) {
-      expect(await hostProposalsOf(answering(404, kind), "/work/acme")()).toEqual([]);
+      expect(await hostProposalsOf(answering(404, kind), "/work/acme", () => true)()).toEqual([]);
     }
-    const failure = await hostProposalsOf(answering(422, "proposal_refused"), "/work/acme")().catch(
-      (error: unknown) => error,
-    );
+    const failure = await hostProposalsOf(
+      answering(422, "proposal_refused"),
+      "/work/acme",
+      () => true,
+    )().catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(AgentHostError);
+  });
+
+  it("asks the host nothing while the workspace isn't trusted", async () => {
+    const request = vi.fn(async () => ({ status: 200, body: { proposals: [] } }));
+    const transport = {
+      request,
+      stream: async () => {
+        throw new Error("No streams here.");
+      },
+    };
+
+    expect(await hostProposalsOf(transport, "/work/acme", () => false)()).toEqual([]);
+    expect(request).not.toHaveBeenCalled();
   });
 });
