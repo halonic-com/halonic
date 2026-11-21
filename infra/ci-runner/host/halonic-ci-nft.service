@@ -1,0 +1,14 @@
+[Unit]
+Description=Halonic CI VM network rules (nft table inet halonic_ci)
+After=network-pre.target
+Before=libvirtd.service
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/halonic-ci/halonic-ci.nft
+ExecStop=/usr/sbin/nft delete table inet halonic_ci
+
+[Install]
+WantedBy=multi-user.target
