@@ -29,14 +29,34 @@ export interface TrustedSource {
   readonly found?: boolean | undefined;
   /** What the record trusts; the Remove dialog says what stops. Absent counts as a workspace. */
   readonly kind?: "workspace" | "plugin" | undefined;
+  /**
+   * A plugin whose trust is removed but whose sign-ins couldn't be signed out yet: removing it
+   * again tries the sign-out again (`app.plugin-sign-out`).
+   */
+  readonly signOutPending?: boolean | undefined;
 }
 
 /** What Settings › Trusted sources reads and changes of the trust records on this computer. */
 export interface TrustedSourcesHost {
   /** Every record, most recently trusted first. Rejects with the reason it couldn't be read. */
   list(): Promise<readonly TrustedSource[]>;
-  /** Deletes the record, so Halonic asks again. Rejects with the reason it couldn't. */
+  /**
+   * Deletes the record, so Halonic asks again, signing a plugin out first. Rejects with the reason
+   * it couldn't, or with a {@link SignOutFailedError} when the record is gone but the plugin's
+   * sign-ins couldn't be signed out.
+   */
   remove(location: string): Promise<void>;
+}
+
+/**
+ * A plugin's trust was removed, but its sign-ins couldn't be signed out; `cause` says why. Removing
+ * it again tries the sign-out again.
+ */
+export class SignOutFailedError extends Error {
+  constructor(options: { readonly cause: unknown }) {
+    super("The plugin's trust was removed, but its sign-ins couldn't be signed out.", options);
+    this.name = "SignOutFailedError";
+  }
 }
 
 /** The trust records Settings › Trusted sources lists, provided by the app (`workspace.trusted-sources`). */
