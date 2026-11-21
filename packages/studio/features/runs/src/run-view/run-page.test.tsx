@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { RunEvent } from "@halonicjs/events";
+import { parentEndedCause, type RunEvent } from "@halonicjs/events";
 import { EngineNotAnswering, engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -163,6 +163,33 @@ verifies("runs.run-page", () => {
     unmountAll();
     const without = await openRun(source, parent.id);
     expect(without.root.querySelector("button")).toBeNull();
+  });
+
+  it("links a child run its parent's end cancelled to the parent, where the page can open runs", async () => {
+    const child = summaryWith({
+      id: "run_c_4f2a1b.2",
+      status: "failed",
+      reason: "cancelled",
+      state: "draft",
+      parentRunId: parent.id,
+      cause: parentEndedCause,
+    });
+    const openRunPage = vi.fn();
+    const source = fakeSource([parent, child]).source;
+    const { root } = await openRun(source, child.id, { openRun: openRunPage });
+
+    expect(root.textContent).toContain(
+      "Support reply was cancelled because the run that started it ended. Nothing after the step Draft ran. Open run 4f2a1b",
+    );
+    await act(async () => button(root, "Open run 4f2a1b").click());
+    expect(openRunPage).toHaveBeenCalledWith(parent.id);
+
+    unmountAll();
+    const without = await openRun(source, child.id);
+    expect(without.root.textContent).toContain("Nothing after the step Draft ran.");
+    expect([...without.root.querySelectorAll("button")].map((b) => b.textContent)).not.toContain(
+      "Open run 4f2a1b",
+    );
   });
 
   it("updates in place as the run moves on", async () => {

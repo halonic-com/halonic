@@ -5,6 +5,7 @@ import {
   type CalloutAction,
   COMMAND_COPIED,
   COMMAND_NOT_COPIED,
+  inlineLinkClasses,
   type ToastStore,
   useOpenExternal,
   useToastStore,
@@ -211,7 +212,7 @@ function Banner({
     return null;
   }
   if (banner.kind === "note") {
-    return <p className="text-body">{banner.text}</p>;
+    return <CancelledNote note={banner} openRun={openRun} />;
   }
   const own = bannerAction(banner.action, reviewInInbox, openRun);
   const buttonsOf = (list: readonly BannerFix[] | undefined) =>
@@ -251,6 +252,30 @@ function Banner({
         ))}
       </Callout>
     </section>
+  );
+}
+
+/** A cancelled run's plain note, and the link to its parent run when the page can open runs. */
+function CancelledNote({
+  note,
+  openRun,
+}: {
+  readonly note: Extract<RunBanner, { kind: "note" }>;
+  readonly openRun: ((runId: string) => void) | undefined;
+}) {
+  const { parent } = note;
+  return (
+    <p className="text-body">
+      {note.text}
+      {parent === undefined || openRun === undefined ? null : (
+        <>
+          {" "}
+          <button type="button" className={inlineLinkClasses} onClick={() => openRun(parent.runId)}>
+            {parent.label}
+          </button>
+        </>
+      )}
+    </p>
   );
 }
 

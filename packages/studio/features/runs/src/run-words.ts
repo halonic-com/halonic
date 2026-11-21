@@ -307,6 +307,11 @@ export const runPageWords = {
   cancelledIn: (workflow: string, step: string) =>
     `${workflow} was cancelled in the step ${step}. Nothing after it ran.`,
   cancelledBeforeStart: (workflow: string) => `${workflow} was cancelled before it started.`,
+  /** A child run its parent's end cancelled (UX check R9 on HAL-12390); the note links to the parent. */
+  cancelledWithParentIn: (workflow: string, step: string) =>
+    `${workflow} was cancelled because the run that started it ended. Nothing after the step ${step} ran.`,
+  cancelledWithParent: (workflow: string) =>
+    `${workflow} was cancelled because the run that started it ended.`,
 };
 
 /**

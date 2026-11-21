@@ -1,4 +1,5 @@
 import {
+  parentEndedCause,
   type RunEvent,
   type RunFailureCause,
   type RunFailureReason,
@@ -21,7 +22,7 @@ export const parentEndedError = "The run that started this one ended, so this on
  * `running` gets a `run.failed` event with `reason: "interrupted"`
  * (requirement `engine.end-interrupted-runs`). Then each child run left
  * `waiting` under a parent that has ended gets one with `reason: "cancelled"`
- * (requirement `engine.end-orphaned-child-runs`). The engine calls it once on
+ * and the parent-ended cause (requirement `engine.end-orphaned-child-runs`). The engine calls it once on
  * start, before it starts or resumes any run.
  *
  * Other runs that are `waiting` for an event, a timer or a child run stay as
@@ -134,7 +135,15 @@ async function endOrphanedChildren(store: RunStore, clock: Clock): Promise<strin
       const orphaned = await hasEndedRun(store, child.parentRunId);
       if (
         orphaned &&
-        (await endRun(store, clock, child.id, "waiting", parentEndedError, "cancelled"))
+        (await endRun(
+          store,
+          clock,
+          child.id,
+          "waiting",
+          parentEndedError,
+          "cancelled",
+          parentEndedCause,
+        ))
       ) {
         ended.push(child.id);
         endedSome = true;
