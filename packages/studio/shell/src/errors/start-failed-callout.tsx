@@ -1,6 +1,6 @@
-import { errorKindOf } from "@halonicjs/std";
 import { Callout, type CalloutAction, type CalloutHandle, CommandBox } from "@halonicjs/studio-kit";
 import { useEffect, useRef } from "react";
+import { isUntrustedRefusal } from "../engine/workspace-untrusted.ts";
 import { useCopyDetails } from "../page/copy-details.ts";
 import { copyDetailsWords, detailsOf } from "./copy-details-words.ts";
 import { startFailureOf, withFullStop } from "./start-failure.ts";
@@ -23,7 +23,8 @@ export interface StartFailedCalloutProps {
   readonly tryAgain: () => void | Promise<void>;
   /**
    * Opens the workspace's trust check; absent where there is none. A start refused because the
-   * workspace isn't trusted (`denied`) then offers **Review** in place of **Try again** (C144 RT1).
+   * workspace isn't trusted ({@link isUntrustedRefusal}) then offers **Review** in place of **Try
+   * again** (C144 RT1); any other `denied`, such as a folder that isn't open, keeps **Try again**.
    */
   readonly review?: (() => void) | undefined;
   /** Moves focus to the Callout when it shows a failure, as the Run panel's card does (D7). */
@@ -54,7 +55,7 @@ export function StartFailedCallout({
   }, [takeFocus, error]);
   const failure = startFailureOf(error, notAnswering);
   const line = startFailedWords.couldntStart(failure.reason);
-  const untrusted = review !== undefined && errorKindOf(error) === "denied";
+  const untrusted = review !== undefined && isUntrustedRefusal(error);
   const actions: CalloutAction[] = [
     ...(untrusted ? [{ label: startFailedWords.review, onClick: review }] : []),
     ...(failure.tryAgain && !untrusted

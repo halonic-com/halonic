@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
+import { WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -53,8 +54,7 @@ async function open(
 
 verifies("workflows.start.start-run", () => {
   it("offers Review in place of Try again when the workspace isn't trusted yet", async () => {
-    const untrusted = new KindedError(
-      "denied",
+    const untrusted = new WorkspaceUntrusted(
       "This workspace isn't trusted yet, so nothing was started.",
     );
     const attempts = vi
@@ -80,10 +80,7 @@ verifies("workflows.start.start-run", () => {
   it("brings Start run back, focused, once the person trusts the workspace from Review", async () => {
     const page = await open(
       async () => {
-        throw new KindedError(
-          "denied",
-          "This workspace isn't trusted yet, so nothing was started.",
-        );
+        throw new WorkspaceUntrusted("This workspace isn't trusted yet, so nothing was started.");
       },
       async () => "trusted",
     );
@@ -98,7 +95,7 @@ verifies("workflows.start.start-run", () => {
 
   it("keeps Try again for a refusal when the host can't ask for trust", async () => {
     const page = await open(async () => {
-      throw new KindedError("denied", "This workspace isn't trusted yet, so nothing was started.");
+      throw new WorkspaceUntrusted("This workspace isn't trusted yet, so nothing was started.");
     });
 
     await click(runButton(page));
@@ -106,5 +103,20 @@ verifies("workflows.start.start-run", () => {
 
     expect(buttonNamed(page, "Try again")).toBeDefined();
     expect(buttonNamed(page, "Review")).toBeUndefined();
+  });
+
+  it("keeps Try again, with no Review, for a denied that isn't about trust", async () => {
+    const askTrust = vi.fn(async () => "trusted" as const);
+    const page = await open(async () => {
+      throw new KindedError("denied", "Acme isn't an opened folder.");
+    }, askTrust);
+
+    await click(runButton(page));
+    await click(buttonNamed(page, "Start run"));
+
+    expect(page.textContent).toContain("Couldn't start the run: Acme isn't an opened folder.");
+    expect(buttonNamed(page, "Try again")).toBeDefined();
+    expect(buttonNamed(page, "Review")).toBeUndefined();
+    expect(askTrust).not.toHaveBeenCalled();
   });
 });
