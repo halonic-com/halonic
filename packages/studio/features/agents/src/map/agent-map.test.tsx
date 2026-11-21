@@ -38,7 +38,9 @@ const host = () =>
       connectors: [{ id: "acme-mail", name: "Acme mail" }],
     },
     users: {
-      "acme/triage": [{ hubId: "acme", id: "support-reply", name: "Support reply", steps: 2 }],
+      "acme/triage": [
+        { hubId: "acme", id: "support-reply", name: "Support reply", stepIds: ["sort", "reply"] },
+      ],
     },
   });
 
@@ -83,7 +85,7 @@ verifies("agents.map.layout-by-side", () => {
   it("puts work in on the left, the agent in the centre, tools below and subagents on the right", async () => {
     const page = await openFlow();
     expect(side(page, "What brings it work")).toEqual([
-      "Workflow Support reply2 steps",
+      "Workflow Support replysort, reply",
       "Agent Sorter",
     ]);
     expect(side(page, "What it can use")).toEqual([
@@ -102,10 +104,12 @@ verifies("agents.map.layout-by-side", () => {
     );
   });
 
-  it("names a workflow's card with how many of its steps run the agent", async () => {
+  it("names a workflow's card with the steps that run the agent", async () => {
     const page = await openFlow({ openWorkflow: () => undefined });
     expect(
-      page.querySelector("[aria-label='Workflow Support reply, uses Mail triage in 2 steps']"),
+      page.querySelector(
+        "[aria-label='Workflow Support reply, uses Mail triage in sort and reply']",
+      ),
     ).not.toBeNull();
   });
 
@@ -211,7 +215,7 @@ verifies("agents.map.clicks", () => {
     await act(async () =>
       page
         .querySelector<HTMLElement>(
-          "[aria-label='Workflow Support reply, uses Mail triage in 2 steps']",
+          "[aria-label='Workflow Support reply, uses Mail triage in sort and reply']",
         )
         ?.click(),
     );
@@ -228,5 +232,38 @@ verifies("agents.map.clicks", () => {
     expect(buttonNamed(map, "Mail triage")).toBeUndefined();
     expect(map.querySelector("[aria-label^='Workflow Support reply']")).toBeNull();
     expect(buttonNamed(map, "Skill Tone")).toBeUndefined();
+  });
+});
+
+verifies("agents.map.workflow-card-steps", () => {
+  /** Mail triage's map, run by Support reply in the given steps. */
+  const runIn = (stepIds: readonly string[]) =>
+    memoryAgentsHost({
+      hubs: [{ id: "acme", name: "Acme Mail" }],
+      agents: [mailTriage],
+      users: {
+        "acme/triage": [{ hubId: "acme", id: "support-reply", name: "Support reply", stepIds }],
+      },
+    });
+
+  it("names the one step that runs the agent", async () => {
+    const page = await openFlow({ agents: runIn(["draft"]), openWorkflow: () => undefined });
+    expect(side(page, "What brings it work")).toEqual(["Workflow Support replydraft"]);
+    expect(
+      page.querySelector("[aria-label='Workflow Support reply, uses Mail triage in draft']"),
+    ).not.toBeNull();
+  });
+
+  it("lists more steps in the workflow's order, the last two joined by and", async () => {
+    const page = await openFlow({
+      agents: runIn(["sort", "check", "reply"]),
+      openWorkflow: () => undefined,
+    });
+    expect(side(page, "What brings it work")).toEqual(["Workflow Support replysort, check, reply"]);
+    expect(
+      page.querySelector(
+        "[aria-label='Workflow Support reply, uses Mail triage in sort, check and reply']",
+      ),
+    ).not.toBeNull();
   });
 });

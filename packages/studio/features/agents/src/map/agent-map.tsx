@@ -143,12 +143,12 @@ function mapSides(props: AgentMapProps): Record<MapSide, SideContent> {
         ...users.map((user) => (
           <Card
             key={`${user.hubId}/${user.id}`}
-            label={words.workflowCard(user.name, settings.name, user.steps)}
+            label={words.workflowCard(user.name, settings.name, user.stepIds)}
             onOpen={openWorkflow && (() => openWorkflow(user))}
           >
             <Kind>{words.workflow}</Kind>
             <span>{user.name}</span>
-            <span className="text-caption text-fg-muted">{words.steps(user.steps)}</span>
+            <span className="text-caption text-fg-muted">{words.steps(user.stepIds)}</span>
           </Card>
         )),
         ...handsWork.map((member) => (

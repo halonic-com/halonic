@@ -69,7 +69,9 @@ verifies("agents.page.frame", () => {
     const host = memoryAgentsHost({
       hubs: [{ id: "acme", name: "acme" }],
       agents: [sorter],
-      users: { "acme/sorter": [{ hubId: "acme", id: "reply", name: "Support reply", steps: 1 }] },
+      users: {
+        "acme/sorter": [{ hubId: "acme", id: "reply", name: "Support reply", stepIds: ["draft"] }],
+      },
     });
     const page = await show(<AgentScreen host={host} hubId="acme" id="sorter" />);
     await act(async () => buttonNamed(page, "Runs")?.click());
@@ -81,8 +83,8 @@ verifies("agents.page.frame", () => {
   });
 
   it("counts the workflows when several run the agent, and doesn't guess when they can't be read", async () => {
-    const reply = { hubId: "acme", id: "reply", name: "Support reply", steps: 1 };
-    const triage = { hubId: "acme", id: "triage", name: "Triage", steps: 2 };
+    const reply = { hubId: "acme", id: "reply", name: "Support reply", stepIds: ["draft"] };
+    const triage = { hubId: "acme", id: "triage", name: "Triage", stepIds: ["sort", "reply"] };
     const several = memoryAgentsHost({
       hubs: [{ id: "acme", name: "acme" }],
       agents: [sorter],
@@ -404,7 +406,7 @@ verifies("agents.page.menu", () => {
     const host = memoryAgentsHost({
       hubs: [{ id: "acme", name: "acme" }],
       agents: [sorter],
-      users: { "acme/sorter": [{ hubId: "acme", id: "reply", name: "Reply", steps: 1 }] },
+      users: { "acme/sorter": [{ hubId: "acme", id: "reply", name: "Reply", stepIds: ["draft"] }] },
     });
     const { page } = await open(host);
 
