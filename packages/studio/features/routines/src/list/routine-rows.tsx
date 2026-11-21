@@ -79,6 +79,8 @@ function itemOf(listing: RoutineListing, now: Date): OverviewItem {
     description: listing.summary,
     detail: cantStartReason(listing) ?? summaryLine(listing),
     ...(time === undefined ? {} : { usedBy: time }),
+    // On a phone the sentence gets two lines and the chip starts the line with the next time (flow 5.1).
+    chipsBeforeUsedBy: true,
     avatar: <LetterTile name={listing.name} />,
     ...(hasChip(listing) ? { chips: <Chip listing={listing} /> } : {}),
   };

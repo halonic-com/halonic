@@ -27,6 +27,7 @@ interface SwitchBase {
 interface SwitchWithText extends SwitchBase {
   readonly children: ReactNode;
   readonly label?: never;
+  readonly rowTarget?: never;
 }
 
 /** A switch without words of its own: its name says what it turns on. */
@@ -34,6 +35,12 @@ interface SwitchWithLabel extends SwitchBase {
   /** "Turn on Sorter". */
   readonly label: string;
   readonly children?: never;
+  /**
+   * The whole row round it is its target, not only a 48px square: the routine page's When header
+   * on a phone (component specs, Switch on a phone). Its label's ::after covers the nearest
+   * positioned box, which a Card's header with actions is.
+   */
+  readonly rowTarget?: boolean;
 }
 
 /** The props of `Switch`. */
@@ -114,13 +121,16 @@ export function Switch(props: SwitchProps) {
   const cursor = isUnavailable ? "cursor-not-allowed" : "cursor-pointer";
 
   if (props.children === undefined) {
-    // Without words the switch is still a 48px target on a phone or a touch screen. The target is
-    // the label's ::after, and a label passes its clicks on to the switch.
+    // Without words the switch is still a 48px target on a phone or a touch screen, or the whole
+    // row with `rowTarget`. The target is the label's ::after, and a label passes its clicks on to
+    // the switch. A row target's label isn't positioned itself, so its ::after reaches the row.
+    const target =
+      props.rowTarget === true
+        ? "after:absolute after:inset-0"
+        : "relative phone:hit-touch touch:hit-touch";
     return (
       // biome-ignore lint/a11y/noLabelWithoutControl: the input is inside `inside`, which Biome can't see; aria-label names it
-      <label className={`relative inline-flex shrink-0 phone:hit-touch touch:hit-touch ${cursor}`}>
-        {inside}
-      </label>
+      <label className={`inline-flex shrink-0 ${target} ${cursor}`}>{inside}</label>
     );
   }
   return (

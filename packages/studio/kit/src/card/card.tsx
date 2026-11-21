@@ -96,6 +96,12 @@ const interactiveClasses: Record<CardState, string> = {
 const headerClasses = "flex items-center gap-3 border-b border-border px-4 py-3";
 
 /**
+ * A header with actions is the box a Switch's `rowTarget` covers, and on a phone it's a 48px row,
+ * so that target is as big as the phone's other rows.
+ */
+const headerWithActionsClasses = `${headerClasses} relative phone:min-h-touch`;
+
+/**
  * A self-contained summary on a page: a routine, a model provider, a stat. Never a card inside a
  * card. With `onClick` the whole card is one `<button>`; it then holds no buttons of its own, and
  * only phrasing content (text, `<span>`, icons), never a `<div>`, `<p>` or heading.
@@ -130,7 +136,7 @@ export function Card(props: CardProps) {
   }
   const body = (
     <>
-      <div className={headerClasses}>
+      <div className={actions === null ? headerClasses : headerWithActionsClasses}>
         {header}
         {actions}
       </div>

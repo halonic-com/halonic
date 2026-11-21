@@ -2,7 +2,7 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-1306 (T12 PR 3), HAL-12323, HAL-13843, HAL-14940, HAL-14205, HAL-15082 (C540 #4), HAL-15485 (C583 #4, the page's "Changes not live yet"), HAL-15269 (C552-5); flow-routines 2.1; microcopy 12.1; states RT
+- Source: HAL-1306 (T12 PR 3), HAL-12323, HAL-13843, HAL-14940, HAL-14205, HAL-15082 (C540 #4), HAL-15485 (C583 #4, the page's "Changes not live yet"), HAL-15269 (C552-5), HAL-15338; flow-routines 2.1 and 5.1; microcopy 12.1; states RT
 
 The Routines place shall list the workspace's routines under "Routines" and the sentence "A routine starts a workflow or an agent on its own: on a schedule or every so often. Routines run while Halonic is open." (the app's engine starts routines while its window is open, HAL-14205; it checks no mail, HAL-12323) in one section per hub, each row with the routine's letter avatar, its name, the routine as one line, followed by " · Changes not live yet" while its saved changes aren't live, as its page says it (or, when it can't start, why and what to do, in the sentence its Starts card and Run now's toast give), its next start time when it is on, can start and runs on a clock, or in its place "couldn't start at *time*" ("yesterday *time*", "*day* *time*" within the week, then the date) when it is on and can start but the start of its newest due time was refused and no run started since, and one state chip (**Can't start** when the workflow or agent it starts isn't in the workspace or its file has an error `halonic validate` reports, as `halonic routines` says, else **Off**, else **Paused until trusted**, else **Needs sign-in again**, else **Needs you**), open a routine in its tab when a row is chosen, and show the loading, empty, no-match and can't-load states in the approved words.
 
@@ -24,3 +24,4 @@ The Routines place shall list the workspace's routines under "Routines" and the 
 - Given a read fails after the list was shown, then the rows stay and a line with **Try again** shows above them.
 - Given the host says the routines changed, then the list reads them again and shows the new rows.
 - Given the window is a phone, then the heading and sentence are there for screen readers only.
+- Given the window is a phone and "Daily" is on, needs you and next starts on Monday at 07:30, then its row shows the routine as one line on up to two lines, and under it a line that starts with the chip "Needs you", then "next Mon 07:30".

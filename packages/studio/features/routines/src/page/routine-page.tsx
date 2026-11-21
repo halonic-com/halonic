@@ -1,6 +1,7 @@
 import { type SandboxStartCheck, sandboxStartCheckKey } from "@halonicjs/app";
 import { SandboxCantRunCallout } from "@halonicjs/studio-feature-runs/api";
 import {
+  ActionBar,
   Button,
   Callout,
   EmptyState,
@@ -22,6 +23,7 @@ import {
   type RoutineRef,
   type RoutinesHost,
   RoutinesHostService,
+  type RoutineTarget,
   type RoutineView,
 } from "../api.ts";
 import { RulesSection } from "../rules/rules-section.tsx";
@@ -32,12 +34,11 @@ import { StartsCard } from "../starts/starts-card.tsx";
 import { WhenCard } from "../when/when-card.tsx";
 import { NotLiveLine } from "./not-live-line.tsx";
 import { failureReason, pageWords } from "./page-words.ts";
-import { RunDialog, runDialogReason } from "./run-dialog.tsx";
-import { runRoutineNow } from "./run-now.ts";
 import { type RunNowGate, useRunNowGate } from "./run-now-gate.ts";
 import { TRIGGER_STEP } from "./trigger-step.ts";
 import { type RoutineLoad, useRoutine } from "./use-routine.ts";
 import { useRoutineTrash } from "./use-routine-trash.tsx";
+import { type RunNow, useRunNow } from "./use-run-now.tsx";
 import { useTriggerFocus } from "./use-trigger-focus.ts";
 
 /** The file tab's item kind and hub part (the Files feature's `FILE_KIND` and `FILE_HUB`): files belong to the workspace folder. */
@@ -46,7 +47,7 @@ const fileHub = "workspace";
 
 /** The routine's page in its tab: `item` names the routine, the host gives its fields. */
 export function RoutinePage({ item, context, step, asked }: ItemViewProps) {
-  const { openPlace, openItem, runCommand } = context;
+  const { openPlace, openItem } = context;
   return (
     <RoutineScreen
       host={context.services.get(RoutinesHostService)}
@@ -56,10 +57,11 @@ export function RoutinePage({ item, context, step, asked }: ItemViewProps) {
       sandboxStartCheck={context.services.find(sandboxStartCheckKey)}
       {...(step === TRIGGER_STEP && { triggerAsked: asked ?? 0 })}
       {...(openPlace && { goToRoutines: () => openPlace("routines") })}
-      {...(runCommand && { addConnector: () => void runCommand("library.new-connector") })}
       {...(openItem && {
         openRun: (runId: string) => openItem({ kind: "run", hub: item.hub, id: runId }),
         openFile: (path: string) => openItem({ kind: fileKind, hub: fileHub, id: path }),
+        openTarget: (target: RoutineTarget) =>
+          openItem({ kind: target.kind, hub: target.hubId, id: target.id }),
       })}
     />
   );
@@ -76,8 +78,8 @@ export interface RoutineScreenProps {
   readonly goToRoutines?: () => void;
   /** Opens a run's page, for the Run now toast's **Open run**; without it the toast has no such button. */
   readonly openRun?: (runId: string) => void;
-  /** Opens New connector, for the When card's **Add a Google connector**; without it the card has no such link. */
-  readonly addConnector?: () => void;
+  /** Opens the workflow or agent the routine starts, for the phone's "Open <name>" row; without it there is no row. */
+  readonly openTarget?: (target: RoutineTarget) => void;
   /** Opens a file in the code editor in a tab; without it the ⋮ menu has no **Open as file**. */
   readonly openFile?: (path: string) => void;
   /**
@@ -105,7 +107,7 @@ export function RoutineScreen({
   announce,
   goToRoutines,
   openRun,
-  addConnector,
+  openTarget,
   openFile,
   triggerAsked,
   sandboxStartCheck,
@@ -123,6 +125,7 @@ export function RoutineScreen({
   const routine = load.kind === "ready" ? load.routine : undefined;
   const runs = useRoutineRuns(host, routine);
   const gate = useRunNowGate(host, routine, sandboxStartCheck);
+  const runNow = useRunNow(host, routine, gate, openRun);
   const views = routineTabs(runs.load, routine);
   // After Undo brings a deleted routine back, its name takes the focus once the page is drawn again.
   const trash = useRoutineTrash(host, load, focusTitle);
@@ -140,9 +143,9 @@ export function RoutineScreen({
         tabs={{ ids, views, selected: view, onSelect: setView }}
         title={title}
         onDelete={trash.onDelete}
-        openRun={openRun}
         openFile={openFile}
         gate={gate}
+        runNow={runNow}
       />
       {load.kind === "ready" ? (
         <TabPanel
@@ -163,7 +166,7 @@ export function RoutineScreen({
               host={host}
               routine={load.routine}
               announce={announce}
-              addConnector={addConnector}
+              openTarget={openTarget}
               focusTrigger={trigger.focusTrigger}
               onTriggerFocused={trigger.done}
               readAgain={readAgain}
@@ -206,6 +209,24 @@ export function RoutineScreen({
           )}
         </div>
       )}
+      {phone && routine !== undefined && host.runNow !== undefined && (
+        // On a phone Run now is one full-width button at the bottom, on both views (flow-routines 5.2).
+        <ActionBar
+          whileTyping="hide"
+          rows={[
+            [
+              {
+                label: pageWords.runNow,
+                ref: gate.runNow,
+                busy: runNow.starting,
+                unavailable: gate.unavailable,
+                onClick: runNow.press,
+              },
+            ],
+          ]}
+        />
+      )}
+      {runNow.dialog}
     </div>
   );
 }
@@ -226,7 +247,7 @@ function ScheduleView({
   host,
   routine,
   announce,
-  addConnector,
+  openTarget,
   focusTrigger,
   onTriggerFocused,
   readAgain,
@@ -235,7 +256,7 @@ function ScheduleView({
   readonly host: RoutinesHost;
   readonly routine: RoutineView;
   readonly announce: (text: string) => void;
-  readonly addConnector: (() => void) | undefined;
+  readonly openTarget: ((target: RoutineTarget) => void) | undefined;
   readonly focusTrigger: boolean;
   readonly onTriggerFocused: () => void;
   /** Reads the routine again, for the not-live line once a version is made. */
@@ -250,11 +271,10 @@ function ScheduleView({
         host={host}
         routine={routine}
         announce={announce}
-        {...(addConnector && { addConnector })}
         focusTrigger={focusTrigger}
         onTriggerFocused={onTriggerFocused}
       />
-      <StartsCard host={host} routine={routine} />
+      <StartsCard host={host} routine={routine} {...(openTarget && { openTarget })} />
       <RulesSection host={host} routine={routine} />
     </>
   );
@@ -329,7 +349,7 @@ function Summary({
 /**
  * The page's header: the avatar, "ROUTINE" and the name, which is a rename field once the routine
  * is read, then its ⋮ menu with Open as file (where tabs open) and Delete, and **Run now** at the right (only where the host can start a run). On a phone the top bar already names the routine, so the
- * page keeps only its type.
+ * page keeps only its type, and Run now is in the bar at the bottom.
  */
 function RoutineHeader({
   host,
@@ -338,9 +358,9 @@ function RoutineHeader({
   title,
   tabs,
   onDelete,
-  openRun,
   openFile,
   gate,
+  runNow,
 }: {
   readonly host: RoutinesHost;
   /** The routine, once it is read; before that the header has no menu. */
@@ -356,29 +376,14 @@ function RoutineHeader({
   };
   /** Deletes the routine, for the ⋮ menu's Delete. */
   readonly onDelete: (routine: RoutineView) => void;
-  readonly openRun: ((runId: string) => void) | undefined;
   readonly openFile: ((path: string) => void) | undefined;
   /** Whether Run now can start a run while the sandbox can't start, and its button. */
   readonly gate: RunNowGate;
+  readonly runNow: RunNow;
 }) {
   const phone = usePresentation() === "phone";
   const toasts = useToastStore();
   const [renaming, setRenaming] = useState(false);
-  // A second press while the host still starts the first run would start a second run.
-  const [starting, setStarting] = useState(false);
-  // Run now on a routine that isn't fully live asks first, in the run dialog.
-  const [asking, setAsking] = useState(false);
-  const start = () => {
-    if (routine === undefined || starting || gate.unavailable !== undefined) return;
-    setAsking(false);
-    setStarting(true);
-    void runRoutineNow(host, toasts, routine, openRun).finally(() => setStarting(false));
-  };
-  const pressRunNow = () => {
-    if (routine === undefined || starting) return;
-    if (runDialogReason(host, routine) === undefined) start();
-    else setAsking(true);
-  };
   const rename = ({ hubId, id }: RoutineView, next: string) => {
     host.save({ hubId, id }, { name: next }).catch((error: unknown) => {
       toasts?.show({
@@ -458,15 +463,15 @@ function RoutineHeader({
           ids={tabs.ids}
         />
       )}
-      {routine !== undefined && host.runNow !== undefined && (
+      {!phone && routine !== undefined && host.runNow !== undefined && (
         <div className="ml-auto">
           <Button
             ref={gate.runNow}
             variant="secondary"
             size="sm"
-            busy={starting}
+            busy={runNow.starting}
             unavailable={gate.unavailable}
-            onClick={pressRunNow}
+            onClick={runNow.press}
           >
             {pageWords.runNow}
           </Button>
@@ -479,9 +484,6 @@ function RoutineHeader({
           onRename={(next) => rename(routine, next)}
           onClose={() => setRenaming(false)}
         />
-      )}
-      {asking && routine !== undefined && (
-        <RunDialog host={host} routine={routine} onRun={start} onCancel={() => setAsking(false)} />
       )}
     </header>
   );

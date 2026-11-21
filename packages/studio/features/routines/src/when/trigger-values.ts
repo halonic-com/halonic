@@ -135,27 +135,19 @@ export function intervalText({ count, unit }: EveryInterval): string {
 /** The signal name picking On a signal starts with. */
 export const DEFAULT_SIGNAL = "mail.tagged";
 
-/** The trigger kinds the picker can switch to, in the order it lists them. */
-export const PICKABLE_KINDS = ["manual", "schedule", "every", "mail", "signal"] as const;
+/**
+ * The trigger kinds the picker can switch to, in the order it lists them. New mail isn't one while
+ * Halonic checks no mail (rule N5b, HAL-15340); a routine already on it still shows it, as the
+ * kind it is. Whoever brings mail checking back adds it here again.
+ */
+export const PICKABLE_KINDS = ["manual", "schedule", "every", "signal"] as const;
 export type PickableKind = (typeof PICKABLE_KINDS)[number];
-
-/** The Gmail search a new mail trigger starts with. */
-export const DEFAULT_MAIL_QUERY = "in:inbox";
-
-/** What picking New mail writes: the inbox of this connector, checked every two minutes. */
-export function defaultMailTrigger(connector: string): RoutineTrigger {
-  return { kind: "mail", connector, query: DEFAULT_MAIL_QUERY, every: "2m" };
-}
 
 /**
  * What picking a kind writes: manual, weekdays at 08:00 in the device's zone (no zone when it
- * can't be read), every hour, or the signal `mail.tagged`. New mail needs a connector, so it
- * has {@link defaultMailTrigger}.
+ * can't be read), every hour, or the signal `mail.tagged`.
  */
-export function defaultTrigger(
-  kind: Exclude<PickableKind, "mail">,
-  deviceZone: string | undefined,
-): RoutineTrigger {
+export function defaultTrigger(kind: PickableKind, deviceZone: string | undefined): RoutineTrigger {
   switch (kind) {
     case "manual":
       return { kind: "manual" };

@@ -1,10 +1,10 @@
-import { Button, Field, FilterChips, Input, Select, usePresentation } from "@halonicjs/studio-kit";
+import { Field, FilterChips, Input, Select, usePresentation } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { RoutineMailbox, RoutineTrigger } from "../api.ts";
 import { ScheduleAdvanced, SignalFields } from "./advanced-fields.tsx";
+import { optionSentence } from "./option-sentences.ts";
 import {
   cronFor,
-  defaultMailTrigger,
   defaultTrigger,
   EVERY_UNITS,
   type EveryUnit,
@@ -23,12 +23,12 @@ import { deviceTimeZone, whenWords as words } from "./when-words.ts";
 /** Props for {@link TriggerFields}. */
 export interface TriggerFieldsProps {
   readonly trigger: RoutineTrigger;
+  /** The routine's trigger in words, which its own option in the picker sheet shows under it. */
+  readonly sentence: string;
   /** Whether the routine starts on its own. */
   readonly enabled: boolean;
   /** The Google connectors a mail trigger can watch; `undefined` while they are read, empty when there are none. */
   readonly mailboxes: readonly RoutineMailbox[] | undefined;
-  /** Opens New connector, for the link under the Trigger picker; without it the window can't open one and there is no link. */
-  readonly addConnector?: () => void;
   /** Called with the whole new trigger as soon as a field changes to a value that can be written. */
   readonly onChange: (trigger: RoutineTrigger) => void;
   /** Whether the Trigger picker should take the focus now. */
@@ -41,15 +41,15 @@ export interface TriggerFieldsProps {
 
 /**
  * The When card's trigger fields (`routines.when.trigger-fields`): the Trigger picker and, under
- * it, the fields of the kind picked. A trigger the picker can't switch to (a web request) is shown
- * as the kind it is and has no fields yet. Picking New mail with no Google connector writes
- * nothing, says to add one and, where the window can, links to New connector.
+ * it, the fields of the kind picked. On a phone each option in the picker sheet shows the sentence
+ * it would write. A trigger the picker can't switch to (New mail, a web request) is shown as the
+ * kind it is; a web request has no fields yet.
  */
 export function TriggerFields({
   trigger,
+  sentence,
   enabled,
   mailboxes,
-  addConnector,
   onChange,
   focusTrigger,
   onTriggerFocused,
@@ -64,42 +64,26 @@ export function TriggerFields({
     else picker.current?.focus();
     onTriggerFocused?.();
   }, [focusTrigger, onTriggerFocused, phone]);
-  const [triedMail, setTriedMail] = useState(false);
-  // The error belongs to the list it was shown for: connectors that arrive take it away.
-  const triggerError = triedMail ? mailboxProblem(mailboxes) : null;
   const kinds: readonly RoutineTrigger["kind"][] = (PICKABLE_KINDS as readonly string[]).includes(
     trigger.kind,
   )
     ? PICKABLE_KINDS
     : [...PICKABLE_KINDS, trigger.kind];
+  const zone = deviceTimeZone();
+  const options = kinds.map((kind) => {
+    const description = optionSentence(kind, { trigger, sentence }, zone);
+    return { value: kind, label: words.kinds[kind], ...(description && { description }) };
+  });
+  // Only the pickable kinds reach here: the routine's own kind is no change.
   const pick = (kind: string) => {
     if (kind === trigger.kind) return;
-    if (kind === "mail") {
-      setTriedMail(true);
-      const first = mailboxes?.[0];
-      if (first !== undefined) onChange(defaultMailTrigger(first.connector));
-      return;
-    }
-    setTriedMail(false);
-    onChange(defaultTrigger(kind as Exclude<PickableKind, "mail">, deviceTimeZone()));
+    onChange(defaultTrigger(kind as PickableKind, zone));
   };
   return (
     <div className="flex flex-col gap-3">
-      <Field label={words.trigger} error={triggerError}>
-        <Select
-          ref={picker}
-          options={kinds.map((kind) => ({ value: kind, label: words.kinds[kind] }))}
-          value={trigger.kind}
-          onChange={pick}
-        />
+      <Field label={words.trigger}>
+        <Select ref={picker} options={options} value={trigger.kind} onChange={pick} />
       </Field>
-      {triggerError === words.addGoogleConnector && addConnector !== undefined && (
-        <div>
-          <Button variant="secondary" size="sm" onClick={addConnector}>
-            {words.addGoogleConnectorLink}
-          </Button>
-        </div>
-      )}
       {trigger.kind === "schedule" && (
         <ScheduleFields trigger={trigger} enabled={enabled} next={next} onChange={onChange} />
       )}
@@ -188,19 +172,26 @@ function SimpleScheduleFields({
   return (
     <>
       <div className="flex flex-col gap-1">
-        {/* Labelled like At (flow-routines 3.1); the chips' group already says "Days" to screen readers. */}
+        {/* Labelled like At (flow-routines 3.1); the fieldset already says "Days" to screen readers. */}
         <span aria-hidden="true" className="text-caption text-fg-muted">
           {words.days}
         </span>
-        <FilterChips
-          label={words.days}
-          toggles={WEEK_DAYS.map((day) => ({
-            label: day.label,
-            name: day.name,
-            pressed: schedule.days.has(day.cron),
-            onChange: (pressed) => toggleDay(day.cron, pressed),
-          }))}
-        />
+        {/* Mo–Fr on one row and Sa Su on the next at any width (flow-routines 5.3), in one Days group. */}
+        <fieldset aria-label={words.days} className="m-0 min-w-0 border-0 p-0">
+          {DAY_ROWS.map((row) => (
+            <FilterChips
+              key={row.id}
+              // The outer group names the days; each row is only a line of it.
+              label=""
+              toggles={row.days.map((day) => ({
+                label: day.label,
+                name: day.name,
+                pressed: schedule.days.has(day.cron),
+                onChange: (pressed) => toggleDay(day.cron, pressed),
+              }))}
+            />
+          ))}
+        </fieldset>
         {needsDay && (
           <p role="status" className="px-4 text-small text-fg-muted">
             {words.atLeastOneDay}
@@ -339,8 +330,8 @@ function EveryFields({
 const COUNT_ON_A_PHONE = "phone:min-w-16 phone:flex-1";
 const UNIT_ON_A_PHONE = "phone:min-w-0";
 
-/** What a New mail pick runs into: nothing to watch yet, or the list still being read. */
-function mailboxProblem(mailboxes: readonly RoutineMailbox[] | undefined): string | null {
-  if (mailboxes === undefined) return words.readingMailboxes;
-  return mailboxes.length === 0 ? words.addGoogleConnector : null;
-}
+/** The day chips' two rows: Monday to Friday, then Saturday and Sunday. */
+const DAY_ROWS = [
+  { id: "weekdays", days: WEEK_DAYS.slice(0, 5) },
+  { id: "weekend", days: WEEK_DAYS.slice(5) },
+] as const;

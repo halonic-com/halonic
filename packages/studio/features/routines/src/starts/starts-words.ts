@@ -5,6 +5,8 @@ export const startsWords = {
   pick: "Workflow or agent",
   workflowOption: (name: string) => `${name} (workflow)`,
   agentOption: (name: string) => `${name} (agent)`,
+  /** The phone's row under the picker that opens what the routine starts. */
+  open: (name: string) => `Open ${name}`,
   input: "Input",
   inputHint: "The workflow's input, as a JSON object.",
   /** Under the workflow's own start field while it is empty: a run then has nothing to work on. */

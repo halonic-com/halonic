@@ -1,4 +1,4 @@
-import { type MouseEvent, type ReactNode, useId } from "react";
+import { type MouseEvent, type ReactNode, type Ref, useId } from "react";
 import { Button, type ButtonUnavailable } from "../button/button.tsx";
 
 /** One of the bar's buttons. Always `size="touch"` and full width: the bar draws it. */
@@ -33,6 +33,8 @@ export interface ActionBarButton {
   readonly "aria-describedby"?: string | undefined;
   /** Its `id`, for a control elsewhere that points at it: a form sheet's Close while it's busy. */
   readonly id?: string;
+  /** The button, for a page that gives it the focus: Run now, once the sandbox can start. */
+  readonly ref?: Ref<HTMLButtonElement>;
   readonly onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 }
 
@@ -123,6 +125,7 @@ export function ActionBar({ lead, rows, note, whileTyping = "ride" }: ActionBarP
             >
               <Button
                 {...idOf(button, busyButton, busyId)}
+                {...(button.ref === undefined ? {} : { ref: button.ref })}
                 variant={button.variant ?? "secondary"}
                 size="touch"
                 block
