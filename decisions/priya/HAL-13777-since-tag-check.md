@@ -26,12 +26,12 @@ the app version: the app version is also the last release's version until
 the next release pull request raises it, so the exception would pass every
 `Since: 0.1.0` unchecked there (HAL-14684).
 
-Twenty-one requirements written after v0.1.0 still said `Since: 0.1.0` and
+Twenty-three requirements written after v0.1.0 still said `Since: 0.1.0` and
 now say `Since: unreleased`. Two are guard paths (`check.guard-dependency`,
 `spec.verifies-counts-retries-once`), moved here from HAL-13752. One more,
 `integration.sheet-shows-everything`, said a guessed `Since: 0.1.2` and now
 says `Since: unreleased` too. The guard wants every edited active
-requirement named, so Covers lists all twenty-two by ID.
+requirement named, so Covers lists all twenty-four by ID.
 
 ## Covers
 
@@ -54,9 +54,11 @@ requirement named, so Covers lists all twenty-two by ID.
 - routines.signal-loop
 - routines.signals-due
 - spec.verifies-counts-retries-once
+- std.near-match
 - studio.workspace-agents-chat
 - workflow.validate-choice-values
 - workflow.validate-template-names
 - workflow.validate-wait-signal
 - workspace.hub-uses
+- workspace.test-references
 - yaml.edit-rename
