@@ -13,6 +13,9 @@ import type {
 } from "@halonicjs/app";
 import type { SecretText } from "@halonicjs/studio-kit";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
+import type { OwnCardMemory } from "./own-progress.ts";
+
+export type { OwnCardMemory } from "./own-progress.ts";
 
 /** The three steps of the Try the sample card, in the order the card lists them. */
 export const sampleSteps = ["start", "decide", "see"] as const;
@@ -32,6 +35,10 @@ export interface SampleWorkspace {
   finishedShown(): boolean;
   /** Saves that the finished card was shown, so the next visit doesn't show it. */
   recordFinishedShown(): void;
+  /** What this device remembers of the folder's Get set up card (`first-run.own-card`). Read each time. */
+  ownCardMemory(): OwnCardMemory;
+  /** Saves what to remember of the folder's Get set up card, for the next visit to Home. */
+  recordOwnCard(memory: OwnCardMemory): void;
   /**
    * Opens the New workspace dialog, which the finished card offers as **Start your own workspace**.
    * Without it the app has no such dialog and the card offers no button.
