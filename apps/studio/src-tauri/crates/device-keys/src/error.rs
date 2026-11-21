@@ -3,7 +3,8 @@ use std::fmt;
 /// Why a device key call failed. No message ever holds key material.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DeviceKeyError {
-    /// The computer id breaks [`crate::ComputerId`]'s rule.
+    /// The computer id breaks [`crate::ComputerId`]'s rule, or a
+    /// computer's details are too long to keep.
     InvalidComputer,
     /// The platform's key store can't be reached, or can't make its key.
     Unavailable,
