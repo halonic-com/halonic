@@ -29,7 +29,7 @@ export {
   type CalloutProps,
   type CalloutTone,
 } from "./callout/callout.tsx";
-export { DONE_LABEL_MS } from "./callout/callout-button.tsx";
+export { type DoneLabel, useDoneLabel } from "./callout/done-label.ts";
 export { Card, type CardProps, type CardState } from "./card/card.tsx";
 export type { ChatAction } from "./chat/chat-actions.tsx";
 export {

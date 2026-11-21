@@ -4,19 +4,18 @@ import {
   Button,
   Callout,
   Dialog,
-  DONE_LABEL_MS,
   ExternalLink,
   RefreshIcon,
   StatusChip,
   type StatusChipTone,
-  useModalPolite,
+  useDoneLabel,
 } from "@halonicjs/studio-kit";
 import {
   copyDetailsWords,
   type SettingsSectionProps,
   useCopyDetailsInPlace,
 } from "@halonicjs/studio-shell";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useState } from "react";
 import {
   type AgentSandboxHost,
   AgentSandboxService,
@@ -210,7 +209,8 @@ export function AgentSandboxView({
 }: AgentSandboxViewProps) {
   // In place, as the Callout's own: toasts wait while the Settings dialog is open (C529-5).
   const copyDetails = useCopyDetailsInPlace();
-  const copied = useCopiedLabel();
+  // The ghost Copy details reads Copied as the Callout's does (`kit.callout-done-label`).
+  const copied = useDoneLabel(copyDetailsWords.label, copyDetailsWords.done);
   const view = sandboxView(facts, new Date());
   const copy = () => copyDetails(view.details ?? "");
   const buttons = {
@@ -218,7 +218,10 @@ export function AgentSandboxView({
     remove: { label: text.REMOVE, onClick: onRemove },
     "copy-details": {
       label: copied.label,
-      onClick: () => void copy().then(copied.show),
+      onClick: () =>
+        void copy().then((worked) => {
+          if (worked) copied.show();
+        }),
     },
   } as const;
   const calloutAction = {
@@ -295,28 +298,6 @@ export function AgentSandboxView({
       {newAgents}
     </div>
   );
-}
-
-/**
- * The ghost **Copy details**'s "Copied", as a Callout action's `doneLabel` (`kit.callout-done-label`):
- * for 2 seconds after a copy that worked, said through the Settings dialog's polite region.
- */
-function useCopiedLabel(): { readonly label: string; readonly show: (copied: boolean) => void } {
-  const modal = useModalPolite();
-  const [shown, setShown] = useState(false);
-  useEffect(() => {
-    if (!shown) return;
-    const timer = setTimeout(() => setShown(false), DONE_LABEL_MS);
-    return () => clearTimeout(timer);
-  }, [shown]);
-  return {
-    label: shown ? copyDetailsWords.done : copyDetailsWords.label,
-    show: (copied) => {
-      if (!copied) return;
-      setShown(true);
-      modal?.say(copyDetailsWords.done);
-    },
-  };
 }
 
 /** The words under the chip: the Not available lines where the section has them, else the view's lead. */

@@ -4,7 +4,7 @@ import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { buttonNamed, deleteDialog, fakeDialogPage, restoreDialogPage } from "../test/dialogs.tsx";
 import { click, render, unmountAll } from "../test/render.tsx";
-import { DONE_LABEL_MS } from "./callout-button.tsx";
+import { DONE_LABEL_MS } from "./done-label.ts";
 
 beforeEach(() => {
   fakeDialogPage();
