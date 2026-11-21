@@ -13,6 +13,7 @@ import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CommandContext } from "../src/command.ts";
 import { runMessages } from "../src/messages/run.ts";
+import { computerSheetHosts } from "../src/sheet-hosts.ts";
 import { removeTestFolder } from "../src/test/remove-folder.ts";
 import { openWorkspaceDir } from "../src/workspace-dir.ts";
 import { openWorkspaceEngine } from "../src/workspace-engine.ts";
@@ -87,13 +88,9 @@ beforeEach(async () => {
   acme = inBase("acme");
   profile = inBase("profile");
   home = inBase("home");
+  // Acme stays local-only, as every new workspace starts. The connector says `local: true` and
+  // the plugin's local tool declares no network, so it counts as local and is offered (HAL-15094).
   await cp(acmeExample, acme, { recursive: true });
-  // The attacks need the plugin offered whatever the workspace's privacy setting; local-only runs are tested elsewhere.
-  const settings = await readFile(join(acme, "workspace.yaml"), "utf8");
-  await writeFile(
-    join(acme, "workspace.yaml"),
-    settings.replace("localOnly: true", "localOnly: false"),
-  );
   for (const name of ["HALONIC_HOME", "HOME"]) saved[name] = process.env[name];
   // The command reads the profile and the home folder from the environment, as a person's does.
   process.env["HALONIC_HOME"] = profile;
@@ -108,6 +105,7 @@ beforeEach(async () => {
     "library/connectors/notes.connector.yaml": [
       "id: notes",
       "name: Notes",
+      "local: true",
       "transport:",
       "  plugin: { id: notes }",
       "tools:",
@@ -136,9 +134,14 @@ async function put(root: string, files: Record<string, string>): Promise<void> {
   }
 }
 
+/** This computer's environment, with `HALONIC_HOME` naming the test's profile. */
+function profileEnvironment() {
+  return { ...nodeProfileEnvironment(), variables: { HALONIC_HOME: profile } };
+}
+
 /** The profile `HALONIC_HOME` names. */
 function profileNow() {
-  return profileFolder({ ...nodeProfileEnvironment(), variables: { HALONIC_HOME: profile } });
+  return profileFolder(profileEnvironment());
 }
 
 function trustMachine(): WorkspaceTrustMachine {
@@ -184,7 +187,10 @@ interface RunOutcome {
 /** Runs Weekly report, whose Reporter makes the calls the test model was given, with this computer's real connectors. */
 async function runReport(): Promise<RunOutcome> {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-  const workspace = await loadWorkspace(dir.store);
+  // With the plugin's sites, as `halonic run` loads it, so local-only counts them.
+  const workspace = await loadWorkspace(dir.store, {
+    sheetHosts: await computerSheetHosts(dir.root, dir.shown, profileEnvironment()),
+  });
   const grant = await trustedGrant(
     dir,
     trustMachine(),
@@ -203,7 +209,7 @@ async function runReport(): Promise<RunOutcome> {
     context,
     {
       http: { fetch: () => Promise.reject(new TypeError("The run calls no server.")) },
-      profile: { ...nodeProfileEnvironment(), variables: { HALONIC_HOME: profile } },
+      profile: profileEnvironment(),
       sandboxGate: () => ({
         sandbox: { check: () => Promise.reject(new Error("The agent needs no sandbox.")) },
         placement: { where: () => Promise.reject(new Error("The agent needs no placement.")) },
