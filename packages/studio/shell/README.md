@@ -749,7 +749,9 @@ nothing changed:
 - **The top card** is `surface-raised` with `shadow-2`: **←** ("Back"), the breadcrumb ("Card
   path"), **✕** ("Close all cards" while more than one card is open, else "Close"), then the
   title, named "draft-reply, in Acme Mail › Writer › draft-reply". The feature draws the body
-  under it.
+  under it. A card narrower than 30rem (a phone, a narrow panel) is its own container query: there
+  one **←** that names where it goes, "← Writer" ("Back to Writer"), takes the place of **←** and
+  the breadcrumb, and the title wraps instead of being cut.
 - **Cards behind** are bands only, 10px higher (`--stack-peek`) and 12px narrower on each side
   (`--stack-inset`) per step back, on `--stack-shade-1` and `--stack-shade-2`, with no shadow. A
   docked card behind stays full width. Their bodies aren't kept, so a feature keeps what a card
