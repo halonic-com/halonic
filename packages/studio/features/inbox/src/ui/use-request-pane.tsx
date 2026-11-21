@@ -23,11 +23,12 @@ import { emptyDraft, RequestForm } from "./request-form.tsx";
 import { RequestSheet } from "./request-sheet.tsx";
 
 /** No request has failed to start since the last Send. */
-const none: NotStarted = { line: "", copyDetails: false };
+const none: NotStarted = { line: "", command: undefined, copyDetails: false };
 
 /**
  * What the form says when a request didn't start (UX check S6, HAL-12390): the "Not started:"
- * line, and **Copy details** with what the host said when the line has it.
+ * line, the refusal's command when it has one, and **Copy details** with what the host said when
+ * the line has it.
  */
 function useNotStarted(words: EngineWords) {
   const [state, setState] = useState<NotStarted & { readonly error?: unknown }>(none);
@@ -35,8 +36,11 @@ function useNotStarted(words: EngineWords) {
   const copy = () => void copyDetails(detailsOf(state.line, state.error));
   return {
     line: state.line,
-    /** The form's and the sheet's **Copy details**, when the line has it. */
-    copy: state.copyDetails ? { onCopyDetails: copy } : {},
+    /** The form's and the sheet's command and **Copy details**, when the line has them. */
+    parts: {
+      ...(state.command === undefined ? {} : { notStartedCommand: state.command }),
+      ...(state.copyDetails ? { onCopyDetails: copy } : {}),
+    },
     fail: (error: unknown) => setState({ ...notStartedOf(error, words), error }),
     clear: () => setState(none),
   };
@@ -280,7 +284,7 @@ export function useRequestPane(options: {
         busy={busy}
         notStarted={notStarted.line}
         {...(budgetStop && openBudget !== undefined && { onChangeBudget: openBudget })}
-        {...notStarted.copy}
+        {...notStarted.parts}
         onSend={send}
         onEscape={onEscape}
         messageRef={message}
@@ -302,7 +306,7 @@ export function useRequestPane(options: {
             },
           })}
           {...(budgetStop && openBudget !== undefined && { onChangeBudget: openBudget })}
-          {...notStarted.copy}
+          {...notStarted.parts}
           onSend={send}
           onClose={closeSheet}
           messageRef={message}

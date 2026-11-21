@@ -1,6 +1,6 @@
-import { Button, Field, Select, TextArea } from "@halonicjs/studio-kit";
+import { Button, CommandBox, Field, Select, TextArea } from "@halonicjs/studio-kit";
 import { copyDetailsWords } from "@halonicjs/studio-shell";
-import { type FormEvent, type Ref, useState } from "react";
+import { type FormEvent, type ReactNode, type Ref, useState } from "react";
 import type { RequestWorkflow } from "../request/inbox-requests.ts";
 
 /** What you have typed in the form. It lives above the form, so it stays while a card is open. */
@@ -23,6 +23,8 @@ export interface RequestFormProps {
   readonly busy: boolean;
   /** The "Not started: …" line, or empty. */
   readonly notStarted: string;
+  /** The command the line's next step leads to, in a CommandBox under the line (C533-2). */
+  readonly notStartedCommand?: string | undefined;
   /** With a refusal for the month's budget: **Change budget**, after the line. */
   readonly onChangeBudget?: (() => void) | undefined;
   /** With a failure Halonic can't explain: **Copy details**, after the line (22 F13). */
@@ -50,6 +52,7 @@ export function RequestForm({
   onDraft,
   busy,
   notStarted,
+  notStartedCommand,
   onChangeBudget,
   onCopyDetails,
   onSend,
@@ -107,26 +110,46 @@ export function RequestForm({
           Send
         </Button>
       </div>
-      <p role="alert" className="text-small text-fg-muted">
-        {notStarted}
-        {notStarted !== "" && onChangeBudget !== undefined ? (
-          <>
-            {" · "}
-            <Button variant="ghost" size="sm" onClick={onChangeBudget}>
-              Change budget
-            </Button>
-          </>
+      {/* Only the sentence is the alert, so its buttons aren't read with it (C533-3). */}
+      <div className="flex flex-col gap-2 text-small text-fg-muted">
+        <p>
+          <span role="alert">{notStarted}</span>
+          {notStarted !== "" && onChangeBudget !== undefined ? (
+            <AfterLine onClick={onChangeBudget}>Change budget</AfterLine>
+          ) : null}
+          {notStarted !== "" && onCopyDetails !== undefined ? (
+            <AfterLine onClick={onCopyDetails}>{copyDetailsWords.label}</AfterLine>
+          ) : null}
+        </p>
+        {notStarted !== "" && notStartedCommand !== undefined ? (
+          <CommandBox command={notStartedCommand} />
         ) : null}
-        {notStarted !== "" && onCopyDetails !== undefined ? (
-          <>
-            {" · "}
-            <Button variant="ghost" size="sm" onClick={onCopyDetails}>
-              {copyDetailsWords.label}
-            </Button>
-          </>
-        ) : null}
-      </p>
+      </div>
     </form>
+  );
+}
+
+/**
+ * A button after the line, behind a "·". The dot and the button wrap as one piece, so a narrow
+ * window never leaves the dot alone at the end of a line (C533-3).
+ */
+function AfterLine({
+  onClick,
+  children,
+}: {
+  readonly onClick: () => void;
+  readonly children: ReactNode;
+}) {
+  return (
+    <>
+      {" "}
+      <span className="whitespace-nowrap">
+        {"· "}
+        <Button variant="ghost" size="sm" onClick={onClick}>
+          {children}
+        </Button>
+      </span>
+    </>
   );
 }
 

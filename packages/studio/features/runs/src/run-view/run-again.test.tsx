@@ -265,6 +265,49 @@ verifies("runs.run-view.run-again", () => {
   });
 });
 
+verifies("runs.run-view.run-again-try-again", () => {
+  const held = () =>
+    new KindedError("conflict", "Acme is already running in another Halonic on this computer.", {
+      fix: "Stop that one, then try again.",
+    });
+
+  it("announces the reason, then the next step", async () => {
+    const startRun = vi.fn<RunStartHost["startRun"]>().mockRejectedValue(held());
+    const announce = vi.fn();
+    const root = await open(failed, { startRun }, vi.fn(), (line) => announce(line));
+    await act(async () => button(root, "Run again")?.click());
+    expect(announce).toHaveBeenCalledWith(
+      "Couldn't start the run: Acme is already running in another Halonic on this computer. Stop that one, then try again.",
+    );
+  });
+
+  it("keeps Try again in place, busy and focused, while it starts, then focuses a new failure", async () => {
+    let refuse: (error: unknown) => void = () => {};
+    const startRun = vi
+      .fn<RunStartHost["startRun"]>()
+      .mockRejectedValueOnce(held())
+      .mockImplementationOnce(() => new Promise((_, reject) => (refuse = reject)));
+    const announce = vi.fn();
+    const root = await open(failed, { startRun }, vi.fn(), (line) => announce(line));
+    await act(async () => button(root, "Run again")?.click());
+    const tryAgain = button(root, "Try again");
+    await act(async () => {
+      tryAgain?.focus();
+      tryAgain?.click();
+    });
+    expect(tryAgain?.isConnected).toBe(true);
+    expect(document.activeElement).toBe(tryAgain);
+    expect(tryAgain?.getAttribute("aria-busy")).toBe("true");
+    expect(root.textContent).toContain("Stop that one, then try again.");
+
+    await act(async () => refuse(held()));
+    const failure = root.querySelector('section[aria-label="Run didn\'t start"] [role="group"]');
+    expect(failure).not.toBeNull();
+    expect(document.activeElement).toBe(failure);
+    expect(announce).toHaveBeenCalledTimes(2);
+  });
+});
+
 verifies("runs.run-view.run-again-review", () => {
   const untrusted = () => {
     throw Object.assign(new Error("This workspace isn't trusted yet, so nothing was started."), {
