@@ -78,9 +78,9 @@ interface CheckLines {
 
 /**
  * The lines of `halonic doctor`, in the order of cli-output 3.7: Workspace,
- * Models, Secrets (HAL-14269), Sandbox, Harnesses, Node.js (HAL-6517), Network (HAL-14262)
- * and Disk, each only when the report has it, with an empty line after the heading and before
- * the summary.
+ * Models, Secrets (HAL-14269), Plugins (HAL-14296), Sandbox, Harnesses, Node.js (HAL-6517),
+ * Network (HAL-14262) and Disk, each only when the report has it, with an empty line after the
+ * heading and before the summary.
  *
  * @example
  * doctorReportLines(report, { version: "0.1.0", system: "Linux x64", sandboxKind: "bubblewrap" });
@@ -104,6 +104,7 @@ export function doctorReportLines(report: DoctorReport, facts: DoctorFacts): Phr
     worded(report.workspace),
     worded(report.models),
     worded(report.secrets),
+    worded(report.plugins),
     sandbox,
     worded(report.harnesses),
     worded(report.node),

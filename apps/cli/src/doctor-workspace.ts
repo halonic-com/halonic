@@ -292,7 +292,7 @@ export function comparedName(secret: string): string {
  * its `uses.connectors` allows, as a run loads them. An agent at the
  * workspace's root sees the shared ones.
  */
-function usedConnectors(workspace: LoadedWorkspace): Connector[] {
+export function usedConnectors(workspace: LoadedWorkspace): Connector[] {
   const shared = Object.fromEntries(
     filesOf(workspace, "connector")
       .filter((file) => file.hub === null)

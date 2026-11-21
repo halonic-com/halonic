@@ -14,8 +14,9 @@ import {
   trustedOnMachine,
   withHarnessSettingsFolders,
 } from "../../doctor-machine.ts";
+import { withPluginProblems } from "../../doctor-plugins.ts";
 import { agentsWithProviderKey, withHarnessProviderKeys } from "../../doctor-provider-keys.ts";
-import { doctorWorkspace } from "../../doctor-workspace.ts";
+import { doctorWorkspace, usedConnectors } from "../../doctor-workspace.ts";
 import { exitCode } from "../../exit-code.ts";
 import { doctorMessages } from "../../messages/doctor.ts";
 import { doctorReportLines } from "../../output/doctor-report.ts";
@@ -105,7 +106,8 @@ function givenDir(input: CommandInput): string | undefined {
  * line can say when Studio won't watch the folder (HAL-12295). With the
  * person's placement choices, it finds the harness agents whose runs get a
  * provider key, so the Harnesses line doesn't ask about their own sign-in
- * (HAL-14661) and the Secrets line checks that key (HAL-15086).
+ * (HAL-14661) and the Secrets line checks that key (HAL-15086). It checks
+ * the plugins its agents' connectors use against the profile's (HAL-14296).
  *
  * @throws NoWorkspaceError when `--dir` was given and has no `workspace.yaml`
  */
@@ -131,7 +133,11 @@ async function readWorkspace(
     fallbackName: dir.name,
     commandPaths: await commandPaths(connectors, nodeCommandSearch()),
   });
-  const workspace = await withProviderKeyAgents(computer, secrets, loaded, found, location);
+  const workspace = await withPluginProblems(
+    await withProviderKeyAgents(computer, secrets, loaded, found, location),
+    usedConnectors(loaded),
+    computer.plugins,
+  );
   const tooManyToWatch = await store.hasMoreFilesThan(watchedFileLimit);
   const providerFiles = new Map(
     filesOf(loaded, "provider").map((file) => [file.value.id, file.value]),
@@ -196,12 +202,12 @@ function withWindowsDrive(
  * with its `check` and `status` (`ok`, `warning` or `failed`), and the counts.
  */
 function doctorJson(report: DoctorReport) {
-  const { workspace, models, secrets, sandbox, harnesses, node, network, disk, summary } = report;
+  const { workspace, models, secrets, plugins, sandbox, harnesses, node, network, disk } = report;
   return {
-    checks: [workspace, models, secrets, sandbox, harnesses, node, network, disk].filter(
+    checks: [workspace, models, secrets, plugins, sandbox, harnesses, node, network, disk].filter(
       (line) => line !== undefined,
     ),
-    problems: summary.problems,
-    warnings: summary.warnings,
+    problems: report.summary.problems,
+    warnings: report.summary.warnings,
   };
 }
