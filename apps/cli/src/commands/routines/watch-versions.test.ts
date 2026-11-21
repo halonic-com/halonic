@@ -112,6 +112,48 @@ verifies("cli.local-engine", () => {
     expect(checks).toBe(0);
   });
 
+  it("gives the live version only while it passes the trust check a run's version passes", async () => {
+    const watched = await watchAcme();
+    let trusted = true;
+    watched.checkWith({
+      trust: async () => {
+        if (!trusted) throw new Error("not trusted here");
+        return contractGrant;
+      },
+      sandbox: async () => {},
+    });
+    await writeFile(
+      join(acme, "providers", "ollama.yaml"),
+      "id: ollama\ntype: ollama\nlocal: true\n",
+    );
+
+    const live = await watched.trustedLive();
+    expect(live === null ? null : providersOf(live)).toEqual(["mock", "ollama"]);
+
+    trusted = false;
+    expect(await watched.trustedLive()).toBeNull();
+  });
+
+  it("gives no live version that turns local only off, before its trust check", async () => {
+    const watched = await watchAcme();
+    let checks = 0;
+    watched.checkWith({
+      trust: async () => {
+        checks += 1;
+        return contractGrant;
+      },
+      sandbox: async () => {},
+    });
+    const file = join(acme, "workspace.yaml");
+    await writeFile(
+      file,
+      (await readFile(file, "utf8")).replace("localOnly: true", "localOnly: false"),
+    );
+
+    expect(await watched.trustedLive()).toBeNull();
+    expect(checks).toBe(0);
+  });
+
   it("gives a run's connectors the load its definitions came from, not an edit made since", async () => {
     const watched = await watchAcme();
     const checked: string[][] = [];

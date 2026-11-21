@@ -5,9 +5,10 @@ import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { createServer } from "@halonicjs/host-server";
 import { profileFolder, workspaceFolders } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
-import { loadWorkspace } from "@halonicjs/workspace";
+import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { openGoogleHost } from "../../google-host.ts";
+import { committedVersions } from "../../test/committed-versions.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts";
 import { workspaceGoogleRead } from "./google-read.ts";
 
@@ -59,6 +60,9 @@ beforeEach(async () => {
 
 afterEach(() => rm(folder, { recursive: true, force: true }));
 
+/** This test starts a real git repository and commits twice (see `committedVersions`). */
+const slowTest = { timeout: 60_000 };
+
 const profile = () => ({
   platform: process.platform === "win32" ? ("windows" as const) : ("linux" as const),
   homeFolder: folder,
@@ -74,16 +78,20 @@ async function keyOf(workspace: string): Promise<string> {
   return folders.key;
 }
 
-/** The server over the read ports, with the setups the test started. */
-async function served() {
+/**
+ * The server over the read ports, with the setups the test started.
+ *
+ * @param workspace reads the served version; the saved files as they were at the start when left out
+ */
+async function served(workspace?: () => Promise<LoadedWorkspace>) {
   const failures: unknown[] = [];
   const { setups } = openGoogleHost({ profile: profile() });
-  const workspace = await loadWorkspace(new FolderDefinitionStore(acme, acme));
+  const loaded = await loadWorkspace(new FolderDefinitionStore(acme, acme));
   const googleRead = workspaceGoogleRead({
     setups,
     workspaceKey: await keyOf(acme),
     root: acme,
-    workspace: () => workspace,
+    workspace: workspace ?? (async () => loaded),
   });
   const server = createServer({
     config: {
@@ -155,6 +163,34 @@ describe("serve: Google setups of the served workspace", () => {
       expect(failures).toEqual([]);
       expect(body.setups).toEqual([]);
     });
+
+    it(
+      "shows a connector's new address once the change is committed, before a run starts",
+      slowTest,
+      async () => {
+        const { versions, commitAll } = await committedVersions(acme);
+        try {
+          const { link, get, key } = await served(() => versions.live());
+          const mine = await link(key, "mailbox");
+          const addressShown = async () =>
+            JSON.stringify(await (await get("/api/google/setups")).json());
+          expect(await addressShown()).toContain(address);
+
+          await writeFile(
+            join(acme, "library", "connectors", "mailbox.connector.yaml"),
+            "name: Mailbox\ntransport:\n  google:\n    account: office@example.com\n",
+          );
+          // Saved but not committed: the live version still names the old address.
+          expect(await addressShown()).toContain(address);
+          await commitAll();
+
+          expect(await addressShown()).toContain("office@example.com");
+          expect((await get(`/api/google/setups/${mine}`)).status).toBe(200);
+        } finally {
+          await versions.close();
+        }
+      },
+    );
 
     it("answers 404 for another workspace's setup", async () => {
       const { link, get } = await served();

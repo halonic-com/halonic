@@ -11,8 +11,9 @@ import {
   type Secrets,
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import { definitionsOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { committedVersions } from "../../test/committed-versions.ts";
 import { workspaceModelSettings } from "./model-settings-gate.ts";
 
 let root: string;
@@ -42,6 +43,9 @@ async function workspaceOf(): Promise<LoadedWorkspace> {
   return loadWorkspace(new FolderDefinitionStore(root, "./acme"));
 }
 
+/** This test starts a real git repository and commits twice (see `committedVersions`). */
+const slowTest = { timeout: 60_000 };
+
 const settings = (rest: Partial<ChatAgentSettings>): ChatAgentSettings => ({
   type: "openai",
   model: "gpt-5",
@@ -52,7 +56,7 @@ const settings = (rest: Partial<ChatAgentSettings>): ChatAgentSettings => ({
 describe("the model settings of a served chat turn", () => {
   verifies("server.chat-turn-model-address", () => {
     it("allows a secret only with the address its provider names", async () => {
-      const gate = workspaceModelSettings(await workspaceOf().then((w) => () => w));
+      const gate = workspaceModelSettings(await workspaceOf().then((w) => async () => w));
       const allows = (hub: string, rest: Partial<ChatAgentSettings>) =>
         gate.allows(hub, settings(rest));
 
@@ -77,6 +81,77 @@ describe("the model settings of a served chat turn", () => {
       expect(await allows("support", { secret: "unknown-key" })).toBe(false);
       expect(await allows("gone", { secret: "openai-key" })).toBe(false);
     });
+
+    it(
+      "follows a provider's secret once the change is committed, before a run starts",
+      slowTest,
+      async () => {
+        await workspaceOf();
+        const { versions, commitAll } = await committedVersions(root);
+        try {
+          const gate = workspaceModelSettings(() => versions.live());
+          const allows = (secret: string) => gate.allows("support", settings({ secret }));
+          expect(await allows("openai-key")).toBe(true);
+
+          writeFileSync(
+            join(root, "providers/openai.yaml"),
+            "id: openai\ntype: openai\nsecret: openai-team-key\n",
+          );
+          // Saved but not committed: the live version still names the old secret.
+          expect(await allows("openai-team-key")).toBe(false);
+          await commitAll();
+
+          expect(await allows("openai-team-key")).toBe(true);
+          expect(await allows("openai-key")).toBe(false);
+        } finally {
+          await versions.close();
+        }
+      },
+    );
+
+    it(
+      "refuses every secret while the live version fails the trust check a run's version passes",
+      slowTest,
+      async () => {
+        await workspaceOf();
+        const { versions, commitAll } = await committedVersions(root);
+        try {
+          versions.checkWith({
+            // Stands in for `halonic trust`: the committed address below was never trusted here.
+            trust: async (workspace) => {
+              const proxy = definitionsOf(workspace, "support").providers["proxy"];
+              if (proxy?.baseUrl?.includes("evil.example") === true) {
+                throw new Error("not trusted here");
+              }
+              return null;
+            },
+            sandbox: async () => {},
+          });
+          const gate = workspaceModelSettings(() => versions.trustedLive());
+          const proxyAt = (baseUrl: string) =>
+            gate.allows(
+              "support",
+              settings({ type: "openai-compatible", secret: "proxy-key", baseUrl }),
+            );
+          expect(await proxyAt("https://llm.acme.example/v1")).toBe(true);
+
+          writeFileSync(
+            join(root, "providers/proxy.yaml"),
+            "id: proxy\ntype: openai-compatible\nbaseUrl: https://evil.example/v1\nsecret: proxy-key\n",
+          );
+          await commitAll();
+
+          // The committed file names the new address, but nobody trusted it: no key goes anywhere.
+          expect(await proxyAt("https://evil.example/v1")).toBe(false);
+          expect(await proxyAt("https://llm.acme.example/v1")).toBe(false);
+          expect(await gate.allows("support", settings({ secret: "openai-key" }))).toBe(false);
+          // A turn that sends no key still passes.
+          expect(await gate.allows("support", settings({}))).toBe(true);
+        } finally {
+          await versions.close();
+        }
+      },
+    );
 
     it("sends no model request for a stored key and an address its provider doesn't name", async () => {
       const workspace = await workspaceOf();
@@ -106,7 +181,7 @@ describe("the model settings of a served chat turn", () => {
           maxBodyBytes: 4096,
         },
         ports: {
-          modelSettings: workspaceModelSettings(() => workspace),
+          modelSettings: workspaceModelSettings(async () => workspace),
           runs: {
             chatTurn: async (request: { hubId: string }) => {
               const model = await resolve(request as never);
