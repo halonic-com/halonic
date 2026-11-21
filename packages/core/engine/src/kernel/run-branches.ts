@@ -1,4 +1,9 @@
-import type { CantTryStep, InstructionsRefusal, RunFailureReason } from "@halonicjs/events";
+import type {
+  CantTryStep,
+  InstructionsRefusal,
+  RunFailureCause,
+  RunFailureReason,
+} from "@halonicjs/events";
 import type { Branch, WorkflowState } from "@halonicjs/format";
 import type { PendingCall } from "./run-state.ts";
 
@@ -22,6 +27,7 @@ export type BranchEnd =
   | {
       readonly error: string;
       readonly reason: RunFailureReason;
+      readonly cause?: RunFailureCause;
       readonly agent?: string;
       readonly refusal?: InstructionsRefusal;
     }

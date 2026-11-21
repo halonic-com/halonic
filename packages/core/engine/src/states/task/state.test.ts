@@ -1,3 +1,4 @@
+import { answerNotAnOptionCause } from "@halonicjs/events";
 import type { Agent, Workflow } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -63,7 +64,16 @@ verifies("engine.task-choice-answer", () => {
     const agents = { triage: triageAgent() };
     const { decisions, run } = play(triage, [start, answer("This is a refund.")], agents);
     expect(decisions[1]?.events).toEqual([
-      { type: "run.failed", state: "sort", error: notAnOption, reason: "answer-not-an-option" },
+      {
+        type: "run.failed",
+        state: "sort",
+        error: notAnOption,
+        reason: "answer-not-an-option",
+        cause: answerNotAnOptionCause({
+          agent: "triage",
+          options: ["refund", "complaint", "question"],
+        }),
+      },
     ]);
     expect(decisions[1]?.effects).toEqual([]);
     expect(run?.status).toBe("failed");

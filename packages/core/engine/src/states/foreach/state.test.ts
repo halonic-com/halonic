@@ -1,3 +1,4 @@
+import { answerNotAnOptionCause } from "@halonicjs/events";
 import type { Workflow, WorkflowState } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -268,6 +269,7 @@ verifies("engine.task-choice-answer", () => {
           "which isn't one of its options (refunds, billing). " +
           "Tighten the agent's instructions or use a larger model.",
         reason: "answer-not-an-option",
+        cause: answerNotAnOptionCause({ agent: "labeler", options: ["refunds", "billing"] }),
       },
     ]);
     expect(run).toMatchObject({ status: "failed", foreach: null });

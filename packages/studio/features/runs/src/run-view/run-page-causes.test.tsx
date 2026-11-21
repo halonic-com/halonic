@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+
+import { answerNotAnOptionCause } from "@halonicjs/events";
 import {
   ClipboardProvider,
   COMMAND_COPIED,
@@ -290,5 +292,53 @@ verifies("runs.run-view.failure-banners", () => {
         ?.click(),
     );
     expect(opened).toEqual(["fast"]);
+  });
+
+  it("opens the failed step with See the step, before Run again, for an answer that isn't a choice (R7)", async () => {
+    const cause = answerNotAnOptionCause({ agent: "sorter", options: ["refund", "spam"] });
+    const runId = "run_e_7r7r7r";
+    const log = logOf(runId, [
+      [0, entered("draft")],
+      [0, { type: "agent.started", state: "draft", agent: "sorter", prompt: "Sort it" }],
+      [
+        1,
+        {
+          type: "run.failed",
+          state: "draft",
+          error: "engine text",
+          reason: "answer-not-an-option",
+          cause,
+        },
+      ],
+    ]);
+    const run = summaryWith({
+      id: runId,
+      status: "failed",
+      reason: "answer-not-an-option",
+      cause,
+      state: "draft",
+      statesVisited: ["draft"],
+      lastSeq: log.length,
+      endedAt: mondayMorning.toISOString(),
+    });
+    const list = new RunsList(fakeSource([run], { [runId]: log }).source);
+    const root = render(
+      <RunView
+        list={list}
+        runId={runId}
+        now={() => mondayMorning}
+        runStart={{ startRun: async () => ({ runId: "run_new" }) }}
+        openRun={() => {}}
+      />,
+    );
+    await settled();
+    expect(names(root)).toEqual(["See the step", "Run again"]);
+    expect(root.querySelector("aside")).toBeNull();
+    await act(async () =>
+      [...root.querySelectorAll("button")]
+        .find((candidate) => candidate.textContent === "See the step")
+        ?.click(),
+    );
+    expect(root.querySelector("aside")).not.toBeNull();
   });
 });

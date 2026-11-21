@@ -346,8 +346,9 @@ function branchEndOf(event: Extract<RunEvent, { type: "agent.finished" }>): Bran
     return { error: event.error, cantTry: event.cantTry };
   }
   const reason = event.reason ?? "error";
+  const cause = event.cause === undefined ? {} : { cause: event.cause };
   if (event.pin === undefined) {
-    return { error: event.error, reason };
+    return { error: event.error, reason, ...cause };
   }
   const refusal = {
     pin: event.pin,

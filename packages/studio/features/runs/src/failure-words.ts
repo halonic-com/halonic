@@ -1,6 +1,9 @@
 import type { ProxyFailure } from "@halonicjs/app/run-failure";
 import { capitalised } from "./run-words.ts";
 
+/** "refund, question or spam": the step's choices, any one of which the answer had to be. */
+const choiceList = new Intl.ListFormat("en-GB", { type: "disjunction" });
+
 /**
  * What the proxy did, naming it and the variable it came from: the words of the CLI's line 1
  * (`apps/cli/src/messages/proxy-failures.ts`), as a sentence of its own.
@@ -200,7 +203,13 @@ export const failureWords = {
   modelsPlace: "Models",
   diskFull: (workflow: string, step: string) =>
     `${workflow} stopped in the step ${step}: the disk is full, so Halonic couldn't write the run log. Free some space, then run again.`,
-  /** `answer-not-an-option`: names the agent, never its answer, which is the model's own text. */
+  /**
+   * `answer-not-an-option` with the choices from the run's cause (UX check R7): names the agent and
+   * the step's choices, never its answer, which is the model's own text (microcopy 1.4).
+   */
+  answerNotAChoice: (workflow: string, step: string, agent: string, options: readonly string[]) =>
+    `${workflow} failed in the step ${step}: ${capitalised(agent)}'s answer wasn't one of the step's choices (${choiceList.format(options)}).`,
+  /** `answer-not-an-option` in an older log, whose cause doesn't give the choices. */
   answerNotAnOption: (workflow: string, step: string, agent: string) =>
     `${workflow} stopped in the step ${step}: ${capitalised(agent)} answered with something that isn't one of its options. Make its instructions stricter, or pick a larger model, then run again.`,
   /** `harness-bridge.socket-path-too-long`: the figures are left out when the cause doesn't give them all. */

@@ -77,6 +77,7 @@ function failedState(stateId: string, state: StateOf<"parallel">, first: EndedBr
   const end = first.end;
   const error = "error" in end ? end.error : "";
   const reason = "reason" in end ? end.reason : "error";
+  const cause = "cause" in end ? end.cause : undefined;
   const refusal = "refusal" in end ? end.refusal : undefined;
   const agent = "agent" in end ? end.agent : undefined;
   const what =
@@ -90,6 +91,7 @@ function failedState(stateId: string, state: StateOf<"parallel">, first: EndedBr
       type: "fail",
       error: `${what} failed: ${error}`,
       reason,
+      ...(cause === undefined ? {} : { cause }),
       ...(agent === undefined ? {} : { agent }),
       ...(refusal === undefined ? {} : { refusal }),
     },

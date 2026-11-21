@@ -246,6 +246,8 @@ verifies("events.run-log-contract", () => {
       changed?: boolean;
       // Added after the reference by events.run-cant-try (HAL-4285).
       cantTry?: CantTryStep;
+      // Added after the reference by events.answer-choices (HAL-12411).
+      cause?: RunFailureCause;
     }>();
   });
 

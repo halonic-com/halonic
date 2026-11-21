@@ -1,6 +1,12 @@
 export { addUsage } from "./add-usage.ts";
 export type { AgentResume, LoggedToolCall } from "./agent-resume.ts";
 export {
+  type AnswerChoices,
+  answerChoicesOf,
+  answerNotAnOptionCause,
+  answerNotAnOptionCode,
+} from "./answer-choices.ts";
+export {
   type BlockedSite,
   type BlockedSitesOptions,
   blockedSites,
