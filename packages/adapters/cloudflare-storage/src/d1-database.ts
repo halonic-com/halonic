@@ -1,6 +1,6 @@
 /**
  * The few D1 calls the stores make. A Worker's `D1Database` binding fits it, and so does a
- * stand-in in a Node test, which has no Cloudflare types.
+ * wrapper around one, which a test uses to make a batch fail.
  *
  * Values reach D1 only through `bind`: nothing a caller supplies is ever part of the SQL text.
  */
