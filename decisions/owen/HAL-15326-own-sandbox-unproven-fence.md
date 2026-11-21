@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-15326, plan approved by Liam on the task
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SZvaU/hZdPPjclS0V8soOaB5CQVymJtdCnTPGIrc2BeA7sP8MR6EE7xEkhg4/ZEXAFHAOjufPdKAtqpOEmlKAQ==
 
 Claude Code's and Codex's own sandboxes used to start only for a session whose
 fence is `off`. A session whose fence is `not-fenced` or `stopped` started them
