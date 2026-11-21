@@ -3,6 +3,7 @@
 - Task: HAL-14960 (left over from HAL-4291: PR #3905 was closed in the PR freeze; its phone fix already landed through #3891)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-4291 (the CTO's scope for this task: checklist Part 3 of HAL-1833 and microcopy 23.3; the words stay placeholders by key until HAL-1784)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:U2HR0Sjr9m87dzOhrA/DfF6A5gOjBLGIG43XBSTNSEB9+h78cDx4MPfro69XUFySD+PaQuMt23Xz5EYLOE5FCw==
 
 ## What changes
 
