@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15277 (words check C557, rows 58 and 59; a small fix on an approved screen, decided by the team under HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:RUsXGWu4kR4PGw5hsWTKINjbH1s8MMVLw6ensAXmqFNO4uNpV10/FQ/LBJvAcdkI1lQPZN/KQUUoQp8AUDEjBg==
 
 A web request that fails inside the server with a 500 is a bug, so `halonic serve` now prints the
 error shape's F16 lines (microcopy 25.1 L4) instead of "· see why with --debug": "✕ Weekly report
