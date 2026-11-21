@@ -147,7 +147,7 @@ function SheetBar({
         ref={title}
         id={titleId}
         tabIndex={-1}
-        className={`min-w-0 flex-1 truncate text-heading${onClose === undefined ? " pl-3" : ""}`}
+        className={`min-w-0 flex-1 truncate text-heading ${onClose === undefined ? "pl-3" : ""}`}
       >
         {text}
       </h2>

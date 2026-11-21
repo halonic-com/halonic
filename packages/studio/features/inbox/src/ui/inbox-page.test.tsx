@@ -437,16 +437,13 @@ verifies("inbox.page", () => {
       const next = button(root, "Next: Approve this reply?");
       expect(next.classList.contains("w-full")).toBe(true);
       expect(next.className).not.toContain("whitespace-nowrap");
-      // The button is a flex box: the label, the count and the screen reader's count are one item,
-      // so the name has no stray space before its comma (HAL-14489 IX1).
+      // The button is a flex box: the label and the count are one item, so they wrap as one
+      // sentence (HAL-14489 IX1). The name is given whole, with no space before its comma (HAL-15105).
       const items = [...next.children];
       expect(items.map((item) => item.textContent)).toEqual([
-        "Next: Approve this reply? ·\u00a01\u00a0left, 1 left",
+        "Next: Approve this reply? ·\u00a01\u00a0left",
       ]);
-      expect(items[0]?.querySelector('[aria-hidden="true"]')?.textContent).toBe(
-        " ·\u00a01\u00a0left",
-      );
-      expect(items[0]?.querySelector(".sr-only")?.textContent).toBe(", 1 left");
+      expect(next.getAttribute("aria-label")).toBe("Next: Approve this reply?, 1 left");
     });
 
     it("has no Back link on the desktop", async () => {

@@ -39,7 +39,7 @@ export function PhoneTopBar({ title, onBack, actions }: PhoneTopBarProps) {
       )}
       {/* 22px lines, so two of them fit the 56px bar with room above and below. */}
       <p
-        className={`min-w-0 flex-1 line-clamp-2 wrap-break-word text-heading leading-5.5${onBack === undefined ? " ps-3" : ""}`}
+        className={`min-w-0 flex-1 line-clamp-2 wrap-break-word text-heading leading-5.5 ${onBack === undefined ? "ps-3" : ""}`}
       >
         {title}
       </p>

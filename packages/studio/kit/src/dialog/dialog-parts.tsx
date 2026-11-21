@@ -29,7 +29,7 @@ export function DialogHeader({
   const showClose = closeButton && props.closeButton !== false;
   return (
     <header
-      className={`flex items-start gap-2 px-6 pt-5 pb-1${props.flush ? " border-b border-border" : ""}`}
+      className={`flex items-start gap-2 px-6 pt-5 pb-1 ${props.flush ? "border-b border-border" : ""}`}
     >
       <h2
         ref={titleRef}

@@ -122,6 +122,9 @@ The theme starts from `--*: initial`, so Tailwind's own palette and scales don't
 are not allowed: arbitrary values (`p-[13px]`, `text-[#333]`) and numeric z-index classes
 (`z-50`), which Tailwind doesn't take from the theme. Use `z-(--layer-*)` instead.
 
+Write a class with a space after it when a `${…}` follows in a template: Tailwind reads
+`leading-5.5${…}` as one word and leaves the class out (theme-classes.test.ts checks it).
+
 ## Motion, for now
 
 Colour changes and short fades only. Nothing slides, scales or moves on its own, cards don't lift
@@ -237,6 +240,7 @@ The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 | `round` | An icon button only: a circle instead of a square, for the ✕ at the end of a round chip (a Tools chip), so its high-contrast edge and hover fill follow the chip's round end |
 | `busy` | While its request runs: the spinner takes the icon's place, `aria-busy`, clicks ignored |
 | `busyLabel` | The label while busy ("Creating…"). Both labels share one cell, so the width never changes |
+| `name` | A button with words only: what screen readers hear when the words leave something out, starting with those words ("Next: Approve this reply?, 2 left" for "Next: Approve this reply? · 2 left") |
 | `unavailable` | `{ reason }`: the `id` of the visible text that says why the button can't be used now |
 | `type` | `submit` only for a form's confirming button |
 
