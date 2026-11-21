@@ -14,6 +14,7 @@ import type {
   WslRemoveRequest,
   WslRemoveResult,
 } from "@halonicjs/studio-feature-settings";
+import { studioStartsUnfenced } from "../engine/studio-harness-host.ts";
 import type { ElevateHelper, ShellElevation } from "./sandbox-elevate-shell.ts";
 
 /**
@@ -48,6 +49,8 @@ const HELPER_DIDNT_START = "Windows couldn't start Halonic's sandbox helper.";
  */
 export class AgentHostSandboxFacts implements AgentSandboxHost {
   readonly available = true;
+  /** Whether the Studio's runs start an agent outside its sandbox: the Harness page's answer too. */
+  readonly studioStartsUnfenced = studioStartsUnfenced;
   readonly #transport: AgentHostTransport;
   readonly #setup: AgentHostSandboxSetup;
   readonly #now: () => Date;

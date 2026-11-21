@@ -1,6 +1,6 @@
 import type { HostSettings } from "@halonicjs/app";
 import { Dialog, Field, Select } from "@halonicjs/studio-kit";
-import { useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { useHostSetting } from "../assistant/use-host-setting.ts";
 import { type NewAgentsRun, sandboxPrefs } from "./sandbox-prefs.ts";
 import * as text from "./sandbox-text.ts";
@@ -15,6 +15,23 @@ export interface NewAgentsRunControlProps {
   readonly settings: HostSettings;
   /** Served Studio and the phone only look. */
   readonly viewOnly: boolean;
+  /** Whether this Studio can itself start an agent outside its sandbox, as its host reports it. */
+  readonly studioStartsUnfenced: boolean;
+}
+
+/**
+ * The hint under the Select. Where the choice can be changed and this Studio can't start such an
+ * agent, a second line says what can (HAL-13194); served Studio only looks, so it says that alone.
+ */
+function hintFor(viewOnly: boolean, studioStartsUnfenced: boolean): ReactNode {
+  if (viewOnly) return text.NEW_AGENTS_VIEW_ONLY;
+  if (studioStartsUnfenced) return text.NEW_AGENTS_HINT;
+  return (
+    <>
+      {text.NEW_AGENTS_HINT}
+      <span className="block">{text.NEW_AGENTS_STUDIO_CANT_START}</span>
+    </>
+  );
 }
 
 /**
@@ -22,7 +39,11 @@ export interface NewAgentsRunControlProps {
  * computer** asks first and saves nothing until confirmed; Cancel or Escape leaves the Select
  * where it was and returns focus to it.
  */
-export function NewAgentsRunControl({ settings, viewOnly }: NewAgentsRunControlProps) {
+export function NewAgentsRunControl({
+  settings,
+  viewOnly,
+  studioStartsUnfenced,
+}: NewAgentsRunControlProps) {
   const setting = useHostSetting(settings, sandboxPrefs.newAgents);
   const [asking, setAsking] = useState(false);
   const select = useRef<HTMLElement>(null);
@@ -34,7 +55,7 @@ export function NewAgentsRunControl({ settings, viewOnly }: NewAgentsRunControlP
     <>
       <Field
         label={text.NEW_AGENTS_RUN}
-        hint={viewOnly ? text.NEW_AGENTS_VIEW_ONLY : text.NEW_AGENTS_HINT}
+        hint={hintFor(viewOnly, studioStartsUnfenced)}
         error={setting.failed ? text.newAgentsNotSaved : null}
       >
         <Select
