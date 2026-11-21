@@ -1,9 +1,11 @@
 # Fails a pull request that has no `built-on:*` label (`built-on:paperclip`
 # or `built-on:halonic`), so we can see which tool built each change. It
-# re-runs when a label is added or removed. It only reads the labels in the
-# event, so it needs no token and checks out nothing. In the merge queue
-# there is no pull request in the event, so it passes: the label was
-# already checked on the pull request.
+# re-runs when a label is added or removed. It reads the pull request's
+# current labels from the API, not the labels in the event: a re-run replays
+# the original event, so with the event's labels a re-run of a run that
+# failed before the label was added failed again (HAL-14946). It checks out
+# nothing. In the merge queue there is no pull request in the event, so it
+# passes: the label was already checked on the pull request.
 
 name: Built-on label
 
@@ -25,15 +27,21 @@ jobs:
     # MERGE_QUEUE_RUNNER: see the top of ci.yml (HAL-14115).
     runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 2
+    permissions:
+      pull-requests: read
     steps:
       - name: Require a built-on label
         env:
-          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = "merge_group" ]; then
             echo "Merge queue: the label was checked on the pull request."
             exit 0
           fi
+          LABELS=$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER" --jq '[.labels[].name] | join(",")')
+          echo "Labels: ${LABELS:-none}"
           case ",$LABELS," in
             *,built-on:paperclip,*|*,built-on:halonic,*)
               echo "Found a built-on label."

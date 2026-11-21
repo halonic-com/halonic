@@ -923,8 +923,9 @@ there shows on `main`, and the next daily check gives the area's owner a task
 **The built-on label.** Every pull request needs a `built-on:paperclip` or `built-on:halonic` label,
 which says which tool built the change. The `Built-on label` workflow
 (`built-on-label` check) fails a pull request without one and re-runs when a
-label is added or removed. In the merge queue it passes, because the label was
-checked on the pull request. An outside contributor can't add the label; a
+label is added or removed. It reads the pull request's current labels, so a
+re-run after the label was added passes. In the merge queue it passes, because
+the label was checked on the pull request. An outside contributor can't add the label; a
 maintainer does during review.
 
 `.github/workflows/scheduled.yml` runs the advisories, the lockfile and
