@@ -9,7 +9,7 @@ import { answer, play, replyWorkflow, startInput } from "./kernel-test-kit.test-
 
 /** The reply workflow, with these transitions on its `draft` step. */
 function draftOn(on: Transition[]): Workflow {
-  const draft = replyWorkflow.states.draft;
+  const draft = replyWorkflow.states["draft"];
   if (draft === undefined) throw new Error("The reply workflow has a draft step.");
   return { ...replyWorkflow, states: { ...replyWorkflow.states, draft: { ...draft, on } } };
 }
