@@ -243,11 +243,16 @@ test("each job container is capped and unprivileged (C5)", () => {
 
 test("the slot script fails closed and never reads job files as root on the VM", () => {
   const slot = read("vm/halonic-runner-slot.sh");
-  assert.ok(slot.includes(`stat -c '%u %a' "$KEY")" = "0 400"`), "App key must be checked as root 0400");
+  assert.ok(
+    slot.includes(`stat -c '%u %a' "$KEY")" = "0 400"`),
+    "App key must be checked as root 0400",
+  );
   assert.match(slot, /no dockremap range in \/etc\/subuid/);
   // The event file is job-controlled: read it inside the container, not through $WORK.
   assert.doesNotMatch(slot, /\$WORK\/_temp/);
-  assert.ok(slot.includes('docker exec "hci-$SLOT" cat "$JOB_WORK/_temp/_github_workflow/event.json"'));
+  assert.ok(
+    slot.includes('docker exec "hci-$SLOT" cat "$JOB_WORK/_temp/_github_workflow/event.json"'),
+  );
 });
 
 test("stopping the firewall unit never removes the CI VM's rules", () => {
