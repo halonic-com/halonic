@@ -1,4 +1,5 @@
 import type { Routine, RoutineTrigger } from "@halonicjs/format";
+import { KindedError } from "@halonicjs/std";
 import { type TriggerKind, triggerKind } from "./trigger-kind.ts";
 
 /** Every placeholder in a text, as `render` of `@halonicjs/workflow` finds them. */
@@ -18,6 +19,21 @@ export interface TriggerValueProblem {
   readonly path: readonly (string | number)[];
   /** What is wrong and what to use instead. */
   readonly message: string;
+}
+
+/**
+ * A routine start stopped by a placeholder its trigger has no value for. It is
+ * `invalid_input`, so a surface shows the message, the same one
+ * `halonic validate` gives under the code `unknown-trigger-value`
+ * (HAL-14883).
+ */
+export class UnknownTriggerValueError extends KindedError {
+  /** The validate code for the same problem. */
+  readonly code = "unknown-trigger-value";
+
+  constructor(problem: TriggerValueProblem) {
+    super("invalid_input", problem.message);
+  }
 }
 
 /**

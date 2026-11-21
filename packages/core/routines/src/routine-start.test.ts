@@ -81,6 +81,9 @@ verifies("routines.trigger-values", () => {
     expect(() => routineStart(routine, { at, lastRun })).toThrow(
       "{{trigger.date}} isn't a trigger value. Use {{trigger.at}} or {{trigger.lastRun}}.",
     );
+    expect(() => routineStart(routine, { at, lastRun })).toThrow(
+      expect.objectContaining({ kind: "invalid_input", code: "unknown-trigger-value" }),
+    );
   });
 
   it("starts nothing when a prompt would read an empty value", () => {
