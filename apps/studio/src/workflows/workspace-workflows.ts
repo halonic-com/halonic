@@ -7,12 +7,21 @@ import type {
   WorkflowHub,
   WorkflowListing,
   WorkflowRef,
+  WorkflowStepChange,
   WorkflowsHost,
   WorkflowTests,
   WorkflowView,
 } from "@halonicjs/studio-feature-workflows/api";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
-import { editYaml, readYaml, writeYamlFile } from "@halonicjs/yaml";
+import { editYaml, type YamlEdit } from "@halonicjs/yaml";
+import {
+  endedIn,
+  newWorkflowText,
+  testFile,
+  withTestCase,
+  workflowFolder,
+  workflowSuffix,
+} from "./workflow-files.ts";
 
 /** What {@link WorkspaceWorkflows} needs of the workspace's files, events and runs. */
 export interface WorkspaceWorkflowsParts {
@@ -54,31 +63,6 @@ export interface WorkspaceWorkflowsParts {
       input: Record<string, unknown>,
     ): Promise<{ readonly id: string }>;
   };
-}
-
-/** Where the workflow files of a hub are kept. */
-const workflowFolder = (hubId: string): string => `hubs/${hubId}/workflows`;
-
-const workflowSuffix = ".workflow.yaml";
-
-/** Where the test cases of a workflow are kept: next to it, in the hub's `workflows` folder. */
-const testFile = ({ hubId, id }: WorkflowRef): string => `${workflowFolder(hubId)}/${id}.test.yaml`;
-
-/** The text of a new workflow: a step `start` that leads to the final step `done`. */
-function newWorkflowText(id: string, name: string): string {
-  return [
-    `id: ${id}`,
-    // A JSON string is a YAML double-quoted one, so any name a person types is safe.
-    `name: ${JSON.stringify(name)}`,
-    "initial: start",
-    "states:",
-    "  start:",
-    "    on:",
-    "      - to: done",
-    "  done:",
-    "    type: final",
-    "",
-  ].join("\n");
 }
 
 /**
@@ -204,6 +188,10 @@ export class WorkspaceWorkflows implements WorkflowsHost {
         type: state.type,
         title: stepTitle(state.description),
         agent: state.agent,
+        description: state.description,
+        prompt: typeof state.input === "string" ? state.input : undefined,
+        promptIsData: state.input !== undefined && typeof state.input !== "string",
+        output: state.output,
       })),
       arrows: Object.entries(value.states).flatMap(([from, state]) =>
         state.on.map((arrow) => ({ from, to: arrow.to, label: arrow.label })),
@@ -285,34 +273,11 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     if (summary.hubId !== ref.hubId || summary.workflowId !== ref.id) {
       throw new Error(`The run ${runId} is not a run of the workflow "${ref.id}".`);
     }
-    if (summary.state === null) {
-      throw new KindedError(
-        "invalid_input",
-        `The run ${runId} ended in no step, so it can't say what to expect.`,
-      );
-    }
-    const testCase = { name, input: started.input, expect: { final: summary.state } };
+    const final = endedIn(runId, summary.state);
+    const testCase = { name, input: started.input, expect: { final } };
     const path = testFile(ref);
-    const text = await this.#parts.files.read(path);
-    if (text === null) {
-      this.#parts.files.change(`Saved a run as the test ${name}`, {
-        [path]: writeYamlFile({ version: 1, workflow: ref.id, cases: [testCase] }),
-      });
-      return;
-    }
-    const read = readYaml(text);
-    if (!read.ok) throw new Error(`The test file ${path} can't be read: ${read.error.message}`);
-    const cases = (read.value.data as { cases?: unknown } | null)?.cases;
-    if (!Array.isArray(cases)) throw new Error(`The test file ${path} has no list of cases.`);
-    if (cases.some((one) => (one as { name?: unknown } | null)?.name === name)) {
-      throw new Error(`The workflow already has a test case called "${name}".`);
-    }
-    const edited = editYaml(text, [
-      { kind: "insert", path: ["cases", cases.length], value: testCase },
-    ]);
-    if (!edited.ok)
-      throw new Error(`The test file ${path} can't be changed: ${edited.error.message}`);
-    this.#parts.files.change(`Saved a run as the test ${name}`, { [path]: edited.value.text });
+    const text = withTestCase(path, await this.#parts.files.read(path), ref.id, testCase);
+    this.#parts.files.change(`Saved a run as the test ${name}`, { [path]: text });
   }
 
   /**
@@ -358,6 +323,42 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     const text = await this.#parts.files.read(file.path);
     if (text === null) throw workflowGone();
     return { file, text };
+  }
+
+  /**
+   * Edits the step in the workflow's file in place, so comments and the order of its keys stay, as
+   * one undoable change: each field given is set, and an empty one is taken out of the file.
+   */
+  async changeStep(ref: WorkflowRef, stepId: string, change: WorkflowStepChange): Promise<void> {
+    const { file, text } = await this.#fileOf(ref);
+    const state = Object.hasOwn(file.value.states, stepId) ? file.value.states[stepId] : undefined;
+    if (state === undefined) {
+      throw new KindedError("not_found", `This workflow has no step "${stepId}" any more.`);
+    }
+    if (
+      change.prompt !== undefined &&
+      state.input !== undefined &&
+      typeof state.input !== "string"
+    ) {
+      throw new KindedError(
+        "invalid_input",
+        "This step's prompt is written as data in its file, so it can only be changed there.",
+      );
+    }
+    const edits: YamlEdit[] = [];
+    for (const [field, key] of stepFieldKeys) {
+      const next = change[field];
+      if (next === undefined) continue;
+      const path = ["states", stepId, key];
+      if (next.trim() !== "") edits.push({ kind: "set", path, value: next });
+      else if (state[key] !== undefined) edits.push({ kind: "delete", path });
+    }
+    if (edits.length === 0) return;
+    const edited = editYaml(text, edits);
+    if (!edited.ok) throw cantChange();
+    this.#parts.files.change(`Changed step ${stepId} of workflow ${file.value.name}`, {
+      [file.path]: edited.value.text,
+    });
   }
 
   subscribe(listener: () => void): () => void {
@@ -456,6 +457,13 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     };
   }
 }
+
+/** The key in the step's part of the file that each field of the docked step card changes. */
+const stepFieldKeys = [
+  ["description", "description"],
+  ["prompt", "input"],
+  ["output", "output"],
+] as const satisfies readonly (readonly [keyof WorkflowStepChange, string])[];
 
 /** What a read of a workflow the workspace doesn't have rejects with: Studio shows the item-gone state for it. */
 function workflowGone(): KindedError {

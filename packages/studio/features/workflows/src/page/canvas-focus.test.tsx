@@ -59,8 +59,11 @@ async function clickOn(card: HTMLElement) {
   });
 }
 
-async function zoomedToTwoHundred() {
-  const { host } = memoryHost([], [], [reply]);
+/** The page at 200 %; `canChangeSteps` docks a picked step's card. */
+async function zoomedToTwoHundred({ canChangeSteps = false } = {}) {
+  const { host } = memoryHost([], [], [reply], [], {
+    ...(canChangeSteps ? { changeStep: async () => {} } : {}),
+  });
   const page = await show(
     <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
   );
@@ -122,6 +125,47 @@ verifies("workflows.canvas.focus-in-view", () => {
     await clickOn(last);
 
     expect(document.activeElement).toBe(last);
+    expect(viewOf(page)).toEqual(before);
+  });
+});
+
+verifies("workflows.page.step-card", () => {
+  it("pans a picked step that's half out of view clear of its docked card, keeping the zoom", async () => {
+    const page = await zoomedToTwoHundred({ canChangeSteps: true });
+    const last = cards(page).at(-1);
+    if (last === undefined) throw new Error("no card");
+    expect(shownBox(page, last, false).bottom).toBeGreaterThan(CANVAS.bottom);
+
+    await act(async () => last.click());
+
+    expect(page.querySelector("aside")).not.toBeNull();
+    const box = shownBox(page, last, false);
+    expect(box.right).toBeLessThanOrEqual(CANVAS.right - 16);
+    expect(box.bottom).toBe(CANVAS.bottom - 16);
+    expect(viewOf(page).zoom).toBe(2);
+  });
+
+  it("doesn't move the view for a picked step that already shows", async () => {
+    const page = await zoomedToTwoHundred({ canChangeSteps: true });
+    const middle = cards(page)[1];
+    if (middle === undefined) throw new Error("no card");
+    const before = viewOf(page);
+
+    await act(async () => middle.click());
+
+    expect(page.querySelector("aside")).not.toBeNull();
+    expect(viewOf(page)).toEqual(before);
+  });
+
+  it("doesn't move the view when no card docks for the picked step", async () => {
+    const page = await zoomedToTwoHundred();
+    const last = cards(page).at(-1);
+    if (last === undefined) throw new Error("no card");
+    const before = viewOf(page);
+
+    await act(async () => last.click());
+
+    expect(page.querySelector("aside")).toBeNull();
     expect(viewOf(page)).toEqual(before);
   });
 });

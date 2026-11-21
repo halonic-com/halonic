@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-12620; Sofia's keyboard and screen-reader check on HAL-12584, row E2 (WCAG 2.4.11, 2.1.1)
 
-When a step card gets keyboard focus while part of it is out of the canvas's view, the workflows feature shall pan the canvas just enough that the whole card, its Start chip included, shows inside the canvas, 16 pixels clear of its edges and clear of the strip at the left edge where the zoom buttons sit, keeping the zoom; it shall not pan for a card that already shows, nor for a card the person clicks, and the canvas box itself shall never scroll.
+When a step card gets keyboard focus while part of it is out of the canvas's view, the workflows feature shall pan the canvas just enough that the whole card, its Start chip included, shows inside the canvas, 16 pixels clear of its edges and clear of the strip at the left edge where the zoom buttons sit, keeping the zoom; it shall not pan for a card that already shows, nor for a card the person clicks (once a click has docked the step's card, `workflows.page.step-card` pans it clear), and the canvas box itself shall never scroll.
 
 ## Examples
 

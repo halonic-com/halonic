@@ -1,10 +1,10 @@
 import { findSecretShape } from "@halonicjs/std";
 import { Field, Input, TextArea } from "@halonicjs/studio-kit";
+import { useAutoSaved, useReportNotSaved } from "@halonicjs/studio-shell";
 import { useState } from "react";
 import type { AgentChange, AgentSettings } from "../api.ts";
 import { configurationWords as words } from "./configuration-words.ts";
 import { OutputField } from "./output-field.tsx";
-import { useAutoSaved, useReportNotSaved } from "./use-auto-saved.ts";
 
 /** Props for {@link BehaviourPage}. */
 export interface BehaviourPageProps {

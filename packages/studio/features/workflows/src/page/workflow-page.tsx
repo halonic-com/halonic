@@ -8,10 +8,7 @@ import {
 } from "@halonicjs/studio-feature-runs/api";
 import {
   Button,
-  CloseIcon,
-  EmptyState,
   LetterTile,
-  SkeletonBar,
   TabList,
   TabPanel,
   usePresentation,
@@ -29,9 +26,10 @@ import { RunsView } from "../runs/runs-view.tsx";
 import { useRuns } from "../runs/use-runs.ts";
 import { useSaveAsTest } from "../runs/use-save-as-test.ts";
 import { useAnnounceDockedRun } from "../start/run-announcement.ts";
-import type { ShownRun } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
+import { StepEditDock, stepCardDocks } from "./docked-step-card.tsx";
+import { FlowView } from "./flow-view.tsx";
 import { goneState } from "./gone-state.tsx";
 import { firstTestsPick, firstView, panelClass } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
@@ -41,7 +39,6 @@ import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
 import { useRename } from "./use-rename.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
-import { type CanvasEdit, WorkflowCanvas } from "./workflow-canvas.tsx";
 import { WorkflowName } from "./workflow-name.tsx";
 import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
 import { type WorkflowView, workflowTabs } from "./workflow-tabs.ts";
@@ -65,6 +62,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       announceState={(key, text) => context.announcer.announceState(key, text)}
       announce={(line) => context.announcer.announce(line)}
       {...(openModels && { openModels })}
+      saving={context.saving}
       {...(context.runCommand && {
         openBudget: () => void context.runCommand?.(openBudgetCommand),
       })}
@@ -110,6 +108,7 @@ export function WorkflowScreen({
   testsAsked = 0,
   announceState,
   announce,
+  saving,
 }: WorkflowScreenProps) {
   // After a Try again reads, the workflow's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -169,6 +168,11 @@ export function WorkflowScreen({
   const needYou = runCount(runsRead.load, { hubId, id }, runs);
   const views = workflowTabs(errors, needYou);
   const shown = useShownRun(runsRead.load, { hubId, id }, runs, shownId);
+  // A card at the right narrows the canvas, which then keeps a picked step clear of it.
+  const docked = hasDockedCard(
+    { dock, host, shown, pickedStep: dockStep },
+    { host, workflow: load, pickedStep: dockStep, dock, runShown: shown !== undefined, phone },
+  );
   const strip = shown?.line;
   useAnnounceDockedRun(strip, typeof dock === "object", announceState);
   const { startRun } = host;
@@ -244,10 +248,7 @@ export function WorkflowScreen({
           ids={ids}
           tabs={views}
           selected={view}
-          className={panelClass(view, {
-            phone,
-            docked: dockHasCard({ dock, host, shown, pickedStep: dockStep }),
-          })}
+          className={panelClass(view, { phone, docked })}
         >
           {view === "configuration" && (
             <Configuration
@@ -307,6 +308,9 @@ export function WorkflowScreen({
               }}
               onSelectStep={setPickedStep}
               edit={canvasEdit}
+              pickedStep={pickedStep}
+              docked={docked}
+              onClearStep={() => setPickedStep(undefined)}
               kept={kept}
               onView={keep}
             />
@@ -335,98 +339,25 @@ export function WorkflowScreen({
           pickedStep={dockStep}
           onClosePickedStep={() => setPickedStep(undefined)}
         />
+        <StepEditDock
+          host={host}
+          workflow={load}
+          pickedStep={dockStep}
+          dock={dock}
+          runShown={shown !== undefined}
+          phone={phone}
+          saving={saving}
+          onClose={() => setPickedStep(undefined)}
+        />
       </div>
     </div>
   );
 }
 
-interface FlowViewProps {
-  readonly load: ReturnType<typeof useWorkflow>["load"];
-  readonly retry: () => void;
-  readonly hubId: string;
-  readonly id: string;
-  readonly name: string;
-  readonly openStep: string | undefined;
-  /** The shown run's strip and the step it failed in (D8); absent when no run is shown. */
-  readonly strip: ShownRun | undefined;
-  readonly onClearStrip: () => void;
-  readonly onSelectStep: (stepId: string) => void;
-  /** How the canvas's toolbar changes the workflow; absent where it can't. */
-  readonly edit: CanvasEdit | undefined;
-  readonly kept: { readonly of: string; readonly view: View } | undefined;
-  readonly onView: (next: View) => void;
-}
-
-/** The Flow tab's content: the canvas, a skeleton when the file is slow, or why it couldn't be read. */
-function FlowView({
-  load,
-  retry,
-  hubId,
-  id,
-  name,
-  openStep,
-  strip,
-  onClearStrip,
-  onSelectStep,
-  edit,
-  kept,
-  onView,
-}: FlowViewProps) {
-  const workflowKey = `${hubId}/${id}`;
-  return (
-    <>
-      {strip && (
-        <p className="flex items-center justify-between gap-3 border-b border-border px-6 py-2 text-small">
-          {strip.line}
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<CloseIcon />}
-            label={startWords.clearStrip}
-            onClick={onClearStrip}
-          />
-        </p>
-      )}
-      {load.kind === "ready" && load.value.id === id && load.value.hubId === hubId && (
-        <WorkflowCanvas
-          key={`${workflowKey}/${openStep}`}
-          workflow={load.value}
-          selectedStep={openStep}
-          failedStep={strip?.failedStep}
-          route={strip?.route}
-          marks={strip?.marks}
-          active={strip?.active}
-          saved={kept?.of === workflowKey ? kept.view : undefined}
-          onView={onView}
-          onSelectStep={onSelectStep}
-          edit={edit}
-        />
-      )}
-      {load.kind === "failed" && (
-        <EmptyState
-          tone="error"
-          title={pageWords.loadFailedTitle}
-          description={load.reason}
-          action={{ label: pageWords.tryAgain, onClick: retry, busy: load.retrying }}
-        />
-      )}
-      {load.kind === "loading" && load.skeleton && (
-        <div role="status" className="flex flex-1 flex-col gap-4 p-6">
-          <span className="sr-only">{pageWords.loading(name)}</span>
-          <div className="flex gap-6">
-            <SkeletonBar kind="value" />
-            <SkeletonBar kind="value" />
-          </div>
-          {load.slow && (
-            <p className="flex items-center gap-3 text-small text-fg-muted">
-              {pageWords.stillLoading}
-              <Button variant="secondary" size="sm" onClick={retry}>
-                {pageWords.tryAgain}
-              </Button>
-            </p>
-          )}
-        </div>
-      )}
-    </>
-  );
+/** Whether a card is docked at the right: the start form or a run's, or a picked step's own. */
+function hasDockedCard(
+  run: Parameters<typeof dockHasCard>[0],
+  step: Parameters<typeof stepCardDocks>[0],
+): boolean {
+  return dockHasCard(run) || stepCardDocks(step);
 }

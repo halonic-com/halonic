@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { SAVE_PAUSE_MS } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -14,7 +15,6 @@ import {
   typeIntoArea,
   unmount,
 } from "../test-support.tsx";
-import { SAVE_PAUSE_MS } from "./use-auto-saved.ts";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
 afterEach(() => {

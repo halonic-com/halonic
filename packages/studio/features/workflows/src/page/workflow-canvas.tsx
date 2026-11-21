@@ -48,6 +48,9 @@ export function WorkflowCanvas({
   onView,
   onSelectStep,
   edit,
+  picked,
+  docked = false,
+  onBackgroundClick,
 }: {
   readonly workflow: WorkflowView;
   /** The zoom and pan the canvas had when it was last shown; absent the first time. */
@@ -68,12 +71,30 @@ export function WorkflowCanvas({
   readonly onSelectStep?: ((stepId: string) => void) | undefined;
   /** How the toolbar changes the workflow; absent where it can't, so the canvas has no toolbar. */
   readonly edit?: CanvasEdit | undefined;
+  /**
+   * The step the page has picked. When it changes (the step's card closed), the selection follows;
+   * absent, the canvas keeps its own.
+   */
+  readonly picked?: string | undefined;
+  /** A card is docked at the right: a step picked while it is pans clear of it. */
+  readonly docked?: boolean | undefined;
+  /** A click on the background, not a drag: the page closes the picked step's card. */
+  readonly onBackgroundClick?: (() => void) | undefined;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number } | undefined>(undefined);
   const [view, setView] = useState<View>(saved ?? { zoom: 1, pan: { x: 0, y: 0 } });
   useEffect(() => onView?.(view), [view, onView]);
   const [selected, setSelected] = useState<string | undefined>(selectedStep);
+  // Only a change of the page's pick moves the selection, so a card a problem's link selected stays.
+  const lastPicked = useRef(picked);
+  useEffect(() => {
+    if (picked === lastPicked.current) return;
+    lastPicked.current = picked;
+    setSelected(picked);
+  }, [picked]);
+  // Where a press on the background started, to tell a click from a pan.
+  const pressedAt = useRef<{ x: number; y: number } | undefined>(undefined);
 
   const boxes = useMemo(
     () =>
@@ -133,15 +154,27 @@ export function WorkflowCanvas({
   }, []);
 
   const centre = () => ({ x: size().width / 2, y: size().height / 2 });
-  // A card reached with the keyboard pans into view, clear of the zoom buttons like a fit, so
-  // focus never lands out of sight (`workflows.canvas.focus-in-view`). A click doesn't pan: the
-  // card would move from under the pointer before the click lands.
+  // Where a card is shown when it's brought into view: clear of the zoom buttons, like a fit.
+  const room = () => {
+    const { width, height } = size();
+    return { x: ZOOM_GUTTER, y: 0, width: width - ZOOM_GUTTER, height };
+  };
+  // A card reached with the keyboard pans into view, so focus never lands out of sight
+  // (`workflows.canvas.focus-in-view`). A click doesn't pan: the card would move from under the
+  // pointer before the click lands.
   const showFocused = (event: React.FocusEvent<HTMLButtonElement>, card: Box) => {
     if (!event.currentTarget.matches(":focus-visible")) return;
-    const { width, height } = size();
-    const room = { x: ZOOM_GUTTER, y: 0, width: width - ZOOM_GUTTER, height };
-    setView((now) => panToShow(now, card, room));
+    setView((now) => panToShow(now, card, room()));
   };
+  // The page docks a picked step's card at the right, which narrows the canvas. Once the card has
+  // opened or been replaced, the click has landed, so the step pans just clear of it, at the same
+  // zoom (`workflows.page.step-card`).
+  useLayoutEffect(() => {
+    if (picked === undefined || !docked) return;
+    const box = boxes.get(picked);
+    if (box === undefined) return;
+    setView((now) => panToShow(now, cardExtent(box, picked === workflow.initial), room()));
+  }, [picked, docked]);
   return (
     // A group, not an application: the canvas has no keys of its own, so a screen reader stays in
     // its reading mode here (a11y check E3).
@@ -154,9 +187,12 @@ export function WorkflowCanvas({
       // focus moves to a card outside it, and that shift is lost to the zoom and pan.
       className="relative min-h-80 flex-1 touch-none overflow-clip bg-canvas-grid"
       onPointerDown={(event) => {
-        // A press on a card or a button is theirs: capturing it here would steal their click.
-        if ((event.target as Element).closest("button") !== null) return;
+        // A press on a card, a button or the controls around them (the toolbar's padding and
+        // divider, the gaps between the zoom buttons) is theirs: it is neither a pan nor a click
+        // on the background, and capturing it here would steal a button's click.
+        if ((event.target as Element).closest("button, [data-canvas-controls]") !== null) return;
         drag.current = { x: event.clientX, y: event.clientY };
+        pressedAt.current = { x: event.clientX, y: event.clientY };
         event.currentTarget.setPointerCapture?.(event.pointerId);
       }}
       onPointerMove={(event) => {
@@ -165,11 +201,17 @@ export function WorkflowCanvas({
         drag.current = { x: event.clientX, y: event.clientY };
         setView((now) => panBy(now, delta));
       }}
-      onPointerUp={() => {
+      onPointerUp={(event) => {
         drag.current = undefined;
+        const from = pressedAt.current;
+        pressedAt.current = undefined;
+        if (from === undefined || !isClick(from, event)) return;
+        setSelected(undefined);
+        onBackgroundClick?.();
       }}
       onPointerCancel={() => {
         drag.current = undefined;
+        pressedAt.current = undefined;
       }}
       onWheel={(event) => {
         const rect = event.currentTarget.getBoundingClientRect();
@@ -216,7 +258,7 @@ export function WorkflowCanvas({
           color={activeDot === undefined ? "" : DOT_VAR[activeDot.mark]}
         />
       </div>
-      <div className="absolute bottom-3 left-3 flex flex-col gap-1">
+      <div data-canvas-controls className="absolute bottom-3 left-3 flex flex-col gap-1">
         <Button
           variant="secondary"
           size="sm"
@@ -252,4 +294,12 @@ export interface CanvasEdit {
   ) => Promise<string | undefined>;
   /** Forgets the steps' places, so each takes the automatic one; resolves to whether it did. */
   readonly autoLayout: () => Promise<boolean>;
+}
+
+/** How far the pointer may move between press and release for a click, in px; further is a pan. */
+const CLICK_SLOP = 4;
+
+/** Whether a press and its release were a click, not a drag. */
+function isClick(from: { x: number; y: number }, to: { clientX: number; clientY: number }) {
+  return Math.hypot(to.clientX - from.x, to.clientY - from.y) <= CLICK_SLOP;
 }

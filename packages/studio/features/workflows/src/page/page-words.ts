@@ -23,8 +23,25 @@ export const pageWords = {
     label: "Flow tools",
     step: "Step",
     wait: "Wait",
+    /** What a screen reader hears for **Step** and **Wait**, which say what they do (C285 TB1). */
+    addStep: "Add step",
+    addWait: "Add wait",
     autoLayout: "Auto layout",
     couldntChange: (name: string) => `Couldn't change ${name}`,
+  },
+  /** The docked step card (flow-workflows 5.1, 5.2; microcopy 9.4). */
+  stepCard: {
+    title: (stepId: string) => `Step ${stepId}`,
+    breadcrumb: (workflowName: string, stepId: string) => `${workflowName} › ${stepId}`,
+    close: "Close step",
+    prompt: "Prompt",
+    promptEmpty: "The agent gets the run input.",
+    output: "Save output as",
+    outputHint: (name: string) => `Later steps can pick this as step ${name}.`,
+    description: "Description",
+    /** Save model 8.4: a key pasted into a field is not saved. */
+    looksLikeKey: "This looks like a key. Keep it as a secret instead?",
+    couldntSave: (stepId: string) => `Couldn't change step ${stepId}`,
   },
   noAgent: "No agent",
   /**

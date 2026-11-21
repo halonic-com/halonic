@@ -1,5 +1,6 @@
 import type { ShownRuns } from "@halonicjs/studio-feature-inbox/api";
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
+import type { SaveState } from "@halonicjs/studio-shell";
 import type { WorkflowsHost } from "../api.ts";
 import type { AnnounceState } from "../start/run-announcement.ts";
 
@@ -40,4 +41,6 @@ export interface WorkflowScreenProps {
   readonly announceState?: AnnounceState;
   /** Says a line to a screen reader (`announcer.announce`), for why the run card's Run again didn't start; without it nothing is said. */
   readonly announce?: (line: string) => void;
+  /** The window's save state, for the toolbar's "1 field not saved"; absent without a window. */
+  readonly saving?: Pick<SaveState, "setFieldsNotSaved"> | undefined;
 }

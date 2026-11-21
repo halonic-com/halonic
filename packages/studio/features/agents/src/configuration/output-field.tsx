@@ -1,9 +1,9 @@
 import { Field, type Tab, TabList, TabPanel, TextArea, useTabIds } from "@halonicjs/studio-kit";
+import { type AutoSaved, useAutoSaved, useReportNotSaved } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState } from "react";
 import type { AgentChange, AgentOutput } from "../api.ts";
 import { configurationWords as words } from "./configuration-words.ts";
 import { OptionChips } from "./option-chips.tsx";
-import { type AutoSaved, useAutoSaved, useReportNotSaved } from "./use-auto-saved.ts";
 
 type OutputKind = AgentOutput["type"];
 

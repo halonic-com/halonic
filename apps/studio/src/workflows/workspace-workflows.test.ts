@@ -177,8 +177,15 @@ verifies("studio.workspace-workflow-read", () => {
       name: "Reply",
       initial: "first",
       steps: [
-        { id: "first", type: "task", title: "Read the email", agent: "writer" },
-        { id: "done", type: "final", agent: undefined },
+        {
+          id: "first",
+          type: "task",
+          title: "Read the email",
+          agent: "writer",
+          description: "Read the email\n{{context.email}}\n",
+          promptIsData: false,
+        },
+        { id: "done", type: "final", agent: undefined, promptIsData: false },
       ],
       arrows: [{ from: "first", to: "done", label: "ok" }],
       layout: { done: { x: 5, y: 7 } },
