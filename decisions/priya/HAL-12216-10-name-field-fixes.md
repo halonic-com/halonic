@@ -3,6 +3,7 @@
 - Task: HAL-12216
 - Approval: C434 RN1 to RN3 (HAL-14607), decided by the designer on the approved screen (HAL-2282); Julian approves this note in review (HAL-14905)
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:873yAf9w2d5+z3MQFxiGA4+1HE/AM/4atsERZUcYioXR1jfvSbGct8NwKQJFsVijGkaal8LM+i1W4xg9uNn6Dg==
 
 ## What changes
 
