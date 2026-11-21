@@ -5,6 +5,7 @@ import { type CloseStack, createCloseStack } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
+import type { AgentsHost } from "../api.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { AgentScreen } from "../page/agent-page.tsx";
 import { buttonNamed, openDialogsInJsdom, show, unmount } from "../test-support.tsx";
@@ -61,10 +62,14 @@ const host = () =>
   });
 
 /** Opens the agent's page, which opens on Flow. */
-async function openFlow(id: string, closeStack: CloseStack = createCloseStack()) {
+async function openFlow(
+  id: string,
+  closeStack: CloseStack = createCloseStack(),
+  agents: AgentsHost = host(),
+) {
   return show(
     <ToastStoreProvider store={createToastStore()}>
-      <AgentScreen host={host()} hubId="acme" id={id} closeStack={closeStack} />
+      <AgentScreen host={agents} hubId="acme" id={id} closeStack={closeStack} />
     </ToastStoreProvider>,
   );
 }
@@ -174,5 +179,17 @@ verifies("agents.map.summary-drawer", () => {
     expect(drawerName(page)).toBe("Who it hands work to");
     await act(async () => void closeStack.escape());
     expect(drawer(page)).toBeNull();
+  });
+
+  it("closes when its side drops to three, with the focus on the side's first card", async () => {
+    const agents = host();
+    const page = await openFlow("triage", createCloseStack(), agents);
+    await act(async () => buttonNamed(page, "4 subagents")?.click());
+    expect(drawerName(page)).toBe("Who it hands work to");
+    await act(() =>
+      agents.update({ hubId: "acme", id: "triage" }, { subagents: ["writer", "checker", "filer"] }),
+    );
+    expect(drawer(page)).toBeNull();
+    expect(document.activeElement).toBe(buttonNamed(page, "Agent Writer"));
   });
 });
