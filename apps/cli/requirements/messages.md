@@ -61,10 +61,10 @@ The `halonic` command shall take every sentence it shows the user from the CLI's
   then it reads "bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.", and a reason code Halonic doesn't know gets the `other` line, never the check's own sentence (cli-output 3.8).
 - Given `halonic doctor` on a computer whose sandbox can't start,
   when its summary is made,
-  then it reads "1 problem. Agents set to run in a sandbox won't start until it's fixed." (cli-output 3.7).
+  then it reads "1 problem. Agents set to run in a sandbox won't start until the sandbox is fixed." (cli-output 3.7).
 - Given `halonic doctor` with a Models ✕ for Ollama and a Sandbox ✕,
   when its summary line is made,
-  then it reads "2 problems. Agents that use Ollama won't run until it answers. Agents set to run in a sandbox won't start until it's fixed." (cli-output 3.7).
+  then it reads "2 problems. Agents that use Ollama won't run until it answers. Agents set to run in a sandbox won't start until the sandbox is fixed." (cli-output 3.7).
 - Given the code of every command under `src/commands` and of `printError`,
   when its strings and template texts are read, comments left out,
   then none holds two words with a space between them: every sentence comes from `src/messages` (Liam on HAL-2194).

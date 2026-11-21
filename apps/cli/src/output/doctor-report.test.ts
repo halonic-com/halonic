@@ -98,7 +98,7 @@ verifies("cli.doctor-report", () => {
       "              More: https://docs.halonic.dev/security/sandbox/#bubblewrap (bubblewrap-missing)",
       "✓ Disk        48 GB free · Halonic uses 1.4 GB (run logs 1.1 GB)",
       "",
-      "1 problem. Agents set to run in a sandbox won't start until it's fixed.",
+      "1 problem. Agents set to run in a sandbox won't start until the sandbox is fixed.",
     ]);
   });
 
@@ -308,7 +308,7 @@ describe("doctorReportLines", () => {
     };
     const lines = printed(reportOf({ models, sandbox: bubblewrapMissing, disk: diskFree }));
     expect(lines.at(-1)).toBe(
-      "2 problems. Agents that use Ollama or LM Studio won't run until they answer. Agents set to run in a sandbox won't start until it's fixed.",
+      "2 problems. Agents that use Ollama or LM Studio won't run until they answer. Agents set to run in a sandbox won't start until the sandbox is fixed.",
     );
   });
 

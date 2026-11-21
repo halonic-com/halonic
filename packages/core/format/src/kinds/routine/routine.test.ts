@@ -62,10 +62,18 @@ verifies("format.routine-file", () => {
 
   it("refuses a run with neither a workflow nor an agent, and an unknown overlap", () => {
     const text = routine("trigger: { manual: true }", "run: { hub: billing }", "overlap: wait");
-    expect(summary(problemsOf("routine", text))).toEqual([
-      "run invalid_union 4",
-      "overlap invalid_value 5",
-    ]);
+    const problems = problemsOf("routine", text);
+    expect(summary(problems)).toEqual(["run invalid_union 4", "overlap invalid_value 5"]);
+    expect(problems[0]?.message).toBe(
+      "run needs a workflow, with its input, or an agent, with its prompt.",
+    );
+  });
+
+  it("refuses an agent given input at the run, saying it takes prompt", () => {
+    const run = "run: { agent: reporter, input: '{{trigger.body}}' }";
+    const problems = problemsOf("routine", routine("trigger: { manual: true }", run));
+    expect(summary(problems)).toEqual(["run invalid_union 4"]);
+    expect(problems[0]?.message).toBe("An agent routine takes prompt, not input.");
   });
 });
 

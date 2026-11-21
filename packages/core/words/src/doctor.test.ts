@@ -26,7 +26,7 @@ verifies("words.doctor", () => {
       "Anthropic: API key stored",
       "can't start on this computer",
       "48 GB free · Halonic uses 1.4 GB (run logs 1.1 GB)",
-      "1 problem. Agents set to run in a sandbox won't start until it's fixed.",
+      "1 problem. Agents set to run in a sandbox won't start until the sandbox is fixed.",
     ]);
   });
 
@@ -166,8 +166,8 @@ describe("doctor's sentences", () => {
     ]).toEqual([
       "1 problem. Agents that use Ollama won't run until it answers.",
       "1 problem. Agents that use Ollama or LM Studio won't run until they answer.",
-      "2 problems. Agents that use Ollama won't run until it answers. Agents set to run in a sandbox won't start until it's fixed.",
-      "1 problem. Agents set to run in a sandbox won't start until it's fixed. 1 warning.",
+      "2 problems. Agents that use Ollama won't run until it answers. Agents set to run in a sandbox won't start until the sandbox is fixed.",
+      "1 problem. Agents set to run in a sandbox won't start until the sandbox is fixed. 1 warning.",
       "No problems. 1 warning.",
     ]);
   });

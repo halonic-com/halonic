@@ -94,18 +94,46 @@ function connectorIssues(context: CheckContext): WorkspaceIssue[] {
     });
 }
 
-/** Why a connector isn't local, and the way out: `local: true` only for a program or an address. */
+/** The way out for a runner connector whose code may reach past this computer. */
+const keepOff = "set privacy.localOnly: false in workspace.yaml to use it";
+
+/**
+ * Why a connector isn't local, and the way out: `local: true` only for a
+ * program, an address, or code whose sheet keeps it on this computer and its
+ * network. A plugin or integration names its reason (HAL-15396), since "the
+ * local integration in integrations/notes isn't local" reads as a
+ * contradiction without one.
+ */
 function connectorMessage(connector: Connector, context: CheckContext): string {
   if (!runsInRunner(connector)) {
     return `Connector "${connector.id}" isn't local, and the workspace is local only: set local: true if it runs on this computer, ${turnOff}`;
   }
   const { sheetHosts } = context;
-  const hosts = sheetHosts === undefined ? [] : (sheetHostsOf(connector, sheetHosts) ?? []);
-  const outside = outsideHosts(hosts);
-  if (outside.length === 0) {
-    return `Connector "${connector.id}" isn't local, and the workspace is local only: set privacy.localOnly: false in workspace.yaml to use it`;
+  if (sheetHosts === undefined) {
+    return `Connector "${connector.id}" isn't local, and the workspace is local only: ${keepOff}`;
   }
-  return `${codeOf(connector)} reaches ${outside.map(shownHost).join(", ")}, so it isn't local: set privacy.localOnly: false in workspace.yaml to use it`;
+  const hosts = sheetHostsOf(connector, sheetHosts);
+  if (hosts === undefined) {
+    return `${noSheet(connector)}, so nothing says which hosts it reaches, and it isn't local: ${keepOff}`;
+  }
+  const outside = outsideHosts(hosts);
+  if (outside.length > 0) {
+    return `${codeOf(connector)} reaches ${outside.map(shownHost).join(", ")}, so it isn't local: ${keepOff}`;
+  }
+  if (connector.local === false) {
+    return `Connector "${connector.id}" says local: false, and the workspace is local only: ${keepOff}`;
+  }
+  return `${codeOf(connector)} reaches nothing outside this computer and its network, but connector "${connector.id}" doesn't say local: true: set local: true in its file, ${turnOff}`;
+}
+
+/** Why a runner connector's hosts are unknown: its plugin or its integration's sheet couldn't be read. */
+function noSheet({ transport }: Connector): string {
+  if ("plugin" in transport) {
+    return `The plugin ${transport.plugin.id} isn't installed here or can't be read`;
+  }
+  return "integration" in transport
+    ? `The sheet of the integration in integrations/${transport.integration.folder} can't be read`
+    : "Its code has no sheet";
 }
 
 /** Whose code a runner connector runs: "The plugin acme-orders" or "The integration in integrations/notes". */
