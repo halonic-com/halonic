@@ -135,6 +135,12 @@ export const configurationWords = {
       `${agent}'s file changed since you chose On this computer, so it runs in the sandbox until you confirm again.`,
     reviewAndConfirm: "Review and confirm",
     /**
+     * Microcopy 23.4, the warning's first line while the choice is on hold, and its link to
+     * Changes (checklist 3.8). The date the file changed joins it in a later pull request.
+     */
+    fileChanged: (agent: string) => `${agent}'s file changed.`,
+    seeWhatChanged: "See what changed ›",
+    /**
      * The chip in the agent page's header while On this computer is chosen, on hold or not
      * (checklist 3.8); a screen reader hears the spoken line instead, as with the run page's chip
      * (microcopy 23.1).
