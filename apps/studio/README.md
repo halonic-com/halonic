@@ -18,8 +18,11 @@ ones the CLI writes, through the shell's `run_*` and `fs_*` commands. While a
 page listens, it reads the runs again every 10 seconds and when the window
 comes to the front, and tells the page only when a run changed. The window
 runs an engine of its own in the page (`src/engine/engine-service.ts`) with
-models and secrets only: a workflow that needs a connector or an agent in a
-harness is refused as `unavailable`. An answer from the Inbox, such as Approve
+models and secrets, and, where the agent host runs, the run's `stdio`
+connectors and its harness agents (`studio.engine-service`). Where no agent
+host runs, a workflow that needs a connector or an agent in a harness is
+refused as `unavailable`, as is one whose agent lists a connector that isn't
+`stdio`. An answer from the Inbox, such as Approve
 or Reject, goes to that engine, and the runs are read again so the Inbox shows
 the run moved on (`studio.workspace-runs`).
 
