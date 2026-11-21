@@ -20,7 +20,10 @@ Any other refusal still shows "Couldn't load changes", the reason and Try again.
 `source-control.history-restore`'s "Not covered yet" line no longer says HAL-9756 will make
 History work for such a folder, since the decided state only shows the note. No test was weakened
 or skipped: the old test of the nested state now checks the new wording, and the app's test that
-let `folder_not_opened` through now uses another refusal (`timed_out`).
+let `folder_not_opened` through now uses another refusal (`timed_out`). The ten tests of
+`createVersion` moved unchanged from `workspace-changes.test.ts` to
+`workspace-create-version.test.ts`, because the file went over the 500-line limit, so fewer of
+the old file's tests run there.
 
 ## Why
 
@@ -31,3 +34,4 @@ The page showed an error with nothing the person could do about it (review of PR
 - source-control.changes-page
 - source-control.changes-phone
 - source-control.history-restore
+- apps/studio/src/changes/workspace-changes.test.ts
