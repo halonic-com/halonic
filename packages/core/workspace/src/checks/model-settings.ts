@@ -12,6 +12,12 @@ export interface ModelSetting {
   /** Such as `Agent "clerk"`. */
   readonly owner: string;
   readonly model: string;
+  /**
+   * Whether an agent's harness starts a program (any but `halonic`): that
+   * program gets the model as written, not through `providers/`
+   * (`engine.harness-model-alias`). False for every setting but an agent's.
+   */
+  readonly startsAProgram: boolean;
 }
 
 /** A file's model aliases, under its key. */
@@ -45,9 +51,10 @@ export function modelSettings(context: CheckContext): ModelSetting[] {
     path: (string | number)[],
     owner: string,
     model: string | undefined,
+    startsAProgram = false,
   ) => {
     if (model !== undefined) {
-      settings.push({ file, path, owner, model });
+      settings.push({ file, path, owner, model, startsAProgram });
     }
   };
   for (const workspace of context.filesOf("workspace")) {
@@ -59,9 +66,12 @@ export function modelSettings(context: CheckContext): ModelSetting[] {
   }
   for (const agent of context.filesOf("agent")) {
     const name = agent.value.id;
-    add(agent.path, ["model"], `Agent "${name}"`, agent.value.model);
+    const harness = agent.value.harness;
+    const program = harness !== undefined && harness !== "halonic";
+    add(agent.path, ["model"], `Agent "${name}"`, agent.value.model, program);
     for (const [methodId, method] of Object.entries(agent.value.methods)) {
-      add(agent.path, ["methods", methodId, "model"], `Method "${name}.${methodId}"`, method.model);
+      const path = ["methods", methodId, "model"];
+      add(agent.path, path, `Method "${name}.${methodId}"`, method.model, program);
     }
   }
   return settings;

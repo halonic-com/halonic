@@ -9,7 +9,8 @@ import { aliasFiles, modelSettings } from "./model-settings.ts";
  * have a file in `providers/`, as one in `models.yaml` must
  * ({@link checkModelsFile}): otherwise the run stops on it (HAL-14301, Nina's
  * C340 check). A provider whose file failed its own checks isn't unknown:
- * that file's error says what to fix.
+ * that file's error says what to fix. An agent whose harness starts a program
+ * passes its model to that program as written, so its provider isn't checked.
  */
 export function checkModelProviders(context: CheckContext): WorkspaceIssue[] {
   const providers = context.nameableIds("provider", null);
@@ -29,7 +30,7 @@ export function checkModelProviders(context: CheckContext): WorkspaceIssue[] {
         }),
     );
   const shorthands = modelSettings(context).flatMap((setting) => {
-    if (isAliasName(setting.model)) {
+    if (setting.startsAProgram || isAliasName(setting.model)) {
       return [];
     }
     const slash = setting.model.indexOf("/");

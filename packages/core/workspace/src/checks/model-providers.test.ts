@@ -59,6 +59,17 @@ verifies("workspace.references", () => {
       ]);
     });
 
+    it("isn't checked for an agent whose harness starts a program", async () => {
+      const errors = await errorsIn({
+        "agents/coder.agent.yaml":
+          "name: Coder\nharness: codex\nmodel: openai/gpt-5\nmethods:\n  fix:\n    instructions: Fix it.\n    model: openai/gpt-5-mini\n",
+        "agents/writer.agent.yaml": "name: Writer\nharness: halonic\nmodel: openai/gpt-5\n",
+      });
+      expect(errors).toEqual([
+        'agents/writer.agent.yaml model: Agent "writer" uses model "openai/gpt-5", whose provider "openai" the workspace doesn\'t have: add providers/openai.yaml, or use a provider the workspace has',
+      ]);
+    });
+
     it("isn't unknown when it is there, or when its file failed its own checks", async () => {
       const errors = await errorsIn({
         "providers/local.yaml": "id: local\ntype: carrier-pigeon\n",
