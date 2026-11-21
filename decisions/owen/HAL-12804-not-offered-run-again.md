@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12804, Sofia's flow decision (option 1); Liam signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:98LFkI3Gve0hwKfTQfDZIhvOJcey5qWinjbI/rW3Dn22pWFBZR4efyOe1QEcyajo7/1M/rLbEV8T3zukxcaJCg==
 
 A run refused with the sandbox reason `not-offered` (an agent set to run "on
 this computer") offered **Check again**. That button checks this computer's
