@@ -85,11 +85,20 @@ export function signInFacts(
  * signInPage("https://evil.example.net/login", facts); // throws
  */
 export function signInPage(address: string, facts: SignInFacts): string {
-  const url = URL.parse(address);
-  if (url === null || url.protocol !== "https:" || url.host !== facts.authorizeHost) {
+  const url = parsedAddress(address);
+  if (url === undefined || url.protocol !== "https:" || url.host !== facts.authorizeHost) {
     throw new NotTheSignInPageError(facts.authorizeHost);
   }
   return address;
+}
+
+/** The address as a URL, or `undefined` when it isn't one; `new URL` because Studio's oldest webviews have no `URL.parse`. */
+function parsedAddress(address: string): URL | undefined {
+  try {
+    return new URL(address);
+  } catch {
+    return undefined;
+  }
 }
 
 /** The host answered an address that isn't the approved sign-in page. It doesn't hold the address. */

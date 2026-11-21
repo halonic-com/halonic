@@ -133,3 +133,47 @@ verifies("secrets-tauri.key-origins", () => {
     });
   });
 });
+
+/** Runs `run` with `URL.parse` taken away, as on Studio's oldest webviews, then puts it back. */
+async function withoutUrlParse<T>(run: () => Promise<T>): Promise<T> {
+  const parse = Object.getOwnPropertyDescriptor(URL, "parse");
+  Reflect.deleteProperty(URL, "parse");
+  try {
+    expect("parse" in URL).toBe(false);
+    return await run();
+  } finally {
+    if (parse !== undefined) {
+      Object.defineProperty(URL, "parse", parse);
+    }
+  }
+}
+
+verifies("secrets-tauri.key-origins", () => {
+  describe("TauriKeyOrigins on a webview without URL.parse", () => {
+    it("reads the origins and the outcome the shell answers", async () => {
+      const origins = ["https://llm.example.com", "http://localhost:11434"];
+      const added = { result: "added", origin: "https://llm.example.com" };
+      await withoutUrlParse(async () => {
+        expect(await new TauriKeyOrigins(answering(origins)).allowedOrigins("acme-key")).toEqual(
+          origins,
+        );
+        expect(
+          await new TauriKeyOrigins(answering(added)).allowOrigin(
+            "acme-key",
+            "https://llm.example.com/v1",
+          ),
+        ).toEqual(added);
+      });
+    });
+
+    it.each([
+      ["an address with a path", ["https://llm.example.com/v1"]],
+      ["text that isn't an address", ["llm.example.com"]],
+    ])("still never reads %s as the key's origins", async (_, answer) => {
+      const reason = await withoutUrlParse(() =>
+        rejection(new TauriKeyOrigins(answering(answer)).allowedOrigins("acme-key")),
+      );
+      expect(reason).toBeInstanceOf(KeychainError);
+    });
+  });
+});
