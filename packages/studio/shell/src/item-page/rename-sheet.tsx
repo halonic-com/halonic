@@ -17,14 +17,15 @@ export interface RenameSheetProps {
   readonly name: string;
   /** Called with the new name, trimmed, when the user keeps one that differs. */
   readonly onRename: (name: string) => void;
-  /** Closes the sheet, after **Rename** or on Cancel. */
+  /** Closes the sheet, after **Rename** or on ✕. */
   readonly onClose: () => void;
 }
 
 /**
  * Renaming from an item page's ⋮ on a phone, where the page has no name field
- * (`shell.rename-sheet`): the name in one field and **Rename**. An empty name stays open and says
- * what is wrong; the same name closes and saves nothing.
+ * (`shell.rename-sheet`): the name in one field and **Rename**, in the kit's form sheet, which
+ * focuses its title and closes with ✕ on a phone. An empty name stays open and says what is
+ * wrong, read out even while Name has the focus; the same name closes and saves nothing.
  *
  * @example
  * {renaming && <RenameSheet kindName="routine" name={name} onRename={save} onClose={close} />}
@@ -50,9 +51,9 @@ export function RenameSheet({ kindName, name, onRename, onClose }: RenameSheetPr
       onConfirm={confirm}
       onCancel={onClose}
     >
-      <Field label={renameSheetWords.nameField} error={problem ?? null}>
+      {/* Enter keeps focus in Name, so its error is read there too (HAL-14489, NS1). */}
+      <Field label={renameSheetWords.nameField} error={problem ?? null} announceWhileFocused>
         <Input
-          autoFocus
           value={draft}
           onChange={(event) => {
             setProblem(undefined);

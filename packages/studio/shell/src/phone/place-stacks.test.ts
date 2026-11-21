@@ -9,6 +9,7 @@ import {
   openPhonePageIn,
   type PlaceStacks,
   phonePlaceOf,
+  retitlePhonePages,
   settingsLocation,
   showsBottomNavigation,
   startPlaceStacks,
@@ -184,6 +185,27 @@ verifies("shell.place-stacks", () => {
       const fromRuns = switchPhonePlace(on("inbox", card), "runs");
       const back = goBackOnPhone(fromRuns) as PlaceStacks;
       expect(back.place).toBe("home");
+    });
+  });
+  describe("a renamed item", () => {
+    const renamed = (location: TabLocation) =>
+      location.key === workflow.key ? "Support replies" : undefined;
+
+    it("names its pages again in every place, and leaves the rest as they are (PT1)", () => {
+      const more = on("more", workflows, workflow);
+      const stacks = openPhonePageIn(more, "runs", workflow);
+      const next = retitlePhonePages(stacks, renamed);
+      expect(currentPhonePage(next).location).toEqual({ ...workflow, title: "Support replies" });
+      expect(next.stacks.more.at(-1)?.location.title).toBe("Support replies");
+      expect(next.stacks.more.at(-2)).toBe(stacks.stacks.more.at(-2));
+      expect(next.stacks.home).toBe(stacks.stacks.home);
+      expect(next.place).toBe(stacks.place);
+    });
+
+    it("gives the same stacks back when no title changes", () => {
+      const stacks = on("more", workflows, workflow);
+      expect(retitlePhonePages(stacks, () => undefined)).toBe(stacks);
+      expect(retitlePhonePages(stacks, (location) => location.title)).toBe(stacks);
     });
   });
 });

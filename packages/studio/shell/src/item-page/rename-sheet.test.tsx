@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { FieldAnnounceProvider, PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -51,6 +52,42 @@ verifies("shell.rename-sheet", () => {
     expect(sheet.textContent).toContain("Give it a name.");
     expect(onRename).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("reads the empty name's error while Name keeps the focus, as Enter leaves it", async () => {
+    vi.useFakeTimers();
+    try {
+      const announced: string[] = [];
+      render(
+        <FieldAnnounceProvider announce={(text) => announced.push(text)}>
+          <RenameSheet kindName="collection" name="Claims" onRename={vi.fn()} onClose={vi.fn()} />
+        </FieldAnnounceProvider>,
+      );
+      const sheet = document.querySelector("dialog") as HTMLDialogElement;
+      const input = sheet.querySelector("input") as HTMLInputElement;
+      input.focus();
+      await typeInto(input, "");
+      await act(async () => sheet.querySelector("form")?.requestSubmit());
+      await act(async () => vi.advanceTimersToNextFrame());
+      expect(document.activeElement).toBe(input);
+      expect(announced).toEqual(["Name: Give it a name."]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("on a phone, focuses the sheet's title and closes with ✕, as the kit's form sheet does", () => {
+    render(
+      <PresentationProvider presentation="phone">
+        <RenameSheet kindName="routine" name="Daily digest" onRename={vi.fn()} onClose={vi.fn()} />
+      </PresentationProvider>,
+    );
+    const sheet = document.querySelector("dialog") as HTMLDialogElement;
+    expect(document.activeElement).toBe(sheet.querySelector("h2"));
+    const [close, rename, ...others] = sheet.querySelectorAll("button");
+    expect(close?.getAttribute("aria-label")).toBe("Close");
+    expect(rename?.textContent?.trim()).toMatch(/^Rename/);
+    expect(others).toEqual([]);
   });
 
   it("closes and renames nothing when the name is the same", async () => {

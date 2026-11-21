@@ -20,9 +20,9 @@ export interface PhoneTopBarProps {
 /**
  * The phone's top bar (component specs 15.1, VK T2-F11): at least 56px plus the top safe area, a
  * `border` line below, padding 0 4px with 4px between its parts, on the sticky layer. **Back** sits at the top left as
- * a 48px icon button, and only under the top of a place. The title follows it on one line, left
- * aligned so a long name gets the room, and ends in "…" when it doesn't fit; at the top of a place
- * it starts 16px in. The actions sit at the right.
+ * a 48px icon button, and only under the top of a place. The title follows it, left aligned so a
+ * long name gets the room; it wraps onto a second line and ends in "…" only after two. At the top
+ * of a place it starts 16px in. The actions sit at the right.
  *
  * The title isn't a heading: the page under it keeps its own `h1`, which the shell moves focus to
  * after a move, as on the desktop. The top bar is the window's `header`, so a screen reader can
@@ -37,7 +37,10 @@ export function PhoneTopBar({ title, onBack, actions }: PhoneTopBarProps) {
       {onBack === undefined ? null : (
         <Button variant="ghost" size="lg" icon={<BackIcon />} label="Back" onClick={onBack} />
       )}
-      <p className={`min-w-0 flex-1 truncate text-heading${onBack === undefined ? " ps-3" : ""}`}>
+      {/* 22px lines, so two of them fit the 56px bar with room above and below. */}
+      <p
+        className={`min-w-0 flex-1 line-clamp-2 wrap-break-word text-heading leading-5.5${onBack === undefined ? " ps-3" : ""}`}
+      >
         {title}
       </p>
       {actions === undefined ? null : <div className="flex shrink-0 gap-1">{actions}</div>}

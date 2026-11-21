@@ -94,7 +94,9 @@ verifies("shell.phone-bars", () => {
     const back = bar.querySelector('button[aria-label="Back"]') as HTMLButtonElement;
     expect(bar.firstElementChild).toBe(back);
     expect(bar.querySelector("p")?.textContent).toBe("Support reply");
-    expect(bar.querySelector("p")?.className).toContain("truncate");
+    // A long name wraps to a second line and is cut only after two (HAL-14489, PT2).
+    expect(bar.querySelector("p")?.className).toContain("line-clamp-2");
+    expect(bar.querySelector("p")?.className).not.toContain("truncate");
     // 56px below the notch, not 56px counting it (HAL-4676): the kit utility adds the two.
     expect(bar.className.split(" ")).toContain("phone-top-bar");
     expect(bar.className).not.toContain("min-h-phone-bar");

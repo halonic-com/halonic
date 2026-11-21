@@ -302,7 +302,7 @@ function StudioWindowBody(props: StudioWindowProps) {
   const places = useMemo(() => contributions.places.list(), [contributions]);
   const sidebarViews = useMemo(() => contributions.sidebarViews.list(), [contributions]);
   const kinds = useMemo(() => contributions.itemKinds.list(), [contributions]);
-  useClosingGoneItemTabs(tabs, kinds, contextFor);
+  useClosingGoneItemTabs(tabs, kinds, contextFor, phone.retitle);
   usePhoneBackButton(!desktop, shell.closeStack, phone);
   useOpenPageAcrossLayouts({
     desktop,

@@ -180,6 +180,39 @@ export function goBackOnPhone(stacks: PlaceStacks): PlaceStacks | undefined {
   return stacks.place === "home" ? undefined : { ...stacks, place: "home" };
 }
 
+/**
+ * Gives every page, in every place's stack, the title `titleOf` gives its place now, where that
+ * differs, as the desktop renames an item's tabs after a rename (HAL-14489, PT1). `titleOf`
+ * returns `undefined` for a place it doesn't name. Nothing else moves, and when no title changes
+ * the same stacks come back.
+ */
+export function retitlePhonePages(
+  stacks: PlaceStacks,
+  titleOf: (location: TabLocation) => string | undefined,
+): PlaceStacks {
+  let changed = false;
+  const retitle = (pages: readonly PhonePage[]): readonly PhonePage[] => {
+    let pagesChanged = false;
+    const next = pages.map((page) => {
+      const title = titleOf(page.location);
+      if (title === undefined || title === page.location.title) {
+        return page;
+      }
+      pagesChanged = true;
+      return { ...page, location: { ...page.location, title } };
+    });
+    changed ||= pagesChanged;
+    return pagesChanged ? next : pages;
+  };
+  const next = {
+    home: retitle(stacks.stacks.home),
+    inbox: retitle(stacks.stacks.inbox),
+    runs: retitle(stacks.stacks.runs),
+    more: retitle(stacks.stacks.more),
+  };
+  return changed ? { ...stacks, stacks: next } : stacks;
+}
+
 function openSidebarPlace(stacks: PlaceStacks, place: SidebarPlace): PlaceStacks {
   const phonePlace = phonePlaceOf(place);
   if (phonePlace === "more") {

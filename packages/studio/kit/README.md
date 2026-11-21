@@ -1873,6 +1873,8 @@ scrolling row.
 - An `unavailable` toggle stays focusable, keeps its state in `fg-disabled`, ignores presses and
   points at the `id` of the visible hint that says why.
 - With one hub, the feature hides the hub filter; the kit doesn't decide that.
+- The row has 16px sides of its own. On a page whose padding already lines up its title and
+  content, pass `flush` so the chips start where they do (the collection page).
 
 - A **picker chip** ("Hub: All hubs ⌄") goes in a row with other filters, on both sizes: Runs, and
   Search's In and Hub. Picker chips come before the on/off chips. With nothing picked it's the off
