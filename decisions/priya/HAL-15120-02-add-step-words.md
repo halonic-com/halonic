@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-15120 (C544 finding 10 in Iris's flow check HAL-15101; a small wording change on an approved screen, decided by the team under HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jWCOb3IOb0aYbFo95ijX+L4sUTC3a6OLQtqJCM/a1bFx+xIxrUe9SLvAC+YE3/jLYPlFRV+TvjwoBqXtMDEhAQ==
 
 The docked step card's title was "Step <id>", so a step added from the toolbar read "Step step-1", the doubled word #4382 meant to fix. The card is now titled with the step's name as its card on the canvas shows it: its title, else its id ("step-1", "write", "Writes the answer"). The breadcrumb under it keeps "<workflow> › <id>".
 
