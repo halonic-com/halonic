@@ -42,6 +42,12 @@ so this works once HAL-13862 (#4086) is merged and does nothing before.
 No test was weakened or removed. New cases cover both banners, the parallel branch's agent, a
 log without an agent, a cause without all its figures, and the phone sentence.
 
+`failure-banner.test.ts` had grown past the 500-line limit with them, so the known-cause cases
+(full disk, stopped engine, off-option answer, long socket path) moved unchanged to
+`failure-banner-known-causes.test.ts`, and the setup both files share to
+`failure-banner.test-helper.ts`. The package runs the same 522 tests (32 in that file instead of 40).
+
 ## Covers
 
 - runs.run-view.failure-banners
+- packages/studio/features/runs/src/run-view/failure-banner.test.ts
