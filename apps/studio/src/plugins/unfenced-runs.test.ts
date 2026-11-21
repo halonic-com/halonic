@@ -93,6 +93,36 @@ verifies("studio.desktop-unfenced-runs", () => {
       await taking;
     });
 
+    it("lets a Take back wait for every yes already sent, not only the latest", async () => {
+      const calls: string[] = [];
+      const first = later<{ reason: string; allowedAt: string } | null>();
+      const second = later<{ reason: string; allowedAt: string } | null>();
+      const answers = [first, second];
+      const unfenced = desktopUnfencedRuns({
+        status: async () => ({ run: "fenced" }),
+        allow: (reason) => {
+          calls.push(`allow ${reason}`);
+          return (answers.shift() ?? first).promise;
+        },
+        takeBack: async () => {
+          calls.push("take back");
+        },
+      });
+
+      const firstYes = unfenced.allow("windows");
+      const secondYes = unfenced.allow("windows");
+      const taking = unfenced.takeBack();
+      second.settle({ reason: "windows", allowedAt: "2026-11-19T10:00:00Z" });
+      await secondYes;
+      await settle();
+      expect(calls).toEqual(["allow windows", "allow windows"]);
+
+      first.settle({ reason: "windows", allowedAt: "2026-11-19T10:00:00Z" });
+      await firstYes;
+      await taking;
+      expect(calls).toEqual(["allow windows", "allow windows", "take back"]);
+    });
+
     it("sends the yes again once the Take back has ended", async () => {
       const { routes, calls, takeBack, allow } = acmeRoutes();
       const unfenced = desktopUnfencedRuns(routes);
