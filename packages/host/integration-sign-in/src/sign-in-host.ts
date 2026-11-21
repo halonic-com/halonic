@@ -7,6 +7,7 @@ import {
   type SignInSource,
 } from "./integration-sign-ins.ts";
 import { createSignInFlow, type SignInFlow, type SignInOutcome } from "./sign-in-flow.ts";
+import { signOutSavedSignIns } from "./sign-out-saved.ts";
 
 /**
  * One integration the host runs sign-ins for. `read` is the one source of its
@@ -90,9 +91,12 @@ export interface SignInHost {
    * revoked at the address the person approved, where there is one, and its
    * grant is removed, also when the revoke fails. Then its parts are
    * forgotten. Removing a plugin's trust or the plugin calls it, so a plugin
-   * added later under the same id finds itself signed out.
+   * added later under the same id finds itself signed out. When the host runs
+   * no sign-ins for the integration, its saved grants are still signed out,
+   * with no client secret, since another host on the profile may have saved
+   * them.
    *
-   * @returns each sign-in signed out and how; none when the host runs no sign-ins for the integration, which then has no grant from it
+   * @returns each sign-in signed out and how; none when the integration has no saved grant
    */
   signOutAll(name: string): Promise<readonly SignedOutSignIn[]>;
   /**
@@ -154,7 +158,7 @@ export function createSignInHost(settings: SignInHostSettings): SignInHost {
 
   async function signOutAll(name: string): Promise<SignedOutSignIn[]> {
     const parts = integration(name);
-    if (parts === undefined) return [];
+    if (parts === undefined) return await signOutWithoutParts(name, settings);
     try {
       const signedOut: SignedOutSignIn[] = [];
       // One after the other, through the parts, so each waits for its refresh in flight.
@@ -176,6 +180,31 @@ export function createSignInHost(settings: SignInHostSettings): SignInHost {
   }
 
   return { integration, signOutAll, forget, handleCallback };
+}
+
+/** No client secret can be read without the integration's picks, so a revoke that needs one isn't sent. */
+const noSecrets: Secrets = { get: async () => null };
+
+/**
+ * Signs out the saved sign-ins of an integration the host runs no sign-ins
+ * for, such as a plugin in a host that can't load plugins. Another host on
+ * the same profile may have saved its grants, so they are found and removed
+ * all the same. Without parts no refresh of them runs here, and without the
+ * integration's picks no client secret can be read: a revoke goes out only
+ * for a sign-in that needs none.
+ */
+async function signOutWithoutParts(
+  name: string,
+  settings: SignInHostSettings,
+): Promise<SignedOutSignIn[]> {
+  return await signOutSavedSignIns({
+    integration: name,
+    signIns: await settings.savedSignIns(name),
+    grants: settings.grants,
+    http: settings.http,
+    secrets: noSecrets,
+    requestSignal: settings.requestSignal,
+  });
 }
 
 function buildParts(

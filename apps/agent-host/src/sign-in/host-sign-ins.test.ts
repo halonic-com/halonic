@@ -92,6 +92,28 @@ describe("openHostSignIns", () => {
     ]);
   });
 
+  it("signs out a grant another host start saved, also when this one runs no plugins, as a single-executable host", async () => {
+    const server = rig.createFakeOAuthServer({ clock: { now: () => new Date() } });
+    const first = opened(server);
+    const started = await first.integration("example")?.flow.start(rig.signInName, 4321);
+    if (started?.kind !== "started") throw new Error("the sign-in didn't start");
+    await first.handleCallback(new Request(server.approve(started.authorizeUrl)));
+
+    const withoutPlugins = openHostSignIns({
+      profile,
+      env: { HALONIC_SECRET_TOKEN_KEY: tokenKey },
+      integration: () => undefined,
+      ownPorts: () => [],
+      http: server.http,
+    });
+    expect(await withoutPlugins.signOutAll("example")).toEqual([
+      { signIn: rig.signInName, result: { kind: "signedOut", revoke: "notConfirmed" } },
+    ]);
+    expect(await opened(server).integration("example")?.status()).toEqual([
+      { signIn: rig.signInName, state: "signedOut" },
+    ]);
+  });
+
   it("creates nothing in the profile until a sign-in saves its grant", async () => {
     const server = rig.createFakeOAuthServer({ clock: { now: () => new Date() } });
     expect(await opened(server).integration("example")?.status()).toEqual([
