@@ -3,6 +3,7 @@
 - Task: HAL-15080
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15080 (found in check C540 #2 on HAL-15074; R13's words, which the board approved on HAL-1949, said on the command line, so a team decision under the HAL-2282 rule; Sofia confirms the words on the task; Liam's code review signs this note)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:s/U7xO2765682sgXbuG7qYM2ea35boAinKi/xNaYeHfChOvVMmUYN1tvZWkI2OQmXEcj9tiIb9oJsszuP4ppAg==
 
 ## What changes
 
