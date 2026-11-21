@@ -58,6 +58,13 @@ verifies("kit.status-chip", () => {
     expect(renderChip({ tone, children: "State" }).className).toContain(look);
   });
 
+  it("keeps its words on one line, but wraps them inside its edge when its column is narrower", () => {
+    // HAL-14005: at 400% zoom "2 needs you" was cut to "2 needs yo" in a 75px column.
+    const { className } = renderChip({ tone: "warning", dot: true, children: "2 needs you" });
+    expect(className).toContain("w-max max-w-full whitespace-normal");
+    expect(className).not.toContain("whitespace-nowrap");
+  });
+
   it("carries a see-through edge, in its own colour for more contrast", () => {
     const { className } = renderChip({ tone: "running", children: "Running" });
     expect(className).toContain("border border-transparent");

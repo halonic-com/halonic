@@ -80,6 +80,15 @@ const shapeClasses = {
 } as const;
 
 /**
+ * The chip's width: its words on one line, but never wider than the column it sits in. A chip
+ * wider than its column wraps its words inside its edge, never cut: at 400% zoom a phone row's
+ * "2 needs you" is 89px in a 75px column (HAL-14005). It wraps even in a line that cuts its own
+ * text, such as a list row's line under the name. Being as wide as its words, it still asks a
+ * table or a grid for its one-line width, so a column doesn't wrap it to make room for others.
+ */
+const widthClasses = "w-max max-w-full whitespace-normal";
+
+/**
  * The state of an item, in a row, a card header or a panel. Not interactive: a thing you can click
  * is a Button or a row, never a chip.
  *
@@ -92,7 +101,8 @@ const shapeClasses = {
 export function StatusChip(props: StatusChipProps) {
   const { children, tone = "neutral", dot = false, shape = "chip" } = props;
   const classes = [
-    "inline-flex min-h-5 shrink-0 items-center gap-1 whitespace-nowrap text-caption",
+    "inline-flex min-h-5 shrink-0 items-center gap-1 text-caption",
+    widthClasses,
     toneClasses[tone],
     edgeClasses(tone),
     shapeClasses[shape],
