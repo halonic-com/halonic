@@ -5,9 +5,15 @@ import { createToastStore } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { EngineNotAnswering, type RoutinesHost } from "../api.ts";
-import { runRoutineNow } from "./run-now.ts";
+import { type RunNowRoutine, runRoutineNow } from "./run-now.ts";
 
-const daily = { hubId: "acme", id: "daily", name: "Daily", targetName: "Support reply" };
+const daily = {
+  hubId: "acme",
+  id: "daily",
+  name: "Daily",
+  target: { kind: "workflow", hubId: "acme", id: "support-reply", input: "{}" },
+  targetName: "Support reply",
+} satisfies RunNowRoutine;
 
 /** The engine lock's refusal, as the window's `engine-lock.ts` words it. */
 function lockRefusal(): KindedError {

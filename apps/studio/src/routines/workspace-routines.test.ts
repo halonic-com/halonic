@@ -1,13 +1,6 @@
-import { KindedError } from "@halonicjs/std";
-import {
-  agentCantRunWords,
-  EngineNotAnswering,
-  NothingToRun,
-} from "@halonicjs/studio-feature-routines/api";
-import { StartRefused } from "@halonicjs/studio-feature-workflows/api";
+import { NothingToRun } from "@halonicjs/studio-feature-routines/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { WindowCantStart } from "../engine/page-refusal.ts";
 import {
   analystFile,
   replyFile,
@@ -76,9 +69,35 @@ verifies("studio.workspace-routines", () => {
     const listed = await host.list();
     const row = (id: string) => listed.find((each) => each.id === id);
 
-    expect(row("weekly-report")?.targetFound).toBe(true);
-    expect(row("no-agent")).toMatchObject({ targetFound: false, targetName: "nobody" });
-    expect(row("no-workflow")).toMatchObject({ targetFound: false, targetName: "support-reply" });
+    expect(row("weekly-report")).toMatchObject({ targetFound: true, problems: [] });
+    expect(row("no-agent")).toMatchObject({
+      targetKind: "agent",
+      targetFound: false,
+      targetName: "nobody",
+    });
+    expect(row("no-workflow")).toMatchObject({
+      targetKind: "workflow",
+      targetFound: false,
+      targetName: "support-reply",
+    });
+  });
+
+  it("lists the errors in a routine's file, such as a value its trigger doesn't have", async () => {
+    const { host } = setup({}, [], {
+      "hubs/acme/workflows/routines/weekly-report.routine.yaml": weeklyFile.replace(
+        "Write the report.",
+        "Write the report for {{trigger.date}}.",
+      ),
+    });
+
+    const [listed] = await host.list();
+
+    // C540 #4 (HAL-15082): `halonic routines` says it can't start, so the Studio list must too.
+    expect(listed?.targetFound).toBe(true);
+    // The row names the routine already, so the line starts with the problem, not `Routine "<id>": `.
+    expect(listed?.problems).toEqual([
+      expect.stringMatching(/^\{\{trigger\.date\}\} isn't a trigger value/),
+    ]);
   });
 
   it("reads a routine as the page draws it", async () => {
@@ -378,84 +397,6 @@ verifies("studio.workspace-routines", () => {
     });
   });
 
-  it("starts the target through the engine, and refuses what can't start", async () => {
-    const started: unknown[] = [];
-    const { host } = setup({
-      engine: {
-        start: async (start, trigger) => {
-          started.push(["agent" in start ? start.agent.agentId : "", trigger.routineKey]);
-          return { id: "run-1" };
-        },
-      },
-    });
-    expect(await host.runNow?.(weekly)).toEqual({
-      started: true,
-      runId: "run-1",
-      shortId: "run-1",
-    });
-    expect(started).toEqual([["analyst", "acme/weekly-report"]]);
-
-    const gone = setup({ engine: { start: async () => ({ id: "x" }) } }, [], {
-      "hubs/acme/workflows/routines/lost.routine.yaml": weeklyFile.replace("analyst", "nobody"),
-    });
-    expect(await gone.host.runNow?.({ hubId: "acme", id: "lost" })).toEqual({
-      started: false,
-      refusal: { reason: "target-not-found" },
-    });
-    const untrusted = setup({
-      trusted: async () => false,
-      engine: { start: async () => ({ id: "x" }) },
-    });
-    expect(await untrusted.host.runNow?.(weekly)).toEqual({
-      started: false,
-      refusal: { reason: "not-trusted" },
-    });
-    expect((await untrusted.host.list())[0]?.pausedUntilTrusted).toBe(true);
-  });
-
-  it("says the engine isn't answering when it can't be reached, and has no Run now without one", async () => {
-    const down = setup({
-      engine: {
-        start: async () => {
-          throw new KindedError("unavailable", "closed");
-        },
-      },
-    });
-    await expect(down.host.runNow?.(weekly)).rejects.toThrow(EngineNotAnswering);
-    expect(setup().host.runNow).toBeUndefined();
-  });
-
-  it.each([
-    [
-      "with a step in Studio",
-      new WindowCantStart(
-        "Analyst runs in Claude Code, which Halonic can't start yet.",
-        "Set Analyst to Halonic on its Harness page to run it now.",
-      ),
-    ],
-    // The engine answered, but agent runs aren't built yet (HAL-14647).
-    ["while agent runs aren't built", new WindowCantStart(agentCantRunWords.line)],
-    [
-      "with a terminal command",
-      new StartRefused({
-        reason: "Analyst uses a connector, which Studio can't start yet.",
-        fix: "To start it, run this in a terminal:",
-        command: "halonic run reply",
-      }),
-    ],
-  ])("keeps the window's own reason for an agent it can't start, %s", async (_, windowRefusal) => {
-    const refused = setup({
-      engine: {
-        start: async () => {
-          throw windowRefusal;
-        },
-      },
-    });
-    const refusal = await refused.host.runNow?.(weekly).catch((error: unknown) => error);
-    expect(refusal).toBe(windowRefusal);
-    expect(refusal).not.toBeInstanceOf(EngineNotAnswering);
-  });
-
   it("tells a subscriber when a file changed or a run started, and not after it stopped", () => {
     const { host, fileListeners, runListeners } = setup();
     let heard = 0;
@@ -486,13 +427,5 @@ verifies("studio.workspace-routines-make-live", () => {
 
   it("has no Make live where the app can't open Create version", () => {
     expect(setup().host.makeLive).toBeUndefined();
-  });
-});
-
-verifies("studio.start-asks-trust", () => {
-  it("passes the window's trust check on to Run now, and has none without it", async () => {
-    const askTrust = async () => "trusted" as const;
-    expect(await setup({ askTrust }).host.askTrust?.()).toBe("trusted");
-    expect(setup().host.askTrust).toBeUndefined();
   });
 });

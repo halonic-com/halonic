@@ -48,11 +48,20 @@ export interface RoutineListing extends RoutineRef {
   readonly targetName: string;
   /** ISO time it next starts on its own; absent when it is off or its trigger isn't a clock. */
   readonly nextRun?: string | undefined;
+  /** Whether it starts a workflow or an agent, so the row can say which to pick instead. */
+  readonly targetKind: RoutineTarget["kind"];
   /**
    * Whether the workflow or agent it starts is in the workspace. When it isn't, the routine can't
-   * start, so the row shows "Can't start" and no next time.
+   * start, so the row shows "Can't start", why, and no next time.
    */
   readonly targetFound: boolean;
+  /**
+   * The errors the workspace's checks found in its file, as `halonic validate` gives them but
+   * without the `Routine "<id>": ` that starts each, since the row names the routine already. Any
+   * one means it can't start, as `halonic routines` says, so the row shows "Can't start" and the
+   * first (HAL-15082).
+   */
+  readonly problems: readonly string[];
   /** Held for a Google sign-in, which the row shows as "Needs sign-in again". */
   readonly needsSignIn: boolean;
   /** Runs of this routine that wait for a person, which the row shows as "Needs you". */

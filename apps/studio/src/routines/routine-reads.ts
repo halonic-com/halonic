@@ -147,6 +147,23 @@ export function targetFound(workspace: LoadedWorkspace, target: RoutineTarget): 
 }
 
 /**
+ * The errors the workspace's checks found in a routine's file, in `halonic validate`'s words. Any
+ * one means the routine can't start, as `halonic routines` counts them (HAL-15082).
+ *
+ * The checks start each message with `Routine "<id>": `. The row already names the routine and cuts
+ * its line to one, so the prefix goes and the line starts with the problem; otherwise the fix at the
+ * end is what a narrow window cuts off.
+ */
+export function errorsOf(workspace: LoadedWorkspace, file: PlacedFile): readonly string[] {
+  const prefix = `Routine "${idOf(file)}": `;
+  return workspace.issues
+    .filter((issue) => issue.file === file.path && issue.severity === "error")
+    .map((issue) =>
+      issue.message.startsWith(prefix) ? issue.message.slice(prefix.length) : issue.message,
+    );
+}
+
+/**
  * Whether what a routine starts runs an agent in a program of its own (Claude Code or Codex), which
  * needs the sandbox: any agent of the workflow and the workflows it starts.
  *

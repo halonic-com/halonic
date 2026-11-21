@@ -78,7 +78,7 @@ verifies("routines.list.rows-and-states", () => {
     expect(chips("E")).not.toMatch(/Off|Needs|Paused/);
   });
 
-  it("shows Can't start, says why to screen readers and shows no time when what a routine starts isn't there", async () => {
+  it("shows Can't start, says why and what to do, and shows no time when what a routine starts isn't there", async () => {
     const rows = [
       listing("acme", "morning", "Morning replies", {
         summary: "Daily at 08:00 → support-reply",
@@ -91,22 +91,33 @@ verifies("routines.list.rows-and-states", () => {
     ];
     const page = await show(<RoutinesView host={memoryHost(hubs, rows).host} />);
     const row = rowOf(page, "Morning replies");
-    const chip = [...row.querySelectorAll("span")].find((span) =>
-      span.className.includes("text-danger"),
-    );
 
-    // One text for screen readers, so Chromium can't put a space before its colon (C538-4).
-    expect(chip?.querySelector(".sr-only")?.textContent).toBe(
-      "Can't start: support-reply isn't in this workspace",
+    // C540 #4 (HAL-15082): the reason was for screen readers only; it is the row's line now.
+    expect(row.textContent).toContain(
+      "support-reply isn't in this workspace. Pick another workflow.",
     );
-    expect(chip?.querySelector('[aria-hidden="true"]')?.textContent).toBe("Can't start");
-    expect(chip?.childNodes).toHaveLength(2);
-    expect(row.textContent).toContain("Can't start: support-reply isn't in this workspace");
+    expect(row.textContent).toContain("Can't start");
+    expect(row.textContent).not.toContain("Daily at 08:00");
     expect(row.textContent).not.toContain("next ");
     expect(rowOf(page, "Weekend").textContent).toContain("Can't start");
     expect(rowOf(page, "Weekend").textContent).not.toMatch(/Off|Needs you/);
     expect(rowOf(page, "Untrusted").textContent).toContain("Can't start");
     expect(rowOf(page, "Untrusted").textContent).not.toContain("Paused until trusted");
+  });
+
+  it("shows Can't start, the first error and no time for a routine whose file has errors", async () => {
+    // The host gives `halonic validate`'s message without its `Routine "<id>": ` prefix.
+    const problem = "{{trigger.date}} isn't a trigger value. Use {{trigger.at}}.";
+    const rows = [
+      listing("acme", "monday", "Monday note", { problems: [problem], nextRun: tomorrow }),
+    ];
+    const page = await show(<RoutinesView host={memoryHost(hubs, rows).host} />);
+    const row = rowOf(page, "Monday note");
+
+    // C540 #4 (HAL-15082): `halonic routines` said it can't start; the list showed a next time.
+    expect(row.textContent).toContain("Can't start");
+    expect(row.textContent).toContain(problem);
+    expect(row.textContent).not.toContain("next ");
   });
 
   it("shows only the empty state when there are no routines", async () => {

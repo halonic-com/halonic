@@ -435,7 +435,11 @@ verifies("routines.page.run-now", () => {
     const refusals: [RunNowRefusal, string][] = [
       [{ reason: "target-never-live" }, "Not started: Briefing isn't live yet."],
       [{ reason: "target-in-trash" }, "Not started: Briefing was deleted."],
-      [{ reason: "target-not-found" }, "Not started: Briefing isn't in this hub any more."],
+      // The sentence the list row and the Starts card give too (HAL-15082).
+      [
+        { reason: "target-not-found" },
+        "Not started: briefing isn't in this workspace. Pick another workflow.",
+      ],
       [{ reason: "not-trusted" }, "Not started: Daily isn't trusted yet."],
       [
         { reason: "signed-out", account: "fin@acme.example" },

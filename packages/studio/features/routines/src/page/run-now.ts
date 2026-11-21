@@ -1,10 +1,11 @@
 import { copyText, type ToastMessage, type ToastStore } from "@halonicjs/studio-kit";
 import { engineWordsOf, startFailureOf, withFullStop } from "@halonicjs/studio-shell";
 import type { RoutinesHost, RoutineView, RunNowRefusal } from "../api.ts";
+import { cantStartWords } from "../cant-start.ts";
 import { failureReason, runNowWords } from "./page-words.ts";
 
 /** The routine facts a Run now toast names. */
-export type RunNowRoutine = Pick<RoutineView, "hubId" | "id" | "name" | "targetName">;
+export type RunNowRoutine = Pick<RoutineView, "hubId" | "id" | "name" | "target" | "targetName">;
 
 /** The one sentence a refusal is shown as. */
 function refusalSentence(refusal: RunNowRefusal, routine: RunNowRoutine): string {
@@ -14,7 +15,10 @@ function refusalSentence(refusal: RunNowRefusal, routine: RunNowRoutine): string
     case "not-trusted":
       return runNowWords.notTrusted(routine.name);
     case "target-not-found":
-      return runNowWords.targetNotFound(routine.targetName);
+      // The sentence the list row and the Starts card give too (HAL-15082).
+      return cantStartWords.refused(
+        cantStartWords.targetMissing(routine.target.id, routine.target.kind),
+      );
     case "target-never-live":
       return runNowWords.targetNeverLive(routine.targetName);
     case "target-in-trash":
