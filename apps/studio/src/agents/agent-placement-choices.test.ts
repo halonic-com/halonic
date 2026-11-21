@@ -20,21 +20,31 @@ function workspace() {
   return { saved, unsaved };
 }
 
+/** The kernel's `WorkspaceFiles` over {@link workspace}: reads with unsaved changes applied. */
+function filesOf({ saved, unsaved }: ReturnType<typeof workspace>) {
+  return {
+    read: async (path: string) => unsaved[path] ?? null,
+    list: async (dir: string) => Object.keys(unsaved).filter((path) => path.startsWith(`${dir}/`)),
+    change: () => {},
+    undo: () => false,
+    step: 0,
+    get pending() {
+      return Object.fromEntries(
+        Object.entries(unsaved).filter(([path, text]) => saved[path] !== text),
+      );
+    },
+  };
+}
+
 /** Studio on one computer: its own placement choices, over the workspace's files. */
-function computer(files: ReturnType<typeof workspace>) {
+function computer(files: ReturnType<typeof workspace>, studioStartsUnfenced?: boolean) {
   const placement = new AgentPlacement({
     store: new MemoryAgentPlacementStore(),
     digest: webCryptoDigest,
     clock: { now: () => new Date(chosenAt) },
   });
   return new WorkspaceAgents({
-    files: {
-      read: async (path) => files.unsaved[path] ?? null,
-      list: async (dir) => Object.keys(files.unsaved).filter((path) => path.startsWith(`${dir}/`)),
-      change: () => {},
-      undo: () => false,
-      step: 0,
-    },
+    files: filesOf(files),
     onChange: () => () => {},
     placement: new AgentPlacementChoices({
       placement,
@@ -44,6 +54,7 @@ function computer(files: ReturnType<typeof workspace>) {
         if (text === undefined) throw new Error("no such agent");
         return new TextEncoder().encode(text);
       },
+      ...(studioStartsUnfenced === undefined ? {} : { studioStartsUnfenced }),
     }),
   });
 }
@@ -62,6 +73,8 @@ verifies("studio.agent-placement-choices", () => {
       expect(await host.placement(writer)).toEqual({
         runsOn: "sandbox",
         fingerprint: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
+        unsaved: false,
+        studioStartsUnfenced: false,
       });
     });
 
@@ -135,19 +148,30 @@ verifies("studio.agent-placement-choices", () => {
       expect((await host.placement(writer))?.fingerprint).toBe(before?.fingerprint);
     });
 
-    it("offers no choice without an agent host", async () => {
-      const files = workspace();
-      const host = new WorkspaceAgents({
-        files: {
-          read: async (path) => files.unsaved[path] ?? null,
-          list: async (dir) =>
-            Object.keys(files.unsaved).filter((path) => path.startsWith(`${dir}/`)),
-          change: () => {},
-          undo: () => false,
-          step: 0,
-        },
-        onChange: () => () => {},
+    // Julian's HAL-13201 review: the warning must not let out a saved file the person isn't looking at.
+    // Liam's condition 4 (HAL-13194): the page's hint follows what the host says, not a constant.
+    it("says whether this Studio can start the agent outside its sandbox, as its host says", async () => {
+      expect(await computer(workspace()).placement(writer)).toMatchObject({
+        studioStartsUnfenced: false,
       });
+      expect(await computer(workspace(), true).placement(writer)).toMatchObject({
+        studioStartsUnfenced: true,
+      });
+    });
+
+    it("says when the agent's file has unsaved changes, and not for another file's", async () => {
+      const files = workspace();
+      const host = computer(files);
+      files.unsaved["hubs/acme/hub.yaml"] = "id: acme\nname: Acme Inc\n";
+      expect(await host.placement(writer)).toMatchObject({ unsaved: false });
+      files.unsaved[writerPath] = `${files.unsaved[writerPath]}# not saved yet\n`;
+      expect(await host.placement(writer)).toMatchObject({ unsaved: true });
+      files.saved[writerPath] = files.unsaved[writerPath] ?? "";
+      expect(await host.placement(writer)).toMatchObject({ unsaved: false });
+    });
+
+    it("offers no choice without an agent host", async () => {
+      const host = new WorkspaceAgents({ files: filesOf(workspace()), onChange: () => () => {} });
       expect(await host.placement(writer)).toBeUndefined();
       await expect(host.chooseThisComputer(writer, "sha256:any")).rejects.toThrow();
       await expect(host.chooseSandbox(writer)).rejects.toThrow();

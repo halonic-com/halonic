@@ -11,6 +11,7 @@ import { configurationWords as words } from "./configuration-words.ts";
 import { type HarnessCheck, harnessSetupPages, harnessStrip } from "./harness-strip.ts";
 import { HarnessStripCallout } from "./harness-strip-callout.tsx";
 import { useHarnessCheck } from "./use-harness-check.ts";
+import { WhereItRuns } from "./where-it-runs.tsx";
 
 /** Props for {@link HarnessPage}. */
 export interface HarnessPageProps {
@@ -146,6 +147,9 @@ export function HarnessPage({ host, settings, save }: HarnessPageProps) {
         <Field label={words.harness} hint={words.harnessHint}>
           <RadioGroup options={options} value={harness} onChange={(next) => void pick(next)} />
         </Field>
+      </div>
+      <div className="mt-6">
+        <WhereItRuns host={host} settings={settings} />
       </div>
     </div>
   );

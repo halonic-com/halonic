@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-4295, HAL-1709 (checklist 3.8, Julian's conditions from HAL-1673); `app.agent-placement`
+- Source: HAL-4295, HAL-1709 (checklist 3.8, Julian's conditions from HAL-1673, his review on HAL-13201, Liam's conditions on HAL-13194); `app.agent-placement`
 
-The Studio app shall give the Harness page where each agent runs on this computer, read through `AgentPlacement` from the agent's saved file and keyed by the workspace's path, the agent's hub and its id, as the engine reads it: in its sandbox, on this computer since the time the person chose, or on hold when the choice was made for an earlier version of the file. It shall save On this computer only for the fingerprint the person was shown in the warning, and save nothing when the saved file changed since, answering with the new fingerprint. It shall put an agent back in its sandbox by forgetting the choice. A choice shall hold on the computer it was made on only. Without an agent host, it shall offer no choice.
+The Studio app shall give the Harness page where each agent runs on this computer, read through `AgentPlacement` from the agent's saved file and keyed by the workspace's path, the agent's hub and its id, as the engine reads it: in its sandbox, on this computer since the time the person chose, or on hold when the choice was made for an earlier version of the file. It shall save On this computer only for the fingerprint the person was shown in the warning, and save nothing when the saved file changed since, answering with the new fingerprint. It shall also say whether the agent's file has unsaved changes. It shall also say whether this Studio can start an agent outside its sandbox, as its harness host reports it, and not by default. It shall put an agent back in its sandbox by forgetting the choice. A choice shall hold on the computer it was made on only. Without an agent host, it shall offer no choice.
 
 ## Examples
 
@@ -15,4 +15,6 @@ The Studio app shall give the Harness page where each agent runs on this compute
 - Given the file changed after the warning was shown, when the person confirms, then nothing is saved and the answer holds the new fingerprint.
 - Given an agent on this computer, when the person chooses the sandbox, then it runs in its sandbox.
 - Given an unsaved change to the agent's file, then the fingerprint is still the saved file's.
+- Given an unsaved change to the agent's file, then the answer says the file has unsaved changes; a change to another file, or saving it, doesn't.
 - Given no agent host, then there is no placement, and choosing rejects.
+- Given a harness host that can't start an agent outside its sandbox, then the answer says Studio can't; given one that can, then it says Studio can.

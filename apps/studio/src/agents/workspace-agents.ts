@@ -56,6 +56,8 @@ export interface WorkspaceAgentsParts {
     undo(): boolean;
     /** The kernel's `WorkspaceFiles.step`: moves on every change, so it tells a step is still the newest. */
     readonly step: number;
+    /** The kernel's `WorkspaceFiles.pending`: the unsaved changes by path. */
+    readonly pending: Readonly<Record<string, string | null>>;
   };
   /** Calls `listener` after every change of the workspace's files; returns the way to stop. */
   readonly onChange: (listener: () => void) => () => void;
@@ -315,8 +317,14 @@ export class WorkspaceAgents implements AgentsHost {
 
   /** Where the agent runs on this computer; `undefined` without an agent host. */
   async placement(ref: AgentRef): Promise<AgentPlacementState | undefined> {
-    await this.#find(ref);
-    return this.#parts.placement?.where(ref);
+    const { path } = await this.#find(ref);
+    const choices = this.#parts.placement;
+    if (choices === undefined) return undefined;
+    return {
+      ...(await choices.where(ref)),
+      unsaved: Object.hasOwn(this.#parts.files.pending, path),
+      studioStartsUnfenced: choices.studioStartsUnfenced,
+    };
   }
 
   /** Saves On this computer for the file the person was warned about. */

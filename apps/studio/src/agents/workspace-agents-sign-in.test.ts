@@ -23,6 +23,7 @@ function setup(openSignIn?: WorkspaceAgentsParts["openSignIn"]) {
       },
       undo: () => false,
       step: 0,
+      pending: {},
     },
     onChange: () => () => {},
     ...(openSignIn === undefined ? {} : { openSignIn }),
