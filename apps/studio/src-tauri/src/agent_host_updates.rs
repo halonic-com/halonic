@@ -162,32 +162,44 @@ const RUNTIME_INSTALL_LIMIT: Duration = Duration::from_secs(300);
 ///
 /// # Errors
 ///
-/// Only when the runtime couldn't be installed and the distro has none to
-/// start; with one, the host starts on it and the log says why.
+/// Only when the runtime couldn't be installed and `status` answered that
+/// the distro has none to start. A `status` that couldn't be read doesn't
+/// say the distro has none, so the host starts on whatever it has and the
+/// log says why (HAL-15147).
 pub(super) fn install_bundled_runtime(wsl: &Path, app_folder: &Path) -> Result<(), String> {
     let status = runtime_command(wsl, RuntimeStep::Status)
         .and_then(|command| run_runtime_step_within(command, STATUS_LIMIT));
-    let current = status.ok().as_deref().and_then(current_runtime);
+    let current = status.as_deref().map(current_runtime);
+    let current = current
+        .as_ref()
+        .map(Option::as_deref)
+        .map_err(|error| *error);
+    let known = current.ok().flatten();
     let update = bundled_runtime(app_folder).and_then(|bundled| {
         bundled
             .map(|bundled| {
-                update_runtime(wsl, &bundled, current.as_deref(), RUNTIME_INSTALL_LIMIT)
+                update_runtime(wsl, &bundled, known, RUNTIME_INSTALL_LIMIT)
                     .map(|update| (bundled, update))
             })
             .transpose()
     });
-    let (line, outcome) = runtime_ending(current.as_deref(), update);
+    let (line, outcome) = runtime_ending(current, update);
     halonic_shell_log::record("wsl", line);
     outcome
 }
 
 /// The log line for the runtime's install, and whether the host may start:
-/// it may unless the install failed with no runtime in the distro.
+/// it may unless the install failed and `status` answered that the distro
+/// has no runtime. `current` is `Err` when `status` couldn't be read.
 fn runtime_ending(
-    current: Option<&str>,
+    current: Result<Option<&str>, &WslError>,
     update: Result<Option<(BundledRuntime, RuntimeUpdate)>, WslError>,
 ) -> (String, Result<(), String>) {
-    let kept = current.unwrap_or("none");
+    let kept = match current {
+        Ok(Some(version)) => version.to_owned(),
+        Ok(None) => "none".to_owned(),
+        Err(error) => format!("unknown, its status couldn't be read: {error}"),
+    };
     match update {
         Ok(None) => (
             format!("runtime: this build ships none, keeping the distro's ({kept})"),
@@ -200,8 +212,10 @@ fn runtime_ending(
             format!("runtime: installed {} (was {kept})", bundled.version),
             Ok(()),
         ),
-        Err(error) if current.is_some() => (
-            format!("runtime: couldn't install this build's, starting {kept}: {error}"),
+        Err(error) if !matches!(current, Ok(None)) => (
+            format!(
+                "runtime: couldn't install this build's, starting the distro's ({kept}): {error}"
+            ),
             Ok(()),
         ),
         Err(error) => {
