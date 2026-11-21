@@ -9,7 +9,13 @@ import {
   useTabIds,
 } from "@halonicjs/studio-kit";
 import type { ItemPageSectionListing, SectionsProps } from "@halonicjs/studio-shell";
-import { type ComponentType, type ReactNode, useState } from "react";
+import {
+  type ComponentType,
+  type ReactNode,
+  useEffectEvent,
+  useLayoutEffect,
+  useState,
+} from "react";
 import type {
   AgentChange,
   AgentListing,
@@ -63,6 +69,13 @@ export interface ConfigurationProps {
   readonly sections?: readonly ItemPageSectionListing[] | undefined;
   /** Draws a section of {@link sections}; the shell's, absent where there's no window. */
   readonly Sections?: ComponentType<SectionsProps> | undefined;
+  /**
+   * Whether a request to open at the model (`agents.configuration.open-at-model`) is waiting: the
+   * Model page is then shown with its picker focused, and `onModelShown` called.
+   */
+  readonly showModel?: boolean;
+  /** Called once the Model page was shown for the waiting request, which then stops waiting. */
+  readonly onModelShown?: () => void;
 }
 
 type BuiltPageId = "behaviour" | "model" | "harness" | "tools" | "subagents" | "agentSteps";
@@ -130,10 +143,22 @@ export function Configuration({
   announce,
   sections = [],
   Sections,
+  showModel = false,
+  onModelShown,
 }: ConfigurationProps) {
   const [picked, setPage] = useState<PageId>("behaviour");
   const pages = pageTabs(sections, Sections);
   const page = shownPage(pages, picked);
+  // The picker takes the focus once for each request, so a later click on Model doesn't move it.
+  const [focusModel, setFocusModel] = useState(false);
+  const modelShown = useEffectEvent(() => onModelShown?.());
+  // Before the page is drawn, so Behaviour doesn't flash first.
+  useLayoutEffect(() => {
+    if (!showModel) return;
+    setPage("model");
+    setFocusModel(true);
+    modelShown();
+  }, [showModel]);
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
   const panel = useNarrowPanel();
@@ -194,6 +219,8 @@ export function Configuration({
                   defaultModel={defaultModel}
                   save={save}
                   reportNotSaved={reportNotSaved}
+                  focus={focusModel}
+                  onFocused={() => setFocusModel(false)}
                 />
               ))}
             {page === "harness" && <HarnessPage host={host} settings={load.value} save={save} />}

@@ -7,7 +7,7 @@ import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { AgentScreen } from "../page/agent-page.tsx";
-import { buttonNamed, show, typeInto, unmount } from "../test-support.tsx";
+import { buttonNamed, redraw, show, typeInto, unmount } from "../test-support.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
 afterEach(() => {
@@ -254,5 +254,75 @@ verifies("agents.configuration.model", () => {
       expect(page.textContent, bad).toContain("Enter a whole number from 1 to 200.");
       expect((await agents.settings(ref)).maxSteps, bad).toBe(6);
     }
+  });
+});
+
+verifies("agents.configuration.open-at-model", () => {
+  const agents = () =>
+    memoryAgentsHost({
+      hubs: [{ id: "acme", name: "acme" }],
+      agents: [{ ...ref, name: "Sorter", model: "fast" }],
+      modelAliases: ["fast", "smart"],
+    });
+  const screen = (host: ReturnType<typeof agents>, modelRequest?: string) => (
+    <AgentScreen host={host} hubId="acme" id="sorter" modelRequest={modelRequest} />
+  );
+  // The picker takes the focus a moment after it is drawn, once the shell focused the heading.
+  const settle = () => act(async () => vi.advanceTimersByTime(1));
+  const pickTab = (page: HTMLElement, name: string) =>
+    act(async () =>
+      [...page.querySelectorAll<HTMLElement>("[role=tab]")]
+        .find((tab) => tab.textContent === name)
+        ?.click(),
+    );
+  /** The Configuration page shown, by its name in the list of pages; `undefined` on Runs. */
+  const configurationPage = (page: HTMLElement) =>
+    page.querySelector('[aria-label="Configuration pages"] [role=tab][aria-selected=true]')
+      ?.textContent ?? undefined;
+
+  it("opens on Configuration › Model with the picker focused", async () => {
+    const page = await show(screen(agents(), "sorter/1"));
+    await settle();
+    expect(configurationPage(page)).toBe("Model");
+    expect(document.activeElement).toBe(page.querySelector("select"));
+  });
+
+  it("opens there again when asked again, after the person moved away", async () => {
+    const host = agents();
+    const page = await show(screen(host, "sorter/1"));
+    await settle();
+    await act(async () => buttonNamed(page, "Runs")?.click());
+    await redraw(screen(host, "sorter/2"));
+    await settle();
+    expect(configurationPage(page)).toBe("Model");
+    expect(document.activeElement).toBe(page.querySelector("select"));
+  });
+
+  it("moves the focus once for each request, not when Model is picked by hand", async () => {
+    const page = await show(screen(agents(), "sorter/1"));
+    await settle();
+    (document.activeElement as HTMLElement).blur();
+    await pickTab(page, "Behaviour");
+    await pickTab(page, "Model");
+    await settle();
+    expect(document.activeElement).not.toBe(page.querySelector("select"));
+  });
+
+  it("doesn't take the request up again when the person comes back to Configuration by hand", async () => {
+    const page = await show(screen(agents(), "sorter/1"));
+    await settle();
+    await act(async () => buttonNamed(page, "Runs")?.click());
+    (document.activeElement as HTMLElement).blur();
+    await act(async () => buttonNamed(page, "Configuration")?.click());
+    await settle();
+    expect(configurationPage(page)).toBe("Behaviour");
+    expect(document.activeElement).not.toBe(page.querySelector("select"));
+  });
+
+  it("opens on Configuration › Behaviour without the step", async () => {
+    const page = await show(screen(agents()));
+    await settle();
+    expect(configurationPage(page)).toBe("Behaviour");
+    expect(document.activeElement).not.toBe(page.querySelector("select"));
   });
 });

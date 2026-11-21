@@ -11,15 +11,11 @@ import {
   useTabIds,
 } from "@halonicjs/studio-kit";
 import {
-  type CardStack,
   type CloseStack,
   createCloseStack,
-  dropGoneCards,
   ItemGone,
   type ItemPageSectionListing,
   type ItemViewProps,
-  noCards,
-  openCard,
   type SaveState,
   type SectionsProps,
   StackedCards,
@@ -29,7 +25,6 @@ import {
   type AgentChange,
   type AgentListing,
   type AgentRef,
-  type AgentStep,
   type AgentsHost,
   AgentsHostService,
   type AgentToolList,
@@ -40,12 +35,13 @@ import { configurationWords } from "../configuration/configuration-words.ts";
 import { useConfigurationLoads } from "../configuration/use-configuration-loads.ts";
 import { fileItemOf } from "../trash/file-item.ts";
 import { useAgentTrash } from "../trash/use-agent-trash.tsx";
-import { AgentStepCard, agentStepCardKey, agentStepOfCard } from "./agent-step-card.tsx";
+import { AgentStepCard, agentStepOfCard } from "./agent-step-card.tsx";
 import { forgetFreshAgent, isFreshAgent } from "./fresh-agents.ts";
 import { NotLiveLine } from "./not-live-line.tsx";
 import { pageWords } from "./page-words.ts";
 import { RenameField } from "./rename-field.tsx";
-import { SubagentCard, subagentCardKey, subagentOfCard } from "./subagent-card.tsx";
+import { SubagentCard, subagentOfCard } from "./subagent-card.tsx";
+import { useAgentCards } from "./use-agent-cards.ts";
 import { type Load, useLoad } from "./use-load.ts";
 
 /**
@@ -58,8 +54,14 @@ const libraryTabCommands: Readonly<Record<AgentToolList, string>> = {
   connectors: "library.connector",
 };
 
-/** The agent's page in its tab: `item` names the agent, the host reads its row. */
-export function AgentPage({ item, context, Sections, sections }: ItemViewProps) {
+/** The step that opens an agent's page at its model, as `openItem(agent, { step: "model" })`. */
+export const MODEL_STEP = "model";
+
+/**
+ * The agent's page in its tab: `item` names the agent, the host reads its row. Opened with the
+ * step `model`, it opens at the model picker (`agents.configuration.open-at-model`).
+ */
+export function AgentPage({ item, context, step, asked, Sections, sections }: ItemViewProps) {
   const { openPlace, openItem, runCommand, closeStack, announcer } = context;
   const announce = useCallback((text: string) => announcer.announce(text), [announcer]);
   return (
@@ -70,6 +72,7 @@ export function AgentPage({ item, context, Sections, sections }: ItemViewProps) 
       id={item.id}
       sections={sections}
       Sections={Sections}
+      {...(step === MODEL_STEP && { modelRequest: `${item.id}/${asked ?? 0}` })}
       {...(openPlace && {
         goToAgents: () => openPlace("agents"),
         openRuns: () => openPlace("runs"),
@@ -109,6 +112,11 @@ export interface AgentScreenProps extends AgentRef {
   readonly sections?: readonly ItemPageSectionListing[] | undefined;
   /** The shell's component that draws them; absent where there's no window. */
   readonly Sections?: ComponentType<SectionsProps> | undefined;
+  /**
+   * Set when the page was asked to open at the model, and changed each time it is asked again:
+   * Configuration then shows its Model page with the picker focused.
+   */
+  readonly modelRequest?: string | undefined;
 }
 
 /**
@@ -131,6 +139,7 @@ export function AgentScreen({
   openAgent,
   sections,
   Sections,
+  modelRequest,
 }: AgentScreenProps) {
   // After a Try again reads, the agent's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -170,7 +179,11 @@ export function AgentScreen({
     [host, hubId, id],
   );
   const users = useLoad<readonly AgentUser[]>(usersSource);
-  const { view, selectView, fresh } = useAgentView(hubId, id);
+  const { view, selectView, fresh, modelWaiting, modelShown } = useAgentView(
+    hubId,
+    id,
+    modelRequest,
+  );
   const cards = useAgentCards(host, { hubId, id }, announce);
   // Picking another view closes the stack: cards belong to the view they opened over (flow-agents 7).
   const showView = (next: AgentView) => {
@@ -312,6 +325,8 @@ export function AgentScreen({
               openAgentStep={cards.openAgentStep}
               sections={sections}
               Sections={Sections}
+              showModel={modelWaiting}
+              onModelShown={modelShown}
             />
           </StackedCards>
         )}
@@ -343,71 +358,6 @@ export function AgentScreen({
 /** The hub's name for the breadcrumb, else its id while the hubs aren't read. */
 function hubName(host: AgentsHost, hubId: string): string {
   return host.hubs().find((hub) => hub.id === hubId)?.name ?? hubId;
-}
-
-/** The agent page's stack of cards, and the ways to change it. */
-interface AgentCards {
-  readonly stack: CardStack;
-  readonly set: (stack: CardStack) => void;
-  readonly openSubagent: (agent: AgentListing) => void;
-  readonly openAgentStep: (step: AgentStep) => void;
-  readonly close: () => void;
-}
-
-/**
- * The cards stacked on the agent page's panel (flow-agents 7): a subagent and an agent step open
- * as cards, and a card whose agent or agent step is gone drops with every card above it, saying
- * so to screen readers. The stack is the page's state, so it stays across tab switches while the
- * page stays mounted.
- */
-function useAgentCards(
-  host: AgentsHost,
-  agent: AgentRef,
-  announce: ((text: string) => void) | undefined,
-): AgentCards {
-  const [stack, setStack] = useState<CardStack>(noCards);
-  const latest = useRef(stack);
-  latest.current = stack;
-  const set = useCallback((next: CardStack) => setStack(next), []);
-  const openSubagent = useCallback(
-    (sub: AgentListing) =>
-      setStack((now) => openCard(now, { key: subagentCardKey(sub), title: sub.name })),
-    [],
-  );
-  const openAgentStep = useCallback(
-    (step: AgentStep) =>
-      setStack((now) => openCard(now, { key: agentStepCardKey(step), title: step.id })),
-    [],
-  );
-  const close = useCallback(() => setStack(noCards), []);
-  const { hubId, id } = agent;
-  useEffect(() => {
-    let live = true;
-    const check = async () => {
-      if (latest.current.length === 0) return;
-      const [team, agentSettings] = await Promise.all([
-        host.team({ hubId, id }),
-        host.settings({ hubId, id }),
-      ]).catch(() => []);
-      if (!live || team === undefined || agentSettings === undefined) return;
-      const agents = new Set(team.map((member) => member.id));
-      const steps = new Set(agentSettings.agentSteps.map((step) => step.id));
-      const { stack: kept, removed } = dropGoneCards(latest.current, (card) => {
-        const sub = subagentOfCard(card.key);
-        const step = agentStepOfCard(card.key);
-        return (sub === undefined || agents.has(sub)) && (step === undefined || steps.has(step));
-      });
-      if (removed === undefined) return;
-      setStack(kept);
-      announce?.(pageWords.cardRemoved(removed.title));
-    };
-    const stop = host.subscribe(() => void check());
-    return () => {
-      live = false;
-      stop();
-    };
-  }, [host, hubId, id, announce]);
-  return { stack, set, openSubagent, openAgentStep, close };
 }
 
 /**
@@ -475,16 +425,28 @@ type AgentView = "configuration" | "runs";
  * is finished, on Configuration (HAL-12399). An agent just made with nothing written opens there
  * on Behaviour with Instructions focused (`agents.page.new-agent`); once the person picks a view,
  * it is a page like any other, so coming back to Behaviour doesn't take the focus again.
+ *
+ * Each request to open at the model shows Configuration again if the person left it. The request
+ * waits until Configuration has shown its Model page, so coming back to Configuration by hand later
+ * opens it as usual.
  */
-function useAgentView(hubId: string, id: string) {
+function useAgentView(hubId: string, id: string, modelRequest: string | undefined) {
   const [fresh, setFresh] = useState(() => isFreshAgent(hubId, id));
   useEffect(() => forgetFreshAgent(hubId, id), [hubId, id]);
   const [view, setView] = useState<AgentView>("configuration");
+  const [shownFor, setShownFor] = useState<string>();
+  const [modelWaiting, setModelWaiting] = useState(false);
+  if (modelRequest !== undefined && modelRequest !== shownFor) {
+    setShownFor(modelRequest);
+    setView("configuration");
+    setModelWaiting(true);
+  }
   const selectView = (next: AgentView) => {
     setView(next);
     setFresh(false);
   };
-  return { view, selectView, fresh };
+  const modelShown = useCallback(() => setModelWaiting(false), []);
+  return { view, selectView, fresh, modelWaiting, modelShown };
 }
 
 /** The page's views, as far as they are built: Flow and the Try it chat join them later. */
