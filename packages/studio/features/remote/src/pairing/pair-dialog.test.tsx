@@ -42,21 +42,28 @@ async function press(element: Element | undefined) {
   await settle();
 }
 
-/** The dialog on its own over a fake, at the fake's start time, with `onClose` counted. */
-async function openDialog() {
-  const remote = new FakeRemoteControl({ time: new FakeTunnelTime() });
+/**
+ * The dialog on its own over a fake, at the fake's start time, with `onClose` counted. `prepare`
+ * runs on the fake before the dialog opens its pairing.
+ */
+async function openDialog(prepare?: (remote: FakeRemoteControl) => unknown) {
+  const time = new FakeTunnelTime();
+  const remote = new FakeRemoteControl({ time });
+  await prepare?.(remote);
   const closed = vi.fn();
   render(
     <PairDialog
       remote={remote}
       provider="tailscale"
       allowRisky={false}
+      openExternal={() => undefined}
       onClose={closed}
+      onCloseFailed={() => undefined}
       now={() => Date.parse("2026-11-16T08:00:00.000Z")}
     />,
   );
   await settle();
-  return { remote, closed };
+  return { remote, time, closed };
 }
 
 verifies("remote.pair-a-phone", () => {
@@ -102,7 +109,9 @@ verifies("remote.pair-a-phone", () => {
         remote={new FakeRemoteControl()}
         provider="tailscale"
         allowRisky={false}
+        openExternal={() => undefined}
         onClose={() => undefined}
+        onCloseFailed={() => undefined}
         now={() => now}
       />,
     );
@@ -174,5 +183,155 @@ verifies("remote.pair-a-phone", () => {
     expect(closed).toHaveBeenCalledOnce();
     expect(remote.snapshot.pairing).toBe(false);
     expect(remote.snapshot.on).toBe(false);
+  });
+});
+
+verifies("remote.pair-a-phone-narrow", () => {
+  it("puts the steps below the QR code when the dialog is too narrow for both (C306 PP3)", async () => {
+    await openDialog();
+    const steps = dialog()?.querySelector("ol");
+    const row = steps?.parentElement;
+
+    expect(row?.querySelector('[role="img"]')).not.toBeNull();
+    expect(row?.className.split(" ")).toContain("flex-wrap");
+    // At least 12rem beside the code, or a line of its own that may shrink to the dialog.
+    expect(steps?.className.split(" ")).toEqual(
+      expect.arrayContaining(["flex-[1_1_12rem]", "min-w-0"]),
+    );
+    expect(buttonIn(dialog(), "New code")?.parentElement?.className.split(" ")).toContain(
+      "flex-wrap",
+    );
+  });
+});
+
+verifies("remote.pair-a-phone-problems", () => {
+  const focused = () => document.activeElement?.textContent;
+
+  it("says the code ran out, and Make a new code shows a new one from the same pairing", async () => {
+    let started = 0;
+    const { remote, time } = await openDialog((fake) => {
+      const start = fake.startPairing.bind(fake);
+      vi.spyOn(fake, "startPairing").mockImplementation(() => {
+        started++;
+        return start();
+      });
+    });
+    const first = typedCode();
+
+    time.advance(5 * 60_000);
+    await settle();
+
+    expect(dialog()?.textContent).toContain("The code ran out");
+    expect(focused()).toBe("Make a new code");
+    expect(remote.snapshot.on).toBe(true);
+    await press(buttonIn(dialog(), "Make a new code"));
+    expect(typedCode()).toBeDefined();
+    expect(typedCode()).not.toBe(first);
+    // A new code on the open pairing, so remote stayed on throughout (HAL-14060).
+    expect(started).toBe(1);
+    expect(remote.snapshot.on).toBe(true);
+  });
+
+  it("says why else a pairing ended: too many tries, another pairing, remote off", async () => {
+    const tries = await openDialog();
+    for (let left = 5; left > 0; left--) tries.remote.wrongTry();
+    await settle();
+    expect(dialog()?.textContent).toContain("Too many wrong tries");
+    unmountAll();
+
+    await openDialog((remote) => remote.startPairing());
+    expect(dialog()?.textContent).toContain("Pair a phone is already open");
+    expect(focused()).toBe("Try again");
+    unmountAll();
+
+    const off = await openDialog();
+    await act(() => off.remote.setRemote(false));
+    await settle();
+    expect(dialog()?.textContent).toContain("Remote was turned off");
+  });
+
+  it("shows the tunnel's reason with its actions, and Check again starts a new pairing", async () => {
+    await openDialog((remote) => remote.failNextStart("not-installed"));
+
+    expect(dialog()?.textContent).toContain("Tailscale isn't installed");
+    expect(dialog()?.textContent).toContain("Nothing is shared until you press Allow.");
+    expect(focused()).toContain("Open Tailscale setup");
+
+    await press(buttonIn(dialog(), "Check again"));
+    expect(typedCode()).toBeDefined();
+  });
+
+  it("gives a new code under Pairing was not allowed after Don't allow", async () => {
+    const { remote } = await openDialog();
+    remote.phoneUsesCode({ name: "Pixel 8" });
+    await settle();
+
+    const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
+    await press(buttonIn(dialog(), "Don't allow"));
+
+    expect(remote.snapshot.phones).toHaveLength(0);
+    expect(remote.snapshot.pairing).toBe(true);
+    expect(focused()).toContain("Pairing was not allowed");
+    // Its title shows first, even where the group is taller than the dialog (C306 PP2).
+    const top = scrolled.mock.contexts.at(-1) as Element | undefined;
+    expect(top?.textContent).toMatch(/^Pairing was not allowed/);
+    expect(scrolled).toHaveBeenLastCalledWith({ block: "start" });
+    // With room above it for the top of its focus ring (HAL-14085).
+    expect(top?.className.split(" ")).toContain("scroll-mt-2");
+    expect(typedCode()).toBeDefined();
+  });
+
+  it("says when the host can't make a code, or Allow fails", async () => {
+    await openDialog((remote) => {
+      vi.spyOn(remote, "startPairing").mockRejectedValueOnce(new Error("host down"));
+    });
+    expect(dialog()?.textContent).toContain("Couldn't make a code");
+    await press(buttonIn(dialog(), "Try again"));
+    expect(typedCode()).toBeDefined();
+    unmountAll();
+
+    const { remote } = await openDialog((fake) => {
+      const start = fake.startPairing.bind(fake);
+      vi.spyOn(fake, "startPairing").mockImplementation(async () => {
+        const session = await start();
+        vi.spyOn(session, "allow").mockRejectedValue(new Error("store full"));
+        return session;
+      });
+    });
+    remote.phoneUsesCode({ name: "Pixel 8" });
+    await settle();
+    await press(buttonIn(dialog(), "AllowAllowing…"));
+    // The dialog's alert slot fills a frame after the request ends.
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+
+    expect(dialog()?.textContent).toContain("Couldn't pair Pixel 8. Try again.");
+    expect(dialog()?.textContent).toContain("Check the code");
+  });
+
+  it("closes even when the host fails to end the pairing, and Settings › Remote says so", async () => {
+    const remote = new FakeRemoteControl();
+    const start = remote.startPairing.bind(remote);
+    vi.spyOn(remote, "startPairing").mockImplementation(async () => {
+      const session = await start();
+      vi.spyOn(session, "close").mockRejectedValue(new Error("the host didn't answer"));
+      return session;
+    });
+    const announced: string[] = [];
+    const view = render(
+      <RemoteSection
+        context={remoteContext(remote, announced)}
+        closeSettings={() => undefined}
+        place="app"
+        surface="window"
+      />,
+    );
+    await settle();
+    await press(buttonIn(view, "Pair a phone"));
+
+    await press(buttonIn(dialog(), "Close Pair a phone"));
+
+    expect(dialog()).toBeNull();
+    expect(view.textContent).toContain("Couldn't turn remote off. Try again.");
+    expect(announced).toEqual(["Couldn't turn remote off. Try again."]);
   });
 });

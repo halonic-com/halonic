@@ -6,30 +6,43 @@ import { followStream } from "../remote-state.ts";
 export type CodeEvent = Extract<PairingEvent, { readonly type: "code" }>;
 /** A phone used the code: its check code waits for Allow. */
 export type CheckEvent = Extract<PairingEvent, { readonly type: "check" }>;
+/** The code stopped working, and the pairing waits for New code, or it ended without a phone. */
+export type EndedEvent = Extract<PairingEvent, { readonly type: "code-ended" | "ended" }>;
 
 /** What the Pair a phone dialog shows, one step at a time. */
 export type PairingView =
   | { readonly stage: "starting" }
-  | { readonly stage: "code"; readonly code: CodeEvent }
+  /** `refused` after Don't allow: the new code comes with the reason it is new. */
+  | { readonly stage: "code"; readonly code: CodeEvent; readonly refused: boolean }
   | { readonly stage: "check"; readonly check: CheckEvent }
   | { readonly stage: "paired"; readonly phone: PairedPhone }
-  /** The pairing ended without a phone, or never opened. */
-  | { readonly stage: "ended" };
+  | { readonly stage: "ended"; readonly ended: EndedEvent }
+  /** The host couldn't open a pairing at all. */
+  | { readonly stage: "failed" };
 
-/** The step a pairing event leads to. */
-export function viewOf(event: PairingEvent): PairingView {
+/** The step a pairing event leads to; `refused` when the code follows a Don't allow. */
+export function viewOf(event: PairingEvent, refused = false): PairingView {
   switch (event.type) {
     case "code":
-      return { stage: "code", code: event };
+      return { stage: "code", code: event, refused };
     case "check":
       return { stage: "check", check: event };
     case "paired":
       return { stage: "paired", phone: event.phone };
-    // Until the dialog offers New code here (HAL-14189), a code that stopped working closes it.
     case "code-ended":
     case "ended":
-      return { stage: "ended" };
+      return { stage: "ended", ended: event };
   }
+}
+
+/**
+ * What the dialog does with a pairing event: show a step, nothing for a pairing the person ended
+ * (`closed`), or `refused` for Don't allow, which the design follows with a new code at once.
+ */
+function stepOf(event: PairingEvent, refused: boolean): PairingView | "refused" | undefined {
+  if (event.type === "ended" && event.reason === "closed") return undefined;
+  if (event.type === "code-ended" && event.reason === "denied") return "refused";
+  return viewOf(event, refused);
 }
 
 /** What {@link usePairing} gives the dialog. */
@@ -48,14 +61,19 @@ export interface Pairing {
 /**
  * Opens a pairing on `remote` while the dialog is open and follows it step by step. Unmounting
  * closes the pairing, so a dialog that goes away never leaves a code working (decision 10). A
- * pairing the person ended themselves (`closed`) shows nothing more.
+ * pairing the person ended themselves (`closed`) shows nothing more. New code asks the open
+ * pairing for a new code, so remote stays on (HAL-14060); only a pairing that has ended, or never
+ * opened, is started again.
  */
 export function usePairing(remote: RemoteControl): Pairing {
   const [view, setView] = useState<PairingView>({ stage: "starting" });
+  // The open pairing, until it ends; a code that stops working leaves it open.
   const session = useRef<PairingSession | undefined>(undefined);
   // Each start bumps it; a session that opens after a newer start, or after unmount, is closed.
   const generation = useRef(0);
   const stopFollowing = useRef<() => void>(() => undefined);
+  // Set by Don't allow: the next code comes with the reason it is new.
+  const refused = useRef(false);
 
   const start = useCallback(() => {
     const mine = ++generation.current;
@@ -68,12 +86,21 @@ export function usePairing(remote: RemoteControl): Pairing {
         }
         session.current = opened;
         stopFollowing.current = followStream(opened.events(), (event) => {
-          if (event.type === "ended" && event.reason === "closed") return;
-          setView(viewOf(event));
+          if (event.type === "paired" || event.type === "ended") session.current = undefined;
+          const step = stepOf(event, refused.current);
+          if (step === "refused") {
+            refused.current = true;
+            opened.newCode().catch(() => {
+              if (mine === generation.current) setView({ stage: "failed" });
+            });
+          } else if (step !== undefined) {
+            refused.current = false;
+            setView(step);
+          }
         });
       },
       () => {
-        if (mine === generation.current) setView({ stage: "ended" });
+        if (mine === generation.current) setView({ stage: "failed" });
       },
     );
   }, [remote]);
@@ -81,6 +108,7 @@ export function usePairing(remote: RemoteControl): Pairing {
   const end = useCallback(async () => {
     generation.current++;
     stopFollowing.current();
+    refused.current = false;
     const open = session.current;
     session.current = undefined;
     await open?.close();
@@ -92,8 +120,18 @@ export function usePairing(remote: RemoteControl): Pairing {
   }, [start, end]);
 
   const newCode = useCallback(async () => {
-    await end();
-    start();
+    const open = session.current;
+    refused.current = false;
+    if (open === undefined) {
+      await end();
+      start();
+      return;
+    }
+    // A pairing that ended meanwhile can't give a code; a new pairing can.
+    await open.newCode().catch(async () => {
+      await end();
+      start();
+    });
   }, [end, start]);
 
   return {

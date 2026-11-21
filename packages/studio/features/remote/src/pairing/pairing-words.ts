@@ -59,3 +59,53 @@ export const PAIRED_CAN_RISKY =
   "It can view your agents, approve (risky ones too) and send prompts.";
 export const PAIRED_REVOKE = "To cut a phone off, use Revoke in Settings › Remote.";
 export const DONE = "Done";
+
+// The words the design doesn't draw are design decision 28 (HAL-13132).
+export const START_FAILED = "Couldn't make a code";
+/** "Couldn't pair Pixel 8. Try again.": Allow failed, like "Couldn't revoke Pixel 8" (decision 27). */
+export const allowFailed = (name: string): string => `Couldn't pair ${name}. Try again.`;
+/** Don't allow failed: one verb per job (decision 15), and the safe fact for a scared moment. */
+export const denyFailed = (name: string): string =>
+  `Don't allow didn't go through. Try again: ${name} isn't let in unless you press Allow.`;
+
+export const NOTHING_SHARED =
+  "Nothing is shared until you press Allow. Remote stays off until a phone is paired.";
+export const MAKE_NEW_CODE = "Make a new code";
+export const TRY_AGAIN = "Try again";
+/** A tunnel problem with no action of its own re-checks the tunnel, as every other one does. */
+export const CHECK_AGAIN = "Check again";
+
+/** A pairing that ended without a phone: what happened, and the one thing to do. */
+export interface EndedWords {
+  readonly title: string;
+  readonly line: string;
+  /** The button that makes a new code, on a new pairing if this one ended. */
+  readonly action: string;
+}
+
+export const RAN_OUT: EndedWords = {
+  title: "The code ran out",
+  line: "A code works once and for 5 minutes, and Allow waits 2 minutes after the scan. Make a new one, then scan again.",
+  action: MAKE_NEW_CODE,
+};
+
+/** Shown above the new code after Don't allow. */
+export const NOT_ALLOWED_TITLE = "Pairing was not allowed";
+export const NOT_ALLOWED_LINE =
+  "You pressed Don't allow, so nothing was shared. If your phone showed no code, someone else may have scanned it: they were not let in. Here is a new code.";
+
+export const TOO_MANY_TRIES: EndedWords = {
+  title: "Too many wrong tries",
+  line: "The code was typed wrong 5 times, so it no longer works. Nothing was shared. Make a new code, then try again.",
+  action: MAKE_NEW_CODE,
+};
+export const BUSY: EndedWords = {
+  title: "Pair a phone is already open",
+  line: "Only one phone can pair at a time. Close Pair a phone in the other window, then try again.",
+  action: TRY_AGAIN,
+};
+export const REMOTE_TURNED_OFF: EndedWords = {
+  title: "Remote was turned off",
+  line: "The code stopped working. Make a new code to turn remote on again.",
+  action: MAKE_NEW_CODE,
+};
