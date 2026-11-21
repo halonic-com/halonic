@@ -22,6 +22,20 @@ verifies("std.near-match", () => {
   });
 });
 
+verifies("std.near-match-spellings", () => {
+  const optionStem = (name: string) => (name.startsWith("--no-") ? [`--${name.slice(5)}`] : []);
+
+  it("finds a name by another spelling the caller gives for it", () => {
+    expect(nearMatch("--colour", ["--json", "--no-color"], { spellingsOf: optionStem })).toBe(
+      "--no-color",
+    );
+  });
+
+  it("finds nothing by a spelling the caller didn't give", () => {
+    expect(nearMatch("--colour", ["--json", "--no-color"])).toBeUndefined();
+  });
+});
+
 describe("editDistance", () => {
   it("counts a swap of two neighbours as one edit", () => {
     expect(editDistance("nmae", "name")).toBe(1);

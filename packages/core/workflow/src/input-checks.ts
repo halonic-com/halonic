@@ -1,5 +1,5 @@
 import type { Workflow, WorkflowState } from "@halonicjs/format";
-import { nearName } from "./near-name.ts";
+import { nearMatch } from "@halonicjs/std";
 import { templatePlaces } from "./template-checks.ts";
 import {
   issue,
@@ -141,7 +141,7 @@ function unreadStartField(start: string, readFields: readonly string[]): Workflo
 
 /** "Did you mean input.mail?" for a close name, or else the fields there are. */
 function fieldHint(field: string, known: readonly string[]): string {
-  const near = nearName(field, known);
+  const near = nearMatch(field, known);
   if (near !== undefined) {
     return `Did you mean input.${near}?`;
   }
