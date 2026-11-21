@@ -49,7 +49,16 @@ createRoot(root).render(
     <div className="h-screen bg-surface text-fg">
       <ToastStoreProvider store={createToastStore()}>
         <Suspense fallback={null}>
-          <AgentScreen host={host} hubId="support" id="triage" closeStack={createCloseStack()} />
+          {/* The opens do nothing here; with them the cards are buttons, as in the app. */}
+          <AgentScreen
+            host={host}
+            hubId="support"
+            id="triage"
+            closeStack={createCloseStack()}
+            openAgent={() => {}}
+            openWorkflow={() => {}}
+            openLibrary={() => {}}
+          />
         </Suspense>
       </ToastStoreProvider>
     </div>
