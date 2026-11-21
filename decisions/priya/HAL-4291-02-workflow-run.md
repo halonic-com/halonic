@@ -3,7 +3,7 @@
 - Task: HAL-4291 (the workflow page's Run, PR 2 of 4)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-4291 (the CTO's scope for this task: Run is unavailable while the sandbox can't start, checklist 3.1 and 3.3 of HAL-1833)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qxzZ/NpXi5halh/15o5mq6P21Z62nhMZxmT/vMqUnk97ANjDdn7knSPog2So7BrxYZJrCNVLzpF80fMTYJ16Ag==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:otZDzdFgSN069l2kL/HLwwWxgHmhxFuSbBQDIiERvq/zKJFU16Io871pP5TmO/HASEoL7qrfetOzFGfqP97VBg==
 
 ## What changes
 
@@ -29,7 +29,12 @@ agent's settings.
 No test was weakened or skipped. The new cases have their own tests in
 `packages/adapters/workspace-models/src/workflow-agents.test.ts` and in `apps/studio/src/workflows/workspace-workflow-read.test.ts`.
 
+The 12 read tests that were in `apps/studio/src/workflows/workspace-workflows.test.ts` moved
+unchanged into `apps/studio/src/workflows/workspace-workflow-read.test.ts`, which follows `main`'s
+layout, so that file now runs 11 tests instead of 23.
+
 ## Covers
 
 - cli.workspace-models
 - studio.workspace-workflow-read
+- apps/studio/src/workflows/workspace-workflows.test.ts
