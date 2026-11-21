@@ -3,8 +3,8 @@
  * functions: `cli/sbom.ts` reads the file the app's Gradle task writes.
  *
  * The Gradle task lists every library of the release runtime classpath with
- * the licences its POM names, and the `third_party_licenses.txt` its AAR
- * carries, if any. A POM names a licence in words, so `gradle.names` in
+ * the licences its POM names, the `third_party_licenses.txt` its AAR
+ * carries, if any, and the `META-INF/NOTICE` files of its JAR (HAL-12776). A POM names a licence in words, so `gradle.names` in
  * `licences.json` maps those words to SPDX IDs, and the ID must be on the
  * `shipped` list. Google's ML Kit and Play services libraries are under
  * Google's own terms, not an open-source licence: each one is named in
@@ -31,6 +31,11 @@ export interface GradleArtifact {
   readonly licences: readonly PomLicence[];
   /** The `third_party_licenses.txt` its AAR carries, verbatim. */
   readonly embedded?: string | null;
+  /**
+   * Its `META-INF/NOTICE*` files, verbatim: Apache-2.0 section 4(d) asks us
+   * to pass them on with the library (HAL-12776).
+   */
+  readonly notices?: readonly string[] | null;
 }
 
 /** The file the Gradle task writes. */
@@ -116,9 +121,11 @@ function proprietaryEntry(artifact: GradleArtifact, terms: ProprietaryArtifact):
   };
 }
 
+/** The texts the library itself carries: its AAR's licence list, then its NOTICE files. */
 function embeddedTexts(artifact: GradleArtifact): string[] {
-  const text = artifact.embedded?.trim() ?? "";
-  return text === "" ? [] : [text];
+  return [artifact.embedded, ...(artifact.notices ?? [])]
+    .map((text) => text?.trim() ?? "")
+    .filter((text) => text !== "");
 }
 
 /**
