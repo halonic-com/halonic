@@ -3,6 +3,7 @@
 - Task: HAL-15415
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15415 (Noah's design check C569 on HAL-15385 asks for it); the reviewer signs this note
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:bmaMOwlIBrVsjUSOqrt3gh9tN3kzmvkOJ+Y/7bdcqa4MvmtpI1Ys+ituthB4icf8/xBR3PPwgWS/CkEJuSdMAA==
 
 ## What changes
 
