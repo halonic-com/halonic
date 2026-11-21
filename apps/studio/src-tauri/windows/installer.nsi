@@ -1786,7 +1786,7 @@ Function PageFinish
     ; Three lines for the cause, so a long reason isn't cut (checklist 2.4).
     ${NSD_CreateLabel} 10u 12u 96% 32u "$1"
     Pop $0
-    ${NSD_CreateLabel} 10u 46u 96% 42u "Everything else works. Until the sandbox is set up, an agent can run on this computer only after a warning you confirm. To set it up later, open Settings › Agent sandbox in Halonic."
+    ${NSD_CreateLabel} 10u 46u 96% 42u "Everything else works. Until the sandbox is set up, an agent can run on this computer only after a warning you confirm. To set it up later, run this installer again."
     Pop $0
   ${EndIf}
 
