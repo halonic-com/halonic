@@ -7,12 +7,20 @@ SLOT=${1:?slot, e.g. large-1}
 . /etc/halonic-ci/pool.env   # APP_ID INSTALLATION_ID ORG RUNNER_GROUP_ID IMAGE
 KEY=/etc/halonic-ci/app.pem
 case "$SLOT" in
-  large-*) LABEL=halonic-ci-large; CPUS=12; MEM=9g;  QUOTA=20g; TMPFS=1g ;;
-  small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=2g;  QUOTA=6g;  TMPFS=512m ;;
+  large-*) LABEL=halonic-ci-large; CPUS=12; MEM=16g; QUOTA=20g; TMPFS=1g ;;
+  small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=4g;  QUOTA=6g;  TMPFS=512m ;;
   *) echo "unknown slot $SLOT" >&2; exit 2 ;;
 esac
 N=${SLOT##*-}
 case "$SLOT" in large-*) PROJ=$((100+N));; small-*) PROJ=$((200+N));; esac
+# Each slot gets its own CPUs, so a job sees only those (nproc, Node's availableParallelism).
+# With --cpus alone it saw all 48 of the VM's, and test runners started a worker per CPU and ran
+# out of memory. vCPUs 2k and 2k+1 are SMT siblings, so 12 in a row are 6 whole cores. The small
+# slots share the last 6 (each capped at 2 by --cpus).
+case "$SLOT" in
+  large-*) CPUSET="$(( (N-1)*12 ))-$(( N*12-1 ))" ;;
+  small-*) CPUSET="42-47" ;;
+esac
 
 b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
 now=$(date +%s)
@@ -63,9 +71,9 @@ trap cleanup EXIT
 echo "slot $SLOT: runner $NAME (id $RUNNER_ID) waiting for a job"
 STARTED=$(date +%s)
 docker run --rm --name "hci-$SLOT" --hostname "$NAME" --init \
-  --cpus "$CPUS" --memory "$MEM" --memory-swap "$MEM" --pids-limit 8192 \
+  --cpus "$CPUS" --cpuset-cpus "$CPUSET" --memory "$MEM" --memory-swap "$MEM" --pids-limit 8192 \
   --cap-drop ALL --security-opt no-new-privileges \
-  --tmpfs "/tmp:rw,nosuid,nodev,size=$TMPFS" \
+  --tmpfs "/tmp:rw,exec,nosuid,nodev,size=$TMPFS" \
   -v "$RUN:/run/halonic-ci:ro" \
   -v /etc/halonic-ci/pool:/etc/halonic-ci:ro \
   -v "$WORK:$JOB_WORK" \
