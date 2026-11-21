@@ -3,6 +3,7 @@
 - Task: HAL-3384 part 6, followed to merge on HAL-15321
 - Approval: Liam approved this PR's Integrations section on `29dd21a3` (HAL-3384); the rebase onto HAL-15261 is a team decision on HAL-15321; Liam signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ksRz3XtbZtpJUiyF4MXcVYI7BNBJpJmMZXRKYV4ZTvNLzJpiVZI1I/gn5hqPlxws2lx8k2GTrsNlHPXSVj8XAg==
 
 ## What changes
 
