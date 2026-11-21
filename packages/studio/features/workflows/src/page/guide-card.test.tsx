@@ -67,6 +67,10 @@ const press = (button: HTMLButtonElement | null | undefined) =>
     button?.click();
   });
 
+/** The page's own Run, not the guide's "Run your first workflow". */
+const runButtonOf = (page: HTMLElement) =>
+  [...page.querySelectorAll("button")].find((button) => button.textContent?.trim() === "Run");
+
 const guideCardOf = (page: HTMLElement) => page.querySelector<HTMLElement>("[data-guide-card]");
 
 verifies("workflows.page.guide-card", () => {
@@ -150,6 +154,24 @@ verifies("workflows.page.guide-card", () => {
     expect(guideCardOf(page)).toBeNull();
   });
 
+  it("shows no card, and says why, when the guide fails to give one", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const guide: WorkflowGuide = {
+      card: () => {
+        throw new Error("The first run's state can't be read.");
+      },
+      subscribe: () => () => {},
+    };
+    const page = await show(screen(guide));
+    expect(guideCardOf(page)).toBeNull();
+    expect(runButtonOf(page)).toBeDefined();
+    expect(error).toHaveBeenCalledWith(
+      'The guide couldn\'t give a card for "reply".',
+      expect.any(Error),
+    );
+    error.mockRestore();
+  });
+
   it("puts the card above the canvas on a phone", async () => {
     const page = await show(
       <PresentationProvider presentation="phone">
@@ -160,5 +182,31 @@ verifies("workflows.page.guide-card", () => {
     const panel = page.querySelector("[role=tabpanel]") as HTMLElement;
     expect(card.compareDocumentPosition(panel)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(card.parentElement).not.toBe(panel.parentElement);
+  });
+});
+
+verifies("workflows.page.guide-card-focus", () => {
+  it("gives focus back to the guide's button when the Run form it opened closes", async () => {
+    const page = await show(screen(guideFor(firstRunCard).guide));
+    await press(buttonNamed(page, "Run your first workflow"));
+    await press(buttonNamed(page, "Cancel"));
+    expect(guideCardOf(page)).not.toBeNull();
+    expect(document.activeElement).toBe(buttonNamed(page, "Run your first workflow"));
+  });
+
+  it("gives focus back to Run when the guide card doesn't come back", async () => {
+    const { guide, change } = guideFor(firstRunCard);
+    const page = await show(screen(guide));
+    await press(buttonNamed(page, "Run your first workflow"));
+    act(() => change(undefined));
+    await press(buttonNamed(page, "Cancel"));
+    expect(document.activeElement).toBe(runButtonOf(page));
+  });
+
+  it("gives focus back to Run when Run opened the form", async () => {
+    const page = await show(screen(guideFor(firstRunCard).guide));
+    await press(runButtonOf(page));
+    await press(buttonNamed(page, "Cancel"));
+    expect(document.activeElement).toBe(runButtonOf(page));
   });
 });
