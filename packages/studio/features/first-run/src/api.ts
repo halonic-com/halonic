@@ -5,6 +5,7 @@
 import type {
   ChoiceChange,
   ChoiceProblem,
+  FirstRunKeyProvider,
   KeyProblem,
   LocalModels,
   ModelChoice,
@@ -98,6 +99,14 @@ export interface ModelChoicePreview {
 }
 
 /**
+ * The trust line's facts for a choice before its test, so the line shows under
+ * Test and continue before it is pressed. It gives no fingerprint: Continue
+ * trusts only what {@link ModelChoiceService.preview} gave for the passed test,
+ * so the screen compares the two lines and asks again when they differ.
+ */
+export type ModelChoiceLine = Omit<ModelChoicePreview, "fingerprint">;
+
+/**
  * What Continue did:
  * - `ok`: the choice is saved. `changes` are the facts of the "Changed …"
  *   line; `trusted` says whether the folder is trusted now.
@@ -126,8 +135,16 @@ export type ModelChoiceSaved =
  * {@link ModelChoiceService.preview} showed.
  */
 export interface ModelChoiceService {
-  /** Makes the one tiny test call for `choice`, with `key` for a key choice. A new test drops the last one's key. */
+  /**
+   * Makes the one tiny test call for `choice`, with `key` for a key choice. Without `key`, a key
+   * choice is tested with the key saved for it on this computer, which Continue then leaves as it
+   * is; `not-a-key` when none is saved. A new test drops the last one's key.
+   */
   test(choice: ModelChoice, key?: SecretText): Promise<ModelChoiceTest>;
+  /** Whether a key is saved on this computer for the provider, for "A key is saved for …". */
+  keySaved(provider: FirstRunKeyProvider): Promise<boolean>;
+  /** The trust line's facts for `choice` before its test; `undefined` when a file stops the choice. */
+  lineFacts(choice: ModelChoice): Promise<ModelChoiceLine | undefined>;
   /** The trust line's facts for a passed test, with nothing written; `undefined` for an unknown `testId`. */
   preview(testId: string): Promise<ModelChoicePreview | undefined>;
   /** Which models Ollama on this computer has downloaded, for the local option's state line. */

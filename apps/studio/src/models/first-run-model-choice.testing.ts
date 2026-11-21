@@ -157,12 +157,14 @@ export function acmeFolder(options: { files?: Record<string, string>; saves?: bo
             unsaved.clear();
           },
     keys: {
+      stored: async (name: string) => stored.has(name),
       save: async (name: string, key: SecretText) => {
         steps.push(`key: ${name}`);
         if (state.failKey !== undefined) throw state.failKey;
         stored.set(name, key.reveal());
       },
     },
+    saved: { get: async (name) => stored.get(name) ?? null },
     trust,
     digest,
     provider: modelOf(calls, () => state.answer),

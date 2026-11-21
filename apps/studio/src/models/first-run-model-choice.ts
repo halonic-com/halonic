@@ -3,6 +3,7 @@ import {
   type ChoiceProblem,
   choiceEdits,
   choiceProvider,
+  type FirstRunKeyProvider,
   keyProblem,
   type LocalModels,
   type ModelChoice,
@@ -12,8 +13,9 @@ import {
   testTimeLimitMs,
 } from "@halonicjs/app";
 import { type Provider, parseFile } from "@halonicjs/format";
-import { type Digest, type LlmProvider, type Secrets, secretKey } from "@halonicjs/ports";
+import type { Digest, LlmProvider, Secrets } from "@halonicjs/ports";
 import type {
+  ModelChoiceLine,
   ModelChoicePreview,
   ModelChoiceSaved,
   ModelChoiceService,
@@ -23,6 +25,7 @@ import type { ModelKeys, ModelsFiles } from "@halonicjs/studio-feature-models/ap
 import { SecretText } from "@halonicjs/studio-kit";
 import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
 import { choicePreview } from "./first-run-choice-trust.ts";
+import { emptyKey, onlySaved, onlySecret } from "./first-run-test-secrets.ts";
 
 /** What the first run's model choice reads and writes, all for the one open folder. */
 export interface FirstRunModelChoiceParts {
@@ -38,7 +41,9 @@ export interface FirstRunModelChoiceParts {
    * the browser demo: Continue then changes nothing.
    */
   readonly settle: (() => Promise<void>) | undefined;
-  readonly keys: Pick<ModelKeys, "save">;
+  readonly keys: Pick<ModelKeys, "save" | "stored">;
+  /** The keys saved on this computer, read as a run reads them (`workspaceSecrets`). */
+  readonly saved: Secrets;
   readonly trust: Pick<
     WorkspaceTrust,
     "check" | "needsNoTrust" | "refresh" | "grant" | "isTrusted"
@@ -83,15 +88,24 @@ export class FirstRunModelChoice implements ModelChoiceService {
     this.#shown = undefined;
     const mine = ++this.#latest;
     let tested: SecretText | undefined;
-    if (choice.kind === "key") {
-      const text = key?.reveal() ?? "";
+    if (choice.kind === "key" && key !== undefined) {
+      const text = key.reveal();
       const problem = keyProblem(choice.provider, text);
       if (problem !== undefined) return { kind: "not-a-key", problem };
       tested = new SecretText(text.trim());
     }
     const edits = await this.#edits(choice);
     if (!edits.ok) return { kind: "files", problem: edits.problem };
-    const outcome = testOutcome(choice, await this.#call(choice, edits, tested));
+    const { secretName } = edits.value;
+    let secrets = onlySecret(secretName, tested);
+    if (choice.kind === "key" && tested === undefined) {
+      // No key pasted: the test uses the saved one, read as a run reads it, or there is none to test.
+      if (secretName === undefined || !(await this.#parts.keys.stored(secretName))) {
+        return { kind: "not-a-key", problem: keyProblem(choice.provider, "") ?? emptyKey };
+      }
+      secrets = onlySaved(secretName, this.#parts.saved);
+    }
+    const outcome = testOutcome(choice, await this.#call(choice, edits, secrets));
     // Failed or passed: the screen waits for the newer test, so this one's outcome is old news.
     if (mine !== this.#latest) return { kind: "superseded" };
     if (outcome !== "ok") return { kind: "tested", outcome };
@@ -104,21 +118,24 @@ export class FirstRunModelChoice implements ModelChoiceService {
     return this.#parts.localModels();
   }
 
+  async keySaved(provider: FirstRunKeyProvider): Promise<boolean> {
+    const edits = await this.#edits({ kind: "key", provider });
+    const name = edits.ok ? edits.value.secretName : undefined;
+    return name !== undefined && this.#parts.keys.stored(name);
+  }
+
+  async lineFacts(choice: ModelChoice): Promise<ModelChoiceLine | undefined> {
+    const facts = await this.#facts(choice);
+    return facts === undefined
+      ? undefined
+      : { reaches: facts.reaches, localOnlyOff: facts.localOnlyOff };
+  }
+
   async preview(testId: string): Promise<ModelChoicePreview | undefined> {
     const passed = this.#passedTest(testId);
     if (passed === undefined) return undefined;
-    const edits = await this.#edits(passed.choice);
-    if (!edits.ok) return undefined;
-    await this.#parts.trust.refresh();
-    const { trust, digest } = this.#parts;
-    const preview = await choicePreview({
-      before: trust.check,
-      needsNoTrust: trust.needsNoTrust,
-      added: edits.added,
-      name: choiceProvider(passed.choice).name,
-      localOnlyOff: edits.value.changes.some((change) => change.kind === "local-only-off"),
-      digest,
-    });
+    const preview = await this.#facts(passed.choice);
+    if (preview === undefined) return undefined;
     if (this.#passedTest(testId) !== undefined) {
       this.#shown = { testId, fingerprint: preview.fingerprint };
     }
@@ -201,6 +218,22 @@ export class FirstRunModelChoice implements ModelChoiceService {
     return trust.isTrusted();
   }
 
+  /** The trust line's facts for `choice` on the files as they are now, with nothing written. */
+  async #facts(choice: ModelChoice): Promise<ModelChoicePreview | undefined> {
+    const edits = await this.#edits(choice);
+    if (!edits.ok) return undefined;
+    await this.#parts.trust.refresh();
+    const { trust, digest } = this.#parts;
+    return choicePreview({
+      before: trust.check,
+      needsNoTrust: trust.needsNoTrust,
+      added: edits.added,
+      name: choiceProvider(choice).name,
+      localOnlyOff: edits.value.changes.some((change) => change.kind === "local-only-off"),
+      digest,
+    });
+  }
+
   #passedTest(testId: string): PassedTest | undefined {
     return this.#passed?.id === testId ? this.#passed : undefined;
   }
@@ -235,13 +268,12 @@ export class FirstRunModelChoice implements ModelChoiceService {
   /** The one test call, cut off at the choice's time limit; what came back, never thrown. */
   async #call(
     choice: ModelChoice,
-    edits: { value: ChoiceEdits; file: Provider },
-    key: SecretText | undefined,
+    edits: { file: Provider },
+    secrets: Secrets,
   ): Promise<TestResult> {
     const limit = new AbortController();
     const stop = this.#parts.setTimer(() => limit.abort(), testTimeLimitMs(choice));
     try {
-      const secrets = onlySecret(edits.value.secretName, key);
       const model = this.#parts.provider(edits.file, secrets);
       return { reply: await model.chat(modelTestRequest(choice, limit.signal)) };
     } catch (error) {
@@ -250,16 +282,6 @@ export class FirstRunModelChoice implements ModelChoiceService {
       stop();
     }
   }
-}
-
-/** Secrets holding only the pasted key, under the provider's secret name. */
-function onlySecret(name: string | undefined, key: SecretText | undefined): Secrets {
-  return {
-    get: async (asked) =>
-      name !== undefined && key !== undefined && secretKey(asked) === secretKey(name)
-        ? key.reveal()
-        : null,
-  };
 }
 
 function problemReason(problem: ChoiceProblem): string {

@@ -11,15 +11,21 @@
   said `ok` with nothing saved.
 - `studio.first-run-key-after-test`: a test that fails after a newer one started is `superseded`
   too, as a passed one already was.
+- `studio.first-run-choice-trust`: the service also gives the trust line's facts before the test,
+  with nothing written and no fingerprint, so the screen can show the line under Test and continue
+  before it is pressed. Continue still trusts only the fingerprint `preview` gave for the passed
+  test.
 
 ## Why
 
 Liam's review of #3960 found the three cases: the edits stayed waiting after a failed save while
 the answer said the choice wasn't saved, the browser got `ok: true` for nothing, and a slow failure
-could come back after a newer test. Every old example still holds; the two old tests of these cases
+could come back after a newer test. The screen needs the line before the press, which `preview`
+only gave after a passed test. Every old example still holds; the two old tests of these cases
 only gain checks, and two tests are added. No test was weakened.
 
 ## Covers
 
 - studio.first-run-choice-order
 - studio.first-run-key-after-test
+- studio.first-run-choice-trust

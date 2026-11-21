@@ -7,9 +7,10 @@ import {
   type ServiceRegistry,
   workspaceFilesKey,
 } from "@halonicjs/app";
+import { workspaceSecrets } from "@halonicjs/ports";
 import { ModelChoiceHostService } from "@halonicjs/studio-feature-first-run/api";
 import { type ModelKeys, ModelsFilesService } from "@halonicjs/studio-feature-models/api";
-import { ShellHttpClient, type TauriIpc } from "@halonicjs/studio-services";
+import { ShellHttpClient, shellKeychain, type TauriIpc } from "@halonicjs/studio-services";
 import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
 import { FirstRunModelChoice } from "./first-run-model-choice.ts";
 
@@ -41,9 +42,11 @@ export function provideModelChoice(services: ServiceRegistry, parts: ModelChoice
       },
       settle,
       keys,
+      // A saved key is read only for its own test, under the name rule a run reads keys by.
+      saved: workspaceSecrets(shellKeychain(ipc)),
       trust,
       digest: webCryptoDigest,
-      // The test call goes the way a run's calls go, with only the pasted key as its secrets.
+      // The test call goes the way a run's calls go, with only the one key it tests as its secrets.
       provider: (file, secrets) => workspaceProvider(file, { secrets, http }),
       setTimer: (callback, delayMs) => {
         const timer = setTimeout(callback, delayMs);
