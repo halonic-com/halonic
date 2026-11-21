@@ -260,7 +260,7 @@ describe("run with the integration sign-in routes", () => {
     return answers;
   }
 
-  it("serves them for the profile folder it was given, with no integration's sign-ins yet", async () => {
+  it("serves them for the profile folder it was given, with no sign-ins for a plugin it doesn't have", async () => {
     const profile = await mkdtemp(join(tmpdir(), "halonic-host-profile-"));
     try {
       expect(await signInAnswers(["--profile-folder", profile])).toEqual({

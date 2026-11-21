@@ -36,7 +36,9 @@ version 1 loads and runs unchanged; the loader no longer insists on equality.
 - A plugin's backend, and an `integration.yaml` read as a plugin, can't declare
   `signIns` yet (`backend-sign-in`): the trust check and the trust content
   don't show a sign-in, so the user couldn't approve one. The Studio pull request
-  of HAL-984 lifts it.
+  of HAL-984 lifts it. (Lifted in HAL-8613, once the trust check showed a
+  backend's sign-ins; a local integration that isn't a plugin still can't
+  declare them, `sign-ins-not-allowed`.)
 - The kit places sign-in tokens, `oauth-sign-in` runs the flow and Studio asks
   for sign-in in later pull requests of HAL-984; until they land, a sheet may
   declare `signIns` but the kit places no token.

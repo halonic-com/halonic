@@ -41,7 +41,7 @@ import { hostWslRemover, type WslRemover } from "./sandbox/wsl-remove-host.ts";
 import { healthRoute } from "./server/health-route.ts";
 import { type HostRoute, serveHostOverFrames, startHostServer } from "./server/host-server.ts";
 import { randomLaunchToken } from "./server/launch-token.ts";
-import { hostIntegrationSignInRoutes } from "./sign-in/host-sign-ins.ts";
+import { hostIntegrationSignIns } from "./sign-in/host-sign-ins.ts";
 import { takeStandardOutput } from "./stdio/standard-output.ts";
 import { openTerminal } from "./terminal/open-terminal.ts";
 
@@ -343,7 +343,21 @@ function hostServices(
     undefined,
     (text) => process.stderr.write(text),
   );
-  const plugins = hostPlugins(version, sandbox, profile);
+  // A plugin's backend places the tokens of its sign-ins, and the sign-ins read
+  // the plugin's sheet: each looks the other up only when it is used.
+  const signIns = hostIntegrationSignIns({
+    profile,
+    relayPort,
+    integration: (name) => plugins?.signIns(name),
+    ownPorts: () => [...listeningPorts, ...bridges.ports()],
+    log: logToError,
+  });
+  const plugins = hostPlugins(
+    version,
+    sandbox,
+    profile,
+    (plugin) => signIns.host?.integration(plugin)?.signIns.tokens,
+  );
   const folders = harnessFolders(
     profile,
     connectors.workspaceRoots,
@@ -394,12 +408,7 @@ function hostServices(
           ...(relayPort === undefined ? {} : { relayPort }),
         })),
     ...hostPluginRoutes(plugins, logToError),
-    ...hostIntegrationSignInRoutes({
-      profile,
-      relayPort,
-      ownPorts: () => [...listeningPorts, ...bridges.ports()],
-      log: logToError,
-    }),
+    ...signIns.routes,
     signInRoute({ harnesses, openTerminal: (command) => openTerminal(command) }),
   ];
   const stop = async () => {

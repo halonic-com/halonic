@@ -1,5 +1,6 @@
 import type { IncomingMessage } from "node:http";
 import type { SignInHost } from "@halonicjs/host-integration-sign-in";
+import { PluginRefusal } from "../plugin/plugin-refusal.ts";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import { integrationBody, signInBody } from "./sign-in-schemas.ts";
@@ -51,7 +52,7 @@ const callbackPageHeaders = {
  * - `POST /v1/integrations/sign-in/start` with `{ integration, signIn }`:
  *   answers `{ authorizeUrl }`. The redirect names this host's own port and a
  *   new random path under {@link signInCallbackPrefix}. 404 `unknown_integration`
- *   or `unknown_sign_in`; 422 `settings_invalid` (a setting the sign-in reads
+ *   (also for a plugin the trust doesn't cover now) or `unknown_sign_in`; 422 `settings_invalid` (a setting the sign-in reads
  *   is missing or wrong) or `client_secret_missing`; 501 `callback_unavailable`
  *   over frames.
  * - `POST /v1/integrations/sign-in/status` with `{ integration }`: answers
@@ -152,6 +153,7 @@ export function integrationSignInRoutes(deps: IntegrationSignInRouteDeps): HostR
             );
         }
       } catch (error) {
+        if (refusedAsUnknown(error)) return unknownIntegration(response);
         logFailure(error);
         sendError(response, 502, "sign_in_failed", failedMessage);
       }
@@ -169,6 +171,7 @@ export function integrationSignInRoutes(deps: IntegrationSignInRouteDeps): HostR
       try {
         sendJson(response, 200, { signIns: await parts.status() });
       } catch (error) {
+        if (refusedAsUnknown(error)) return unknownIntegration(response);
         logFailure(error);
         sendError(response, 502, "sign_in_failed", failedMessage);
       }
@@ -199,6 +202,7 @@ export function integrationSignInRoutes(deps: IntegrationSignInRouteDeps): HostR
       try {
         sendJson(response, 200, { result: await parts.signIns.signOut(body.signIn) });
       } catch (error) {
+        if (refusedAsUnknown(error)) return unknownIntegration(response);
         logFailure(error);
         sendError(response, 502, "sign_in_failed", failedMessage);
       }
@@ -206,6 +210,15 @@ export function integrationSignInRoutes(deps: IntegrationSignInRouteDeps): HostR
   };
 
   return [callback, start, status, cancel, signOut];
+}
+
+/**
+ * A plugin's sign-ins read its folder and check the trust again at every
+ * request: a plugin that isn't there, changed or lost its trust is one the
+ * host runs no sign-ins for now.
+ */
+function refusedAsUnknown(error: unknown): boolean {
+  return error instanceof PluginRefusal && error.code === "plugin_not_trusted";
 }
 
 function unknownIntegration(response: Parameters<typeof sendError>[0]): void {

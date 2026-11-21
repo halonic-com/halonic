@@ -188,7 +188,7 @@ verifies("integration-kit.loader", () => {
   });
 
   describe("a sign-in in a local integration", () => {
-    it("is refused until the trust content shows it, which a built-in one may declare", () => {
+    it("is refused unless it is a plugin's backend, whose trust check shows it; a built-in one may declare it", () => {
       const withSignIn = {
         ...sheet(),
         kit: 2,
@@ -215,6 +215,16 @@ verifies("integration-kit.loader", () => {
       );
       const builtIn = load({ source: { origin: "built-in", sheet: withSignIn, integration } });
       expect(builtIn.loaded.ok).toBe(true);
+      const backend = load({
+        source: {
+          origin: "local",
+          sheet: withSignIn,
+          integration,
+          approvedSheet: withSignIn,
+          plugin: true,
+        },
+      });
+      expect(backend.loaded.ok).toBe(true);
     });
   });
 

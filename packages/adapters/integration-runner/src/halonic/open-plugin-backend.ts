@@ -26,6 +26,7 @@ import type {
   ConnectorFactoryContext,
   Digest,
   FolderReader,
+  SignInTokens,
 } from "@halonicjs/ports";
 import { checkedFilesProblems } from "./checked-files.ts";
 import type { RunnerConnection } from "./connect-runner.ts";
@@ -48,6 +49,12 @@ export interface OpenPluginBackendRequest {
    * a plugin swapped between the caller's check and the start never runs.
    */
   readonly fingerprint?: string;
+  /**
+   * The access tokens of the backend's sign-ins, from the host's sign-ins for
+   * this plugin. Without them a request that places a sign-in's token is
+   * refused as `sign-in-needed`. The backend never sees them.
+   */
+  readonly signInTokens?: SignInTokens;
 }
 
 /** The sandbox that fences a plugin isn't available here, so nothing started and nothing runs without it. */
@@ -118,7 +125,7 @@ class PluginBackendOpening {
   }
 
   async open(): Promise<ConnectorClient> {
-    const { id, plugin: pluginId, context } = this.#request;
+    const { id, plugin: pluginId, context, signInTokens } = this.#request;
     const { plugins, digest, trust, gate } = this.#machine;
     const starts = new PluginBackendStart({ plugins, digest, trust, gate });
     const read = await readPluginFolder(plugins, digest, pluginId);
@@ -132,6 +139,7 @@ class PluginBackendOpening {
       transport: this.#machine.transport,
       secrets: context.secrets,
       tokens: context.tokens,
+      ...(signInTokens === undefined ? {} : { signInTokens }),
       choices: pluginBackendChoices(plugin, await this.#machine.settings(plugin)),
     });
     if (!loaded.ok) {

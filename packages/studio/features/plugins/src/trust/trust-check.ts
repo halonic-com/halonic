@@ -160,6 +160,7 @@ export function trustCheckContent(plugin: Plugin): TrustCheckContent {
       programs: programs.length,
       secrets: secrets.length,
       secretsTo: allGoTo.length === 1 ? allGoTo[0] : undefined,
+      signIns: signIns.length,
       addresses: addresses.length,
     },
   };

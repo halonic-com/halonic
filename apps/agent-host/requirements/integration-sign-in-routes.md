@@ -15,7 +15,7 @@ The agent host shall give Studio the start, status, cancel and sign-out of an in
 - Given a callback with an `Origin` header or another host name, then it is refused as for every route.
 - Given a started sign-in that Studio cancels, then its callback gets the 400 page.
 - Given a sign-in that is signed in, when Studio signs it out, then the provider is asked to revoke, the status says `signedOut`, and the answer carries what the provider did.
-- Given an integration the host doesn't run sign-ins for, then every route answers 404 `unknown_integration`; given a sign-in the sheet doesn't have, a start answers 404 `unknown_sign_in`.
+- Given an integration the host doesn't run sign-ins for, or a plugin that isn't in the profile or that the trust doesn't cover now, then every route answers 404 `unknown_integration`; given a sign-in the sheet doesn't have, a start answers 404 `unknown_sign_in`.
 - Given a setting the sign-in reads that is missing, then a start answers 422 `settings_invalid`; given a client secret that isn't set, 422 `client_secret_missing`.
 - Given a pick of a secret that belongs to Halonic, then a start answers 502 `sign_in_failed` with a fixed message, and the log holds only an error name.
 - Given the host serves over frames, then a start answers 501 `callback_unavailable`.

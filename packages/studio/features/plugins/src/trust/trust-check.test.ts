@@ -119,7 +119,15 @@ verifies("plugins.plugin-trust-check", () => {
   });
 
   it("says a lone risky tool with which", () => {
-    const counts = { tools: 1, writes: 0, sends: 1, programs: 0, secrets: 0, addresses: 0 };
+    const counts = {
+      tools: 1,
+      writes: 0,
+      sends: 1,
+      programs: 0,
+      secrets: 0,
+      signIns: 0,
+      addresses: 0,
+    };
 
     expect(trustSummary({ ...counts, secretsTo: undefined })).toBe(
       "Adds 1 tool for agents, which sends.",
@@ -129,8 +137,34 @@ verifies("plugins.plugin-trust-check", () => {
     );
   });
 
+  it("counts the sign-ins after the secrets", () => {
+    const reach = {
+      tools: 0,
+      writes: 0,
+      sends: 0,
+      programs: 0,
+      secrets: 2,
+      secretsTo: undefined,
+      signIns: 2,
+      addresses: 2,
+    };
+
+    expect(trustSummary(reach)).toBe("Sends 2 secrets, has 2 sign-ins and reaches 2 addresses.");
+    expect(trustSummary({ ...reach, signIns: 1 })).toBe(
+      "Sends 2 secrets, has 1 sign-in and reaches 2 addresses.",
+    );
+  });
+
   it("gives no summary when there's nothing to sum up, and names only what Studio draws", () => {
-    const none = { tools: 0, writes: 0, sends: 0, programs: 0, secrets: 0, addresses: 0 };
+    const none = {
+      tools: 0,
+      writes: 0,
+      sends: 0,
+      programs: 0,
+      secrets: 0,
+      signIns: 0,
+      addresses: 0,
+    };
 
     expect(trustSummary({ ...none, secretsTo: undefined })).toBe("");
     expect(inStudioRow({ settings: false, commands: 1, cards: 1, panel: false })).toBe(

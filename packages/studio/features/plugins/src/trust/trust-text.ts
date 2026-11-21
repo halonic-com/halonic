@@ -216,13 +216,15 @@ export interface TrustCounts {
   readonly secrets: number;
   /** Where its secrets go, when they all go to the one address. */
   readonly secretsTo: string | undefined;
+  /** The backend's sign-ins. */
+  readonly signIns: number;
   readonly addresses: number;
 }
 
 /**
  * The summary, in risk order, zero counts left out (design section 5, checklist 4.1): "Adds 2
  * tools for agents, 1 of which changes things. Starts 1 program in a sandbox on this computer,
- * sends 1 secret to api.example.com and reaches 2 addresses." `""` when the plugin adds none of
+ * sends 1 secret to api.example.com, has 1 sign-in and reaches 2 addresses." `""` when the plugin adds none of
  * these. Programs are said to start only where they can: with `programsRun` saying they can't,
  * the line says so, as the Runs line does.
  */
@@ -274,6 +276,7 @@ function reachSentence(counts: TrustCounts, programsRun: ProgramsRun): string {
   const parts = [
     counts.programs === 0 ? undefined : programsPart(counts.programs, programsRun),
     secrets,
+    counts.signIns === 0 ? undefined : `has ${counted(counts.signIns, "sign-in", "sign-ins")}`,
     counts.addresses === 0
       ? undefined
       : `reaches ${counted(counts.addresses, "address", "addresses")}`,

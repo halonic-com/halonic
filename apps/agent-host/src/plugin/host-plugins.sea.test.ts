@@ -41,7 +41,7 @@ verifies("agent-host.unfenced-runs-routes", () => {
       const profile = { platform: onWindows ? ("windows" as const) : ("linux" as const), root };
       // On Windows plugin code never runs in the sandbox, whatever the check says (condition b).
       const reason = onWindows ? "windows" : "container";
-      const plugins = hostPlugins("0.0.0", inContainer as SrtSandbox, profile);
+      const plugins = hostPlugins("0.0.0", inContainer as SrtSandbox, profile, () => undefined);
       server = await startHostServer(
         token,
         hostPluginRoutes(plugins, () => undefined),
@@ -60,7 +60,7 @@ verifies("agent-host.unfenced-runs-routes", () => {
       });
       expect((await call("/v1/unfenced-runs/allow", { reason })).status).toBe(200);
       // A second host on the same profile reads the yes from the file.
-      const again = hostPlugins("0.0.0", inContainer as SrtSandbox, profile);
+      const again = hostPlugins("0.0.0", inContainer as SrtSandbox, profile, () => undefined);
       expect(await again?.unfenced.gate.status()).toMatchObject({
         run: "allowed",
         reason,

@@ -7,7 +7,7 @@ import type { FakeOAuthServer } from "@halonicjs/testing-sign-in";
 import * as rig from "@halonicjs/testing-sign-in";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { signInIntegration } from "./app-sign-in-integration.ts";
-import { noSignInIntegrations, openHostSignIns } from "./host-sign-ins.ts";
+import { hostIntegrationSignIns, openHostSignIns } from "./host-sign-ins.ts";
 import { exampleSheet, pickedClientSecret } from "./sign-in-test-kit.test-helper.ts";
 
 const tokenKey = encodeBase64url(new Uint8Array(32).fill(7));
@@ -84,13 +84,26 @@ describe("openHostSignIns", () => {
     expect(await readdir(profile.root)).toEqual([]);
   });
 
-  it("runs no integration's sign-ins while the app has none that may hold one", () => {
+  it("runs no sign-ins for an integration the app doesn't give", () => {
     const host = openHostSignIns({
       profile,
       env: {},
-      integration: noSignInIntegrations,
+      integration: () => undefined,
       ownPorts: () => [],
     });
     expect(host.integration("example")).toBeUndefined();
+  });
+});
+
+describe("hostIntegrationSignIns", () => {
+  it("has no sign-ins and serves no route without a profile folder", () => {
+    const signIns = hostIntegrationSignIns({
+      profile: undefined,
+      relayPort: undefined,
+      integration: () => expect.fail("asked for an integration without a profile"),
+      ownPorts: () => [],
+      log: () => undefined,
+    });
+    expect(signIns).toEqual({ host: undefined, routes: [] });
   });
 });

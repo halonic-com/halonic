@@ -14,17 +14,17 @@ import {
   MemoryUnfencedRunConsentStore,
 } from "@halonicjs/adapter-memory";
 import { RunnerStartGate, readPluginFolder, TrustService, UnfencedRuns } from "@halonicjs/app";
-import type {
-  ConnectorFactoryContext,
-  FolderReader,
-  Sandbox,
-  SandboxCheck,
-} from "@halonicjs/ports";
+import type { FolderReader, Sandbox, SandboxCheck, SignInTokens } from "@halonicjs/ports";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { hostPluginBackends, unavailablePluginBackends } from "./host-plugin-backends.ts";
+import {
+  type HostPluginContext,
+  hostPluginBackends,
+  unavailablePluginBackends,
+} from "./host-plugin-backends.ts";
 import { PluginRefusal } from "./plugin-refusal.ts";
+import { pluginSignIns } from "./plugin-sign-ins.ts";
 
 /** These tests never take a yes back in another process and no start hangs, so no timer goes off. */
 const idleTimers = { set: () => undefined, clear: () => undefined };
@@ -87,6 +87,8 @@ async function setup(
     platform?: NodeJS.Platform;
     /** The user's saved yes for running without the sandbox, for this reason. */
     allowed?: "windows";
+    /** The plugin's saved setting values. */
+    settings?: Record<string, string>;
   } = {},
 ) {
   const { check = passes, trusted = true, platform = "linux" } = options;
@@ -137,7 +139,7 @@ async function setup(
     }),
     runtime: { node: "/host/halonic-agent-host", nodeFolder: "/host", runnerFile: "/r/runner.mjs" },
     transport: { fetch: async () => new Response("{}") } as never,
-    settings: async () => ({}),
+    settings: async () => options.settings ?? {},
     runnerMachine: async () => ({
       homeFolder: "home-folder",
       socketFolders: [],
@@ -175,14 +177,20 @@ async function setup(
       return runner;
     },
   };
+  /** The plugins whose sign-in tokens a backend's start asked for. */
+  const signInAsks: string[] = [];
   const context = {
     secrets: new MemorySecrets({}),
     tokens: new MemoryTokenStore(),
+    signInTokens: (plugin: string): SignInTokens | undefined => {
+      signInAsks.push(plugin);
+      return undefined;
+    },
     trust: null,
-  } as unknown as ConnectorFactoryContext;
+  } as unknown as HostPluginContext;
   const logged: string[] = [];
   const backends = hostPluginBackends(machine, context, (text) => logged.push(text));
-  return { backends, seen, launched, readNames, logged };
+  return { backends, machine, seen, launched, readNames, logged, signInAsks };
 }
 
 async function refusedWith(promise: Promise<unknown>): Promise<string | undefined> {
@@ -330,6 +338,85 @@ verifies("agent-host.plugin-secrets", () => {
       const { backends } = await setup();
       await put({ "acme/backend/index.js": "export default { changed: true };\n" });
       expect(await refusedWith(backends.trustedSecretNames("acme"))).toBe("plugin_not_trusted");
+    });
+  });
+});
+
+/** The fixture plugin with a sign-in that names a client secret, and `sdk: 2`, which a sign-in needs. */
+const signInManifest = `id: acme
+version: 1.0.0
+sdk: 2
+name: Acme
+backend:
+  hosts: [api.acme.example]
+  secrets:
+    acme-client: { purpose: The Acme app's client secret }
+  signIns:
+    acme-account:
+      purpose: Access to your Acme account.
+      flow: oauth-code
+      authorizeUrl: https://auth.acme.example/authorize
+      tokenUrl: https://auth.acme.example/token
+      clientId: { fromSetting: clientId }
+      clientSecret: acme-client
+      access: { hosts: [api.acme.example], as: bearer }
+  tools:
+    - { name: echo, description: Echoes., risk: read, untrusted: true }
+`;
+
+verifies("agent-host.plugin-sign-ins", () => {
+  describe("a plugin's sign-ins", () => {
+    beforeEach(async () => {
+      await put({ "acme/plugin.yaml": signInManifest });
+    });
+
+    it("reads the trusted plugin's backend sheet and the settings its backend starts with", async () => {
+      const { machine } = await setup({ settings: { clientId: "acme-app" } });
+      const signIns = pluginSignIns({ machine, secrets: new MemorySecrets({}) });
+      const read = await signIns("acme")?.read();
+      expect(read?.sheet.id).toBe("acme");
+      expect(Object.keys(read?.sheet.signIns ?? {})).toEqual(["acme-account"]);
+      expect(read?.settings).toEqual({ clientId: "acme-app" });
+    });
+
+    it("reads the client secret only from the plugin's own handed-over secrets", async () => {
+      const { machine } = await setup();
+      const secrets = new MemorySecrets({
+        "plugin__acme__acme-client": "acme-client-value",
+        "acme-client": "workspace-value",
+        "plugin__rain__acme-client": "other-plugin-value",
+      });
+      const signIns = pluginSignIns({ machine, secrets })("acme");
+      expect(await signIns?.secrets.get("acme-client")).toBe("acme-client-value");
+      expect(await signIns?.secrets.get("plugin__acme__acme-client")).toBeNull();
+    });
+
+    it("gives no sheet and no client secret for a plugin nobody trusted, or one that changed since", async () => {
+      const secrets = new MemorySecrets({ "plugin__acme__acme-client": "acme-client-value" });
+      const untrusted = (await setup({ trusted: false })).machine;
+      const notTrusted = pluginSignIns({ machine: untrusted, secrets })("acme");
+      expect(await refusedWith(notTrusted?.read() ?? Promise.resolve())).toBe("plugin_not_trusted");
+      const { machine } = await setup();
+      await put({ "acme/backend/index.js": "export default { changed: true };\n" });
+      const changed = pluginSignIns({ machine, secrets })("acme");
+      expect(await refusedWith(changed?.read() ?? Promise.resolve())).toBe("plugin_not_trusted");
+      expect(await refusedWith(changed?.secrets.get("acme-client") ?? Promise.resolve())).toBe(
+        "plugin_not_trusted",
+      );
+    });
+
+    it("runs no sign-ins for a name that can't be a plugin's id", async () => {
+      const { machine } = await setup();
+      const signIns = pluginSignIns({ machine, secrets: new MemorySecrets({}) });
+      expect(signIns("../acme")).toBeUndefined();
+      expect(signIns("Acme")).toBeUndefined();
+    });
+
+    it("gives a backend's start the sign-in tokens of its own plugin", async () => {
+      const { backends, signInAsks } = await setup({ settings: { clientId: "acme-app" } });
+      const client = await backends.open("acme", await backends.trustedFingerprint("acme"));
+      await client.close();
+      expect(signInAsks).toEqual(["acme"]);
     });
   });
 });

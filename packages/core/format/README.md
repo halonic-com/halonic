@@ -115,8 +115,8 @@ not here.
   reads) and `secrets` (sheet secret name → workspace secret name). Such a connector
   is local only when its own `local` key says `true` (requirement `connector-runner-transports`).
 - Sign-ins: an integration sheet may declare `signIns` (the `oauth-code` flow, with its URLs, scopes
-  and the hosts it may reach), which need `kit` 2 or higher; a plugin's backend can't declare
-  them yet (requirements `integration-sign-ins`, `plugin-backend-sign-ins`).
+  and the hosts it may reach), which need `kit` 2 or higher; a plugin's backend may declare them
+  with `sdk` 2 or higher (requirements `integration-sign-ins`, `plugin-backend-sign-ins`).
 - Plugin settings and `ui`: `PluginSettingField`, `PluginSettingValue` and `settingValueProblem(field,
   value)` check a setting's value; a `ui` command or card must name a declared tool whose `risk` is
   `read` (`tool-not-read`, requirement `plugin-ui-read-tools`).
