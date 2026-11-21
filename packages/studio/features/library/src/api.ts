@@ -22,6 +22,7 @@ export {
   connectionStateOf,
   connectionStateTable,
 } from "./connection-state.ts";
+export { type ConnectorSecrets, ConnectorSecretsService } from "./connector-secrets-host.ts";
 export {
   type ConnectorAsks,
   type ConnectorConnection,

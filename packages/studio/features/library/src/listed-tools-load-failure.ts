@@ -23,7 +23,8 @@ export interface LoadFailureLine {
  * The line for tools that couldn't be listed (UX check C2, C3 and G2): a cause the agent host
  * names gets its own words, an engine that isn't answering gets the words for where Studio runs,
  * and anything else gives its kinded reason, or the sentence for a problem Halonic can't explain
- * with **Copy details**.
+ * with **Copy details**. A secret's line points to the page's Secrets section when
+ * `secretsOnPage` says there is one (HAL-14995).
  *
  * @example
  * loadFailureLine(new ConnectorCouldntList({ reason: "stopped" }), "notes-mcp", words);
@@ -34,8 +35,9 @@ export function loadFailureLine(
   error: unknown,
   sourceName: string,
   engine: EngineWords,
+  secretsOnPage = false,
 ): LoadFailureLine {
-  if (error instanceof ConnectorCouldntList) return causeLine(error, sourceName);
+  if (error instanceof ConnectorCouldntList) return causeLine(error, sourceName, secretsOnPage);
   if (error instanceof EngineNotAnswering) {
     return plainLine(listedToolsWords.loadFailed(reasonAfterColon(engine.notAnswering)), false);
   }
@@ -44,7 +46,11 @@ export function loadFailureLine(
 }
 
 /** The words for a cause the agent host named. */
-function causeLine({ failure }: ConnectorCouldntList, source: string): LoadFailureLine {
+function causeLine(
+  { failure }: ConnectorCouldntList,
+  source: string,
+  secretsOnPage: boolean,
+): LoadFailureLine {
   const words = listedToolsWords.couldntList;
   switch (failure.reason) {
     case "program-missing":
@@ -54,9 +60,9 @@ function causeLine({ failure }: ConnectorCouldntList, source: string): LoadFailu
         copyDetails: false,
       };
     case "secret-missing":
-      return plainLine(words.secretMissing(source, failure.secret), false);
+      return plainLine(words.secretMissing(source, failure.secret, secretsOnPage), false);
     case "secret-refused":
-      return secretRefusedLine(failure.secrets, source);
+      return secretRefusedLine(failure.secrets, source, secretsOnPage);
     case "stopped":
       return plainLine(words.stopped(source), true);
     default:
@@ -68,14 +74,18 @@ function causeLine({ failure }: ConnectorCouldntList, source: string): LoadFailu
  * The server doesn't say which secret it refused: one declared secret is named, several are all
  * named, and none means setting a secret can't help.
  */
-function secretRefusedLine(secrets: readonly string[], source: string): LoadFailureLine {
+function secretRefusedLine(
+  secrets: readonly string[],
+  source: string,
+  secretsOnPage: boolean,
+): LoadFailureLine {
   const words = listedToolsWords.couldntList;
   const [only] = secrets;
   if (secrets.length === 0) return plainLine(words.secretRefusedNoneSent(source), true);
   if (secrets.length === 1 && only !== undefined) {
-    return plainLine(words.secretRefused(source, only), false);
+    return plainLine(words.secretRefused(source, only, secretsOnPage), false);
   }
-  return plainLine(words.secretRefusedOneOf(source, secrets), false);
+  return plainLine(words.secretRefusedOneOf(source, secrets, secretsOnPage), false);
 }
 
 function plainLine(text: string, copyDetails: boolean): LoadFailureLine {

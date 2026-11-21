@@ -11,6 +11,7 @@ import { InboxRequestsService, InboxRunsService } from "@halonicjs/studio-featur
 import { libraryFeature } from "@halonicjs/studio-feature-library";
 import {
   CollectionHostService,
+  ConnectorSecretsService,
   ConnectorStatusHostService,
   KnowledgeHostService,
   LibraryItemsHostService,
@@ -88,6 +89,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     SkillHostService,
     GoogleSetupAccountsService,
     ListedToolsHostService,
+    ConnectorSecretsService,
     InboxRunsService,
     InboxRequestsService,
     RunsSourceService,

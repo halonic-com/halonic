@@ -23,6 +23,8 @@ export interface ListedToolsReviewDialogProps {
   readonly onClose: (toast: string | null) => void;
   /** The words for an engine that isn't answering, for where Studio runs; the desktop app's by default. */
   readonly engine?: EngineWords;
+  /** The connector's page has a Secrets section, so a secret's line says to set it there. */
+  readonly secretsOnPage?: boolean;
 }
 
 /**
@@ -36,6 +38,7 @@ export function ListedToolsReviewDialog({
   sourceName,
   onClose,
   engine,
+  secretsOnPage = false,
 }: ListedToolsReviewDialogProps) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
   const state = useSyncExternalStore(subscribe, () => model.state);
@@ -71,6 +74,7 @@ export function ListedToolsReviewDialog({
           error={state.approveError}
           sourceName={snapshot?.sourceName ?? sourceName}
           {...(engine === undefined ? {} : { engine })}
+          secretsOnPage={secretsOnPage}
           onTryAgain={() => model.refresh()}
           onRemoveApproval={async (toolName) => {
             removedToast.current = (await model.removeApproval(toolName)) ?? removedToast.current;
