@@ -2,6 +2,7 @@
 
 - Approval: HAL-15429 (Sofia's C576 check on HAL-15424, rows 1, 2, 4, 5 and 10, decided by her as team wording under HAL-2282) and HAL-15427 (Nina's C572 check on HAL-15420)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5Q/EeCLbDhTwilKFsOv9W33fi5jifcpyPH8piw0AoBkL0Q0sxPNVLLH70JftU746mL3GVNigjnf3G+NUGefoDQ==
 - Task: HAL-15427, HAL-15429
 
 `halonic trust --list` and `halonic trust --remove` led every error with "Couldn't trust this
