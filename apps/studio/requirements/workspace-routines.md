@@ -16,4 +16,4 @@ When the desktop app opens a folder, it shall give the Routines feature the fold
 - Given a hub with neither, then creating a routine fails and writes nothing.
 - Given a routine whose schedule doesn't parse, then it is listed without a next time and its problems say why.
 - Given a file changes, or a run starts, then a subscriber hears it, and not after it stopped.
-- Given `weekly-report` starts the agent `analyst` in Halonic's own loop, then it starts no program, and with `harness: codex` it starts none either; a routine that starts a workflow with an agent in Claude Code.
+- Given `weekly-report` starts the agent `analyst` in Halonic's own loop, then it starts no program, and with `harness: codex` it starts none either; a routine that starts a workflow with an agent in Claude Code does.
