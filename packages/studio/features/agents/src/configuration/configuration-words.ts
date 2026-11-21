@@ -164,6 +164,9 @@ export const configurationWords = {
   agentStepModelAgent: (model: string | undefined) =>
     model === undefined ? "The agent's model" : `${model}, the agent's model`,
   agentStepLimitAgent: (limit: number) => `${limit}, the agent's limit`,
+  /** Its tools when the file leaves them out, and when it gives none (C462-6). */
+  agentStepToolsAgent: (agent: string) => `All of ${agent}'s tools`,
+  agentStepToolsNone: "None",
   /** The toast when a change of the subagents wasn't saved for another reason than a loop. */
   subagentsNotSaved: (agent: string) => `Couldn't save ${agent}'s subagents`,
   loading: (name: string) => `Loading ${name}'s settings`,

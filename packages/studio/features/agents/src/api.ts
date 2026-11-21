@@ -127,6 +127,10 @@ export interface AgentStep {
   readonly model?: string | undefined;
   /** Its own model call limit; absent when it uses the agent's. */
   readonly maxSteps?: number | undefined;
+  /** The field names of its JSON answer, in the file's order; absent when it answers in text. */
+  readonly outputFields?: readonly string[] | undefined;
+  /** The tools it may use; absent when it may use all of the agent's, empty for none. */
+  readonly tools?: readonly string[] | undefined;
 }
 
 /** What the New agent step dialog hands over. */

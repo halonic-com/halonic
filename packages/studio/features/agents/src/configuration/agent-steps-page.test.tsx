@@ -27,6 +27,8 @@ const draftReply: AgentStep = {
   description: "Drafts a reply to the customer.",
   instructions: "Write a short reply.",
   model: "smart",
+  outputFields: ["subject", "body"],
+  tools: ["send-mail"],
 };
 
 const host = (agentSteps: readonly AgentStep[] = []) =>
@@ -77,11 +79,24 @@ verifies("agents.configuration.agent-steps", () => {
     expect(card.querySelector("nav")?.textContent).toContain("Writer");
     expect(card.textContent).toContain("Write a short reply.");
     expect(card.textContent).toContain("smart");
+    expect(card.textContent).toContain("subject, body");
+    expect(card.textContent).toContain("send-mail");
 
     await act(async () => buttonNamed(card, "Writer")?.click());
     await act(async () => buttonNamed(page, "check")?.click());
     expect(topCard(page)?.textContent).toContain("fast, the agent's model");
     expect(topCard(page)?.textContent).toContain("8, the agent's limit");
+    expect(topCard(page)?.textContent).toContain("Text");
+    expect(topCard(page)?.textContent).toContain("All of Writer's tools");
+  });
+
+  it("says None when an agent step may use no tools", async () => {
+    const page = await openAgentSteps(host([{ id: "check", instructions: "Check.", tools: [] }]));
+    await act(async () => buttonNamed(page, "check")?.click());
+    const tools = [...(topCard(page)?.querySelectorAll("dl > div") ?? [])].find(
+      (row) => row.querySelector("dt")?.textContent === "Tools",
+    );
+    expect(tools?.querySelector("dd")?.textContent).toBe("None");
   });
 
   it("asks for a name and what it should do, then adds the agent step and opens its card", async () => {

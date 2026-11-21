@@ -11,7 +11,7 @@ export function agentStepOfCard(key: string): string | undefined {
 
 /**
  * An agent step's card on the agent page (flow-agents 7): what it is for, its instructions, and
- * the model and model call limit it runs with, its own or the agent's.
+ * the model and model call limit it runs with, its own or the agent's, its output and its tools.
  */
 export function AgentStepCard({
   step,
@@ -24,6 +24,13 @@ export function AgentStepCard({
     [words.instructions, step.instructions],
     [words.model, step.model ?? words.agentStepModelAgent(agent.model)],
     [words.turnLimit, step.maxSteps?.toString() ?? words.agentStepLimitAgent(agent.maxSteps)],
+    [words.output, step.outputFields?.join(", ") ?? words.outputKinds.text],
+    [
+      words.pageNames.tools,
+      step.tools === undefined
+        ? words.agentStepToolsAgent(agent.name)
+        : step.tools.join(", ") || words.agentStepToolsNone,
+    ],
   ];
   return (
     <div className="flex flex-col gap-4 p-4">
