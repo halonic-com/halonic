@@ -133,7 +133,16 @@ export class LocalBridgeHost implements HarnessBridgeHost {
       ...(agent.file.model === undefined ? {} : { model: agent.file.model }),
       runsOn,
     });
-    const asks = sandboxedAsks(agent, services.approvals, recorder, this.#paths);
+    const asks = sandboxedAsks(agent, {
+      inner: services.approvals,
+      recorder,
+      paths: this.#paths,
+      failed: (failure) =>
+        this.#recordFailure(recorder, agent.agentId, {
+          kind: failure.kind,
+          message: this.#scrub(failure.message),
+        }),
+    });
     const bridge = await this.#servers[runsOn].open({
       runId: agent.runId,
       agentId: agent.agentId,

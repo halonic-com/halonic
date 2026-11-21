@@ -242,3 +242,11 @@ folder while the run is inside Halonic's sandbox. Only `harness: claude-code`
 takes it for now: on `codex`, `halonic` or no harness the file fails with
 `asks-needs-claude-code`, even for `always`, because Codex in the sandbox
 doesn't ask whatever the file says.
+
+With `in-sandbox`, the sandbox, not a person, is what limits a command the
+agent runs: it writes only to the working folder and reaches only the bridge
+and the agent's `allowedSites`. So a command can send whatever it can read to
+those sites without anyone seeing it first. Keep `allowedSites` to the sites
+you would let the agent send your files to. Each call Halonic answers is in the
+run log as `harness.allowed`, and the run's changes still come back as a
+proposal you accept or reject.
