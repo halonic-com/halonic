@@ -42,6 +42,22 @@ verifies("schema-kit.plain-words", () => {
       ]);
     });
 
+    it("says an empty value is empty, never that it isn't nothing (C571)", () => {
+      const empty = s.object({
+        temperature: s.number(),
+        maxSteps: s.number().int(),
+        local: s.boolean(),
+        model: s.string(),
+      });
+      const result = parse(empty, { temperature: null, maxSteps: null, local: null, model: null });
+      expect(result.ok ? [] : result.error.map(({ message }) => message)).toEqual([
+        "temperature is empty: write a number.",
+        "maxSteps is empty: write a number.",
+        "local is empty: write true or false.",
+        "model is empty: write a value.",
+      ]);
+    });
+
     it("asks for a whole number", () => {
       expect(onlyIssue(s.object({ maxSteps: s.number().int() }), { maxSteps: 2.5 })).toEqual([
         "invalid_type",
@@ -153,6 +169,17 @@ verifies("schema-kit.plain-words", () => {
         "invalid_format",
         ["http", "url"],
         "url needs https://, such as https://tracker.example.com/mcp.",
+      ]);
+    });
+
+    it("adds http:// to an address on this computer, where local model servers answer (C571)", () => {
+      const messages = ["127.0.0.1:11434/v1", "[::1]:1234/v1", "LOCALHOST/v1"].map(
+        (url) => onlyIssue(schema, { http: { url } })?.[2],
+      );
+      expect(messages).toEqual([
+        "url needs http://, such as http://127.0.0.1:11434/v1.",
+        "url needs http://, such as http://[::1]:1234/v1.",
+        "url needs http://, such as http://LOCALHOST/v1.",
       ]);
     });
   });

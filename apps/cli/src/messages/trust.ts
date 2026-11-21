@@ -102,18 +102,17 @@ export const trustMessages = defineMessages("trust", {
     phrase`gets the ${names.length === 1 ? "secret" : "secrets"} ${listed(names)}`,
   /**
    * The workspace secrets a local integration's connector picks, after its
-   * folder: "gets the secrets backup and my-notes-key as notes-key", where
+   * folder: "gets the secrets backup and my-notes-key (as notes-key)", where
    * "as" names the secret in the integration's sheet when it differs (Mara,
-   * HAL-14737). The picks that keep their name come first, so "as" ends the
-   * list and never reads as a second name for the secret before it (Mara,
-   * C569).
+   * HAL-14737). The picks that keep their name come first (Mara, C569), and
+   * the brackets keep each workspace secret's sheet names with it, so
+   * "my-notes-key (as notes-key and sync-key)" can't be read as two secrets
+   * (C571).
    */
-  getsPickedSecrets: (picks: readonly SecretPick[]) =>
-    phrase`gets the ${picks.length === 1 ? "secret" : "secrets"} ${listed(
-      sameNamesFirst(picks).map(({ secret, as }) =>
-        secret === as ? secret : `${secret} as ${as}`,
-      ),
-    )}`,
+  getsPickedSecrets: (picks: readonly SecretPick[]) => {
+    const entries = pickedSecretEntries(picks);
+    return phrase`gets the ${entries.length === 1 ? "secret" : "secrets"} ${listed(entries)}`;
+  },
   /**
    * The variables a program takes from the person's environment, after its
    * secrets: "takes AWS_PROFILE from your environment". The team's words
@@ -330,13 +329,30 @@ function changeParts(changes: TrustChangeCounts): string[] {
 }
 
 /**
- * The picks whose workspace secret has the sheet's name, then the renamed ones,
- * each group in the order it came in: "sync-key, backup as api-key and
- * my-notes-key as notes-key" (Mara, C569).
+ * One entry per workspace secret, in the order of its first pick: its name
+ * alone when every pick keeps it, otherwise "my-notes-key (as notes-key and
+ * sync-key)" with each name the sheet reads it as. The names alone come
+ * first, then the ones in brackets: "sync-key and my-notes-key (as
+ * notes-key)" (Mara, C569).
  */
-function sameNamesFirst(picks: readonly SecretPick[]): SecretPick[] {
-  const isSameName = (pick: SecretPick) => pick.secret === pick.as;
-  return [...picks.filter(isSameName), ...picks.filter((pick) => !isSameName(pick))];
+function pickedSecretEntries(picks: readonly SecretPick[]): string[] {
+  const sheetNames = new Map<string, Set<string>>();
+  for (const { secret, as } of picks) {
+    sheetNames.set(secret, (sheetNames.get(secret) ?? new Set<string>()).add(as));
+  }
+  const kept: string[] = [];
+  const renamed: string[] = [];
+  for (const [secret, names] of sheetNames) {
+    if ([...names].every((name) => name === secret)) kept.push(secret);
+    else renamed.push(`${secret} (as ${joined([...names])})`);
+  }
+  return [...kept, ...renamed];
+}
+
+/** "A", "A and B", "A, B and C". */
+function joined(names: readonly string[]): string {
+  const last = names.at(-1) ?? "";
+  return names.length < 2 ? last : `${names.slice(0, -1).join(", ")} and ${last}`;
 }
 
 /** "A", "A and B", "A, B and C". */

@@ -151,7 +151,7 @@ export function shownHost(host: unknown): string {
 }
 
 /**
- * "  notes         integrations/notes · gets the secret my-notes-key as notes-key":
+ * "  notes         integrations/notes · gets the secret my-notes-key (as notes-key)":
  * the folder the connector runs, then the workspace secret each secret of the
  * integration's sheet gets, by name only (HAL-14734, words from HAL-14737).
  */

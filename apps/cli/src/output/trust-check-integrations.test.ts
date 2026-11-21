@@ -131,7 +131,7 @@ verifies("cli.trust-check", () => {
       "Will pass 3 secrets and list 2 addresses.",
       "",
       "Addresses",
-      "  notes         integrations/notes · gets the secrets sync-key, backup as api-key and my-notes-key as notes-key",
+      "  notes         integrations/notes · gets the secrets sync-key, backup (as api-key) and my-notes-key (as notes-key)",
       "  tasks         integrations/tasks",
       "",
       "Fingerprint",
@@ -149,9 +149,28 @@ verifies("cli.trust-check", () => {
       unpinned: [],
     };
     expect(lines(check)).toContain(
-      "  notes         integrations/notes · gets the secret my-notes-key as notes-key",
+      "  notes         integrations/notes · gets the secret my-notes-key (as notes-key)",
     );
     expect(lines(check).join("\n")).not.toContain("‹secret");
+  });
+
+  it("names a workspace secret once, with every sheet name it's given as in brackets (C571)", () => {
+    const check: FingerprintedCheck = {
+      status: "new",
+      content: {
+        connectors: [
+          integrationConnector("notes", {
+            "notes-key": "‹secret my-notes-key›",
+            "sync-key": "‹secret my-notes-key›",
+          }),
+        ],
+      },
+      fingerprint,
+      unpinned: [],
+    };
+    expect(lines(check)).toContain(
+      "  notes         integrations/notes · gets the secret my-notes-key (as notes-key and sync-key)",
+    );
   });
 
   it("tags a connector whose secret pick changed as a changed address", () => {
@@ -176,7 +195,7 @@ verifies("cli.trust-check", () => {
       "1 changed address since you trusted this on 3 Nov.",
       "",
       "Addresses",
-      "  notes         integrations/notes · gets the secret other-key as notes-key   Changed",
+      "  notes         integrations/notes · gets the secret other-key (as notes-key)   Changed",
     ]);
   });
 
