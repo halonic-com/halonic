@@ -236,7 +236,7 @@ async function versionOf(source: DefinitionSource, leaveOut: LeaveOut): Promise<
     return await source.version({ leaveOut });
   } catch (error) {
     if (isUnreadableWorkspaceFolderError(error)) {
-      throw unreadableFolder(error.path, error);
+      throw unreadableFolderError(error.path, error);
     }
     if (!isUnreadable(error)) {
       throw error;
@@ -266,14 +266,22 @@ async function listPaths(
     return await source.list(dir, { leaveOut });
   } catch (error) {
     if (isUnreadableWorkspaceFolderError(error)) {
-      throw unreadableFolder(error.path, error);
+      throw unreadableFolderError(error.path, error);
     }
     throw error;
   }
 }
 
-/** The user error for a workspace folder the account may not read, keeping the store's error as its cause. */
-function unreadableFolder(path: string, cause: unknown): KindedError {
+/**
+ * The user error for a workspace folder the account may not read, keeping
+ * the store's error as its cause. Exported so that anything else that walks
+ * the workspace, such as a run's copy with history off, says it as loading
+ * does (`workspace.unreadable-folder`).
+ *
+ * @example
+ * if (isUnreadableWorkspaceFolderError(error)) throw unreadableFolderError(error.path, error);
+ */
+export function unreadableFolderError(path: string, cause: unknown): KindedError {
   return new KindedError("invalid_input", `the workspace folder ${path} can't be read.`, {
     fix: "Check the folder's permissions, or move it out of the workspace.",
     cause,
@@ -295,11 +303,23 @@ async function readText(source: DefinitionSource, path: string): Promise<string 
     if (!isUnreadable(error)) {
       throw error;
     }
-    throw new KindedError("invalid_input", `the workspace file ${path} can't be read.`, {
-      fix: "Check the file's permissions, or move it out of the workspace.",
-      cause: error,
-    });
+    throw unreadableFileError(path, error);
   }
+}
+
+/**
+ * The user error for a workspace file the account may not read, keeping the
+ * store's error as its cause. Exported for the same reason as
+ * {@link unreadableFolderError} (`workspace.unreadable-file`).
+ *
+ * @example
+ * if (isUnreadable(error)) throw unreadableFileError("notes/today.md", error);
+ */
+export function unreadableFileError(path: string, cause: unknown): KindedError {
+  return new KindedError("invalid_input", `the workspace file ${path} can't be read.`, {
+    fix: "Check the file's permissions, or move it out of the workspace.",
+    cause,
+  });
 }
 
 /** True for an error with one of the {@link unreadableCodes}. */

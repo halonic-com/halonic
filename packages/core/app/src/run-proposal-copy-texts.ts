@@ -7,8 +7,14 @@
 // to the files the run changed, and they are what the proposal keeps, in
 // place of the ref. Internal to `core/app`.
 
-import type { DefinitionSource, DefinitionStore, Digest } from "@halonicjs/ports";
+import {
+  type DefinitionSource,
+  type DefinitionStore,
+  type Digest,
+  isUnreadableWorkspaceFolderError,
+} from "@halonicjs/ports";
 import { contentDigest, encodeUtf8 } from "@halonicjs/std";
+import { isUnreadable, unreadableFileError, unreadableFolderError } from "@halonicjs/workspace";
 import { refusalOf } from "./run-proposal-decide.ts";
 import type { HistoryOffRunningRecord } from "./run-proposal-record.ts";
 import type {
@@ -86,6 +92,8 @@ export class CopyProposalTexts implements KeptTexts<HistoryOffRunningRecord, His
    * workspace store won't serve (private paths, links).
    *
    * @throws WorkspaceTooBigToCopyError past the limits; nothing of the copy is left
+   * @throws KindedError `invalid_input` naming a workspace folder or file the
+   *   account may not read, as loading words it; nothing of the copy is left
    */
   async open(runId: string): Promise<{ folder: string; record: HistoryOffRunningRecord }> {
     await this.copies.create(runId);
@@ -106,8 +114,8 @@ export class CopyProposalTexts implements KeptTexts<HistoryOffRunningRecord, His
     const run = this.copies.store(runId, "run");
     let files = 0;
     let bytes = 0;
-    for (const path of await this.workspace.list()) {
-      const text = refusalOf(path) === null ? await this.workspace.read(path) : null;
+    for (const path of await this.listWorkspace()) {
+      const text = refusalOf(path) === null ? await this.readWorkspace(path) : null;
       if (text === null) {
         // Accept may never write it, or it went since the list.
         continue;
@@ -122,6 +130,36 @@ export class CopyProposalTexts implements KeptTexts<HistoryOffRunningRecord, His
       }
       await base.write(path, text);
       await run.write(path, text);
+    }
+  }
+
+  /**
+   * Every saved file, with no folder left out: the copy is the run's whole
+   * workspace, `node_modules` and harness working folders included, though
+   * loading leaves those out (`workspace.load-leaves-out-working-folders`). So a folder
+   * there that loading never reads can still stop the copy, and it says so
+   * as loading would (`app.run-proposal-unreadable`).
+   */
+  private async listWorkspace(): Promise<string[]> {
+    try {
+      return await this.workspace.list();
+    } catch (error) {
+      if (isUnreadableWorkspaceFolderError(error)) {
+        throw unreadableFolderError(error.path, error);
+      }
+      throw error;
+    }
+  }
+
+  /** The saved file's text; a file the account may not read says so as loading would. */
+  private async readWorkspace(path: string): Promise<string | null> {
+    try {
+      return await this.workspace.read(path);
+    } catch (error) {
+      if (isUnreadable(error)) {
+        throw unreadableFileError(path, error);
+      }
+      throw error;
     }
   }
 
