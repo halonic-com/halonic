@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this change on HAL-15250 (https://paperclip.halonic.com/HAL/issues/HAL-15250), follow-up to HAL-14784. Wording decided by the team on HAL-15259 (option 1), Sofia's check didn't happen. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gYuDOhGAWrr5lS18NXqK2ef4bd4vfxad7AbmrPm5GLxAO+fegeRrdPYnUQAVyqT4eqY602GbxyE4ktMd2ttUAw==
 
 ## What changes
 
