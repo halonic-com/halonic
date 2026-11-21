@@ -344,7 +344,7 @@ function classWords(declared: AddressClass | undefined): string {
     case "loopback":
       return "a URL on this machine (localhost, 127.0.0.0/8 or [::1])";
     case "private":
-      return "a URL with a private network address (10/8, 172.16/12, 192.168/16 or fc00::/7)";
+      return "a URL with a private network address (10/8, 172.16/12, 192.168/16, 100.64/10 or fc00::/7)";
     case "public":
       return "an https URL with a public host name";
     case undefined:
@@ -449,7 +449,7 @@ function isLoopback(hostname: string): boolean {
   return hostname === "localhost" || hostname === "[::1]" || ipv4(hostname)?.[0] === 127;
 }
 
-/** Loopback, or `10/8`, `172.16/12`, `192.168/16` or IPv6 `fc00::/7`. */
+/** Loopback, or `10/8`, `172.16/12`, `192.168/16`, `100.64/10` or IPv6 `fc00::/7`. */
 function isLocalAddress(hostname: string): boolean {
   if (isLoopback(hostname)) {
     return true;
@@ -457,9 +457,25 @@ function isLocalAddress(hostname: string): boolean {
   const v4 = ipv4(hostname);
   if (v4 !== undefined) {
     const [a = 0, b = 0] = v4;
-    return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+    return (
+      a === 10 ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      isSharedAddress(v4)
+    );
   }
   return /^\[f[cd][0-9a-f]{2}:/.test(hostname);
+}
+
+/**
+ * `100.64/10`, the shared range Tailscale's addresses sit in, apart from the
+ * two service addresses in it: Tailscale's own `100.100.100.100` and
+ * Alibaba's metadata service `100.100.100.200`.
+ */
+function isSharedAddress(v4: readonly number[]): boolean {
+  const [a = 0, b = 0, c = 0, d = 0] = v4;
+  const service = a === 100 && b === 100 && c === 100 && (d === 100 || d === 200);
+  return a === 100 && b >= 64 && b <= 127 && !service;
 }
 
 /** The four numbers of a whole dotted IPv4 address, as the kit reads it. */

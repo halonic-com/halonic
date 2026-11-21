@@ -18,12 +18,12 @@ checks DNS answers with `addressAllowedFor` yet.
 | Class | What it covers |
 | --- | --- |
 | `public` | global unicast addresses outside every block below |
-| `private` | `10/8`, `172.16/12`, `192.168/16`, `fc00::/7` |
+| `private` | `10/8`, `172.16/12`, `192.168/16`, `fc00::/7`, and `100.64/10`, where Tailscale's addresses sit |
 | `loopback` | `127/8`, `::1` |
 | `link-local` | `169.254/16`, `fe80::/10` |
 | `metadata` | cloud credential services: `169.254.169.254`, `169.254.170.2`, `100.100.100.200`, `fd00:ec2::254` |
 | `unspecified` | `0/8`, `::` |
-| `reserved` | carrier-grade NAT `100.64/10`, documentation, benchmark, multicast and broadcast blocks, IPv4-mapped IPv6, and NAT64 or 6to4 forms of any address that isn't public |
+| `reserved` | Tailscale's own service address `100.100.100.100`, documentation, benchmark, multicast and broadcast blocks, IPv4-mapped IPv6, and NAT64 or 6to4 forms of any address that isn't public |
 
 A NAT64 (`64:ff9b::/96`) or 6to4 (`2002::/16`) address counts as public only when the IPv4
 address inside it is public.

@@ -4,15 +4,17 @@ import { type IpAddress, parseIpAddress } from "./ip-address.ts";
  * Where an IP address leads, for deciding whether a request may connect to it.
  *
  * - `public`: the internet.
- * - `private`: a home or office network (`10/8`, `172.16/12`, `192.168/16`, `fc00::/7`).
+ * - `private`: a home or office network (`10/8`, `172.16/12`, `192.168/16`, `fc00::/7`),
+ *   or the shared range `100.64/10` that Tailscale's addresses sit in. On some
+ *   ISPs that range is the carrier's own network instead.
  * - `loopback`: this computer (`127/8`, `::1`).
  * - `link-local`: the network segment, without a router (`169.254/16`, `fe80::/10`).
  * - `metadata`: a cloud machine's credential service, such as `169.254.169.254`.
  * - `unspecified`: `0.0.0.0/8` and `::`, which reach this computer on some systems.
  * - `reserved`: everything that is none of these and must never be connected
- *   to: carrier-grade NAT (`100.64/10`), documentation and benchmark ranges,
- *   multicast, broadcast, IPv4-mapped IPv6, and NAT64 or 6to4 forms of any
- *   address that isn't public.
+ *   to: Tailscale's own service address `100.100.100.100`, documentation and
+ *   benchmark ranges, multicast, broadcast, IPv4-mapped IPv6, and NAT64 or
+ *   6to4 forms of any address that isn't public.
  */
 export type AddressClass =
   | "public"
@@ -73,14 +75,16 @@ const block = (prefix: readonly number[], bits: number, kind: AddressClass): Blo
 
 // Metadata services, ahead of the wider blocks they sit in: AWS, GCP and
 // Azure (169.254.169.254), AWS containers (169.254.170.2) and Alibaba
-// (100.100.100.200).
+// (100.100.100.200). Tailscale's own service address (MagicDNS and the local
+// client, 100.100.100.100) also sits in `100.64/10` and comes first too.
 const ipv4Blocks: readonly Block[] = [
   block([169, 254, 169, 254], 32, "metadata"),
   block([169, 254, 170, 2], 32, "metadata"),
   block([100, 100, 100, 200], 32, "metadata"),
+  block([100, 100, 100, 100], 32, "reserved"),
   block([0], 8, "unspecified"),
   block([10], 8, "private"),
-  block([100, 64], 10, "reserved"),
+  block([100, 64], 10, "private"),
   block([127], 8, "loopback"),
   block([169, 254], 16, "link-local"),
   block([172, 16], 12, "private"),
