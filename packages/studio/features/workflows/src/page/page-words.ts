@@ -78,6 +78,19 @@ export const pageWords = {
     /** "Arrow 2 is now first.": the arrow's old number and its new place. */
     moved: (number: number, place: number) =>
       `Arrow ${number} is now ${places[place - 1] ?? `number ${place}`}.`,
+    /** The expanded row's fields (flow-workflows 5.3). */
+    fields: {
+      to: "To",
+      event: "On event",
+      /** An arrow without an event fires on done, the format's default. */
+      eventNone: "done",
+      useTimer: "Use a timer instead (fires if nothing happens in time)",
+      after: "After",
+      afterHint: "30m, 4h, 2d",
+      condition: "Condition (JSON)",
+      badJson: "This isn't valid JSON.",
+      label: "Label",
+    },
     arrowsIn: "Arrows in",
     from: (stepId: string) => `From ${stepId}`,
   },

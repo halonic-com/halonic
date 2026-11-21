@@ -23,7 +23,13 @@ import { workflowRefusalOf } from "../engine/page-refusal.ts";
 import { checkedSource } from "../library/workspace-library-items.ts";
 import { hubFilesFor } from "../studio/first-hub.ts";
 import { programOf } from "./step-program.ts";
-import { arrowEdits, writtenArrows } from "./workflow-arrow-edits.ts";
+import {
+  arrowChangeLabel,
+  arrowEdits,
+  checkArrowChange,
+  writtenArrows,
+} from "./workflow-arrow-edits.ts";
+import { cantChange, stepGone, workflowGone } from "./workflow-errors.ts";
 import {
   endedIn,
   newWorkflowText,
@@ -284,11 +290,18 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     ]);
   }
 
-  /** Writes `edits` of the file at `path`, whose text is `text`, as one undoable change named `label`. */
-  #edit(path: string, text: string, label: string, edits: readonly YamlEdit[]): void {
+  /** Writes `edits` of the file at `path` (now `text`) as one undoable change, once `check` passes. */
+  #edit(
+    path: string,
+    text: string,
+    label: string,
+    edits: readonly YamlEdit[],
+    check?: (edited: string) => void,
+  ): void {
     if (edits.length === 0) return;
     const edited = editYaml(text, edits);
     if (!edited.ok) throw cantChange();
+    check?.(edited.value.text);
     this.#parts.files.change(label, { [path]: edited.value.text });
   }
 
@@ -321,8 +334,8 @@ export class WorkspaceWorkflows implements WorkflowsHost {
   }
 
   /**
-   * Adds or moves an arrow in the step's `on` list in place, so comments stay, as one undoable
-   * change (see {@link arrowEdits}).
+   * Adds, moves or changes an arrow in the step's `on` list in place, so comments stay, as one
+   * undoable change (see {@link arrowEdits}). A change the format doesn't take isn't written.
    */
   async changeArrows(ref: WorkflowRef, stepId: string, change: WorkflowArrowChange): Promise<void> {
     const { file, text } = await this.#fileOf(ref);
@@ -337,11 +350,8 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     const read = readYaml(text);
     const written = read.ok ? writtenArrows(read.value.data, stepId) : undefined;
     const edits = arrowEdits(stepId, Object.keys(file.value.states), written, change);
-    const label =
-      change.kind === "add"
-        ? `Added an arrow from ${stepId} to ${change.to} in workflow ${file.value.name}`
-        : `Moved an arrow of step ${stepId} in workflow ${file.value.name}`;
-    this.#edit(file.path, text, label, edits);
+    const label = arrowChangeLabel(stepId, file.value.name, change);
+    this.#edit(file.path, text, label, edits, (edited) => checkArrowChange(edited, file.value.id));
   }
 
   /** Moves the workflow's file and its test files to the trash as one change ({@link trashWorkflowFiles}). */
@@ -440,22 +450,4 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     }));
     return workspace;
   }
-}
-
-/** What a read of a workflow the workspace doesn't have rejects with: Studio shows the item-gone state for it. */
-function workflowGone(): KindedError {
-  return new KindedError("not_found", "This workflow isn't in this workspace any more.");
-}
-
-/** What a change of a step the workflow no longer has rejects with. */
-function stepGone(stepId: string): KindedError {
-  return new KindedError("not_found", `This workflow has no step "${stepId}" any more.`);
-}
-
-/** What an edit of a workflow's file rejects with when the file is written in a way it can't change. */
-function cantChange(): KindedError {
-  return new KindedError(
-    "invalid_input",
-    "This workflow's file couldn't be changed as it is written.",
-  );
 }

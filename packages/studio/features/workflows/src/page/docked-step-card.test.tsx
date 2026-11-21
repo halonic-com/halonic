@@ -12,7 +12,16 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { WorkflowStepChange, WorkflowsHost, WorkflowView } from "../api.ts";
-import { memoryHost, memoryRuns, show, typeInto, unmount } from "../test-support.tsx";
+import {
+  choose,
+  field,
+  memoryHost,
+  memoryRuns,
+  show,
+  typeAndLeave,
+  typeInto,
+  unmount,
+} from "../test-support.tsx";
 import { WorkflowScreen } from "./workflow-page.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -102,38 +111,8 @@ const canvasCard = (page: HTMLElement, stepId: string) =>
 
 const docked = (page: HTMLElement) => page.querySelector<HTMLElement>("aside");
 
-/** A field of the docked card, by its label. */
-function field(page: HTMLElement, label: string) {
-  const labelElement = [...page.querySelectorAll("aside label")].find(
-    (one) => one.textContent?.trim() === label,
-  );
-  const id = labelElement?.getAttribute("for");
-  return (id === null || id === undefined ? undefined : document.getElementById(id)) as
-    | HTMLInputElement
-    | HTMLTextAreaElement
-    | HTMLSelectElement
-    | undefined;
-}
-
-async function choose(select: HTMLSelectElement, value: string) {
-  await act(async () => {
-    select.value = value;
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-}
-
 async function pick(page: HTMLElement, stepId: string) {
   await act(async () => canvasCard(page, stepId).click());
-}
-
-async function typeAndLeave(element: HTMLInputElement | HTMLTextAreaElement, text: string) {
-  await act(async () => element.focus());
-  await act(async () => {
-    const proto = Object.getPrototypeOf(element) as object;
-    Object.getOwnPropertyDescriptor(proto, "value")?.set?.call(element, text);
-    element.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await act(async () => element.blur());
 }
 
 verifies("workflows.page.step-card", () => {
