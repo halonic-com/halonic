@@ -19,17 +19,23 @@ const stateWords: Readonly<Record<PluginState, string>> = {
   changed: "changed since you trusted it",
 };
 
-/** The schema's words for a value YAML read as a number where text goes, such as `version: 1.0`. */
-const numberForText = /expected string, received number$/u;
+/**
+ * The schema's plain words for a value YAML read as a number where text goes,
+ * such as `version: 1.0` (schema-kit's plain words, HAL-14277).
+ */
+const numberForText = / is text: write "-?[\d.]+" in quotes\.$/u;
 
 /** How the format starts a check's words: `Plugin "weather": `. */
 const pluginNamePrefix = /^Plugin "[^"]*": /u;
 
-/** A number where text goes: YAML reads `1.0` as a number unless it's in quotes. */
-function numberForTextWords(field: string) {
-  return field === "version"
-    ? phrase`version is a number here; write it in quotes, with three numbers, such as "1.0.0".`
-    : phrase`${field} is a number here; write it in quotes.`;
+/**
+ * Whether a check's words already start with the field's name, as the
+ * schema's plain words do (`name needs text, not a list.`), so the field
+ * isn't named twice. The plain words name a field from its last key on.
+ */
+function namesField(reason: string, field: string): boolean {
+  const lastName = field.split(".").at(-1) ?? field;
+  return reason.startsWith(`${lastName} `);
 }
 
 /**
@@ -161,8 +167,13 @@ export const pluginMessages = defineMessages("plugin", {
     const at = where === undefined ? file : `${file} ${where}`;
     // The format names the plugin in front of a check's words; the file already says which one.
     const reason = message.replace(pluginNamePrefix, "");
-    if (numberForText.test(reason)) return phrase`${at} ${numberForTextWords(field)}`;
-    return field === "" ? phrase`${at} ${reason}` : phrase`${at} ${field}: ${reason}`;
+    // A version also needs three numbers, which writing it in quotes alone doesn't give.
+    if (field === "version" && numberForText.test(reason)) {
+      return phrase`${at} version is a number here; write it in quotes, with three numbers, such as "1.0.0".`;
+    }
+    return field === "" || namesField(reason, field)
+      ? phrase`${at} ${reason}`
+      : phrase`${at} ${field}: ${reason}`;
   },
   /** The fix after a problem in the manifest: the file is what to change, not the folder. */
   manifestFix: (file: string) => phrase`Fix ${file}, then run halonic plugin add again.`,
