@@ -7,7 +7,8 @@
 //! commands, the `run_*` commands, the `agent_host_*` commands, the
 //! `engine_*` commands, the `fs_*`
 //! commands, the `blob_*` and `record_*` commands and the `update_*`
-//! commands, and, on Android, `pair_scan` and `pair_scan_cancel`.
+//! commands, and, on Android, `pair_scan` and `pair_scan_cancel` and the
+//! phone tunnel's `phone_*` commands with `phone_tunnel_watch`.
 
 use serde_json::{Value, json};
 use tauri::ipc::{CallbackFn, InvokeBody};
@@ -20,6 +21,7 @@ mod device_keys;
 mod engine;
 mod engine_lock;
 mod pair_scan;
+mod phone_tunnel;
 mod runs;
 #[cfg(desktop)]
 mod secrets;
@@ -155,6 +157,14 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "sandbox_elevate",
         "pair_scan",
         "pair_scan_cancel",
+        "phone_pair_start",
+        "phone_pair_wait",
+        "phone_pair_cancel",
+        "phone_computers",
+        "phone_forget",
+        "phone_connect",
+        "phone_disconnect",
+        "phone_tunnel_watch",
         "agent_host_request",
         "agent_host_stream",
         "agent_host_stream_end",
