@@ -126,7 +126,7 @@ verifies("workflows.configuration.problem-lines", () => {
 });
 
 verifies("workflows.page.step-problems", () => {
-  it("gives a card its step's problems, errors first, with each full message named", () => {
+  it("gives a card its step's first problem, errors first, with each full message named", () => {
     const problems: WorkflowProblem[] = [
       {
         severity: "warning",
@@ -140,7 +140,7 @@ verifies("workflows.page.step-problems", () => {
     expect(cardProblems(problems, "first", () => "Ask")).toEqual({
       severity: "error",
       glyph: "✕",
-      line: "2 problems",
+      line: "Uses a missing agent",
       detail: '"Ask" uses x\n"Ask" is unreachable',
     });
     expect(cardProblems([problem("unreachable", "warning", "first")], "first")).toMatchObject({

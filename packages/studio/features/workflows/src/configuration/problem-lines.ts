@@ -131,7 +131,10 @@ export interface CardProblems {
   readonly severity: WorkflowProblem["severity"];
   /** The glyph before the line: ✕ when any is an error, else △. */
   readonly glyph: string;
-  /** The problem line after its glyph: "Uses a missing agent", or "2 problems" for several. */
+  /**
+   * The problem line after its glyph: the first problem's own line, "Uses a missing agent". A card
+   * shows one problem; the Problems list counts them (HAL-15171).
+   */
   readonly line: string;
   /** The line's tooltip: each problem's full message, errors first, one per line. */
   readonly detail: string;
@@ -154,7 +157,7 @@ export function cardProblems(
   return {
     severity: first.severity,
     glyph: problemGlyph[first.severity],
-    line: summaryWords(own),
+    line: problemLine(first),
     detail: own.map((problem) => namedMessage(problem, nameOf)).join("\n"),
   };
 }

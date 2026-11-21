@@ -65,6 +65,8 @@ verifies("workflows.page.step-problems", () => {
 
     expect(first?.className).toContain("border-danger");
     expect(line?.textContent).toBe("✕ Error: Uses a missing agent");
+    expect(line?.className).toContain("max-w-20");
+    expect(line?.querySelector(".truncate")?.textContent).toBe("Uses a missing agent");
     expect(line?.title).toBe('"Ask a missing agent" uses unknown agent "nobody-here"');
     expect(nameOf(first)).toBe(
       "Ask a missing agent AGENT STEP Start nobody-here ✕ Error: Uses a missing agent",
@@ -72,7 +74,7 @@ verifies("workflows.page.step-problems", () => {
     expect(card(page, "done")?.className).toContain("border-border");
   });
 
-  it("draws warnings alone in attention, and several problems as a count", async () => {
+  it("draws warnings alone in attention, and only the first of several problems", async () => {
     const page = await open([
       { severity: "warning", code: "unreachable", message: "x", stepId: "first" },
       { severity: "warning", code: "ignored-key", message: "y", stepId: "first" },
@@ -80,7 +82,8 @@ verifies("workflows.page.step-problems", () => {
     const first = card(page, "Ask a missing agent");
 
     expect(first?.className).toContain("border-attention");
-    expect(lineOf(first)?.textContent).toBe("△ Warning: 2 warnings");
+    expect(lineOf(first)?.textContent).toBe("△ Warning: Can't be reached");
+    expect(lineOf(first)?.title).toBe("x\ny");
   });
 
   it("keeps the line under the selection's ring when the step is picked", async () => {

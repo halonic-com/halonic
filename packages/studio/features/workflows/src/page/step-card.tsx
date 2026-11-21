@@ -188,19 +188,21 @@ export function dotCentre(box: Box) {
  * The problem line (flow-workflows 4.4): "✕ Uses a missing agent" in the colour of the worst
  * problem, with each problem's full message as its tooltip. The card has no room for a fourth line,
  * so the line hangs from its bottom edge at the left, as the Failed chip stands on its top edge at
- * the right. A screen reader hears it in the card's name, after "Error" or "Warning".
+ * the right. It is at most 80px wide, so it ends before the middle of the edge where the arrows
+ * leave; its words are cut short there, never its glyph (Noah, HAL-15171). A screen reader hears
+ * the whole line in the card's name, after "Error" or "Warning".
  */
 function ProblemLine({ id, problems }: { readonly id: string; readonly problems: CardProblems }) {
   return (
     <span
       id={id}
       title={problems.detail}
-      className="absolute top-full left-3 flex max-w-[calc(100%-1.5rem)] rounded-xs bg-surface"
+      className="absolute top-full left-3 flex max-w-20 rounded-xs bg-surface"
     >
       <StatusChip tone={problems.severity === "error" ? "danger" : "attention"}>
-        <span aria-hidden="true">{problems.glyph} </span>
+        <span aria-hidden="true" className="shrink-0">{`${problems.glyph} `}</span>
         <span className="sr-only">{configurationWords[problems.severity]}: </span>
-        {problems.line}
+        <span className="min-w-0 truncate">{problems.line}</span>
       </StatusChip>
     </span>
   );
