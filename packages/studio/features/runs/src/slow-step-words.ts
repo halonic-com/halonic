@@ -1,11 +1,10 @@
-import { providerName } from "./failure-words.ts";
-
 /**
  * What a step that waits says (microcopy 22 F3, first-run-progress section 9): it names the thing,
  * never "Please wait". The time and the dot are the WaitingLine's.
  */
 export const slowStepWords = {
-  model: (provider: string) => `Waiting for ${providerName(provider)}`,
+  /** `provider` is the name a person knows (`providerNameOf`), not the id in the log. */
+  model: (provider: string) => `Waiting for ${provider}`,
   /**
    * Ollama runs the model on this computer, the one wait whose reason Studio knows. A cloud
    * provider gets no reason: Studio doesn't know why it's slow.

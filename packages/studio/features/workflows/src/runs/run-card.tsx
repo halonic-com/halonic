@@ -16,7 +16,7 @@ export interface RunCardProps {
   /** The runs feature's source, which the receipt reads the run's log from. */
   readonly source: Pick<
     RunsSource,
-    "log" | "workflow" | "currency" | "providerKind" | "providerName"
+    "log" | "workflow" | "currency" | "providerKind" | "providerName" | "models"
   >;
   /** The workspace's runs, to name a child run's workflow. */
   readonly runs: readonly SourcedRun[];

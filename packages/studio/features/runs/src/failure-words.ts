@@ -1,16 +1,5 @@
 import { capitalised } from "./run-words.ts";
 
-/** The model programs by the name a person knows (microcopy 5): "LM Studio", not "Lmstudio". */
-const providerNames: Readonly<Record<string, string>> = { lmstudio: "LM Studio", openai: "OpenAI" };
-
-/**
- * A provider as the slow-step line names it: its known name, or its own name with a capital.
- * The banners get the name from the provider's file instead (`providerNameOf`).
- */
-export function providerName(provider: string): string {
-  return providerNames[provider] ?? capitalised(provider);
-}
-
 /** F7's "the model alias `smart`", or "the model gpt-4o" when the log doesn't give the alias. */
 function modelOrAlias(model: string, alias: string | undefined): string {
   return alias === undefined ? `the model ${model}` : `the model alias ${alias}`;
@@ -170,6 +159,34 @@ export const failureWords = {
   /** F21: the harness program (Claude Code, Codex) didn't start, or sent no first event in time. */
   harnessStartFailed: (agent: string, harness: string, seconds: number, step: string) =>
     `${capitalised(agent)} didn't start: ${harness} didn't start on this computer, or didn't answer within ${seconds} ${seconds === 1 ? "second" : "seconds"}. Nothing ran in the step ${step}.`,
+  /** R1 (microcopy 15.3): the provider's secret holds no key, so no key was sent. */
+  noKey: (provider: string, alias: string) =>
+    `${provider} has no API key on this computer, and the model alias ${alias} needs one.`,
+  addKey: "Add key",
+  /** R2 (microcopy 15.3, P9): the provider turned the key away. */
+  keyRefused: (provider: string, secret: string, alias: string) =>
+    `${provider} didn't accept the key in the secret ${secret}, used by the model alias ${alias}. It may be mistyped, revoked, or for another account.`,
+  replaceKey: "Replace key",
+  /** R3 (microcopy 15.3, revision 77): the tries only when the run log has them. */
+  providerBusy: (provider: string, step: string) =>
+    `${provider} was busy and asked Halonic to slow down, so the step ${step} stopped. Nothing you set caused this.`,
+  providerBusyAfterTries: (provider: string, tries: string, over: string, step: string) =>
+    `${provider} was busy and asked Halonic to slow down. Halonic tried ${tries} over ${over} and stopped the step ${step}. Nothing you set caused this.`,
+  /** R4 (microcopy 15.3): the provider's account, not the Halonic budget. */
+  outOfCredit: (provider: string) =>
+    `${provider} refused the call because the account has no credit left or reached its limit at ${provider}. This isn't your Halonic budget.`,
+  openBilling: (provider: string) => `Open ${provider} billing`,
+  opensProvider: (provider: string) => `Opens ${provider}`,
+  /** R5: a cloud provider answered that it has no model by that name. */
+  cloudModelMissing: (provider: string, model: string, alias: string) =>
+    `${provider} doesn't have the model ${model}, used by the model alias ${alias}. Pick another model for ${alias} in Models.`,
+  /** R5 for a model no alias points at, which the facts name `<provider>/<model>`. */
+  cloudModelMissingNoAlias: (provider: string, model: string) =>
+    `${provider} doesn't have the model ${model}. Pick another model in Models.`,
+  /** R6 (microcopy 15.3, "Local only"): nothing was sent, so Run again would fail the same way. */
+  localOnly: (workspace: string, provider: string, agent: string, alias: string) =>
+    `${workspace} is local only, so Halonic sent nothing to ${provider}. ${agent}'s model alias ${alias} points to a cloud model.`,
+  chooseLocalModel: (agent: string) => `Choose a local model for ${agent}`,
   /** The harness ids the engine logs, as the person knows the programs. */
   harnessNames: { "claude-code": "Claude Code", codex: "Codex" } as Readonly<
     Record<string, string>

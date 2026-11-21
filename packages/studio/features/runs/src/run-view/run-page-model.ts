@@ -3,9 +3,10 @@
 // page only draws what these return.
 
 import { moneyAmount, runWait, shortRunId } from "@halonicjs/app";
+import type { WorkspaceModels } from "@halonicjs/app/run-failure";
 import type { PendingApproval, RunSummary } from "@halonicjs/events";
 import { escapeHidden } from "@halonicjs/std";
-import type { ProviderKind, RunWorkflow, SourcedRun } from "../api.ts";
+import type { ProviderKind, RunsSource, RunWorkflow, SourcedRun } from "../api.ts";
 import { currentStepName, type RunChip, runRow } from "../list/run-row.ts";
 import { lineSeparator, runPageWords } from "../run-words.ts";
 import { clockTime, dayAndMonth, dayWords, dueWords, tookWords } from "../time-words.ts";
@@ -43,6 +44,8 @@ export type RunBanner =
       readonly fixes?: readonly BannerFix[];
       /** The links after **Run again**, where it is the primary: 15.3's "**Run again** · link Open Models". */
       readonly links?: readonly BannerFix[];
+      /** No **Run again**: the run would fail the same way, as a local-only run does (UX check R6). */
+      readonly noRunAgain?: true;
       /**
        * What **Copy details** puts on the clipboard, after **Run again**: the engine's own message,
        * which never shows on screen (microcopy 22 F13). Absent: no Copy details.
@@ -63,8 +66,11 @@ export type BannerAction =
  */
 export type BannerFix =
   | { readonly kind: "copy-command"; readonly command: string }
-  /** **Open Models**, at the alias's tab when `alias` is set, else at Models on the workspace page. */
-  | { readonly kind: "open-models"; readonly alias?: string }
+  /**
+   * **Open Models**, at the alias's tab when `alias` is set, else at Models on the workspace page.
+   * `label` names what to do there, such as **Add key**; absent, it reads **Open Models**.
+   */
+  | { readonly kind: "open-models"; readonly alias?: string; readonly label?: string }
   /** **Change budget**: Workspace settings at its Budget block (`workspace.open-budget`). */
   | { readonly kind: "change-budget" }
   | {
@@ -73,6 +79,15 @@ export type BannerFix =
       readonly address: string;
       readonly opens: string;
     };
+
+/** The `models` of a {@link RunPageContext} for a run of `hubId`, left out while the source has none. */
+export function modelsOf(
+  source: Pick<RunsSource, "models">,
+  hubId: string,
+): { readonly models?: WorkspaceModels } {
+  const models = source.models?.(hubId);
+  return models === undefined ? {} : { models };
+}
 
 /** What the page needs besides the run. */
 export interface RunPageContext {
@@ -85,6 +100,8 @@ export interface RunPageContext {
   readonly providerName?: (providerId: string) => string | undefined;
   /** An agent's name as its file says; `undefined` when the workspace has no such agent. */
   readonly agentName?: (agentId: string) => string | undefined;
+  /** The run's hub's model aliases and the workspace's providers (`RunsSource.models`); absent when not read yet. */
+  readonly models?: WorkspaceModels;
   readonly currency: string;
   readonly now: Date;
 }

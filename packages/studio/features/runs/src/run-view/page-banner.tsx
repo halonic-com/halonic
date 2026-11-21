@@ -217,7 +217,10 @@ function Banner({
   const links = buttonsOf(banner.links);
   // The same test as `bannerOffersRunAgain`, which keeps the header's Run again out.
   const again =
-    own === undefined && banner.tone === "danger" && runAgain !== undefined
+    own === undefined &&
+    banner.tone === "danger" &&
+    banner.noRunAgain !== true &&
+    runAgain !== undefined
       ? [{ label: runPageWords.runAgain, onClick: runAgain.start }]
       : [];
   const { details } = banner;
@@ -307,7 +310,7 @@ function fixAction(
   const alias = fix.alias;
   return [
     {
-      label: failureWords.openModels,
+      label: fix.label ?? failureWords.openModels,
       onClick: () => {
         openModels(alias);
       },

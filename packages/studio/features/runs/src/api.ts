@@ -5,6 +5,7 @@
  * Runs feature keeps one `RunsList` per workspace (`RunsListService`) that
  * other features read instead of listing the runs again.
  */
+import type { WorkspaceModels } from "@halonicjs/app/run-failure";
 import type { LoggedInstructionPin, RunEvent, RunSummary } from "@halonicjs/events";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
@@ -137,6 +138,13 @@ export interface RunsSource {
    * provider by it, so they never write its id with a capital ("Openai").
    */
   readonly providerName?: (providerId: string) => string | undefined;
+  /**
+   * The model aliases a hub's runs can use, the workspace's provider files and their addresses,
+   * as `@halonicjs/app/run-failure` reads a failed run's facts from them; `undefined` until the
+   * workspace's files are read. The run page's banners name the key, alias and agent from them,
+   * as the CLI's failure lines do (E4).
+   */
+  readonly models?: (hubId: string) => WorkspaceModels | undefined;
   /** The workspace's currency (`budget.currency`, EUR when it names none). */
   readonly currency: () => string;
   /** The workspace's monthly budget (`budget.monthly`); `undefined` when it sets none. */

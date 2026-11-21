@@ -20,6 +20,8 @@ export interface RunWaitingLineProps {
    * that action: nothing passes it until the dialog lands (HAL-13411), so the line leaves it out.
    */
   readonly somethingWrong: (() => void) | undefined;
+  /** The workspace's provider names, so a model call names its provider as the banners do. */
+  readonly providerName: ((providerId: string) => string | undefined) | undefined;
   /** The clock; tests pass a fixed one. */
   readonly now: () => Date;
 }
@@ -30,8 +32,15 @@ export interface RunWaitingLineProps {
  * 10 seconds. It's mounted as soon as the last event names a wait, so its status region is there
  * before the words arrive.
  */
-export function RunWaitingLine({ log, running, phone, somethingWrong, now }: RunWaitingLineProps) {
-  const wait = running && log !== undefined ? stepWait(log, phone) : undefined;
+export function RunWaitingLine({
+  log,
+  running,
+  phone,
+  somethingWrong,
+  providerName,
+  now,
+}: RunWaitingLineProps) {
+  const wait = running && log !== undefined ? stepWait(log, phone, providerName) : undefined;
   if (wait === undefined) {
     return null;
   }

@@ -7,6 +7,7 @@
 import type { RunEvent } from "@halonicjs/events";
 import { WAITING_LINE_AFTER_MS } from "@halonicjs/studio-kit";
 import { failureWords } from "../failure-words.ts";
+import { providerNameOf } from "../provider-name.ts";
 import { capitalised } from "../run-words.ts";
 import { slowStepWords } from "../slow-step-words.ts";
 
@@ -26,9 +27,14 @@ export interface StepWait {
 /**
  * What the log's last event waits for, however long ago it was written, or `undefined` when it
  * names no wait. Only the last event counts, so a step that moved on never shows an old wait. On a
- * `phone`, a local model's line says it runs on the computer.
+ * `phone`, a local model's line says it runs on the computer. A model provider is named as the
+ * banners name it (`providerNameOf`), through the workspace's `providerName` lookup.
  */
-export function stepWait(log: readonly RunEvent[], phone = false): StepWait | undefined {
+export function stepWait(
+  log: readonly RunEvent[],
+  phone = false,
+  providerName?: (providerId: string) => string | undefined,
+): StepWait | undefined {
   const last = log.at(-1);
   if (last === undefined) {
     return undefined;
@@ -38,14 +44,17 @@ export function stepWait(log: readonly RunEvent[], phone = false): StepWait | un
     const what = phone ? slowStepWords.ollamaOnPhone : slowStepWords.ollama;
     return { what, reason: slowStepWords.ollamaReason, since };
   }
-  const what = waitOf(last);
+  const what = waitOf(last, providerName);
   return what === undefined ? undefined : { what, since };
 }
 
-function waitOf(last: RunEvent): string | undefined {
+function waitOf(
+  last: RunEvent,
+  providerName?: (providerId: string) => string | undefined,
+): string | undefined {
   switch (last.type) {
     case "llm.request":
-      return slowStepWords.model(last.provider);
+      return slowStepWords.model(providerNameOf(last.provider, providerName));
     case "tool.called":
       return slowStepWords.tool(last.tool);
     case "connector.started":
@@ -69,8 +78,9 @@ export function slowStepLine(
   log: readonly RunEvent[],
   now: Date,
   phone = false,
+  providerName?: (providerId: string) => string | undefined,
 ): string | undefined {
-  const wait = stepWait(log, phone);
+  const wait = stepWait(log, phone, providerName);
   if (wait === undefined || now.getTime() - wait.since.getTime() < slowStepAfterMs) {
     return undefined;
   }

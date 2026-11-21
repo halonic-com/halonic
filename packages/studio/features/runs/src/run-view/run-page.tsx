@@ -202,7 +202,14 @@ export function RunView({
     const entries =
       log === undefined
         ? []
-        : everyStep(log, summarize(log) ?? run.summary, context.workflow, context.now, phone);
+        : everyStep(
+            log,
+            summarize(log) ?? run.summary,
+            context.workflow,
+            context.now,
+            phone,
+            context.providerName,
+          );
     const open = entries.find((entry) => entry.id === openEntry);
     return (
       <div ref={page} className="flex min-h-full w-full items-start">
@@ -250,6 +257,7 @@ export function RunView({
                 running={run.summary.status === "running"}
                 phone={phone}
                 somethingWrong={checkThisComputer}
+                providerName={context.providerName}
                 now={now}
               />
               <ReceiptAndSteps
