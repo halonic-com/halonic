@@ -12,11 +12,13 @@ When a run failed with the reason `sandbox-not-ready`, the run page shall show, 
 
 Until the log is read the page keeps its general banner. The check's own sentence never shows.
 
-Where the open workspace provides `sandboxStartCheckKey`, the banner shall have one button, **Check again**, which asks the check now and never runs anything:
+Where the open workspace provides `sandboxStartCheckKey`, the banner shall have one button, **Check again**, which asks the check now and never runs anything, except when the reason can't be checked on this computer (`not-offered`):
 
 - when the check passes, the banner turns calm, adds and announces "The sandbox works now. You can run *Reporter*.", and **Check again** becomes **Run again** (none where the page can't run again);
 - when it is still refused, the lines change to the reason and fix of the new code, and the button stays;
 - when the check itself fails, the banner adds "Halonic couldn't check the sandbox. Try again.", and the button stays.
+
+For a reason that can't be checked on this computer (`not-offered`, which is about where the agent is set to run), the banner shall stay in the danger tone and offer **Run again** at once, with no "The sandbox works now" line, and no button where the page can't run again.
 
 Where nothing provides it, there is no button. The banner has no way to run anyway.
 
@@ -28,3 +30,6 @@ Where nothing provides it, there is no button. The banner has no way to run anyw
 - Given the same banner and a check that now passes,
   when the person presses Check again,
   then it reads "The sandbox works now. You can run Support reply." and has Run again in place of Check again.
+- Given a run that failed with `sandbox-not-ready` and `sandboxReason` `not-offered`, on a page that can run again,
+  when its page is shown,
+  then the banner gives the words for `sandbox-start.not-offered`, then "Nothing ran.", and has Run again and no Check again.
