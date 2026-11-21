@@ -11,7 +11,6 @@ export const cantRunWords = {
   cantRun: (name: string) => `${name} can't run: the sandbox can't start on this computer.`,
   checkAgain: runPageWords.sandboxCheckAgain,
   checking: "Checking…",
-  docs: runPageWords.sandboxDocs,
   docsBase: runPageWords.sandboxDocsBase,
   /** Said once when **Check again** finds the sandbox ready; the Callout goes. */
   ready: (name: string) => `The sandbox works now. You can run ${name}.`,

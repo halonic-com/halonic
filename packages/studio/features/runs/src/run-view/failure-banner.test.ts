@@ -140,6 +140,16 @@ verifies("runs.run-view.failure-banners", () => {
       expect(links(banner)).toEqual([{ kind: "open-models" }]);
     });
 
+    it("opens Models at the alias's tab for a missing model when the log names the alias (RQ1)", () => {
+      const banner = causeBanner(
+        failed("model-missing"),
+        [alias("ollama", "llama3.2", "fast"), failedEvent()],
+        context,
+        false,
+      );
+      expect(links(banner)).toEqual([{ kind: "open-models", alias: "fast" }]);
+    });
+
     it("keeps the general banner for a cloud provider's missing model, and waits for the log", () => {
       const log = [call("claude", "claude-sonnet"), failedEvent()];
       expect(causeBanner(failed("model-missing"), log, context, false)).toBeUndefined();
