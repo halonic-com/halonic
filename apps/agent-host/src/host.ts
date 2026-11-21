@@ -49,6 +49,12 @@ import { hostIntegrationSignIns } from "./sign-in/host-sign-ins.ts";
 import { takeStandardOutput } from "./stdio/standard-output.ts";
 import { openTerminal } from "./terminal/open-terminal.ts";
 
+/** What a serving host's sandbox gets from the profile: the kept-grant record, and whether it takes back what a removal with administrator rights left (HAL-5404 S2). */
+export interface ProfileSandbox {
+  recordFolder?: string;
+  takeBackOrphaned?: boolean;
+}
+
 /** Where the host talks to the program that started it. */
 export interface HostIo {
   /** The starter's end of the pipe: when it closes, the host stops. */
@@ -120,12 +126,12 @@ export async function run(
   makeSandbox: (
     sweepRoots: readonly string[],
     sharedFolders: readonly string[],
-    recordFolder?: string,
-  ) => SrtSandbox = (roots, sharedFolders, recordFolder) =>
+    inProfile?: ProfileSandbox,
+  ) => SrtSandbox = (roots, sharedFolders, inProfile = {}) =>
     new SrtSandbox(undefined, undefined, null, {
       sweepRoots: roots,
       sharedFolders,
-      ...(recordFolder === undefined ? {} : { recordFolder }),
+      ...inProfile,
     }),
   gateway: GatewaySettings = gatewayOff,
 ): Promise<number> {
@@ -149,11 +155,11 @@ export async function run(
   };
   const lock = profileFolder === undefined ? null : await takeHostLock(profileFolder, warn);
   const sharedFolders = sharedFoldersOf(args);
-  const sandbox = makeSandbox(
-    lock === null ? [] : given.roots,
-    sharedFolders,
-    profileFolder === undefined ? undefined : keptGrantsRecordFolder(profileFolder),
-  );
+  const sandbox = makeSandbox(lock === null ? [] : given.roots, sharedFolders, {
+    ...(profileFolder === undefined ? {} : { recordFolder: keptGrantsRecordFolder(profileFolder) }),
+    // Only the lock's holder: it alone sweeps, before its first session.
+    ...(lock === null ? {} : { takeBackOrphaned: true }),
+  });
   // Right after the lock is taken, so a host starting next skips its sweep
   // before any session of ours could lose a grant to it.
   if (lock !== null) void sandbox.sweepOnce();

@@ -16,6 +16,7 @@ import type {
 import { HelperError } from "./elevate-helper.ts";
 import { describeForgetFailures, type ForgetResult, KeptGrants } from "./kept-grants.ts";
 import { type Machine, systemMachine } from "./machine.ts";
+import { grantsKeptLine, takeBackOrphaned } from "./orphaned-grants.ts";
 import { appArmorFix, installFix } from "./package-manager.ts";
 import { startSmallestSandbox } from "./ready-check.ts";
 import { assertSrtDeniesKeychain, bridgeNetwork } from "./srt-config.ts";
@@ -61,10 +62,6 @@ export type SandboxRemoval =
 /** Why a setup or a removal didn't happen when the administrator prompt was turned down. */
 export const promptCancelled = "the administrator prompt was cancelled; nothing changed";
 
-/** The log line for a removal that ran with administrator rights, so it left the user's kept grants recorded (HAL-7585). */
-const grantsKeptElevated =
-  "Removed the Windows sandbox, but skipped forgetting its kept access grants: this removal ran with administrator rights. Remove it again without them to forget the grants.";
-
 /**
  * The Sandbox port on sandbox-runtime (srt): bubblewrap on Linux, Seatbelt on
  * macOS, a sandbox user account and network filters on Windows. Windows is
@@ -80,6 +77,7 @@ export class SrtSandbox implements Sandbox {
   readonly #warn: (message: string) => void;
   #swept: Promise<void> | null = null;
   readonly #sharedFolders: readonly string[];
+  readonly #takeBackOrphaned: boolean;
 
   /**
    * @param journalFolder where each session keeps its `commondir` snapshot so
@@ -99,6 +97,7 @@ export class SrtSandbox implements Sandbox {
    *   `WSL_SHARED_FOLDERS` in Halonic's WSL distro (`srt-wsl`). Each session
    *   denies them for reading as a whole, except its own folders inside, and
    *   doesn't open when one is missing.
+   * @param options.takeBackOrphaned whether `sweepOnce` first runs {@link takeBackOrphaned}: the lock holder's
    */
   constructor(
     machine: Machine = systemMachine,
@@ -110,6 +109,7 @@ export class SrtSandbox implements Sandbox {
       grants?: KeptGrants;
       warn?: (message: string) => void;
       sharedFolders?: readonly string[];
+      takeBackOrphaned?: boolean;
     } = {},
   ) {
     this.#machine = machine;
@@ -125,6 +125,7 @@ export class SrtSandbox implements Sandbox {
     this.#sweepRoots = options.sweepRoots ?? [];
     this.#warn = options.warn ?? ((message) => void process.stderr.write(`${message}\n`));
     this.#sharedFolders = options.sharedFolders ?? [];
+    this.#takeBackOrphaned = options.takeBackOrphaned ?? false;
   }
 
   /** Whether the sandbox can start here; when it can't, the first reason and one sentence on what is missing. Never throws. */
@@ -157,9 +158,9 @@ export class SrtSandbox implements Sandbox {
    * (see {@link Machine.installWindowsSandbox}), then checks the
    * sandbox, so `ok` means {@link SrtSandbox.check} passes. The install is for
    * the whole machine, so it serves every user, also when an administrator
-   * other than the person at the keyboard answered the prompt. Running it
-   * again repairs the install or changes nothing. Other systems have no setup
-   * step. Never throws.
+   * other than the person at the keyboard answered the prompt. It first runs
+   * {@link takeBackOrphaned}. Running it again repairs the install or changes
+   * nothing. Other systems have no setup step. Never throws.
    */
   async setUp(): Promise<SandboxSetup> {
     const machine = this.#machine;
@@ -167,6 +168,7 @@ export class SrtSandbox implements Sandbox {
       const reason = `only Windows has a sandbox setup, not ${machine.platform}`;
       return { ok: false, outcome: "failed", reason };
     }
+    await takeBackOrphaned(machine, this.#grants, this.#warn);
     try {
       if ((await machine.installWindowsSandbox()) === "cancelled") {
         return { ok: false, outcome: "cancelled", reason: promptCancelled };
@@ -186,7 +188,7 @@ export class SrtSandbox implements Sandbox {
    * the write grants kept by this user's sessions. It is `ok` when nothing
    * was set up, and when run again. srt refuses, and nothing is removed,
    * while a sandboxed program runs. When it runs with administrator rights it
-   * leaves the user's kept grants recorded and logs that it did (HAL-7585).
+   * leaves the user's kept grants recorded and logs when they go (HAL-7585, HAL-5404 S2).
    * Other systems have nothing to remove. Never throws.
    */
   async remove(): Promise<SandboxRemoval> {
@@ -196,7 +198,7 @@ export class SrtSandbox implements Sandbox {
       if (removed === "cancelled") {
         return { ok: false, outcome: "cancelled", reason: promptCancelled };
       }
-      if (removed === "grants_kept") this.#warn(grantsKeptElevated);
+      if (removed === "grants_kept") this.#warn(await grantsKeptLine(this.#grants));
     } catch (error) {
       return { ok: false, outcome: "failed", ...failure(error) };
     }
@@ -282,11 +284,12 @@ export class SrtSandbox implements Sandbox {
 
   /**
    * On Windows, forgets the kept grants inside the sweep roots that no live
-   * session holds. Elsewhere, or without a root, it does nothing.
-   * Never rejects.
+   * session holds, after {@link takeBackOrphaned} when asked to. Elsewhere, or
+   * without a root, it does nothing. Never rejects.
    */
   async sweepKeptGrants(): Promise<ForgetResult> {
     if (this.#machine.platform !== "win32") return { heldByOthers: [], failed: [] };
+    if (this.#takeBackOrphaned) await takeBackOrphaned(this.#machine, this.#grants, this.#warn);
     return this.#grants.sweep(this.#sweepRoots);
   }
 
