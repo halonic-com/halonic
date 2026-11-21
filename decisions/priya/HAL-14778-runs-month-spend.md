@@ -2,7 +2,6 @@
 
 - Approval: HAL-14776
 - Kind: user-visible
-- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:eCKjTfSTqabTSHfsRRoyOD8JSOaYi1xXUQ36BuW80Hhg5IkP/XtPIGI5YuD2Y3Xn5Z12qDhU1y/Klk/JGD2LDA==
 
 `halonic runs` now ends with one line for the current calendar month, such
 as "This month: about €0.42 of your €20.00 budget.", so a CLI user can see
@@ -24,3 +23,5 @@ lines. No assertion is removed.
 
 - apps/cli/src/commands/runs/requirements/list.md
 - apps/cli/src/commands/runs/list.test.ts
+- cli.commands.runs.list
+- apps/cli/src/commands/runs/golden/month-spend.txt
