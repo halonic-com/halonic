@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { libraryFeature } from "./feature.ts";
 import { type LibraryItemsHost, LibraryItemsHostService } from "./library-items-host.ts";
 import { libraryKinds } from "./library-words.ts";
@@ -47,6 +47,13 @@ function tabLabel(kind: string, hub: string, id: string, host?: Partial<LibraryI
 }
 
 describe("libraryFeature", () => {
+  // Each Library page loads lazily. On a busy CI machine the first import (transforming the page and
+  // everything behind it) took longer than the test's 30 s (HAL-14641), so load them all up front under
+  // the hook's longer limit; the tests then only check the already loaded pages.
+  beforeAll(async () => {
+    await Promise.all(itemKinds().map((entry) => entry.open.load()));
+  }, 120_000);
+
   it("is registered under its folder name", () => {
     expect(libraryFeature.id).toBe("library");
   });
