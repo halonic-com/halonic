@@ -1,6 +1,6 @@
 import { counted } from "./counts.ts";
 import { defineMessages } from "./define.ts";
-import { dim, markPart, phrase } from "./phrase.ts";
+import { dim, markPart, type Phrase, phrase } from "./phrase.ts";
 import { runMessages } from "./run.ts";
 import {
   type DueAt,
@@ -64,8 +64,36 @@ export const routinesMessages = defineMessages("routines", {
     dim("Add one as workflows/routines/<id>.routine.yaml in a hub."),
   ],
 
-  /** The dim line under the list: a routine starts on time only while `watch` runs. */
-  watchHint: () => [dim("Routines start on time only while `halonic routines watch` is running.")],
+  /**
+   * The line under the list for a routine whose saved file isn't live yet:
+   * `watch` and the Studio start the last commit's (HAL-15204), as the
+   * Studio's "Changes not live yet" says. In the words of `run`'s
+   * {@link runMessages.changesNotLive}, since a commit makes it live.
+   */
+  changesNotLive: (name: string) =>
+    phrase`${markPart("needsYou")} ${name} has changes that aren't live yet. It runs as last committed until you commit them.`,
+  /**
+   * Ends the reason when git can't start, so the list can't tell which
+   * routines' changes are live (HAL-15204), after `run`'s reason.
+   */
+  liveNotChecked: () => phrase`So the list doesn't say which changes aren't live yet.`,
+  /**
+   * The line under the list when git can't start, with `run`'s reason: "! Couldn't check what's
+   * live: git can't start on this computer, so the live version can't be read. So the list …".
+   * The list still shows, since listing needs no git; the fix follows, dimmed.
+   */
+  liveCheckFailed: (reason: Phrase) =>
+    phrase`${markPart("needsYou")} Couldn't check what's live: ${reason}`,
+
+  /**
+   * The dim line under the list: a routine starts on time only while `watch`
+   * runs or the Studio is open, since the Studio's engine starts them too (HAL-14205, HAL-15204).
+   */
+  watchHint: () => [
+    dim(
+      "Routines start on time only while `halonic routines watch` is running or the Studio is open.",
+    ),
+  ],
 
   /** `watch`'s line in `halonic routines --help`. */
   watchSummary: () => phrase`Start the routines on time until you stop it`,

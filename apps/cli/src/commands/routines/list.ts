@@ -3,7 +3,9 @@
 // runs, asks the service, and turns its answer into rows. Listing starts
 // nothing and writes nothing, so it needs no trust, as `halonic runs`. A
 // routine whose file has errors shows "Can't start", and the list exits 1,
-// so "will it run?" is answered where people look for it (HAL-14299).
+// so "will it run?" is answered where people look for it (HAL-14299). A
+// routine whose saved changes aren't live yet gets a line under the list,
+// since it runs as last committed until then (HAL-15204).
 
 import { type ListedRoutine, RoutineList } from "@halonicjs/app/routines";
 import { loadWorkspace } from "@halonicjs/workspace";
@@ -14,24 +16,27 @@ import { dim, dimmed, type Phrase, phrase } from "../../messages/phrase.ts";
 import { routinesMessages } from "../../messages/routines.ts";
 import { printable } from "../../output/printable.ts";
 import { dueAt, type RunClock, startedAt } from "../../run-times.ts";
+import type { OpenWorkspaceHistory } from "../../run-workspace.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
 import type { RunListSetup } from "../runs/list.ts";
 import { listedStatus } from "../runs/listed-run.ts";
+import { type NotLiveRoutines, notLiveRoutines } from "./not-live.ts";
 
 /**
  * Lists the workspace's routines, one lined-up row each: the name, what
  * starts it, its next run and its last run. No routines says so, and exits 0.
  * Routines whose files have errors are counted above the list, which then
- * exits 1.
+ * exits 1. Routines with saved changes that aren't live yet get a line each
+ * under it.
  *
  * @throws NoWorkspaceError when the folder holds no workspace
  */
 export async function listRoutines(
   input: CommandInput,
   context: CommandContext,
-  setup: RunListSetup,
+  setup: RoutineListSetup,
 ): Promise<CommandResult> {
   const workspace = await openWorkspaceDir(input, context);
   const clock = setup.clock();
@@ -53,15 +58,41 @@ export async function listRoutines(
     withProblems === 0
       ? []
       : [routinesMessages.routinesCantStart(withProblems, givenDir(input, workspace)).phrase];
+  const notLive = await notLiveRoutines(workspace, loaded, setup.history);
   return {
     exitCode: withProblems === 0 ? exitCode.ok : exitCode.failed,
     lines: [
       ...problemsLine,
       ...columns(routines.map((each) => routineRow(each, clock, withHub))),
+      ...notLiveLines(routines, notLive),
       routinesMessages.watchHint().phrase,
     ],
     json,
   };
+}
+
+/**
+ * What {@link listRoutines} needs: the `runs` list's clock and profile, and
+ * the history the live version is read from (git on the `PATH` by default).
+ */
+export interface RoutineListSetup extends RunListSetup {
+  readonly history?: OpenWorkspaceHistory;
+}
+
+/**
+ * One line for each routine whose saved changes aren't live yet, in the
+ * list's order, or why that couldn't be checked and its fix, dimmed.
+ */
+function notLiveLines(routines: readonly ListedRoutine[], notLive: NotLiveRoutines): Phrase[] {
+  if (!notLive.checked) {
+    return [
+      routinesMessages.liveCheckFailed(notLive.reason.phrase).phrase,
+      dimmed(notLive.fix.phrase),
+    ];
+  }
+  return routines
+    .filter((each) => notLive.keys.has(each.key))
+    .map((each) => routinesMessages.changesNotLive(printable(each.name)).phrase);
 }
 
 /**

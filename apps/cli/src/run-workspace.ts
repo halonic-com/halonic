@@ -77,7 +77,7 @@ export class HistoryUnavailableError extends KindedError {
  * git settings is named, since installing git wouldn't help (HAL-12342);
  * any other cause reads as git that can't start.
  */
-function historyRefusalOf(
+export function historyRefusalOf(
   nothingDone: Message,
   cause: unknown,
 ): { readonly reason: Message; readonly fix: Message } {
