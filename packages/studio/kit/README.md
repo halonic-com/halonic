@@ -350,6 +350,7 @@ screen unmounts it to close it.
 | `height` | A fixed height in px instead of one that follows the content (Settings: 640). Desktop |
 | `flush` | No body padding, for a body that lays out and scrolls its own columns |
 | `form` | The body is a form: the confirming button submits it, focus starts in the first field |
+| `initialFocus` | A form on the desktop: where focus starts instead of the first field, such as the first agent to pick above Add a subagent's name box |
 | `confirm` | `{ label, variant?, busyLabel, unavailable? }`: "Delete agent", `primary` or `danger` |
 | `onConfirm` | The confirming button or a submit. Clear `error` first, then check the fields |
 | `cancelLabel` | "Cancel" by default, or what cancelling does: "Not now" |
@@ -372,7 +373,7 @@ easing, nothing else moves.
 
 | State | What happens |
 | --- | --- |
-| Open | Focus on the first field of a form, or on Cancel in a confirmation |
+| Open | Focus on the first field of a form (or its `initialFocus`), or on Cancel in a confirmation |
 | Cancel | Escape runs the same `onCancel` as Cancel. The overlay cancels only before anything was typed |
 | Incomplete | The confirming button stays pressable; the screen shows every field error, focuses the first |
 | Busy | The confirming button is busy; Cancel and ✕ are unavailable; Escape and the overlay wait |
@@ -744,9 +745,11 @@ tabs share it equally, each at least 48px high with 4px 8px padding. A label wra
 and the counter follows it like one more word. A tab is never narrower than its longest word, in
 the selected weight, so switching doesn't move the tabs: at 320px "Behaviour" keeps its word and
 Model, Harness and Tools share the rest. When the words don't fit side by side, as at 200% text,
-the tabs go on to another row. Only a word wider than the whole track breaks, without a hyphen.
-Labels are never shortened and the tabs never scroll sideways. **On a touch screen** at desktop
-width a tab renders at 40px with a 48px hit area.
+the tabs go on to another row, and every row then holds as many tabs as the others, as near as it
+can without one more row: at 320px Behaviour · Model · Harness · Tools · Subagents is three and
+two, not four and one, so no tab stretches alone across a row. Only a word wider than the whole
+track breaks, without a hyphen. Labels are never shortened and the tabs never scroll sideways.
+**On a touch screen** at desktop width a tab renders at 40px with a 48px hit area.
 
 **In high contrast** the selected tab keeps an outline: forced colours drops its fill and shadow and
 keeps a 1px `CanvasText` outline instead (with more contrast, a 1px `border-control` one). A

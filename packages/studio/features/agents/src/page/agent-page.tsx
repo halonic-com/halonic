@@ -269,6 +269,7 @@ export function AgentScreen({
                   name={card.title}
                   openSubagent={cards.openSubagent}
                   openAgent={openAgent}
+                  announce={announce}
                 />
               );
             }}
@@ -286,6 +287,7 @@ export function AgentScreen({
               openLibrary={openLibrary}
               openSubagent={cards.openSubagent}
               reportNotSaved={reportNotSaved}
+              announce={announce}
             />
           </StackedCards>
         )}

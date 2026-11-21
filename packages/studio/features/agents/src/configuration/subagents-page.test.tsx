@@ -36,9 +36,10 @@ const host = () =>
 
 async function openSubagents(agents: AgentsHost = host()) {
   const toasts = createToastStore();
+  const said: string[] = [];
   const page = await show(
     <ToastStoreProvider store={toasts}>
-      <AgentScreen host={agents} hubId="acme" id="triage" />
+      <AgentScreen host={agents} hubId="acme" id="triage" announce={(text) => said.push(text)} />
     </ToastStoreProvider>,
   );
   await act(async () => buttonNamed(page, "Configuration")?.click());
@@ -47,10 +48,16 @@ async function openSubagents(agents: AgentsHost = host()) {
       .find((tab) => tab.textContent === "Subagents")
       ?.click(),
   );
-  return { page, toasts };
+  return { page, toasts, said };
 }
 
 const dialog = () => document.querySelector("dialog") as HTMLDialogElement;
+
+/** The row of the agent named `name` in the dialog's Pick an agent list. */
+const pickNamed = (name: string) =>
+  [...dialog().querySelectorAll<HTMLElement>("[role=gridcell]")].find((cell) =>
+    cell.textContent?.startsWith(name),
+  );
 
 verifies("agents.configuration.subagents", () => {
   it("shows the subagents as chips with ✕, and a loop as a disabled chip with its reason", async () => {
@@ -65,30 +72,53 @@ verifies("agents.configuration.subagents", () => {
     expect(page.querySelector("[aria-label='Remove Sorter']")).toBeNull();
   });
 
-  it("removes a subagent, saves the list and moves focus to Add subagent", async () => {
+  it("removes a subagent, saves the list, says so and moves focus to Add subagent", async () => {
     const agents = host();
-    const { page } = await openSubagents(agents);
+    const { page, said } = await openSubagents(agents);
     await act(async () => page.querySelector<HTMLElement>("[aria-label='Remove Writer']")?.click());
     expect((await agents.settings(triage)).subagents).toEqual([]);
+    expect(said).toEqual(["Writer removed."]);
     expect(document.activeElement?.textContent).toContain("Add subagent");
+  });
+
+  it("starts focus on the first agent to pick, not in the name box under it (a11y SA1)", async () => {
+    const agents = host();
+    const { page } = await openSubagents(agents);
+    await act(async () => buttonNamed(page, "Add subagent")?.click());
+    expect(document.activeElement).toBe(pickNamed("Archive"));
+  });
+
+  it("starts focus in the name box when there is nothing to pick (a11y SA1)", async () => {
+    const agents = host();
+    await agents.update(triage, { subagents: ["writer", "refunds", "archive"] });
+    const { page } = await openSubagents(agents);
+    await act(async () => buttonNamed(page, "Add subagent")?.click());
+    expect(document.activeElement).toBe(dialog().querySelector("input"));
   });
 
   it("lists only agents that wouldn't loop, by name, with their description; a click adds it", async () => {
     const agents = host();
-    const { page } = await openSubagents(agents);
+    const { page, said } = await openSubagents(agents);
     await act(async () => buttonNamed(page, "Add subagent")?.click());
     expect(dialog().textContent).toContain("Add a subagent to Mail triage");
-    const picks = [...dialog().querySelectorAll("li button")].map((button) => button.textContent);
-    expect(picks).toEqual(["Archive", "Refund checkerChecks refunds."]);
+    // The agents are the kit List's rows, so they look pressable (HAL-14105).
+    const grid = dialog().querySelector("[role=grid]");
+    expect(grid?.getAttribute("aria-label")).toBe("Pick an agent");
+    const picks = [...dialog().querySelectorAll<HTMLElement>("[role=gridcell]")];
+    expect(picks.map((cell) => cell.textContent)).toEqual([
+      "Archive",
+      "Refund checkerChecks refunds.",
+    ]);
     expect(dialog().textContent).toContain("Or create a new agent");
-    await act(async () => buttonNamed(dialog(), "Archive")?.click());
+    await act(async () => pickNamed("Archive")?.click());
     expect((await agents.settings(triage)).subagents).toEqual(["writer", "archive"]);
     expect(document.querySelector("dialog")).toBeNull();
+    expect(said).toEqual(["Archive added."]);
   });
 
   it("creates a new agent in the hub and adds it, and asks for a name first", async () => {
     const agents = host();
-    const { page } = await openSubagents(agents);
+    const { page, said } = await openSubagents(agents);
     await act(async () => buttonNamed(page, "Add subagent")?.click());
     const input = dialog().querySelector("input") as HTMLInputElement;
     expect(input.placeholder).toBe("Name");
@@ -103,6 +133,7 @@ verifies("agents.configuration.subagents", () => {
     await act(async () => buttonNamed(dialog(), "Create")?.click());
     expect((await agents.settings(triage)).subagents).toEqual(["writer", "sorter-2"]);
     expect(document.querySelector("dialog")).toBeNull();
+    expect(said).toEqual(["Sorter 2 created and added."]);
   });
 
   it("names the create box New agent when there is nothing to pick", async () => {
@@ -124,12 +155,13 @@ verifies("agents.configuration.subagents", () => {
         );
       },
     };
-    const { page, toasts } = await openSubagents(refusing);
+    const { page, toasts, said } = await openSubagents(refusing);
     await act(async () => buttonNamed(page, "Add subagent")?.click());
-    await act(async () => buttonNamed(dialog(), "Archive")?.click());
+    await act(async () => pickNamed("Archive")?.click());
     expect(toasts.list().map((toast) => toast.title)).toEqual([
       "Archive already hands work to Mail triage; that would be a loop.",
     ]);
+    expect(said).toEqual([]);
     expect(page.querySelector("[aria-label='Remove Archive']")).toBeNull();
     expect(page.querySelector("[aria-label='Remove Writer']")).not.toBeNull();
   });

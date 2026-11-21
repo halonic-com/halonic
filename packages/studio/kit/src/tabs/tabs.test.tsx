@@ -365,7 +365,7 @@ verifies("kit.tabs", () => {
     const [configuration] = tabsIn(container);
     expect(list.className).toContain("flex w-full");
     expect(configuration?.className).toContain("min-h-touch");
-    expect(configuration?.className).toContain("flex-1 basis-0 px-2 py-1");
+    expect(configuration?.className).toContain("flex-1 basis-[var(--tab-basis,0)] px-2 py-1");
     expect(configuration?.className).toContain("wrap-break-word");
     expect(configuration?.className).not.toContain("whitespace-nowrap");
     // The counter follows the label like one more word.
@@ -395,6 +395,82 @@ verifies("kit.tabs", () => {
       expect(widthCopy.className).toBe("invisible block h-0 overflow-hidden font-medium");
       expect(widthCopy.textContent).toBe(labelOf(tab));
     }
+  });
+
+  it("balances the rows when the fill tabs wrap: three and two, not four and one", () => {
+    const pages = ["Behaviour", "Model", "Harness", "Tools", "Subagents"].map((label) => ({
+      id: label.toLowerCase(),
+      label,
+    }));
+    // jsdom lays nothing out, so the tabs say where they'd be at 320px: Subagents on a row of its
+    // own. Once balanced the basis is set, and the tabs say nothing new.
+    vi.spyOn(HTMLElement.prototype, "offsetTop", "get").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      return this.textContent?.startsWith("Subagents") ? 48 : 0;
+    });
+    const fivePages = (fill: boolean) => (
+      <TabList
+        label="Configuration"
+        tabs={pages}
+        selected="behaviour"
+        onSelect={() => undefined}
+        fill={fill}
+        ids={{ base: "config" }}
+      />
+    );
+    const { container, rerender } = render(fivePages(true));
+    const list = container.querySelector('[role="tablist"]') as HTMLElement;
+    // Five tabs on two rows: three a row, each a third of the track less one gap.
+    expect(list.style.getPropertyValue("--tab-basis")).toBe(
+      "calc(100% / 3 - calc(var(--spacing) * 0.5))",
+    );
+    // Inline tabs are as wide as their labels, so there's nothing to balance.
+    rerender(fivePages(false));
+    expect(list.style.getPropertyValue("--tab-basis")).toBe("");
+    vi.restoreAllMocks();
+  });
+
+  it("keeps the rows the words allow when balancing them would take one more", () => {
+    const pages = ["Behaviour", "Model", "Harness", "Tools", "Subagents"].map((label) => ({
+      id: label.toLowerCase(),
+      label,
+    }));
+    // At 195px the words allow two, two and one. Two a row would give "Behaviour" a row of its own
+    // and take four rows, so the basis comes off again.
+    const free = [0, 0, 48, 48, 96];
+    const balanced = [0, 48, 48, 96, 144];
+    vi.spyOn(HTMLElement.prototype, "offsetTop", "get").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      const track = this.parentElement as HTMLElement;
+      const index = Array.from(track.children).indexOf(this);
+      const capped = track.style.getPropertyValue("--tab-basis") !== "";
+      return (capped ? balanced : free)[index] ?? 0;
+    });
+    const { container } = render(
+      <TabList
+        label="Configuration"
+        tabs={pages}
+        selected="behaviour"
+        onSelect={() => undefined}
+        fill
+        ids={{ base: "config" }}
+      />,
+    );
+    const list = container.querySelector('[role="tablist"]') as HTMLElement;
+    expect(list.style.getPropertyValue("--tab-basis")).toBe("");
+    vi.restoreAllMocks();
+  });
+
+  it("leaves the fill tabs their equal parts when they fit on one row", () => {
+    const { container } = render(
+      <PresentationProvider presentation="phone">
+        <Page />
+      </PresentationProvider>,
+    );
+    const list = container.querySelector('[role="tablist"]') as HTMLElement;
+    expect(list.style.getPropertyValue("--tab-basis")).toBe("");
   });
 
   it("takes fill as a prop, over the presentation", () => {

@@ -41,7 +41,8 @@ const footnoteClasses = "px-6 pt-3 text-small text-fg-muted wrap-break-word";
 /**
  * A decision or a short form that must be finished or cancelled: the kit's `<dialog>` with
  * `showModal()`. Mounting it opens it, and the screen unmounts it to close it. Focus starts on
- * the first field of a form, or on Cancel in a confirmation, and goes back to the opener.
+ * the first field of a form (or where its `initialFocus` says), or on Cancel in a confirmation,
+ * and goes back to the opener.
  *
  * Without `confirm` there is no footer, for a screen that saves as it goes, such as Settings.
  * Focus then starts on what `initialFocus` returns, else on the body's first field, else on the
@@ -206,14 +207,14 @@ function heightStyle(height: number | undefined, phone: boolean): CSSProperties 
 }
 
 /**
- * The screen's choice for a footerless Dialog, else the first field of a form or of a footerless
- * body. `null` leaves it to Cancel, or to the ✕ when there's no footer.
+ * The screen's choice for a footerless Dialog or a form, else the first field of a form or of a
+ * footerless body. `null` leaves it to Cancel, or to the ✕ when there's no footer.
  */
 function initialFocus(props: DialogProps, body: HTMLElement | null): HTMLElement | null {
-  if (props.confirm === undefined) {
+  if (props.confirm === undefined || props.form === true) {
     return props.initialFocus?.() ?? firstField(body);
   }
-  return props.form === true ? firstField(body) : null;
+  return null;
 }
 
 /** The first field that can take focus: not disabled, and not inside something `hidden`. */

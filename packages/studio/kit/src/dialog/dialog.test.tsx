@@ -134,6 +134,37 @@ verifies("kit.dialog", () => {
     expect(document.activeElement).toBe(container.querySelector("input"));
   });
 
+  it("starts a form where its initialFocus says, else on the first field", () => {
+    const { container } = render(
+      <Dialog
+        title="Add a subagent"
+        form
+        confirm={{ label: "Create", busyLabel: "Creating…" }}
+        initialFocus={() => buttonNamed(document, "Writer")}
+        onConfirm={() => undefined}
+        onCancel={() => undefined}
+      >
+        <button type="button">Writer</button>
+        <input name="name" />
+      </Dialog>,
+    );
+    expect(document.activeElement).toBe(buttonNamed(container, "Writer"));
+    unmountAll();
+    const fallback = render(
+      <Dialog
+        title="Add a subagent"
+        form
+        confirm={{ label: "Create", busyLabel: "Creating…" }}
+        initialFocus={() => null}
+        onConfirm={() => undefined}
+        onCancel={() => undefined}
+      >
+        <input name="name" />
+      </Dialog>,
+    );
+    expect(document.activeElement).toBe(fallback.container.querySelector("input"));
+  });
+
   it("skips a disabled field and one inside something hidden", () => {
     const { container } = render(
       formDialog(
