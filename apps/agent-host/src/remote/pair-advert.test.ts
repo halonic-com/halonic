@@ -9,14 +9,14 @@ class FakeSocket implements MulticastSocket {
   sent: Uint8Array[] = [];
   closed = false;
   failing = false;
-  #handler: ((message: Uint8Array) => void) | undefined;
+  #handler: ((message: Uint8Array, from: string) => void) | undefined;
 
   async send(message: Uint8Array): Promise<void> {
     if (this.failing) throw new Error("the network is unreachable");
     this.sent.push(message);
   }
 
-  onMessage(handler: (message: Uint8Array) => void): void {
+  onMessage(handler: (message: Uint8Array, from: string) => void): void {
     this.#handler = handler;
   }
 
@@ -25,18 +25,37 @@ class FakeSocket implements MulticastSocket {
     this.#handler = undefined;
   }
 
-  deliver(message: Uint8Array): void {
-    this.#handler?.(message);
+  /** Delivers a datagram, by default from a phone on the interface's subnet. */
+  deliver(message: Uint8Array, from = "192.168.1.33"): void {
+    this.#handler?.(message, from);
   }
 }
 
-const desk = { hostName: "Tim's laptop", port: 4100, addresses: ["192.168.1.20"] };
+const lan = { address: "192.168.1.20", netmask: "255.255.255.0" };
+const desk = { hostName: "Tim's laptop", port: 4100, lan };
+
+/** An open that waits until the test lets it finish, counting the sockets it opened. */
+function heldOpen() {
+  const sockets: FakeSocket[] = [];
+  const pending: Array<() => void> = [];
+  const open = () =>
+    new Promise<MulticastSocket>((resolve) => {
+      const socket = new FakeSocket();
+      sockets.push(socket);
+      pending.push(() => resolve(socket));
+    });
+  const finish = async () => {
+    for (const resolve of pending.splice(0)) resolve();
+    await new Promise((resolve) => setImmediate(resolve));
+  };
+  return { open, sockets, finish };
+}
 
 /**
  * An advert on a fake socket and a fake clock, with the wait between
  * announcements held until `gapOver`, which also moves the clock on a second.
  */
-function advertOnFakeSocket(open?: () => Promise<MulticastSocket>) {
+function advertOnFakeSocket(open?: (on: typeof lan) => Promise<MulticastSocket>) {
   const socket = new FakeSocket();
   const logged: string[] = [];
   let time = 0;
@@ -70,6 +89,9 @@ function advertOnFakeSocket(open?: () => Promise<MulticastSocket>) {
   return { advert, socket, logged, gapOver, later };
 }
 
+/** Lets the advert's socket open and its first announcement go out. */
+const settled = () => new Promise((resolve) => setImmediate(resolve));
+
 const instance = `halonic-abababababababab.${pairServiceName}`;
 
 verifies("agent-host.remote-pair-advert", () => {
@@ -77,7 +99,7 @@ verifies("agent-host.remote-pair-advert", () => {
     it("announces the service twice, a second apart, with the host's name as its only TXT entry", async () => {
       const { advert, socket, gapOver } = advertOnFakeSocket();
       const started = advert.start(desk);
-      await Promise.resolve();
+      await settled();
       expect(socket.sent).toHaveLength(1);
       gapOver();
       await started;
@@ -158,17 +180,21 @@ verifies("agent-host.remote-pair-advert", () => {
         opened += 1;
         return new FakeSocket();
       });
-      await advert.start({ ...desk, addresses: ["fe80::1"] });
+      await advert.start({ ...desk, lan: { address: "fe80::1", netmask: "255.255.255.0" } });
+      await advert.start({ ...desk, lan: { ...lan, netmask: "255.0.255.0" } });
+      await advert.start({ ...desk, lan: { ...lan, netmask: "0.0.0.0" } });
       expect(opened).toBe(0);
-      expect(logged).toHaveLength(1);
-      expect(logged[0]).toMatch(/^Phones on this Wi-Fi won't list this computer: RangeError/);
+      expect(logged).toHaveLength(3);
+      for (const line of logged) {
+        expect(line).toMatch(/^Phones on this Wi-Fi won't list this computer: RangeError/);
+      }
       await advert.stop();
     });
 
     it("says goodbye and closes the socket when it stops, and announces nothing after", async () => {
       const { advert, socket, gapOver } = advertOnFakeSocket();
       const started = advert.start(desk);
-      await Promise.resolve();
+      await settled();
       await advert.stop();
       gapOver();
       await started;
@@ -182,7 +208,7 @@ verifies("agent-host.remote-pair-advert", () => {
     it("puts the host's name in TXT as the phone may show it", async () => {
       const { advert, socket } = advertOnFakeSocket();
       void advert.start({ ...desk, hostName: `Desk${String.fromCodePoint(0x202e)}kseD` });
-      await Promise.resolve();
+      await settled();
       const txt = readResponse(socket.sent[0] ?? new Uint8Array()).records[2];
       expect(txt?.data).toBe("name=DeskkseD");
     });
@@ -195,7 +221,7 @@ verifies("agent-host.remote-pair-advert", () => {
         return socket;
       });
       void advert.start(desk);
-      await Promise.resolve();
+      await settled();
       await advert.start(desk);
       expect(opened).toBe(1);
     });
@@ -217,6 +243,60 @@ verifies("agent-host.remote-pair-advert", () => {
       expect(logged).toEqual([
         "An advertisement for phones on this Wi-Fi wasn't sent: Error: the network is unreachable\n",
       ]);
+    });
+
+    it("opens its socket on the phone's interface and answers only addresses on its subnet", async () => {
+      const socket = new FakeSocket();
+      const opened: (typeof lan)[] = [];
+      const { advert, gapOver, later } = advertOnFakeSocket(async (on) => {
+        opened.push(on);
+        return socket;
+      });
+      const started = advert.start(desk);
+      gapOver();
+      await started;
+      expect(opened).toEqual([lan]);
+      later(1_000);
+      for (const from of ["10.0.0.5", "192.168.2.33", "172.17.0.1", "::1", "fe80::1", "nonsense"]) {
+        socket.deliver(queryFor(pairServiceName, dnsTypes.PTR), from);
+      }
+      expect(socket.sent).toHaveLength(2);
+      socket.deliver(queryFor(pairServiceName, dnsTypes.PTR), "192.168.1.254");
+      expect(socket.sent).toHaveLength(3);
+    });
+
+    it("leaves no socket open when it stops while the socket opens", async () => {
+      const { open, sockets, finish } = heldOpen();
+      const { advert } = advertOnFakeSocket(open);
+      const started = advert.start(desk);
+      const stopped = advert.stop();
+      await finish();
+      await Promise.all([started, stopped]);
+      expect(sockets).toHaveLength(1);
+      expect(sockets[0]?.closed).toBe(true);
+      expect(sockets[0]?.sent).toEqual([]);
+      sockets[0]?.deliver(queryFor(pairServiceName, dnsTypes.PTR));
+      expect(sockets[0]?.sent).toEqual([]);
+    });
+
+    it("opens one socket for two starts, and a new one for a start after a stop", async () => {
+      const { open, sockets, finish } = heldOpen();
+      const { advert, gapOver } = advertOnFakeSocket(open);
+      const first = advert.start(desk);
+      const second = advert.start(desk);
+      await finish();
+      gapOver();
+      await Promise.all([first, second]);
+      expect(sockets).toHaveLength(1);
+      await advert.stop();
+      expect(sockets[0]?.closed).toBe(true);
+      const third = advert.start(desk);
+      await finish();
+      await third;
+      expect(sockets).toHaveLength(2);
+      expect(sockets[1]?.closed).toBe(false);
+      await advert.stop();
+      expect(sockets[1]?.closed).toBe(true);
     });
   });
 });

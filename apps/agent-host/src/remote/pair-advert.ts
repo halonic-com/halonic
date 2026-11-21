@@ -6,6 +6,7 @@ import {
   readQuestions,
   writeResponse,
 } from "./dns-message.ts";
+import { type LanInterface, onSubnet, type Subnet, subnetOf } from "./lan-interface.ts";
 
 /** The service a phone browses for on its Wi-Fi to list computers that are pairing. */
 export const pairServiceName = "_halonic-pair._tcp.local";
@@ -17,12 +18,12 @@ const announceGapMs = 1_000;
 /** The least time between two multicasts of the answer, announcements included (RFC 6762 section 6). */
 const answerGapMs = 1_000;
 
-/** The datagram socket on the multicast DNS group, port 5353. */
+/** The datagram socket on the multicast DNS group, port 5353, on one interface. */
 export interface MulticastSocket {
   /** Sends one datagram to the group. */
   send(message: Uint8Array): Promise<void>;
-  /** Calls `handler` with each datagram that arrives. */
-  onMessage(handler: (message: Uint8Array) => void): void;
+  /** Calls `handler` with each datagram that arrives, and the address it came from. */
+  onMessage(handler: (message: Uint8Array, from: string) => void): void;
   close(): Promise<void>;
 }
 
@@ -32,14 +33,14 @@ export interface PairAdvertisement {
   readonly hostName: string;
   /** The port of the gateway's LAN endpoint. */
   readonly port: number;
-  /** The computer's IPv4 addresses on the LAN. */
-  readonly addresses: readonly string[];
+  /** The interface the phone shares, the one the gateway's LAN endpoint is on: the only one advertised on. */
+  readonly lan: LanInterface;
 }
 
 /** What a {@link PairAdvert} runs on. */
 export interface PairAdvertOptions {
-  /** Opens the multicast socket; rejects when port 5353 can't be had. */
-  readonly open: () => Promise<MulticastSocket>;
+  /** Opens the multicast socket on the interface; rejects when port 5353 can't be had. */
+  readonly open: (lan: LanInterface) => Promise<MulticastSocket>;
   /** The time in milliseconds, for the limit of one answer a second. */
   readonly now: () => number;
   /** Resolves `ms` milliseconds from now. */
@@ -64,9 +65,17 @@ interface AdvertMessages {
   readonly goodbye: Uint8Array;
 }
 
-interface Running {
-  readonly socket: MulticastSocket;
+/** One advertisement, from `start` until `stop`. */
+interface Run {
   readonly messages: AdvertMessages;
+  /** The interface's subnet: a query from anywhere else is dropped. */
+  readonly subnet: Subnet;
+  /** The socket, once open; `undefined` when it couldn't open. */
+  readonly socket: Promise<MulticastSocket | undefined>;
+  /** `stop` was called: nothing more goes out, and `stop` closes the socket. */
+  stopped: boolean;
+  /** Whether an announcement went out, so phones need a goodbye. */
+  announced: boolean;
   /** When the answer or an announcement last went out. */
   lastSentAt: number;
 }
@@ -83,13 +92,20 @@ interface Running {
  * can't open is reported and pairing goes on: the phone can still type the
  * computer's address.
  *
+ * It listens and sends on one interface only, the one the phone shares, and
+ * drops a query from an address that isn't on that interface's subnet
+ * (RFC 6762 section 11), so a VPN, a container bridge or a router can't
+ * reach it. `start` and `stop` may come in any order: after `stop`
+ * resolves, no socket of this advertisement is open.
+ *
  * @example
- * await advert.start({ hostName: "Tim's laptop", port: 4100, addresses: ["192.168.1.20"] });
+ * const lan = { address: "192.168.1.20", netmask: "255.255.255.0" };
+ * await advert.start({ hostName: "Tim's laptop", port: 4100, lan });
  * await advert.stop(); // says goodbye, so phones drop it at once
  */
 export class PairAdvert {
   readonly #options: PairAdvertOptions;
-  #running: Running | undefined;
+  #run: Run | undefined;
 
   constructor(options: PairAdvertOptions) {
     this.#options = options;
@@ -97,62 +113,86 @@ export class PairAdvert {
 
   /** Starts advertising, announcing twice a second apart; does nothing while it runs. */
   async start(advertisement: PairAdvertisement): Promise<void> {
-    if (this.#running !== undefined) return;
+    if (this.#run !== undefined) return;
     let messages: AdvertMessages;
+    let subnet: Subnet;
     try {
+      subnet = subnetOf(advertisement.lan);
       messages = writeMessages(this.#records(advertisement));
     } catch (error) {
       this.#options.log(`Phones on this Wi-Fi won't list this computer: ${String(error)}\n`);
       return;
     }
-    let socket: MulticastSocket;
-    try {
-      socket = await this.#options.open();
-    } catch (error) {
-      this.#options.log(`Phones on this Wi-Fi won't list this computer: ${String(error)}\n`);
-      return;
-    }
-    const running: Running = { socket, messages, lastSentAt: Number.NEGATIVE_INFINITY };
-    this.#running = running;
-    socket.onMessage((message) => {
+    const run: Run = {
+      messages,
+      subnet,
+      socket: this.#open(advertisement.lan),
+      stopped: false,
+      announced: false,
+      lastSentAt: Number.NEGATIVE_INFINITY,
+    };
+    this.#run = run;
+    const socket = await run.socket;
+    // A stop while the socket opened closes it; this run sends nothing.
+    if (socket === undefined || run.stopped) return;
+    socket.onMessage((message, from) => {
       // A second guard: the handler runs in the socket's event, where a throw would stop the host.
       try {
-        this.#answer(running, message);
+        this.#answer(run, socket, message, from);
       } catch (error) {
         this.#options.log(`A query from a phone on this Wi-Fi wasn't answered: ${String(error)}\n`);
       }
     });
-    this.#send(running, messages.announcement);
+    this.#send(run, socket, messages.announcement);
+    run.announced = true;
     await this.#options.wait(announceGapMs);
-    if (this.#running === running) this.#send(running, messages.announcement);
+    if (!run.stopped) this.#send(run, socket, messages.announcement);
   }
 
-  /** Says goodbye (the records with no time to live) and closes the socket. */
+  /**
+   * Says goodbye (the records with no time to live) when it announced, and
+   * closes the socket, waiting for one still opening.
+   */
   async stop(): Promise<void> {
-    const running = this.#running;
-    if (running === undefined) return;
-    this.#running = undefined;
+    const run = this.#run;
+    if (run === undefined) return;
+    this.#run = undefined;
+    run.stopped = true;
+    const socket = await run.socket;
+    if (socket === undefined) return;
     try {
-      await running.socket.send(running.messages.goodbye);
+      if (run.announced) await socket.send(run.messages.goodbye);
     } finally {
-      await running.socket.close();
+      await socket.close();
+    }
+  }
+
+  /** Opens the socket, or says why it couldn't and gives `undefined`. */
+  async #open(lan: LanInterface): Promise<MulticastSocket | undefined> {
+    try {
+      return await this.#options.open(lan);
+    } catch (error) {
+      this.#options.log(`Phones on this Wi-Fi won't list this computer: ${String(error)}\n`);
+      return undefined;
     }
   }
 
   /**
-   * Sends the answer when `message` asks for the pairing service, at most
+   * Sends the answer when `message`, from an address on the interface's
+   * subnet, asks for the pairing service, at most
    * once a second however many ask, so a flood of queries on the Wi-Fi
    * can't make the host flood the group.
    */
-  #answer(running: Running, message: Uint8Array): void {
+  #answer(run: Run, socket: MulticastSocket, message: Uint8Array, from: string): void {
+    if (run.stopped || !onSubnet(run.subnet, from)) return;
     if (!asksForPairService(readQuestions(message))) return;
-    if (this.#options.now() - running.lastSentAt < answerGapMs) return;
-    this.#send(running, running.messages.answer);
+    if (this.#options.now() - run.lastSentAt < answerGapMs) return;
+    this.#send(run, socket, run.messages.answer);
   }
 
-  #send(running: Running, message: Uint8Array): void {
-    running.lastSentAt = this.#options.now();
-    running.socket.send(message).catch((error: unknown) => {
+  #send(run: Run, socket: MulticastSocket, message: Uint8Array): void {
+    run.lastSentAt = this.#options.now();
+    socket.send(message).catch((error: unknown) => {
       this.#options.log(
         `An advertisement for phones on this Wi-Fi wasn't sent: ${String(error)}\n`,
       );
@@ -180,15 +220,7 @@ export class PairAdvert {
         unique: true,
         entries: [`name=${gatewayHostName(advertisement.hostName)}`],
       },
-      ...advertisement.addresses.map(
-        (address): DnsRecord => ({
-          type: "A",
-          name: target,
-          ttl: recordTtl,
-          unique: true,
-          address,
-        }),
-      ),
+      { type: "A", name: target, ttl: recordTtl, unique: true, address: advertisement.lan.address },
     ];
   }
 }
