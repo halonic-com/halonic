@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -11,6 +12,8 @@ import { WhereItRuns } from "./where-it-runs.tsx";
 
 const words = configurationWords.whereItRuns;
 const ref = { hubId: "acme", id: "writer" };
+/** The shell's reason for an error Halonic can't explain (microcopy 22 F13). */
+const cantExplain = "Halonic ran into a problem it can't explain yet.";
 
 beforeAll(openDialogsInJsdom);
 afterEach(unmount);
@@ -133,7 +136,7 @@ verifies("agents.configuration.where-it-runs", () => {
     });
 
     // Julian's HAL-13201 review: the choice is for the saved file, which `halonic run` runs.
-    it("asks to save first while the agent's file has unsaved changes", async () => {
+    it("says to confirm once the agent's file is saved while it has unsaved changes", async () => {
       const host = agentsHost({ unsaved: () => true });
       const page = await open(host);
       await press(radioNamed(page, words.onThisComputer));
@@ -163,7 +166,7 @@ verifies("agents.configuration.where-it-runs", () => {
       const host: AgentsHost = {
         ...memory,
         placement: async (asked) => {
-          if (!readable) throw new Error("The agent host isn't answering.");
+          if (!readable) throw new KindedError("unavailable", "The agent host isn't answering.");
           return memory.placement(asked);
         },
       };
@@ -172,6 +175,34 @@ verifies("agents.configuration.where-it-runs", () => {
       readable = true;
       await press(buttonNamed(page, configurationWords.tryAgain));
       expect(radioNamed(page, words.inSandbox)?.checked).toBe(true);
+    });
+
+    // Words check C571 (HAL-15403), rule E3: an internal error's own text never reaches the page.
+    it("gives the can't-explain reason, not an internal error's text, when it can't read or save", async () => {
+      const memory = agentsHost();
+      const internal = new Error("ENOENT: placement.json");
+      const unreadable: AgentsHost = {
+        ...memory,
+        placement: async () => {
+          throw internal;
+        },
+      };
+      const cantRead = await open(unreadable);
+      expect(cantRead.textContent).toContain(words.couldntRead(cantExplain));
+      expect(cantRead.textContent).not.toContain(internal.message);
+      unmount();
+
+      const unsaveable: AgentsHost = {
+        ...memory,
+        chooseSandbox: async () => {
+          throw internal;
+        },
+      };
+      await memory.chooseThisComputer(ref, (await memory.placement(ref))?.fingerprint ?? "");
+      const cantSave = await open(unsaveable);
+      await press(radioNamed(cantSave, words.inSandbox));
+      expect(cantSave.textContent).toContain(words.notSaved(cantExplain));
+      expect(cantSave.textContent).not.toContain(internal.message);
     });
 
     it("isn't drawn where Studio can't choose where agents run, and points to the desktop app", async () => {

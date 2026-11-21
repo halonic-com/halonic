@@ -105,8 +105,8 @@ export const configurationWords = {
   /** When the host couldn't be asked to open it at all (team decision on HAL-6351). */
   couldntOpenSignIn: (reason: string) => `Couldn't open the sign-in: ${reason}`,
   /**
-   * Harness › Where it runs (microcopy 8.5 and 23.4; checklist 3.8). Placeholders until the board
-   * approves HAL-1784, except `inSandboxNote` (team, revision 59): reviewers check the keys.
+   * Harness › Where it runs (microcopy 8.5 and 23.4; checklist 3.8). The board approved these
+   * words on HAL-1784 (11 Nov); `inSandboxNote` is the team's (revision 59).
    */
   whereItRuns: {
     label: "Where it runs",
@@ -143,9 +143,13 @@ export const configurationWords = {
     /** The file changed while the warning was open, so nothing was saved; the warning stays for the new file. */
     changedWhileOpen: (agent: string) =>
       `${agent}'s file changed while this was open, so nothing was saved. Read this again, then confirm.`,
-    /** The agent's file has unsaved changes: the choice is for the saved file, so save first (HAL-13201). */
+    /**
+     * The agent's file has unsaved changes: the choice is for the saved file (HAL-13201). Studio
+     * saves by itself, so there is nothing to press: confirm once the save lands (team decision on
+     * HAL-15403, words check C571 row 73; microcopy 1.2 has no "Save first").
+     */
     saveFirst: (agent: string) =>
-      `${agent}'s file has changes that aren't saved. This choice is for the saved file, so save first, then confirm.`,
+      `${agent}'s file has changes that aren't saved yet. This choice is for the saved file, so confirm once they're saved.`,
     /**
      * In place of the choice where Studio can't make it (the browser). Team decision on HAL-15226,
      * from words check C553 (HAL-15219, row 41).

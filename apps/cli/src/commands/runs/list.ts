@@ -33,7 +33,6 @@ import { columns } from "../../messages/columns.ts";
 import { usageMessages } from "../../messages/general.ts";
 import { dimmed, type Phrase, phrase } from "../../messages/phrase.ts";
 import {
-  estimatedSpend,
   type GivenFilters,
   type ListFilters,
   runsListMessages,
@@ -249,7 +248,7 @@ async function thisMonthLine(
   const budget = filesOf(workspace, "workspace")[0]?.value.budget;
   const currency = budget?.currency ?? defaultCurrency;
   const [month] = await monthsSpend(runs, now.toISOString(), 1);
-  const spent = estimatedSpend(month?.spent ?? 0, currency);
+  const spent = moneyAmount(month?.spent ?? 0, currency);
   const monthly = budget?.monthly === undefined ? undefined : moneyAmount(budget.monthly, currency);
   return runsListMessages.thisMonth(spent, monthly).phrase;
 }

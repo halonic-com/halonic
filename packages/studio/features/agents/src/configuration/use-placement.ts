@@ -1,3 +1,4 @@
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import {
   createContext,
   createElement,
@@ -25,11 +26,6 @@ export interface PlacementState {
   readonly reload: () => Promise<void>;
 }
 
-/** The words of a throw. */
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 /**
  * Where the agent runs on this computer, read when the page opens and again after each change of
  * the workspace's files, since saving the agent's file can put the choice on hold.
@@ -53,7 +49,7 @@ function useOwnPlacement(
       const placement = await host.placement(ref);
       next = placement === undefined ? { kind: "unavailable" } : { kind: "loaded", placement };
     } catch (error) {
-      next = { kind: "failed", reason: reasonOf(error) };
+      next = { kind: "failed", reason: errorReasonFor(error) };
     }
     if (mine === newestRead.current) setLoad(next);
   }, [host, hubId, id]);

@@ -1,4 +1,5 @@
 import { Callout, Dialog, Field, RadioGroup, type RadioOption } from "@halonicjs/studio-kit";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useId, useState } from "react";
 import type { AgentPlacementState, AgentSettings, AgentsHost } from "../api.ts";
 import { configurationWords } from "./configuration-words.ts";
@@ -29,11 +30,6 @@ function shownChoice(placement: AgentPlacementState): RunsOn {
   return placement.runsOn === "sandbox" ? "sandbox" : "this-computer";
 }
 
-/** The words of a throw. */
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 /**
  * The two options. While this Studio can't start an agent outside its sandbox, On this computer
  * also says where such an agent does run, as its host reports it (HAL-13194).
@@ -58,8 +54,8 @@ function optionsFor(placement: AgentPlacementState): RadioOption<RunsOn>[] {
  * saves at once. On this computer saves only after the warning, for the file the person was
  * warned about: Cancel is focused and **Run on this computer** is the danger button. When the
  * agent's file changed since, the choice is on hold: a Callout with **Review and confirm** opens
- * the same warning. While the agent's file has unsaved changes, the warning asks the person to
- * save first: the choice is for the saved file, which may hold what they already took out. Where
+ * the same warning. While the agent's file has unsaved changes, the warning says to confirm once
+ * they're saved: the choice is for the saved file, which may hold what they already took out. Where
  * Studio can't choose (the browser), only a line pointing to the desktop app is drawn.
  */
 export function WhereItRuns({ host, settings }: WhereItRunsProps) {
@@ -96,7 +92,7 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
     try {
       await host.chooseSandbox(ref);
     } catch (thrown) {
-      setError(words.notSaved(reasonOf(thrown)));
+      setError(words.notSaved(errorReasonFor(thrown)));
     }
     await reload();
   };
@@ -116,7 +112,7 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
         });
       }
     } catch (thrown) {
-      setWarning({ ...shown, error: words.notSaved(reasonOf(thrown)) });
+      setWarning({ ...shown, error: words.notSaved(errorReasonFor(thrown)) });
     } finally {
       setBusy(false);
     }
