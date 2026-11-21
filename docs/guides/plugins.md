@@ -57,8 +57,9 @@ is the reference.
 ## Run it and see errors
 
 - **Check the manifest:** `halonic plugin add ./my-plugin` reports schema and
-  manifest errors, with the field they're about first, for example
-  `✕ Couldn't add the plugin: backend.tools[0].risk: Invalid option: expected one of "read"|"write"|"send"`.
+  manifest errors with the line and field they're about, as `validate` does,
+  for example
+  `✕ Couldn't add the plugin: plugin.yaml 21:13 backend.tools[0].risk: Invalid option: expected one of "read"|"write"|"send"`.
   `halonic validate` checks a workspace, not a plugin folder.
 - **After you edit:** a changed file changes the fingerprint, so the plugin is
   off until you trust it again. `halonic plugin list` shows it as "changed

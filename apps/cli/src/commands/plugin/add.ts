@@ -5,8 +5,8 @@
 // and asks. A git address is first exported to a temporary folder outside
 // every workspace (`git-source.ts`).
 
-import { stat } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readdir, stat } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
 import { GitHardeningIgnoredError } from "@halonicjs/adapter-git";
 import type {
@@ -76,20 +76,22 @@ export async function addPlugin(
   const opened = await openSource(source, context, setup);
   const service = openPluginService(setup, context.cwd);
   let added: Awaited<ReturnType<PluginService["add"]>>;
+  let nested: NestedManifest | undefined;
   try {
     added = await service.add(new FileSystemFolderReader(opened.folder), {
       from: opened.from,
       replace: false,
     });
+    if (!added.ok && opened.from.kind === "folder" && hasNoManifest(added.error)) {
+      nested = await nestedManifest(opened.folder);
+    }
   } finally {
     await opened.close();
   }
-  if (!added.ok) throw refused(added.error);
+  if (!added.ok) throw refused(added.error, nested);
   const entry = added.value;
   // Only a replace keeps a copy that can't be read back; `add` never replaces.
-  if (entry.status === "broken") {
-    throw refusal("invalid_input", firstProblem(entry.problems));
-  }
+  if (entry.status === "broken") throw problemRefusal(entry.problems);
   const leftOut = leftOutLine(entry.leftOut, context);
   const result = await trustAdded(service, entry, { context, yes, fingerprint });
   return { ...result, lines: [...opened.printedAhead, ...leftOut, ...result.lines] };
@@ -133,10 +135,10 @@ async function openSource(
   const folder = resolve(context.cwd, source);
   const found = await stat(folder).catch(() => null);
   if (found === null) {
-    throw refusal("invalid_input", pluginMessages.noFolder(printable(source)).phrase);
+    throw refusal(pluginMessages.noFolder(printable(source)).phrase);
   }
   if (!found.isDirectory()) {
-    throw refusal("invalid_input", pluginMessages.notAFolder(printable(source)).phrase);
+    throw refusal(pluginMessages.notAFolder(printable(source)).phrase);
   }
   return {
     folder,
@@ -205,7 +207,7 @@ function exportRefusal(error: unknown): KindedError {
     );
   }
   const reason = error instanceof Error ? error.message : String(error);
-  return refusal("invalid_input", phrase`${printable(reason)}`);
+  return refusal(phrase`${printable(reason)}`);
 }
 
 /** The last part of a git address without `.git`, such as `weather`, for the live line. */
@@ -239,16 +241,43 @@ async function trustAdded(
   });
 }
 
-/** The refusal for a plugin that wasn't added, with its reason and "Check the folder or git address.". */
-function refused(error: PluginAddRefusal): KindedError {
-  if (error.kind === "halonic-data")
-    return refusal("invalid_input", pluginMessages.halonicData().phrase);
+/** The refusal for a plugin that wasn't added: Halonic's own data, already added, or its first problem. */
+function refused(error: PluginAddRefusal, nested: NestedManifest | undefined): KindedError {
+  if (error.kind === "halonic-data") return refusal(pluginMessages.halonicData().phrase);
   if (error.kind === "taken") {
     return new KindedError("conflict", plainOf(pluginMessages.alreadyAdded(error.id)), {
       fix: plainOf(pluginMessages.alreadyAddedFix(error.id)),
     });
   }
-  return refusal("invalid_input", firstProblem(error.problems));
+  if (nested !== undefined) {
+    const fix = pluginMessages.nestedManifest(nested.manifest, printable(nested.folder));
+    return refusal(firstProblem(error.problems), fix);
+  }
+  return problemRefusal(error.problems);
+}
+
+/**
+ * The first problem, never more detail than its own words. One in the
+ * manifest says where, as `validate` does, and that the file is the fix;
+ * one about the folder, that the folder or git address is.
+ */
+function problemRefusal(problems: readonly PluginProblem[]): KindedError {
+  const inManifest = problems.filter(isManifestProblem).sort(byLine);
+  const [first] = inManifest;
+  if (first === undefined) {
+    return refusal(firstProblem(problems));
+  }
+  const where = first.line === undefined ? undefined : `${first.line}:${first.col ?? 1}`;
+  const field = printable(formatPath(first.path));
+  const problem = pluginMessages.manifestProblem(
+    first.file,
+    where,
+    field,
+    printable(first.message),
+  );
+  // The SDK's own words already say what to do, and the manifest isn't it.
+  const fix = first.code === "sdk-version" ? null : pluginMessages.manifestFix(first.file);
+  return refusal(problem.phrase, fix);
 }
 
 /**
@@ -265,11 +294,51 @@ function firstProblem(problems: readonly PluginProblem[]): Phrase {
   return phrase`${printable(reason)}`;
 }
 
-/** "Couldn't add the plugin: <reason> · Check the folder or git address." */
-function refusal(kind: "invalid_input", reason: Phrase): KindedError {
-  return new KindedError(kind, plainText(reason), {
-    fix: plainOf(pluginMessages.refusedSourceFix()),
+/** "Couldn't add the plugin: <reason>", then the fix: "Check the folder or git address." unless another is given, none for `null`. */
+function refusal(
+  reason: Phrase,
+  fix: Message | null = pluginMessages.refusedSourceFix(),
+): KindedError {
+  return new KindedError("invalid_input", plainText(reason), {
+    ...(fix === null ? {} : { fix: plainOf(fix) }),
   });
+}
+
+/** The two manifest names a plugin folder may have, as `readPluginFolder` reads them. */
+const manifestNames = ["plugin.yaml", "integration.yaml"] as const;
+
+/** A problem inside the manifest, at a value or a line, not one about the folder or another file. */
+function isManifestProblem(problem: PluginProblem): boolean {
+  const named = (manifestNames as readonly string[]).includes(problem.file);
+  return named && (problem.line !== undefined || problem.path.length > 0);
+}
+
+/** Problems with a line first, in line order; the others after them, as found. */
+function byLine(a: PluginProblem, b: PluginProblem): number {
+  return (a.line ?? Number.MAX_SAFE_INTEGER) - (b.line ?? Number.MAX_SAFE_INTEGER);
+}
+
+/** A manifest one folder down: the folder's name and which manifest it has. */
+interface NestedManifest {
+  readonly folder: string;
+  readonly manifest: (typeof manifestNames)[number];
+}
+
+function hasNoManifest(error: PluginAddRefusal): boolean {
+  return error.kind === "broken" && error.problems[0]?.code === "manifest-missing";
+}
+
+/** The first folder in `folder`, by name, that has a manifest; only this one level down. */
+async function nestedManifest(folder: string): Promise<NestedManifest | undefined> {
+  const entries = await readdir(folder, { withFileTypes: true }).catch(() => []);
+  const folders = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  for (const name of folders.sort()) {
+    for (const manifest of manifestNames) {
+      const found = await stat(join(folder, name, manifest)).catch(() => null);
+      if (found?.isFile() === true) return { folder: name, manifest };
+    }
+  }
+  return undefined;
 }
 
 function plainOf(message: Message): string {

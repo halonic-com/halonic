@@ -63,6 +63,47 @@ describe("plugin's sentences", () => {
     ]);
   });
 
+  it("places a manifest problem as validate does, with the file as the fix", () => {
+    expect([
+      words(pluginMessages.manifestProblem("plugin.yaml", "3:5", "id", "use lower-case words")),
+      words(
+        pluginMessages.manifestProblem(
+          "plugin.yaml",
+          "2:10",
+          "version",
+          "Invalid input: expected string, received number",
+        ),
+      ),
+      words(
+        pluginMessages.manifestProblem(
+          "plugin.yaml",
+          "6:7",
+          "name",
+          "Invalid input: expected string, received number",
+        ),
+      ),
+      words(
+        pluginMessages.manifestProblem(
+          "plugin.yaml",
+          undefined,
+          "sdk",
+          'Plugin "weather": needs SDK 3',
+        ),
+      ),
+      words(pluginMessages.manifestProblem("plugin.yaml", "9:1", "", "Map keys must be unique")),
+      words(pluginMessages.manifestFix("plugin.yaml")),
+      words(pluginMessages.nestedManifest("plugin.yaml", "acme-orders")),
+    ]).toEqual([
+      "plugin.yaml 3:5 id: use lower-case words",
+      'plugin.yaml 2:10 version is a number here; write it in quotes, with three numbers, such as "1.0.0".',
+      "plugin.yaml 6:7 name is a number here; write it in quotes.",
+      "plugin.yaml sdk: needs SDK 3",
+      "plugin.yaml 9:1 Map keys must be unique",
+      "Fix plugin.yaml, then run halonic plugin add again.",
+      "There's a plugin.yaml in acme-orders/. Did you mean that folder?",
+    ]);
+  });
+
   it("has the trust check's headings in Studio's words and order", () => {
     expect([
       words(pluginMessages.toolsHeading()),

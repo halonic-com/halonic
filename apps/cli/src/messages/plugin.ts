@@ -15,6 +15,19 @@ const stateWords: Readonly<Record<PluginState, string>> = {
   changed: "changed since you trusted it",
 };
 
+/** The schema's words for a value YAML read as a number where text goes, such as `version: 1.0`. */
+const numberForText = /expected string, received number$/u;
+
+/** How the format starts a check's words: `Plugin "weather": `. */
+const pluginNamePrefix = /^Plugin "[^"]*": /u;
+
+/** A number where text goes: YAML reads `1.0` as a number unless it's in quotes. */
+function numberForTextWords(field: string) {
+  return field === "version"
+    ? phrase`version is a number here; write it in quotes, with three numbers, such as "1.0.0".`
+    : phrase`${field} is a number here; write it in quotes.`;
+}
+
 /**
  * The sentences of `halonic plugin add | list | remove` (cli-output 1.9 and
  * 3.6). The trust check's sections, headings and order are Studio's
@@ -126,6 +139,23 @@ export const pluginMessages = defineMessages("plugin", {
   /** The refusal for a source that is, holds or is inside the profile folder or a workspace's data (HAL-13713). */
   halonicData: () =>
     phrase`a plugin can't be added from Halonic's own data, or from a folder that holds it.`,
+  /**
+   * A problem in the plugin's manifest, placed as `validate` places one:
+   * "plugin.yaml 4:10 id: use lower-case words…". A check over the parsed
+   * plugin has no line, and a YAML syntax error no field (HAL-14304).
+   */
+  manifestProblem: (file: string, where: string | undefined, field: string, message: string) => {
+    const at = where === undefined ? file : `${file} ${where}`;
+    // The format names the plugin in front of a check's words; the file already says which one.
+    const reason = message.replace(pluginNamePrefix, "");
+    if (numberForText.test(reason)) return phrase`${at} ${numberForTextWords(field)}`;
+    return field === "" ? phrase`${at} ${reason}` : phrase`${at} ${field}: ${reason}`;
+  },
+  /** The fix after a problem in the manifest: the file is what to change, not the folder. */
+  manifestFix: (file: string) => phrase`Fix ${file}, then run halonic plugin add again.`,
+  /** The fix when the folder has no manifest but one folder in it has (Nina's C340 row 26). */
+  nestedManifest: (manifest: string, folder: string) =>
+    phrase`There's a ${manifest} in ${folder}/. Did you mean that folder?`,
 
   /** A plugin's state on its `list` line. */
   state: (state: PluginState) => phrase`${stateWords[state]}`,

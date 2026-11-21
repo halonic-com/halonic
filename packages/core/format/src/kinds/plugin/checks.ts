@@ -17,7 +17,7 @@ import { uiProblems } from "./ui-checks.ts";
 /**
  * The rules over several fields of a plugin: it has a backend or local
  * tools, its id and secret names aren't too long, its backend passes the
- * integration sheet's checks and starts no program, no id is used twice, no tool or secret name is in two parts, a
+ * integration sheet's checks and starts no program, no id is used twice, no tool name has a space, no tool or secret name is in two parts, a
  * local tool's environment names its own secrets and the plugin's settings
  * and sets none of the variables Halonic sets itself, and its `ui` names
  * what the plugin declares.
@@ -31,6 +31,7 @@ export function checkPlugin(plugin: Plugin): KindCheckProblem[] {
     ...lengthProblems(plugin),
     ...backendProblems(plugin),
     ...localToolProblems(plugin),
+    ...toolNameProblems(plugin),
     ...inTwoParts(plugin, declaredTools(plugin), "tool-twice", "tool"),
     ...inTwoParts(plugin, declaredSecrets(plugin), "secret-twice", "secret"),
     ...uiProblems(plugin),
@@ -44,6 +45,20 @@ function partProblems(plugin: Plugin): KindCheckProblem[] {
   }
   const message = "a plugin needs a backend or localTools; ui alone has nothing to call";
   return [problem(plugin, "no-part", [], message)];
+}
+
+/**
+ * A tool's name is one word: a model calls a tool by its name, and a command
+ * or card that names it would otherwise be the only problem shown (HAL-14304).
+ */
+function toolNameProblems(plugin: Plugin): KindCheckProblem[] {
+  return declaredTools(plugin)
+    .filter((tool) => /\s/u.test(tool.name))
+    .map((tool) => {
+      const oneWord = tool.name.trim().split(/\s+/u).join("-");
+      const message = `the tool name "${tool.name}" has a space; use one word, such as ${oneWord}`;
+      return problem(plugin, "tool-name-space", tool.path, message);
+    });
 }
 
 /**

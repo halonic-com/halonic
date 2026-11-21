@@ -129,6 +129,28 @@ verifies("format.plugin-checks", () => {
     );
   });
 
+  it("fails a tool name with a space at the name, before the command that uses it", () => {
+    const problems = problemsOf(
+      "plugin",
+      yaml(
+        ...head,
+        "backend:",
+        "  hosts: [api.example.com]",
+        "  tools:",
+        "    - { name: find order, description: Finds one., risk: read, untrusted: true }",
+        "ui:",
+        "  commands: [{ id: find, title: Find, tool: find-order }]",
+      ),
+    );
+    expect(problems.map((problem) => `${problem.path.join(".")} ${problem.code}`)).toEqual([
+      "backend.tools.0.name tool-name-space",
+      "ui.commands.0.tool tool-not-found",
+    ]);
+    expect(problems[0]?.message).toBe(
+      'Plugin "weather": the tool name "find order" has a space; use one word, such as find-order',
+    );
+  });
+
   it("fails a secret name in two parts", () => {
     expect(
       found(
