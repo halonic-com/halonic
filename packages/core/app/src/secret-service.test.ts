@@ -179,6 +179,16 @@ verifies("app.secret-host-names", () => {
     },
   );
 
+  it("says the host keeps the name itself and what to do instead", async () => {
+    const { secrets } = setup();
+
+    expect(await secrets.remove("remote-host-key")).toEqual({
+      changed: false,
+      reason:
+        'Secret name "remote-host-key" belongs to Halonic\'s agent host, which makes and keeps it itself. Use another name for a secret of your own.',
+    });
+  });
+
   it("refuses the agent host's name before a value is typed", () => {
     const { secrets } = setup();
 
