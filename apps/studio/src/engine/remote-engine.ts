@@ -1,4 +1,8 @@
-import { createRemoteExecutor, RemoteHostError } from "@halonicjs/adapter-executor-remote";
+import {
+  createRemoteExecutor,
+  RemoteHostError,
+  readSseMessages,
+} from "@halonicjs/adapter-executor-remote";
 import type { SkipRecord } from "@halonicjs/app/routines";
 import type { RunSummary } from "@halonicjs/events";
 import type { RunExecutor, SendOptions } from "@halonicjs/ports";
@@ -12,6 +16,7 @@ import {
   tauriEngineFetch,
 } from "@halonicjs/studio-services";
 import { EngineNotAnswering, WorkspaceUntrusted } from "@halonicjs/studio-shell";
+import type { RunFeedListener } from "../runs/workspace-runs.ts";
 import type { RoutineRunStart } from "./engine-service.ts";
 import type { PageRuns } from "./page-refusal.ts";
 
@@ -123,7 +128,36 @@ export class RemoteEngine {
     if (!Array.isArray(runs)) {
       throw new KindedError("unavailable", "The engine's list of waiting runs wasn't readable.");
     }
+    // Not checked entry by entry: the engine is Halonic's own, reached only through the shell.
     return runs as RunSummary[];
+  }
+
+  /**
+   * Follows the engine's run changes (`GET /api/run-updates`): calls `changed` for each `changed`
+   * event until the returned function is called. When the feed stops on its own, it calls `ended`,
+   * with why when it broke, such as `EngineNotAnswering`. The feed keeps no history, so what
+   * changed before it connected shows only when the runs are read.
+   */
+  followRuns({ changed, ended }: RunFeedListener): () => void {
+    const abort = new AbortController();
+    const follow = async () => {
+      const request = new Request(`${engineBaseUrl}/api/run-updates`, { signal: abort.signal });
+      const response = await this.#fetch(request);
+      if (!response.ok) throw await refusalOf(response);
+      if (response.body === null) return;
+      for await (const message of readSseMessages(response.body)) {
+        if (message.event === "changed") changed();
+      }
+    };
+    follow().then(
+      () => {
+        if (!abort.signal.aborted) ended();
+      },
+      (error: unknown) => {
+        if (!abort.signal.aborted) ended(studioErrorOf(error));
+      },
+    );
+    return () => abort.abort();
   }
 
   /** Calls a JSON route of the engine and gives its body; a refusal throws as {@link studioErrorOf} says. */
@@ -144,15 +178,17 @@ export class RemoteEngine {
 
 /**
  * Asks the shell whether an engine runs for the window's workspace, once, when the folder opens:
- * a `RemoteEngine` when the engine answered, `undefined` when the shell has none
- * (`engine_unavailable`). Anything else that stops the call is reported, and the page then runs
- * its own engine, which the engine lock keeps from running beside another.
+ * a `RemoteEngine` when the engine answered with a success status, `undefined` when the shell has
+ * none (`engine_unavailable`). An engine that refuses, or anything else that stops the call, is
+ * reported, and the page then runs its own engine, which the engine lock keeps from running
+ * beside another.
  */
 export async function openRemoteEngine(
   options: RemoteEngineOptions,
 ): Promise<RemoteEngine | undefined> {
   try {
-    await options.fetch(new Request(`${engineBaseUrl}/api/hello`));
+    const hello = await options.fetch(new Request(`${engineBaseUrl}/api/hello`));
+    if (!hello.ok) throw await refusalOf(hello);
     return new RemoteEngine(options);
   } catch (error) {
     if (!(error instanceof EngineCallRefused && error.kind === "engine_unavailable")) {

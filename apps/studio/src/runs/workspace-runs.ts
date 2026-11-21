@@ -45,6 +45,14 @@ export interface PollTimer {
   every(ms: number, tick: () => void): () => void;
 }
 
+/** Hears an engine's run changes; see {@link WorkspaceRunsOptions.followRuns}. */
+export interface RunFeedListener {
+  /** A run started, moved on or ended. */
+  changed(): void;
+  /** The feed stopped on its own: with why when it broke, with nothing when the engine closed it. */
+  ended(error?: unknown): void;
+}
+
 /** What {@link WorkspaceRuns} reads. */
 export interface WorkspaceRunsOptions {
   /** The workspace's runs, the same files the CLI reads. */
@@ -60,6 +68,15 @@ export interface WorkspaceRunsOptions {
   readonly waiting?: () => Promise<RunSummary[]>;
   /** The workspace folder's absolute path, which the commands to copy name (D1, HAL-12725). */
   readonly folder?: string;
+  /**
+   * Follows the engine's run changes until the returned function is called
+   * (`RemoteEngine.followRuns`). Given, the runs are read again each time it
+   * says one changed and each time it connects, instead of every 10 s; a feed
+   * that ends connects again after 10 s.
+   */
+  readonly followRuns?: (listener: RunFeedListener) => () => void;
+  /** Hears why the feed of run changes broke off. */
+  readonly reportError?: (error: unknown) => void;
   /** Defaults to `setInterval`. */
   readonly timer?: PollTimer;
   /**
@@ -102,9 +119,10 @@ export const systemTimer: PollTimer = {
  *
  * A run changes when the window's engine or something else, such as
  * `halonic run`, writes its log. While anyone listens, the runs are read
- * again every 10 s, when the window comes to the front and after an answer
- * the window sent, and listeners hear only when a run started, moved on or
- * ended. An answer goes through the window's engine (`send`); without one,
+ * again every 10 s, or each time the background engine's feed says one
+ * changed ({@link WorkspaceRunsOptions.followRuns}), when the window comes to
+ * the front and after an answer the window sent, and listeners hear only
+ * when a run started, moved on or ended. An answer goes through the window's engine (`send`); without one,
  * {@link WorkspaceRuns.send} fails as `unavailable`.
  *
  * @example
@@ -124,6 +142,8 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
   /** Each run's id and last event as the last poll saw them; `undefined` before the first. */
   #seen: string | undefined;
   #polling = false;
+  /** Whether something asked for a read while one ran, so another follows it. */
+  #pollAgain = false;
   #disposed = false;
 
   constructor(options: WorkspaceRunsOptions) {
@@ -295,10 +315,15 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
   #startWatching(): void {
     if (this.#stopPolling !== undefined || this.#disposed) return;
     const timer = this.#options.timer ?? systemTimer;
-    const stopTimer = timer.every(runsPollInterval, () => void this.#poll());
+    const { followRuns } = this.#options;
+    const stopReading =
+      followRuns === undefined
+        ? timer.every(runsPollInterval, () => void this.#poll())
+        : this.#follow(followRuns, timer);
+    // Kept with the feed too: a `halonic run` in a terminal writes runs the engine doesn't know of.
     const stopFocus = this.#options.onFocus?.(() => void this.#poll()) ?? (() => {});
     this.#stopPolling = () => {
-      stopTimer();
+      stopReading();
       stopFocus();
     };
     this.#watch = this.#options.definitions
@@ -331,10 +356,62 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     void watch?.then((open) => open?.close());
   }
 
-  /** Reads the runs and tells the listeners when one started, moved on or ended. */
+  /**
+   * Follows the engine's feed of run changes, reading the runs on each change. The feed keeps no
+   * history, so the runs are read again each time it connects again, after it ended; it connects
+   * again after {@link runsPollInterval}. Returns a function that stops following.
+   */
+  #follow(
+    followRuns: NonNullable<WorkspaceRunsOptions["followRuns"]>,
+    timer: PollTimer,
+  ): () => void {
+    let stopped = false;
+    let stopFeed = () => {};
+    let stopWaiting: (() => void) | undefined;
+    const connect = () => {
+      stopFeed = followRuns({
+        changed: () => void this.#poll(),
+        ended: (error) => {
+          if (stopped) return;
+          if (error !== undefined) this.#options.reportError?.(error);
+          stopWaiting = timer.every(runsPollInterval, () => {
+            stopWaiting?.();
+            stopWaiting = undefined;
+            connect();
+            void this.#poll();
+          });
+        },
+      });
+    };
+    connect();
+    return () => {
+      stopped = true;
+      stopFeed();
+      stopWaiting?.();
+    };
+  }
+
+  /**
+   * Reads the runs and tells the listeners when one started, moved on or ended. A call while a
+   * read runs makes one more read follow it, so a change the feed told of during a read isn't lost.
+   */
   async #poll(): Promise<void> {
-    if (this.#polling) return;
+    if (this.#polling) {
+      this.#pollAgain = true;
+      return;
+    }
     this.#polling = true;
+    try {
+      do {
+        this.#pollAgain = false;
+        await this.#readRuns();
+      } while (this.#pollAgain && this.#stopPolling !== undefined);
+    } finally {
+      this.#polling = false;
+    }
+  }
+
+  async #readRuns(): Promise<void> {
     try {
       const summaries = await this.#options.runs.list();
       const seen = summaries.map((run) => `${run.id}@${run.lastSeq}`).join(" ");
@@ -343,8 +420,6 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
       if (changed) this.#tell();
     } catch {
       // The next poll tries again; a list that fails shows on the page that lists.
-    } finally {
-      this.#polling = false;
     }
   }
 
