@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-12411 (S3 and S5 of the UX check of the error lines on HAL-12390; L4 and L5 of the UX check on HAL-12363; wording on approved screens, a team decision under HAL-2282); the shared start-failure line of HAL-12412 (`startFailureOf`); `routines.page.run-now`.
+- Source: HAL-12411 (S3 and S5 of the UX check of the error lines on HAL-12390; L4 and L5 of the UX check on HAL-12363; wording on approved screens, a team decision under HAL-2282); the shared start-failure line of HAL-12412 (`startFailureOf`); `routines.page.run-now`; HAL-15336 (RT3 and RT4 of HAL-15304).
 
-When **Run now** doesn't start a run because the start failed, the toast that stays shall say "Couldn't start *Daily*." with the reason, its next step and the command that step leads to after it, as the Run panel's start-failure line has them (`startFailureOf`), so the window's refusal of what the routine starts keeps its own words and only an engine that can't be reached says it isn't answering. A toast has no room for a CommandBox, so the command shall end the line and **Copy command** shall copy it while the toast stays open. When starting again may help, such as a workspace another Halonic is running, the toast shall offer **Try again**, which starts the routine again; a refusal whose next step is somewhere else shall have no **Try again**.
+When **Run now** doesn't start a run because the start failed, the toast that stays shall say "Couldn't start *Daily*." with the reason, its next step and the command that step leads to after it, as the Run panel's start-failure line has them (`startFailureOf`), so the window's refusal of what the routine starts keeps its own words, such as "The input has no field mail, which the step Read the email reads.", only an engine that can't be reached says it isn't answering, in the words for where Studio runs ("The engine isn't answering. It may still be starting."), and a failure without a reason says Halonic can't explain it. A toast has no room for a CommandBox, so the command shall end the line and **Copy command** shall copy it while the toast stays open. When starting again may help, such as a workspace another Halonic is running, the toast shall offer **Try again**, which starts the routine again; a refusal whose next step is somewhere else shall have no **Try again**.
 
 ## Examples
 

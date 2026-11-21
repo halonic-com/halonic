@@ -76,14 +76,17 @@ verifies("shell.rename-sheet", () => {
     }
   });
 
-  it("on a phone, focuses the sheet's title and closes with ✕, as the kit's form sheet does", () => {
+  it("on a phone, focuses Name with its text selected and closes with ✕", () => {
     render(
       <PresentationProvider presentation="phone">
         <RenameSheet kindName="routine" name="Daily digest" onRename={vi.fn()} onClose={vi.fn()} />
       </PresentationProvider>,
     );
     const sheet = document.querySelector("dialog") as HTMLDialogElement;
-    expect(document.activeElement).toBe(sheet.querySelector("h2"));
+    // A form sheet focuses its first field, not its title (component specs 15.3, RT17 of HAL-15304).
+    const input = sheet.querySelector("input") as HTMLInputElement;
+    expect(document.activeElement).toBe(input);
+    expect([input.selectionStart, input.selectionEnd]).toEqual([0, "Daily digest".length]);
     const [close, rename, ...others] = sheet.querySelectorAll("button");
     expect(close?.getAttribute("aria-label")).toBe("Close");
     expect(rename?.textContent?.trim()).toMatch(/^Rename/);

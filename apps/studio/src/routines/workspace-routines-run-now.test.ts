@@ -1,6 +1,6 @@
-import { KindedError } from "@halonicjs/std";
 import { agentCantRunWords, EngineNotAnswering } from "@halonicjs/studio-feature-routines/api";
 import { StartRefused } from "@halonicjs/studio-feature-workflows/api";
+import { EngineNotAnswering as ShellEngineNotAnswering } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { WindowCantStart } from "../engine/page-refusal.ts";
@@ -46,8 +46,10 @@ verifies("studio.workspace-routines", () => {
   it("says the engine isn't answering when it can't be reached, and has no Run now without one", async () => {
     const down = setup({
       engine: {
+        // The background engine's own error when it isn't reached; any other refusal keeps its
+        // sentence (RT3 of HAL-15304).
         start: async () => {
-          throw new KindedError("unavailable", "closed");
+          throw new ShellEngineNotAnswering();
         },
       },
     });

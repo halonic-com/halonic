@@ -17,6 +17,7 @@ import {
   RoutinesHostService,
 } from "../api.ts";
 import { NewRoutineDialog } from "../new/new-routine-dialog.tsx";
+import { TRIGGER_STEP } from "../page/trigger-step.ts";
 import { OnTimeHint } from "../when/on-time-hint.tsx";
 import { listWords, rowMenuWords } from "./list-words.ts";
 import { dropNewRoutineRequest, takeNewRoutineRequests } from "./new-request.ts";
@@ -49,9 +50,11 @@ export function RoutinesPage({ context }: PlaceViewProps) {
   const open =
     openItem === undefined
       ? undefined
-      : (ref: RoutineRef) => {
+      : (ref: RoutineRef, step?: string) => {
           const item = itemOf(ref);
-          if (item !== undefined) openItem(item);
+          if (item === undefined) return;
+          if (step === undefined) openItem(item);
+          else openItem(item, { step });
         };
   const openInNewTab =
     openItemInNewTab === undefined
@@ -75,8 +78,11 @@ export function RoutinesPage({ context }: PlaceViewProps) {
 /** Props for {@link RoutinesView}. */
 export interface RoutinesViewProps {
   readonly host: RoutinesHost;
-  /** Opens a routine's page in a tab: a row's click and Enter. */
-  readonly open?: (ref: RoutineRef) => void;
+  /**
+   * Opens a routine's page in a tab: a row's click and Enter, and a routine New routine made, on
+   * `step` when given (see {@link TRIGGER_STEP}).
+   */
+  readonly open?: (ref: RoutineRef, step?: string) => void;
   /** Opens a routine's page in a new tab: a Ctrl-click, a middle click and Ctrl Enter. Without it, those open it in the same tab as a click. */
   readonly openInNewTab?: (ref: RoutineRef) => void;
   /** What the page calls the engine when it can't read, for this window's host; the desktop app's by default. */
@@ -295,7 +301,8 @@ export function RoutinesView({
           onCreated={(ref) => {
             setCreating(false);
             read();
-            open?.(ref);
+            // The new routine's first step is its trigger (flow-routines 2.2, RT1 of HAL-15304).
+            open?.(ref, TRIGGER_STEP);
           }}
           onCancel={() => setCreating(false)}
           onNewWorkflow={

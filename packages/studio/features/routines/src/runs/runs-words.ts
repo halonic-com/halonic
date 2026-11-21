@@ -6,6 +6,8 @@ export const runsWords = {
   tab: "Runs",
   viewsLabel: "Routine views",
   scheduleTab: "Schedule",
+  /** The Schedule tab's count of what stops a start, read after its name: "Schedule, 1 error". */
+  scheduleErrors: (count: number) => (count === 1 ? "1 error" : `${count} errors`),
   now: "Now",
   earlier: "Earlier",
   loading: "Loading runs",

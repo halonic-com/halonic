@@ -465,7 +465,8 @@ verifies("routines.page.run-now", () => {
 
     expect(toasts.list()[0]).toMatchObject({
       title: "Couldn't start Daily.",
-      text: "The engine isn't answering.",
+      // The words for where Studio runs, as `EngineNotAnswering` asks for (RT3 of HAL-15304).
+      text: "The engine isn't answering. It may still be starting.",
       sticky: true,
     });
   });

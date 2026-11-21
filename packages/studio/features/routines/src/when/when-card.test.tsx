@@ -71,6 +71,18 @@ verifies("routines.when.when-card", () => {
     expect(toggle(page).checked).toBe(true);
   });
 
+  it("labels the day chips Days, like At, and shows Next above Advanced", async () => {
+    const { host } = hostWith(times("2026-11-06T06:30:00Z"));
+    const page = await show(<WhenCard host={host} routine={daily} announce={() => {}} />);
+
+    // Days, At, Next, Advanced (flow-routines 3.1, RT14 of HAL-15304).
+    const text = page.textContent ?? "";
+    const order = ["Days", "At", "Next", "Advanced"].map((word) => text.indexOf(word));
+    expect(order.every((at) => at >= 0)).toBe(true);
+    expect([...order].sort((first, second) => first - second)).toEqual(order);
+    expect(page.querySelector("fieldset")?.getAttribute("aria-label")).toBe("Days");
+  });
+
   it("says the times are kept while Halonic is open", async () => {
     const { host } = hostWith(times("2026-11-06T06:30:00Z"));
     const page = await show(<WhenCard host={host} routine={daily} announce={() => {}} />);

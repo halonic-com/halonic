@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-12170; flow-routines 3.8
+- Source: HAL-12170; flow-routines 3.8; HAL-15336 (RT7 of HAL-15304)
 
-Where the host can make a routine live, **Run now** on a routine that has changes that aren't live, or that never had a version, shall open a dialog first instead of starting at once; the dialog shall say which version runs and offer **Make live first** or, for a routine that never had a version, **Make live and run**, and Cancel shall change nothing.
+Where the host can make a routine live, **Run now** on a routine that has changes that aren't live, or that never had a version, shall open a dialog first instead of starting at once; the dialog shall say which version runs and offer **Make live first** or, for a routine that never had a version, **Make live and run**, and Cancel shall change nothing. Only the button that was pressed shall be busy, so **Run now** keeps its label while **Make live first** runs, and once a version is made the dialog's **Run now** shall take the focus.
 
 ## Examples
 

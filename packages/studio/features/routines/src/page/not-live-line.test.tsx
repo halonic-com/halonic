@@ -37,7 +37,7 @@ verifies("routines.page.review-and-make-live", () => {
   it("makes the routine live from the line, reads it again and gives its name the focus", async () => {
     const { host, asked } = hostMaking("made");
     const { page } = await showWithToasts(host);
-    expect(page.textContent).toContain(`${line} ${link}`);
+    expect(page.textContent).toContain(`${line} · ${link}`);
     const button = buttonNamed(page, link);
     button?.focus();
 

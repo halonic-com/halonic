@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-15050 (the design check C529-6 of HAL-13206); microcopy 2; flow-routines 3.1 and 3.8; as `agents.page.review-and-make-live` (C508 M5, M6)
+- Source: HAL-15050 (the design check C529-6 of HAL-13206); HAL-15336 (RT6 of HAL-15304); microcopy 2; flow-routines 3.1 and 3.8; as `agents.page.review-and-make-live` (C508 M5, M6)
 
-While the routine page shows "Changes not live yet" (`routines.page.frame-and-states`) and the host can make the routine live, the routines feature shall end the line in **Review and make live**, which asks the host to make the routine live. When the host answers `made`, the page shall read the routine again, since a version changes no file, and once the line goes, the routine's name shall take the focus the link had; when it answers `cancelled`, nothing changes. When it rejects, a toast shall say "Couldn't make {name} live." with the reason. Where the host can't make a routine live there is no link. On a phone the link shall sit at the right of the line, and under the words when both don't fit.
+While the routine page shows "Changes not live yet" (`routines.page.frame-and-states`) and the host can make the routine live, the routines feature shall end the line in " · " and **Review and make live**, which asks the host to make the routine live. When the host answers `made`, the page shall read the routine again, since a version changes no file, and once the line goes, the routine's name shall take the focus the link had; when it answers `cancelled`, nothing changes. When it rejects, a toast shall say "Couldn't make {name} live." with the reason. Where the host can't make a routine live there is no link. On a phone the link shall sit at the right of the line, without the dot, and under the words when both don't fit.
 
 ## Examples
 

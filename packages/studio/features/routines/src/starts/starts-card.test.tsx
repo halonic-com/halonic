@@ -184,6 +184,20 @@ verifies("routines.starts.starts-card", () => {
     });
   });
 
+  it("marks the empty field as an error while the engine refuses the start without it", async () => {
+    const refused = { ...supportReplyWith("{}"), inputMissing: true };
+    const { page } = await card(refused, supportChoices);
+
+    // The engine refuses the start (`missing-routine-input`, RT2 of HAL-15304).
+    const field = page.querySelector("textarea") as HTMLTextAreaElement;
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    const error = document.getElementById(field.getAttribute("aria-describedby") ?? "");
+    expect(error?.textContent).toBe(
+      "Support reply needs this. Left empty, the routine won't start.",
+    );
+    expect(page.textContent).not.toContain("it starts with nothing to work on");
+  });
+
   it("keeps what else the input holds, and opens Advanced to show it", async () => {
     const { page, saved } = await card(
       supportReplyWith('{"mail":"Hi","tone":"short"}'),

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it } from "vitest";
 import type { RoutinesHost, RoutineView } from "../api.ts";
-import { memoryHost, show, unmount } from "../test-support.tsx";
+import { memoryHost, openDialogsInJsdom, show, unmount } from "../test-support.tsx";
 import { RoutineScreen } from "./routine-page.tsx";
 
 afterEach(unmount);
@@ -54,6 +55,26 @@ verifies("routines.when.trigger-fields", () => {
     const picker = page.querySelector("select");
     expect(picker).not.toBeNull();
     expect(document.activeElement).toBe(picker);
+  });
+
+  it("opens the Trigger picker sheet on a phone", async () => {
+    openDialogsInJsdom();
+    await show(
+      <PresentationProvider presentation="phone">
+        <RoutineScreen
+          host={dailyHost()}
+          hubId="acme"
+          id="daily"
+          announce={() => {}}
+          triggerAsked={0}
+        />
+      </PresentationProvider>,
+    );
+
+    // The picker sheet is titled with the field's label (flow-routines 5.1, RT1 of HAL-15304).
+    const sheet = document.querySelector("dialog");
+    expect(sheet?.textContent).toContain("Trigger");
+    expect(sheet?.textContent).toContain("On a schedule");
   });
 
   it("leaves the focus alone when the page isn't asked for it", async () => {

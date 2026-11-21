@@ -58,7 +58,8 @@ export function NotLiveLine({ host, routine, readAgain, onMadeLive }: NotLiveLin
       {pageWords.changesNotLive}
       {host.makeLive !== undefined && (
         <>
-          {" "}
+          {/* On a phone the line puts the two at its ends, so a dot between would hang alone. */}
+          {phone ? " " : " · "}
           <button
             type="button"
             className={inlineLinkClasses}
