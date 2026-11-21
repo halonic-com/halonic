@@ -9,7 +9,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { AgentsHost } from "../api.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { AgentScreen, type AgentScreenProps } from "../page/agent-page.tsx";
-import { buttonNamed, openDialogsInJsdom, show, unmount } from "../test-support.tsx";
+import { buttonNamed, openDialogsInJsdom, show, unmount, viewPanel } from "../test-support.tsx";
 
 beforeEach(openDialogsInJsdom);
 afterEach(unmount);
@@ -114,7 +114,8 @@ verifies("agents.map.layout-by-side", () => {
     const page = await openFlow({ agents });
     await act(async () => agents.update({ hubId: "acme", id: "triage" }, { subagents: [] }));
     expect(side(page, "Who it hands work to")).toEqual(["+ Add subagent"]);
-    expect(page.querySelector("[role=status]")).toBeNull();
+    // The panel's own skeleton, not the Try it chat's lines.
+    expect(viewPanel(page).querySelector("[role=status]")).toBeNull();
   });
 
   it("says why it can't draw the map, with Open as file", async () => {

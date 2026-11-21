@@ -329,29 +329,29 @@ export function AgentScreen({
             )}
           />
         ) : (
-        <Configuration
-          host={host}
-          name={name}
-          load={settings.load}
-          aliases={aliases.load}
-          defaultModel={defaultModel}
-          retryAliases={aliases.retry}
-          retry={settings.retry}
-          startOnInstructions={fresh}
-          save={save}
-          openLibrary={openLibrary}
-          openSubagent={cards.openSubagent}
-          reportNotSaved={reportNotSaved}
-          announce={announce}
-          openAgentStep={cards.openAgentStep}
-          sections={sections}
-          Sections={Sections}
-          showModel={modelWaiting}
-          onModelShown={modelShown}
-          page={configurationPage}
-          onPickPage={setConfigurationPage}
-          start={configurationStart}
-        />
+          <Configuration
+            host={host}
+            name={name}
+            load={settings.load}
+            aliases={aliases.load}
+            defaultModel={defaultModel}
+            retryAliases={aliases.retry}
+            retry={settings.retry}
+            startOnInstructions={fresh}
+            save={save}
+            openLibrary={openLibrary}
+            openSubagent={cards.openSubagent}
+            reportNotSaved={reportNotSaved}
+            announce={announce}
+            openAgentStep={cards.openAgentStep}
+            sections={sections}
+            Sections={Sections}
+            showModel={modelWaiting}
+            onModelShown={modelShown}
+            page={configurationPage}
+            onPickPage={setConfigurationPage}
+            start={configurationStart}
+          />
         )}
       </StackedCards>
     );

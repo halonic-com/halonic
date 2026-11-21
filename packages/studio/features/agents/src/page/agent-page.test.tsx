@@ -217,6 +217,8 @@ verifies("agents.page.rename", () => {
     const host = twoAgents();
     const page = await show(<AgentScreen host={host} hubId="acme" id="sorter" />);
     await typeInto(nameInput(page), "writer");
+    // Enter shows the reason at once, without waiting for the typing to pause.
+    await press(nameInput(page), "Enter");
     expect(page.textContent).toContain("An agent called writer already exists.");
     await leave(nameInput(page));
     expect(await nameInFile(host)).toBe("Sorter");
