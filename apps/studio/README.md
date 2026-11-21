@@ -95,7 +95,10 @@ host binary) and leaves `dist/Halonic-<version>-windows-x64-setup.exe` at the
 repo root. It installs per user and puts the repo's `LICENSE` and `NOTICE` next
 to the app, with `THIRD-PARTY-NOTICES.txt`: the licences of the bundled npm
 libraries and of the Rust crates the app links, which the script writes to
-`src-tauri/legal/` with `pnpm check:sbom --notices --cargo`. Only the "Set up the agent sandbox" step asks Windows for
+`src-tauri/legal/` with `pnpm check:sbom --notices --cargo`. With
+`-Runtime <folder>` it also ships the WSL runtime (`halonic-runtime.tar.gz` and
+`halonic-runtime.json`, from `infra/wsl-image/runtime-archive.sh`) next to the
+app, through `tauri.runtime.conf.json`; CI and the release always pass it. Only the "Set up the agent sandbox" step asks Windows for
 administrator rights, once, and the uninstaller asks again to remove the sandbox.
 
 The release runs the script in two steps, `-Step build` and `-Step pack`, and

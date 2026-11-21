@@ -2376,11 +2376,31 @@ jobs:
           echo "$out" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Build time: ${BUILD_SECONDS} s" >> "$GITHUB_STEP_SUMMARY"
-      # The runtime Studio installs in Halonic's WSL distro (HAL-14644): the
-      # Linux executable packed for the distro's runtime updater, kept for 7
-      # days like the WSL image. Build only: nothing is published.
+
+  wsl-runtime:
+    # The runtime Studio installs in Halonic's WSL distro (HAL-14644): the
+    # Linux agent host executable packed for the distro's runtime updater,
+    # kept for 7 days like the WSL image. The Windows installer job ships it
+    # (HAL-15136), so it runs whenever that job does. Build only: nothing is
+    # published.
+    name: WSL runtime (Linux agent host, packed)
+    needs: changes
+    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      - name: Build the Linux agent host
+        run: pnpm --filter @halonicjs/app-agent-host build:sea
       - name: Pack the WSL runtime
-        if: matrix.name == 'Linux' && github.event_name != 'merge_group'
         run: |
           version="$(jq -r .version apps/studio/package.json)+$(git rev-parse --short=12 HEAD)"
           infra/wsl-image/runtime-archive.sh apps/agent-host/dist/halonic-agent-host "$version" "$RUNNER_TEMP/wsl-runtime"
@@ -2391,11 +2411,11 @@ jobs:
             cat "$RUNNER_TEMP/wsl-runtime/halonic-runtime.json"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-      - if: matrix.name == 'Linux' && github.event_name != 'merge_group'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: halonic-wsl-runtime
           path: ${{ runner.temp }}/wsl-runtime/*
+          if-no-files-found: error
           retention-days: 7
 
   installer-windows:
@@ -2405,7 +2425,7 @@ jobs:
     # install (no admin), that Halonic reopens only on /RELAUNCH (HAL-1139),
     # and that the uninstaller removes the agent sandbox. Signing is later.
     name: Windows installer (build, install, uninstall)
-    needs: changes
+    needs: [changes, wsl-runtime]
     if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: windows-2025
     timeout-minutes: 45
@@ -2431,9 +2451,14 @@ jobs:
       - name: Install the pinned Rust toolchain
         working-directory: apps/studio/src-tauri
         run: rustup toolchain install
+      # The runtime the installer ships beside the app (HAL-15136).
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: halonic-wsl-runtime
+          path: ${{ runner.temp }}/wsl-runtime
       - name: Build the installer
         working-directory: apps/studio/src-tauri
-        run: pwsh windows/build-installer.ps1
+        run: pwsh windows/build-installer.ps1 -Runtime (Join-Path $env:RUNNER_TEMP 'wsl-runtime')
       - name: Walk the installer's pages and take a picture of each
         run: pwsh apps/studio/src-tauri/windows/screenshot-installer.ps1 -Setup (Resolve-Path "dist/Halonic-*-windows-x64-setup.exe") -InstallFolder (Join-Path $env:RUNNER_TEMP 'Halonic-pages') -OutFolder installer-pages
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -2462,7 +2487,7 @@ jobs:
           if (-not (Test-Path (Join-Path $dir 'Halonic.exe'))) { throw "Halonic isn't in the default folder $dir" }
           if (Test-Path (Join-Path $env:LOCALAPPDATA 'halonic\Halonic.exe')) { throw 'The installer wrote into the profile folder' }
           Get-ChildItem $dir -Recurse -ErrorAction SilentlyContinue | Select-Object -First 40 -ExpandProperty FullName | Out-Host
-          foreach ($f in 'Halonic.exe', 'halonic-agent-host.exe', 'halonic-sandbox-elevate.exe', 'srt-win.exe', 'uninstall.exe', 'sandbox-step.ps1', 'sandbox-remove.ps1', 'LICENSE', 'NOTICE', 'THIRD-PARTY-NOTICES.txt') {
+          foreach ($f in 'Halonic.exe', 'halonic-agent-host.exe', 'halonic-sandbox-elevate.exe', 'srt-win.exe', 'uninstall.exe', 'sandbox-step.ps1', 'sandbox-remove.ps1', 'LICENSE', 'NOTICE', 'THIRD-PARTY-NOTICES.txt', 'halonic-runtime.tar.gz', 'halonic-runtime.json') {
             if (-not (Test-Path (Join-Path $dir $f))) { throw "$f is missing from the install folder" }
           }
           # Per user: the uninstall entry is in HKCU, none in HKLM.
@@ -3282,6 +3307,7 @@ jobs:
         sandbox-os,
         sandbox-windows,
         agent-host,
+        wsl-runtime,
         installer-windows,
         update-windows,
         android,
