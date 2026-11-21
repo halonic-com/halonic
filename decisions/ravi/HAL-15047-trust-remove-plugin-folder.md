@@ -2,6 +2,7 @@
 
 - Approval: HAL-15047, the follow-up Liam decided on HAL-14993; Liam approves this note in his security review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:sX7LPCY2nfvyEGZ4+IBQxiZuIKq0iMBzyOo+GV4G77h9HBkVI8nMHXoNC0bFMBZtfvrEAl2v0ZJRXErjFm1MCg==
 - Task: HAL-15047
 
 ## What changes
