@@ -133,15 +133,15 @@ export function targetFound(workspace: LoadedWorkspace, target: RoutineTarget): 
 
 /**
  * Whether what a routine starts runs an agent in a program of its own (Claude Code or Codex), which
- * needs the sandbox: the agent itself, or any agent of the workflow and the workflows it starts.
+ * needs the sandbox: any agent of the workflow and the workflows it starts.
+ *
+ * An agent on its own is never counted while agent runs aren't built (HAL-14848): Run now refuses
+ * it with `agentCantRunWords` whatever its harness, so asking for the sandbox first would send the
+ * person to fix the sandbox for a routine that still can't run.
  */
 export function targetStartsProgram(workspace: LoadedWorkspace, target: RoutineTarget): boolean {
-  const agents =
-    target.kind === "workflow"
-      ? workflowAgentsOf(workspace, { hubId: target.hubId, workflowId: target.id })
-      : filesOf(workspace, "agent").filter(
-          (file) => file.hub === target.hubId && file.value.id === target.id,
-        );
+  if (target.kind === "agent") return false;
+  const agents = workflowAgentsOf(workspace, { hubId: target.hubId, workflowId: target.id });
   return agents.some((agent) => startsAProgram(agent.value.harness));
 }
 

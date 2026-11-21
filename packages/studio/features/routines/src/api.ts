@@ -111,7 +111,8 @@ export interface RoutineView extends RoutineRef {
   readonly targetState: RoutineTargetState;
   /**
    * Whether what it starts runs an agent in Claude Code or Codex, which needs the sandbox, so
-   * **Run now** can't work while the sandbox can't start. Absent where the host can't say.
+   * **Run now** can't work while the sandbox can't start. False for an agent on its own while
+   * Halonic can't run one ({@link agentCantRunWords}). Absent where the host can't say.
    */
   readonly startsProgram?: boolean | undefined;
   readonly overlap: RoutineOverlap;

@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import type { SandboxStartResult } from "@halonicjs/app";
-import { PresentationProvider } from "@halonicjs/studio-kit";
+import { KindedError } from "@halonicjs/std";
+import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import type { RoutinesHost, RoutineView } from "../api.ts";
+import { agentCantRunWords, type RoutinesHost, type RoutineView } from "../api.ts";
 import { buttonNamed, show, unmount } from "../test-support.tsx";
 import { daily, hostReading, runNowButton } from "./page.test-helper.tsx";
 import { RoutineScreen } from "./routine-page.tsx";
@@ -103,5 +104,41 @@ verifies("routines.page.cant-run", () => {
     expect(check).not.toHaveBeenCalled();
     expect(page.textContent).not.toContain(firstLine);
     expect(runNowButton(page)?.hasAttribute("aria-disabled")).toBe(false);
+  });
+
+  it("gives an agent routine the reason an agent can't run on its own, not the sandbox's", async () => {
+    // The host reads an agent target as starting no program while agent runs aren't built
+    // (HAL-14848), even in Codex, and Run now refuses it with the New routine dialog's words.
+    const analyst: RoutineView = {
+      ...dailySummary,
+      targetName: "Analyst",
+      target: { kind: "agent", hubId: "acme", id: "analyst", prompt: "Write the report." },
+      startsProgram: false,
+    };
+    const check = vi.fn(async () => refused);
+    // The desktop host's `WindowCantStart`: an `unavailable` error with the window's own words.
+    const runNow = vi.fn(async () => {
+      throw new KindedError("unavailable", agentCantRunWords.line);
+    });
+    const toasts = createToastStore();
+    const { host } = hostReading(() => analyst);
+    const page = await show(
+      <ToastStoreProvider store={toasts}>
+        <RoutineScreen
+          host={{ ...host, runNow } as RoutinesHost}
+          hubId="acme"
+          id="daily"
+          announce={() => {}}
+          sandboxStartCheck={{ check }}
+        />
+      </ToastStoreProvider>,
+    );
+    await act(async () => {});
+    expect(check).not.toHaveBeenCalled();
+    expect(page.textContent).not.toContain(firstLine);
+
+    await act(async () => runNowButton(page)?.click());
+    expect(runNow).toHaveBeenCalledTimes(1);
+    expect(toasts.list()[0]?.text).toContain(agentCantRunWords.why);
   });
 });

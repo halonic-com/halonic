@@ -2,11 +2,11 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-4291 (checklist 3.1, 3.4, 3.9); microcopy 23.3 "Can't run, routine"; `runs.sandbox-cant-run`.
+- Source: HAL-4291 (checklist 3.1, 3.4, 3.9); HAL-14848; microcopy 23.3 "Can't run, routine"; `runs.sandbox-cant-run`.
 
 When what a routine starts runs an agent in Claude Code or Codex (`startsProgram`), the page has **Run now** and the sandbox check refuses, the routine page shall show the can't-run Callout of `runs.sandbox-cant-run` at the top of its column, on the Schedule and Runs views alike, with no last line of its own, and **Run now** shall stay focusable but unavailable, described by the Callout's first line, on a phone too. A press on it starts nothing and asks nothing. The routine stays on: the Callout changes nothing in its file. When **Check again** finds the sandbox ready, focus shall move to **Run now**.
 
-A routine whose target starts no program shall not be checked and shall show no Callout.
+A routine whose target starts no program shall not be checked and shall show no Callout. While Halonic can't run an agent on its own, a routine that starts an agent starts no program, whatever the agent's harness, so its **Run now** gives that reason instead of the sandbox's.
 
 ## Examples
 
@@ -16,3 +16,5 @@ A routine whose target starts no program shall not be checked and shall show no 
   when the person presses Check again,
   then the Callout goes and Run now has the focus.
 - Given a routine whose workflow only uses Halonic's own agents, then nothing is checked and Run now works.
+- Given a routine that starts the agent *Analyst* in Codex, and a check that would say `bubblewrap-missing`,
+  then nothing is checked and there is no Callout, and Run now says "Halonic can't run an agent on its own yet, only as a step in a workflow."
