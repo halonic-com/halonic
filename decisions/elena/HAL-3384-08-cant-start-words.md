@@ -3,6 +3,7 @@
 - Task: HAL-3384
 - Approval: the words are R11 of microcopy 24.1 (HAL-751), approved by the board on HAL-1949 for Studio's trust check. The CLI's requirement already says it shows "the words Studio's trust check shows for the same state". Raised as C1 of the C506 code check of #4299 (HAL-14929); decided by the team on HAL-3384.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:dccG39V5liFVRHIUffjcRgDmUcyYrNRgHsXYOB4izemK9bkxEfxLuCBDiLYX/xn7wEz7sxK2KbnieXX5TU71DA==
 
 ## What changes
 
