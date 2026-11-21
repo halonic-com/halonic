@@ -29,7 +29,7 @@ const sorter: AgentListing = { hubId: "acme", id: "sorter", name: "Sorter" };
 const hostWith = () => memoryAgentsHost({ hubs: [{ id: "acme", name: "acme" }], agents: [sorter] });
 
 verifies("agents.page.frame", () => {
-  it("shows AGENT and the name at once, and opens on Flow", async () => {
+  it("shows AGENT and the name at once, its tabs Flow, Configuration and Runs, and opens on Flow", async () => {
     const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
 
     expect(page.textContent).toContain("AGENT");
@@ -38,7 +38,12 @@ verifies("agents.page.frame", () => {
     expect(buttonNamed(page, "Configuration")?.getAttribute("aria-selected")).toBe("false");
     expect(page.querySelector("[role=status]")).toBeNull();
     const views = page.querySelector("[role=tablist][aria-label='Agent views']");
-    expect([...(views?.querySelectorAll("[role=tab]") ?? [])].map((tab) => tab.id)).toHaveLength(3);
+    const tabs = [...(views?.querySelectorAll("[role=tab]") ?? [])];
+    expect(tabs).toHaveLength(3);
+    const order = ["Flow", "Configuration", "Runs"].map((name) =>
+      tabs.indexOf(buttonNamed(page, name) as Element),
+    );
+    expect(order).toEqual([0, 1, 2]);
     expect(buttonNamed(page, "Flow")?.getAttribute("role")).toBe("tab");
   });
 

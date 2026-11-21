@@ -7,7 +7,7 @@ import {
   PlusIcon,
   SkeletonBar,
 } from "@halonicjs/studio-kit";
-import { type RefObject, useEffect, useId, useMemo, useRef, useState } from "react";
+import { type RefObject, useEffect, useEffectEvent, useId, useMemo, useRef, useState } from "react";
 import {
   type AgentChange,
   type AgentSettings,
@@ -28,6 +28,9 @@ export interface ToolsPageProps {
   readonly save: (change: AgentChange) => Promise<boolean>;
   /** Opens Library on the tab of a list, for **Open Library ›**; absent where the app can't. */
   readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
+  /** Moves the focus to the first list's heading once the lists are read, then calls `onFocused`. */
+  readonly focusHeading?: boolean | undefined;
+  readonly onFocused?: (() => void) | undefined;
 }
 
 type Options = Readonly<Record<AgentToolList, readonly AgentToolOption[]>>;
@@ -38,7 +41,14 @@ type Options = Readonly<Record<AgentToolList, readonly AgentToolOption[]>>;
  * saves the whole list at once. When the Library can't be read, the lists still show the agent's
  * chips, which come from its file, without the pickers.
  */
-export function ToolsPage({ host, settings, save, openLibrary }: ToolsPageProps) {
+export function ToolsPage({
+  host,
+  settings,
+  save,
+  openLibrary,
+  focusHeading = false,
+  onFocused,
+}: ToolsPageProps) {
   const { hubId, id } = settings;
   const source = useMemo(
     () => ({
@@ -53,6 +63,14 @@ export function ToolsPage({ host, settings, save, openLibrary }: ToolsPageProps)
   const options = useLoad<Options>(source, () =>
     lists.current?.querySelector<HTMLElement>("section h3")?.focus(),
   );
+  // The map's Add a tool opened this page: its first heading takes the focus the button had.
+  const read = options.load.kind !== "loading";
+  const focused = useEffectEvent(() => onFocused?.());
+  useEffect(() => {
+    if (!focusHeading || !read) return;
+    lists.current?.querySelector<HTMLElement>("section h3")?.focus();
+    focused();
+  }, [focusHeading, read]);
   if (options.load.kind === "loading") {
     return (
       <div className="flex flex-col gap-4">

@@ -1,3 +1,4 @@
+import { usePresentation } from "@halonicjs/studio-kit";
 import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   type Box,
@@ -5,7 +6,9 @@ import {
   fitScale,
   type MapLine,
   type MapSide,
+  MIN_FIT_SCALE,
   mapLines,
+  PHONE_MIN_FIT_SCALE,
 } from "./map-geometry.ts";
 
 /** The map's natural width; the fit scales it to the panel from there. */
@@ -21,7 +24,8 @@ interface Fit {
 /**
  * The agent map's frame (`agents.map.lines-and-fit`): it fits the map to the panel when it opens
  * and again {@link FIT_DELAY_MS} after the panel or the map stops changing size, centred, never
- * larger than its natural size and with no zoom buttons. In the gaps it draws the curved lines
+ * larger than its natural size and with no zoom buttons; on a phone it never shrinks it, and the
+ * panel scrolls. In the gaps it draws the straight lines
  * from each side's cards to the centre card, each ending in a ring-and-dot port; the lines are a
  * picture only, hidden from screen readers and the pointer, so the cards and the add buttons stay
  * the only things to press. Its children are the grid's cells: left, centre and right in the first
@@ -46,6 +50,7 @@ export function MapFrame({
   const map = useRef<HTMLElement>(null);
   const [fit, setFit] = useState<Fit>();
   const [lines, setLines] = useState<readonly MapLine[]>([]);
+  const floor = usePresentation() === "phone" ? PHONE_MIN_FIT_SCALE : MIN_FIT_SCALE;
 
   const fitNow = useCallback(() => {
     const room = panel.current;
@@ -56,16 +61,18 @@ export function MapFrame({
     const scale = fitScale(
       { width, height },
       { width: room.clientWidth, height: room.clientHeight },
+      floor,
     );
     setFit({
       scale,
       left: Math.max(0, (room.clientWidth - width * scale) / 2),
       top: Math.max(0, (room.clientHeight - height * scale) / 2),
     });
-  }, []);
+  }, [floor]);
 
-  // Fit before the first paint, so the map never shows at the wrong size.
-  useLayoutEffect(fitNow, []);
+  // Fit before the first paint, so the map never shows at the wrong size, and again on a change
+  // between the phone and the desktop.
+  useLayoutEffect(fitNow, [fitNow]);
 
   // Cards move when what the map shows changes, so the lines are measured after every render.
   useLayoutEffect(() => {
@@ -126,14 +133,15 @@ export function MapFrame({
 
 /**
  * The lines and their ports, one SVG layer over the map that the pointer passes through, so a port
- * on a card's edge shows whole.
+ * on a card's edge shows whole. They take the workflow canvas's line colour, and the text colour in
+ * forced colours, so they read like the cards' borders there.
  */
 function MapLines({ lines }: { readonly lines: readonly MapLine[] }) {
   return (
     <svg
       aria-hidden="true"
       data-map-lines=""
-      className="pointer-events-none absolute top-0 left-0 size-px overflow-visible text-border-strong"
+      className="pointer-events-none absolute top-0 left-0 size-px overflow-visible text-fg-muted forced-colors:text-[CanvasText]"
     >
       {lines.map((line, index) => (
         // Two lines can have the same path while the map isn't laid out, so the place is the key.
@@ -155,7 +163,7 @@ function Port({ at }: { readonly at: { readonly x: number; readonly y: number } 
         cx={at.x}
         cy={at.y}
         r={4}
-        className="fill-surface"
+        className="fill-surface forced-colors:fill-[Canvas]"
         stroke="currentColor"
         strokeWidth={1.5}
       />

@@ -17,27 +17,42 @@ export type MapSide = "in" | "use" | "out";
 export interface MapLine {
   readonly from: Point;
   readonly to: Point;
-  /** The bezier's path, leaving and reaching each port straight out from its card's edge. */
+  /**
+   * The line's path: straight out from the first port's edge, a square turn halfway, and straight
+   * into the second port (flow-agents 6, T12; HAL-15064). Ports in line make one straight segment.
+   */
   readonly path: string;
 }
 
-/** The least the fit shrinks the map to; smaller, its words can't be read, so the panel scrolls. */
-export const MIN_FIT_SCALE = 0.5;
+/**
+ * The least the fit shrinks the map to on the desktop: its 12 px captions stay about 10 px. Smaller,
+ * the panel scrolls instead.
+ */
+export const MIN_FIT_SCALE = 0.8;
+
+/**
+ * The least on the phone presentation (narrower than 600 px, a 640 px window at 200 % zoom too):
+ * the map keeps its natural size and the panel scrolls, so a zoom isn't undone and its buttons
+ * stay 24 px or more (WCAG 1.4.4, 2.5.8).
+ */
+export const PHONE_MIN_FIT_SCALE = 1;
 
 /** How long after the last resize the map fits again, like the workflow canvas. */
 export const FIT_DELAY_MS = 260;
 
 /**
  * The scale that fits `content` into `room`: never above 1, so a small map isn't blown up, and
- * never below {@link MIN_FIT_SCALE}. 1 while either isn't measured (a test without a layout).
+ * never below `floor` ({@link MIN_FIT_SCALE}, or {@link PHONE_MIN_FIT_SCALE} on a phone). 1 while
+ * either isn't measured (a test without a layout).
  */
 export function fitScale(
   content: { readonly width: number; readonly height: number },
   room: { readonly width: number; readonly height: number },
+  floor: number = MIN_FIT_SCALE,
 ): number {
   if (content.width <= 0 || content.height <= 0 || room.width <= 0 || room.height <= 0) return 1;
   const scale = Math.min(1, room.width / content.width, room.height / content.height);
-  return Math.max(MIN_FIT_SCALE, scale);
+  return Math.max(floor, scale);
 }
 
 /**
@@ -52,21 +67,12 @@ export function mapLines(
 ): readonly MapLine[] {
   const spread = (count: number, index: number) => (index + 1) / (count + 1);
   const across = (from: Point, to: Point): MapLine => {
-    const bend = Math.abs(to.x - from.x) / 2;
-    const out = to.x >= from.x ? bend : -bend;
-    return {
-      from,
-      to,
-      path: `M ${from.x} ${from.y} C ${from.x + out} ${from.y}, ${to.x - out} ${to.y}, ${to.x} ${to.y}`,
-    };
+    const middle = (from.x + to.x) / 2;
+    return { from, to, path: `M ${from.x} ${from.y} H ${middle} V ${to.y} H ${to.x}` };
   };
   const down = (from: Point, to: Point): MapLine => {
-    const bend = Math.abs(to.y - from.y) / 2;
-    return {
-      from,
-      to,
-      path: `M ${from.x} ${from.y} C ${from.x} ${from.y + bend}, ${to.x} ${to.y - bend}, ${to.x} ${to.y}`,
-    };
+    const middle = (from.y + to.y) / 2;
+    return { from, to, path: `M ${from.x} ${from.y} V ${middle} H ${to.x} V ${to.y}` };
   };
   return [
     ...sides.in.map((card, index) =>
