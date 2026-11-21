@@ -141,6 +141,32 @@ verifies("fs-tauri.trust-commands", () => {
       }
     });
 
+    it("says an io refusal in Halonic's words, with the shell's message only in the details (C548 5)", async () => {
+      const message = "Permission denied (os error 13)";
+      const store = new TauriTrustStore({
+        invoke: async () => Promise.reject({ kind: "io", message }),
+      });
+      const revoked = await rejection(store.revoke("/a"));
+      expect(errorKindOf(revoked)).toBe("unavailable");
+      expect(revoked).toMatchObject({
+        message: "Halonic can't write to its data folder.",
+        details: message,
+      });
+      expect(await rejection(store.list())).toMatchObject({
+        message: "Halonic can't read its data folder.",
+        details: message,
+      });
+    });
+
+    it("keeps the text of a call the shell didn't answer only in the details (C548 5)", async () => {
+      const store = new TauriTrustStore(new FakeTrustShell({ granted: false }));
+      const error = await rejection(store.revoke("/a"));
+      expect(error).toMatchObject({ message: "Halonic's desktop app didn't answer." });
+      expect((error as { details: string }).details).toMatch(
+        /^The desktop shell gave no answer to the trust call\.\n.*ACL/su,
+      );
+    });
+
     it("rejects an answer that isn't a record as unavailable", async () => {
       const answers: unknown[] = [{ location: 7 }, "record", { list: [] }];
       for (const answer of answers) {

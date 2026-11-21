@@ -331,7 +331,8 @@ async function listed(record: TrustRecord, cwd: string) {
 
 /**
  * `--remove`: forgets the trust in the workspace, even when its record can't
- * be read or its folder is gone, so the user can always start over. In a
+ * be read or its folder is gone, so the user can always start over. When
+ * there was no record, it says so instead of "Removed trust" (C548 5). In a
  * plugin's folder the record is the plugin's, so it goes the `--plugin` way
  * and signs the plugin out first (`app.plugin-sign-out`).
  */
@@ -350,7 +351,19 @@ async function removeTrust(
     return await trustPlugin(basename(location), removeOnly, context, plugins);
   }
   const name = await nameAt(location, dir.shown);
+  // A record that can't be read is still there, and revoking deletes it.
+  const hadTrust = await machine.store.get(location).then(
+    (record) => record !== null,
+    () => true,
+  );
   await cliTrustService(machine.store, machine.clock).revoke(location);
+  if (!hadTrust) {
+    return {
+      exitCode: exitCode.ok,
+      lines: [marked(trustMessages.nothingToRemove(printable(name)))],
+      json: { name, folder: dir.shown, status: "not-trusted" },
+    };
+  }
   return {
     exitCode: exitCode.ok,
     lines: [marked(trustMessages.removed(printable(name)))],

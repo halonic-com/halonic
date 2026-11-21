@@ -108,6 +108,9 @@ describe("trust's sentences", () => {
     expect(words(trustMessages.removed("Acme"))).toBe(
       "Removed trust for Acme. Its programs and real models won't start until you review it again.",
     );
+    expect(words(trustMessages.nothingToRemove("Acme"))).toBe(
+      "Acme isn't trusted on this computer, so there was no trust to remove.",
+    );
   });
 
   it("has the fingerprint errors, with the user's own --dir in the fix", () => {

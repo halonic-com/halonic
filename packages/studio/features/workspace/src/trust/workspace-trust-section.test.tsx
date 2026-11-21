@@ -2,6 +2,7 @@
 
 import { KindedError } from "@halonicjs/std";
 import { ClipboardProvider, createToastStore, type ToastStore } from "@halonicjs/studio-kit";
+import { ErrorWithDetails } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -269,5 +270,54 @@ verifies("workspace.trust-section", () => {
     );
     expect(dialogButton("Copy details")).toBeUndefined();
     expect(dialogButton("Copied")).toBeUndefined();
+  });
+
+  it("says the shell's refusal in Halonic's words, with its raw text in Copy details (C548 5)", async () => {
+    vi.useFakeTimers();
+    const writeClipboard = vi.fn(async (_text: string) => true);
+    const errors = [
+      new ErrorWithDetails(
+        "unavailable",
+        "Halonic can't write to its data folder.",
+        "Permission denied (os error 13)",
+      ),
+      new ErrorWithDetails(
+        "unavailable",
+        "Halonic's desktop app didn't answer.",
+        "The desktop shell gave no answer to the trust call.",
+      ),
+    ];
+    const results = errors.map(
+      (error): TrustGrantResult => ({ ok: false, reason: error.message, error }),
+    );
+    const trust = control("trusted", async () => results.shift() ?? { ok: true });
+    show(trust.value, createToastStore(), writeClipboard);
+    act(() => button("Remove trust")?.click());
+    const confirm = async () => {
+      await act(async () => dialogButton("Remove trust")?.click());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(50);
+      });
+      return document.querySelector("dialog[open]");
+    };
+
+    const io = await confirm();
+    expect(io?.textContent).toContain(
+      "Couldn't remove trust from Acme: Halonic can't write to its data folder.",
+    );
+    expect(io?.textContent).not.toContain("os error");
+    await act(async () => dialogButton("Copy details")?.click());
+    expect(writeClipboard).toHaveBeenLastCalledWith(
+      expect.stringMatching(
+        /^Couldn't remove trust from Acme: .*\nPermission denied \(os error 13\)$/su,
+      ),
+    );
+
+    const noAnswer = await confirm();
+    expect(noAnswer?.textContent).toContain(
+      "Couldn't remove trust from Acme: Halonic's desktop app didn't answer.",
+    );
+    expect(noAnswer?.textContent).not.toContain("trust call");
+    expect(dialogButton("Copy details")).toBeDefined();
   });
 });

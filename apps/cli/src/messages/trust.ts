@@ -239,6 +239,9 @@ export const trustMessages = defineMessages("trust", {
   /** `--remove`. */
   removed: (name: string) =>
     phrase`Removed trust for ${name}. Its programs and real models won't start until you review it again.`,
+  /** `--remove` when the workspace had no trust on this computer, never or since an earlier `--remove` (C548 5). */
+  nothingToRemove: (name: string) =>
+    phrase`${name} isn't trusted on this computer, so there was no trust to remove.`,
 
   /** `--yes` alone: wrong usage, exit 2, and never a question (Liam's F5 on HAL-2618). */
   yesNeedsFingerprint: () =>
