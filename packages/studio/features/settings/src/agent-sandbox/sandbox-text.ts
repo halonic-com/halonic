@@ -198,6 +198,12 @@ export const UNFENCED_LINE =
 /** R16's line for every reason but `windows`, which isn't about Windows (team decision, HAL-3384). */
 export const UNFENCED_LINE_HERE =
   "The agent sandbox runs agents' programs. Plugin and integration code can't run in it on this computer, so it needs your yes.";
+/**
+ * Under R16's line while no yes is saved: where the yes is given, since this block has no button
+ * for it (C565 row 2, HAL-15373). The yes covers every plugin, so any plugin's Review gives it.
+ */
+export const UNFENCED_WHERE = "You give it with Review on a plugin's page in Plugins.";
+export const OPEN_PLUGINS = "Open Plugins";
 export const UNFENCED_ALLOWED = "Allowed without the sandbox";
 export const unfencedAllowedOn = (day: string) => `Allowed on ${day}.`;
 export const TAKE_BACK = "Take back";

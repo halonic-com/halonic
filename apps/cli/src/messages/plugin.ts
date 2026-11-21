@@ -271,9 +271,15 @@ export const pluginMessages = defineMessages("plugin", {
   /** With a !, in place of `plugin add`'s "Added … It's on.". */
   addedButOffHere: (name: string, version: string) =>
     phrase`Added ${name} ${version}. It's trusted, but off on this computer until you allow plugins and integrations to run without the sandbox.`,
-  /** Under the reason: where the yes can be given, and why not here. */
-  offHereAllow: () =>
-    phrase`Or allow this in the Halonic desktop app. The halonic command runs plugin code only in the sandbox.`,
+  /**
+   * With a !, above the trust question while its backend would be off here:
+   * a yes trusts it but doesn't turn it on (C565 row 5, HAL-15373).
+   */
+  trustWontTurnOn: (name: string) =>
+    phrase`Trusting ${name} won't turn it on here: it stays off on this computer until you allow plugins and integrations to run without the sandbox.`,
+  /** Under the reason: where the yes can be given, and why not here (C565 row 2, HAL-15373). */
+  offHereAllow: (name: string) =>
+    phrase`Or allow this in the Halonic desktop app: Settings › Plugins › ${name} › Review. The halonic command runs plugin code only in the sandbox.`,
   /** The state on its `plugin list` line, with a !. */
   offHereState: () => phrase`off on this computer`,
   /** Answer No, or Enter, with a !: exit 3. */

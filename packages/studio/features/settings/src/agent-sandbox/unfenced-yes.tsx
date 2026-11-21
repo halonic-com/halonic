@@ -30,6 +30,11 @@ type YesState =
 export interface UnfencedYesBlockProps {
   readonly host: UnfencedYesHost;
   readonly surface?: SettingsSurface | undefined;
+  /**
+   * Opens Settings › Plugins, where each plugin's **Review** gives the yes; without it (no
+   * Plugins section, no window) the block names the place but has no link.
+   */
+  readonly onOpenPlugins?: (() => void) | undefined;
   /** Says the result in the dialog, or where there are no toasts: the settings container's live region. */
   readonly announce: (line: string) => void;
 }
@@ -70,15 +75,20 @@ function useUnfencedYes(host: UnfencedYesHost) {
 
 /**
  * Settings › Agent sandbox's "Plugins and integrations" (`settings.unfenced-yes-take-back`, R16):
- * while plugin code doesn't run in the sandbox on this computer, the heading and why it needs a
- * yes; while a yes is saved, the reason, the day and **Take back**; while the host can't say,
- * the heading, that it couldn't check and **Try again**. Taking it back goes through the host,
- * which stops every plugin running without the sandbox before it answers, so the result is true
- * when it shows. The phone's page says it as a toast; the Settings dialog says it in place and
- * through its live region, since a toast would wait behind the modal dialog (C551). The host
- * still decides at every start; this block only shows and asks.
+ * while plugin code doesn't run in the sandbox on this computer, the heading, why it needs a
+ * yes and where it's given; while a yes is saved, the reason, the day and **Take back**; while
+ * the host can't say, the heading, that it couldn't check and **Try again**. Taking it back goes
+ * through the host, which stops every plugin running without the sandbox before it answers, so
+ * the result is true when it shows. The phone's page says it as a toast; the Settings dialog says
+ * it in place and through its live region, since a toast would wait behind the modal dialog
+ * (C551). The host still decides at every start; this block only shows and asks.
  */
-export function UnfencedYesBlock({ host, surface, announce }: UnfencedYesBlockProps) {
+export function UnfencedYesBlock({
+  host,
+  surface,
+  onOpenPlugins,
+  announce,
+}: UnfencedYesBlockProps) {
   const toasts = useToastStore();
   const { yes, read } = useUnfencedYes(host);
   const [takingBack, setTakingBack] = useState(false);
@@ -145,6 +155,7 @@ export function UnfencedYesBlock({ host, surface, announce }: UnfencedYesBlockPr
           {yes.reason === "windows" ? text.UNFENCED_LINE : text.UNFENCED_LINE_HERE}
         </p>
       )}
+      {yes.state === "needs-yes" ? <WhereRow onOpenPlugins={onOpenPlugins} /> : null}
       {yes.state === "allowed" ? (
         <AllowedRow
           reason={yes.reason}
@@ -166,6 +177,20 @@ function NotReadRow(props: { readonly onTryAgain: () => void }) {
       <Button variant="ghost" size="sm" onClick={props.onTryAgain}>
         {text.TRY_AGAIN}
       </Button>
+    </div>
+  );
+}
+
+/** Where the yes is given while none is saved, and **Open Plugins** to go there (C565 row 2). */
+function WhereRow(props: { readonly onOpenPlugins: (() => void) | undefined }) {
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <p className="text-small text-fg-muted">{text.UNFENCED_WHERE}</p>
+      {props.onOpenPlugins ? (
+        <Button variant="secondary" size="sm" onClick={props.onOpenPlugins}>
+          {text.OPEN_PLUGINS}
+        </Button>
+      ) : null}
     </div>
   );
 }

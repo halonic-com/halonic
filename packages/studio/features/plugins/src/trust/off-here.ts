@@ -4,13 +4,14 @@
 // (C540, HAL-15080). The trust check's **Trust** stays unavailable until its box is ticked then,
 // so its toast never says "on" for such a plugin.
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { InstalledPlugin } from "../page/plugin-pages.ts";
 import {
   type PluginUnfencedRuns,
   type TrustStatus,
   trustStatusOf,
   type UnfencedRunStatus,
+  useYesChanges,
 } from "./unfenced-status.ts";
 
 /** Whether the host is asked about `plugin` at all: it's on and has a backend. */
@@ -34,8 +35,9 @@ function offHereOf(status: UnfencedRunStatus): boolean {
 /**
  * Whether the plugins the list shows on are off on this computer (R13). The host is asked once for
  * all of them, since one yes covers every plugin, and only while one of them has a backend; it's
- * asked again when those plugins or their trust change, so a yes given in the trust check shows.
- * A host that can't say leaves them looking on, as their pages do.
+ * asked again when those plugins or their trust change, so a yes given in the trust check shows,
+ * and whenever the window's yes changes, as an open plugin page is (C565 row 3). A host that can't
+ * say leaves them looking on, as their pages do.
  */
 export function useOffHere(
   unfencedRuns: PluginUnfencedRuns | undefined,
@@ -46,6 +48,11 @@ export function useOffHere(
     .map((plugin) => `${plugin.plugin} ${plugin.trustedAt ?? ""}`)
     .join("\n");
   const [offHere, setOffHere] = useState(false);
+  const [changes, setChanges] = useState(0);
+  useYesChanges(
+    unfencedRuns,
+    useCallback(() => setChanges((count) => count + 1), []),
+  );
   useEffect(() => {
     if (unfencedRuns === undefined || asked === "") {
       setOffHere(false);
@@ -63,6 +70,7 @@ export function useOffHere(
     return () => {
       current = false;
     };
-  }, [unfencedRuns, asked]);
+    // `changes` only counts the yes's changes, so the host is asked again after each one.
+  }, [unfencedRuns, asked, changes]);
   return offHere;
 }

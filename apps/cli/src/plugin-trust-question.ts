@@ -57,7 +57,9 @@ export interface PluginTrustWords {
 
 /**
  * Shows the plugin's trust check, asks "Trust <name> and turn it on?" and
- * trusts exactly the fingerprint that was checked. A `--fingerprint` that
+ * trusts exactly the fingerprint that was checked. While its backend would be
+ * off on this computer, it says so, with why and where to allow it, before
+ * the question. A `--fingerprint` that
  * isn't the current one asks nothing and saves nothing.
  *
  * @throws NotTrustedError when nobody can answer and `--yes --fingerprint`
@@ -93,9 +95,14 @@ export async function askToTrustPlugin(
     throw fingerprintNotCurrent(entry, { check, fingerprint });
   }
 
+  // Said before the question, so nobody says yes expecting it to turn on (C565 row 5).
+  const wontTurnOn =
+    answer.offHere === undefined
+      ? []
+      : [...offHereLines(pluginMessages.trustWontTurnOn(name), answer.offHere, name), phrase``];
   const trusted = await answer.context.ask({
     question: pluginMessages.trustQuestion(name),
-    shownFirst: [...check, ...pluginFingerprintLines(fingerprint), phrase``],
+    shownFirst: [...check, ...pluginFingerprintLines(fingerprint), phrase``, ...wontTurnOn],
     yes: answer.yes,
     refusal: () =>
       new NotTrustedError({
@@ -126,7 +133,7 @@ export async function askToTrustPlugin(
   if (answer.offHere !== undefined) {
     return {
       exitCode: exitCode.ok,
-      lines: offHereLines(words.offHere, answer.offHere),
+      lines: offHereLines(words.offHere, answer.offHere, name),
       json: { ...json, status: "on", offOnThisComputer: answer.offHere },
     };
   }

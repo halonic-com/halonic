@@ -21,7 +21,8 @@ export interface DesktopUnfencedRuns extends PluginUnfencedRuns {
  * back is still under way would save the yes again right after it was removed (Julian, HAL-13786),
  * so while one is, `allow` sends nothing and answers that nothing was saved, and `status` waits
  * for it: the trust check then reads the status as it is after the Take back and asks again. A
- * Take back waits for a yes already sent, so it removes that one too.
+ * Take back waits for a yes already sent, so it removes that one too. After a Take back ends, and
+ * after a yes is saved, it tells its subscribers, so an open plugin page reads the status again.
  *
  * @example
  * const unfencedRuns = desktopUnfencedRuns(new AgentHostUnfencedRuns(transport));
@@ -31,7 +32,22 @@ export function desktopUnfencedRuns(routes: UnfencedRunsRoutes): DesktopUnfenced
   // Every yes on its way, not only the latest: two trust checks may save at once (Liam, HAL-3384).
   const allowing = new Set<Promise<unknown>>();
   let takingBack: Promise<void> | undefined;
+  const listeners = new Set<() => void>();
+  // A listener only reads the status again; one that throws mustn't stop the others.
+  const changed = () => {
+    for (const listener of [...listeners]) {
+      try {
+        listener();
+      } catch {
+        // Its view reads the status again the next time it opens.
+      }
+    }
+  };
   return {
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
     status: async () => {
       // Waits only for the Take back to end; its failure is Take back's to report.
       await takingBack?.catch(() => undefined);
@@ -42,7 +58,9 @@ export function desktopUnfencedRuns(routes: UnfencedRunsRoutes): DesktopUnfenced
       const run = routes.allow(reason);
       allowing.add(run);
       try {
-        return await run;
+        const saved = await run;
+        if (saved !== null) changed();
+        return saved;
       } finally {
         allowing.delete(run);
       }
@@ -55,6 +73,8 @@ export function desktopUnfencedRuns(routes: UnfencedRunsRoutes): DesktopUnfenced
         await routes.takeBack();
       })().finally(() => {
         if (takingBack === run) takingBack = undefined;
+        // Even a refused Take back may have stopped some plugins: views read the status again.
+        changed();
       });
       takingBack = run;
       return run;

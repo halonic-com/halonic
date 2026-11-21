@@ -104,7 +104,7 @@ export async function trustPlugin(
     if (offHere !== undefined) {
       return {
         exitCode: exitCode.ok,
-        lines: offHereLines(pluginMessages.alreadyTrustedButOffHere(name), offHere),
+        lines: offHereLines(pluginMessages.alreadyTrustedButOffHere(name), offHere, name),
         json: { ...json, offOnThisComputer: offHere },
       };
     }

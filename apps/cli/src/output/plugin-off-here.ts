@@ -15,20 +15,21 @@ import { rowIndent } from "./trust-check-rows.ts";
 
 /**
  * The reason and its fix, then where the yes can be given, each indented
- * under the line that names the plugin.
+ * under the line that names the plugin. `name` is the plugin's printable
+ * name, as Studio's Plugins list shows it.
  *
  * @example
- * offHereReasonLines("container");
- * // ["  Plugin code can't run in the sandbox inside a container. …", "  Or allow this in the Halonic desktop app. …"]
+ * offHereReasonLines("container", "Weather");
+ * // ["  Plugin code can't run in the sandbox inside a container. …", "  Or allow this in the Halonic desktop app: Settings › Plugins › Weather › Review. …"]
  */
-export function offHereReasonLines(reason: RunnerUnfencedReason): Phrase[] {
+export function offHereReasonLines(reason: RunnerUnfencedReason, name: string): Phrase[] {
   return [
     phrase`${rowIndent}${sandboxMessages.reasonAndFix(reason).phrase}`,
-    phrase`${rowIndent}${pluginMessages.offHereAllow().phrase}`,
+    phrase`${rowIndent}${pluginMessages.offHereAllow(name).phrase}`,
   ];
 }
 
 /** `first` with a !, then {@link offHereReasonLines}. */
-export function offHereLines(first: Message, reason: RunnerUnfencedReason): Phrase[] {
-  return [phrase`${markPart("needsYou")} ${first.phrase}`, ...offHereReasonLines(reason)];
+export function offHereLines(first: Message, reason: RunnerUnfencedReason, name: string): Phrase[] {
+  return [phrase`${markPart("needsYou")} ${first.phrase}`, ...offHereReasonLines(reason, name)];
 }

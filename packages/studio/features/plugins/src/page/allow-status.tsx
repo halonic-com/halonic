@@ -8,7 +8,11 @@ import { Button, Callout, ExternalLink } from "@halonicjs/studio-kit";
 import type { ReactNode, RefObject } from "react";
 import { asksAboutYes, isOffHere } from "../trust/off-here.ts";
 import { SANDBOX_DOCS } from "../trust/runs-line.ts";
-import { type PluginUnfencedRuns, useTrustStatus } from "../trust/unfenced-status.ts";
+import {
+  type PluginUnfencedRuns,
+  useTrustStatus,
+  useYesChanges,
+} from "../trust/unfenced-status.ts";
 import { ALLOW_IN_DESKTOP_APP, offUntilAllowed } from "./page-text.ts";
 import { REVIEW } from "./plugin-actions.ts";
 import type { InstalledPlugin } from "./plugin-pages.ts";
@@ -31,7 +35,8 @@ export interface AllowStatusProps {
  * R13 in place of the status box, for a trusted plugin with a backend, while the host says plugin
  * code needs a yes it doesn't have (`plugins.plugin-page-needs-yes`). For any other plugin the
  * host isn't asked. The page mounts it again when the trust check closes, so a yes given there
- * takes R13 away.
+ * takes R13 away, and it reads the host again whenever the window's yes changes, so a Take back in
+ * Settings brings R13 back while the page is open, as the Plugins list shows it (C565 row 3).
  */
 export function AllowStatus({
   id,
@@ -42,7 +47,9 @@ export function AllowStatus({
   onReview,
   children,
 }: AllowStatusProps) {
-  const status = useTrustStatus(asksAboutYes(plugin) ? unfencedRuns : undefined);
+  const asked = asksAboutYes(plugin) ? unfencedRuns : undefined;
+  const status = useTrustStatus(asked);
+  useYesChanges(asked, status.read);
   const { fence } = status;
   if (fence?.state !== "not-fenced" || !isOffHere(status)) return children;
   const words = runnerUnfencedWords(fence.reason, "plugin");
