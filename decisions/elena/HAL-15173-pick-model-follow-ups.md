@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15173 (Liam's review of the build 4 stack on https://paperclip.halonic.com/HAL/issues/HAL-13432: "[nit] One `it.each` in the view tests runs the same case twice")
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kjNdRtREPAfZ+MMHQ1SjU8GSUZbiOZ67csLoZ/BY/lmtCey07mwrqdN1mLHyQ6LBOELBbAOmuVg1eAkUH6SSDg==
 
 `pick-model-screen.test.tsx` had an `it.each` over two labels, "the browser demo" and "a browser on
 halonic serve, before it has the service", but both rows opened the screen the same way, with no model
