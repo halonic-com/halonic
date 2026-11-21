@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-Studio's Approve on a tool call from an http connector it can't run now gives the terminal command instead of failing the run.
+In Studio, Approve on a tool call from a connector that reaches its server over HTTP now gives the command to run in a terminal, instead of failing the run.
