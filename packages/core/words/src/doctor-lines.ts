@@ -282,6 +282,18 @@ function harnessProblem(problem: HarnessProblem, shell: SignInShell): DoctorLine
             .phrase,
         },
       ];
+    case "searches-web":
+      return [
+        {
+          sentence: doctorMessages.agentModelSearchesWeb(
+            problem.agent,
+            printable(problem.alias),
+            printable(problem.model),
+            printable(problem.provider),
+          ).phrase,
+        },
+        { fix: doctorMessages.pickModelWithoutSearch(printable(problem.alias)).phrase },
+      ];
   }
 }
 
