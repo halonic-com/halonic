@@ -5,6 +5,7 @@ import {
   createCloseStack,
   ItemGone,
   ItemPage,
+  type ItemPageHandle,
   type ItemPageSectionListing,
   type ItemViewProps,
   type SaveState,
@@ -192,15 +193,37 @@ export function AgentScreen({
   const cards = useAgentCards(host, { hubId, id }, announce);
   // The page an add button on the map opens Configuration on; picking a view by hand forgets it.
   const [configurationStart, setConfigurationStart] = useState<ConfigurationStart>();
+  // On a desktop the shell's item page keeps the view, so the page learns it as each view is drawn.
+  const shownView = useRef<AgentView>(view);
+  const viewBox = useRef<HTMLDivElement>(null);
+  const itemPage = useRef<ItemPageHandle<AgentView>>(null);
   // Picking another view closes the stack: cards belong to the view they opened over (flow-agents 7).
   // Configuration then opens on Behaviour again, as when it was drawn anew, or on the page an add
   // button on the map asks for.
-  const showView = (next: AgentView, start?: ConfigurationStart) => {
-    if (next !== view) cards.close();
-    if (next !== view || start !== undefined) setConfigurationPage(start?.page ?? "behaviour");
+  const pickView = (next: AgentView, start?: ConfigurationStart) => {
+    if (next !== shownView.current) cards.close();
+    if (next !== shownView.current || start !== undefined) {
+      setConfigurationPage(start?.page ?? "behaviour");
+    }
     setConfigurationStart(start);
     selectView(next);
   };
+  // A view the page opens itself is shown as a pick would show it, with focus on `focus()`'s
+  // element: the shell reopens a closed panel, or its screen in a narrow tab (flow-agents 3.4).
+  const openView = (
+    next: AgentView,
+    focus: () => HTMLElement | null,
+    start?: ConfigurationStart,
+  ) => {
+    pickView(next, start);
+    itemPage.current?.show(next, focus);
+  };
+  // Each request to open at the model shows Configuration again, where the picker takes the focus.
+  useEffect(() => {
+    if (modelRequest !== undefined) {
+      itemPage.current?.show("configuration", () => focusedIn(viewBox.current));
+    }
+  }, [modelRequest]);
   const ownCloseStack = useMemo(() => createCloseStack(), []);
   const [saveFailed, setSaveFailed] = useState<string>();
   // Resolves to whether the change was written, so a page can put its control back when it wasn't.
@@ -252,6 +275,14 @@ export function AgentScreen({
   );
   // Until the agent is read, its read speaks for the page whichever view is open.
   const drawView = (shown: AgentView): ReactNode => {
+    shownView.current = shown;
+    return (
+      <div ref={viewBox} className="contents">
+        {drawViewContent(shown)}
+      </div>
+    );
+  };
+  const drawViewContent = (shown: AgentView): ReactNode => {
     if (!ready) {
       return (
         <div className="min-w-0 flex-1 overflow-auto p-6">
@@ -293,7 +324,9 @@ export function AgentScreen({
             openAgent={openAgent}
             openWorkflow={openWorkflow}
             openTool={openLibrary}
-            {...mapAdds(sections, Sections, showView)}
+            {...mapAdds(sections, Sections, (start) =>
+              openView("configuration", () => focusAfterAdd(viewBox.current), start),
+            )}
           />
         ) : (
         <Configuration
@@ -332,7 +365,7 @@ export function AgentScreen({
         menu={ready && trash.menu}
         views={agentTabs}
         view={view}
-        onPickView={showView}
+        onPickView={pickView}
         notice={notice}
       >
         {drawView(view)}
@@ -352,8 +385,9 @@ export function AgentScreen({
       titleRef={titleRef}
       actions={ready ? trash.actions : []}
       views={agentTabs}
-      view={view}
-      onPickView={showView}
+      firstView="configuration"
+      handle={itemPage}
+      onPickView={pickView}
       notice={notice}
       closeStack={closeStack}
       chat={{
@@ -367,7 +401,7 @@ export function AgentScreen({
             ways={{
               goToKeyField: () => openKeyField?.(),
               openHarness: () => {
-                showView("configuration");
+                openView("configuration", () => pickedPageTab(viewBox.current));
                 setConfigurationPage("harness");
               },
             }}
@@ -410,15 +444,44 @@ function useTakenNames(host: AgentsHost, { hubId, id }: AgentRef): readonly stri
 function mapAdds(
   sections: readonly ItemPageSectionListing[] | undefined,
   Sections: ComponentType<SectionsProps> | undefined,
-  showView: (view: AgentView, start: ConfigurationStart) => void,
+  openConfiguration: (start: ConfigurationStart) => void,
 ) {
   const triggers =
     Sections === undefined ? undefined : sections?.find((each) => each.id === "triggers");
   return {
-    addTrigger: triggers && (() => showView("configuration", { page: `section:${triggers.id}` })),
-    addTool: () => showView("configuration", { page: "tools" }),
-    addSubagent: () => showView("configuration", { page: "subagents", adding: true }),
+    addTrigger: triggers && (() => openConfiguration({ page: `section:${triggers.id}` })),
+    addTool: () => openConfiguration({ page: "tools" }),
+    addSubagent: () => openConfiguration({ page: "subagents", adding: true }),
   };
+}
+
+/** The element the view focused itself as it was drawn, such as the model picker; else none. */
+function focusedIn(box: HTMLElement | null): HTMLElement | null {
+  const focused = document.activeElement;
+  return box !== null && focused instanceof HTMLElement && box.contains(focused) ? focused : null;
+}
+
+/**
+ * Where focus goes after an add button on the map: the Add subagent dialog's field when the dialog
+ * opened, else the page Configuration opened on.
+ */
+function focusAfterAdd(box: HTMLElement | null): HTMLElement | null {
+  const focused = document.activeElement;
+  if (focused instanceof HTMLElement && focused.closest("[role=dialog]") !== null) return focused;
+  return pickedPageTab(box);
+}
+
+/**
+ * Configuration's picked page in its page list, a control that shows where the person landed; the
+ * Select stands for the list in a narrow panel.
+ */
+function pickedPageTab(box: HTMLElement | null): HTMLElement | null {
+  const list = `[aria-label="${configurationWords.pages}"]`;
+  return (
+    box?.querySelector<HTMLElement>(`${list}[role=tablist] [aria-selected="true"]`) ??
+    box?.querySelector<HTMLElement>(`${list}:not([role=tablist])`) ??
+    null
+  );
 }
 
 /** The hub's name for the breadcrumb, else its id while the hubs aren't read. */
