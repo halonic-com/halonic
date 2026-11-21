@@ -2,7 +2,6 @@
 
 - Approval: Liam approves this note in his review of this pull request on HAL-13931 (a team decision with no board card, HAL-2282 rule: it adds a how-to to a sentence the team already decided on HAL-13862 and HAL-13882)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kJ56TpFDXxw1d2V0729IBSIkkRsa72WVEfUtOxtIQx2mVuNpNr3A3gJM1QNpwC8uWsOKDrBPITICZ4CI+Pq0Cg==
 - Task: HAL-13931
 
 ## What changes
