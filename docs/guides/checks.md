@@ -916,9 +916,16 @@ The queue runs only the Linux jobs. The macOS and Windows jobs above
 (MXC on Windows 11), Sandbox packages, the macOS and Windows legs of Agent
 host executable, Keychain contract on macOS, Windows installer and Windows
 update) are skipped in the queue, and a skipped job counts as passed for
-`ci-ok`. They run on the pull request and on every push to `main`. A failure
+`ci-ok`. They run on the pull request and on pushes to `main`. A failure
 there shows on `main`, and the next daily check gives the area's owner a task
 ([area-owners.md](area-owners.md)).
+
+Pushes to `main` don't wait for each other: each push's run is keyed on its
+commit, so its Linux jobs start at once. The macOS and Windows jobs above
+share one group per job across pushes to `main`: one runs, one waits, and a
+newer push's job replaces the waiting one, because running them on every merge
+would need more macOS runners than GitHub gives us. Such a replaced job shows
+as cancelled and counts as skipped for `ci-ok` (HAL-15187).
 
 **The built-on label.** Every pull request needs a `built-on:paperclip` or `built-on:halonic` label,
 which says which tool built the change. The `Built-on label` workflow
