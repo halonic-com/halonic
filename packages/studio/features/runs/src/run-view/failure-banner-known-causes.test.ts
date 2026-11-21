@@ -32,9 +32,10 @@ verifies("runs.run-view.failure-banners", () => {
     it("names the agent and the step's choices from the cause, before the log is read", () => {
       const banner = causeBanner(offChoice, undefined, context, false);
       expect(lines(banner)).toEqual([
-        "Support reply failed in the step Draft: Sorter's answer wasn't one of the step's choices (refund, question or spam).",
+        "Support reply stopped in the step Draft: Sorter's answer wasn't one of the step's choices (refund, question or spam). Make its instructions stricter, or pick a larger model, then run again.",
       ]);
-      expect(banner?.kind === "callout" && banner.fixes).toEqual([{ kind: "see-step" }]);
+      expect(banner?.kind === "callout" && banner.fixes).toBeUndefined();
+      expect(banner?.kind === "callout" && banner.links).toEqual([{ kind: "see-step" }]);
     });
 
     it("never quotes the answer", () => {

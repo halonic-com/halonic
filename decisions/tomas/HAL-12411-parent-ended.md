@@ -20,6 +20,13 @@ second sentence when the child hadn't started a step. **Open run 4f2a1b** follow
 link to the parent's page, where the page can open another run; the wording is the one the
 waiting banner already uses for a child run. A log written before the cause keeps the plain note.
 
+**R7's banner, the same words as an older log (Iris's C516 S-1 on HAL-14955).** With the
+choices, the banner now reads "*Support reply* stopped in the step *Classify*: *Sorter*'s answer
+wasn't one of the step's choices (*refund*, *question* or *spam*). Make its instructions
+stricter, or pick a larger model, then run again.", the same verb and fix as an older log's line
+(rule E4; microcopy 22 F22, revision 121, a team decision under HAL-2282). The sentence ends
+"then run again", so **Run again** comes first and **See the step** follows it (E2).
+
 ## Why
 
 The run page didn't say why such a child ended, and the engine's reason showed nowhere. Studio
@@ -37,10 +44,12 @@ The CLI's lines for a cancelled run stay as they are. The receipt's "Cancelled i
 No test was weakened or removed. The engine tests for a child cancelled with its parent (a
 for-each item, a child left waiting on start) now also expect the cause, and a cancel's children
 expect none. New tests cover the cause (`parent-ended.test.ts`), the note in its step and before
-it started, the plain note for an older log, and **Open run** opening the parent.
+it started, the plain note for an older log, and **Open run** opening the parent. R7's tests
+expect the new sentence and **Run again** before **See the step**.
 
 ## Covers
 
 - engine.child-runs-end-with-run
 - engine.end-orphaned-child-runs
 - runs.run-page
+- runs.run-view.failure-banners
