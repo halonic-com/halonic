@@ -144,8 +144,12 @@ export const listedToolsWords = {
    */
   cantList: (where: "terminal" | "computer") =>
     `Studio can't list this server's tools yet. To review them, run this ${where === "terminal" ? "in a terminal" : "on your computer"}:`,
-  /** The command under {@link listedToolsWords.cantList}. */
-  reviewCommand: (connectorId: string) => `halonic tools review ${connectorId}`,
+  /**
+   * The line in place of {@link listedToolsWords.cantList} where no terminal can review the tools
+   * for Studio: on a Windows folder the CLI runs in WSL 2, whose approvals Studio doesn't read
+   * (D-A, HAL-12822).
+   */
+  cantListWithoutCommand: "Studio can't list this server's tools yet.",
   tryAgain: "Try again",
   /** Opens the workspace's trust check, when the tools couldn't be listed because it isn't trusted. */
   reviewTrust: "Review",

@@ -142,7 +142,12 @@ export {
   type EventMap,
   type ListenerErrorHandler,
 } from "./event-bus.ts";
-export { halonicCommand, isWindowsFolder, startRunCommand } from "./halonic-command.ts";
+export {
+  halonicCommand,
+  isWindowsFolder,
+  reviewToolsCommand,
+  startRunCommand,
+} from "./halonic-command.ts";
 export {
   type HostSetting,
   HostSettings,
