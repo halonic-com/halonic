@@ -16,8 +16,9 @@
 - `leaks` (the only job with the leak guard's secret, Julian's C3), `gitleaks` (runs Docker, which
   the server's image doesn't have) and `zizmor` (needs a Python venv, which the image doesn't have)
   stay on `ubuntu-24.04`, as do every job the plan keeps on GitHub.
-- The `MERGE_QUEUE_RUNNER` switch (HAL-14115) is removed from `ci.yml`, `built-on-label.yml` and
-  `guard-notes.yml`. It was never set, so those jobs keep running on `ubuntu-24.04`.
+- The `MERGE_QUEUE_RUNNER` switch (HAL-14115) is removed from `ci.yml` and `built-on-label.yml`.
+  It was never set, so those jobs keep running on `ubuntu-24.04`. `guard-notes.yml` keeps its copy
+  for now: it's a trust root, and the dead expression there does nothing while the variable is unset.
 - On our own server, the e2e job doesn't run `apt-install` (the image has no sudo, and has
   Playwright's Linux libraries preinstalled). Instead it checks that every library Playwright asks
   for is installed and names any that's missing, so a Playwright update that needs a new one says

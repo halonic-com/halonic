@@ -30,7 +30,8 @@ concurrency:
 jobs:
   guard-notes:
     name: Decision note and the guard's own paths
-    runs-on: ubuntu-24.04
+    # MERGE_QUEUE_RUNNER: see the top of ci.yml (HAL-14115).
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 5
     permissions:
       contents: read
