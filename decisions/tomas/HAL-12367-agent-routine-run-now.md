@@ -14,6 +14,8 @@ A routine whose Starts is an agent can't run in 0.1: the local executor refuses 
 
 The requirement `studio.workspace-routines` gains this refusal in its text and one example, with a new test. No test was skipped, and every changed test still checks what the app does.
 
+The tests of `studio.engine-service` make four fewer `expect` calls. The two cases of an agent in a harness or with a connector now check that the executor's refusal comes first, and drop two checks each, both of things this change alters on purpose: that no lock was taken (the lock is now taken before the executor refuses) and that the refusal names no command (Run now no longer shows the Harness page words it checked).
+
 ## Why
 
 The engine was answering, so "The engine isn't answering" sent people looking for the wrong problem. The words come from Sofia's UX check and are small wording on a screen the board already approved, so the team decides them (HAL-2282).
@@ -21,3 +23,4 @@ The engine was answering, so "The engine isn't answering" sent people looking fo
 ## Covers
 
 - studio.workspace-routines
+- studio.engine-service
