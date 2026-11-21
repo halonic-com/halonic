@@ -2,6 +2,7 @@
 
 - Approval: HAL-14464, from Liam's security review of the plugin secrets hand-over on HAL-13692; Liam approves this note in his security review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:brOWDn2WgK1Ccvch6+hGga65yitxLjBTWiLW2Ga/VgVGF1e2Kf5MLtHdA+5S/G1lg2jVadYUEY6VxhHylQh2Cw==
 - Task: HAL-14464
 
 ## What changes
