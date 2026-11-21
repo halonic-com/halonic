@@ -4,15 +4,20 @@ import { chmod, mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { DigestWatch, runOwnChange } from "@halonicjs/adapter-watch-kit";
 import {
+  checkLeaveOut,
   checkPublicWorkspacePath,
   type DefinitionStore,
   type DefinitionWatch,
   type DefinitionWatchListener,
   type Digest,
+  isLeftOut,
   isPrivateWorkspacePath,
+  type LeaveOut,
+  type ListOptions,
   type RemoveOptions,
   type RemoveResult,
   UnreadableWorkspaceFolderError,
+  type VersionOptions,
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
@@ -43,6 +48,12 @@ function folderInTheWay(file: string): NodeJS.ErrnoException {
     path: file,
   });
 }
+
+/**
+ * What the watch never reads or reports: installed packages hold tens of
+ * thousands of files and no definitions, and Studio's file tree hides them.
+ */
+const watchLeavesOut: LeaveOut = { names: ["node_modules"] };
 
 /** How long the folder must be quiet before a watch reports a batch, by default. */
 const defaultQuietMs = 100;
@@ -91,18 +102,24 @@ export class FolderDefinitionStore implements DefinitionStore {
     };
   }
 
-  async list(dir?: string): Promise<string[]> {
+  /**
+   * With `leaveOut`, the walk never steps into a left-out folder, so a
+   * working folder's files are neither listed nor looked at.
+   */
+  async list(dir?: string, options: ListOptions = {}): Promise<string[]> {
+    const { leaveOut } = options;
+    checkLeaveOut(leaveOut);
     const paths: string[] = [];
     const add = (path: string) => {
       paths.push(path);
       return true;
     };
     if (dir === undefined) {
-      await this.#walk(this.#root, "", add);
+      await this.#walk(this.#root, "", add, leaveOut);
     } else {
       checkPublicWorkspacePath(dir);
-      if ((await entryAt(this.#root, dir))?.isDirectory()) {
-        await this.#walk(join(this.#root, dir), dir, add);
+      if (!isLeftOut(dir, leaveOut) && (await entryAt(this.#root, dir))?.isDirectory()) {
+        await this.#walk(join(this.#root, dir), dir, add, leaveOut);
       }
     }
     return paths.sort();
@@ -212,6 +229,7 @@ export class FolderDefinitionStore implements DefinitionStore {
         events: folderWatchEvents(this.#root, this.#watchOptions.events),
         quietMs: this.#watchOptions.quietMs,
         isScratch: isTemporaryWrite,
+        leaveOut: watchLeavesOut,
         openWatches: this.#watches,
       },
       listener,
@@ -219,18 +237,18 @@ export class FolderDefinitionStore implements DefinitionStore {
   }
 
   /**
-   * `sha256:` and the first 16 hex characters of a hash over every file it
-   * serves and its text, worked out as the memory adapter does, so the same
-   * files give the same version in both.
+   * `sha256:` and the first 16 hex characters of a hash over every file
+   * `list()` gives with the same `leaveOut`, and its text, worked out as the
+   * memory adapter does, so the same files give the same version in both.
    *
    * The hash takes in one file and one piece of it at a time: an agent's
    * working folder with its installed packages holds more text than one
    * string can (HAL-13291).
    */
-  async version(): Promise<string> {
+  async version(options: VersionOptions = {}): Promise<string> {
     const hash = createHash("sha256");
     let separator = "";
-    for (const path of await this.list()) {
+    for (const path of await this.list(undefined, options)) {
       // As `read()` does: a file removed since `list()`, or swapped for a link, isn't served.
       if (!(await entryAt(this.#root, path))?.isFile()) {
         continue;
@@ -244,7 +262,8 @@ export class FolderDefinitionStore implements DefinitionStore {
 
   /**
    * Gives `visit` the workspace path of each file under `folder`, whose
-   * workspace path is `prefix`, leaving out links and private entries. The
+   * workspace path is `prefix`, leaving out links, private entries and what
+   * `leaveOut` names, without stepping into a left-out folder. The
    * shell's folder watch leaves out the same (`walk` in the
    * `workspace-files` crate), so the doctor counts the files Studio would
    * watch.
@@ -254,21 +273,20 @@ export class FolderDefinitionStore implements DefinitionStore {
    * @throws UnreadableWorkspaceFolderError naming a folder under the root
    *   that the account may not read
    */
-  async #walk(folder: string, prefix: string, visit: (path: string) => boolean): Promise<boolean> {
+  async #walk(
+    folder: string,
+    prefix: string,
+    visit: (path: string) => boolean,
+    leaveOut?: LeaveOut,
+  ): Promise<boolean> {
     const entries = await entriesOf(folder, prefix);
     for (const entry of entries) {
-      // A backslash is allowed in a file name on Linux, but not in a workspace path.
-      if (
-        entry.isSymbolicLink() ||
-        entry.name.includes("\\") ||
-        isTemporaryWrite(entry.name) ||
-        isPrivateWorkspacePath(entry.name)
-      ) {
+      const path = prefix === "" ? entry.name : `${prefix}/${entry.name}`;
+      if (isNeverListed(entry) || isLeftOut(path, leaveOut)) {
         continue;
       }
-      const path = prefix === "" ? entry.name : `${prefix}/${entry.name}`;
       if (entry.isDirectory()) {
-        if (!(await this.#walk(join(folder, entry.name), path, visit))) {
+        if (!(await this.#walk(join(folder, entry.name), path, visit, leaveOut))) {
           return false;
         }
       } else if (entry.isFile() && !visit(path)) {
@@ -277,6 +295,17 @@ export class FolderDefinitionStore implements DefinitionStore {
     }
     return true;
   }
+}
+
+/** Whether `list()` leaves an entry out whatever the caller asks: a link, a private entry or a scratch file. */
+function isNeverListed(entry: Dirent): boolean {
+  // A backslash is allowed in a file name on Linux, but not in a workspace path.
+  return (
+    entry.isSymbolicLink() ||
+    entry.name.includes("\\") ||
+    isTemporaryWrite(entry.name) ||
+    isPrivateWorkspacePath(entry.name)
+  );
 }
 
 /**

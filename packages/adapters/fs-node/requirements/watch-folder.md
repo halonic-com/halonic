@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: save model 6.1 (HAL-1102), routing note task 3 (HAL-3236), HAL-3247
 
-While a watch is open, the folder definition store shall hear the workspace folder through `node:fs.watch`, recursive, gather the events until the folder has been quiet for a short pause (100 ms by default), then read every path they name once and report it as `ports.definition-store-watch` says. It shall keep the digest of every file it has seen, so it can tell its own writes, which it marks before and after each write and remove, from changes made outside. An event that names no entry shall make it check every file. Its temporary write files shall never be reported.
+While a watch is open, the folder definition store shall hear the workspace folder through `node:fs.watch`, recursive, gather the events until the folder has been quiet for a short pause (100 ms by default), then read every path they name once and report it as `ports.definition-store-watch` says. It shall keep the digest of every file it has seen, so it can tell its own writes, which it marks before and after each write and remove, from changes made outside. An event that names no entry shall make it check every file. Its temporary write files shall never be reported, and it shall neither read nor report anything inside a `node_modules` folder, at any depth, as `watch-kit.digest-watch-left-out` says.
 
 ## Examples
 
@@ -14,3 +14,6 @@ While a watch is open, the folder definition store shall hear the workspace fold
 - Given a watch,
   when `hubs/a` with two files is deleted and `hubs/b/hub.yaml` arrives,
   then one batch holds both files of `hubs/a` as `removed` and `hubs/b/hub.yaml` as `changed`.
+- Given a watch on a folder holding `node_modules/x.js` and `workspace.yaml`,
+  when another program changes both,
+  then the listener gets only `workspace.yaml changed`.
