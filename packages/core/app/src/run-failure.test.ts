@@ -7,6 +7,7 @@ import {
   type FailedModel,
   failedModelOf,
   failedStartOf,
+  isModelAlias,
   isSetupCause,
   type RunFailedEvent,
   runFailureOf,
@@ -166,10 +167,19 @@ verifies("app.run-failure", () => {
         reason: "key-refused",
         provider: "OpenAI",
         secret: "openai-key",
+        model: "gpt-4o",
         alias: "smart",
       });
       const skipped = calledModel({ ...atOpenai, keyMissing: true });
       expect(runFailureOf(failedWith("key-refused"), skipped)).toMatchObject({ reason: "no-key" });
+    });
+
+    it("tells a key's alias from a model no alias points at (C457-1)", () => {
+      const noAlias = calledModel({ ...atOpenai, alias: "openai/gpt-4o" });
+      const failure = runFailureOf(failedWith("key-refused"), noAlias);
+      expect(failure).toMatchObject({ model: "gpt-4o", alias: "openai/gpt-4o" });
+      expect(isModelAlias("smart")).toBe(true);
+      expect(isModelAlias("openai/gpt-4o")).toBe(false);
     });
 
     it("names a provider without a file by its id", () => {

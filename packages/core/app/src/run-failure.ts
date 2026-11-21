@@ -10,6 +10,7 @@ export {
 } from "./failed-model.ts";
 export {
   type BusyRetries,
+  isModelAlias,
   isSetupCause,
   type RunFailure,
   runFailureOf,

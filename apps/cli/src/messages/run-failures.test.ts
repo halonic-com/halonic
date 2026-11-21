@@ -21,6 +21,7 @@ verifies("cli.messages", () => {
       reason: "key-refused",
       provider: "OpenAI",
       secret: "openai-key",
+      model: "gpt-4.1",
       alias: "smart",
     };
     const { message, fix } = runFailedLines(draftReply, failure);
@@ -80,12 +81,28 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
       reason: "no-key",
       provider: "OpenAI",
       secret: "openai-key",
+      model: "gpt-4.1",
       alias: "smart",
     };
     expect(lines(failure)).toEqual([
       "Support reply failed in the step Draft a reply: there's no key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model alias smart.",
       "Save your OpenAI key with halonic secret set openai-key, or set HALONIC_SECRET_OPENAI_KEY, then run again.",
     ]);
+  });
+
+  it("names the model when no alias points at it (C457-1)", () => {
+    const keyFacts = {
+      provider: "OpenAI",
+      secret: "openai-key",
+      model: "gpt-4.1",
+      alias: "openai/gpt-4.1",
+    };
+    expect(lines({ reason: "key-refused", ...keyFacts })[0]).toBe(
+      "Support reply failed in the step Draft a reply: OpenAI didn't accept the key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model gpt-4.1.",
+    );
+    expect(lines({ reason: "no-key", ...keyFacts })[0]).toBe(
+      "Support reply failed in the step Draft a reply: there's no key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model gpt-4.1.",
+    );
   });
 
   it("has a signed-out account and a provider without credit", () => {
@@ -300,7 +317,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
   });
 
   it("sends no one to Studio, which 0.1 doesn't have (HAL-6183)", () => {
-    const key = { provider: "OpenAI", secret: "openai-key", alias: "smart" };
+    const key = { provider: "OpenAI", secret: "openai-key", model: "gpt-4.1", alias: "smart" };
     const fixes = [
       lines({ reason: "key-refused", ...key })[1],
       lines({ reason: "no-key", ...key })[1],

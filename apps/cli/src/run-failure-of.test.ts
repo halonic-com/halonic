@@ -61,6 +61,7 @@ verifies("cli.run-failure", () => {
         reason: "key-refused",
         provider: "OpenAI",
         secret: "openai-key",
+        model: "gpt-4o",
         alias: "smart",
       });
     });
