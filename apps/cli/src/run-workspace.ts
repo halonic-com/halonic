@@ -23,7 +23,7 @@ import type { Message } from "./messages/define.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { sandboxMessages } from "./messages/sandbox.ts";
-import { computerSheetHosts } from "./sheet-hosts.ts";
+import { versionSheetHosts } from "./sheet-hosts.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 
 /** What a run's workspace needs of version control: which version is live, and its files. */
@@ -119,8 +119,9 @@ export async function loadRunWorkspace(
       return { found: "nothing-live" };
     }
     // Loaded before the history closes: a loaded workspace holds its files' contents.
-    // With the sheets' hosts, so `privacy.localOnly` refuses what `validate` does.
-    const sheetHosts = await computerSheetHosts(dir.root, dir.shown, profile);
+    // With the hosts of the sheets the run uses, so `privacy.localOnly` refuses
+    // what `validate` does and what the run's connectors would leave out.
+    const sheetHosts = await versionSheetHosts(picked.source, profile);
     const workspace = await loadWorkspace(picked.source, { sheetHosts });
     const changesNotLive =
       vcs !== null && picked.reads === "live-version" && (await definitionsChanged(vcs));
