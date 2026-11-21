@@ -48,6 +48,9 @@ export const trustInstructionsMessages = defineMessages("trustInstructions", {
    * be trusted yet, and the refusal the person came from said "then run again".
    */
   trusted: (agent: string) => phrase`${agent}'s instructions are trusted on this computer.`,
+  /** After a yes in `halonic run`, which then starts the run again. */
+  trustedRunAgain: (agent: string) =>
+    phrase`${agent}'s instructions are trusted on this computer. Starting the run again.`,
   alreadyTrusted: (agent: string) =>
     phrase`${agent}'s instructions are already trusted on this computer. Nothing changed.`,
   /** Answer No, or Enter: exit 3. */

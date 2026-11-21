@@ -81,8 +81,8 @@ export interface RunSetup extends WorkspaceEngineSetup {
 }
 
 /**
- * Runs the workflow and returns its lines: exit 0 when it finished or waits
- * for the user, 1 when it failed. Ctrl C stops following it and returns
+ * Runs the workflow and returns its lines and the run: exit 0 when it
+ * finished or waits for the user, 1 when it failed. Ctrl C stops following it and returns
  * what stopping meant.
  *
  * @throws UsageError when there isn't exactly one workflow
@@ -105,11 +105,11 @@ export interface RunSetup extends WorkspaceEngineSetup {
  * @throws OwnLineError when the run doesn't take an `--event` at its wait,
  *   or is gone when one is sent
  */
-export async function runWorkflow(
+export async function followWorkflow(
   input: CommandInput,
   context: CommandContext,
   setup: RunSetup,
-): Promise<CommandResult | StoppedResult> {
+): Promise<FollowedResult | StoppedResult> {
   const typed = oneWorkflow(input);
   const dir = await openWorkspaceDir(input, context);
   const typedDir = givenDir(input, dir);
@@ -206,7 +206,25 @@ export async function runWorkflow(
     ...(proposal === undefined ? {} : { proposal: proposal.json }),
   };
   const lines = [...warnings, ...result.lines, ...(proposal?.lines ?? [])];
-  return { ...result, json, lines };
+  return {
+    result: { ...result, json, lines },
+    run,
+    workspaceRoot: dir.root,
+    workspace,
+    hubId: workflow.hubId,
+  };
+}
+
+/** What a run that wasn't stopped ended with: its result, and the run, for a caller that looks at how it ended. */
+export interface FollowedResult {
+  readonly result: CommandResult;
+  readonly run: RunDetail;
+  /** The workspace's folder, as the engine opened it. */
+  readonly workspaceRoot: string;
+  /** The workspace's files the run started from. */
+  readonly workspace: LoadedWorkspace;
+  /** The hub of the workflow that ran, whose agents it started. */
+  readonly hubId: string;
 }
 
 /** What the command starts: the workflow, its input, and the version of the workspace it reads. */

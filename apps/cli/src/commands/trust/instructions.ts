@@ -5,12 +5,7 @@ import type { Clock, InstructionPin, InstructionTrustStore } from "@halonicjs/po
 import { profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { loadWorkspace } from "@halonicjs/workspace";
-import {
-  type AgentFile,
-  agentNamed,
-  instructionSourcesOf,
-  savedInstructionsPin,
-} from "../../agent-instructions.ts";
+import { agentNamed, instructionsAbout, savedInstructionsPin } from "../../agent-instructions.ts";
 import {
   type CliCommand,
   type CommandContext,
@@ -20,7 +15,6 @@ import {
 } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
 import { instructionTrustFolder } from "../../local-harness-host.ts";
-import { harnessNames } from "../../messages/harness-names.ts";
 import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { trustMessages } from "../../messages/trust.ts";
 import { trustInstructionsMessages as words } from "../../messages/trust-instructions.ts";
@@ -121,7 +115,7 @@ async function reviewAndTrust(
   const key = { location, agent: file.value.id };
   const service = new InstructionTrustService({ store: machine.store, clock: machine.clock });
   const check = await service.check(key, pin);
-  const about = { harness: harnessNameOf(file), sourceOf: instructionSourcesOf(workspace, file) };
+  const about = instructionsAbout(workspace, file);
   const refusal = { agent, dir, pin, about };
   if (fingerprint !== undefined && fingerprint !== pin.digest) {
     throw fingerprintNotCurrent(refusal, check.kind === "ask" ? check : undefined);
@@ -229,11 +223,6 @@ function noTerminal(
 
 function done(line: Phrase, json: Readonly<Record<string, unknown>>): CommandResult {
   return { exitCode: exitCode.ok, lines: [phrase`${markPart("done")} ${line}`], json };
-}
-
-/** The name of the harness the agent runs in, such as Claude Code; `undefined` for one the CLI has no name for. */
-function harnessNameOf(file: AgentFile): string | undefined {
-  return file.value.harness === undefined ? undefined : harnessNames.get(file.value.harness);
 }
 
 /** The agent as typed, made safe to print, for "✕ Couldn't trust coder's instructions: …". */
