@@ -2,6 +2,7 @@
 
 - Approval: decided by Liam on HAL-13203; the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:dFBYSlMEPBxIb1zwcdC07b30j1sJJDzu7PWRBOlf2M8cMM04JBnHW4V2KLNV+RrPra4ubuVaG5gZYqOKQvezCQ==
 
 ## What changes
 
