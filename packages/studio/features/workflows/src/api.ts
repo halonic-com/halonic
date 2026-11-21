@@ -155,12 +155,17 @@ export interface WorkflowArrow {
  *   which changes which arrow wins when several fit. `to` is where that arrow goes as the card
  *   showed it, so a card that is out of date can't move another arrow;
  * - `set`: one field of the step's arrow at `index`, from its expanded row (see
- *   {@link WorkflowArrowFieldChange}).
+ *   {@link WorkflowArrowFieldChange}). `to` is where that arrow goes as the card showed it, as for
+ *   a move, so a card that is out of date can't change another arrow.
  */
 export type WorkflowArrowChange =
   | { readonly kind: "add"; readonly to: string }
   | { readonly kind: "move"; readonly index: number; readonly by: -1 | 1; readonly to: string }
-  | ({ readonly kind: "set"; readonly index: number } & WorkflowArrowFieldChange);
+  | ({
+      readonly kind: "set";
+      readonly index: number;
+      readonly to: string;
+    } & WorkflowArrowFieldChange);
 
 /**
  * One field of an arrow, as its expanded row edits it. `undefined` takes the field out of the file:

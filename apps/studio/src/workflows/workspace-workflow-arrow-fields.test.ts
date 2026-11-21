@@ -39,22 +39,31 @@ verifies("studio.workspace-workflow-arrow-fields", () => {
     const { host, store, changes } = setup();
     store[path] = sortFile;
 
-    await host.changeArrows(reply, "sort", { kind: "set", index: 1, field: "to", value: "done" });
     await host.changeArrows(reply, "sort", {
       kind: "set",
       index: 1,
+      to: "draft",
+      field: "to",
+      value: "done",
+    });
+    await host.changeArrows(reply, "sort", {
+      kind: "set",
+      index: 1,
+      to: "done",
       field: "event",
       value: "skipped",
     });
     await host.changeArrows(reply, "sort", {
       kind: "set",
       index: 1,
+      to: "done",
       field: "condition",
       value: { exists: "context.summary" },
     });
     await host.changeArrows(reply, "sort", {
       kind: "set",
       index: 1,
+      to: "done",
       field: "label",
       value: "Nothing to reply",
     });
@@ -79,12 +88,14 @@ verifies("studio.workspace-workflow-arrow-fields", () => {
     await host.changeArrows(reply, "sort", {
       kind: "set",
       index: 0,
+      to: "approve",
       field: "condition",
       value: undefined,
     });
     await host.changeArrows(reply, "approve", {
       kind: "set",
       index: 0,
+      to: "draft",
       field: "event",
       value: "done",
     });
@@ -102,6 +113,7 @@ verifies("studio.workspace-workflow-arrow-fields", () => {
     await host.changeArrows(reply, "approve", {
       kind: "set",
       index: 0,
+      to: "draft",
       field: "after",
       value: "4h",
     });
@@ -119,22 +131,62 @@ verifies("studio.workspace-workflow-arrow-fields", () => {
     store[path] = sortFile;
 
     await expect(
-      host.changeArrows(reply, "approve", { kind: "set", index: 1, field: "after", value: "soon" }),
+      host.changeArrows(reply, "approve", {
+        kind: "set",
+        index: 1,
+        to: "done",
+        field: "after",
+        value: "soon",
+      }),
     ).rejects.toMatchObject({ kind: "invalid_input", message: expect.stringMatching(/^U.*\.$/) });
     await expect(
       host.changeArrows(reply, "sort", {
         kind: "set",
         index: 0,
+        to: "approve",
         field: "condition",
         value: { maybe: true },
       }),
     ).rejects.toMatchObject({ kind: "invalid_input" });
     await expect(
-      host.changeArrows(reply, "sort", { kind: "set", index: 0, field: "to", value: "gone" }),
+      host.changeArrows(reply, "sort", {
+        kind: "set",
+        index: 0,
+        to: "approve",
+        field: "to",
+        value: "gone",
+      }),
     ).rejects.toMatchObject({ kind: "invalid_input" });
     await expect(
-      host.changeArrows(reply, "sort", { kind: "set", index: 2, field: "label", value: "x" }),
+      host.changeArrows(reply, "sort", {
+        kind: "set",
+        index: 2,
+        to: "done",
+        field: "label",
+        value: "x",
+      }),
     ).rejects.toMatchObject({ kind: "invalid_input" });
+    expect(changes).toEqual([]);
+    expect(store[path]).toBe(sortFile);
+  });
+
+  it("refuses to change an arrow that no longer goes where the card showed it", async () => {
+    const { host, store, changes } = setup();
+    store[path] = sortFile;
+
+    await expect(
+      host.changeArrows(reply, "sort", {
+        kind: "set",
+        index: 0,
+        to: "draft",
+        field: "label",
+        value: "Refund",
+      }),
+    ).rejects.toMatchObject({
+      kind: "invalid_input",
+      message:
+        "This step's arrows changed in the meantime. Look at them again, then change the arrow.",
+    });
     expect(changes).toEqual([]);
     expect(store[path]).toBe(sortFile);
   });

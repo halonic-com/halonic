@@ -66,9 +66,9 @@ verifies("workflows.page.arrow-fields", () => {
     await typeAndLeave(field(page, "Label") as HTMLInputElement, "Nothing to reply");
 
     expect(vi.mocked(changeArrows).mock.calls.map((call) => call.slice(1))).toEqual([
-      ["sort", { kind: "set", index: 1, field: "to", value: "done" }],
-      ["sort", { kind: "set", index: 1, field: "event", value: "skipped" }],
-      ["sort", { kind: "set", index: 1, field: "label", value: "Nothing to reply" }],
+      ["sort", { kind: "set", index: 1, to: "write", field: "to", value: "done" }],
+      ["sort", { kind: "set", index: 1, to: "done", field: "event", value: "skipped" }],
+      ["sort", { kind: "set", index: 1, to: "done", field: "label", value: "Nothing to reply" }],
     ]);
     expect(arrowsSection(page).rows[1]).toBe("2 → done on skipped");
     expect(changeArrows).toHaveBeenCalledWith(anyRef, "sort", expect.anything());
@@ -91,6 +91,7 @@ verifies("workflows.page.arrow-fields", () => {
     expect(changeArrows).toHaveBeenLastCalledWith(anyRef, "sort", {
       kind: "set",
       index: 0,
+      to: "approve",
       field: "condition",
       value: { exists: "context.summary" },
     });
@@ -99,6 +100,7 @@ verifies("workflows.page.arrow-fields", () => {
     expect(changeArrows).toHaveBeenLastCalledWith(anyRef, "sort", {
       kind: "set",
       index: 0,
+      to: "approve",
       field: "condition",
       value: undefined,
     });
@@ -126,6 +128,7 @@ verifies("workflows.page.arrow-fields", () => {
     expect(changeArrows).toHaveBeenLastCalledWith(anyRef, "approve", {
       kind: "set",
       index: 0,
+      to: "write",
       field: "after",
       value: "4h",
     });
@@ -135,6 +138,7 @@ verifies("workflows.page.arrow-fields", () => {
     expect(changeArrows).toHaveBeenLastCalledWith(anyRef, "approve", {
       kind: "set",
       index: 0,
+      to: "write",
       field: "after",
       value: undefined,
     });

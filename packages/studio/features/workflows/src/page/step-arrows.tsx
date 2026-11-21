@@ -172,7 +172,7 @@ export function StepArrows({
                   stepIds={stepIds}
                   fromWait={isWait}
                   set={(field: WorkflowArrowFieldChange) =>
-                    change({ kind: "set", index, ...field })
+                    change({ kind: "set", index, to: arrow.to, ...field })
                   }
                   reportNotSaved={reportNotSaved}
                 />

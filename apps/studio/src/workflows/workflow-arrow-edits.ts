@@ -24,7 +24,7 @@ export function writtenArrows(data: unknown, stepId: string): readonly unknown[]
  * @param stepIds - the workflow's steps, which a new arrow must go to
  * @param written - the step's arrows as its file writes them (see {@link writtenArrows})
  * @throws `invalid_input` for an arrow to a step the workflow doesn't have, an arrow that isn't
- *   there or can't move that way, and one that no longer goes to the move's `to`; whether a
+ *   there or can't move that way, and one that no longer goes to the change's `to`; whether a
  *   field's new value fits the format is {@link checkArrowChange}'s
  */
 export function arrowEdits(
@@ -47,6 +47,7 @@ export function arrowEdits(
   const inList = (at: number) => Number.isInteger(at) && at >= 0 && at < arrows.length;
   if (change.kind === "set") {
     if (!inList(change.index)) throw new KindedError("invalid_input", "This arrow isn't there.");
+    checkStillGoesTo(arrows[change.index], change.to, "change");
     return fieldEdits([...path, change.index], stepIds, change);
   }
   const { index } = change;
@@ -54,13 +55,21 @@ export function arrowEdits(
   if (!inList(index) || !inList(place)) {
     throw new KindedError("invalid_input", "This arrow can't move that way.");
   }
-  if (recordOf(arrows[index])?.["to"] !== change.to) {
-    throw new KindedError(
-      "invalid_input",
-      "This step's arrows changed in the meantime. Look at them again, then move the arrow.",
-    );
-  }
+  checkStillGoesTo(arrows[index], change.to, "move");
   return [{ kind: "move", path: [...path, index], to: place }];
+}
+
+/**
+ * Throws `invalid_input` when `arrow`, as the file writes it, no longer goes to `to`, the step the
+ * card showed it going to: the arrows changed since the card read them (in the file, or in another
+ * window), so the change would land on another arrow.
+ */
+function checkStillGoesTo(arrow: unknown, to: string, verb: "move" | "change"): void {
+  if (recordOf(arrow)?.["to"] === to) return;
+  throw new KindedError(
+    "invalid_input",
+    `This step's arrows changed in the meantime. Look at them again, then ${verb} the arrow.`,
+  );
 }
 
 /** The file's key for each field of an arrow's row. */
