@@ -2,7 +2,7 @@ import type { ShownRuns } from "@halonicjs/studio-feature-inbox/api";
 import type { RunRow, RunsSource } from "@halonicjs/studio-feature-runs/api";
 import { Button, type ButtonUnavailable, CloseIcon } from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
-import type { WorkflowRef, WorkflowsHost } from "../api.ts";
+import type { WorkflowGuideRun, WorkflowRef, WorkflowsHost } from "../api.ts";
 import { RunCard } from "../runs/run-card.tsx";
 import { realRunsOf, runRowsOf } from "../runs/runs-model.ts";
 import type { SaveAsTestProps } from "../runs/save-as-test.tsx";
@@ -119,6 +119,8 @@ interface RunDockProps {
   /** The step picked on the canvas; while a run is shown its card replaces the run's. */
   readonly pickedStep: string | undefined;
   readonly onClosePickedStep: () => void;
+  /** What a guide adds while the shown run's card is docked: its notes and Pick another model. */
+  readonly guideRun?: WorkflowGuideRun | undefined;
 }
 
 /**
@@ -192,6 +194,7 @@ export function RunDock({
   saveAsTest,
   pickedStep,
   onClosePickedStep,
+  guideRun,
 }: RunDockProps) {
   const { startRun } = host;
   const started = (runId: string) => {
@@ -259,6 +262,8 @@ export function RunDock({
         })}
         openModels={openModels}
         openBudget={openBudget}
+        notes={guideRun?.notes}
+        pickAnotherModel={guideRun?.pickAnotherModel}
       />
     );
   }

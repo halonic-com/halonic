@@ -20,6 +20,7 @@ import { seeTheStepText } from "./blocked-sites.tsx";
 import { childFailureBanner, type FailedChildView } from "./child-failure-banner.ts";
 import type { StepEntry } from "./every-step-model.ts";
 import { agentNameOf, causeBanner } from "./failure-banner.ts";
+import { guidedRunWords, lastModelCall, type ModelCall, tooSmallAgent } from "./guided-run.ts";
 import { refusedInstructions } from "./instructions-refusal.ts";
 import { InstructionsRefusalBanner } from "./instructions-refusal-banner.tsx";
 import type { RunAgain } from "./run-again.ts";
@@ -54,6 +55,7 @@ export function PageBanner({
   phone = false,
   onSeeStep,
   failedChild,
+  pickAnotherModel,
 }: {
   readonly run: SourcedRun;
   readonly context: RunPageContext;
@@ -85,6 +87,11 @@ export function PageBanner({
   readonly onSeeStep: (entryId: string) => void;
   /** The child run the run's step failed with, whose cause the banner says; absent for any other run. */
   readonly failedChild?: FailedChildView | undefined;
+  /**
+   * A guided run's **Pick another model** (`guided-run.ts`): a failed banner offers it with
+   * **Try again**, first and with a line of its own when the model runs on this computer.
+   */
+  readonly pickAnotherModel?: (() => void) | undefined;
 }) {
   const chosen = chooseBanner(run, context, log, entries, {
     asksTrust: instructionTrust !== undefined,
@@ -118,6 +125,7 @@ export function PageBanner({
   if (chosen.kind === "blocked") {
     return <BlockedFailureBanner failure={chosen.failure} onSeeStep={onSeeStep} />;
   }
+  const call = log === undefined ? undefined : lastModelCall(log, context.providerKind);
   return (
     <Banner
       banner={chosen.banner}
@@ -127,8 +135,32 @@ export function PageBanner({
       openModels={openModels}
       openBudget={openBudget}
       seeStep={failedStepOpener(entries, onSeeStep)}
+      guide={
+        pickAnotherModel && {
+          pickAnotherModel,
+          tooSmallFor: tooSmallNameOf(run, call, context),
+        }
+      }
     />
   );
+}
+
+/** The name of the agent a failed run's local model may be too small for, if it may be. */
+function tooSmallNameOf(
+  run: SourcedRun,
+  call: ModelCall | undefined,
+  context: RunPageContext,
+): string | undefined {
+  const { summary } = run;
+  const reason = summary.status === "failed" ? (summary.reason ?? undefined) : undefined;
+  const agent = tooSmallAgent(reason, call);
+  return agent === undefined ? undefined : agentNameOf(agent, context);
+}
+
+/** A guided run's failure: its way to another model, and the agent a local model may be too small for. */
+interface BannerGuide {
+  readonly pickAnotherModel: () => void;
+  readonly tooSmallFor: string | undefined;
 }
 
 /** Which of the page's banners a run gets, in the order `PageBanner` tries them. */
@@ -225,6 +257,7 @@ function Banner({
   openModels,
   openBudget,
   seeStep,
+  guide,
 }: {
   readonly banner: RunBanner | undefined;
   readonly reviewInInbox: (() => void) | undefined;
@@ -234,6 +267,7 @@ function Banner({
   readonly openBudget?: (() => void) | undefined;
   /** Opens the failed step's panel, for **See the step**; absent while no step is marked failed. */
   readonly seeStep: (() => void) | undefined;
+  readonly guide?: BannerGuide | undefined;
 }) {
   const writeClipboard = useWriteClipboard();
   const toasts = useToastStore();
@@ -259,13 +293,28 @@ function Banner({
   const fixes = buttonsOf(banner.fixes);
   const links = buttonsOf(banner.links);
   // The same test as `bannerOffersRunAgain`, which keeps the header's Run again out.
+  const guided = banner.tone === "danger" ? guide : undefined;
   const again =
     own === undefined &&
     banner.tone === "danger" &&
     banner.noRunAgain !== true &&
     runAgain !== undefined
-      ? [{ label: runPageWords.runAgain, onClick: runAgain.start }]
+      ? [
+          {
+            label: guided === undefined ? runPageWords.runAgain : guidedRunWords.tryAgain,
+            onClick: runAgain.start,
+          },
+        ]
       : [];
+  const pick =
+    guided === undefined
+      ? []
+      : [{ label: guidedRunWords.pickAnotherModel, onClick: guided.pickAnotherModel }];
+  // A local model that failed would usually fail again, so another model comes first (3.4).
+  const tooSmall = guided?.tooSmallFor;
+  const retry = tooSmall === undefined ? [...again, ...pick] : [...pick, ...again];
+  const lines =
+    tooSmall === undefined ? banner.lines : [...banner.lines, guidedRunWords.tooSmall(tooSmall)];
   const { details } = banner;
   const copy =
     details === undefined
@@ -274,7 +323,7 @@ function Banner({
           { label: copyDetailsWords.label, onClick: () => copyDetails(details) },
           ...buttonsOf(banner.afterDetails),
         ];
-  const action = [...(own === undefined ? [] : [own]), ...fixes, ...again, ...links, ...copy];
+  const action = [...(own === undefined ? [] : [own]), ...fixes, ...retry, ...links, ...copy];
   return (
     <section aria-label={banner.name}>
       <Callout
@@ -285,7 +334,7 @@ function Banner({
         // what the banner says (C461 BN1).
         describeActions
       >
-        {banner.lines.map((line) => (
+        {lines.map((line) => (
           <span key={line} className="block">
             {line}
           </span>

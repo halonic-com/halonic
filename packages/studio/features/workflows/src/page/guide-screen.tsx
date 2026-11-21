@@ -2,6 +2,7 @@ import { loadView } from "@halonicjs/studio-shell";
 import { type ComponentType, type ReactNode, useEffect, useRef, useState } from "react";
 import type {
   WorkflowGuide,
+  WorkflowGuideRun,
   WorkflowGuideScreen,
   WorkflowGuideScreenProps,
   WorkflowRef,
@@ -25,6 +26,51 @@ export function useGuideScreen(
     return stop;
   }, [guide]);
   return screenOf(guide, workflow);
+}
+
+/**
+ * What the guide adds while the run `runId` shows on this workflow's page, read again whenever the
+ * guide says it may have changed; `undefined` without a guide, a shown run or additions. When the
+ * guide takes the run off the page (`dismissed`), `onDismissed` closes its card.
+ */
+export function useGuideRun(
+  guide: WorkflowGuide | undefined,
+  workflow: WorkflowRef,
+  runId: string | undefined,
+  onDismissed: () => void,
+): WorkflowGuideRun | undefined {
+  const [, setChanges] = useState(0);
+  useEffect(() => {
+    if (guide?.run === undefined) return;
+    const changed = () => setChanges((count) => count + 1);
+    const stop = guide.subscribe(changed);
+    changed();
+    return stop;
+  }, [guide]);
+  const additions = runOf(guide, workflow, runId);
+  const dismissed = additions?.dismissed === true;
+  // The page hands a new `onDismissed` on every draw: the card closes when the run is dismissed.
+  const close = useRef(onDismissed);
+  close.current = onDismissed;
+  useEffect(() => {
+    if (dismissed) close.current();
+  }, [dismissed]);
+  return additions;
+}
+
+/** The guide's additions to the run, or none when the guide fails to give them. */
+function runOf(
+  guide: WorkflowGuide | undefined,
+  workflow: WorkflowRef,
+  runId: string | undefined,
+): WorkflowGuideRun | undefined {
+  if (guide?.run === undefined || runId === undefined) return undefined;
+  try {
+    return guide.run(workflow, runId);
+  } catch (error) {
+    console.error(`The guide couldn't say what it adds to run "${runId}".`, error);
+    return undefined;
+  }
 }
 
 /** The guide's screen, or none when the guide fails to give one: its fault mustn't break the page. */

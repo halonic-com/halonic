@@ -37,6 +37,8 @@ export interface FlowViewProps {
   readonly focus: CanvasFocus | undefined;
   readonly kept: { readonly of: string; readonly view: View } | undefined;
   readonly onView: (next: View) => void;
+  /** A guide's caption under the drawing, shown while a run shows, such as the first run's "Each box is…". */
+  readonly caption?: string | undefined;
 }
 
 /** The Flow tab's content: the canvas, a skeleton when the file is slow, or why it couldn't be read. */
@@ -60,6 +62,7 @@ export function FlowView({
   focus,
   kept,
   onView,
+  caption,
 }: FlowViewProps) {
   const workflowKey = `${hubId}/${id}`;
   return (
@@ -102,6 +105,9 @@ export function FlowView({
           onBackgroundClick={onClearStep}
           focus={focus}
         />
+      )}
+      {caption !== undefined && strip !== undefined && load.kind === "ready" && (
+        <p className="border-t border-border px-6 py-2 text-small text-fg-muted">{caption}</p>
       )}
       {load.kind === "failed" && (
         <EmptyState

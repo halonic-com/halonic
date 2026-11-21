@@ -21,6 +21,7 @@ import { useRunAgain } from "./run-again.ts";
 import { RunAgainFailed } from "./run-again-failed.tsx";
 import { DamagedLogBanner } from "./run-page.tsx";
 import { modelsOf } from "./run-page-model.ts";
+import { RunWaitingLine } from "./run-waiting-line.tsx";
 
 /** The props of `RunCardReceipt`. */
 export interface RunCardReceiptProps {
@@ -56,6 +57,14 @@ export interface RunCardReceiptProps {
   readonly openBudget?: (() => void) | undefined;
   /** Says a line to a screen reader, for why **Run again** didn't start; absent in tests that don't listen. */
   readonly announce?: ((line: string) => void) | undefined;
+  /**
+   * A guided run's **Pick another model**, such as the first run's (`guided-run.ts`): with it the
+   * card says what the run waits for and escalates that line on a model, and a failed banner
+   * offers it with **Try again**. Without it the card shows no waiting line.
+   */
+  readonly pickAnotherModel?: (() => void) | undefined;
+  /** Whether the card is drawn for a phone, where the waiting line names Ollama on "your computer". */
+  readonly phone?: boolean | undefined;
 }
 
 /**
@@ -83,6 +92,8 @@ export function RunCardReceipt({
   openModels,
   openBudget,
   announce,
+  pickAnotherModel,
+  phone = false,
 }: RunCardReceiptProps) {
   const log = read.events;
   const runAgain = useRunAgain(runStart, run, log, openStartedRun ?? openRun, engine, announce);
@@ -148,6 +159,17 @@ export function RunCardReceipt({
   );
   return (
     <>
+      {pickAnotherModel === undefined ? null : (
+        <RunWaitingLine
+          log={log}
+          running={summary.status === "running"}
+          phone={phone}
+          somethingWrong={undefined}
+          providerName={context.providerName}
+          now={() => now ?? new Date()}
+          guide={{ pickAnotherModel, providerKind: context.providerKind }}
+        />
+      )}
       <div ref={banners} className="contents">
         <RunAgainFailed runAgain={runAgain} engine={engine} onTrusted={focusRunAgain} />
         <PageBanner
@@ -161,6 +183,7 @@ export function RunCardReceipt({
           openModels={openModels}
           openBudget={openBudget}
           onSeeStep={() => onOpenStep?.()}
+          pickAnotherModel={pickAnotherModel}
         />
       </div>
       <DamagedLogBanner line={read.damagedLine} />
