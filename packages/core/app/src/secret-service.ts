@@ -77,7 +77,7 @@ export class SecretService {
    * be typed twice (the sign-in password).
    */
   planSet(name: string): { readonly reason: string } | { readonly typedTwice: boolean } {
-    const refusal = this.refuseName(name);
+    const refusal = this.refuseName(name, "set");
     if (refusal !== null && !refusal.changed) {
       return { reason: refusal.reason };
     }
@@ -86,7 +86,7 @@ export class SecretService {
 
   /** Saves a secret, replacing the one under the same name. */
   async set(input: SecretInput): Promise<SecretChange> {
-    const refusal = this.refuseName(input.name);
+    const refusal = this.refuseName(input.name, "set");
     if (refusal !== null) {
       return refusal;
     }
@@ -104,7 +104,7 @@ export class SecretService {
 
   /** Removes a secret. Removing one that isn't stored succeeds. */
   async remove(name: string): Promise<SecretChange> {
-    const refusal = this.refuseName(name);
+    const refusal = this.refuseName(name, "remove");
     if (refusal !== null) {
       return refusal;
     }
@@ -138,8 +138,11 @@ export class SecretService {
     return { changed: true };
   }
 
-  /** A refusal for a name a person can't set or remove, or `null` when it is fine. */
-  private refuseName(name: string): SecretChange | null {
+  /**
+   * A refusal for a name a person can't set or remove, or `null` when it is
+   * fine. `action` is what the person asked for, so the reason fits it.
+   */
+  private refuseName(name: string, action: SecretAction): SecretChange | null {
     let key: string;
     try {
       key = secretKey(name);
@@ -155,15 +158,25 @@ export class SecretService {
     }
     // The agent host makes these itself; a changed or removed remote host key
     // would make every paired phone see "Can't confirm your computer". There
-    // is nowhere else to change them, so the reason says what to do instead.
+    // is nowhere else to change them, so the reason says what they are for
+    // in words the person knows (microcopy 1.6 E1, G2), and what to do instead.
     if (hostKeys.has(key)) {
-      return {
-        changed: false,
-        reason: `${describeSecretName(name)} belongs to Halonic's agent host, which makes and keeps it itself. Use another name for a secret of your own.`,
-      };
+      return { changed: false, reason: hostKeyReason(name, action) };
     }
     return null;
   }
+}
+
+/** What a person asked to do with a secret's name. */
+type SecretAction = "set" | "remove";
+
+/** Why a name of the agent host's own secrets is refused, for `set` or `remove`. */
+function hostKeyReason(name: string, action: SecretAction): string {
+  const purpose = `${describeSecretName(name)} is the key paired phones use to confirm this computer. Halonic keeps it itself`;
+  if (action === "remove") {
+    return `${purpose}, so it can't be removed.`;
+  }
+  return `${purpose}, so use another name for a secret of your own.`;
 }
 
 function isTokenName(key: string): boolean {
