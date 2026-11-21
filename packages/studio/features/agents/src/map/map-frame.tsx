@@ -26,13 +26,20 @@ interface Fit {
  * picture only, hidden from screen readers and the pointer, so the cards and the add buttons stay
  * the only things to press. Its children are the grid's cells: left, centre and right in the first
  * row, what it can use across the second. The cards mark themselves with `data-map-centre` and,
- * inside an element with `data-map-side`, `data-map-card`.
+ * inside an element with `data-map-side`, `data-map-card`. A summary card's drawer sits over the
+ * panel, outside the fit, so its words keep their size; a press on the empty canvas closes it.
  */
 export function MapFrame({
   label,
+  drawer,
+  onCanvasPress,
   children,
 }: {
   readonly label: string;
+  /** The open summary drawer, if any. */
+  readonly drawer?: ReactNode;
+  /** Called on a press on the map that isn't on a card or a button. */
+  readonly onCanvasPress?: (() => void) | undefined;
   readonly children: ReactNode;
 }) {
   const panel = useRef<HTMLDivElement>(null);
@@ -85,19 +92,34 @@ export function MapFrame({
   }, [fitNow]);
 
   return (
-    <div ref={panel} data-map-panel="" className="relative size-full overflow-auto">
-      <section
-        ref={map}
-        aria-label={label}
-        className={`absolute top-0 left-0 ${MAP_WIDTH} origin-top-left`}
-        style={fit && { transform: `translate(${fit.left}px, ${fit.top}px) scale(${fit.scale})` }}
+    <div className="relative size-full">
+      {/* The pointer's way to close the drawer; the keyboard's is Esc, so no key handler here. */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: see above. */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: see above. */}
+      <div
+        ref={panel}
+        data-map-panel=""
+        className="relative size-full overflow-auto"
+        onClick={(event) => {
+          if (!(event.target instanceof Element) || event.target.closest("button, a") === null) {
+            onCanvasPress?.();
+          }
+        }}
       >
-        <MapLines lines={lines} />
-        {/* Lines need room between the sides, so the gaps are wider than a page's. */}
-        <div className="grid grid-cols-[1fr_minmax(12rem,auto)_1fr] items-start gap-x-16 gap-y-10 p-6">
-          {children}
-        </div>
-      </section>
+        <section
+          ref={map}
+          aria-label={label}
+          className={`absolute top-0 left-0 ${MAP_WIDTH} origin-top-left`}
+          style={fit && { transform: `translate(${fit.left}px, ${fit.top}px) scale(${fit.scale})` }}
+        >
+          <MapLines lines={lines} />
+          {/* Lines need room between the sides, so the gaps are wider than a page's. */}
+          <div className="grid grid-cols-[1fr_minmax(12rem,auto)_1fr] items-start gap-x-16 gap-y-10 p-6">
+            {children}
+          </div>
+        </section>
+      </div>
+      {drawer}
     </div>
   );
 }
