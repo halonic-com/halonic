@@ -11,8 +11,8 @@ export interface WorkspaceGoogleReadOptions {
   readonly workspaceKey: string;
   /** The workspace's real folder, where the local integrations are read at every request. */
   readonly root: string;
-  /** The live version, read at every request, so a changed connector shows at once. */
-  readonly workspace: () => LoadedWorkspace;
+  /** Reads the live version at every request, so a committed connector change shows at once. */
+  readonly workspace: () => Promise<LoadedWorkspace>;
 }
 
 /**
@@ -39,7 +39,7 @@ export function workspaceGoogleRead(options: WorkspaceGoogleReadOptions): Google
           return null;
         }
         const subject = googleSetupSubject(
-          filesOf(workspace(), "connector").map((file) => file.value),
+          filesOf(await workspace(), "connector").map((file) => file.value),
           await workspaceIntegrations(root, root),
           record.connector.id,
         );
