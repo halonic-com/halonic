@@ -183,7 +183,7 @@ export function WorkflowScreen({
   const strip = shown?.line;
   useAnnounceDockedRun(strip, typeof dock === "object", announceState);
   const { startRun } = host;
-  const gate = useRunGate(load, startRun !== undefined, sandboxStartCheck, phone);
+  const gate = useRunGate(load, startRun !== undefined, sandboxStartCheck);
   const saveAsTest = useSaveAsTest(host, { hubId, id }, (testName) => {
     testsMade.current += 1;
     setMadeTest({ name: testName, n: testsMade.current });
@@ -231,7 +231,7 @@ export function WorkflowScreen({
           }}
           ids={ids}
         />
-        {gate.showRun && (
+        {startRun && (
           <div className="ms-auto">
             <Button
               ref={runButton}

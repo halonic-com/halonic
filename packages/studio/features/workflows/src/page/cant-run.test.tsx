@@ -115,9 +115,14 @@ verifies("workflows.page.cant-run", () => {
     }
   });
 
-  it("draws no Run on a phone, and says to use the computer with no link", async () => {
+  it("Run is unavailable on a phone too, and the Callout says to use the computer with no link", async () => {
     const { page } = await open({ phone: true, openAgent: vi.fn() });
-    expect(runOf(page)).toBeUndefined();
+    const run = runOf(page) as HTMLButtonElement;
+    expect(run.getAttribute("aria-disabled")).toBe("true");
+    expect(run.disabled).toBe(false);
+    expect(document.getElementById(run.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+      firstLine,
+    );
     expect(page.textContent).toContain("To change where Writer runs, use your computer.");
     expect(buttonNamed(page, "Writer's settings")).toBeUndefined();
   });

@@ -12,8 +12,6 @@ export interface RunGate {
   readonly sandbox: SandboxStart;
   /** The `id` of the Callout's first line, which describes Run while it is unavailable. */
   readonly cantRunId: string;
-  /** Whether to draw Run: a phone draws none while it can't work (checklist 3.9). */
-  readonly showRun: boolean;
   /** Run's `unavailable` while the sandbox can't start; `undefined` while it can. */
   readonly unavailable: ButtonUnavailable | undefined;
 }
@@ -27,7 +25,6 @@ export function useRunGate(
   load: WorkflowLoad,
   canStart: boolean,
   check: SandboxStartCheck | undefined,
-  phone: boolean,
 ): RunGate {
   const programSteps = programStepsOf(load.kind === "ready" ? load.value : undefined);
   const sandbox = useSandboxStart(check, canStart && programSteps.length > 0);
@@ -37,7 +34,6 @@ export function useRunGate(
     programSteps,
     sandbox,
     cantRunId,
-    showRun: canStart && !(phone && refused),
     unavailable: refused ? { reason: cantRunId } : undefined,
   };
 }
