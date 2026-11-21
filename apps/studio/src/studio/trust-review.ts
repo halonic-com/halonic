@@ -329,7 +329,7 @@ const withoutAsking = "Without asking";
  * behaviour that doesn't exist (HAL-15117).
  */
 const inSandboxCalls =
-  "will edit and run commands in its working folder, inside the sandbox; this version still asks first";
+  "will edit and run commands in its working folder, inside the sandbox; this version of Halonic still asks first";
 
 /** One Changed row per agent, saying what is different. */
 function agentChangeRows(agent: ChangedAgent): TrustRowView[] {

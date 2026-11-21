@@ -141,11 +141,11 @@ export const trustMessages = defineMessages("trust", {
    * behaviour that doesn't exist.
    */
   inSandboxCalls: () =>
-    phrase`will edit and run commands in its working folder, inside the sandbox; this version still asks first`,
+    phrase`will edit and run commands in its working folder, inside the sandbox; this version of Halonic still asks first`,
   /** A changed agent's `asks`: it turned `in-sandbox` on, or off again. */
   asksChanged: (inSandbox: boolean) =>
     inSandbox
-      ? phrase`will edit and run commands in its working folder without asking, inside the sandbox; this version still asks first`
+      ? phrase`will edit and run commands in its working folder without asking, inside the sandbox; this version of Halonic still asks first`
       : phrase`asks again before it edits or runs a command`,
   /** After a wildcard site, `*.example.com`. */
   everySiteUnder: (domain: string) => phrase`every site under ${domain}`,
