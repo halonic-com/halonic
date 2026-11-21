@@ -91,6 +91,7 @@ nothing, so it isn't listed.
 | ✓ "answering at" an address | The model server on this computer answers, and the line lists the models it has loaded. | Nothing. |
 | ✓ "API key stored" | The key for this cloud provider is stored. | Nothing. |
 | ! an alias "needs an API key" | The aliases named on the line use a provider whose key isn't stored. Agents that use them won't run. | Store the key with `halonic secret set <name>`, where `<name>` is the `secret` in the provider's file. |
+| ! "couldn't read" a key "from the secret store" | Halonic couldn't ask the secret store for this provider's key, for example because the keychain is locked. The key may still be there. | Unlock the keychain, then run `halonic doctor` again. Don't set the key again until `doctor` says it isn't set. |
 | ✕ "isn't answering" at an address | The model server on this computer doesn't answer. Every alias that uses it fails, and Halonic doesn't fall back to another model by itself. | Start the server (for example, open Ollama or LM Studio). Check that the address matches `baseUrl` in the provider's file. |
 
 Until you trust a workspace, `doctor` only asks servers on this computer. A

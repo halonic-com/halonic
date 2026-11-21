@@ -376,4 +376,36 @@ verifies("cli.doctor-secrets", () => {
     );
     expect(io.stdout.join("\n")).toContain("Sandbox");
   });
+
+  it("warns on the Models line about a cloud key the store couldn't read, with no command that sets it", async () => {
+    writeWorkspace({
+      "workspace.yaml": "id: acme\nname: Acme\n",
+      "models.yaml": "aliases:\n  smart:\n    provider: anthropic\n    model: big\n",
+      "providers/anthropic.yaml":
+        "id: anthropic\nname: Anthropic\ntype: anthropic\nsecret: anthropic-key\n",
+    });
+    const io = captureIo(folder);
+
+    const code = await runCli(
+      ["doctor", "--dir", "acme"],
+      io,
+      [createDoctorCommand(() => machine())],
+      {
+        secrets: {
+          get: async (name) => {
+            if (name === "anthropic-key") throw new Error("The keychain is locked.");
+            return null;
+          },
+        },
+      },
+    );
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout).toContain(
+      "! Models      couldn't read anthropic-key from the secret store (provider anthropic)",
+    );
+    // The key may be there, so doctor neither calls it missing nor offers to overwrite it (HAL-14629).
+    expect(io.stdout.join("\n")).not.toContain("needs an API key");
+    expect(io.stdout.join("\n")).not.toContain("halonic secret set");
+  });
 });

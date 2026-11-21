@@ -220,14 +220,27 @@ function readyProvider(provider: ProviderReport): Phrase {
     .phrase;
 }
 
-/** One line per unreachable server, then one line per provider naming its aliases without a key. */
+/**
+ * One line per unreachable server, then one line per provider naming its
+ * aliases without a key, then one per provider whose key couldn't be read.
+ */
 function modelProblems(problems: readonly ModelProblem[]): Phrase[] {
   const lines: Phrase[] = [];
+  const unreadable: Phrase[] = [];
   const aliasesByProvider = new Map<string, { name: string; aliases: string[] }>();
   for (const problem of problems) {
     if (problem.problem === "unreachable") {
       lines.push(
         doctorMessages.notAnswering(printable(problem.name), printable(problem.address)).phrase,
+      );
+      continue;
+    }
+    if (problem.problem === "key-unreadable") {
+      unreadable.push(
+        // The Secrets line's words, with no command that sets the key: it may be there (HAL-14629).
+        doctorMessages.secretUnreadable(printable(problem.secret), [
+          { kind: "provider", id: printable(problem.provider) },
+        ]).phrase,
       );
       continue;
     }
@@ -238,7 +251,7 @@ function modelProblems(problems: readonly ModelProblem[]): Phrase[] {
   for (const { name, aliases } of aliasesByProvider.values()) {
     lines.push(doctorMessages.needKey(aliases.map(printable), printable(name)).phrase);
   }
-  return lines;
+  return [...lines, ...unreadable];
 }
 
 /**
