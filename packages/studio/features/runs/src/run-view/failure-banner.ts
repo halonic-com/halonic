@@ -3,8 +3,9 @@
 // the model and its provider from the last model call, the agent from the last agent that started
 // or the branch whose answer wasn't an option, and the harness program and its limit from the last
 // `harness.started`. A setup cause the engine names, such as a provider type Halonic can't call, is
-// read from the summary's cause with the CLI's own facts (`setupFailureOf`). Run again is the
-// banner's button (`run-again.ts`); a banner adds the fixes that come before it (Copy command,
+// read from the summary's cause with the CLI's own facts (`setupFailureOf`), and a sandboxed
+// harness agent's key Studio refused from its own cause (`harness-key-banners.ts`). Run again is
+// the banner's button (`run-again.ts`); a banner adds the fixes that come before it (Copy command,
 // Open Models where the cause is fixed in Models, or See the step) and the links after it (Open
 // Models, Copy details).
 
@@ -22,6 +23,7 @@ import { capitalised } from "../run-words.ts";
 import { accountBanner } from "./account-banners.ts";
 import { apiOffOf } from "./api-off.ts";
 import { danger } from "./danger-banner.ts";
+import { harnessKeyBanner } from "./harness-key-banners.ts";
 import type { BannerFix, RunBanner, RunPageContext } from "./run-page-model.ts";
 
 /** The cause code the Studio gives a run it stopped because the workspace's trust was removed (`trustRemovedCause`). */
@@ -73,6 +75,10 @@ export function causeBanner(
   if (setup !== undefined) {
     return setup;
   }
+  const harnessKey = harnessKeyBanner(summary, log, context, phone);
+  if (harnessKey !== undefined) {
+    return harnessKey;
+  }
   if (summary.cause?.code === socketPathTooLongCode) {
     return danger([
       failureWords.socketPathTooLong(workflow, step, socketLimitOf(summary.cause), phone),
@@ -89,20 +95,8 @@ export function causeBanner(
       return danger([failureWords.diskFull(workflow, step)]);
     case "interrupted":
       return interrupted(summary, workflow, step);
-    case "answer-not-an-option": {
-      const choices = answerChoicesOf(summary.cause);
-      if (choices !== undefined) {
-        const agent = agentNameOf(choices.agent, context);
-        return danger([failureWords.answerNotAChoice(workflow, step, agent, choices.options)], {
-          fixes: [{ kind: "see-step" }],
-        });
-      }
-      // An older log: its cause doesn't give the choices, so the agent comes from the log.
-      const agent = facts.offOptionAgent ?? facts.agent;
-      return agent === undefined
-        ? undefined
-        : danger([failureWords.answerNotAnOption(workflow, step, agent)]);
-    }
+    case "answer-not-an-option":
+      return answerNotAnOption(summary, facts, context, workflow, step);
     case "model-unreachable":
       return proxyBanner(summary, facts, context) ?? modelUnreachable(facts, context, phone);
     case "model-out-of-memory":
@@ -123,6 +117,31 @@ export function causeBanner(
     default:
       return undefined;
   }
+}
+
+/**
+ * An answer that isn't one of the step's choices: with the choices and **See the step** when the
+ * cause gives them, or else the agent from the log.
+ */
+function answerNotAnOption(
+  summary: RunSummary,
+  facts: FailureFacts,
+  context: RunPageContext,
+  workflow: string,
+  step: string,
+): RunBanner | undefined {
+  const choices = answerChoicesOf(summary.cause);
+  if (choices !== undefined) {
+    const agent = agentNameOf(choices.agent, context);
+    return danger([failureWords.answerNotAChoice(workflow, step, agent, choices.options)], {
+      fixes: [{ kind: "see-step" }],
+    });
+  }
+  // An older log: its cause doesn't give the choices, so the agent comes from the log.
+  const agent = facts.offOptionAgent ?? facts.agent;
+  return agent === undefined
+    ? undefined
+    : danger([failureWords.answerNotAnOption(workflow, step, agent)]);
 }
 
 /** The cause code the harness bridge gives a socket path longer than the system takes (HAL-13862). */

@@ -52,19 +52,27 @@ export function studioProviderKeys(parts: StudioKeyParts): ProviderKeyServices {
   });
 }
 
+/** The cause code a run logs when Studio refuses a provider with its own address (C503 M3). */
+const baseUrlCauseCode = "studio.harness-base-url";
+
 /**
  * Refuses a provider with its own address, which the agent host's bridge
- * can't send calls to yet (HAL-13798).
+ * can't send calls to yet (HAL-13798). Its `failureCause` names the provider,
+ * so the run page says so and gives the `halonic run` command, rather than
+ * say it can't tell the cause.
  *
  * @throws KindedError `invalid_input` naming the provider and saying what works instead
  */
 function refuseOwnAddress(file: Pick<Provider, "id" | "baseUrl">): void {
   if (file.baseUrl === undefined) return;
-  throw new KindedError(
+  const refusal = new KindedError(
     "invalid_input",
     `Studio can't send a sandboxed agent's calls to provider ${file.id}'s own address (${file.baseUrl}) yet, so its key isn't used.`,
     {
       fix: `Run this workflow with halonic run, or point the agent's model at a provider without its own address.`,
     },
   );
+  throw Object.assign(refusal, {
+    failureCause: { code: baseUrlCauseCode, detail: { provider: file.id } },
+  });
 }

@@ -107,12 +107,36 @@ verifies("harness-host.provider-key-services", () => {
       expect(asked).toEqual([]);
     });
 
+    it("keeps the cause the app's check named, so a screen can still word the refusal", async () => {
+      const failureCause = { code: "studio.harness-base-url", detail: { provider: "claude" } };
+      const keys = servicesWith({ "anthropic-key": key }, async () => {
+        throw Object.assign(new KindedError("invalid_input", "Studio can't reach it yet."), {
+          failureCause,
+        });
+      });
+
+      const failure = await keys.servicesFor(coder).catch((error: unknown) => error);
+
+      expect(failure).toMatchObject({ failureCause });
+    });
+
     it("stops in the app's words when the key's secret holds no value", async () => {
       const keys = servicesWith({});
 
       const failure = await keys.servicesFor(coder).catch((error: unknown) => error);
 
-      expect(failure).toMatchObject({ message: "No anthropic-key for claude." });
+      expect(failure).toMatchObject({
+        message: "No anthropic-key for claude.",
+        failureCause: {
+          code: "harness-host.no-key",
+          detail: {
+            provider: "claude",
+            secret: "anthropic-key",
+            agent: "coder",
+            harness: "claude-code",
+          },
+        },
+      });
       expect(errorKindOf(failure)).toBe("invalid_input");
     });
 

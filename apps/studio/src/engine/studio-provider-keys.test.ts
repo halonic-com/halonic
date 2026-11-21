@@ -166,6 +166,16 @@ verifies("studio.harness-provider-key", () => {
     expect(failure).toMatchObject({
       message:
         "The secret \"anthropic-key\" that holds provider claude's key isn't saved on this computer, so the sandboxed agent can't call its model. Save it in Settings › Models.",
+      // The run page words it from the cause, with Add key (C503 M2).
+      failureCause: {
+        code: "harness-host.no-key",
+        detail: {
+          provider: "claude",
+          secret: "anthropic-key",
+          agent: "coder",
+          harness: "claude-code",
+        },
+      },
     });
     expect(errorKindOf(failure)).toBe("invalid_input");
     expect(host.opens).toEqual([]);
@@ -181,6 +191,8 @@ verifies("studio.harness-provider-key", () => {
     expect(failure).toMatchObject({
       message:
         "Studio can't send a sandboxed agent's calls to provider zai's own address (https://api.zai.acme.test/anthropic) yet, so its key isn't used. Run this workflow with halonic run, or point the agent's model at a provider without its own address.",
+      // The run page words it from the cause, with the command (C503 M3).
+      failureCause: { code: "studio.harness-base-url", detail: { provider: "zai" } },
     });
     expect(asked).toEqual([]);
     expect(checked).toEqual([]);
