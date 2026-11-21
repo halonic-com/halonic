@@ -45,7 +45,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `ResourceProbe` | `resource-probe.ts` | 1 | the engine's memory, the processes it started, a folder's size and free disk space | `resource-probe` |
 | `RunExecutor` | `run-executor.ts` | 2 | start, send events, stream them, cancel (optional), chat turns; replaces `Runtime` and `RunHost` | `run-executor` (with the engine) |
 | `RunStore` | `run-store.ts` | 1 | run event logs (append with a sequence check) and run summaries | `run-store` |
-| `Sandbox` | `sandbox.ts` | 8 | runs programs in a fence and reports blocked accesses; its profile is Halonic's own format | `sandbox` (check; sessions with HAL-193) |
+| `Sandbox` | `sandbox.ts` | 9 | runs programs in a fence and reports blocked accesses; its profile is Halonic's own format | `sandbox` (check; sessions with HAL-193) |
 | `SandboxSettingStore` | `sandbox-setting-store.ts` | 1 | the person's sandbox choice (a backend or none) in the user's profile; `SandboxChoiceService` decides | `sandbox-setting-store` |
 | `Scheduler` | `scheduler.ts` | 1 | run timers and the routine tick; timers may arrive late or twice | `scheduler` |
 | `Secrets` | `secrets.ts` | 1 | configured secrets, read-only; `SecretStore` (same file and version) adds `set`, `remove` and `names` for a store the person owns | `secrets`, `secret-store` |
