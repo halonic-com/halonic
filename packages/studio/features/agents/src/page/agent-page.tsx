@@ -182,8 +182,13 @@ export function AgentScreen({
     [host, hubId, id],
   );
   const phone = usePresentation() === "phone";
-  const { load, retry } = useLoad(source, () => title.current?.focus());
+  const { load, retry: retryAgent } = useLoad(source, () => title.current?.focus());
   const { settings, aliases, defaultModel } = useConfigurationLoads(host, { hubId, id });
+  // The chat's first load is the agent's (v0.1), so one Try again reads the agent and its settings.
+  const retry = () => {
+    retryAgent();
+    settings.retry();
+  };
   const takenNames = useTakenNames(host, { hubId, id });
   const { view, selectView, fresh, modelWaiting, modelShown } = useAgentView(
     hubId,
@@ -238,7 +243,8 @@ export function AgentScreen({
       return false;
     }
   };
-  const name = load.kind === "ready" ? load.value.name : id;
+  // While the agent is read, the name the host already knows, as the tab shows it.
+  const name = load.kind === "ready" ? load.value.name : (host.nameOf({ hubId, id }) ?? id);
   const reportNotSaved = useCallback(
     (count: number) =>
       saving?.setFieldsNotSaved({ key: `agent/${hubId}/${id}`, title: name }, count),
@@ -393,12 +399,19 @@ export function AgentScreen({
       closeStack={closeStack}
       chat={{
         startsOpen: true,
-        render: () => (
+        render: (_close, panelShown) => (
           <TryItPanel
             host={host}
             agent={{ hubId, id }}
-            settings={settings.load}
-            retry={settings.retry}
+            settings={ready ? settings.load : load}
+            // One read, one state: the panel's, or the chat's while the panel doesn't show (C516 S-4).
+            waiting={
+              panelShown ? null : (
+                <div className="overflow-auto p-6">
+                  <AgentRead load={ready ? settings.load : load} name={name} retry={retry} />
+                </div>
+              )
+            }
             ways={{
               goToKeyField: () => openKeyField?.(),
               openHarness: () => {

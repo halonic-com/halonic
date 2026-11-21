@@ -88,6 +88,15 @@ export interface WorkspaceAgentsParts {
    * so there is no `makeLive`.
    */
   readonly versionDialog?: (paths: readonly string[]) => Promise<"made" | "cancelled">;
+  /**
+   * The workspace's trust, for a Try it message: whether it may start now, the window's trust
+   * check, and the workspace's name for the toast. Absent where there is no folder to trust.
+   */
+  readonly trust?: {
+    readonly mayStart: () => boolean;
+    readonly askTrust: () => Promise<"trusted" | "declined">;
+    readonly workspaceName: string;
+  };
 }
 
 /** Where the agent files of a hub are kept. */
@@ -115,13 +124,24 @@ export class WorkspaceAgents implements AgentsHost {
 
   /** Present only when the app can open Create version; see {@link AgentsHost.makeLive}. */
   makeLive?: NonNullable<AgentsHost["makeLive"]>;
+  /** Present only where there is a folder to trust; see {@link AgentsHost.mayStart}. */
+  mayStart?: NonNullable<AgentsHost["mayStart"]>;
+  /** Present only where the window can show the trust check; see {@link AgentsHost.askTrust}. */
+  askTrust?: NonNullable<AgentsHost["askTrust"]>;
+  /** Present only where there is a folder to trust; see {@link AgentsHost.workspaceName}. */
+  workspaceName?: NonNullable<AgentsHost["workspaceName"]>;
 
   constructor(parts: WorkspaceAgentsParts) {
     this.#parts = parts;
-    const { versionDialog } = parts;
+    const { versionDialog, trust } = parts;
     if (versionDialog !== undefined) {
       // Only the agent's own file, so the version holds nothing else the person changed.
       this.makeLive = async (ref) => versionDialog([(await this.#find(ref)).path]);
+    }
+    if (trust !== undefined) {
+      this.mayStart = trust.mayStart;
+      this.askTrust = trust.askTrust;
+      this.workspaceName = () => trust.workspaceName;
     }
   }
 

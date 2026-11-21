@@ -278,6 +278,8 @@ export function provideFolderServices(
           }),
       // Looked up when Review and make live is pressed, as for the routines below.
       versionDialog: (paths) => services.get(VersionDialogService).open(paths),
+      // Send checks first, so the trust check opens; the engine still refuses with `denied`.
+      trust: { mayStart: () => trust.mayStartNow(), askTrust, workspaceName: name },
     }),
   );
   const workflows = services.provide(

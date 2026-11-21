@@ -4,14 +4,10 @@ import type { ReplyEnd } from "./transcript.ts";
 type BadEnd = Extract<ReplyEnd, { readonly kind: "failed" | "engine-stopped" }>;
 
 /**
- * The Try it chat's words (microcopy 8.3, 14.1 and 19.5; states H2, H7, H9, H11, H12, H13, H16,
+ * The Try it chat's words (microcopy 8.3, 14.1 and 19.5; states H2, H9, H12, H13, H16,
  * H23, H24). The agent's name is the one it has now.
  */
 export const tryItWords = {
-  /** H7: what the status line says while the chat first loads. */
-  loading: "Loading this chat",
-  /** H11: the chat couldn't load, with the reason under it. */
-  couldntLoad: "Couldn't load this chat",
   /** H2: the empty chat's heading. */
   heading: (agent: string) => `Chat with ${agent}`,
   /** The box's name and its placeholder. */
