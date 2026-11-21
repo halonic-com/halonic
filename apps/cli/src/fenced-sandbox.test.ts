@@ -9,17 +9,18 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { recordingOptions, sweepingUnderHostLock } from "./fenced-sandbox.ts";
 
-/** A sandbox that remembers its sweep roots and how many sessions it opened. */
+/** A sandbox that remembers its sweep roots, whether it was the lock holder's, and how many sessions it opened. */
 interface MadeSandbox {
   readonly roots: readonly string[];
+  readonly lockHolder: boolean;
   opened: number;
 }
 
 /** The sandboxes `sweepingUnderHostLock` made, and the `make` that makes them. */
 function sandboxMaker() {
   const made: MadeSandbox[] = [];
-  const make = (roots: readonly string[]): Sandbox => {
-    const record: MadeSandbox = { roots: [...roots], opened: 0 };
+  const make = (roots: readonly string[], lockHolder: boolean): Sandbox => {
+    const record: MadeSandbox = { roots: [...roots], lockHolder, opened: 0 };
     made.push(record);
     return {
       check: async () => ({ ok: true, reason: null, missing: [] }),
@@ -54,7 +55,7 @@ verifies("cli.sandbox-kept-grants", () => {
       await rm(profile.root, { recursive: true, force: true });
     });
 
-    it("on Windows takes the lock at the first session, sweeps only then, and gives it up when released", async () => {
+    it("on Windows takes the lock at the first session, takes back and sweeps only then, and gives it up when released", async () => {
       const { made, make } = sandboxMaker();
       const warnings: string[] = [];
       const sandbox = sweepingUnderHostLock({
@@ -68,9 +69,9 @@ verifies("cli.sandbox-kept-grants", () => {
       await sandbox.open(sessionProfile);
       await sandbox.open(sessionProfile);
       expect(await exists(hostLockFile(profile.root))).toBe(true);
-      expect(made.map((each) => [each.roots, each.opened])).toEqual([
-        [[], 0],
-        [roots, 2],
+      expect(made.map((each) => [each.roots, each.lockHolder, each.opened])).toEqual([
+        [[], false, 0],
+        [roots, true, 2],
       ]);
       await sandbox.release();
       await sandbox.release();
@@ -95,7 +96,9 @@ verifies("cli.sandbox-kept-grants", () => {
           warn: (text) => warnings.push(text),
         });
         await sandbox.open(sessionProfile);
-        expect(made.map((each) => [each.roots, each.opened])).toEqual([[[], 1]]);
+        expect(made.map((each) => [each.roots, each.lockHolder, each.opened])).toEqual([
+          [[], false, 1],
+        ]);
         expect(warnings.join()).toMatch(/doesn't sweep kept grants: The lock .* is held/);
         await sandbox.release();
         // The other process's lock is still there.
@@ -131,7 +134,9 @@ verifies("cli.sandbox-kept-grants", () => {
         });
         await sandbox.open(sessionProfile);
         await sandbox.release();
-        expect(made.map((each) => [each.roots, each.opened])).toEqual([[[], 1]]);
+        expect(made.map((each) => [each.roots, each.lockHolder, each.opened])).toEqual([
+          [[], false, 1],
+        ]);
       }
       expect(await exists(join(profile.root, "agent-host"))).toBe(false);
     });
@@ -141,6 +146,15 @@ verifies("cli.sandbox-kept-grants", () => {
         recordFolder: keptGrantsRecordFolder(profile.root),
         sweepRoots: [],
       });
+    });
+
+    it("has only the lock holder's sandbox take back what a removal with administrator rights left", () => {
+      expect(recordingOptions(profile, roots, true)).toEqual({
+        recordFolder: keptGrantsRecordFolder(profile.root),
+        sweepRoots: roots,
+        takeBackOrphaned: true,
+      });
+      expect(recordingOptions(profile, [], false)).not.toHaveProperty("takeBackOrphaned");
     });
   });
 });

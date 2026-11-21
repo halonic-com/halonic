@@ -3,7 +3,8 @@
 //
 // On Windows srt keeps a write grant on each session's folders, and the one
 // process that holds the profile's host lock sweeps the kept grants that no
-// live session uses. Every session the CLI opens is first written to this
+// live session uses, after taking back what a removal with administrator
+// rights left (HAL-5404 S2). Every session the CLI opens is first written to this
 // process's kept-grant record in the profile, so the sweep of a Studio agent
 // host, or of another CLI process, never takes the grant of a live CLI
 // session, however many CLI processes run. Only the harness sandbox sweeps,
@@ -19,26 +20,37 @@ import { privateJournalFolder } from "./sandbox-journals.ts";
 /**
  * The srt sandbox for sessions, which records each session's folders in the
  * profile before srt grants them (Windows only; elsewhere it records
- * nothing). Give `sweepRoots` only while this process holds the host lock.
+ * nothing). Give `sweepRoots` and `lockHolder` only while this process holds
+ * the host lock.
  */
 export function recordingSrtSandbox(
   profile: ProfileFolder,
   sweepRoots: readonly string[] = [],
+  lockHolder = false,
 ): SrtSandbox {
   return new SrtSandbox(
     undefined,
     undefined,
     privateJournalFolder(profile),
-    recordingOptions(profile, sweepRoots),
+    recordingOptions(profile, sweepRoots, lockHolder),
   );
 }
 
-/** The options of {@link recordingSrtSandbox}: the profile's kept-grant record, and these sweep roots. */
+/**
+ * The options of {@link recordingSrtSandbox}: the profile's kept-grant record,
+ * these sweep roots and, for the lock's holder only, taking back the grants a
+ * removal with administrator rights left, as the agent host does.
+ */
 export function recordingOptions(
   profile: ProfileFolder,
   sweepRoots: readonly string[],
-): { recordFolder: string; sweepRoots: readonly string[] } {
-  return { recordFolder: keptGrantsRecordFolder(profile.root), sweepRoots };
+  lockHolder = false,
+): { recordFolder: string; sweepRoots: readonly string[]; takeBackOrphaned?: true } {
+  return {
+    recordFolder: keptGrantsRecordFolder(profile.root),
+    sweepRoots,
+    ...(lockHolder ? { takeBackOrphaned: true } : {}),
+  };
 }
 
 /** A sandbox that may hold the profile's host lock, until {@link HostLockSandbox.release}. */
@@ -53,8 +65,8 @@ export interface HostLockSandboxInput {
   readonly profile: ProfileFolder;
   /** The folders that hold the sessions' folders, swept only while this process holds the lock. */
   readonly sweepRoots: readonly string[];
-  /** Makes the sandbox with these sweep roots; {@link recordingSrtSandbox} by default. */
-  readonly make?: (sweepRoots: readonly string[]) => Sandbox;
+  /** Makes the sandbox with these sweep roots, for the lock's holder or not; {@link recordingSrtSandbox} by default. */
+  readonly make?: (sweepRoots: readonly string[], lockHolder: boolean) => Sandbox;
   /** Hears why this process doesn't sweep, or lost the lock. */
   readonly warn: (message: string) => void;
 }
@@ -62,14 +74,16 @@ export interface HostLockSandboxInput {
 /**
  * The sandbox that sweeps kept grants only under the profile's host lock. On
  * Windows, the first session it opens tries to take the lock; with it, the
- * sessions open in a sandbox that sweeps once before the first, and without
+ * sessions open in a sandbox that, once before the first, takes back what a
+ * removal with administrator rights left and sweeps, and without
  * it (a Studio host or another CLI process holds it) in one that doesn't.
  * The lock is held until {@link HostLockSandbox.release}, so a command that
  * opens no session never takes it.
  */
 export function sweepingUnderHostLock(input: HostLockSandboxInput): HostLockSandbox {
-  const make = input.make ?? ((roots) => recordingSrtSandbox(input.profile, roots));
-  const plain = make([]);
+  const make =
+    input.make ?? ((roots, lockHolder) => recordingSrtSandbox(input.profile, roots, lockHolder));
+  const plain = make([], false);
   if (input.platform !== "win32") return withoutHostLock(plain);
   let chosen: Promise<Sandbox> | undefined;
   let release: (() => Promise<void>) | undefined;
@@ -77,7 +91,7 @@ export function sweepingUnderHostLock(input: HostLockSandboxInput): HostLockSand
     const lock = await takeHostLock(input.profile.root, input.warn);
     if (lock === null) return plain;
     release = () => lock.release();
-    return make(input.sweepRoots);
+    return make(input.sweepRoots, true);
   };
   return {
     ...delegateTo(plain),
