@@ -146,6 +146,11 @@ warning, because only the agents that use that harness are stopped.
 | ! a version "isn't supported" | The installed harness is older than Halonic needs. The line says which version it needs. | Update the harness, then run `doctor` again. |
 | ! "couldn't ask its version" | Halonic found the harness, but asking its version failed. The line gives the harness's own error. | Check that the harness runs on its own in a terminal. |
 | ! a harness "isn't signed in for" an agent | Each agent signs in to its harness on its own, in its own settings folder, not with your personal sign-in. An agent whose runs in the sandbox get a provider key instead, the workspace's `anthropic` or `openai` key as `halonic run` gives it, isn't asked about, because its runs don't use its own sign-in. | Run the sign-in command on the `Fix:` line in your own terminal. It signs in for that agent only. |
+| ! an agent's model "searches the web by itself" | The agent's model alias points at a model its provider file lists in `searchesWeb`. That model searches the web at the provider, outside Halonic's tools and approvals. | Nothing, if you chose that model on purpose. Otherwise point the alias in `models.yaml` at a model that doesn't search by itself. |
+
+The search warning only covers the model ids a provider file lists in
+`searchesWeb`, matched exactly. A suffix that turns search on for any model,
+such as OpenRouter's `:online`, isn't detected yet.
 
 ### Node.js
 

@@ -182,6 +182,16 @@ export const doctorMessages = defineMessages("doctor", {
   /** Under {@link agentSignedOut}: the sign-in for that agent's folder, to type into the person's own terminal. */
   signInForAgent: (agent: string, command: string) =>
     phrase`Fix: sign in for ${agent} with ${command}`,
+  /**
+   * Harnesses !: "Writer uses research (perplexity/sonar at OpenRouter), which
+   * searches the web by itself, outside Halonic's tools and approvals."
+   * A warning, not a fault: the model may be the person's choice (HAL-13603).
+   */
+  agentModelSearchesWeb: (agent: string, alias: string, model: string, provider: string) =>
+    phrase`${agent} uses ${alias} (${model} at ${provider}), which searches the web by itself, outside Halonic's tools and approvals.`,
+  /** Under {@link agentModelSearchesWeb}. */
+  pickModelWithoutSearch: (alias: string) =>
+    phrase`Fix: to keep its searches inside Halonic, point ${alias} in models.yaml at a model that doesn't search by itself.`,
 
   // The Node.js line (HAL-6517): shown only with one of these problems.
   /** Node.js ! on Windows, when the working folder is a WSL folder. */

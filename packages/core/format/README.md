@@ -224,6 +224,8 @@ secret: OPENROUTER_API_KEY
 searchesWeb: [perplexity/sonar, perplexity/sonar-pro]
 ```
 
+`halonic doctor` warns about each harness agent whose alias points at one
+(requirement `app.doctor-harness-web-search`); it never blocks the agent.
 An id counts only when it matches an alias's `model` exactly. A suffix that
 turns search on for any model, such as OpenRouter's `:online`, isn't detected
 yet.
