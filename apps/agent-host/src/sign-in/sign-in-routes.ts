@@ -3,7 +3,7 @@ import type { SignInHost } from "@halonicjs/host-integration-sign-in";
 import { PluginRefusal } from "../plugin/plugin-refusal.ts";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
-import { integrationBody, signInBody } from "./sign-in-schemas.ts";
+import { anyIntegrationBody, integrationBody, signInBody } from "./sign-in-schemas.ts";
 
 /** What the integration sign-in routes reach. */
 export interface IntegrationSignInRouteDeps {
@@ -62,13 +62,20 @@ const callbackPageHeaders = {
  * - `POST /v1/integrations/sign-in/sign-out` with `{ integration, signIn }`:
  *   revokes at the approved address and removes the grant; answers `{ result }`
  *   (see `SignOutResult`).
+ * - `POST /v1/integrations/sign-in/sign-out-all` with `{ integration }`: signs
+ *   out every sign-in that has a saved grant, also for a plugin the trust no
+ *   longer covers, and answers `{ signedOut: [{ signIn, result }] }` (see
+ *   `SignInHost.signOutAll`). Studio calls it when it removes a plugin's trust
+ *   or the plugin. A name the host runs no sign-ins for answers an empty list.
  * - `GET /sign-in/<random>`: where the provider sends the browser back. The
  *   browser has no launch token, so this is a `tokenFree` prefix route; the
  *   sign-in's own `state` is the proof, and a path nobody waits on gets a
  *   plain 400 page. The host server's `Host` and `Origin` checks still apply.
  *
- * Any other failure answers 502 `sign_in_failed` with a fixed message; the
- * error's own name goes to the log, never its text, which can hold a URL.
+ * A request refused because the plugin isn't trusted also drops the
+ * integration's parts, so the host keeps none for it. Any other failure
+ * answers 502 `sign_in_failed` with a fixed message; the error's own name goes
+ * to the log, never its text, which can hold a URL.
  */
 export function integrationSignInRoutes(deps: IntegrationSignInRouteDeps): HostRoute[] {
   /**
@@ -153,7 +160,7 @@ export function integrationSignInRoutes(deps: IntegrationSignInRouteDeps): HostR
             );
         }
       } catch (error) {
-        if (refusedAsUnknown(error)) return unknownIntegration(response);
+        if (refusedAsUnknown(error)) return untrusted(body.integration, response);
         logFailure(error);
         sendError(response, 502, "sign_in_failed", failedMessage);
       }
@@ -171,7 +178,7 @@ export function integrationSignInRoutes(deps: IntegrationSignInRouteDeps): HostR
       try {
         sendJson(response, 200, { signIns: await parts.status() });
       } catch (error) {
-        if (refusedAsUnknown(error)) return unknownIntegration(response);
+        if (refusedAsUnknown(error)) return untrusted(body.integration, response);
         logFailure(error);
         sendError(response, 502, "sign_in_failed", failedMessage);
       }
@@ -202,14 +209,35 @@ export function integrationSignInRoutes(deps: IntegrationSignInRouteDeps): HostR
       try {
         sendJson(response, 200, { result: await parts.signIns.signOut(body.signIn) });
       } catch (error) {
-        if (refusedAsUnknown(error)) return unknownIntegration(response);
+        if (refusedAsUnknown(error)) return untrusted(body.integration, response);
         logFailure(error);
         sendError(response, 502, "sign_in_failed", failedMessage);
       }
     },
   };
 
-  return [callback, start, status, cancel, signOut];
+  const signOutAll: HostRoute = {
+    method: "POST",
+    path: "/v1/integrations/sign-in/sign-out-all",
+    handle: async (request, response) => {
+      const body = await readCheckedBody(request, response, anyIntegrationBody);
+      if (body === undefined) return;
+      try {
+        sendJson(response, 200, { signedOut: await deps.signIns.signOutAll(body.integration) });
+      } catch (error) {
+        logFailure(error);
+        sendError(response, 502, "sign_in_failed", failedMessage);
+      }
+    },
+  };
+
+  /** A plugin the trust doesn't cover now: the host forgets its parts and runs no sign-ins for it. */
+  function untrusted(integration: string, response: Parameters<typeof sendError>[0]): void {
+    deps.signIns.forget(integration);
+    unknownIntegration(response);
+  }
+
+  return [callback, start, status, cancel, signOut, signOutAll];
 }
 
 /**

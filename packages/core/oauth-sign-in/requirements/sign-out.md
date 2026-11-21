@@ -4,14 +4,16 @@
 - Since: unreleased
 - Source: HAL-8323 (HAL-984 design, section 4, "Signing out")
 
-The sign-in shall on sign-out revoke the saved refresh token at the revoke endpoint of the sign-in the user approved, never at one from the sheet as it is now, with the client of that approved sign-in, unless the sign-out is for a new grant that the revoke would end too (the old or the new approval says `revokeEndsClientGrants`, and both have the same client and token server), in which case no revoke is sent, and then remove the grant whether or not the server confirmed, and shall drop the access token in use so that it is not given out again.
+The sign-in shall on sign-out revoke the saved refresh token at the revoke endpoint of the sign-in the user approved, never at one from the sheet as it is now, with the client of that approved sign-in, unless the sign-out is for a new grant that the revoke would end too (the old or the new approval says `revokeEndsClientGrants`, and both have the same client and token server), in which case no revoke is sent, and then remove the grant whether or not the server confirmed, also when the saved grant can't be opened to revoke it, and shall drop the access token in use so that it is not given out again.
 
 ## Examples
 
 - Given a saved grant whose sheet has since changed its `revokeUrl`,
   then the revoke goes to the approved `revokeUrl` and the grant is removed.
-- Given a server that answers 503 or can't be reached, or a client secret that is not set,
+- Given a server that answers 503 or can't be reached, or a client secret that is not set or can't be read,
   then the result says `notConfirmed` and the grant is removed.
+- Given a saved grant that can't be opened, such as without the token key,
+  then nothing is sent, the result says `notConfirmed` and the grant is removed.
 - Given an approved sign-in without a revoke endpoint,
   then nothing is sent, the result says `noRevokeUrl` and the grant is removed.
 - Given an approved sign-in with `revokeEndsClientGrants` and a replacing approval with the same client and servers,

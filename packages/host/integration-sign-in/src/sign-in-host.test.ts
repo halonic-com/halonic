@@ -1,4 +1,4 @@
-import { createSignInGrants } from "@halonicjs/oauth-sign-in";
+import { createSignInGrants, signInsInTokenNames } from "@halonicjs/oauth-sign-in";
 import type { HttpClient, Secrets } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -30,8 +30,12 @@ function exampleHost(names: readonly string[] = ["example"]) {
       return Response.json(outcomeAnswer.body, { status: outcomeAnswer.status });
     },
   };
+  // Like a plugin that lost its trust: neither its sheet nor its secrets can be read.
+  const refused = new Set<string>();
+  const refusal = () => new Error("plugin_not_trusted");
   const secrets: Secrets = {
     get: async (name) => {
+      if (refused.size > 0) throw refusal();
       secretsAsked.push(name);
       return name === "example-client" ? fakeClientSecret : null;
     },
@@ -40,7 +44,13 @@ function exampleHost(names: readonly string[] = ["example"]) {
   const host = createSignInHost({
     integration: (name): SignInIntegration | undefined =>
       current.has(name)
-        ? { read: async () => current.get(name) as SignInSource, secrets }
+        ? {
+            read: async () => {
+              if (refused.has(name)) throw refusal();
+              return current.get(name) as SignInSource;
+            },
+            secrets,
+          }
         : undefined,
     grants: createSignInGrants(
       {
@@ -50,6 +60,7 @@ function exampleHost(names: readonly string[] = ["example"]) {
       },
       webDigest,
     ),
+    savedSignIns: async (name) => signInsInTokenNames(name, values.keys()),
     http,
     clock: { now: () => new Date(Date.UTC(2026, 10, 13)) },
     digest: webDigest,
@@ -60,6 +71,11 @@ function exampleHost(names: readonly string[] = ["example"]) {
     host,
     bodies,
     secretsAsked,
+    /** The token names saved now. */
+    saved: () => [...values.keys()],
+    refuse(name: string) {
+      refused.add(name);
+    },
     answerWith(status: number, body: unknown) {
       outcomeAnswer.status = status;
       outcomeAnswer.body = body as ReturnType<typeof tokenAnswer>;
@@ -178,5 +194,85 @@ verifies("integration-sign-in.sign-in-host", () => {
       const [status] = (await test.host.integration("example")?.status()) ?? [];
       expect(status?.lastOutcome).toEqual({ kind: "codeRefused", signIn: signInName });
     });
+  });
+});
+
+verifies("integration-sign-in.sign-out-all", () => {
+  it("revokes at the approved address and removes the grant", async () => {
+    const test = exampleHost();
+    await signIn(test.host);
+    test.bodies.length = 0;
+
+    const signedOut = await test.host.signOutAll("example");
+
+    expect(signedOut).toEqual([
+      { signIn: signInName, result: { kind: "signedOut", revoke: "revoked" } },
+    ]);
+    expect(test.bodies).toHaveLength(1);
+    expect(test.bodies[0]).toContain(`token=${rotatedRefreshToken}`);
+    expect(test.saved()).toEqual([]);
+  });
+
+  it("removes the grant when neither the sheet nor the secret can be read, and the revoke isn't confirmed", async () => {
+    const test = exampleHost();
+    await signIn(test.host);
+    test.bodies.length = 0;
+    test.refuse("example");
+
+    const signedOut = await test.host.signOutAll("example");
+
+    expect(signedOut).toEqual([
+      { signIn: signInName, result: { kind: "signedOut", revoke: "notConfirmed" } },
+    ]);
+    expect(test.bodies).toEqual([]);
+    expect(test.saved()).toEqual([]);
+  });
+
+  it("finds a grant by its saved name, also for a sign-in the sheet no longer has", async () => {
+    const test = exampleHost();
+    await signIn(test.host);
+    test.change("example", (now) => ({ ...now, sheet: { ...now.sheet, signIns: {} } }));
+
+    const signedOut = await test.host.signOutAll("example");
+
+    expect(signedOut.map((each) => each.signIn)).toEqual([signInName]);
+    expect(test.saved()).toEqual([]);
+  });
+
+  it("forgets the parts afterwards, so a pending sign-in ends and a new one starts signed out", async () => {
+    const test = exampleHost();
+    const before = test.host.integration("example");
+    const started = await before?.flow.start(signInName, port);
+    if (started?.kind !== "started") throw new Error("didn't start");
+    const state = new URL(started.authorizeUrl).searchParams.get("state") ?? "";
+
+    expect(await test.host.signOutAll("example")).toEqual([]);
+
+    expect(test.host.integration("example")).not.toBe(before);
+    expect((await test.host.handleCallback(callback(started.callbackPath, state))).status).toBe(
+      400,
+    );
+    expect(await test.host.integration("example")?.status()).toMatchObject([
+      { state: "signedOut" },
+    ]);
+  });
+
+  it("signs out nothing for an integration the app doesn't name", async () => {
+    const test = exampleHost();
+    await signIn(test.host);
+
+    expect(await test.host.signOutAll("unknown")).toEqual([]);
+    expect(test.saved()).toHaveLength(1);
+  });
+
+  it("forget drops the parts and keeps the grants", async () => {
+    const test = exampleHost();
+    await signIn(test.host);
+    const before = test.host.integration("example");
+
+    test.host.forget("example");
+
+    expect(test.host.integration("example")).not.toBe(before);
+    expect(test.saved()).toHaveLength(1);
   });
 });

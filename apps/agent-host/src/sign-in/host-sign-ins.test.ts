@@ -76,6 +76,22 @@ describe("openHostSignIns", () => {
     }
   });
 
+  it("finds a grant saved by an earlier host start and signs it out", async () => {
+    const server = rig.createFakeOAuthServer({ clock: { now: () => new Date() } });
+    const first = opened(server);
+    const started = await first.integration("example")?.flow.start(rig.signInName, 4321);
+    if (started?.kind !== "started") throw new Error("the sign-in didn't start");
+    await first.handleCallback(new Request(server.approve(started.authorizeUrl)));
+
+    const next = opened(server);
+    expect(await next.signOutAll("example")).toEqual([
+      { signIn: rig.signInName, result: { kind: "signedOut", revoke: "revoked" } },
+    ]);
+    expect(await opened(server).integration("example")?.status()).toEqual([
+      { signIn: rig.signInName, state: "signedOut" },
+    ]);
+  });
+
   it("creates nothing in the profile until a sign-in saves its grant", async () => {
     const server = rig.createFakeOAuthServer({ clock: { now: () => new Date() } });
     expect(await opened(server).integration("example")?.status()).toEqual([

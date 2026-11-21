@@ -11,7 +11,7 @@ import {
 } from "./fakes.test-helper.ts";
 import { UnreadableTokenError } from "./sealed-value.ts";
 import { tokenKeySecret } from "./token-key.ts";
-import { createTokenStore, tokenCollection } from "./token-store.ts";
+import { createTokenStore, storedTokenNames, tokenCollection } from "./token-store.ts";
 
 // Long enough that it can't turn up in random bytes by chance.
 const refreshToken = "1//refresh-token-for-the-plain-text-check";
@@ -346,3 +346,22 @@ function fixedChange() {
     values: null,
   };
 }
+
+verifies("token-store.stored-names", () => {
+  it("lists every token kept, in the stored form", async () => {
+    const { records, tokens } = setup();
+    await tokens.set("Google-Refresh", refreshToken);
+    await tokens.set("s6_gitlab_work-account", refreshToken);
+    await tokens.set("gone", refreshToken);
+    await tokens.remove("gone");
+
+    expect((await storedTokenNames(records)).sort()).toEqual([
+      "google_refresh",
+      "s6_gitlab_work_account",
+    ]);
+  });
+
+  it("lists none for records without a token", async () => {
+    expect(await storedTokenNames(memoryRecords())).toEqual([]);
+  });
+});

@@ -1,4 +1,4 @@
-import type { SignInGrants } from "@halonicjs/oauth-sign-in";
+import type { SignInGrants, SignOutResult } from "@halonicjs/oauth-sign-in";
 import type { Clock, Digest, HttpClient, Secrets } from "@halonicjs/ports";
 import type { RandomBytes } from "@halonicjs/std";
 import {
@@ -31,6 +31,12 @@ export interface SignInHostSettings {
   /** The integration called `name`, or `undefined` when the host runs no sign-ins for it. */
   integration(name: string): SignInIntegration | undefined;
   readonly grants: SignInGrants;
+  /**
+   * The sign-ins of the integration called `name` that have a saved grant,
+   * from the grants themselves, never from its sheet: a sign-out of all of
+   * them must find every one, also when the sheet is gone or can't be trusted.
+   */
+  savedSignIns(name: string): Promise<readonly string[]>;
   /** The server's `HttpClient`: no redirects, a limited answer. The flows make it https only. */
   readonly http: HttpClient;
   readonly clock: Clock;
@@ -68,10 +74,33 @@ export interface IntegrationSignInParts {
   status(): Promise<readonly SignInStatus[]>;
 }
 
+/** One sign-in that {@link SignInHost.signOutAll} signed out, and how. */
+export interface SignedOutSignIn {
+  readonly signIn: string;
+  readonly result: SignOutResult;
+}
+
 /** The sign-ins of every integration the app runs. */
 export interface SignInHost {
-  /** The integration's parts, or `undefined` when the host runs no sign-ins for it. The same parts each time. */
+  /** The integration's parts, or `undefined` when the host runs no sign-ins for it. The same parts each time, until {@link forget}. */
   integration(name: string): IntegrationSignInParts | undefined;
+  /**
+   * Signs out every sign-in of the integration that has a saved grant,
+   * whatever its sheet says now and whether or not it can be read: each is
+   * revoked at the address the person approved, where there is one, and its
+   * grant is removed, also when the revoke fails. Then its parts are
+   * forgotten. Removing a plugin's trust or the plugin calls it, so a plugin
+   * added later under the same id finds itself signed out.
+   *
+   * @returns each sign-in signed out and how; none when the host runs no sign-ins for the integration, which then has no grant from it
+   */
+  signOutAll(name: string): Promise<readonly SignedOutSignIn[]>;
+  /**
+   * Drops the integration's parts, so the next use builds them again: a
+   * pending sign-in of it ends, and a host never keeps parts for a plugin the
+   * trust doesn't cover now. Its grants stay.
+   */
+  forget(name: string): void;
   /**
    * Answers a callback with the flow that owns its path. A path that no flow
    * is waiting on gets the flow's own plain 400, so the answer doesn't tell
@@ -103,7 +132,7 @@ const noFlowPage = () =>
  * picks the app gives, as the loader reads the integration's own secrets.
  *
  * @example
- * const host = createSignInHost({ integration: (name) => integrations.get(name), grants, http, secrets, clock, digest, randomBytes, requestSignal });
+ * const host = createSignInHost({ integration: (name) => integrations.get(name), grants, savedSignIns, http, clock, digest, randomBytes, requestSignal });
  * const started = await host.integration("gitlab")?.flow.start("work-account", server.port);
  */
 export function createSignInHost(settings: SignInHostSettings): SignInHost {
@@ -119,6 +148,25 @@ export function createSignInHost(settings: SignInHostSettings): SignInHost {
     return parts;
   }
 
+  function forget(name: string): void {
+    built.delete(name);
+  }
+
+  async function signOutAll(name: string): Promise<SignedOutSignIn[]> {
+    const parts = integration(name);
+    if (parts === undefined) return [];
+    try {
+      const signedOut: SignedOutSignIn[] = [];
+      // One after the other, through the parts, so each waits for its refresh in flight.
+      for (const signIn of await settings.savedSignIns(name)) {
+        signedOut.push({ signIn, result: await parts.signIns.signOut(signIn) });
+      }
+      return signedOut;
+    } finally {
+      if (built.get(name) === parts) forget(name);
+    }
+  }
+
   async function handleCallback(request: Request): Promise<Response> {
     const { pathname } = new URL(request.url);
     for (const parts of built.values()) {
@@ -127,7 +175,7 @@ export function createSignInHost(settings: SignInHostSettings): SignInHost {
     return noFlowPage();
   }
 
-  return { integration, handleCallback };
+  return { integration, signOutAll, forget, handleCallback };
 }
 
 function buildParts(

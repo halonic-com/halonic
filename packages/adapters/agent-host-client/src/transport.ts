@@ -52,6 +52,7 @@ export const agentHostRequestRoutes = [
   "POST /v1/integrations/sign-in/start",
   "POST /v1/integrations/sign-in/cancel",
   "POST /v1/integrations/sign-in/sign-out",
+  "POST /v1/integrations/sign-in/sign-out-all",
   "POST /v1/plugins/call",
   "POST /v1/plugins/secrets",
   "GET /v1/unfenced-runs",

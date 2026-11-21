@@ -264,6 +264,16 @@ const ROUTES: &[(&str, Route)] = &[
             Answer::Json,
         ),
     ),
+    // Removing a plugin's trust or the plugin signs out all of its sign-ins
+    // (HAL-14850); the page sends only the plugin's id.
+    (
+        "POST /v1/integrations/sign-in/sign-out-all",
+        route(
+            Method::Post,
+            "/v1/integrations/sign-in/sign-out-all",
+            Answer::Json,
+        ),
+    ),
     // A trusted plugin's tool call (HAL-9389): the host checks the trust and
     // runs the backend in its own sandbox; the page sends only the plugin's id.
     (

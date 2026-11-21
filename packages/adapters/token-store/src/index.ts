@@ -8,4 +8,9 @@ export {
 } from "./made-token-key.ts";
 export { UnreadableTokenError } from "./sealed-value.ts";
 export { tokenKeySecret } from "./token-key.ts";
-export { createTokenStore, type TokenStoreOptions, tokenCollection } from "./token-store.ts";
+export {
+  createTokenStore,
+  storedTokenNames,
+  type TokenStoreOptions,
+  tokenCollection,
+} from "./token-store.ts";

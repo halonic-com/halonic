@@ -38,3 +38,32 @@ export function signInTokenName(integration: string, signIn: string): string {
   }
   return tokenName;
 }
+
+/**
+ * The sign-ins of `integration` that have a token among `tokenNames`, the
+ * names a `TokenStore` holds, as written or in its stored form (lower case,
+ * with `_` for `-`): the way back from {@link signInTokenName}. Sheet names
+ * have no `_`, so each `_` after the integration's part was a `-`. It lets a
+ * sign-out find every grant of an integration whose sheet is gone or can't be
+ * trusted any more. Sorted; none for an integration that isn't a sheet name.
+ *
+ * @example
+ * signInsInTokenNames("gitlab", ["s6_gitlab_work_account", "s3_jira_work"]); // ["work-account"]
+ */
+export function signInsInTokenNames(integration: string, tokenNames: Iterable<string>): string[] {
+  if (!sheetNamePattern.test(integration)) return [];
+  const prefix = storedForm(`s${integration.length}_${integration}_`);
+  const signIns: string[] = [];
+  for (const tokenName of tokenNames) {
+    const stored = storedForm(tokenName);
+    if (!stored.startsWith(prefix)) continue;
+    const signIn = stored.slice(prefix.length).replaceAll("_", "-");
+    if (sheetNamePattern.test(signIn)) signIns.push(signIn);
+  }
+  return signIns.sort();
+}
+
+/** A token name as a `TokenStore` keeps it: lower case, with `_` for `-`. */
+function storedForm(tokenName: string): string {
+  return tokenName.toLowerCase().replaceAll("-", "_");
+}

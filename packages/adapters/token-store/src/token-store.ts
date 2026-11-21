@@ -107,3 +107,15 @@ export function createTokenStore(options: TokenStoreOptions): TokenStore {
     },
   };
 }
+
+/**
+ * The names of every token kept in `records`, in their stored form (see
+ * `canonicalTokenName`). Nothing is opened, so it needs no token key: a host
+ * lists the tokens it must remove even when it can't read them.
+ *
+ * @example
+ * await storedTokenNames(records); // ["google_refresh", "s6_gitlab_work_account"]
+ */
+export async function storedTokenNames(records: RecordStore): Promise<string[]> {
+  return [...foldRecords(await records.changes(tokenCollection)).keys()];
+}
