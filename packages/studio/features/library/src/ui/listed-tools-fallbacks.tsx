@@ -82,6 +82,8 @@ export interface ListedToolsFallbackBodyProps {
   readonly error?: string | undefined;
   /** The words for an engine that isn't answering, for where Studio runs; the desktop app's by default. */
   readonly engine?: EngineWords;
+  /** The connector's page has a Secrets section, so a secret's line says to set it there. */
+  readonly secretsOnPage?: boolean;
 }
 
 /**
@@ -150,6 +152,7 @@ export function ListedToolsFallbackBody({
   onRemoveApproval,
   error,
   engine = engineWords["desktop-app"],
+  secretsOnPage = false,
 }: ListedToolsFallbackBodyProps) {
   switch (fallback.kind) {
     case "loading":
@@ -157,7 +160,7 @@ export function ListedToolsFallbackBody({
     case "load-failed":
       return (
         <LoadFailedCallout
-          line={loadFailureLine(fallback.error, sourceName, engine)}
+          line={loadFailureLine(fallback.error, sourceName, engine, secretsOnPage)}
           error={fallback.error}
           onTryAgain={() => void onTryAgain()}
         />
