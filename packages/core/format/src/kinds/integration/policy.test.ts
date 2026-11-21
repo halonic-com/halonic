@@ -303,10 +303,17 @@ verifies("format.integration-host-class", () => {
     ],
     [
       "private",
-      ["http://192.168.1.5:8123", "https://[fd12::1]", "https://100.116.12.34"],
+      [
+        "http://192.168.1.5:8123",
+        "https://[fd12::1]",
+        "https://100.116.12.34",
+        "https://nas.example.com",
+        "https://box.tail1234.ts.net:8443",
+      ],
       [
         "http://localhost:8123",
-        "https://nas.example.com",
+        "https://localhost",
+        "https://app.localhost",
         "https://[fe80::1]",
         "https://100.100.100.100",
         "https://100.100.100.200",
@@ -337,11 +344,31 @@ verifies("format.integration-host-class", () => {
     }
   });
 
-  it("refuses plain http to a public host before its class", () => {
-    expect(problems(fromSetting("public", true), { url: "http://mcp.example.com" })).toEqual([
-      "hosts.0 plain-http-not-local",
-      "secrets.mcp-key.hosts.0 plain-http-not-local",
-    ]);
+  it.each<AddressClass>(["public", "private"])(
+    "refuses plain http to a %s host name before its class",
+    (addressClass) => {
+      expect(problems(fromSetting(addressClass, true), { url: "http://mcp.example.com" })).toEqual([
+        "hosts.0 plain-http-not-local",
+        "secrets.mcp-key.hosts.0 plain-http-not-local",
+      ]);
+    },
+  );
+
+  it("names a private setting's host name for the transport's check, and only that", () => {
+    const named = resolve(fromSetting("private", false), { url: "https://box.tail1234.ts.net" });
+    expect(named.policy.hosts).toEqual(["box.tail1234.ts.net"]);
+    expect(named.policy.privateNames).toEqual(["box.tail1234.ts.net"]);
+    expect(named.policy.secrets).toEqual({
+      "mcp-key": { hosts: ["box.tail1234.ts.net"], placement: { as: "bearer" } },
+    });
+    const port = resolve(hostOnly("private"), { url: "https://nas.example.com:8443" });
+    expect(port.policy.privateNames).toEqual(["nas.example.com"]);
+    for (const [addressClass, url] of [
+      ["private", "https://192.168.1.5"],
+      ["public", "https://mcp.example.com"],
+    ] as const) {
+      expect(resolve(hostOnly(addressClass), { url }).policy.privateNames).toBeUndefined();
+    }
   });
 
   it.each(["https://169.254.169.254", "https://[::]", "https://100.100.100.100"])(
@@ -361,8 +388,8 @@ verifies("format.integration-host-class", () => {
       url: "http://localhost:8123",
     });
     expect(resolved.ok ? [] : resolved.error.map((problem) => problem.message)).toEqual([
-      'mcp: the setting "url" must hold a URL with a private network address (10/8, 172.16/12, 192.168/16, 100.64/10 or fc00::/7), not localhost:8123',
-      'mcp: the setting "url" must hold a URL with a private network address (10/8, 172.16/12, 192.168/16, 100.64/10 or fc00::/7), not localhost:8123',
+      'mcp: the setting "url" must hold a URL with a private network address (10/8, 172.16/12, 192.168/16, 100.64/10 or fc00::/7) or an https URL with a host name that points to one, not localhost:8123',
+      'mcp: the setting "url" must hold a URL with a private network address (10/8, 172.16/12, 192.168/16, 100.64/10 or fc00::/7) or an https URL with a host name that points to one, not localhost:8123',
     ]);
   });
 });

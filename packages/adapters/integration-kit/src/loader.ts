@@ -1,5 +1,6 @@
 import type { AddressCheckingHttpClient } from "@halonicjs/adapter-http-kit";
 import {
+  type IntegrationPolicy,
   type IntegrationSecret,
   type IntegrationSheet,
   integrationPolicy,
@@ -173,7 +174,10 @@ function prepare(
   if (!resolved.ok) {
     problems.push(...resolved.error);
   }
-  if (problems.length > 0 || !resolved.ok) {
+  const transport = resolved.ok
+    ? transportFor(resolved.value.policy, options.transport, problems)
+    : undefined;
+  if (problems.length > 0 || !resolved.ok || transport === undefined) {
     return err(problems);
   }
   const secrets = chosenSecrets(
@@ -183,7 +187,7 @@ function prepare(
   );
   const { host, log } = createIntegrationHost({
     policy: resolved.value.policy,
-    transport: options.transport,
+    transport,
     secrets,
     tokens: options.tokens,
     ...(options.signInTokens ? { signInTokens: options.signInTokens } : {}),
@@ -194,6 +198,33 @@ function prepare(
   const readSecrets = () => secretsOnWire(sheet, secrets);
   const forms = async () => currentSecretForms(await readSecrets(), options.signInTokens);
   return ok({ origin: source.origin, sheet, host, log, readSecrets, currentSecretForms: forms });
+}
+
+/**
+ * The transport for this integration: when the user set a host name in a
+ * `private` setting, one that counts that name as private, so it connects
+ * only to the private addresses the name resolves to. A transport that can't
+ * do that is refused, never used as if the name were public (HAL-15005).
+ */
+function transportFor(
+  policy: IntegrationPolicy,
+  transport: AddressCheckingHttpClient,
+  problems: LoadProblem[],
+): AddressCheckingHttpClient | undefined {
+  const names = policy.privateNames ?? [];
+  if (names.length === 0) {
+    return transport;
+  }
+  if (transport.withPrivateNames === undefined) {
+    problems.push({
+      code: "private-name-unchecked",
+      path: ["hosts"],
+      message: `${policy.name}: here Halonic can't check that ${names.join(", ")} points to a private address, so it doesn't connect to it`,
+      fix: "Set the setting to the server's private IP address instead of its name.",
+    });
+    return undefined;
+  }
+  return transport.withPrivateNames(names);
 }
 
 /**
