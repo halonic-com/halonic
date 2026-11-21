@@ -2,6 +2,7 @@
 
 - Approval: the plan for PR 5b is on HAL-8613 (19 Nov), Liam set its scope there on 21 Nov; SL1 is the team's decision with the designer (C403, HAL-14497, HAL-2282 rule); Liam approves this note in his security review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:y8rU3qjA+3lClGqFazSf4RVyLv/nxRJTF8JFc/HqSZE5Zc9jzxU3yIAts9TZHXAzAlHwU9ZtTJvmxlR7jBdhBQ==
 - Task: HAL-8613
 
 ## What changes
