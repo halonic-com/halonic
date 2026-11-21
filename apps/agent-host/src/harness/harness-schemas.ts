@@ -16,6 +16,8 @@ const task = portSchema<HarnessTask>(
       prompt: s.string(),
       model: id.optional(),
       modelForEveryCall: s.literal(true).optional(),
+      // Only `in-sandbox` turns a harness's asking down, so nothing else is let through (agent-host.harness-task-asks).
+      asks: s.literal("in-sandbox").optional(),
     })
     .strict(),
 );

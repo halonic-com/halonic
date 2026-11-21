@@ -87,6 +87,14 @@ export interface HarnessTask {
    * resolves itself, such as `sonnet`.
    */
   modelForEveryCall?: true;
+  /**
+   * `in-sandbox` when the agent's file says `asks: in-sandbox`: its program
+   * may run commands inside Halonic's fence without asking a person first.
+   * Absent for `asks: always` and for a file without `asks`, which ask. The
+   * engine sets it only from the agent's file, never from a run's input. A
+   * harness still asks when the session isn't fenced.
+   */
+  asks?: "in-sandbox";
 }
 
 /**
