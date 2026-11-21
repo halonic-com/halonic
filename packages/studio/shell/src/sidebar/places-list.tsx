@@ -1,5 +1,5 @@
 import {
-  InfoIcon,
+  HelpIcon,
   Menu,
   type MenuEntry,
   PlaceIcon,
@@ -106,7 +106,7 @@ export function PlacesList({
           trigger={(props) => (
             <button {...props} type="button" className={settingsClasses}>
               <span className={iconClasses(false)}>
-                <InfoIcon />
+                <HelpIcon />
               </span>
               <span className="min-w-0 flex-1 truncate">Help</span>
             </button>

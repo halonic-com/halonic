@@ -2475,7 +2475,8 @@ group, so a long action ("Sign in with Google") goes under the text and lines up
 
 ## Other exports
 
-The icons `AlertIcon`, `BackIcon`, `ForwardIcon`, `InfoIcon`, `MaximiseIcon` (⤢), `RefreshIcon`
+The icons `AlertIcon`, `BackIcon`, `ForwardIcon`, `HelpIcon` (a circled ?, the sidebar's Help row,
+drawn like the place icons), `InfoIcon`, `MaximiseIcon` (⤢), `RefreshIcon`
 (a circle arrow, the ↻ of a plugin card), `RestoreIcon` (the restore mark), `SettingsIcon` (a gear, the sidebar's Settings row, drawn like
 the place icons) and `WarningIcon` are outline icons in `currentColor`, hidden from screen readers; the slot
 they sit in gives them their size.
