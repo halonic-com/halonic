@@ -14,7 +14,7 @@ import type {
   SandboxUnavailableReason,
 } from "@halonicjs/ports";
 import { HelperError } from "./elevate-helper.ts";
-import { clearForgetPending, forgetIsPending, markForgetPending } from "./forget-pending.ts";
+import { markGrantsKept, takeBackPending } from "./forget-pending.ts";
 import { describeForgetFailures, type ForgetResult, KeptGrants } from "./kept-grants.ts";
 import { type Machine, systemMachine } from "./machine.ts";
 import { appArmorFix, installFix } from "./package-manager.ts";
@@ -62,18 +62,6 @@ export type SandboxRemoval =
 /** Why a setup or a removal didn't happen when the administrator prompt was turned down. */
 export const promptCancelled = "the administrator prompt was cancelled; nothing changed";
 
-/** The log line for a removal that ran with administrator rights, so it left the user's kept grants recorded (HAL-7585). */
-const grantsKeptElevated =
-  "Removed the Windows sandbox, but skipped forgetting its kept access grants: this removal ran with administrator rights. Remove it again without them to forget the grants.";
-const forgetPendingDone =
-  "Took back the access the Windows sandbox kept on your folders, which a removal with administrator rights had left.";
-const forgetPendingFailed =
-  "Couldn't take back the access the Windows sandbox kept on your folders after a removal with administrator rights; trying again at the next start";
-const forgetPendingElevated =
-  "Didn't take back the access the Windows sandbox kept on your folders after a removal with administrator rights: this host runs with administrator rights too.";
-const grantsKeptMarked =
-  "Removed the Windows sandbox, but skipped forgetting its kept access grants: this removal ran with administrator rights. Halonic takes them back the next time it starts as this user, or run `srt-win acl forget --all`.";
-
 /**
  * The Sandbox port on sandbox-runtime (srt): bubblewrap on Linux, Seatbelt on
  * macOS, a sandbox user account and network filters on Windows. Windows is
@@ -109,11 +97,8 @@ export class SrtSandbox implements Sandbox {
    *   `WSL_SHARED_FOLDERS` in Halonic's WSL distro (`srt-wsl`). Each session
    *   denies them for reading as a whole, except its own folders inside, and
    *   doesn't open when one is missing.
-   * @param options.forgetPendingFile on Windows, the mark in the profile (see
-   *   {@link forgetPendingFile}): {@link SrtSandbox.remove} leaves it when it
-   *   ran with administrator rights and skipped the user's kept grants, and
-   *   {@link SrtSandbox.sweepOnce} takes them back first when it is there.
-   *   Give it to a host only while it holds the profile's lock.
+   * @param options.forgetPendingFile on Windows, the mark an elevated `remove` leaves and
+   *   `sweepOnce` acts on (see `forget-pending.ts`); give it only to the lock's holder.
    */
   constructor(
     machine: Machine = systemMachine,
@@ -203,9 +188,7 @@ export class SrtSandbox implements Sandbox {
    * the write grants kept by this user's sessions. It is `ok` when nothing
    * was set up, and when run again. srt refuses, and nothing is removed,
    * while a sandboxed program runs. When it runs with administrator rights it
-   * leaves the user's kept grants recorded and logs that it did (HAL-7585),
-   * and leaves the mark at `forgetPendingFile` so the next host to start
-   * without them takes the grants back (HAL-5404 S2).
+   * leaves the user's kept grants recorded, logs it (HAL-7585) and leaves the mark (HAL-5404 S2).
    * Other systems have nothing to remove. Never throws.
    */
   async remove(): Promise<SandboxRemoval> {
@@ -215,7 +198,7 @@ export class SrtSandbox implements Sandbox {
       if (removed === "cancelled") {
         return { ok: false, outcome: "cancelled", reason: promptCancelled };
       }
-      if (removed === "grants_kept") this.#warn(this.#markGrantsKept());
+      if (removed === "grants_kept") this.#warn(markGrantsKept(this.#forgetPendingFile));
     } catch (error) {
       return { ok: false, outcome: "failed", ...failure(error) };
     }
@@ -293,60 +276,21 @@ export class SrtSandbox implements Sandbox {
    * logged, never thrown.
    */
   sweepOnce(): Promise<void> {
-    this.#swept ??= this.#forgetPending()
-      .then(() => this.sweepKeptGrants())
-      .then((result) => {
-        if (result.failed.length > 0) this.#warn(describeForgetFailures(result.failed));
-      });
+    this.#swept ??= this.sweepKeptGrants().then((result) => {
+      if (result.failed.length > 0) this.#warn(describeForgetFailures(result.failed));
+    });
     return this.#swept;
-  }
-
-  /** Leaves the mark for a removal that skipped the user's kept grants, and says so. */
-  #markGrantsKept(): string {
-    const file = this.#forgetPendingFile;
-    return file !== undefined && markForgetPending(file) ? grantsKeptMarked : grantsKeptElevated;
-  }
-
-  /**
-   * On Windows, before the sweep, takes back every grant srt kept for this
-   * user when a removal run with administrator rights skipped them
-   * (HAL-5404 S2): when the mark is at `forgetPendingFile`, or when srt still
-   * lists kept grants while its sandbox account is gone (a removal from
-   * another account leaves its mark in that account's profile). Only a
-   * process without administrator rights does it (HAL-7544), and only a
-   * success takes the mark away; a failure is logged and tried again at the
-   * next start. Never rejects.
-   */
-  async #forgetPending(): Promise<void> {
-    const file = this.#forgetPendingFile;
-    if (this.#machine.platform !== "win32" || file === undefined) return;
-    try {
-      if (!forgetIsPending(file) && !(await this.#grants.orphaned())) return;
-      if ((await this.#machine.elevated?.()) ?? true) {
-        this.#warn(forgetPendingElevated);
-        return;
-      }
-      const failed = await this.#grants.forgetAll();
-      if (failed.length > 0) {
-        this.#warn(`${forgetPendingFailed} (${failed.join("; ")})`);
-        return;
-      }
-      clearForgetPending(file);
-      this.#warn(forgetPendingDone);
-    } catch (error) {
-      this.#warn(
-        `${forgetPendingFailed} (${error instanceof Error ? error.message : String(error)})`,
-      );
-    }
   }
 
   /**
    * On Windows, forgets the kept grants inside the sweep roots that no live
-   * session holds. Elsewhere, or without a root, it does nothing.
+   * session holds, after it takes back what an elevated removal left (see
+   * {@link takeBackPending}). Elsewhere, or without a root, it does nothing.
    * Never rejects.
    */
   async sweepKeptGrants(): Promise<ForgetResult> {
     if (this.#machine.platform !== "win32") return { heldByOthers: [], failed: [] };
+    await takeBackPending(this.#machine, this.#forgetPendingFile, this.#grants, this.#warn);
     return this.#grants.sweep(this.#sweepRoots);
   }
 
