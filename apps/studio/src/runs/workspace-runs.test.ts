@@ -246,6 +246,33 @@ verifies("studio.workspace-runs", () => {
     stop();
   });
 
+  it.each([
+    ["approve", "sent"],
+    ["reject", "dropped"],
+  ] as const)(
+    "answers the sample's review with %s, and the run ends at %s",
+    async (answer, end) => {
+      const { engine, runId } = await waitingRun();
+      const runs = new WorkspaceRuns({
+        runs: engine.stores.store,
+        definitions: acmeFiles(),
+        send: (...sent) => engine.executor.send(...sent),
+      });
+      const [call] = (await runs.waiting())[0]?.approvals ?? [];
+      await runs.send(runId, "approve", undefined, { callId: call?.callId ?? "" });
+      await engine.settle(runId);
+
+      // "Approve this reply?" is the step the walk-through's step 2 answers.
+      await runs.send(runId, answer);
+      await engine.settle(runId);
+
+      expect(await runs.waiting()).toEqual([]);
+      expect(await runs.list()).toMatchObject([
+        { summary: { id: runId, status: "completed", state: end } },
+      ]);
+    },
+  );
+
   it("without an engine, gives the Inbox the runs that wait and the CLI line to answer one", async () => {
     const { engine, runId } = await waitingRun();
     const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions: acmeFiles() });
