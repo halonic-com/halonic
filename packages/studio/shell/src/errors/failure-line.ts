@@ -1,6 +1,5 @@
-import { EngineNotAnswering } from "../engine/engine-not-answering.ts";
 import { type EngineWords, engineWords } from "../engine/engine-words.ts";
-import { errorReasonFor } from "./error-message.ts";
+import { engineReasonFor } from "./error-message.ts";
 
 /** Words that start one of our own sentences, so their capital goes when a reason follows a colon. */
 const commonFirstWords = new Set([
@@ -42,7 +41,7 @@ export function lowerAfterColon(reason: string): string {
  * An action that failed, as the microcopy's 1.1 shape: "Couldn't save your progress: the engine
  * isn't answering." The reason is the host's message after a colon ({@link reasonAfterColon}). An
  * `internal` error, which has no safe message, gives the generic sentence as the reason. An engine
- * that can't be reached ({@link EngineNotAnswering}) gives `engine.notAnswering`, the words for
+ * that can't be reached ({@link engineReasonFor}) gives `engine.notAnswering`, the words for
  * where Studio runs: "Couldn't start the sign-in: the engine isn't answering. It may still be
  * starting." (UX check G2).
  */
@@ -51,8 +50,7 @@ export function failureLine(
   error: unknown,
   engine: EngineWords = engineWords["desktop-app"],
 ): string {
-  const reason = error instanceof EngineNotAnswering ? engine.notAnswering : errorReasonFor(error);
-  return `Couldn't ${action}: ${reasonAfterColon(reason)}.`;
+  return `Couldn't ${action}: ${reasonAfterColon(engineReasonFor(error, engine.notAnswering))}.`;
 }
 
 /**

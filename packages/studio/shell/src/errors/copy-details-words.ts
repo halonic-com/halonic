@@ -1,6 +1,8 @@
 /** Copy details and its toasts (microcopy 22 F13 and F13b, and 19.8 for a copy that fails). */
 export const copyDetailsWords = {
   label: "Copy details",
+  /** The action's label for 2 seconds after a copy in a Dialog, where toasts wait (C446-1). */
+  done: "Copied",
   copied: "Copied. Paste it into a bug report.",
   couldNotCopy: "Couldn't copy.",
 } as const;

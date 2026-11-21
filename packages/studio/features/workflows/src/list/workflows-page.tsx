@@ -4,8 +4,9 @@ import {
   detailsOf,
   EngineNotAnswering,
   type EngineWords,
+  engineReasonFor,
   engineWordsOf,
-  errorReasonFor,
+  isUnexplained,
   OverviewPage,
   type PlaceViewProps,
   useCopyDetails,
@@ -244,8 +245,8 @@ function RefreshFailed({
     <p className="flex flex-wrap items-center gap-2 text-small text-fg-muted">
       {error instanceof EngineNotAnswering
         ? words.showingLast
-        : `${listWords.refreshFailed} ${reasonOf(error, words)}`}
-      {unexplained(error) && (
+        : `${listWords.refreshFailed} ${engineReasonFor(error, words.notAnswering)}`}
+      {isUnexplained(error) && (
         <button
           type="button"
           className={inlineLinkClasses}
@@ -283,9 +284,9 @@ function LoadFailed({
     <EmptyState
       tone="error"
       title={listWords.loadFailedTitle}
-      description={reasonOf(error, words)}
+      description={engineReasonFor(error, words.notAnswering)}
       action={{ label: listWords.tryAgain, onClick: tryAgain, busy: retrying }}
-      {...(unexplained(error)
+      {...(isUnexplained(error)
         ? {
             link: {
               label: copyDetailsWords.label,
@@ -295,19 +296,4 @@ function LoadFailed({
         : {})}
     />
   );
-}
-
-/**
- * Why the list couldn't be read. The list reads the workspace's files, which works while the
- * engine is stopped, so only a host that says the engine can't be reached gets "isn't answering";
- * any other failure gives a kinded error's own reason, else "Halonic ran into a problem it can't
- * explain yet." (microcopy 22 F13).
- */
-function reasonOf(error: unknown, words: EngineWords): string {
-  return error instanceof EngineNotAnswering ? words.notAnswering : errorReasonFor(error);
-}
-
-/** Whether the failure has no reason of its own to show, so the page offers Copy details. */
-function unexplained(error: unknown): boolean {
-  return !(error instanceof EngineNotAnswering) && errorReasonFor(error, "") === "";
 }

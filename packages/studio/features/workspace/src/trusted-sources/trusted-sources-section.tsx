@@ -11,7 +11,7 @@ import {
   type SettingsSurface,
   sectionHeading,
   sectionHeadingLevel,
-  useCopyDetails,
+  useCopyDetailsInPlace,
 } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type TrustedSource, type TrustedSourcesHost, TrustedSourcesService } from "../api.ts";
@@ -75,7 +75,7 @@ export function TrustedSourcesView({
   const [error, setError] = useState<string | undefined>();
   // For an internal error only: what **Copy details** puts on the clipboard (microcopy 22 F13).
   const [details, setDetails] = useState<string | undefined>();
-  const copyDetails = useCopyDetails();
+  const copyDetails = useCopyDetailsInPlace();
   const root = useRef<HTMLDivElement | null>(null);
   const alive = useRef(true);
   const removeButtons = useRef(new Map<string, HTMLButtonElement>());
@@ -237,7 +237,8 @@ export function TrustedSourcesView({
             : {
                 errorAction: {
                   label: copyDetailsWords.label,
-                  onClick: () => void copyDetails(details),
+                  doneLabel: copyDetailsWords.done,
+                  onClick: () => copyDetails(details),
                 },
               })}
           returnFocus={() => {

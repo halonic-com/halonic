@@ -155,7 +155,7 @@ verifies("plugins.plugin-updates", () => {
     });
 
     expect(document.querySelector('dialog [role="alert"]')?.textContent).toContain(
-      "Couldn't update: The disk is full. The plugin stays as it was.",
+      "Couldn't update: the disk is full. The plugin stays as it was.",
     );
     expect(button("Keep 1.2.0")).toBeDefined();
 

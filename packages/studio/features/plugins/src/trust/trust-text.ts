@@ -12,6 +12,7 @@ import {
   pluginTrustToolsIntro,
 } from "@halonicjs/app";
 import type { AddressClass } from "@halonicjs/format";
+import { reasonAfterColon } from "@halonicjs/studio-shell";
 import { hostFromSetting } from "../settings/settings-text.ts";
 
 /** Why the trust check opens: right after Add, or from **Review** on the plugin's page. */
@@ -54,12 +55,12 @@ export function trustNotSavedLine(reason: string): string {
 }
 
 /**
- * A host's message after a colon: no closing full stop, and its first letter as the host sent
- * it ("Windows denied access." is "Windows denied access"), because a capital can't be told
- * from a name's.
+ * A host's message after a colon ({@link reasonAfterColon}): no closing full stop, and a common
+ * first word lower-cased ("The store is locked." is "the store is locked"), while a name keeps its
+ * capital ("Windows denied access").
  */
 function afterColon(reason: string): string {
-  return reason.trim().replace(/\.$/, "");
+  return reasonAfterColon(reason.trim());
 }
 
 /** The focused button that leaves the plugin off (T10). */

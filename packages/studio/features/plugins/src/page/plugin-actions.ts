@@ -5,7 +5,7 @@
 
 import type { PluginTrustChanges } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
-import { lowerAfterColon } from "@halonicjs/studio-shell";
+import { reasonAfterColon } from "@halonicjs/studio-shell";
 import type { ProgramsRun } from "../trust/trust-text.ts";
 import type { PluginUnfencedRuns } from "../trust/unfenced-status.ts";
 
@@ -242,9 +242,9 @@ export function actionFailedLine(action: string, reason: string): string {
   return `Couldn't ${action}: ${afterColon(reason)}.`;
 }
 
-/** A host's message after a colon ({@link lowerAfterColon}), with no closing full stop. */
+/** A host's message after a colon ({@link reasonAfterColon}). */
 function afterColon(reason: string): string {
-  return lowerAfterColon(reason.trim().replace(/\.$/, ""));
+  return reasonAfterColon(reason.trim());
 }
 
 /** What each action is called in `actionFailedLine`. */

@@ -4,7 +4,8 @@ import {
   detailsOf,
   EngineNotAnswering,
   type EngineWords,
-  errorReasonFor,
+  engineReasonFor,
+  isUnexplained,
   lowerAfterColon,
   useCopyDetails,
 } from "@halonicjs/studio-shell";
@@ -17,7 +18,7 @@ import {
  * "Halonic ran into a problem it can't explain yet."
  */
 export function loadFailureReason(error: unknown, engine: EngineWords, afterColon = false): string {
-  const reason = error instanceof EngineNotAnswering ? engine.notAnswering : errorReasonFor(error);
+  const reason = engineReasonFor(error, engine.notAnswering);
   return afterColon ? lowerAfterColon(reason) : reason;
 }
 
@@ -38,8 +39,7 @@ export interface FailureReasonProps {
 export function FailureReason({ what, error, engine, afterColon = false }: FailureReasonProps) {
   const copyDetails = useCopyDetails();
   const reason = loadFailureReason(error, engine, afterColon);
-  const unexplained = !(error instanceof EngineNotAnswering) && errorReasonFor(error, "") === "";
-  if (!unexplained) return reason;
+  if (!isUnexplained(error)) return reason;
   return (
     <>
       {reason}{" "}

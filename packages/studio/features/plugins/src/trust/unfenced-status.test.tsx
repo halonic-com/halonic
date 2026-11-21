@@ -260,7 +260,7 @@ verifies("plugins.plugin-trust-yes", () => {
     expect(trusted).toEqual([]);
     expect(closed).toEqual([]);
     expect(await alertText()).toContain(
-      "Couldn't save trust: The agent host isn't answering. Nothing was started.",
+      "Couldn't save trust: the agent host isn't answering. Nothing was started.",
     );
   });
 
@@ -301,7 +301,7 @@ verifies("plugins.plugin-trust-yes", () => {
 
     await tick();
     await press("Trust");
-    expect(await alertText()).toContain("The store is locked.");
+    expect(await alertText()).toContain("Couldn't save trust: the store is locked.");
     expect(box()).toBeNull();
     expect(dialog().textContent).toContain("You allowed plugins and integrations");
 

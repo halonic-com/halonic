@@ -158,7 +158,7 @@ export {
   visibleRowIds,
 } from "./overview/row-focus.ts";
 export { PageBackLinkSlot } from "./page/back-link-slot.tsx";
-export { copyDetails, useCopyDetails } from "./page/copy-details.ts";
+export { copyDetails, useCopyDetails, useCopyDetailsInPlace } from "./page/copy-details.ts";
 export { ItemGone, type ItemGoneProps } from "./page/item-gone.tsx";
 export { PageErrorBoundary, type PageErrorBoundaryProps } from "./page/page-error-boundary.tsx";
 export { pageStoppedWords } from "./page/page-stopped.tsx";
