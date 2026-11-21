@@ -2,9 +2,10 @@
 // (cli-output 3.4, C174 on HAL-2000). A thin command over `RunHistory`, the
 // service the Studio's run page reads too: this file finds the run by the id
 // the user typed, and prints the heading, the step lines (`run-view.ts`,
-// shared with `halonic run`) and how the run ended (`show-ending.ts`). It never prints
-// where the run log is (Liam, HAL-1984). The words are the catalogue's
-// (`runsMessages`).
+// shared with `halonic run`), why a connector didn't start
+// (`show-connectors.ts`) and how the run ended (`show-ending.ts`). It never
+// prints where the run log is (Liam, HAL-1984). The words are the
+// catalogue's (`runsMessages`).
 
 import { type RunDetail, RunHistory, shortRunId } from "@halonicjs/app";
 import { workspaceModelsOf } from "@halonicjs/app/run-failure";
@@ -17,6 +18,7 @@ import {
   OwnLineError,
   UsageError,
 } from "../../command.ts";
+import { connectorFileOf } from "../../connector-file.ts";
 import { providerAddress } from "../../doctor-workspace.ts";
 import { exitCode } from "../../exit-code.ts";
 import type { Phrase } from "../../messages/phrase.ts";
@@ -35,6 +37,7 @@ import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
 import type { RunListSetup } from "./list.ts";
 import { listedStatus, workflowTitle } from "./listed-run.ts";
+import { connectorNotStartedLines } from "./show-connectors.ts";
 import { failedRunDebugText, outputHintLines, showEnding } from "./show-ending.ts";
 
 /**
@@ -91,6 +94,7 @@ export async function showRun(
         lines: [
           heading(run, title, workspaceName, clock),
           ...(steps.length === 0 ? [] : [[], ...steps]),
+          ...connectorNotStartedLines(run.events, dir, (id) => connectorFileOf(loaded, id)),
           ...providerNoteLines(run.events),
           ...showEnding(
             run,

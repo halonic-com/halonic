@@ -4,6 +4,11 @@ import { defineMessages } from "./define.ts";
 import { markPart, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
+/** The part of a connector a `connector.part-off` names: its backend, or a program, by its name escaped. */
+export type ShownPart =
+  | { readonly kind: "backend" }
+  | { readonly kind: "program"; readonly name: string };
+
 /**
  * Why a connector's program didn't start, in the words Studio's pages use
  * (`connector-failure.ts` of `@halonicjs/adapter-agent-host-client`, UX
@@ -53,6 +58,24 @@ export const connectorStartMessages = defineMessages("connectorStart", {
   /** `connector` is the id as the workspace writes it, and `dir` the user's own `--dir`. */
   notListedFix: (connector: string, dir: string | undefined) =>
     phrase`To see why, run ${suggestedCommand("tools review", dir, shellWord(connector))}`,
+  /**
+   * HAL-15081: line 1 of `runs show` for a part of a connector that the run's log says was off
+   * (`connector.part-off`), in the shape of `run`'s plugin part warning. The log names the
+   * connector, not the plugin.
+   */
+  partOff: (connector: string, part: ShownPart) =>
+    part.kind === "backend"
+      ? phrase`${markPart("needsYou")} The backend of ${connector} didn't start, so its tools are off in this run.`
+      : phrase`${markPart("needsYou")} The program ${part.name} of ${connector} didn't start, so its tools are off in this run.`,
+  /** HAL-15081: the line under `partOff` for a reason the log gives by its code; Tomas, decided by the team. */
+  partOffNeedsDesktopApp: () => phrase`It runs only in the Halonic desktop app.`,
+  partOffSandboxUnavailable: () => phrase`The sandbox it runs in can't start on this computer.`,
+  partOffSandboxNotFenced: () =>
+    phrase`Halonic couldn't confirm that the sandbox limits this program on this computer.`,
+  partOffNetworkNeedsSrt: () =>
+    phrase`It reaches the network, and the Windows 11 sandbox can't limit a program to single sites yet.`,
+  partOffSettingsNotSet: () => phrase`A setting it needs has no value.`,
+  partOffNotTrusted: () => phrase`Your trust doesn't cover it as it is now.`,
   /** HAL-13714: an `http` connector where nothing answers at its address. Mateo, decided by the team. */
   nothingAnswered: (address: string) => phrase`Nothing answered at ${address}.`,
   nothingAnsweredFix: (connector: string, file: string | undefined) =>

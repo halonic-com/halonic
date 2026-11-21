@@ -217,6 +217,12 @@ reason code, such as `sandbox-unavailable`, never an error's text. The
 plugin's other parts keep working. `halonic run --json` lists the event with
 the run's others.
 
+`halonic runs show` reads it back later, under the run's steps: one warning
+for each part and reason, with the reason the code gives and the command
+that shows more, `halonic tools review <connector>`. The log keeps no error
+text, so a part that is off for another reason (`failed`) gets only that
+command.
+
 ### `ui`
 
 `ui` describes what Studio draws. It carries no code.
