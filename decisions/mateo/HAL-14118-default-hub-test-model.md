@@ -2,7 +2,6 @@
 
 - Approval: the board's answer on HAL-12723, 20 Nov: "Can we not make a \"Default\" hub? And use test model indeed"; the work is on HAL-14118, following Liam's fit check on HAL-12380
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3G0osO2uq37fmrJj+yJy0cFEPqchUZ5ohSBCyQafx62nOImJmtQZgZpDmZtp4iBPRvXW8FZ7PQiwy08gSEEQBg==
 - Task: HAL-14118
 
 ## What changes
@@ -28,9 +27,12 @@ in the style of `--example acme`. Its `--json` `created` list names the new file
 
 Studio's New workspace dialog no longer promises "a model on this computer (Ollama)" for a new
 folder. It says "Starts local only, with a Default hub and the built-in test model, which repeats
-your message back. No key, no cost. Connect your own model in Models." (the team's wording from
-HAL-12723, section 1 of new-workspace-wording; HAL-14152). A new workspace has no scripted
-replies, so the first agent's reply is an echo, and the dialog says so up front.
+your message back. No key, no cost. To use cloud models, turn off localOnly in workspace.yaml."
+(the team's wording from HAL-12723, section 1 of new-workspace-wording; HAL-14152). A new
+workspace has no scripted replies, so the first agent's reply is an echo, and the dialog says so
+up front. The last sentence is the one HAL-12642 put on `main`, in place of "Connect your own
+model in Models.": with `localOnly: true` a cloud model is refused, so the dialog says how to
+allow one.
 
 ## Why
 
