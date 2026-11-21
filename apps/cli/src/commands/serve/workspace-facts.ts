@@ -17,7 +17,7 @@ export interface ServedWorkspaceFactsOptions {
 
 /**
  * Which workspace `halonic serve` shows, for `GET /api/workspace` (requirement
- * `cli.commands.serve`). The name is read again at every request from the live
+ * `cli.commands.serve.serve`). The name is read again at every request from the live
  * version, so a rename in `workspace.yaml` shows once it is committed, before
  * any run starts from that commit.
  */

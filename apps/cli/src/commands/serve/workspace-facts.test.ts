@@ -21,7 +21,7 @@ afterEach(() => {
 const slowTest = { timeout: 60_000 };
 
 describe("the facts a served workspace gives GET /api/workspace", () => {
-  verifies("cli.commands.serve", () => {
+  verifies("cli.commands.serve.serve", () => {
     it(
       "names a renamed workspace once the rename is committed, before a run starts",
       slowTest,
