@@ -2,7 +2,10 @@ import { Button, Dialog, Field, Input, SecretText } from "@halonicjs/studio-kit"
 import { errorReasonFor } from "@halonicjs/studio-shell";
 import { type RefObject, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { KeyEntry, ModelKeys } from "../api.ts";
+import { type Stored, useAddressStep } from "./address-step.tsx";
+import { saveKey } from "./key-save.ts";
 import {
+  addressSavedLine,
   CHANGE_KEY,
   changeQuestion,
   hostCommand,
@@ -43,10 +46,12 @@ export interface KeyBlockProps {
    * takes the focus, or the heading when there is no field.
    */
   readonly focusRequest?: string | undefined;
+  /**
+   * The address the provider's key goes to when that is its type's own, pre-filled in the Address
+   * field (`KeyAddresses.usualAddress`); `undefined` for a custom provider.
+   */
+  readonly usualAddress?: string | undefined;
 }
-
-/** What the block knows about the stored key; `unknown` after a failed check. */
-type Stored = "checking" | "set" | "none" | "unknown";
 
 /** Whether a key is stored under the secret name, read when the provider changes. */
 function useStoredKey(
@@ -88,6 +93,7 @@ export function KeyBlock({
   providerName,
   onFirstKey,
   focusRequest,
+  usualAddress,
 }: KeyBlockProps) {
   const { entry } = keys;
   if (entry.kind === "unavailable") {
@@ -103,6 +109,7 @@ export function KeyBlock({
       providerName={providerName}
       {...(onFirstKey === undefined ? {} : { onFirstKey })}
       focusRequest={focusRequest}
+      usualAddress={usualAddress}
     />
   );
 }
@@ -161,6 +168,7 @@ function KeyField({
   providerName,
   onFirstKey,
   focusRequest,
+  usualAddress,
 }: KeyFieldProps) {
   const input = useRef<HTMLInputElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -172,11 +180,18 @@ function KeyField({
   const [confirm, setConfirm] = useState<Confirm>();
   const [problem, setProblem] = useState<string>();
   const [done, setDone] = useState("");
+  const address = useAddressStep({
+    addresses: keys.addresses,
+    secretName,
+    stored,
+    usualAddress,
+    busy,
+  });
 
   async function run(
     action: () => Promise<void>,
     failure: (reason: string) => string,
-    line: string,
+    line: string | (() => string),
     secret?: string,
   ) {
     setBusy(true);
@@ -184,7 +199,7 @@ function KeyField({
     setDone("");
     try {
       await action();
-      setDone(line);
+      setDone(typeof line === "string" ? line : line());
       return true;
     } catch (error) {
       // No reason is a known phrase ("Couldn't save the key. Try again."). The key is taken out of
@@ -199,14 +214,31 @@ function KeyField({
 
   async function send() {
     const value = input.current?.value.trim() ?? "";
-    if (secretName === undefined || value === "") return;
+    const typed = address.typed();
+    if (secretName === undefined || (value === "" && typed === undefined)) return;
+    let kept: string | undefined;
+    let refused: string | undefined;
     const saved = await run(
-      () => keys.save(secretName, new SecretText(value)),
-      (reason) => saveFailedLine(reason, stored === "set"),
-      savedLine(providerName),
+      async () => {
+        try {
+          kept = await saveKey(keys, keys.addresses, secretName, {
+            key: value === "" ? undefined : new SecretText(value),
+            address: typed,
+          });
+        } catch (error) {
+          refused = address.refused(error);
+          throw error;
+        }
+      },
+      (reason) => refused ?? saveFailedLine(reason, stored === "set"),
+      () => (kept === undefined ? savedLine(providerName) : addressSavedLine(kept, value !== "")),
       value,
     );
     if (!saved) return;
+    if (kept !== undefined) address.kept();
+    // The Address field may be gone now, so the focus goes back to the key's field either way.
+    input.current?.focus();
+    if (value === "") return;
     if (input.current !== null) input.current.value = "";
     setHasText(false);
     const first = stored === "none";
@@ -224,15 +256,20 @@ function KeyField({
 
   function save() {
     if (busy) return;
-    if (!hasText) {
+    // A stored key may get just an address; a new one needs the key first.
+    const addressOnly = !hasText && stored === "set" && address.typed() !== undefined;
+    if (!hasText && !addressOnly) {
       setDone("");
       setProblem(PASTE_FIRST);
       input.current?.focus();
       return;
     }
-    if (stored === "unknown") setConfirm("save");
-    else if (stored !== "none") setConfirm("change");
-    else void send();
+    if (!address.checked()) {
+      setDone("");
+      return;
+    }
+    if (addressOnly || stored === "none") void send();
+    else setConfirm(stored === "unknown" ? "save" : "change");
   }
 
   return (
@@ -248,6 +285,7 @@ function KeyField({
             <HostCommandLine lead={OFF_HOST_HTTPS_LEAD} command secretName={secretName} />
           ) : null}
           <KeyStatus stored={stored} onTryAgain={check} />
+          {address.summary}
           <form
             className="flex flex-wrap items-start gap-2"
             onSubmit={(event) => {
@@ -275,6 +313,7 @@ function KeyField({
                 />
               </Field>
             </div>
+            {address.field}
             <Button type="submit" variant="primary" busy={busy} busyLabel="Saving…">
               {SAVE_KEY}
             </Button>

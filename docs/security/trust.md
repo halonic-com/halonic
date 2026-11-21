@@ -132,10 +132,13 @@ A key saved before lists existed has none, and keeps the rule above.
 Studio's desktop keychain keeps a key's list as a second entry beside the key
 (service `halonic-origins`, under the key's name), and Studio's engine checks it
 on every model call with a key, the same way. A list the keychain didn't write
-is an error, never read as no list. Nothing in Studio writes a list yet: the
-Models page that will is HAL-11872, and `halonic models allow-address` writes
-to the CLI's secrets file, not the keychain. Until then Studio's keys have no
-list and keep the rule above.
+is an error, never read as no list. A provider's page on the Models page writes
+it: a new key is saved with an address (the provider type's own, pre-filled, or
+one you type), and is removed again if its address can't be kept, so it never
+stands without one. A key saved before lists existed shows "Not bound yet" and
+keeps the rule above until you save an address for it. A list that can't be
+read is shown as an error, never as "Not bound yet". `halonic models
+allow-address` writes to the CLI's secrets file, not the keychain.
 
 `halonic models allow-address <key-name> <address>` adds one address to a key's
 list, keeping the others. It keeps the scheme, host and port of what you type,
