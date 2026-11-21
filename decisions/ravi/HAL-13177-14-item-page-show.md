@@ -3,6 +3,7 @@
 - Task: HAL-13177
 - Approval: decided by the team on HAL-13177 (Sofia's UX check C505-5 on HAL-14915; flow-agents 3.4's rule that focus never lands on something hidden, approved by the board). Liam signs on review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:uIKUtOjAcNVeMbKdA1zrpT2qeNY3fphm/JoX1BZDxy4zNp5B+gERGuAl5XKnXDKe+nDmr5alUzF+CvrpjGuMAg==
 
 ## What changes
 
