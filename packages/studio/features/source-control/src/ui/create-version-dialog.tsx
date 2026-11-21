@@ -1,5 +1,5 @@
 import { Checkbox, Dialog, Field, Input, TextArea, useToastStore } from "@halonicjs/studio-kit";
-import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import type { ShareChoice } from "../api.ts";
 import { groupIntoItems } from "../change-items.ts";
 import type { ChangedFile, ChangesList } from "../changes-list.ts";
@@ -156,7 +156,11 @@ export function CreateVersionDialog({
   );
 }
 
-/** "Share with your team right away" and what it means, under What's in it (2.6). */
+/**
+ * "Share with your team right away" and what it means, under What's in it (2.6). A line above
+ * sets it apart from the items to include, and the caption is the box's description, so a
+ * screen reader hears it with the box.
+ */
 function ShareRightAway({
   checked,
   onChange,
@@ -164,12 +168,15 @@ function ShareRightAway({
   readonly checked: boolean;
   readonly onChange: (checked: boolean) => void;
 }) {
+  const captionId = useId();
   return (
-    <div className="flex flex-col gap-1">
-      <Checkbox checked={checked} onChange={onChange}>
+    <div className="mt-2 flex flex-col gap-1 border-t border-border pt-4">
+      <Checkbox checked={checked} onChange={onChange} describedBy={captionId}>
         {versionWords.shareRightAway}
       </Checkbox>
-      <p className="ms-6 text-small text-fg-muted">{versionWords.shareRightAwayCaption}</p>
+      <p id={captionId} className="ms-6 text-small text-fg-muted">
+        {versionWords.shareRightAwayCaption}
+      </p>
     </div>
   );
 }

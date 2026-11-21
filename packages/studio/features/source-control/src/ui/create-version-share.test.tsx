@@ -101,6 +101,14 @@ verifies("source-control.create-version-share", () => {
       );
     });
 
+    it("has its caption as its description, for a screen reader", async () => {
+      await openDialog();
+      const captionId = shareBox()?.getAttribute("aria-describedby") ?? "";
+      expect(document.getElementById(captionId)?.textContent).toContain(
+        "Sharing can't be taken back",
+      );
+    });
+
     it("isn't offered without a share address", async () => {
       await openDialog({ remote: false });
       expect(shareBox()).toBeUndefined();
