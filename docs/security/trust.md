@@ -38,8 +38,13 @@ lists, in this order (requirement `cli.trust-check`):
   program, because the program runs with your rights and `sites` limits
   nothing.
 - **Agents:** every agent that runs in Claude Code or Codex, with its allowed
-  sites and its working folder when it isn't the default. Agents in Halonic's
-  own harness aren't listed.
+  sites and its working folder when it isn't the default. A Claude Code agent
+  whose file sets `asks: in-sandbox` gets one more line, "Without asking: edits
+  and runs commands in its working folder, inside the sandbox" (requirement
+  `cli.trust-check-asks`). The setting is part of the fingerprint
+  (`workspace.trust-agent-asks`), so changing it asks for trust again, and the
+  agent's Changed row says it now does so without asking, or asks again.
+  Agents in Halonic's own harness aren't listed.
 - **Addresses:** HTTP connectors, connectors to a plugin, local integrations
   that read an address from a setting, and every model provider other than the
   test model, with its `baseUrl` (or its type when the file names none) and the
