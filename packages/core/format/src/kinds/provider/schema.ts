@@ -19,6 +19,13 @@ export const Provider = s
     local: s.boolean().default(false),
     /** Adapter-specific settings (account id, API version, headers, …). */
     options: s.record(s.string(), s.unknown()).default({}),
+    /**
+     * The model ids at this provider that search the web by themselves, such
+     * as `perplexity/sonar`. Their searches happen at the provider, outside
+     * Halonic's tools and approvals, so `halonic doctor` can warn when a
+     * harness agent's alias names one. Matched exactly against an alias's `model`.
+     */
+    searchesWeb: s.array(s.string().min(1)).optional(),
   })
   .strict();
 

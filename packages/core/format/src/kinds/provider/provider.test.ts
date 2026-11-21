@@ -61,3 +61,40 @@ verifies("format.provider-file", () => {
     expect(problem).toMatchObject({ code: "unrecognized_keys", path: [], keys: ["apiKey"] });
   });
 });
+
+verifies("format.provider-searches-web", () => {
+  const openRouter = (...lines: string[]) =>
+    yaml("id: openrouter", "type: openai-compatible", ...lines);
+
+  it("leaves searchesWeb out when the file does", () => {
+    expect(parsedValue("provider", openRouter())).not.toHaveProperty("searchesWeb");
+  });
+
+  it("keeps the listed model ids in order", () => {
+    const text = openRouter("searchesWeb: [perplexity/sonar, perplexity/sonar-pro]");
+    expect(parsedValue("provider", text).searchesWeb).toEqual([
+      "perplexity/sonar",
+      "perplexity/sonar-pro",
+    ]);
+  });
+
+  it("refuses a model id listed twice, at the repeat", () => {
+    const text = openRouter("searchesWeb: [perplexity/sonar, perplexity/sonar]");
+    const [problem, ...others] = problemsOf("provider", text);
+    expect(others).toEqual([]);
+    expect(problem).toMatchObject({ code: "duplicate", path: ["searchesWeb", 1], line: 3 });
+    expect(problem?.message).toBe(
+      "searchesWeb lists perplexity/sonar twice in providers/openrouter.yaml",
+    );
+  });
+
+  it("refuses an empty model id", () => {
+    const [problem] = problemsOf("provider", openRouter('searchesWeb: [""]'));
+    expect(problem?.path).toEqual(["searchesWeb", 0]);
+  });
+
+  it("refuses a single id instead of a list", () => {
+    const [problem] = problemsOf("provider", openRouter("searchesWeb: perplexity/sonar"));
+    expect(problem).toMatchObject({ code: "invalid_type", path: ["searchesWeb"] });
+  });
+});
