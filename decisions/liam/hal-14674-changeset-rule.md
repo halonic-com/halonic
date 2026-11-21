@@ -2,6 +2,7 @@
 
 - Approval: Liam decided it on HAL-14674 as the weekly working-rules update; Julian reviews and signs it there
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:uCD/XZfmuT03H0FuSBb6f+9BDVdtnHibx3mGmQFEYoxaqI2tt8k9IJSKPQ2Bs1TxNUocqJ62HZEER1IMikFFCw==
 
 `.github/pull_request_template.md` no longer says "Don't run `pnpm changeset` before the
 0.1.0 release". Its Changeset section now asks for a `.changeset/*.md` that names
