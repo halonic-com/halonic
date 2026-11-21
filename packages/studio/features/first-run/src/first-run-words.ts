@@ -1,4 +1,4 @@
-import type { FirstRunStep } from "./first-run-state.ts";
+import { type FirstRunStep, firstRunSteps } from "./first-run-state.ts";
 
 /** The first-run bar's words (first-run-flow 2 and 5, decided by the team). */
 export const barWords = {
@@ -27,4 +27,16 @@ export const guideWords = {
   run: "Run your first workflow",
   /** After a run that ended without a win (3.4, 8b). */
   runAgain: "Run again",
+} as const;
+
+/** The Inbox's setup item of a paused first run (first-run-flow 5, decided by the team). */
+export const setupWords = {
+  /** How the Inbox names the setup while its view loads: "Loading the first run setup". */
+  name: "first run",
+  title: "Finish your first run",
+  /** The line under the title: "Step 2 of 4 · Model". */
+  progress: (step: FirstRunStep) =>
+    `Step ${firstRunSteps.indexOf(step) + 1} of ${firstRunSteps.length} · ${barWords.steps[step]}`,
+  continue: "Continue",
+  dismiss: "Dismiss",
 } as const;
