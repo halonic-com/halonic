@@ -2566,12 +2566,18 @@ importers:
       '@halonicjs/engine':
         specifier: workspace:*
         version: link:../../core/engine
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../core/format
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../core/std
+      '@halonicjs/workspace':
+        specifier: workspace:*
+        version: link:../../core/workspace
     devDependencies:
       '@halonicjs/testing-spec':
         specifier: workspace:*

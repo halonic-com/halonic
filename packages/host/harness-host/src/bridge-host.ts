@@ -141,11 +141,13 @@ export class LocalBridgeHost implements HarnessBridgeHost {
           message: this.#scrub(failure.message),
         }),
     });
-    const { url, token, socketPath } = bridge;
+    const { url, token, socketPath, keyProviders } = bridge;
     return {
       url,
       token,
       ...(socketPath === undefined ? {} : { socketPath }),
+      // So the harness's environment gives the program a stand-in key (HAL-13795).
+      ...(keyProviders === undefined ? {} : { keyProviders }),
       close: () => bridge.close(),
       providers: services.providers,
     };

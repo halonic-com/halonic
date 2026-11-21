@@ -26,3 +26,8 @@ export {
   type ProviderAccessInput,
   providerAccessOf,
 } from "./provider-access.ts";
+export {
+  type ModelAliasRules,
+  ProviderKeyServices,
+  type ProviderKeyServicesInput,
+} from "./provider-key-services.ts";

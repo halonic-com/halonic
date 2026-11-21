@@ -87,9 +87,14 @@ export class RecordingBridgeServer implements HarnessBridgeServer {
 
   async open(options: HarnessBridgeOptions): Promise<OpenHarnessBridge> {
     this.opened.push(options);
+    // As the Node bridge says it, for the providers it reaches with a key.
+    const keyProviders = (["anthropic", "openai"] as const).filter(
+      (provider) => options.providers[provider]?.kind === "key",
+    );
     return {
       url: "http://127.0.0.1:4100",
       token: "test-token",
+      ...(keyProviders.length === 0 ? {} : { keyProviders }),
       close: async () => {
         this.closed += 1;
       },

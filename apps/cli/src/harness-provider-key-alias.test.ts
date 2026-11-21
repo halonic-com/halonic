@@ -14,7 +14,7 @@ import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { HarnessProviderKeys, type HarnessProviderKeysInput } from "./harness-provider-keys.ts";
+import { type CliProviderKeysInput, cliProviderKeys } from "./cli-provider-keys.ts";
 import {
   acme,
   commitWorkspace,
@@ -65,10 +65,10 @@ async function addProviders(model: string): Promise<void> {
 }
 
 /** The keys over the lab on disk; `asked` gets each secret the bridge reads. */
-async function keysOf(overrides: Partial<HarnessProviderKeysInput> = {}) {
+async function keysOf(overrides: Partial<CliProviderKeysInput> = {}) {
   const workspace = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
   const asked: string[] = [];
-  const keys = new HarnessProviderKeys({
+  const keys = cliProviderKeys({
     workspace: () => workspace,
     secrets: {
       get: async (name) => {

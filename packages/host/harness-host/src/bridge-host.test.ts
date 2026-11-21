@@ -200,3 +200,13 @@ verifies("harness-host.provider-access", () => {
     ]);
   });
 });
+
+verifies("harness-host.provider-key-services", () => {
+  it("gives the engine the providers the bridge reaches with a key, for the program's stand-in", async () => {
+    const { host } = setup();
+
+    const bridge = await host.open(writer, recorder, "sandbox");
+
+    expect(bridge.keyProviders).toEqual(["anthropic"]);
+  });
+});

@@ -56,8 +56,8 @@ import {
   type WorkspaceFolders,
 } from "@halonicjs/profile";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import { cliProviderKeys } from "./cli-provider-keys.ts";
 import { sweepingUnderHostLock, withoutHostLock } from "./fenced-sandbox.ts";
-import { HarnessProviderKeys } from "./harness-provider-keys.ts";
 import { localProposalParts } from "./local-proposals.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { skillFileOf } from "./skill-file.ts";
@@ -95,7 +95,7 @@ export interface LocalHarnessParts {
   readonly launcher?: HarnessRunsOptions["sandboxes"]["this-computer"];
   /** The harnesses, by their `id`. */
   readonly harnesses?: HarnessRunsOptions["harnesses"];
-  /** Opens every run's bridge, whatever its placement; Node's, on the keys of `HarnessProviderKeys`, by default. */
+  /** Opens every run's bridge, whatever its placement; Node's, on the keys of `cliProviderKeys`, by default. */
   readonly bridgeServer?: HarnessBridgeServer;
   /** The system the CLI runs on; `process.platform` by default. */
   readonly platform?: NodeJS.Platform;
@@ -205,11 +205,11 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
     worktrees: folders.proposalWorktreesFolder(),
     ...(input.git === undefined ? {} : { git: input.git }),
   });
-  const keys = new HarnessProviderKeys({
+  const keys = cliProviderKeys({
     workspace: input.workspace,
     secrets: input.secrets,
-    keyOrigins: input.keyOrigins,
     trusted: input.trusted,
+    keyOrigins: input.keyOrigins,
     ...(input.reportAccess === undefined ? {} : { reportAccess: input.reportAccess }),
   });
   const built = harnessHostOf({

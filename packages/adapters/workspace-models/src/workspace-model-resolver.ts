@@ -213,6 +213,14 @@ export function latestModelResolver(
   };
 }
 
+/** What {@link requireKeyMayGo} checks a key against. */
+export interface KeyCheckContext {
+  /** Whether the workspace is trusted on this computer. */
+  readonly trusted: boolean;
+  /** The origins each stored key may be sent to. */
+  readonly keyOrigins: KeyOrigins;
+}
+
 /**
  * The one check before a provider is called: the key check below, then, in a
  * workspace that isn't trusted, a refusal of every provider but the test
@@ -223,10 +231,7 @@ export function latestModelResolver(
  * @throws {WorkspaceModelError} what {@link requireKeyMayGo} throws, or
  *   `untrusted-workspace` naming the provider
  */
-export async function requireMayCall(
-  file: ProviderFile,
-  context: { trusted: boolean; keyOrigins: KeyOrigins },
-): Promise<void> {
+export async function requireMayCall(file: ProviderFile, context: KeyCheckContext): Promise<void> {
   await requireKeyMayGo(file, context);
   if (file.type !== "mock" && !context.trusted) {
     throw new WorkspaceModelError(
@@ -248,14 +253,16 @@ export async function requireMayCall(
  *   address is on it.
  *
  * An address that can't be read is on no list. The message names the
- * provider and the origin, never the key or the path.
+ * provider and the origin, never the key or the path. A harness agent's
+ * bridge makes the same check before it serves a key (HAL-13795), so both
+ * refuse with these words.
  *
  * @throws {WorkspaceModelError} `untrusted-provider-address` for the trust
  *   rule, `key-origin-not-allowed` for a key with a list
  */
-async function requireKeyMayGo(
-  file: ProviderFile,
-  context: { trusted: boolean; keyOrigins: KeyOrigins },
+export async function requireKeyMayGo(
+  file: Pick<ProviderFile, "id" | "type" | "baseUrl" | "secret">,
+  context: KeyCheckContext,
 ): Promise<void> {
   const destination = keyDestination(file);
   if (destination === undefined) {
