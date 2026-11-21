@@ -8,6 +8,7 @@ import {
 } from "@halonicjs/studio-kit";
 import { StartFailedCallout } from "@halonicjs/studio-shell";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { dockedCard } from "../runs/docked-card.ts";
 import { startWords as words } from "./start-words.ts";
 
 /** Props for {@link StartRunCard}. */
@@ -143,11 +144,7 @@ export function StartRunCard({
     if (event.key === "Escape") onClose();
   };
   return (
-    <aside
-      aria-label={words.startRun}
-      onKeyDown={onKeyDown}
-      className="flex w-120 max-w-full shrink-0 flex-col gap-4 overflow-auto border-s border-border bg-surface-raised p-6 shadow-2"
-    >
+    <aside aria-label={words.startRun} onKeyDown={onKeyDown} className={dockedCard}>
       {/* A long name wraps, so Close stays inside a narrow window. */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">

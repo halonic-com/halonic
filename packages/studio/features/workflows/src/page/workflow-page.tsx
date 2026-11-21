@@ -277,7 +277,8 @@ export function WorkflowScreen({
         showStartCommand={!startRun && settings.load.kind === "ready" && errors === 0}
       />
       <GuideSlot {...guideSlot} page={guidePage} at="top" />
-      <div className="flex min-h-0 flex-1">
+      {/* The container a docked card measures: under 800 px it takes the whole body (DW1). */}
+      <div className="@container flex min-h-0 flex-1">
         <TabPanel
           ids={ids}
           tabs={views}

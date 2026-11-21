@@ -2,6 +2,7 @@ import type { RunEvent, RunEventBody, RunSummary } from "@halonicjs/events";
 import type { RunRow, SourcedRun } from "@halonicjs/studio-feature-runs/api";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { besideDockedCard } from "../../src/runs/docked-card.ts";
 import { RunCard } from "../../src/runs/run-card.tsx";
 
 const start = new Date(2026, 10, 9, 10, 40);
@@ -120,9 +121,14 @@ const source = {
   currency: () => "EUR",
 };
 
-/** The run card for the state in the page's `state` query parameter, docked at the right as in the app. */
+/**
+ * The run card for the state in the page's `state` query parameter, docked at the right as in the
+ * app. With `beside=canvas` it sits in a body that is a container, beside a stand-in for the canvas,
+ * as on the workflow page, so a narrow window shows where the card takes the body (DW1).
+ */
 function Card() {
-  const name = new URLSearchParams(location.search).get("state") ?? "finished";
+  const query = new URLSearchParams(location.search);
+  const name = query.get("state") ?? "finished";
   const state = states[name];
   if (state === undefined) {
     throw new Error(`The run card page has no state "${name}".`);
@@ -138,8 +144,15 @@ function Card() {
     startedBy: "A message arrived",
   } as RunRow;
   const run = { summary: state.summary } satisfies SourcedRun;
+  const beside = query.get("beside") === "canvas";
   return (
-    <div className="flex h-screen justify-end bg-surface text-fg">
+    <div className={`${beside ? "@container" : ""} flex h-screen justify-end bg-surface text-fg`}>
+      {beside && (
+        <div
+          data-testid="canvas"
+          className={`min-w-0 flex-1 bg-surface-muted ${besideDockedCard}`}
+        />
+      )}
       <RunCard
         source={source}
         runs={[run]}

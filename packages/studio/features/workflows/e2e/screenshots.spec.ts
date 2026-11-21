@@ -97,6 +97,34 @@ for (const width of [390, 320, 195] as const) {
 }
 
 /**
+ * The docked run card beside the canvas on a desktop (DW1, WCAG 1.4.10). 640 px is a 1280 px
+ * window at 200 %: the canvas would get under 320 px beside the card, so the card takes the body and
+ * the canvas hides. At 1000 px the card keeps its 480 px and the canvas is beside it.
+ */
+for (const width of [640, 1000] as const) {
+  test(`run card beside the canvas, ${width} px wide`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/run-card.html?state=failed&beside=canvas");
+    const card = page.getByRole("complementary", { name: "Run 01jd8q" });
+    await expect(card).toBeVisible();
+    const box = await card.boundingBox();
+    const canvas = page.getByTestId("canvas");
+    if (width === 640) {
+      expect(box?.width, "the card takes the body").toBe(width);
+      await expect(canvas, "the canvas hides behind the card").toBeHidden();
+    } else {
+      expect(box?.width, "the card keeps its 480 px").toBe(480);
+      const beside = await canvas.boundingBox();
+      expect(beside?.width ?? 0, "the canvas has 320 px or more").toBeGreaterThanOrEqual(320);
+    }
+    await expect(card.getByRole("button", { name: "Close run" })).toBeInViewport();
+    await page.screenshot({
+      path: `test-results/screenshots/run-card-beside-canvas-${width}px.png`,
+    });
+  });
+}
+
+/**
  * The first-start sandbox choice (HAL-5405) on a Windows PC, at the window sizes the plan names
  * (HAL-3777): the halo must stay partly visible around the card at each. Every screen at the largest
  * size, and the first screen at the others.
