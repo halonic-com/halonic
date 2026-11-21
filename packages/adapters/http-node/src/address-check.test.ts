@@ -2,7 +2,7 @@ import type { HostClass } from "@halonicjs/adapter-http-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { AddressRefusedError } from "./address-refused.ts";
-import { fixedLookup } from "./checked-addresses.ts";
+import { checkedAddresses, fixedLookup } from "./checked-addresses.ts";
 import {
   fakeResolver,
   type LoopbackServer,
@@ -50,6 +50,7 @@ verifies("http-node.address-check", () => {
     "64:ff9b::a9fe:a9fe",
     "fe80::1",
     "100.64.0.1",
+    "100.116.12.34",
     "0.0.0.0",
   ])("refuses a public host whose answer is %s, before any connection (A7)", async (address) => {
     const { http } = client({ "api.example.test": [[address]] });
@@ -87,6 +88,15 @@ verifies("http-node.address-check", () => {
       expect(server.connections()).toBe(0);
     },
   );
+
+  it("lets a home-network host reach a Tailscale address, but not Tailscale's own 100.100.100.100", async () => {
+    const target = { hostname: "nas.example.test", port: 443, hostClass: "private" } as const;
+    const resolve = async () => ["100.116.12.34", "100.100.100.100"];
+    await expect(checkedAddresses(target, resolve, new Set())).resolves.toEqual(["100.116.12.34"]);
+    await expect(
+      checkedAddresses(target, async () => ["100.100.100.100"], new Set()),
+    ).rejects.toBeInstanceOf(AddressRefusedError);
+  });
 
   it("checks an IP address in the URL as it is, with no lookup", async () => {
     const { http, lookups } = client({});
