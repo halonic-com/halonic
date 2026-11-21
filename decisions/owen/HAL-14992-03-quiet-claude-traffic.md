@@ -2,6 +2,7 @@
 
 - Approval: HAL-14992
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:7BxujvAAV4zWeCFrMbD1hzfwJrx03vcvEmfzf3wxF/sDRWY0ZF5k/tgDYnLMzAsfUyCbg3SAF671f4qD5G9UAA==
 
 The HAL-12475 smoke run showed the sandbox refusing Claude Code's own calls
 to `api.anthropic.com:443`, 17 to 18 times per run. Its model calls went
