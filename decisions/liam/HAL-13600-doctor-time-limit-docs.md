@@ -4,6 +4,7 @@
   wording already approved and merged in HAL-13405). Liam wrote it, so Julian signs this note as the
   security reviewer
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:dMXoGApHDBbCrJAvNYzrlz69xcR3kma/j8c6hZzrfT7ZYjKA0UoQbJXAsU7B6laWQprPI7G/GPLLYogdVKptCQ==
 
 Since HAL-13405 (#3937), `halonic doctor` prints `! <Check>  didn't answer in 5 seconds` for a check
 that doesn't answer within the time limit `app.doctor-time-limit` sets. The requirement
