@@ -1,15 +1,10 @@
-import {
-  AgentHostChat,
-  AgentHostPlacementStore,
-  type AgentHostTransport,
-} from "@halonicjs/adapter-agent-host-client";
+import { AgentHostChat, AgentHostPlacementStore } from "@halonicjs/adapter-agent-host-client";
 import {
   TauriDefinitionStore,
   TauriEngineLock,
   type TauriFileShell,
   TauriInstructionTrustStore,
   TauriRecordStore,
-  TauriRunStore,
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
 import {
@@ -23,13 +18,7 @@ import { randomIds, systemClock } from "@halonicjs/std";
 import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
-import {
-  InboxNoticesService,
-  InboxRequestsService,
-  InboxRunsService,
-  monthBudgetUse,
-  SandboxRefusalsService,
-} from "@halonicjs/studio-feature-inbox/api";
+import { InboxRequestsService, monthBudgetUse } from "@halonicjs/studio-feature-inbox/api";
 import {
   CollectionHostService,
   KnowledgeHostService,
@@ -83,9 +72,7 @@ import type { RemoteEngine } from "../engine/remote-engine.ts";
 import { openStudioHarnessHost } from "../engine/studio-harness-host.ts";
 import { WorkspaceFilesHost } from "../files/workspace-files-host.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
-import { WorkspaceNotices } from "../inbox/workspace-notices.ts";
 import { WorkspaceRequests } from "../inbox/workspace-requests.ts";
-import { WorkspaceSandboxRefusals } from "../inbox/workspace-sandbox-refusals.ts";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
 import { WorkspaceCollections } from "../library/workspace-collections.ts";
 import { WorkspaceKnowledge } from "../library/workspace-knowledge.ts";
@@ -102,10 +89,10 @@ import { WorkspaceNoLimit } from "../models/workspace-no-limit.ts";
 import { WorkspaceProviderCheck } from "../models/workspace-provider-check.ts";
 import { providePlugins } from "../plugins/provide-plugins.ts";
 import { WorkspaceRoutines } from "../routines/workspace-routines.ts";
-import { hostProposalsOf } from "../runs/host-proposals.ts";
-import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
 import { openStudioRunConnectors } from "./open-run-connectors.ts";
+import { focusOf, storageOf } from "./page-window.ts";
+import { provideWorkspaceRuns } from "./provide-workspace-runs.ts";
 import { WorkspaceInstructionTrust } from "./workspace-instruction-trust.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
 
@@ -441,71 +428,4 @@ export function provideFolderServices(
     location,
     onFocus: (listener) => focusOf(window, listener),
   });
-}
-
-/**
- * Gives the workspace in `location` its runs, read through the shell, as both the Runs
- * feature's and the Inbox's source.
- */
-function provideWorkspaceRuns(
-  services: ServiceRegistry,
-  {
-    ipc,
-    files,
-    window,
-    remoteEngine,
-    transport,
-    trust,
-  }: {
-    ipc: TauriIpc;
-    files: TauriFileShell;
-    window: object;
-    remoteEngine?: RemoteEngine | undefined;
-    transport: AgentHostTransport | undefined;
-    trust: WorkspaceTrust;
-  },
-  location: string,
-): void {
-  const runs = new WorkspaceRuns({
-    runs: new TauriRunStore(ipc, location),
-    definitions: new TauriDefinitionStore(files, location),
-    folder: location,
-    onFocus: (listener) => focusOf(window, listener),
-    // Looked up on the first answer: the page's engine is provided after the runs.
-    send: (...answer) => (remoteEngine ?? services.get(engineServiceKey)).send(...answer),
-    ...(remoteEngine === undefined ? {} : { waiting: () => remoteEngine.waiting() }),
-    // Run proposals live in the agent host's records (HAL-10916); without the host there are none,
-    // and an untrusted folder asks the host nothing.
-    ...(transport === undefined
-      ? {}
-      : { proposals: hostProposalsOf(transport, location, () => trust.mayStartNow()) }),
-  });
-  services.provide(RunsSourceService, runs);
-  services.provide(InboxRunsService, runs);
-  services.provide(SandboxRefusalsService, new WorkspaceSandboxRefusals(runs));
-  services.provide(
-    InboxNoticesService,
-    new WorkspaceNotices({
-      runs,
-      storage: storageOf(window),
-      location,
-      now: () => new Date(),
-    }),
-  );
-}
-
-/** Calls `listener` whenever the page's window comes to the front; returns a function that stops it. */
-function focusOf(window: object, listener: () => void): () => void {
-  if (!(window instanceof EventTarget)) return () => {};
-  window.addEventListener("focus", listener);
-  return () => window.removeEventListener("focus", listener);
-}
-
-/** The window's local storage, or `undefined` when it has none or won't give it. */
-function storageOf(window: object): Storage | undefined {
-  try {
-    return "localStorage" in window ? (window.localStorage as Storage) : undefined;
-  } catch {
-    return undefined;
-  }
 }
