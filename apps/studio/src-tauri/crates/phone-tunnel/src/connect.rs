@@ -1,12 +1,14 @@
 //! Connecting to a paired computer, and passing its connection's states on
 //! (requirement `phone-tunnel-connections`). The paired-computer list
 //! follows what the connection learns: connected, can't confirm, and
-//! Removed, which wipes the key before the page hears of it.
+//! Removed, which wipes the key before the page hears of it. Only while the
+//! computer is still kept under the key that connection used: a connection
+//! from before a Pair again changes nothing (Julian on HAL-15463).
 
 use std::sync::Arc;
 use std::time::Duration;
 
-use halonic_device_keys::{ComputerId, DeviceKeyError, DeviceKeyStore};
+use halonic_device_keys::{ComputerId, DeviceKeyError, DeviceKeyStore, KEY_BYTES, PairedComputers};
 use halonic_tunnel::{
     ConnectError, Endpoint, PairedComputer as Pinned, PhoneConnection, PhoneEvent, PhoneKeys,
     PhoneStatus,
@@ -33,7 +35,11 @@ impl<S: DeviceKeyStore + 'static> PhoneTunnel<S> {
         if let Begin::Running = self.connections.begin(&id, serial) {
             return ConnectOutcome::Connecting;
         }
-        let (connection, events) = match self.open(&id).await {
+        let Opened {
+            connection,
+            events,
+            key,
+        } = match self.open(&id).await {
             Ok(opened) => opened,
             Err(problem) => {
                 self.connections.finished(&id, serial);
@@ -43,6 +49,7 @@ impl<S: DeviceKeyStore + 'static> PhoneTunnel<S> {
         let passing = Passing {
             computer: id.clone(),
             serial,
+            key,
             store: self.store.clone(),
             host: Arc::clone(&self.host),
             connections: Arc::clone(&self.connections),
@@ -74,10 +81,7 @@ impl<S: DeviceKeyStore + 'static> PhoneTunnel<S> {
 
     /// Loads the computer's pinned key and the phone's key for it, and
     /// opens a connection at the first endpoint that takes one.
-    async fn open(
-        &self,
-        id: &ComputerId,
-    ) -> Result<(PhoneConnection, UnboundedReceiver<PhoneEvent>), Problem> {
+    async fn open(&self, id: &ComputerId) -> Result<Opened, Problem> {
         let loaded = {
             let id = id.clone();
             self.store
@@ -112,7 +116,13 @@ impl<S: DeviceKeyStore + 'static> PhoneTunnel<S> {
             let connecting =
                 PhoneConnection::connect(pinned, keys, self.dialer.clone(), self.options.phone);
             match connecting.await {
-                Ok(opened) => return Ok(opened),
+                Ok((connection, events)) => {
+                    return Ok(Opened {
+                        connection,
+                        events,
+                        key: pair.public,
+                    });
+                }
                 Err(error) => reason = error,
             }
         }
@@ -122,11 +132,20 @@ impl<S: DeviceKeyStore + 'static> PhoneTunnel<S> {
     }
 }
 
+/// A connection that opened, with the phone's public key it used.
+struct Opened {
+    connection: PhoneConnection,
+    events: UnboundedReceiver<PhoneEvent>,
+    key: [u8; KEY_BYTES],
+}
+
 /// Passes one connection's events on, while it is the computer's current
 /// one.
 struct Passing<S: DeviceKeyStore + 'static> {
     computer: ComputerId,
     serial: u64,
+    /// The phone's public key this connection used.
+    key: [u8; KEY_BYTES],
     store: Store<S>,
     host: Arc<dyn TunnelHost>,
     connections: Arc<Connections>,
@@ -149,27 +168,19 @@ impl<S: DeviceKeyStore + 'static> Passing<S> {
 
     /// Notes what the status says in the list, then tells the page: on
     /// Removed the key is wiped first.
+    ///
+    /// When the wipe fails, the page still hears Removed: the computer has
+    /// proved who it is and refused the phone, so the page mustn't show it
+    /// as reachable. The key stays, the failure is logged, and the next
+    /// connect hears `not-paired` again and wipes it then.
     async fn on_status(&self, status: PhoneStatus) {
         let computer = self.computer.clone();
-        let noted = match status {
-            PhoneStatus::Connected => {
-                let at_ms = (self.clock)();
-                self.store
-                    .run(move |computers| computers.mark_connected(&computer, at_ms))
-                    .await
-            }
-            PhoneStatus::CantConfirm => {
-                self.store
-                    .run(move |computers| computers.mark_cant_confirm(&computer))
-                    .await
-            }
-            PhoneStatus::Removed => {
-                self.store
-                    .run(move |computers| computers.mark_removed(&computer))
-                    .await
-            }
-            _ => Ok(()),
-        };
+        let key = self.key;
+        let at_ms = (self.clock)();
+        let noted = self
+            .store
+            .run(move |computers| note(computers, &computer, &key, status, at_ms))
+            .await;
         if let Err(error) = noted {
             self.host
                 .log(&format!("noting a computer's status in the list: {error}"));
@@ -194,5 +205,37 @@ impl<S: DeviceKeyStore + 'static> Passing<S> {
         }
         self.connections.set_status(&self.computer, status);
         self.host.status_changed(&self.computer, &status);
+    }
+}
+
+/// Notes in the list what a connection under the phone's public key `key`
+/// learned: connected, can't confirm, or Removed, which wipes the key and
+/// the pin. Nothing changes when the computer is no longer kept under
+/// `key`: the person paired again since that connection opened, and what
+/// it learns isn't about the new pairing. The check runs under the store's
+/// lock with the note, so a note queued before Pair again saved its key is
+/// checked against that new key too.
+pub(crate) fn note<S: DeviceKeyStore>(
+    computers: &PairedComputers<S>,
+    computer: &ComputerId,
+    key: &[u8; KEY_BYTES],
+    status: PhoneStatus,
+    at_ms: u64,
+) -> Result<(), DeviceKeyError> {
+    if !matches!(
+        status,
+        PhoneStatus::Connected | PhoneStatus::CantConfirm | PhoneStatus::Removed
+    ) {
+        return Ok(());
+    }
+    let kept = computers.keys().load(computer)?;
+    if !kept.is_some_and(|pair| pair.public == *key) {
+        return Ok(());
+    }
+    match status {
+        PhoneStatus::Connected => computers.mark_connected(computer, at_ms),
+        PhoneStatus::CantConfirm => computers.mark_cant_confirm(computer),
+        PhoneStatus::Removed => computers.mark_removed(computer),
+        _ => Ok(()),
     }
 }

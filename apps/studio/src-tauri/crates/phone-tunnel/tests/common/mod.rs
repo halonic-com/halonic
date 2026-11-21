@@ -164,7 +164,12 @@ impl Phone {
 
     /// Pairs with `gateway` on the typed route and gives the computer's id.
     pub async fn pair(&self, gateway: &Gateway) -> String {
-        let start = gateway.typed_start();
+        self.pair_from(gateway, gateway.typed_start()).await
+    }
+
+    /// Pairs with `gateway` from the page's `start`, and gives the
+    /// computer's id.
+    pub async fn pair_from(&self, gateway: &Gateway, start: PairingStart) -> String {
         let (step, (server, noise)) = tokio::join!(
             self.tunnel.pair_start(start),
             gateway.run_to_message_3(CODE)
