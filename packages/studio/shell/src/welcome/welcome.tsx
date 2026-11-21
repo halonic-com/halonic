@@ -139,11 +139,9 @@ export function Welcome({
   const copyDetails = useCopyDetails();
   const alertId = useId();
   const startState = useWelcomeStart(start);
-  const focusLead = useCallback(() => {
-    (demoButton.current ?? openButton.current)?.focus();
-  }, []);
+  const lead = useCallback(() => demoButton.current ?? openButton.current, []);
   // Before any effect of the start's, so a failure that is there at once keeps its focus.
-  useLayoutEffect(() => focusLead(), [focusLead]);
+  useLayoutEffect(() => lead()?.focus(), [lead]);
   useEffect(() => {
     if (focusAfterRemove === undefined) {
       return;
@@ -260,7 +258,7 @@ export function Welcome({
               view={startState.view}
               offId={startState.offId}
               demo={onTrySample !== undefined}
-              focusLead={focusLead}
+              lead={lead}
             />
           }
         />

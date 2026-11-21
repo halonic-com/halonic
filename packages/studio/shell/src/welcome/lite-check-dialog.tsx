@@ -1,6 +1,6 @@
 import {
-  AlertIcon,
   Button,
+  CloseIcon,
   Dialog,
   Disclosure,
   InfoIcon,
@@ -10,6 +10,7 @@ import {
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { useCopyDetails } from "../page/copy-details.ts";
 import {
+  allClear,
   type CheckLine,
   type CheckMark,
   checkHeading,
@@ -27,11 +28,14 @@ export interface LiteCheckDialogProps {
   /** Gets each finished check, so Welcome's Copy report can hold it after the dialog closed. */
   readonly onChecked: (results: readonly LiteCheckResult[]) => void;
   readonly onClose: () => void;
+  /** Where focus goes on close when its opener has gone, such as Something wrong? once ready. */
+  readonly returnFocus: () => HTMLElement | null;
 }
 
+/** The screen's marks are the report's glyphs (✓ ✕ ! –, 4.2 and 4.3); info keeps its quiet i. */
 const markIcons: Readonly<Record<CheckMark, ReactNode>> = {
   pass: <TickIcon />,
-  problem: <AlertIcon />,
+  problem: <CloseIcon />,
   warning: <WarningIcon />,
   info: <InfoIcon />,
 };
@@ -55,10 +59,18 @@ const markNames: Readonly<Record<CheckMark, string>> = {
  * **Check this computer** as the window runs it while the engine isn't running
  * (first-run-progress 3.2, 4.2 to 4.4): the lite check's lines, the Engine line, and the engine's
  * own checks as Not checked, never as passed. It opens already checking; **Check again** runs it
- * again. The heading counts causes and is said once when the check ends. **Show the report**
- * unfolds exactly what **Copy report** copies. It changes nothing and sends nothing.
+ * again. The heading counts causes and is said once when the check ends; with no problem, a
+ * sentence under the lines says what to do if something still doesn't work. **Show the report**
+ * unfolds exactly what **Copy report** copies, with a note on what it holds. It takes focus on its
+ * title (section 5), and changes nothing and sends nothing.
  */
-export function LiteCheckDialog({ start, view, onChecked, onClose }: LiteCheckDialogProps) {
+export function LiteCheckDialog({
+  start,
+  view,
+  onChecked,
+  onClose,
+  returnFocus,
+}: LiteCheckDialogProps) {
   const { lines, run } = useLiteCheck(start, view, onChecked);
   const copyDetails = useCopyDetails();
   const report = lines === undefined ? undefined : checkReport(start.about, new Date(), lines);
@@ -69,6 +81,8 @@ export function LiteCheckDialog({ start, view, onChecked, onClose }: LiteCheckDi
       anchor="top"
       confirm={{ label: liteCheckWords.close, busyLabel: liteCheckWords.close }}
       cancelButton={false}
+      focusTitle
+      returnFocus={returnFocus}
       onConfirm={onClose}
       onCancel={onClose}
       {...(report === undefined
@@ -92,11 +106,15 @@ export function LiteCheckDialog({ start, view, onChecked, onClose }: LiteCheckDi
           </Button>
         </div>
         {lines === undefined ? null : <CheckList lines={lines} />}
+        {lines !== undefined && allClear(lines) ? (
+          <p className="text-small text-fg-muted">{liteCheckWords.allClear}</p>
+        ) : null}
         {report === undefined ? null : (
-          <Disclosure summary={liteCheckWords.showReport}>
+          <Disclosure summary={liteCheckWords.showReport} openSummary={liteCheckWords.hideReport}>
             <pre className="overflow-auto px-4 pb-3 font-mono text-small whitespace-pre-wrap">
               {report}
             </pre>
+            <p className="px-4">{liteCheckWords.reportNote}</p>
           </Disclosure>
         )}
       </div>
@@ -144,7 +162,8 @@ function CheckList({ lines }: { readonly lines: readonly CheckLine[] }) {
   return (
     <ul className="flex flex-col gap-2">
       {lines.map((line) => (
-        <li key={line.label} className="flex items-start gap-2 text-small">
+        // Two Not checked lines share a label, so the text tells them apart.
+        <li key={`${line.label}: ${line.text}`} className="flex items-start gap-2 text-small">
           <span
             aria-hidden="true"
             className={`mt-0.5 inline-grid size-icon-sm shrink-0 place-items-center *:size-full ${markColours[line.mark]}`}

@@ -8,6 +8,8 @@ export type DisclosureTone = "label" | "value";
 export interface DisclosureProps {
   /** The row's words: "How the budget works", or a value under a `label`: "3 items". */
   readonly summary: string;
+  /** The row's words while it is open, when they say what activating it does: "Hide the report". */
+  readonly openSummary?: string;
   /** `label` (the default) is `text-body-strong`, `value` is `text-body`. */
   readonly tone?: DisclosureTone;
   /** Open when it first renders. After that the user opens and closes it. */
@@ -60,6 +62,7 @@ const chevronClasses = [
  */
 export function Disclosure({
   summary,
+  openSummary,
   tone = "label",
   defaultOpen = false,
   label,
@@ -74,7 +77,7 @@ export function Disclosure({
       >
         {hasLabel ? <span className="sr-only">{`${label}, `}</span> : null}
         <span className="min-w-0 flex-1 wrap-break-word">
-          {summary}
+          <SummaryWords summary={summary} openSummary={openSummary} />
           {detail === undefined || detail === "" ? null : (
             <span className="text-small font-normal text-fg-muted">{` ${detail}`}</span>
           )}
@@ -97,5 +100,28 @@ export function Disclosure({
       </p>
       {details}
     </div>
+  );
+}
+
+/**
+ * The summary, swapped for `openSummary` while the `<details>` is open. CSS swaps them, so the
+ * browser alone still opens and closes it; the hidden words are `display: none`, so the row's
+ * name is only the words in view.
+ */
+function SummaryWords({
+  summary,
+  openSummary,
+}: {
+  readonly summary: string;
+  readonly openSummary: string | undefined;
+}) {
+  if (openSummary === undefined) {
+    return summary;
+  }
+  return (
+    <>
+      <span className="group-open/disclosure:hidden">{summary}</span>
+      <span className="hidden group-open/disclosure:inline">{openSummary}</span>
+    </>
   );
 }

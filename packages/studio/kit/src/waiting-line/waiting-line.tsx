@@ -38,7 +38,26 @@ export interface WaitingLineProps {
   /** The ways out the line offers itself. An escalation changes them; it never adds a second line. */
   readonly actions?: readonly WaitingLineAction[];
   readonly placement?: WaitingLinePlacement;
+  /**
+   * The reasons and action labels this wait will show, when they're known from the start: the line
+   * keeps room for the tallest of them from the moment it shows, so their coming moves nothing on
+   * screen at any width (Welcome's start, first-run-progress 5).
+   */
+  readonly keepRoomFor?: WaitingLineRoom;
 }
+
+/** What a WaitingLine keeps room for: every reason it may show, and its actions' labels. */
+export interface WaitingLineRoom {
+  readonly reasons: readonly string[];
+  readonly actions: readonly string[];
+}
+
+const noRoom: WaitingLineRoom = { reasons: [], actions: [] };
+
+/** One grid cell for every child, so it is as high as the tallest of them. */
+const oneCell = "grid *:col-start-1 *:row-start-1";
+
+const actionRowClasses = "flex flex-wrap gap-x-4 gap-y-1";
 
 const placementClasses: Record<WaitingLinePlacement, string> = {
   inline: "flex items-start gap-2 text-small",
@@ -98,6 +117,7 @@ export function WaitingLine({
   reason,
   actions = [],
   placement = "inline",
+  keepRoomFor = noRoom,
 }: WaitingLineProps) {
   const shown = waitedMs >= WAITING_LINE_AFTER_MS;
   const reasonShown = reason !== undefined && waitedMs >= WAITING_REASON_AFTER_MS;
@@ -111,32 +131,68 @@ export function WaitingLine({
         </span>
       ) : null}
       <div className="min-w-0 flex-1">
-        <div role="status">
-          {shown ? (
-            <>
-              <p className="wrap-break-word text-fg">{what}</p>
-              {reasonShown ? <p className="wrap-break-word text-fg-muted">{reason}</p> : null}
-            </>
-          ) : null}
-        </div>
-        {shown && actions.length > 0 ? (
-          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-            {actions.map((action) => (
-              <button
-                key={action.label}
-                type="button"
-                className={lineActionClasses}
-                onClick={action.onClick}
-              >
-                {action.label}
-              </button>
-            ))}
+        <div className={oneCell}>
+          <div role="status">
+            {shown ? (
+              <>
+                <p className="wrap-break-word text-fg">{what}</p>
+                {reasonShown ? <p className="wrap-break-word text-fg-muted">{reason}</p> : null}
+              </>
+            ) : null}
           </div>
-        ) : null}
+          {shown
+            ? keepRoomFor.reasons.map((each) => (
+                // `invisible` keeps the box and hides it from screen readers, the pointer and Tab.
+                <div key={each} aria-hidden="true" className="invisible">
+                  <p className="wrap-break-word">{what}</p>
+                  <p className="wrap-break-word">{each}</p>
+                </div>
+              ))
+            : null}
+        </div>
+        {shown ? <ActionRow actions={actions} room={keepRoomFor.actions} /> : null}
       </div>
       {shown ? (
         <span className="shrink-0 text-fg-muted tabular-nums">{waitedTime(waitedMs)}</span>
       ) : null}
+    </div>
+  );
+}
+
+/** The line's actions as text buttons, over the unseen labels it keeps room for. */
+function ActionRow({
+  actions,
+  room,
+}: {
+  readonly actions: readonly WaitingLineAction[];
+  readonly room: readonly string[];
+}) {
+  if (actions.length === 0 && room.length === 0) {
+    return null;
+  }
+  return (
+    <div className={`mt-1 ${oneCell}`}>
+      <div className={actionRowClasses}>
+        {actions.map((action) => (
+          <button
+            key={action.label}
+            type="button"
+            className={lineActionClasses}
+            onClick={action.onClick}
+          >
+            {action.label}
+          </button>
+        ))}
+      </div>
+      {room.length === 0 ? null : (
+        <div aria-hidden="true" className={`invisible ${actionRowClasses}`}>
+          {room.map((label) => (
+            <span key={label} className={lineActionClasses}>
+              {label}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

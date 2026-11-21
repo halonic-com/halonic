@@ -111,3 +111,17 @@ verifies("kit.dialog-return-focus", () => {
     expect(document.activeElement).toBe(buttonNamed(container, "More actions for Writer"));
   });
 });
+
+verifies("kit.dialog", () => {
+  it("starts focus on the title with focusTitle, and only then makes the title focusable", () => {
+    const { container, rerender } = render(deleteDialog({ focusTitle: true }));
+    const title = container.querySelector("h2");
+    expect(title?.textContent).toBe("Delete agent?");
+    expect(document.activeElement).toBe(title);
+    expect(title?.tabIndex).toBe(-1);
+    rerender(null);
+    rerender(deleteDialog());
+    expect(document.activeElement).toBe(buttonNamed(container, "Cancel"));
+    expect(container.querySelector("h2")?.hasAttribute("tabindex")).toBe(false);
+  });
+});

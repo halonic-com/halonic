@@ -80,6 +80,11 @@ interface DialogCommonProps {
    * read. It comes before the footnote.
    */
   readonly describedBy?: string;
+  /**
+   * Focus starts on the title rather than on a button or a field, for a Dialog that shows
+   * something to read first, such as Check this computer's lines (first-run-progress 5).
+   */
+  readonly focusTitle?: boolean;
   readonly children: ReactNode;
 }
 

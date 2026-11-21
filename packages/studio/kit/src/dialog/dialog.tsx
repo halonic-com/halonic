@@ -78,10 +78,14 @@ function DialogBox(props: DialogProps) {
   const [attempt, setAttempt] = useState(0);
 
   const closeButton = useRef<HTMLButtonElement>(null);
+  const title = useRef<HTMLHeadingElement>(null);
   const footerless = props.confirm === undefined;
 
   useModal(dialog, {
-    initial: () => initialFocus(props, body.current) ?? cancelButton.current ?? closeButton.current,
+    initial: () =>
+      props.focusTitle === true
+        ? title.current
+        : (initialFocus(props, body.current) ?? cancelButton.current ?? closeButton.current),
     fallback: props.returnFocus,
   });
 
@@ -123,6 +127,7 @@ function DialogBox(props: DialogProps) {
         <DialogHeader
           props={props}
           titleId={ids.title}
+          titleRef={title}
           confirmId={ids.confirm}
           closeButton={!phone || footerless}
           closeButtonRef={closeButton}

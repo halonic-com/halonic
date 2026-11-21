@@ -63,6 +63,13 @@ export function useWelcomeStart(start: WelcomeStart | undefined): WelcomeStartSt
       for (const waiter of waiters.current.splice(0)) waiter(view.kind === "ready");
     }
   }, [view.kind]);
+  // A press held when Welcome goes away ends without running, so its promise doesn't hang.
+  useEffect(
+    () => () => {
+      for (const waiter of waiters.current.splice(0)) waiter(false);
+    },
+    [],
+  );
   const afterStart = useCallback(
     async <T,>(task: () => Promise<T>): Promise<T | undefined> => {
       const ready =
@@ -86,8 +93,11 @@ export interface WelcomeStartAreaProps {
   readonly offId: string | undefined;
   /** Whether Welcome has Open demo, which that line then names. */
   readonly demo: boolean;
-  /** Moves focus back to Welcome's leading button, after Try again took the failure away. */
-  readonly focusLead: () => void;
+  /**
+   * Welcome's leading button: focus goes there after Try again took the failure away, and when
+   * Check this computer closes after its opener went.
+   */
+  readonly lead: () => HTMLElement | null;
 }
 
 /**
@@ -107,7 +117,7 @@ function StartArea({
   view,
   offId,
   demo,
-  focusLead,
+  lead,
 }: WelcomeStartAreaProps & { readonly start: WelcomeStart }) {
   const [checking, setChecking] = useState(false);
   /** The lite check's last answer, for Copy report after the dialog closed. */
@@ -118,10 +128,10 @@ function StartArea({
   useEffect(() => {
     if (wasFailed.current && !failed) {
       // Try again took the box with the focus in it away.
-      focusLead();
+      lead()?.focus();
     }
     wasFailed.current = failed;
-  }, [failed, focusLead]);
+  }, [failed, lead]);
 
   return (
     <>
@@ -152,6 +162,7 @@ function StartArea({
             view={view}
             onChecked={setResults}
             onClose={() => setChecking(false)}
+            returnFocus={lead}
           />
         </div>
       ) : null}
@@ -221,10 +232,17 @@ function useReadyLine(view: StartView): boolean {
   return said;
 }
 
+/** What the line keeps room for from the moment it shows: both sentences and Something wrong?. */
+const startRoom = {
+  reasons: [welcomeStartWords.firstStart, welcomeStartWords.stillStarting],
+  actions: [welcomeStartWords.somethingWrong],
+} as const;
+
 /**
  * The kit's waiting line for the start. From the moment it shows it keeps room for its 10 s and 30 s
- * sentences and **Something wrong?**, so their coming moves nothing under it (Sofia, through Owen
- * on HAL-13412). The shell's seconds count the time, so it draws again with each answer.
+ * sentences and **Something wrong?** at any width, so their coming moves nothing (Sofia, through
+ * Owen on HAL-13412; at 390px the 30 s sentence takes three lines, C513 M11). The shell's seconds
+ * count the time, so it draws again with each answer.
  */
 function StartLine({
   seconds,
@@ -236,9 +254,8 @@ function StartLine({
   readonly onSomethingWrong: (open: true) => void;
 }) {
   const waitedMs = seconds * 1000;
-  const shown = waitedMs >= WAITING_LINE_AFTER_MS;
   return (
-    <div className={shown ? "min-h-21 w-full text-left" : "w-full"}>
+    <div className="w-full text-left">
       <WaitingLine
         what={welcomeStartWords.starting}
         waitedMs={waitedMs}
@@ -248,6 +265,7 @@ function StartLine({
             ? [{ label: welcomeStartWords.somethingWrong, onClick: () => onSomethingWrong(true) }]
             : []
         }
+        keepRoomFor={startRoom}
       />
     </div>
   );
