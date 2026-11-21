@@ -1,7 +1,7 @@
 import type { Workflow } from "@halonicjs/format";
 import { inputIssues } from "./input-checks.ts";
+import { likelyTarget } from "./likely-target.ts";
 import { hasState } from "./machine.ts";
-import { likelyName } from "./near-name.ts";
 import { STATE_CHECKS } from "./state-checks.ts";
 import { issue, stateKey, type ValidateOptions, type WorkflowIssue } from "./workflow-issue.ts";
 
@@ -46,14 +46,11 @@ function unreachableStates(workflow: Workflow): WorkflowIssue[] {
   if (!hasState(workflow, workflow.initial)) {
     return [];
   }
-  const stateIds = Object.keys(workflow.states);
   const reached = new Set([workflow.initial]);
   const queue = [workflow.initial];
   for (let current = queue.shift(); current !== undefined; current = queue.shift()) {
     for (const transition of workflow.states[current]?.on ?? []) {
-      const to = hasState(workflow, transition.to)
-        ? transition.to
-        : likelyName(transition.to, stateIds);
+      const to = likelyTarget(workflow, transition.to);
       if (to !== undefined && !reached.has(to)) {
         reached.add(to);
         queue.push(to);

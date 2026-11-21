@@ -67,7 +67,7 @@ const unknownGets: StateCheck = ({ workflow, id, state }) => {
   if (!state.gets?.length) {
     return [];
   }
-  const known = contextBefore(workflow, id);
+  const known = contextBefore(workflow, id, { followGuesses: true });
   return state.gets.flatMap((path, index) => {
     const key = contextKey(path);
     if (key === null || known.includes(key)) {

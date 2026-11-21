@@ -73,6 +73,35 @@ verifies("workflow.unknown-name-hints", () => {
       ]);
     });
 
+    // New (HAL-15394).
+    it("lets the state it guesses read what the steps before the misspelling write", () => {
+      const draft = (to: string) =>
+        workflowOf({
+          id: "write",
+          name: "Write",
+          initial: "draft",
+          states: {
+            draft: { agent: "writer", output: "reply", on: [{ to }] },
+            review: {
+              agent: "writer",
+              input: "Check {{context.reply}}",
+              gets: ["context.reply"],
+              on: [{ to: "done" }],
+            },
+            done: { type: "final" },
+          },
+        });
+      const codes = (to: string) => validateWorkflow(draft(to)).map((issue) => issue.code);
+      expect(codes("reveiw")).toEqual(["unknown-target"]);
+      expect(codes("nowhere")).toEqual([
+        "unknown-target",
+        "unknown-gets",
+        "unknown-template-name",
+        "unreachable",
+        "unreachable",
+      ]);
+    });
+
     it("leaves the states unreached without a likely state", () => {
       expect(found({ on: [{ to: "nowhere" }] })).toEqual([
         'unknown-target at states.classify.on.0.to: "classify" goes to unknown state "nowhere"',

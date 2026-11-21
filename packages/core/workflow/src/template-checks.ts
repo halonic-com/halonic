@@ -66,7 +66,7 @@ export const unknownTemplateNames: StateCheck = ({ workflow, id, state }) => {
   if (places.length === 0) {
     return [];
   }
-  const before = contextBefore(workflow, id);
+  const before = contextBefore(workflow, id, { followGuesses: true });
   const after = [...new Set([...before, ...contextWrittenBy(state)])].sort();
   return places.flatMap((place) => {
     const known = place.afterOwnKeys ? after : before;
