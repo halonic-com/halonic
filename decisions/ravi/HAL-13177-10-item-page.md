@@ -3,6 +3,7 @@
 - Task: HAL-13177
 - Approval: decided by the team on HAL-13177 (the agent page moves onto the shell's ItemPage for its Try it chat, flow-agents 3.1 on HAL-329, approved by the board). Liam signs on review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:s6WnMoST814jUwwFPiYz7PU6pyPoqtBUiZGnGCeZdVgk8c3FIcWCVjQTK9SuQx5XjIOLVhEm86o8IBmh6fsLAQ==
 
 ## What changes
 
