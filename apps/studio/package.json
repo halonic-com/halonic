@@ -55,6 +55,7 @@
   "devDependencies": {
     "@halonicjs/app-agent-host": "workspace:*",
     "@halonicjs/adapter-fs-node": "workspace:*",
+    "@halonicjs/host-server": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",

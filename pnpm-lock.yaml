@@ -715,6 +715,9 @@ importers:
       '@halonicjs/app-agent-host':
         specifier: workspace:*
         version: link:../agent-host
+      '@halonicjs/host-server':
+        specifier: workspace:*
+        version: link:../../packages/host/server
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../packages/studio/kit
