@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-13433 (first-run build 5, build notes 4); first-run-flow 3.5 and 5, "Help › First run" and "Start over", and 10.2 R8 (HAL-7985); `shell.help-menu`; the lines under the items from Noah's Help sheet (HAL-7990), the board's decision C520-9 (HAL-14977, HAL-15164)
+- Source: HAL-13433 (first-run build 5, build notes 4); first-run-flow 3.5 and 5, "Help › First run" and "Start over", and 10.2 R8 (HAL-7985); `shell.help-menu`; the lines under the items from Noah's Help sheet (HAL-7990), the board's decision C520-9 (HAL-14977, HAL-15164); Start over only in the demo from flow check C583 (HAL-15484)
 
-The First Run feature shall add the group "First run" to the Help menu. In a folder the device remembers as the demo, it shall hold **Show the guide**, which takes a first run paused here up again, begins it again at Demo here when it is off, done, dismissed or in another folder, and opens Support reply's page, where the guide card is. Where the app can copy the demo again, it shall hold **Start over**, which turns the first run off and asks the app for a fresh copy of the demo in the next free folder (`workspace.fresh-copy-asks`), which never writes into a folder that is there; the copy, once open, starts the first run at Demo. Under **Show the guide** it shall say "Brings back the first-run bar and the guide card where you left off.", and under **Start over** "Copies Acme to a new folder and begins again at the first step. Your old copy stays where it is.". With neither item, the group shall not show.
+The First Run feature shall add the group "First run" to the Help menu. In a folder the device remembers as the demo, it shall hold **Show the guide**, which takes a first run paused here up again, begins it again at Demo here when it is off, done, dismissed or in another folder, and opens Support reply's page, where the guide card is. In that folder, where the app can copy the demo again, it shall also hold **Start over**, which turns the first run off and asks the app for a fresh copy of the demo in the next free folder (`workspace.fresh-copy-asks`), which never writes into a folder that is there; the copy, once open, starts the first run at Demo. Under **Show the guide** it shall say "Brings back the first-run bar and the guide card where you left off.", and under **Start over** "Copies Acme to a new folder and begins again at the first step. Your old copy stays where it is.". With neither item, the group shall not show, so it never shows outside the demo.
 
 ## Examples
 
@@ -23,3 +23,6 @@ The First Run feature shall add the group "First run" to the Help menu. In a fol
 - Given a folder that isn't the demo, in a window without Open demo,
   when the Help menu opens,
   then it has no "First run" group.
+- Given the user's own folder is open, in a window that can copy the demo,
+  when the Help menu opens,
+  then it has no "First run" group and no **Start over**.

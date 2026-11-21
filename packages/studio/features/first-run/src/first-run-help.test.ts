@@ -38,6 +38,10 @@ const pick = (firstRun: FirstRun, label: string, openItem?: (item: ItemRef) => v
     ?.run();
 
 verifies("first-run.help", () => {
+  it("offers Start over only in the demo, even where the app can copy it (C583)", () => {
+    expect(labels(firstRunOf(undefined, { sample: false, startOver: () => {} }))).toEqual([]);
+  });
+
   it("offers Show the guide in the demo and Start over where the app can copy it", () => {
     expect(labels(firstRunOf(undefined, { startOver: () => {} }))).toEqual([
       "Show the guide",

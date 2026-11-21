@@ -18,7 +18,7 @@ explore**. It also gives Support reply's page the guide card through the Workflo
 A paused first run has a setup item in the Inbox (`first-run.setup-item`): "Finish your first run" at its step,
 with **Continue**, which takes it up again and opens Support reply, and **Dismiss**.
 
-**Help › First run** (`first-run.help`) has **Show the guide** in the demo and **Start over**, which turns the
+**Help › First run** (`first-run.help`) shows only in the demo. It has **Show the guide** and **Start over**, which turns the
 first run off and asks the app for a fresh copy of the demo through the device's `startOver`. The copy starts
 the first run when it opens.
 
