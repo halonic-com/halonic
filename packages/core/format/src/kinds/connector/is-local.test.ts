@@ -31,7 +31,6 @@ verifies("format.connector-is-local", () => {
   it.each([
     ["http://localhost:3000/mcp", true],
     ["http://LOCALHOST/mcp", true],
-    ["http://tools.localhost/mcp", true],
     ["http://127.0.0.1:8080", true],
     ["http://127.12.0.3", true],
     ["http://[::1]:3000/mcp", true],
@@ -40,6 +39,10 @@ verifies("format.connector-is-local", () => {
     ["https://localhost.example.com", false],
     ["http://10.0.0.5", false],
     ["http://localhost@evil.example.com/", false],
+    ["http://tools.localhost/mcp", false],
+    ["http://127.tools.example.com/mcp", false],
+    ["http://127.0.0.1.example.com/mcp", false],
+    ["http://127.1/mcp", false],
   ])("reads %s as local: %s", (url, expected) => {
     expect(connectorIsLocal(httpConnector(url))).toBe(expected);
   });
