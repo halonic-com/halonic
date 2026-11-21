@@ -1,29 +1,28 @@
-import {
-  Button,
-  EmptyState,
-  LetterTile,
-  SkeletonBar,
-  type Tab,
-  TabList,
-  TabPanel,
-  usePresentation,
-  useTabIds,
-} from "@halonicjs/studio-kit";
+import { type SandboxStartCheck, sandboxStartCheckKey } from "@halonicjs/app";
+import { PlaceIcon, usePresentation } from "@halonicjs/studio-kit";
 import {
   type CloseStack,
   createCloseStack,
   ItemGone,
+  ItemPage,
+  type ItemPageHandle,
   type ItemPageSectionListing,
   type ItemViewProps,
   type SaveState,
-  SECTION_ADD_STEP,
   type SectionsProps,
   StackedCards,
 } from "@halonicjs/studio-shell";
-import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ComponentType,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   type AgentChange,
-  type AgentListing,
   type AgentRef,
   type AgentRoutine,
   type AgentsHost,
@@ -32,23 +31,29 @@ import {
   type AgentUser,
   selectStepsStep,
 } from "../api.ts";
-import { Configuration, type ConfigurationStart } from "../configuration/configuration.tsx";
-import { configurationWords } from "../configuration/configuration-words.ts";
+import { TryItPanel } from "../chat/try-it-panel.tsx";
+import {
+  Configuration,
+  type ConfigurationPage,
+  type ConfigurationStart,
+} from "../configuration/configuration.tsx";
 import { useConfigurationLoads } from "../configuration/use-configuration-loads.ts";
 import { PlacementProvider } from "../configuration/use-placement.ts";
 import { FlowView } from "../map/flow-view.tsx";
-import { mapWords } from "../map/map-words.ts";
 import { fileItemOf } from "../trash/file-item.ts";
 import { useAgentTrash } from "../trash/use-agent-trash.tsx";
+import { AgentPhoneFrame } from "./agent-phone-frame.tsx";
+import { AgentRead } from "./agent-read.tsx";
 import { FullAccessChip } from "./full-access-chip.tsx";
+import { nameProblem } from "./name-check.ts";
 import { NotLiveLine } from "./not-live-line.tsx";
 import { PageCard } from "./page-card.tsx";
 import { pageWords } from "./page-words.ts";
-import { RenameField, titleClasses } from "./rename-field.tsx";
 import { RunsView } from "./runs-view.tsx";
 import { useAgentCards } from "./use-agent-cards.ts";
-import { type AgentView, useAgentView } from "./use-agent-view.ts";
-import { type Load, useLoad } from "./use-load.ts";
+import { type AgentView, agentTabs, useAgentView } from "./use-agent-view.ts";
+import { useLoad } from "./use-load.ts";
+import { focusAfterAdd, focusedIn, mapAdds, pickedPageTab } from "./view-opening.ts";
 
 /**
  * The Library's commands that open it on a tab (`library.skill` and so on); the Agents feature
@@ -60,6 +65,12 @@ const libraryTabCommands: Readonly<Record<AgentToolList, string>> = {
   connectors: "library.connector",
 };
 
+/**
+ * The Workspace feature's command that opens Workspace settings, where the Models feature keeps
+ * the providers and their keys; run by id, as the Agents feature can't import it.
+ */
+const openWorkspaceCommand = "workspace.open";
+
 /** The step that opens an agent's page at its model, as `openItem(agent, { step: "model" })`. */
 export const MODEL_STEP = "model";
 
@@ -69,7 +80,10 @@ export const MODEL_STEP = "model";
  */
 export function AgentPage({ item, context, step, asked, Sections, sections }: ItemViewProps) {
   const { openPlace, openItem, runCommand, closeStack, announcer } = context;
-  const announce = useCallback((text: string) => announcer.announce(text), [announcer]);
+  const announce = useCallback(
+    (text: string, politeness?: "polite" | "assertive") => announcer.announce(text, politeness),
+    [announcer],
+  );
   const host = context.services.get(AgentsHostService);
   const openChanges = openPlace && (() => openPlace("changes"));
   // One read of where the agent runs, so the header's chip follows a choice in Where it runs.
@@ -90,9 +104,11 @@ export function AgentPage({ item, context, step, asked, Sections, sections }: It
         {...(openItem && { openFile: (path: string) => openItem(fileItemOf(path)) })}
         {...(runCommand && {
           openLibrary: (list: AgentToolList) => runCommand(libraryTabCommands[list]),
+          openKeyField: () => runCommand(openWorkspaceCommand),
         })}
         closeStack={closeStack}
         announce={announce}
+        sandboxStartCheck={context.services.find(sandboxStartCheckKey)}
         {...(openItem && {
           openAgent: (agent: AgentRef) =>
             openItem({ kind: "agent", hub: agent.hubId, id: agent.id }),
@@ -123,10 +139,12 @@ export interface AgentScreenProps extends AgentRef {
   readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
   /** Opens the Runs page, for **Open the Runs page ›**; absent where the app can't open a place. */
   readonly openRuns?: (() => void) | undefined;
+  /** Opens where keys are kept, for the Try it chat's **Go to the key field ›**. */
+  readonly openKeyField?: (() => void) | undefined;
   /** The window's close stack, so Esc closes the top card; a page of its own without one. */
   readonly closeStack?: CloseStack | undefined;
   /** Reads a sentence to screen readers, such as "*Writer* was removed." when its card drops. */
-  readonly announce?: ((text: string) => void) | undefined;
+  readonly announce?: ((text: string, politeness?: "polite" | "assertive") => void) | undefined;
   /** Opens another agent's page, from a card's team chart; absent where the app can't. */
   readonly openAgent?: ((agent: AgentRef) => void) | undefined;
   /**
@@ -145,13 +163,16 @@ export interface AgentScreenProps extends AgentRef {
    * Configuration then shows its Model page with the picker focused.
    */
   readonly modelRequest?: string | undefined;
+  /** Checks that the sandbox can start a program, for the Try it chat of an agent that starts one. */
+  readonly sandboxStartCheck?: SandboxStartCheck | undefined;
 }
 
 /**
- * The agent page's frame (`agents.page.frame`): the letter avatar, "AGENT" and the name, then the
- * agent's Flow (the agent map), Configuration and Runs in its tabs, open on Flow. The page is a skeleton when the
- * read takes over 300 ms, and says why when the agent can't be read. The Try it chat joins it in a
- * later pull request.
+ * The agent page (`agents.page.frame`): the shell's item page, with "AGENT" and the agent's name in
+ * its header, the Try it chat on the left (`agents.chat.first-load`, flow-agents 3.1) and the
+ * agent's Flow (the agent map), Configuration or Runs in the panel beside it, open on Flow. On a
+ * phone the views fill the page under the letter avatar. The panel is a skeleton when the read
+ * takes over 300 ms, and says why when the agent can't be read.
  */
 export function AgentScreen({
   host,
@@ -162,6 +183,7 @@ export function AgentScreen({
   openFile,
   openLibrary,
   openRuns,
+  openKeyField,
   closeStack,
   announce,
   openAgent,
@@ -170,6 +192,7 @@ export function AgentScreen({
   sections,
   Sections,
   modelRequest,
+  sandboxStartCheck,
 }: AgentScreenProps) {
   // After a Try again reads, or the not-live line goes, the agent's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -183,41 +206,50 @@ export function AgentScreen({
   const phone = usePresentation() === "phone";
   const { load, retry } = useLoad(source, () => title.current?.focus());
   const { settings, aliases, defaultModel } = useConfigurationLoads(host, { hubId, id });
-  const [takenNames, setTakenNames] = useState<readonly string[]>([]);
-  // The other agents' names, for the rename check; read again when a file changes.
-  useEffect(() => {
-    const read = () =>
-      host
-        .list()
-        .then((agents) =>
-          setTakenNames(
-            agents
-              .filter((agent) => agent.hubId === hubId && agent.id !== id)
-              .map((agent) => agent.name),
-          ),
-        )
-        .catch(() => setTakenNames([]));
-    void read();
-    return host.subscribe(() => void read());
-  }, [host, hubId, id]);
+  const takenNames = useTakenNames(host, { hubId, id });
   const { view, selectView, fresh, modelWaiting, modelShown } = useAgentView(
     hubId,
     id,
     modelRequest,
   );
+  const [configurationPage, setConfigurationPage] = useState<ConfigurationPage>("behaviour");
   const cards = useAgentCards(host, { hubId, id }, announce);
   // The page an add button on the map opens Configuration on; picking a view by hand forgets it.
   const [configurationStart, setConfigurationStart] = useState<ConfigurationStart>();
+  // On a desktop the shell's item page keeps the view, so the page learns it as each view is drawn.
+  const shownView = useRef<AgentView>(view);
+  const viewBox = useRef<HTMLDivElement>(null);
+  const itemPage = useRef<ItemPageHandle<AgentView>>(null);
   // Picking another view closes the stack: cards belong to the view they opened over (flow-agents 7).
-  const showView = (next: AgentView, start?: ConfigurationStart) => {
-    if (next !== view) cards.close();
+  // Configuration then opens on Behaviour again, as when it was drawn anew, or on the page an add
+  // button on the map asks for.
+  const pickView = (next: AgentView, start?: ConfigurationStart) => {
+    if (next !== shownView.current) cards.close();
+    if (next !== shownView.current || start !== undefined) {
+      setConfigurationPage(start?.page ?? "behaviour");
+    }
     setConfigurationStart(start);
     selectView(next);
   };
+  // A view the page opens itself is shown as a pick would show it, with focus on `focus()`'s
+  // element: the shell reopens a closed panel, or its screen in a narrow tab (flow-agents 3.4).
+  const openView = (
+    next: AgentView,
+    focus: () => HTMLElement | null,
+    start?: ConfigurationStart,
+  ) => {
+    pickView(next, start);
+    itemPage.current?.show(next, focus);
+  };
+  // Each request to open at the model shows Configuration again, where the picker takes the focus.
+  useEffect(() => {
+    if (modelRequest !== undefined) {
+      itemPage.current?.show("configuration", () => focusedIn(viewBox.current));
+    }
+  }, [modelRequest]);
   const ownCloseStack = useMemo(() => createCloseStack(), []);
   const cardsCloseStack = closeStack ?? ownCloseStack;
   const [saveFailed, setSaveFailed] = useState<string>();
-  const ids = useTabIds();
   // Resolves to whether the change was written, so a page can put its control back when it wasn't.
   const save = async (change: AgentChange): Promise<boolean> => {
     try {
@@ -235,8 +267,6 @@ export function AgentScreen({
       saving?.setFieldsNotSaved({ key: `agent/${hubId}/${id}`, title: name }, count),
     [saving, hubId, id, name],
   );
-  // Until the agent is read, its read speaks for the page whichever view is open.
-  const panel: AgentView | "read" = load.kind === "ready" ? view : "read";
   // After Undo brings a deleted agent back, its name takes the focus once the page is drawn again.
   const focusWhenBack = useRef(false);
   const titleRef = useCallback((heading: HTMLHeadingElement | null) => {
@@ -255,49 +285,11 @@ export function AgentScreen({
   if (load.kind === "failed" && load.gone === true && goToAgents !== undefined) {
     return <ItemGone kindName="agent" place="Agents" onGoTo={goToAgents} />;
   }
-  return (
-    <div className="flex size-full min-h-0 flex-col">
-      <header
-        className={
-          phone
-            ? "flex flex-col gap-3 border-b border-border px-4 py-3"
-            : "flex items-center gap-3 border-b border-border px-6 py-3"
-        }
-      >
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="relative flex min-w-0 items-center gap-3">
-            <LetterTile name={name} />
-            <div className="flex flex-col">
-              <p className="text-caption text-fg-muted">{pageWords.kind}</p>
-              {/* On a phone the top bar already names the agent, so the page keeps only its type. */}
-              <h1 ref={titleRef} tabIndex={-1} className={titleClasses(phone)}>
-                <span className="sr-only">{name}</span>
-              </h1>
-              {!phone && load.kind === "ready" && (
-                <RenameField
-                  name={name}
-                  takenNames={takenNames}
-                  onRename={(next) => void save({ name: next })}
-                />
-              )}
-            </div>
-          </div>
-          {load.kind === "ready" && (
-            <>
-              <FullAccessChip host={host} agent={{ hubId, id }} />
-              {trash.menu}
-            </>
-          )}
-        </div>
-        <TabList
-          label={pageWords.views}
-          tabs={agentTabs}
-          selected={view}
-          onSelect={showView}
-          ids={ids}
-        />
-      </header>
-      {load.kind === "ready" && (
+
+  const ready = load.kind === "ready";
+  const notice = (
+    <>
+      {ready && (
         <NotLiveLine
           host={host}
           agent={{ hubId, id }}
@@ -310,158 +302,185 @@ export function AgentScreen({
           {pageWords.couldntSave(saveFailed)}
         </p>
       )}
-      <TabPanel ids={ids} tabs={agentTabs} selected={view} className="flex min-h-0 flex-1 flex-col">
-        {panel === "read" && (
-          <div className="min-w-0 flex-1 overflow-auto p-6">
-            <AgentRead load={load} name={name} retry={retry} />
-          </div>
+    </>
+  );
+  // Until the agent is read, its read speaks for the page whichever view is open.
+  const drawView = (shown: AgentView): ReactNode => {
+    shownView.current = shown;
+    return (
+      <div ref={viewBox} className="contents">
+        {drawViewContent(shown)}
+      </div>
+    );
+  };
+  const drawViewContent = (shown: AgentView): ReactNode => {
+    if (!ready) {
+      return (
+        <div className="min-w-0 flex-1 overflow-auto p-6">
+          <AgentRead load={load} name={name} retry={retry} />
+        </div>
+      );
+    }
+    if (shown === "runs") {
+      return <RunsView host={host} agent={{ hubId, id }} name={name} openRuns={openRuns} />;
+    }
+    return (
+      <StackedCards
+        itemPath={[hubName(host, hubId), name]}
+        stack={cards.stack}
+        onChange={cards.set}
+        closeStack={cardsCloseStack}
+        // No card on this page docks, so the panel's width doesn't change how they look.
+        panelWidth={Number.POSITIVE_INFINITY}
+        renderCard={(card) => (
+          <PageCard
+            card={card}
+            host={host}
+            hubId={hubId}
+            settings={settings.load}
+            openSubagent={cards.openSubagent}
+            openAgent={openAgent}
+            announce={announce}
+          />
         )}
-        {cardViews.has(panel) && (
-          <StackedCards
-            itemPath={[hubName(host, hubId), name]}
-            stack={cards.stack}
-            onChange={cards.set}
+      >
+        {shown === "flow" ? (
+          <FlowView
+            host={host}
+            agent={{ hubId, id }}
+            name={name}
+            openAsFile={trash.openAsFile}
             closeStack={cardsCloseStack}
-            // No card on this page docks, so the panel's width doesn't change how they look.
-            panelWidth={Number.POSITIVE_INFINITY}
-            renderCard={(card) => (
-              <PageCard
-                card={card}
-                host={host}
-                hubId={hubId}
-                settings={settings.load}
-                openSubagent={cards.openSubagent}
-                openAgent={openAgent}
-                announce={announce}
-              />
+            openAgentStep={cards.openAgentStep}
+            openSubagent={cards.openSubagent}
+            openAgent={openAgent}
+            openWorkflow={openWorkflow}
+            openRoutine={openRoutine}
+            openTool={openLibrary}
+            {...mapAdds(sections, Sections, (start) =>
+              openView("configuration", () => focusAfterAdd(viewBox.current), start),
             )}
-          >
-            {panel === "flow" ? (
-              <FlowView
-                host={host}
-                agent={{ hubId, id }}
-                name={name}
-                openAsFile={trash.openAsFile}
-                closeStack={cardsCloseStack}
-                openAgentStep={cards.openAgentStep}
-                openSubagent={cards.openSubagent}
-                openAgent={openAgent}
-                openWorkflow={openWorkflow}
-                openRoutine={openRoutine}
-                openTool={openLibrary}
-                {...mapAdds(sections, Sections, showView)}
-              />
-            ) : (
-              <Configuration
-                host={host}
-                name={name}
-                load={settings.load}
-                aliases={aliases.load}
-                defaultModel={defaultModel}
-                retryAliases={aliases.retry}
-                retry={settings.retry}
-                startOnInstructions={fresh}
-                save={save}
-                openLibrary={openLibrary}
-                openSubagent={cards.openSubagent}
-                reportNotSaved={reportNotSaved}
-                announce={announce}
-                openAgentStep={cards.openAgentStep}
-                sections={sections}
-                Sections={Sections}
-                showModel={modelWaiting}
-                onModelShown={modelShown}
-                start={configurationStart}
-              />
-            )}
-          </StackedCards>
+          />
+        ) : (
+          <Configuration
+            host={host}
+            name={name}
+            load={settings.load}
+            aliases={aliases.load}
+            defaultModel={defaultModel}
+            retryAliases={aliases.retry}
+            retry={settings.retry}
+            startOnInstructions={fresh}
+            save={save}
+            openLibrary={openLibrary}
+            openSubagent={cards.openSubagent}
+            reportNotSaved={reportNotSaved}
+            announce={announce}
+            openAgentStep={cards.openAgentStep}
+            sections={sections}
+            Sections={Sections}
+            showModel={modelWaiting}
+            onModelShown={modelShown}
+            page={configurationPage}
+            onPickPage={setConfigurationPage}
+            start={configurationStart}
+          />
         )}
-        {panel === "runs" && (
-          <RunsView host={host} agent={{ hubId, id }} name={name} openRuns={openRuns} />
-        )}
-      </TabPanel>
-    </div>
+      </StackedCards>
+    );
+  };
+
+  // The header's Full access chip while the agent runs on this computer (agents.page.full-access-chip).
+  const fullAccess = <FullAccessChip host={host} agent={{ hubId, id }} />;
+  if (phone) {
+    return (
+      <AgentPhoneFrame
+        name={name}
+        titleRef={titleRef}
+        menu={
+          ready && (
+            <>
+              {fullAccess}
+              {trash.menu}
+            </>
+          )
+        }
+        views={agentTabs}
+        view={view}
+        onPickView={pickView}
+        notice={notice}
+      >
+        {drawView(view)}
+      </AgentPhoneFrame>
+    );
+  }
+  return (
+    <ItemPage<AgentView>
+      icon={<PlaceIcon name="agents" />}
+      kind={pageWords.kindWord}
+      name={name}
+      // Until the agent is read there's no name to change.
+      onRename={(next) => {
+        if (ready) void save({ name: next });
+      }}
+      check={(next) => nameProblem(next, takenNames)}
+      titleRef={titleRef}
+      actions={ready ? trash.actions : []}
+      end={ready && fullAccess}
+      views={agentTabs}
+      firstView={view}
+      handle={itemPage}
+      onPickView={pickView}
+      notice={notice}
+      closeStack={closeStack}
+      chat={{
+        startsOpen: true,
+        render: () => (
+          <TryItPanel
+            host={host}
+            agent={{ hubId, id }}
+            settings={settings.load}
+            retry={settings.retry}
+            ways={{
+              goToKeyField: () => openKeyField?.(),
+              openHarness: () => {
+                openView("configuration", () => pickedPageTab(viewBox.current));
+                setConfigurationPage("harness");
+              },
+            }}
+            sandboxStartCheck={sandboxStartCheck}
+            announce={(text, politeness) => announce?.(text, politeness)}
+          />
+        ),
+      }}
+    >
+      {drawView}
+    </ItemPage>
   );
 }
 
-/**
- * What the agent map's add buttons do: each opens Configuration on its page, Add subagent with its
- * dialog open. Add trigger is there only once a feature adds the Triggers section, and asks that
- * section to start adding, as its own Add trigger would, so the Prompt shows at once.
- */
-function mapAdds(
-  sections: readonly ItemPageSectionListing[] | undefined,
-  Sections: ComponentType<SectionsProps> | undefined,
-  showView: (view: AgentView, start: ConfigurationStart) => void,
-) {
-  const triggers =
-    Sections === undefined ? undefined : sections?.find((each) => each.id === "triggers");
-  return {
-    addTrigger:
-      triggers &&
-      (() =>
-        showView("configuration", {
-          page: `section:${triggers.id}`,
-          focus: true,
-          step: SECTION_ADD_STEP,
-        })),
-    addTool: () => showView("configuration", { page: "tools", focus: true }),
-    addSubagent: () => showView("configuration", { page: "subagents", adding: true }),
-  };
+/** The names of the hub's other agents, for the rename check; read again when a file changes. */
+function useTakenNames(host: AgentsHost, { hubId, id }: AgentRef): readonly string[] {
+  const [takenNames, setTakenNames] = useState<readonly string[]>([]);
+  useEffect(() => {
+    const read = () =>
+      host
+        .list()
+        .then((agents) =>
+          setTakenNames(
+            agents
+              .filter((agent) => agent.hubId === hubId && agent.id !== id)
+              .map((agent) => agent.name),
+          ),
+        )
+        .catch(() => setTakenNames([]));
+    void read();
+    return host.subscribe(() => void read());
+  }, [host, hubId, id]);
+  return takenNames;
 }
 
 /** The hub's name for the breadcrumb, else its id while the hubs aren't read. */
 function hubName(host: AgentsHost, hubId: string): string {
   return host.hubs().find((hub) => hub.id === hubId)?.name ?? hubId;
 }
-
-/**
- * The agent while it is read, whichever view is open: a skeleton after 300 ms, then "Still
- * loading" with **Try again**, or why it couldn't be read.
- */
-function AgentRead({
-  load,
-  name,
-  retry,
-}: {
-  readonly load: Load<AgentListing>;
-  readonly name: string;
-  readonly retry: () => void;
-}) {
-  if (load.kind === "failed") {
-    return (
-      <EmptyState
-        tone="error"
-        title={pageWords.loadFailedTitle}
-        description={load.reason}
-        action={{ label: pageWords.tryAgain, onClick: retry, busy: load.retrying }}
-      />
-    );
-  }
-  if (load.kind === "ready" || !load.skeleton) return null;
-  return (
-    <div role="status" className="flex flex-col gap-4">
-      <span className="sr-only">{pageWords.loading(name)}</span>
-      <SkeletonBar kind="value" />
-      <SkeletonBar kind="value" />
-      {load.slow && (
-        <p className="flex items-center gap-3 text-small text-fg-muted">
-          {pageWords.stillLoading}
-          <Button variant="secondary" size="sm" onClick={retry}>
-            {pageWords.tryAgain}
-          </Button>
-        </p>
-      )}
-    </div>
-  );
-}
-
-/** The views stacked cards open over: a subagent or an agent step opens from either. */
-const cardViews: ReadonlySet<AgentView | "read"> = new Set(["flow", "configuration"]);
-
-/** The page's views, as far as they are built: the Try it chat joins them later. */
-const agentTabs: readonly Tab<AgentView>[] = [
-  { id: "flow", label: mapWords.tab },
-  { id: "configuration", label: configurationWords.tab },
-  { id: "runs", label: pageWords.runsHeading },
-];

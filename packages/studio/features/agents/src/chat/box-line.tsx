@@ -75,11 +75,11 @@ export function TryItBoxLine({
       </ChatBoxLine>
     );
   }
-  const program = configurationWords.harnessNames[problem.harness];
-  const sentence =
-    problem.strip === "not-installed"
-      ? configurationWords.stripNotInstalled(name, program)
-      : configurationWords.stripTooOld(name, program);
+  const sentence = harnessSentence(
+    problem.strip,
+    name,
+    configurationWords.harnessNames[problem.harness],
+  );
   return (
     <ChatBoxLine
       tone="warning"
@@ -88,4 +88,16 @@ export function TryItBoxLine({
       {sentence}
     </ChatBoxLine>
   );
+}
+
+/** The Harness page strip's sentence for `strip`, so the chat and the page say the same. */
+function harnessSentence(strip: HarnessStrip, agent: string, program: string): string {
+  switch (strip) {
+    case "not-installed":
+      return configurationWords.stripNotInstalled(agent, program);
+    case "too-old":
+      return configurationWords.stripTooOld(agent, program);
+    case "signed-out":
+      return configurationWords.stripSignedOut(agent, program);
+  }
 }

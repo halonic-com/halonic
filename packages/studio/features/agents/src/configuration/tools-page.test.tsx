@@ -69,7 +69,11 @@ verifies("agents.configuration.tools", () => {
       "Subagents",
       "Agent steps",
     ]);
-    expect([...page.querySelectorAll("section h2")].map((h) => h.textContent)).toEqual([
+    // The Try it chat beside the panel has its own h2, so look only in the Tools page.
+    const tools = page.querySelector(
+      `#${pages.querySelector("[aria-selected=true]")?.getAttribute("aria-controls")}`,
+    );
+    expect([...(tools?.querySelectorAll("section h2") ?? [])].map((h) => h.textContent)).toEqual([
       "Skills",
       "Knowledge",
       "Connectors",
