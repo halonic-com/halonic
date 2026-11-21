@@ -102,6 +102,11 @@ Var RollbackMode
 ; sets both and refuses to pack without them.
 !define SRTSETUPVERSION "$%HALONIC_SRT_SETUP_VERSION%"
 !define SETUPGUARD "$%HALONIC_SETUP_GUARD%"
+; .onInit unpacks the guard and nsExec. With /SOLID, anything not reserved
+; here sits behind the app's files, and NSIS shows its "Unpacking data"
+; window while it gets there, before any page or message.
+ReserveFile "${SETUPGUARD}"
+ReserveFile /plugin nsExec.dll
 Var SandboxState
 Var ShortcutState
 Var SandboxOutcome
