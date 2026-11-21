@@ -5,6 +5,7 @@ import type {
   TunnelReason,
 } from "@halonicjs/ports";
 import { AsyncFeed } from "@halonicjs/std";
+import { RemoteRefusal } from "./remote-refusal.ts";
 
 /** What a pairing session asks of the host that opened it. */
 export interface PairingSessionOwner {
@@ -56,7 +57,7 @@ export class HostPairingSession implements PairingSession {
   }
 
   newCode(): Promise<void> {
-    if (this.over) return Promise.reject(new Error("An ended pairing gives no new code."));
+    if (this.over) return Promise.reject(new RemoteRefusal("An ended pairing gives no new code."));
     return this.#owner.newCode(this);
   }
 
@@ -83,7 +84,9 @@ export class HostPairingSession implements PairingSession {
 
   #answer(allow: boolean): Promise<void> {
     if (this.last?.type !== "check") {
-      return Promise.reject(new Error("Allow and Don't allow wait for a phone's check code."));
+      return Promise.reject(
+        new RemoteRefusal("Allow and Don't allow wait for a phone's check code."),
+      );
     }
     return this.#owner.decide(this, allow);
   }

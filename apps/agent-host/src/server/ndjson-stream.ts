@@ -43,6 +43,10 @@ export function startNdjsonStream(response: ServerResponse): NdjsonStream {
     markEnded();
   };
   response.once("close", finish);
+  // A route may await before it starts the stream (opening a pairing does). A
+  // caller that left during that wait has already fired `close`, which never
+  // fires again, so the stream would never end and would hold what it serves.
+  if (response.destroyed || response.socket?.destroyed === true) finish();
 
   return {
     send(value) {

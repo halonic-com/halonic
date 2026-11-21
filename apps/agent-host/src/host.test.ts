@@ -199,6 +199,36 @@ describe("run", () => {
     await expect(fetch(`${handshake.url}/v1/health`)).rejects.toThrow();
     expect(lines).toHaveLength(1);
   });
+
+  verifies("agent-host.remote-not-offered", () => {
+    it("serves remote as not offered: unavailable, and no pairing opens", async () => {
+      const { io, input, lines, nextLine } = starter();
+      const running = run([], "1.2.3", io);
+      await nextLine();
+      const handshake = JSON.parse(lines[0] ?? "") as Handshake;
+      const headers = { authorization: `Bearer ${handshake.token}` };
+
+      const leave = new AbortController();
+      const state = await fetch(`${handshake.url}/v1/remote/state`, {
+        headers,
+        signal: leave.signal,
+      });
+      const reader = (state.body as ReadableStream<Uint8Array>).getReader();
+      const first = new TextDecoder().decode((await reader.read()).value);
+      expect(JSON.parse(first.split("\n")[0] ?? "")).toMatchObject({ available: false, on: false });
+      leave.abort();
+
+      const pairing = await fetch(`${handshake.url}/v1/remote/pairing`, {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: "{}",
+      });
+      expect(pairing.status).toBe(409);
+
+      input.end();
+      expect(await running).toBe(0);
+    });
+  });
 });
 
 describe("run with the Google routes", () => {

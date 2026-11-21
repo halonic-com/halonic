@@ -57,6 +57,34 @@ describe("startNdjsonStream", () => {
     await expect(stream.ended).resolves.toBeUndefined();
   });
 
+  it("ends at once when the caller left before the stream started", async () => {
+    let markReceived: () => void = () => {};
+    const received = new Promise<void>((resolve) => {
+      markReceived = resolve;
+    });
+    let markStarted: (stream: NdjsonStream) => void = () => {};
+    const started = new Promise<NdjsonStream>((resolve) => {
+      markStarted = resolve;
+    });
+    const listening = createServer((_request, response) => {
+      markReceived();
+      // As a route that awaits first would: start only after the caller has gone.
+      response.once("close", () => markStarted(startNdjsonStream(response)));
+    });
+    server = listening;
+    await new Promise<void>((resolve) => listening.listen(0, "127.0.0.1", resolve));
+    const { port } = listening.address() as AddressInfo;
+    const caller = request({ host: "127.0.0.1", port });
+    // The caller hangs up on purpose, so its socket error is expected.
+    caller.on("error", () => {});
+    caller.end();
+
+    await received;
+    caller.destroy();
+    const stream = await started;
+    await expect(stream.ended).resolves.toBeUndefined();
+  });
+
   it("ends, and drops what waits, when the caller stops reading", async () => {
     const { stream, answer } = await openStream();
     answer.pause();
