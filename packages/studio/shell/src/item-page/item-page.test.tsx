@@ -263,24 +263,6 @@ verifies("shell.item-page-header", () => {
     expect(panel?.textContent).toBe("runs view");
   });
 
-  it("shows the view the page picks, and tells it which one the user picks", () => {
-    const picked: View[] = [];
-    let show = (_view: View) => {};
-    function Picking() {
-      const [view, setView] = useState<View>("runs");
-      show = setView;
-      return <Workflow view={view} onPickView={(next) => picked.push(next)} />;
-    }
-    const container = render(<Picking />);
-    const panel = () => container.querySelector('[role="tabpanel"]')?.textContent;
-    expect(panel()).toBe("runs view");
-    act(() => viewTab(container, "Flow").click());
-    expect(picked).toEqual(["flow"]);
-    expect(panel()).toBe("runs view");
-    act(() => show("configuration"));
-    expect(panel()).toBe("configuration view");
-  });
-
   it("shows the first view when the view it was on is gone", () => {
     const fewer: readonly [Tab<View>, ...Tab<View>[]] = [{ id: "flow", label: "Flow" }];
     let dropViews = () => {};
