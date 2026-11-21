@@ -153,7 +153,7 @@ function LoadedSkillPage({
     );
   }
   if (!loaded) {
-    return <p className="px-4 py-5 text-small text-fg-muted">{skillWords.loading(item.id)}</p>;
+    return <p className="px-4 py-5 text-small text-fg-muted">{skillWords.loading}</p>;
   }
   if (unreadable || parts === undefined) {
     return <EmptyState title={skillWords.unreadable} />;

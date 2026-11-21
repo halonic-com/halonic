@@ -14,7 +14,8 @@ export const skillWords = {
   otherHeaderHint: "Kept as they are. Edit them in the file.",
   files: "Files in this skill",
   notUsed: "No agent uses this skill yet. Add it under an agent's Tools.",
-  loading: (name: string) => `Loading ${name}`,
+  /** Never the id while it loads: that is a file name, not the name people gave the skill. */
+  loading: "Loading the skill…",
   couldntLoad: "Couldn't load this skill",
   tryAgain: "Try again",
   unreadable: "This skill's file can't be read here. Open it as a file to fix its header.",

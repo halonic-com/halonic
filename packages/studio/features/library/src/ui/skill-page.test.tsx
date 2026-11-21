@@ -131,6 +131,13 @@ verifies("library.skill-page", () => {
       expect(openItem).toHaveBeenCalledWith({ kind: "file", hub: "~workspace", id: "r.md" });
     });
 
+    it("says it is loading the skill while it reads, never its file name", () => {
+      const { props } = setup();
+      const root = render(<SkillPage {...props} />);
+      expect(root.textContent).toBe("Loading the skill…");
+      expect(root.textContent).not.toContain("refunds");
+    });
+
     it("leaves out the header and files rows when there is nothing to show, and says no agent uses it", async () => {
       const { props } = setup({
         text: "---\nname: Refunds\ndescription: Use\n---\nBe kind.\n",

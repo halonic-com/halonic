@@ -124,6 +124,13 @@ verifies("library.knowledge-page", () => {
       expect(openItem).toHaveBeenCalledWith({ kind: "agent", hub: "~workspace", id: "support" });
     });
 
+    it("says it is loading the source while it reads, never its file name", () => {
+      const { props } = setup();
+      const root = render(<KnowledgePage {...props} />);
+      expect(root.textContent).toBe("Loading the source…");
+      expect(root.textContent).not.toContain("handbook");
+    });
+
     it("says what is missing: no summary, nobody using it, no notes line", async () => {
       const { props } = setup({ text: "id: handbook\nprovider: files\n", source: "Folder docs" });
       const root = render(<KnowledgePage {...props} />);
