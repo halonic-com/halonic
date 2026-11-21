@@ -3,6 +3,7 @@
 - Task: HAL-1302 (T9)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-1360 (ux-checklists-t8-t9, part 2, 2.8 and decision C-D4)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:1AeyWHMy+q3SPYnzDEcmPMROs7+XL8WAdLhPPza8bxOLfs7cNubFHXPnGBsmGrTCtMgTM33Bq1Gsgl4QUk9XDg==
 
 ## What changes
 
