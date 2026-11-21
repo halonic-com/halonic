@@ -24,7 +24,7 @@ export function FirstRunSetupView({ item, firstRun, openItem, close }: FirstRunS
   const reached = step === undefined ? firstRunSteps.length : firstRunSteps.indexOf(step);
   return (
     <section className="flex flex-col gap-4 p-6">
-      <h2 ref={title} tabIndex={-1} className="text-title outline-none">
+      <h2 ref={title} tabIndex={-1} className="text-title">
         {item.title}
       </h2>
       <div className="flex flex-col gap-2">
