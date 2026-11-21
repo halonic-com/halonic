@@ -2,6 +2,7 @@
 
 - Approval: Liam planned it on HAL-13406 (first-run-progress 4.2, sized on HAL-8005 item 1); Mateo checked it on HAL-14801 and Julian signs, because Liam wrote it
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:1YCBKEpSguwkAcv7QnbNGpWpOmH7g9AtuU7oJPED6d/zd6P2cuf/r2Na7n8uKwosU1yM2/I+q3wXYrVGD/svCQ==
 - Task: HAL-13406
 
 ## What changes
