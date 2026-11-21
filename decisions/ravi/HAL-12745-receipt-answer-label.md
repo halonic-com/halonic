@@ -3,6 +3,7 @@
 - Task: HAL-12745, from Liam's review of HAL-12727 (PR #3735, finding L8)
 - Approval: Liam, in review of HAL-12745 (his signature is added there)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qT2EghhOxFxKp3zYWZuFJCveLaeOp9rskECsqK1FHGOzfjcV899+KFEiPnRmHOr4Hew4vCSQgy8aSNRaBAc+BQ==
 
 ## What changes
 
