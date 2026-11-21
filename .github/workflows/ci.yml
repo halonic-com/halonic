@@ -466,7 +466,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [adapters-a, adapters-b, features-a, features-b, core, studio-testing, apps-host, tooling-targets]
+        shard:
+          - adapters-a
+          - adapters-b
+          - features-a
+          - features-b
+          - core
+          - studio-testing
+          - apps-host
+          - tooling-targets
     # The key that signs the remote cache's entries lives in the environment
     # `turbo-cache-write`, which only `main` and the merge queue may use
     # (deployment branch rule). Only a push to `main` gets a token that can
