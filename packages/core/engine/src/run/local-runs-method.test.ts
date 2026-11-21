@@ -94,7 +94,7 @@ verifies("engine.task-method", () => {
 
   it("names the run in the scope of its model call, so a model can start afresh for each run", async () => {
     const { scopes } = await runMethod([textAnswer("Dear support")]);
-    expect(scopes).toEqual([{ runId: "run_1" }]);
+    expect(scopes.map((scope) => scope?.runId)).toEqual(["run_1"]);
   });
 
   it("offers only the tools the method names, and none for []", async () => {

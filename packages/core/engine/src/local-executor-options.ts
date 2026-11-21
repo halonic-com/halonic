@@ -9,8 +9,10 @@ import type {
   RecordStore,
   Secrets,
 } from "@halonicjs/ports";
+import type { StopSignal } from "@halonicjs/std";
 import type { ListedToolApproval } from "./agent/listed-tool-approval.ts";
 import type { ResolvedModel } from "./agent/model-chain.ts";
+import type { TurnLog } from "./agent/turn-log.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
 import type { AgentKnowledgeOptions } from "./knowledge/agent-knowledge.ts";
 import type { AbortOnStop } from "./run/abort-on-stop.ts";
@@ -19,6 +21,16 @@ import type { LocalRunsOptions } from "./run/local-runs-options.ts";
 /** The run a model call is made in. A chat turn has none. */
 export interface ModelScope {
   readonly runId: string;
+  /**
+   * The run's log, for a host that writes what a person answered while the model was picked
+   * (`key-origin.answered`, requirement `engine.model-scope-log`).
+   */
+  readonly log?: TurnLog;
+  /**
+   * Told to stop when the run's call is stopped, so a host that waits for a person while the
+   * model is picked stops waiting too. A subagent's call has none.
+   */
+  readonly stop?: StopSignal;
 }
 
 /** What a {@link LocalExecutor} works with. Everything comes in here: no registry, no adapters. */

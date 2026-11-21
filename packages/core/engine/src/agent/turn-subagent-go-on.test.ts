@@ -120,7 +120,11 @@ function lastToolMessage(model: ScriptedModel): ChatMessage | undefined {
 function agentAndToolEvents(log: MemoryTurnLog): string[] {
   return log.events
     .filter((event) => event.type.startsWith("agent.") || event.type.startsWith("tool."))
-    .map((event) => [event.type, event.agent, "tool" in event ? event.tool : ""].join(" ").trim());
+    .map((event) =>
+      [event.type, "agent" in event ? event.agent : "", "tool" in event ? event.tool : ""]
+        .join(" ")
+        .trim(),
+    );
 }
 
 /** The writer stopped two levels deep, where the reader's model called `readerCall`. */

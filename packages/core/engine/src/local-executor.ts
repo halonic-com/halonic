@@ -51,11 +51,10 @@ import { runsOptionsOf } from "./run/local-runs-options.ts";
 import { runAgentTools } from "./run/run-agent-tools.ts";
 import { RunsConnectors } from "./run/run-connectors.ts";
 import { runModelCall } from "./run/run-model-call.ts";
-import { RunStoreTurnLog } from "./run/run-store-turn-log.ts";
+import { runTurnLogOf } from "./run/run-store-turn-log.ts";
 import { AgentMemory } from "./tools/agent-memory/agent-memory.ts";
 import { memoryTools } from "./tools/agent-memory/memory-tools.ts";
 import { knowledgeTools } from "./tools/knowledge/knowledge-tools.ts";
-import { LargeResultsTurnLog } from "./tools/large-results.ts";
 
 /** The round limit of a chat turn when the options don't set one. */
 export const defaultMaxRounds = 20;
@@ -399,7 +398,7 @@ export class LocalExecutor implements RunExecutor {
           {
             turn,
             resolveModel: (request) =>
-              this.options.resolveModel(request, { runId: turn.run.runId }),
+              this.options.resolveModel(request, { runId: turn.run.runId, log: turn.log }),
             secrets: this.options.secrets,
             clock: this.options.clock,
             connectorsOfRun: () => this.connectorsOfRun(turn.run),
@@ -445,7 +444,8 @@ export class LocalExecutor implements RunExecutor {
     return runModelCall({
       turn,
       call,
-      resolveModel: (request) => this.options.resolveModel(request, { runId: run.runId }),
+      resolveModel: (request) =>
+        this.options.resolveModel(request, { runId: run.runId, log: turn.log, stop }),
       secrets: this.options.secrets,
       clock: this.options.clock,
       ...(connectorCalls === undefined
@@ -471,9 +471,8 @@ export class LocalExecutor implements RunExecutor {
   }
 
   /**
-   * The log a run's model call writes its turn to: the run's own log
-   * ({@link RunStoreTurnLog}), with a tool result over 256 KB in the blob
-   * store ({@link LargeResultsTurnLog}).
+   * The log a run's model call writes its turn to ({@link runTurnLogOf}), in the runs' watched
+   * store, so the run's subscribers hear of the turn's events.
    *
    * @throws when the executor has no runs, which only a run's call can't be
    */
@@ -481,11 +480,7 @@ export class LocalExecutor implements RunExecutor {
     if (this.runs === undefined || this.options.runs === undefined) {
       throw new Error(`Run ${run.runId}'s model call has no run store to log to.`);
     }
-    // The runs' watched store, so the run's subscribers hear of the turn's events.
-    return new LargeResultsTurnLog(
-      new RunStoreTurnLog(this.runs.store, run, call, this.options.clock),
-      this.options.runs.blobs,
-    );
+    return runTurnLogOf(this.runs.store, this.options.runs.blobs, run, call, this.options.clock);
   }
 
   /** The definitions the run started with. */

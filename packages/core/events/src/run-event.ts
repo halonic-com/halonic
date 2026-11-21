@@ -1,6 +1,8 @@
 import type { AgentResume } from "./agent-resume.ts";
 import type { ConnectorListingFailedEvent } from "./connector-listing-failed.ts";
 import type { ConnectorPartOffEvent } from "./connector-part-off.ts";
+import type { ConnectorStartedEvent } from "./connector-started.ts";
+import type { KeyOriginAnsweredEvent } from "./key-origin-answered.ts";
 import type {
   ApprovalResolver,
   CantTryStep,
@@ -276,20 +278,10 @@ export type RunEventBody =
       block: LoggedSandboxBlock;
       count: number;
     }
-  /**
-   * A step is about to call a connector's program (requirement `events.connector-started`).
-   * `connector`: its id in the workspace. `timeoutMs`: how long the engine waits for it; every
-   * wait has a limit. Logged before the call, so a screen can say what the step is waiting for.
-   */
-  | {
-      type: "connector.started";
-      state: string;
-      agent: string;
-      connector: string;
-      timeoutMs: number;
-    }
+  | ConnectorStartedEvent
   | ConnectorListingFailedEvent
   | ConnectorPartOffEvent
+  | KeyOriginAnsweredEvent
   /**
    * A step is about to make a connector call that can change things
    * (requirement `events.effect-requested`). Written before the call, so a
