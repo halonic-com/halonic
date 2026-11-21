@@ -15,8 +15,9 @@
 //!   iOS will use a Secure Enclave key the same way.
 //! - [`WrappedFileStore`]: the [`DeviceKeyStore`] the phone uses, one sealed
 //!   file per computer.
-//! - [`PairedComputers`]: the computers the phone is paired with, each one's
-//!   [`ComputerDetails`] next to its key, forgotten together.
+//! - [`PairedComputers`]: the computers the phone has paired with, each
+//!   one's [`ComputerDetails`] and [`Standing`] next to its key. Removed
+//!   wipes the key and keeps the entry; Forget deletes both.
 //! - [`check_store_contract`] and [`check_wrapper_contract`]: the behaviour
 //!   every store and every wrapper must show. [`FakeWrapper`] is for tests.
 //!
@@ -45,11 +46,11 @@ mod paired_tests;
 
 pub use computer::{ComputerId, MAX_COMPUTER_ID_LENGTH};
 pub use contract::{check_store_contract, check_wrapper_contract};
-pub use details::ComputerDetails;
+pub use details::{ComputerDetails, MAX_ENDPOINTS, Standing};
 pub use error::DeviceKeyError;
 pub use fake::FakeWrapper;
 pub use file_store::WrappedFileStore;
 pub use key::{DeviceKeyPair, KEY_BYTES, PrivateKey};
-pub use paired::{PairedComputer, PairedComputers};
+pub use paired::{NewPairing, PairedComputer, PairedComputers};
 pub use store::DeviceKeyStore;
 pub use wrapper::KeyWrapper;

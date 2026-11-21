@@ -24,9 +24,10 @@ impl ComputerId {
         Ok(Self(id.to_owned()))
     }
 
-    /// The id the phone keeps for a computer: its pinned static key in
-    /// lowercase hex, 64 characters. Pairing with the same computer again
-    /// gives the same id, so the new pairing replaces the old one.
+    /// The id the phone gives a computer it hasn't listed: the computer's
+    /// static key in lowercase hex, 64 characters. A computer keeps its id
+    /// when the phone pairs with it again, even with a new key
+    /// ([`crate::PairedComputers::add`]).
     pub fn for_host_key(host_key: &[u8; KEY_BYTES]) -> Self {
         let hex = host_key.iter().map(|byte| format!("{byte:02x}")).collect();
         Self(hex)
