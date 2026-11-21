@@ -1,5 +1,4 @@
 ---
-"@halonicjs/studio-kit": minor
 "@halonicjs/app-studio": patch
 ---
 
