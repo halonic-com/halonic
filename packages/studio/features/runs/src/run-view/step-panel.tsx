@@ -4,16 +4,10 @@ import { useEffect, useMemo, useRef } from "react";
 import { stepEventsWords } from "../run-words.ts";
 import { BlockedSitesPanel } from "./blocked-sites.tsx";
 import type { StepEntry } from "./every-step-model.ts";
-import { failedCallWords } from "./failed-call-words.ts";
-import { fillWords } from "./fill-words.tsx";
+import { FailedCallLine } from "./failed-call-line.tsx";
 import { noConnectionProven, stepSandboxes } from "./sandbox-model.ts";
 import { SandboxOffPanel, SandboxPanel, sayText } from "./sandbox-panel.tsx";
-import {
-  type FailedCall,
-  stepBlockedSites,
-  stepChildRuns,
-  stepEvents,
-} from "./step-events-model.ts";
+import { stepBlockedSites, stepChildRuns, stepEvents } from "./step-events-model.ts";
 
 /** Props for {@link StepPanel}. */
 export interface StepPanelProps {
@@ -168,29 +162,6 @@ export function StepPanel({
         ))}
       </SidePanel>
     </div>
-  );
-}
-
-/**
- * "✕ Didn't work: the tool `create_note` (*notes-mcp*) broke off without an answer, …", under a
- * tool call that failed, outside its fold so it shows while the arguments are closed. The ✕ is
- * drawn only; a screen reader hears the words.
- */
-function FailedCallLine({ tool, failed }: { readonly tool: string; readonly failed: FailedCall }) {
-  const words =
-    failed.reason === undefined
-      ? fillWords(failedCallWords, "failed")
-      : fillWords(failedCallWords, failed.connector === undefined ? "noAnswer" : "noAnswerFrom", {
-          tool: <code className="font-mono">{tool}</code>,
-          connector: <em>{failed.connector}</em>,
-        });
-  return (
-    <p className="px-4 pb-3 text-small text-fg-muted">
-      <span aria-hidden="true" className="text-danger">
-        ✕{" "}
-      </span>
-      {words}
-    </p>
   );
 }
 
