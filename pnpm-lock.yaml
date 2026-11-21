@@ -957,6 +957,9 @@ importers:
 
   packages/adapters/doctor-node:
     dependencies:
+      '@halonicjs/adapter-fs-node':
+        specifier: workspace:*
+        version: link:../fs-node
       '@halonicjs/adapter-http-kit':
         specifier: workspace:*
         version: link:../http-kit
@@ -982,9 +985,6 @@ importers:
         specifier: workspace:*
         version: link:../../core/workspace
     devDependencies:
-      '@halonicjs/adapter-fs-node':
-        specifier: workspace:*
-        version: link:../fs-node
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec

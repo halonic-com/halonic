@@ -5,6 +5,7 @@
 // outside host count as local (requirement `workspace.local-only-sheet-hosts`).
 // The trust check shows a plugin connector's hosts from the same list (HAL-14860).
 
+import { workspaceIntegrations } from "@halonicjs/adapter-doctor-node";
 import { type PluginEntry, readIntegrationSheets } from "@halonicjs/app";
 import {
   type IntegrationHost,
@@ -16,7 +17,6 @@ import type { DefinitionSource } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import { openPluginService } from "./plugin-host.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
-import { workspaceIntegrations } from "./workspace-trust.ts";
 
 /** The hosts each installed plugin may reach, its backend's and its local tools', by the plugin's id. */
 export type PluginHosts = SheetHosts["plugins"];

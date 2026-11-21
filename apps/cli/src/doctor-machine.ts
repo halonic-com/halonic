@@ -6,10 +6,12 @@
 
 import { arch, platform } from "node:os";
 import {
+  findCommand,
   type MachineWorkspace,
   doctorService as machineDoctorService,
   type DoctorMachine as NodeDoctorMachine,
   trustedOnMachine as machineTrustedOnMachine,
+  nodeCommandSearch,
 } from "@halonicjs/adapter-doctor-node";
 import { FileAgentPlacementStore, FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
@@ -18,7 +20,6 @@ import { AgentPlacement, type DoctorService, type DoctorWorkspace } from "@halon
 import type { Secrets } from "@halonicjs/ports";
 import { placementFolder, profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
-import { findCommand, nodeCommandSearch } from "./command-paths.ts";
 import { type AddedPlugins, addedPluginsOf } from "./connector-plugin.ts";
 import { networkProblemOf } from "./doctor-network.ts";
 import { engineHttp } from "./engine-http.ts";

@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@halonicjs/adapter-fs-node": "workspace:*",
     "@halonicjs/adapter-http-kit": "workspace:*",
     "@halonicjs/adapter-workspace-models": "workspace:*",
     "@halonicjs/app": "workspace:*",
@@ -22,7 +23,6 @@
     "@halonicjs/workspace": "workspace:*"
   },
   "devDependencies": {
-    "@halonicjs/adapter-fs-node": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",

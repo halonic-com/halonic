@@ -1,9 +1,9 @@
 // The local integrations whose sheets a run may take declared tools from
 // (requirement `workspace.declared-tools`): only when a trust check passed.
 
+import { workspaceIntegrations } from "@halonicjs/adapter-doctor-node";
 import type { TrustGrant } from "@halonicjs/ports";
 import type { LocalIntegrationInput } from "@halonicjs/workspace";
-import { workspaceIntegrations } from "./workspace-trust.ts";
 
 /**
  * The workspace's local integrations as a run starts, or `undefined` when

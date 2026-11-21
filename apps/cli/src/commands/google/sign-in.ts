@@ -8,6 +8,7 @@
 // failure is told by its kind only.
 
 import { realpath } from "node:fs/promises";
+import { workspaceIntegrations } from "@halonicjs/adapter-doctor-node";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import {
   googleSetupSubject,
@@ -40,7 +41,7 @@ import { printable } from "../../output/printable.ts";
 import { proxySetting } from "../../proxy-setting.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts";
-import { workspaceIntegrations, workspaceNameOf } from "../../workspace-trust.ts";
+import { workspaceNameOf } from "../../workspace-trust.ts";
 import { prepareTokenKey } from "./prepare-token-key.ts";
 import { readSetup } from "./read-setup.ts";
 
