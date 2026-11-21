@@ -96,7 +96,7 @@ export function LiteCheckDialog({
     >
       <div className="flex flex-col gap-3">
         <p className="text-small text-fg-muted">{start.about}</p>
-        <p>{liteCheckWords.intro}</p>
+        <p>{liteCheckWords.intro(view.kind === "ready")}</p>
         <div className="flex items-center justify-between gap-3">
           <p role="status" className="text-body-strong">
             {lines === undefined ? liteCheckWords.checking : checkHeading(lines)}

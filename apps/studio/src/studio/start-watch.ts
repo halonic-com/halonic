@@ -63,7 +63,8 @@ function isStartReport(answer: unknown): answer is StartReport {
  * Halonic's start for Welcome (`studio.start-watch`, first-run-progress 3.2): it tells the window
  * the page is ready (`engine_ready`), which starts the agent host, then asks `start_status` once
  * a second until the start is ready. A failed start is asked on too, because a host that starts
- * late still turns it ready. **Try again** is a new `engine_ready`; **Check this computer** is
+ * late still turns it ready; it keeps the seconds of its first failed answer, so the report says
+ * when the start failed. **Try again** is a new `engine_ready`; **Check this computer** is
  * the window's `lite_check`. When the window can't answer twice in a row, or answers something
  * else, the start reads as ready and the watch stops asking.
  *
@@ -88,6 +89,11 @@ export function watchStart(
   let round = 0;
   /** The `start_status` calls that failed in a row. */
   let misses = 0;
+  /**
+   * The seconds of this try's first failed answer. The shell keeps counting after a failure, but
+   * the report says when the start failed, not when it was copied (C525-2).
+   */
+  let failedAfter: number | undefined;
 
   const askAgain = (mine: number) => {
     timer = timers.setTimeout(() => void ask(mine), startPollMs);
@@ -107,15 +113,24 @@ export function watchStart(
       askAgain(mine);
       return;
     }
-    report = isStartReport(answer) ? answer : cantTell;
+    report = heldFailure(isStartReport(answer) ? answer : cantTell);
     for (const listener of listeners) listener();
     if (report.state !== "ready") {
       askAgain(mine);
     }
   };
+  const heldFailure = (answer: StartReport): StartReport => {
+    if (answer.state !== "failed") {
+      failedAfter = undefined;
+      return answer;
+    }
+    failedAfter ??= answer.seconds;
+    return { ...answer, seconds: failedAfter };
+  };
   const begin = async () => {
     const mine = ++round;
     misses = 0;
+    failedAfter = undefined;
     timers.clearTimeout(timer);
     try {
       await ipc.invoke("engine_ready");
