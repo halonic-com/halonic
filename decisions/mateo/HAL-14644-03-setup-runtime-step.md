@@ -3,6 +3,7 @@
 - Task: HAL-14644
 - Approval: the task asks for this change (plan on HAL-14644, part 3); Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:VeKV8Q2/74pSBPJq3iUIm1GEn98RwoKAZcmWGpVhUR+35GOW/t01dqrWG9IxWUf6zW0ZLrbZBBrYVA1OhT57AA==
 
 ## What changes
 
