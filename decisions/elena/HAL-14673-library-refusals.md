@@ -3,6 +3,7 @@
 - Task: HAL-14673
 - Approval: the follow-up HAL-14673 of HAL-14672 asks for the page engine's refusals and waiting tools to reach the Library's refusals list, with a test; decided by the team on HAL-14673.
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:hYMVjIFWg+xNePIGZnFvVcjV0/wz2TXtOzZ9nw1DZHCrTDONPpjJskES6nPQlMtkWxGpSw9RrpVOrWPgxDrgDQ==
 
 ## What changes
 
