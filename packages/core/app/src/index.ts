@@ -57,6 +57,16 @@ export {
   type PinnedPackage,
   type PinRegistry,
 } from "./connector-pin.ts";
+export { type ChosenDeployment, chooseDeployment } from "./deploy/choose-deployment.ts";
+export { type DeployNews, deployNews, hasNews } from "./deploy/deploy-news.ts";
+export {
+  createDeployService,
+  type DeployInput,
+  type DeployOutcome,
+  type DeployQuestions,
+  type DeployService,
+  type DeployServiceDeps,
+} from "./deploy/deploy-service.ts";
 export {
   type DetectedHarness,
   type DoctorLine,
