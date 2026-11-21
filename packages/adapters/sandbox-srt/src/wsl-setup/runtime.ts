@@ -23,7 +23,7 @@ export interface WslRuntime {
 /**
  * Why the runtime isn't in place.
  *
- * - `runtime-busy`: a sandbox session runs in the distro, so the updater changes nothing; run the setup again once it ends.
+ * - `runtime-busy`: a sandbox session runs in the distro, or another install, rollback or security update holds the updater's lock, so the updater changes nothing; run the setup again once it ends.
  * - `runtime-install-failed`: the updater refused the archive or failed. The same archive won't do better, so Studio needs reinstalling.
  */
 export interface WslRuntimeFailure {
@@ -34,6 +34,7 @@ export interface WslRuntimeFailure {
 /** The updater's exit codes the step tells apart (see `infra/wsl-image/README.md`). */
 const EXIT_WRONG_USE = 2;
 const EXIT_BUSY = 3;
+const EXIT_LOCKED = 8;
 
 /**
  * The `current` version in `halonic-runtime status`'s output, or `null` when
@@ -77,6 +78,8 @@ export async function ensureWslRuntime(
   ) {
     return null;
   }
-  if (installed.code === EXIT_BUSY) return { code: "runtime-busy", detail };
+  if (installed.code === EXIT_BUSY || installed.code === EXIT_LOCKED) {
+    return { code: "runtime-busy", detail };
+  }
   return { code: "runtime-install-failed", detail };
 }

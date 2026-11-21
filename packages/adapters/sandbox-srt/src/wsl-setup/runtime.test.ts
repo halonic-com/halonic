@@ -80,9 +80,12 @@ verifies("sandbox-srt.wsl-runtime", () => {
       expect(fake.machine.runtime).toBe(runtime.version);
     });
 
-    it("ends runtime-busy while a sandbox session runs, and finishes on the next run", async () => {
+    it.each([
+      [3, "a sandbox session runs"],
+      [8, "another install holds the updater's lock"],
+    ])("ends runtime-busy on exit %s (%s), and finishes on the next run", async (code) => {
       const { fake, saved } = imported();
-      fake.machine.runtimeInstallCode = 3;
+      fake.machine.runtimeInstallCode = code;
       const { setup, store } = setupOn(fake, saved);
 
       expect(await setup.run()).toMatchObject({
