@@ -3,6 +3,7 @@
 - Task: HAL-13318 (follow-up to #3913, from checks C267 AN3 and C270); HAL-13973 (check C275 SR1, SR2, TU1, CW1); HAL-14007 (check C285 TU2)
 - Approval: Liam, in review of HAL-13318
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BtzfQ1LNct3VHD89WBZhYg9tGO1jahYEUL+rLoOLX1PDHSliF4HfZVfirWNaipG3jkvJ9215dNLbWSRou15FDg==
 
 ## What changes
 
