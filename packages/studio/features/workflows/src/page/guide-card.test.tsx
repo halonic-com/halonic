@@ -55,7 +55,7 @@ function screen(guide: WorkflowGuide) {
 
 const guideCardOf = (page: HTMLElement) => page.querySelector<HTMLElement>("[data-guide-card]");
 
-verifies("workflows.guide-card", () => {
+verifies("workflows.page.guide-card", () => {
   it("shows the guide's card at the right of the canvas, named by its title, with no ✕", async () => {
     const page = await show(screen(guideFor(firstRunCard).guide));
     const card = guideCardOf(page);

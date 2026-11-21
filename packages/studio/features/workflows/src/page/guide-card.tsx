@@ -31,7 +31,7 @@ export interface GuideSlotProps {
 }
 
 /**
- * Where the workflow page may show the guide's card (`workflows.guide-card`): on Flow, while no
+ * Where the workflow page may show the guide's card (`workflows.page.guide-card`): on Flow, while no
  * other card is docked at the right. The page has two slots, and only the one for the layout
  * draws: `top` on a phone, `right` on the desktop.
  */
@@ -53,7 +53,7 @@ export interface GuideCardProps {
 }
 
 /**
- * Another feature's guide card on the workflow's page (`workflows.guide-card`), such as the first
+ * Another feature's guide card on the workflow's page (`workflows.page.guide-card`), such as the first
  * run's: a region named by its title, the lines, and one primary button. It isn't a dialog and has
  * no ✕, so the canvas stays usable beside it.
  */

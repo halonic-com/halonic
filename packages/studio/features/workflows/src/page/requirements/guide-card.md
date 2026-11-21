@@ -1,4 +1,4 @@
-# workflows.guide-card
+# workflows.page.guide-card
 
 - Status: active
 - Since: unreleased
