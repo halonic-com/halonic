@@ -2,6 +2,7 @@
 
 - Approval: Liam approved the rule on HAL-15201 (comment of 21 Nov, answer 1 and 2) and signs this note in the review of this pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:XUAV2UaE+MrFQW/okhIX/9xwAfMqVZHdXWZo3zx9/OiSnnnDqZAL/pV1HCgg7i+ejG2bsbhYTEEDdTtA+ZoqDQ==
 
 Nothing stopped the profile folder from being inside a workspace. A profile in a workspace that git tracks comes and goes with a pull or a checkout, and with it the trust records, the yes to run without the sandbox and the placements ("On this computer"), so whoever pushes to that repo controls the profile (Julian's finding I1 on HAL-15195).
 
