@@ -27,7 +27,7 @@ import {
   visibleLength,
 } from "../messages/phrase.ts";
 import { pluginMessages } from "../messages/plugin.ts";
-import { type PackageRegistry, trustMessages } from "../messages/trust.ts";
+import { type PackageRegistry, type SecretPick, trustMessages } from "../messages/trust.ts";
 import type { PluginHosts } from "../sheet-hosts.ts";
 import { printable } from "./printable.ts";
 
@@ -36,6 +36,9 @@ import { printable } from "./printable.ts";
  * so short ids line up the same way. Lines under a row start past it.
  */
 const firstColumn = 14;
+
+/** The workspace folder a local integration's connector names its folder in. */
+const integrationsFolder = "integrations";
 
 /** Where a section's rows start. */
 export const rowIndent = "  ";
@@ -94,6 +97,8 @@ export function programSites(connector: ConnectorTrustContent): string[] {
 
 /**
  * "  inbox         https://mail.example.com/mcp · gets the secret INBOX_KEY".
+ * A local integration's connector names its folder, with the secret each of
+ * its sheet's secrets gets.
  * A plugin connector names its plugin, "  orders        plugin acme-orders",
  * and, when the plugin is installed here and its backend lists hosts, the
  * line "Reaches api.acme.example." under it (HAL-14860). The hosts come from
@@ -107,6 +112,9 @@ export function addressRows(
   connector: ConnectorTrustContent,
   pluginHosts: PluginHosts = new Map(),
 ): Phrase[] {
+  if (connector.transport === "integration") {
+    return [integrationConnectorRow(connector)];
+  }
   if (connector.transport !== "plugin") {
     const address =
       connector.transport === "http" ? text(connector.settings["url"]) : connector.transport;
@@ -138,6 +146,37 @@ export function hostText(host: unknown): string {
 /** A host as {@link hostText} gives it, escaped, where nothing else escapes it. */
 export function shownHost(host: unknown): string {
   return printable(hostText(host));
+}
+
+/**
+ * "  notes         integrations/notes · gets the secret my-notes-key as notes-key":
+ * the folder the connector runs, then the workspace secret each secret of the
+ * integration's sheet gets, by name only (HAL-14734, words from HAL-14737).
+ */
+function integrationConnectorRow(connector: ConnectorTrustContent): Phrase {
+  const folder = phrase`${printable(`${integrationsFolder}/${text(connector.settings["folder"])}`)}`;
+  const picks = secretPicks(connector);
+  return row(
+    printable(connector.id),
+    picks.length === 0
+      ? folder
+      : phrase`${folder} ${markPart("separator")} ${trustMessages.getsPickedSecrets(picks).phrase}`,
+  );
+}
+
+/**
+ * The workspace secret each secret of a local integration's sheet gets, by
+ * name, sorted by the sheet's name, such as `{ secret: "my-notes-key", as:
+ * "notes-key" }`. A connector's own `secret` keeps its name.
+ */
+function secretPicks(connector: ConnectorTrustContent): SecretPick[] {
+  const own = namesOf([connector.secret]).map((name) => ({ secret: name, as: name }));
+  const picks = Object.entries(record(connector.settings["secrets"]))
+    .sort(([first], [second]) => first.localeCompare(second, "en"))
+    .flatMap(([as, reference]) =>
+      namesOf([reference]).map((secret) => ({ secret, as: printable(as) })),
+    );
+  return [...own, ...picks];
 }
 
 /**
@@ -334,9 +373,18 @@ export function withTag(line: Phrase, tag: Message): Phrase {
   return phrase`${line}${" ".repeat(columnGap)}${tag.phrase}`;
 }
 
-/** The secrets a connector gets, by name: its own and the program's `secretEnv`, sorted. */
+/**
+ * The secrets a connector gets, by name: its own, the program's `secretEnv`
+ * and the ones a local integration's connector picks, sorted.
+ */
 export function secretNames(connector: ConnectorTrustContent): string[] {
-  const references = [connector.secret, ...Object.values(record(connector.settings["secretEnv"]))];
+  const references = [
+    connector.secret,
+    ...Object.values(record(connector.settings["secretEnv"])),
+    ...(connector.transport === "integration"
+      ? Object.values(record(connector.settings["secrets"]))
+      : []),
+  ];
   return namesOf(references);
 }
 
