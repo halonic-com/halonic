@@ -1,8 +1,18 @@
 import { Button, inlineLinkClasses } from "@halonicjs/studio-kit";
-import { type Ref, useCallback, useEffect, useId, useRef, useState } from "react";
+import {
+  type ReactNode,
+  type Ref,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { copyDetailsWords } from "../errors/copy-details-words.ts";
 import { useCopyDetails } from "../page/copy-details.ts";
 import { engineWaitMs, type WelcomeOpenProblem } from "./cant-open.ts";
+import type { WelcomeStart } from "./start-status.ts";
 import {
   WELCOME_RECENT_ROWS,
   WelcomeRecent,
@@ -14,6 +24,7 @@ import {
   trySampleWords,
   type WelcomeSampleProblem,
 } from "./welcome-sample.tsx";
+import { useWelcomeStart, WelcomeStartArea } from "./welcome-start.tsx";
 
 /** The Welcome screen's Recent list and what its rows do. */
 export interface WelcomeRecentList {
@@ -43,6 +54,11 @@ export interface WelcomeProps {
   readonly onTrySample?: (() => Promise<WelcomeSampleProblem | undefined>) | undefined;
   /** The workspaces remembered on this device; without it, or while it's empty, none show. */
   readonly recent?: WelcomeRecentList | undefined;
+  /**
+   * How far Halonic's start has got, from the desktop app's window (`shell.welcome-start`).
+   * Without it Welcome shows no start, as in a served Studio.
+   */
+  readonly start?: WelcomeStart | undefined;
 }
 
 /** How long Welcome waits between two tries while the engine doesn't answer. */
@@ -90,6 +106,11 @@ type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly
  * again (`shell.welcome.cant-open`); a reason Halonic can't explain comes with **Copy details**.
  * Cancelling the picker changes nothing. Focus starts on the primary button (accessibility pass 1.3).
  *
+ * While Halonic starts, the waiting line shows under the buttons from 2 seconds, and **Open demo**
+ * and **Open folder** are off with a line that says why; a start that fails shows why there, with
+ * **Try again** (`shell.welcome-start`). A press that comes before the start is ready keeps its
+ * button busy, and runs once it is.
+ *
  * Under the button, **Recent** lists up to five remembered workspaces, and one press opens one
  * (states-flow-map W2). A row whose folder is gone says so on the same line with
  * **Remove from Recent**; the row stays until it's removed, and focus then goes to the next row,
@@ -98,7 +119,13 @@ type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly
  * @example
  * <Welcome onOpenFolder={openFolder} recent={{ workspaces, onOpen, onRemove }} />
  */
-export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: WelcomeProps) {
+export function Welcome({
+  onOpenFolder,
+  onNewWorkspace,
+  onTrySample,
+  recent,
+  start,
+}: WelcomeProps) {
   const [opening, setOpening] = useState<Opening | undefined>(undefined);
   /** True while the demo is being copied; Open folder and New workspace… stay usable. */
   const [creatingSample, setCreatingSample] = useState(false);
@@ -111,9 +138,12 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
   const rows = useRef(new Map<string, HTMLButtonElement>());
   const copyDetails = useCopyDetails();
   const alertId = useId();
-  useEffect(() => {
+  const startState = useWelcomeStart(start);
+  const focusLead = useCallback(() => {
     (demoButton.current ?? openButton.current)?.focus();
   }, []);
+  // Before any effect of the start's, so a failure that is there at once keeps its focus.
+  useLayoutEffect(() => focusLead(), [focusLead]);
   useEffect(() => {
     if (focusAfterRemove === undefined) {
       return;
@@ -149,10 +179,11 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
     setSampleProblem(undefined);
     try {
       // The picker's folder is retried by whoever opens it, so the picker isn't shown again.
-      const problem =
+      const problem = await startState.afterStart(() =>
         what.from === "recent"
-          ? await untilAnswered(open, (answer) => answer?.kind === "unavailable")
-          : await open();
+          ? untilAnswered(open, (answer) => answer?.kind === "unavailable")
+          : open(),
+      );
       setShownProblem(
         problem === undefined
           ? undefined
@@ -175,7 +206,11 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
     setShownProblem(undefined);
     setSampleProblem(undefined);
     try {
-      setSampleProblem(await untilAnswered(onTrySample, (answer) => answer?.unavailable === true));
+      setSampleProblem(
+        await startState.afterStart(() =>
+          untilAnswered(onTrySample, (answer) => answer?.unavailable === true),
+        ),
+      );
     } finally {
       setCreatingSample(false);
     }
@@ -218,6 +253,16 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
           onOpenFolder={() => run({ from: "picker" }, onOpenFolder)}
           onNewWorkspace={onNewWorkspace}
           opening={opening !== undefined}
+          offId={startState.offId}
+          start={
+            <WelcomeStartArea
+              start={start}
+              view={startState.view}
+              offId={startState.offId}
+              demo={onTrySample !== undefined}
+              focusLead={focusLead}
+            />
+          }
         />
         <p id={alertId} role="alert" className="text-body text-danger break-words empty:hidden">
           {problem === undefined ? null : `Can't open ${problem.folder}: ${problem.reason}`}
@@ -255,7 +300,7 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
           />
         )}
         {hasRecent && onTrySample !== undefined ? (
-          <TrySample quiet busy={creatingSample} onPress={trySample} />
+          <TrySample quiet busy={creatingSample} onPress={trySample} offId={startState.offId} />
         ) : null}
       </div>
     </div>
@@ -280,12 +325,16 @@ interface WelcomeActionsProps {
   readonly onNewWorkspace: (() => void) | undefined;
   /** True while a folder opens: **New workspace…** then does nothing. */
   readonly opening: boolean;
+  /** The id of the line that says why Open demo and Open folder are off, while they are. */
+  readonly offId: string | undefined;
+  /** Halonic's start, right under the buttons it turns off (`shell.welcome-start`). */
+  readonly start: ReactNode;
 }
 
 /**
  * Welcome's buttons: **Open demo** and **Open folder** side by side when the demo leads, else
- * **Open folder** alone as the primary button; then the time line while the demo leads, right under
- * the button it describes, and last the **New workspace…** link (`shell.welcome-sample`).
+ * **Open folder** alone as the primary button; then Halonic's start while it shows; then the time
+ * line while the demo leads, and last the **New workspace…** link (`shell.welcome-sample`).
  */
 function WelcomeActions({
   demo,
@@ -294,6 +343,8 @@ function WelcomeActions({
   onOpenFolder,
   onNewWorkspace,
   opening,
+  offId,
+  start,
 }: WelcomeActionsProps) {
   const timeId = useId();
   const demoLeads = demo !== undefined;
@@ -307,6 +358,7 @@ function WelcomeActions({
             onPress={demo.onPress}
             buttonRef={demo.ref}
             timeId={timeId}
+            offId={offId}
           />
         )}
         <Button
@@ -314,11 +366,13 @@ function WelcomeActions({
           variant={demoLeads ? "secondary" : "primary"}
           busy={openingFolder}
           busyLabel="Opening…"
+          unavailable={openingFolder || offId === undefined ? undefined : { reason: offId }}
           onClick={onOpenFolder}
         >
           Open folder
         </Button>
       </div>
+      {start}
       {demoLeads ? (
         <p id={timeId} className="text-small text-fg-muted">
           {trySampleWords.time}
