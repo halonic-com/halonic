@@ -162,3 +162,36 @@ verifies("app.secret-service", () => {
     expect(secrets.planSet("not a name")).toHaveProperty("reason");
   });
 });
+
+verifies("app.secret-host-names", () => {
+  it.each(["remote-host-key", "Remote_Host_Key", "REMOTE-HOST-KEY"])(
+    "refuses to set or remove the agent host's name %s, and says whose it is",
+    async (name) => {
+      const { store, secrets } = setup();
+      await store.set("remote-host-key", "the host's key");
+
+      const set = await secrets.set({ name, value: "x" });
+      const remove = await secrets.remove(name);
+
+      expect(set).toEqual({ changed: false, reason: expect.stringContaining("agent host") });
+      expect(remove).toEqual({ changed: false, reason: expect.stringContaining("agent host") });
+      expect(await store.get("remote-host-key")).toBe("the host's key");
+    },
+  );
+
+  it("refuses the agent host's name before a value is typed", () => {
+    const { secrets } = setup();
+
+    expect(secrets.planSet("remote-host-key")).toEqual({
+      reason: expect.stringContaining("agent host"),
+    });
+  });
+
+  it("leaves the agent host's key out of the listing", async () => {
+    const { store, secrets } = setup();
+    await store.set("openai-key", "sk-live-1234");
+    await store.set("remote-host-key", "the host's key");
+
+    expect(await secrets.list()).toEqual(["openai-key"]);
+  });
+});

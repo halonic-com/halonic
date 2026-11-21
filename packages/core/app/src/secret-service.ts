@@ -5,6 +5,7 @@
 import {
   checkSecretValue,
   describeSecretName,
+  hostSecretNames,
   isQuotableSecretName,
   type PasswordHasher,
   type SecretStore,
@@ -21,6 +22,7 @@ const maxServePasswordLength = 1024;
 const servePasswordKey = secretKey(servePasswordName);
 const tokenKey = secretKey("token-key");
 const tokenKeyPrefix = secretKey(tokenNamePrefix);
+const hostKeys = new Set(hostSecretNames.map(secretKey));
 
 /** What {@link SecretService} needs from the host. */
 interface SecretServiceOptions {
@@ -113,7 +115,10 @@ export class SecretService {
   /** The names of the secrets a person may set, never a value. */
   async list(): Promise<readonly string[]> {
     const names = await this.store.names();
-    return names.filter((name) => !isTokenName(secretKey(name)));
+    return names.filter((name) => {
+      const key = secretKey(name);
+      return !isTokenName(key) && !hostKeys.has(key);
+    });
   }
 
   private async setServePassword(input: SecretInput): Promise<SecretChange> {
@@ -146,6 +151,14 @@ export class SecretService {
       return {
         changed: false,
         reason: `${shown} belongs to Halonic's sign-in tokens and can't be changed here.`,
+      };
+    }
+    // The agent host makes these itself; a changed or removed remote host key
+    // would make every paired phone see "Can't confirm your computer".
+    if (hostKeys.has(key)) {
+      return {
+        changed: false,
+        reason: `${describeSecretName(name)} belongs to Halonic's agent host and can't be changed here.`,
       };
     }
     return null;
