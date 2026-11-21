@@ -425,16 +425,35 @@ verifies("studio.workspace-files-delete", () => {
     expect(undone).toHaveLength(1);
   });
 
-  it("rejects the way back, and undoes nothing, after another change", async () => {
-    const { host, undone } = setup([], {}, workspace);
+  it("puts the file back as a change of its own after another change, and keeps that change", async () => {
+    const { host, undone, changes } = setup([], {}, workspace);
 
     const removed = await host.remove("notes.md");
     host.edit("workspace.yaml", "id: acme\nname: Acme 2\n");
+    await removed.undo();
 
-    await expect(removed.undo()).rejects.toThrow(
-      "notes.md can't be put back, because the workspace changed after it was deleted.",
-    );
     expect(undone).toEqual([]);
+    expect(changes.map(({ label }) => label)).toEqual([
+      "Deleted notes.md",
+      "Edited workspace.yaml",
+      "Put back notes.md",
+    ]);
+    expect(changes.at(-1)?.changes).toEqual({ "notes.md": "hi" });
+  });
+
+  it("rejects the way back, and writes nothing, when a new file has taken its place", async () => {
+    const { host, undone, changes } = setup([], {}, workspace);
+
+    const removed = await host.remove("notes.md");
+    host.edit("notes.md", "new");
+
+    await expect(removed.undo()).rejects.toMatchObject({
+      kind: "conflict",
+      message:
+        "notes.md can't be put back, because there is a new notes.md. Rename or move it, then undo again.",
+    });
+    expect(undone).toEqual([]);
+    expect(changes).toHaveLength(2);
   });
 
   it("refuses a file that isn't there", async () => {

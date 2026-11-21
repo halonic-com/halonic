@@ -149,32 +149,41 @@ verifies("library.library-delete", () => {
     expect(store).toEqual(before);
   });
 
-  it("refuses an Undo after another change, and undoes nothing", async () => {
-    const { host, store, edit } = setup();
+  it("puts the item back with Undo after another change, and keeps that change", async () => {
+    const { host, store, edit } = setup({ "library/skills/tone/notes.md": "More." });
+    const skill = store["library/skills/tone/SKILL.md"];
     const removed = await host.remove("skill", { hub: null, id: "tone" });
     edit("library/collections/claims.collection.yaml", "id: claims\nname: Claims 2\n");
-    await expect(removed.undo()).rejects.toMatchObject({
-      kind: "conflict",
-      message: expect.stringContaining("can't be put back"),
-    });
-    expect(store["library/skills/tone/SKILL.md"]).toBeUndefined();
+    await removed.undo();
+    expect(store["library/skills/tone/SKILL.md"]).toBe(skill);
+    expect(store["library/skills/tone/notes.md"]).toBe("More.");
     expect(store["library/collections/claims.collection.yaml"]).toContain("Claims 2");
   });
 
-  it("refuses an Undo after the delete was undone some other way", async () => {
-    const { host, store, ctrlZ } = setup();
+  it("refuses an Undo, and undoes nothing, when a new file has taken the item's place", async () => {
+    const { host, store, edit } = setup();
     const removed = await host.remove("skill", { hub: null, id: "tone" });
-    ctrlZ();
-    expect(store["library/skills/tone/SKILL.md"]).toContain("Plain.");
-    await expect(removed.undo()).rejects.toThrow("can't be put back");
-    expect(store["library/skills/tone/SKILL.md"]).toContain("Plain.");
+    edit("library/skills/tone/SKILL.md", "New.");
+    await expect(removed.undo()).rejects.toMatchObject({
+      kind: "conflict",
+      message:
+        "The skill tone can't be put back, because there is a new library/skills/tone/SKILL.md. Rename or move it, then undo again.",
+    });
+    expect(store["library/skills/tone/SKILL.md"]).toBe("New.");
   });
 
-  it("refuses a second Undo", async () => {
-    const { host } = setup();
-    const removed = await host.remove("skill", { hub: null, id: "tone" });
-    await removed.undo();
-    await expect(removed.undo()).rejects.toThrow("can't be put back");
+  it("does nothing on Undo after the delete was undone some other way, or a second time", async () => {
+    const { host, store, ctrlZ } = setup();
+    const skill = store["library/skills/tone/SKILL.md"];
+    const first = await host.remove("skill", { hub: null, id: "tone" });
+    ctrlZ();
+    await first.undo();
+    expect(store["library/skills/tone/SKILL.md"]).toBe(skill);
+
+    const second = await host.remove("skill", { hub: null, id: "tone" });
+    await second.undo();
+    await second.undo();
+    expect(store["library/skills/tone/SKILL.md"]).toBe(skill);
   });
 });
 

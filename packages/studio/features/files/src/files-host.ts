@@ -26,7 +26,7 @@ export interface FileIssue {
 export interface RemovedFile {
   /** How many places in other files named the file by its id and now show an error. */
   readonly places: number;
-  /** Puts the file back while the delete is still the newest step; rejects with an `Error` whose message is one sentence when it can't. */
+  /** Puts the file back, after later changes too; rejects with an `Error` whose message is one sentence when it can't, such as when a new file has taken its place. */
   undo(): Promise<void>;
 }
 

@@ -28,6 +28,7 @@ import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspa
 import { editYaml } from "@halonicjs/yaml";
 import type { RoutineVersionsAt } from "../changes/workspace-liveness.ts";
 import type { RoutineRunStart } from "../engine/engine-service.ts";
+import { deleteWithUndo } from "../files/undoable-delete.ts";
 import {
   editsOf,
   newRoutineText,
@@ -308,25 +309,18 @@ export class WorkspaceRoutines implements RoutinesHost {
   }
 
   /**
-   * Undo is the workspace's undo, so it puts the routine back only while the delete is still the
-   * newest step: after any other change it rejects and undoes nothing.
+   * Deletes the routine's file as one change, with the way back of {@link deleteWithUndo}: it puts
+   * the routine back after later changes too, unless a file has taken its place.
    */
   async trash(ref: RoutineRef): Promise<TrashedRoutine> {
     const { files } = this.#parts;
     const workspace = await this.#load();
     const { value } = findRoutine(workspace, ref);
-    files.change(`Deleted routine ${value.name}`, { [routinePath(ref)]: null });
-    const afterDelete = files.step;
-    return {
-      undo: async () => {
-        if (files.step !== afterDelete || !files.undo()) {
-          throw new KindedError(
-            "conflict",
-            `${value.name} can't be put back, because the workspace changed after it was deleted.`,
-          );
-        }
-      },
-    };
+    return deleteWithUndo(files, {
+      paths: [routinePath(ref)],
+      what: `routine ${value.name}`,
+      name: value.name,
+    });
   }
 
   async starterTarget(hubId: string): Promise<RoutineTargetChoice | undefined> {

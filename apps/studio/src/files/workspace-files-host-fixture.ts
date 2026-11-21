@@ -69,6 +69,10 @@ export function setup(
       change: (label, made, options) => {
         current = { ...current };
         step++;
+        for (const [path, text] of Object.entries(made)) {
+          if (text === null) delete texts[path];
+          else texts[path] = text;
+        }
         changes.push({
           label,
           changes: made,

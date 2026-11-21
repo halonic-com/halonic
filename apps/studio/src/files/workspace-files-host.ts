@@ -24,6 +24,7 @@ import type { KeyboardPlatform } from "@halonicjs/studio-shell";
 import { loadWorkspace, placeOf } from "@halonicjs/workspace";
 import { defaultYamlLimits, editYaml, readYaml } from "@halonicjs/yaml";
 import { checkedSource, unsavedSource } from "../library/workspace-library-items.ts";
+import { deleteWithUndo } from "./undoable-delete.ts";
 
 /** What {@link WorkspaceFilesHost} needs of the workspace's files and events. */
 export interface FilesHostParts {
@@ -326,19 +327,8 @@ export class WorkspaceFilesHost implements FilesHost {
         ? []
         : ((await this.#placesNaming(path, old.kind as LibraryItemKind, old.hub, old.placeId)) ??
           []);
-    files.change(`Deleted ${path}`, { [path]: null });
-    const afterDelete = files.step;
-    return {
-      places: places.length,
-      undo: async () => {
-        if (files.step !== afterDelete || !files.undo()) {
-          throw new KindedError(
-            "conflict",
-            `${path} can't be put back, because the workspace changed after it was deleted.`,
-          );
-        }
-      },
-    };
+    const { undo } = await deleteWithUndo(files, { paths: [path], what: path, name: path });
+    return { places: places.length, undo };
   }
 
   /** A skill is its whole folder: moving only `SKILL.md` to another folder would leave the rest behind. */
