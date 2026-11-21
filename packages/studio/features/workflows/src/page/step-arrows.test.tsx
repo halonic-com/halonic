@@ -34,6 +34,21 @@ verifies("workflows.page.step-arrows", () => {
     expect(arrowsSection(page).rows).toEqual(["1 → write on approved", "2 → done after 2d"]);
   });
 
+  // jsdom lays nothing out, so this checks the classes that keep a wrapped row's number and ⋮
+  // beside its first line (C547 A5) instead of centred on the whole row.
+  it("keeps a row's number and ⋮ on its first line when its words wrap", async () => {
+    const { page } = await showPage(vi.fn);
+    await pick(page, "sort");
+
+    const row = arrowsSection(page).section?.querySelector("li > div");
+    const number = row?.firstElementChild;
+    const classes = (element: Element | null | undefined) => element?.className.split(" ") ?? [];
+    expect(classes(row)).toContain("items-start");
+    expect(classes(row)).not.toContain("items-center");
+    expect(number?.textContent).toBe("1");
+    expect(classes(number)).toEqual(expect.arrayContaining(["h-control-sm", "items-center"]));
+  });
+
   it("has no arrows section on an end step", async () => {
     const { page } = await showPage(vi.fn);
     await pick(page, "done");

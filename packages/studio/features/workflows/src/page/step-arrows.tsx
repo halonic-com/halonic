@@ -14,6 +14,17 @@ import { pageWords } from "./page-words.ts";
 
 const words = pageWords.arrows;
 
+/**
+ * A row lines up on its first line when its words wrap (C547 A5): the row aligns to the top and
+ * the number sits centred in a box as high as a one-line `sm` button (`lg` on a phone or touch
+ * screen, as the button grows there), so it stays beside the first line and one-line rows look
+ * as before.
+ */
+const arrowNumber = [
+  "flex h-control-sm w-4 shrink-0 items-center text-fg-muted tabular-nums",
+  "phone:h-control-lg touch:h-control-lg",
+].join(" ");
+
 /** Props for {@link StepArrows}. */
 export interface StepArrowsProps {
   readonly stepId: string;
@@ -112,8 +123,8 @@ export function StepArrows({
           {arrows.map((arrow, index) => (
             // An arrow has no name of its own: its place in the list is what the file knows it by.
             <li key={index} className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-body">
-                <span className="w-4 shrink-0 text-fg-muted tabular-nums">{index + 1}</span>
+              <div className="flex items-start gap-2 text-body">
+                <span className={arrowNumber}>{index + 1}</span>
                 <span className="min-w-0 flex-1">
                   <Button
                     variant="ghost"
