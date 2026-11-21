@@ -25,6 +25,7 @@ undocumented_unsafe_blocks = "deny"
 # Pinned to the versions already in Cargo.lock, so this crate adds no new
 # code to the build. Only the windows-sys features it calls are turned on.
 [dependencies]
+halonic-publisher = { path = "../publisher" }
 sha2 = { version = "=0.10.9", default-features = false }
 
 [target.'cfg(windows)'.dependencies]
@@ -33,10 +34,6 @@ windows-sys = { version = "=0.61.2", features = [
   "Win32_Foundation",
   "Win32_Security",
   "Win32_Security_Authorization",
-  "Win32_Security_Cryptography",
-  "Win32_Security_Cryptography_Catalog",
-  "Win32_Security_Cryptography_Sip",
-  "Win32_Security_WinTrust",
   "Win32_Storage_FileSystem",
   "Win32_System_Com",
   "Win32_System_LibraryLoader",

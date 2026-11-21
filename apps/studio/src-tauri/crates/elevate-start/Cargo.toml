@@ -19,11 +19,17 @@ unsafe_code = "allow"
 all = { level = "warn", priority = -1 }
 undocumented_unsafe_blocks = "deny"
 
+# The publisher check the helper uses on its own copy (HAL-14958).
+[dependencies]
+halonic-publisher = { path = "../publisher" }
+
 # Pinned to the version already in Cargo.lock, so this crate adds no new
 # code to the build. Only the windows-sys features it calls are turned on.
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "=0.61.2", features = [
   "Win32_Foundation",
+  # Where the opened helper really is (GetFinalPathNameByHandleW).
+  "Win32_Storage_FileSystem",
   "Win32_System_Com",
   # SHELLEXECUTEINFOW names a registry key, so Windows' Shell needs it.
   "Win32_System_Registry",
