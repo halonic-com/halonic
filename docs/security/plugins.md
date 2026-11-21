@@ -41,8 +41,14 @@ integration. Its only way out is the `IntegrationHost`:
   values. The trust check's "goes only to *host*" describes this route. A
   local tool is different: a secret named in its `env` is given to that
   program (Fence 2), and the check lists it.
-- A plugin backend **can't hold sign-in tokens** yet, so no token value ever
-  enters the worker.
+- A trusted plugin's backend may declare **sign-ins**, and its code **never
+  sees a sign-in token** either. Halonic runs the sign-in, keeps the tokens and
+  puts the access token into a request itself, only for the sign-in's `access`
+  hosts. The kit that does this runs on Halonic's side: the worker only asks
+  for a request, so no token value enters the worker, and results, errors and
+  logs pass through the same filter for token values. The trust check lists
+  each sign-in's hosts and scopes before you trust the plugin, and a plugin
+  that changed or lost its trust can't use a sign-in.
 - Every tool has a `risk`, which the trust check shows. Agents reach the tools
   through a connector, and every call asks a person first, whatever the risk,
   unless the connector file's `read` list names the tool; a plugin can't add a
