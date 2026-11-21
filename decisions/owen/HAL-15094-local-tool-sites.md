@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-15094 (Liam signed off the task's recommendation when he routed it)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QApv7NRj/LbubKplrxo1s1cRXfvF9cnVXRIOMHbB8rfoZcP1Oz4JIRV3yUZXB5EHllJWOcEZb/l3w/e35t9zBw==
 
 ## What changes
 
