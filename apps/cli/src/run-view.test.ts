@@ -171,6 +171,27 @@ verifies("cli.run-view", () => {
     ]);
   });
 
+  it("names an answer by the label its wait step gave it, and by its event without one", () => {
+    const labelledWait: RunEventBody = {
+      ...waiting,
+      events: ["approve", "escalate", "hold"],
+      labels: { escalate: "Send to a manager" },
+    };
+    const answeredWith = (event: string) =>
+      linesOf(
+        logOf([
+          ...upToTheWait.slice(0, -1),
+          ["14:02:10", labelledWait],
+          ["14:02:30", { type: "event.received", event }],
+          ...finishedAt("14:02:30"),
+        ]),
+      ).at(-1);
+    expect([answeredWith("escalate"), answeredWith("hold")]).toEqual([
+      "! Approve this reply? you answered Send to a manager at 14:02",
+      "! Approve this reply? you answered hold at 14:02",
+    ]);
+  });
+
   it("ends a failed run's lines with the step it failed in", () => {
     const events = logOf([
       ["14:00:00", entered("read")],
