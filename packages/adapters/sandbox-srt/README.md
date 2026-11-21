@@ -83,8 +83,13 @@ above a working folder elsewhere in the profile stay.
 `remove()` undoes it for the uninstaller (through the agent host's `--sandbox-remove`). On Windows it
 runs srt's uninstall (what `srt windows-uninstall` runs): the sandbox account and its profile, the
 sandbox group, the network filters, the `HKLM\SOFTWARE\sandbox-runtime` key, and the write grants
-kept on project folders by sessions of the user it runs as (when it runs with administrator rights it
-leaves that user's kept grants recorded and logs that it did). It is `ok` when nothing was set up, and
+kept on project folders by sessions of the user it runs as. When it runs with administrator rights it
+leaves that user's kept grants recorded, since they change access lists on paths from the user's own
+srt store (HAL-7544), and leaves an empty mark, `agent-host/forget-pending`, in the profile it was
+given. The next host that holds the profile's lock and runs without administrator rights takes them
+back (`profile forget`, `acl forget --all`) before its sweep and its first session: when the mark is
+there, or when srt lists kept grants while its sandbox account is gone, as a removal from another
+administrator account leaves them. Only a success takes the mark away. It is `ok` when nothing was set up, and
 when run again. srt removes nothing while a sandboxed program runs, and leaves
 `%ProgramData%\sandbox-runtime` (its CA key folder) in place. Other systems have nothing to remove.
 

@@ -3,10 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { holdLock } from "@halonicjs/adapter-fs-node";
-import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import { forgetPendingFile, SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type HostIo, run } from "../host.ts";
+import { type HostIo, type ProfileFiles, run } from "../host.ts";
 import { argumentValues, hostLockFile, sweepRoots } from "./sweep-lock.ts";
 
 /** A host started with `args`, the sweep roots its sandbox got, and what it wrote. */
@@ -14,6 +14,7 @@ function startHost(args: readonly string[]) {
   const input = new PassThrough();
   const errors: string[] = [];
   const given: string[][] = [];
+  const files: ProfileFiles[] = [];
   const sandboxes: SrtSandbox[] = [];
   let served: () => void = () => {};
   const handshake = new Promise<void>((resolve) => {
@@ -27,15 +28,16 @@ function startHost(args: readonly string[]) {
       throw new Error("Only --stdio takes the output over.");
     },
   };
-  const makeSandbox = (roots: readonly string[]) => {
+  const makeSandbox = (roots: readonly string[], _shared: readonly string[], inProfile = {}) => {
     given.push([...roots]);
+    files.push(inProfile);
     const sandbox = new SrtSandbox(undefined, undefined, null, { sweepRoots: roots });
     vi.spyOn(sandbox, "sweepOnce").mockResolvedValue();
     sandboxes.push(sandbox);
     return sandbox;
   };
   const running = run(args, "1.2.3", io, makeSandbox);
-  return { input, errors, given, sandboxes, handshake, running };
+  return { input, errors, given, files, sandboxes, handshake, running };
 }
 
 /** Makes a run folder in the profile's `bridges` folder as a crashed host leaves one: empty, and long unchanged. */
@@ -76,6 +78,7 @@ verifies("agent-host.sweep-lock", () => {
       await host.handshake;
       expect(host.given).toEqual([roots]);
       expect(host.sandboxes[0]?.sweepOnce).toHaveBeenCalledOnce();
+      expect(host.files[0]?.forgetPendingFile).toBe(forgetPendingFile(profile));
       expect(await exists(hostLockFile(profile))).toBe(true);
       host.input.end();
       expect(await host.running).toBe(0);
@@ -109,6 +112,7 @@ verifies("agent-host.sweep-lock", () => {
         await host.handshake;
         expect(host.given).toEqual([[]]);
         expect(host.sandboxes[0]?.sweepOnce).not.toHaveBeenCalled();
+        expect(host.files[0]?.forgetPendingFile).toBeUndefined();
         expect(host.errors.join()).toMatch(/doesn't sweep kept grants: The lock .* is held/);
         expect(await exists(leftOver)).toBe(true);
         host.input.end();
@@ -128,6 +132,12 @@ verifies("agent-host.sweep-lock", () => {
       host.input.end();
       expect(await host.running).toBe(0);
       expect(await exists(hostLockFile(profile))).toBe(false);
+    });
+
+    it("gives the removal the mark's place in the profile it is given", async () => {
+      const host = startHost(["--profile-folder", profile, "--sandbox-remove"]);
+      expect(await host.running).toBe(0);
+      expect(host.files).toEqual([{ forgetPendingFile: forgetPendingFile(profile) }]);
     });
 
     it("refuses a relative or missing sweep root with exit code 2", async () => {

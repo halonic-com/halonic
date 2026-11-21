@@ -96,6 +96,12 @@ export interface Machine {
    */
   dockerDesktopVisible?(): Promise<boolean>;
   /**
+   * Whether this process runs with administrator rights (see
+   * {@link listsElevated}): true when it can't tell. A machine without it
+   * counts as one with them, so nothing that must not run elevated runs.
+   */
+  elevated?(): Promise<boolean>;
+  /**
    * Runs srt's Windows install (`srt windows-install`): the sandbox account and
    * its network filters, for the whole machine. It asks for an administrator
    * once, unless this process already runs as one. Running it again repairs
@@ -305,6 +311,7 @@ export const systemMachine: Machine = {
     }
   },
   dockerDesktopVisible: () => dockerDesktopShows(dockerSocket, sharedWslFolder),
+  elevated: removalSteps.elevated,
   async profileReadGranted() {
     if (process.platform !== "win32") return false;
     try {
