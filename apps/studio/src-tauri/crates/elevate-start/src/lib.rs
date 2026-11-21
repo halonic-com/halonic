@@ -5,6 +5,14 @@
 //! HAL-14812: asked for by a hidden PowerShell under the agent host, the
 //! prompt didn't show on a tester's PC, and the setup waited for ever.
 //!
+//! Before Windows is asked, the helper is opened so that nobody can change,
+//! rename or delete it until it has started, and a signed release checks
+//! through that opening that it is signed by the publisher built in
+//! ([`SIGNER`]). Studio installs per user, so any program of the user's can
+//! put another program in the helper's place; the prompt would still name
+//! that program's publisher, but the shell refuses it before any prompt
+//! (HAL-14958).
+//!
 //! One start runs at a time, and each waits at most a time limit. A helper
 //! still running at the limit is left to finish, never stopped: it runs as
 //! an administrator, and stopping it halfway would leave the machine half
@@ -22,6 +30,8 @@ use std::time::Duration;
 mod windows;
 #[cfg(windows)]
 pub use windows::Windows;
+
+pub use halonic_publisher::SIGNER;
 
 /// What the helper is asked to do; it takes nothing else.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -73,11 +83,23 @@ pub enum Wait {
 
 /// What [`Starts`] asks of the operating system. [`Windows`] is the real one.
 pub trait Launch {
+    /// The helper's file, opened so that nobody can change, rename or delete
+    /// it until this is dropped.
+    type Opened;
     /// A started helper. Dropping it lets go of it without stopping it.
     type Process: Send;
-    /// Starts `helper` with `verb` and the administrator prompt, owned by
-    /// the window `owner` (0 for none).
-    fn start(&self, helper: &Path, verb: Verb, owner: isize) -> Result<Self::Process, StartError>;
+    /// Opens `helper` that way, with the publisher Windows trusts its
+    /// signature for, read through that opening: `None` when it isn't
+    /// signed or Windows doesn't trust the signature.
+    fn open(&self, helper: &Path) -> Result<(Self::Opened, Option<String>), String>;
+    /// Starts the opened helper with `verb` and the administrator prompt,
+    /// owned by the window `owner` (0 for none).
+    fn start(
+        &self,
+        helper: &Self::Opened,
+        verb: Verb,
+        owner: isize,
+    ) -> Result<Self::Process, StartError>;
     /// Waits at most `limit` for `process` to end.
     fn wait(&self, process: &Self::Process, limit: Duration) -> Result<Wait, String>;
 }
@@ -95,25 +117,42 @@ enum Slot<P> {
 /// running after its time limit.
 pub struct Starts<L: Launch> {
     launch: L,
+    publisher: Option<&'static str>,
     slot: Mutex<Slot<L::Process>>,
 }
 
 impl<L: Launch> Starts<L> {
-    pub fn new(launch: L) -> Self {
+    /// `publisher` is [`SIGNER`] outside tests: the helper must be signed by
+    /// it, and with none (dev and CI builds, an unsigned release) there is
+    /// nothing to check it against.
+    pub fn new(launch: L, publisher: Option<&'static str>) -> Self {
         Starts {
             launch,
+            publisher,
             slot: Mutex::new(Slot::Free),
         }
     }
 
     /// Starts `helper` with `verb` and waits at most `limit` for it.
     /// Answers [`Outcome::StillRunning`] without asking Windows while
-    /// another start runs, or while the helper a start left still runs.
+    /// another start runs, or while the helper a start left still runs, and
+    /// [`Outcome::Failed`] without asking Windows for a helper that isn't
+    /// signed by the publisher.
     pub fn run(&self, helper: &Path, verb: Verb, owner: isize, limit: Duration) -> Outcome {
         if let Some(busy) = self.take_slot() {
             return busy;
         }
-        let process = match self.launch.start(helper, verb, owner) {
+        let opened = match self.open(helper) {
+            Ok(opened) => opened,
+            Err(reason) => {
+                self.set(Slot::Free);
+                return Outcome::Failed(reason);
+            }
+        };
+        let started = self.launch.start(&opened, verb, owner);
+        // Once Windows has started it, swapping its file changes nothing.
+        drop(opened);
+        let process = match started {
             Ok(process) => process,
             Err(error) => {
                 self.set(Slot::Free);
@@ -137,6 +176,17 @@ impl<L: Launch> Starts<L> {
                 self.set(Slot::Left(process));
                 Outcome::Failed(reason)
             }
+        }
+    }
+
+    /// Opens `helper`, and refuses it unless it is signed by the publisher.
+    fn open(&self, helper: &Path) -> Result<L::Opened, String> {
+        let (opened, signer) = self.launch.open(helper)?;
+        match self.publisher {
+            Some(publisher) if signer.as_deref() != Some(publisher) => Err(format!(
+                "the sandbox helper beside the app isn't signed by {publisher}, so Windows wasn't asked to start it"
+            )),
+            _ => Ok(opened),
         }
     }
 

@@ -1475,9 +1475,11 @@ jobs:
       # wait and its time limit (HAL-14841). The runner's user is an
       # administrator with UAC off, so Windows starts it with no prompt.
       - name: Sandbox helper's start from Studio (runas, wait, time limit)
-        run: cargo test --locked -p halonic-elevate-start -- --ignored
+        run: cargo test --locked -p halonic-elevate-start -- --ignored --skip elevate_start_reads_the_helpers_publisher
       # The helper reads a publisher as Windows shows it, here PowerShell's
       # own signed program, and refuses a changed copy (HAL-7385, S-4).
+      # Studio reads it the same way through the handle it holds while it
+      # starts the helper (HAL-14958).
       - name: Sandbox helper's signature check
         run: |
           $signed = (Get-Command pwsh).Source
@@ -1486,6 +1488,8 @@ jobs:
           $env:HALONIC_SIGNED_FILE = $signed
           $env:HALONIC_SIGNED_PUBLISHER = $signature.SignerCertificate.GetNameInfo('SimpleName', $false)
           cargo test --locked -p halonic-sandbox-elevate --test windows -- --ignored
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test --locked -p halonic-elevate-start -- --ignored elevate_start_reads_the_helpers_publisher
       # The agent sandbox's elevated helper on a real Windows (HAL-1451). The
       # runner's user is an administrator with UAC off, so it runs elevated
       # with no prompt. Built with the static C runtime, as the release
