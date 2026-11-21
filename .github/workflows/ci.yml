@@ -51,7 +51,8 @@ env:
   TURBO_TELEMETRY_DISABLED: "1"
   DO_NOT_TRACK: "1"
   # turbo.json caps Turbo at 2 tasks at once for agent workspaces; CI keeps
-  # Turbo's own default of 10.
+  # Turbo's own default of 10. The build job runs fewer on our own CI server
+  # (see its "Run every task through the cache" step).
   TURBO_CONCURRENCY: "10"
   # "on": a pull request's build job and the merge base's tests run only the
   # tests of the packages it changes, their dependents and the packages whose
@@ -63,17 +64,26 @@ env:
   # The build job's shards (HAL-14115), for every event:
   # one line per shard, its name, then the Turbo folder or package filters
   # it runs every task of. Each package belongs to exactly one shard; the
-  # first shard checks that with a dry run. Balanced by the merge-queue task
-  # timings of 20 Nov (about 2,100-2,500 task-seconds each).
-  # adapter-password-scrypt, the slowest test, sits with the lighter apps
-  # and tooling tests: beside only heavy tests, one scrypt test ran past its
+  # first shard checks that with a dry run. Eight shards since HAL-15167
+  # (board decision on HAL-14831, 21 Nov): on our own CI server a shard's
+  # time is almost all tests, so twice the shards roughly halve the longest
+  # one. Balanced by the merge-queue task timings of 21 Nov (run
+  # 44936676468): about 1,150-1,900 task-seconds each. The -a shards name
+  # their packages, and the -b shards take the rest of the folder, so a new
+  # adapter or feature lands in a -b shard by itself.
+  # adapter-password-scrypt, the slowest test, sits with the lighter tooling
+  # and targets tests: beside only heavy tests, one scrypt test ran past its
   # 180 s limit (HAL-9808). A new shard name also goes into the build job's
   # matrix.
   BUILD_SHARDS: |
-    adapters ./packages/adapters/* !@halonicjs/adapter-password-scrypt
-    studio-features ./packages/studio/features/*
-    core-studio ./packages/core/* ./packages/studio/*
-    apps-tooling ./apps/* ./tooling/* ./packages/host/* ./packages/targets/*/* ./packages/testing/* @halonicjs/adapter-password-scrypt
+    adapters-a @halonicjs/adapter-git @halonicjs/adapter-sandbox-srt @halonicjs/adapter-memory @halonicjs/adapter-cloudflare-durable @halonicjs/adapter-mcp @halonicjs/adapter-integration-runner @halonicjs/adapter-fs-node @halonicjs/adapter-connector-stdio-sandbox @halonicjs/adapter-scheduler-node @halonicjs/adapter-workspace-models
+    adapters-b ./packages/adapters/* !@halonicjs/adapter-password-scrypt !@halonicjs/adapter-git !@halonicjs/adapter-sandbox-srt !@halonicjs/adapter-memory !@halonicjs/adapter-cloudflare-durable !@halonicjs/adapter-mcp !@halonicjs/adapter-integration-runner !@halonicjs/adapter-fs-node !@halonicjs/adapter-connector-stdio-sandbox !@halonicjs/adapter-scheduler-node !@halonicjs/adapter-workspace-models
+    features-a @halonicjs/studio-feature-workflows @halonicjs/studio-feature-plugins @halonicjs/studio-feature-runs @halonicjs/studio-feature-source-control @halonicjs/studio-feature-agents @halonicjs/studio-feature-inbox
+    features-b ./packages/studio/features/* !@halonicjs/studio-feature-workflows !@halonicjs/studio-feature-plugins !@halonicjs/studio-feature-runs !@halonicjs/studio-feature-source-control !@halonicjs/studio-feature-agents !@halonicjs/studio-feature-inbox
+    core ./packages/core/*
+    studio-testing ./packages/studio/* ./packages/testing/*
+    apps-host ./apps/* ./packages/host/*
+    tooling-targets ./tooling/* ./packages/targets/*/* @halonicjs/adapter-password-scrypt
 
 jobs:
   changes:
@@ -187,7 +197,9 @@ jobs:
 
   fast:
     name: Fast gates
-    runs-on: ${{ vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
+    # A large slot on our own CI server: on a 2-CPU slot it took 50 s, as
+    # long as on GitHub (HAL-14831).
+    runs-on: ${{ vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
     permissions:
@@ -454,7 +466,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [adapters, studio-features, core-studio, apps-tooling]
+        shard:
+          - adapters-a
+          - adapters-b
+          - features-a
+          - features-b
+          - core
+          - studio-testing
+          - apps-host
+          - tooling-targets
     # The key that signs the remote cache's entries lives in the environment
     # `turbo-cache-write`, which only `main` and the merge queue may use
     # (deployment branch rule). Only a push to `main` gets a token that can
@@ -581,6 +601,17 @@ jobs:
           # Give each test and hook 30 s on a loaded runner, as the other jobs
           # do (HAL-4241); this job had left it at Vitest's 5 s (HAL-12081).
           HALONIC_TEST_TIMEOUT: "30000"
+          # On our own CI server a slot has 12 CPUs in the same 16 GB as a
+          # GitHub runner's 4, and Vitest starts one worker per CPU: 10
+          # packages at once with about 11 workers each ran out of memory
+          # (HAL-15167: tsc and a test worker killed in studio-features).
+          # There at most 6 tasks with 3 test workers each, at most 18
+          # workers, fewer than GitHub's 10 packages with 3. The repo
+          # variables CI_SELF_HOSTED_TURBO_CONCURRENCY and
+          # CI_SELF_HOSTED_TEST_WORKERS change them without a pull request.
+          # GitHub's runners keep 10 and Vitest's defaults.
+          TURBO_CONCURRENCY: ${{ runner.environment == 'self-hosted' && (vars.CI_SELF_HOSTED_TURBO_CONCURRENCY || '6') || env.TURBO_CONCURRENCY }}
+          HALONIC_TEST_WORKERS: ${{ runner.environment == 'self-hosted' && (vars.CI_SELF_HOSTED_TEST_WORKERS || '3') || '' }}
         run: |
           if [ -z "$TURBO_TOKEN" ] || [ -z "$TURBO_REMOTE_CACHE_SIGNATURE_KEY" ]; then
             if [ -n "$TURBO_TOKEN" ]; then
