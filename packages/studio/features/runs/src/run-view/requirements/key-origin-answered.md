@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-11873 (PR 3b, HAL-15128); UX checklist on HAL-11873, C-20 and "After Allow" / "After Don't allow"
 
-The run log view shall show a `key-origin.answered` event as one line in words, in place of its event line, with its number and its time with seconds: `Allowed {address} for key "{key}"` after Allow, and `Not allowed: provider "{provider}" can't send key "{key}" to {address}.` after Don't allow. The line shall never name who answered, and shall write a hidden or direction-changing character as its escape.
+The run log view shall show a `key-origin.answered` event as one line in words, in place of its event line, with its number and its time with seconds: `Allowed {address} for key "{key}".` after Allow, and `Not allowed: provider "{provider}" can't send key "{key}" to {address}.` after Don't allow. The line shall never name who answered, and shall write a hidden or direction-changing character as its escape.
 
 ## Examples
 

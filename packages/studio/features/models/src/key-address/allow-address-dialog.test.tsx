@@ -145,6 +145,28 @@ verifies("models.key-address.allow-address", () => {
     expect(buttons.indexOf("Don't allow")).toBeLessThan(buttons.indexOf("Allow this address"));
   });
 
+  it("never draws Allow as the prominent button (C-2)", () => {
+    const queue = new KeyAddressQueue();
+    show(queue);
+    ask(queue, gateway);
+    expect(button("Allow this address").className.split(" ")).not.toContain("bg-primary");
+  });
+
+  it("sets the key's current addresses in mono, like the asked address (X-2)", () => {
+    const queue = new KeyAddressQueue();
+    show(queue);
+    ask(queue, { ...gateway, allowed: ["https://api.example.com", "https://eu.example.com"] });
+    const mono = [...dialog().querySelectorAll(".font-mono")].map((part) => part.textContent);
+    expect(mono).toEqual([
+      "https://gateway.example.com",
+      "https://api.example.com",
+      "https://eu.example.com",
+    ]);
+    expect(dialog().textContent).toContain(
+      "This key is currently allowed for https://api.example.com, https://eu.example.com.",
+    );
+  });
+
   it("answers not-allowed on Escape, as on Don't allow, and saves nothing", async () => {
     for (const refuse of [
       () => dialog().dispatchEvent(new Event("cancel", { cancelable: true })),

@@ -1,4 +1,5 @@
 import { Dialog } from "@halonicjs/studio-kit";
+import { Fragment, type ReactNode } from "react";
 import type { ShownKeyAddressQuestion } from "./key-address-queue.ts";
 import { allowAddressTitle, allowAddressWords, currentlyAllowedFor } from "./key-address-text.ts";
 
@@ -22,7 +23,12 @@ export function AllowAddressDialog({ shown, onAllow, onRefuse }: AllowAddressDia
     <Dialog
       title={allowAddressTitle(shown.position, shown.count)}
       alert
-      confirm={{ label: allowAddressWords.allow, busyLabel: allowAddressWords.saving }}
+      confirm={{
+        label: allowAddressWords.allow,
+        // Never the prominent button: a reflex press sends the key somewhere new (C-2).
+        variant: "secondary",
+        busyLabel: allowAddressWords.saving,
+      }}
       cancelLabel={allowAddressWords.refuse}
       closeButton={false}
       busy={shown.saving}
@@ -45,9 +51,19 @@ export function AllowAddressDialog({ shown, onAllow, onRefuse }: AllowAddressDia
   );
 }
 
-/** The addresses the key has now, or that it has none. */
-function contextLine(allowed: readonly string[] | undefined): string {
-  return allowed === undefined || allowed.length === 0
-    ? allowAddressWords.noAddressYet
-    : `${currentlyAllowedFor} ${allowed.join(", ")}.`;
+/** The addresses the key has now, in mono like the address above them (X-2), or that it has none. */
+function contextLine(allowed: readonly string[] | undefined): ReactNode {
+  if (allowed === undefined || allowed.length === 0) return allowAddressWords.noAddressYet;
+  return (
+    <>
+      {currentlyAllowedFor}{" "}
+      {allowed.map((address, index) => (
+        <Fragment key={address}>
+          {index > 0 && ", "}
+          <span className="font-mono wrap-anywhere">{address}</span>
+        </Fragment>
+      ))}
+      .
+    </>
+  );
 }

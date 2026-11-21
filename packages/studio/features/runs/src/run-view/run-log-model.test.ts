@@ -120,7 +120,7 @@ verifies("runs.run-view.key-origin-answered", () => {
       kind: "words",
       seq: 2,
       time: "10:41:00",
-      text: 'Allowed https://gateway.example.com for key "gateway-key"',
+      text: 'Allowed https://gateway.example.com for key "gateway-key".',
     });
   });
 

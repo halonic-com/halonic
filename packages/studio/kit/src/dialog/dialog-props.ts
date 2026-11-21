@@ -9,8 +9,11 @@ export type DialogSize = "sm" | "md" | "lg";
 export interface DialogConfirm {
   /** Names the action: "Delete agent", never "OK". */
   readonly label: string;
-  /** `danger` when it deletes or removes something. Default `primary`. */
-  readonly variant?: "primary" | "danger";
+  /**
+   * `danger` when it deletes or removes something. `secondary` when pressing it by reflex would
+   * do harm, so it mustn't be the prominent button. Default `primary`.
+   */
+  readonly variant?: "primary" | "secondary" | "danger";
   /**
    * The label while `busy`: "Deleting…". Required, because it's also why Cancel and the ✕ are
    * unavailable then.

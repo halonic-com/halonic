@@ -392,7 +392,7 @@ export function keyOriginAnswerWords(answer: {
   readonly answer: "allowed" | "not-allowed";
 }): string {
   return answer.answer === "allowed"
-    ? `Allowed ${answer.origin} for key "${answer.key}"`
+    ? `Allowed ${answer.origin} for key "${answer.key}".`
     : `Not allowed: provider "${answer.provider}" can't send key "${answer.key}" to ${answer.origin}.`;
 }
 
