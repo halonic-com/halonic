@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15262 (team wording call on flow check 38's C552 findings 1 and 7, HAL-15218; small wording on approved screens, HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:OwqlqevfFbqJ9sU6yXhurjxhhludcDhXUfmt0UtuE4kP6/i377UiEs0j8K7Z4YkG0CdXhIpE9SGfTB5YcpWjDg==
 
 `halonic models allow-address` without a saved key said "Save it with halonic secret set *key* or on
 the Models page first." The Models page saves into the keychain, which the CLI never reads
