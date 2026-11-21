@@ -217,14 +217,16 @@ export function createChatTurnRoutes({
       if (!mayUseSecret(turn.agent?.secret)) {
         return errorResponse(serverErrors.secretNameNotAllowed);
       }
-      // The host sends the secret to the address, so a pair its workspace didn't set up goes nowhere.
-      if (!(await mayUseAddress(modelSettings, turn))) {
-        return errorResponse(serverErrors.modelAddressNotAllowed);
-      }
       // The executor runs the tools a turn calls, so a chat turn needs trust just like a start.
+      // It comes before the address check: an untrusted version names no provider the host may
+      // use, and the caller should hear that the workspace needs trust, not that a provider is missing.
       const refusal = await refuseUnlessTrusted(trust);
       if (refusal !== null) {
         return refusal;
+      }
+      // The host sends the secret to the address, so a pair its workspace didn't set up goes nowhere.
+      if (!(await mayUseAddress(modelSettings, turn))) {
+        return errorResponse(serverErrors.modelAddressNotAllowed);
       }
       try {
         return Response.json(await runs.chatTurn({ ...turn, signal: request.signal }));
