@@ -36,6 +36,18 @@
 # CI_RUNNER_SMALL and every job is back on `ubuntu-24.04` on its next run.
 # Every copy of the expression must stay identical; tooling/check tests that.
 # It replaces MERGE_QUEUE_RUNNER (HAL-14115), which was never set.
+#
+# A push to main doesn't test again what its merge group already passed
+# (board decision, HAL-15465, 21 Nov): with squash merges, the commit that
+# lands on main is the exact commit its merge group tested. The `merged` job
+# looks for a green merge-group run of this file for the pushed commit; the
+# jobs on our own CI server that passed there (fast, build, trace, and
+# scaffold, e2e and docs when the group ran them) skip on the push. A job the
+# group skipped by area still runs here, so a gap in the area rules still
+# shows on main. The GitHub-hosted, macOS and Windows jobs always run, as
+# does everything when there's no such run (a bypass merge, a direct push, a
+# failed or lost group), when the lookup fails, on a re-run, or when the repo
+# variable CI_MAIN_SKIP_MERGED is "off".
 
 name: CI
 
@@ -209,8 +221,67 @@ jobs:
       - if: always() && runner.environment == 'self-hosted'
         uses: $/.github/actions/runner-usage
 
+  merged:
+    # Pushes to main only (see the top of this file, HAL-15465). Skipped
+    # everywhere else, so the jobs that need it run with `!cancelled()`. It
+    # never fails: any error means an empty list, and every job runs.
+    name: Merge group already passed this commit
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      actions: read # to read this commit's merge-group runs and their jobs
+    outputs:
+      passed: ${{ steps.lookup.outputs.passed }}
+    steps:
+      - id: lookup
+        name: Find this commit's green merge-group run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          ATTEMPT: ${{ github.run_attempt }}
+          SWITCH: ${{ vars.CI_MAIN_SKIP_MERGED }}
+        run: |
+          full() { echo "::notice title=Full run::$1, so every job runs."; exit 0; }
+          [ "$SWITCH" != off ] || full "CI_MAIN_SKIP_MERGED is off"
+          [ "$ATTEMPT" = 1 ] || full "This is a re-run (attempt $ATTEMPT)"
+          runs=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$SHA&event=merge_group&status=success&per_page=10" \
+            | jq -r --arg sha "$SHA" '.workflow_runs[] | select(.head_sha == $sha and .event == "merge_group" and .conclusion == "success") | "\(.id) \(.html_url)"') \
+            || full "Couldn't list the merge-group runs of $SHA"
+          [ -n "$runs" ] || full "No green merge-group run tested $SHA (a bypass merge, a direct push, or a group that failed or was lost)"
+          while read -r id url; do
+            jobs=$(gh api --paginate "repos/$REPO/actions/runs/$id/jobs?per_page=100&filter=latest" --jq '.jobs[] | {name, conclusion}' | jq -s .) \
+              || full "Couldn't list the jobs of $url"
+            # A job counts only if every leg of it passed there. trace reads
+            # the build's test results, so it skips only with the build.
+            passed=$(jq -r '
+              . as $jobs
+              | def ok($name): [$jobs[] | select(.name == $name or (.name | startswith($name + " (")))] as $legs
+                  | ($legs | length) > 0 and all($legs[]; .conclusion == "success");
+              if ok("ci-ok") | not then "" else
+                [ ({ fast: "Fast gates",
+                     build: "Typecheck, lint, test, build",
+                     scaffold: "Empty package and feature pass every check",
+                     e2e: "Studio end-to-end (Playwright)",
+                     docs: "Docs build and link check" } | to_entries[]) as $job
+                  | select(ok($job.value)) | $job.key ]
+                | if index("build") and ok("Requirements and their tests (trace)") then . + ["trace"] else . end
+                | join(" ")
+              end' <<< "$jobs") || full "Couldn't read the jobs of $url"
+            if [ -n "$passed" ]; then
+              echo "::notice title=Merge group passed this commit::$url passed $SHA. Skipped here: $passed."
+              echo "passed= $passed " >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done <<< "$runs"
+          full "No merge-group run of $SHA has a green ci-ok"
+
   fast:
     name: Fast gates
+    # Skips on a push to main when its merge group passed it (`merged`).
+    needs: merged
+    if: ${{ !cancelled() && !contains(needs.merged.outputs.passed, ' fast ') }}
     # A large slot on our own CI server: on a 2-CPU slot it took 50 s, as
     # long as on GitHub (HAL-14831).
     runs-on: ${{ vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
@@ -470,6 +541,9 @@ jobs:
 
   build:
     name: Typecheck, lint, test, build (${{ matrix.shard }})
+    # Skips on a push to main when its merge group passed it (`merged`).
+    needs: merged
+    if: ${{ !cancelled() && !contains(needs.merged.outputs.passed, ' build ') }}
     runs-on: ${{ vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     # The longest shard since the split took 7.3 minutes (20 Nov, 244 runs).
     timeout-minutes: 15
@@ -756,8 +830,8 @@ jobs:
   # pull request, the guard job runs trace from the merge base's copy.
   trace:
     name: Requirements and their tests (trace)
-    needs: build
-    if: ${{ !cancelled() && github.event_name != 'pull_request' }}
+    needs: [merged, build]
+    if: ${{ !cancelled() && github.event_name != 'pull_request' && !contains(needs.merged.outputs.passed, ' trace ') }}
     runs-on: ${{ vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 10
     permissions:
@@ -1212,8 +1286,8 @@ jobs:
     # Proves the templates still pass every check, so `pnpm new` never
     # hands an agent a package that fails.
     name: Empty package and feature pass every check
-    needs: changes
-    if: needs.changes.outputs.scaffold == 'true' && needs.changes.outputs.full == 'true'
+    needs: [changes, merged]
+    if: ${{ !cancelled() && needs.changes.outputs.scaffold == 'true' && needs.changes.outputs.full == 'true' && !contains(needs.merged.outputs.passed, ' scaffold ') }}
     runs-on: ${{ vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     timeout-minutes: 35
     permissions:
@@ -2809,8 +2883,8 @@ jobs:
     # only, never in the agents' runner container. Playwright's web server
     # builds the pages and serves them, and stops with the tests.
     name: Studio end-to-end (Playwright)
-    needs: changes
-    if: needs.changes.outputs.studio == 'true' && needs.changes.outputs.full == 'true'
+    needs: [changes, merged]
+    if: ${{ !cancelled() && needs.changes.outputs.studio == 'true' && needs.changes.outputs.full == 'true' && !contains(needs.merged.outputs.passed, ' e2e ') }}
     runs-on: ${{ vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
@@ -2900,8 +2974,8 @@ jobs:
 
   docs:
     name: Docs build and link check
-    needs: changes
-    if: needs.changes.outputs.docs == 'true'
+    needs: [changes, merged]
+    if: ${{ !cancelled() && needs.changes.outputs.docs == 'true' && !contains(needs.merged.outputs.passed, ' docs ') }}
     runs-on: ${{ vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 2
     permissions: {}
