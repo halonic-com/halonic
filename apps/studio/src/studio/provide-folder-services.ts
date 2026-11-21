@@ -68,11 +68,11 @@ import { EngineNotAnswering, type KeyboardPlatform } from "@halonicjs/studio-she
 import { loadWorkspace } from "@halonicjs/workspace";
 import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
+import { folderLiveness } from "../changes/folder-liveness.ts";
 import { shareChoiceMemory } from "../changes/share-choice.ts";
 import { versionHistoryOf } from "../changes/version-history.ts";
 import { WatchedChanges } from "../changes/watched-changes.ts";
 import type { GitAnswer } from "../changes/workspace-changes.ts";
-import { WorkspaceLiveness } from "../changes/workspace-liveness.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
 import { answerChatOn, EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
@@ -203,21 +203,11 @@ export function provideFolderServices(
   services.provide(ChangesSourceService, changes);
   services.provide(VersionHistoryHostService, versionHistoryOf(changes));
   services.provide(ShareChoiceService, shareChoiceMemory(storageOf(window), location));
-  const liveness = new WorkspaceLiveness({
-    history: changes,
+  const { liveness, onChange: onLivenessChange } = folderLiveness({
+    changes,
     saved: new TauriDefinitionStore(files, location),
+    events: scope.events,
   });
-  // Whether an item is live changes with its saved file and with a new version.
-  const onLivenessChange = (listener: () => void) => {
-    const stops = [
-      scope.events.on("files.changed", listener),
-      scope.events.on("files.saved", listener),
-      changes.onNewVersion(listener),
-    ];
-    return () => {
-      for (const stop of stops) stop();
-    };
-  };
   const transport = tauriAgentHostTransport(window);
   const engine =
     remoteEngine ??
@@ -275,7 +265,8 @@ export function provideFolderServices(
     AgentsHostService,
     new WorkspaceAgents({
       files: services.get(workspaceFilesKey),
-      onChange: (listener) => scope.events.on("files.changed", listener),
+      onChange: onLivenessChange,
+      liveness: async (path) => (await liveness.liveState(path)).state,
       // The background engine has no chat route yet, so its window answers "not answering".
       ...(engine instanceof EngineService ? { answerChat: answerChatOn(engine) } : {}),
       ...(transport === undefined

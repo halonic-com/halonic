@@ -60,6 +60,16 @@ verifies("agents.page.review-and-make-live", () => {
     expect(page.textContent).not.toContain(line);
   });
 
+  it("gives the focus the link had to the agent's name once the line goes", async () => {
+    const { page } = await open(hostMaking("made").host);
+    const button = buttonNamed(page, link);
+    button?.focus();
+
+    await act(async () => button?.click());
+    expect(page.textContent).not.toContain(line);
+    expect(document.activeElement).toBe(page.querySelector("h1"));
+  });
+
   it("keeps the line when the person closes Create version without a version", async () => {
     const { host, asked } = hostMaking("cancelled");
     const { page, toasts } = await open(host);
