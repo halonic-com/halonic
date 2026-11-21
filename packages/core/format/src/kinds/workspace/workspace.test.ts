@@ -41,7 +41,7 @@ verifies("format.workspace-file", () => {
     const text = yaml("id: acme", "name: Acme", "appearance:", "  characters: loud", "colour: red");
     expect(summary(problemsOf("workspace", text))).toEqual([
       "appearance.characters invalid_value 4",
-      " unrecognized_keys 1",
+      " unrecognized_keys 5",
     ]);
   });
 });

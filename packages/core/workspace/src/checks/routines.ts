@@ -76,8 +76,9 @@ function targetProblem(context: CheckContext, routine: Routine): RoutineProblem 
   } else if (routine.hub === null && hub !== null && context.filesOf("hub", hub).length === 0) {
     return { path: ["run", "hub"], code: "unknown-hub", message: `unknown hub "${hub}"` };
   }
+  // A file that is there but failed has its own errors; "unknown" would blame the routine.
   if ("workflow" in run) {
-    return context.idsOf("workflow", hub).has(run.workflow)
+    return context.nameableIds("workflow", hub).has(run.workflow)
       ? null
       : {
           path: ["run", "workflow"],
@@ -85,7 +86,7 @@ function targetProblem(context: CheckContext, routine: Routine): RoutineProblem 
           message: `unknown workflow "${run.workflow}"`,
         };
   }
-  return context.idsOf("agent", hub).has(run.agent)
+  return context.nameableIds("agent", hub).has(run.agent)
     ? null
     : { path: ["run", "agent"], code: "unknown-agent", message: `unknown agent "${run.agent}"` };
 }

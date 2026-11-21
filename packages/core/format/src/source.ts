@@ -9,6 +9,8 @@ export interface Source {
   readonly data: unknown;
   /** Where the value at `path` starts, or the nearest parent; line 1, column 1 when nothing does. */
   positionOf(path: YamlPath): SourcePosition;
+  /** Where the key that names the value at `path` starts; as `positionOf` when there is none. */
+  positionOfKey(path: YamlPath): SourcePosition;
 }
 
 const fileStart: SourcePosition = { line: 1, col: 1 };
@@ -30,6 +32,7 @@ export function readSource(syntax: KindSyntax, text: string): Result<Source, Yam
   return ok({
     data: file.data ?? {},
     positionOf: (path) => file.positionOf(path) ?? fileStart,
+    positionOfKey: (path) => file.positionOfKey(path) ?? fileStart,
   });
 }
 
@@ -45,7 +48,11 @@ const frontMatterPattern = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/;
 function readFrontMatterFile(text: string): Result<Source, YamlProblem> {
   const match = frontMatterPattern.exec(text);
   if (match === null) {
-    return ok({ data: { body: text }, positionOf: () => fileStart });
+    return ok({
+      data: { body: text },
+      positionOf: () => fileStart,
+      positionOfKey: () => fileStart,
+    });
   }
   const frontMatterText = match[1] ?? "";
   const body = match[2] ?? "";
@@ -61,17 +68,13 @@ function readFrontMatterFile(text: string): Result<Source, YamlProblem> {
     col: 1,
   };
   const data = frontMatter.data ?? {};
+  const below = (position: SourcePosition | undefined): SourcePosition =>
+    position === undefined ? fileStart : { line: position.line + lineOffset, col: position.col };
   return ok({
     data: isMap(data) ? { ...data, body: body.trim() } : data,
-    positionOf: (path) => {
-      if (path[0] === "body") {
-        return bodyPosition;
-      }
-      const position = frontMatter.positionOf(path);
-      return position === undefined
-        ? fileStart
-        : { line: position.line + lineOffset, col: position.col };
-    },
+    positionOf: (path) => (path[0] === "body" ? bodyPosition : below(frontMatter.positionOf(path))),
+    positionOfKey: (path) =>
+      path[0] === "body" ? bodyPosition : below(frontMatter.positionOfKey(path)),
   });
 }
 

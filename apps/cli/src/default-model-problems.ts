@@ -14,6 +14,7 @@ import {
   filesOf,
   type LoadedFileOf,
   type LoadedWorkspace,
+  placeOf,
   resolveModel,
   type WorkspaceIssue,
 } from "@halonicjs/workspace";
@@ -23,6 +24,8 @@ import {
  * an agent gets (the hub's default, else the workspace's, else `default`) is
  * an alias the hub doesn't have. A default with a `/` names a provider and a
  * model directly, and a provider no file has is `loadWorkspace`'s to report.
+ * Nor is it reported when a file the aliases come from failed: the alias may
+ * be in it, and its own errors say what to fix (HAL-14261).
  *
  * - **Error**, on the first such agent a workflow of the hub runs: a run of
  *   that workflow would stop when the agent calls the model.
@@ -35,6 +38,7 @@ import {
 export function defaultModelProblems(workspace: LoadedWorkspace): WorkspaceIssue[] {
   const problems: WorkspaceIssue[] = [];
   for (const [hub, agents] of agentsOnDefaultModel(workspace)) {
+    if (aliasFileFailed(workspace, hub)) continue;
     const name = callModelName(definitionsOf(workspace, hub), {});
     if (name.includes("/") || resolveModel(workspace, hub, name) !== undefined) {
       continue;
@@ -77,4 +81,16 @@ function agentsRunByWorkflows(workspace: LoadedWorkspace, hub: string): LoadedFi
     .flatMap((workflow) =>
       workflowAgentsOf(workspace, { hubId: hub, workflowId: workflow.value.id }),
     );
+}
+
+/** Whether `models.yaml` or the hub's `hub.yaml` was read but failed its own checks. */
+function aliasFileFailed(workspace: LoadedWorkspace, hub: string): boolean {
+  const parsed = new Set(workspace.files.map((file) => file.path));
+  return workspace.issues.some((issue) => {
+    if (issue.severity !== "error" || parsed.has(issue.file)) {
+      return false;
+    }
+    const place = placeOf(issue.file);
+    return place?.kind === "models" || (place?.kind === "hub" && place.hub === hub);
+  });
 }

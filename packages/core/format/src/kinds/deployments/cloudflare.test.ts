@@ -125,7 +125,7 @@ verifies("format.deployments-cloudflare", () => {
   it("refuses an unknown key in the cloudflare block, such as an account id", () => {
     const text = cloudflare("worker: acme", "accountId: abc");
     expect(summary(problemsOf("deployments", text))).toEqual([
-      "deployments.cloud.cloudflare unrecognized_keys 6",
+      "deployments.cloud.cloudflare unrecognized_keys 7",
     ]);
   });
 

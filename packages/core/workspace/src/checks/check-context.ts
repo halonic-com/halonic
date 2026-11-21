@@ -22,12 +22,33 @@ type KindWithId = {
 }[KindName];
 
 /**
+ * The id a file that failed its own checks would have had, as the parser
+ * gives it: its own `id:` when the kind lets a file name itself and the text
+ * still reads, otherwise the id its file name gives. A `writer.agent.yaml`
+ * with `id: author` is the agent `author`, not `writer`.
+ */
+function failedFileId(file: ReadFile): string | undefined {
+  const { idFromPlace, syntax } = fileKinds[file.kind];
+  const placeId = placeOf(file.path)?.placeId;
+  if (idFromPlace === "always" || syntax !== "yaml") {
+    return placeId;
+  }
+  const yaml = readYaml(file.text);
+  const data = yaml.ok ? yaml.value.data : undefined;
+  if (typeof data === "object" && data !== null && !Array.isArray(data) && "id" in data) {
+    return typeof data.id === "string" ? data.id : undefined;
+  }
+  return idFromPlace === "fallback" ? placeId : undefined;
+}
+
+/**
  * What every check across files gets: the files that parsed, the kinds of
  * every file the loader read (also those that failed), and a way to report
  * an error at a key path with its line.
  *
- * A file that failed its own checks is not among `files`, so whatever names
- * it is reported as unknown, as the old loader did.
+ * A file that failed its own checks is not among `files`. What names it
+ * looks it up with {@link CheckContext.nameableIds}, so it isn't reported as
+ * unknown on top of that file's own errors.
  */
 export class CheckContext {
   readonly files: readonly LoadedFile[];
@@ -81,24 +102,30 @@ export class CheckContext {
   }
 
   /**
-   * Whether a file of this kind whose name gives this id, in this hub (`null`:
-   * the root), was read but failed its own checks. Whatever names it would
-   * only repeat that file's own errors (HAL-12126).
+   * The ids other files may name in one hub (`null`: the root): those of the
+   * parsed files, and those the names of files that failed their own checks
+   * give. An "unknown agent" for a file that is there but broken sends the
+   * user to the wrong file; its own errors already say what to fix
+   * (HAL-12126, HAL-14261).
    */
-  failedWithPlaceId(kind: KindName, hub: string | null, id: string): boolean {
+  nameableIds(kind: KindWithId, hub: string | null): Set<string> {
+    return new Set([...this.idsOf(kind, hub), ...this.failedIds(kind, hub)]);
+  }
+
+  /** The ids this kind's files in one hub would have, for files that failed their own checks. */
+  private failedIds(kind: KindName, hub: string | null): Set<string> {
     const parsed = new Set(this.filesOf(kind, hub).map((file) => file.path));
+    const ids = new Set<string>();
     for (const file of this.read.values()) {
-      const place = placeOf(file.path);
-      if (
-        file.kind === kind &&
-        !parsed.has(file.path) &&
-        place?.hub === hub &&
-        place.placeId === id
-      ) {
-        return true;
+      if (file.kind !== kind || parsed.has(file.path) || placeOf(file.path)?.hub !== hub) {
+        continue;
+      }
+      const id = failedFileId(file);
+      if (id !== undefined) {
+        ids.add(id);
       }
     }
-    return false;
+    return ids;
   }
 
   /**

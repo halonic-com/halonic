@@ -71,13 +71,18 @@ interface Recording {
   diagnostics: { path: string; message: string; line?: number }[];
 }
 
-/** The broken cases: the file, and the line the old app's recording gave for its syntax problem. */
+/**
+ * The broken cases: the file, and the line the old app's recording gave for
+ * its syntax problem. An unclosed quote is the exception: the old app gave
+ * the end of the file, and we give the line the quote opens on, which is the
+ * line the case expects (HAL-14261).
+ */
 const brokenCases = filesUnder(join(parityRoot, "cases"))
   .filter((path) => path.endsWith("case.json"))
   .flatMap((path) => {
     const info = JSON.parse(readFileSync(path, "utf8")) as {
       fault?: string;
-      expect?: { file: string };
+      expect?: { file: string; line?: number };
     };
     if (info.fault !== "yaml-syntax" || !info.expect?.file.endsWith(".yaml")) return [];
     const recording = JSON.parse(
@@ -89,7 +94,7 @@ const brokenCases = filesUnder(join(parityRoot, "cases"))
       {
         name,
         file: join(path, "..", "files", info.expect.file),
-        line: problem?.line,
+        line: problem?.message.includes("Missing closing") ? info.expect.line : problem?.line,
       },
     ];
   });

@@ -29,11 +29,15 @@ export function checkWorkflows(context: CheckContext): WorkspaceIssue[] {
   return issues;
 }
 
-/** The workflow package's checks: unknown states, agents and workflows, dead ends and more. */
+/**
+ * The workflow package's checks: unknown states, agents and workflows, dead
+ * ends and more. An agent or workflow whose file is there but failed isn't
+ * unknown: that file's own errors say what to fix.
+ */
 function staticIssues(context: CheckContext, workflow: Workflow): WorkspaceIssue[] {
   const options = {
-    agents: [...context.idsOf("agent", workflow.hub)],
-    workflows: [...context.idsOf("workflow", workflow.hub)],
+    agents: [...context.nameableIds("agent", workflow.hub)],
+    workflows: [...context.nameableIds("workflow", workflow.hub)],
     choices: choiceOptions(context, workflow.hub),
     inputFields: inputFieldsOf(context, workflow),
   };

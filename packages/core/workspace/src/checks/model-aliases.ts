@@ -32,19 +32,28 @@ export function modelAliasesOf(context: CheckContext, hub: string | null): Set<s
 }
 
 /**
+ * Whether `models.yaml` was read but failed its own checks. Any alias may be
+ * in it then, so "unknown alias" would send the user to the wrong file; its
+ * own errors say what to fix (HAL-14261).
+ */
+export function modelsFileFailed(context: CheckContext): boolean {
+  return context.hasReadKind("models") && context.filesOf("models").length === 0;
+}
+
+/**
  * The aliases in `models.yaml`: each one's provider must exist, and each
  * alias it falls back to too. The messages are the old loader's. A provider
  * whose file failed its own checks isn't unknown: that file's error says
- * what to fix (HAL-14260).
+ * what to fix (HAL-14260, HAL-14261).
  */
 export function checkModelsFile(context: CheckContext): WorkspaceIssue[] {
-  const providers = context.idsOf("provider", null);
+  const providers = context.nameableIds("provider", null);
   const issues: WorkspaceIssue[] = [];
   for (const models of context.filesOf("models")) {
     const aliases = models.value.aliases;
     for (const [alias, target] of Object.entries(aliases)) {
       const provider = target.provider;
-      if (!providers.has(provider) && !context.failedWithPlaceId("provider", null, provider)) {
+      if (!providers.has(provider)) {
         const message = `Alias "${alias}" uses unknown provider "${provider}"`;
         const path = ["aliases", alias, "provider"];
         issues.push(context.error(models.path, path, "unknown-provider", message));
@@ -63,6 +72,9 @@ export function checkModelsFile(context: CheckContext): WorkspaceIssue[] {
 
 /** The assistant model in `workspace.yaml` (`assistant.model`) must be a known alias. */
 export function checkSessionModel(context: CheckContext): WorkspaceIssue[] {
+  if (modelsFileFailed(context)) {
+    return [];
+  }
   const aliases = modelAliasesOf(context, null);
   return context.filesOf("workspace").flatMap((workspace) => {
     const model = workspace.value.assistant?.model;

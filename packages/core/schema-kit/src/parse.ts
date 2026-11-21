@@ -1,6 +1,7 @@
 import { err, ok, type Result } from "@halonicjs/std";
+import type { z } from "zod";
 import { findTooDeep } from "./depth.ts";
-import { fromZodIssue, type Issue } from "./issue.ts";
+import { fromZodIssue, type Issue, knownKeysOf } from "./issue.ts";
 import type { Infer, Schema } from "./schema.ts";
 
 /**
@@ -19,7 +20,14 @@ import type { Infer, Schema } from "./schema.ts";
 export function parse<S extends Schema>(schema: S, input: unknown): Result<Infer<S>, Issue[]> {
   const tooDeep = findTooDeep(input);
   if (tooDeep !== undefined) return err([tooDeep]);
-  const result = schema.safeParse(input);
+  // Zod's error map is the one place that sees which object a key is unknown
+  // to; we note the keys the object allows and keep Zod's own message.
+  const knownKeys = new Map<string, readonly string[]>();
+  const rememberKnownKeys = (issue: z.core.$ZodRawIssue): undefined => {
+    const known = knownKeysOf(issue);
+    if (known !== undefined) knownKeys.set(known.path, known.keys);
+  };
+  const result = schema.safeParse(input, { error: rememberKnownKeys });
   if (result.success) return ok(result.data);
-  return err(result.error.issues.map(fromZodIssue));
+  return err(result.error.issues.map((issue) => fromZodIssue(issue, knownKeys)));
 }

@@ -170,13 +170,13 @@ verifies("format.plugin-file", () => {
 
   describe("refuses an unknown key at every depth", () => {
     it.each([
-      ["the top", yaml(...head, "author: someone"), "", 1],
+      ["the top", yaml(...head, "author: someone"), "", 5],
       ["the backend", yaml(...head, "backend: { hosts: [], extra: 1 }"), "backend", 5],
       [
         "a local tool",
         localTool("{ script: { program: node, path: a.js } }", "    cwd: /"),
         "localTools.0",
-        6,
+        9,
       ],
       [
         "a script start",
@@ -217,7 +217,12 @@ verifies("format.plugin-file", () => {
         "  kit: 1",
         "  hosts: []",
       );
-      expect(summary(problemsOf("plugin", text))).toEqual(["backend unrecognized_keys 6"]);
+      // One problem per key, each at its own line.
+      expect(summary(problemsOf("plugin", text))).toEqual([
+        "backend unrecognized_keys 6",
+        "backend unrecognized_keys 7",
+        "backend unrecognized_keys 8",
+      ]);
     });
 
     it("including a card's `for`: selection cards aren't offered in v0.1", () => {
