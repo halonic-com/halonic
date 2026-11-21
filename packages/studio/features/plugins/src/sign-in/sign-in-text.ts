@@ -90,6 +90,12 @@ export function waitingForBrowser(service: string): string {
   return `Waiting for ${service}… Finish in your browser.`;
 }
 
+/**
+ * Opens the sign-in's page in the browser again, without starting another sign-in (team wording,
+ * HAL-15405, as the Google setup's **Open again**, microcopy 10.4).
+ */
+export const OPEN_AGAIN = "Open again";
+
 /** Ends the wait for the browser and drops the pending sign-in at the host. */
 export const CANCEL = "Cancel";
 
@@ -98,8 +104,12 @@ export function cancelFailed(reason: string): string {
   return `Couldn't cancel the sign-in: ${reason}`;
 }
 
-/** A sign-in that didn't finish: no answer came back, or it came back incomplete or too late. */
-export const SIGN_IN_NOT_FINISHED = "The sign-in didn't finish. Try again.";
+/**
+ * A sign-in that didn't finish: no answer came back, or it came back incomplete or too late. The
+ * block offers **Sign in** right under it, so the line names no other next step (team wording,
+ * HAL-15405, as the Google setup's "Nothing was saved.", microcopy 10.4).
+ */
+export const SIGN_IN_NOT_FINISHED = "The sign-in didn't finish. Nothing was saved.";
 
 /** **Sign out** failed; nothing was removed (team wording, microcopy 1.1 "Action failed"). */
 export function signOutFailed(reason: string): string {

@@ -120,7 +120,7 @@ verifies("plugins.plugin-sign-in-text", () => {
         "Couldn't reach Acme. Check your connection and try again.",
       );
       expect(outcomeLine("Acme", { kind: "linkNoLongerValid" })).toBe(
-        "The sign-in didn't finish. Try again.",
+        "The sign-in didn't finish. Nothing was saved.",
       );
       expect(outcomeLine("Acme", { kind: "unexpectedAnswer", status: 500 })).toBe(
         "The sign-in didn't finish: Halonic couldn't use Acme's answer.",

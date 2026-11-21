@@ -14,6 +14,7 @@ import {
   CANCEL,
   CLIENT_SECRET_NOT_SET,
   cancelFailed,
+  OPEN_AGAIN,
   outcomeLine,
   SETTINGS_NEEDED,
   SIGN_IN,
@@ -92,7 +93,7 @@ export interface PluginSignInsSectionProps {
  * block each, with its purpose, the trust check line, the token host warning
  * when the hosts differ, and **Sign in**, **Signed in** with **Sign out**, or
  * **Sign in again** with the reason. While the browser sign-in is open the
- * block waits, with **Cancel**. After the browser sign-in, the person comes
+ * block waits, with **Open again** and **Cancel**. After the browser sign-in, the person comes
  * back to Halonic, and the section reads where the sign-ins stand again when
  * the window gets focus. A plugin without sign-ins shows nothing.
  *
@@ -206,7 +207,8 @@ interface SignInBlockProps {
 
 /**
  * One sign-in: what it does, where it stands, its one button and the line under it. Once the
- * browser opens, the block waits for it with **Cancel** in place of the button, until the host
+ * browser opens, the block waits for it with **Open again** and **Cancel** in place of the button,
+ * until the host
  * reports the sign-in differently from when it opened, the person cancels, or the host's wait
  * ends. A sign-in that fails the same way twice in a row reads the same, so that wait ends only
  * by **Cancel** or the host's wait.
@@ -226,9 +228,11 @@ function SignInBlock({
   const openExternal = useOpenExternal();
   const [busy, setBusy] = useState(false);
   const [line, setLine] = useState<string | undefined>(undefined);
-  // Set while the browser sign-in is open: where the sign-in stood when the browser opened.
+  // Set while the browser sign-in is open: where the sign-in stood when the browser opened, and
+  // the page it opened. **Open again** opens that same page: starting another sign-in would make
+  // the first tab's answer fail. The page is never shown, only opened.
   const [waiting, setWaiting] = useState<
-    { readonly from: PluginSignInStatus | undefined } | undefined
+    { readonly from: PluginSignInStatus | undefined; readonly page: string } | undefined
   >(undefined);
   const block = useRef<HTMLLIElement>(null);
   const waitingRow = useRef<HTMLDivElement>(null);
@@ -270,13 +274,20 @@ function SignInBlock({
       // promise. It opens only the approved sign-in page (`signInPage`).
       const address = signIns.start(plugin, name).then((answered) => signInPage(answered, facts));
       await openExternal(address);
-      setWaiting({ from: status });
+      setWaiting({ from: status, page: await address });
       announceState?.(announceKey, waitingForBrowser(service));
     } catch (error) {
       setLine(startFailedLine(error));
     } finally {
       setBusy(false);
     }
+  }
+
+  function openAgain() {
+    if (waiting === undefined) return;
+    // For a page already known the kit's `openExternal` never rejects: the shell reports its own
+    // errors, such as a system browser that didn't start.
+    void openExternal(waiting.page);
   }
 
   async function cancel() {
@@ -328,7 +339,13 @@ function SignInBlock({
         </>
       )}
       {waiting !== undefined && actions ? (
-        <WaitingRow ref={waitingRow} service={service} busy={busy} onCancel={() => void cancel()} />
+        <WaitingRow
+          ref={waitingRow}
+          service={service}
+          busy={busy}
+          onOpenAgain={openAgain}
+          onCancel={() => void cancel()}
+        />
       ) : (
         <StateRow
           state={state}
@@ -370,21 +387,27 @@ interface WaitingRowProps {
   readonly ref: Ref<HTMLDivElement>;
   readonly service: string;
   readonly busy: boolean;
+  readonly onOpenAgain: () => void;
   readonly onCancel: () => void;
 }
 
 /**
- * The browser sign-in is open: a spinner, "Waiting for Acme… Finish in your browser." and
- * **Cancel**, as the Google setup waits. The window's announcer reads the line once when the wait
- * starts, so it is plain text.
+ * The browser sign-in is open: a spinner, "Waiting for Acme… Finish in your browser.",
+ * **Open again** and **Cancel**, as the Google setup waits. The window's announcer reads the line
+ * once when the wait starts, so it is plain text.
  */
-function WaitingRow({ ref, service, busy, onCancel }: WaitingRowProps) {
+function WaitingRow({ ref, service, busy, onOpenAgain, onCancel }: WaitingRowProps) {
   return (
     <div ref={ref} className="flex flex-wrap items-center gap-2">
       <span className="size-4 text-fg-muted">
         <Spinner />
       </span>
       <p className="text-small text-fg-muted wrap-anywhere">{waitingForBrowser(service)}</p>
+      <Button variant="secondary" size="sm" onClick={onOpenAgain}>
+        {OPEN_AGAIN}
+        <span aria-hidden="true"> ↗</span>
+        <span className="sr-only"> (opens in your browser)</span>
+      </Button>
       <Button variant="ghost" size="sm" busy={busy} onClick={onCancel}>
         {CANCEL}
       </Button>
