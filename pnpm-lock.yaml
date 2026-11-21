@@ -2821,9 +2821,18 @@ importers:
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../../core/events
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../../core/format
+      '@halonicjs/studio-feature-agents':
+        specifier: workspace:*
+        version: link:../agents
       '@halonicjs/studio-feature-inbox':
         specifier: workspace:*
         version: link:../inbox
+      '@halonicjs/studio-feature-models':
+        specifier: workspace:*
+        version: link:../models
       '@halonicjs/studio-feature-runs':
         specifier: workspace:*
         version: link:../runs
