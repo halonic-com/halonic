@@ -116,41 +116,48 @@ verifies("workspace.routines", () => {
   });
 });
 
+/** A workspace whose routine Nightly runs Report, whose one step `reads` and gets `input`. */
+function nightlyRoutine(reads: string, input: string) {
+  const workflow = [
+    "name: Report",
+    "initial: write",
+    "states:",
+    "  write:",
+    "    agent: writer",
+    `    ${reads}`,
+    "    on: [{ to: done }]",
+    "  done: { type: final }",
+    "",
+  ].join("\n");
+  return loadWorkspace(
+    new MemorySource({
+      "workspace.yaml": "id: acme\nname: Acme\n",
+      "agents/writer.agent.yaml": "name: Writer\n",
+      "workflows/report.workflow.yaml": workflow,
+      "workflows/routines/nightly.routine.yaml": [
+        "name: Nightly",
+        "trigger: { schedule: '0 6 * * *' }",
+        "run:",
+        "  workflow: report",
+        ...(input === "" ? [] : ["  input:", `    ${input}`]),
+        "",
+      ].join("\n"),
+    }),
+  );
+}
+
+/** The routine's issues with `code`. */
+async function routineIssues(reads: string, input: string, code: string) {
+  const workspace = await nightlyRoutine(reads, input);
+  return workspace.issues.filter((issue) => issue.code === code);
+}
+
 verifies("workspace.routine-input", () => {
-  const workflow = (reads: string) =>
-    [
-      "name: Report",
-      "initial: write",
-      "states:",
-      "  write:",
-      "    agent: writer",
-      `    ${reads}`,
-      "    on: [{ to: done }]",
-      "  done: { type: final }",
-      "",
-    ].join("\n");
-  const load = (reads: string, input: string) =>
-    loadWorkspace(
-      new MemorySource({
-        "workspace.yaml": "id: acme\nname: Acme\n",
-        "agents/writer.agent.yaml": "name: Writer\n",
-        "workflows/report.workflow.yaml": workflow(reads),
-        "workflows/routines/nightly.routine.yaml": [
-          "name: Nightly",
-          "trigger: { schedule: '0 6 * * *' }",
-          "run:",
-          "  workflow: report",
-          "  input:",
-          `    ${input}`,
-          "",
-        ].join("\n"),
-      }),
-    );
-  const routineIssues = async (reads: string, input: string) =>
-    (await load(reads, input)).issues.filter((issue) => issue.file.includes("/routines/"));
+  const unread = (reads: string, input: string) =>
+    routineIssues(reads, input, "unread-routine-input");
 
   it("warns at a key no step reads, with the field it is close to", async () => {
-    const issues = await routineIssues("gets: [input.day]", "dya: monday");
+    const issues = await unread("gets: [input.day]", "dya: monday");
     expect(
       issues.map((issue) => [issue.severity, issue.code, issue.path.join("."), issue.line]),
     ).toEqual([["warning", "unread-routine-input", "run.input.dya", 6]]);
@@ -160,7 +167,7 @@ verifies("workspace.routine-input", () => {
   });
 
   it("names the fields the steps read when no key is close", async () => {
-    const issues = await routineIssues("gets: [input.day, input.team]", "region: north");
+    const issues = await unread("gets: [input.day, input.team]", "region: north");
     expect(issues.map((issue) => issue.message)).toEqual([
       'Routine "nightly": workflow "report" doesn\'t read input.region. Its steps read input.day and input.team: rename the key to one of those, or remove it.',
     ]);
@@ -168,10 +175,47 @@ verifies("workspace.routine-input", () => {
 
   it("counts a field read in a prompt as read", async () => {
     const reads = "input: 'Report for {{input.day}}.'";
-    expect(await routineIssues(reads, "day: monday")).toEqual([]);
+    expect(await unread(reads, "day: monday")).toEqual([]);
   });
 
   it("leaves a workflow alone that sends its agent the whole input", async () => {
-    expect(await routineIssues("gets: []", "dya: monday")).toEqual([]);
+    expect(await unread("gets: []", "dya: monday")).toEqual([]);
+  });
+});
+
+verifies("workspace.routine-start-input", () => {
+  const missing = (reads: string, input: string) =>
+    routineIssues(reads, input, "missing-routine-input");
+
+  it("fails at run.input when the input lacks a field the first step reads", async () => {
+    const issues = await missing("input: 'Write about: {{input.topic}}'", "");
+    expect(
+      issues.map((issue) => [issue.severity, issue.path.join("."), issue.line, issue.message]),
+    ).toEqual([
+      [
+        "error",
+        "run.input",
+        3,
+        "Nightly starts report without topic, which its first step reads. Add topic under run.input.",
+      ],
+    ]);
+  });
+
+  it("names every missing field, next to the key it doesn't read", async () => {
+    const issues = await missing("gets: [input.day, input.team]", "dya: monday");
+    expect(issues.map((issue) => [issue.path.join("."), issue.message])).toEqual([
+      [
+        "run.input",
+        "Nightly starts report without day and team, which its first step reads. Add day and team under run.input.",
+      ],
+    ]);
+  });
+
+  it("counts a {{trigger.…}} template as a given field", async () => {
+    expect(await missing("gets: [input.day]", "day: '{{trigger.at}}'")).toEqual([]);
+  });
+
+  it("leaves a workflow alone that sends its agent the whole input", async () => {
+    expect(await missing("gets: []", "")).toEqual([]);
   });
 });

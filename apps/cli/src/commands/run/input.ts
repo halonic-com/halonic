@@ -6,7 +6,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Workflow } from "@halonicjs/format";
 import { KindedError } from "@halonicjs/std";
-import { inputReads, readsWholeInput } from "@halonicjs/workflow";
+import { missingStartFields } from "@halonicjs/workflow";
 import type { Message } from "../../messages/define.ts";
 import { plainText } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
@@ -76,19 +76,13 @@ export function checkFirstStepInput(
   input: Record<string, unknown>,
   given: boolean,
 ): void {
-  const first = workflow.states[workflow.initial];
-  if (first === undefined || readsWholeInput(first)) {
+  const lacks = missingStartFields(workflow, Object.keys(input));
+  if (lacks === null) {
     return;
   }
-  const read = new Set(inputReads(workflow.initial, first).map((each) => each.field));
-  const missing = [...read].filter((field) => !Object.hasOwn(input, field));
-  if (missing.length === 0) {
-    return;
-  }
-  const step = first.description?.split("\n")[0]?.trim() || workflow.initial;
   throw new RunInputError(
-    runMessages.inputLacksFields(missing, step, given ? Object.keys(input) : undefined),
-    runMessages.inputLacksFieldsFix(missing),
+    runMessages.inputLacksFields(lacks.missing, lacks.step, given ? Object.keys(input) : undefined),
+    runMessages.inputLacksFieldsFix(lacks.missing),
   );
 }
 

@@ -73,7 +73,11 @@ verifies("engine.budget-stops", () => {
       cost: 0.6,
     });
 
-    const run = await executor.start({ hubId: "acme", workflowId: "reply", input: {} });
+    const run = await executor.start({
+      hubId: "acme",
+      workflowId: "reply",
+      input: { from: "ada@example.com" },
+    });
 
     expect(run).toMatchObject({
       status: "failed",
@@ -126,7 +130,11 @@ verifies("engine.budget-stops", () => {
       { startedAt: thisMonth, cost: 0.6, paidBy: "subscription" as const },
     ]) {
       const { executor, runs, scheduler } = budgetRuns(replyWorkflow, monthly, earlier);
-      await executor.start({ hubId: "acme", workflowId: "reply", input: {} });
+      await executor.start({
+        hubId: "acme",
+        workflowId: "reply",
+        input: { from: "ada@example.com" },
+      });
       await scheduler.runDue();
 
       expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
@@ -135,7 +143,11 @@ verifies("engine.budget-stops", () => {
 
   it("stops a run at its next model call once its own calls reach the run budget", async () => {
     const { executor, model, runs, scheduler } = budgetRuns(draftTwice, perRun);
-    await executor.start({ hubId: "acme", workflowId: "draft-twice", input: {} });
+    await executor.start({
+      hubId: "acme",
+      workflowId: "draft-twice",
+      input: { from: "ada@example.com" },
+    });
     addPricedCall(runs, "run_1", 0.6);
     await scheduler.runDue();
 
