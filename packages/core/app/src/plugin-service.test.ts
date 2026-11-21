@@ -61,7 +61,7 @@ function setup(reader = plugins(), store = new TestTrustStore()) {
     trust,
     records,
     clock,
-    signOut: async () => undefined,
+    signOut: async () => [],
   });
   return { trust, service };
 }

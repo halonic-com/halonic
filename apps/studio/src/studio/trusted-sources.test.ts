@@ -14,7 +14,7 @@ import { trustedSourcesOf } from "./trusted-sources.ts";
 import { WorkspaceTrust } from "./workspace-trust.ts";
 
 /** A plugin sign-out that signs out nothing: these rows are workspaces, or only listed. */
-const signOutPlugin = async () => undefined;
+const signOutPlugin = async () => [];
 
 /** A trust record for the folder at `location`, a plugin's when its fingerprint starts with `hpf1:`. */
 function record(location: string, fingerprint = "hfp1:a"): TrustRecord {
@@ -154,6 +154,7 @@ verifies("app.plugin-sign-out", () => {
       store,
       signOutPlugin: async (id) => {
         signedOut.push({ id, trusted: (await store.list()).length > 0 });
+        return [];
       },
     });
 
@@ -226,7 +227,13 @@ verifies("app.plugin-sign-out", () => {
     const store = new MemoryTrustStore();
     await store.grant(record("/work/weather"));
     const signedOut: string[] = [];
-    const host = trustedSourcesOf({ store, signOutPlugin: async (id) => void signedOut.push(id) });
+    const host = trustedSourcesOf({
+      store,
+      signOutPlugin: async (id) => {
+        signedOut.push(id);
+        return [];
+      },
+    });
 
     await host.remove("/work/weather");
 

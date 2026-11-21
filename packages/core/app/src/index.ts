@@ -336,6 +336,7 @@ export type {
   PluginAddRefusal,
   PluginEntry,
   PluginRemoveRefusal,
+  PluginSignedOut,
   PluginTrustRefusal,
   ReadPlugin,
   SignOutPlugin,
@@ -357,6 +358,7 @@ export {
   signInTokenHostWarning,
   signInTrustLine,
 } from "./plugin-sign-in-trust.ts";
+export { signInsNotConfirmed, signInsSignedOut } from "./plugin-signed-out.ts";
 export {
   checkPluginTrustNow,
   type PluginStartTrustOptions,

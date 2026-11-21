@@ -2,6 +2,8 @@ import type { Clock, Digest } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { PluginService } from "./plugin-service.ts";
+import type { PluginSignedOut } from "./plugin-service-types.ts";
+import { signInsNotConfirmed, signInsSignedOut } from "./plugin-signed-out.ts";
 import { weatherManifest } from "./testing/plugin-fixtures.ts";
 import { TestFolderReader } from "./testing/test-folder-reader.ts";
 import { TestPluginFolder } from "./testing/test-plugin-folder.ts";
@@ -18,15 +20,15 @@ const digest: Digest = {
 
 /**
  * The weather plugin added and trusted, over a host sign-out that notes, for
- * each plugin it signs out, whether a trust record was still there, and that
- * fails while `failing` is set.
+ * each plugin it signs out, whether a trust record was still there, that
+ * fails while `failing` is set and otherwise answers `answer`.
  */
 async function setup() {
   const clock: Clock = { now: () => new Date("2026-11-21T09:00:00.000Z") };
   const store = new TestTrustStore();
   const folder = new TestPluginFolder();
   const signedOut: { id: string; trusted: boolean }[] = [];
-  const host = { failing: false };
+  const host: { failing: boolean; answer: PluginSignedOut[] } = { failing: false, answer: [] };
   const service = new PluginService({
     plugins: folder.reader,
     writer: folder,
@@ -37,6 +39,7 @@ async function setup() {
     signOut: async (id) => {
       signedOut.push({ id, trusted: (await store.list()).length > 0 });
       if (host.failing) throw new Error("the agent host isn't running");
+      return host.answer;
     },
   });
   const source = new TestFolderReader().putFiles({
@@ -137,5 +140,36 @@ verifies("app.plugin-sign-out", () => {
     expect((await add(true)).ok).toBe(true);
 
     expect(signedOut).toEqual([]);
+  });
+
+  it("gives back how each sign-in was signed out, from Remove trust and from a remove", async () => {
+    const { service, host, deleteSecret } = await setup();
+    host.answer = [{ signIn: "weather-account", result: { kind: "signedOut", revoke: "revoked" } }];
+
+    expect(await service.revoke("weather")).toEqual(host.answer);
+    expect(await service.remove("weather", deleteSecret)).toEqual({ ok: true, value: host.answer });
+  });
+});
+
+verifies("app.plugin-sign-out", () => {
+  const signedOut: PluginSignedOut[] = [
+    { signIn: "confirmed", result: { kind: "signedOut", revoke: "revoked" } },
+    { signIn: "unanswered", result: { kind: "signedOut", revoke: "notConfirmed" } },
+    { signIn: "no-address", result: { kind: "signedOut", revoke: "noRevokeUrl" } },
+    { signIn: "newer-grant", result: { kind: "signedOut", revoke: "skipped" } },
+    { signIn: "never", result: { kind: "notSignedIn" } },
+  ];
+
+  it("names each sign-in whose grant is gone now", () => {
+    expect(signInsSignedOut(signedOut)).toEqual([
+      "confirmed",
+      "unanswered",
+      "no-address",
+      "newer-grant",
+    ]);
+  });
+
+  it("names the sign-ins whose token may still work, as Studio's Sign out does", () => {
+    expect(signInsNotConfirmed(signedOut)).toEqual(["unanswered", "no-address"]);
   });
 });

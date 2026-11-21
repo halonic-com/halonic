@@ -33,7 +33,10 @@ function hostOver(shell: TauriShell, signedOut: string[] = []) {
       cancel: async () => {},
       signOut: async () => ({ kind: "notSignedIn" }),
     },
-    signOut: async (plugin) => void signedOut.push(plugin),
+    signOut: async (plugin) => {
+      signedOut.push(plugin);
+      return [];
+    },
     onReloadFailed: () => {},
   });
 }

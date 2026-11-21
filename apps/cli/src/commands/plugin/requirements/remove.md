@@ -2,15 +2,18 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1736 and HAL-6653 (P3, plugin remove); cli-output 3.6, approved on HAL-2123
+- Source: HAL-1736 and HAL-6653 (P3, plugin remove); cli-output 3.6, approved on HAL-2123; the sign-out lines from HAL-15083
 
-The `halonic plugin remove <id>` command shall remove the plugin whose folder in the profile's plugins folder is named exactly `<id>`, with its trust, settings and any secret stored for it, through `PluginService.remove`. It shall ask first, "Remove Weather? Its settings are removed from this computer. [y/N]", naming "the API key you entered" only when a key for the plugin is stored on this computer, which on the command line it never is, and on yes print "✓ Removed Weather 1.2.0 and its trust." and exit 0. With `--yes` it shall ask nothing. On No, or Enter, it shall remove nothing, print "Not removed. Weather is still added." and exit 1. With no terminal, or `CI` set, and no `--yes`, it shall remove nothing and exit 2 with "✕ Removing Weather deletes its settings, and there's no terminal to ask you." and "To remove it anyway, pass --yes.". A plugin that can't be read or checked shall be removed the same way, named by its folder's name. A link in the plugins folder shall be removed itself, never what it points to. With no plugin of exactly that id, it shall exit 4 with "✕ There's no plugin called "wether".", naming a near id when there is one, and "See them with halonic plugin list.".
+The `halonic plugin remove <id>` command shall remove the plugin whose folder in the profile's plugins folder is named exactly `<id>`, with its sign-ins, trust, settings and any secret stored for it, through `PluginService.remove` (`app.plugin-sign-out`). It shall ask first, "Remove Weather? Its settings are removed from this computer. [y/N]", naming "the API key you entered" only when a key for the plugin is stored on this computer, which on the command line it never is, and on yes print "✓ Removed Weather 1.2.0 and its trust." and exit 0. When it signed out a sign-in, the lines `halonic trust --plugin <id> --remove` gives for it shall follow, and `--json` shall give them as `signedOut` and `signOutNotConfirmed`, as there. With `--yes` it shall ask nothing. On No, or Enter, it shall remove nothing, print "Not removed. Weather is still added." and exit 1. With no terminal, or `CI` set, and no `--yes`, it shall remove nothing and exit 2 with "✕ Removing Weather deletes its settings, and there's no terminal to ask you." and "To remove it anyway, pass --yes.". A plugin that can't be read or checked shall be removed the same way, named by its folder's name. A link in the plugins folder shall be removed itself, never what it points to. With no plugin of exactly that id, it shall exit 4 with "✕ There's no plugin called "wether".", naming a near id when there is one, and "See them with halonic plugin list.".
 
 ## Examples
 
 - Given a trusted plugin Weather 1.2.0 with a secret,
   when `halonic plugin remove weather` is run and the user answers y,
   then it prints "✓ Removed Weather 1.2.0 and its trust.", the plugin's folder is gone and adding it again asks for trust again.
+- Given Weather, signed in with `weather-account`, whose provider confirms the revoke,
+  when `halonic plugin remove weather --yes` is run,
+  then it prints "✓ Signed you out of weather-account." under the confirmation, and nothing about the token.
 - Given a trusted plugin Weather and no terminal,
   when `halonic plugin remove weather` is run without `--yes`,
   then it removes nothing and exits 2.

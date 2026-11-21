@@ -4,7 +4,12 @@
 // everything in the order that lets a second run finish the job, this file
 // finds the plugin and asks.
 
-import type { PluginEntry, PluginRemoveRefusal } from "@halonicjs/app";
+import {
+  type PluginEntry,
+  type PluginRemoveRefusal,
+  signInsNotConfirmed,
+  signInsSignedOut,
+} from "@halonicjs/app";
 import { KindedError } from "@halonicjs/std";
 import {
   type CommandContext,
@@ -17,6 +22,7 @@ import { exitCode } from "../../exit-code.ts";
 import { markPart, phrase, plainText } from "../../messages/phrase.ts";
 import { pluginMessages } from "../../messages/plugin.ts";
 import { nearMatch } from "../../near-match.ts";
+import { pluginSignedOutLines } from "../../output/plugin-signed-out.ts";
 import { printable } from "../../output/printable.ts";
 import {
   deletePluginSecret,
@@ -85,8 +91,16 @@ export async function removePlugin(
   if (!removed.ok) throw secretNotDeleted(id, removed.error);
   return {
     exitCode: exitCode.ok,
-    lines: [phrase`${markPart("done")} ${removedLine(plugin)}`],
-    json: { id, removed: true },
+    lines: [
+      phrase`${markPart("done")} ${removedLine(plugin)}`,
+      ...pluginSignedOutLines(plugin.name, removed.value),
+    ],
+    json: {
+      id,
+      removed: true,
+      signedOut: signInsSignedOut(removed.value),
+      signOutNotConfirmed: signInsNotConfirmed(removed.value),
+    },
   };
 }
 
