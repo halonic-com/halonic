@@ -313,6 +313,31 @@ verifies("app.run-failure", () => {
       expect(isSetupCause(withoutFacts)).toBe(false);
     });
 
+    it("names a key or provider the model check refused, as the workspace's setup (HAL-15333)", () => {
+      const facts = (code: string, detail: Record<string, string>) =>
+        runFailureOf(failedWith("error", { cause: { kind: "denied", code, detail } }), undefined);
+      const provider = "gateway";
+      const origin = "https://other.example.com";
+
+      expect(facts("models.key-origin-not-allowed", { provider, key: "gw-key", origin })).toEqual({
+        reason: "key-address-not-allowed",
+        provider,
+        key: "gw-key",
+        address: origin,
+      });
+      expect(facts("models.untrusted-provider-address", { provider, origin })).toEqual({
+        reason: "key-address-not-trusted",
+        provider,
+        address: origin,
+      });
+      expect(facts("models.untrusted-workspace", { provider })).toEqual({
+        reason: "workspace-not-trusted",
+        provider,
+      });
+      expect(facts("models.untrusted-provider-address", { provider })).toEqual(general);
+      expect(facts("models.untrusted-workspace", {})).toEqual(general);
+    });
+
     it("says the cause of a bridge socket path that is too long is known (HAL-13862)", () => {
       const cause = {
         kind: "invalid_input" as const,

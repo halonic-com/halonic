@@ -9,6 +9,7 @@ import { assertNever } from "@halonicjs/std";
 import type { FailedModel, FailedStart, RunFailedFacts } from "./failed-model.ts";
 import { budgetStopOf, nextMonthStart } from "./run-failure-budget.ts";
 import { type ConfigFailure, configFailureOf } from "./run-failure-config.ts";
+import { type KeyAddressFailure, keyAddressFailureOf } from "./run-failure-key-address.ts";
 import { type ProxyFailure, proxyFailureOf } from "./run-failure-proxy.ts";
 import { type StartFailure, startFailureOf } from "./run-failure-start.ts";
 
@@ -155,6 +156,7 @@ export type RunFailure =
       readonly hub: string;
     }
   | ConfigFailure
+  | KeyAddressFailure
   | StartFailure
   | {
       readonly reason: "secrets-file-readable";
@@ -385,8 +387,8 @@ function timeoutFailure(failed: RunFailedFacts, model: FailedModel | undefined):
  * bug: a provider file whose type Halonic can't call (HAL-12342), a model
  * alias the hub doesn't have, such as `default` in a workspace made with
  * plain `halonic init` (HAL-12377), a secrets file other users can read
- * (HAL-12569), a provider a model names that the workspace doesn't have, and
- * a workflow step the run can't go on from: for-each items that aren't a
+ * (HAL-12569), a provider a model names that the workspace doesn't have, a
+ * key or provider the model check refused (HAL-15333), and a workflow step the run can't go on from: for-each items that aren't a
  * list, an event with no transition, a task with no agent (HAL-14301). A
  * cause without the names its facts need is `error`. Studio reads its run
  * summary's cause with it, so both word the same facts (HAL-14324).
@@ -413,7 +415,7 @@ export function setupFailureOf(cause: RunFailureCause | undefined): RunFailure |
       return file === undefined ? undefined : { reason: "secrets-file-readable", file };
     }
     default:
-      return configFailureOf(code, detail);
+      return keyAddressFailureOf(code, detail) ?? configFailureOf(code, detail);
   }
 }
 
