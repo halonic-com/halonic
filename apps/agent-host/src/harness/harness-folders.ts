@@ -1,6 +1,7 @@
 // What the host keeps in Halonic's data folder for Studio's harness runs
-// (HAL-10849): the profile builder, the proposal folders, the placement
-// choices and the instructions folders, each served over its own routes.
+// (HAL-10849): the profile builder, the proposal folders and decisions, the
+// placement choices and the instructions folders, each served over its own
+// routes.
 // All of them need the profile folder; without one, none is served.
 
 import type { Harness } from "@halonicjs/ports";
@@ -14,7 +15,9 @@ import { hostProposalFolders } from "./host-proposals.ts";
 import { instructionRoutes } from "./instruction-routes.ts";
 import { placementRoutes } from "./placement-routes.ts";
 import { profileRoute } from "./profile-route.ts";
+import { proposalDecisionRoutes } from "./proposal-decision-routes.ts";
 import { proposalRoutes } from "./proposal-routes.ts";
+import { ProposalUndoSteps } from "./proposal-undo-steps.ts";
 import { settingsFolderRoute } from "./settings-folder-route.ts";
 
 /** The harness folders' routes, and the profile builder, whose sessions the sandbox routes open. */
@@ -47,7 +50,12 @@ export function harnessFolders(
       ...(profiles === undefined
         ? []
         : [profileRoute(profiles, bridges), settingsFolderRoute(profiles)]),
-      ...(proposals === undefined ? [] : proposalRoutes(proposals)),
+      ...(proposals === undefined
+        ? []
+        : [
+            ...proposalRoutes(proposals),
+            ...proposalDecisionRoutes(proposals, new ProposalUndoSteps(() => crypto.randomUUID())),
+          ]),
       ...(placements === undefined ? [] : placementRoutes(placements)),
       ...(instructions === undefined ? [] : instructionRoutes(instructions)),
     ],

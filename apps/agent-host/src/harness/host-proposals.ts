@@ -33,6 +33,7 @@ export interface HostProposalFoldersOptions {
 
 /** One workspace's folders, with the profile folders they live in. */
 interface WorkspaceProposals {
+  readonly service: RunProposals;
   readonly folders: ProposalFolders;
   readonly kept: readonly string[];
   /** Stops the workspace's git, if it started. */
@@ -89,6 +90,16 @@ export class HostProposalFolders {
   }
 
   /**
+   * The workspace's run proposal service, for the Inbox's decisions on
+   * proposals (`agent-host.proposal-decision-routes`).
+   *
+   * @returns `undefined` for a workspace that isn't named
+   */
+  async service(workspace: string): Promise<RunProposals | undefined> {
+    return (await this.#of(workspace))?.service;
+  }
+
+  /**
    * Stops every workspace's git that started. Call it when the host stops,
    * once no run uses a folder any more. Safe to call twice.
    */
@@ -134,6 +145,7 @@ export class HostProposalFolders {
       onEndFailed,
     });
     return {
+      service: proposals,
       folders: new ProposalFolders({ proposals }),
       kept: keptFoldersOf(folders),
       close: git.close,
