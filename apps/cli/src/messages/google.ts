@@ -16,8 +16,7 @@ export const googleMessages = defineMessages("google", {
 
   allowSendingNeedsMore: () =>
     phrase`halonic google allow-sending needs a connector and on or off.`,
-  allowSendingUsage: () =>
-    phrase`halonic google allow-sending <connector> on|off [--dir <folder>]`,
+  allowSendingUsage: () => phrase`halonic google allow-sending <connector> on|off [--dir <folder>]`,
   unknownConnection: (typed: string, workspace: string) =>
     phrase`There's no connector called "${typed}" in ${workspace}.`,
   /** Line 2 under {@link unknownConnection} when no id is close. */
