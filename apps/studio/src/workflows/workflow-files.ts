@@ -13,8 +13,12 @@ export const workflowSuffix = ".workflow.yaml";
 export const testFile = ({ hubId, id }: WorkflowRef): string =>
   `${workflowFolder(hubId)}/${id}.test.yaml`;
 
-/** The text of a new workflow: a step `start` that leads to the final step `done`. */
-export function newWorkflowText(id: string, name: string): string {
+/**
+ * The text of a new workflow: a step `start` that leads to the final step `done`. `start` runs
+ * `agentId` when there is one; without it, `start` names no agent, which `validate` reports as an
+ * error because a run fails there (HAL-14303).
+ */
+export function newWorkflowText(id: string, name: string, agentId?: string): string {
   return [
     `id: ${id}`,
     // A JSON string is a YAML double-quoted one, so any name a person types is safe.
@@ -22,6 +26,7 @@ export function newWorkflowText(id: string, name: string): string {
     "initial: start",
     "states:",
     "  start:",
+    ...(agentId === undefined ? [] : [`    agent: ${agentId}`]),
     "    on:",
     "      - to: done",
     "  done:",

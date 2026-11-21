@@ -90,7 +90,7 @@ export interface WorkflowStep {
   readonly type: WorkflowStepType;
   /** The step's own words for itself (the first line of its description); `undefined` when it has none. */
   readonly title?: string | undefined;
-  /** The agent a task step runs; `undefined` when it has none (the step passes the data on). */
+  /** The agent a task step runs; `undefined` when it has none (a run fails at the step). */
   readonly agent?: string | undefined;
   /** The step's whole description, as its docked card edits it; `undefined` when it has none. */
   readonly description?: string | undefined;

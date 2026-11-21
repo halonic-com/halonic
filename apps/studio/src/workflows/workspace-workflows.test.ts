@@ -63,7 +63,7 @@ verifies("studio.workspace-workflows", () => {
     expect(listing?.problems.errors).toBeGreaterThan(0);
   });
 
-  it("creates start → done as one unsaved change, listed at once, with only the error that start has no agent", async () => {
+  it("creates start → done as one unsaved change, listed at once, with only the error that start has no agent when the hub has none", async () => {
     const { host, changes } = setup();
 
     const ref = await host.create({ name: "Invoice intake", hubId: "acme" });
@@ -74,6 +74,20 @@ verifies("studio.workspace-workflows", () => {
     ]);
     const created = (await host.list()).find((each) => each.id === "invoice-intake");
     expect(created).toMatchObject({ name: "Invoice intake", problems: { errors: 1, warnings: 0 } });
+  });
+
+  it("gives a new workflow's start the hub's first agent by id, so it has no problems", async () => {
+    const { host, store } = setup();
+    store["hubs/acme/agents/writer.agent.yaml"] = "id: writer\nname: Writer\n";
+    store["hubs/acme/agents/reviewer.agent.yaml"] = "id: reviewer\nname: Reviewer\n";
+
+    await host.create({ name: "Invoice intake", hubId: "acme" });
+
+    expect(store["hubs/acme/workflows/invoice-intake.workflow.yaml"]).toContain(
+      "  start:\n    agent: reviewer\n",
+    );
+    const created = (await host.list()).find((each) => each.id === "invoice-intake");
+    expect(created?.problems).toEqual({ errors: 0, warnings: 0 });
   });
 
   it("knows a workflow's name once it has read or made it, for the tab and the page title", async () => {
