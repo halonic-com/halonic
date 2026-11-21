@@ -70,6 +70,11 @@ export interface LocalIntegrationSheet {
  * has, and every folder when `integrations/` can't be listed. A connector
  * to a left-out integration then isn't local.
  *
+ * Unlike {@link readLocalIntegrations}, it reads only the sheet, so a
+ * folder `readIntegrationFolder` would leave out (such as one with a link
+ * in it or too many files) still counts here. That fails closed: the run's
+ * connectors read the folder whole and refuse to start that integration.
+ *
  * @param workspace - the workspace's files, such as a `VersionSource` at the live commit
  *
  * @example
@@ -81,28 +86,36 @@ export async function readIntegrationSheets(
 ): Promise<LocalIntegrationSheet[]> {
   const sheets: LocalIntegrationSheet[] = [];
   const ids = new Set<string>();
-  for (const path of await sheetPaths(workspace)) {
-    const sheet = await readSheet(workspace, path);
+  for (const folder of await sheetFolders(workspace)) {
+    const sheet = await readSheet(workspace, `${folder}/${sheetName}`);
     if (sheet === undefined || ids.has(sheet.id)) continue;
     ids.add(sheet.id);
-    sheets.push({ folder: path.slice(0, -`/${sheetName}`.length), sheet });
+    sheets.push({ folder, sheet });
   }
   return sheets;
 }
 
-/** Every `integrations/<folder>/integration.yaml` in `workspace`, by its folder's name. */
-async function sheetPaths(workspace: DefinitionSource): Promise<string[]> {
+/**
+ * Every folder in `workspace` with an `integrations/<folder>/integration.yaml`,
+ * by the folder's name. It sorts the folders, not the sheets' paths, the
+ * way {@link readLocalIntegrations} does: `integrations/a-b/integration.yaml`
+ * sorts before `integrations/a/integration.yaml`, but `integrations/a` sorts
+ * before `integrations/a-b`, and with a shared id the first folder wins.
+ */
+async function sheetFolders(workspace: DefinitionSource): Promise<string[]> {
   let paths: string[];
   try {
     paths = await workspace.list(integrationsFolder);
   } catch {
     return [];
   }
-  const sheets = paths.filter((path) => {
+  const folders: string[] = [];
+  for (const path of paths) {
     const parts = path.split("/");
-    return parts.length === 3 && parts[0] === integrationsFolder && parts[2] === sheetName;
-  });
-  return sheets.sort(compareText);
+    if (parts.length !== 3 || parts[0] !== integrationsFolder || parts[2] !== sheetName) continue;
+    folders.push(`${parts[0]}/${parts[1]}`);
+  }
+  return folders.sort(compareText);
 }
 
 /** The sheet at `path`, or `undefined` when it can't be read or doesn't parse as a sheet. */

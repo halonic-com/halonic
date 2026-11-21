@@ -57,6 +57,22 @@ describe("readIntegrationSheets", () => {
     expect(sheets.map(({ folder }) => folder)).toEqual(["integrations/a"]);
   });
 
+  it("keeps the first folder by name when two share an id, as readLocalIntegrations does", async () => {
+    // "integrations/a-b/integration.yaml" sorts before "integrations/a/integration.yaml",
+    // but "integrations/a" sorts before "integrations/a-b".
+    const sheets = await readIntegrationSheets(
+      version({
+        "integrations/a/integration.yaml": sheet("station", "[]"),
+        "integrations/a-b/integration.yaml": sheet("station", "[api.station.example]"),
+        "integrations/a.b/integration.yaml": sheet("station", "[api.station.example]"),
+      }),
+    );
+
+    expect(sheets.map(({ folder, sheet }) => [folder, sheet.hosts])).toEqual([
+      ["integrations/a", []],
+    ]);
+  });
+
   it("has no sheets when integrations/ can't be listed, or a sheet can't be read", async () => {
     const unlistable: DefinitionSource = {
       ...version({}),
