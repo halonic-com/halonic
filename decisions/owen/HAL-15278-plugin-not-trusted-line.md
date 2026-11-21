@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this note in his review of this pull request on HAL-15278 (a team decision with no board card, HAL-2282 rule: it fills in a line of the run page's step panel the board already approved, from words check C557, row 48)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aBp71RaReepbQRAI4AddiF6HFp/88ETTRxurR3YVBHsLTWlsy+tL61s4l6AzsAoRh+C9fmX9vL79bRmDTTaIDg==
 - Task: HAL-15278
 
 ## What changes
