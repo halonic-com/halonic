@@ -129,6 +129,19 @@ With `--json`, the check is `secrets`, with `missing` and `unreadable`: each a
 list of the secrets and what uses them, such as
 `{"check": "secrets", "status": "failed", "missing": [{"secret": "anthropic-key", "usedBy": [{"kind": "provider", "id": "claude"}]}], "unreadable": []}`.
 
+`doctor` checks the command line's secrets: the `HALONIC_SECRET_<NAME>`
+variables and the file `halonic secret set` writes. Studio keeps the keys and
+secrets you save there (on a provider's page in **Models**, in a plugin's
+settings or in a connector's **Secrets** section) in your system's keychain.
+Studio's agents, its Models page, its plugins and its connectors read only the
+keychain, and the command line reads only its own two places, so neither sees
+what the other saved. A secret you set with `halonic secret set` still shows
+in Studio as not set: **No key** on the provider's page (and **No key for
+Anthropic**, for example, in Settings › Models), or **Not set** next to a
+plugin's or connector's secret. Save it in Studio too. One exception: when
+Studio calls a model on this computer that needs a key, for example for the
+Library, it reads that key the way the command line does.
+
 ### Sandbox
 
 **Checks:** whether the sandbox that agents run in can start on this computer.
