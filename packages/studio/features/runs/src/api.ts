@@ -23,6 +23,7 @@ export { openModelsOf } from "./run-view/open-models.ts";
 export { type RunEnd, runFailureLine, useRunEnd } from "./run-view/run-end.ts";
 export { RunView } from "./run-view/run-page.tsx";
 export { RunsList, RunsListService, type RunsListState } from "./runs-list.ts";
+export { cantRunWords } from "./sandbox-cant-run/cant-run-words.ts";
 export {
   SandboxCantRunCallout,
   type SandboxCantRunCalloutProps,

@@ -1,3 +1,4 @@
+import { sandboxStartCheckKey } from "@halonicjs/app";
 import { defineFeature, type SettingsSectionContribution } from "@halonicjs/studio-shell";
 import { sandboxCommands } from "./agent-sandbox/sandbox-commands.ts";
 import { createSandboxFlow, SandboxFlowService } from "./agent-sandbox/sandbox-flow.ts";
@@ -113,6 +114,8 @@ export const settingsFeature = defineFeature({
     RestartRunsService,
     AgentSandboxService,
     AssistantWorkspaceService,
+    // Says why the sandbox can't start, under Settings › Agent sandbox's Not available.
+    sandboxStartCheckKey,
   ],
   register(studio) {
     studio.services.provide(RestartFlowService, createRestartFlow);
