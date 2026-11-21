@@ -1,0 +1,12 @@
+[Unit]
+Description=halonic-ci queue gate socket (C7), mounted read-only into every job container
+
+[Socket]
+ListenStream=/run/halonic-ci-gate/gate.sock
+DirectoryMode=0755
+SocketMode=0666
+Accept=yes
+MaxConnections=16
+
+[Install]
+WantedBy=sockets.target

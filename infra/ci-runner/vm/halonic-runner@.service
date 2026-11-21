@@ -1,8 +1,8 @@
 [Unit]
 Description=halonic-ci runner slot %i (one JIT runner per job)
-After=docker.service network-online.target
+After=docker.service network-online.target halonic-ci-gate.socket
 Requires=docker.service
-Wants=network-online.target
+Wants=network-online.target halonic-ci-gate.socket
 ConditionPathExists=!/etc/halonic-ci/paused
 
 [Service]
