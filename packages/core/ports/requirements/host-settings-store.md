@@ -26,5 +26,5 @@ The port's documentation shall state that the settings live in the user's profil
   when a key is saved, or removed,
   then the save is refused and the removal isn't.
 - Given the text of a newer version with a field and a key this version doesn't know,
-  when the turn limit 24 is saved over it,
+  when the model call limit 24 is saved over it,
   then the text keeps that version, field and key, and isn't marked broken.

@@ -118,7 +118,7 @@ verifies("studio.workspace-agents", () => {
       expect(changes).toEqual([]);
     });
 
-    it("reads the turn limit and the model aliases, and saves a model and a turn limit in place", async () => {
+    it("reads the model call limit and the model aliases, and saves a model and a model call limit in place", async () => {
       const { host, store } = setup();
       const ref = { hubId: "acme", id: "writer" };
       expect(await host.settings(ref)).toMatchObject({ model: "fast", maxSteps: 6 });
@@ -148,7 +148,7 @@ verifies("studio.workspace-agents", () => {
       expect(await host.defaultModel("beta")).toBeUndefined();
     });
 
-    it("saves the harness and the turn limit only when they're valid, and writes nothing otherwise", async () => {
+    it("saves the harness and the model call limit only when they're valid, and writes nothing otherwise", async () => {
       const { host, store, changes } = setup();
       const ref = { hubId: "acme", id: "writer" };
       expect((await host.settings(ref)).harness).toBe("halonic");

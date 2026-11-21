@@ -10,24 +10,24 @@ From its first `load`, it shall watch the store, starting before the read so a c
 
 ## Examples
 
-- Given a saved turn limit of 0, 65, 2.5 or "16",
-  when the turn limit is read,
+- Given a saved model call limit of 0, 65, 2.5 or "16",
+  when the model call limit is read,
   then it is 16.
-- Given a loaded `HostSettings` with a turn limit of 20,
+- Given a loaded `HostSettings` with a model call limit of 20,
   when 65 is saved, or 24 is saved and the store fails,
-  then it throws and the turn limit stays 20.
-- Given a loaded `HostSettings` with a turn limit of 20,
-  when the turn limit is reset,
-  then it is 16 and the store holds no turn limit; when the store fails, it throws and stays 20.
-- Given a store where another window saves a turn limit of 20 while it is read,
+  then it throws and the model call limit stays 20.
+- Given a loaded `HostSettings` with a model call limit of 20,
+  when the model call limit is reset,
+  then it is 16 and the store holds no model call limit; when the store fails, it throws and stays 20.
+- Given a store where another window saves a model call limit of 20 while it is read,
   when `HostSettings` loads,
-  then the turn limit is 20 once the change is read.
+  then the model call limit is 20 once the change is read.
 - Given a listener,
-  when this `HostSettings` saves a turn limit and the CLI then turns off connector tools,
+  when this `HostSettings` saves a model call limit and the CLI then turns off connector tools,
   then the listener is called once, with `assistant.connector-tools`.
-- Given a turn limit of 16 and a store that fails to read,
-  when another window saves a turn limit of 20,
-  then the turn limit stays 16, no listener is called and `onRefreshError` gets the error once.
+- Given a model call limit of 16 and a store that fails to read,
+  when another window saves a model call limit of 20,
+  then the model call limit stays 16, no listener is called and `onRefreshError` gets the error once.
 - Given a closed `HostSettings`,
-  when another window saves a turn limit,
+  when another window saves a model call limit,
   then it doesn't read again.

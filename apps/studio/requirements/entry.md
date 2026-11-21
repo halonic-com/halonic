@@ -12,8 +12,8 @@ When the Studio page loads, the app shall create the shell with the Studio's fea
   when it loads,
   then it shows the window tabs and Home, as the served Studio.
 - Given the served Studio's services,
-  when the turn limit 20 is saved through their `HostSettingsStore`,
-  then a read gives the turn limit 20.
+  when the model call limit 20 is saved through their `HostSettingsStore`,
+  then a read gives the model call limit 20.
 - Given the Studio page in the desktop app's webview,
   when it loads,
   then it runs as the desktop app.
