@@ -1,7 +1,8 @@
 import { Button, Dialog, Field, Input, Select, usePresentation } from "@halonicjs/studio-kit";
-import { errorReasonFor, NameAndHubRow, NewItemNote } from "@halonicjs/studio-shell";
+import { NameAndHubRow, NewItemNote } from "@halonicjs/studio-shell";
 import { useId, useRef, useState } from "react";
 import type { NewWorkflow, WorkflowHub, WorkflowRef } from "../api.ts";
+import { createFailureReason } from "./default-hub-refusal.ts";
 import { newWorkflowWords as words } from "./new-workflow-words.ts";
 import { workflowFilePath } from "./workflow-file.ts";
 
@@ -69,8 +70,7 @@ export function NewWorkflowDialog({
     try {
       onCreated(await create({ name: name.trim(), hubId }));
     } catch (error) {
-      const reason = errorReasonFor(error);
-      setFailure(words.createFailed(reason.replace(/\.$/, "")));
+      setFailure(words.createFailed(createFailureReason(error, phone)));
       setBusy(false);
     }
   }

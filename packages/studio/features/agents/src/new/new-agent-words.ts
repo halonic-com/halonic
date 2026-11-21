@@ -15,4 +15,8 @@ export const newAgentWords = {
   file: (path: string) => `File: ${path}`,
   folder: (path: string) => `Folder: ${path}`,
   createFailed: (reason: string) => `Couldn't create the agent: ${reason}.`,
+  defaultHubUnreadable: (file: string, line: number) =>
+    `${file} can't be read right now (line ${line}). Fix it in the file, then try again`,
+  defaultHubUnreadableOnPhone:
+    "the Default hub's file can't be read right now. Fix it on a computer, then try again",
 } as const;
