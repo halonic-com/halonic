@@ -149,6 +149,6 @@ verifies("first-run.setup-item", () => {
     );
     act(() => button(root, "Dismiss").click());
     expect(close).toHaveBeenCalledOnce();
-    expect(firstRun.state).toEqual({ kind: "dismissed", folder });
+    expect(firstRun.state).toEqual({ ...paused, kind: "dismissed" });
   });
 });

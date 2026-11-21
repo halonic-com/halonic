@@ -89,7 +89,7 @@ verifies("workspace.fresh-copy-asks", () => {
     await act(async () => asks.ask());
     expect(create).toHaveBeenCalledWith([]);
     expect(shell.toasts.list().map((toast) => toast.title)).toContain(
-      "Created Acme sample 2. Your earlier copy is still in Recent.",
+      "Created Acme sample 2. Your old copy is still in Recent.",
     );
   });
 

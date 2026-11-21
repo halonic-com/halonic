@@ -63,7 +63,7 @@ verifies("first-run.state", () => {
 
   it("leaves a paused first run for good when its setup item is dismissed", () => {
     const dismissed = after(demo, { kind: "left" }, { kind: "dismissed" });
-    expect(dismissed).toEqual({ kind: "dismissed", folder: demo.folder });
+    expect(dismissed).toEqual({ kind: "dismissed", folder: demo.folder, since: at, step: "demo" });
     expect(after(dismissed, { kind: "resumed" }, { kind: "first-win" })).toEqual(dismissed);
     expect(after(demo, { kind: "dismissed" })).toEqual(demo);
     expect(parseFirstRun(serializeFirstRun(dismissed))).toEqual(dismissed);
@@ -77,6 +77,23 @@ verifies("first-run.state", () => {
       ...demo,
       folder: "/docs/Acme sample 2",
     });
+  });
+
+  it("takes a first run paused or dismissed in the folder up again at its step on Show the guide", () => {
+    const atModel = after(demo, { kind: "model-picking" }, { kind: "left" });
+    const again = { kind: "guide-reopened", folder: demo.folder, at: "later" } as const;
+    expect(after(atModel, again)).toEqual({ ...demo, step: "model" });
+    expect(after(atModel, { kind: "dismissed" }, again)).toEqual({ ...demo, step: "model" });
+    const elsewhere = { ...again, folder: "/docs/Acme sample 2" };
+    expect(after(atModel, { kind: "dismissed" }, elsewhere)).toEqual({
+      kind: "on",
+      folder: "/docs/Acme sample 2",
+      since: "later",
+      step: "demo",
+    });
+    const savedBefore: FirstRunState = { kind: "dismissed", folder: demo.folder };
+    expect(parseFirstRun(serializeFirstRun(savedBefore))).toEqual(savedBefore);
+    expect(after(savedBefore, again)).toEqual({ ...demo, since: "later" });
   });
 
   it("begins again at the demo on Show the guide, whatever it was", () => {
