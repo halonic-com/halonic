@@ -2,7 +2,6 @@
 
 - Approval: the task asks for this change (HAL-15184, from Nina's C545 check on HAL-15153, case 8); it completes the design Liam approved for #4419 on HAL-5404
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:dBGftjg66ZlVZyDqMRTh3KABfRzSGHVp94dG1t78x1IXWKPOmw0bEfliPq8YP5pFAwMAHopN3Yv/uWxP64I5Bw==
 
 #4419 made the holder of the profile's host lock take back the grants srt kept for this user when a removal with administrator rights left them (`sandbox-srt.forget-after-admin-removal`). Only Studio's agent host passed `takeBackOrphaned`. The CLI's harness sandbox also holds that lock and sweeps (#4127), but didn't pass it, so someone who uses only the CLI on Windows kept the grants until they ran `halonic sandbox setup` or opened Studio. That was a gap, not a choice: the requirement already says "a host that holds the profile's lock".
 
