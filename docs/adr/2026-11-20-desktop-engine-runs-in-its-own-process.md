@@ -1,6 +1,6 @@
 # The desktop engine runs in its own process, which the shell owns and the page reaches only through the shell
 
-- **Status:** Accepted
+- **Status:** Accepted; extended by [desktop engines are keyed by workspace path](2026-11-21-desktop-engines-are-keyed-by-workspace-path.md)
 - **Date:** 2026-11-20
 
 ## Context
