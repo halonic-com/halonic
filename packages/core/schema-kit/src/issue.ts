@@ -79,7 +79,7 @@ export function knownKeysOf(
   return { path: formatPath(path), keys: Object.keys(issue.inst.shape) };
 }
 
-// Parsed files only have text keys; a symbol can only come from code.
-function toPathSegment(segment: PropertyKey): PathSegment {
+/** A key of the input as a path segment. Parsed files only have text keys; a symbol can only come from code. */
+export function toPathSegment(segment: PropertyKey): PathSegment {
   return typeof segment === "symbol" ? String(segment) : segment;
 }

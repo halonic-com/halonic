@@ -155,9 +155,7 @@ verifies("workspace.references", () => {
         "workflows/routines/sort.routine.yaml":
           'name: Sort\ntrigger:\n  schedule: "0 9 * * 1"\nrun:\n  agent: sorter\n  prompt: Sort the new items.\n',
       });
-      expect(errors).toEqual([
-        "agents/sorter.agent.yaml: Too small: expected array to have >=1 items",
-      ]);
+      expect(errors).toEqual(["agents/sorter.agent.yaml: options needs at least one item."]);
     });
 
     it("doesn't call a workflow whose file failed unknown to a routine (C337 #22)", async () => {
@@ -196,7 +194,7 @@ verifies("workspace.references", () => {
         "models.yaml": 'aliases:\n  smart:\n    provider: mock\n    model: ""\n',
         "agents/writer.agent.yaml": "name: Writer\nmodel: smart\n",
       });
-      expect(errors).toEqual(["models.yaml: Too small: expected string to have >=1 characters"]);
+      expect(errors).toEqual(["models.yaml: model is empty: write a value."]);
     });
 
     it("lets a hub without uses take every shared item, and prefers the hub's own", async () => {

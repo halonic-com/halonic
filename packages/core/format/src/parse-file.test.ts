@@ -12,7 +12,7 @@ verifies("format.parse-file-positions", () => {
         source: "schema",
         code: "invalid_type",
         path: ["params", "temperature"],
-        message: "Invalid input: expected number, received string",
+        message: "temperature needs a number, not text.",
         line: 4,
         col: 16,
       },
@@ -213,10 +213,10 @@ verifies("format.missing-key-words", () => {
     ]);
   });
 
-  it("keeps Zod's message for a key that is there with the wrong type", () => {
+  it("says in plain words what a key that is there with the wrong type needs", () => {
     const text = yaml("id: clerk", "name: Clerk", "params:", "  temperature: hot");
     expect(messages("agent", text)).toEqual([
-      ["params.temperature", "Invalid input: expected number, received string"],
+      ["params.temperature", "temperature needs a number, not text."],
     ]);
   });
 });
