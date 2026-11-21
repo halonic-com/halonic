@@ -334,3 +334,50 @@ async fn phone_states_pause_and_resume_with_a_new_handshake() {
     gateway.handshake(&mut again).await;
     until(&mut events, PhoneEvent::SessionOpened).await;
 }
+
+#[tokio::test]
+async fn reconnect_next_try_phone_reports_the_wait_while_reconnecting() {
+    let gateway = Gateway::start().await;
+    let (_phone, mut events, mut server) = connect(&gateway).await;
+    gateway.handshake(&mut server).await;
+    until(&mut events, PhoneEvent::SessionOpened).await;
+    drop(server);
+    assert_eq!(
+        next(&mut events).await,
+        PhoneEvent::Status(PhoneStatus::Reconnecting { last_try: None })
+    );
+    assert!(matches!(next(&mut events).await, PhoneEvent::NextTry(_)));
+}
+
+#[tokio::test]
+async fn reconnect_next_try_phone_tries_now() {
+    // A first wait of a minute: only "try now" can reconnect within the test.
+    let slow = PhoneOptions {
+        backoff: Backoff {
+            first_delay: Duration::from_secs(60),
+            max_delay: Duration::from_secs(60),
+            ..FAST.backoff
+        },
+        ..FAST
+    };
+    let gateway = Gateway::start().await;
+    let keys = PhoneKeys::generate().unwrap();
+    let (phone, server) = tokio::join!(
+        PhoneConnection::connect(gateway.computer(), keys, Dialer::without_tls(), slow),
+        gateway.accept()
+    );
+    let (phone, mut events) = phone.expect("the first connection");
+    let mut server = server;
+    gateway.handshake(&mut server).await;
+    until(&mut events, PhoneEvent::SessionOpened).await;
+    drop(server);
+    until(
+        &mut events,
+        PhoneEvent::Status(PhoneStatus::Reconnecting { last_try: None }),
+    )
+    .await;
+    phone.try_now();
+    let mut again = gateway.accept().await;
+    gateway.handshake(&mut again).await;
+    until(&mut events, PhoneEvent::SessionOpened).await;
+}

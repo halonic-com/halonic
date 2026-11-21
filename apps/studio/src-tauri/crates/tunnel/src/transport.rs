@@ -71,6 +71,10 @@ pub enum TransportEvent {
     Frame(Vec<u8>),
     /// A try to reconnect failed, and why, for the phone's status.
     TryFailed(ConnectError),
+    /// While reconnecting: the next try starts after this wait, unless
+    /// [`Transport::try_now`] starts it sooner. Reported after the state
+    /// and after each failed try.
+    NextTryIn(Duration),
 }
 
 /// Why a frame wasn't sent.
@@ -88,6 +92,7 @@ type SendReply = oneshot::Sender<Result<(), SendError>>;
 enum Command {
     Send(ConnectionId, Vec<u8>, SendReply),
     Drop(ConnectionId),
+    TryNow,
     Pause,
     Resume,
     Close,
@@ -151,6 +156,14 @@ impl Transport {
     /// handshake can't make the phone retry in a tight loop.
     pub fn drop_connection(&self, connection: ConnectionId) {
         let _ = self.commands.send(Command::Drop(connection));
+    }
+
+    /// Ends the wait before the next try to reconnect, so it starts at
+    /// once: the person pressed "Try now". The backoff goes on from where
+    /// it was, so pressing it often can't make the phone retry in a tight
+    /// loop. Does nothing when the transport isn't waiting to reconnect.
+    pub fn try_now(&self) {
+        let _ = self.commands.send(Command::TryNow);
     }
 
     /// Closes the connection and stops every timer until [`Self::resume`].
@@ -243,7 +256,7 @@ impl Worker {
                         self.close_socket(&mut socket).await;
                         break;
                     }
-                    Some(Command::Resume | Command::Drop(_)) => {}
+                    Some(Command::Resume | Command::TryNow | Command::Drop(_)) => {}
                     Some(Command::Pause) => {
                         self.close_socket(&mut socket).await;
                         return Next::Pause;
@@ -294,15 +307,22 @@ impl Worker {
     }
 
     /// Waits `delay` and tries once, while still taking commands: a frame
-    /// to send is refused, and a pause or close stops the try.
+    /// to send is refused, "try now" ends the wait, and a pause or close
+    /// stops the try. While reconnecting, it reports the wait first.
     async fn reconnect(&mut self, delay: Duration, state: TransportState) -> Next {
         self.set_state(state);
+        if state == TransportState::Reconnecting {
+            let _ = self.events.send(TransportEvent::NextTryIn(delay));
+        }
         let sleep = tokio::time::sleep(delay);
         tokio::pin!(sleep);
         loop {
             tokio::select! {
                 () = &mut sleep => break,
                 command = self.commands.recv() => {
+                    if matches!(command, Some(Command::TryNow)) {
+                        break;
+                    }
                     if let Some(next) = self.while_closed(command) {
                         return next;
                     }
@@ -360,7 +380,7 @@ impl Worker {
                 let _ = reply.send(Err(SendError::NotOpen));
                 None
             }
-            Some(Command::Resume | Command::Drop(_)) => None,
+            Some(Command::Resume | Command::TryNow | Command::Drop(_)) => None,
             Some(Command::Pause) => Some(Next::Pause),
             Some(Command::Close) | None => Some(Next::Close),
         }

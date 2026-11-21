@@ -227,9 +227,97 @@ async fn tunnel_transport_reports_each_failed_try() {
     } = connected().await;
     drop((listener, server));
     until_state(&mut events, TransportState::Reconnecting).await;
+    assert!(matches!(
+        next(&mut events).await,
+        TransportEvent::NextTryIn(_)
+    ));
     assert_eq!(
         next(&mut events).await,
         TransportEvent::TryFailed(ConnectError::Refused)
+    );
+}
+
+#[tokio::test]
+async fn reconnect_next_try_is_reported_after_the_drop_and_each_failed_try() {
+    let Connected {
+        listener,
+        transport: _transport,
+        mut events,
+        server,
+        ..
+    } = connected().await;
+    drop((listener, server));
+    until_state(&mut events, TransportState::Reconnecting).await;
+    // FAST waits 20 ms, then 40 ms, then 80 ms, each ±20 %.
+    for (try_number, base) in [20, 40, 80].into_iter().enumerate() {
+        let TransportEvent::NextTryIn(wait) = next(&mut events).await else {
+            panic!("the wait before try {try_number} comes first");
+        };
+        let (low, high) = (base * 8 / 10, base * 12 / 10);
+        assert!(
+            (low..=high).contains(&(wait.as_millis() as u64)),
+            "{wait:?} isn't {base} ms ±20 %"
+        );
+        assert_eq!(
+            next(&mut events).await,
+            TransportEvent::TryFailed(ConnectError::Refused)
+        );
+    }
+}
+
+#[tokio::test]
+async fn reconnect_next_try_starts_at_once_on_try_now() {
+    // A first wait of a minute: only "try now" can reconnect within the test.
+    let slow = Backoff {
+        first_delay: Duration::from_secs(60),
+        max_delay: Duration::from_secs(60),
+        ..FAST
+    };
+    let (listener, endpoint) = gateway().await;
+    let (connecting, server) = tokio::join!(
+        Transport::connect(endpoint, Dialer::without_tls(), slow, SHORT),
+        accept(&listener)
+    );
+    let (transport, mut events) = connecting.expect("the first connection");
+    until_opened(&mut events).await;
+    drop(server);
+    until_state(&mut events, TransportState::Reconnecting).await;
+    assert!(matches!(
+        next(&mut events).await,
+        TransportEvent::NextTryIn(wait) if wait >= Duration::from_secs(48)
+    ));
+    transport.try_now();
+    let _again = accept(&listener).await;
+    until_opened(&mut events).await;
+    assert_eq!(transport.state(), TransportState::Open);
+}
+
+#[tokio::test]
+async fn reconnect_next_try_now_does_nothing_on_an_open_connection() {
+    let Connected {
+        listener,
+        transport,
+        mut events,
+        connection,
+        mut server,
+    } = connected().await;
+    transport.try_now();
+    transport.send(connection, vec![0x20, 1]).await.unwrap();
+    assert_eq!(
+        server_frame(&mut server).await,
+        Some(Message::Binary(vec![0x20, 1].into()))
+    );
+    assert!(
+        timeout(Duration::from_millis(300), listener.accept())
+            .await
+            .is_err(),
+        "no second connection"
+    );
+    assert!(
+        timeout(Duration::from_millis(50), events.recv())
+            .await
+            .is_err(),
+        "no event"
     );
 }
 

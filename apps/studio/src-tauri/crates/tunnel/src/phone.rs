@@ -89,10 +89,15 @@ pub enum PhoneEvent {
     SessionOpened,
     /// A gateway message from the host, decrypted.
     Message(Vec<u8>),
+    /// While Reconnecting: the next try starts after this wait, for
+    /// "Trying again in N seconds". Reported after the status and after
+    /// each failed try.
+    NextTry(Duration),
 }
 
 enum Command {
     Send(Vec<u8>, oneshot::Sender<Result<(), SendError>>),
+    TryNow,
     Pause,
     Resume,
     Close,
@@ -141,6 +146,12 @@ impl PhoneConnection {
             .send(Command::Send(message, reply))
             .map_err(|_| SendError::NotOpen)?;
         answer.await.unwrap_or(Err(SendError::NotOpen))
+    }
+
+    /// Tries to reconnect at once instead of after the wait ("Try now").
+    /// Does nothing unless the phone is waiting to reconnect.
+    pub fn try_now(&self) {
+        let _ = self.commands.send(Command::TryNow);
     }
 
     pub fn pause(&self) {
@@ -262,6 +273,11 @@ impl Worker {
                     });
                 }
             }
+            TransportEvent::NextTryIn(wait) => {
+                if matches!(self.status, PhoneStatus::Reconnecting { .. }) {
+                    let _ = self.events.send(PhoneEvent::NextTry(wait));
+                }
+            }
             TransportEvent::Frame(frame) => self.on_frame(&frame),
         }
     }
@@ -345,6 +361,7 @@ impl Worker {
             Command::Send(message, reply) => {
                 let _ = reply.send(self.seal_and_send(&message).await);
             }
+            Command::TryNow => self.transport.try_now(),
             Command::Pause => self.transport.pause(),
             Command::Resume => self.transport.resume(),
             Command::Close => self.transport.close(),
