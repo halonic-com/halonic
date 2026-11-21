@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { lstat, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import {
+  flushFolder,
   makePrivateFolder,
   readUnlinkedFile,
   renameOver,
@@ -40,7 +41,8 @@ const writeLockName = "write.lock";
  *   protect the file there.
  * - **Whole:** a save writes a temporary file in the same folder, flushes it
  *   and renames it over the secrets file, so a reader finds the old secrets
- *   or the new, never half of them.
+ *   or the new, never half of them. On Linux and macOS the folder is
+ *   flushed after the rename too, so the new file survives a power cut.
  * - **Not followed:** a file that is a link is refused, so the secrets can't
  *   be read from or written into a file elsewhere.
  * - **One save at a time:** every save holds the folder's write lock
@@ -233,6 +235,9 @@ export class FileSecretStore implements SecretStore, KeyOrigins {
       await rm(temporary, { force: true });
       throw error;
     }
+    // Without this, a power cut right after the first token is sealed could
+    // keep the token but lose the key made for it (HAL-13881).
+    await flushFolder(folder);
   }
 }
 
