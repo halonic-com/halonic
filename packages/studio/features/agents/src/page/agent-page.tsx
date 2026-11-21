@@ -1,7 +1,6 @@
 import {
   Button,
   EmptyState,
-  inlineLinkClasses,
   LetterTile,
   SkeletonBar,
   type Tab,
@@ -28,19 +27,18 @@ import {
   type AgentsHost,
   AgentsHostService,
   type AgentToolList,
-  type AgentUser,
 } from "../api.ts";
 import { Configuration } from "../configuration/configuration.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
 import { useConfigurationLoads } from "../configuration/use-configuration-loads.ts";
 import { fileItemOf } from "../trash/file-item.ts";
 import { useAgentTrash } from "../trash/use-agent-trash.tsx";
-import { AgentStepCard, agentStepOfCard } from "./agent-step-card.tsx";
 import { forgetFreshAgent, isFreshAgent } from "./fresh-agents.ts";
 import { NotLiveLine } from "./not-live-line.tsx";
+import { PageCard } from "./page-card.tsx";
 import { pageWords } from "./page-words.ts";
 import { RenameField } from "./rename-field.tsx";
-import { SubagentCard, subagentOfCard } from "./subagent-card.tsx";
+import { RunsView } from "./runs-view.tsx";
 import { useAgentCards } from "./use-agent-cards.ts";
 import { type Load, useLoad } from "./use-load.ts";
 
@@ -170,15 +168,6 @@ export function AgentScreen({
     void read();
     return host.subscribe(() => void read());
   }, [host, hubId, id]);
-  // The workflows that run the agent, for what the Runs tab says; read again when a file changes.
-  const usersSource = useMemo(
-    () => ({
-      fetch: () => host.referencesTo({ hubId, id }),
-      subscribe: (onChange: () => void) => host.subscribe(onChange),
-    }),
-    [host, hubId, id],
-  );
-  const users = useLoad<readonly AgentUser[]>(usersSource);
   const { view, selectView, fresh, modelWaiting, modelShown } = useAgentView(
     hubId,
     id,
@@ -285,28 +274,17 @@ export function AgentScreen({
             closeStack={closeStack ?? ownCloseStack}
             // No card on this page docks, so the panel's width doesn't change how they look.
             panelWidth={Number.POSITIVE_INFINITY}
-            renderCard={(card) => {
-              const step = agentStepOfCard(card.key);
-              if (step !== undefined) {
-                const agentSettings =
-                  settings.load.kind === "ready" ? settings.load.value : undefined;
-                const found = agentSettings?.agentSteps.find((each) => each.id === step);
-                return found === undefined || agentSettings === undefined ? null : (
-                  <AgentStepCard step={found} agent={agentSettings} />
-                );
-              }
-              const subagent = subagentOfCard(card.key);
-              return subagent === undefined ? null : (
-                <SubagentCard
-                  host={host}
-                  agent={{ hubId, id: subagent }}
-                  name={card.title}
-                  openSubagent={cards.openSubagent}
-                  openAgent={openAgent}
-                  announce={announce}
-                />
-              );
-            }}
+            renderCard={(card) => (
+              <PageCard
+                card={card}
+                host={host}
+                hubId={hubId}
+                settings={settings.load}
+                openSubagent={cards.openSubagent}
+                openAgent={openAgent}
+                announce={announce}
+              />
+            )}
           >
             <Configuration
               host={host}
@@ -331,24 +309,7 @@ export function AgentScreen({
           </StackedCards>
         )}
         {panel === "runs" && (
-          <div className="min-w-0 flex-1 overflow-auto p-6">
-            <section aria-label={pageWords.runsHeading} className="flex flex-col gap-2">
-              <h2 className="text-caption text-fg-muted">{pageWords.runsHeading}</h2>
-              {runsLines(name, users.load).map((line) => (
-                <p key={line} className="text-small text-fg-muted">
-                  {line}
-                  {line === pageWords.noRuns && openRuns && (
-                    <>
-                      {" "}
-                      <button type="button" className={inlineLinkClasses} onClick={openRuns}>
-                        {pageWords.openRuns}
-                      </button>
-                    </>
-                  )}
-                </p>
-              ))}
-            </section>
-          </div>
+          <RunsView host={host} agent={{ hubId, id }} name={name} openRuns={openRuns} />
         )}
       </TabPanel>
     </div>
@@ -399,23 +360,6 @@ function AgentRead({
       )}
     </div>
   );
-}
-
-/**
- * What the Runs tab says. A run doesn't say which agent ran in it (R9), so the tab lists none: an
- * agent no workflow runs can't have run, and one that workflows run is pointed to their runs. While
- * the workflows are read it says nothing, and when they can't be read it doesn't guess.
- */
-function runsLines(name: string, users: Load<readonly AgentUser[]>): readonly string[] {
-  if (users.kind === "loading") return [];
-  if (users.kind === "failed") return [pageWords.runsAsAStep(name)];
-  if (users.value.length === 0) return [pageWords.noRuns, pageWords.runsInAWorkflow(name)];
-  return [
-    pageWords.runsInWorkflows(
-      name,
-      users.value.map((user) => user.name),
-    ),
-  ];
 }
 
 type AgentView = "configuration" | "runs";
