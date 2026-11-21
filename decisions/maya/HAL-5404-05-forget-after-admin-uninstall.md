@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this change (HAL-5404, condition S2 from the HAL-5407 review); the design is Owen's call on HAL-14806, changed after Liam's security review on HAL-5404; Liam approves this note in review on HAL-5404
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:u+hYePsau9IJ0rHQzYxNF8LOI39YVkI6G6LSoqqQyR88AF5fdcb8NYPyxAV6kc5n4mUGOnpXKA514GQOCtepAw==
 
 ## What changes
 
