@@ -1,4 +1,9 @@
-import { checkWorkspacePath, isPrivateWorkspacePath } from "@halonicjs/ports";
+import {
+  checkWorkspacePath,
+  isLeftOut,
+  isPrivateWorkspacePath,
+  type LeaveOut,
+} from "@halonicjs/ports";
 import type { ShellCall } from "./fake-shell.test-helper.ts";
 import type {
   FileRefusal,
@@ -168,7 +173,10 @@ export class FakeFileShell implements TauriFileShell {
     }
     switch (command) {
       case "fs_list":
-        return this.#list(args["dir"] === null ? null : String(args["dir"]));
+        return this.#list(
+          args["dir"] === null ? null : String(args["dir"]),
+          args["leaveOut"] as LeaveOut | undefined,
+        );
       case "fs_read":
         return this.#read(this.#checked(args["path"]));
       case "fs_write":
@@ -233,18 +241,21 @@ export class FakeFileShell implements TauriFileShell {
     return await this.approvalsOf(workspace, source).invoke(command, { workspace, ...args });
   }
 
-  #list(dir: string | null): string[] {
+  #list(dir: string | null, leaveOut: LeaveOut | undefined): string[] {
     if (dir !== null) {
       this.#checked(dir);
     }
     const prefix = dir === null ? "" : `${dir}/`;
-    const folder = [...this.unreadable].find((path) => `${path}/`.startsWith(prefix));
+    // As the shell's walk, which never steps into a left-out folder.
+    const folder = [...this.unreadable].find(
+      (path) => `${path}/`.startsWith(prefix) && !isLeftOut(path, leaveOut),
+    );
     if (folder !== undefined) {
       throw { ...refusal("folder_unreadable", "permission denied"), path: folder };
     }
     return [...this.files.keys()]
       .filter((path) => path.startsWith(prefix) && !isPrivateWorkspacePath(path))
-      .filter((path) => !this.#linked(path))
+      .filter((path) => !this.#linked(path) && !isLeftOut(path, leaveOut))
       .sort();
   }
 

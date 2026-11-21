@@ -1,13 +1,17 @@
 import { type DigestWatch, runOwnChange } from "@halonicjs/adapter-watch-kit";
 import {
+  checkLeaveOut,
   checkPublicWorkspacePath,
   type DefinitionStore,
   type DefinitionWatch,
   type DefinitionWatchListener,
   type Digest,
+  isLeftOut,
+  type ListOptions,
   type RemoveOptions,
   type RemoveResult,
   UnreadableWorkspaceFolderError,
+  type VersionOptions,
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
@@ -80,12 +84,25 @@ export class TauriDefinitionStore implements DefinitionStore {
     this.#folder = options.folder ?? "workspace";
   }
 
-  /** @throws UnreadableWorkspaceFolderError naming a folder under the workspace the shell can't read */
-  async list(dir?: string): Promise<string[]> {
+  /**
+   * With `leaveOut`, the shell's walk never steps into a left-out folder.
+   *
+   * @throws UnreadableWorkspaceFolderError naming a folder under the workspace the shell can't read
+   */
+  async list(dir?: string, options: ListOptions = {}): Promise<string[]> {
+    const { leaveOut } = options;
+    checkLeaveOut(leaveOut);
     if (dir !== undefined) {
       checkPublicWorkspacePath(dir);
+      if (isLeftOut(dir, leaveOut)) {
+        return [];
+      }
     }
-    const answer = await this.#call(fileCommands.list, { dir: dir ?? null });
+    // Sent only when given, so a plain list is the same call as before.
+    const answer = await this.#call(fileCommands.list, {
+      dir: dir ?? null,
+      ...(leaveOut === undefined ? {} : { leaveOut }),
+    });
     if (!Array.isArray(answer) || !answer.every((path) => typeof path === "string")) {
       throw noAnswer();
     }
@@ -139,13 +156,14 @@ export class TauriDefinitionStore implements DefinitionStore {
   }
 
   /**
-   * `sha256:` and the first 16 hex characters of a hash over every file it
-   * serves and its text, worked out as `fs-node` and the memory adapter do,
-   * so the same files give the same version in all three.
+   * `sha256:` and the first 16 hex characters of a hash over every file
+   * `list()` gives with the same `leaveOut`, and its text, worked out as
+   * `fs-node` and the memory adapter do, so the same files give the same
+   * version in all three.
    */
-  async version(): Promise<string> {
+  async version(options: VersionOptions = {}): Promise<string> {
     const parts: string[] = [];
-    for (const path of await this.list()) {
+    for (const path of await this.list(undefined, options)) {
       const content = await this.read(path);
       if (content !== null) {
         parts.push(`${path}\n${content}`);

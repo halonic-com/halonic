@@ -18,7 +18,8 @@ use std::time::{Duration, SystemTime};
 
 use crate::error::FileError;
 use crate::fence::Fence;
-use crate::folder::{sort_as_javascript, walk};
+use crate::folder::{Skip, sort_as_javascript, walk};
+use crate::leave_out::LeaveOut;
 
 /// The most files a watch looks at. Each look reads every file's size and
 /// modified time, about once a second; at 50,000 files that is still a
@@ -67,7 +68,11 @@ impl FolderSnapshot {
             }
             Ok(())
         };
-        walk(root, "", fence, &mut add)?;
+        let skip = Skip {
+            fence,
+            leave_out: &LeaveOut::default(),
+        };
+        walk(root, "", &skip, &mut add)?;
         Ok(Self { files })
     }
 
