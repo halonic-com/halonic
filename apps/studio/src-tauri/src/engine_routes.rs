@@ -268,7 +268,8 @@ fn run_segment(text: &str) -> Result<String, BadParam> {
         return Err(BadParam::of(Param::Run, "holds a '/'"));
     }
     if text == "." || text == ".." {
-        return Err(BadParam::of(Param::Run, "is '.' or '..'"));
+        // Described in words: quoting the dots would look like echoing the value.
+        return Err(BadParam::of(Param::Run, "is a dot segment"));
     }
     Ok(percent_encode(text))
 }
