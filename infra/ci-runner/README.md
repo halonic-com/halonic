@@ -66,14 +66,15 @@ for it to exit and cleans up. systemd starts the next cycle.
 
 | Slot | Label | CPUs | Pinned to vCPUs | Memory (= swap) | Work dir |
 | --- | --- | --- | --- | --- | --- |
-| `large-1` … `large-4` | `halonic-ci-large` | 12 | 0-11, 12-23, 24-35, 36-47 | 16 GB | 20 GB |
-| `small-1` … `small-3` | `halonic-ci-small` | 2 each | 42-47 (shared) | 4 GB | 6 GB |
+| `large-1` … `large-8` | `halonic-ci-large` | 6 | 0-5, 6-11, … 42-47 (`(N-1)*6`–`N*6-1`) | 10 GB | 20 GB |
+| `small-1` … `small-3` | `halonic-ci-small` | 2 each | 42-47 (shared) | 3 GB | 6 GB |
 
 Each slot is pinned to its own vCPUs (`--cpuset-cpus`), so a job sees only those (`nproc`, Node's
-`availableParallelism`) and test runners don't start a worker for each of the VM's 48. The small
-slots share 42-47 with `large-4` on purpose: the large slots use all 48 vCPUs, and the small jobs
-are short and capped at 2 CPUs each, so `large-4` can run a little slower while they're busy.
-Separate CPUs for them need more vCPUs on the VM.
+`availableParallelism`) and test runners don't start a worker for each of the VM's 48. Eight large
+slots run the eight build shards at once; in the 96 GB VM they take 80 GB and the small slots 9 GB.
+The small slots share 42-47 with `large-8` on purpose: the large slots use all 48 vCPUs, and the
+small jobs are short and capped at 2 CPUs each, so `large-8` can run a little slower while they're
+busy. Separate CPUs for them need more vCPUs on the VM.
 
 Every container: all capabilities dropped, `no-new-privileges`, Docker's default seccomp and
 AppArmor profiles, `--pids-limit 8192`, no host devices, no Docker socket. The image

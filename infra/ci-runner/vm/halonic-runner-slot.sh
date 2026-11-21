@@ -12,21 +12,21 @@ fail() { echo "slot ${SLOT}: $1" >&2; exit 1; }
 [ -f "$KEY" ] && [ ! -L "$KEY" ] || fail "$KEY missing or not a file"
 [ "$(stat -c '%u %a' "$KEY")" = "0 400" ] || fail "$KEY must be owned by root with mode 0400"
 case "$SLOT" in
-  large-*) LABEL=halonic-ci-large; CPUS=12; MEM=16g; QUOTA=20g; TMPFS=1g ;;
-  small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=4g;  QUOTA=6g;  TMPFS=512m ;;
+  large-*) LABEL=halonic-ci-large; CPUS=6;  MEM=10g; QUOTA=20g; TMPFS=1g ;;
+  small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=3g;  QUOTA=6g;  TMPFS=512m ;;
   *) echo "unknown slot $SLOT" >&2; exit 2 ;;
 esac
 N=${SLOT##*-}
 case "$SLOT" in large-*) PROJ=$((100+N));; small-*) PROJ=$((200+N));; esac
 # Each slot gets its own CPUs, so a job sees only those (nproc, Node's availableParallelism).
 # With --cpus alone it saw all 48 of the VM's, and test runners started a worker per CPU and ran
-# out of memory. vCPUs 2k and 2k+1 are SMT siblings, so 12 in a row are 6 whole cores.
-# The small slots share 42-47 with large-4, on purpose: the four large slots use all 48 vCPUs, and
+# out of memory. vCPUs 2k and 2k+1 are SMT siblings, so 6 in a row are 3 whole cores.
+# The small slots share 42-47 with large-8, on purpose: the eight large slots use all 48 vCPUs, and
 # taking 6 away from them would cost every build. The three small slots are capped at 2 CPUs each
-# (--cpus) and run short jobs, so when all are busy large-4 has about 6 of its 12 vCPUs to itself
-# and 6 shared. Moving them off needs more vCPUs on the VM.
+# (--cpus) and run short jobs, so when all are busy large-8 runs slower. Moving them off needs more
+# vCPUs on the VM.
 case "$SLOT" in
-  large-*) CPUSET="$(( (N-1)*12 ))-$(( N*12-1 ))" ;;
+  large-*) CPUSET="$(( (N-1)*6 ))-$(( N*6-1 ))" ;;
   small-*) CPUSET="42-47" ;;
 esac
 
