@@ -75,7 +75,7 @@ export class ProfilePlaceError extends KindedError {
       refusal.code === "profile-in-workspace"
         ? [
             workspaceMessages.profileInWorkspace(refusal.movedBy),
-            workspaceMessages.profileInWorkspaceFix(refusal.movedBy),
+            workspaceMessages.profileInWorkspaceFix(),
           ]
         : [
             workspaceMessages.workspaceInProfile(shownProfile),

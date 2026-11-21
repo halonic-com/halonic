@@ -11,6 +11,7 @@ import { type CliCommand, type CommandInput, UsageError } from "../../command.ts
 import { exitCode } from "../../exit-code.ts";
 import { extractMessages } from "../../messages/extract.ts";
 import { printable } from "../../output/printable.ts";
+import { checkProfilePlace } from "../../profile-place.ts";
 import { shownPath, typedPath } from "../../shown-path.ts";
 import {
   dirOption,
@@ -49,6 +50,7 @@ export const extractCommand: CliCommand = {
     const { hub, folder } = parse(input, context.cwd);
     const workspace = await openWorkspaceDir(input, context);
     refuseInside(folder, workspace);
+    await checkProfilePlace(folder.root);
 
     const loaded = await loadWorkspace(workspace.store);
     const target = new FolderDefinitionStore(folder.root, folder.shown);

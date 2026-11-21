@@ -59,8 +59,13 @@ export const workspaceMessages = defineMessages("workspace", {
    */
   profileInWorkspace: (variable: string) =>
     phrase`the profile folder ${variable} is inside this workspace.`,
-  profileInWorkspaceFix: (variable: string) =>
-    phrase`Move it out of the workspace and set ${variable} to its new place, so a change in the workspace can't change your trust records.`,
+  /**
+   * Always names `HALONIC_HOME`, whichever variable moved the profile:
+   * `XDG_DATA_HOME` and `LOCALAPPDATA` point at the parent folder, and
+   * `LOCALAPPDATA` moves every other app's data too (Sofia's words, HAL-15232).
+   */
+  profileInWorkspaceFix: () =>
+    phrase`Move it out of the workspace and set HALONIC_HOME to its new place, so a change in the workspace can't change your trust records.`,
   /** The reason when the workspace is inside the profile folder: "this workspace is inside the profile folder ~/.local/share/halonic." */
   workspaceInProfile: (profile: string) =>
     phrase`this workspace is inside the profile folder ${profile}.`,

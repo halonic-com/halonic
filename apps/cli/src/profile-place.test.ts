@@ -1,8 +1,9 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { extractCommand } from "./commands/extract/command.ts";
 import { initCommand } from "./commands/init/command.ts";
 import { exitCode } from "./exit-code.ts";
 import { runCli } from "./run-cli.ts";
@@ -72,6 +73,8 @@ verifies("cli.profile-outside-workspace", () => {
         expect(io.stderr[0]).toContain(
           "the profile folder XDG_DATA_HOME is inside this workspace.",
         );
+        expect(io.stderr[1]).toContain("set HALONIC_HOME to its new place");
+        expect(io.stderr[1]).not.toContain("set XDG_DATA_HOME");
       },
     );
 
@@ -91,6 +94,19 @@ verifies("cli.profile-outside-workspace", () => {
 
       expect(code).toBe(exitCode.usage);
       expect(io.stderr[0]).toContain("HALONIC_HOME is inside this workspace.");
+    });
+
+    it("isn't made a workspace by extract, which writes nothing there", async () => {
+      vi.stubEnv("HALONIC_HOME", join(folder, "new", ".profile"));
+      const io = captureIo(folder);
+
+      const code = await runCli(["extract", "support", "new", "--dir", "acme"], io, [
+        extractCommand,
+      ]);
+
+      expect(code).toBe(exitCode.usage);
+      expect(io.stderr[0]).toContain("HALONIC_HOME is inside this workspace.");
+      expect(existsSync(join(folder, "new"))).toBe(false);
     });
   });
 
