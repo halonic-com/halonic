@@ -1,0 +1,4 @@
+# Commits whose lockfile lines the gitleaks lockfile step does not scan.
+# One full 40-character hash per line, then the reason. Only for test
+# commits that were never merged and that a full scan still fetches.
+4546fae946d35e2ebc74cb010a7e1995073d0d71 test probe for the lockfile scan: a made-up token on an example.invalid URL (pull request 553, closed unmerged)
