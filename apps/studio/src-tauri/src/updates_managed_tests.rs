@@ -1,9 +1,13 @@
+use std::net::TcpListener;
+use std::sync::Arc;
+
+use halonic_http_guard::ProxySetting;
 use halonic_update_state::{CheckFailure, CheckResult, Managed, ManagedBy, UpdateState};
 use tauri::Manager;
 use tauri::test::mock_app;
 
 use super::super::{Inner, Updates, update_restart};
-use super::apply;
+use super::{apply, fetch};
 
 fn scoop_install() -> Inner {
     Inner {
@@ -84,4 +88,53 @@ fn update_managed_leaves_an_unmanaged_install_alone() {
     app.manage(Updates::default());
     let refusal = update_restart(app.handle().clone()).expect_err("nothing is ready");
     assert!(refusal.contains("no update is ready"), "{refusal}");
+}
+
+/// `HTTPS_PROXY` set to `value`, and nothing else.
+fn proxy_setting(value: &str) -> Arc<ProxySetting> {
+    Arc::new(ProxySetting::from_env(|name| {
+        (name == "HTTPS_PROXY").then(|| value.to_owned())
+    }))
+}
+
+/// A loopback address nothing listens on any more.
+fn closed_url() -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("a loopback port");
+    let port = listener.local_addr().expect("its address").port();
+    drop(listener);
+    format!("http://127.0.0.1:{port}")
+}
+
+fn bucket_check(url: &str, setting: &Arc<ProxySetting>) -> CheckFailure {
+    tauri::async_runtime::block_on(fetch(url, setting)).expect_err("no manifest")
+}
+
+#[test]
+fn update_managed_names_an_unusable_proxy_setting() {
+    let unusable = proxy_setting("socks5://127.0.0.1:1080");
+    let failure = bucket_check("https://bucket.test/halonic.json", &unusable);
+    assert_eq!(failure, CheckFailure::ProxySetting);
+}
+
+#[test]
+fn update_managed_names_a_proxy_nobody_answers() {
+    let setting = proxy_setting(&closed_url());
+    let failure = bucket_check("https://bucket.test/halonic.json", &setting);
+    assert_eq!(failure, CheckFailure::Proxy);
+}
+
+#[test]
+fn update_managed_sends_nothing_for_plain_http_to_a_public_name_behind_a_proxy() {
+    let setting = proxy_setting(&closed_url());
+    let failure = bucket_check("http://bucket.test/halonic.json", &setting);
+    assert_eq!(failure, CheckFailure::NoAnswer);
+}
+
+#[test]
+fn update_managed_is_offline_when_a_direct_call_finds_no_server() {
+    let failure = bucket_check(
+        &format!("{}/halonic.json", closed_url()),
+        &Arc::new(ProxySetting::None),
+    );
+    assert_eq!(failure, CheckFailure::Offline);
 }
