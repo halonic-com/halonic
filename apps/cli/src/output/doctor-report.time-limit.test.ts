@@ -4,6 +4,7 @@ import {
   doctorSummary,
   type WorkspaceLine,
 } from "@halonicjs/app";
+import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { plainText } from "../messages/phrase.ts";
 import { type DoctorFacts, doctorReportLines } from "./doctor-report.ts";
@@ -31,23 +32,25 @@ function printed(report: Omit<DoctorReport, "summary">): string[] {
   return doctorReportLines(full, facts).map(plainText);
 }
 
-describe("doctorReportLines for a check that ran out of time", () => {
-  it("words a check that didn't answer in time on its own line, as a warning", () => {
-    const lines = printed({
-      workspace: trusted,
-      sandbox: { check: "sandbox", status: "warning", timedOut: true },
-      harnesses: { check: "harnesses", status: "warning", timedOut: true },
-      disk: diskFree,
+verifies("cli.doctor-report", () => {
+  describe("doctorReportLines for a check that ran out of time", () => {
+    it("words a check that didn't answer in time on its own line, as a warning", () => {
+      const lines = printed({
+        workspace: trusted,
+        sandbox: { check: "sandbox", status: "warning", timedOut: true },
+        harnesses: { check: "harnesses", status: "warning", timedOut: true },
+        disk: diskFree,
+      });
+      expect(lines).toEqual([
+        "Halonic 0.1.0 · Linux x64",
+        "",
+        "✓ Workspace   acme · trusted on this computer",
+        "! Sandbox     didn't answer in 5 seconds",
+        "! Harnesses   didn't answer in 5 seconds",
+        "✓ Disk        48 GB free · Halonic uses 1.4 GB (run logs 1.1 GB)",
+        "",
+        "No problems. 2 warnings.",
+      ]);
     });
-    expect(lines).toEqual([
-      "Halonic 0.1.0 · Linux x64",
-      "",
-      "✓ Workspace   acme · trusted on this computer",
-      "! Sandbox     didn't answer in 5 seconds",
-      "! Harnesses   didn't answer in 5 seconds",
-      "✓ Disk        48 GB free · Halonic uses 1.4 GB (run logs 1.1 GB)",
-      "",
-      "No problems. 2 warnings.",
-    ]);
   });
 });
