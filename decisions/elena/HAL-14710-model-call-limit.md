@@ -3,6 +3,7 @@
 - Task: HAL-14710
 - Approval: team decision under the HAL-2282 rule for small wording on approved screens (HAL-14707, Sofia; microcopy revision 117, cli-output revision 54); the reviewer of the pull request on HAL-14710 signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Nyv4Q5pXJnYXxbyKqQ3HNMlhIAb2FpuB2SlHFR/Pl+rPnGuCNGUfW7F+frzvhommljfPQiBh0/K89nN5tWr6BQ==
 
 ## What changes
 
