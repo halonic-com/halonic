@@ -160,8 +160,11 @@ export interface RunsSetup {
   readonly scriptedAlias?: { readonly alias: string; readonly secret: string };
   /** How a model call's stop becomes an `AbortSignal`; model calls get none when left out. */
   readonly abortOnStop?: AbortOnStop;
-  /** Gets each request the executor resolves a model for, such as a method's alias. */
-  readonly onResolveModel?: (request: ChatTurnRequest, scope?: ModelScope) => void;
+  /**
+   * Gets each request the executor resolves a model for, such as a method's alias; the model is
+   * picked once what it returns has settled.
+   */
+  readonly onResolveModel?: (request: ChatTurnRequest, scope?: ModelScope) => unknown;
 }
 
 /** A local executor with runs on memory ports, a scripted model and one workflow. */
@@ -190,7 +193,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
   const versionsAsked: (RunVersion | undefined)[] = [];
   const executor = new LocalExecutor({
     resolveModel: async (request, scope) => {
-      setup.onResolveModel?.(request, scope);
+      await setup.onResolveModel?.(request, scope);
       return (
         setup.model ?? {
           provider: model,

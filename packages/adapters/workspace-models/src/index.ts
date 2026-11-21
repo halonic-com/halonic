@@ -8,6 +8,13 @@ export {
   harnessModelAccess,
   harnessProviderModel,
 } from "./harness-model-access.ts";
+export {
+  askingModelResolver,
+  type KeyOriginAnswer,
+  type KeyOriginAskOptions,
+  type KeyOriginQuestion,
+  keyOriginWaitMs,
+} from "./key-origin-ask.ts";
 export type { ModelText } from "./model-texts.ts";
 export { type KeyDestination, keyDestination } from "./provider-origin.ts";
 export {
