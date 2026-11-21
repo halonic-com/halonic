@@ -180,7 +180,7 @@ verifies("cli.commands.plugin.add", () => {
     expect(io.stderr[0]).toBe("Trust Weather and turn it on?");
     expect(io.stderr.slice(-2)).toEqual([
       "! Weather is added but off, because there's no terminal to ask you to trust it.",
-      "  Review it with halonic trust --plugin weather, then pass --yes --fingerprint <fingerprint>.",
+      `  Read the list above, then run: halonic trust --plugin weather --yes --fingerprint ${io.stdout[0]}`,
     ]);
     expect(io.stdout).toHaveLength(1);
     expect(io.stdout[0]).toMatch(fullFingerprint);

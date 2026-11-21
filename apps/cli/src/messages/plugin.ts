@@ -155,6 +155,13 @@ export const pluginMessages = defineMessages("plugin", {
   /** The fix names `trust --plugin`, because a second `plugin add` would be a conflict. */
   addNoTerminalFix: (id: string) =>
     phrase`Review it with halonic trust --plugin ${id}, then pass --yes --fingerprint <fingerprint>.`,
+  /**
+   * Under {@link addNoTerminal} and {@link offNoTerminal}: the command that
+   * trusts what the check above showed, with its fingerprint filled in, ready
+   * to copy, as a workspace's trust gives it (HAL-15123).
+   */
+  noTerminalFix: (id: string, fingerprint: string) =>
+    phrase`Read the list above, then run: halonic trust --plugin ${id} --yes --fingerprint ${fingerprint}`,
   /** After the refusal's reason from the attack-test list; never more detail than the reason. */
   refusedSourceFix: () => phrase`Check the folder or git address.`,
   /** The refusal for a source that is, holds or is inside the profile folder or a workspace's data (HAL-13713). */

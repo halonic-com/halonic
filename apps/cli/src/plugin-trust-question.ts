@@ -88,7 +88,7 @@ export async function askToTrustPlugin(
     answer.programsRun,
     install?.source,
   );
-  const fix = pluginMessages.addNoTerminalFix(id);
+  const fix = pluginMessages.noTerminalFix(id, fingerprint);
   if (answer.fingerprint !== undefined && answer.fingerprint !== fingerprint) {
     throw fingerprintNotCurrent(entry, { check, fingerprint });
   }
