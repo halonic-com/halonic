@@ -217,6 +217,7 @@ verifies("workspace.references", () => {
         "hubs/billing/agents/clerk.agent.yaml": "name: Clerk\nmodel: careful\n",
         "agents/helper.agent.yaml": "name: Helper\nmodel: careful\n",
         "agents/direct.agent.yaml": "name: Direct\nmodel: mock/echo\n",
+        "providers/mock.yaml": "id: mock\ntype: mock\n",
       });
       expect(errors).toEqual([
         'agents/helper.agent.yaml: Agent "helper" uses unknown model alias "careful"',

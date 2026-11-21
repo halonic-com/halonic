@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-2270 (no line that names nothing: found running `doctor` on `examples/acme`); cli-output 3.7 (the Models line, and "Models checks only that a key is set") and microcopy L91; HAL-14629 (a key the store couldn't be asked about)
+- Source: HAL-14301 (a default model no file has, decided by the team on the task, from Nina's C340 check, code row C22); HAL-2270 (no line that names nothing: found running `doctor` on `examples/acme`); cli-output 3.7 (the Models line, and "Models checks only that a key is set") and microcopy L91; HAL-14629 (a key the store couldn't be asked about)
 
-While it runs inside a workspace with model aliases, `halonic doctor` shall show a Models line. It shall list each provider the aliases use that is ready: a provider on this computer that answers, with the models it has loaded, and a provider whose key is stored. While a provider on this computer doesn't answer, the line shall be marked as failed and name the provider and its address. While an alias uses a provider whose key isn't stored, the line shall be marked as a warning and name the alias and the provider, once per alias. If the secret store can't be asked for a provider's key, such as with a locked keychain, then the line shall be marked as a warning and name the provider and its secret once, and shall not say the key isn't stored. `doctor` shall never call a provider over the internet to check its key. A provider that needs no key, such as the mock provider, shall be neither listed nor warned about. If the workspace has no model aliases, or every alias uses a provider that needs no key, then there shall be no Models line.
+While it runs inside a workspace with model aliases, `halonic doctor` shall show a Models line. It shall list each provider the aliases use that is ready: a provider on this computer that answers, with the models it has loaded, and a provider whose key is stored. While a provider on this computer doesn't answer, the line shall be marked as failed and name the provider and its address. While an alias uses a provider whose key isn't stored, the line shall be marked as a warning and name the alias and the provider, once per alias. If the secret store can't be asked for a provider's key, such as with a locked keychain, then the line shall be marked as a warning and name the provider and its secret once, and shall not say the key isn't stored. `doctor` shall never call a provider over the internet to check its key. A provider that needs no key, such as the mock provider, shall be neither listed nor warned about. While the workspace's default model is an alias no file has, and the host says something would call it, the line shall be marked as failed and name that alias first, also when the workspace has no model aliases. If the workspace has no model aliases and no such default, or every alias uses a provider that needs no key, then there shall be no Models line.
 
 ## Examples
 
@@ -22,5 +22,7 @@ While it runs inside a workspace with model aliases, `halonic doctor` shall show
   then the line is ✓ and doesn't name it.
 - Given the workspace has no model aliases,
   then `doctor` prints no Models line.
+- Given the workspace has no model aliases, and its default model `default` is an alias no file has,
+  then the line is ✕ and names `default`, so `doctor` exits 1.
 - Given the only alias, `test`, uses the mock provider,
   then `doctor` prints no Models line, rather than a ✓ that names nothing.

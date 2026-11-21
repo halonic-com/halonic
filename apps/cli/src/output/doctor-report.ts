@@ -228,10 +228,15 @@ function summaryLine(report: DoctorReport): Phrase {
     problems === 0 ? doctorMessages.noProblems() : doctorMessages.problems(problems),
   ];
   if (report.models?.status === "failed") {
-    const servers = report.models.problems.flatMap((problem) =>
+    const { problems: modelProblemsFound } = report.models;
+    for (const problem of modelProblemsFound) {
+      if (problem.problem === "no-alias")
+        parts.push(doctorMessages.noModelAliasStops(problem.alias));
+    }
+    const servers = modelProblemsFound.flatMap((problem) =>
       problem.problem === "unreachable" ? [problem.name] : [],
     );
-    parts.push(doctorMessages.modelsStop(servers));
+    if (servers.length > 0) parts.push(doctorMessages.modelsStop(servers));
   }
   if (report.sandbox.status === "failed") parts.push(doctorMessages.sandboxStops());
   if (warnings > 0) parts.push(doctorMessages.warnings(warnings));

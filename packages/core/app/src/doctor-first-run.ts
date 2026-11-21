@@ -127,7 +127,8 @@ function defaultModelCause(
   if (localOnly && !local) return "default-model.local-only";
   if (models === undefined || "timedOut" in models) return undefined;
   for (const problem of models.problems) {
-    if (problem.provider !== provider.provider) continue;
+    // A default model no file has names no provider (HAL-14301).
+    if (problem.problem === "no-alias" || problem.provider !== provider.provider) continue;
     if (problem.problem === "unreachable") return "models.unreachable";
     // The store couldn't be asked, so the key may be there: never call it missing (HAL-14629).
     if (problem.problem === "key-unreadable") return "models.key-unreadable";

@@ -102,6 +102,13 @@ export const doctorMessages = defineMessages("doctor", {
   /** Models !, one line per provider: "smart and writer need an API key for Anthropic." */
   needKey: (aliases: readonly string[], provider: string) =>
     phrase`${listed(aliases)} ${aliases.length === 1 ? "needs" : "need"} an API key for ${provider}.`,
+  /**
+   * Models ✕ when the workspace's default model is an alias no file has, as
+   * after plain `halonic init` (Nina's C340 wording, HAL-14301):
+   * "no model alias default · copy models.yaml and providers/mock.yaml from Acme, or add your own".
+   */
+  noModelAlias: (alias: string) =>
+    phrase`no model alias ${alias} ${markPart("separator")} copy models.yaml and providers/mock.yaml from Acme, or add your own`,
   /** Models ✕, `model-unreachable`'s sentence. */
   notAnswering: (server: string, address: string) =>
     phrase`${server} isn't answering at ${address}`,
@@ -209,6 +216,9 @@ export const doctorMessages = defineMessages("doctor", {
     servers.length === 1
       ? phrase`Agents that use ${listed(servers, "or")} won't run until it answers.`
       : phrase`Agents that use ${listed(servers, "or")} won't run until they answer.`,
+  /** After the count, when the default model is an alias no file has: what that stops (HAL-14301). */
+  noModelAliasStops: (alias: string) =>
+    phrase`Agents without a model of their own won't run until ${alias} is added.`,
   /** After the count, when the sandbox can't start: what that stops. */
   sandboxStops: () => phrase`Agents set to run in a sandbox won't start until it's fixed.`,
 });

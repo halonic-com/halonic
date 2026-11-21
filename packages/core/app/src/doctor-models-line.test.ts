@@ -157,6 +157,25 @@ verifies("app.doctor-models", () => {
     expect(modelsLine([], [])).toBeUndefined();
   });
 
+  it("fails on a default model no file has, also without aliases, so doctor exits 1 (HAL-14301)", () => {
+    const line = modelsLine([], [], "default");
+
+    expect(line).toEqual({
+      check: "models",
+      status: "failed",
+      ready: [],
+      problems: [{ problem: "no-alias", alias: "default" }],
+    });
+    expect(line && doctorSummary([line]).needsFixing).toBe(true);
+    const withAlias = modelsLine(
+      [anthropic(false)],
+      [{ alias: "smart", provider: "anthropic" }],
+      "defualt",
+    );
+    expect(withAlias?.status).toBe("failed");
+    expect(withAlias?.problems.map((problem) => problem.problem)).toEqual(["no-alias", "no-key"]);
+  });
+
   it("throws when an alias names a provider the host didn't give", () => {
     expect(() => modelsLine([], [{ alias: "smart", provider: "anthropic" }])).toThrow(
       "The model alias smart uses the provider anthropic, which wasn't given.",

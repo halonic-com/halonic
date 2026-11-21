@@ -7,21 +7,22 @@ import { type TimedOutLine, timedOut, timedOutLine } from "./doctor-time-limit.t
 import type { ProviderModels, Resources } from "./resource-report.ts";
 
 /**
- * The Models line, or none without model aliases. It needs the stored keys,
- * and the resource report's loaded models when a provider runs on this
- * computer, so it ran over when one of those did.
+ * The Models line, or none without model aliases or a missing default
+ * model. It needs the stored keys, and the resource report's loaded models
+ * when a provider runs on this computer, so it ran over when one of those did.
  */
 export function workspaceModels(
   workspace: DoctorWorkspace,
   resources: Resources | typeof timedOut,
   keys: ReadonlyMap<string, boolean | "unreadable"> | typeof timedOut,
 ): ModelsLine | TimedOutLine<"models"> | undefined {
-  if (workspace.aliases.length === 0) return undefined;
+  const missing = workspace.missingDefaultModel;
+  if (workspace.aliases.length === 0 && missing === undefined) return undefined;
   const local = workspace.providers.some((provider) => provider.runs === "on-this-computer");
   if (keys === timedOut || (local && resources === timedOut)) return timedOutLine("models");
   const loaded = resources === timedOut ? [] : resources.models;
   const providers = workspace.providers.map((provider) => providerState(provider, loaded, keys));
-  return modelsLine(providers, workspace.aliases);
+  return modelsLine(providers, workspace.aliases, missing);
 }
 
 /** A provider as the Models line takes it, with what the report and the secrets found. */

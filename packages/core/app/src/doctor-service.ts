@@ -102,6 +102,13 @@ export interface DoctorWorkspace {
    */
   secrets?: readonly UsedSecret[];
   /**
+   * The workspace's default model (`defaults.model`, else `default`) when it
+   * is an alias neither `models.yaml` nor anything else defines, as in a
+   * workspace made with plain `halonic init`. The Models line fails on it
+   * (HAL-14301). Left out when the default is there or names `provider/model`.
+   */
+  missingDefaultModel?: string;
+  /**
    * Whether a run here can only reach the test model, as
    * `reachesOnlyTheTestModel` finds: then it needs no trust, the trust check
    * isn't read, and the Workspace line is ✓ (HAL-6007).

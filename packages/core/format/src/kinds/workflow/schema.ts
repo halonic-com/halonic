@@ -1,6 +1,7 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
 import { DURATION_PATTERN, id, version } from "../../shared/fields.ts";
 import { Guard } from "../../shared/guard.ts";
+import { relativePathProblem } from "../../shared/relative-path.ts";
 
 /** A move from one state to another, on an event, a condition or a timer. */
 export const Transition = s
@@ -24,6 +25,29 @@ export const Transition = s
  * once. foreach: run an agent or a workflow once per item of a list.
  */
 export const StateType = s.enum(["task", "wait", "final", "workflow", "parallel", "foreach"]);
+
+/**
+ * Why an artifact's name can't be a file's name, or `null` when it can: one
+ * name without folders, by the same rules as a path in an agent's working
+ * folder, so a host that ever saves it as a file keeps it where it belongs
+ * (HAL-14301).
+ *
+ * @param name - the name as written, such as `announcement.md`
+ * @returns a message, or `null`
+ */
+function artifactNameProblem(name: string): string | null {
+  const notAFile = "artifact name isn't a file name";
+  if (/[/\\]/.test(name) || /^\.{0,2}$/.test(name)) {
+    return `${notAFile}. Use one without folders, such as announcement.md`;
+  }
+  const problem = relativePathProblem(name, { root: "the run's files", part: "file name" });
+  return problem === null ? null : `${notAFile}. ${problem}`;
+}
+
+const artifactName = s.string().superRefine((name, context) => {
+  const problem = artifactNameProblem(name);
+  if (problem !== null) context.addIssue({ code: "custom", message: problem });
+});
 
 const prompt = () => s.union([s.string(), s.record(s.string(), s.unknown())]);
 
@@ -88,7 +112,7 @@ export const WorkflowState = s
     continueOnError: s.boolean().optional(),
     /** Save the agent's output as an artifact. */
     artifact: s
-      .object({ name: s.string(), mediaType: s.string().default("text/markdown") })
+      .object({ name: artifactName, mediaType: s.string().default("text/markdown") })
       .strict()
       .optional(),
     on: s.array(Transition).default([]),

@@ -2,7 +2,7 @@
 // the trust check covers, its model aliases and the providers they use. The
 // doctor service asks the machine about them; this only reads the files.
 
-import { defaultLocalAddress } from "@halonicjs/adapter-workspace-models";
+import { defaultLocalAddress, startsAProgram } from "@halonicjs/adapter-workspace-models";
 import {
   type AliasProvider,
   type DoctorProvider,
@@ -14,12 +14,14 @@ import {
 import type { Connector, Provider } from "@halonicjs/format";
 import { isSecretName, secretKey } from "@halonicjs/ports";
 import {
+  callModelName,
   definitionsOf,
   filesOf,
   type LoadedWorkspace,
   type LocalIntegrationInput,
   modelAliases,
   reachesOnlyTheTestModel,
+  resolveModel,
 } from "@halonicjs/workspace";
 import { fileProblemsOf } from "./workspace-problems.ts";
 
@@ -50,6 +52,8 @@ export interface DoctorWorkspaceInput {
  *   aliases: `halonic validate` reports it.
  * - **Secrets:** each one a run needs that the Models line doesn't check,
  *   with what uses it (see {@link usedSecrets}).
+ * - **Default model:** the workspace's, when it is an alias no file has and
+ *   something would call it (see {@link missingDefaultModel}).
  * - **File problems:** the errors `halonic validate` finds. Each leaves a
  *   file out, so a workspace with any is never on the test model only:
  *   the file left out may be a provider's (HAL-6613).
@@ -73,6 +77,7 @@ export function doctorWorkspace(input: DoctorWorkspaceInput): DoctorWorkspace {
     aliases: allAliases.filter((alias) => listed.has(alias.provider)),
     providers,
     secrets: usedSecrets(workspace, providerFiles),
+    ...missingDefaultModel(workspace, fileProblems, allAliases),
     // The rule `run` skips trust by, so doctor doesn't ask for a trust `run` wouldn't.
     testModelOnly:
       fileProblems === 0 &&
@@ -80,6 +85,34 @@ export function doctorWorkspace(input: DoctorWorkspaceInput): DoctorWorkspace {
     ...(fileProblems === 0 ? {} : { fileProblems }),
     ...(settings?.privacy.localOnly === true ? { localOnly: true } : {}),
   };
+}
+
+/**
+ * The workspace's default model (`defaults.model`, else `default`) when it is
+ * an alias the root has no file for and something would call it: the
+ * workspace has no model alias at all, as after plain `halonic init`, or an
+ * agent that names no model gets it (HAL-14301, Nina's C340 check). An agent
+ * in a hub with its own default, or whose harness starts a program, doesn't.
+ * Not while the files have errors: the alias may be in a file that failed,
+ * and the Workspace line already sends the user to `halonic validate`. A
+ * default with a `/` names a provider and a model directly, and isn't an alias.
+ */
+function missingDefaultModel(
+  workspace: LoadedWorkspace,
+  fileProblems: number,
+  aliases: readonly AliasProvider[],
+): { missingDefaultModel?: string } {
+  const name = filesOf(workspace, "workspace")[0]?.value.defaults.model ?? "default";
+  if (fileProblems > 0 || name.includes("/") || resolveModel(workspace, null, name) !== undefined) {
+    return {};
+  }
+  const onDefault = filesOf(workspace, "agent").some(
+    (agent) =>
+      agent.value.model === undefined &&
+      !startsAProgram(agent.value.harness) &&
+      (agent.hub === null || callModelName(definitionsOf(workspace, agent.hub), {}) === name),
+  );
+  return aliases.length === 0 || onDefault ? { missingDefaultModel: name } : {};
 }
 
 /**
