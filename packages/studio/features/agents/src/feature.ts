@@ -1,3 +1,4 @@
+import { sandboxStartCheckKey } from "@halonicjs/app";
 import { defineFeature } from "@halonicjs/studio-shell";
 import { AgentsHostService } from "./api.ts";
 import { searchWords } from "./list/list-words.ts";
@@ -12,6 +13,8 @@ export const agentsFeature = defineFeature({
   id: "agents",
   title: "Agents",
   needs: [AgentsHostService],
+  // Try it waits while the sandbox can't start, for an agent whose harness is a program.
+  wants: [sandboxStartCheckKey],
   register(studio) {
     studio.places.add({
       id: "agents",

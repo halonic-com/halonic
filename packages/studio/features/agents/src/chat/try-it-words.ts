@@ -1,8 +1,12 @@
 /**
- * The Try it chat's words (microcopy 8.3 and 19.5; states H2, H9, H12, H13, H23, H24). The agent's
- * name is the one it has now.
+ * The Try it chat's words (microcopy 8.3, 14.1 and 19.5; states H2, H7, H9, H11, H12, H13, H16,
+ * H23, H24). The agent's name is the one it has now.
  */
 export const tryItWords = {
+  /** H7: what the status line says while the chat first loads. */
+  loading: "Loading this chat",
+  /** H11: the chat couldn't load, with the reason under it. */
+  couldntLoad: "Couldn't load this chat",
   /** H2: the empty chat's heading. */
   heading: (agent: string) => `Chat with ${agent}`,
   /** The box's name and its placeholder. */
@@ -28,6 +32,9 @@ export const tryItWords = {
   turnLimit: (agent: string, turns: number) =>
     `${agent} used all ${turns} turns without finishing.`,
   tryAgain: "Try again",
+  /** H16: the toast after Not now in the trust gate, or where there is no gate to open. */
+  notTrusted: (workspace: string | undefined) =>
+    `Not started: ${workspace ?? "this workspace"} isn't trusted yet`,
   /** H29: a message that looks like it holds a key isn't sent (flow-assistant 5.9, HAL-1625). */
   keyInMessage:
     "This looks like an API key. Keys go in the key field, so they stay out of chats and files.",
