@@ -2,6 +2,7 @@
 
 - Approval: HAL-15116, from Iris's flow check C544 (HAL-15101) of halonic#4406; Liam approves this note in his security review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:f0bK4SQm9YJV1L41N4MUSpsDLo5yMAZDGpnqSYNpGkE4X7mnUqJ0yyFRLu6JnpBNg4h+ysP+MMfNSQCe4FBWBg==
 - Task: HAL-15116
 
 ## What changes
