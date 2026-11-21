@@ -7,8 +7,10 @@ import type {
   DefinitionStore,
   DefinitionWatch,
   DefinitionWatchListener,
+  ListOptions,
   RemoveOptions,
   RemoveResult,
+  VersionOptions,
   WriteOptions,
   WriteResult,
 } from "@halonicjs/ports";
@@ -42,16 +44,16 @@ export class ReviewingDefinitionStore implements DefinitionStore {
     return this.inner.location;
   }
 
-  list(dir?: string): Promise<string[]> {
-    return this.inner.list(dir);
+  list(dir?: string, options?: ListOptions): Promise<string[]> {
+    return this.inner.list(dir, options);
   }
 
   read(path: string): Promise<string | null> {
     return this.inner.read(path);
   }
 
-  version(): Promise<string> {
-    return this.inner.version();
+  version(options?: VersionOptions): Promise<string> {
+    return this.inner.version(options);
   }
 
   write(path: string, content: string, options?: WriteOptions): Promise<WriteResult> {

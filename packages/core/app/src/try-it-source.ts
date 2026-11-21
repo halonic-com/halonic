@@ -6,7 +6,12 @@
 // was trusted. Built in memory; nothing is written.
 
 import type { LeftOutReason } from "@halonicjs/events";
-import type { DefinitionSource } from "@halonicjs/ports";
+import {
+  type DefinitionSource,
+  isLeftOut,
+  type ListOptions,
+  type VersionOptions,
+} from "@halonicjs/ports";
 import { deepEqual, diffLines, isPlainObject } from "@halonicjs/std";
 import { readYaml } from "@halonicjs/yaml";
 import { type ItemPath, revertParts } from "./changes/revert-parts.ts";
@@ -73,7 +78,8 @@ export class FileReads {
   readonly #files: ReviewFiles;
   #shared: boolean;
   readonly #reads = new Map<string, Promise<FileNow>>();
-  readonly #lists = new Map<string | undefined, Promise<string[]>>();
+  /** By `dir` and `leaveOut`, as JSON: the same listing asked for twice is one read. */
+  readonly #lists = new Map<string, Promise<string[]>>();
 
   constructor(files: ReviewFiles, shared = false) {
     this.#files = files;
@@ -90,9 +96,10 @@ export class FileReads {
     return this.#once(this.#reads, path, () => readNow(this.#files, path));
   }
 
-  /** The workspace's paths under `dir`, as its store lists them. */
-  list(dir?: string): Promise<string[]> {
-    return this.#once(this.#lists, dir, () => this.#files.store.list(dir));
+  /** The workspace's paths under `dir`, as its store lists them with `options`. */
+  list(dir?: string, options?: ListOptions): Promise<string[]> {
+    const key = JSON.stringify([dir ?? null, options?.leaveOut ?? null]);
+    return this.#once(this.#lists, key, () => this.#files.store.list(dir, options));
   }
 
   /** The workspace as it is, from the same reads as Try it's. */
@@ -100,9 +107,9 @@ export class FileReads {
     const store = this.#files.store;
     return {
       location: store.location,
-      list: (dir) => this.list(dir),
+      list: (dir, options) => this.list(dir, options),
       read: async (path) => (await this.now(path)).text,
-      version: () => store.version(),
+      version: (options) => store.version(options),
     };
   }
 
@@ -256,11 +263,12 @@ class HeldBackSource implements DefinitionSource {
     this.#used = used;
   }
 
-  async list(dir?: string): Promise<string[]> {
-    // The workspace's own list first: it refuses an unsafe `dir`.
-    const listed = await this.#reads.list(dir);
+  async list(dir?: string, options?: ListOptions): Promise<string[]> {
+    // The workspace's own list first: it refuses an unsafe `dir` and `leaveOut`.
+    const listed = await this.#reads.list(dir, options);
     const prefix = dir === undefined ? null : `${dir.replace(/\/+$/u, "")}/`;
-    const within = (path: string) => prefix === null || path.startsWith(prefix);
+    const within = (path: string) =>
+      (prefix === null || path.startsWith(prefix)) && !isLeftOut(path, options?.leaveOut);
     const { records } = await this.#files.list();
     const candidates = new Set([
       ...listed,
@@ -294,14 +302,16 @@ class HeldBackSource implements DefinitionSource {
   /**
    * The workspace's version, with the digest of what is held after a `+`
    * when anything is, so a run tried with held-back changes never records
-   * the same version as one run with the files as they are.
+   * the same version as one run with the files as they are. With `leaveOut`,
+   * a held file it leaves out doesn't count, as the store doesn't count it.
    */
-  async version(): Promise<string> {
-    const version = await this.#files.store.version();
-    if (this.#used.size === 0) {
+  async version(options?: VersionOptions): Promise<string> {
+    const version = await this.#files.store.version(options);
+    const heldPaths = [...this.#used.keys()].filter((path) => !isLeftOut(path, options?.leaveOut));
+    if (heldPaths.length === 0) {
       return version;
     }
-    const held = [...this.#used.keys()].sort().map((path) => [path, this.#used.get(path)]);
+    const held = heldPaths.sort().map((path) => [path, this.#used.get(path)]);
     return `${version}+held-back.${await this.#files.digestOf(JSON.stringify(held))}`;
   }
 }

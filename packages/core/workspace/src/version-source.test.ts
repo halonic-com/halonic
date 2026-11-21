@@ -1,4 +1,7 @@
-import { definitionSourceContract } from "@halonicjs/testing-contracts";
+import {
+  definitionSourceContract,
+  definitionSourceLeftOutContract,
+} from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { filesOf, loadWorkspace, VersionSource } from "./index.ts";
@@ -8,6 +11,16 @@ definitionSourceContract("VersionSource", async (files) => {
   const versions = new MemoryVersions();
   return new VersionSource(versions, versions.commit(files), "memory:acme");
 });
+
+// The commit id names the whole snapshot, so any change gives a new version.
+definitionSourceLeftOutContract(
+  "VersionSource",
+  async (files) => {
+    const versions = new MemoryVersions();
+    return new VersionSource(versions, versions.commit(files), "memory:acme");
+  },
+  { snapshotVersion: true },
+);
 
 const briefing = (model: string) =>
   `id: briefing\nname: Briefing\nmodel: ${model}\ninstructions: Brief me.\n`;

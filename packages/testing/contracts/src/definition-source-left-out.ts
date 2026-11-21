@@ -76,7 +76,12 @@ export function definitionSourceLeftOutContract(
 
       it("refuses an unsafe folder or name with a RangeError", async () => {
         const source = await make(workspace);
-        for (const leaveOut of [{ folders: ["a/../b"] }, { folders: [""] }, { names: ["a/b"] }]) {
+        for (const leaveOut of [
+          { folders: ["a/../b"] },
+          { folders: [""] },
+          { names: ["a/b"] },
+          { names: ["..."] },
+        ]) {
           const label = JSON.stringify(leaveOut);
           await expect(source.list(undefined, { leaveOut }), label).rejects.toThrow(RangeError);
           await expect(source.version({ leaveOut }), label).rejects.toThrow(RangeError);
@@ -95,6 +100,10 @@ export function definitionSourceLeftOutContract(
           const before = await make(workspace);
           const after = await make(edited);
           expect(await after.version({ leaveOut: repo })).toBe(
+            await before.version({ leaveOut: repo }),
+          );
+          // A folder named in another case leaves out the same files, so the version matches too.
+          expect(await after.version({ leaveOut: { folders: ["REPO"] } })).toBe(
             await before.version({ leaveOut: repo }),
           );
           expect(await after.version()).not.toBe(await before.version());

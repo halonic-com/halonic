@@ -4,9 +4,13 @@
 
 import {
   checkCommitId,
+  checkLeaveOut,
   checkPublicWorkspacePath,
   type DefinitionSource,
+  isLeftOut,
+  type ListOptions,
   type Vcs,
+  type VersionOptions,
 } from "@halonicjs/ports";
 
 /** The part of {@link Vcs} a {@link VersionSource} reads through. */
@@ -46,12 +50,14 @@ export class VersionSource implements DefinitionSource {
     this.location = location;
   }
 
-  /** Every file under `dir` in the version, sorted; `[]` when it has none there. */
-  async list(dir?: string): Promise<string[]> {
+  /** Every file under `dir` in the version, sorted, without what `leaveOut` leaves out; `[]` when it has none there. */
+  async list(dir?: string, options: ListOptions = {}): Promise<string[]> {
     if (dir !== undefined) {
       checkPublicWorkspacePath(dir);
     }
-    return (await this.#vcs.listAt(this.#commit, dir)) ?? [];
+    checkLeaveOut(options.leaveOut);
+    const listed = (await this.#vcs.listAt(this.#commit, dir)) ?? [];
+    return listed.filter((path) => !isLeftOut(path, options.leaveOut));
   }
 
   /** The file's text in the version, or `null` when the version has no such file. */
@@ -60,8 +66,9 @@ export class VersionSource implements DefinitionSource {
     return this.#vcs.readAt(this.#commit, path);
   }
 
-  /** The commit id. */
-  async version(): Promise<string> {
+  /** The commit id, with or without `leaveOut`: it names the whole snapshot. */
+  async version(options: VersionOptions = {}): Promise<string> {
+    checkLeaveOut(options.leaveOut);
     return this.#commit;
   }
 }

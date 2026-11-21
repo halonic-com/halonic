@@ -1,10 +1,13 @@
-import type {
-  DefinitionStore,
-  DefinitionWatch,
-  RemoveOptions,
-  RemoveResult,
-  WriteOptions,
-  WriteResult,
+import {
+  checkLeaveOut,
+  type DefinitionStore,
+  type DefinitionWatch,
+  isLeftOut,
+  type ListOptions,
+  type RemoveOptions,
+  type RemoveResult,
+  type WriteOptions,
+  type WriteResult,
 } from "@halonicjs/ports";
 import { KeyedQueue, matchesExpected, type Sha256 } from "@halonicjs/std";
 
@@ -41,13 +44,15 @@ export class TestDefinitionStore implements DefinitionStore {
     this.digest = digest;
   }
 
-  async list(dir?: string): Promise<string[]> {
+  async list(dir?: string, options: ListOptions = {}): Promise<string[]> {
     if (dir !== undefined) {
       checkPath(dir);
     }
+    checkLeaveOut(options.leaveOut);
     const prefix = dir === undefined ? "" : `${dir}/`;
     return [...this.files.keys()]
       .filter((path) => path.startsWith(prefix) && !isPrivatePath(path))
+      .filter((path) => !isLeftOut(path, options.leaveOut))
       .sort();
   }
 

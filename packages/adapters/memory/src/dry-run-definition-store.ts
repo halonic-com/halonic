@@ -4,8 +4,11 @@ import {
   type DefinitionStore,
   type DefinitionWatch,
   type DefinitionWatchListener,
+  isLeftOut,
+  type ListOptions,
   type RemoveOptions,
   type RemoveResult,
+  type VersionOptions,
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
@@ -51,13 +54,16 @@ export class DryRunDefinitionStore implements DefinitionStore {
     this.location = source.location;
   }
 
-  async list(dir?: string): Promise<string[]> {
+  async list(dir?: string, options: ListOptions = {}): Promise<string[]> {
     if (dir !== undefined) {
       checkPublicWorkspacePath(dir);
     }
-    const paths = new Set(await this.#source.list(dir));
+    const paths = new Set(await this.#source.list(dir, options));
     for (const [path, content] of this.#pending) {
       if (dir !== undefined && !path.startsWith(`${dir}/`)) {
+        continue;
+      }
+      if (isLeftOut(path, options.leaveOut)) {
         continue;
       }
       if (content === null) {
@@ -135,14 +141,17 @@ export class DryRunDefinitionStore implements DefinitionStore {
    * The version of the store under it while nothing is pending. Once
    * something is, `dry-run:` and 16 hex characters of a hash over that
    * version and the pending changes, so it is never mistaken for a version
-   * the real store has.
+   * the real store has. With `leaveOut`, pending changes to left-out files
+   * don't count, as the store under it doesn't count those files.
    */
-  async version(): Promise<string> {
-    const sourceVersion = await this.#source.version();
-    if (this.#pending.size === 0) {
+  async version(options: VersionOptions = {}): Promise<string> {
+    const sourceVersion = await this.#source.version(options);
+    const paths = [...this.#pending.keys()]
+      .filter((path) => !isLeftOut(path, options.leaveOut))
+      .sort();
+    if (paths.length === 0) {
       return sourceVersion;
     }
-    const paths = [...this.#pending.keys()].sort();
     // JSON keeps a removed file (null) apart from an empty one ("") and any text apart from the separators.
     const listing = JSON.stringify([
       sourceVersion,
