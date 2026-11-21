@@ -443,7 +443,6 @@ function generalFailure(failed: RunFailedEvent): Extract<RunFailure, { reason: "
   return { reason: "error", message: failed.error };
 }
 
-/** The provider as its file names it, such as "Ollama", or else its id. */
 /**
  * Whether a failure's `alias` is a model alias, such as "smart". Without one, the facts name the
  * model as `<provider>/<model>`, and a line names the model itself (C457-1 on HAL-14694).
@@ -457,6 +456,7 @@ export function isModelAlias(alias: string): boolean {
   return !alias.includes("/");
 }
 
+/** The provider as its file names it, such as "Ollama", or else its id. */
 function providerName(model: FailedModel): string {
   return model.provider?.name ?? model.providerId;
 }

@@ -151,7 +151,9 @@ verifies("runs.run-view.failure-banners", () => {
   // C461 BN1: Tab from the run's heading lands on the first button, which says what it fixes.
   it("describes each button by the banner's sentence", async () => {
     const root = await openOn("desktop", missing, { openModels: () => {}, runAgain: true });
-    for (const candidate of root.querySelectorAll('section[aria-label="Run failed"] button')) {
+    const buttons = [...root.querySelectorAll('section[aria-label="Run failed"] button')];
+    expect(buttons.length).toBeGreaterThan(0);
+    for (const candidate of buttons) {
       const ids = candidate.getAttribute("aria-describedby")?.split(" ") ?? [];
       const described = ids.map((id) => root.ownerDocument.getElementById(id)?.textContent);
       expect(described.join(" ")).toContain("doesn't have");
