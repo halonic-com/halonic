@@ -36,6 +36,9 @@ const typedCode = () =>
     .map((image) => image.getAttribute("aria-label"))
     .find((label) => label?.startsWith("Pairing code: "));
 
+/** The faded tile of the code that stopped working, hidden from screen readers (C529-2). */
+const fadedCode = () => dialog()?.querySelector('[aria-hidden="true"].opacity-30 [role="img"]');
+
 async function press(element: Element | undefined) {
   if (!(element instanceof HTMLElement)) throw new Error("Nothing to press");
   act(() => element.click());
@@ -194,6 +197,8 @@ verifies("remote.pair-a-phone-narrow", () => {
 
     expect(row?.querySelector('[role="img"]')).not.toBeNull();
     expect(row?.className.split(" ")).toContain("flex-wrap");
+    // The tile alone on its row sits in the middle (C529-3).
+    expect(row?.className.split(" ")).toContain("justify-center");
     // At least 12rem beside the code, or a line of its own that may shrink to the dialog.
     expect(steps?.className.split(" ")).toEqual(
       expect.arrayContaining(["flex-[1_1_12rem]", "min-w-0"]),
@@ -224,6 +229,10 @@ verifies("remote.pair-a-phone-problems", () => {
     expect(dialog()?.textContent).toContain("The code ran out");
     expect(focused()).toBe("Make a new code");
     expect(remote.snapshot.on).toBe(true);
+    // The code that ran out stays under the reason, faded, without its steps or timer (C529-2).
+    expect(fadedCode()?.getAttribute("aria-label")).toContain("QR code to pair your phone");
+    expect(dialog()?.querySelector("ol")).toBeNull();
+    expect(dialog()?.textContent).not.toContain("ends in");
     await press(buttonIn(dialog(), "Make a new code"));
     expect(typedCode()).toBeDefined();
     expect(typedCode()).not.toBe(first);
@@ -237,10 +246,12 @@ verifies("remote.pair-a-phone-problems", () => {
     for (let left = 5; left > 0; left--) tries.remote.wrongTry();
     await settle();
     expect(dialog()?.textContent).toContain("Too many wrong tries");
+    expect(fadedCode()).not.toBeNull();
     unmountAll();
 
     await openDialog((remote) => remote.startPairing());
     expect(dialog()?.textContent).toContain("Pair a phone is already open");
+    expect(fadedCode()).toBeNull();
     expect(focused()).toBe("Try again");
     unmountAll();
 
@@ -248,6 +259,7 @@ verifies("remote.pair-a-phone-problems", () => {
     await act(() => off.remote.setRemote(false));
     await settle();
     expect(dialog()?.textContent).toContain("Remote was turned off");
+    expect(fadedCode()).toBeNull();
   });
 
   it("shows the tunnel's reason with its actions, and Check again starts a new pairing", async () => {
@@ -272,6 +284,8 @@ verifies("remote.pair-a-phone-problems", () => {
     expect(remote.snapshot.phones).toHaveLength(0);
     expect(remote.snapshot.pairing).toBe(true);
     expect(focused()).toContain("Pairing was not allowed");
+    // Nothing went wrong, the person chose it: the info tone, as drawn (C529-1).
+    expect(document.activeElement?.className.split(" ")).toContain("bg-accent-soft");
     // Its title shows first, even where the group is taller than the dialog (C306 PP2).
     const top = scrolled.mock.contexts.at(-1) as Element | undefined;
     expect(top?.textContent).toMatch(/^Pairing was not allowed/);
