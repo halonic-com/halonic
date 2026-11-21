@@ -236,6 +236,8 @@ function KeyField({
     );
     if (!saved) return;
     if (kept !== undefined) address.kept();
+    // The Address field may be gone now, so the focus goes back to the key's field either way.
+    input.current?.focus();
     if (value === "") return;
     if (input.current !== null) input.current.value = "";
     setHasText(false);

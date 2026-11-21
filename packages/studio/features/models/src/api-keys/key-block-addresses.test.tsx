@@ -197,6 +197,7 @@ verifies("models.api-keys.not-bound-yet", () => {
     expect(lists["anthropic"]).toEqual(["https://api.anthropic.com"]);
     expect(view.textContent).toContain("Address saved: https://api.anthropic.com");
     expect(view.textContent).not.toContain("Not bound yet");
+    expect(document.activeElement).toBe(keyInput(view));
   });
 
   it("says when the addresses can't be read, with no badge, address or field", async () => {
