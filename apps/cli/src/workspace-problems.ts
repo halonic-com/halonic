@@ -5,7 +5,7 @@
 // shows it as a problem, until `halonic validate` finds no error.
 
 import { KindedError } from "@halonicjs/std";
-import type { LoadedWorkspace, WorkspaceIssue } from "@halonicjs/workspace";
+import { type LoadedWorkspace, misplacedFileCode, type WorkspaceIssue } from "@halonicjs/workspace";
 import { defaultModelProblems } from "./default-model-problems.ts";
 import type { Message } from "./messages/define.ts";
 import { plainText } from "./messages/phrase.ts";
@@ -30,6 +30,15 @@ export function workspaceProblemsOf(workspace: LoadedWorkspace): WorkspaceIssue[
  */
 export function fileProblemsOf(workspace: LoadedWorkspace): number {
   return workspaceProblemsOf(workspace).filter((issue) => issue.severity === "error").length;
+}
+
+/**
+ * How many files the loader skipped with a `misplaced-file` warning: files
+ * meant as a kind's that Halonic doesn't read for their folder or name, such
+ * as a hub outside `hubs/` or `models.yml`. A workflow among them looks missing.
+ */
+export function misplacedFilesOf(workspace: LoadedWorkspace): number {
+  return workspace.issues.filter((issue) => issue.code === misplacedFileCode).length;
 }
 
 /**

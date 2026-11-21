@@ -15,4 +15,14 @@ verifies("cli.messages", () => {
       words(workflowMessages.seeWorkflows("acme", [])),
     ]).toEqual(["Workflows in acme: support-reply, weekly-report.", "acme has no workflows yet."]);
   });
+
+  it("counts the files the loader skipped and points at validate", () => {
+    expect([
+      words(workflowMessages.skippedFiles("base", 1)),
+      words(workflowMessages.skippedFiles("base", 7, "base")),
+    ]).toEqual([
+      "Halonic skipped 1 file in base for its folder or name. See them with: halonic validate",
+      "Halonic skipped 7 files in base for their folder or name. See them with: halonic validate --dir base",
+    ]);
+  });
 });

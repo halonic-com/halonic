@@ -149,8 +149,11 @@ verifies("workspace.references", () => {
     it("doesn't call an agent whose output failed unknown (C337 #18)", async () => {
       const errors = await errorsIn({
         "agents/sorter.agent.yaml": "name: Sorter\noutput:\n  type: choice\n  options: []\n",
-        "routines/sort.routine.yaml":
-          'name: Sort\ntrigger:\n  schedule: "0 9 * * 1"\nrun:\n  agent: sorter\n',
+        // A workspace-level routine runs an agent only with workflows/ at the root too.
+        "workflows/tidy.workflow.yaml":
+          "name: Tidy\ninitial: done\nstates:\n  done:\n    type: final\n",
+        "workflows/routines/sort.routine.yaml":
+          'name: Sort\ntrigger:\n  schedule: "0 9 * * 1"\nrun:\n  agent: sorter\n  prompt: Sort the new items.\n',
       });
       expect(errors).toEqual([
         "agents/sorter.agent.yaml: Too small: expected array to have >=1 items",
@@ -173,7 +176,7 @@ verifies("workspace.references", () => {
           "    type: final",
           "",
         ].join("\n"),
-        "routines/report.routine.yaml":
+        "workflows/routines/report.routine.yaml":
           'name: Report\ntrigger:\n  schedule: "0 9 * * 1"\nrun:\n  workflow: report\n',
       });
       expect(errors).toEqual(['workflows/report.workflow.yaml: Missing required key "name"']);

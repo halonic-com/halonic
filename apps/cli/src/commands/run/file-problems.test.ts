@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { cp, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rename, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -140,5 +140,20 @@ verifies("cli.workspace-file-problems", () => {
     );
     const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
     expect(listed.total).toBe(0);
+  });
+});
+
+verifies("workspace.misplaced-files", () => {
+  it("points at validate when the workflow's hub sits outside hubs/ (HAL-14297)", async () => {
+    await rename(join(acme, "hubs/support"), join(acme, "support"));
+    const io = captureIo(acme);
+
+    const code = await runCli(["run", "support-reply", ...samsEmail], io, [runCommand()]);
+
+    expect(code).toBe(exitCode.notFound);
+    expect(io.stderr.slice(0, 2)).toEqual([
+      '✕ There\'s no workflow called "support-reply" in Acme.',
+      "  Halonic skipped 5 files in Acme for their folder or name. See them with: halonic validate",
+    ]);
   });
 });
