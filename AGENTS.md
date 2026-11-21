@@ -150,7 +150,9 @@ you spot become a new task.
   turbo uses it, and a package another worktree already checked is a cache hit. Don't
   set it per worktree. `pnpm turbo:prune` deletes entries unused for 7 days.
 - Fill in the template: requirements, how you tested, docs, changeset (or "None"), and the AI tool
-  and model you used. Agents leave the sign-off box unticked (see Review).
+  and model you used. A change users will notice, such as one to a released requirement, also
+  needs a `.changeset/*.md` that names `@halonicjs/app-studio`, the CLI included
+  (`.changeset/README.md`). Agents leave the sign-off box unticked (see Review).
 - Docs change in the same pull request as the behaviour.
 - Fix your own CI failures. Never push to `main`.
 

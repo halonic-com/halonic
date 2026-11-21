@@ -190,10 +190,10 @@ Halonic has one firm rule: **nothing that works may break.**
   contributors can't add. A maintainer adds it during review, so a red
   `built-on-label` before then is expected. Leave the template's `Built-on:`
   line empty.
-- **Write the changeset sentence** in the template's Changeset section if users
-  will notice the change. Write one sentence a user would understand. Don't run
-  `pnpm changeset` yet: the first release, 0.1.0, is a hand-made pull request,
-  and a changeset before it would make the release bot open one for 0.1.1. See
+- **Write a changeset** if users will notice the change: one sentence a user
+  would understand, in the template's Changeset section and as a changeset file
+  (`pnpm changeset`, pick `@halonicjs/app-studio`, also for the CLI). A change
+  to a released requirement is one users notice. See
   [`.changeset/README.md`](.changeset/README.md).
 - **Your targeted checks pass locally** before you ask for review. All checks
   (`ci-ok`) must pass in CI before anything is merged.

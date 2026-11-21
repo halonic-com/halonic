@@ -36,7 +36,8 @@ Local check:
 
 <!--
 One sentence a user would understand, or "None (no user-visible change)".
-Don't run `pnpm changeset` before the 0.1.0 release. See .changeset/README.md.
+If users will notice the change, also add it as a changeset file with
+`pnpm changeset` and pick `@halonicjs/app-studio`. See .changeset/README.md.
 -->
 
 ## AI assistance used
