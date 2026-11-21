@@ -3,6 +3,7 @@
 - Task: HAL-14629
 - Approval: decided by the team on HAL-14629 (Julian's review of #4189 on HAL-14269; the wording reuses the Secrets line's approved form, HAL-2282 rule). Liam signs on review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BRWnGXNCWCda5lmHx+GxANwhWp0N8wyrJY0oJKfoYw+642En88nMO5GqphFmdd+EsmFjcV3c/kaXXYlCY1/6CQ==
 
 ## What changes
 
