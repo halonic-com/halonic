@@ -33,10 +33,32 @@ pub(super) fn run_within(
 /// Runs `command` with `input` and answers the bytes it printed, stopping it
 /// after `limit`. A `wsl.exe` of its own prints UTF-16, so the caller decodes.
 pub(crate) fn run_within_bytes(
-    mut command: Command,
+    command: Command,
     input: Input,
     limit: Duration,
 ) -> Result<Vec<u8>, WslError> {
+    let ended = wait_within(command, input, limit)?;
+    let printed = ending(ended.status, ended.printed)?;
+    // A step that ended well without all of its input must not count as done.
+    ended.input_sent.map(|()| printed)
+}
+
+/// How a step that ran to its end ended.
+pub(super) struct Ended {
+    pub(super) status: ExitStatus,
+    /// What it printed on its standard output.
+    pub(super) printed: Vec<u8>,
+    /// Whether all of the bytes it was given went in.
+    pub(super) input_sent: Result<(), WslError>,
+}
+
+/// Runs `command` with `input` until it ends or `limit` has passed. The exit
+/// code is left to the caller: only the updater's codes mean [`ending`]'s errors.
+pub(super) fn wait_within(
+    mut command: Command,
+    input: Input,
+    limit: Duration,
+) -> Result<Ended, WslError> {
     let (stdin, bytes) = match input {
         Input::Given(stdin) => (stdin, None),
         Input::Bytes(bytes) => (Stdio::piped(), Some(bytes)),
@@ -81,18 +103,20 @@ pub(crate) fn run_within_bytes(
             }
         }
     };
-    let printed = reader.join().unwrap_or_default();
-    let printed = ending(status, printed)?;
-    // A step that ended well without all of its input must not count as done.
-    match writer.map(std::thread::JoinHandle::join) {
+    let input_sent = match writer.map(std::thread::JoinHandle::join) {
         Some(Ok(Err(error))) => Err(WslError::Start(format!(
             "wsl.exe didn't take all of its input: {error}."
         ))),
         Some(Err(_)) => Err(WslError::Start(
             "wsl.exe's input couldn't be sent.".to_owned(),
         )),
-        _ => Ok(printed),
-    }
+        _ => Ok(()),
+    };
+    Ok(Ended {
+        status,
+        printed: reader.join().unwrap_or_default(),
+        input_sent,
+    })
 }
 
 fn ending(status: ExitStatus, stdout: Vec<u8>) -> Result<Vec<u8>, WslError> {

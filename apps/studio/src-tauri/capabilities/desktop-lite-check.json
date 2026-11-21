@@ -1,0 +1,16 @@
+{
+  "identifier": "desktop-lite-check",
+  "description": "On desktop, the app's own page may run the lite check, through the lite_check command, when Halonic's engine didn't start (HAL-13408): the window checks on its own that Halonic's files are beside the app, that the profile folder takes a file (it makes the folder when it's missing, then makes and removes a probe file in it), the free disk space and, on Windows, Halonic's WSL distro and runtime. The command takes nothing from the page and answers ids and facts only, no path. It is local only, so the Studio the computer serves gets nothing through the shell.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-lite-check"
+  ]
+}

@@ -14,9 +14,9 @@ use std::sync::atomic::{AtomicU32, Ordering};
 #[cfg(unix)]
 use std::time::{Duration, Instant};
 
-#[cfg(unix)]
-use super::run_runtime_step_within;
 use super::{SettingCopy, WslError, lists_distro, run_runtime_step, send_archive, send_setting};
+#[cfg(unix)]
+use super::{distro_listed_within, run_runtime_step_within};
 
 const ARCHIVE: &[u8] = b"a runtime archive\n";
 /// The SHA-256 of [`ARCHIVE`].
@@ -163,4 +163,27 @@ fn the_listing_has_the_distro_only_as_a_whole_line() {
     assert!(!lists_distro(&utf16("halonic-old\r\nUbuntu\r\n")));
     assert!(!lists_distro(&utf16("")));
     assert!(!lists_distro(b""));
+}
+
+#[cfg(unix)]
+#[test]
+fn the_distro_listing_with_a_time_limit_answers_or_is_stopped() {
+    let script = temp_file("sh", b"printf 'Ubuntu\\nhalonic\\n'\n");
+    let mut wsl = Command::new("/bin/sh");
+    wsl.arg(&*script);
+    assert_eq!(distro_listed_within(wsl, Duration::from_secs(30)), Ok(true));
+
+    let script = temp_file("sh", b"exit 1\n");
+    let mut failing = Command::new("/bin/sh");
+    failing.arg(&*script);
+    let answer = distro_listed_within(failing, Duration::from_secs(30));
+    assert_eq!(answer, Err(WslError::Failed(Some(1))));
+
+    let script = temp_file("sh", b"sleep 30\n");
+    let mut hung = Command::new("/bin/sh");
+    hung.arg(&*script);
+    let started = Instant::now();
+    let answer = distro_listed_within(hung, Duration::from_millis(200));
+    assert_eq!(answer, Err(WslError::TimedOut));
+    assert!(started.elapsed() < Duration::from_secs(10));
 }

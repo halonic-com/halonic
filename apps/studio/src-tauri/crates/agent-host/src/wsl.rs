@@ -30,7 +30,7 @@ use crate::console_window::new_command;
 mod run;
 
 pub(crate) use run::{Input, run_within_bytes};
-use run::{run, run_within};
+use run::{run, run_within, wait_within};
 
 /// The name Halonic's distro is imported under.
 pub const DISTRO: &str = "halonic";
@@ -221,17 +221,29 @@ fn send_setting(command: Command, copy: SettingCopy<'_>) -> Result<(), WslError>
 ///
 /// When `wsl.exe` can't start, or ends with an error.
 pub fn distro_installed(wsl: &Path) -> Result<bool, WslError> {
+    distro_installed_within(wsl, Duration::MAX)
+}
+
+/// [`distro_installed`] with a time limit: a `wsl.exe` that hasn't listed
+/// the distros after `limit` is stopped, so a hung WSL service never holds
+/// up what waits for the answer.
+///
+/// # Errors
+///
+/// [`WslError::TimedOut`] after `limit`, otherwise as [`distro_installed`].
+pub fn distro_installed_within(wsl: &Path, limit: Duration) -> Result<bool, WslError> {
     let mut command = new_command(wsl);
     command.env_remove("WSLENV").args(["--list", "--quiet"]);
-    command
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null());
-    let output = command
-        .output()
-        .map_err(|error| WslError::Start(format!("wsl.exe could not start: {error}.")))?;
-    match output.status.code() {
-        Some(0) => Ok(lists_distro(&output.stdout)),
+    distro_listed_within(command, limit)
+}
+
+/// Runs `command`, a `wsl.exe --list --quiet`, and reads the distro from
+/// what it printed. The bytes are read as they are, because the listing is
+/// UTF-16.
+fn distro_listed_within(command: Command, limit: Duration) -> Result<bool, WslError> {
+    let ended = wait_within(command, Input::Given(Stdio::null()), limit)?;
+    match ended.status.code() {
+        Some(0) => Ok(lists_distro(&ended.printed)),
         code => Err(WslError::Failed(code)),
     }
 }

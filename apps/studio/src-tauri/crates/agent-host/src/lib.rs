@@ -14,6 +14,7 @@ mod error;
 mod handshake;
 mod relay;
 mod routes;
+mod runtime_status;
 mod security_updates;
 mod stderr_log;
 mod wsl;
@@ -30,13 +31,14 @@ pub use error::{AgentHostError, StartCause};
 pub use handshake::{Handshake, read_handshake};
 use relay::Relay;
 pub use routes::{Answer, LineSplitter, LineTooLong, Method, Route, find_route};
+pub use runtime_status::runtime_installed;
 pub use security_updates::{OVERDUE_AFTER_DAYS, SecurityUpdates, security_updates};
 use stderr_log::log_stderr;
 pub use wsl::{
     DISTRO, DISTRO_HOST, DISTRO_PROFILE_FOLDER, DISTRO_USER, RUNTIME_UPDATER, RuntimeStep,
     SettingCopy, WslError, copy_sandbox_setting, distro_host_command, distro_installed,
-    file_sha256, install_runtime, run_runtime_step, run_runtime_step_within, runtime_command,
-    setting_copy_command, wsl_exe,
+    distro_installed_within, file_sha256, install_runtime, run_runtime_step,
+    run_runtime_step_within, runtime_command, setting_copy_command, wsl_exe,
 };
 
 /// The host's executable name, without the `.exe` Windows adds.
