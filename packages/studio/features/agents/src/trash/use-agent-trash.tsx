@@ -36,6 +36,8 @@ export interface AgentTrash {
   readonly menu: ReactNode;
   /** The strip with Undo that replaces the page after Delete, or `null` while the agent is there. */
   readonly strip: ReactNode;
+  /** Opens the agent's file in a tab, as the menu's Open as file; absent where the app can't. */
+  readonly openAsFile: (() => void) | undefined;
 }
 
 /**
@@ -143,5 +145,5 @@ export function useAgentTrash({
         />
       </div>
     );
-  return { menu, strip };
+  return { menu, strip, openAsFile: openFile && (() => void onOpenAsFile()) };
 }

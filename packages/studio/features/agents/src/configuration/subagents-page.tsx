@@ -36,6 +36,8 @@ export interface SubagentsPageProps {
   readonly openSubagent?: ((agent: AgentListing) => void) | undefined;
   /** Reads text to screen readers, politely; absent says nothing. */
   readonly announce?: ((text: string) => void) | undefined;
+  /** Opens with the Add subagent dialog open, for the agent map's **Add subagent**. */
+  readonly startAdding?: boolean | undefined;
 }
 
 /** An agent of the hub that can't be a subagent, and why. */
@@ -51,7 +53,13 @@ interface LoopingAgent {
  * saves the whole list at once, and a saved change is read politely: "Writer added." A change the
  * host refuses shows its reason in a toast and changes nothing (flow-agents 5.4, a11y SA2).
  */
-export function SubagentsPage({ host, settings, openSubagent, announce }: SubagentsPageProps) {
+export function SubagentsPage({
+  host,
+  settings,
+  openSubagent,
+  announce,
+  startAdding = false,
+}: SubagentsPageProps) {
   const { hubId, id, name } = settings;
   const source = useMemo(
     () => ({
@@ -64,7 +72,7 @@ export function SubagentsPage({ host, settings, openSubagent, announce }: Subage
   const toasts = useToastStore();
   const [ids, setIds] = useState(settings.subagents);
   useEffect(() => setIds(settings.subagents), [settings.subagents]);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(startAdding);
   const list = useRef<HTMLUListElement>(null);
   const addButton = useRef<HTMLButtonElement>(null);
 
