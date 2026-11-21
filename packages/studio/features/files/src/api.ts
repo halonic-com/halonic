@@ -3,6 +3,11 @@
  * import each other only through this file.
  */
 
+export {
+  type BrokenFileActions,
+  brokenFileActions,
+  brokenFileMenu,
+} from "./broken-file-actions.ts";
 export { fileItem } from "./file-item.ts";
 export {
   type CompareChoice,
@@ -20,5 +25,6 @@ export {
 export { filesWords } from "./files-words.ts";
 export { type FollowFilesParts, followFilesHost } from "./follow-host.ts";
 export { requestOpenAtLine } from "./open-at-line.ts";
+export type { RemoveFocus } from "./remove-file.ts";
 export { type FilesRevealAnswer, requestFilesReveal } from "./reveal-request.ts";
 export type { FileMarks, TreeMarks } from "./tree/tree-model.ts";

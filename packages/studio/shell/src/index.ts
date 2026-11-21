@@ -186,6 +186,7 @@ export {
 export * from "./phone-exports.ts";
 // biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
 export * from "./points-exports.ts";
+export { brokenFileItem, brokenFileWords, useBrokenFiles } from "./problems/broken-file-rows.ts";
 export {
   FilesWithErrorsService,
   type FilesWithErrorsSource,

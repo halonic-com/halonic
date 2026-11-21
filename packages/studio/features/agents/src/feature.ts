@@ -1,5 +1,6 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
-import { defineFeature } from "@halonicjs/studio-shell";
+import { FilesHostService } from "@halonicjs/studio-feature-files/api";
+import { defineFeature, FilesWithErrorsService } from "@halonicjs/studio-shell";
 import { AgentsHostService } from "./api.ts";
 import { searchWords } from "./list/list-words.ts";
 import { requestNewAgent } from "./list/new-request.ts";
@@ -13,8 +14,9 @@ export const agentsFeature = defineFeature({
   id: "agents",
   title: "Agents",
   needs: [AgentsHostService],
-  // Try it waits while the sandbox can't start, for an agent whose harness is a program.
-  wants: [sandboxStartCheckKey],
+  // Try it waits while the sandbox can't start, for an agent whose harness is a program. An agent
+  // file that didn't load keeps its row, which opens and deletes the file itself (C348).
+  wants: [sandboxStartCheckKey, FilesWithErrorsService, FilesHostService],
   register(studio) {
     studio.places.add({
       id: "agents",

@@ -1,7 +1,8 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
+import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import { RunsListService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
-import { defineFeature } from "@halonicjs/studio-shell";
+import { defineFeature, FilesWithErrorsService } from "@halonicjs/studio-shell";
 import { WorkflowGuideService, WorkflowsHostService } from "./api.ts";
 import { searchWords } from "./list/list-words.ts";
 import { requestNewWorkflow } from "./list/new-request.ts";
@@ -18,7 +19,14 @@ export const workflowsFeature = defineFeature({
   // The docked run card notes its run in the Inbox, which then leaves it out of its news.
   // Run is unavailable while the sandbox can't start, for a workflow whose steps need it.
   // A guide, such as the first run's, shows its card on a workflow's page.
-  wants: [InboxService, sandboxStartCheckKey, WorkflowGuideService],
+  // A workflow file that didn't load keeps its row, which opens and deletes the file itself (C348).
+  wants: [
+    InboxService,
+    sandboxStartCheckKey,
+    WorkflowGuideService,
+    FilesWithErrorsService,
+    FilesHostService,
+  ],
   register(studio) {
     studio.places.add({
       id: "workflows",

@@ -1,13 +1,28 @@
-import { Button, EmptyState, usePresentation, useToastStore } from "@halonicjs/studio-kit";
+import {
+  type BrokenFileActions,
+  brokenFileActions,
+  brokenFileMenu,
+} from "@halonicjs/studio-feature-files/api";
+import {
+  Button,
+  EmptyState,
+  type MenuEntry,
+  usePresentation,
+  useToastStore,
+} from "@halonicjs/studio-kit";
 import {
   type EngineWords,
   engineWordsOf,
   errorReasonFor,
+  FilesWithErrorsService,
+  type FilesWithErrorsSource,
+  type FileWithErrors,
   type FocusTarget,
   focusRow,
   OverviewPage,
   type PlaceViewProps,
   targetAfterRemoving,
+  useBrokenFiles,
   visibleRowIds,
 } from "@halonicjs/studio-shell";
 import { defaultHub } from "@halonicjs/workspace";
@@ -18,7 +33,7 @@ import { markFreshAgent } from "../page/fresh-agents.ts";
 import { deleteWords } from "../trash/delete-words.ts";
 import { fileItemOf } from "../trash/file-item.ts";
 import { trashAgent } from "../trash/trash-agent.ts";
-import { agentHubs, rowId } from "./agent-rows.tsx";
+import { agentHubs, brokenRowId, rowId } from "./agent-rows.tsx";
 import { listWords } from "./list-words.ts";
 import { takeNewAgentRequests } from "./new-request.ts";
 
@@ -62,10 +77,14 @@ export function AgentsPage({ context }: PlaceViewProps) {
       : (ref: AgentRef) => openItemInNewTab({ kind: "agent", hub: ref.hubId, id: ref.id });
   const openFile =
     openItem === undefined ? undefined : (path: string) => openItem(fileItemOf(path));
+  const filesWithErrors = context.services.find(FilesWithErrorsService);
+  const toasts = useToastStore();
   return (
     <AgentsView
       host={context.services.get(AgentsHostService)}
       engine={engineWordsOf(context)}
+      brokenActions={brokenFileActions(context, toasts)}
+      {...(filesWithErrors ? { filesWithErrors } : {})}
       {...(open ? { open } : {})}
       {...(openInNewTab ? { openInNewTab } : {})}
       {...(openFile ? { openFile } : {})}
@@ -84,6 +103,10 @@ export interface AgentsViewProps {
   readonly openFile?: (path: string) => void;
   /** What the page calls the engine when it can't read, for this window's host; the desktop app's by default. */
   readonly engine?: EngineWords;
+  /** The workspace's files with errors: an agent file that didn't load keeps its row (C348 ST4). */
+  readonly filesWithErrors?: FilesWithErrorsSource;
+  /** What a broken file's row and its ⋮ menu do; without it the row opens nothing and has no menu. */
+  readonly brokenActions?: BrokenFileActions;
 }
 
 /**
@@ -95,7 +118,15 @@ export interface AgentsViewProps {
  * @example
  * <AgentsView host={host} open={openAgentTab} />
  */
-export function AgentsView({ host, open, openInNewTab, openFile, engine }: AgentsViewProps) {
+export function AgentsView({
+  host,
+  open,
+  openInNewTab,
+  openFile,
+  engine,
+  filesWithErrors,
+  brokenActions = {},
+}: AgentsViewProps) {
   const words = engine ?? engineWordsOf({});
   const phone = usePresentation() === "phone";
   const [load, setLoad] = useState<Load>({ kind: "loading" });
@@ -155,14 +186,21 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
   }, [host, read]);
 
   const listings = load.kind === "ready" ? load.listings : [];
+  const broken = useBrokenFiles(filesWithErrors, "agent");
   const listingOf = (id: string) => listings.find((each) => rowId(each) === id);
+  const brokenOf = (id: string) => broken.find((file) => brokenRowId(file) === id);
+  // A broken file has no page: its row opens the file at its first problem.
   const openRow = (id: string) => {
     const listing = listingOf(id);
     if (listing !== undefined) open?.(listing);
+    const file = brokenOf(id);
+    if (file !== undefined) brokenActions.open?.(file);
   };
   const openRowInNewTab = (id: string) => {
     const listing = listingOf(id);
     if (listing !== undefined) (openInNewTab ?? open)?.(listing);
+    const file = brokenOf(id);
+    if (file !== undefined) brokenActions.open?.(file);
   };
   const openRowAsFile = (id: string) => {
     const listing = listingOf(id);
@@ -205,6 +243,43 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
     pendingFocus.current = { target, listAtStart: latestLoad.current, gone };
     applyFocus();
   };
+  const rowMenu = (id: string): MenuEntry[] => [
+    // A phone has no tabs and a tap on the row opens the agent: its menu is Delete alone (UX 9.12).
+    ...(phone
+      ? []
+      : [
+          { id: "open", label: deleteWords.open, onSelect: () => openRow(id) },
+          {
+            id: "open-in-new-tab",
+            label: deleteWords.openInNewTab,
+            onSelect: () => openRowInNewTab(id),
+          },
+          ...(openFile === undefined
+            ? []
+            : [
+                {
+                  id: "open-as-file",
+                  label: deleteWords.openAsFile,
+                  onSelect: () => openRowAsFile(id),
+                },
+              ]),
+        ]),
+    {
+      id: "delete",
+      label: deleteWords.delete,
+      danger: true,
+      onSelect: () => trashRow(id),
+    },
+  ];
+  const brokenMenu = (file: FileWithErrors, id: string) =>
+    brokenFileMenu(file, brokenActions, {
+      removed: () => {
+        if (page.current === null) return;
+        // The row is still drawn until the shared list reads again, so the next one is found now.
+        focusOn(targetAfterRemoving(visibleRowIds(page.current), id), id);
+      },
+      restored: () => focusOn({ row: id }),
+    });
   const trashRow = (id: string) => {
     const listing = listingOf(id);
     if (listing === undefined || page.current === null) return;
@@ -257,7 +332,7 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
         />
       ) : (
         <OverviewPage
-          hubs={agentHubs(host.hubs(), listings)}
+          hubs={agentHubs(host.hubs(), listings, broken)}
           words={{
             searchLabel: listWords.searchLabel,
             loadingLabel: listWords.loadingLabel,
@@ -282,34 +357,10 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
           {...(canCreate
             ? { newButton: { label: listWords.newAgent, onClick: startCreating } }
             : {})}
-          itemMenu={(row) => [
-            // A phone has no tabs and a tap on the row opens the agent: its menu is Delete alone (UX 9.12).
-            ...(phone
-              ? []
-              : [
-                  { id: "open", label: deleteWords.open, onSelect: () => openRow(row.id) },
-                  {
-                    id: "open-in-new-tab",
-                    label: deleteWords.openInNewTab,
-                    onSelect: () => openRowInNewTab(row.id),
-                  },
-                  ...(openFile === undefined
-                    ? []
-                    : [
-                        {
-                          id: "open-as-file",
-                          label: deleteWords.openAsFile,
-                          onSelect: () => openRowAsFile(row.id),
-                        },
-                      ]),
-                ]),
-            {
-              id: "delete",
-              label: deleteWords.delete,
-              danger: true,
-              onSelect: () => trashRow(row.id),
-            },
-          ]}
+          itemMenu={(row) => {
+            const file = brokenOf(row.id);
+            return file === undefined ? rowMenu(row.id) : brokenMenu(file, row.id);
+          }}
           onOpen={openRow}
           onOpenInNewTab={openRowInNewTab}
         />
