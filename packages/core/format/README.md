@@ -106,7 +106,8 @@ not here.
   A plugin's id is at most 48 characters and a secret it declares at most 64, so the name the app
   keeps the secret under fits the `Secrets` port's 128.
 - Routines: a `webhook` trigger takes a `secret` (the name of the secret that signs the request body,
-  never its value) and the `headers` a run may read; `WEBHOOK_REFUSED_HEADERS` lists the headers it
+  never its value; a name that belongs to Halonic or a plugin fails with `secret-name-reserved`, as a
+  connector's does) and the `headers` a run may read; `WEBHOOK_REFUSED_HEADERS` lists the headers it
   refuses, such as `authorization` and `cookie` (requirement `routine-webhook`). A mail trigger's
   `every` is a number followed by `m`, `h` or `d`, such as `15m` (requirement `routine-mail-interval`).
 - Connectors: besides the local and remote transports, `integration: { folder: <id> }` (a folder
