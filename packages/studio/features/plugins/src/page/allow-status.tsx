@@ -6,9 +6,10 @@
 import { runnerUnfencedWords } from "@halonicjs/app";
 import { Button, Callout, ExternalLink } from "@halonicjs/studio-kit";
 import type { ReactNode, RefObject } from "react";
+import { asksAboutYes, isOffHere } from "../trust/off-here.ts";
 import { SANDBOX_DOCS } from "../trust/runs-line.ts";
 import { type PluginUnfencedRuns, useTrustStatus } from "../trust/unfenced-status.ts";
-import { ALLOW_ON_COMPUTER, offUntilAllowed } from "./page-text.ts";
+import { ALLOW_IN_DESKTOP_APP, offUntilAllowed } from "./page-text.ts";
 import { REVIEW } from "./plugin-actions.ts";
 import type { InstalledPlugin } from "./plugin-pages.ts";
 
@@ -18,7 +19,7 @@ export interface AllowStatusProps {
   readonly boxRef: RefObject<HTMLDivElement | null>;
   readonly plugin: InstalledPlugin;
   readonly unfencedRuns: PluginUnfencedRuns | undefined;
-  /** View only (a phone, a served browser): R13 without **Review**, and "Allow this on your computer." */
+  /** View only (a phone, a served browser): R13 without **Review**, and "Allow this in the Halonic desktop app." */
   readonly viewOnly: boolean;
   /** Opens "Trust *name*?" with the checkbox. */
   readonly onReview: () => void;
@@ -41,10 +42,9 @@ export function AllowStatus({
   onReview,
   children,
 }: AllowStatusProps) {
-  const asks = plugin.status === "on" && plugin.manifest?.backend !== undefined;
-  const status = useTrustStatus(asks ? unfencedRuns : undefined);
+  const status = useTrustStatus(asksAboutYes(plugin) ? unfencedRuns : undefined);
   const { fence } = status;
-  if (fence?.state !== "not-fenced" || status.yes?.reason === fence.reason) return children;
+  if (fence?.state !== "not-fenced" || !isOffHere(status)) return children;
   const words = runnerUnfencedWords(fence.reason, "plugin");
   return (
     <div id={id} ref={boxRef} tabIndex={-1} className="focus-ring rounded-sm">
@@ -53,7 +53,7 @@ export function AllowStatus({
           {words.reason} {words.fix}
         </p>
         {viewOnly ? (
-          <p className="mt-2">{ALLOW_ON_COMPUTER}</p>
+          <p className="mt-2">{ALLOW_IN_DESKTOP_APP}</p>
         ) : (
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <ExternalLink href={`${SANDBOX_DOCS}/${words.docsKey}`}>{words.docsLabel}</ExternalLink>
