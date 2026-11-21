@@ -3,7 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import type { AllowAddressResult, KeyAddresses } from "../api.ts";
 import { readAddress } from "./key-address.ts";
-import { AddressRefused, saveKey } from "./key-save.ts";
+import { AddressRefused, KeyLeftWithoutAddress, saveKey } from "./key-save.ts";
 
 /** A key store and its addresses in memory, logging each call in order. */
 function store(stored: boolean, answer?: AllowAddressResult["result"]) {
@@ -66,6 +66,19 @@ verifies("models.api-keys.address-field", () => {
 
     await expect(saving).rejects.toBeInstanceOf(AddressRefused);
     expect(log.at(-1)).toBe("remove acme");
+  });
+
+  it("keeps the first error when the new key can't be removed again", async () => {
+    const { keys, addresses } = store(false, "full");
+    keys.remove = async () => {
+      throw new Error("the keychain is locked");
+    };
+
+    const saving = saveKey(keys, addresses, "acme", { key, address: "https://llm.example.com" });
+
+    const error = await saving.catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(KeyLeftWithoutAddress);
+    expect((error as KeyLeftWithoutAddress).cause).toBeInstanceOf(AddressRefused);
   });
 
   it("stores only the key where the Studio keeps no addresses", async () => {

@@ -111,6 +111,8 @@ export const ADDRESSES_UNREADABLE =
 export const ADDRESSES_RECOVERY = "Check that your system keychain is unlocked, then try again.";
 export const ADDRESS_UNENCRYPTED =
   "This address isn't encrypted. Keys sent to it can be read on the way.";
+export const KEY_LEFT_WITHOUT_ADDRESS =
+  "The key is still stored, with no address yet. Enter the address and save again.";
 export const ADDRESSES_FULL =
   "This key can't take more addresses. To start again, remove the key and save it with one address.";
 

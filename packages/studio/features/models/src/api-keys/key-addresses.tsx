@@ -27,9 +27,12 @@ export type AddressState =
   | { readonly kind: "checking" | "none" | "unreadable" }
   | { readonly kind: "listed"; readonly list: readonly string[] };
 
+const CHECKING: AddressState = { kind: "checking" };
+
 /**
  * The stored key's addresses, read when the key, its name or `attempt` changes. `undefined` when
- * there is nothing to read: no address service, no secret name or no key stored.
+ * there is nothing to read: no address service, no secret name or no key stored. A state read
+ * for another name is never shown: until this name's list comes, it is `checking`.
  */
 export function useKeyAddresses(
   addresses: KeyAddresses | undefined,
@@ -37,22 +40,23 @@ export function useKeyAddresses(
   keyStored: boolean,
   attempt: number,
 ): AddressState | undefined {
-  const [state, setState] = useState<AddressState>({ kind: "checking" });
+  const [read, setRead] = useState<{ readonly name: string; readonly state: AddressState }>();
   const reads = addresses !== undefined && secretName !== undefined && keyStored;
   useEffect(() => {
     if (!reads) return;
     let current = true;
-    setState({ kind: "checking" });
+    const found = (state: AddressState) => current && setRead({ name: secretName, state });
+    found(CHECKING);
     addresses.allowed(secretName).then(
-      (list) =>
-        current && setState(list === undefined ? { kind: "none" } : { kind: "listed", list }),
-      () => current && setState({ kind: "unreadable" }),
+      (list) => found(list === undefined ? { kind: "none" } : { kind: "listed", list }),
+      () => found({ kind: "unreadable" }),
     );
     return () => {
       current = false;
     };
   }, [reads, addresses, secretName, attempt]);
-  return reads ? state : undefined;
+  if (!reads) return undefined;
+  return read?.name === secretName ? read.state : CHECKING;
 }
 
 /**
