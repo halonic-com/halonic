@@ -11,6 +11,7 @@ export { contentDigest, matchesExpected, type Sha256 } from "./content-digest.ts
 export { deepClone } from "./deep-clone.ts";
 export { deepEqual } from "./deep-equal.ts";
 export { Emitter, type Listener } from "./emitter.ts";
+export { findCause } from "./error-cause.ts";
 export {
   type ErrorKind,
   errorKindOf,

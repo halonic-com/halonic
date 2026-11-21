@@ -44,7 +44,8 @@ The `stdio` connector for a plugin's local tool: it starts the tool's MCP progra
   session it makes new copy, working and temp folders, copies the checked files, and builds the
   config, the place and the profile with the plugin's own secrets; its `release` removes the
   folders. A changed file, a required setting with no value (`LocalToolSettingsNotSetError`), a
-  refused pin or a missing secret starts nothing and leaves no folder.
+  refused pin or a missing secret starts nothing and leaves no folder. `pluginLocalToolsSource`
+  makes new sessions for every plugin connector, so two runs never share a session's setup.
 - **Halonic builds the profile, never the plugin.** `localToolLaunch` builds the session's profile
   (working folder, environment, network, time limit) and the command from the place the host set
   up, the stdio config, the pin and the secrets. The host opens the session with it. Before each
@@ -74,8 +75,11 @@ The `stdio` connector for a plugin's local tool: it starts the tool's MCP progra
 - `PluginLocalToolSessions`: one plugin connector's local tool sessions. `prepare(set, trusted)`
   for `PluginLocalTools` and `localTools(connectorId)` for `SandboxStdioConnectorFactory`, with
   `PluginLocalToolSessionsOptions` (folders, runners, denied paths, bridge, `PATH`, time limit,
-  `http`, every secret and the plugin's settings). `LocalToolSettingsNotSetError` names the
-  required settings that have no value.
+  `http`, every secret and the plugin's settings). `LocalToolSettingsNotSetError` (from
+  `core/app`) names the required settings that have no value.
+- `pluginLocalToolsSource(host)`: the `localTools` of `PluginConnectorSources`, which the CLI and
+  the desktop agent host share. It gives each plugin connector a new `PluginLocalTools` with new
+  `PluginLocalToolSessions`, and tells `host.onReleaseFailed` when a session's folders stay.
 - `SandboxNotFencedError` (with its `reason`) and `SandboxSessionEndedError`: the two typed
   refusals the host checks for.
 - `sandboxProgram(process)`: a session's `SandboxProcess` as the MCP stdio transport's

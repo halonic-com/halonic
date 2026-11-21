@@ -1,5 +1,5 @@
 // The public API of @halonicjs/adapter-harness-kit. Everything else in src/ is internal.
-export { homeDeniedGroups } from "./denied-groups.ts";
+export { homeDeniedGroups, homeDeniedPaths } from "./denied-groups.ts";
 export { exitGraceMs, exitWithin } from "./exit-within.ts";
 export { HarnessEventFilter, type HarnessEventFilterOptions } from "./harness-event-filter.ts";
 export {

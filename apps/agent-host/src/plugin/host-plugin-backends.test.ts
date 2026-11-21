@@ -1,205 +1,22 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
-import {
-  type PluginBackendMachine,
-  RunnerToolError,
-  type StartedRunner,
-} from "@halonicjs/adapter-integration-runner";
-import {
-  MemorySecrets,
-  MemoryTokenStore,
-  MemoryTrustStore,
-  MemoryUnfencedRunConsentStore,
-} from "@halonicjs/adapter-memory";
-import { RunnerStartGate, readPluginFolder, TrustService, UnfencedRuns } from "@halonicjs/app";
-import type { FolderReader, Sandbox, SandboxCheck, SignInTokens } from "@halonicjs/ports";
-import { fixedClock } from "@halonicjs/std";
+import { RunnerToolError } from "@halonicjs/adapter-integration-runner";
+import { MemorySecrets } from "@halonicjs/adapter-memory";
+import { ConnectorToolError } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  type HostPluginContext,
-  hostPluginBackends,
-  unavailablePluginBackends,
-} from "./host-plugin-backends.ts";
+  makePluginsFolder,
+  onWindows,
+  put,
+  refusedWith,
+  removePluginsFolder,
+  setup,
+} from "./host-plugin-backends.test-helper.ts";
+import { unavailablePluginBackends } from "./host-plugin-backends.ts";
 import { PluginRefusal } from "./plugin-refusal.ts";
 import { pluginSignIns } from "./plugin-sign-ins.ts";
 
-/** These tests never take a yes back in another process and no start hangs, so no timer goes off. */
-const idleTimers = { set: () => undefined, clear: () => undefined };
-
-const clock = fixedClock(Date.UTC(2026, 10, 14, 9));
-const passes: SandboxCheck = { ok: true, reason: null, missing: [] };
-const onWindows: SandboxCheck = { ok: false, reason: "windows", missing: [] };
-
-const manifest = `id: acme
-version: 1.0.0
-sdk: 1
-name: Acme
-backend:
-  hosts: [api.acme.example]
-  secrets:
-    acme-key: { purpose: Reads your Acme account, hosts: [api.acme.example], as: bearer }
-  tools:
-    - { name: echo, description: Echoes., risk: read, untrusted: true }
-`;
-
-const digest = {
-  async sha256(data: Uint8Array): Promise<Uint8Array> {
-    return new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
-  },
-};
-
-let root: string;
-
-beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), "halonic-host-plugin-"));
-  await put({ "acme/plugin.yaml": manifest, "acme/backend/index.js": "export default {};\n" });
-});
-
-afterEach(async () => {
-  await rm(root, { recursive: true, force: true, maxRetries: 5 });
-});
-
-async function put(files: Record<string, string>): Promise<void> {
-  for (const [path, text] of Object.entries(files)) {
-    await mkdir(dirname(join(root, path)), { recursive: true });
-    await writeFile(join(root, path), text);
-  }
-}
-
-function sandbox(check: SandboxCheck): Sandbox {
-  return {
-    check: async () => check,
-    capabilities: () => ({ files: "shared", strength: "os" }),
-    open: async () => {
-      throw new Error("the fake start never opens a session");
-    },
-  };
-}
-
-/** The host's machine over a folder in the temp folder, with a runner that answers, and the folders read. */
-async function setup(
-  options: {
-    check?: SandboxCheck;
-    trusted?: boolean;
-    platform?: NodeJS.Platform;
-    /** The user's saved yes for running without the sandbox, for this reason. */
-    allowed?: "windows";
-    /** The plugin's saved setting values. */
-    settings?: Record<string, string>;
-  } = {},
-) {
-  const { check = passes, trusted = true, platform = "linux" } = options;
-  const consent = new MemoryUnfencedRunConsentStore();
-  if (options.allowed !== undefined) {
-    await consent.save({ reason: options.allowed, allowedAt: clock.now().toISOString() });
-  }
-  const launcher = sandbox(passes);
-  const folders = new FileSystemFolderReader(root, root);
-  const readNames: string[] = [];
-  const plugins: FolderReader = {
-    location: folders.location,
-    entries: async (dir, options) => {
-      readNames.push(String(dir));
-      return await folders.entries(dir, options);
-    },
-    read: async (path) => {
-      readNames.push(path);
-      return await folders.read(path);
-    },
-    locationOf: async (path) => await folders.locationOf(path),
-  };
-  const trust = new TrustService({
-    store: new MemoryTrustStore(),
-    digest,
-    clock,
-    appVersion: "0.0.0",
-  });
-  if (trusted) {
-    const read = await readPluginFolder(folders, digest, "acme");
-    if (!read.ok) throw new Error("the fixture plugin must read");
-    const shown = await trust.checkPlugin(read.value);
-    await trust.grantPlugin(read.value, shown.fingerprint, "cli");
-  }
-  const seen = { starts: 0, stops: 0 };
-  const launched = { inLauncher: 0 };
-  const machine: PluginBackendMachine = {
-    plugins,
-    digest,
-    trust,
-    gate: new RunnerStartGate({
-      platform,
-      fenced: sandbox(check),
-      // Reached only with the user's saved yes for the reason at the start.
-      launcher,
-      runs: new UnfencedRuns({ store: consent, clock, timers: idleTimers }),
-      timers: idleTimers,
-    }),
-    runtime: { node: "/host/halonic-agent-host", nodeFolder: "/host", runnerFile: "/r/runner.mjs" },
-    transport: { fetch: async () => new Response("{}") } as never,
-    settings: async () => options.settings ?? {},
-    runnerMachine: async () => ({
-      homeFolder: "home-folder",
-      socketFolders: [],
-      systemFiles: [],
-      sandboxFolders: [],
-      tempFolder: "temp-folder",
-      timeLimitMs: 1000,
-    }),
-    runnerExists: () => true,
-    startRunner: async (startOptions) => {
-      seen.starts += 1;
-      const inLauncher = startOptions.sandbox === launcher;
-      if (inLauncher) launched.inLauncher += 1;
-      const runner: StartedRunner = {
-        fence: inLauncher ? { state: "off" } : { state: "fenced" },
-        declaration: {
-          name: "acme",
-          version: "1.0.0",
-          tools: [
-            {
-              name: "echo",
-              description: "Echoes.",
-              parameters: { type: "object", properties: {} },
-              risk: "read",
-              untrusted: true,
-            },
-          ],
-        },
-        stopped: new Promise(() => {}),
-        callTool: async (name) => `answer from ${name}`,
-        close: async () => {
-          seen.stops += 1;
-        },
-      };
-      return runner;
-    },
-  };
-  /** The plugins whose sign-in tokens a backend's start asked for. */
-  const signInAsks: string[] = [];
-  const context = {
-    secrets: new MemorySecrets({}),
-    tokens: new MemoryTokenStore(),
-    signInTokens: (plugin: string): SignInTokens | undefined => {
-      signInAsks.push(plugin);
-      return undefined;
-    },
-    trust: null,
-  } as unknown as HostPluginContext;
-  const logged: string[] = [];
-  const backends = hostPluginBackends(machine, context, (text) => logged.push(text));
-  return { backends, machine, seen, launched, readNames, logged, signInAsks };
-}
-
-async function refusedWith(promise: Promise<unknown>): Promise<string | undefined> {
-  const error = await promise.then(
-    () => undefined,
-    (thrown: unknown) => thrown,
-  );
-  return error instanceof PluginRefusal ? error.code : undefined;
-}
+beforeEach(makePluginsFolder);
+afterEach(removePluginsFolder);
 
 verifies("agent-host.plugin-routes", () => {
   describe("the shipped executable's backends", () => {
@@ -259,16 +76,16 @@ verifies("agent-host.plugin-routes", () => {
 
     it("answers not_fenced and starts nothing where the sandbox fails its check", async () => {
       const { backends, seen, logged } = await setup({ check: onWindows });
-      const fingerprint = await backends.trustedFingerprint("acme");
-      expect(await refusedWith(backends.open("acme", fingerprint))).toBe("not_fenced");
+      const client = await backends.open("acme", await backends.trustedFingerprint("acme"));
+      expect(await refusedWith(client.callTool("echo", {}))).toBe("not_fenced");
       expect(seen.starts).toBe(0);
       expect(logged.join("")).toContain("windows");
     });
 
     it("answers not_fenced on Windows even when the sandbox passes its check, as the host wires no MXC", async () => {
       const { backends, seen } = await setup({ platform: "win32" });
-      const fingerprint = await backends.trustedFingerprint("acme");
-      expect(await refusedWith(backends.open("acme", fingerprint))).toBe("not_fenced");
+      const client = await backends.open("acme", await backends.trustedFingerprint("acme"));
+      expect(await refusedWith(client.callTool("echo", {}))).toBe("not_fenced");
       expect(seen.starts).toBe(0);
     });
 
@@ -276,6 +93,7 @@ verifies("agent-host.plugin-routes", () => {
       const { backends, seen, launched } = await setup({ platform: "win32", allowed: "windows" });
       const fingerprint = await backends.trustedFingerprint("acme");
       const client = await backends.open("acme", fingerprint);
+      await client.callTool("echo", {});
       expect(seen.starts).toBe(1);
       expect(launched.inLauncher).toBe(1);
       await client.close();
@@ -283,11 +101,12 @@ verifies("agent-host.plugin-routes", () => {
 
     it("starts nothing with a saved yes for another reason", async () => {
       const { backends, seen } = await setup({
-        check: { ...onWindows, reason: "container" },
+        check: { ok: false, reason: "container", missing: [] },
         allowed: "windows",
       });
       const fingerprint = await backends.trustedFingerprint("acme");
-      expect(await refusedWith(backends.open("acme", fingerprint))).toBe("not_fenced");
+      const client = await backends.open("acme", fingerprint);
+      expect(await refusedWith(client.callTool("echo", {}))).toBe("not_fenced");
       expect(seen.starts).toBe(0);
     });
 
@@ -316,6 +135,9 @@ verifies("agent-host.plugin-routes", () => {
     it("keeps a runner after a tool's own error, and not after any other failure", async () => {
       const { backends } = await setup();
       expect(backends.runnerSurvives(new RunnerToolError("bad input"))).toBe(true);
+      expect(backends.runnerSurvives(new ConnectorToolError("acme", "list-files", "no"))).toBe(
+        true,
+      );
       expect(backends.runnerSurvives(new Error("the runner stopped"))).toBe(false);
     });
   });

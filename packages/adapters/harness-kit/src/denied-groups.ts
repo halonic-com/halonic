@@ -42,6 +42,22 @@ export async function homeDeniedGroups(
 }
 
 /**
+ * The paths of every {@link homeDeniedGroups} group in one list, for a
+ * program that only needs what it may never reach, such as a plugin's local tool.
+ *
+ * @param home - the person's home folder, absolute
+ * @param platform - the system, as `process.platform` names it
+ */
+export async function homeDeniedPaths(
+  home: string,
+  platform: NodeJS.Platform,
+  disk: Pick<ProfileDisk, "realPath">,
+): Promise<string[]> {
+  const groups = await homeDeniedGroups(home, platform, disk);
+  return groups.flatMap((group) => group.paths);
+}
+
+/**
  * The entries in `folder` that aren't on the way to a path in `kept`, all
  * the way down: the folder itself when nothing kept is in it, nothing when a
  * kept path holds it. The profile reopens a proposal folder's entries around

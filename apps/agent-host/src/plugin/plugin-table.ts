@@ -25,12 +25,13 @@ export interface PluginBackends {
    */
   trustedSecretNames(plugin: string): Promise<Readonly<Record<string, string>>>;
   /**
-   * Starts the plugin's backend in the sandbox, checking trust again at the
-   * start. It refuses the start when the folder no longer has `fingerprint`,
+   * Opens the plugin's connector: its backend and each local tool, each
+   * started in the sandbox on its first call, checking trust again at that
+   * start. It refuses the open when the folder no longer has `fingerprint`,
    * the one {@link PluginBackends.trustedFingerprint} gave, so a plugin swapped
-   * in between never runs.
+   * in between never runs. A part that can't start refuses its call instead.
    *
-   * @throws PluginRefusal `plugin_not_trusted` or `not_fenced` when nothing may start
+   * @throws PluginRefusal `plugin_not_trusted`, or `not_fenced` when nothing may start
    */
   open(plugin: string, fingerprint: string): Promise<ConnectorClient>;
   /** Whether a runner is still good after this call error, such as the tool's own error; a crash isn't. */
