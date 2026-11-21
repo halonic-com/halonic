@@ -318,4 +318,44 @@ verifies("workflows.page.menu", () => {
     expect(page.textContent).toContain("Support reply was deleted");
     expect(toasts.list()).toEqual([]);
   });
+
+  it("hands Undo to a toast that stays when the page is left after Delete, and the toast puts it back", async () => {
+    const { page, toasts, undo } = await showPage({ users: { routines: 1, steps: 0 } });
+    await pickDelete(page);
+
+    unmount();
+
+    const [toast] = toasts.list();
+    expect(toast).toMatchObject({
+      tone: "success",
+      title: "Deleted Support reply.",
+      text: "1 routine now shows an error until you pick another workflow.",
+      sticky: true,
+      action: { label: "Undo" },
+    });
+    await act(async () => toast?.action?.onClick());
+    expect(undo).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows no toast when the page is left after the strip's Undo", async () => {
+    const { page, toasts } = await showPage();
+    await pickDelete(page);
+    await act(async () => buttonNamed(page, "Undo")?.click());
+    await settled();
+
+    unmount();
+
+    expect(toasts.list()).toEqual([]);
+  });
+
+  it("closes that toast once the workspace's undo puts the workflow back", async () => {
+    const { page, toasts, undoInWorkspace } = await showPage();
+    await pickDelete(page);
+    unmount();
+    expect(toastTitles(toasts)).toEqual(["Deleted Support reply"]);
+
+    await undoInWorkspace();
+
+    expect(toasts.list()).toEqual([]);
+  });
 });

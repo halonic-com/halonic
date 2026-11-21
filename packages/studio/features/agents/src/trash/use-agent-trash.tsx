@@ -7,10 +7,10 @@ import {
   useToastStore,
 } from "@halonicjs/studio-kit";
 import { errorReasonFor, PhoneTopBarActions, useInPhoneTopBar } from "@halonicjs/studio-shell";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { AgentRef, AgentsHost, TrashedAgent } from "../api.ts";
 import { deleteWords } from "./delete-words.ts";
-import { putBackAgent, trashAgent } from "./trash-agent.ts";
+import { putBackAgent, showDeletedToast, trashAgent } from "./trash-agent.ts";
 
 /** What {@link useAgentTrash} needs of the open agent page. */
 export interface AgentTrashInput {
@@ -43,7 +43,8 @@ export interface AgentTrash {
 /**
  * Delete and Open as file for an open agent page (`agents.page.menu`): the ⋮ menu, and, once the
  * agent is in the trash, a strip with Undo that stands where "isn't in this workspace any more"
- * would. A page whose agent went some other way still shows that state.
+ * would. Leaving the page while the agent is still deleted hands Undo to a toast that stays. A page
+ * whose agent went some other way still shows that state.
  */
 export function useAgentTrash({
   host,
@@ -62,6 +63,22 @@ export function useAgentTrash({
     name: string;
   }>();
   const { hubId, id } = agent;
+
+  // Leaving the page with the strip up would take Undo with it, and Back skips a deleted page: a
+  // toast that stays, as a row's delete gives, keeps the way back (C565 6). It closes by itself
+  // once the agent is back some other way.
+  const leaving = useRef({ host, toasts, hubId, id, removed });
+  leaving.current = { host, toasts, hubId, id, removed };
+  useEffect(
+    () => () => {
+      const left = leaving.current;
+      if (left.removed === undefined || left.toasts === null) return;
+      const { trashed, line, name: shownName } = left.removed;
+      const request = { hubId: left.hubId, id: left.id, name: shownName };
+      showDeletedToast(left.host, left.toasts, request, trashed, line, { sticky: true });
+    },
+    [],
+  );
 
   // The workspace's undo (Ctrl Z) can bring the agent back past the strip; then the page returns.
   const inTrash = removed !== undefined;
@@ -137,7 +154,7 @@ export function useAgentTrash({
     removed === undefined ? null : (
       <div className="pt-4">
         <TrashStrip
-          text={deleteWords.pageMoved(removed.line !== undefined)}
+          text={deleteWords.pageMoved(removed.name, removed.line !== undefined)}
           detail={removed.line}
           undoLabel={deleteWords.undo}
           onUndo={onUndo}
