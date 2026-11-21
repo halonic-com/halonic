@@ -889,6 +889,7 @@ requirement guard, and the workflow lint unless the group changes
 | Tauri shell on Windows | when `apps/studio/src-tauri` changes: `clippy` and `cargo test` again on Windows, for the Windows-only paths |
 | Coverage floors | pull requests only: `pnpm check:coverage-floors`; the `coverage-floor-lowered` label allows a lower floor |
 | Sandbox fence | when `sandbox-srt`, the integration runner, the integration kit, the sandboxed stdio connector or the ports change: bubblewrap (Linux) and Seatbelt (macOS) fence tests for `sandbox-srt`, the integration runner and local tools through the stdio connector, and canary probes on Windows (required; it retries only when the probes didn't run) |
+| Sandbox fence (MXC on Windows 11) | when `sandbox-mxc`, the integration runner, the sandbox choice and trust check in `core/app`, the ports or the lockfile change: the contract suite, the fence proof and the attack cases of `sandbox-mxc` against the real process container on Windows 11 (required; it never skips itself there) |
 | Sandbox packages | when sandbox adapters or the ports change: typecheck and test on macOS and Windows. The Windows leg also tests the changed packages (and their dependants) among those that touch paths, files and processes, such as the CLI, the agent host and the file and system adapters |
 | Agent host executable | when `apps/agent-host` changes: builds the executable on Linux, macOS and Windows (Linux only in the queue), runs it and reports its size |
 | Keychain contract on macOS | when `apps/studio/src-tauri` changes: the keychain crate's contract test against a real macOS Keychain |
@@ -909,12 +910,13 @@ green and queue it again. Run `pnpm check:enqueue` first: it checks what the
 queue would break, on top of the latest `main`.
 
 The queue runs only the Linux jobs. The macOS and Windows jobs above
-(Tauri shell on Windows, Sandbox fence on macOS and Windows, Sandbox
-packages, the macOS and Windows legs of Agent host executable, Keychain
-contract on macOS, Windows installer and Windows update) are skipped in the
-queue, and a skipped job counts as passed for `ci-ok`. They run on the pull
-request and on every push to `main`. A failure there shows on `main`, and
-the area's owner gets the task ([area-owners.md](area-owners.md)).
+(Tauri shell on Windows, Sandbox fence on macOS and Windows, Sandbox fence
+(MXC on Windows 11), Sandbox packages, the macOS and Windows legs of Agent
+host executable, Keychain contract on macOS, Windows installer and Windows
+update) are skipped in the queue, and a skipped job counts as passed for
+`ci-ok`. They run on the pull request and on every push to `main`. A failure
+there shows on `main`, and the next daily check gives the area's owner a task
+([area-owners.md](area-owners.md)).
 
 **The built-on label.** Every pull request needs a `built-on:paperclip` or `built-on:halonic` label,
 which says which tool built the change. The `Built-on label` workflow
