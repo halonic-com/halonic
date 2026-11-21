@@ -3,6 +3,7 @@
 - Task: HAL-1302 (T9, follow-up to #4113 and #4114)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-1302 (Liam's review of #3780)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0mHJZbhuZrXRZ6+crzz/qXRjPeAm6oRg5lOS/6nJJnTsTbnuiLMDx0ZmL5vSut/xKnHgPs/6L/n0CxbeaIekAg==
 
 ## What changes
 
