@@ -2,7 +2,7 @@ import { isHostTooOld } from "@halonicjs/ports";
 import { markHiddenName } from "@halonicjs/std";
 import { Button, type ButtonUnavailable, type CalloutHandle, Tooltip } from "@halonicjs/studio-kit";
 import { engineWords } from "@halonicjs/studio-shell";
-import { useEffect, useId, useRef, useState } from "react";
+import { type RefObject, useEffect, useId, useRef, useState } from "react";
 import { type AfterAnswer, afterAnswer, type InboxDecisions } from "../decide.ts";
 import type { WaitItem } from "../inbox-items.ts";
 import { decidedAt, movesOnLine, waitingSince } from "../plain/waiting-time.ts";
@@ -14,6 +14,7 @@ import {
   DecidedBar,
   type EngineState,
   FailedLine,
+  failureDetailOf,
   type ManualAnswer,
   manualAnswerOf,
   type NextItem,
@@ -22,9 +23,16 @@ import {
   unavailableWhile,
   useEveryMinute,
   wasDecidedElsewhere,
+  wasRefusedUntrusted,
 } from "./card-parts.tsx";
 import { type DecisionGuard, useDecisionGuard } from "./decision-guard.ts";
 import { PlainValue } from "./plain-value.tsx";
+import {
+  showsUntrusted,
+  type TrustReview,
+  useClearedWhenTrusted,
+  withoutUntrusted,
+} from "./workspace-trust.ts";
 
 export interface WaitCardProps extends EngineState {
   readonly item: WaitItem;
@@ -44,6 +52,12 @@ export interface WaitCardProps extends EngineState {
    * window or a timer: a card not answered here turns stale (flow-inbox 5.4). `true` when left out.
    */
   readonly waiting?: boolean;
+  /**
+   * The workspace's trust, for an answer refused because the workspace isn't trusted: **Review**,
+   * and when it becomes trusted the line goes and the first answer takes focus. Without it there's
+   * no **Review**.
+   */
+  readonly trust?: TrustReview | undefined;
 }
 
 type CardState =
@@ -55,6 +69,10 @@ type CardState =
       readonly manual: ManualAnswer | null;
       /** The host is too old to check which wait step the answer is for, so it wasn't sent. */
       readonly tooOld: boolean;
+      /** The failure's own sentence, shown after "Couldn't record your decision.". */
+      readonly detail: string | null;
+      /** The answer was refused because the workspace isn't trusted. */
+      readonly untrusted: boolean;
     }
   | { readonly kind: "answering"; readonly event: string }
   | {
@@ -141,10 +159,19 @@ export function WaitCard(props: WaitCardProps) {
     elsewhere: false,
     manual: null,
     tooOld: false,
+    detail: null,
+    untrusted: false,
   });
   const [usableAt] = useState(() => now().getTime());
   const guard = useDecisionGuard(usableAt, () => now().getTime());
+  const bar = useRef<HTMLDivElement>(null);
   useEveryMinute();
+  useClearedWhenTrusted(
+    props.trust,
+    showsUntrusted(state),
+    () => setState(withoutUntrusted),
+    () => bar.current?.querySelector<HTMLElement>(`[${firstAnswerAttribute}] button`) ?? null,
+  );
 
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   useEffect(() => {
@@ -169,6 +196,8 @@ export function WaitCard(props: WaitCardProps) {
         elsewhere: wasDecidedElsewhere(error),
         manual: manualAnswerOf(error),
         tooOld: isHostTooOld(error),
+        detail: failureDetailOf(error),
+        untrusted: wasRefusedUntrusted(error),
       });
     }
   }
@@ -221,6 +250,8 @@ export function WaitCard(props: WaitCardProps) {
           engine={props}
           onAnswer={answer}
           onOpenRun={openRun}
+          onReviewTrust={props.trust?.review}
+          bar={bar}
         />
       ) : null}
     </section>
@@ -235,6 +266,8 @@ interface AnswerBarProps {
   readonly engine: EngineState;
   readonly onAnswer: (event: string) => void;
   readonly onOpenRun: (() => void) | undefined;
+  readonly onReviewTrust: ((opener: HTMLElement | null) => void) | undefined;
+  readonly bar: RefObject<HTMLDivElement | null>;
 }
 
 /**
@@ -247,7 +280,17 @@ interface AnswerBarProps {
  * (HAL-4050, HAL-12721 L15). Each button sits in a `@container` as wide as the button, so the label can be
  * capped at that width less the button's widest padding and edges.
  */
-function AnswerBar({ accepts, labels, state, guard, engine, onAnswer, onOpenRun }: AnswerBarProps) {
+function AnswerBar({
+  accepts,
+  labels,
+  state,
+  guard,
+  engine,
+  onAnswer,
+  onOpenRun,
+  onReviewTrust,
+  bar,
+}: AnswerBarProps) {
   const reasonId = useId();
   const unavailable = unavailableWhile(engine.answering ?? true, reasonId);
   const [first, ...others] = accepts;
@@ -265,6 +308,7 @@ function AnswerBar({ accepts, labels, state, guard, engine, onAnswer, onOpenRun 
   );
   return (
     <div
+      ref={bar}
       className="flex flex-col gap-2 border-t border-border p-4"
       onPointerDownCapture={guard.onPointerDownCapture}
       onKeyDownCapture={guard.onKeyDownCapture}
@@ -272,6 +316,7 @@ function AnswerBar({ accepts, labels, state, guard, engine, onAnswer, onOpenRun 
       <NotAnsweringLine id={reasonId} {...engine} />
       <FailedLine
         onRetry={failed === null ? null : () => onAnswer(failed)}
+        detail={state.kind === "open" ? state.detail : null}
         manual={state.kind === "open" ? state.manual : null}
         elsewhere={state.kind === "open" && state.elsewhere ? { openRun: onOpenRun } : null}
         tooOld={
@@ -279,6 +324,7 @@ function AnswerBar({ accepts, labels, state, guard, engine, onAnswer, onOpenRun 
             ? (engine.words ?? engineWords["desktop-app"]).tooOldToAnswer
             : null
         }
+        untrusted={state.kind === "open" && state.untrusted ? { review: onReviewTrust } : null}
       />
       {first === undefined ? null : answerButton(first, true)}
       {others.length === 0 ? null : (
@@ -297,6 +343,9 @@ interface AnswerButtonProps {
   readonly onClick: () => void;
 }
 
+/** Marks the first answer's box, which takes focus once the workspace is trusted. */
+const firstAnswerAttribute = "data-first-answer";
+
 /** One answer's button, whose tooltip shows the whole label only when the button cuts it off. */
 function AnswerButton({
   label,
@@ -309,7 +358,10 @@ function AnswerButton({
   const shown = useRef<HTMLSpanElement>(null);
   return (
     // `[&>span]:flex` makes the tooltip's wrapper as wide as the container, as is the button.
-    <div className="@container min-w-0 flex-1 [&>span]:flex">
+    <div
+      className="@container min-w-0 flex-1 [&>span]:flex"
+      {...(primary ? { [firstAnswerAttribute]: "" } : {})}
+    >
       <Tooltip
         text={label}
         isName

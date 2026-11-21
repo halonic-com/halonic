@@ -1,6 +1,6 @@
 import { markHiddenName } from "@halonicjs/std";
 import { Button, type CalloutHandle, StatusChip } from "@halonicjs/studio-kit";
-import { useEffect, useId, useRef, useState } from "react";
+import { type RefObject, useEffect, useId, useRef, useState } from "react";
 import { type AfterAnswer, afterAnswer, type InboxDecisions } from "../decide.ts";
 import type { ApprovalItem } from "../inbox-items.ts";
 import { actionSummary, approvalTitle } from "../plain/approval-text.ts";
@@ -16,15 +16,24 @@ import {
   type EngineState,
   FailedLine,
   failedText,
+  failureDetailOf,
   type ManualAnswer,
   manualAnswerOf,
   type NextItem,
   NotAnsweringLine,
   unavailableWhile,
+  untrustedText,
   useEveryMinute,
   wasDecidedElsewhere,
+  wasRefusedUntrusted,
 } from "./card-parts.tsx";
 import { useDecisionGuard } from "./decision-guard.ts";
+import {
+  showsUntrusted,
+  type TrustReview,
+  useClearedWhenTrusted,
+  withoutUntrusted,
+} from "./workspace-trust.ts";
 
 export interface ApprovalCardProps extends EngineState {
   readonly item: ApprovalItem;
@@ -52,6 +61,11 @@ export interface ApprovalCardProps extends EngineState {
   readonly onGoToSecret?: ((note: string) => void) | undefined;
   /** Where that button goes; with no account waiting it is the Library's New connector. */
   readonly secretPlace?: "setup" | "connectors" | undefined;
+  /**
+   * The workspace's trust, for a decision refused because the workspace isn't trusted: **Review**,
+   * and when it becomes trusted the line goes and Approve takes focus. Without it there's no **Review**.
+   */
+  readonly trust?: TrustReview | undefined;
 }
 
 type Decision = "approve" | "reject";
@@ -66,6 +80,10 @@ type CardState =
       /** The decision was refused because the tool call isn't the one waiting any more. */
       readonly elsewhere: boolean;
       readonly manual: ManualAnswer | null;
+      /** The failure's own sentence, shown after "Couldn't record your decision.". */
+      readonly detail: string | null;
+      /** The decision was refused because the workspace isn't trusted. */
+      readonly untrusted: boolean;
     }
   | { readonly kind: "deciding"; readonly decision: Decision }
   | {
@@ -82,6 +100,8 @@ interface NoteForm {
   readonly failed: boolean;
   /** Set when the note can only go by the command line, which sends `reject` without it. */
   readonly manual: ManualAnswer | null;
+  /** The note was refused because the workspace isn't trusted. */
+  readonly untrusted: boolean;
 }
 
 /** What the command line does with a note: `runs send` takes no note, so only the reject goes. */
@@ -93,6 +113,7 @@ function noteError(form: NoteForm): string | undefined {
     if (form.manual.command === undefined) return form.manual.message;
     return `${form.manual.message} ${rejectOnlyText}`;
   }
+  if (form.untrusted) return untrustedText;
   return form.failed ? failedText : undefined;
 }
 
@@ -140,6 +161,8 @@ export function ApprovalCard(props: ApprovalCardProps) {
     failed: null,
     elsewhere: false,
     manual: null,
+    detail: null,
+    untrusted: false,
   });
   const [note, setNote] = useState(props.initialNote ?? "");
   const [form, setForm] = useState<NoteForm>({
@@ -147,10 +170,18 @@ export function ApprovalCard(props: ApprovalCardProps) {
     busy: false,
     failed: false,
     manual: null,
+    untrusted: false,
   });
   const [usableAt] = useState(() => now().getTime());
   const guard = useDecisionGuard(usableAt, () => now().getTime());
+  const approve = useRef<HTMLButtonElement>(null);
   useEveryMinute();
+  useClearedWhenTrusted(
+    props.trust,
+    showsUntrusted(state),
+    () => setState(withoutUntrusted),
+    () => approve.current,
+  );
 
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   useEffect(() => {
@@ -174,16 +205,18 @@ export function ApprovalCard(props: ApprovalCardProps) {
         failed: decision,
         elsewhere: wasDecidedElsewhere(error),
         manual: manualAnswerOf(error),
+        detail: failureDetailOf(error),
+        untrusted: wasRefusedUntrusted(error),
       });
     }
   }
 
   async function sendNote(text: string) {
     if (form.busy || state.kind !== "open") return;
-    setForm({ open: true, busy: true, failed: false, manual: null });
+    setForm({ open: true, busy: true, failed: false, manual: null, untrusted: false });
     try {
       const run = await decisions.askForChanges(item, text);
-      setForm({ open: false, busy: false, failed: false, manual: null });
+      setForm({ open: false, busy: false, failed: false, manual: null, untrusted: false });
       setState({
         kind: "decided",
         decided: { kind: "note", note: text },
@@ -192,7 +225,13 @@ export function ApprovalCard(props: ApprovalCardProps) {
       });
     } catch (error) {
       // The dialog stays open with the note, and says so in its alert slot (flow-inbox 5.4).
-      setForm({ open: true, busy: false, failed: true, manual: manualAnswerOf(error) });
+      setForm({
+        open: true,
+        busy: false,
+        failed: true,
+        manual: manualAnswerOf(error),
+        untrusted: wasRefusedUntrusted(error),
+      });
     }
   }
 
@@ -225,6 +264,8 @@ export function ApprovalCard(props: ApprovalCardProps) {
           guard={guard}
           engine={props}
           onDecide={decide}
+          onReviewTrust={props.trust?.review}
+          approve={approve}
           onOpenRun={
             props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId)
           }
@@ -243,7 +284,9 @@ export function ApprovalCard(props: ApprovalCardProps) {
           onSend={sendNote}
           {...(props.onGoToSecret === undefined ? {} : { onGoToSecret: props.onGoToSecret })}
           {...(props.secretPlace === undefined ? {} : { secretPlace: props.secretPlace })}
-          onCancel={() => setForm({ open: false, busy: false, failed: false, manual: null })}
+          onCancel={() =>
+            setForm({ open: false, busy: false, failed: false, manual: null, untrusted: false })
+          }
         />
       ) : null}
     </section>
@@ -284,6 +327,8 @@ interface DecisionBarProps {
   readonly onDecide: (decision: Decision) => void;
   readonly onAskForChanges: () => void;
   readonly onOpenRun: (() => void) | undefined;
+  readonly onReviewTrust: ((opener: HTMLElement | null) => void) | undefined;
+  readonly approve: RefObject<HTMLButtonElement | null>;
 }
 
 /**
@@ -298,6 +343,8 @@ function DecisionBar({
   onDecide,
   onAskForChanges,
   onOpenRun,
+  onReviewTrust,
+  approve,
 }: DecisionBarProps) {
   const reasonId = useId();
   const unavailable = unavailableWhile(engine.answering ?? true, reasonId);
@@ -312,8 +359,10 @@ function DecisionBar({
       <NotAnsweringLine id={reasonId} {...engine} />
       <FailedLine
         onRetry={failed === null ? null : () => onDecide(failed)}
+        detail={state.kind === "open" ? state.detail : null}
         manual={state.kind === "open" ? state.manual : null}
         elsewhere={state.kind === "open" && state.elsewhere ? { openRun: onOpenRun } : null}
+        untrusted={state.kind === "open" && state.untrusted ? { review: onReviewTrust } : null}
       />
       <div className="flex flex-wrap justify-end gap-2">
         <Button
@@ -328,6 +377,7 @@ function DecisionBar({
           Ask for changes
         </Button>
         <Button
+          ref={approve}
           variant="primary"
           unavailable={unavailable}
           busy={busy("approve")}

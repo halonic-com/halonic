@@ -19,7 +19,9 @@
 // (`openHarnessHost`, HAL-10849). Where no agent host runs, a workflow with an
 // agent that lists a connector or runs in a harness is refused as
 // `unavailable` before the engine opens, as is one whose agent lists a
-// connector that isn't `stdio` where it does.
+// connector that isn't `stdio` where it does. An Approve of a connector's tool call
+// the window can't make (no agent host, or a run the CLI started at a commit) is
+// refused the same way, with the CLI line that sends it (`engine-refusals.ts`).
 // Nothing starts from a workspace that isn't trusted, unless it reaches only
 // the test model, the CLI's rule (HAL-1984, HAL-12409): the engine checks it
 // on the workspace it loaded, when it opens and before each start, and it
@@ -49,8 +51,8 @@ import {
   type LocalExecutor,
   noListedToolApproval,
 } from "@halonicjs/engine";
-import type { RunVersion } from "@halonicjs/events";
-import { isAgentRunsNotAvailable, type RunExecutor } from "@halonicjs/ports";
+import type { RunSummary, RunVersion } from "@halonicjs/events";
+import { isAgentRunsNotAvailable, type RunExecutor, type SendOptions } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import {
@@ -61,6 +63,7 @@ import {
 } from "@halonicjs/workspace";
 import { studioConnectorCalls } from "../connect/studio-run-connectors.ts";
 import { type EngineLockHold, holdEngineLock } from "./engine-lock.ts";
+import { answerRefusalOf, refuseConnectorApprove } from "./engine-refusals.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
 import { agentRefusalOf, type PageRuns, workflowRefusalOf } from "./page-refusal.ts";
 import type { EngineDecisions, StudioHarnessHost } from "./studio-harness-host.ts";
@@ -96,6 +99,8 @@ interface OpenEngine {
   readonly engine: AssembledEngine;
   readonly workspace: LoadedWorkspace;
   readonly lock: EngineLockHold;
+  /** The runs the engine keeps, read before an answer is sent. */
+  readonly runs: TauriRunStore;
 }
 
 /** The engine of one workspace in the page, opened on first use. */
@@ -257,9 +262,40 @@ export class EngineService {
     }
   }
 
-  /** Answers a waiting run (an Inbox Approve or Reject) as `halonic runs send` does, with a start's checks. */
-  async send(...args: Parameters<LocalExecutor["send"]>): ReturnType<LocalExecutor["send"]> {
-    return (await this.openForStart()).executor.send(...args);
+  /**
+   * Sends `event` to a run waiting for a person, such as an Inbox card's Approve or Reject, as
+   * `halonic runs send` does, with the executor's `payload` and `options` (the call or wait step it
+   * answers): opens the engine, with the checks of a start, and returns once the event is recorded.
+   * Another engine holding the workspace fails as `unavailable`, a failure to try again, and an
+   * Approve of a connector's tool call the window can't make is refused before anything is
+   * recorded (`engine-refusals`).
+   * @returns the run as it is after the event
+   * @throws KindedError `unavailable` for those, `denied` for a workspace that may start nothing,
+   *   what {@link EngineService.open} throws otherwise, or the executor's refusal
+   */
+  async send(
+    runId: string,
+    event: string,
+    payload?: unknown,
+    options?: SendOptions,
+  ): Promise<RunSummary> {
+    const { engine, workspace, runs } = await this.#forAnswer();
+    await refuseConnectorApprove(
+      { runs, workspace, startsConnectors: this.pageRuns.startsConnectors },
+      runId,
+      event,
+      options,
+    );
+    return engine.executor.send(runId, event, payload, options);
+  }
+
+  /** The open engine, for an answer: as for a start, with the lock's `conflict` as `unavailable`. */
+  async #forAnswer(): Promise<OpenEngine> {
+    const open = await this.#open().catch((error: unknown) => {
+      throw answerRefusalOf(error);
+    });
+    await this.#refuseUntrusted(open.workspace);
+    return open;
   }
 
   /**
@@ -429,7 +465,7 @@ export class EngineService {
         },
       });
       executor = engine.executor;
-      return { engine, workspace, lock };
+      return { engine, workspace, lock, runs: runStore };
     } catch (error) {
       await lock.held.release();
       throw error;

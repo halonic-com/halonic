@@ -415,6 +415,10 @@ These regions are separate from the alert slot, which carries only the Dialog's 
 **When the browser closes it anyway** (Chrome lets a second Escape through while busy),
 `onCancel` still runs. The request carries on, and its result goes to a toast.
 
+**Waiting for it to close.** `useModalOpen()` is `true` while any of the kit's modal dialogs is
+open. A part that moves focus after a dialog's work, such as a card whose button that opened the
+dialog is gone by then, waits until it is `false`, so the dialog's own focus return comes first.
+
 **On a phone** a confirmation stays a dialog, the screen's width less 16px on each side, with no
 ✕: its buttons are stacked, full width and 48px, the confirming one first in the DOM, so focus
 moves in the order you see.

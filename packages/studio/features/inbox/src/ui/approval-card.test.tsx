@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { KindedError } from "@halonicjs/std";
 import { engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";

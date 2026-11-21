@@ -4,7 +4,7 @@ import { act } from "react";
 import type { ApprovalItem } from "../inbox-items.ts";
 import { inboxItems } from "../inbox-items.ts";
 import { pendingApproval, waitingRun } from "../test-runs.test-helper.ts";
-import { render } from "../test-support/render.tsx";
+import { renderWithUpdate } from "../test-support/render.tsx";
 import { ApprovalCard, type ApprovalCardProps } from "./approval-card.tsx";
 
 // Local times, so the test reads the same in every time zone. Sun 8 Nov 2026.
@@ -59,11 +59,13 @@ export function openCard(overrides: Partial<ApprovalCardProps> = {}) {
     now: () => clock.now,
     ...overrides,
   };
-  const root = render(<ApprovalCard {...props} />);
+  const { container: root, update } = renderWithUpdate(<ApprovalCard {...props} />);
   const later = (seconds: number) => {
     clock.now = new Date(clock.now.getTime() + seconds * 1000);
   };
-  return { root, sent, clock, later };
+  const rerender = (changes: Partial<ApprovalCardProps>) =>
+    update(<ApprovalCard {...props} {...changes} />);
+  return { root, sent, clock, later, rerender };
 }
 
 export function button(root: HTMLElement, name: string): HTMLButtonElement {
