@@ -327,16 +327,38 @@ verifies("studio.workspace-agents", () => {
       ]);
     });
 
-    it("answers whether a harness can run: Halonic always, the others as the host finds, a failed check as failed", async () => {
+    it("answers whether a harness can run: Halonic always, the others as the host finds, and rejects without a host", async () => {
       const { host } = setup();
       const ref = { hubId: "acme", id: "writer" };
       expect(await host.harnessReadiness(ref, "halonic")).toMatchObject({ status: "ready" });
-      expect(await host.harnessReadiness(ref, "codex")).toMatchObject({ status: "failed" });
+      await expect(host.harnessReadiness(ref, "codex")).rejects.toMatchObject({
+        kind: "unavailable",
+        message: "Halonic can't check programs on this computer from here.",
+      });
       await expect(
         host.harnessReadiness({ hubId: "acme", id: "gone" }, "codex"),
       ).rejects.toMatchObject({
         kind: "not_found",
       });
+    });
+
+    it("gives the host's own failed answer as failed, and rejects when the host can't be asked", async () => {
+      const ref = { hubId: "acme", id: "writer" };
+      const failed = setup({
+        detectHarness: async () => ({ status: "failed", error: "No answer." }),
+      });
+      expect(await failed.host.harnessReadiness(ref, "codex")).toEqual({
+        status: "failed",
+        error: "No answer.",
+      });
+      const down = setup({
+        detectHarness: async () => {
+          throw new Error("The engine isn't answering.");
+        },
+      });
+      await expect(down.host.harnessReadiness(ref, "claude-code")).rejects.toThrow(
+        "The engine isn't answering.",
+      );
     });
   });
 });

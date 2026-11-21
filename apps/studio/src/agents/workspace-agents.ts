@@ -62,8 +62,8 @@ export interface WorkspaceAgentsParts {
   /** Calls `listener` after every change of the workspace's files; returns the way to stop. */
   readonly onChange: (listener: () => void) => () => void;
   /**
-   * Asks the agent host whether a harness can run for this agent. Absent where there is no agent
-   * host (the browser), which answers "couldn't check".
+   * Asks the agent host whether a harness can run for this agent; rejects when the host can't be
+   * asked. Absent where there is no agent host (the browser), which answers "couldn't check".
    */
   readonly detectHarness?: (ref: AgentRef, harness: AgentHarnessId) => Promise<HarnessReadiness>;
   /**
@@ -251,22 +251,22 @@ export class WorkspaceAgents implements AgentsHost {
     };
   }
 
-  /** Whether `harness` can run for this agent; `halonic` always can, and a check that didn't work says so. */
+  /**
+   * Whether `harness` can run for this agent; `halonic` always can. `failed` is only the host's own
+   * answer: when the host can't be asked, or there is none, it rejects with the reason, so the
+   * page says "Couldn't check" rather than that it found the program.
+   */
   async harnessReadiness(ref: AgentRef, harness: AgentHarnessId): Promise<HarnessReadiness> {
     await this.#find(ref);
     if (harness === "halonic") return { status: "ready", version: "" };
     const detect = this.#parts.detectHarness;
     if (detect === undefined) {
-      return {
-        status: "failed",
-        error: "Halonic can't check programs on this computer from here.",
-      };
+      throw new KindedError(
+        "unavailable",
+        "Halonic can't check programs on this computer from here.",
+      );
     }
-    try {
-      return await detect(ref, harness);
-    } catch (error) {
-      return { status: "failed", error: error instanceof Error ? error.message : String(error) };
-    }
+    return await detect(ref, harness);
   }
 
   /**
