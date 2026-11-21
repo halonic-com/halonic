@@ -3,6 +3,7 @@
 - Approval: Liam planned it on HAL-13406 (first-run-progress 4.2 and 7, sized on HAL-8005 item 1); Mateo checked it on HAL-14801. It changes `tooling/check/policy.json`, a trust root, so both guardians sign: Julian, and Liam after Mateo's check
 - Kind: user-visible
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:n8QW/En5B2UCp4sH53VJrLdNAeDb40gaKQTZNQKDJi9FnZkNKzvOA7yCnb+Wv/lVjv02QOGRiUwnCPguDpnUBw==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:m74vF/KlJjGO8G9xAOSpkDiRZBQMEp2Lr2W5h2owTQLTTWrCmPw7s8zx28bOkSsFSgPjGWA0l1ifb3Oa03WlCg==
 - Task: HAL-13406
 
 ## What changes
