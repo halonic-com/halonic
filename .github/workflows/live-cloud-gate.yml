@@ -1,0 +1,89 @@
+# Re-runs CI's "Live cloud suites passed" job on a pull request (HAL-14858).
+# On a ready pull request that changes a cloud path, that job fails at once
+# until live-cloud.yml's `live-cloud` job passed on the pull request's head,
+# so `ci-ok` is red and the queue session doesn't queue it. It doesn't wait on
+# a runner: runners are shared with the merge queue (HAL-12419).
+#
+# A run can only be re-run once it has ended, so this re-runs the job, and
+# with it `ci-ok`, when the second of the two ends: the live suites passing
+# after CI ended, or CI ending after they passed.
+
+name: Live cloud gate
+
+on:
+  # zizmor: ignore[dangerous-triggers] checks out nothing; it only reads job results and re-runs one CI job
+  workflow_run:
+    workflows: [CI, Live cloud]
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  group: live-cloud-gate-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  rerun:
+    name: Re-run the live cloud gate
+    # Only a pull request run from this repository: a fork never runs the live
+    # suites.
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      ((github.event.workflow_run.name == 'Live cloud' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event.workflow_run.name == 'CI' && github.event.workflow_run.conclusion == 'failure'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Re-run the gate if the live suites passed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          # The same question as CI's gate: did a live-cloud job of this
+          # repository pass on this head?
+          runs=$(gh api "repos/$GH_REPO/actions/workflows/live-cloud.yml/runs?head_sha=$SHA&event=pull_request&per_page=20" \
+            --jq ".workflow_runs[] | select(.head_repository.full_name == \"$GH_REPO\" and .status == \"completed\") | .id")
+          passed=false
+          for run in $runs; do
+            if gh api "repos/$GH_REPO/actions/runs/$run/jobs" \
+              --jq '.jobs[] | select(.name == "live-cloud") | .conclusion' | grep -qx success; then
+              passed=true
+              break
+            fi
+          done
+          if [ "$passed" != "true" ]; then
+            echo "No live-cloud job has passed on $SHA: nothing to re-run."
+            exit 0
+          fi
+          ci=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$SHA&event=pull_request&per_page=1" \
+            --jq '.workflow_runs[0] // empty | "\(.id) \(.status) \(.conclusion) \(.run_attempt)"')
+          read -r run status conclusion attempt <<< "$ci"
+          if [ -z "$run" ] || [ "$status" != "completed" ]; then
+            echo "CI on $SHA hasn't ended yet. Its gate re-runs when it ends, if it failed."
+            exit 0
+          fi
+          if [ "$conclusion" = "cancelled" ]; then
+            echo "CI run $run was cancelled by a newer push: nothing to re-run."
+            exit 0
+          fi
+          # A gate that keeps failing with a pass in place (GitHub unreadable)
+          # doesn't loop: each re-run ends CI again and starts this workflow.
+          if [ "$attempt" -ge 4 ]; then
+            echo "::warning::CI run $run is on attempt $attempt; not re-running it again. Re-run it by hand."
+            exit 0
+          fi
+          job=$(gh run view "$run" --json jobs \
+            --jq '.jobs[] | select(.name == "Live cloud suites passed" and .conclusion == "failure") | .databaseId')
+          if [ -z "$job" ]; then
+            echo "The live cloud gate didn't fail in CI run $run: nothing to re-run."
+            exit 0
+          fi
+          echo "The live suites passed on $SHA. Re-running the gate (job $job) and ci-ok in CI run $run."
+          # Re-running a job re-runs the jobs that need it, ci-ok among them.
+          # The other trigger may have re-run it a moment ago.
+          gh api -X POST "repos/$GH_REPO/actions/jobs/$job/rerun" \
+            || [ "$(gh run view "$run" --json status --jq .status)" != "completed" ]

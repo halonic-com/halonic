@@ -2699,10 +2699,14 @@ jobs:
   live-cloud:
     # ADR 5.9: a change to a cloud path merges only after the live suites
     # passed on it. They run in live-cloud.yml once the pull request is ready
-    # for review, so here the pull request only gets a notice, and the merge
-    # queue waits for that workflow's `live-cloud` job on the pull request's
-    # head. Only a run of live-cloud.yml from this repository counts, never a
-    # fork's. Off, with a notice, until LIVE_CLOUD_ENABLED is "true".
+    # for review. A draft only gets a notice. A ready pull request fails here
+    # at once, without waiting on a runner, until that workflow's `live-cloud`
+    # job passed on its head, so `ci-ok` shows it before the queue does
+    # (HAL-14858: 45% of failed merge groups were this job). live-cloud-gate.yml
+    # re-runs this job when the live suites pass. The merge queue waits for the
+    # same job on the pull request's head. Only a run of live-cloud.yml from
+    # this repository counts, never a fork's. Off, with a notice, until
+    # LIVE_CLOUD_ENABLED is "true".
     name: Live cloud suites passed
     if: github.event_name != 'push'
     runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
@@ -2742,6 +2746,10 @@ jobs:
           ENABLED: ${{ vars.LIVE_CLOUD_ENABLED }}
           EVENT: ${{ github.event_name }}
           MERGE_REF: ${{ github.event.merge_group.head_ref }}
+          PR: ${{ github.event.pull_request.number }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
@@ -2750,16 +2758,29 @@ jobs:
             exit 0
           fi
           if [ "$EVENT" = "pull_request" ]; then
-            echo "::notice title=Live cloud suites::This changes a cloud path. The live suites run once the pull request is ready for review, and the merge queue requires them to pass."
-            exit 0
+            if [ "$DRAFT" = "true" ]; then
+              echo "::notice title=Live cloud suites::This changes a cloud path. The live suites run once the pull request is ready for review, and this job fails until they passed."
+              exit 0
+            fi
+            if [ "$HEAD_REPO" != "$REPO" ]; then
+              echo "::error::Pull request #$PR changes a cloud path, and a fork never gets the test account's token. A maintainer pushes the branch into this repository to run the live suites (CONTRIBUTING.md)."
+              exit 1
+            fi
+            pr=$PR
+            sha=$PR_SHA
+            # Once: a pull request doesn't hold a runner while the suites run.
+            tries=1
+          else
+            pr=$(sed -nE 's#^refs/heads/gh-readonly-queue/[^/]+/pr-([0-9]+)-[0-9a-f]+$#\1#p' <<< "$MERGE_REF")
+            [ -n "$pr" ] || { echo "::error::Can't read the pull request number from $MERGE_REF."; exit 1; }
+            sha=$(gh api "repos/$REPO/pulls/$pr" --jq .head.sha)
+            # A live job still running is waited for, up to 45 minutes: the
+            # merge queue drops an entry after 60.
+            tries=45
           fi
-          pr=$(sed -nE 's#^refs/heads/gh-readonly-queue/[^/]+/pr-([0-9]+)-[0-9a-f]+$#\1#p' <<< "$MERGE_REF")
-          [ -n "$pr" ] || { echo "::error::Can't read the pull request number from $MERGE_REF."; exit 1; }
-          sha=$(gh api "repos/$REPO/pulls/$pr" --jq .head.sha)
-          # A live job still running is waited for, up to 45 minutes: the merge
-          # queue drops an entry after 60. A run that hasn't finished counts as
-          # running even before its live-cloud job is listed.
-          for _ in $(seq 45); do
+          # A run that hasn't finished counts as running even before its
+          # live-cloud job is listed.
+          for try in $(seq "$tries"); do
             runs=$(gh api "repos/$REPO/actions/workflows/live-cloud.yml/runs?head_sha=$sha&event=pull_request&per_page=20" \
               --jq ".workflow_runs[] | select(.head_repository.full_name == \"$REPO\") | \"\(.id) \(.status)\"")
             results=""
@@ -2774,8 +2795,16 @@ jobs:
               exit 0
             fi
             grep -qx running <<< "$results" || break
-            sleep 60
+            [ "$try" = "$tries" ] || sleep 60
           done
+          if [ "$EVENT" = "pull_request" ]; then
+            if grep -qx running <<< "$results"; then
+              echo "::error::The live suites are still running on $sha. When they pass, this job re-runs by itself (live-cloud-gate.yml) and ci-ok turns green."
+            else
+              echo "::error::Pull request #$pr changes a cloud path, but the live-cloud job has not passed on its head $sha. Fix it and push, or re-run the Live cloud workflow; when it passes, this job re-runs by itself."
+            fi
+            exit 1
+          fi
           echo "::error::Pull request #$pr changes a cloud path, but the live-cloud job has not passed on its head $sha. Mark it ready for review, or re-run the Live cloud workflow, then queue it again."
           exit 1
 
