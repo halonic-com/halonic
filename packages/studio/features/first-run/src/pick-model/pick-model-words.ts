@@ -123,7 +123,7 @@ export function messageText(message: PickMessage, provider: FirstRunKeyProvider)
     case "files":
       return message.problem.kind === "unreadable"
         ? `Studio can't read ${message.problem.file}. Fix it, or pick another option.`
-        : `${message.problem.file} in this workspace is set up another way, so Studio leaves it. Pick another option.`;
+        : `This workspace already has its own ${message.problem.file}, and Studio won't change a file you set up. Pick another option.`;
     case "tested":
       return testedText(message.outcome, name);
     case "line-changed":

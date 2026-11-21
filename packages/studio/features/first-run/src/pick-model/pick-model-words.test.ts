@@ -66,7 +66,7 @@ verifies("first-run.pick-model", () => {
     ],
     [
       { kind: "files", problem: { kind: "provider-differs", file: "providers/anthropic.yaml" } },
-      "set up another way",
+      "This workspace already has its own providers/anthropic.yaml, and Studio won't change a file you set up.",
     ],
     [{ kind: "tested", outcome: "key-refused" }, "Anthropic didn't accept this key."],
     [{ kind: "tested", outcome: "offline" }, "Studio can't reach Anthropic."],
