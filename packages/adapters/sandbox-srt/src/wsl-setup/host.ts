@@ -1,6 +1,7 @@
 // What the WSL setup asks of the Windows machine. A test hands it a fake one;
 // `system-host.ts` is the real one. It has no way to touch `.wslconfig`: that
 // file is shared by every distro of the user (HAL-3779, section 5.2).
+import type { WslRuntime } from "./runtime.ts";
 
 /** One distro as `wsl --list --verbose` shows it. */
 export interface WslDistro {
@@ -49,6 +50,14 @@ export interface WslHost {
   importDistro(name: string, location: string, rootfs: string): Promise<ProgramResult>;
   /** Runs a program in the distro without a shell (`wsl -d <name> --exec`), as the distro's default user. */
   runInDistro(name: string, program: string[]): Promise<ProgramResult>;
+  /**
+   * Installs `runtime` in the distro as root with the image's updater
+   * (`halonic-runtime install <version> <sha256>`, the archive on standard
+   * input), after checking the archive's SHA-256 on Windows. `code` is the
+   * updater's exit code, or `null` when it didn't start. Studio's shell does
+   * this (`install_runtime` in the agent-host crate, HAL-14644).
+   */
+  installRuntime(name: string, runtime: WslRuntime): Promise<ProgramResult>;
   /** Puts `command` in the user's `RunOnce` key (no administrator) under Halonic's own value name. */
   setRunOnce(command: string): Promise<void>;
   /** Takes Halonic's value out of `RunOnce`; fine when it isn't there. */
