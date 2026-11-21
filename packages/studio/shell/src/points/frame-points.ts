@@ -3,11 +3,13 @@ import type {
   BarItemContribution,
   CardContribution,
   DialogHostContribution,
+  HelpContribution,
   PanelWindowContribution,
   PhoneBarContribution,
   PlaceContribution,
   SettingsSectionContribution,
   SidebarViewContribution,
+  StripContribution,
 } from "./frame.ts";
 import { sidebarPlaces } from "./frame.ts";
 import { type HomeCardContribution, type HomePoint, homeSections } from "./home.ts";
@@ -32,6 +34,10 @@ export interface FramePoints {
   readonly statusBar: Point<BarItemContribution>;
   readonly titleBar: Point<BarItemContribution>;
   readonly phoneBar: Point<PhoneBarContribution>;
+  /** Adds a strip under the top bar, such as the first-run bar. */
+  readonly strips: Point<StripContribution>;
+  /** Adds a group of items to the sidebar's Help menu. */
+  readonly help: Point<HelpContribution>;
   /** Adds a view that draws the feature's dialogs; the window draws each once. */
   readonly dialogs: Point<DialogHostContribution>;
   /** Adds a settings section. Throws a `ShellError` for a `scope` that isn't one of `settingsScopes`. */
@@ -60,6 +66,8 @@ export interface FrameContributions {
   readonly statusBar: { list(): readonly Registered<BarItemContribution>[] };
   readonly titleBar: { list(): readonly Registered<BarItemContribution>[] };
   readonly phoneBar: { list(): readonly Registered<PhoneBarContribution>[] };
+  readonly strips: { list(): readonly Registered<StripContribution>[] };
+  readonly help: { list(): readonly Registered<HelpContribution>[] };
   readonly dialogs: { list(): readonly Registered<DialogHostContribution>[] };
   readonly settings: { list(): readonly Registered<SettingsSectionContribution>[] };
   /** Home, which the shell adds, and the places features added, in the sidebar's fixed order. */
@@ -89,6 +97,8 @@ export class FrameStores {
   private readonly statusBar = new PointStore<BarItemContribution>("statusBar.add", ["id"]);
   private readonly titleBar = new PointStore<BarItemContribution>("titleBar.add", ["id"]);
   private readonly phoneBar = new PointStore<PhoneBarContribution>("phoneBar.add", ["id"]);
+  private readonly strips = new PointStore<StripContribution>("strips.add", ["id"]);
+  private readonly help = new PointStore<HelpContribution>("help.add", ["id"]);
   private readonly dialogs = new PointStore<DialogHostContribution>("dialogs.add", ["id"]);
   private readonly settings = new PointStore<SettingsSectionContribution>("settings.add", ["id"]);
   private readonly places = new PointStore<PlaceContribution>("places.add", ["id"]);
@@ -111,6 +121,8 @@ export class FrameStores {
       statusBar: pointOf("statusBar.add", this.statusBar),
       titleBar: pointOf("titleBar.add", this.titleBar),
       phoneBar: pointOf("phoneBar.add", this.phoneBar),
+      strips: pointOf("strips.add", this.strips),
+      help: pointOf("help.add", this.help),
       dialogs: pointOf("dialogs.add", this.dialogs),
       settings: {
         add: (section) => {
@@ -158,6 +170,8 @@ export class FrameStores {
       statusBar: { list: () => byOrder(this.statusBar.all()) },
       titleBar: { list: () => byOrder(this.titleBar.all()) },
       phoneBar: { list: () => byOrder(this.phoneBar.all()) },
+      strips: { list: () => byOrder(this.strips.all()) },
+      help: { list: () => byOrder(this.help.all()) },
       dialogs: { list: () => byOrder(this.dialogs.all()) },
       settings: { list: () => bySettingsGroup(this.settings.all()) },
       places: {

@@ -27,6 +27,38 @@ export interface DialogHostContribution extends Ordered, ViewRef {}
 /** An item in the status bar or the title bar, such as the run target picker. */
 export interface BarItemContribution extends Ordered, ViewRef {}
 
+/**
+ * A strip under the top bar, such as the first-run bar: at the top of the panel on the desktop,
+ * under the top bar on a phone, after the engine's line. The view decides when it shows, from its
+ * context (`shown()` names the page); a view that draws nothing takes no room.
+ */
+export interface StripContribution extends Ordered, ViewRef {}
+
+/** One item of the Help menu, such as "Start over". */
+export interface HelpItem {
+  /** Unique in its group. */
+  readonly id: string;
+  readonly label: string;
+  /** Called when the item is picked. */
+  run(): void;
+}
+
+/**
+ * A group of items in the Help menu, such as First run's **Show the guide** and **Start over**.
+ * The menu lists the groups by `order`, each under its `title` and a divider between them.
+ */
+export interface HelpContribution extends Ordered {
+  /** The group's name, shown over its items, such as "First run"; left out, the items stand alone. */
+  readonly title?: string;
+  /** The group's items now, read each time the sidebar draws; none leaves the group out. */
+  items(context: WorkspaceContext): readonly HelpItem[];
+  /**
+   * Calls `listener` whenever the items may have changed, so the sidebar reads them again. Returns
+   * a function that stops the calls. Left out, the items are read again only when the window redraws.
+   */
+  subscribe?(context: WorkspaceContext, listener: () => void): () => void;
+}
+
 /** An entry in the phone's bottom bar. */
 export interface PhoneBarContribution extends Ordered, ViewRef {
   readonly label: string;

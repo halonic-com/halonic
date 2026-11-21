@@ -16,7 +16,7 @@ import {
 } from "@halonicjs/studio-kit";
 import { engineWordsOf, type ItemViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useRef, useState } from "react";
-import { WorkflowsHostService } from "../api.ts";
+import { WorkflowGuideService, WorkflowsHostService } from "../api.ts";
 import type { View } from "../canvas/geometry.ts";
 import { Configuration } from "../configuration/configuration-page.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
@@ -31,6 +31,7 @@ import { TestsPage } from "../tests/tests-page.tsx";
 import { StepEditDock, stepCardDocks } from "./docked-step-card.tsx";
 import { FlowView } from "./flow-view.tsx";
 import { goneState } from "./gone-state.tsx";
+import { GuideSlot } from "./guide-card.tsx";
 import { firstTestsPick, firstView, panelClass } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
 import { ProgramStepsLine } from "./program-steps-line.tsx";
@@ -67,6 +68,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       {...(openModels && { openModels })}
       saving={context.saving}
       sandboxStartCheck={context.services.find(sandboxStartCheckKey)}
+      guide={context.services.find(WorkflowGuideService)}
       {...(context.runCommand && {
         openBudget: () => void context.runCommand?.(openBudgetCommand),
       })}
@@ -116,6 +118,7 @@ export function WorkflowScreen({
   saving,
   sandboxStartCheck,
   openAgent,
+  guide,
 }: WorkflowScreenProps) {
   // After a Try again reads, the workflow's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -196,6 +199,14 @@ export function WorkflowScreen({
   });
   const canvasEdit = useCanvasEdit(host, { hubId, id }, name, phone);
   const rename = useRename(host, { hubId, id }, name, everyWorkflow.load, announce);
+  // Run and a guide's button open the start form the same way, and neither while Run can't start.
+  const openStart = () => {
+    if (startRun === undefined || runUnavailable !== undefined) return;
+    setRowCard(undefined);
+    setDock("start");
+  };
+  const guideSlot = { guide, workflow: { hubId, id }, view, docked, phone };
+  const guidePage = { openRunForm: openStart };
   const gone = goneState(load, goToWorkflows);
   if (gone !== undefined) return gone;
   return (
@@ -242,10 +253,7 @@ export function WorkflowScreen({
               variant="primary"
               size="sm"
               unavailable={runUnavailable}
-              onClick={() => {
-                setRowCard(undefined);
-                setDock("start");
-              }}
+              onClick={openStart}
             >
               {startWords.run}
             </Button>
@@ -268,6 +276,7 @@ export function WorkflowScreen({
         startCommand={startCommand}
         showStartCommand={!startRun && settings.load.kind === "ready" && errors === 0}
       />
+      <GuideSlot {...guideSlot} page={guidePage} at="top" />
       <div className="flex min-h-0 flex-1">
         <TabPanel
           ids={ids}
@@ -376,6 +385,7 @@ export function WorkflowScreen({
           saving={saving}
           onClose={() => setPickedStep(undefined)}
         />
+        <GuideSlot {...guideSlot} page={guidePage} at="right" />
       </div>
     </div>
   );

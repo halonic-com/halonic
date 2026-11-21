@@ -8,6 +8,7 @@ import { usePresentationFromWidth } from "../frame/frame-effects.ts";
 import { ShellFrame } from "../frame/shell-frame.tsx";
 import { StatusBarItems } from "../frame/status-bar.tsx";
 import { StatusBarSaveNote } from "../frame/status-bar-save-note.tsx";
+import { Strips } from "../frame/strips.tsx";
 import { itemLocation } from "../palette/palette-groups.ts";
 import { usePaletteOpening } from "../palette/palette-opening.ts";
 import { runWithToast, ShellPalette } from "../palette/shell-palette.tsx";
@@ -28,6 +29,7 @@ import { SettingsDialog } from "../settings/settings-dialog.tsx";
 import { listedSections, settingsGroups } from "../settings/settings-groups.ts";
 import { useSettingsOpening } from "../settings/settings-opening.ts";
 import type { Shell } from "../shell.ts";
+import { useHelpMenu } from "../sidebar/help-menu.ts";
 import { studioTab } from "../sidebar/sidebar-views.tsx";
 import type { WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
 import { usePageHeadingFocus, usePageHeadingFocusAfterDialog } from "../tabs/history-moves.ts";
@@ -329,6 +331,7 @@ function StudioWindowBody(props: StudioWindowProps) {
       {props.badges}
     </>
   );
+  const help = useHelpMenu(contributions.help, contextFor);
 
   return (
     <ShellFrame
@@ -351,6 +354,7 @@ function StudioWindowBody(props: StudioWindowProps) {
       saveNote={<StatusBarSaveNote saving={workspace.saving} />}
       phoneBadges={<HeaderBadges registry={shell.badges} layout="strip" />}
       dialogs={props.dialogs}
+      strips={<Strips strips={contributions.strips.list()} contextFor={contextFor} />}
       sidebar={
         <StudioSidebar
           places={places}
@@ -363,6 +367,7 @@ function StudioWindowBody(props: StudioWindowProps) {
           contextFor={contextFor}
           onSearch={palette.show}
           onSettings={() => openSettings()}
+          help={help}
           switcher={sidebarSwitcher}
         />
       }

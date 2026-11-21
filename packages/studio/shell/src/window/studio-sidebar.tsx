@@ -1,3 +1,4 @@
+import type { MenuEntry } from "@halonicjs/studio-kit";
 import { useCallback, useId, useState, useSyncExternalStore } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import type { PlaceContribution, SidebarViewContribution } from "../points/frame.ts";
@@ -32,6 +33,8 @@ export interface StudioSidebarProps {
   readonly onSearch: () => void;
   /** Opens Settings, from the Settings row last in the sidebar. Without it, there's no such row. */
   readonly onSettings?: (() => void) | undefined;
+  /** The Help menu's entries, from `helpMenuEntries`; without any, there's no Help row. */
+  readonly help?: readonly MenuEntry[] | undefined;
   /**
    * The views features added to the sidebar's Studio switch: `shell.contributions.sidebarViews.list()`.
    * Pass the same list each render. Without any, there is no switch.
@@ -89,6 +92,7 @@ export function StudioSidebar(props: StudioSidebarProps) {
               tabs={tabs}
               announcer={props.announcer}
               onSettings={props.onSettings}
+              help={props.help}
             />
           }
           settings={
@@ -97,6 +101,7 @@ export function StudioSidebar(props: StudioSidebarProps) {
               tabs={tabs}
               announcer={props.announcer}
               onSettings={props.onSettings}
+              help={props.help}
             />
           }
         />

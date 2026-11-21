@@ -982,6 +982,11 @@ and records the feature that added each (`Registered`). A bad id, a repeated id 
   `home.addCard` above. A dialog host (`shell.feature-dialogs`) is a view the window draws once,
   on the desktop and on a phone, with its feature's context (`DialogHostProps`); it draws nothing
   while none of its dialogs is open, and one that fails shows nothing.
+  `strips.add` (`shell.frame-strips`) adds a strip under the top bar, such as the first-run bar:
+  the window draws its view (`StripProps`) at the top of the panel on the desktop and under the
+  top bar on a phone, and the view decides from `context.shown()` whether it draws anything.
+  `help.add` (`shell.help-menu`) adds a group of items to the Help menu, which the sidebar opens
+  from **Help** just above Settings while any group has items.
   A settings section names its `scope` (`workspace`, `display` or `host`: where its values are
   saved), may give a `summary` for the phone's list and `phone: false` to stay off a phone. The
   settings list shows the workspace's group, then "On this computer", each by `order`

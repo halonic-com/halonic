@@ -1,4 +1,11 @@
-import { PlaceIcon, SettingsIcon, StatusChip } from "@halonicjs/studio-kit";
+import {
+  InfoIcon,
+  Menu,
+  type MenuEntry,
+  PlaceIcon,
+  SettingsIcon,
+  StatusChip,
+} from "@halonicjs/studio-kit";
 import { useCallback, useSyncExternalStore } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import type { PlaceSignal, ShownPlace } from "../points/frame.ts";
@@ -22,6 +29,8 @@ export interface PlacesListProps {
   readonly parentsOf?: ((location: TabLocation) => readonly TabLocation[]) | undefined;
   /** Opens Settings: the window's `openSettings`. Without it, the list has no Settings row. */
   readonly onSettings?: (() => void) | undefined;
+  /** The Help menu's entries, from `helpMenuEntries`. Without any, the list has no Help row. */
+  readonly help?: readonly MenuEntry[] | undefined;
 }
 
 /**
@@ -35,12 +44,21 @@ export interface PlacesListProps {
  * middle-click opens it in a new tab next to it and says so.
  *
  * Settings comes last, under a divider (`shell.sidebar-settings`). It is a button, not a link: it
- * opens the Settings dialog over the page, so it is never where you are.
+ * opens the Settings dialog over the page, so it is never where you are. **Help**, when a feature
+ * adds to it, sits just above Settings under the same divider and opens the Help menu
+ * (`shell.help-menu`).
  *
  * @example
  * <PlacesList places={shownPlaces} tabs={workspace.tabs} announcer={shell.announcer} />
  */
-export function PlacesList({ places, tabs, announcer, parentsOf, onSettings }: PlacesListProps) {
+export function PlacesList({
+  places,
+  tabs,
+  announcer,
+  parentsOf,
+  onSettings,
+  help = noHelp,
+}: PlacesListProps) {
   // One `subscribe` per tab set, so React doesn't subscribe again on every render.
   const subscribe = useCallback((listener: () => void) => tabs.subscribe(listener), [tabs]);
   useSyncExternalStore(subscribe, () => tabs.state);
@@ -78,21 +96,37 @@ export function PlacesList({ places, tabs, announcer, parentsOf, onSettings }: P
           );
         })}
       </ul>
+      {onSettings === undefined && help.length === 0 ? null : (
+        // 1px `border`, 8px above and below (component specs 24.4).
+        <hr className="my-2 border-border" />
+      )}
+      {help.length === 0 ? null : (
+        <Menu
+          entries={help}
+          trigger={(props) => (
+            <button {...props} type="button" className={settingsClasses}>
+              <span className={iconClasses(false)}>
+                <InfoIcon />
+              </span>
+              <span className="min-w-0 flex-1 truncate">Help</span>
+            </button>
+          )}
+        />
+      )}
       {onSettings === undefined ? null : (
-        <>
-          {/* 1px `border`, 8px above and below (component specs 24.4). */}
-          <hr className="my-2 border-border" />
-          <button type="button" className={settingsClasses} onClick={onSettings}>
-            <span className={iconClasses(false)}>
-              <SettingsIcon />
-            </span>
-            <span className="min-w-0 flex-1 truncate">Settings</span>
-          </button>
-        </>
+        <button type="button" className={settingsClasses} onClick={onSettings}>
+          <span className={iconClasses(false)}>
+            <SettingsIcon />
+          </span>
+          <span className="min-w-0 flex-1 truncate">Settings</span>
+        </button>
       )}
     </nav>
   );
 }
+
+/** No Help row: no feature added to the Help menu. */
+const noHelp: readonly MenuEntry[] = [];
 
 /** The place the user is in: an item's outermost parent, or the place itself. */
 function placeOf(location: TabLocation, parentsOf: PlacesListProps["parentsOf"]): string {
