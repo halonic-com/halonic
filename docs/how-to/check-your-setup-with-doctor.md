@@ -131,9 +131,15 @@ list of the secrets and what uses them, such as
 
 `doctor` checks the command line's secrets: the `HALONIC_SECRET_<NAME>`
 variables and the file `halonic secret set` writes. Studio keeps the keys and
-connector secrets you save in it in your system's keychain, and the two don't
-read each other's. A secret you set with `halonic secret set` still shows in
-Studio as "isn't set for Studio": save it in Studio too.
+connector secrets you save in it in your system's keychain. Studio's agents,
+its Models page, its plugins and its connectors read only the keychain, and
+the command line reads only its own two places, so neither sees what the other
+saved. A secret you set with `halonic secret set` still shows as not set in
+Studio: a model key as "No key" on the Models page and "No key for Anthropic"
+(or another provider) in Settings, a connector's secret as "isn't set for
+Studio". Save it in Studio too. One exception: when Studio calls a model on
+this computer that needs a key, for example for the Library, it reads that key
+the way the command line does.
 
 ### Sandbox
 
