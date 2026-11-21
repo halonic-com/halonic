@@ -25,6 +25,36 @@ verifies("ports.connector-start-failure", () => {
     });
   });
 
+  it("reads a plugin that isn't trusted yet, or changed since, by its id", () => {
+    const notTrusted = adapterError("PluginConnectorNotTrustedError", {
+      plugin: "files",
+      reason: "not-trusted",
+    });
+    const changed = adapterError("PluginConnectorNotTrustedError", {
+      plugin: "files",
+      reason: "changed",
+    });
+    expect(connectorStartFailureOf(notTrusted)).toEqual({
+      reason: "plugin-not-trusted",
+      plugin: "files",
+    });
+    expect(connectorStartFailureOf(changed)).toEqual({ reason: "plugin-changed", plugin: "files" });
+  });
+
+  it("reads a known error in the cause of the one the connector threw", () => {
+    const known = adapterError("PluginConnectorNotTrustedError", {
+      plugin: "files",
+      reason: "not-trusted",
+    });
+    const thrown = new Error('Connector "files" didn\'t start', {
+      cause: new Error("wrapped", { cause: known }),
+    });
+    expect(connectorStartFailureOf(thrown)).toEqual({
+      reason: "plugin-not-trusted",
+      plugin: "files",
+    });
+  });
+
   it("turns away anything else", () => {
     expect(connectorStartFailureOf(new Error("The MCP server stopped."))).toBeUndefined();
     expect(connectorStartFailureOf(adapterError("ProgramNotFoundError", {}))).toBeUndefined();
@@ -36,6 +66,14 @@ verifies("ports.connector-start-failure", () => {
     ).toBeUndefined();
     expect(
       connectorStartFailureOf({ name: "ProgramNotFoundError", program: "npx" }),
+    ).toBeUndefined();
+    expect(
+      connectorStartFailureOf(
+        adapterError("PluginConnectorNotTrustedError", { plugin: "files", reason: "unreadable" }),
+      ),
+    ).toBeUndefined();
+    expect(
+      connectorStartFailureOf(new Error("failed", { cause: { name: "SecretNotSetError" } })),
     ).toBeUndefined();
   });
 });

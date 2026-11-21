@@ -8,13 +8,15 @@ import type { CommandContext } from "../../command.ts";
 import { connectorStartMessages } from "../../messages/connector-start.ts";
 import type { Message } from "../../messages/define.ts";
 import { phrase } from "../../messages/phrase.ts";
+import { pluginMessages } from "../../messages/plugin.ts";
 import { printable } from "../../output/printable.ts";
 
 type ListingFailed = Extract<RunEvent, { type: "connector.listing-failed" }>;
 
 /**
  * Warns once for each connector a run's log says couldn't list its tools:
- * what happened, then the cause and its fix, indented under it. Every step
+ * what happened, then the cause and its fix, indented under it: a missing
+ * program or secret, or a plugin that isn't trusted yet or changed since. Every step
  * lists the tools again, and every follow reads the log from its first
  * event, so a connector is warned about only the first time. A connector
  * whose parts the log already named as off (`connector.part-off`, written
@@ -53,27 +55,45 @@ function warningLines(
   file: string | undefined,
 ): Message[] {
   const connector = printable(event.connector);
-  const { why, name } = event.cause;
-  if (name !== undefined && why === "program-missing") {
-    const program = printable(name);
+  const causeAndFix = causeLines(event.cause, connector, file);
+  if (causeAndFix === undefined) {
     return [
-      connectorStartMessages.notStarted(connector),
-      indented(connectorStartMessages.programMissing(program)),
-      indented(connectorStartMessages.programMissingFix(program, connector, file)),
+      connectorStartMessages.notListed(connector),
+      indented(connectorStartMessages.notListedFix(event.connector, dir)),
     ];
   }
-  if (name !== undefined && why === "secret-not-set") {
-    const secret = printable(name);
-    return [
-      connectorStartMessages.notStarted(connector),
-      indented(connectorStartMessages.secretMissing(secret)),
-      indented(connectorStartMessages.secretMissingFix(secret)),
-    ];
+  return [connectorStartMessages.notStarted(connector), ...causeAndFix.map(indented)];
+}
+
+/** The cause and its fix, or `undefined` when the log doesn't say why, so `tools review` has to. */
+function causeLines(
+  cause: ListingFailed["cause"],
+  connector: string,
+  file: string | undefined,
+): Message[] | undefined {
+  if (cause.name === undefined) return undefined;
+  const name = printable(cause.name);
+  switch (cause.why) {
+    case "program-missing":
+      return [
+        connectorStartMessages.programMissing(name),
+        connectorStartMessages.programMissingFix(name, connector, file),
+      ];
+    case "secret-not-set":
+      return [
+        connectorStartMessages.secretMissing(name),
+        connectorStartMessages.secretMissingFix(name),
+      ];
+    case "plugin-not-trusted":
+      return [
+        connectorStartMessages.pluginNotTrusted(name),
+        pluginMessages.startNotTrustedFix(name),
+      ];
+    case "plugin-changed":
+      return [connectorStartMessages.pluginChanged(name), pluginMessages.startChangedFix(name)];
+    case "other":
+      return undefined;
   }
-  return [
-    connectorStartMessages.notListed(connector),
-    indented(connectorStartMessages.notListedFix(event.connector, dir)),
-  ];
 }
 
 /** `message` two spaces in, as a fix line stands under its line 1. */

@@ -20,6 +20,16 @@ function programMissing(program: string): Error {
   });
 }
 
+/** An error as a plugin's connector throws one for a plugin nobody trusted yet: wrapped, with the reason in its cause. */
+function pluginNotTrusted(plugin: string): Error {
+  const refusal = Object.assign(new Error(`The plugin ${plugin} runs a program.`), {
+    name: "PluginConnectorNotTrustedError",
+    plugin,
+    reason: "not-trusted",
+  });
+  return new Error(`Connector "${plugin}" didn't start: ${refusal.message}`, { cause: refusal });
+}
+
 /** A run of the reply workflow whose writer lists `handbook-files`, whose listing throws `error`. */
 async function runWithBrokenListing(error: Error) {
   const handbook = new ScriptedConnector("handbook-files", error);
@@ -55,6 +65,17 @@ verifies("engine.connector-listing-failed", () => {
       status: "completed",
       context: { reply: "Found" },
     });
+  });
+
+  it("logs a connector from a plugin nobody trusted yet, by the plugin's id", async () => {
+    const { log } = await runWithBrokenListing(pluginNotTrusted("files"));
+
+    expect(listingFailures(log)).toMatchObject([
+      {
+        connector: "handbook-files",
+        cause: { code: "connector-not-started", why: "plugin-not-trusted", name: "files" },
+      },
+    ]);
   });
 
   it("logs another failure as other, and keeps the error's message out of the log", async () => {
