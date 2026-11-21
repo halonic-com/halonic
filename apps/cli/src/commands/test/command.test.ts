@@ -100,32 +100,28 @@ verifies("cli.commands.test.run-tests", () => {
       expect(io.stdout.at(-1)).toBe("✕ 5 passed, 1 failed. 6 tests in 0.0 s.");
     });
 
-    it("names both steps by id and lists the workflow's steps when the test names a step it doesn't have", async () => {
-      const spamCase = (name: string, expectation: string) => [
-        "",
-        `  - name: ${name}`,
-        '    input: { mail: "You have won a prize!" }',
-        "    mocks: { writer: [Someone says we won a prize.], sorter: [spam] }",
-        "    expect:",
-        `      ${expectation}`,
-      ];
+    it("runs no test and points at validate when a test names a step its workflow doesn't have", async () => {
+      // `validate` names each of them first (workspace.test-references, HAL-14270).
       await appendFile(
         join(acme, testFile),
         [
-          ...spamCase("Spam ends nowhere", "final: nothing"),
-          ...spamCase("Spam is clasified", "states: [read, clasify, ignored]"),
+          "",
+          "  - name: Spam ends nowhere",
+          '    input: { mail: "You have won a prize!" }',
+          "    mocks: { writer: [Someone says we won a prize.], sorter: [spam] }",
+          "    expect:",
+          "      final: nothing",
           "",
         ].join("\n"),
       );
 
       const { code, io } = await testIn(acme);
 
-      expect(code).toBe(exitCode.failed);
-      const failures = io.stdout.filter((line) => line.startsWith("    Expected"));
-      const steps = '"read", "classify", "draft", "review", "replied", "not-replied" and "ignored"';
-      expect(failures).toEqual([
-        `    Expected the run to end in the step "nothing", but it ended in "ignored". The workflow has no step "nothing"; its steps are ${steps}.`,
-        `    Expected the run to go through "read", "clasify" and "ignored", but it went through "read", "classify" and "ignored". The workflow has no step "clasify"; its steps are ${steps}.`,
+      expect(code).toBe(exitCode.usage);
+      expect(io.stdout).toEqual([]);
+      expect(io.stderr.slice(0, 2)).toEqual([
+        "✕ Couldn't test acme: Acme has 1 problem in its files. Nothing ran.",
+        "  See them with: halonic validate",
       ]);
     });
 

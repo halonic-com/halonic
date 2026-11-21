@@ -37,6 +37,7 @@ export {
   mergedText,
   mergeLines,
 } from "./line-merge.ts";
+export { editDistance, nearMatch } from "./near-match.ts";
 export { absolutePathsOverlap, insideOrSame } from "./path-overlap.ts";
 export { describeObject, isPlainObject, keyPath } from "./plain-data.ts";
 export { posixPath } from "./posix-path.ts";
