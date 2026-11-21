@@ -18,7 +18,7 @@ import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { runCommandWith } from "./command.ts";
-import { connectorWarnings } from "./connector-warnings.ts";
+import { connectorWarnings, type WarnedConnectors } from "./connector-warnings.ts";
 
 /** The Acme example, on the test model: Support reply takes Sam's email down the refund path. */
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
@@ -54,6 +54,9 @@ async function writerWithMissingProgram(): Promise<void> {
   assertTrustable(check, read);
   expect((await trust.grant(read.subject, check.fingerprint, "cli")).ok).toBe(true);
 }
+
+/** Connectors with no file in the workspace, as from the hub. */
+const noFiles: WarnedConnectors = { fileOf: () => undefined, isIntegration: () => false };
 
 /** A `connector.listing-failed` event of the Writer, at `seq`. */
 function listingFailed(
@@ -105,7 +108,7 @@ verifies("cli.run-connector-warning", () => {
     connectorWarnings(
       { warn: (line) => lines.push(plainText(line)) },
       undefined,
-      () => undefined,
+      noFiles,
     )(listingFailed(4, { why: "program-missing", name: "npx-nope" }));
 
     expect(lines).toEqual([
@@ -120,7 +123,7 @@ verifies("cli.run-connector-warning", () => {
     const warn = connectorWarnings(
       { warn: (line) => lines.push(plainText(line)) },
       undefined,
-      () => undefined,
+      noFiles,
     );
 
     warn(listingFailed(4, { why: "secret-not-set", name: "handbook-token" }));
@@ -133,21 +136,33 @@ verifies("cli.run-connector-warning", () => {
     ]);
 
     const other: string[] = [];
-    connectorWarnings(
-      { warn: (line) => other.push(plainText(line)) },
-      "acme",
-      () => "library/connectors/handbook.connector.yaml",
-    )(listingFailed(4, { why: "other" }));
+    connectorWarnings({ warn: (line) => other.push(plainText(line)) }, "acme", {
+      fileOf: () => "library/connectors/handbook.connector.yaml",
+      isIntegration: () => false,
+    })(listingFailed(4, { why: "other" }));
     expect(other).toEqual([
       "! handbook couldn't list its tools, so they are off in this run.",
       "  To see why, run halonic tools review --dir acme handbook",
     ]);
   });
 
+  it("points an integration's connector to halonic doctor, not tools review", () => {
+    const lines: string[] = [];
+    connectorWarnings({ warn: (line) => lines.push(plainText(line)) }, "acme", {
+      fileOf: () => "library/connectors/handbook.connector.yaml",
+      isIntegration: (connector) => connector === "handbook",
+    })(listingFailed(4, { why: "other" }));
+
+    expect(lines).toEqual([
+      "! handbook couldn't list its tools, so they are off in this run.",
+      "  Its integration needs the sandbox and a trusted workspace to start. To check both, run halonic doctor --dir acme",
+    ]);
+  });
+
   it("says a plugin isn't trusted yet, or changed since, with halonic trust --plugin as the fix", () => {
     const lines: string[] = [];
     const warnings = (dir: string | undefined) =>
-      connectorWarnings({ warn: (line) => lines.push(plainText(line)) }, dir, () => undefined);
+      connectorWarnings({ warn: (line) => lines.push(plainText(line)) }, dir, noFiles);
 
     warnings("acme")(listingFailed(4, { why: "plugin-not-trusted", name: "files" }));
     warnings(undefined)(listingFailed(4, { why: "plugin-changed", name: "files" }));
@@ -167,7 +182,7 @@ verifies("cli.run-connector-warning", () => {
     const warn = connectorWarnings(
       { warn: (line) => lines.push(plainText(line)) },
       undefined,
-      () => undefined,
+      noFiles,
     );
 
     warn({
