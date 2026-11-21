@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
+import type { SettingsSurface } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -39,11 +40,15 @@ function fakeHost(first: Status) {
   };
 }
 
-async function show(host: UnfencedYesHost, announce = vi.fn()) {
+async function show(
+  host: UnfencedYesHost,
+  surface: SettingsSurface = "window",
+  announce = vi.fn(),
+) {
   const toasts = createToastStore();
   const view = render(
     <ToastStoreProvider store={toasts}>
-      <UnfencedYesBlock host={host} announce={announce} />
+      <UnfencedYesBlock host={host} surface={surface} announce={announce} />
     </ToastStoreProvider>,
   );
   await act(async () => {});
@@ -61,6 +66,8 @@ verifies("settings.unfenced-yes-take-back", () => {
     const { view } = await show(fakeHost(allowed).host);
 
     expect(view.querySelector("h4")?.textContent).toBe("Plugins and integrations");
+    // The base heading ring marks its focus; outline-none would hide it in high contrast (C551).
+    expect(view.querySelector("h4")?.className).not.toContain("outline-none");
     expect(view.textContent).toContain(
       "The agent sandbox runs agents' programs. On Windows, plugin and integration code can't run in it yet, so it needs your yes.",
     );
@@ -140,7 +147,7 @@ verifies("settings.unfenced-yes-take-back", () => {
 
   it("takes the yes back through the host, says so once it's done and reads the status again", async () => {
     const fake = fakeHost(allowed);
-    const { view, toasts } = await show(fake.host);
+    const { view, toasts } = await show(fake.host, "phone");
     const shown = vi.spyOn(toasts, "show");
 
     await click(takeBackButton(view) as HTMLButtonElement);
@@ -178,7 +185,7 @@ verifies("settings.unfenced-yes-take-back", () => {
 
   it("keeps the yes and says why when the host can't take it back", async () => {
     const fake = fakeHost(allowed);
-    const { view, toasts } = await show(fake.host);
+    const { view, toasts } = await show(fake.host, "phone");
     const shown = vi.spyOn(toasts, "show");
 
     await click(takeBackButton(view) as HTMLButtonElement);
@@ -200,9 +207,25 @@ verifies("settings.unfenced-yes-take-back", () => {
     expect(fake.host.takeBack).toHaveBeenCalledTimes(2);
   });
 
+  it("ignores the toast's Try again while a Take back is still running", async () => {
+    const fake = fakeHost(allowed);
+    const { view, toasts } = await show(fake.host, "phone");
+    const shown = vi.spyOn(toasts, "show");
+
+    await click(takeBackButton(view) as HTMLButtonElement);
+    await fake.endTakeBack(new Error("The agent host didn't answer."));
+    await click(takeBackButton(view) as HTMLButtonElement);
+    expect(fake.host.takeBack).toHaveBeenCalledTimes(2);
+
+    // The first failure's toast still offers Try again; it must not start a second Take back.
+    await act(async () => shown.mock.calls[0]?.[0].action?.onClick());
+    expect(fake.host.takeBack).toHaveBeenCalledTimes(2);
+    expect(takeBackButton(view)?.getAttribute("aria-busy")).toBe("true");
+  });
+
   it("never shows an internal error's own text when Take back fails", async () => {
     const fake = fakeHost(allowed);
-    const { view, toasts } = await show(fake.host);
+    const { view, toasts } = await show(fake.host, "phone");
     const shown = vi.spyOn(toasts, "show");
 
     await click(takeBackButton(view) as HTMLButtonElement);
@@ -211,6 +234,51 @@ verifies("settings.unfenced-yes-take-back", () => {
     expect(shown).toHaveBeenCalledWith(
       expect.objectContaining({ text: "Halonic ran into a problem it can't explain yet." }),
     );
+  });
+
+  // A toast would wait behind the modal Settings dialog until it closes (C551).
+  it("says Taken back in place under the heading and through the live region in the dialog", async () => {
+    const fake = fakeHost(allowed);
+    const { view, toasts, announce } = await show(fake.host);
+    const shown = vi.spyOn(toasts, "show");
+
+    await click(takeBackButton(view) as HTMLButtonElement);
+    expect(announce).not.toHaveBeenCalled();
+    fake.setStatus({ run: "needs-yes", reason: "windows" });
+    await fake.endTakeBack();
+
+    const said =
+      "Taken back. Plugins and integrations won't start without the sandbox until you allow it again.";
+    expect(shown).not.toHaveBeenCalled();
+    expect(announce).toHaveBeenCalledWith(said);
+    expect(view.querySelector("h4")?.nextElementSibling?.textContent).toBe(said);
+    expect(document.activeElement?.textContent).toBe("Plugins and integrations");
+  });
+
+  it("says why under Take back and through the live region when the dialog's Take back is refused", async () => {
+    const fake = fakeHost(allowed);
+    const { view, toasts, announce } = await show(fake.host);
+    const shown = vi.spyOn(toasts, "show");
+    const button = takeBackButton(view) as HTMLButtonElement;
+
+    button.focus();
+    await click(button);
+    await fake.endTakeBack(
+      Object.assign(new Error("The agent host didn't answer."), { kind: "unavailable" }),
+    );
+
+    const said = "Couldn't take it back: The agent host didn't answer.";
+    expect(shown).not.toHaveBeenCalled();
+    expect(announce).toHaveBeenCalledWith(said);
+    const refused = takeBackButton(view)?.nextElementSibling;
+    expect(refused?.textContent).toBe(said);
+    expect(refused?.className).toContain("text-danger");
+    expect(document.activeElement).toBe(takeBackButton(view));
+    expect(view.textContent).toContain("Allowed without the sandbox");
+
+    // A second try clears the old reason while the host works.
+    await click(takeBackButton(view) as HTMLButtonElement);
+    expect(view.textContent).not.toContain(said);
   });
 });
 

@@ -30,9 +30,12 @@ type YesState =
 export interface UnfencedYesBlockProps {
   readonly host: UnfencedYesHost;
   readonly surface?: SettingsSurface | undefined;
-  /** Says the result where there are no toasts: the settings container's live region. */
+  /** Says the result in the dialog, or where there are no toasts: the settings container's live region. */
   readonly announce: (line: string) => void;
 }
+
+/** What **Take back** last said in place, in the Settings dialog. */
+type TakeBackResult = { readonly tone: "success" | "danger"; readonly line: string };
 
 /** The host's word on the yes, as the block shows it. */
 function yesStateOf(status: Awaited<ReturnType<UnfencedYesHost["status"]>>, now: Date): YesState {
@@ -69,14 +72,19 @@ function useUnfencedYes(host: UnfencedYesHost) {
  * Settings › Agent sandbox's "Plugins and integrations" (`settings.unfenced-yes-take-back`, R16):
  * while plugin code doesn't run in the sandbox on this computer, the heading and why it needs a
  * yes; while a yes is saved, the reason, the day and **Take back**; while the host can't say,
- * the heading, that it couldn't check and **Try again**. Taking it back goes through
- * the host, which stops every plugin running without the sandbox before it answers, so the toast
- * is true when it shows. The host still decides at every start; this block only shows and asks.
+ * the heading, that it couldn't check and **Try again**. Taking it back goes through the host,
+ * which stops every plugin running without the sandbox before it answers, so the result is true
+ * when it shows. The phone's page says it as a toast; the Settings dialog says it in place and
+ * through its live region, since a toast would wait behind the modal dialog (C551). The host
+ * still decides at every start; this block only shows and asks.
  */
 export function UnfencedYesBlock({ host, surface, announce }: UnfencedYesBlockProps) {
   const toasts = useToastStore();
   const { yes, read } = useUnfencedYes(host);
   const [takingBack, setTakingBack] = useState(false);
+  const [result, setResult] = useState<TakeBackResult | undefined>(undefined);
+  // A ref, not `takingBack`: the failure toast's Try again keeps the render it was made in.
+  const inFlight = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const say = (
     title: string,
@@ -84,16 +92,26 @@ export function UnfencedYesBlock({ host, surface, announce }: UnfencedYesBlockPr
     tone: "success" | "danger",
     action?: { readonly label: string; readonly onClick: () => void },
   ) => {
-    if (toasts) toasts.show({ tone, title, text: line, ...(action ? { action } : {}) });
-    else announce(title.endsWith(".") ? `${title} ${line}` : `${title}: ${line}`);
+    const said = title.endsWith(".") ? `${title} ${line}` : `${title}: ${line}`;
+    if (toasts && surface === "phone") {
+      toasts.show({ tone, title, text: line, ...(action ? { action } : {}) });
+      return;
+    }
+    if (surface !== "phone") setResult({ tone, line: said });
+    announce(said);
   };
 
   const takeBack = () => {
+    // One Take back at a time: Try again on an older toast waits for the one still running.
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setResult(undefined);
     setTakingBack(true);
     host.takeBack().then(
       async () => {
         say(text.TAKEN_BACK_TITLE, text.TAKEN_BACK_TEXT, "success");
         await read();
+        inFlight.current = false;
         setTakingBack(false);
         // The button is gone with the yes; the block's name keeps the focus in the section.
         heading.current?.focus();
@@ -103,6 +121,7 @@ export function UnfencedYesBlock({ host, surface, announce }: UnfencedYesBlockPr
           label: text.TRY_AGAIN,
           onClick: takeBack,
         });
+        inFlight.current = false;
         setTakingBack(false);
       },
     );
@@ -112,9 +131,13 @@ export function UnfencedYesBlock({ host, surface, announce }: UnfencedYesBlockPr
   const Heading = `h${sectionHeadingLevel(surface)}` as const;
   return (
     <div className="flex max-w-120 flex-col gap-2">
-      <Heading ref={heading} tabIndex={-1} className="text-body font-medium outline-none">
+      {/* No outline-none: the base heading ring marks the focus, high contrast included. */}
+      <Heading ref={heading} tabIndex={-1} className="text-body font-medium">
         {text.UNFENCED_TITLE}
       </Heading>
+      {result?.tone === "success" ? (
+        <p className="text-small text-fg-muted">{result.line}</p>
+      ) : null}
       {yes.state === "unread" ? (
         <NotReadRow onTryAgain={() => void read()} />
       ) : (
@@ -123,7 +146,13 @@ export function UnfencedYesBlock({ host, surface, announce }: UnfencedYesBlockPr
         </p>
       )}
       {yes.state === "allowed" ? (
-        <AllowedRow reason={yes.reason} day={yes.day} busy={takingBack} onTakeBack={takeBack} />
+        <AllowedRow
+          reason={yes.reason}
+          day={yes.day}
+          busy={takingBack}
+          refused={result?.tone === "danger" ? result.line : undefined}
+          onTakeBack={takeBack}
+        />
       ) : null}
     </div>
   );
@@ -142,13 +171,15 @@ function NotReadRow(props: { readonly onTryAgain: () => void }) {
 }
 
 /**
- * The saved yes: its reason and day, **Take back** and what taking it back does. For `windows`
- * only the day: the block's own line already says why (C553, HAL-15227).
+ * The saved yes: its reason and day, **Take back**, in the dialog why the host refused it, and what
+ * taking it back does. For `windows` only the day: the block's own line already says why (C553,
+ * HAL-15227).
  */
 function AllowedRow(props: {
   readonly reason: string;
   readonly day: string | undefined;
   readonly busy: boolean;
+  readonly refused: string | undefined;
   readonly onTakeBack: () => void;
 }) {
   const because =
@@ -173,6 +204,9 @@ function AllowedRow(props: {
       >
         {text.TAKE_BACK}
       </Button>
+      {props.refused === undefined ? null : (
+        <p className="text-small text-danger">{props.refused}</p>
+      )}
       <p className="text-small text-fg-muted">{text.TAKE_BACK_HINT}</p>
     </div>
   );
