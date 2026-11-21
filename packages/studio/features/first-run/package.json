@@ -15,7 +15,10 @@
   "dependencies": {
     "@halonicjs/app": "workspace:*",
     "@halonicjs/events": "workspace:*",
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/studio-feature-agents": "workspace:*",
     "@halonicjs/studio-feature-inbox": "workspace:*",
+    "@halonicjs/studio-feature-models": "workspace:*",
     "@halonicjs/studio-feature-runs": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",
