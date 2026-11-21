@@ -1,22 +1,12 @@
-import {
-  chmodSync,
-  cpSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, sep } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
-import { runCli } from "../../run-cli.ts";
-import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { goldenText, runGolden } from "../../test/golden.ts";
 import { checklistProblems } from "../../test/golden-checklist.ts";
+import { agent, smallWorkspace, validateIn, writeFiles } from "../../test/validate-workspace.ts";
 import { validateCommand } from "./command.ts";
 
 let folder: string;
@@ -26,32 +16,12 @@ let acme: string;
 beforeEach(() => {
   folder = mkdtempSync(join(tmpdir(), "halonic-cli-validate-"));
   acme = join(folder, "acme");
-  writeFiles(acme, {
-    "workspace.yaml": "id: acme\nname: Acme\n",
-    "models.yaml": "aliases:\n  fast:\n    provider: mock\n    model: echo\n",
-    "providers/mock.yaml": "type: mock\n",
-  });
+  writeFiles(acme, smallWorkspace);
 });
 
 afterEach(() => {
   rmSync(folder, { recursive: true, force: true });
 });
-
-function writeFiles(root: string, files: Readonly<Record<string, string>>): void {
-  for (const [path, text] of Object.entries(files)) {
-    const file = join(root, path);
-    mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, text);
-  }
-}
-
-/** An agent in the support hub that names the model alias `model`. */
-function agent(id: string, model: string): Readonly<Record<string, string>> {
-  return {
-    "hubs/support/hub.yaml": "id: support\nname: Support\n",
-    [`hubs/support/agents/${id}.agent.yaml`]: `id: ${id}\nname: ${id}\nmodel: ${model}\ninstructions: Sort the mail.\n`,
-  };
-}
 
 /** A connector that asks approval for a tool it doesn't allow: a warning, not an error. */
 const warnedConnector = {
@@ -66,15 +36,6 @@ const warnedConnector = {
     "",
   ].join("\n"),
 };
-
-async function validateIn(
-  cwd: string,
-  ...args: string[]
-): Promise<{ code: number; io: CapturedIo }> {
-  const io = captureIo(cwd);
-  const code = await runCli(["validate", ...args], io, [validateCommand]);
-  return { code, io };
-}
 
 verifies("cli.commands.validate.check-workspace", () => {
   describe("the report", () => {
@@ -445,74 +406,4 @@ verifies("workspace.unreadable-folder", () => {
       }
     },
   );
-});
-
-verifies("workflow.validate-wait-signal", () => {
-  // HAL-14310: the engine sends no signal from a wait step, so a routine on it would never start.
-  it("stops a signal on a wait step at its line, with exit 1", async () => {
-    writeFiles(acme, {
-      ...agent("writer", "fast"),
-      "hubs/support/workflows/review.workflow.yaml": [
-        "id: review",
-        "name: Review",
-        "initial: draft",
-        "states:",
-        "  draft:",
-        "    agent: writer",
-        "    on: [{ to: check }]",
-        "  check:",
-        "    type: wait",
-        "    signal: { name: review.done }",
-        "    on: [{ to: sent, event: approve }]",
-        "  sent:",
-        "    type: final",
-        "",
-      ].join("\n"),
-    });
-
-    const { code, io } = await validateIn(acme);
-
-    expect(code).toBe(exitCode.failed);
-    expect(io.stdout.slice(1, 2)).toEqual([
-      `  10:13  ✕ Wait step "check" can't send a signal. Put signal: on the step after it.  (wait-with-signal)`,
-    ]);
-  });
-});
-
-verifies("workflow.validate-input", () => {
-  /** The Acme example's Support reply, with `change` made to its file. */
-  function acmeWith(change: (text: string) => string): string {
-    const copy = join(folder, "acme-example");
-    cpSync(fileURLToPath(new URL("../../../../../examples/acme", import.meta.url)), copy, {
-      recursive: true,
-    });
-    const file = join(copy, "hubs/support/workflows/support-reply.workflow.yaml");
-    writeFileSync(file, change(readFileSync(file, "utf8")));
-    return copy;
-  }
-
-  // C337 row 1 (HAL-14267): the run gave the agent "(not set)" while validate said "No problems".
-  it("stops a gets of an input field the start form doesn't write, with exit 1", async () => {
-    const { code, io } = await validateIn(
-      acmeWith((text) => text.replace("gets: [input.mail]", "gets: [input.email]")),
-    );
-
-    expect(code).toBe(exitCode.failed);
-    expect(io.stdout.slice(1, 2)).toEqual([
-      '  11:12  ✕ "read" gets input.email, but the workflow\'s input has no field email. Did you mean input.mail?  (unknown-gets)',
-    ]);
-  });
-
-  // C337 row 3: the start form (Studio, phone) would write a field no step reads.
-  it("stops a start.field no step reads, once, with exit 1", async () => {
-    const { code, io } = await validateIn(
-      acmeWith((text) => text.replace("field: mail", "field: email")),
-    );
-
-    expect(code).toBe(exitCode.failed);
-    expect(io.stdout.slice(1, 3)).toEqual([
-      "  5:51  ✕ start.field is email, but no step reads input.email. The steps read input.mail: use one of those names as field, or add input.email to a step's gets.  (unread-start-field)",
-      "",
-    ]);
-  });
 });
