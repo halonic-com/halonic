@@ -394,7 +394,8 @@ the address bar and the history (`agent-host.google-callback-over-frames`).
 
 An integration's sign-in (HAL-12191, HAL-8613) has a second token-free route of
 its own: `GET /sign-in/<random>`, a prefix route of `host-server`, whose path is
-new for each start and whose redirect names the host's own port. The host
+new for each start and whose redirect names the host's own port, or in WSL
+the relay's. The host
 serves these routes only with a profile folder, and Studio starts it with one
 (`--profile-folder`), so they are live on a shipped host. It seals the grants
 with the profile's token key, as it does Google's tokens, in
@@ -410,11 +411,15 @@ that isn't a plugin still can't declare a sign-in (`sign-ins-not-allowed`),
 because only a plugin's trust check shows a sign-in's hosts. The callback has the
 same `Host` and `Origin` checks and the same defence, the sign-in's `state`
 (plus PKCE), and a path no sign-in waits on gets a plain 400 page that repeats
-nothing of the request. The relay passes only `/v1/google/callback` without the
-token, so in WSL a start of an integration's sign-in is refused
-(`501 callback_unavailable`) instead of sending a browser to a callback that
-can't arrive; passing a `/sign-in/` prefix would be a change to the relay and
-its own security review (`agent-host.integration-sign-in-routes`).
+nothing of the request. In WSL the relay passes it on without the token only
+in exactly the shape the host makes, `GET /sign-in/` and 43 base64url
+characters (HAL-13427), with the Google callback's rules: one request, no body,
+no reuse of the connection, a query of at most 2 KiB, and the same 4 places.
+A path of another shape needs the token. So the relay lets through one more
+family of token-free paths, all of which reach only the callback route: what a
+process on Windows can send there without the token it could already send to
+the host's own port elsewhere, and a path no sign-in waits on gets the 400 page
+(`agent-host.integration-sign-in-routes`).
 
 What the callback answers to, in relay mode as on the host's own port:
 

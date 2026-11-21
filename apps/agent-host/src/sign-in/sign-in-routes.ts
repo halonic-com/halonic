@@ -10,9 +10,8 @@ export interface IntegrationSignInRouteDeps {
   readonly signIns: SignInHost;
   /**
    * Set when the host serves over frames: the port of Studio's relay. The
-   * relay passes on without the launch token only the Google callback's path,
-   * so a sign-in's random callback path can't reach the host, and a start is
-   * refused rather than sent to a browser that can't come back.
+   * redirect names it, and the relay passes `/sign-in/<random>` on without
+   * the launch token (`relay-callback.md` of Studio's agent-host crate).
    */
   readonly relayPort?: number;
   /** Where the host writes what it keeps from a failure; the answer never carries it. */
@@ -50,11 +49,12 @@ const callbackPageHeaders = {
  * holds a code, a token or a client secret.
  *
  * - `POST /v1/integrations/sign-in/start` with `{ integration, signIn }`:
- *   answers `{ authorizeUrl }`. The redirect names this host's own port and a
- *   new random path under {@link signInCallbackPrefix}. 404 `unknown_integration`
+ *   answers `{ authorizeUrl }`. The redirect names this host's own port, or
+ *   the relay's over frames, and a new random path under
+ *   {@link signInCallbackPrefix}. 404 `unknown_integration`
  *   (also for a plugin the trust doesn't cover now) or `unknown_sign_in`; 422 `settings_invalid` (a setting the sign-in reads
  *   is missing or wrong) or `client_secret_missing`; 501 `callback_unavailable`
- *   over frames.
+ *   when the request's socket names no port.
  * - `POST /v1/integrations/sign-in/status` with `{ integration }`: answers
  *   `{ signIns: [{ signIn, state, lastOutcome? }] }` (see `SignInStatus`).
  * - `POST /v1/integrations/sign-in/cancel` with `{ integration, signIn }`:
@@ -79,13 +79,14 @@ const callbackPageHeaders = {
  */
 export function integrationSignInRoutes(deps: IntegrationSignInRouteDeps): HostRoute[] {
   /**
-   * The port the provider must send the browser back to: the one the request
-   * came in on. A connected socket always has one; without it, or behind the
-   * relay (whose port forwards only Google's callback), a start is refused
-   * with `callback_unavailable` rather than send the browser to a wrong port.
+   * The port the provider must send the browser back to, and the `Host` the
+   * callback names: the relay's over frames, otherwise the one the request
+   * came in on. A connected socket always has one; without it, a start is
+   * refused with `callback_unavailable` rather than send the browser to a
+   * wrong port.
    */
   const callbackPortOf = (request: IncomingMessage): number | undefined =>
-    deps.relayPort === undefined ? request.socket.localPort : undefined;
+    deps.relayPort ?? request.socket.localPort;
 
   function logFailure(error: unknown): void {
     const name = error instanceof Error ? error.name : "Error";
@@ -99,7 +100,7 @@ export function integrationSignInRoutes(deps: IntegrationSignInRouteDeps): HostR
     tokenFree: true,
     handle: async (request, response) => {
       try {
-        const port = request.socket.localPort;
+        const port = callbackPortOf(request);
         if (port === undefined) throw new Error("the request's socket has no local port");
         const host = `127.0.0.1:${port}`;
         const answer = await deps.signIns.handleCallback(

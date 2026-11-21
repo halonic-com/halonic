@@ -69,7 +69,8 @@ verifies("agent-host.integration-sign-in-routes", () => {
 
       const redirect = new URL(new URL(authorizeUrl).searchParams.get("redirect_uri") ?? "");
       expect(redirect.origin).toBe(url);
-      expect(redirect.pathname).toMatch(/^\/sign-in\/.+/u);
+      // Exactly the shape Studio's relay passes without the token (`relay-callback.md`).
+      expect(redirect.pathname).toMatch(/^\/sign-in\/[A-Za-z0-9_-]{43}$/u);
       const callback = example.server.approve(authorizeUrl);
       const page = await fetch(callback);
       expect(page.status).toBe(200);
@@ -298,16 +299,13 @@ verifies("agent-host.integration-sign-in-routes", () => {
       expect(logged).toEqual(["An integration sign-in request failed (RangeError).\n"]);
     });
 
-    it("answers 501 over frames, where the callback can't arrive", async () => {
+    it("names the relay's port in the redirect over frames", async () => {
       const { url } = await started({ relayPort: 49_152 });
 
-      const response = await post(url, "/v1/integrations/sign-in/start", {
-        integration: "example",
-        signIn: rig.signInName,
-      });
+      const authorizeUrl = await start(url);
 
-      expect(response.status).toBe(501);
-      expect(await response.json()).toMatchObject({ error: { kind: "callback_unavailable" } });
+      const redirect = new URL(new URL(authorizeUrl).searchParams.get("redirect_uri") ?? "");
+      expect(redirect.origin).toBe("http://127.0.0.1:49152");
     });
 
     it("answers 501, and starts nothing, when the request's socket names no local port", async () => {

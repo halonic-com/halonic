@@ -1,5 +1,6 @@
-//! The relay and the Google callback (HAL-10028): a stand-in host sees what
-//! the relay forwards of a connection without the token.
+//! The relay and the sign-in callbacks, Google's (HAL-10028) and an
+//! integration's (HAL-13427): a stand-in host sees what the relay forwards of
+//! a connection without the token.
 
 use std::io::Write;
 use std::net::Shutdown;
@@ -56,6 +57,39 @@ fn relay_callback_passes_the_head_without_the_token_and_closes_with_the_answer()
         b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n"
     );
     wait_until(|| open_connections(&relay) == 0);
+}
+
+#[test]
+fn relay_callback_passes_an_integration_sign_in_head_without_the_token() {
+    let (relay, mut host) = relay();
+    let mut client = connect(&relay);
+    let head = "GET /sign-in/abcdefghijklmnopqrstuvwxyzABCDEFGHIJ0123-_Q?state=a&code=b HTTP/1.1\r\nHost: 127.0.0.1:1\r\n\r\n";
+    client.write_all(head.as_bytes()).expect("send");
+
+    assert_eq!(host.next(), (1, OPEN, Vec::new()));
+    assert_eq!(host.next(), (1, DATA, head.as_bytes().to_vec()));
+    host.send(1, DATA, b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
+    host.send(1, super::END, &[]);
+    assert_eq!(
+        read_all(&mut client),
+        b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n"
+    );
+    wait_until(|| open_connections(&relay) == 0);
+}
+
+#[test]
+fn relay_callback_leaves_another_sign_in_path_to_the_token_deadline() {
+    let (relay, host) = relay_with_limits(Limits {
+        token: SHORT,
+        ..Limits::default()
+    });
+    let mut client = connect(&relay);
+    let sent = b"GET /sign-in/too-short HTTP/1.1\r\n\r\n";
+    client.write_all(sent).expect("send");
+
+    assert_eq!(host.next(), (1, OPEN, Vec::new()));
+    assert_eq!(data_until_reset(&host, 1), sent);
+    assert!(closed(&mut client));
 }
 
 #[test]

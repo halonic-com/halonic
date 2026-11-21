@@ -400,7 +400,7 @@ describe("run --stdio", () => {
     },
   );
 
-  it("refuses an integration's sign-in start, since the relay can't pass its callback", async () => {
+  it("serves an integration's sign-in start over frames, so it answers for the integration, not the setup", async () => {
     const profile = await mkdtemp(join(tmpdir(), "halonic-host-profile-"));
     try {
       const { relay, running } = relayed([
@@ -423,8 +423,9 @@ describe("run --stdio", () => {
       relay.streams.input.end();
       expect(await running).toBe(0);
 
-      expect(start.status).toBe(501);
-      expect(JSON.parse(start.body)).toMatchObject({ error: { kind: "callback_unavailable" } });
+      // The profile has no such plugin: no longer `501 callback_unavailable`.
+      expect(start.status).toBe(404);
+      expect(JSON.parse(start.body)).toMatchObject({ error: { kind: "unknown_integration" } });
     } finally {
       await rm(profile, { recursive: true, force: true });
     }

@@ -310,7 +310,7 @@ interface HostServices {
  * @param connectors - the folders the launcher named as workspaces, what a workspace connector's program may never reach, and the trust records it is checked against
  * @param google - the Google setup of the profile, or `undefined` without a profile folder (no Google route is served)
  * @param profile - the profile folder plugins and their trust are read from; `undefined` without one, and then no plugin call is served
- * @param relayPort - the relay's port in `--stdio` mode, which the Google sign-in's redirect names (an integration's sign-in can't start there yet); `undefined` when the host listens on its own port
+ * @param relayPort - the relay's port in `--stdio` mode, which the redirect of a Google or an integration's sign-in names; `undefined` when the host listens on its own port
  * @param choice - the choice service of this host's backend, `undefined` without a profile folder (no choice route is served)
  * @param wslRemover - removes Halonic's WSL distro, `undefined` without a profile folder (no `remove-wsl` route is served)
  * @param gateway - whether and where the remote gateway listens (requirement `agent-host.remote-gateway`)
