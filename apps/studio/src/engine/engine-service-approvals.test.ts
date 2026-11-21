@@ -4,6 +4,7 @@
 // `AgentHostBridges` over the host's routes, then the engine's approvals.
 
 import type { RunEvent } from "@halonicjs/events";
+import { noKeyOrigins } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { acmeFiles, fakeShell, location, serviceOn } from "./engine-service.testing.ts";
@@ -31,6 +32,7 @@ async function runOnAgentHost() {
         location,
         definitions,
         secrets: { get: async () => null },
+        keyOrigins: noKeyOrigins,
         isTrusted: async () => true,
         digest: { sha256: async () => new Uint8Array(32) },
         clock: { now: () => new Date("2026-11-18T10:00:00.000Z") },

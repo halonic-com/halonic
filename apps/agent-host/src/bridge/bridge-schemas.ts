@@ -11,8 +11,10 @@ const access = portSchema<BridgeProviderAccess>(
         secret: s.string().min(1),
         // A compatible provider's address and its file's id (HAL-12488): Studio
         // has already checked the key may go there; the bridge checks the URL.
+        // `models` are the only models the bridge spends the key on (HAL-13479).
         baseUrl: s.string().min(1).optional(),
         providerId: s.string().min(1).optional(),
+        models: s.array(s.string().min(1)).optional(),
       })
       .strict(),
     s.object({ kind: s.literal("sign-in") }).strict(),

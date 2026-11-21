@@ -46,21 +46,24 @@ verifies("studio.harness-bridge-keys", () => {
       prices: {},
     });
 
-    it("takes a key's compatible provider: its baseUrl and its file's id", () => {
+    it("takes a key's compatible provider: its baseUrl, its file's id and its models", () => {
       const zai = {
         kind: "key",
         secret: "zai-key",
         providerId: "zai",
         baseUrl: "https://api.z.ai/api/anthropic",
+        models: ["glm-5.3"],
       };
       expect(parse(openBridgeBody, body(zai))).toEqual({ ok: true, value: body(zai) });
       expect(parse(openBridgeBody, body({ kind: "key", secret: "zai-key" })).ok).toBe(true);
     });
 
-    it("refuses an empty baseUrl or provider id, and a field the port doesn't have", () => {
+    it("refuses an empty baseUrl, provider id or model, and a field the port doesn't have", () => {
       for (const anthropic of [
         { kind: "key", secret: "zai-key", baseUrl: "" },
         { kind: "key", secret: "zai-key", providerId: "" },
+        { kind: "key", secret: "zai-key", models: [""] },
+        { kind: "key", secret: "zai-key", models: "glm-5.3" },
         { kind: "key", secret: "zai-key", headers: { "x-api-key": "fake" } },
         { kind: "sign-in", baseUrl: "https://api.z.ai/api/anthropic" },
       ]) {

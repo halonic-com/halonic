@@ -11,7 +11,7 @@ import { harnessModelAccess, harnessProviderModel } from "@halonicjs/adapter-wor
 import type { HarnessModelNames } from "@halonicjs/engine";
 import {
   type DefinitionSource,
-  noKeyOrigins,
+  type KeyOrigins,
   type Secrets,
   workspaceSecrets,
 } from "@halonicjs/ports";
@@ -23,6 +23,8 @@ export interface StudioHarnessKeysInput {
   readonly definitions: DefinitionSource;
   /** The keychain, as `Secrets`. */
   readonly secrets: Secrets;
+  /** The addresses each saved key may be sent to, as the engine's model calls read them. */
+  readonly keyOrigins: KeyOrigins;
   /** Whether a person trusted exactly these files on this computer, as the engine's model calls ask. */
   isTrusted(workspace: LoadedWorkspace): Promise<boolean>;
 }
@@ -53,12 +55,12 @@ const signIn: BridgeAccess = {
  * `studio.harness-bridge-keys`). An agent whose file's `model` is an alias
  * gets the alias's provider on the bridge route its API is served on, and no
  * other route, after the same key check as the engine's model calls; every
- * other agent gets the program's own sign-in for both. The desktop keychain
- * keeps no origin list yet, so its keys stay on the trust rule, as the
- * engine's do.
+ * other agent gets the program's own sign-in for both. The key pays only for
+ * the alias's model: the program is asked for it on every call, so the
+ * bridge refuses any other.
  *
  * @example
- * const keys = studioHarnessKeys({ definitions, secrets, isTrusted });
+ * const keys = studioHarnessKeys({ definitions, secrets, keyOrigins, isTrusted });
  * await keys.accessOf({ runId, agentId: "coder", harness: "claude-code", hubId: "support", model: "open-coder-agent" });
  */
 export function studioHarnessKeys(input: StudioHarnessKeysInput): StudioHarnessKeys {
@@ -74,7 +76,7 @@ export function studioHarnessKeys(input: StudioHarnessKeysInput): StudioHarnessK
 
 /**
  * The agent's providers and prices: its alias's provider with the key, at its
- * `baseUrl`, and its price under the route, or sign-in when its file names
+ * `baseUrl`, for the alias's model only, and its price under the route, or sign-in when its file names
  * no alias.
  *
  * @throws what `harnessModelAccess` throws, so the run fails with the reason
@@ -84,7 +86,7 @@ async function accessOf(input: StudioHarnessKeysInput, agent: BridgeAgent): Prom
   const workspace = await loadWorkspace(input.definitions);
   const access = await harnessModelAccess(workspace, agent.hubId, agent.model, agent.harness, {
     isTrusted: () => input.isTrusted(workspace),
-    keyOrigins: noKeyOrigins,
+    keyOrigins: input.keyOrigins,
   });
   if (access === undefined) return signIn;
   return {
@@ -94,6 +96,7 @@ async function accessOf(input: StudioHarnessKeysInput, agent: BridgeAgent): Prom
         secret: access.secret,
         providerId: access.providerId,
         ...(access.baseUrl === undefined ? {} : { baseUrl: access.baseUrl }),
+        models: [access.model],
       },
     },
     prices: access.price === undefined ? {} : { [access.route]: { [access.model]: access.price } },

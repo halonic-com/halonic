@@ -6,7 +6,12 @@ import type {
 } from "@halonicjs/adapter-agent-host-client";
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import type { HarnessAgent } from "@halonicjs/engine";
-import type { BridgeApprovals, BridgeRecorder, SandboxProfile } from "@halonicjs/ports";
+import {
+  type BridgeApprovals,
+  type BridgeRecorder,
+  noKeyOrigins,
+  type SandboxProfile,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { openStudioHarnessHost, type StudioHarnessInput } from "./studio-harness-host.ts";
@@ -107,6 +112,7 @@ function inputOn(
         "---\nname: Tone\ndescription: The hub's.\n---\nThe hub's tone.\n",
     }),
     secrets: { get: async () => null },
+    keyOrigins: noKeyOrigins,
     isTrusted: async () => true,
     digest: { sha256: async () => new Uint8Array(32) },
     clock: { now: () => new Date("2026-11-18T10:00:00.000Z") },
@@ -279,7 +285,7 @@ verifies("studio.harness-bridge-keys", () => {
       const host = fakeHost({}, keyCall("zai-key"));
       const built = await openStudioHarnessHost(withKeys(host));
 
-      const bridge = await built.harnesses.bridges.open(coder, recorder);
+      const bridge = await built.harnesses.bridges.open(coder, recorder, "sandbox");
       await bridge.close();
 
       expect(host.opened).toEqual([
@@ -287,7 +293,13 @@ verifies("studio.harness-bridge-keys", () => {
           runId: "run_1",
           agentId: "coder",
           providers: {
-            anthropic: { kind: "key", secret: "zai-key", providerId: "zai", baseUrl: zaiAddress },
+            anthropic: {
+              kind: "key",
+              secret: "zai-key",
+              providerId: "zai",
+              baseUrl: zaiAddress,
+              models: ["glm-5.3"],
+            },
           },
           prices: { anthropic: { "glm-5.3": { input: 0.6, output: 2.2 } } },
         },
@@ -302,7 +314,7 @@ verifies("studio.harness-bridge-keys", () => {
       const host = fakeHost({}, keyCall("other-key"));
       const built = await openStudioHarnessHost(withKeys(host));
 
-      const bridge = await built.harnesses.bridges.open(coder, recorder);
+      const bridge = await built.harnesses.bridges.open(coder, recorder, "sandbox");
       await bridge.close();
 
       expect(host.answers).toEqual([{ bridge: "b1", call: "c1", result: null }]);

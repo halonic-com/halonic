@@ -1,4 +1,5 @@
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
+import { noKeyOrigins } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { acmeKeychain, acmeWithOpenCoder, zaiAddress } from "./studio-harness-keys.test-helper.ts";
@@ -8,6 +9,7 @@ function keysOf(overrides: Partial<StudioHarnessKeysInput> = {}) {
   return studioHarnessKeys({
     definitions: new MemoryDefinitionStore(acmeWithOpenCoder),
     secrets: acmeKeychain,
+    keyOrigins: noKeyOrigins,
     isTrusted: async () => true,
     ...overrides,
   });
@@ -25,14 +27,20 @@ const signIn = { anthropic: { kind: "sign-in" }, openai: { kind: "sign-in" } };
 
 verifies("studio.harness-bridge-keys", () => {
   describe("what a Studio harness agent's bridge reaches", () => {
-    it("gives an agent whose model is an alias its provider's key, at its baseUrl, with its price", async () => {
+    it("gives an agent whose model is an alias its provider's key, at its baseUrl, for its model only, with its price", async () => {
       const keys = keysOf();
 
       const access = await keys.accessOf(coder("open-coder-agent"));
 
       expect(access).toEqual({
         providers: {
-          anthropic: { kind: "key", secret: "zai-key", providerId: "zai", baseUrl: zaiAddress },
+          anthropic: {
+            kind: "key",
+            secret: "zai-key",
+            providerId: "zai",
+            baseUrl: zaiAddress,
+            models: ["glm-5.3"],
+          },
         },
         prices: { anthropic: { "glm-5.3": { input: 0.6, output: 2.2 } } },
       });
@@ -60,6 +68,23 @@ verifies("studio.harness-bridge-keys", () => {
         kind: "denied",
       });
       expect(asked).toBe(1);
+    });
+
+    it("refuses before naming the key when the key's allowed addresses leave out the provider's", async () => {
+      const asked: string[] = [];
+      const keys = keysOf({
+        keyOrigins: {
+          allowedOrigins: async (name) => {
+            asked.push(name);
+            return ["https://open.bigmodel.cn"];
+          },
+        },
+      });
+
+      await expect(keys.accessOf(coder("open-coder-agent"))).rejects.toMatchObject({
+        code: "key-origin-not-allowed",
+      });
+      expect(asked).toEqual(["zai-key"]);
     });
 
     it("refuses before the program starts an alias whose provider the agent's harness can't call", async () => {

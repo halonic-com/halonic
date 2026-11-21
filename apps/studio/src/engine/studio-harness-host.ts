@@ -38,6 +38,7 @@ import type {
   Clock,
   DefinitionSource,
   Digest,
+  KeyOrigins,
   Sandbox,
   SandboxSession,
   Secrets,
@@ -58,6 +59,8 @@ export interface StudioHarnessInput {
   readonly definitions: DefinitionSource;
   /** The keychain, as `Secrets`, which a bridge reads its agent's alias's key from. */
   readonly secrets: Secrets;
+  /** The addresses each saved key may be sent to, checked before a key is named. */
+  readonly keyOrigins: KeyOrigins;
   /** Whether a person trusted exactly these files on this computer, checked before a key is named. */
   readonly isTrusted: StudioHarnessKeysInput["isTrusted"];
   readonly digest: Digest;
