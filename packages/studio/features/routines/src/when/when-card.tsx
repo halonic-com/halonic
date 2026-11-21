@@ -24,8 +24,8 @@ export interface WhenCardProps {
 
 /**
  * The When card (`routines.when.when-card`): the trigger in words, the On/Off switch that applies
- * at once, and the next start times from the live version, with the line that only
- * `halonic routines watch` keeps them; a mail routine says mail doesn't start it yet. A routine
+ * at once, and the next start times from the live version, with the line that they start on time
+ * while Halonic is open; a mail routine says mail doesn't start it yet. A routine
  * that has never been live can't be turned on here yet, and says so; a change that can't be saved
  * is shown in the card and the switch goes back to what is saved.
  */
@@ -141,8 +141,8 @@ function notLiveLine(routine: RoutineView): string | undefined {
 }
 
 /**
- * The next start times in words, or "at the next check", followed by the line that only
- * `halonic routines watch` starts them on time. Shows nothing when there is no next start.
+ * The next start times in words, or "at the next check", followed by the line that they start on
+ * time while Halonic is open. Shows nothing when there is no next start.
  */
 function NextTimesLines({
   shown,

@@ -14,14 +14,12 @@ export const whenWords = {
   newTriggerNotLive: (live: string) =>
     `Your new trigger isn't live yet. Until it is, the routine keeps the live one: ${live}.`,
   /**
-   * Until the app has the scheduler, only `halonic routines watch` starts routines on time
-   * (HAL-12323): the same line as the CLI's, with the command shown as code.
+   * The app's engine starts routines on time while its window is open (HAL-14205); the engine
+   * that keeps running with the window closed (B1 of HAL-45) changes this line.
    */
   onTime: {
-    routine: "Starts on time only while",
-    routines: "Routines start on time only while",
-    command: "halonic routines watch",
-    end: "is running in a terminal.",
+    routine: "Starts on time while Halonic is open.",
+    routines: "Routines run while Halonic is open.",
   },
   /** `routines watch` checks no mailbox in 0.1, so a mail routine starts only with Run now (HAL-12323). */
   mailNotChecked: "Halonic doesn't check mail yet, so this routine starts only with Run now.",

@@ -7,14 +7,9 @@ export interface OnTimeHintProps {
 }
 
 /**
- * Says that routines start on time only while `halonic routines watch` is running in a terminal:
- * the app has no scheduler of its own yet, so a next time it shows is kept only by the command
- * (HAL-12323; "in a terminal" says where, HAL-12367).
+ * Says that routines start on time while Halonic is open: the app's engine starts them only while
+ * its window is open (HAL-14205).
  */
 export function OnTimeHint({ of }: OnTimeHintProps) {
-  return (
-    <>
-      {words.onTime[of]} <code>{words.onTime.command}</code> {words.onTime.end}
-    </>
-  );
+  return <>{words.onTime[of]}</>;
 }
