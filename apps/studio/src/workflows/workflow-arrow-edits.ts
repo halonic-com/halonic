@@ -20,8 +20,8 @@ export function writtenArrows(data: unknown, stepId: string): readonly unknown[]
  *
  * @param stepIds - the workflow's steps, which a new arrow must go to
  * @param written - the step's arrows as its file writes them (see {@link writtenArrows})
- * @throws `invalid_input` for an arrow to a step the workflow doesn't have, and an arrow that isn't
- *   there or can't move that way
+ * @throws `invalid_input` for an arrow to a step the workflow doesn't have, an arrow that isn't
+ *   there or can't move that way, and one that no longer goes to the move's `to`
  */
 export function arrowEdits(
   stepId: string,
@@ -46,6 +46,12 @@ export function arrowEdits(
   if (!inList(index) || !inList(place)) {
     throw new KindedError("invalid_input", "This arrow can't move that way.");
   }
+  if (recordOf(arrows[index])?.["to"] !== change.to) {
+    throw new KindedError(
+      "invalid_input",
+      "This step's arrows changed in the meantime. Look at them again, then move the arrow.",
+    );
+  }
   return [
     { kind: "delete", path: [...path, index] },
     { kind: "insert", path: [...path, place], value: arrows[index] },
@@ -54,9 +60,13 @@ export function arrowEdits(
 
 /** The map at `key` of `value`, or `undefined` when there is none. */
 function recordAt(value: unknown, key: string): Record<string, unknown> | undefined {
-  if (typeof value !== "object" || value === null || !Object.hasOwn(value, key)) return undefined;
-  const child = (value as Record<string, unknown>)[key];
-  return typeof child === "object" && child !== null && !Array.isArray(child)
-    ? (child as Record<string, unknown>)
+  const map = recordOf(value);
+  return map !== undefined && Object.hasOwn(map, key) ? recordOf(map[key]) : undefined;
+}
+
+/** `value` as a map, or `undefined` when it isn't one. */
+function recordOf(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
     : undefined;
 }

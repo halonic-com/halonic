@@ -364,7 +364,14 @@ export class WorkspaceWorkflows implements WorkflowsHost {
    */
   async changeArrows(ref: WorkflowRef, stepId: string, change: WorkflowArrowChange): Promise<void> {
     const { file, text } = await this.#fileOf(ref);
-    if (!Object.hasOwn(file.value.states, stepId)) throw stepGone(stepId);
+    const state = Object.hasOwn(file.value.states, stepId) ? file.value.states[stepId] : undefined;
+    if (state === undefined) throw stepGone(stepId);
+    if (state.type === "final") {
+      throw new KindedError(
+        "invalid_input",
+        `Step "${stepId}" ends the workflow, so it has no arrows.`,
+      );
+    }
     const read = readYaml(text);
     const written = read.ok ? writtenArrows(read.value.data, stepId) : undefined;
     const edits = arrowEdits(stepId, Object.keys(file.value.states), written, change);
