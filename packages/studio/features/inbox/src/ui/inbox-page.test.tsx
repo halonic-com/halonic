@@ -444,6 +444,7 @@ verifies("inbox.page", () => {
         "Next: Approve this reply? ·\u00a01\u00a0left",
       ]);
       expect(next.getAttribute("aria-label")).toBe("Next: Approve this reply?, 1 left");
+      expect(next.querySelector(".sr-only")).toBeNull();
     });
 
     it("has no Back link on the desktop", async () => {
