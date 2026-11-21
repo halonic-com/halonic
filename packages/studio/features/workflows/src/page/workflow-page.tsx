@@ -1,4 +1,5 @@
 import { sandboxStartCheckKey, startRunCommand } from "@halonicjs/app";
+import { stepsToSelect } from "@halonicjs/studio-feature-agents/api";
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import {
   openModelsOf,
@@ -49,6 +50,7 @@ import { stepCardIn } from "./step-card.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
 import { useOpenProblems } from "./use-open-problems.ts";
+import { useOutline } from "./use-outline.ts";
 import { useRename } from "./use-rename.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
 import { useWorkflowTrash } from "./use-workflow-trash.tsx";
@@ -62,6 +64,7 @@ const openBudgetCommand = "workspace.open-budget";
 /** The workflow's page in its tab: `item` names the workflow, the host gives its steps. */
 export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
   const { openItem, openPlace } = context;
+  const outline = stepsToSelect(step);
   const runsList = context.services.get(RunsListService);
   const openModels = openModelsOf(context);
   return (
@@ -71,6 +74,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       hubId={item.hub}
       id={item.id}
       {...(step === "tests" && { startOnTests: true, testsAsked: asked ?? 0 })}
+      {...(outline && { outline, outlineAsked: asked ?? 0 })}
       notAnswering={engineWordsOf(context).notAnswering}
       announceState={(key, text) => context.announcer.announceState(key, text)}
       announce={(line) => context.announcer.announce(line)}
@@ -122,6 +126,8 @@ export function WorkflowScreen({
   shownRuns,
   startOnTests,
   testsAsked = 0,
+  outline,
+  outlineAsked = 0,
   announceState,
   announce,
   saving,
@@ -182,6 +188,17 @@ export function WorkflowScreen({
     testsMade.current += 1;
     setMadeTest({ name: undefined, n: testsMade.current });
   });
+  // Steps another feature asked to see, such as those that run an agent: outlined on Flow, no card.
+  const { outlined, clear: clearOutline } = useOutline(
+    outline,
+    outlineAsked,
+    load,
+    announce,
+    () => {
+      showView("flow");
+      setPickedStep(undefined);
+    },
+  );
   const problemsAsk = useOpenProblems(view, madeTest, { setDock, setMadeTest, showView });
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
@@ -383,11 +400,18 @@ export function WorkflowScreen({
                 // A run dock goes with the strip, or it would wait for a run that is already listed.
                 setDock((now) => (typeof now === "object" ? undefined : now));
               }}
-              onSelectStep={setPickedStep}
+              onSelectStep={(stepId) => {
+                clearOutline();
+                setPickedStep(stepId);
+              }}
               edit={canvasEdit}
               pickedStep={pickedStep}
+              outlined={outlined}
               docked={docked}
-              onClearStep={() => setPickedStep(undefined)}
+              onClearStep={() => {
+                clearOutline();
+                setPickedStep(undefined);
+              }}
               kept={kept}
               onView={keep}
             />

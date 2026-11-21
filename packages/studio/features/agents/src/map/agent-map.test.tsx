@@ -228,7 +228,9 @@ verifies("agents.map.clicks", () => {
         )
         ?.click(),
     );
-    expect(openWorkflow).toHaveBeenCalledWith(expect.objectContaining({ id: "support-reply" }));
+    expect(openWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "support-reply", stepIds: ["sort", "reply"] }),
+    );
     await act(async () => buttonNamed(page, "Agent Sorter")?.click());
     expect(openAgent).toHaveBeenCalledWith(expect.objectContaining({ id: "sorter" }));
     await act(async () => buttonNamed(page, "Skill Tone")?.click());

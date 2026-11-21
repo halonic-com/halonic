@@ -28,6 +28,8 @@ import {
   type AgentsHost,
   AgentsHostService,
   type AgentToolList,
+  type AgentUser,
+  selectStepsStep,
 } from "../api.ts";
 import { Configuration, type ConfigurationStart } from "../configuration/configuration.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
@@ -92,8 +94,11 @@ export function AgentPage({ item, context, step, asked, Sections, sections }: It
         {...(openItem && {
           openAgent: (agent: AgentRef) =>
             openItem({ kind: "agent", hub: agent.hubId, id: agent.id }),
-          openWorkflow: (workflow: AgentRef) =>
-            openItem({ kind: "workflow", hub: workflow.hubId, id: workflow.id }),
+          openWorkflow: (workflow: AgentUser) =>
+            openItem(
+              { kind: "workflow", hub: workflow.hubId, id: workflow.id },
+              { step: selectStepsStep(workflow.stepIds) },
+            ),
           openRoutine: ({ hubId: hub, id: routine }: AgentRoutine) => {
             // A routine at the workspace's root has no page of its own yet, as on the Routines list.
             if (hub !== null) openItem({ kind: "routine", hub, id: routine });
@@ -122,8 +127,11 @@ export interface AgentScreenProps extends AgentRef {
   readonly announce?: ((text: string) => void) | undefined;
   /** Opens another agent's page, from a card's team chart; absent where the app can't. */
   readonly openAgent?: ((agent: AgentRef) => void) | undefined;
-  /** Opens a workflow's page, from its card on the agent map; absent where the app can't. */
-  readonly openWorkflow?: ((workflow: AgentRef) => void) | undefined;
+  /**
+   * Opens a workflow's page with the steps that run the agent outlined, from its card on the agent
+   * map; absent where the app can't.
+   */
+  readonly openWorkflow?: ((workflow: AgentUser) => void) | undefined;
   /** Opens a routine's page, from its card on the agent map; absent where the app can't. */
   readonly openRoutine?: ((routine: AgentRoutine) => void) | undefined;
   /** The sections other features add to the page, such as Triggers; Configuration lists them as pages. */

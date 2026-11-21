@@ -23,6 +23,9 @@ export const pageWords = {
   startChip: "Start",
   /** The tooltip on a step's output port (flow-workflows 4.3). */
   connectHint: "Drag to another step to connect",
+  /** Read once when the page opens with an agent's steps outlined: "2 steps use Sorter: triage, draft" (flow-workflows 9). */
+  outlined: (stepIds: readonly string[], agent: string) =>
+    `${stepIds.length} ${stepIds.length === 1 ? "step uses" : "steps use"} ${agent}: ${stepIds.join(", ")}`,
   /** The canvas's toolbar (flow-workflows 3.2, UX checklist 10.4). */
   toolbar: {
     label: "Flow tools",

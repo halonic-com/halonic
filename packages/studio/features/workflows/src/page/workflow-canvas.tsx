@@ -54,6 +54,7 @@ export function WorkflowCanvas({
   onSelectStep,
   edit,
   picked,
+  outlined,
   docked = false,
   onBackgroundClick,
 }: {
@@ -83,6 +84,8 @@ export function WorkflowCanvas({
    * absent, the canvas keeps its own.
    */
   readonly picked?: string | undefined;
+  /** The steps the page was opened to outline, with no card open (flow-workflows 9); absent is none. */
+  readonly outlined?: readonly string[] | undefined;
   /** A card is docked at the right: a step picked while it is pans clear of it. */
   readonly docked?: boolean | undefined;
   /** A click on the background, not a drag: the page closes the picked step's card. */
@@ -270,6 +273,7 @@ export function WorkflowCanvas({
                 box={box}
                 first={first}
                 selected={selected === step.id}
+                outlined={outlined?.includes(step.id) === true}
                 failed={failedStep === step.id}
                 mark={marks?.[step.id]}
                 problems={cardProblems(problems, step.id, stepName)}
