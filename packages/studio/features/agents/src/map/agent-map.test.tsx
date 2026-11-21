@@ -174,6 +174,18 @@ verifies("agents.map.add-button-per-side", () => {
       "Add a subagent to Refund checker",
     );
   });
+
+  it("opens the Add subagent dialog once per press, not again on coming back to Subagents", async () => {
+    const page = await openFlow({ id: "refunds" });
+    await act(async () => buttonNamed(page, "+ Add subagent")?.click());
+    const dialog = page.querySelector<HTMLElement>("dialog[open]");
+    await act(async () => (dialog && buttonNamed(dialog, "Cancel"))?.click());
+    expect(page.querySelector("dialog[open]")).toBeNull();
+    await act(async () => tabNamed(page, "Tools")?.click());
+    await act(async () => tabNamed(page, "Subagents")?.click());
+    expect(tabNamed(page, "Subagents")?.getAttribute("aria-selected")).toBe("true");
+    expect(page.querySelector("dialog[open]")).toBeNull();
+  });
 });
 
 verifies("agents.map.clicks", () => {

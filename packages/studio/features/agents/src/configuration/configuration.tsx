@@ -12,6 +12,7 @@ import type { ItemPageSectionListing, SectionsProps } from "@halonicjs/studio-sh
 import {
   type ComponentType,
   type ReactNode,
+  useEffect,
   useEffectEvent,
   useLayoutEffect,
   useState,
@@ -164,6 +165,12 @@ export function Configuration({
   const [picked, setPage] = useState<PageId>(start.page);
   const pages = pageTabs(sections, Sections);
   const page = shownPage(pages, picked);
+  // The Add subagent dialog opens once per press: once Subagents has been shown, coming back to it
+  // doesn't open the dialog again.
+  const [startAdding, setStartAdding] = useState(start.adding === true);
+  useEffect(() => {
+    if (page === "subagents") setStartAdding(false);
+  }, [page]);
   // The picker takes the focus once for each request, so a later click on Model doesn't move it.
   const [focusModel, setFocusModel] = useState(false);
   const modelShown = useEffectEvent(() => onModelShown?.());
@@ -248,7 +255,7 @@ export function Configuration({
                 settings={load.value}
                 openSubagent={openSubagent}
                 announce={announce}
-                startAdding={start.adding}
+                startAdding={startAdding}
               />
             )}
             {page === "agentSteps" && (
