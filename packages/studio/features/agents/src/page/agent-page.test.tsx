@@ -122,6 +122,13 @@ verifies("agents.page.frame", () => {
     expect(page.querySelector("h1")?.className).toContain("sr-only");
   });
 
+  it("lays the focusable title over the header's title on the desktop, its name for readers only (AG4)", async () => {
+    const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
+    const title = page.querySelector("h1");
+    expect(title?.className).toBe("pointer-events-none absolute inset-0 rounded-xs focus-ring");
+    expect(title?.innerHTML).toBe('<span class="sr-only">Sorter</span>');
+  });
+
   it("shows a skeleton only after 300 ms, and Still loading with Try again after 10 s", async () => {
     const slow: AgentsHost = { ...hostWith(), read: () => new Promise<AgentListing>(() => {}) };
     const page = await show(<AgentScreen host={slow} hubId="acme" id="sorter" />);
@@ -209,6 +216,16 @@ verifies("agents.page.rename", () => {
     await leave(nameInput(page));
     expect(await nameInFile(host)).toBe("Mail sorter");
     expect((await host.list()).map((agent) => agent.id)).toEqual(["sorter", "writer"]);
+  });
+
+  it("applies the name on Enter and keeps focus in the field (AG1)", async () => {
+    const host = twoAgents();
+    const page = await show(<AgentScreen host={host} hubId="acme" id="sorter" />);
+    act(() => nameInput(page).focus());
+    await typeInto(nameInput(page), "Mail sorter");
+    await press(nameInput(page), "Enter");
+    expect(await nameInFile(host)).toBe("Mail sorter");
+    expect(document.activeElement).toBe(nameInput(page));
   });
 
   it("says why a taken or empty name isn't applied, and puts the old one back", async () => {

@@ -51,7 +51,7 @@ async function openTools(
 /** The section of one list, by its heading. */
 const listNamed = (page: HTMLElement, heading: string) =>
   [...page.querySelectorAll("section")].find(
-    (section) => section.querySelector("h3")?.textContent === heading,
+    (section) => section.querySelector("h2")?.textContent === heading,
   ) as HTMLElement;
 
 const chips = (section: HTMLElement) =>
@@ -69,7 +69,7 @@ verifies("agents.configuration.tools", () => {
       "Subagents",
       "Agent steps",
     ]);
-    expect([...page.querySelectorAll("section h3")].map((h) => h.textContent)).toEqual([
+    expect([...page.querySelectorAll("section h2")].map((h) => h.textContent)).toEqual([
       "Skills",
       "Knowledge",
       "Connectors",
@@ -159,6 +159,17 @@ verifies("agents.configuration.tools", () => {
     expect(opened).toEqual(["connectors", "knowledge"]);
   });
 
+  it("describes each Open Library by its line and doesn't read the › (AG3)", async () => {
+    const page = await openTools(host({ knowledge: ["handbook"] }), () => {});
+    const button = buttonNamed(listNamed(page, "Connectors"), "Open Library ›") as HTMLElement;
+    const line = document.getElementById(button.getAttribute("aria-describedby") ?? "");
+    expect(line?.textContent).toBe("No connectors this hub can use yet.");
+    expect(button.querySelector('[aria-hidden="true"]')?.textContent).toBe(" ›");
+    expect(
+      buttonNamed(listNamed(page, "Knowledge"), "Open Library ›")?.getAttribute("aria-describedby"),
+    ).not.toBe(button.getAttribute("aria-describedby"));
+  });
+
   it("leaves out Open Library where the app can't open it", async () => {
     const page = await openTools(host());
     const connectors = listNamed(page, "Connectors");
@@ -190,7 +201,7 @@ verifies("agents.configuration.tools", () => {
     works = true;
     await act(async () => buttonNamed(page, "Try again")?.click());
     expect(page.textContent).not.toContain("Couldn't load the Library");
-    expect(document.activeElement).toBe(listNamed(page, "Skills").querySelector("h3"));
+    expect(document.activeElement).toBe(listNamed(page, "Skills").querySelector("h2"));
     expect(chips(listNamed(page, "Skills"))).toEqual(["Refund policy"]);
     expect(buttonNamed(listNamed(page, "Skills"), "Add skill")).toBeDefined();
   });

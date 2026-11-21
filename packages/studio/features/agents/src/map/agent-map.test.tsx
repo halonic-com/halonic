@@ -170,7 +170,7 @@ verifies("agents.map.add-button-per-side", () => {
     const page = await openFlow();
     await act(async () => buttonNamed(page, "+ Add a tool")?.click());
     expect(tabNamed(page, "Tools")?.getAttribute("aria-selected")).toBe("true");
-    await vi.waitFor(() => expect(document.activeElement?.tagName).toBe("H3"));
+    await vi.waitFor(() => expect(document.activeElement?.tagName).toBe("H2"));
     expect(document.activeElement?.textContent).toBe("Skills");
   });
 

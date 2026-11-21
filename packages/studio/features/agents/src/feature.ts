@@ -34,6 +34,10 @@ export const agentsFeature = defineFeature({
             item.id,
         }),
         exists: () => true,
+        // The window names the tab again when the host says the agents changed, so a rename shows
+        // on the tab as it does on the page (AG2, HAL-14377).
+        subscribe: (listener, context) =>
+          context.services.get(AgentsHostService).subscribe(listener),
       },
     });
     studio.search.addProvider({
