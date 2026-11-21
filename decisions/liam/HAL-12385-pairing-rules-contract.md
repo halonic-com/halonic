@@ -2,6 +2,7 @@
 
 - Approval: Liam planned it on HAL-12353 and split it out as HAL-12385; Julian reviews and signs it there
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:ag55JkdTPPJ/w6mxOnv7YxS6ICD2fbEIS4G/u6X0ZmruNESQ1Xn9JPrAefa3EEBoocvTtarWXR7EXk/etl80Bg==
 
 ## What changes
 
