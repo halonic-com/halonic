@@ -309,6 +309,7 @@ export function provideFolderServices(
       trusted: async () => trust.mayStartNow(),
       engine: { start: (start, trigger) => engine.startRoutine(start, trigger) },
       skips: (key) => engine.routineSkips(key),
+      onSkips: (listener) => engine.onRoutineSkips(listener),
       // Looked up when Make live is pressed, as the source control feature's services come later.
       versionDialog: (paths) => services.get(VersionDialogService).open(paths),
       askTrust,

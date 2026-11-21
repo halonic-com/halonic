@@ -94,6 +94,8 @@ export interface WorkspaceRoutinesParts {
   readonly askTrust?: () => Promise<"trusted" | "declined">;
   /** The times the scheduler dropped for a routine, by its key; none when absent. */
   readonly skips?: (key: string) => Promise<readonly StoredSkip[]>;
+  /** Calls `listener` each time the scheduler adds to a routine's skips, which starts no run. */
+  readonly onSkips?: (listener: () => void) => () => void;
   /**
    * The routine at a path from the workspace folder, as the live version has it and as it is saved
    * (core's `routineVersions`). Without it a routine counts as live and unchanged.
@@ -178,7 +180,11 @@ export class WorkspaceRoutines implements RoutinesHost {
   }
 
   subscribe(listener: () => void): () => void {
-    const stops = [this.#parts.onChange(listener), this.#parts.runs.subscribe(listener)];
+    const stops = [
+      this.#parts.onChange(listener),
+      this.#parts.runs.subscribe(listener),
+      this.#parts.onSkips?.(listener) ?? (() => undefined),
+    ];
     return () => {
       for (const stop of stops) stop();
     };

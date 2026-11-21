@@ -80,13 +80,12 @@ export interface RoutineTickResult {
   lastRunNotSaved: RoutineFailure[];
   /** Every due time waiting in the queue after the tick (`overlap: queue`), oldest first per routine. */
   queued: RoutineTime[];
-  /**
-   * Due times dropped because a run of the routine was going
-   * (`overlap: skip`), or because its queue was full.
-   */
+  /** Due times dropped because a run of the routine was going (`overlap: skip`) or its queue was full. */
   skipped: RoutineTime[];
   /** Due times whose target can't be started (`targetUnavailable`), recorded as `target-unavailable` skips. */
   unavailable: UnavailableTime[];
+  /** Routines whose skip records this tick added to, so a host can tell a page that shows them. */
+  skipsSaved: string[];
   /** Routines whose skipped times this tick could not add to their skip records. */
   skipsNotSaved: { key: string; error: Error }[];
 }
@@ -156,6 +155,7 @@ const nothing = (): RoutineTickResult => ({
   queued: [],
   skipped: [],
   unavailable: [],
+  skipsSaved: [],
   skipsNotSaved: [],
 });
 
@@ -307,9 +307,9 @@ export class RoutineScheduler<
       queued: plan.queue.map(timeOf),
       skipped: plan.skip.map(timeOf),
       unavailable: targets.unavailable,
-      // Before the starts, so a skip after this tick's run starts a row of its own.
-      skipsNotSaved: await skips.record(this.skipRecords, this.lastRuns, now),
     };
+    // Before the starts, so a skip after this tick's run starts a row of its own.
+    await skips.record(this.skipRecords, this.lastRuns, now, result);
     const refused = new TickSkips(); // Recorded after the starts, as a run of this tick ends a row.
     for (const run of plan.start) {
       if (this.disposed) {
@@ -319,7 +319,7 @@ export class RoutineScheduler<
       }
       await this.startAndRecord(run, result, refused);
     }
-    result.skipsNotSaved.push(...(await refused.record(this.skipRecords, this.lastRuns, now)));
+    await refused.record(this.skipRecords, this.lastRuns, now, result);
     // Stored after the starts: a crash in between repeats them, and the run ids make that harmless.
     // The queue goes first, so a crash before the last tick asks for the same times again and
     // they queue once. A lost race means another instance ticked too; its values stay.

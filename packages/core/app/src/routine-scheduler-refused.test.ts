@@ -111,5 +111,18 @@ verifies("app.scheduler-keeps-refused-starts", () => {
       ]);
       expect(rows[1]).not.toHaveProperty("sentence");
     });
+
+    it("names the routine in skipsSaved when a tick adds to its skips, and none when it drops nothing", async () => {
+      const { scheduler, at, state } = refusing();
+      await scheduler.tick();
+      state.refusal = new KindedError("unavailable", noField);
+      at("2026-11-03T08:00:20Z");
+      expect((await scheduler.tick()).skipsSaved).toEqual(["p/hourly"]);
+      state.refusal = null;
+      at("2026-11-03T09:00:20Z");
+      const started = await scheduler.tick();
+      expect(started.started).toHaveLength(1);
+      expect(started.skipsSaved).toEqual([]);
+    });
   });
 });

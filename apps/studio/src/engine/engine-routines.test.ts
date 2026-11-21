@@ -187,6 +187,10 @@ verifies("studio.engine-routines", () => {
     const { service, errors } = serviceWith(hourly, time, {
       agents: { writer: "connectors: [mail]\n" },
     });
+    let told = 0;
+    service.onRoutineSkips(() => {
+      told += 1;
+    });
     await service.open();
     await waitUntil("the scheduler's wake-up", time.armed);
 
@@ -204,6 +208,8 @@ verifies("studio.engine-routines", () => {
         count: 1,
       },
     ]);
+    // The open page hears of it, though no run started.
+    await waitUntil("the page is told", () => told === 1);
     await service.close();
   });
 

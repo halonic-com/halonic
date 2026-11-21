@@ -4,6 +4,7 @@
 
 import { errorKindOf } from "@halonicjs/std";
 import type { LastRuns } from "./routine-last-runs.ts";
+import type { RoutineTickResult } from "./routine-scheduler.ts";
 import type { SkippedTimes, SkipReason, SkipRecords } from "./routine-skips.ts";
 
 /** A range of a routine's due times the tick function dropped, with the routine key. */
@@ -89,27 +90,32 @@ export class TickSkips {
    * first so a skip after a run starts a new row. Call it before the tick
    * starts anything, so the last run is the one before this tick.
    *
-   * @returns the routines whose skips could not be stored, with why; the
-   *   tick goes on, since the runs matter more than their trace
+   * @param into the tick's result, which gets each routine whose skips are
+   *   stored in `skipsSaved`, once, and each whose skips could not be, with
+   *   why, in `skipsNotSaved`; the tick goes on, since the runs matter more
+   *   than their trace
    */
   async record(
     records: SkipRecords,
     lastRuns: LastRuns,
     decidedAt: Date,
-  ): Promise<{ key: string; error: Error }[]> {
+    into: Pick<RoutineTickResult, "skipsSaved" | "skipsNotSaved">,
+  ): Promise<void> {
     this.foldSingles();
-    const notSaved: { key: string; error: Error }[] = [];
     for (const [key, skips] of this.byKey) {
       try {
         const lastRun = await lastRuns.read(key);
         if (!(await records.add(key, skips, lastRun.at, decidedAt))) {
-          notSaved.push({ key, error: new Error("Other hosts kept changing the skip records.") });
+          const error = new Error("Other hosts kept changing the skip records.");
+          into.skipsNotSaved.push({ key, error });
+        } else if (!into.skipsSaved.includes(key)) {
+          into.skipsSaved.push(key);
         }
       } catch (error) {
-        notSaved.push({ key, error: error instanceof Error ? error : new Error(String(error)) });
+        const reason = error instanceof Error ? error : new Error(String(error));
+        into.skipsNotSaved.push({ key, error: reason });
       }
     }
-    return notSaved;
   }
 
   private foldSingles(): void {

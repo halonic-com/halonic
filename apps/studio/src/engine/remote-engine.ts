@@ -103,6 +103,11 @@ export class RemoteEngine {
     return [];
   }
 
+  /** Hears no skip records, as the engine's API doesn't serve them yet (HAL-15068). */
+  onRoutineSkips(_listener: () => void): () => void {
+    return () => undefined;
+  }
+
   /** Sends `event` to a waiting run (`RunExecutor.send`); the engine decides which answer was first. */
   send(
     runId: string,
