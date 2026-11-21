@@ -1,5 +1,5 @@
 import { defineMessages } from "./define.ts";
-import { markPart, phrase } from "./phrase.ts";
+import { dim, markPart, phrase } from "./phrase.ts";
 
 /**
  * The sentences `halonic serve` gives a caller of the served workspace. They
@@ -49,6 +49,24 @@ export const serveMessages = defineMessages("serve", {
    */
   webhookSecretNotOwn: (name: string, secret: string) =>
     phrase`${markPart("failed")} ${name} won't start: its secret name ${secret} belongs to Halonic or a plugin. Use a name of your own in its routine file.`,
+  /**
+   * The line under {@link webhookRoutine} when the routine has an error that
+   * `halonic validate` reports too, such as a `{{trigger.date}}` a web request
+   * has no value for, so the server refuses every signed request for it
+   * (HAL-15084). `reason` is validate's own sentence.
+   */
+  webhookRoutineInvalid: (name: string, reason: string) =>
+    phrase`${markPart("failed")} ${name} won't start: ${reason}`,
+  /**
+   * A signed web request the server refused with a 400 while it serves, with
+   * the server's reason, so the person at the terminal sees why the webhook
+   * started nothing (HAL-15084).
+   */
+  webhookRefused: (name: string, reason: string) =>
+    phrase`${markPart("failed")} ${name} didn't start on a web request: ${reason}`,
+  /** A web request for a routine that failed with a 500; its cause shows with `--debug`, as `requestFailed`. */
+  webhookFailed: (name: string) =>
+    phrase`${markPart("failed")} ${name} didn't start on a web request ${markPart("separator")} ${dim("see why with --debug")}`,
   /** The runtime's own line with the address for the phone, as it words it. */
   address: (line: string) => phrase`${line}`,
   /** The line under {@link serving} when the sign-in password is not set, so only this computer can open it. */

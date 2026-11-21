@@ -55,6 +55,7 @@ import { workspaceGoogleRead } from "./google-read.ts";
 import { startsOnLiveVersion } from "./live-version-runs.ts";
 import { workspaceModelSettings } from "./model-settings-gate.ts";
 import { studioPageIsOutdated } from "./studio-page-age.ts";
+import { reportWebhookRefusals } from "./webhook-refusals.ts";
 import { webhookRoutineLines } from "./webhook-routines.ts";
 import { servedWorkspaceFacts } from "./workspace-facts.ts";
 
@@ -248,6 +249,8 @@ async function listenOnComputer(
       serveMessages.requestFailed(printable(error instanceof Error ? error.message : String(error)))
         .phrase,
     );
+  const findWebhookRoutine = async (key: string) =>
+    (await versions.routines.list()).find((placed) => routineKey(placed) === key) ?? null;
   const countFolder = join(folders.folder, "serve-requests");
   await makePrivateFolder(countFolder);
   const ports: ServerPorts = {
@@ -265,10 +268,7 @@ async function listenOnComputer(
       root,
       workspace: () => versions.live(),
     }),
-    webhooks: {
-      find: async (key) =>
-        (await versions.routines.list()).find((placed) => routineKey(placed) === key) ?? null,
-    },
+    webhooks: { find: findWebhookRoutine },
     workspace: {
       // Both read at every request, from the live version as it is now: a rename shows once
       // it is committed, before a run starts from that commit.
@@ -288,16 +288,23 @@ async function listenOnComputer(
   };
   const listening = listenOnNode({
     createServer: (allowedHosts) =>
-      createServer({
-        config: {
-          deploymentId: "local",
-          version: halonicVersion,
-          minAppVersion: halonicVersion,
-          allowedHosts,
-          maxBodyBytes,
+      // A refused webhook delivery gets a line, so the terminal says why it started nothing (HAL-15084).
+      reportWebhookRefusals(
+        createServer({
+          config: {
+            deploymentId: "local",
+            version: halonicVersion,
+            minAppVersion: halonicVersion,
+            allowedHosts,
+            maxBodyBytes,
+          },
+          ports,
+        }),
+        {
+          routineName: async (key) => (await findWebhookRoutine(key))?.routine.name ?? null,
+          print: (line) => context.printAhead(line),
         },
-        ports,
-      }),
+      ),
     port: listen.port,
     network: listen.network,
     passwordIsSet: await passwordIsSet(context),
