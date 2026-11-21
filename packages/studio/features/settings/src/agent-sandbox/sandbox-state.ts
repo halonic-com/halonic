@@ -62,6 +62,10 @@ export type SandboxOutcome =
     }
   | { readonly kind: "setup"; readonly how: "check_failed"; readonly reason: string }
   | { readonly kind: "remove"; readonly how: "cancelled" }
+  /** The shell's helper still ran at its time limit and was left to finish (HAL-15091). */
+  | { readonly kind: "remove"; readonly how: "timed-out" }
+  /** The helper of an earlier press still runs; Windows wasn't asked again (HAL-15091). */
+  | { readonly kind: "remove"; readonly how: "still-running" }
   | {
       readonly kind: "remove";
       readonly how: "failed";
@@ -290,11 +294,20 @@ function chipOf(check: SandboxCheckFacts): SandboxView["chip"] {
   return check.state === "ready" ? { label: "Ready", tone: "success" } : null;
 }
 
-function calloutFor(outcome: SandboxOutcome): SandboxView["callout"] {
+/** The line of the Callout an outcome shows, as the section says it once (HAL-15091). */
+export function outcomeLine(outcome: SandboxOutcome): string {
+  return calloutFor(outcome).line;
+}
+
+function calloutFor(outcome: SandboxOutcome): NonNullable<SandboxView["callout"]> {
   if (outcome.kind === "remove") {
     switch (outcome.how) {
       case "cancelled":
         return { line: text.REMOVE_DENIED, action: null };
+      case "timed-out":
+        return { line: text.REMOVE_TOOK_TOO_LONG, action: null };
+      case "still-running":
+        return { line: text.REMOVE_STILL_RUNNING, action: null, note: true };
       case "failed":
         return {
           line: text.removeFailed(outcome.reason),

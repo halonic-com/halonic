@@ -88,29 +88,15 @@ verifies("studio.sandbox-remove-through-shell", () => {
 
   it.each([
     [{ outcome: "cancelled" } as const, { kind: "remove", how: "cancelled" }],
-    [
-      { outcome: "timed_out" } as const,
-      {
-        kind: "remove",
-        how: "failed",
-        reason: "Windows didn't finish removing it within 5 minutes.",
-      },
-    ],
-    [
-      { outcome: "still_running" } as const,
-      {
-        kind: "remove",
-        how: "failed",
-        reason: "the earlier removal is still running. Wait a minute, then try again.",
-      },
-    ],
+    [{ outcome: "timed_out" } as const, { kind: "remove", how: "timed-out" }],
+    [{ outcome: "still_running" } as const, { kind: "remove", how: "still-running" }],
     [
       { outcome: "failed", reason: "The system cannot find the file specified." } as const,
       {
         kind: "remove",
         how: "failed",
-        reason:
-          "Windows couldn't start the sandbox helper: The system cannot find the file specified.",
+        reason: "Windows couldn't start Halonic's sandbox helper.",
+        details: "The system cannot find the file specified.",
       },
     ],
   ])("ends the shell's %o without asking the host how", async (elevation, outcome) => {

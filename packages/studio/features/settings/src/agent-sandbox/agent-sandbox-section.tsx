@@ -15,7 +15,7 @@ import {
   type SettingsSectionProps,
   useCopyDetailsInPlace,
 } from "@halonicjs/studio-shell";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, type RefObject, useRef, useState } from "react";
 import {
   type AgentSandboxHost,
   AgentSandboxService,
@@ -86,6 +86,8 @@ export function AgentSandboxHostView({
   const sandbox = useAgentSandbox(host, place, announce);
   const start = useSandboxStart(startCheck, !sandbox.facts.available);
   const [removing, setRemoving] = useState(false);
+  // Remove the sandbox… leaves while the removal runs, so focus goes to its step (HAL-15091).
+  const status = useRef<HTMLOListElement>(null);
   const [removingWsl, setRemovingWsl] = useState(false);
   const [reloading, setReloading] = useState(false);
   const tryLoadAgain = () => {
@@ -129,6 +131,7 @@ export function AgentSandboxHostView({
         onSetUp={sandbox.setUp}
         onRemove={() => setRemoving(true)}
         onCheckAgain={sandbox.checkAgain}
+        statusRef={status}
         notAvailable={<NotAvailableLines start={start} announce={announce} />}
         newAgents={
           <>
@@ -160,6 +163,7 @@ export function AgentSandboxHostView({
             sandbox.remove();
           }}
           onCancel={() => setRemoving(false)}
+          returnFocus={() => status.current}
         >
           <p>{text.REMOVE_BODY}</p>
         </Dialog>
@@ -179,6 +183,8 @@ export interface AgentSandboxViewProps {
   readonly newAgents?: ReactNode;
   /** What follows the Not available chip in place of 13.1's one line, when the section can say why. */
   readonly notAvailable?: ReactNode;
+  /** The steps while one runs, which take focus when the Remove dialog closes. */
+  readonly statusRef?: RefObject<HTMLOListElement | null>;
 }
 
 const chipTones: Record<NonNullable<SandboxView["chip"]>["tone"], StatusChipTone> = {
@@ -206,6 +212,7 @@ export function AgentSandboxView({
   onCheckAgain,
   newAgents = null,
   notAvailable,
+  statusRef,
 }: AgentSandboxViewProps) {
   // In place, as the Callout's own: toasts wait while the Settings dialog is open (C529-5).
   const copyDetails = useCopyDetailsInPlace();
@@ -260,7 +267,12 @@ export function AgentSandboxView({
         </Callout>
       ) : null}
       {view.steps.length === 0 ? null : (
-        <ol className="flex flex-col gap-1 text-small" aria-live="polite">
+        <ol
+          ref={statusRef}
+          tabIndex={-1}
+          className="flex flex-col gap-1 text-small"
+          aria-live="polite"
+        >
           {view.steps.map((step) => (
             <li key={step.label}>
               <span aria-hidden="true">{marks[step.mark]} </span>
