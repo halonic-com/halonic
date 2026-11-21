@@ -97,7 +97,7 @@ function LoadedCollectionPage({
     );
   }
   if (!loaded || grid === undefined) {
-    return <p className="px-4 py-5 text-small text-fg-muted">{collectionWords.loading(item.id)}</p>;
+    return <p className="px-4 py-5 text-small text-fg-muted">{collectionWords.loading}</p>;
   }
 
   return (

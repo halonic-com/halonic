@@ -131,7 +131,7 @@ export class KnowledgeModel {
         this.set({
           ...this.state,
           failed: true,
-          failureReason: readFailureReason(error, knowledgeWords.couldntLoad(this.source.id), {
+          failureReason: readFailureReason(error, knowledgeWords.couldntLoad, {
             kindName: "knowledge source",
           }),
         });

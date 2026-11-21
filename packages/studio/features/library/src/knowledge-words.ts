@@ -29,7 +29,9 @@ export const knowledgeWords = {
   lookupTools: "Agents search when they decide to (tools)",
   lookupAuto: "Also search with the task before the first model call (auto)",
   notUsed: "No agent uses this source yet.",
-  loading: (name: string) => `Loading ${name}`,
-  couldntLoad: (name: string) => `Couldn't load ${name}`,
+  /** Never the id while it loads: that is a file name, not the name people gave the source. */
+  loading: "Loading the source…",
+  /** "This source", like skill and collection: the page has only the id, a file name (Sofia, HAL-15196). */
+  couldntLoad: "Couldn't load this source",
   unreadable: "This source's file can't be read here. Open it as a file to fix it.",
 } as const;

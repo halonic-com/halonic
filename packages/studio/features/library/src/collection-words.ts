@@ -2,7 +2,8 @@
 export const collectionWords = {
   kindName: "collection",
   place: "Library",
-  loading: (name: string) => `Loading ${name}`,
+  /** Never the id while it loads: that is a file name, not the name people gave the collection. */
+  loading: "Loading the collection…",
   couldntLoad: "Couldn't load this collection",
   tryAgain: "Try again",
   renameFailed: "Couldn't rename the collection.",

@@ -42,6 +42,12 @@ verifies("library.collection-page", () => {
       expect(chips(root)).toEqual(["All (1)", "open (1) · 45,00"]);
     });
 
+    it("says it is loading the collection while it reads, never its file name", async () => {
+      const { root } = await opened(undefined, undefined, { read: () => new Promise(() => {}) });
+      expect(root.textContent).toBe("Loading the collection…");
+      expect(root.textContent).not.toContain("claims");
+    });
+
     it("gives the reason a failed load came with", async () => {
       const { root } = await opened(undefined, undefined, {
         read: async () => {

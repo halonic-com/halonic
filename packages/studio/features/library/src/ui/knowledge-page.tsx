@@ -95,7 +95,7 @@ function LoadedKnowledgePage({
   if (failed && !loaded) {
     return (
       <LoadFailed
-        title={knowledgeWords.couldntLoad(item.id)}
+        title={knowledgeWords.couldntLoad}
         reason={failureReason}
         retryLabel={knowledgeWords.tryAgain}
         context={context}
@@ -104,7 +104,7 @@ function LoadedKnowledgePage({
     );
   }
   if (!loaded) {
-    return <p className="px-4 py-5 text-small text-fg-muted">{knowledgeWords.loading(item.id)}</p>;
+    return <p className="px-4 py-5 text-small text-fg-muted">{knowledgeWords.loading}</p>;
   }
   if (unreadable || parts === undefined) {
     return <EmptyState title={knowledgeWords.unreadable} />;
