@@ -14,9 +14,6 @@ While the app gives the window's yes to run plugin and integration code without 
 - Given the host can't say whether a yes is saved,
   when Settings › Agent sandbox opens,
   then it reads "Plugins and integrations" and "Couldn't check whether plugins may run without the sandbox." with **Try again**, and no **Take back**.
-- Given the host says a yes for `container` was saved on 9 Nov,
-  when Settings › Agent sandbox opens,
-  then the container reason in the words of `runnerUnfencedWords` comes before "Allowed on 9 Nov.".
 - Given **Take back** is pressed,
   when the host is still stopping the plugins that run without the sandbox,
   then nothing is said yet and **Take back** is busy.
