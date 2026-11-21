@@ -8,7 +8,7 @@ The agents feature shall open an agent in its tab as a page with the letter avat
 
 ## Examples
 
-- Given the agent "Sorter", then the page shows "AGENT" and "Sorter", its tabs Flow, Runs and Configuration, and opens on Flow.
+- Given the agent "Sorter", then the page shows "AGENT" and "Sorter", its tabs Flow, Configuration and Runs, and opens on Flow.
 - Given no workflow runs the agent "Sorter", then its Runs tab says "Runs aren't listed by agent yet. **Open the Runs page ›**" and "Sorter runs as a step in a workflow. Add it to one in Workflows."; pressing **Open the Runs page ›** opens the Runs page.
 - Given an app that can't open pages, then that line says "Runs aren't listed by agent yet." alone.
 - Given the workflow "Support reply" runs "Sorter", then its Runs tab says "Sorter runs as a step in Support reply. That workflow's runs are in Runs." and not that it has no runs; given two workflows run it, it says "Sorter runs as a step in 2 workflows. Their runs are in Runs.".

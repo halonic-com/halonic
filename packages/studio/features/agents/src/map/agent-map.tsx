@@ -45,7 +45,7 @@ const cardClasses =
   "flex w-full flex-col items-start gap-0.5 rounded-md border border-border bg-surface-raised px-3 py-2 text-start text-small text-fg";
 const pressableClasses = `${cardClasses} hover:bg-surface-subtle focus-ring`;
 const addClasses =
-  "w-full rounded-md border border-dashed border-border px-3 py-2 text-start text-small text-fg-muted hover:bg-surface-subtle focus-ring";
+  "w-full rounded-md border border-dashed border-border-strong px-3 py-2 text-start text-small text-fg-muted hover:bg-surface-subtle focus-ring";
 
 /**
  * The agent map (`agents.map.layout-by-side`, flow-agents 6): the agent in the centre with its
@@ -56,7 +56,7 @@ const addClasses =
  * below, right, so Tab goes card to card that way. A side with more than three cards shows one
  * summary card instead, which opens a drawer with all of them (`agents.map.side-summary-card`,
  * `agents.map.summary-drawer`). Its frame fits it to the panel and joins the cards to the centre
- * with curved lines (`agents.map.lines-and-fit`).
+ * with straight lines (`agents.map.lines-and-fit`).
  */
 export function AgentMap(props: AgentMapProps) {
   const { settings, openAgentStep } = props;

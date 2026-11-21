@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
 
-import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
+import {
+  createToastStore,
+  type Presentation,
+  PresentationProvider,
+  ToastStoreProvider,
+} from "@halonicjs/studio-kit";
 import { createCloseStack } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -85,11 +90,13 @@ const host = () =>
   });
 
 /** Opens Mail triage's page, which opens on Flow. */
-const openMap = () =>
+const openMap = (presentation: Presentation = "desktop") =>
   show(
-    <ToastStoreProvider store={createToastStore()}>
-      <AgentScreen host={host()} hubId="acme" id="triage" closeStack={createCloseStack()} />
-    </ToastStoreProvider>,
+    <PresentationProvider presentation={presentation}>
+      <ToastStoreProvider store={createToastStore()}>
+        <AgentScreen host={host()} hubId="acme" id="triage" closeStack={createCloseStack()} />
+      </ToastStoreProvider>
+    </PresentationProvider>,
   );
 
 const mapOf = (page: HTMLElement) =>
@@ -114,8 +121,9 @@ verifies("agents.map.lines-and-fit", () => {
 
   it("fits the map to the panel when it opens, with no zoom buttons", async () => {
     const page = await openMap();
-    // 896 wide in a 448 wide panel: half size, centred in the panel's height.
-    expect(mapOf(page)?.style.transform).toBe("translate(0px, 200px) scale(0.5)");
+    // 896 wide in a 448 wide panel: down to 0.8, the desktop's floor, centred in the panel's height;
+    // the panel scrolls for the rest.
+    expect(mapOf(page)?.style.transform).toBe("translate(0px, 140px) scale(0.8)");
     for (const name of ["Zoom in", "Zoom out", "Fit"]) {
       expect(buttonNamed(page, name)).toBeUndefined();
     }
@@ -137,9 +145,15 @@ verifies("agents.map.lines-and-fit", () => {
     act(() => vi.advanceTimersByTime(200));
     resized();
     act(() => vi.advanceTimersByTime(259));
-    expect(mapOf(page)?.style.transform).toBe("translate(0px, 200px) scale(0.5)");
+    expect(mapOf(page)?.style.transform).toBe("translate(0px, 140px) scale(0.8)");
     act(() => vi.advanceTimersByTime(1));
     // Never larger than its natural size: centred at 896 in 1200.
     expect(mapOf(page)?.style.transform).toBe("translate(152px, 100px) scale(1)");
+  });
+
+  it("never shrinks the map on a phone, so the panel scrolls instead", async () => {
+    const page = await openMap("phone");
+    // 896 wide in a 448 wide panel stays at its natural size, as at 200 % zoom in a 640 px window.
+    expect(mapOf(page)?.style.transform).toBe("translate(0px, 100px) scale(1)");
   });
 });

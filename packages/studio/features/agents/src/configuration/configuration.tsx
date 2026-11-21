@@ -15,6 +15,7 @@ import {
   useEffect,
   useEffectEvent,
   useLayoutEffect,
+  useRef,
   useState,
 } from "react";
 import type {
@@ -88,11 +89,14 @@ type PageId = BuiltPageId | `section:${string}`;
 
 /**
  * Where Configuration opens, for the agent map's add buttons: on a page, one of its own or a
- * section's by its id, and for Subagents, `adding` opens its Add subagent dialog.
+ * section's by its id. For Subagents, `adding` opens its Add subagent dialog; elsewhere `focus`
+ * moves the focus the button had to the page: Tools to its first heading once the lists are read,
+ * a section's page to its tab, since the section has no heading of its own.
  */
 export interface ConfigurationStart {
   readonly page: PageId;
   readonly adding?: boolean | undefined;
+  readonly focus?: boolean | undefined;
 }
 
 /** The pages that are built, in the order of flow-agents 5.1. */
@@ -171,6 +175,8 @@ export function Configuration({
   useEffect(() => {
     if (page === "subagents") setStartAdding(false);
   }, [page]);
+  // The add button's page takes the focus once; picking another page drops the request.
+  const [focusPage, setFocusPage] = useState(start.focus === true);
   // The picker takes the focus once for each request, so a later click on Model doesn't move it.
   const [focusModel, setFocusModel] = useState(false);
   const modelShown = useEffectEvent(() => onModelShown?.());
@@ -191,6 +197,7 @@ export function Configuration({
   const pickPage = (id: PageId) => {
     setPage(id);
     setFocusInstructions(false);
+    setFocusPage(false);
   };
   if (load.kind === "failed") {
     return (
@@ -214,6 +221,8 @@ export function Configuration({
         pages={pages}
         page={page}
         onPick={pickPage}
+        focusSelected={focusPage}
+        onFocused={() => setFocusPage(false)}
       />
       <PagePanel narrow={narrow} ids={ids} pages={pages} page={page}>
         {load.kind === "ready" ? (
@@ -247,7 +256,14 @@ export function Configuration({
               ))}
             {page === "harness" && <HarnessPage host={host} settings={load.value} save={save} />}
             {page === "tools" && (
-              <ToolsPage host={host} settings={load.value} save={save} openLibrary={openLibrary} />
+              <ToolsPage
+                host={host}
+                settings={load.value}
+                save={save}
+                openLibrary={openLibrary}
+                focusHeading={focusPage}
+                onFocused={() => setFocusPage(false)}
+              />
             )}
             {page === "subagents" && (
               <SubagentsPage
@@ -286,6 +302,8 @@ function PageList({
   pages,
   page,
   onPick,
+  focusSelected,
+  onFocused,
 }: {
   readonly narrow: boolean;
   readonly across: boolean;
@@ -293,7 +311,17 @@ function PageList({
   readonly pages: readonly Tab<PageId>[];
   readonly page: PageId;
   readonly onPick: (page: PageId) => void;
+  /** On a section's page, moves the focus to its tab, then calls `onFocused`. */
+  readonly focusSelected: boolean;
+  readonly onFocused: () => void;
 }) {
+  const list = useRef<HTMLDivElement>(null);
+  const focused = useEffectEvent(onFocused);
+  useEffect(() => {
+    if (!focusSelected || !page.startsWith("section:")) return;
+    list.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
+    focused();
+  }, [focusSelected, page]);
   if (narrow) {
     return (
       <div className="px-4 pt-4">
@@ -308,6 +336,7 @@ function PageList({
   }
   return (
     <div
+      ref={list}
       className={
         across
           ? "border-b border-border px-4 py-3"

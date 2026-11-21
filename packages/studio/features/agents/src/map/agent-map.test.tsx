@@ -158,12 +158,16 @@ verifies("agents.map.add-button-per-side", () => {
     await act(async () => buttonNamed(page, "+ Add trigger")?.click());
     expect(tabNamed(page, "Configuration")?.getAttribute("aria-selected")).toBe("true");
     expect(page.textContent).toContain("Section triggers");
+    // The section has no heading of its own, so its page's tab takes the focus the button had.
+    expect(document.activeElement).toBe(tabNamed(page, "Triggers"));
   });
 
-  it("opens Configuration › Tools from Add a tool", async () => {
+  it("opens Configuration › Tools from Add a tool, with the focus on its first heading", async () => {
     const page = await openFlow();
     await act(async () => buttonNamed(page, "+ Add a tool")?.click());
     expect(tabNamed(page, "Tools")?.getAttribute("aria-selected")).toBe("true");
+    await vi.waitFor(() => expect(document.activeElement?.tagName).toBe("H3"));
+    expect(document.activeElement?.textContent).toBe("Skills");
   });
 
   it("opens Subagents with its dialog from Add subagent", async () => {

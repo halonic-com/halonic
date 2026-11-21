@@ -24,7 +24,12 @@ export function AgentStepCard({
     [words.instructions, step.instructions],
     [words.model, step.model ?? words.agentStepModelAgent(agent.model)],
     [words.turnLimit, step.maxSteps?.toString() ?? words.agentStepLimitAgent(agent.maxSteps)],
-    [words.output, step.outputFields?.join(", ") ?? words.outputKinds.text],
+    [
+      words.output,
+      step.outputFields === undefined
+        ? words.outputKinds.text
+        : step.outputFields.join(", ") || words.outputKinds.json,
+    ],
     [
       words.pageNames.tools,
       step.tools === undefined
