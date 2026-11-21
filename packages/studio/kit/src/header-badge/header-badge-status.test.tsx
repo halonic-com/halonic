@@ -43,7 +43,7 @@ verifies("kit.header-badge-status", () => {
     const waiting = buttonIn(render(label("waiting", "Reconnecting…")).container);
     expect(waiting.className).toContain("bg-surface-muted text-fg");
     expect(dotOf(waiting).className).toContain("bg-attention");
-    const removed = buttonIn(render(label("danger", "Removed from this computer")).container);
+    const removed = buttonIn(render(label("danger", "Removed from your computer")).container);
     expect(removed.className).toContain("bg-danger-soft text-danger");
     expect(dotOf(removed).className).toContain("bg-danger");
   });

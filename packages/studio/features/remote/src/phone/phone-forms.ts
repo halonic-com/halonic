@@ -68,7 +68,7 @@ export function secondsText(waitMs: number): string {
  * and "waiting for you" is the same for any number (G15).
  */
 export function agentsAsOfText(running: number, waiting: number): string {
-  const keepRunning = "If the computer is on, they keep running.";
+  const keepRunning = "If your computer is on, they keep running.";
   const needsYou = "Anything that needs you waits.";
   if (running > 0 && waiting > 0) {
     return `${running} running, ${waiting} waiting for you. ${keepRunning} ${needsYou}`;

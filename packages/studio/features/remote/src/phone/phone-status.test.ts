@@ -23,7 +23,7 @@ verifies("remote.phone-status", () => {
         "Can't reach your computer. Details",
       ],
       ["phoneOffline", "Your phone is offline", "attention", "Your phone is offline. Details"],
-      ["removed", "Removed from this computer", "danger", "Removed from this computer. Details"],
+      ["removed", "Removed from your computer", "danger", "Removed from your computer. Details"],
       [
         "cantConfirm",
         "Can't confirm your computer",
@@ -78,7 +78,7 @@ verifies("remote.phone-status", () => {
       const tracker = trackerAt("connected");
       expect(tracker.change("unreachable", 1).announce).toBe("Can't reach your computer");
       expect(tracker.change("phoneOffline", 2).announce).toBe("Your phone is offline");
-      expect(tracker.change("removed", 3).announce).toBe("Removed from this computer");
+      expect(tracker.change("removed", 3).announce).toBe("Removed from your computer");
       expect(trackerAt("connected").change("cantConfirm", 1).announce).toBe(
         "Can't confirm your computer",
       );
