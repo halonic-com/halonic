@@ -1,4 +1,5 @@
 import type { RunSummary } from "@halonicjs/events";
+import type { Routine } from "@halonicjs/format";
 import { CronError, describeCron, nextRun, occurrences, routineKey } from "@halonicjs/routines";
 import type { RoutineNextTimes } from "@halonicjs/studio-feature-routines/api";
 import { type PlacedFile, runsOf } from "./routine-reads.ts";
@@ -44,6 +45,20 @@ export async function nextTimesOf(
   } catch (error) {
     // A cron or an interval that doesn't parse has no times; `read` lists it among the problems.
     if (error instanceof CronError) return none;
+    throw error;
+  }
+}
+
+/**
+ * The next time `routine`, as it runs, starts on its own; none when it is off or its trigger isn't
+ * a clock or doesn't parse.
+ */
+export function nextRunOf(routine: Routine, now: Date, timeZone: string): string | undefined {
+  if (!routine.enabled) return undefined;
+  try {
+    return nextRun(routine.trigger, now, timeZone)?.toISOString();
+  } catch (error) {
+    if (error instanceof CronError) return undefined;
     throw error;
   }
 }

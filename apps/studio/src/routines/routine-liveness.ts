@@ -3,6 +3,7 @@ import type { Routine } from "@halonicjs/format";
 import { describeTrigger } from "@halonicjs/routines";
 import type { RoutineLiveValues, RoutineView } from "@halonicjs/studio-feature-routines/api";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
+import type { RoutineVersionsAt } from "../changes/workspace-liveness.ts";
 import { type PlacedFile, runTargetName } from "./routine-reads.ts";
 
 /** The fields of a {@link RoutineView} that say whether the saved routine is the live one. */
@@ -44,4 +45,31 @@ export function livenessOf(
     liveSince: liveState.state === "not-live" ? liveState.since : undefined,
     live: liveValues,
   };
+}
+
+/** A routine's versions for a list, from one read of the live version; none where the app can't tell. */
+export type ListedVersionsAt = (path: string) => Promise<RoutineVersions | undefined>;
+
+/**
+ * Reads the live version once for a whole list, not once per routine (HAL-15370). When the history
+ * can't be read, or a routine's live version can't, the list falls back to the saved files, as in
+ * a folder that keeps no history, and reports why: only the routine's page fails with the error.
+ */
+export async function listedVersionsAt(
+  liveness: (() => Promise<RoutineVersionsAt>) | undefined,
+  reportError: (error: unknown) => void,
+): Promise<ListedVersionsAt> {
+  const asSaved: ListedVersionsAt = async () => undefined;
+  if (liveness === undefined) return asSaved;
+  const fallBack = (error: unknown): undefined => {
+    reportError(error);
+    return undefined;
+  };
+  try {
+    const versionsAt = await liveness();
+    return (path) => versionsAt(path).catch(fallBack);
+  } catch (error) {
+    fallBack(error);
+    return asSaved;
+  }
 }

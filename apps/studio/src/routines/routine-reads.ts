@@ -140,6 +140,17 @@ export function targetFor(choice: RoutineTargetChoice, prompt: string): RoutineT
     : { kind: "agent", hubId: choice.hubId, id: choice.id, prompt };
 }
 
+/**
+ * What a new routine made from `choice` runs. An agent's prompt is its real task, so an agent with
+ * no prompt is refused rather than written with a stand-in.
+ */
+export function targetWithPrompt(choice: RoutineTargetChoice, prompt: string): RoutineTarget {
+  if (choice.kind === "agent" && prompt.trim() === "") {
+    throw new KindedError("invalid_input", `Say what ${choice.name} should do.`);
+  }
+  return targetFor(choice, prompt);
+}
+
 export function targetFound(workspace: LoadedWorkspace, target: RoutineTarget): boolean {
   return targetsOf(workspace, target.hubId).some(
     (one) => one.kind === target.kind && one.id === target.id,
@@ -216,4 +227,11 @@ export function startsOwner(file: PlacedFile, owner: TriggerOwner): boolean {
 /** What a read of a routine the workspace doesn't have rejects with: Studio shows the item-gone state for it. */
 export function routineGone(): KindedError {
   return new KindedError("not_found", "This routine isn't in this workspace any more.");
+}
+
+/** The routine `ref` names in `workspace`; a routine that is gone throws {@link routineGone}. */
+export function findRoutine(workspace: LoadedWorkspace, ref: RoutineRef): PlacedFile {
+  const file = routineFiles(workspace).find((one) => one.hub === ref.hubId && idOf(one) === ref.id);
+  if (file === undefined) throw routineGone();
+  return file;
 }

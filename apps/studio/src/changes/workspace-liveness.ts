@@ -11,6 +11,9 @@ export interface WorkspaceLivenessParts {
   readonly saved: DefinitionSource;
 }
 
+/** The routine at a path from the workspace folder, as one read of the live version has it and as it is saved. */
+export type RoutineVersionsAt = (path: string) => Promise<RoutineVersions>;
+
 /**
  * Whether an item's saved file is what runs (core's `app.live-state`), read from the workspace's
  * history through the shell's `git`. Each call reads the live version afresh, so a new version or
@@ -32,9 +35,14 @@ export class WorkspaceLiveness {
     return liveState(await this.#input(), path);
   }
 
-  /** The routine at `path` as the live version has it and as it is saved. */
-  async routineVersions(path: string): Promise<RoutineVersions> {
-    return routineVersions(await this.#input(), path);
+  /**
+   * Reads the live version once, then gives the routine at any path as that version has it and as
+   * it is saved. A list asks for every routine from one read, not one read of the history each
+   * (HAL-15370).
+   */
+  async routineVersionsAt(): Promise<RoutineVersionsAt> {
+    const input = await this.#input();
+    return (path) => routineVersions(input, path);
   }
 
   /**
