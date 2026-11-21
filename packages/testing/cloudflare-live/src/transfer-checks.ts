@@ -26,19 +26,33 @@ const adminRoutes = [
 export class UnexpectedStatus extends Error {
   /** The status the Worker answered. */
   readonly status: number;
-  constructor(what: string, got: { status: number; code: string | undefined }, want: number) {
-    const code = got.code === undefined ? "" : ` ${got.code}`;
-    super(`${what} was answered ${got.status}${code}, expected ${want}.`);
+  constructor(what: string, got: StatusAnswer, want: number) {
+    const code = got.code ?? cloudflareErrorOf(got.text);
+    super(
+      `${what} was answered ${got.status}${code === undefined ? "" : ` ${code}`}, expected ${want}.`,
+    );
     this.name = "UnexpectedStatus";
     this.status = got.status;
   }
 }
 
-function expectStatus(
-  what: string,
-  got: { status: number; code: string | undefined },
-  want: number,
-) {
+interface StatusAnswer {
+  readonly status: number;
+  readonly code: string | undefined;
+  readonly text?: string;
+}
+
+/**
+ * Cloudflare's own error number in a page it answered for the Worker (such as 1101, the Worker threw),
+ * so a 5xx without a JSON `code` still says whether the Worker or Cloudflare gave it. Only the
+ * number: the page also names the host, and a page for a request with a key in it may hold the key.
+ */
+function cloudflareErrorOf(text: string | undefined): string | undefined {
+  const number = /error(?: code)?:?\s*(1\d{3})\b/i.exec(text ?? "")?.[1];
+  return number === undefined ? undefined : `Cloudflare error ${number}`;
+}
+
+function expectStatus(what: string, got: StatusAnswer, want: number) {
   if (got.status !== want) throw new UnexpectedStatus(what, got, want);
 }
 

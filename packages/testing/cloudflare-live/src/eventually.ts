@@ -15,8 +15,15 @@ export interface EventuallyOptions {
    * retrying every failure.
    */
   readonly retryIf?: (error: unknown) => boolean;
-  /** Tests inject this; defaults to a timer. */
+  /**
+   * Told about each failure `retryIf` lets through, with the try it happened on (counting from 1)
+   * and the milliseconds since the first try, so a run that runs out of tries shows how the
+   * answers went. Defaults to nothing.
+   */
+  readonly onRetry?: (attempt: number, elapsedMs: number, error: unknown) => void;
+  /** Tests inject this and `now`; they default to a timer and the clock. */
   readonly sleep?: (ms: number) => Promise<void>;
+  readonly now?: () => number;
 }
 
 /**
@@ -35,8 +42,11 @@ export async function eventually(
     passesInARow = 3,
     delayMs = 5_000,
     retryIf = () => true,
+    onRetry = () => {},
     sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
+    now = Date.now,
   } = options;
+  const started = now();
   let passes = 0;
   let lastError: unknown = new Error(`The check passed fewer than ${passesInARow} times in a row.`);
   for (let attempt = 1; attempt <= attempts; attempt++) {
@@ -46,6 +56,7 @@ export async function eventually(
       if (passes >= passesInARow) return;
     } catch (error) {
       if (!retryIf(error)) throw error;
+      onRetry(attempt, now() - started, error);
       passes = 0;
       lastError = error;
     }
