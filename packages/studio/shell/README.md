@@ -858,7 +858,10 @@ top bar's title and Back (only under a place's top), the bottom navigation's pro
 on an opened item, where it hides), and `open`, `openPlace`, `openIn`, `show`, `back` and `backFrom`
 (Back only while the page with that key shows). Every move that changes the page takes focus to the
 new page's `h1`, as on the desktop. Each page in a stack keeps a `PhonePageMemory` while pages above
-it are open: `KeptScroll` keeps its scroll there, and its view the row it pushed a page from.
+it are open: `KeptScroll` keeps its scroll there, and its view the row it pushed a page from. A
+place's view pushes such a page with `context.openPlacePage(place, sub, title)` (the bottom
+navigation hides), closes it with `closePlacePage(place, sub)` (nothing moves once the user has
+left it), and reads its memory as `PlaceViewProps.memory`.
 
 `usePhoneBackButton(enabled, closeStack, places)` handles Android's back, and the browser's when
 the Studio is served on a phone. The press arrives as a step back in the page's history, so the
