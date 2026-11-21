@@ -4,7 +4,9 @@ import { instructionFilesOf, pinInstructions } from "@halonicjs/adapter-harness-
 import type { InstructionPin } from "@halonicjs/ports";
 import { filesOf, type LoadedFileOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { OwnLineError } from "./command.ts";
+import { phrase } from "./messages/phrase.ts";
 import { trustInstructionsMessages } from "./messages/trust-instructions.ts";
+import type { InstructionSource } from "./output/instruction-trust-lines.ts";
 import { printable } from "./output/printable.ts";
 import { skillFileOf } from "./skill-file.ts";
 
@@ -63,4 +65,36 @@ export async function savedInstructionsPin(
     return await readFile(join(location, file.path), "utf8");
   });
   return files.length === 0 ? null : await pinInstructions(files);
+}
+
+/** A skill's file in a pin, as `instructionFilesOf` names it: `skills/<id>/SKILL.md`. */
+const skillInPin = /^skills\/(?<id>[^/]+)\/SKILL\.md$/u;
+
+/**
+ * Where a person reads each file of the agent's pin: `AGENTS.md` is the
+ * `instructions` in the agent's own file, and `skills/<id>/SKILL.md` is the
+ * skill's file in the workspace, which a removed skill may no longer have.
+ * The pin's names are the run's, not the person's, so the rows name these.
+ *
+ * @example
+ * instructionSourcesOf(workspace, coder)("skills/review/SKILL.md");
+ * // { label: "Skill review", path: "hubs/lab/library/skills/review/SKILL.md" } (the label as a phrase)
+ */
+export function instructionSourcesOf(
+  workspace: LoadedWorkspace,
+  agent: AgentFile,
+): (name: string) => InstructionSource {
+  return (name) => {
+    if (name === "AGENTS.md") {
+      return { label: trustInstructionsMessages.instructionsRow().phrase, path: agent.path };
+    }
+    const skillId = skillInPin.exec(name)?.groups?.["id"];
+    if (skillId === undefined) {
+      return { label: phrase`${printable(name)}`, path: undefined };
+    }
+    return {
+      label: trustInstructionsMessages.skillRow(printable(skillId)).phrase,
+      path: skillFileOf(workspace, agent.hub ?? "", skillId)?.path,
+    };
+  };
 }
