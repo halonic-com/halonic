@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { type LaunchRefusal, launchRequestRefusal } from "@halonicjs/host-server";
 import { demuxFrames, type FrameStreams } from "../stdio/frame-demuxer.ts";
+import type { HostConnection } from "../stdio/frame-stream.ts";
 
 /** Only this computer can reach the host: never another machine on the network. */
 const loopbackHost = "127.0.0.1";
@@ -126,6 +127,7 @@ export interface FramedHostServer {
  * {@link startHostServer}, but over a frame stream instead of a port
  * (see `demuxFrames`). Studio's relay listens on Windows' loopback for the
  * host, so the `Host` header must name the relay's port: `relayPort`.
+ * Frames on id 0 go to `host`, the host's own connection, when it has one.
  */
 export function serveHostOverFrames(
   token: string,
@@ -133,13 +135,14 @@ export function serveHostOverFrames(
   streams: FrameStreams,
   relayPort: number,
   limits: HostServerLimits = defaultHostServerLimits,
+  host?: HostConnection,
 ): FramedHostServer {
   const server = createHostServer(token, routes, limits, () => relayPort);
   // Node starts checking the time limits, and keeps the list `closeAllConnections`
   // ends, when the server starts listening. This one never does, so start them here.
   server.emit("listening");
   const accept = (connection: unknown) => server.emit("connection", connection);
-  const ended = demuxFrames(streams, accept, limits.maxConnections);
+  const ended = demuxFrames(streams, accept, limits.maxConnections, host);
   return { ended, close: () => stopServer(server) };
 }
 
