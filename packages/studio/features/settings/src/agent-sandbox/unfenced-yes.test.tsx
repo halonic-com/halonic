@@ -65,9 +65,9 @@ verifies("settings.unfenced-yes-take-back", () => {
       "The agent sandbox runs agents' programs. On Windows, plugin and integration code can't run in it yet, so it needs your yes.",
     );
     expect(view.textContent).toContain("Allowed without the sandbox");
-    expect(view.textContent).toContain(
-      "On Windows, plugin code can't run in the sandbox in this version of Halonic. Allowed on 9 Nov.",
-    );
+    // The block's line already says why for windows; the row adds only the day (C553 row 18).
+    expect(view.textContent).toContain("Allowed without the sandboxAllowed on 9 Nov.");
+    expect(view.textContent).not.toContain("plugin code can't run in the sandbox");
     expect(takeBackButton(view)).toBeDefined();
     expect(view.textContent).toContain(
       "Taking it back stops plugins and integrations that run without the sandbox. Halonic asks again the next time one starts.",
@@ -95,6 +95,12 @@ verifies("settings.unfenced-yes-take-back", () => {
     );
   });
 
+  it("keeps the reason before the day for every saved yes but windows", async () => {
+    const { view } = await show(fakeHost({ ...allowed, reason: "container" }).host);
+
+    expect(view.textContent).toMatch(/Allowed without the sandbox.+ Allowed on 9 Nov\./u);
+  });
+
   it("keeps Take back for a saved yes whose day can't be read, and leaves out the day", async () => {
     const { view } = await show(fakeHost({ ...allowed, allowedAt: "not a time" }).host);
 
@@ -103,16 +109,33 @@ verifies("settings.unfenced-yes-take-back", () => {
     expect(takeBackButton(view)).toBeDefined();
   });
 
-  it("shows nothing while plugin code runs in the sandbox, or when the host can't say", async () => {
+  it("shows nothing while plugin code runs in the sandbox", async () => {
     const fenced = await show(fakeHost({ run: "fenced" }).host);
     expect(fenced.view.textContent).toBe("");
+  });
 
-    const failing: UnfencedYesHost = {
-      status: () => Promise.reject(new Error("no host")),
-      takeBack: vi.fn(async () => {}),
-    };
-    const unknown = await show(failing);
-    expect(unknown.view.textContent).toBe("");
+  it("says it couldn't check, with Try again, when the host can't say, and claims no yes", async () => {
+    const status = vi
+      .fn<UnfencedYesHost["status"]>()
+      .mockRejectedValueOnce(new Error("no host"))
+      .mockResolvedValueOnce(allowed);
+    const { view } = await show({ status, takeBack: vi.fn(async () => {}) });
+
+    expect(view.querySelector("h4")?.textContent).toBe("Plugins and integrations");
+    expect(view.textContent).toContain(
+      "Couldn't check whether plugins may run without the sandbox.",
+    );
+    expect(view.textContent).not.toContain("Allowed without the sandbox");
+    expect(view.textContent).not.toContain("needs your yes");
+    expect(takeBackButton(view)).toBeUndefined();
+
+    const tryAgain = [...view.querySelectorAll("button")].find(
+      (button) => button.textContent === "Try again",
+    );
+    await click(tryAgain as HTMLButtonElement);
+
+    expect(status).toHaveBeenCalledTimes(2);
+    expect(takeBackButton(view)).toBeDefined();
   });
 
   it("takes the yes back through the host, says so once it's done and reads the status again", async () => {
@@ -159,15 +182,35 @@ verifies("settings.unfenced-yes-take-back", () => {
     const shown = vi.spyOn(toasts, "show");
 
     await click(takeBackButton(view) as HTMLButtonElement);
-    await fake.endTakeBack(new Error("The agent host didn't answer."));
+    await fake.endTakeBack(
+      Object.assign(new Error("The agent host didn't answer."), { kind: "unavailable" }),
+    );
 
     expect(shown).toHaveBeenCalledWith({
       tone: "danger",
       title: "Couldn't take it back",
       text: "The agent host didn't answer.",
+      action: { label: "Try again", onClick: expect.any(Function) },
     });
     expect(takeBackButton(view)?.getAttribute("aria-busy")).not.toBe("true");
     expect(view.textContent).toContain("Allowed without the sandbox");
+
+    // Try again on the toast asks the host once more.
+    shown.mock.calls[0]?.[0].action?.onClick();
+    expect(fake.host.takeBack).toHaveBeenCalledTimes(2);
+  });
+
+  it("never shows an internal error's own text when Take back fails", async () => {
+    const fake = fakeHost(allowed);
+    const { view, toasts } = await show(fake.host);
+    const shown = vi.spyOn(toasts, "show");
+
+    await click(takeBackButton(view) as HTMLButtonElement);
+    await fake.endTakeBack(new Error("EPIPE: broken pipe, write"));
+
+    expect(shown).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "Halonic ran into a problem it can't explain yet." }),
+    );
   });
 });
 

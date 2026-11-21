@@ -1,6 +1,6 @@
 import { runnerUnfencedWords } from "@halonicjs/app";
 import { Button, useToastStore } from "@halonicjs/studio-kit";
-import { type SettingsSurface, sectionHeadingLevel } from "@halonicjs/studio-shell";
+import { errorReasonFor, type SettingsSurface, sectionHeadingLevel } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { UnfencedYesHost } from "../api.ts";
 import * as text from "./sandbox-text.ts";
@@ -15,9 +15,13 @@ export function allowedDay(iso: string, now: Date): string | undefined {
   return day.getFullYear() === now.getFullYear() ? date : `${date} ${day.getFullYear()}`;
 }
 
-/** What the block shows: nothing yet, plugin code in the sandbox, a yes needed, or the saved yes. */
+/**
+ * What the block shows: nothing yet, a status it couldn't read, plugin code in the sandbox, a yes
+ * needed, or the saved yes.
+ */
 type YesState =
   | { readonly state: "unknown" }
+  | { readonly state: "unread" }
   | { readonly state: "fenced" }
   | { readonly state: "needs-yes"; readonly reason: string | undefined }
   | { readonly state: "allowed"; readonly reason: string; readonly day: string | undefined };
@@ -47,8 +51,8 @@ function useUnfencedYes(host: UnfencedYesHost) {
     const current = reads.current;
     const next = await host.status().then(
       (status) => yesStateOf(status, new Date()),
-      // A host that can't say shows nothing: nothing here may claim a yes it didn't read.
-      (): YesState => ({ state: "unknown" }),
+      // A host that can't say gets Try again, never a yes or a no it didn't read.
+      (): YesState => ({ state: "unread" }),
     );
     if (reads.current === current) setYes(next);
   }, [host]);
@@ -64,7 +68,8 @@ function useUnfencedYes(host: UnfencedYesHost) {
 /**
  * Settings › Agent sandbox's "Plugins and integrations" (`settings.unfenced-yes-take-back`, R16):
  * while plugin code doesn't run in the sandbox on this computer, the heading and why it needs a
- * yes; while a yes is saved, the reason, the day and **Take back**. Taking it back goes through
+ * yes; while a yes is saved, the reason, the day and **Take back**; while the host can't say,
+ * the heading, that it couldn't check and **Try again**. Taking it back goes through
  * the host, which stops every plugin running without the sandbox before it answers, so the toast
  * is true when it shows. The host still decides at every start; this block only shows and asks.
  */
@@ -73,8 +78,13 @@ export function UnfencedYesBlock({ host, surface, announce }: UnfencedYesBlockPr
   const { yes, read } = useUnfencedYes(host);
   const [takingBack, setTakingBack] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
-  const say = (title: string, line: string, tone: "success" | "danger") => {
-    if (toasts) toasts.show({ tone, title, text: line });
+  const say = (
+    title: string,
+    line: string,
+    tone: "success" | "danger",
+    action?: { readonly label: string; readonly onClick: () => void },
+  ) => {
+    if (toasts) toasts.show({ tone, title, text: line, ...(action ? { action } : {}) });
     else announce(title.endsWith(".") ? `${title} ${line}` : `${title}: ${line}`);
   };
 
@@ -89,11 +99,10 @@ export function UnfencedYesBlock({ host, surface, announce }: UnfencedYesBlockPr
         heading.current?.focus();
       },
       (error: unknown) => {
-        say(
-          text.TAKE_BACK_FAILED_TITLE,
-          error instanceof Error ? error.message : String(error),
-          "danger",
-        );
+        say(text.TAKE_BACK_FAILED_TITLE, errorReasonFor(error), "danger", {
+          label: text.TRY_AGAIN,
+          onClick: takeBack,
+        });
         setTakingBack(false);
       },
     );
@@ -106,9 +115,13 @@ export function UnfencedYesBlock({ host, surface, announce }: UnfencedYesBlockPr
       <Heading ref={heading} tabIndex={-1} className="text-body font-medium outline-none">
         {text.UNFENCED_TITLE}
       </Heading>
-      <p className="text-small text-fg-muted">
-        {yes.reason === "windows" ? text.UNFENCED_LINE : text.UNFENCED_LINE_HERE}
-      </p>
+      {yes.state === "unread" ? (
+        <NotReadRow onTryAgain={() => void read()} />
+      ) : (
+        <p className="text-small text-fg-muted">
+          {yes.reason === "windows" ? text.UNFENCED_LINE : text.UNFENCED_LINE_HERE}
+        </p>
+      )}
       {yes.state === "allowed" ? (
         <AllowedRow reason={yes.reason} day={yes.day} busy={takingBack} onTakeBack={takeBack} />
       ) : null}
@@ -116,21 +129,40 @@ export function UnfencedYesBlock({ host, surface, announce }: UnfencedYesBlockPr
   );
 }
 
-/** The saved yes: its reason and day, **Take back** and what taking it back does. */
+/** The status the host couldn't give: says so and offers **Try again**, never a yes or a no. */
+function NotReadRow(props: { readonly onTryAgain: () => void }) {
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <p className="text-small text-fg-muted">{text.UNFENCED_NOT_READ}</p>
+      <Button variant="ghost" size="sm" onClick={props.onTryAgain}>
+        {text.TRY_AGAIN}
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * The saved yes: its reason and day, **Take back** and what taking it back does. For `windows`
+ * only the day: the block's own line already says why (C553, HAL-15227).
+ */
 function AllowedRow(props: {
   readonly reason: string;
   readonly day: string | undefined;
   readonly busy: boolean;
   readonly onTakeBack: () => void;
 }) {
+  const because =
+    props.reason === "windows" ? "" : runnerUnfencedWords(props.reason, "plugin").reason;
+  const allowedOn = props.day === undefined ? "" : text.unfencedAllowedOn(props.day);
   return (
     <div className="flex flex-col items-start gap-2">
       <p className="text-small">
         <span className="block font-medium">{text.UNFENCED_ALLOWED}</span>
-        <span className="block text-fg-muted">
-          {runnerUnfencedWords(props.reason, "plugin").reason}
-          {props.day === undefined ? null : ` ${text.unfencedAllowedOn(props.day)}`}
-        </span>
+        {because || allowedOn ? (
+          <span className="block text-fg-muted">
+            {[because, allowedOn].filter((part) => part !== "").join(" ")}
+          </span>
+        ) : null}
       </p>
       <Button
         variant="secondary"
