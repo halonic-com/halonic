@@ -19,8 +19,8 @@ use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use halonic_update_state::{
-    CHECK_TIME_LIMIT, CheckResult, FIRST_CHECK_AFTER, JustUpdated, Managed, Migrated, RecordRead,
-    StartOutcome, UpdateState, UpdateStatus, UpdaterRecord, Version, check_due, detect_managed,
+    CheckResult, FIRST_CHECK_AFTER, JustUpdated, Managed, Migrated, RecordRead, StartOutcome,
+    UpdateState, UpdateStatus, UpdaterRecord, Version, check_due, detect_managed,
     migrate_settings_file, read_record, record_text,
 };
 use tauri::async_runtime::JoinHandle;
@@ -34,10 +34,13 @@ use download::start_download;
 
 #[path = "updates_check.rs"]
 mod check;
-use check::{available, check_failure};
+use check::{ask_for_update, available, check_failure};
 
 #[path = "updates_managed.rs"]
 mod managed;
+
+#[path = "updates_proxy.rs"]
+mod proxy;
 
 #[path = "updates_way_back.rs"]
 mod way_back;
@@ -330,10 +333,7 @@ async fn check<R: Runtime>(app: &AppHandle<R>) {
     if is_managed {
         return managed::check(app).await;
     }
-    let result = match app.updater_builder().timeout(CHECK_TIME_LIMIT).build() {
-        Ok(updater) => updater.check().await,
-        Err(error) => Err(error),
-    };
+    let result = ask_for_update(app).await;
     let mut inner = lock(app);
     inner.checking = false;
     match result {

@@ -73,6 +73,8 @@ setting and restart Halonic.
   as in curl. An empty value counts as not set.
 - **`HTTP_PROXY` is not read.** Halonic tunnels only `https`.
 - **`https://` and SOCKS proxies are not supported yet.**
+- **The Studio desktop app** uses the proxy for its model calls and for
+  checking and downloading updates, by the same rules.
 - **A password in the proxy URL travels unencrypted to an `http://` proxy.**
   That is normal for company proxies, but know it. Halonic never prints the
   user name or password, and never sends them to anything but the proxy.
@@ -81,6 +83,11 @@ setting and restart Halonic.
 - **A proxy that re-signs HTTPS** only works if Halonic trusts your company's
   certificate (`NODE_EXTRA_CA_CERTS=<path-to-certificate>`). A re-signing proxy
   sees your provider key. Whether to allow that is your company's decision.
+  The Studio desktop app doesn't read `NODE_EXTRA_CA_CERTS`. Its model calls
+  trust only the certificates built into it, so they don't work through a
+  re-signing proxy. Its update checks and downloads trust the certificates
+  installed on the computer. An app that Scoop updates is the exception: its
+  version check trusts only the built-in certificates too.
 - **The Studio desktop app reads the variables only if it can see them.** An
   app started from the Start menu, the Dock or Finder usually doesn't get
   variables set in a terminal. Start Studio from the shell where you set them,

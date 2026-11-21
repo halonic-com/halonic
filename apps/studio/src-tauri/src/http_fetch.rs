@@ -57,11 +57,17 @@ impl HttpFetchState {
         Self::with_proxy(ProxySetting::from_env(|name| std::env::var(name).ok()))
     }
 
-    fn with_proxy(proxy: ProxySetting) -> Self {
+    pub(crate) fn with_proxy(proxy: ProxySetting) -> Self {
         Self {
             calls: Mutex::default(),
             proxy: Arc::new(proxy),
         }
+    }
+
+    /// The proxy setting read at start. The updater uses it too, so the
+    /// whole app reads the environment once and follows one set of rules.
+    pub fn proxy(&self) -> Arc<ProxySetting> {
+        Arc::clone(&self.proxy)
     }
 
     fn add(&self, key: CallKey, abort: Abort) -> Result<(), FetchRefusal> {

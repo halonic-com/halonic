@@ -78,11 +78,14 @@ rfd = { version = "=0.17.2", default-features = false, features = ["gtk3", "comm
 # with tauri: 2.14.1 needs tauri ^2.12. Only rustls-tls, as for the http
 # plugin: no proxy settings from the operating system (a blocked check is
 # fine, C58), and no zip, which only old .zip update bundles need. Its
-# reqwest does read HTTPS_PROXY, HTTP_PROXY, ALL_PROXY and NO_PROXY by its
-# own rules (upper case first). That is safe, as the installer's signature
-# is checked; moving it to Halonic's rules is HAL-12966's next step. Never
-# granted to a page.
+# client follows Halonic's proxy rules, as `http_fetch` does (HAL-12966,
+# src/updates_proxy.rs), not reqwest's own reading of the environment.
+# Never granted to a page.
 tauri-plugin-updater = { version = "=2.14.1", default-features = false, features = ["rustls-tls"] }
+# The updater's own reqwest, named only so src/updates_proxy.rs can give its
+# client a proxy and a redirect policy. Pinned to the version the updater
+# resolves, with no features of our own, so it adds nothing to the build.
+reqwest = { version = "=0.13.5", default-features = false }
 
 # The pairing scanner (HAL-12246, build plan decision 16 on HAL-12232): the
 # official barcode-scanner plugin, approved in board decision 4c. The shell
@@ -100,6 +103,12 @@ halonic-device-keys = { path = "crates/device-keys" }
 # served page.
 [dev-dependencies]
 tauri = { version = "=2.12.5", features = ["test"] }
+
+# The updater's crypto provider, which it installs before it builds a client;
+# the updater's proxy tests install it the same way. Pinned to the version
+# the updater resolves, so it adds nothing to the build.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dev-dependencies]
+rustls = { version = "=0.23.46", default-features = false, features = ["ring"] }
 
 [lints]
 workspace = true

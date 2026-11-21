@@ -1,8 +1,25 @@
-//! What a check's answer means for the status (HAL-1206): the state for a
-//! version found, and why a check got no usable answer.
+//! One ask for an update, and what its answer means for the status
+//! (HAL-1206): the state for a version found, and why a check got no usable
+//! answer.
 
-use halonic_update_state::{CheckFailure, UpdateState, UpdaterRecord, Version, notes_url};
-use tauri_plugin_updater::Error as UpdaterError;
+use halonic_update_state::{
+    CHECK_TIME_LIMIT, CheckFailure, UpdateState, UpdaterRecord, Version, notes_url,
+};
+use tauri::{AppHandle, Runtime};
+use tauri_plugin_updater::{Error as UpdaterError, Update};
+
+use super::proxy::updater_on_proxy_rules;
+
+/// Asks the update server once, on Halonic's proxy rules and within the
+/// check's time limit.
+pub(super) async fn ask_for_update<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Result<Option<Update>, UpdaterError> {
+    let updater = updater_on_proxy_rules(app, |client| client)?
+        .timeout(CHECK_TIME_LIMIT)
+        .build()?;
+    updater.check().await
+}
 
 /// The state for a version the check found: available, unless its
 /// signature failed too often.
