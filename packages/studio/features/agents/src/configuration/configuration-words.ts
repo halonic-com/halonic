@@ -117,8 +117,10 @@ export const configurationWords = {
     /**
      * Under On this computer while this Studio can't start an agent outside its sandbox
      * (`studioStartsUnfenced`). Team decision by Sofia on HAL-13232, building on microcopy 23.4.
+     * It names `halonic run` too, which starts such an agent after its `!` line (HAL-15508).
      */
-    studioCantStart: "Studio can't start it this way; halonic serve on this computer can.",
+    studioCantStart:
+      "Studio can't start it this way yet; halonic run and halonic serve on this computer can.",
     /** Microcopy 23.4, the warning: title, two sentences, and its danger button. */
     warningTitle: (agent: string) => `Run ${agent} on this computer, without the sandbox?`,
     warningAccess: (agent: string) =>
@@ -130,7 +132,7 @@ export const configurationWords = {
     saving: "Saving…",
     /** Microcopy 23.4, "File changed, Harness page": the Callout while the choice is on hold. */
     onHold: (agent: string) =>
-      `${agent}'s file changed since you chose On this computer, so it won't run until you confirm again.`,
+      `${agent}'s file changed since you chose On this computer, so it runs in the sandbox until you confirm again.`,
     reviewAndConfirm: "Review and confirm",
     /**
      * The chip in the agent page's header while On this computer is chosen, on hold or not
