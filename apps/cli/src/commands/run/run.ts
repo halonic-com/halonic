@@ -17,7 +17,7 @@ import {
   workflowIn,
 } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
-import type { LoadedWorkspace } from "@halonicjs/workspace";
+import type { LoadedWorkspace, WorkflowRef } from "@halonicjs/workspace";
 import {
   type CommandContext,
   type CommandInput,
@@ -116,8 +116,15 @@ export async function followWorkflow(
   const { workspace, version, changesNotLive } = await liveWorkspace(dir, setup);
   const workspaceName = printable(workspaceNameOf(workspace, dir));
   // Before the lookup: a file with an error is left out, so its workflow
-  // would look missing (HAL-12978). The trust check below refuses it too.
-  refuseFileProblems(dir, workspace, runMessages.nothingRan(), typedDir);
+  // would look missing (HAL-12978); a workflow not found counts every error.
+  // The trust check below refuses it too.
+  refuseFileProblems(
+    dir,
+    workspace,
+    runMessages.nothingRan(),
+    typedDir,
+    foundWorkflow(workspace, typed),
+  );
   const harness = await runHarnessOf(
     optionText(input, "harness"),
     (setup.harnesses ?? nodeHarnessPrograms)(),
@@ -138,7 +145,7 @@ export async function followWorkflow(
     setup.trust(),
     typedDir,
     runMessages.nothingRan(),
-    harness,
+    workflow,
   );
   const givenInput = optionText(input, "input");
   const runInput = await runInputOf(givenInput, context.cwd);
@@ -292,6 +299,14 @@ async function followWithEvents(
  *
  * @throws OwnLineError when no hub, or more than one, has the workflow
  */
+/** The one hub's workflow the user typed, or `undefined` when no hub, or more than one, has it. */
+function foundWorkflow(workspace: LoadedWorkspace, typed: string): WorkflowRef | undefined {
+  const lookup = lookUpWorkflow(hubWorkflows(workspace), typed);
+  return lookup.found === "one"
+    ? { hubId: lookup.hubId, workflowId: lookup.workflow.id }
+    : undefined;
+}
+
 function workflowToRun(
   workspace: LoadedWorkspace,
   typed: string,

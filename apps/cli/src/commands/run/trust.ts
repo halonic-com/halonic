@@ -13,6 +13,7 @@ import type { TrustGrant } from "@halonicjs/ports";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { Message } from "../../messages/define.ts";
 import { runMessages } from "../../messages/run.ts";
+import type { SandboxGateRun } from "../../sandbox-gate.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
 import { refuseFileProblems } from "../../workspace-problems.ts";
 import { needsNoTrust, trustedGrant, type WorkspaceTrustMachine } from "../../workspace-trust.ts";
@@ -21,9 +22,9 @@ import { needsNoTrust, trustedGrant, type WorkspaceTrustMachine } from "../../wo
 export type RunTrustMachine = WorkspaceTrustMachine;
 
 /**
- * Refuses to go on when the workspace's files have errors, then unless the
- * workspace is trusted on this computer, or its run can only reach the test
- * model. A file with an error is left out of the loaded workspace, so the
+ * Refuses to go on when the workspace's files have errors that stop the run,
+ * then unless the workspace is trusted on this computer, or its run can only
+ * reach the test model. A file with an error is left out of the loaded workspace, so the
  * trust rule would judge a workspace the user didn't write, such as one
  * whose provider file was dropped for a pasted key (HAL-6613). A run that names a harness program
  * for all its agents, such as with `--harness codex`, reaches more than the
@@ -33,11 +34,12 @@ export type RunTrustMachine = WorkspaceTrustMachine;
  *
  * @param nothingDone - the end of line 1 saying nothing happened:
  *   `runMessages.nothingRan()`, the default, or `sandboxMessages.nothingSent()`
- * @param harness - the harness the run names for all its agents, if any
+ * @param run - the run's workflow, and the harness it names for all its
+ *   agents, if any; absent for `routines watch`, which runs every workflow
  * @returns the trust grant the run's connectors start with, or `null` for a
  *   run that can only reach the test model, which starts no program
- * @throws WorkspaceFileProblemsError when `halonic validate` would find an
- *   error in the workspace's files; nothing ran (exit 2)
+ * @throws WorkspaceFileProblemsError when the workspace's files have an
+ *   error that stops the run; nothing ran (exit 2)
  * @throws NotTrustedError when the workspace was never trusted here, or
  *   changed since; its check and fingerprint are shown, and nothing ran (exit 3)
  */
@@ -47,9 +49,9 @@ export async function checkRunTrust(
   machine: RunTrustMachine,
   typedDir: string | undefined,
   nothingDone: Message = runMessages.nothingRan(),
-  harness?: string,
+  run?: SandboxGateRun,
 ): Promise<TrustGrant | null> {
-  refuseFileProblems(dir, workspace, nothingDone, typedDir);
-  if (await needsNoTrust(dir, workspace, harness)) return null;
+  refuseFileProblems(dir, workspace, nothingDone, typedDir, run);
+  if (await needsNoTrust(dir, workspace, run?.harness)) return null;
   return await trustedGrant(dir, machine, typedDir, nothingDone, workspace);
 }

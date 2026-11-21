@@ -1,3 +1,4 @@
+import { workspaceProblemsOf } from "@halonicjs/adapter-workspace-models";
 import { loadWorkspace, type WorkspaceIssue } from "@halonicjs/workspace";
 import type { CliCommand, CommandInput } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
@@ -10,7 +11,6 @@ import {
 } from "../../output/validate-report.ts";
 import { computerSheetHosts } from "../../sheet-hosts.ts";
 import { dirOption, givenDir, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
-import { workspaceProblemsOf } from "../../workspace-problems.ts";
 
 /**
  * `halonic validate [--dir <folder>] [--all] [--strict]`: checks every file of

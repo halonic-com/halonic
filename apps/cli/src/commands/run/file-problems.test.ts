@@ -41,6 +41,23 @@ function freshProfile(): ProfileEnvironment {
   return { ...nodeProfileEnvironment(), variables: { HALONIC_HOME: home } };
 }
 
+/**
+ * Sends support-reply's spam through a step that calls a workflow `triage` of the support hub,
+ * which runs Acme's sorter, so a broken `triage` is a file support-reply uses.
+ */
+async function callTriage(): Promise<void> {
+  await writeFile(
+    join(acme, "hubs/support/workflows/triage.workflow.yaml"),
+    "id: triage\nname: Triage\ninitial: sort\nstates:\n  sort:\n    agent: sorter\n    on:\n      - to: done\n  done:\n    type: final\n",
+  );
+  const file = join(acme, "hubs/support/workflows/support-reply.workflow.yaml");
+  const text = (await readFile(file, "utf8")).replace("- to: ignored", "- to: triage");
+  await writeFile(
+    file,
+    `${text.trimEnd()}\n  triage:\n    type: workflow\n    workflow: triage\n    on:\n      - to: ignored\n`,
+  );
+}
+
 /** `halonic run` on a fixed clock and fixed ids, with its runs and trust records in `profile`. */
 function runCommand(profile: ProfileEnvironment = freshProfile()): CliCommand {
   return runCommandWith(testRunSetup(folder, profile));
@@ -84,13 +101,14 @@ verifies("cli.workspace-file-problems", () => {
       "type: antropic",
       "1 problem in providers/mock.yaml",
     ],
-    // One problem per hub whose workflow runs an agent without a model, on that agent's file.
+    // One problem per hub whose workflow runs an agent without a model, on that
+    // agent's file; only the support hub's stops support-reply (HAL-15127).
     [
       "a default alias no file has",
       "workspace.yaml",
       "model: default",
       "model: smart",
-      "2 problems in hubs/reports/agents/reporter.agent.yaml and hubs/support/agents/sorter.agent.yaml",
+      "1 problem in hubs/support/agents/sorter.agent.yaml",
     ],
   ])("refuses %s before anything starts, as validate does", async (_, path, from, to, found) => {
     const file = join(acme, path);
@@ -123,23 +141,53 @@ verifies("cli.workspace-file-problems", () => {
     ]);
   });
 
-  // C544-3 (HAL-15119): "Acme has 1 problem in its files." didn't say which file stopped the run.
-  it("names another workflow's file when its error stops the run", async () => {
+  // C544-3 (HAL-15119, HAL-15127): Studio ran support-reply while the CLI
+  // refused it for weekly-report, without saying which file stopped it.
+  it("runs a workflow while only another workflow's file has an error, and refuses that one by its file", async () => {
     const file = join(acme, "hubs/reports/workflows/weekly-report.workflow.yaml");
+    await writeFile(
+      file,
+      (await readFile(file, "utf8")).replace("agent: reporter", "agent: ghost"),
+    );
+    const profile = freshProfile();
+
+    const ran = await runCli(["run", "support-reply", ...samsEmail], captureIo(acme), [
+      runCommand(profile),
+    ]);
+    const io = captureIo(acme);
+    const refused = await runCli(["run", "weekly-report"], io, [runCommand(profile)]);
+
+    expect(ran).toBe(exitCode.ok);
+    expect(refused).toBe(exitCode.usage);
+    expect(io.stderr[0]).toBe(
+      "✕ Couldn't run weekly-report: Acme has 1 problem in hubs/reports/workflows/weekly-report.workflow.yaml. Nothing ran.",
+    );
+  });
+
+  // Without its settings, the workspace is named by its folder.
+  it.each([
+    ["workspace.yaml", "workspace.yaml", "acme"],
+    ["its hub's file", "hubs/support/hub.yaml", "Acme"],
+    ["another hub's file", "hubs/reports/hub.yaml", "Acme"],
+    ["a workflow it calls", "hubs/support/workflows/triage.workflow.yaml", "Acme"],
+  ])("refuses a run while %s has an error, naming it", async (_, path, name) => {
+    await callTriage();
+    const file = join(acme, path);
     await writeFile(file, `version: 2\n${await readFile(file, "utf8")}`);
     const io = captureIo(acme);
 
-    await runCli(["run", "support-reply", ...samsEmail], io, [runCommand()]);
+    const code = await runCli(["run", "support-reply", ...samsEmail], io, [runCommand()]);
 
+    expect(code).toBe(exitCode.usage);
     expect(io.stderr[0]).toBe(
-      "✕ Couldn't run support-reply: Acme has 1 problem in hubs/reports/workflows/weekly-report.workflow.yaml. Nothing ran.",
+      `✕ Couldn't run support-reply: ${name} has 1 problem in ${path}. Nothing ran.`,
     );
   });
 
   it("names the first file and counts the others when three files have errors", async () => {
     for (const path of [
       "hubs/support/workflows/support-reply.workflow.yaml",
-      "hubs/reports/workflows/weekly-report.workflow.yaml",
+      "hubs/support/hub.yaml",
     ]) {
       const file = join(acme, path);
       await writeFile(file, `version: 2\n${await readFile(file, "utf8")}`);

@@ -6,8 +6,9 @@
 // (HAL-14260); when none does, nothing fails yet, and it stays a warning.
 // An agent whose harness starts a program, such as Claude Code, asks that
 // program for no model when it names none, so it never uses the default.
+// The CLI's `validate`, `doctor` and run refusal and Studio's Run all add it
+// to the loader's issues, so it lives here (HAL-15127).
 
-import { startsAProgram, workflowAgentsOf } from "@halonicjs/adapter-workspace-models";
 import {
   callModelName,
   definitionsOf,
@@ -16,8 +17,21 @@ import {
   type LoadedWorkspace,
   placeOf,
   resolveModel,
+  unknownDefaultModelCode,
+  usesDefaultModel,
   type WorkspaceIssue,
 } from "@halonicjs/workspace";
+import { workflowAgentsOf } from "./workflow-agents.ts";
+
+/**
+ * Every problem `halonic validate` lists: the loader's, then a default model
+ * alias the hub doesn't have. `doctor`, the CLI's run refusal and Studio's
+ * Run count the same ones, so validate never says "No problems" for a
+ * workspace they refuse (HAL-14260, HAL-15127).
+ */
+export function workspaceProblemsOf(workspace: LoadedWorkspace): WorkspaceIssue[] {
+  return [...workspace.issues, ...defaultModelProblems(workspace)];
+}
 
 /**
  * One problem per hub with an agent that names no model, when the model such
@@ -30,6 +44,9 @@ import {
  * - **Error**, on the first such agent a workflow of the hub runs: a run of
  *   that workflow would stop when the agent calls the model.
  * - **Warning**, on the first such agent's file, when no workflow runs one.
+ *
+ * Either way it is on a file of the hub it is about, so `errorsStoppingRun`
+ * can tell which workflows' runs it stops: those using such an agent.
  *
  * @example
  * defaultModelProblems(await loadWorkspace(store));
@@ -50,7 +67,7 @@ export function defaultModelProblems(workspace: LoadedWorkspace): WorkspaceIssue
       file: agent.path,
       severity: runIds.has(agent.value.id) ? "error" : "warning",
       source: "check",
-      code: "unknown-default-model",
+      code: unknownDefaultModelCode,
       path: [],
       line: 1,
       col: 1,
@@ -67,8 +84,7 @@ export function defaultModelProblems(workspace: LoadedWorkspace): WorkspaceIssue
 function agentsOnDefaultModel(workspace: LoadedWorkspace): Map<string, LoadedFileOf<"agent">[]> {
   const byHub = new Map<string, LoadedFileOf<"agent">[]>();
   for (const agent of filesOf(workspace, "agent")) {
-    if (agent.hub === null || agent.value.model !== undefined) continue;
-    if (startsAProgram(agent.value.harness)) continue;
+    if (agent.hub === null || !usesDefaultModel(agent)) continue;
     byHub.set(agent.hub, [...(byHub.get(agent.hub) ?? []), agent]);
   }
   return byHub;

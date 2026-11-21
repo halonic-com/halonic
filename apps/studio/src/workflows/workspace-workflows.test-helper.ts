@@ -7,8 +7,9 @@ export const replyFile =
   "id: reply\nname: Reply\ninitial: first\nstates:\n  first:\n    type: final\n";
 
 /**
- * A {@link WorkspaceWorkflows} over files in memory, with the hubs acme and beta and acme's
- * `reply`: the store, the changes it was asked for, and the listeners it registered.
+ * A {@link WorkspaceWorkflows} over files in memory, with its settings, the hubs acme and beta and
+ * acme's `reply`: the store, the changes it was asked for, and the listeners it registered. Without
+ * `workspace.yaml`, every workflow would have its error (HAL-15127).
  */
 export function setup(
   runs: Partial<RunSummary>[] = [],
@@ -17,6 +18,7 @@ export function setup(
   settle?: WorkspaceWorkflowsParts["settle"],
 ) {
   const store: Record<string, string> = {
+    "workspace.yaml": "id: acme\nname: Acme\n",
     "hubs/acme/hub.yaml": "id: acme\nname: Acme\n",
     "hubs/beta/hub.yaml": "id: beta\nname: Beta\n",
     "hubs/acme/workflows/reply.workflow.yaml": replyFile,

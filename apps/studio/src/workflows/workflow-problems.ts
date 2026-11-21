@@ -1,3 +1,4 @@
+import { workspaceProblemsOf } from "@halonicjs/adapter-workspace-models";
 import type { WorkflowProblem } from "@halonicjs/studio-feature-workflows/api";
 import {
   filesOf,
@@ -19,13 +20,15 @@ export function workflowProblemsOf(
   file: LoadedFileOf<"workflow">,
 ): WorkflowProblem[] {
   const agents = filesOf(workspace, "agent").filter((one) => one.hub === file.hub);
-  return problemsOf(workspace, file).map((issue) => {
+  return problemsOf(workspace, workspaceProblemsOf(workspace), file).map((issue) => {
     const agent = agents.find((one) => one.path === issue.file);
     return {
       severity: issue.severity,
       code: issue.code,
       message: issue.message,
-      stepId: issue.path[0] === "states" ? String(issue.path[1]) : undefined,
+      // A called workflow's file has steps too, but they aren't this workflow's.
+      stepId:
+        issue.file === file.path && issue.path[0] === "states" ? String(issue.path[1]) : undefined,
       ...(agent && agentFacts(agent, issue)),
     };
   });
