@@ -1,8 +1,16 @@
-import { type AgentPlacement, type HostSettings, newAgentPlacement } from "@halonicjs/app";
+import {
+  type AgentPlacement,
+  type ChatAnswer,
+  type ChatAnswerRequest,
+  type HostSettings,
+  maxTurnLimit,
+  newAgentPlacement,
+} from "@halonicjs/app";
 import type { DefinitionSource } from "@halonicjs/ports";
 import { encodeUtf8, KindedError, slugify, uniqueName } from "@halonicjs/std";
 import type {
   AgentChange,
+  AgentChatRequest,
   AgentHarnessId,
   AgentHub,
   AgentListing,
@@ -73,6 +81,12 @@ export interface WorkspaceAgentsParts {
    * folder. Without it an agent counts as live, as a routine does, so the page shows no line.
    */
   readonly liveness?: (path: string) => Promise<AgentLiveState>;
+  /**
+   * Answers a chat on the workspace's engine: `ChatService.answer` on the engine's executor,
+   * which opens the engine on first use. Absent where there is no engine, which answers
+   * "The engine isn't answering."
+   */
+  readonly answerChat?: (request: ChatAnswerRequest) => Promise<ChatAnswer>;
 }
 
 /** What {@link WorkspaceAgents} applies Settings › New agents run (`sandbox.new-agents`) with. */
@@ -269,6 +283,27 @@ export class WorkspaceAgents implements AgentsHost {
       throw new Error("Halonic can't open a terminal on this computer from here.");
     }
     return openSignIn(ref, harness);
+  }
+
+  /**
+   * Answers a Try it message on the engine. The engine reads the agent by its id, so the answer
+   * uses the agent as it's saved, with its own tools; the chat adds none of its own.
+   */
+  async answer(ref: AgentRef, request: AgentChatRequest): Promise<ChatAnswer> {
+    const { agent } = await this.#find(ref);
+    const answerChat = this.#parts.answerChat;
+    if (answerChat === undefined) {
+      throw new KindedError("unavailable", "The engine isn't answering.");
+    }
+    return answerChat({
+      settings: { hubId: ref.hubId, agentId: ref.id },
+      messages: request.messages,
+      tools: [],
+      // The file allows up to 200 model calls; a chat answer stops at 64 turns.
+      turnLimit: Math.min(agent.maxSteps, maxTurnLimit),
+      ...(request.signal === undefined ? {} : { signal: request.signal }),
+      ...(request.listener === undefined ? {} : { listener: request.listener }),
+    });
   }
 
   /**

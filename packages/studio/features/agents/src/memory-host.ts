@@ -1,5 +1,7 @@
+import type { ChatAnswer } from "@halonicjs/app";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import type {
+  AgentChatRequest,
   AgentHarnessId,
   AgentHub,
   AgentListing,
@@ -51,6 +53,11 @@ export interface MemoryAgentsHostOptions {
     | undefined;
   /** What `liveState` answers for each agent, keyed by `hubId/id`; `live` when left out. */
   readonly liveStates?: Readonly<Record<string, AgentLiveState>> | undefined;
+  /**
+   * How `answer` answers a Try it message; by default the agent says "Done." and the answer ends.
+   * A test that drives a chat step by step gives its own.
+   */
+  readonly answer?: ((ref: AgentRef, request: AgentChatRequest) => Promise<ChatAnswer>) | undefined;
   /** The workflows that run each agent, keyed by `hubId/id` of the agent. */
   readonly users?: Readonly<Record<string, readonly AgentUser[]>> | undefined;
 }
@@ -197,6 +204,13 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
     liveState: async (ref) => {
       found(ref);
       return options.liveStates?.[keyOf(ref)] ?? "live";
+    },
+    answer: async (ref, request) => {
+      found(ref);
+      if (options.answer !== undefined) return options.answer(ref, request);
+      const message = { role: "assistant", content: "Done." } as const;
+      request.listener?.onMessage?.(message);
+      return { messages: [message], end: { reason: "answered" } };
     },
     filePath: async (ref) => {
       found(ref);
