@@ -1,4 +1,5 @@
 import type { ChatAnswerEnd } from "@halonicjs/app";
+import { errorKindOf } from "@halonicjs/std";
 import { useToastStore } from "@halonicjs/studio-kit";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentRef, AgentsHost } from "../api.ts";
@@ -31,17 +32,34 @@ export interface TryItChat {
   /** A reply is being written. */
   readonly answering: boolean;
   /**
+   * The engine stopped answering while the chat was open (H12): the transcript stays under "The
+   * engine isn't answering. Showing what it said last.", and nothing can be sent until it answers.
+   */
+  readonly engineQuiet: boolean;
+  /**
    * Whether a message may start now (H16). In a workspace this computer doesn't trust, it opens
    * the trust gate where there is one; on Not now, or with no gate, it shows "Not started: *Acme*
    * isn't trusted yet" and answers no, so the message stays in the box.
    */
   mayStart(): Promise<boolean>;
-  /** Sends `message` as the person's next message. */
-  send(message: string): void;
+  /**
+   * Opens the trust gate after the engine refused a message because the workspace isn't trusted,
+   * or shows the toast where there is no gate. Answers whether the person trusted it there.
+   */
+  askTrust(): Promise<boolean>;
+  /**
+   * Sends `message` as the person's next message. When the engine refuses it because the
+   * workspace isn't trusted (`denied`, H16), nothing was sent: the turn is taken back and
+   * `refused` gets the message, so it can go back in the box. It isn't shown as a failure.
+   */
+  send(message: string, refused?: (message: string) => void): void;
   /** Stops the reply being written; it ends with "Stopped by you.". */
   stop(): void;
-  /** Takes back the last turn and sends its message again (H13, H22, H23: only when no tool ran). */
-  tryAgain(): void;
+  /**
+   * Takes back the last turn and sends its message again (H13, H22, H23: only when no tool ran,
+   * and only once the engine answers).
+   */
+  tryAgain(refused?: (message: string) => void): void;
 }
 
 /**
@@ -57,6 +75,7 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
   const current = useRef<Transcript>(emptyTranscript);
   const [transcript, setShown] = useState<Transcript>(emptyTranscript);
   const [answering, setAnswering] = useState(false);
+  const { quiet: engineQuiet, lost: engineLost } = useEngineQuiet(host);
   const running = useRef<AbortController | undefined>(undefined);
   const toasts = useToastStore();
   const said = useRef({ name, announce });
@@ -71,7 +90,7 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
   useEffect(() => () => running.current?.abort(), []);
 
   const send = useCallback(
-    (message: string) => {
+    (message: string, refused?: (message: string) => void) => {
       if (running.current !== undefined) return;
       const stopper = new AbortController();
       running.current = stopper;
@@ -93,29 +112,90 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
           },
         })
         .then((answer) => finish(replyEndOf(answer.end)))
-        .catch((error: unknown) => finish(failureOf(error, toolsRanInLastTurn(current.current))));
+        .catch((error: unknown) => {
+          const kind = errorKindOf(error);
+          if (kind === "denied") {
+            running.current = undefined;
+            update((transcript) => withoutLastTurn(transcript).transcript);
+            setAnswering(false);
+            refused?.(message);
+            return;
+          }
+          if (kind === "unavailable") engineLost();
+          finish(failureOf(error, toolsRanInLastTurn(current.current)));
+        });
     },
-    [host, agent, update],
+    [host, agent, update, engineLost],
   );
 
-  const mayStart = useCallback(async () => {
-    if (host.mayStart === undefined || host.mayStart()) return true;
+  const askTrust = useCallback(async () => {
     if (host.askTrust !== undefined && (await host.askTrust()) === "trusted") return true;
     toasts?.show({ tone: "warning", title: tryItWords.notTrusted(host.workspaceName?.()) });
     return false;
   }, [host, toasts]);
 
+  const mayStart = useCallback(
+    async () => host.mayStart === undefined || host.mayStart() || askTrust(),
+    [host, askTrust],
+  );
+
   const stop = useCallback(() => running.current?.abort(), []);
 
-  const tryAgain = useCallback(() => {
-    if (running.current !== undefined) return;
-    const { transcript, message } = withoutLastTurn(current.current);
-    if (message === undefined) return;
-    update(() => transcript);
-    send(message);
-  }, [send, update]);
+  const tryAgain = useCallback(
+    (refused?: (message: string) => void) => {
+      if (running.current !== undefined || engineQuiet) return;
+      const { transcript, message } = withoutLastTurn(current.current);
+      if (message === undefined) return;
+      update(() => transcript);
+      send(message, refused);
+    },
+    [send, update, engineQuiet],
+  );
 
-  return { transcript, answering, mayStart, send, stop, tryAgain };
+  return {
+    transcript,
+    answering,
+    engineQuiet,
+    mayStart,
+    askTrust,
+    send,
+    stop,
+    tryAgain,
+  };
+}
+
+/** How often the chat asks whether the engine answers again while it doesn't (K1). */
+export const ASK_ENGINE_EVERY_MS = 5_000;
+
+/**
+ * Whether the engine stopped answering while the chat was open (H12, K1). `lost` marks it so when
+ * an answer fails as `unavailable`. While it is so, the chat asks the host every 5 s and when the
+ * window comes to the front; the first answer clears it.
+ */
+function useEngineQuiet(host: AgentsHost): { readonly quiet: boolean; readonly lost: () => void } {
+  const [quiet, setQuiet] = useState(false);
+  const lost = useCallback(() => setQuiet(true), []);
+  useEffect(() => {
+    if (!quiet) return;
+    let current = true;
+    const ask = () => {
+      host.list().then(
+        () => {
+          if (current) setQuiet(false);
+        },
+        // Still not answering: the line stays, and the next ask may find it back.
+        () => {},
+      );
+    };
+    const every = setInterval(ask, ASK_ENGINE_EVERY_MS);
+    window.addEventListener("focus", ask);
+    return () => {
+      current = false;
+      clearInterval(every);
+      window.removeEventListener("focus", ask);
+    };
+  }, [host, quiet]);
+  return { quiet, lost };
 }
 
 /** How the chat service's end reads in the transcript. */
