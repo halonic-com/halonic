@@ -95,7 +95,7 @@ export function createTrustCommand(
     argumentsBesideSubcommands: true,
     strayArgumentFix: optionForWord,
     summary: trustMessages.summary(),
-    action: (input) => trustMessages.action(givenPlugin(input) ?? givenDir(input)),
+    action: trustAction,
     options: {
       dir: dirOption,
       plugin: {
@@ -451,6 +451,21 @@ function refuseWords(given: readonly string[]): void {
   if (word === undefined) return;
   const problem = usageMessages.takesNoArguments("trust", shown);
   throw shown.length === 1 ? new UsageError(problem, optionForWord(word)) : new UsageError(problem);
+}
+
+/**
+ * What `trust` was doing, for its "✕ Couldn't …: …", in the order `run` takes
+ * the options, so `--list` and `--remove` don't say they were trusting (HAL-15427).
+ */
+function trustAction(input: CommandInput): Message {
+  const removing = input.options["remove"] === true;
+  const plugin = givenPlugin(input);
+  if (plugin !== undefined) {
+    return removing ? trustMessages.removeAction(plugin) : trustMessages.action(plugin);
+  }
+  if (input.options["list"] === true) return trustMessages.listAction();
+  const dir = givenDir(input);
+  return removing ? trustMessages.removeAction(dir) : trustMessages.action(dir);
 }
 
 /** The `--plugin` id, made safe to print, for "✕ Couldn't trust weather: …". */

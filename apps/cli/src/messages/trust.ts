@@ -58,6 +58,13 @@ export const trustMessages = defineMessages("trust", {
    * name, or the folder as typed before the workspace was read.
    */
   action: (name?: string) => phrase`trust ${name ?? "this folder"}`,
+  /** What `--list` was doing, for "✕ Couldn't list what's trusted on this computer: …" (team, HAL-15427). */
+  listAction: () => phrase`list what's trusted on this computer`,
+  /**
+   * What `--remove` was doing, for "✕ Couldn't remove the trust for acme: …":
+   * the `--plugin` id or the `--dir` as typed (team, HAL-15427).
+   */
+  removeAction: (name?: string) => phrase`remove the trust for ${name ?? "this folder"}`,
 
   /** The options in `halonic trust --help` (team, HAL-188 4c). */
   listOption: () => phrase`List the workspaces trusted on this computer.`,
