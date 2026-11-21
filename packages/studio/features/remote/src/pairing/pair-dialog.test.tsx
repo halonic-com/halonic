@@ -308,6 +308,35 @@ verifies("remote.pair-a-phone-problems", () => {
     expect(dialog()?.textContent).toContain("Check the code");
   });
 
+  it("drops a failed Allow's line once Check the code goes, so the next phone's starts clear", async () => {
+    const { remote, time } = await openDialog((fake) => {
+      const start = fake.startPairing.bind(fake);
+      vi.spyOn(fake, "startPairing").mockImplementation(async () => {
+        const session = await start();
+        vi.spyOn(session, "allow").mockRejectedValueOnce(new Error("store full"));
+        return session;
+      });
+    });
+    remote.phoneUsesCode({ name: "Pixel 8" });
+    await settle();
+    await press(buttonIn(dialog(), "AllowAllowing…"));
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+    expect(dialog()?.textContent).toContain("Couldn't pair Pixel 8. Try again.");
+
+    // The wait for Allow runs out, and another phone uses the new code.
+    time.advance(2 * 60_000);
+    await settle();
+    expect(dialog()?.textContent).toContain("The code ran out");
+    await press(buttonIn(dialog(), "Make a new code"));
+    remote.phoneUsesCode({ name: "Galaxy S24" });
+    await settle();
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+
+    expect(dialog()?.textContent).toContain("Galaxy S24");
+    expect(dialog()?.textContent).not.toContain("Couldn't pair");
+    expect(dialog()?.querySelector('[role="alert"]')?.textContent ?? "").toBe("");
+  });
+
   it("closes even when the host fails to end the pairing, and Settings › Remote says so", async () => {
     const remote = new FakeRemoteControl();
     const start = remote.startPairing.bind(remote);
