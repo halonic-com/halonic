@@ -4,6 +4,7 @@ import { type MoneyAmountOptions, moneyAmount } from "@halonicjs/app";
 import { type BusyRetries, isModelAlias, type RunFailure } from "@halonicjs/app/run-failure";
 import { shellWord } from "../output/shell-word.ts";
 import { counted, listInWords, timesInWords } from "./counts.ts";
+import { dayAndMonth } from "./dates.ts";
 import { defineMessages, type Message } from "./define.ts";
 import { errorMessages, issuesLink } from "./general.ts";
 import { harnessNames } from "./harness-names.ts";
@@ -465,15 +466,6 @@ function secondsInWords(ms: number): string {
 /** A wait in whole minutes, such as "5 minutes". */
 function minutesInWords(ms: number): string {
   return counted(Math.round(ms / 60_000), "minute", "minutes");
-}
-
-/** An ISO date as the lines write it, such as "1 Dec". */
-function dayAndMonth(isoDate: string): string {
-  return new Date(isoDate).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  });
 }
 
 /** `provider-busy`, `model-timeout` and `tool-timeout`: nothing the user set caused it. */
