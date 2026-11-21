@@ -154,11 +154,12 @@ export class SecretService {
       };
     }
     // The agent host makes these itself; a changed or removed remote host key
-    // would make every paired phone see "Can't confirm your computer".
+    // would make every paired phone see "Can't confirm your computer". There
+    // is nowhere else to change them, so the reason says what to do instead.
     if (hostKeys.has(key)) {
       return {
         changed: false,
-        reason: `${describeSecretName(name)} belongs to Halonic's agent host and can't be changed here.`,
+        reason: `${describeSecretName(name)} belongs to Halonic's agent host, which makes and keeps it itself. Use another name for a secret of your own.`,
       };
     }
     return null;

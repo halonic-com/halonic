@@ -80,6 +80,25 @@ verifies("cli.commands.secret.set", () => {
     expect(await fixture.store().names()).toEqual([]);
   });
 
+  // A refused name isn't a mistyped command line, so no usage line follows
+  // the reason (C552 7, HAL-15265).
+  it("refuses the agent host's key with the service's reason and no usage line", async () => {
+    const { terminal, stdin } = typing(value);
+
+    const { code, io } = await secret(
+      fixture.folder,
+      { ...fixture.setup, stdin },
+      ["set", "remote-host-key"],
+      terminal,
+    );
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr).toEqual([
+      '✕ Secret name "remote-host-key" belongs to Halonic\'s agent host, which makes and keeps it itself. Use another name for a secret of your own.',
+    ]);
+    expect(await fixture.store().names()).toEqual([]);
+  });
+
   it("says why a value is refused, without repeating it", async () => {
     const { code, io } = await secret(
       fixture.folder,

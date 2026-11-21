@@ -40,6 +40,18 @@ verifies("cli.commands.secret.remove", () => {
     expect(await fixture.store().get("token-key")).toBe("kept");
   });
 
+  it("refuses the agent host's key with no usage line and changes nothing", async () => {
+    await fixture.store().set("remote-host-key", "kept");
+
+    const { code, io } = await secret(fixture.folder, fixture.setup, ["remove", "Remote_Host_Key"]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr).toEqual([
+      '✕ Secret name "Remote_Host_Key" belongs to Halonic\'s agent host, which makes and keeps it itself. Use another name for a secret of your own.',
+    ]);
+    expect(await fixture.store().get("remote-host-key")).toBe("kept");
+  });
+
   it("needs exactly one name", async () => {
     for (const args of [["remove"], ["remove", "a-key", "b-key"]]) {
       const { code, io } = await secret(fixture.folder, fixture.setup, args);

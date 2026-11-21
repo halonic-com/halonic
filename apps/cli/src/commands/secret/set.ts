@@ -7,6 +7,7 @@ import {
   type CommandContext,
   type CommandInput,
   type CommandResult,
+  OwnLineError,
   UsageError,
 } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
@@ -19,9 +20,9 @@ import { openSecretService, processStdin, type SecretSetup } from "../../secret-
  * prompt; with stdin piped it is what was piped in, without its last line
  * ending. The sign-in password is asked twice at a terminal.
  *
- * @throws UsageError without a name, with a value as an argument, when the
- *   service refuses the name or value, when there is no value, or when nobody
- *   can type one (no terminal, `CI` or `--json`)
+ * @throws UsageError without a name, with a value as an argument, when there
+ *   is no value, or when nobody can type one (no terminal, `CI` or `--json`)
+ * @throws OwnLineError when the service refuses the name or value
  */
 export async function setSecret(
   input: CommandInput,
@@ -96,7 +97,11 @@ async function pipedValue(stdin: { read(): Promise<string> }): Promise<string | 
   return text === "" ? undefined : text;
 }
 
-/** The service's refusal as the command's usage error; the reason never repeats a value. */
-export function refused(reason: string): UsageError {
-  return new UsageError(secretMessages.refused(printable(reason)));
+/**
+ * The service's refusal, alone on its line with exit 2; the reason never
+ * repeats a value. The command line itself was right, so no usage line
+ * follows it (C552 7, HAL-15265).
+ */
+export function refused(reason: string): OwnLineError {
+  return new OwnLineError("invalid_input", secretMessages.refused(printable(reason)));
 }

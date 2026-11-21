@@ -17,7 +17,8 @@ import { refused } from "./set.ts";
 /**
  * Removes the secret `name`.
  *
- * @throws UsageError without a name, with more than one, or when the service refuses the name
+ * @throws UsageError without a name, or with more than one
+ * @throws OwnLineError when the service refuses the name
  */
 export async function removeSecret(
   input: CommandInput,
