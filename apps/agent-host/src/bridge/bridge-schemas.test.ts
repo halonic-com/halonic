@@ -1,6 +1,7 @@
 import { parse } from "@halonicjs/schema-kit";
+import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { answerBody, priceIn } from "./bridge-schemas.ts";
+import { answerBody, openBridgeBody, priceIn } from "./bridge-schemas.ts";
 
 describe("priceIn", () => {
   it("finds a model's price, and never one the table inherits", () => {
@@ -33,5 +34,41 @@ describe("answerBody", () => {
     ]) {
       expect(parse(answerBody, body).ok, JSON.stringify(body)).toBe(false);
     }
+  });
+});
+
+verifies("studio.harness-provider-key", () => {
+  describe("openBridgeBody", () => {
+    const body = (anthropic: unknown) => ({
+      runId: "run_1",
+      agentId: "coder",
+      providers: { anthropic },
+      prices: {},
+    });
+
+    it("takes a key's compatible provider: its baseUrl, its file's id and its models", () => {
+      const zai = {
+        kind: "key",
+        secret: "zai-key",
+        providerId: "zai",
+        baseUrl: "https://api.z.ai/api/anthropic",
+        models: ["glm-5.3"],
+      };
+      expect(parse(openBridgeBody, body(zai))).toEqual({ ok: true, value: body(zai) });
+      expect(parse(openBridgeBody, body({ kind: "key", secret: "zai-key" })).ok).toBe(true);
+    });
+
+    it("refuses an empty baseUrl, provider id or model, and a field the port doesn't have", () => {
+      for (const anthropic of [
+        { kind: "key", secret: "zai-key", baseUrl: "" },
+        { kind: "key", secret: "zai-key", providerId: "" },
+        { kind: "key", secret: "zai-key", models: [""] },
+        { kind: "key", secret: "zai-key", models: "glm-5.3" },
+        { kind: "key", secret: "zai-key", headers: { "x-api-key": "fake" } },
+        { kind: "sign-in", baseUrl: "https://api.z.ai/api/anthropic" },
+      ]) {
+        expect(parse(openBridgeBody, body(anthropic)).ok, JSON.stringify(anthropic)).toBe(false);
+      }
+    });
   });
 });
