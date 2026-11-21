@@ -2,11 +2,11 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1218; ux-checklists (HAL-1069) 2.1, 2.3, 2.9 and 2.10; ux-checklists-approvals (HAL-1250) 2.5
+- Source: HAL-1218; ux-checklists (HAL-1069) 2.1, 2.3, 2.9 and 2.10; ux-checklists-approvals (HAL-1250) 2.5; a11y check Q1 (HAL-12528)
 
 The Inbox feature shall add the sidebar's Inbox place. Its signal shall be the workspace Inbox's count, heard as "Inbox, 2 waiting", and the sidebar shall read it again whenever the Inbox changes. The place's page shall show the heading "Inbox" and, beside the open item's card, Needs you: a grid of the items newest first, named "Needs you, 2 waiting" while any wait. Each row shall show the card's title, then since when it waits ("Waiting 6 h") and, for a wait step with a timer, when it moves on ("· moves on Mon 14:00"). Nothing shall be open when the page opens, unless Home's Needs you asked for an item; then that item's card shall be open. Likewise a run's **Review in Inbox** shall open the card of the item that run has waited on longest, or nothing when none of its items waits any more. When you open a row with Enter or a click, its card shall show beside the list and the row shall be the list's current row. Once you decide, the card shall stay with what you decided while the item leaves the list, and **Next** shall open the next item, the one after it, else the first. With nothing open, the right pane shall read "Pick something on the left to see it here." while items wait, and "Nothing is waiting for you" with "Approvals and questions from your runs show up here." when none do, with "Nothing is waiting for you." under Needs you. On a phone (HAL-8778, phone layout 5), the list shall be the whole page, with its heading "Inbox" for screen readers only, since the top bar shows the word; opening an item shall show its card as a page in place of the list, with **Back to Inbox**, which returns to the list with focus on the row. Until the first list loads, Needs you shall show its loading rows, heard as "Loading the Inbox". When the first load fails, the page shall show "Couldn't load the Inbox" with the reason, "The engine isn't answering. It may still be starting." when the error has no kind, and **Try again**. When a later load fails, the items shall stay, under "The engine isn't answering. Showing what it said last."
 
-A row says the run's workflow first: "Support reply · a person step · Waiting 2 h" for a wait step, "Support reply · Waiting 2 h" for a tool approval.
+A row says the run's workflow and its short id first, the id `halonic runs` prints, so two runs of one workflow read apart, on screen and to a screen reader (HAL-12528): "Support reply · run 891b5a · a person step · Waiting 2 h" for a wait step, "Support reply · run 891b5a · Waiting 2 h" for a tool approval. A row never shows the run's input.
 
 ## Examples
 
@@ -25,6 +25,9 @@ A row says the run's workflow first: "Support reply · a person step · Waiting 
 - Given two items,
   when you open the first and approve it,
   then its card says "Approved by you", the list has one item and **Next** opens the other.
+- Given two runs of Support reply waiting at "Approve this reply?",
+  when you open the Inbox,
+  then their rows read "Support reply · run 01jd8q · a person step · Waiting 1 h" and "Support reply · run 891b5a · a person step · Waiting 1 h", and a screen reader hears them apart.
 - Given nothing waiting,
   when you open the Inbox,
   then it reads "Nothing is waiting for you".
