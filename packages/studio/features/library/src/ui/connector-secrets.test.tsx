@@ -417,7 +417,7 @@ describe("a connector's secrets keep focus and wait for the keychain", () => {
       store.failWith = lockedKeychain();
       await press(root, "Remove");
       expect(document.activeElement?.textContent).toBe("Remove");
-      expect(root.textContent).toContain("The keychain is locked.");
+      expect(root.textContent).toContain("Couldn't remove the secret: the keychain is locked.");
 
       delete store.failWith;
       await press(root, "Remove");
