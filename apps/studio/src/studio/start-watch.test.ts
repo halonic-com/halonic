@@ -91,6 +91,29 @@ verifies("studio.start-watch", () => {
     expect(start.report?.state).toBe("ready");
   });
 
+  it("keeps the seconds of the first failed answer until Try again, so the report says when it failed", async () => {
+    const { ipc } = windowOf([
+      report("failed", 3, { cause: "stopped", exitCode: 1 }),
+      report("failed", 4, { cause: "stopped", exitCode: 1 }),
+      report("failed", 18, { cause: "stopped", exitCode: 1 }),
+      report("starting", 0),
+      report("failed", 2, { cause: "stopped", exitCode: 1 }),
+    ]);
+    const clock = handTimers();
+    const start = watchStart(ipc, "windows", "0.1.0", clock.timers);
+    await settled();
+    expect(start.report?.seconds).toBe(3);
+
+    await clock.fire();
+    await clock.fire();
+    expect(start.report).toMatchObject({ state: "failed", seconds: 3 });
+
+    await start.tryAgain();
+    expect(start.report).toMatchObject({ state: "starting", seconds: 0 });
+    await clock.fire();
+    expect(start.report).toMatchObject({ state: "failed", seconds: 2 });
+  });
+
   it("tries again with a new engine_ready", async () => {
     const { ipc, calls } = windowOf([report("failed", 60, { cause: "timed_out" })]);
     const clock = handTimers();
