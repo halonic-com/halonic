@@ -2,6 +2,7 @@
 
 - Approval: the board's request on HAL-14115 (20 Nov 22:39, "fix the PR-side selection", a queue fix under the HAL-14331 freeze); it changes `tooling/check/src/lib/affected-tests.ts`, a trust root of the guard, so Liam and Julian both sign it as guardians
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JoWEJ4J0URXYuhtQqydJBs2uECkY+A151sb38e/EksXi/NNgdlnvIilPazn0AyIBCY2/35kRA/uofIQooe9aDg==
 
 ## What changes
 
