@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews this on HAL-13797, which asks for the guard
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BlbgxRSpyMXoimhIWTzs5v4eRcmKTwJLTVnnIKIKyqclyf1nMdphg6MMISgYzfjfcWk6904I+2IONpep7fHMCg==
 
 `pnpm check` gets a new rule, `webview-apis`, in `tooling/check/src/rules/webview-apis.ts` with its tests in
 `tooling/check/src/test/webview-apis.test.ts`. It fails `URL.parse` in the Studio app and every workspace package
