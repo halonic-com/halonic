@@ -90,6 +90,11 @@ interface DialogCommonProps {
    * something to read first, such as Check this computer's lines (first-run-progress 5).
    */
   readonly focusTitle?: boolean;
+  /**
+   * `role="alertdialog"`, for a decision that interrupts and must be answered before the work
+   * goes on, such as "Allow this address?". Default `false`: a plain `dialog`.
+   */
+  readonly alert?: boolean;
   readonly children: ReactNode;
 }
 

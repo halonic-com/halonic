@@ -20,6 +20,16 @@ export function RunLog({ lines }: { readonly lines: readonly RunLogLine[] }) {
             <li key={`blocked-${line.seq}-${line.step.state}`} className="pl-[7ch]">
               <BlockedSitesLogLines step={line.step} />
             </li>
+          ) : line.kind === "words" ? (
+            <li key={line.seq} className="flex gap-2 font-mono text-small">
+              <span className="w-[5ch] shrink-0 text-right text-fg-muted tabular-nums">
+                {line.seq}
+              </span>
+              <span className="min-w-0 wrap-anywhere">
+                <span className="text-fg-muted tabular-nums">{line.time}</span>{" "}
+                <span className="text-fg">{line.text}</span>
+              </span>
+            </li>
           ) : (
             <li key={line.seq} className="flex gap-2 font-mono text-small">
               <span className="w-[5ch] shrink-0 text-right text-fg-muted tabular-nums">

@@ -186,3 +186,42 @@ export const ProviderCheckService: ServiceKey<ProviderCheck> =
  * which draw it with made-up data. The app never calls it: the feature registers the section itself.
  */
 export const loadModelsSettingsSection = () => import("./settings/models-settings-section.tsx");
+
+/**
+ * What Studio asks in "Allow this address?" (HAL-11873): may a provider send a stored key to an
+ * address that isn't on that key's list.
+ */
+export interface KeyAddressQuestion {
+  /** The provider's name as the workspace gives it. */
+  readonly provider: string;
+  /** The stored key's name, never its value. */
+  readonly key: string;
+  /** The address the key would go to, in the form it is saved in: `https://host`, a port only when it isn't the scheme's default. */
+  readonly origin: string;
+  /** The addresses the key may go to now, for the context line; `undefined` when it has none. */
+  readonly allowed: readonly string[] | undefined;
+}
+
+/** A person's answer: the address was added to the key's list, or they refused. */
+export type KeyAddressAnswer = "allowed" | "not-allowed";
+
+/**
+ * Asks the person at the window, one question at a time, in the order they came (requirement
+ * `models.key-address.allow-address`). The engine of the open folder asks it, only for a run a
+ * person started at this window.
+ */
+export interface KeyAddressQuestions {
+  /**
+   * Asks `question`. On Allow, `save` adds the question's address to the key's list (the page
+   * never says which address) and answers whether it did; the answer is `allowed` only once it
+   * did. When `signal` aborts, the question goes away without an answer.
+   */
+  ask(
+    question: KeyAddressQuestion,
+    options: { readonly save: () => Promise<boolean>; readonly signal: AbortSignal },
+  ): Promise<KeyAddressAnswer>;
+}
+
+/** The "Allow this address?" questions of the open folder; the Models feature provides it. */
+export const KeyAddressQuestionsService: ServiceKey<KeyAddressQuestions> =
+  serviceKey<KeyAddressQuestions>("models.key-address-questions");

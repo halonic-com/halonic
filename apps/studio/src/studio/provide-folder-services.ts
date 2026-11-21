@@ -36,6 +36,7 @@ import {
   SkillHostService,
 } from "@halonicjs/studio-feature-library/api";
 import {
+  KeyAddressQuestionsService,
   ModelKeysService,
   ModelsFilesService,
   NoLimitMemoryService,
@@ -200,6 +201,7 @@ export function provideFolderServices(
   });
   const transport = tauriAgentHostTransport(window);
   const refusals = new RefusalsFeed();
+  const keyOrigins = shellKeyOrigins(ipc);
   const engine =
     remoteEngine ??
     services.provide(
@@ -211,7 +213,19 @@ export function provideFolderServices(
         name,
         definitions: new TauriDefinitionStore(files, location),
         secrets: shellKeychain(ipc),
-        keyOrigins: shellKeyOrigins(ipc),
+        keyOrigins,
+        // Only this window's own engine asks; a remote engine has no window to ask.
+        keyOriginPrompt: {
+          // Looked up when a question comes, as the Models feature provides it.
+          questions: {
+            ask: (question, options) =>
+              services.get(KeyAddressQuestionsService).ask(question, options),
+          },
+          allowOrigin: async (key, origin) => {
+            const { result } = await keyOrigins.allowOrigin(key, origin);
+            return result === "added" || result === "already-allowed";
+          },
+        },
         http: new ShellHttpClient(ipc),
         clock: systemClock,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,

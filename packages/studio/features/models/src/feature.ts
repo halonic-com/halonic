@@ -3,11 +3,14 @@ import { defineFeature, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { ALIAS_KIND, ALIAS_KIND_LABEL, aliasTitle, MODELS_HEADING } from "./aliases/alias-text.ts";
 import { readModels, subscribeProviderNames } from "./aliases/read-models.ts";
 import {
+  KeyAddressQuestionsService,
   ModelKeysService,
   ModelsFilesService,
   NoLimitMemoryService,
   ProviderCheckService,
 } from "./api.ts";
+import { KeyAddressQueue } from "./key-address/key-address-queue.ts";
+import { KeyAddressQueueService } from "./key-address/key-address-service.ts";
 import { providerTabTitle } from "./providers/provider-names.ts";
 import {
   PROVIDER_KIND,
@@ -30,14 +33,27 @@ async function modelsLine(context: WorkspaceContext) {
  * and the alias tab, the Budget block above it (`models.budget.budget-settings`), and the
  * **Providers** section with the provider page (`models.providers.list-and-show`), and the month
  * spend in the status bar (`models.spend.month-line`), and the **Models** section of Settings
- * (`models.settings.settings-summary`).
+ * (`models.settings.settings-summary`), and "Allow this address?" over any page
+ * (`models.key-address.allow-address`).
  */
 export const modelsFeature = defineFeature({
   id: "models",
   title: "Models",
   needs: [ModelsFilesService],
   wants: [ModelKeysService, NoLimitMemoryService, ProviderCheckService, RunsListService],
+  provides: [KeyAddressQueueService, KeyAddressQuestionsService],
   register(studio) {
+    // One queue per open folder: its engine asks, and the dialog host draws the first question.
+    studio.services.provide(KeyAddressQueueService, () => new KeyAddressQueue());
+    studio.services.provide(KeyAddressQuestionsService, (services) =>
+      services.get(KeyAddressQueueService),
+    );
+    studio.dialogs.add({
+      id: "models.allow-address",
+      order: 20,
+      view: "AllowAddressDialogHost",
+      load: () => import("./key-address/allow-address-dialog-host.tsx"),
+    });
     studio.settings.add({
       id: "models",
       icon: "models",
