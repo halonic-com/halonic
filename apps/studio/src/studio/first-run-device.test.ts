@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { FIRST_RUN_STATE, firstRunDeviceOf } from "./first-run-device.ts";
 
 /** A page storage that keeps text, and fails when `blocked` is set. */
@@ -29,9 +29,15 @@ verifies("first-run.state", () => {
     expect([...pages.items.keys()]).toEqual([FIRST_RUN_STATE]);
   });
 
-  it("reads nothing from blocked storage, and a failed write doesn't throw", () => {
-    const device = firstRunDeviceOf("/docs/Acme sample", storage(true));
-    expect(device.read()).toBeUndefined();
-    expect(() => device.write('{"kind":"off"}')).not.toThrow();
+  it("reads nothing from blocked storage, and a failed write doesn't throw but is reported", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const device = firstRunDeviceOf("/docs/Acme sample", storage(true));
+      expect(device.read()).toBeUndefined();
+      expect(() => device.write('{"kind":"off"}')).not.toThrow();
+      expect(warn).toHaveBeenCalledOnce();
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

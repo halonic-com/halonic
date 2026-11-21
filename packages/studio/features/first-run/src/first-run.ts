@@ -106,17 +106,7 @@ export class FirstRun {
 
   /** Moves the steps by the newest run of Support reply since the first run began here. */
   async #follow(): Promise<void> {
-    const state = this.#state;
-    if ((state.kind !== "on" && state.kind !== "paused") || state.folder !== this.#device.folder) {
-      return;
-    }
-    // The list is newest first; a test run or an older run says nothing about this first run.
-    const newest = this.#runs.state.runs
-      .map((each) => each.summary)
-      .find(
-        (run) =>
-          run.kind === "run" && run.workflowId === SUPPORT_WORKFLOW && run.startedAt >= state.since,
-      );
+    const newest = this.#newestRun();
     if (newest === undefined) return;
     let event: FirstRunEvent;
     try {
@@ -125,7 +115,26 @@ export class FirstRun {
       // A log that can't be read now is read again on the runs' next change: nothing is lost.
       return;
     }
+    // While the log was read, a newer run or a new status may have been followed already: this
+    // answer is then stale and would move the steps back.
+    const stillNewest = this.#newestRun();
+    if (stillNewest?.id !== newest.id || stillNewest.status !== newest.status) return;
     this.send(event);
+  }
+
+  /** The newest run of Support reply since the first run began here, while it is on or paused. */
+  #newestRun(): RunSummary | undefined {
+    const state = this.#state;
+    if ((state.kind !== "on" && state.kind !== "paused") || state.folder !== this.#device.folder) {
+      return undefined;
+    }
+    // The list is newest first; a test run or an older run says nothing about this first run.
+    return this.#runs.state.runs
+      .map((each) => each.summary)
+      .find(
+        (run) =>
+          run.kind === "run" && run.workflowId === SUPPORT_WORKFLOW && run.startedAt >= state.since,
+      );
   }
 
   async #eventOf(run: RunSummary): Promise<FirstRunEvent> {
