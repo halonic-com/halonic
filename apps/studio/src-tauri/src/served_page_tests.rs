@@ -19,6 +19,7 @@ use crate::shell;
 mod device_keys;
 mod engine;
 mod engine_lock;
+mod owner_check;
 mod pair_scan;
 mod runs;
 #[cfg(desktop)]

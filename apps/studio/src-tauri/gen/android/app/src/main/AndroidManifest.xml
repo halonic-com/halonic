@@ -23,6 +23,10 @@
     <uses-permission
         android:name="android.permission.VIBRATE"
         tools:node="remove" />
+    <!-- The owner check before the phone answers an approval (HAL-15194,
+         OwnerCheckPlugin). A normal permission: Android grants it at
+         install and asks nothing. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
     <!-- No backup or device transfer: the saved computer address stays on
          this phone, so uninstalling the app deletes it (HAL-6866). -->
