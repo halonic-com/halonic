@@ -26,6 +26,8 @@ export interface PageRoutinesOptions {
   readonly timeZone: string;
   /** Hears what a tick couldn't do, such as a routine whose run didn't start. */
   reportError(error: unknown): void;
+  /** Hears that a tick added to a routine's skip records, as a refused start does, which starts no run. */
+  onSkipsSaved?(): void;
 }
 
 /** The routines on the engine's tick, and the tick that catches up as soon as the engine opens. */
@@ -67,7 +69,11 @@ export function pageRoutines(
         targetUnavailable: (run) => live.targetUnavailable(run),
         policy: { ...DEFAULT_TICK_POLICY, timeZone: options.timeZone },
       });
-      tick = async () => reportFailures(await scheduler.tick(), options.reportError);
+      tick = async () => {
+        const result = await scheduler.tick();
+        reportFailures(result, options.reportError);
+        if (result.skipsSaved.length > 0) options.onSkipsSaved?.();
+      };
       const ticked = tick;
       const onTick = async () => {
         // The catch-up's own failure is its caller's to report.
@@ -99,6 +105,22 @@ function checkedExecutor(
     subscribe: (runId, afterSeq, listener) => executor.subscribe(runId, afterSeq, listener),
     chatTurn: (request) => executor.chatTurn(request),
   };
+}
+
+/** Who hears that a tick added to a routine's skip records: the routines host, for the open page. */
+export class SkipListeners {
+  readonly #listeners = new Set<() => void>();
+
+  /** Adds `listener`; returns the way to stop. */
+  subscribe(listener: () => void): () => void {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  }
+
+  /** Calls every listener. */
+  tell(): void {
+    for (const listener of this.#listeners) listener();
+  }
 }
 
 /** Passes on each due time a tick couldn't start or record. */

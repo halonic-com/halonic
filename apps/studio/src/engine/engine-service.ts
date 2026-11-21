@@ -61,7 +61,7 @@ import { studioConnectorCalls } from "../connect/studio-run-connectors.ts";
 import { openEngineHarnessHost } from "./engine-harness-host.ts";
 import { type EngineLockHold, holdEngineLock } from "./engine-lock.ts";
 import { answerRefusalOf, refuseConnectorApprove } from "./engine-refusals.ts";
-import { pageRoutines, routineSkipsOf } from "./engine-routines.ts";
+import { pageRoutines, routineSkipsOf, SkipListeners } from "./engine-routines.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
 import {
   agentRefusalOf,
@@ -115,6 +115,9 @@ export class EngineService {
   /** A routine's skip records while the engine is open (`routineSkipsOf`); none before. */
   readonly routineSkips = (key: string) =>
     routineSkipsOf(this.#opening, this.#options.location, key);
+  readonly #skips = new SkipListeners();
+  /** Calls `listener` each time a routine's tick adds to its skip records; returns the way to stop. */
+  readonly onRoutineSkips = (listener: () => void) => this.#skips.subscribe(listener);
 
   constructor(options: EngineServiceOptions) {
     this.#options = options;
@@ -396,7 +399,9 @@ export class EngineService {
         remoteDecisionsOf: (runId) => executor?.bridgeRemoteDecisions(runId),
       });
       await harnessHost?.start(await openRunsOf(runStore));
-      const routines = pageRoutines(workspace, this.#options, async ({ hubId, workflowId }) => {
+      const onSkipsSaved = () => this.#skips.tell();
+      const routineOptions = { ...this.#options, onSkipsSaved };
+      const routines = pageRoutines(workspace, routineOptions, async ({ hubId, workflowId }) => {
         await this.check({ hubId, workflowId });
         await this.#refuseUntrusted(workspace);
       });

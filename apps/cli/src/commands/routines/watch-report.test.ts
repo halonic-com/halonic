@@ -13,6 +13,7 @@ function failedTick(key: string, at: string): RoutineTickResult {
     queued: [],
     skipped: [],
     unavailable: [],
+    skipsSaved: [],
     skipsNotSaved: [],
   };
 }
