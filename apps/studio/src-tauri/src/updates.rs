@@ -34,7 +34,7 @@ use download::start_download;
 
 #[path = "updates_check.rs"]
 mod check;
-use check::{ask_for_update, available, check_failure};
+use check::{ask_for_update, available, check_failure, installer_args, sets_up_again};
 
 #[path = "updates_managed.rs"]
 mod managed;
@@ -48,10 +48,6 @@ use way_back::{log_way_back, prove_started};
 
 /// How often the background thread asks whether a check is due.
 const TICK: Duration = Duration::from_secs(60);
-
-/// The installer switch that makes our template reopen Halonic (HAL-1139).
-/// "Restart to update" passes it; installing at quit doesn't.
-const RELAUNCH: &str = "/RELAUNCH";
 
 /// The updater, one per app.
 #[derive(Default)]
@@ -93,6 +89,12 @@ impl Inner {
             last_checked: self.record.last_checked,
             just_updated: self.just_updated.clone(),
             managed: self.managed.clone(),
+            sandbox_setup_again: self
+                .ready
+                .as_ref()
+                .map(|(update, _)| update)
+                .or(self.found.as_ref())
+                .is_some_and(sets_up_again),
             state: self.state.clone().unwrap_or(UpdateState::NeverChecked),
         }
     }
@@ -389,12 +391,10 @@ fn install<R: Runtime>(app: &AppHandle<R>, relaunch: bool) -> Result<(), String>
         log_way_back(&inner, &update.version);
         (update, bytes)
     };
-    let mut builder = app.updater_builder();
-    if relaunch {
-        builder = builder.installer_arg(RELAUNCH);
-    }
     let host_app = app.clone();
-    let update = builder
+    let update = app
+        .updater_builder()
+        .installer_args(installer_args(&update, relaunch))
         .on_before_exit(move || crate::agent_host::stop_host(&host_app))
         .build()
         .and_then(|updater| updater.restore_update(update.raw_json.clone()))

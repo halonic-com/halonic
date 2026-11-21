@@ -1,9 +1,12 @@
 //! One ask for an update, and what its answer means for the status
-//! (HAL-1206): the state for a version found, and why a check got no usable
-//! answer.
+//! (HAL-1206): the state for a version found, why a check got no usable
+//! answer, and whether installing it sets the sandbox up again (HAL-5404).
+
+use std::ffi::OsString;
 
 use halonic_update_state::{
     CHECK_TIME_LIMIT, CheckFailure, UpdateState, UpdaterRecord, Version, notes_url,
+    raises_setup_version, this_build_setup_version,
 };
 use tauri::{AppHandle, Runtime};
 use tauri_plugin_updater::{Error as UpdaterError, Update};
@@ -56,4 +59,31 @@ pub(super) fn check_failure<R: Runtime>(app: &AppHandle<R>, error: &UpdaterError
         | UpdaterError::TargetsNotFound(_) => CheckFailure::Unreadable,
         _ => CheckFailure::NoAnswer,
     }
+}
+
+/// The installer switch that makes our template reopen Halonic (HAL-1139).
+/// "Restart to update" passes it; installing at quit doesn't.
+const RELAUNCH: &str = "/RELAUNCH";
+
+/// The installer switch that sets the agent sandbox up again after the
+/// update's files are in place (HAL-5404). The installer asks for
+/// administrator rights only where srt's marker is older than its own srt
+/// needs (windows/installer.nsi, `SetUpAgain`).
+const SANDBOX_AGAIN: &str = "/SANDBOX=again";
+
+/// Whether installing `update` sets the agent sandbox up again: its srt needs
+/// a higher Windows setup version than this build's. Only Windows has that
+/// setup.
+pub(super) fn sets_up_again(update: &Update) -> bool {
+    cfg!(windows) && raises_setup_version(&update.raw_json, this_build_setup_version())
+}
+
+/// The switches our installer template gets for `update`, after Tauri's own.
+pub(super) fn installer_args(update: &Update, relaunch: bool) -> Vec<OsString> {
+    let switches = [(relaunch, RELAUNCH), (sets_up_again(update), SANDBOX_AGAIN)];
+    switches
+        .into_iter()
+        .filter(|(on, _)| *on)
+        .map(|(_, switch)| OsString::from(switch))
+        .collect()
 }

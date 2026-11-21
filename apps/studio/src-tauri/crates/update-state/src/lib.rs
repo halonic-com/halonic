@@ -8,6 +8,7 @@
 mod managed;
 mod record;
 mod settings;
+mod setup_version;
 mod status;
 mod version;
 
@@ -19,6 +20,7 @@ pub use record::{
     UpdaterRecord, read_record, record_text,
 };
 pub use settings::{Migrated, backup_path, migrate_settings_file};
+pub use setup_version::{raises_setup_version, this_build_setup_version};
 pub use status::{
     CheckFailure, DownloadFailure, JustUpdated, Unit, UpdateState, UpdateStatus, notes_url,
 };

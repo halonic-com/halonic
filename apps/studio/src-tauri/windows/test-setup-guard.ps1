@@ -27,6 +27,12 @@ function Assert-Guard([string]$name, [string]$version, [int]$expected) {
   if ($code -ne $expected) { throw "${name}: expected $expected" }
 }
 
+function Assert-Again([string]$name, [string]$version, [int]$expected) {
+  $code, $reason = Invoke-SetUpAgainCheck -SetupVersion $version -Hive CurrentUser -KeyPath $keyPath
+  Write-Output "${name}: $code, '$reason'"
+  if ($code -ne $expected) { throw "${name}: expected $expected" }
+}
+
 try {
   Set-Marker 2; Assert-Guard 'marker below' '3' 0
   Set-Marker 3; Assert-Guard 'marker equal' '3' 0
@@ -38,6 +44,16 @@ try {
   Set-Marker '4' 'String'; Assert-Guard 'marker not a number' '3' 2
   Set-Marker 2; Assert-Guard 'no setup version' '' 2
   Set-Marker 2; Assert-Guard 'setup version not a number' 'three' 2
+
+  # -SetUpAgain (HAL-5404): only a sandbox set up for an older setup version
+  # is set up again; none, a current one or a newer one gets no prompt.
+  Set-Marker 2; Assert-Again 'again, marker below' '3' 0
+  Set-Marker 3; Assert-Again 'again, marker already current' '3' 1
+  Set-Marker 4; Assert-Again 'again, marker above' '3' 1
+  Set-Marker $null; Assert-Again 'again, no sandbox key' '3' 1
+  Set-Marker ''; Assert-Again 'again, key without a marker' '3' 1
+  Set-Marker '2' 'String'; Assert-Again 'again, marker not a number' '3' 2
+  Set-Marker 2; Assert-Again 'again, no setup version' '' 2
 
   # A kept installer's record, and a version kept before records existed.
   $record = Join-Path $work 'Halonic-0.1.0.srt-setup'
@@ -61,6 +77,10 @@ try {
   $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $guard | Out-String).Trim()
   Write-Output "script, no setup version: exit $LASTEXITCODE, '$out'"
   if ($LASTEXITCODE -ne 2) { throw 'script, no setup version: expected exit 2' }
+  # Nothing on this computer is set up for a setup version below 1.
+  $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $guard -SetUpAgain -SetupVersion 1 | Out-String).Trim()
+  Write-Output "script, again for 1: exit $LASTEXITCODE, '$out'"
+  if ($LASTEXITCODE -ne 1) { throw 'script, again for 1: expected exit 1' }
   $global:LASTEXITCODE = 0
   Write-Output 'setup guard: every case gave the expected answer'
 } finally {

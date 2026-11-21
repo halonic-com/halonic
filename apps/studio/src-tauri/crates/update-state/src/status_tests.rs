@@ -16,6 +16,7 @@ fn update_state_sends_the_status_in_the_agreed_shape() {
             not_carried_over: Vec::new(),
         }),
         managed: None,
+        sandbox_setup_again: true,
         state: UpdateState::Downloading {
             version: "0.1.1".to_owned(),
             done: 12,
@@ -32,6 +33,7 @@ fn update_state_sends_the_status_in_the_agreed_shape() {
             "lastChecked": 1_762_160_000_000_u64,
             "justUpdated": { "from": "0.1.0", "to": "0.1.1", "notCarriedOver": [] },
             "managed": null,
+            "sandboxSetupAgain": true,
             "state": { "kind": "downloading", "version": "0.1.1", "done": 12, "total": null, "unit": "bytes" }
         })
     );
