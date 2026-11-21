@@ -188,11 +188,12 @@ verifies("shell.item-page-header", () => {
       name === "Mail triage" ? "A workflow called Mail triage already exists." : undefined;
     const container = render(<Workflow onRename={onRename} check={check} />);
     typeInto(nameField(container), "Mail triage");
+    // Enter shows the reason at once, before the typing pause would.
+    press(nameField(container), "Enter");
     const problemId = nameField(container).getAttribute("aria-describedby") ?? "";
     expect(document.getElementById(problemId)?.textContent).toBe(
       "A workflow called Mail triage already exists.",
     );
-    press(nameField(container), "Enter");
     expect(onRename).not.toHaveBeenCalled();
   });
 
