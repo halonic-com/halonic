@@ -12,10 +12,10 @@ use super::progress::{FailureCause, StartFailure};
 /// answers. No message contains the launch token.
 #[derive(Debug, Serialize)]
 pub struct HostRefusal {
-    kind: &'static str,
+    pub(super) kind: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) reason: Option<&'static str>,
-    message: String,
+    pub(super) message: String,
     /// Why the host didn't start, for `start_status`; never sent with the
     /// refusal.
     #[serde(skip)]
