@@ -1,5 +1,10 @@
 //! Requirement `default-distro`: the default read from the `*` marker only.
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+
 use std::path::Path;
 use std::time::Duration;
 
@@ -68,15 +73,26 @@ struct StandIn(std::path::PathBuf);
 #[cfg(unix)]
 impl StandIn {
     fn new(body: &str) -> Self {
-        use std::os::unix::fs::PermissionsExt;
         use std::sync::atomic::{AtomicUsize, Ordering};
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let number = NEXT.fetch_add(1, Ordering::Relaxed);
         let name = format!("halonic-default-distro-{}-{number}", std::process::id());
         let path = std::env::temp_dir().join(name);
-        std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).expect("write the stand-in");
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700))
-            .expect("make it executable");
+        // Linux refuses to run a file any process holds open for writing
+        // ("Text file busy"), and a process another test thread starts
+        // while this one writes would inherit it open (HAL-14102). A child
+        // shell writes it instead, so this process never opens it.
+        let written = std::process::Command::new("/bin/sh")
+            .args([
+                "-c",
+                "printf '%s\\n' \"$2\" > \"$1\" && chmod 700 \"$1\"",
+                "sh",
+            ])
+            .arg(&path)
+            .arg(format!("#!/bin/sh\n{body}"))
+            .status()
+            .expect("start the shell that writes the stand-in");
+        assert!(written.success(), "write the stand-in: {written}");
         Self(path)
     }
 }
@@ -122,4 +138,40 @@ fn default_distro_fails_when_wsl_exe_cant_start() {
     let missing = Path::new("/nonexistent/wsl.exe");
     let answer = halonic_is_default(missing, Duration::from_secs(5));
     assert!(matches!(answer, Err(WslError::Start(_))));
+}
+
+/// HAL-14102: a stand-in written while another thread starts processes
+/// still runs. A process started in that moment used to inherit the
+/// stand-in open for writing, and running it then failed with "Text file
+/// busy".
+#[cfg(unix)]
+#[test]
+fn default_distro_stand_in_runs_while_other_threads_start_processes() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let done = AtomicBool::new(false);
+    std::thread::scope(|scope| {
+        for _ in 0..4 {
+            scope.spawn(|| {
+                while !done.load(Ordering::Relaxed) {
+                    let started = std::process::Command::new("/bin/sh")
+                        .args(["-c", ":"])
+                        .status();
+                    started.expect("start a process alongside");
+                }
+            });
+        }
+        // Stop the threads above even when an answer is wrong, so the
+        // scope can end and the test reports the failure.
+        let outcome = std::panic::catch_unwind(|| {
+            for _ in 0..200 {
+                let failing = StandIn::new("exit 1");
+                let answer = halonic_is_default(&failing.0, Duration::from_secs(30));
+                assert_eq!(answer, Err(WslError::Failed(Some(1))));
+            }
+        });
+        done.store(true, Ordering::Relaxed);
+        if let Err(panic) = outcome {
+            std::panic::resume_unwind(panic);
+        }
+    });
 }
