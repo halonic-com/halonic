@@ -6,6 +6,7 @@ import {
   type StartRefusal,
   startRefusalOf,
   type TrashedWorkflow,
+  type WorkflowArrowChange,
   type WorkflowConfiguration,
   type WorkflowHub,
   type WorkflowListing,
@@ -17,11 +18,12 @@ import {
   type WorkflowView,
 } from "@halonicjs/studio-feature-workflows/api";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
-import { editYaml } from "@halonicjs/yaml";
+import { editYaml, readYaml, type YamlEdit } from "@halonicjs/yaml";
 import { workflowRefusalOf } from "../engine/page-refusal.ts";
 import { checkedSource } from "../library/workspace-library-items.ts";
 import { hubFilesFor } from "../studio/first-hub.ts";
 import { programOf } from "./step-program.ts";
+import { arrowEdits, writtenArrows } from "./workflow-arrow-edits.ts";
 import {
   endedIn,
   newWorkflowText,
@@ -33,6 +35,7 @@ import {
 } from "./workflow-files.ts";
 import { stepEdits } from "./workflow-step-edits.ts";
 import { trashWorkflowFiles, workflowFilesOf, workflowUsersOf } from "./workflow-trash.ts";
+import { arrowsOf, stepsOf } from "./workflow-view.ts";
 import type { WorkspaceWorkflowsParts } from "./workspace-workflows-parts.ts";
 
 /**
@@ -165,20 +168,8 @@ export class WorkspaceWorkflows implements WorkflowsHost {
       id,
       name: value.name,
       initial: value.initial,
-      steps: Object.entries(value.states).map(([stepId, state]) => ({
-        id: stepId,
-        type: state.type,
-        title: stepTitle(state.description),
-        agent: state.agent,
-        description: state.description,
-        prompt: typeof state.input === "string" ? state.input : undefined,
-        promptIsData: state.input !== undefined && typeof state.input !== "string",
-        output: state.output,
-        program: programOf(stateAgents.get(stepId)),
-      })),
-      arrows: Object.entries(value.states).flatMap(([from, state]) =>
-        state.on.map((arrow) => ({ from, to: arrow.to, label: arrow.label })),
-      ),
+      steps: stepsOf(value, (stepId) => programOf(stateAgents.get(stepId))),
+      arrows: arrowsOf(value),
       layout: value.layout,
       agents: filesOf(workspace, "agent")
         .filter((agent) => agent.hub === hubId)
@@ -277,14 +268,10 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     const id = uniqueName(type === "wait" ? "wait" : "step", Object.keys(file.value.states), {
       numbered: true,
     });
-    const edited = editYaml(text, [
+    this.#edit(file.path, text, `Added step ${id} to workflow ${file.value.name}`, [
       { kind: "set", path: ["states", id], value: type === "wait" ? { type: "wait" } : {} },
       { kind: "set", path: ["layout", id], value: { x: at.x, y: at.y } },
     ]);
-    if (!edited.ok) throw cantChange();
-    this.#parts.files.change(`Added step ${id} to workflow ${file.value.name}`, {
-      [file.path]: edited.value.text,
-    });
     return id;
   }
 
@@ -292,11 +279,17 @@ export class WorkspaceWorkflows implements WorkflowsHost {
   async resetLayout(ref: WorkflowRef): Promise<void> {
     const { file, text } = await this.#fileOf(ref);
     if (Object.keys(file.value.layout).length === 0) return;
-    const edited = editYaml(text, [{ kind: "delete", path: ["layout"] }]);
+    this.#edit(file.path, text, `Laid out workflow ${file.value.name} again`, [
+      { kind: "delete", path: ["layout"] },
+    ]);
+  }
+
+  /** Writes `edits` of the file at `path`, whose text is `text`, as one undoable change named `label`. */
+  #edit(path: string, text: string, label: string, edits: readonly YamlEdit[]): void {
+    if (edits.length === 0) return;
+    const edited = editYaml(text, edits);
     if (!edited.ok) throw cantChange();
-    this.#parts.files.change(`Laid out workflow ${file.value.name} again`, {
-      [file.path]: edited.value.text,
-    });
+    this.#parts.files.change(label, { [path]: edited.value.text });
   }
 
   /** The workflow's file, as read and as text; throws `not_found` when the hub has no such workflow. */
@@ -318,16 +311,37 @@ export class WorkspaceWorkflows implements WorkflowsHost {
   async changeStep(ref: WorkflowRef, stepId: string, change: WorkflowStepChange): Promise<void> {
     const { file, text } = await this.#fileOf(ref);
     const state = Object.hasOwn(file.value.states, stepId) ? file.value.states[stepId] : undefined;
-    if (state === undefined) {
-      throw new KindedError("not_found", `This workflow has no step "${stepId}" any more.`);
+    if (state === undefined) throw stepGone(stepId);
+    this.#edit(
+      file.path,
+      text,
+      `Changed step ${stepId} of workflow ${file.value.name}`,
+      stepEdits(stepId, state, change),
+    );
+  }
+
+  /**
+   * Adds or moves an arrow in the step's `on` list in place, so comments stay, as one undoable
+   * change (see {@link arrowEdits}).
+   */
+  async changeArrows(ref: WorkflowRef, stepId: string, change: WorkflowArrowChange): Promise<void> {
+    const { file, text } = await this.#fileOf(ref);
+    const state = Object.hasOwn(file.value.states, stepId) ? file.value.states[stepId] : undefined;
+    if (state === undefined) throw stepGone(stepId);
+    if (state.type === "final") {
+      throw new KindedError(
+        "invalid_input",
+        `Step "${stepId}" ends the workflow, so it has no arrows.`,
+      );
     }
-    const edits = stepEdits(stepId, state, change);
-    if (edits.length === 0) return;
-    const edited = editYaml(text, edits);
-    if (!edited.ok) throw cantChange();
-    this.#parts.files.change(`Changed step ${stepId} of workflow ${file.value.name}`, {
-      [file.path]: edited.value.text,
-    });
+    const read = readYaml(text);
+    const written = read.ok ? writtenArrows(read.value.data, stepId) : undefined;
+    const edits = arrowEdits(stepId, Object.keys(file.value.states), written, change);
+    const label =
+      change.kind === "add"
+        ? `Added an arrow from ${stepId} to ${change.to} in workflow ${file.value.name}`
+        : `Moved an arrow of step ${stepId} in workflow ${file.value.name}`;
+    this.#edit(file.path, text, label, edits);
   }
 
   /** Moves the workflow's file and its test files to the trash as one change ({@link trashWorkflowFiles}). */
@@ -387,11 +401,9 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     }
     const text = await this.#parts.files.read(file.path);
     if (text === null) throw workflowGone();
-    const edited = editYaml(text, [{ kind: "set", path: ["name"], value: trimmed }]);
-    if (!edited.ok) throw cantChange();
-    this.#parts.files.change(`Renamed workflow ${file.value.name} to ${trimmed}`, {
-      [file.path]: edited.value.text,
-    });
+    this.#edit(file.path, text, `Renamed workflow ${file.value.name} to ${trimmed}`, [
+      { kind: "set", path: ["name"], value: trimmed },
+    ]);
     this.#learnNames([{ hubId: ref.hubId, id: ref.id, name: trimmed }]);
   }
 
@@ -435,20 +447,15 @@ function workflowGone(): KindedError {
   return new KindedError("not_found", "This workflow isn't in this workspace any more.");
 }
 
+/** What a change of a step the workflow no longer has rejects with. */
+function stepGone(stepId: string): KindedError {
+  return new KindedError("not_found", `This workflow has no step "${stepId}" any more.`);
+}
+
 /** What an edit of a workflow's file rejects with when the file is written in a way it can't change. */
 function cantChange(): KindedError {
   return new KindedError(
     "invalid_input",
     "This workflow's file couldn't be changed as it is written.",
   );
-}
-
-/**
- * A step's own words for it: the first line of its description, as the run page and the CLI name
- * it. `undefined` when there is none, or when the line still holds a `{{ }}` placeholder that only
- * a run can fill in.
- */
-function stepTitle(description: string | undefined): string | undefined {
-  const line = description?.split("\n")[0]?.trim();
-  return line === undefined || line === "" || line.includes("{{") ? undefined : line;
 }

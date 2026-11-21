@@ -1,5 +1,8 @@
 import type { WorkflowStepProgram, WorkflowStepType } from "../api.ts";
 
+/** An arrow's place in its step's list, as "Arrow 2 is now first." says it. */
+const places = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth"];
+
 /** The workflow page's words (microcopy 9.3, flow-workflows 3 and 4; states C9, C16). */
 export const pageWords = {
   kind: "WORKFLOW",
@@ -54,6 +57,39 @@ export const pageWords = {
     /** Save model 8.4: a key pasted into a field is not saved. */
     looksLikeKey: "This looks like a key. Keep it as a secret instead?",
     couldntSave: (stepId: string) => `Couldn't change step ${stepId}`,
+  },
+  /** The step card's arrows (flow-workflows 5.3, UX checklist 10.8 and 10.9; microcopy 9.4, 19.7). */
+  arrows: {
+    heading: "Arrows (first match wins)",
+    to: (stepId: string) => `→ ${stepId}`,
+    on: (event: string) => `on ${event}`,
+    after: (time: string) => `after ${time}`,
+    when: (condition: string) => `if ${condition}`,
+    more: (number: number) => `More actions for arrow ${number}`,
+    moveUp: "Move up",
+    moveDown: "Move down",
+    goTo: "Go to…",
+    add: "Add",
+    added: (from: string, to: string) => `Arrow added: ${from} to ${to}.`,
+    /** "Arrow 2 is now first.": the arrow's old number and its new place. */
+    moved: (number: number, place: number) =>
+      `Arrow ${number} is now ${places[place - 1] ?? `number ${place}`}.`,
+    arrowsIn: "Arrows in",
+    from: (stepId: string) => `From ${stepId}`,
+  },
+  /** A condition in words, as an arrow's row shows it: "category = refund". */
+  condition: {
+    equals: "=",
+    notEquals: "≠",
+    contains: "contains",
+    gt: ">",
+    gte: "≥",
+    lt: "<",
+    lte: "≤",
+    exists: (path: string) => `${path} is set`,
+    not: (condition: string) => `not (${condition})`,
+    and: " and ",
+    or: " or ",
   },
   noAgent: "No agent",
   /**
