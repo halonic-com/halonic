@@ -51,6 +51,20 @@ export const workspaceMessages = defineMessages("workspace", {
   engineOpenBy: (command: string, pid: number) =>
     phrase`halonic ${command} is running for this workspace (process ${String(pid)}).`,
   engineOpenFix: () => phrase`Wait until it has finished or stop it, then run again.`,
+  /**
+   * The reason when a variable put the profile folder in the workspace
+   * (HAL-15201): "Couldn't open ./acme: the profile folder HALONIC_HOME is
+   * inside this workspace." `variable` is `HALONIC_HOME`, `XDG_DATA_HOME` or
+   * `LOCALAPPDATA`, whichever put it there.
+   */
+  profileInWorkspace: (variable: string) =>
+    phrase`the profile folder ${variable} is inside this workspace.`,
+  profileInWorkspaceFix: (variable: string) =>
+    phrase`Move it out of the workspace and set ${variable} to its new place, so a change in the workspace can't change your trust records.`,
+  /** The reason when the workspace is inside the profile folder: "this workspace is inside the profile folder ~/.local/share/halonic." */
+  workspaceInProfile: (profile: string) =>
+    phrase`this workspace is inside the profile folder ${profile}.`,
+  workspaceInProfileFix: () => phrase`Move the workspace somewhere else.`,
   /** The fix when the command that holds the engine runs until it is stopped, as `routines watch` and `serve` do. */
   engineOpenStopFix: () => phrase`Stop it with Ctrl C there, then run again.`,
 });
