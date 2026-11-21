@@ -3,6 +3,7 @@
 - Task: HAL-14219 (B1 step 4, PR 3)
 - Approval: Liam, plan review on HAL-14219 (interface point 2) and review of PR 2 on HAL-14861
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vE0czqbEVngKfzH5NkGOUhJmHv+o3e1axLpiPxVV7fUIcoqgpWAmvWbBUoJ+ioly4I2miUHPZq0rmEWOoxDyBw==
 
 ## What changes
 
