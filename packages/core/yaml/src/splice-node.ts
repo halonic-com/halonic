@@ -458,7 +458,7 @@ function pairEnd(pair: Pair): number {
 }
 
 /** The offset of the `-` that starts item `index` of a block list. */
-function dashOffset(list: YAMLSeq, index: number): number | undefined {
+export function dashOffset(list: YAMLSeq, index: number): number | undefined {
   const token = list.srcToken;
   if (token?.type !== "block-seq") {
     return undefined;

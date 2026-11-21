@@ -3,6 +3,7 @@ import { isMap, isScalar, isSeq, type Node } from "yaml";
 import { applyEditToData, type YamlEdit } from "./edit-data.ts";
 import { lineEndingOf } from "./edit-text.ts";
 import type { YamlPath } from "./read.ts";
+import { moveItem } from "./splice-move.ts";
 import {
   addPair,
   deleteEntry,
@@ -63,6 +64,13 @@ function spliceLines(text: string, edit: YamlEdit): string | undefined {
       );
     case "rename":
       return renameKey(parsed, edit.path, edit.to);
+    case "move":
+      return moveItem(
+        parsed,
+        edit.path.slice(0, -1),
+        edit.path[edit.path.length - 1] as number,
+        edit.to,
+      );
   }
 }
 

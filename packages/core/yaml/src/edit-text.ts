@@ -79,6 +79,39 @@ export function aboveComments(text: string, offset: number): number {
 }
 
 /**
+ * Moves `offset` (a line start) up over the comment lines right above it that
+ * start at `column`. A blank line, or a comment indented otherwise, stops it.
+ */
+export function aboveCommentsAt(text: string, offset: number, column: number): number {
+  let start = offset;
+  while (start > 0) {
+    const previous = lineStart(text, start - 1);
+    const line = text.slice(previous, start);
+    if (!line.trim().startsWith("#") || indentOf(line) !== column) {
+      break;
+    }
+    start = previous;
+  }
+  return start;
+}
+
+/**
+ * Moves `offset` (a line start) down over the comment lines right below it that
+ * are indented further than `column`: comments left under the block above.
+ */
+export function belowCommentsIndented(text: string, offset: number, column: number): number {
+  let end = offset;
+  while (end < text.length) {
+    const line = text.slice(end, lineEnd(text, end));
+    if (!line.trim().startsWith("#") || indentOf(line) <= column) {
+      break;
+    }
+    end = lineEnd(text, end);
+  }
+  return end;
+}
+
+/**
  * True when every comment line of `before`, outside `before[from, to)`, is
  * still a line of `after`.
  */

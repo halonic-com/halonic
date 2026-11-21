@@ -13,6 +13,10 @@ import type { YamlPath } from "./read.ts";
  * - `rename`: gives the map key that ends `path` the name `to`, in the same
  *   place in its map and with the same value. The key must be there and `to`
  *   must not be a key of that map yet; `to` equal to the old key changes nothing.
+ * - `move`: moves the list item at the index that ends `path` to index `to` of
+ *   the same list. `to` is the item's index after the move, as when it is
+ *   spliced out and back in: moving item 0 of `[a, b, c]` to 2 gives
+ *   `[b, c, a]`. `to` equal to the index changes nothing.
  *
  * A `set` that adds a new key to a map puts it at the end of that map, or
  * right after the key `after` names; `after: null` puts it first. This is
@@ -30,7 +34,8 @@ export type YamlEdit =
     }
   | { readonly kind: "delete"; readonly path: YamlPath }
   | { readonly kind: "insert"; readonly path: YamlPath; readonly value: unknown }
-  | { readonly kind: "rename"; readonly path: YamlPath; readonly to: string };
+  | { readonly kind: "rename"; readonly path: YamlPath; readonly to: string }
+  | { readonly kind: "move"; readonly path: YamlPath; readonly to: number };
 
 /**
  * Applies an edit to plain data, the way `editYaml` must change what the
@@ -52,6 +57,8 @@ export function applyEditToData(data: unknown, edit: YamlEdit): Result<unknown, 
       return insertData(data, edit.path, edit.value);
     case "rename":
       return renameData(data, edit.path, edit.to);
+    case "move":
+      return moveData(data, edit.path, edit.to);
   }
 }
 
@@ -296,6 +303,45 @@ function renameData(data: unknown, path: YamlPath, to: string): Result<unknown, 
     map,
     Object.entries(map).map(([name, value]) => [name === key ? to : name, value]),
   );
+  return ok(copy);
+}
+
+function moveData(data: unknown, path: YamlPath, to: number): Result<unknown, string> {
+  const index = path[path.length - 1];
+  if (typeof index !== "number") {
+    return err("move needs a path that ends in a list index.");
+  }
+  if (typeof to !== "number" || !Number.isInteger(to)) {
+    const given = typeof to === "number" ? String(to) : describeKind(to);
+    return err(`move needs a whole number to move to, not ${given}.`);
+  }
+  const copy = deepClone(data);
+  let list: unknown = copy;
+  for (let depth = 0; depth < path.length - 1; depth++) {
+    const container = asContainer(list, path, depth);
+    if (!container.ok) {
+      return container;
+    }
+    const child = readChild(container.value, path, depth);
+    if (!child.ok) {
+      return child;
+    }
+    list = child.value;
+  }
+  const listPath = path.slice(0, -1);
+  if (!Array.isArray(list)) {
+    return err(`There is no list at ${describePath(listPath)} to move in.`);
+  }
+  if (index >= list.length) {
+    return err(noItem(path, path.length - 1, list.length));
+  }
+  if (to < 0 || to >= list.length) {
+    return err(
+      `move can't put the item at ${to}; ${describePath(listPath)} has ${list.length}, so to goes from 0 to ${list.length - 1}.`,
+    );
+  }
+  const [item] = list.splice(index, 1);
+  list.splice(to, 0, item);
   return ok(copy);
 }
 
