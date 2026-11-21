@@ -18,6 +18,7 @@ import {
 } from "../settings/plugin-settings-section.tsx";
 import { type PluginSignIns, PluginSignInsSection } from "../sign-in/plugin-sign-ins-section.tsx";
 import { Quoted } from "../ui/quoted.tsx";
+import { AllowStatus } from "./allow-status.tsx";
 import { OPEN_PANEL, PLUGIN } from "./page-text.ts";
 import {
   CHECK_FOR_UPDATES,
@@ -108,6 +109,8 @@ export function PluginPage({
   const [saveState, setSaveState] = useState<SettingsSaveState | undefined>(undefined);
   const [removing, setRemoving] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  // Each closed trust check reads the host's status again, so R13 goes once the yes is saved.
+  const [reviews, setReviews] = useState(0);
   const { run, fail, toastOn, toastRemoved } = usePageActions();
   const manifest = plugin.manifest;
   const off = plugin.status === "on" ? undefined : { reason: statusId };
@@ -129,6 +132,22 @@ export function PluginPage({
       remove: () => setRemoving(true),
     },
     viewOnly,
+  );
+
+  const statusView = (
+    <StatusBox
+      id={statusId}
+      boxRef={statusBox}
+      plugin={plugin}
+      now={now}
+      onCheckAgain={() => run("reload", actions.reload)}
+      onOpenFolder={() => run("openFolder", () => actions.openFolder(plugin.plugin))}
+      onReview={() => setReviewing(true)}
+      viewOnly={viewOnly}
+      update={
+        canUpdate ? updateControl(update, fromFolder, () => void checkForUpdate()) : undefined
+      }
+    />
   );
 
   return (
@@ -176,7 +195,10 @@ export function PluginPage({
           trust={actions.trust}
           programs={actions.programs}
           unfencedRuns={actions.unfencedRuns}
-          onClose={() => setReviewing(false)}
+          onClose={() => {
+            setReviewing(false);
+            setReviews((count) => count + 1);
+          }}
           returnFocus={() => statusBox.current}
           onTrusted={() => toastOn(plugin.name, manifest)}
         />
@@ -211,19 +233,17 @@ export function PluginPage({
             <Quoted text={manifest.description} />
           </p>
         )}
-        <StatusBox
+        <AllowStatus
+          key={reviews}
           id={statusId}
           boxRef={statusBox}
           plugin={plugin}
-          now={now}
-          onCheckAgain={() => run("reload", actions.reload)}
-          onOpenFolder={() => run("openFolder", () => actions.openFolder(plugin.plugin))}
-          onReview={() => setReviewing(true)}
+          unfencedRuns={actions.unfencedRuns}
           viewOnly={viewOnly}
-          update={
-            canUpdate ? updateControl(update, fromFolder, () => void checkForUpdate()) : undefined
-          }
-        />
+          onReview={() => setReviewing(true)}
+        >
+          {statusView}
+        </AllowStatus>
         {manifest === undefined ? null : (
           <PluginSections
             manifest={manifest}
