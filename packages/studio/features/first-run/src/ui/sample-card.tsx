@@ -130,8 +130,8 @@ export function SampleSteps({ progress, openers, openTests, announce }: SampleSt
       <>
         <FinishedLine />
         <Caption done={done.size} />
-        {/* A block around the inline buttons: their outer border starts where the heading does, and they stay side by side as before. */}
-        <div className={inset}>
+        {/* The kit's button row (8px gap, like EmptyState's buttons), inset so the first button starts where the heading does. */}
+        <div className={`${inset} flex flex-wrap items-center gap-2`}>
           {openTests === undefined || finishedRun === undefined ? null : (
             <Button variant="secondary" size="sm" onClick={() => openTests(finishedRun.hub)}>
               {sampleCardWords.seeTests}

@@ -179,7 +179,7 @@ verifies("first-run.sample-card", () => {
     for (const row of rows) expect(insetOf(row), row.textContent ?? "").toBe(insetOf(heading));
   });
 
-  it("on the desktop insets both buttons like the section heading, side by side, with their own padding", () => {
+  it("on the desktop insets both buttons like the section heading, side by side in the kit's button row", () => {
     const insetOf = (element: Element | null | undefined) =>
       element?.className.match(/(?:^|\s)(p[xs]-\S+)/)?.[1];
     const heading = render(<ListHeading name="Try the sample" />).querySelector("h2");
@@ -197,8 +197,8 @@ verifies("first-run.sample-card", () => {
     const wrapper = buttons[0]?.parentElement;
     expect(buttons[1]?.parentElement).toBe(wrapper);
     expect(insetOf(wrapper)).toBe(insetOf(heading));
-    // Only the inset: no flex or gap, so the inline buttons keep the spacing they had.
-    expect(wrapper?.className).toBe(insetOf(heading));
+    // The kit's button row: an 8px gap between the buttons, wrapping when the column is narrow (HAL-14587).
+    expect(wrapper?.className).toBe(`${insetOf(heading)} flex flex-wrap items-center gap-2`);
   });
 
   it("draws the finished card's tick at icon size, on the desktop and on a phone", () => {
