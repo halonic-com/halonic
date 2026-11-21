@@ -81,6 +81,9 @@ pub enum WslError {
     TimedOut,
     /// Some import mounts couldn't be cleaned up; the others were (exit 7).
     MountsLeft,
+    /// Another install, rollback or security update still runs in the
+    /// distro, such as one a time limit stopped `wsl.exe` for (exit 8).
+    UpdateRunning,
     /// Any other ending, with the exit code, or `None` for a signal.
     Failed(Option<i32>),
 }
@@ -100,6 +103,9 @@ impl std::fmt::Display for WslError {
             Self::NothingToRollBack => formatter.write_str("There is no earlier runtime."),
             Self::TimedOut => formatter.write_str("The step took too long and was stopped."),
             Self::MountsLeft => formatter.write_str("Some import mounts could not be cleaned up."),
+            Self::UpdateRunning => {
+                formatter.write_str("Another runtime update is still running in the distro.")
+            }
             Self::Failed(Some(code)) => write!(formatter, "The step ended with exit code {code}."),
             Self::Failed(None) => formatter.write_str("The step was stopped."),
         }

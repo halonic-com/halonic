@@ -127,6 +127,7 @@ fn ending(status: ExitStatus, stdout: Vec<u8>) -> Result<Vec<u8>, WslError> {
         Some(5) => Err(WslError::ArchiveRefused),
         Some(6) => Err(WslError::NothingToRollBack),
         Some(7) => Err(WslError::MountsLeft),
+        Some(8) => Err(WslError::UpdateRunning),
         code => Err(WslError::Failed(code)),
     }
 }
