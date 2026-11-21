@@ -152,6 +152,12 @@ verifies("models.api-keys.address-field", () => {
     expect(view.textContent).toContain(
       "Allowed address: https://gateway.example.com. Only the address part is kept.",
     );
+    // Small, like the field's other lines, with the address in code as the list shows it.
+    const preview = [...view.querySelectorAll("p")].find((line) =>
+      line.textContent?.startsWith("Allowed address:"),
+    );
+    expect(preview?.className).toContain("text-small");
+    expect(preview?.querySelector("code")?.textContent).toBe("https://gateway.example.com");
 
     await type(addressInput(view), "http://192.168.1.20:8080");
     await leave(addressInput(view));
@@ -178,6 +184,8 @@ verifies("models.api-keys.address-field", () => {
 
     await press(view, "Add another address");
     expect(addressInput(view)?.value).toBe("");
+    // The button is gone, so the focus goes on to the field it opened, not to the page.
+    expect(document.activeElement).toBe(addressInput(view));
   });
 });
 
@@ -190,6 +198,16 @@ verifies("models.api-keys.not-bound-yet", () => {
     expect([...view.querySelectorAll("button")].map((button) => button.textContent)).not.toContain(
       "Not bound yet",
     );
+    // The chip steps up from the page's own fill, so it keeps its shape.
+    const chip = [...view.querySelectorAll("span")].find(
+      (span) => span.textContent === "Not bound yet",
+    );
+    expect(chip?.closest('[data-fill="muted"]')).not.toBeNull();
+    // The notice is small, like the field's other lines.
+    const notice = [...view.querySelectorAll("p")].find((line) =>
+      line.textContent?.includes("saved before Halonic recorded addresses"),
+    );
+    expect(notice?.className).toContain("text-small");
 
     await press(view, "Save key");
 

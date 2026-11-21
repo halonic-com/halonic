@@ -1,5 +1,5 @@
 import { Button } from "@halonicjs/studio-kit";
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { KeyAddresses } from "../api.ts";
 import { readAddress } from "./key-address.ts";
 import { AddressField, AddressLine, addressError, useKeyAddresses } from "./key-addresses.tsx";
@@ -63,6 +63,11 @@ export function useAddressStep({
     addresses !== undefined &&
     (stored === "none" || stored === "unknown" || state?.kind === "none" || (listed && adding));
   const typedRead = () => readAddress(input.current?.value ?? "");
+  // **Add another address** is gone once the field shows, so the focus moves on to the field
+  // rather than drop to the page (design check C564).
+  useEffect(() => {
+    if (adding) input.current?.focus();
+  }, [adding]);
 
   const summary =
     state === undefined || secretName === undefined ? null : (
@@ -79,7 +84,7 @@ export function useAddressStep({
     );
   const field = asks ? (
     <div className="flex basis-full flex-col gap-2">
-      {state?.kind === "none" ? <p>{NOT_BOUND_NOTICE}</p> : null}
+      {state?.kind === "none" ? <p className="text-small text-fg">{NOT_BOUND_NOTICE}</p> : null}
       <AddressField
         ref={input}
         prefill={listed ? undefined : usualAddress}
