@@ -63,8 +63,9 @@ export interface ShellFrameProps {
    */
   readonly phoneBadges?: ReactNode;
   /**
-   * The strips under the top bar, `Strips`, such as the first-run bar: at the top of the panel on
-   * the desktop and under the top bar on a phone, after the engine's line in both.
+   * The strips under the top bar, `Strips`, such as the first-run bar: at the top of the page
+   * column on the desktop, beside the full-height sidebar, and under the top bar on a phone, after
+   * the engine's line in both.
    */
   readonly strips?: ReactNode;
   /** The top bar on a phone, `PhoneTopBar`: Back, the place or page title, its actions. */
@@ -182,7 +183,7 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
       <div className={`flex min-h-0 flex-1 flex-col bg-surface ${desktop ? panel : phoneColumn}`}>
         {desktop ? null : props.phoneTopBar}
         <EngineLine engine={props.engine} />
-        {props.strips}
+        {desktop ? null : props.strips}
         {desktop ? null : <PhoneNotices saveNote={props.saveNote} badges={props.phoneBadges} />}
         <div className={`relative flex min-h-0 flex-1 ${desktop ? "" : phoneContent}`}>
           {desktop ? (
@@ -198,12 +199,9 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
               {props.sidebar}
             </SidebarSlot>
           ) : null}
-          <main
-            className={`min-w-0 flex-1 overflow-auto ${desktop ? "" : phonePage}`}
-            inert={drawer.open}
-          >
+          <PageColumn desktop={desktop} inert={drawer.open} strips={props.strips}>
             {props.children}
-          </main>
+          </PageColumn>
           <ToastRegion store={props.toasts} />
         </div>
         {desktop ? (
@@ -219,6 +217,34 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
         ) : (
           props.phoneNavigation
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The page's column, beside the sidebar: on the desktop the strips at its top, over the page (sheet
+ * 05, so the sidebar stays full height), then `main`. It's there in both layouts, so `main` keeps its
+ * place when the width crosses `PHONE_MAX_WIDTH`. While the Places drawer is open its scrim covers
+ * the strips too, so they are inert with the page.
+ */
+function PageColumn(props: {
+  readonly desktop: boolean;
+  readonly inert: boolean;
+  readonly strips: ReactNode;
+  readonly children: ReactNode;
+}) {
+  const grow = props.desktop ? "" : phoneContent;
+  return (
+    <div className={`flex min-h-0 min-w-0 flex-1 flex-col ${grow}`} inert={props.inert}>
+      {props.desktop ? props.strips : null}
+      <div className={`flex min-h-0 flex-1 ${grow}`}>
+        <main
+          className={`min-w-0 flex-1 overflow-auto ${props.desktop ? "" : phonePage}`}
+          inert={props.inert}
+        >
+          {props.children}
+        </main>
       </div>
     </div>
   );

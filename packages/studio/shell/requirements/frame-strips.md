@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-13433 (first-run build 5, build notes 2); first-run-flow 2 and 5, "the first-run bar under the top bar"
+- Source: HAL-13433 (first-run build 5, build notes 2); first-run-flow 2 and 5, "the first-run bar under the top bar"; sheet 05 (HAL-8721), design check C520-5 (HAL-14976)
 
-The shell shall let a feature add a strip under the top bar only through the point `strips.add`, and list the strips by `order`, lowest first, then by `id`. The window shall draw each strip's view with the context of the feature that added it: on the desktop at the top of the panel, above the sidebar and the page, and on a phone under the top bar; in both, after the engine's line. While no strip's view draws anything, the strips shall take no room. A strip whose view fails to load or draw shall show nothing, and the other strips shall stay.
+The shell shall let a feature add a strip under the top bar only through the point `strips.add`, and list the strips by `order`, lowest first, then by `id`. The window shall draw each strip's view with the context of the feature that added it: on the desktop at the top of the page column, above the page and beside the full-height sidebar, and on a phone under the top bar; in both, after the engine's line. While no strip's view draws anything, the strips shall take no room. A strip whose view fails to load or draw shall show nothing, and the other strips shall stay.
 
 ## Examples
 
@@ -13,7 +13,7 @@ The shell shall let a feature add a strip under the top bar only through the poi
   then the order is `remote.notice`, `first-run.bar`.
 - Given a strip whose view draws "1 Demo",
   when the window shows on the desktop,
-  then "1 Demo" is inside the panel, before the page's `main`.
+  then "1 Demo" is in the page column, before the page's `main`, and not above the sidebar.
 - Given a strip whose view draws nothing,
   when the window shows,
   then the strips take no room.

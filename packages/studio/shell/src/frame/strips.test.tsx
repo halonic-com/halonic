@@ -74,6 +74,7 @@ async function renderFrame(
       language="en"
       titleBar={<button type="button">Back</button>}
       phoneTopBar={<header data-top-bar="">Inbox</header>}
+      sidebar={<nav data-sidebar-places="">Places</nav>}
       strips={<Strips strips={strips} contextFor={contextFor} />}
     >
       <p>The page</p>
@@ -110,7 +111,7 @@ verifies("shell.frame-strips", () => {
     ]);
   });
 
-  it("draws a strip in the panel on the desktop, before the page", async () => {
+  it("draws a strip in the page column on the desktop, before the page, beside the sidebar", async () => {
     const strips = stripsOf({
       id: "first-run",
       title: "First run",
@@ -123,6 +124,11 @@ verifies("shell.frame-strips", () => {
     expect(container.querySelector("header.h-titlebar")?.contains(strip as Node)).toBe(false);
     const main = container.querySelector("main") as HTMLElement;
     expect(strip?.compareDocumentPosition(main)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    // The sheet (C520-5): the bar sits in the page's column, so the sidebar stays full height.
+    expect(strip?.parentElement?.contains(main)).toBe(true);
+    const sidebar = container.querySelector("[data-sidebar-places]") as HTMLElement;
+    expect(sidebar.compareDocumentPosition(strip as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(strip?.parentElement?.contains(sidebar)).toBe(false);
   });
 
   it("draws a strip under the top bar on a phone", async () => {

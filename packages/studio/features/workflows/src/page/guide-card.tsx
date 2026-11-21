@@ -1,6 +1,12 @@
-import { Button } from "@halonicjs/studio-kit";
+import { Button, ChevronRightIcon, RefreshIcon } from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useId, useState } from "react";
-import type { WorkflowGuide, WorkflowGuideCard, WorkflowGuidePage, WorkflowRef } from "../api.ts";
+import type {
+  WorkflowGuide,
+  WorkflowGuideCard,
+  WorkflowGuideLine,
+  WorkflowGuidePage,
+  WorkflowRef,
+} from "../api.ts";
 import type { WorkflowView } from "./workflow-tabs.ts";
 
 /**
@@ -89,45 +95,68 @@ export interface GuideCardProps {
 
 /**
  * Another feature's guide card on the workflow's page (`workflows.page.guide-card`), such as the first
- * run's: a region named by its title, the lines, and one primary button. It isn't a dialog and has
- * no ✕, so the canvas stays usable beside it.
+ * run's, drawn as sheet 05 has it: a card with its own border and corners, as tall as its content,
+ * its title over a divider, the lines (a labelled one as a quote in an inset box, its label small
+ * above the text), and one full-width primary button with a ›, or with the refresh mark when it
+ * runs something again. It isn't a dialog and has no ✕, so the canvas stays usable beside it.
  */
 export function GuideCard({ card, page, phone, button }: GuideCardProps) {
   const headingId = useId();
+  const again = card.action.again === true;
   return (
     <aside
       aria-labelledby={headingId}
       className={phone ? classes.phone : classes.desktop}
       data-guide-card=""
     >
-      <h2 id={headingId} className="text-title wrap-anywhere">
+      <h2
+        id={headingId}
+        className="border-b border-border px-4 py-3 text-body-strong wrap-anywhere"
+      >
         {card.title}
       </h2>
-      {card.lines.map((line, index) => (
-        // Two lines may read the same, so the place keeps the key unique.
-        <p key={`${index}:${line.label ?? ""}${line.text}`} className="text-body text-fg-muted">
-          {line.label === undefined ? null : (
-            <span className="text-body-strong text-fg">{line.label} </span>
-          )}
-          {line.text}
-        </p>
-      ))}
-      <div>
+      <div className="flex flex-col gap-3 p-4">
+        {card.lines.map((line, index) => (
+          // Two lines may read the same, so the place keeps the key unique.
+          <GuideLine key={`${index}:${line.label ?? ""}${line.text}`} line={line} />
+        ))}
         <Button
           ref={button ?? null}
           variant="primary"
-          size="sm"
+          block
+          icon={again ? <RefreshIcon /> : undefined}
           onClick={() => card.action.run(page)}
         >
           {card.action.label}
+          {again ? null : (
+            <span className={chevron} aria-hidden="true">
+              <ChevronRightIcon />
+            </span>
+          )}
         </Button>
       </div>
     </aside>
   );
 }
 
+/** A plain line, or a labelled one ("The email") as a quote: an inset box with a bar at its start. */
+function GuideLine({ line }: { readonly line: WorkflowGuideLine }) {
+  if (line.label === undefined) {
+    return <p className="text-body text-fg-muted">{line.text}</p>;
+  }
+  return (
+    <div className="rounded-xs border-s-2 border-border-strong bg-surface-subtle px-3 py-2">
+      <p className="text-caption text-fg-muted">{line.label}</p>
+      <p className="text-body text-fg">{line.text}</p>
+    </div>
+  );
+}
+
+const chevron = "inline-grid size-icon-sm shrink-0 place-items-center *:size-full";
+
 const classes = {
   desktop:
-    "flex w-80 max-w-full shrink-0 flex-col gap-3 overflow-auto border-s border-border bg-surface-raised p-6",
-  phone: "flex flex-col gap-3 border-b border-border bg-surface-raised px-4 py-3",
+    "m-4 ms-0 flex w-80 max-w-full shrink-0 flex-col self-start overflow-hidden rounded-md border border-border bg-surface-raised",
+  phone:
+    "mx-4 my-3 flex flex-col overflow-hidden rounded-md border border-border bg-surface-raised",
 } as const;

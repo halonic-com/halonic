@@ -438,7 +438,10 @@ export interface WorkflowsHost {
 export const WorkflowsHostService: ServiceKey<WorkflowsHost> =
   serviceKey<WorkflowsHost>("workflows.host");
 
-/** One line of a guide card: plain text, after a label when it has one ("The email:"). */
+/**
+ * One line of a guide card: plain text, or, with a label ("The email"), a quote in an inset box
+ * with the label small above it.
+ */
 export interface WorkflowGuideLine {
   readonly label?: string | undefined;
   readonly text: string;
@@ -461,6 +464,8 @@ export interface WorkflowGuideCard {
   readonly action: {
     /** The button's words, such as "Run your first workflow". */
     readonly label: string;
+    /** It runs something again ("Run again"): the button shows the refresh mark instead of ›. */
+    readonly again?: boolean | undefined;
     run(page: WorkflowGuidePage): void;
   };
 }

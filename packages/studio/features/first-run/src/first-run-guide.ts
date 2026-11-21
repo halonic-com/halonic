@@ -28,6 +28,7 @@ function guideCard(ended: boolean): WorkflowGuideCard {
     lines: [{ text: guideWords.about }, { label: guideWords.emailLabel, text: guideWords.email }],
     action: {
       label: ended ? guideWords.runAgain : guideWords.run,
+      again: ended,
       run: (page) => page.openRunForm(),
     },
   };
