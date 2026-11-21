@@ -2,7 +2,7 @@
 
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { noActions, noSettings, weather } from "../test-support/plugins.ts";
@@ -155,6 +155,68 @@ verifies("plugins.plugin-page-stopped", () => {
     const view = await show(weather("not-trusted"), runStates);
 
     expect(runStates.runState).not.toHaveBeenCalled();
+    expect(view.textContent).not.toContain(stoppedLine);
+  });
+
+  it.each(["not-trusted", "changed"] as const)(
+    "drops R15 when a stopped plugin becomes %s on the open page",
+    async (status) => {
+      const runStates = runStatesOf(true);
+      let setPlugin: (plugin: InstalledPlugin) => void = () => {};
+      function Page() {
+        const [plugin, set] = useState(weather("on"));
+        setPlugin = set;
+        return (
+          <PluginPage
+            plugin={plugin}
+            {...noSettings()}
+            actions={{ ...noActions().actions, runStates }}
+            onOpenPanel={() => {}}
+          />
+        );
+      }
+      const view = render(
+        <ToastStoreProvider store={createToastStore()}>
+          <Page />
+        </ToastStoreProvider>,
+      );
+      await act(async () => {});
+      expect(view.textContent).toContain(stoppedLine);
+
+      await act(async () => setPlugin(weather(status)));
+
+      expect(view.textContent).not.toContain(stoppedLine);
+    },
+  );
+
+  it("drops a late answer for a plugin that lost its trust while the host answered", async () => {
+    let answer: (state: { stopped: boolean }) => void = () => {};
+    const runStates = {
+      runState: () => new Promise<{ stopped: boolean }>((resolve) => (answer = resolve)),
+      checkAgain: async () => ({ stopped: false }),
+    };
+    let setPlugin: (plugin: InstalledPlugin) => void = () => {};
+    function Page() {
+      const [plugin, set] = useState(weather("on"));
+      setPlugin = set;
+      return (
+        <PluginPage
+          plugin={plugin}
+          {...noSettings()}
+          actions={{ ...noActions().actions, runStates }}
+          onOpenPanel={() => {}}
+        />
+      );
+    }
+    const view = render(
+      <ToastStoreProvider store={createToastStore()}>
+        <Page />
+      </ToastStoreProvider>,
+    );
+
+    await act(async () => setPlugin(weather("not-trusted")));
+    await act(async () => answer({ stopped: true }));
+
     expect(view.textContent).not.toContain(stoppedLine);
   });
 

@@ -78,22 +78,31 @@ export function StoppedStatus({
 
 /**
  * Reads the host's run state of `plugin` once, and drops the stop after **Check again**. An answer
- * that comes after the page went away is dropped; a host that can't say shows no stop.
+ * that comes after the page went away, or after the plugin changed, is dropped; a host that can't
+ * say shows no stop. Without `runStates` (the plugin was turned off or lost its trust) there is no
+ * stop to show.
  */
 function useStopped(runStates: PluginRunStates | undefined, plugin: string) {
   const [stopped, setStopped] = useState(false);
   const live = useRef(true);
   useEffect(() => {
     live.current = true;
-    runStates?.runState(plugin).then(
+    if (runStates === undefined) {
+      setStopped(false);
+      return;
+    }
+    // Each read has its own flag: a late answer for the plugin as it was must not bring R15 back.
+    let current = true;
+    runStates.runState(plugin).then(
       (state) => {
-        if (live.current) setStopped(state.stopped);
+        if (current && live.current) setStopped(state.stopped);
       },
       () => {
         // The host can't say: the page shows its status as it would without R15.
       },
     );
     return () => {
+      current = false;
       live.current = false;
     };
   }, [runStates, plugin]);
