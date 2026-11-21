@@ -3,6 +3,7 @@
 - Task: HAL-15136
 - Approval: the board chose option A (the installer ships the runtime) on HAL-15093; Liam reviews the workflow change and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mcuFUviU9tZqd7xC11OEXX0tTOaNwaP9lCMSxeG5hLKfWiHpcDI+bFVHnk4nycMShaL0y1jRqFaJ+Sn+PoG3DA==
 
 ## What changes
 
