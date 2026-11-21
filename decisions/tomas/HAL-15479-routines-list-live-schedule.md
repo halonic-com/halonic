@@ -2,6 +2,7 @@
 
 - Approval: Paperclip tasks HAL-15479 (from C581 on HAL-15468) and HAL-15513 (from Nina's C585 G1 on HAL-15496), decided by the team under HAL-2282; Liam approves this note in his review of this pull request on HAL-15479
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:arHgD+rbH+INcTjSnccXR79E9cCm9HzSiUGJCr20bC3CV2DZnY7SeDrbClpgvKuWpRi3y5ItKaIyrcA3tvmECw==
 - Task: HAL-15479
 
 ## What changes
