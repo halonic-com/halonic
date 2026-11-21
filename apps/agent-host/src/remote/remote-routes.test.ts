@@ -1,4 +1,5 @@
-import type { PairingEvent, RemoteControl, RemoteState } from "@halonicjs/ports";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import type { PairingEvent, PairingSession, RemoteControl, RemoteState } from "@halonicjs/ports";
 import { FakeRemoteControl } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
@@ -136,6 +137,50 @@ describe("remoteRoutes", () => {
       const after = await post(url, "/v1/remote/pairing/close", { pairing: id });
       expect(after.status).toBe(404);
       expect(await errorKind(after)).toBe("unknown_pairing");
+    });
+
+    it("closes the pairing when the caller left while it was still opening", async () => {
+      const remote = new FakeRemoteControl();
+      const openPairingNow = remote.startPairing.bind(remote);
+      let markAsked: () => void = () => {};
+      const asked = new Promise<void>((resolve) => {
+        markAsked = resolve;
+      });
+      let markLeft: () => void = () => {};
+      const left = new Promise<void>((resolve) => {
+        markLeft = resolve;
+      });
+      let opened: Promise<PairingSession> | undefined;
+      // Opens the pairing only once the host has seen the caller leave, as a slow start would.
+      remote.startPairing = () => {
+        markAsked();
+        opened = left.then(openPairingNow);
+        return opened;
+      };
+      const routes = remoteRoutes(remote).map((route) =>
+        route.path === "/v1/remote/pairing"
+          ? {
+              ...route,
+              handle: (request: IncomingMessage, response: ServerResponse) => {
+                response.once("close", markLeft);
+                return route.handle(request, response);
+              },
+            }
+          : route,
+      );
+      server = await startHostServer(token, routes);
+      const leave = new AbortController();
+      const answer = post(server.url, "/v1/remote/pairing", {}, leave.signal);
+      await asked;
+      leave.abort();
+      await expect(answer).rejects.toThrow();
+
+      await opened;
+      // The pairing opened after the caller had gone, and the host closes it.
+      await expect.poll(() => remote.snapshot.pairing).toBe(false);
+      const { lines } = await openPairing(server.url);
+      expect(await nextLine(lines)).toMatchObject({ type: "code" });
+      await lines.return(undefined);
     });
 
     it("answers 404 for a pairing it doesn't know", async () => {
