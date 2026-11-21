@@ -214,7 +214,7 @@ Its text is attacker text. The rules are the requirement
 | One integration reads another's tokens | Names are `i<n>_<integration>_<token>`; a policy declares what each may read | **On `main`** (`scoped-tokens`) |
 | A slow or huge response ties up the host | Header, idle and overall timeouts and a size limit on every request | **On `main`** (`request-limits`) |
 | Logs leak secrets | The request log holds method, host, path, status, time and outcome; no query, headers or bodies | **On `main`** (`request-log`) |
-| A plugin's backend in the agent host reads a secret that isn't its own, or the page plants one for another plugin | Studio hands the host one trusted plugin's declared secrets by their short names; the host checks its own trust record, builds `plugin__<id>__<secret>` itself, keeps the values in memory only and answers only `plugin__` names; the kit reads them only through `pluginSecrets(id)` | **Planned** (HAL-13652) |
+| A plugin's backend in the agent host reads a secret that isn't its own, or the page plants one for another plugin | Studio hands the host one trusted plugin's declared secrets by their short names; the host checks its own trust record, builds `plugin__<id>__<secret>` itself, keeps the values in memory only and answers only `plugin__` names; the kit reads them only through `pluginSecrets(id)` | **On `main`** (`agent-host.plugin-secrets`, `agent-host-client.plugin-secrets`, `studio.plugin-secret-hand-over`) |
 | A stored token is read from disk or a copy | AES-256-GCM, a new random nonce per write, bound to the token's name so a value can't be moved to another name; the key is the secret `token-key` (32 bytes). On a person's computer it is made on the first seal from the system's cryptographic generator and kept in the profile's private secrets file; a key already there or in `HALONIC_SECRET_TOKEN_KEY` is never replaced, and none is made while sealed tokens remain (`token-store.made-token-key`, HAL-13855) | **On `main`** (`packages/adapters/token-store`) |
 | A wrong key looks like "not signed in" | A value that won't open throws `UnreadableTokenError`, never `null`; the error names the token, not its value | **On `main`** |
 | Token names fold into each other | Case and `-` versus `_` are treated as the same name; bad names are refused before anything is read | **On `main`** |
@@ -474,11 +474,11 @@ profile's `unfenced-runs` folder starts no local integration or plugin backend
 from the command. In the host, a file written into that folder by hand counts
 as a yes, as the trust records next to it count as trust: whoever can write the
 profile already decides what runs. A plugin's
-backend gets no secret and no sign-in token through the host yet. Its
-secrets are to come from Studio, which hands a trusted plugin's declared
+backend gets its secrets from Studio, which hands a trusted plugin's declared
 secrets to the host before each use; the host builds their names itself and
-keeps the values in memory only (**Planned**, HAL-13652; ADR
-[Studio hands a plugin its secrets](../adr/2026-11-19-studio-hands-a-plugin-its-secrets.md)). The shipped
+keeps the values in memory only (**On `main`**, `agent-host.plugin-secrets`;
+ADR [Studio hands a plugin its secrets](../adr/2026-11-19-studio-hands-a-plugin-its-secrets.md)).
+It gets no sign-in token through the host yet (HAL-8613). The shipped
 single executable has no runner mode of its own (its `process.execPath` is the
 host, not Node), so there the route answers `403 not_in_this_build` and starts
 nothing, rather than start a second host without Node's permission layer.

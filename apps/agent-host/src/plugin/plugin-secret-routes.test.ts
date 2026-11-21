@@ -115,6 +115,15 @@ verifies("agent-host.plugin-secrets", () => {
       expect(await acmeKey()).toBeNull();
     });
 
+    it("keeps nothing from a hand-over still in flight when the host stops", async () => {
+      const { url, backends, table } = await started();
+      backends.whileCheckingSecrets = () => table.closeAll();
+      const refused = await handOver(url, "acme", { "acme-key": fakeValue });
+      expect(refused.status).toBe(503);
+      expect(await errorOf(refused)).toBe("host_stopping");
+      expect(await acmeKey()).toBeNull();
+    });
+
     it("never puts a value in an answer or the log", async () => {
       const { url, backends, logged } = await started();
       const answers = [
