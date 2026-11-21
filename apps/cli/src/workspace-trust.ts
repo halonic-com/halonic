@@ -13,7 +13,7 @@ import {
   trustContentInputOf,
   trustSubjectOf,
 } from "@halonicjs/app";
-import type { Clock, TrustGrant, TrustStore } from "@halonicjs/ports";
+import type { Clock, KeyOrigins, TrustGrant, TrustStore } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import {
   filesOf,
@@ -24,6 +24,7 @@ import {
   reachesOnlyTheTestModel,
 } from "@halonicjs/workspace";
 import { type CommandSearch, commandPaths } from "./command-paths.ts";
+import { keyAddressLists } from "./key-address-lists.ts";
 import type { Message } from "./messages/define.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
@@ -188,6 +189,8 @@ export interface WorkspaceTrustMachine {
   readonly sandboxWorks?: () => Promise<boolean>;
   /** The hosts of the plugins installed here; left out, the check shows no plugin's hosts. */
   readonly pluginHosts?: () => Promise<PluginHosts>;
+  /** The stored keys' lists of addresses; left out, the check reads no key's list. */
+  readonly keyOrigins?: KeyOrigins;
 }
 
 /**
@@ -232,6 +235,7 @@ export async function trustedGrant(
       folder: dir.shown,
       sandboxWorks: (await machine.sandboxWorks?.()) === true,
       pluginHosts: (await machine.pluginHosts?.()) ?? new Map(),
+      keyAddresses: await keyAddressLists(check, machine.keyOrigins),
     }),
     changes: changed ? trustChangesDocument(check.changes, check.trustedAt) : undefined,
   });

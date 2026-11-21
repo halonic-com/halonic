@@ -118,6 +118,8 @@ export class FileSecretStore implements SecretStore, KeyOrigins {
    * name (a name that breaks the rule has none), an address that can't be an
    * origin, or a list that already holds {@link maxAllowedOrigins}. Nothing is
    * written then, and nothing is written when the origin is already on the list.
+   * `added` says whether the key had no list before, so a caller can say the
+   * key now goes only to this one origin.
    *
    * @throws KindedError when the file can't be read or written; the message
    *   never repeats a value
@@ -146,7 +148,7 @@ export class FileSecretStore implements SecretStore, KeyOrigins {
       }
       entries.set(key, { ...entry, allowedOrigins: [...current, found.origin] });
       await this.#save(entries);
-      return { result: "added", origin: found.origin } as const;
+      return { result: "added", origin: found.origin, first: current.length === 0 } as const;
     });
   }
 
@@ -253,8 +255,12 @@ function isMissing(error: unknown): boolean {
   return (error as { code?: unknown } | null)?.code === "ENOENT";
 }
 
-/** What {@link FileSecretStore.addAllowedOrigin} did; `origin` is the address as it is stored. */
+/**
+ * What {@link FileSecretStore.addAllowedOrigin} did; `origin` is the address as it is stored.
+ * `first` is true when the key had no list before, so it may now go only to that origin.
+ */
 export type AddOriginResult =
-  | { readonly result: "added" | "already-allowed"; readonly origin: string }
+  | { readonly result: "added"; readonly origin: string; readonly first: boolean }
+  | { readonly result: "already-allowed"; readonly origin: string }
   | { readonly result: "no-key" | "full" }
   | { readonly result: "bad-address"; readonly problem: AddressProblem };

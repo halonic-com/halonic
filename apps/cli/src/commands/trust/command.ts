@@ -2,7 +2,7 @@ import { realpath } from "node:fs/promises";
 import { resolve } from "node:path";
 import { FileTrustStore, FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { parseFile } from "@halonicjs/format";
-import type { Clock, TrustRecord, TrustStore } from "@halonicjs/ports";
+import type { Clock, KeyOrigins, TrustRecord, TrustStore } from "@halonicjs/ports";
 import { profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { reachesOnlyTheTestModel, settingsPath } from "@halonicjs/workspace";
@@ -15,6 +15,7 @@ import {
 } from "../../command.ts";
 import { type CommandSearch, nodeCommandSearch } from "../../command-paths.ts";
 import { exitCode } from "../../exit-code.ts";
+import { keyAddressLists } from "../../key-address-lists.ts";
 import { columns } from "../../messages/columns.ts";
 import type { Message } from "../../messages/define.ts";
 import { usageMessages } from "../../messages/general.ts";
@@ -31,6 +32,7 @@ import {
 import { type FingerprintedCheck, shownDate, trustCheckLines } from "../../output/trust-check.ts";
 import type { PluginSetup } from "../../plugin-host.ts";
 import { nodeSandboxWorks } from "../../sandbox-works.ts";
+import { profileKeyOrigins } from "../../secret-host.ts";
 import { installedPluginHosts, type PluginHosts } from "../../sheet-hosts.ts";
 import { shownPath } from "../../shown-path.ts";
 import { dirOption, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
@@ -51,6 +53,8 @@ export interface TrustMachine {
   readonly sandboxWorks?: () => Promise<boolean>;
   /** The hosts of the plugins installed here; left out, the check shows no plugin's hosts. */
   readonly pluginHosts?: () => Promise<PluginHosts>;
+  /** The stored keys' lists of addresses; left out, the check reads no key's list. */
+  readonly keyOrigins?: KeyOrigins;
 }
 
 /**
@@ -66,6 +70,7 @@ export function nodeTrustMachine(): TrustMachine {
     commandSearch: nodeCommandSearch(),
     sandboxWorks: nodeSandboxWorks,
     pluginHosts: () => installedPluginHosts(),
+    keyOrigins: profileKeyOrigins(),
   };
 }
 
@@ -175,6 +180,7 @@ async function reviewAndTrust(
     ...facts,
     sandboxWorks: (await machine.sandboxWorks?.()) === true,
     pluginHosts: (await machine.pluginHosts?.()) ?? new Map(),
+    keyAddresses: await keyAddressLists(check, machine.keyOrigins),
   });
   const changes =
     check.status === "changed" ? trustChangesDocument(check.changes, check.trustedAt) : undefined;

@@ -19,6 +19,7 @@ import {
   agentRow,
   integrationChanges,
   integrationRows,
+  type KeyAddressLists,
   programRow,
   programSites,
   providerRow,
@@ -47,6 +48,12 @@ export interface TrustCheckFacts {
    * HAL-15094). Left out, no plugin's hosts are shown.
    */
   readonly pluginHosts?: PluginHosts;
+  /**
+   * The addresses each stored model key may be sent to, for the keys that
+   * have a list, so a provider whose key's list leaves out where it goes
+   * gets a ! line (HAL-15346). Left out, no key's list is checked.
+   */
+  readonly keyAddresses?: KeyAddressLists;
 }
 
 /** A check with a fingerprint: every status but `refused`, which stops before any line is shown. */
@@ -104,7 +111,7 @@ export function trustCheckLines(check: FingerprintedCheck, rawFacts: TrustCheckF
     ...section(trustMessages.addressesHeading(), [
       ...addresses(connectors).flatMap((row) => addressRows(row, facts.pluginHosts)),
       ...integrations.flatMap(integrationRows),
-      ...providers.flatMap(providerRow),
+      ...providers.flatMap((provider) => providerRow(provider, facts.keyAddresses)),
     ]),
     ...fingerprint,
   ];
@@ -168,8 +175,12 @@ function changedLines(
       ...rowsOf(addresses, (row) => addressRows(row, facts.pluginHosts)),
       ...changes.integrations.added.flatMap((row) => tagged(integrationRows(row), newRow)),
       ...changes.integrations.changed.flatMap(integrationChanges),
-      ...changes.providers.added.flatMap((row) => tagged(providerRow(row), newRow)),
-      ...changes.providers.changed.flatMap((row) => tagged(providerRow(row.after), changedRow)),
+      ...changes.providers.added.flatMap((row) =>
+        tagged(providerRow(row, facts.keyAddresses), newRow),
+      ),
+      ...changes.providers.changed.flatMap((row) =>
+        tagged(providerRow(row.after, facts.keyAddresses), changedRow),
+      ),
     ]),
   ];
 }

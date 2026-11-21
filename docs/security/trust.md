@@ -57,6 +57,9 @@ lists, in this order (requirement `cli.trust-check`):
   address other than its type's own gets a second line, "Sends its key to
   https://llm.example.com." (see
   [a key goes only to its own address](#a-key-goes-only-to-its-own-address)).
+  When the key has a list of addresses without the one the provider sends it
+  to, a `!` line says a run with it fails and gives the
+  `halonic models allow-address` command that allows it.
 - **Fingerprint:** the full fingerprint, never shortened.
 
 When the workspace changed since you trusted it, the check shows only what is
@@ -141,7 +144,9 @@ read is shown as an error, never as "Not bound yet". `halonic models
 allow-address` writes to the CLI's secrets file, not the keychain.
 
 `halonic models allow-address <key-name> <address>` adds one address to a key's
-list, keeping the others. It keeps the scheme, host and port of what you type,
+list, keeping the others. For a key that had no list, it says so: from then on
+the key goes only to that address, its type's own included, until you allow
+more. It keeps the scheme, host and port of what you type,
 and refuses an address with a user name or password. It refuses to run from
 inside a run, when the run marker `HALONIC_RUN_TOKEN` is in its environment.
 That check is a second layer so a tool gets a clear answer; it is not the

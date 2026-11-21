@@ -76,7 +76,7 @@ interface Shown {
 function resultOf(outcome: AddOriginResult, shown: Shown): CommandResult {
   switch (outcome.result) {
     case "added":
-      return allowed(outcome.origin, shown, true);
+      return allowed(outcome.origin, shown, outcome.first);
     case "already-allowed":
       return {
         exitCode: exitCode.ok,
@@ -99,17 +99,22 @@ function resultOf(outcome: AddOriginResult, shown: Shown): CommandResult {
   }
 }
 
-/** The success line, after the note that a path was dropped when the person typed more than the address. */
+/**
+ * The success line, after the note that a path was dropped when the person
+ * typed more than the address, and before the note that the key now goes
+ * only there when it was the key's first address.
+ */
 function allowed(
   origin: string,
   shown: { key: string; typed: string },
-  changed: boolean,
+  first: boolean,
 ): CommandResult {
-  const lines = [modelsMessages.allowed(origin, shown.key).phrase];
-  if (typedMoreThan(origin, shown.typed)) {
-    lines.unshift(modelsMessages.onlyAddressKept(origin).phrase);
-  }
-  return { exitCode: exitCode.ok, lines, json: { key: shown.key, address: origin, changed } };
+  const lines = [
+    ...(typedMoreThan(origin, shown.typed) ? [modelsMessages.onlyAddressKept(origin).phrase] : []),
+    modelsMessages.allowed(origin, shown.key).phrase,
+    ...(first ? [modelsMessages.onlyAddressNow(origin, shown.key).phrase] : []),
+  ];
+  return { exitCode: exitCode.ok, lines, json: { key: shown.key, address: origin, changed: true } };
 }
 
 /** Whether the typed address had a path, query or fragment: the stored form is the scheme, host and port only. */
