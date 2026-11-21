@@ -17,6 +17,15 @@ verifies("agents.chat.try-it", () => {
     expect(tryItWords.tool.failed(toolInWords("send_reply"))).toBe("Send reply didn't work");
   });
 
+  it("says a model call limit of 1 in the singular, as the CLI does", () => {
+    expect(tryItWords.turnLimit("Sorter", 1)).toBe(
+      "Sorter used its only model call without finishing.",
+    );
+    expect(tryItWords.turnLimit("Sorter", 6)).toBe(
+      "Sorter used all 6 model calls without finishing.",
+    );
+  });
+
   it("marks a tool call failed when its result is the chat service's error", () => {
     const call = { id: "c1", name: "send_reply", arguments: {} };
     let transcript = withToolCall(startTurn(emptyTranscript, "Reply to Sam"), call);

@@ -5,10 +5,10 @@ import type { AgentChange, AgentSettings } from "../api.ts";
 import { configurationWords as words } from "./configuration-words.ts";
 import { MoreSettings } from "./more-settings.tsx";
 
-/** The turn limit a file gets when the field is left empty (`agents.editor.max-steps-default`). */
+/** The model call limit a file gets when the field is left empty (`agents.editor.max-steps-default`). */
 export const DEFAULT_TURN_LIMIT = 6;
 
-/** The sentence for a turn limit that isn't a whole number from 1 to 200; `null` when it is fine, or empty. */
+/** The sentence for a model call limit that isn't a whole number from 1 to 200; `null` when it is fine, or empty. */
 export const turnLimitCheck = (text: string): string | null => {
   const trimmed = text.trim();
   if (trimmed === "") return null;
@@ -44,8 +44,9 @@ export interface ModelPageProps {
 
 /**
  * The Model page (`agents.configuration.model`): the model, picked from the workspace's aliases,
- * the turn limit, and the model settings folded under More settings. Each saves by itself. A turn
- * limit with a mistake isn't saved, and counts as a field not saved, as does one whose save failed.
+ * the model call limit, and the model settings folded under More settings. Each saves by itself. A
+ * model call limit with a mistake isn't saved, and counts as a field not saved, as does one whose
+ * save failed.
  */
 export function ModelPage({
   settings,

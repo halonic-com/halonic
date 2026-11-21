@@ -76,16 +76,16 @@ verifies("settings.ai-agent-fields", () => {
     expect(checkSecretName("1key").ok).toBe(false);
   });
 
-  it.each(["1", "16", " 64 "])("accepts the turn limit %j", (typed) => {
+  it.each(["1", "16", " 64 "])("accepts the model call limit %j", (typed) => {
     expect(checkTurnLimit(typed)).toEqual({ ok: true, value: Number(typed) });
   });
 
-  it("reads an empty turn limit as the default", () => {
+  it("reads an empty model call limit as the default", () => {
     expect(checkTurnLimit("  ")).toEqual({ ok: true, value: undefined });
   });
 
   it.each(["0", "65", "2.5", "many", "-3", "1e1", "0016x"])(
-    "refuses the turn limit %j",
+    "refuses the model call limit %j",
     (typed) => {
       expect(checkTurnLimit(typed)).toEqual(turnError);
     },
