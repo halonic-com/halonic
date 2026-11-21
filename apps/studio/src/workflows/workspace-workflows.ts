@@ -426,8 +426,8 @@ export class WorkspaceWorkflows implements WorkflowsHost {
    * `not_found` for any other hub the workspace doesn't have, so no stray folder is made.
    */
   async create({ name, hubId }: NewWorkflow): Promise<WorkflowRef> {
-    await this.#load();
-    const hubFiles = hubFilesFor(this.#hubs, hubId);
+    const workspace = await this.#load();
+    const hubFiles = hubFilesFor(workspace.issues, this.#hubs, hubId);
     const folder = workflowFolder(hubId);
     const taken = (await this.#parts.files.list(folder))
       .filter((path) => path.startsWith(`${folder}/`) && path.endsWith(workflowSuffix))

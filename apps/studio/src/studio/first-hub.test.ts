@@ -35,18 +35,20 @@ function folderWith(files: Record<string, string> = {}) {
 verifies("studio.first-hub", () => {
   describe("hubFilesFor", () => {
     it("adds nothing for a hub the workspace has", () => {
-      expect(hubFilesFor([{ id: "acme" }], "acme")).toEqual({});
+      expect(hubFilesFor([], [{ id: "acme" }], "acme")).toEqual({});
     });
 
     it("adds the Default hub's file when the workspace has no hub", () => {
-      expect(hubFilesFor([], "default")).toEqual({
+      expect(hubFilesFor([], [], "default")).toEqual({
         "hubs/default/hub.yaml": "id: default\nname: Default\n",
       });
     });
 
     it("refuses any other hub the workspace doesn't have", () => {
-      expect(() => hubFilesFor([], "acme")).toThrow(expect.objectContaining({ kind: "not_found" }));
-      expect(() => hubFilesFor([{ id: "acme" }], "default")).toThrow(
+      expect(() => hubFilesFor([], [], "acme")).toThrow(
+        expect.objectContaining({ kind: "not_found" }),
+      );
+      expect(() => hubFilesFor([], [{ id: "acme" }], "default")).toThrow(
         expect.objectContaining({ kind: "not_found" }),
       );
     });
@@ -93,6 +95,29 @@ verifies("studio.first-hub", () => {
         new WorkspaceWorkflows(folder).create({ name: "Lost", hubId: "acme" }),
       ).rejects.toMatchObject({ kind: "not_found" });
       expect(folder.changes).toEqual([]);
+    });
+  });
+
+  describe("a folder whose Default hub file doesn't load", () => {
+    const broken = "id: default\nname: [Default\n";
+
+    it("refuses a new agent or workflow with the load error and keeps the file", async () => {
+      const folder = folderWith({ "hubs/default/hub.yaml": broken });
+
+      await expect(
+        new WorkspaceAgents(folder).create({ name: "Greeter", hubId: "default" }),
+      ).rejects.toMatchObject({
+        kind: "invalid_input",
+        message: expect.stringMatching(
+          /^hubs\/default\/hub\.yaml doesn't load: .+ \(line \d+\)\.$/,
+        ),
+      });
+      await expect(
+        new WorkspaceWorkflows(folder).create({ name: "Daily summary", hubId: "default" }),
+      ).rejects.toMatchObject({ kind: "invalid_input" });
+
+      expect(folder.changes).toEqual([]);
+      expect(folder.store["hubs/default/hub.yaml"]).toBe(broken);
     });
   });
 
