@@ -9,6 +9,7 @@ import {
   type SandboxCheckFacts,
   type SandboxFacts,
   type SandboxOutcome,
+  type SandboxResult,
   type SandboxRunning,
   SETUP_TIME_LIMIT_MS,
   sandboxView,
@@ -41,7 +42,7 @@ export function useAgentSandbox(
   const [check, setCheck] = useState<SandboxCheckFacts>(remembered ?? { state: "checking" });
   const [rechecking, setRechecking] = useState(remembered !== undefined);
   const [running, setRunning] = useState<SandboxRunning | null>(null);
-  const [outcome, setOutcome] = useState<SandboxOutcome | null>(null);
+  const [outcome, setOutcome] = useState<SandboxResult | null>(null);
   const [updatesOverdue, setUpdatesOverdue] = useState(false);
   const [defaultDistro, setDefaultDistro] = useState(false);
   const alive = useRef(true);
@@ -94,7 +95,7 @@ export function useAgentSandbox(
       if (!current() || ended === undefined) return;
       busy.current = false;
       setRunning(null);
-      setOutcome(asVerb(ended.outcome, verb));
+      setOutcome(resultOf(ended, verb));
       setCheck((now) => ended.check ?? afterResult(ended.outcome as SandboxOutcome, now));
       if (verb === "remove") {
         announceRef.current(removalLine(ended));
@@ -182,13 +183,19 @@ function checkedLine(facts: SandboxCheckFacts): string {
 
 /**
  * What a removal left, said once for a screen reader (HAL-15091): the Callout's line, or, when it
- * worked, the first line of the state it left.
+ * worked, "Sandbox removed." and the first line of the state it left (HAL-15430).
  */
 function removalLine(ended: Ended): string {
   if (ended.check === undefined) return outcomeLine(ended.outcome);
   if (ended.outcome !== null) return outcomeLine(ended.outcome);
   const facts = { available: true, place: "app", running: null, outcome: null } as const;
-  return sandboxView({ ...facts, check: ended.check }).lead;
+  return text.announceRemoved(sandboxView({ ...facts, check: ended.check }).lead);
+}
+
+/** What the section shows: a removal that worked says so in a note (C575, HAL-15432). */
+function resultOf(ended: Ended, verb: SandboxRunning["verb"]): SandboxResult | null {
+  if (verb === "remove" && ended.outcome === null) return { kind: "remove", how: "removed" };
+  return asVerb(ended.outcome, verb);
 }
 
 /**

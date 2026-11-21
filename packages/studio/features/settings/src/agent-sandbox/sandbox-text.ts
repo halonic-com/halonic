@@ -78,10 +78,13 @@ export const REMOVE_CANCEL = "Cancel";
 export const REMOVE_DENIED =
   "The sandbox wasn't removed: Windows didn't give Halonic administrator rights.";
 export const removeFailed = (reason: string) => `The sandbox wasn't removed: ${reason}`;
-/** The setup's words for the shell's time limit: nobody may have answered the prompt (HAL-15091). */
-export const REMOVE_TOOK_TOO_LONG = removeFailed(
-  `the removal didn't finish within ${SETUP_LIMIT_MINUTES} minutes.`,
-);
+/**
+ * The shell's time limit. Its helper may still finish the removal, and this Callout has no Try again,
+ * so the line says what to do next, in the still-running note's words (C576, HAL-15430).
+ */
+export const REMOVE_TOOK_TOO_LONG = `The sandbox wasn't removed within ${SETUP_LIMIT_MINUTES} minutes. Wait a minute, then try again.`;
+/** A removal that worked, in the WSL removal's words; the state's line says what follows (C575). */
+export const REMOVED = "Sandbox removed.";
 /** A note, not a failure, as for the setup and the repair (HAL-15091). */
 export const REMOVE_STILL_RUNNING =
   "The earlier removal is still running. Wait a minute, then try again.";
@@ -92,6 +95,8 @@ export const removeInUse = (runs: number) =>
 export const announceReady = (checkedAt: string) => `Sandbox set up. Checked ${checkedAt}.`;
 export const announceChecked = (line: string) => `Sandbox checked: ${line}`;
 export const announceStep = (step: string) => step;
+/** A removal that worked, as the WSL removal says it, then the first line of the state it left. */
+export const announceRemoved = (line: string) => `${REMOVED} ${line}`;
 
 /** The toasts for a result that ends while Settings is closed. */
 export const TOAST_SET_UP = "The agent sandbox is set up";

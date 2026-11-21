@@ -7,7 +7,12 @@ import { click } from "../test-support/controls.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { AgentSandboxHostView } from "./agent-sandbox-section.tsx";
-import { type SandboxCheckFacts, type SandboxOutcome, sandboxView } from "./sandbox-state.ts";
+import {
+  type SandboxCheckFacts,
+  type SandboxOutcome,
+  type SandboxResult,
+  sandboxView,
+} from "./sandbox-state.ts";
 
 beforeEach(fakeModal);
 afterEach(() => {
@@ -55,7 +60,7 @@ async function removeFrom(view: HTMLElement) {
   await click(button(document.querySelector("dialog[open]") as HTMLElement, "Remove sandbox"));
 }
 
-function calloutOf(outcome: SandboxOutcome) {
+function calloutOf(outcome: SandboxResult) {
   return sandboxView({ available: true, place: "app", check: ready, running: null, outcome })
     .callout;
 }
@@ -68,21 +73,21 @@ verifies("settings.agent-sandbox-removal-result", () => {
     expect(document.activeElement?.textContent).toContain("Removing the agent sandbox…");
   });
 
-  it("says a removal that worked once, in the first line of the state it left", async () => {
+  it("says a removal that worked once: Sandbox removed, then the first line of the state it left", async () => {
     const { view, announce, end } = await readyHost();
     await removeFrom(view);
     await end(null, { state: "needs-setup" });
     expect(announce).toHaveBeenCalledTimes(1);
     expect(announce).toHaveBeenCalledWith(
-      "The sandbox needs a one-time setup with administrator rights. Until then, agents set to run in a sandbox don't start.",
+      "Sandbox removed. The sandbox needs a one-time setup with administrator rights. Until then, agents set to run in a sandbox don't start.",
     );
   });
 
-  it("says the time limit in the setup's words, on screen and once out loud", async () => {
+  it("says the time limit and what to do next, on screen and once out loud", async () => {
     const { view, announce, end } = await readyHost();
     await removeFrom(view);
     await end({ kind: "remove", how: "timed-out" });
-    const line = "The sandbox wasn't removed: the removal didn't finish within 5 minutes.";
+    const line = "The sandbox wasn't removed within 5 minutes. Wait a minute, then try again.";
     expect(view.textContent).toContain(line);
     expect(announce).toHaveBeenCalledTimes(1);
     expect(announce).toHaveBeenCalledWith(line);
@@ -102,4 +107,36 @@ verifies("settings.agent-sandbox-removal-result", () => {
     });
     expect(calloutOf({ kind: "remove", how: "timed-out" })?.note).toBeUndefined();
   });
+
+  it("shows a removal that worked as a Sandbox removed note", async () => {
+    const { view, end } = await readyHost();
+    await removeFrom(view);
+    await end(null, { state: "needs-setup" });
+    expect(view.textContent).toContain("Sandbox removed.");
+    expect(view.textContent).toContain("Needs setting up");
+    expect(calloutOf({ kind: "remove", how: "removed" })).toEqual({
+      line: "Sandbox removed.",
+      action: null,
+      note: true,
+    });
+  });
+
+  it.each([
+    ["worked", null, "Sandbox removed."],
+    ["timed out", { kind: "remove", how: "timed-out" }, "within 5 minutes"],
+    ["found an earlier one running", { kind: "remove", how: "still-running" }, "still running"],
+    ["was cancelled", { kind: "remove", how: "cancelled" }, "administrator rights"],
+    ["found runs using it", { kind: "remove", how: "in-use", runs: 2 }, "2 runs are using it"],
+    ["failed", { kind: "remove", how: "failed", reason: "disk full." }, "disk full."],
+  ] as const)(
+    "moves focus to the result when a removal that %s ends",
+    async (_, outcome, words) => {
+      const { view, end } = await readyHost();
+      await removeFrom(view);
+      await end(outcome, { state: "needs-setup" });
+      expect(document.activeElement).not.toBe(document.body);
+      expect(view.contains(document.activeElement)).toBe(true);
+      expect(document.activeElement?.textContent).toContain(words);
+    },
+  );
 });
