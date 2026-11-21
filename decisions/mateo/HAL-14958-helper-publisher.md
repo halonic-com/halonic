@@ -1,6 +1,6 @@
 # Decision: Studio checks the sandbox helper's publisher before it starts it with runas
 
-- Approval: [HAL-14958](/HAL/issues/HAL-14958) (Julian's security review of #4298 on HAL-14841)
+- Approval: HAL-14958 (Julian's security review of #4298 on HAL-14841)
 - Kind: user-visible
 
 `sandbox_elevate` (#4298) started the `halonic-sandbox-elevate.exe` beside the app with `runas` without checking who signed it. Studio installs per user, so any program of the user's can write to that folder and put another program in the helper's place. Windows' prompt would still name that program's publisher, but a person who has seen "Halonic" there before may not read it again.
