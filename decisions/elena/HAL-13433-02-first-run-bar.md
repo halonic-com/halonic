@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-7993 (the board approved the first-run flow on 19 Nov, which replaces the sample card); build plan on https://paperclip.halonic.com/HAL/issues/HAL-13433 (Liam's build notes: "The card, `sample-progress.ts`, `sample-text.ts`, `step-openers.ts` and the `sample-card` requirement go")
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HwgFZxTraw+Th6wPUx60136XjSU5Le6O0HcCUxkcrC6fRCk2ISt2KjE/Lvhm7fQUAtZeIaMWQluYh52nvT3FCw==
 
 The approved first-run flow (first-run-flow, HAL-7985, revision 7) guides the demo with a first-run bar under
 the top bar and a guide card on Support reply's page, from **Open demo** until the first win. Home's three-step
