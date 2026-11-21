@@ -26,6 +26,7 @@ import {
   HarnessProfiles,
   programEnvironment,
   RunInstructions,
+  resolveRealPath,
   WorkspaceHarnessHost,
 } from "@halonicjs/adapter-harness-kit";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
@@ -224,6 +225,8 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
     scrub: keys.scrub,
     reportError: input.reportBridgeError,
     profiles,
+    // An agent with `asks: in-sandbox` runs its calls in its working folder without asking, fenced (HAL-14992).
+    paths: { resolve: resolveRealPath, windows: platform === "win32" },
     home: input.environment.homeFolder,
     instructions: new RunInstructions({
       // Inside the temp root, so what an engine that stopped left is cleared when the next one opens.
