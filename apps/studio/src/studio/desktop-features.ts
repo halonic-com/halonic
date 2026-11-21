@@ -3,7 +3,10 @@ import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
 import { filesFeature } from "@halonicjs/studio-feature-files";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { firstRunFeature } from "@halonicjs/studio-feature-first-run";
-import { SampleWorkspaceService } from "@halonicjs/studio-feature-first-run/api";
+import {
+  FirstRunDeviceService,
+  SampleWorkspaceService,
+} from "@halonicjs/studio-feature-first-run/api";
 import { googleSetupFeature } from "@halonicjs/studio-feature-google-setup";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
@@ -106,6 +109,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     AssistantWorkspaceService,
     WorkspacePageService,
     SampleWorkspaceService,
+    FirstRunDeviceService,
     SampleHintService,
     TrustedSourcesService,
   ],

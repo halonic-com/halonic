@@ -1,32 +1,39 @@
-import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
+import { WorkflowGuideService } from "@halonicjs/studio-feature-workflows/api";
 import { defineFeature } from "@halonicjs/studio-shell";
-import { FirstRunService, SampleWorkspaceService } from "./api.ts";
+import { FirstRunDeviceService, FirstRunService, SampleWorkspaceService } from "./api.ts";
 import { FirstRun } from "./first-run.ts";
-import { sampleCardWords } from "./sample-text.ts";
+import { firstRunGuide } from "./first-run-guide.ts";
 
 /**
- * The First Run feature (`first-run.sample-card`). In the Acme sample it fills Home's Get set up
- * slot with the Try the sample card, until the visit after it finished; in any other workspace the
- * slot stays empty.
+ * The First Run feature (`first-run.state`): the first run's state on this device, the first-run
+ * bar under the top bar (`first-run.bar`) and the guide card on Support reply's page
+ * (`first-run.guide-card`), from **Open demo** until the first win.
  */
 export const firstRunFeature = defineFeature({
   id: "first-run",
   title: "First Run",
-  needs: [SampleWorkspaceService, RunsListService, InboxService],
-  provides: [FirstRunService],
+  needs: [SampleWorkspaceService, FirstRunDeviceService, RunsListService],
+  provides: [FirstRunService, WorkflowGuideService],
   register(studio) {
     studio.services.provide(
       FirstRunService,
       (services) =>
-        new FirstRun(services.get(RunsListService), services.get(SampleWorkspaceService)),
+        new FirstRun(
+          services.get(RunsListService),
+          services.get(SampleWorkspaceService),
+          services.get(FirstRunDeviceService),
+          () => new Date(),
+        ),
     );
-    studio.home.addCard({
-      id: "setup",
-      view: "SampleCard",
-      load: () => import("./ui/sample-card.tsx"),
-      title: (context) =>
-        context.services.get(FirstRunService).showsCard ? sampleCardWords.heading : undefined,
+    studio.services.provide(WorkflowGuideService, (services) =>
+      firstRunGuide(services.get(FirstRunService)),
+    );
+    studio.strips.add({
+      id: "first-run.bar",
+      order: 10,
+      view: "FirstRunBar",
+      load: () => import("./ui/first-run-bar.tsx"),
     });
   },
 });

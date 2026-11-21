@@ -2,7 +2,7 @@
   "name": "@halonicjs/studio-feature-first-run",
   "private": true,
   "type": "module",
-  "description": "The First Run feature of the Studio: Home's Try the sample card.",
+  "description": "The First Run feature of the Studio: the first-run state, the first-run bar and the guide card.",
   "exports": {
     ".": "./src/index.ts",
     "./api": "./src/api.ts"
@@ -17,9 +17,9 @@
     "@halonicjs/events": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/studio-feature-agents": "workspace:*",
-    "@halonicjs/studio-feature-inbox": "workspace:*",
     "@halonicjs/studio-feature-models": "workspace:*",
     "@halonicjs/studio-feature-runs": "workspace:*",
+    "@halonicjs/studio-feature-workflows": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",
     "react": "catalog:"

@@ -7,7 +7,10 @@ import {
   fileItem,
   followFilesHost,
 } from "@halonicjs/studio-feature-files/api";
-import { SampleWorkspaceService } from "@halonicjs/studio-feature-first-run/api";
+import {
+  FirstRunDeviceService,
+  SampleWorkspaceService,
+} from "@halonicjs/studio-feature-first-run/api";
 import { SandboxPassesService } from "@halonicjs/studio-feature-inbox/api";
 import { SampleHintService } from "@halonicjs/studio-feature-runs/api";
 import {
@@ -77,6 +80,7 @@ import { watchStart } from "./start-watch.ts";
 
 export { servedServices } from "./served-studio.ts";
 
+import { firstRunDeviceOf } from "./first-run-device.ts";
 import { keyboardPlatform, studioHost } from "./studio-host.ts";
 import { followSystemRegion } from "./system-region.ts";
 import { demoModelWatch } from "./test-model-watch.ts";
@@ -310,6 +314,7 @@ export async function openFolder(
     device.startOwnWorkspace,
   );
   services.provide(SampleWorkspaceService, sample);
+  services.provide(FirstRunDeviceService, firstRunDeviceOf(location, device.storage));
   services.provide(SampleHintService, sample);
   services.provide(TrustedSourcesService, desktopTrustedSources(window, open));
   provideShellSecrets(services, window);
