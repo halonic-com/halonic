@@ -77,10 +77,13 @@ WSL folder.
   is still there at the agent's next run.
 - **Allowed sites see what the agent can read.** The fence checks a site's
   name, not what is sent to it.
-- **Blocked sites aren't reported yet.** The sandbox on Linux, macOS and
-  WSL 2 reports only refused writes, so neither the run log nor the run page
-  names a blocked site. A blocked site still gets no connection on any system;
-  on Windows, the name may still be looked up.
+- **A connection straight at an address isn't reported.** The sandbox reports
+  each site it refuses: the run log records it as `sandbox.blocked`, and
+  Studio's run page lists it under Blocked sites. A connection the sandbox
+  stops below its proxy, such as one straight at an IP address on Windows, is
+  refused but not reported, because only the proxy knows the name that was
+  asked for. A blocked site still gets no connection on any system; on
+  Windows, the name may still be looked up.
 - **A live run's program copy controls which code runs, not what it can
   reach.** A run that reads the live version starts a connector's program in a
   copy of the workspace at that version, so a change that isn't live, such as a
