@@ -182,6 +182,9 @@ export const WSL_DETAILS = "Details";
 export const UNFENCED_TITLE = "Plugins and integrations";
 export const UNFENCED_LINE =
   "The agent sandbox runs agents' programs. On Windows, plugin and integration code can't run in it yet, so it needs your yes.";
+/** R16's line for every reason but `windows`, which isn't about Windows (team decision, HAL-3384). */
+export const UNFENCED_LINE_HERE =
+  "The agent sandbox runs agents' programs. Plugin and integration code can't run in it on this computer, so it needs your yes.";
 export const UNFENCED_ALLOWED = "Allowed without the sandbox";
 export const unfencedAllowedOn = (day: string) => `Allowed on ${day}.`;
 export const TAKE_BACK = "Take back";

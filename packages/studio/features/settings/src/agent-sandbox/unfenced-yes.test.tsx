@@ -82,6 +82,27 @@ verifies("settings.unfenced-yes-take-back", () => {
     expect(takeBackButton(view)).toBeUndefined();
   });
 
+  it("says Windows in its line only for the reason windows", async () => {
+    const container = await show(fakeHost({ run: "needs-yes", reason: "container" }).host);
+    expect(container.view.textContent).toContain(
+      "The agent sandbox runs agents' programs. Plugin and integration code can't run in it on this computer, so it needs your yes.",
+    );
+    expect(container.view.textContent).not.toContain("On Windows");
+
+    const windows = await show(fakeHost({ run: "needs-yes", reason: "windows" }).host);
+    expect(windows.view.textContent).toContain(
+      "On Windows, plugin and integration code can't run in it yet, so it needs your yes.",
+    );
+  });
+
+  it("keeps Take back for a saved yes whose day can't be read, and leaves out the day", async () => {
+    const { view } = await show(fakeHost({ ...allowed, allowedAt: "not a time" }).host);
+
+    expect(view.textContent).toContain("Allowed without the sandbox");
+    expect(view.textContent).not.toContain("Allowed on");
+    expect(takeBackButton(view)).toBeDefined();
+  });
+
   it("shows nothing while plugin code runs in the sandbox, or when the host can't say", async () => {
     const fenced = await show(fakeHost({ run: "fenced" }).host);
     expect(fenced.view.textContent).toBe("");

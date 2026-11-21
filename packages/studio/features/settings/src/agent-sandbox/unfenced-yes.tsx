@@ -19,8 +19,8 @@ export function allowedDay(iso: string, now: Date): string | undefined {
 type YesState =
   | { readonly state: "unknown" }
   | { readonly state: "fenced" }
-  | { readonly state: "needs-yes" }
-  | { readonly state: "allowed"; readonly reason: string; readonly day: string };
+  | { readonly state: "needs-yes"; readonly reason: string | undefined }
+  | { readonly state: "allowed"; readonly reason: string; readonly day: string | undefined };
 
 /** The props of {@link UnfencedYesBlock}. */
 export interface UnfencedYesBlockProps {
@@ -33,11 +33,9 @@ export interface UnfencedYesBlockProps {
 /** The host's word on the yes, as the block shows it. */
 function yesStateOf(status: Awaited<ReturnType<UnfencedYesHost["status"]>>, now: Date): YesState {
   if (status.run === "fenced") return { state: "fenced" };
-  if (status.run !== "allowed") return { state: "needs-yes" };
-  const day = allowedDay(status.allowedAt, now);
-  return day === undefined
-    ? { state: "needs-yes" }
-    : { state: "allowed", reason: status.reason, day };
+  if (status.run !== "allowed") return { state: "needs-yes", reason: status.reason };
+  // A day that can't be read still leaves a saved yes to take back; only the day is left out.
+  return { state: "allowed", reason: status.reason, day: allowedDay(status.allowedAt, now) };
 }
 
 /** Reads the host's yes when the block shows, and again on `read`; a late answer is dropped. */
@@ -108,7 +106,9 @@ export function UnfencedYesBlock({ host, surface, announce }: UnfencedYesBlockPr
       <Heading ref={heading} tabIndex={-1} className="text-body font-medium outline-none">
         {text.UNFENCED_TITLE}
       </Heading>
-      <p className="text-small text-fg-muted">{text.UNFENCED_LINE}</p>
+      <p className="text-small text-fg-muted">
+        {yes.reason === "windows" ? text.UNFENCED_LINE : text.UNFENCED_LINE_HERE}
+      </p>
       {yes.state === "allowed" ? (
         <AllowedRow reason={yes.reason} day={yes.day} busy={takingBack} onTakeBack={takeBack} />
       ) : null}
@@ -119,7 +119,7 @@ export function UnfencedYesBlock({ host, surface, announce }: UnfencedYesBlockPr
 /** The saved yes: its reason and day, **Take back** and what taking it back does. */
 function AllowedRow(props: {
   readonly reason: string;
-  readonly day: string;
+  readonly day: string | undefined;
   readonly busy: boolean;
   readonly onTakeBack: () => void;
 }) {
@@ -128,7 +128,8 @@ function AllowedRow(props: {
       <p className="text-small">
         <span className="block font-medium">{text.UNFENCED_ALLOWED}</span>
         <span className="block text-fg-muted">
-          {runnerUnfencedWords(props.reason, "plugin").reason} {text.unfencedAllowedOn(props.day)}
+          {runnerUnfencedWords(props.reason, "plugin").reason}
+          {props.day === undefined ? null : ` ${text.unfencedAllowedOn(props.day)}`}
         </span>
       </p>
       <Button
