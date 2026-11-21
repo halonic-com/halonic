@@ -21,9 +21,10 @@
   Dialog still focuses Name, its first field.
 - **CP1:** `FilterChips` takes `flush`, which drops its 16px sides; the collection page sets it, so
   its chips line up with the title and the grid.
-- **IX1:** the Inbox's **Next** label is one inline span, not three flex items of the Button, so at
-  195px "· 1 left" wraps with the title instead of standing as a column of its own, and the name
-  reads "Next: _title_, 1 left" with no stray space before the comma.
+- **IX1:** `main` already wraps the Inbox's **Next** label as one run of text (HAL-13830 IN2,
+  #4228), so "· 1 left" wraps with the title at 195px. This branch moves the screen reader's count
+  into that same span, so the Button has one label and its name reads "Next: _title_, 1 left" with
+  no stray space before the comma. `inbox.page`'s phone test now expects that one label.
 
 `shell.rename-sheet`, `shell.item-tab-names`, `shell.phone-bars`, `kit.filter-chips`,
 `library.collection-page` and `inbox.approval-card` say so; all but the last gain examples. One

@@ -18,7 +18,9 @@ it("keeps a renamed page's memory, as it is still the same page", () => {
   const memory = places?.memory;
   if (memory !== undefined) memory.scroll = 120;
 
-  act(() => places?.retitle((location) => (location.key === "workflow/reply" ? "Answer" : undefined)));
+  act(() =>
+    places?.retitle((location) => (location.key === "workflow/reply" ? "Answer" : undefined)),
+  );
 
   expect(places?.page.location.title).toBe("Answer");
   expect(places?.memory).toBe(memory);

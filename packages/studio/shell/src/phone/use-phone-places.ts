@@ -56,6 +56,7 @@ export interface PhonePlaces {
    * taken the user off it already. For a page that closes itself.
    */
   readonly backFrom: (key: string) => void;
+  /**
    * Names the pages again as `titleOf` names their places now (`retitlePhonePages`), after an
    * item is renamed. Focus stays where it is, since nothing moved.
    */
