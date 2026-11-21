@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-When the sandbox can't start on this computer, a workflow whose steps run an agent in Claude Code or Codex shows why under its header, with the fix, Check again and the guide. Run stays focusable but can't start a run until the sandbox works; a phone shows no Run. Workflows that only use Halonic's own agents run as before.
+When the sandbox can't start, a workflow whose steps run a Claude Code or Codex agent now says why under its header, with the fix, and its Run can't start a run until the sandbox works.
