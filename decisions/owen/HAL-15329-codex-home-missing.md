@@ -3,6 +3,7 @@
 - Task: HAL-15329, from C558 on HAL-15310
 - Approval: decided by the team on HAL-15329 (a detection fix inside the approved doctor and Studio sign-in states). Liam signs on review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8ijboB74hyKs6itC06qXObHvdnvoOFKbeFC8/g3ZI6GeOEUC5p55okLSqkFFnlV+n0s3+WaBxjBmyXNMfJq1Cg==
 
 ## What changes
 
