@@ -212,14 +212,18 @@ export const failureWords = {
   /** `answer-not-an-option` in an older log, whose cause doesn't give the choices. */
   answerNotAnOption: (workflow: string, step: string, agent: string) =>
     `${workflow} stopped in the step ${step}: ${capitalised(agent)} answered with something that isn't one of its options. Make its instructions stricter, or pick a larger model, then run again.`,
-  /** `harness-bridge.socket-path-too-long`: the figures are left out when the cause doesn't give them all. */
+  /**
+   * `harness-bridge.socket-path-too-long`: the figures are left out when the cause doesn't give them all.
+   * The socket is in the profile folder, which `HALONIC_HOME` moves, and the agent host reads it
+   * when Halonic opens (HAL-13931).
+   */
   socketPathTooLong: (
     workflow: string,
     step: string,
     limit: { readonly bytes: string; readonly most: string; readonly system: string } | undefined,
     phone: boolean,
   ) =>
-    `${workflow} stopped in the step ${step}: the path to Halonic's data is too long for the bridge's socket${limit === undefined ? "" : ` (${limit.bytes} bytes, and ${limit.system} takes at most ${limit.most})`}. Move Halonic's data to a shorter path${phone ? " on your computer" : ""}, then run again.`,
+    `${workflow} stopped in the step ${step}: the path to Halonic's data is too long for the bridge's socket${limit === undefined ? "" : ` (${limit.bytes} bytes, and ${limit.system} takes at most ${limit.most})`}. ${phone ? "On your computer, move" : "Move"} Halonic's data folder to a shorter path, such as ~/.halonic, set HALONIC_HOME to that path and reopen Halonic, then run again.`,
   engineStopped: (workflow: string, step: string) =>
     `${workflow} stopped because Halonic's engine stopped during the step ${step}. Nothing after that step ran.`,
   engineStoppedBeforeFirstStep: (workflow: string) =>
