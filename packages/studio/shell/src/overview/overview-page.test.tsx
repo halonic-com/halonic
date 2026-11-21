@@ -410,6 +410,8 @@ verifies("shell.overview.used-by", () => {
     expect(detailAndDot?.textContent).toBe("When an email asks for a refund · ");
     expect(detailAndDot?.className).toContain("min-w-20");
     expect(detailAndDot?.className).toContain("h-0");
+    // The detail itself keeps a line's height, or `truncate` would clip it inside the 0px box.
+    expect(detailAndDot?.firstElementChild?.className).toContain("h-lh");
     expect(usedBy?.textContent).toBe("Not used yet");
   });
 
