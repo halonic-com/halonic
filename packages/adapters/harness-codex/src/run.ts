@@ -107,8 +107,7 @@ export class CodexRun implements HarnessRun {
       () => undefined,
     );
     const workingFolder = session.profile.workingFolder;
-    // No fence around the run is "no sandbox": nothing confines Codex, so a person answers every command.
-    const askMode = session.fence.state === "off";
+    const askMode = asksFirst(task, session);
     this.#started = launch.then((process) =>
       this.#startTurn(process, workingFolder, options.clientInfo, askMode),
     );
@@ -375,6 +374,19 @@ export class CodexRun implements HarnessRun {
     const message = error instanceof Error ? error.message : String(error);
     return new Error(this.#scrubber.scrub(message));
   }
+}
+
+/**
+ * Whether a person answers before Codex runs a command (requirement
+ * `harness-codex.start`). Codex runs without asking only when the agent's
+ * file says `asks: in-sandbox` and the fence proof says the session is
+ * fenced. Every other case asks: `asks: always` or no `asks`, and a session
+ * that is off, not fenced or stopped, where nothing proves Codex is confined.
+ * Codex has nothing between asking for nearly every command and never asking
+ * when it has full access, so asking is `untrusted`.
+ */
+function asksFirst(task: HarnessTask, session: SandboxSession): boolean {
+  return !(task.asks === "in-sandbox" && session.fence.state === "fenced");
 }
 
 function cancelledError(): Error {
