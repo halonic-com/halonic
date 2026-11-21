@@ -1,6 +1,7 @@
 import type { StateType, Workflow, WorkflowState } from "@halonicjs/format";
 import { contextBefore } from "./inputs.ts";
 import { hasState } from "./machine.ts";
+import { didYouMean } from "./near-name.ts";
 import { foreachItems, noDoneTransition, taskWithoutAgent } from "./run-failure-checks.ts";
 import { type StateKey, typesUsing, usesKey } from "./state-keys.ts";
 import {
@@ -30,7 +31,8 @@ const unknownTargets: StateCheck = ({ workflow, id, state }) =>
     if (hasState(workflow, transition.to)) {
       return [];
     }
-    const message = `"${id}" goes to unknown state "${transition.to}"`;
+    const guess = didYouMean(transition.to, Object.keys(workflow.states));
+    const message = `"${id}" goes to unknown state "${transition.to}"${guess}`;
     return [issue("error", "unknown-target", message, stateKey(id, "on", index, "to"), id)];
   });
 
@@ -191,7 +193,7 @@ const parallelShape: StateCheck = ({ id, state, options }) => {
   }
   for (const [name, branch] of branches) {
     if (options.agents && !options.agents.includes(branch.agent)) {
-      const message = `Branch "${name}" of "${id}" uses unknown agent "${branch.agent}"`;
+      const message = `Branch "${name}" of "${id}" uses unknown agent "${branch.agent}"${agentHint(branch.agent, options)}`;
       const path = stateKey(id, "branches", name, "agent");
       issues.push(issue("error", "unknown-agent", message, path, id));
     }
@@ -203,9 +205,21 @@ const unknownAgent: StateCheck = ({ id, state, options }) => {
   if (!state.agent || !options.agents || options.agents.includes(state.agent)) {
     return [];
   }
-  const message = `"${id}" uses unknown agent "${state.agent}"`;
+  const message = `"${id}" uses unknown agent "${state.agent}"${agentHint(state.agent, options)}`;
   return [issue("error", "unknown-agent", message, stateKey(id, "agent"), id)];
 };
+
+/**
+ * What follows an unknown agent's message: the hub it is in, when it is
+ * another hub's, or else "Did you mean" for a close name of the hub's own.
+ */
+function agentHint(agent: string, options: ValidateOptions): string {
+  const hub = options.agentHubs?.[agent];
+  if (hub !== undefined) {
+    return `. ${agent} is in the hub ${hub}; a workflow can only use its own hub's agents.`;
+  }
+  return didYouMean(agent, options.agents ?? []);
+}
 
 /** A transition after an unguarded one on the same event is hidden by it. */
 const unguardedShadow: StateCheck = ({ id, state }) => {

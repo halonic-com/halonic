@@ -11,7 +11,7 @@ import { KindedError } from "@halonicjs/std";
 import type { ReadFile } from "./checks/check-context.ts";
 import { checkWorkspace } from "./checks/check-workspace.ts";
 import { misplacedFile } from "./misplaced-files.ts";
-import { placeOf } from "./places.ts";
+import { idSourceOf, placeOf } from "./places.ts";
 
 /**
  * Something wrong with a workspace, and where: the file, the key path in it
@@ -137,7 +137,11 @@ async function loadFile(source: DefinitionSource, path: string): Promise<FileOut
     return null;
   }
   const read: ReadFile = { path, kind: place.kind, text };
-  const options = place.placeId === undefined ? {} : { id: place.placeId };
+  const idSource = idSourceOf(path);
+  const options =
+    place.placeId === undefined
+      ? {}
+      : { id: place.placeId, ...(idSource === undefined ? {} : { idSource }) };
   const parsed = parseFile(place.kind, text, options);
   if (!parsed.ok) {
     const issues = parsed.error.map((problem) => ({ ...problem, file: path }));

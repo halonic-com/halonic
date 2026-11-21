@@ -19,10 +19,16 @@ const coder = {
   file: {},
 } as unknown as HarnessAgent;
 
-/** The provider files of each workspace the tests load. */
-const claude = "id: claude\ntype: anthropic\nsecret: anthropic-key\n";
-const zai =
-  "id: zai\ntype: anthropic\nsecret: zai-key\nbaseUrl: https://api.zai.acme.test/anthropic\n";
+/** The provider files of each workspace the tests load; a file's name is its id. */
+type ProviderFile = { path: string; text: string };
+const claude: ProviderFile = {
+  path: "providers/claude.yaml",
+  text: "id: claude\ntype: anthropic\nsecret: anthropic-key\n",
+};
+const zai: ProviderFile = {
+  path: "providers/zai.yaml",
+  text: "id: zai\ntype: anthropic\nsecret: zai-key\nbaseUrl: https://api.zai.acme.test/anthropic\n",
+};
 
 /** The secret names the keychain was asked for. */
 let asked: string[];
@@ -34,12 +40,12 @@ beforeEach(() => {
   checked = [];
 });
 
-async function workspaceWith(provider: string): Promise<LoadedWorkspace> {
+async function workspaceWith(provider: ProviderFile): Promise<LoadedWorkspace> {
   return await loadWorkspace(
     new MemoryDefinitionStore({
       "workspace.yaml": "id: acme\nname: Acme\n",
       "hubs/support/hub.yaml": "id: support\nname: Support\n",
-      "providers/provider.yaml": provider,
+      [provider.path]: provider.text,
     }),
   );
 }

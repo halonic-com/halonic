@@ -2454,5 +2454,61 @@
         ]
       }
     ]
+  },
+  {
+    "id": "id-differs-from-place",
+    "requirement": "format.id-from-place",
+    "area": "file parser: a file whose own id differs from its file name or hub folder",
+    "old": "A file's own id won over the one its file name or folder gives, with no message. A workflow that named the agent by its file name then got \"uses unknown agent\", and two files could share an id, giving Duplicate id \"<id>\" (also in <file>) on the first.",
+    "new": "The file fails with The id is <id>, but the file is <file name>. Use the same name in both, or leave id out. (for a hub's own file: but the folder is hubs/<hub>/. Use the same name, or leave id out.), and answers to both names, so nothing else calls either unknown. A file without an id still takes its place's.",
+    "why": "Renaming an agent in one place is a common edit, and nothing pointed at the cause; the run and validate could also know a hub by different names (Nina's C337 C20 and C340 row 8). Decided by Liam on HAL-14277.",
+    "status": "proposed",
+    "fixtures": [
+      {
+        "case": "provider/duplicate-id",
+        "file": "providers/mock-copy.yaml",
+        "old": {
+          "status": "pass",
+          "problems": []
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "id"
+              ],
+              "code": "id-differs-from-place",
+              "line": 1,
+              "col": 5
+            }
+          ]
+        }
+      }
+    ],
+    "checks": [
+      {
+        "case": "provider/duplicate-id",
+        "file": "providers/mock-copy.yaml",
+        "old": [],
+        "new": [
+          {
+            "severity": "error",
+            "message": "The id is mock, but the file is mock-copy.yaml. Use the same name in both, or leave id out."
+          }
+        ]
+      },
+      {
+        "case": "provider/duplicate-id",
+        "file": "providers/mock.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Duplicate id \"mock\" (also in providers/mock-copy.yaml)"
+          }
+        ],
+        "new": []
+      }
+    ]
   }
 ]

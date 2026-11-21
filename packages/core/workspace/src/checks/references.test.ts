@@ -133,15 +133,14 @@ verifies("workspace.references", () => {
       ]);
     });
 
-    it("knows a failed agent by its own id, not by its file name", async () => {
-      // writer.agent.yaml is the agent "author": "author" isn't unknown, "writer" is.
+    it("knows an agent whose id differs from its file name by both names (C337 #21)", async () => {
+      // writer.agent.yaml with id: author fails for that; its error says which to change.
       const errors = await errorsIn({
-        "agents/writer.agent.yaml": "id: author\nname: Author\nmodle: smart\n",
+        "agents/writer.agent.yaml": "id: author\nname: Author\n",
         "agents/editor.agent.yaml": "name: Editor\nsubagents: [author, writer]\n",
       });
       expect(errors).toEqual([
-        'agents/editor.agent.yaml: Agent "editor" delegates to unknown agent "writer"',
-        'agents/writer.agent.yaml: There\'s no field "modle" in this file. Did you mean "model"?',
+        "agents/writer.agent.yaml: The id is author, but the file is writer.agent.yaml. Use the same name in both, or leave id out.",
       ]);
     });
 
@@ -230,6 +229,26 @@ verifies("workspace.references", () => {
       });
       expect(errors).toEqual([
         'hubs/billing/agents/clerk.agent.yaml: Agent "clerk" delegates to unknown agent "helper"',
+      ]);
+    });
+
+    it("names the folder of a hub whose id isn't its folder's (C340 #8)", async () => {
+      const errors = await errorsIn({
+        "hubs/notes/hub.yaml": "id: note\nname: Notes\n",
+      });
+      expect(errors).toEqual([
+        "hubs/notes/hub.yaml: The id is note, but the folder is hubs/notes/. Use the same name, or leave id out.",
+      ]);
+    });
+
+    it("guesses the agent a routine meant (C337 #27)", async () => {
+      const errors = await errorsIn({
+        "agents/sorter.agent.yaml": "name: Sorter\n",
+        "workflows/routines/sort.routine.yaml":
+          'name: Sort\ntrigger:\n  schedule: "0 9 * * 1"\nrun:\n  agent: sortr\n  prompt: Sort.\n',
+      });
+      expect(errors).toEqual([
+        'workflows/routines/sort.routine.yaml: Routine "sort": unknown agent "sortr". Did you mean "sorter"?',
       ]);
     });
   });

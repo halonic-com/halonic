@@ -422,13 +422,29 @@ export class WorkspaceFilesHost implements FilesHost {
     try {
       const workspace = await loadWorkspace(unsavedSource(this.#parts.files));
       const loaded = workspace.files.find((file) => file.path === from);
-      // A file that didn't parse names nothing yet, so its name stands for its id.
-      const id = loaded !== undefined && "id" in loaded.value ? loaded.value.id : placeId;
+      // A file that didn't parse names nothing yet, so its name stands for its id, unless it
+      // says its own: a file whose `id:` isn't its name fails for that, and keeps it (HAL-14277).
+      const id =
+        loaded !== undefined && "id" in loaded.value
+          ? loaded.value.id
+          : ((await this.#ownId(from)) ?? placeId);
       if (id !== placeId) return undefined;
       return referencesTo(workspace, { kind, id, hub: kind === "collection" ? null : hub });
     } catch {
       return undefined;
     }
+  }
+
+  /** The file's own `id:` as its text says it, or `undefined` when it has none or doesn't read. */
+  async #ownId(path: string): Promise<string | undefined> {
+    const text = await this.#parts.files.read(path);
+    if (text === null) return undefined;
+    const read = readYaml(text);
+    if (!read.ok) return undefined;
+    const data = read.value.data;
+    if (typeof data !== "object" || data === null || !Object.hasOwn(data, "id")) return undefined;
+    const id = (data as { id: unknown }).id;
+    return typeof id === "string" ? id : undefined;
   }
 
   /** The file's text with its own `id:` set to `id`, or `undefined` when it has none (a skill never has). */

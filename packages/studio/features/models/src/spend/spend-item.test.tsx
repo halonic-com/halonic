@@ -38,13 +38,21 @@ afterEach(() => {
 });
 
 const header = "version: 1\nid: acme\nname: Acme\n";
-const cloud = "version: 1\nid: anthropic\ntype: anthropic\nsecret: anthropic-key\n";
-const local = "version: 1\nid: ollama\ntype: ollama\n";
+/** A provider's file; its name is its id. */
+type ProviderFile = { path: string; text: string };
+const cloud: ProviderFile = {
+  path: "providers/anthropic.yaml",
+  text: "version: 1\nid: anthropic\ntype: anthropic\nsecret: anthropic-key\n",
+};
+const local: ProviderFile = {
+  path: "providers/ollama.yaml",
+  text: "version: 1\nid: ollama\ntype: ollama\n",
+};
 
-function filesOf(workspace: string, provider: string): ModelsFiles {
+function filesOf(workspace: string, provider: ProviderFile): ModelsFiles {
   return {
     readModels: async () => "version: 1\naliases: {}\n",
-    readProviders: async () => [{ path: "providers/p.yaml", text: provider }],
+    readProviders: async () => [provider],
     readProvider: async () => null,
     readWorkspace: async () => workspace,
     changeModels: () => undefined,
