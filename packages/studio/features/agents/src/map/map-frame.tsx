@@ -21,7 +21,7 @@ interface Fit {
 /**
  * The agent map's frame (`agents.map.lines-and-fit`): it fits the map to the panel when it opens
  * and again {@link FIT_DELAY_MS} after the panel or the map stops changing size, centred, never
- * larger than its natural size and with no zoom buttons. In the gaps it draws the curved lines
+ * larger than its natural size and with no zoom buttons. In the gaps it draws the straight lines
  * from each side's cards to the centre card, each ending in a ring-and-dot port; the lines are a
  * picture only, hidden from screen readers and the pointer, so the cards and the add buttons stay
  * the only things to press. Its children are the grid's cells: left, centre and right in the first

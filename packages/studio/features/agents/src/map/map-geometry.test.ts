@@ -25,8 +25,15 @@ verifies("agents.map.lines-and-fit", () => {
     const [line] = mapLines(centre, { in: [card(0, 140)], use: [], out: [] });
     expect(line?.from).toEqual({ x: 160, y: 160 });
     expect(line?.to).toEqual({ x: 400, y: 160 });
-    // The curve leaves and reaches each port straight out from its edge.
-    expect(line?.path).toBe("M 160 160 C 280 160, 280 160, 400 160");
+    // Ports that line up are joined by one straight segment.
+    expect(line?.path).toBe("M 160 160 H 400");
+  });
+
+  it("turns at square corners halfway across the gap when the ports don't line up", () => {
+    const [left] = mapLines(centre, { in: [card(0, 0)], use: [], out: [] });
+    expect(left?.path).toBe("M 160 20 H 280 V 160 H 400");
+    const [below] = mapLines(centre, { in: [], use: [card(600, 300)], out: [] });
+    expect(below?.path).toBe("M 500 220 V 260 H 680 V 300");
   });
 
   it("gives every line its own port on the centre card, spread along the facing edge", () => {
@@ -49,6 +56,7 @@ verifies("agents.map.lines-and-fit", () => {
         { x: 800, y: 160 },
       ],
     ]);
-    expect(lines[0]?.path).toBe("M 500 220 C 500 260, 500 260, 500 300");
+    expect(lines[0]?.path).toBe("M 500 220 V 300");
+    expect(lines.every((line) => !/[CQSAT]/.test(line.path))).toBe(true);
   });
 });

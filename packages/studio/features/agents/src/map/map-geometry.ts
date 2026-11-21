@@ -17,7 +17,11 @@ export type MapSide = "in" | "use" | "out";
 export interface MapLine {
   readonly from: Point;
   readonly to: Point;
-  /** The bezier's path, leaving and reaching each port straight out from its card's edge. */
+  /**
+   * Its SVG path: straight out of the side card's edge, a square turn halfway across the gap, along
+   * that halfway line, and a square turn straight into the centre card's port; one straight
+   * segment when the two ports line up.
+   */
   readonly path: string;
 }
 
@@ -41,7 +45,9 @@ export function fitScale(
 }
 
 /**
- * The lines from each side's cards to the centre card (flow-agents 6, T12): a card on the left
+ * The lines from each side's cards to the centre card (flow-agents 6, T12, revision 29): straight
+ * and orthogonal, as on the workflow canvas, because curves belong to the point of light only
+ * (house style 5 and 8, HAL-5554). A card on the left
  * joins the centre's left edge from its right edge, one on the right its right edge from its left
  * edge, one below its bottom edge from its top. The centre card has a port for every line, spread
  * evenly along the facing edge in the cards' order, so no two lines share one.
@@ -52,20 +58,25 @@ export function mapLines(
 ): readonly MapLine[] {
   const spread = (count: number, index: number) => (index + 1) / (count + 1);
   const across = (from: Point, to: Point): MapLine => {
-    const bend = Math.abs(to.x - from.x) / 2;
-    const out = to.x >= from.x ? bend : -bend;
+    const half = (from.x + to.x) / 2;
     return {
       from,
       to,
-      path: `M ${from.x} ${from.y} C ${from.x + out} ${from.y}, ${to.x - out} ${to.y}, ${to.x} ${to.y}`,
+      path:
+        from.y === to.y
+          ? `M ${from.x} ${from.y} H ${to.x}`
+          : `M ${from.x} ${from.y} H ${half} V ${to.y} H ${to.x}`,
     };
   };
   const down = (from: Point, to: Point): MapLine => {
-    const bend = Math.abs(to.y - from.y) / 2;
+    const half = (from.y + to.y) / 2;
     return {
       from,
       to,
-      path: `M ${from.x} ${from.y} C ${from.x} ${from.y + bend}, ${to.x} ${to.y - bend}, ${to.x} ${to.y}`,
+      path:
+        from.x === to.x
+          ? `M ${from.x} ${from.y} V ${to.y}`
+          : `M ${from.x} ${from.y} V ${half} H ${to.x} V ${to.y}`,
     };
   };
   return [

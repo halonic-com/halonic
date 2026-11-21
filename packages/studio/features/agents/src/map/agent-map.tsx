@@ -56,7 +56,7 @@ const addClasses =
  * below, right, so Tab goes card to card that way. A side with more than three cards shows one
  * summary card instead, which opens a drawer with all of them (`agents.map.side-summary-card`,
  * `agents.map.summary-drawer`). Its frame fits it to the panel and joins the cards to the centre
- * with curved lines (`agents.map.lines-and-fit`).
+ * with straight lines (`agents.map.lines-and-fit`).
  */
 export function AgentMap(props: AgentMapProps) {
   const { settings, openAgentStep } = props;
