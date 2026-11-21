@@ -2,6 +2,7 @@
 
 - Approval: [HAL-15363](/HAL/issues/HAL-15363), from Tomas's words check C566 (HAL-15352), rows 42 and 43; wording on an approved command, decided by the team (HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4E5ySOjx5d/PE/LSLBB6dqsirKwui6KbbmjAmXgBhBfRgSQRKEtwIYWHsf34oY1qcnjx1Xq8T1PWcqW8FYjiCA==
 
 Two wording fixes in `halonic google`, so it uses the same words as the rest
 of Halonic:
