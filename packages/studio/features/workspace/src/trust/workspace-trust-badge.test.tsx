@@ -419,3 +419,24 @@ verifies("workspace.trust-asked", () => {
     Reflect.deleteProperty(HTMLElement.prototype, "hidePopover");
   });
 });
+
+verifies("studio.workspace-trust-integrations", () => {
+  it("asks how the workspace's integrations run each time the check opens", async () => {
+    const trust = control(review);
+    let asked = 0;
+    const value: WorkspaceTrustControl = Object.assign(trust.value, {
+      checkRuns: () => {
+        asked += 1;
+      },
+    });
+    await show(value);
+    expect(asked).toBe(0);
+
+    act(() => badge()?.click());
+    expect(asked).toBe(1);
+    act(() => button("Not now")?.click());
+
+    act(() => badge()?.click());
+    expect(asked).toBe(2);
+  });
+});
