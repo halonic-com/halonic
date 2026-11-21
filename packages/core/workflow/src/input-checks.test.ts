@@ -58,7 +58,7 @@ verifies("workflow.validate-input", () => {
       {
         code: "unknown-gets",
         message:
-          '"read" gets input.order, but the workflow\'s input has no field order. It has only mail and from: read one of those, or add order to the input you start the workflow with.',
+          "\"read\" gets input.order, but the workflow's input has no field order. It has only mail and from: read one of those, or add order to a test case's input in support-reply.test.yaml.",
         path: ["states", "read", "gets", 0],
       },
     ]);
@@ -71,7 +71,7 @@ verifies("workflow.validate-input", () => {
         {
           code: "unknown-gets",
           message:
-            '"read" gets input.order, but the workflow\'s input has no field order. Its only field is mail: read that, or add order to the input you start the workflow with.',
+            "\"read\" gets input.order, but the workflow's input has no field order. Its only field is mail: read that, or add order to a test case's input in support-reply.test.yaml.",
           path: ["states", "read", "gets", 0],
         },
       ],

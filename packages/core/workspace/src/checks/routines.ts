@@ -132,7 +132,8 @@ function unreadHint(key: string, read: readonly string[]): string {
   if (read.length === 0) {
     return `No step reads an input field: remove the key, or add input.${key} to the gets of the step that needs it.`;
   }
-  return `Its steps read ${listed(read.map((field) => `input.${field}`))}: rename the key to one of those, or remove it.`;
+  const to = read.length === 1 ? "that" : "one of those";
+  return `Its steps read ${listed(read.map((field) => `input.${field}`))}: rename the key to ${to}, or remove it.`;
 }
 
 /** `a`, `a and b`, `a, b and c`. */

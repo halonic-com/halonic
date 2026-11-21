@@ -15,7 +15,7 @@ verifies("cli.messages", () => {
       words(workflowMessages.seeWorkflows("acme", [])),
     ]).toEqual([
       "Workflows in acme: support-reply, weekly-report.",
-      "acme has no workflows yet. Add one from a recipe: https://docs.halonic.dev/examples/",
+      "acme has no workflows yet. Add one from a recipe: https://docs.halonic.dev/examples/approval-step",
     ]);
   });
 
