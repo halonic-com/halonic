@@ -2,7 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14552 (decided in Sofia's C415 check, CB1; the shell-word rule from her C442 check on HAL-12368); the package owner's reviewer (Liam) approves this note in review
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cEViKKzGYDl2+w9hvOpWxdGhZZpQescd0IQIh+l0LAdTam05frearGg+Z1S0tPgChxZdgnWzRLnpVJAQFApvAQ==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:y8l0TMPw/1sK+HMyUytXm+N9MkLarXW+uacQuQE7St+BPCqFrm64wYycIT1BPLj4Y/wd4Xd1qq05cFg7b3yMBg==
 
 ## What changes
 
