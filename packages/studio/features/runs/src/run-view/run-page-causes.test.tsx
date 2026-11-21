@@ -299,7 +299,7 @@ verifies("runs.run-view.failure-banners", () => {
     const runId = "run_e_7r7r7r";
     const log = logOf(runId, [
       [0, entered("draft")],
-      [0, { type: "agent.started", state: "draft", agent: "sorter" }],
+      [0, { type: "agent.started", state: "draft", agent: "sorter", prompt: "Sort it" }],
       [
         1,
         {
