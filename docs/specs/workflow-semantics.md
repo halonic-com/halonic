@@ -215,7 +215,7 @@ workflows, for example) belong to the workspace loader.
 | `missing-initial` | error | the initial state does not exist |
 | `unknown-target` | error | a transition goes to a state that does not exist |
 | `dead-end` | error | a state that isn't final has no transitions |
-| `unknown-gets` | error | a step picks a `context.<key>` that no earlier step writes, or picks an `input.<name>` in `gets` that the workflow's input fields (`start.field`, its tests' and routines' inputs) don't have; a `{{input.<name>}}` with such a name is `unknown-template-name` |
+| `unknown-gets` | error | a step picks a `context.<key>` that no earlier step writes, or picks an `input.<name>` in `gets` that the workflow's input fields (`start.field`, its tests' inputs) don't have; a `{{input.<name>}}` with such a name is `unknown-template-name` |
 | `unread-start-field` | error | no step reads the field `start.field` names |
 | `timer-outside-wait` | error | a state that isn't a wait state has a timer |
 | `timer-with-event` | error | a transition has both an `event` and a timer (`after`) |

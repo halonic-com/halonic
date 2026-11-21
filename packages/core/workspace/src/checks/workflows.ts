@@ -57,18 +57,17 @@ function choiceOptions(context: CheckContext, hub: string | null): Record<string
   );
 }
 
-/** The input fields a workflow is started with by its tests and by the routines that run it. */
+/**
+ * The input fields a workflow's tests start it with. A routine's input keys
+ * aren't counted: a typo there would turn the step that reads the right name
+ * into the error, so the routine check warns at the key instead.
+ */
 function inputFieldsOf(context: CheckContext, workflow: Workflow): string[] {
-  const id = workflow.value.id;
   const tests = context
     .filesOf("workflowTest", workflow.hub)
-    .filter((test) => test.value.workflow === id)
+    .filter((test) => test.value.workflow === workflow.value.id)
     .flatMap((test) => test.value.cases.map((testCase) => testCase.input));
-  const routines = context
-    .filesOf("routine")
-    .filter((routine) => (routine.hub ?? routine.value.run.hub) === workflow.hub)
-    .flatMap(({ value: { run } }) => ("workflow" in run && run.workflow === id ? [run.input] : []));
-  return [...new Set([...tests, ...routines].flatMap((input) => Object.keys(input)))];
+  return [...new Set(tests.flatMap((input) => Object.keys(input)))];
 }
 
 /** One call of an agent's method: a state's own, or one branch of a parallel state. */

@@ -66,7 +66,7 @@ export function readsWholeInput(state: WorkflowState): boolean {
 /**
  * Input fields a step reads that the workflow's input doesn't have, and a
  * `start.field` that no step reads. The input's fields are `start.field` and
- * the ones in `options.inputFields` (tests and routines); a workflow that
+ * the ones in `options.inputFields` (its tests); a workflow that
  * names none isn't checked. `start.field` counts only when a step reads it,
  * so a wrong one gets one message, not one per step.
  */
