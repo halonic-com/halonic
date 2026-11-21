@@ -21,6 +21,7 @@ import {
 } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
 import { takeFocusOnOpen } from "../focus-on-open.ts";
+import { takeOpenAtLineRequests } from "../open-at-line.ts";
 import {
   causedElsewhere,
   type Elsewhere,
@@ -293,6 +294,7 @@ export function FileView({ item, context }: ItemViewProps) {
         );
       });
     let unsubscribe = () => {};
+    let stopLines = () => {};
     void openCodeEditor({
       parent: container,
       text,
@@ -317,6 +319,8 @@ export function FileView({ item, context }: ItemViewProps) {
         editorRef.current = made;
         made.setProblems(problemsRef.current);
         unsubscribe = follow(made);
+        // A broken file's row opens the file with the cursor on its first problem (C348).
+        stopLines = takeOpenAtLineRequests(path, (line) => made.goTo(line));
         // A file the user just made opens with the cursor in the editor (files flow 8.10).
         const justMade = takeFocusOnOpen(path);
         if (refocus.current || justMade) {
@@ -328,6 +332,7 @@ export function FileView({ item, context }: ItemViewProps) {
     return () => {
       stopped = true;
       unsubscribe();
+      stopLines();
       editorRef.current = undefined;
       editor?.destroy();
     };
