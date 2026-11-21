@@ -119,6 +119,29 @@ verifies("remote.phone-gateway-client", () => {
       ]);
     });
 
+    it("watches from 0 again when the new watch drops or is refused before its ok", () => {
+      const scene = new GatewayScene();
+      scene.connectAndList([listedSession({ lastSeq: 0 })]);
+      scene.event("session-1", 1, said("one"));
+      scene.event("session-1", 3, said("three"));
+      scene.drop();
+
+      scene.connectAndList([listedSession({ lastSeq: 3 })]);
+      const afterDrop = scene.tunnel.lastOf("watch");
+      expect(afterDrop.afterSeq).toBe(0);
+      scene.host({ type: "error", replyTo: afterDrop.id, code: "too-many-watches" });
+      scene.event("session-1", 1, said("not watched"));
+      expect(scene.client.view().sessions[0]?.events).toEqual([]);
+
+      vi.advanceTimersByTime(listEveryMs);
+      scene.list([listedSession({ lastSeq: 3 })]);
+      const afterRefusal = scene.tunnel.lastOf("watch");
+      expect(afterRefusal.afterSeq).toBe(0);
+      scene.ok(afterRefusal.id);
+      for (const seq of [1, 2, 3]) scene.event("session-1", seq, said(`replayed ${seq}`));
+      expect(scene.client.view().sessions[0]?.events.map((event) => event.seq)).toEqual([1, 2, 3]);
+    });
+
     it("watches from 0 after history-gone, dropping what it held", () => {
       const scene = new GatewayScene();
       scene.connectAndList([listedSession({ lastSeq: 0 })]);
