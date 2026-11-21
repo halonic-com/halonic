@@ -23,6 +23,15 @@ RUN mkdir /opt/node-build && cd /opt/node-build \
  && apt-get update \
  && PATH=$PWD/node-v${NODE_VERSION}-linux-x64/bin:$PATH npx -y playwright@${PLAYWRIGHT_VERSION} install-deps chromium webkit \
  && cd / && rm -rf /opt/node-build "$HOME/.npm" /var/lib/apt/lists/*
+# Node on PATH, as on GitHub's ubuntu image: steps and tests run `node` directly. The version the
+# repo's devEngines asks for.
+ARG CI_NODE_VERSION=26.12.0
+RUN mkdir /opt/node-ci && cd /opt/node-ci \
+ && curl -fsSLO https://nodejs.org/dist/v${CI_NODE_VERSION}/node-v${CI_NODE_VERSION}-linux-x64.tar.xz \
+ && curl -fsSL https://nodejs.org/dist/v${CI_NODE_VERSION}/SHASUMS256.txt | grep " node-v${CI_NODE_VERSION}-linux-x64.tar.xz$" | sha256sum -c - \
+ && tar -xJf node-v${CI_NODE_VERSION}-linux-x64.tar.xz -C /usr/local --strip-components=1 \
+      --exclude='*/CHANGELOG.md' --exclude='*/README.md' --exclude='*/LICENSE' \
+ && cd / && rm -rf /opt/node-ci && node --version
 # The runner lives in the runner user's home, actions-runner/ (entry.sh, the hook's event path and
 # the slot script's JOB_WORK name it).
 RUN useradd -m -u 1001 -s /bin/bash runner \
