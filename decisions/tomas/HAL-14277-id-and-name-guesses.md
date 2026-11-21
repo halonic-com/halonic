@@ -27,12 +27,17 @@
   stays as a guard, but the loader can no longer reach it, since two files of one kind in one hub
   can't share an id any more. The parity helper `placeIdOf` didn't strip `.collection`, which
   didn't matter while a file's own id always won; it now does.
+- Because `providers/mock-copy.yaml` now fails, it is no longer a passing file, so
+  `packages/core/format/src/parity.test.ts` runs two fewer tests for `format.parity-defaults`
+  (its "old app's value" and "old app's defaults" checks). The allowed difference checks that
+  file's new error instead.
 
 The requirements `format.id-from-place`, `workspace.references`, `workspace.file-rules` and
 `workflow.validate` say this, with the new `workflow.unknown-name-hints`. The test that a failed
 agent is known only by its own id now checks both names; the duplicate-id test checks the new
 error. Tests are added for each message, the hub, the routine, the branch and both reachability
-cases. No test was weakened or skipped.
+cases. No test was weakened or skipped; the two fewer parity runs above follow from the fixture's
+new result.
 
 ## Why
 
@@ -47,4 +52,6 @@ common reference mistakes, and one typo in a `to:` gave three warnings about the
 - workspace.references
 - workspace.file-rules
 - workflow.validate
+- format.parity-defaults
+- packages/core/format/src/parity.test.ts
 - packages/testing/parity/allowed-differences.json
