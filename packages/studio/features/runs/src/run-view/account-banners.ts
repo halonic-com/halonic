@@ -54,12 +54,7 @@ export function accountBanner(
       );
     case "key-refused":
       return withModelsFix(
-        failureWords.keyRefused(
-          provider,
-          failure.secret,
-          failure.model,
-          aliasOf(failure.alias),
-        ),
+        failureWords.keyRefused(provider, failure.secret, failure.model, aliasOf(failure.alias)),
         { label: failureWords.replaceKey },
         phone,
       );

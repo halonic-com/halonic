@@ -235,6 +235,9 @@ function Banner({
         tone={banner.tone}
         {...(banner.title === undefined ? {} : { title: banner.title })}
         {...(action.length === 0 ? {} : { action })}
+        // The next Tab after the run's heading lands on the first action, so each is heard with
+        // what the banner says (C461 BN1).
+        describeActions
       >
         {banner.lines.map((line) => (
           <span key={line} className="block">

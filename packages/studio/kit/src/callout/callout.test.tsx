@@ -298,6 +298,30 @@ verifies("kit.callout", () => {
     expect(button.hasAttribute("aria-describedby")).toBe(false);
   });
 
+  it("describes every action, without moving focus, with describeActions", () => {
+    const { container } = render(
+      <Callout
+        tone="danger"
+        title="Run failed"
+        action={[
+          { label: "Add key", onClick: () => undefined },
+          { label: "Run again", onClick: () => undefined },
+        ]}
+        describeActions
+      >
+        Anthropic has no API key on this computer.
+      </Callout>,
+    );
+    const buttons = [...container.querySelectorAll("button")];
+    expect(buttons).toHaveLength(2);
+    for (const button of buttons) {
+      expect(textOf(button.getAttribute("aria-describedby"))).toBe(
+        "Run failed | Anthropic has no API key on this computer.",
+      );
+    }
+    expect(buttons).not.toContain(document.activeElement);
+  });
+
   it("has no close button", () => {
     const { container } = render(<Callout tone="info">Keys stay on this computer.</Callout>);
     expect(container.querySelector("button")).toBeNull();

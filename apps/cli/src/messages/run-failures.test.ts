@@ -91,7 +91,12 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
   });
 
   it("names the model when no alias points at it (C457-1)", () => {
-    const keyFacts = { provider: "OpenAI", secret: "openai-key", model: "gpt-4.1", alias: "openai/gpt-4.1" };
+    const keyFacts = {
+      provider: "OpenAI",
+      secret: "openai-key",
+      model: "gpt-4.1",
+      alias: "openai/gpt-4.1",
+    };
     expect(lines({ reason: "key-refused", ...keyFacts })[0]).toBe(
       "Support reply failed in the step Draft a reply: OpenAI didn't accept the key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model gpt-4.1.",
     );

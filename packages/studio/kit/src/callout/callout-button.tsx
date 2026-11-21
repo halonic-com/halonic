@@ -23,7 +23,7 @@ export function CalloutButton({
   describedBy,
 }: {
   readonly action: CalloutAction;
-  /** The ids of the Callout's title and text, which a focused action is described by. */
+  /** The ids of the Callout's title and text the action is described by; `undefined` for none. */
   readonly describedBy: string | undefined;
 }) {
   const focused = action.focus === true;
@@ -47,7 +47,7 @@ export function CalloutButton({
       busyLabel={action.busyLabel}
       onClick={run}
       {...(focused ? { ref: focusOnMount } : {})}
-      {...(focused && describedBy !== undefined ? { "aria-describedby": describedBy } : {})}
+      {...(describedBy === undefined ? {} : { "aria-describedby": describedBy })}
       {...trigger}
     >
       <span className={labelClasses}>

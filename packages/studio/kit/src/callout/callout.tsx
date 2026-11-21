@@ -52,6 +52,12 @@ interface CalloutBase {
   readonly icon?: ReactNode;
   /** One action, or several side by side ("Keep mine", "Load theirs"). */
   readonly action?: CalloutAction | readonly CalloutAction[];
+  /**
+   * Every action is described by the Callout's title and text, not only one that takes focus: for
+   * a Callout whose first action is the next Tab stop after a heading, so "Add key" is heard with
+   * what it fixes (C461 BN1 on HAL-14702).
+   */
+  readonly describeActions?: boolean;
 }
 
 /** A Callout that's always there: plain page content, read in page order. */
@@ -171,6 +177,7 @@ export function Callout(props: CalloutProps) {
           <CalloutActions
             action={props.action}
             describedBy={actionDescription(ids, title !== undefined, hasText(props.children))}
+            describeAll={props.describeActions === true}
           />
         )}
       </div>
@@ -234,9 +241,11 @@ function CalloutMessage({
 function CalloutActions({
   action,
   describedBy,
+  describeAll,
 }: {
   readonly action: CalloutAction | readonly CalloutAction[] | undefined;
   readonly describedBy: string | undefined;
+  readonly describeAll: boolean;
 }) {
   const actions = action === undefined ? [] : [action].flat();
   if (actions.length === 0) {
@@ -245,15 +254,20 @@ function CalloutActions({
   return (
     <div className={`${actionRow} ${actionRowPhoneWrap} ${actionRowForcedColours} flex flex-wrap`}>
       {actions.map((one) => (
-        <CalloutButton key={one.label} action={one} describedBy={describedBy} />
+        <CalloutButton
+          key={one.label}
+          action={one}
+          describedBy={describeAll || one.focus === true ? describedBy : undefined}
+        />
       ))}
     </div>
   );
 }
 
 /**
- * What a focused action is described by: the title, then the text, so focus that lands on "Try
- * again" also hears what went wrong. `undefined` when the Callout has neither.
+ * What a focused action, or with `describeActions` every action, is described by: the title, then
+ * the text, so focus that lands on "Try again" also hears what went wrong. `undefined` when the
+ * Callout has neither.
  */
 function actionDescription(ids: CalloutIds, hasTitle: boolean, hasWords: boolean) {
   const described = [hasTitle ? ids.title : null, hasWords ? ids.text : null].filter(
