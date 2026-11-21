@@ -1,5 +1,5 @@
 import { AgentHostSandbox, AgentHostSandboxChoice } from "@halonicjs/adapter-agent-host-client";
-import { TauriPickedFolders, TauriTrustStore } from "@halonicjs/adapter-fs-tauri";
+import { TauriPickedFolders } from "@halonicjs/adapter-fs-tauri";
 import { ServiceRegistry, sandboxStartCheck, sandboxStartCheckKey } from "@halonicjs/app";
 import {
   type FilesHost,
@@ -80,7 +80,7 @@ export { servedServices } from "./served-studio.ts";
 import { keyboardPlatform, studioHost } from "./studio-host.ts";
 import { followSystemRegion } from "./system-region.ts";
 import { demoModelWatch } from "./test-model-watch.ts";
-import { trustedSourcesOf } from "./trusted-sources.ts";
+import { desktopTrustedSources } from "./trusted-sources.ts";
 import {
   closeLimitMs,
   leaveFocusedField,
@@ -311,19 +311,7 @@ export async function openFolder(
   );
   services.provide(SampleWorkspaceService, sample);
   services.provide(SampleHintService, sample);
-  const trustStore = ipc === undefined ? undefined : new TauriTrustStore(ipc);
-  services.provide(
-    TrustedSourcesService,
-    trustStore === undefined
-      ? { list: async () => [], remove: async () => undefined }
-      : trustedSourcesOf(
-          trustStore,
-          async () => {
-            await Promise.all([...open].map((each) => each.refresh()));
-          },
-          (locations) => trustStore.foldersFound(locations),
-        ),
-  );
+  services.provide(TrustedSourcesService, desktopTrustedSources(window, open));
   provideShellSecrets(services, window);
   provideShellHostSettings(services, window);
   services.provide(HostSettingsService, await hostSettingsOf(services, window));

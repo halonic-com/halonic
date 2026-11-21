@@ -5,7 +5,7 @@ import {
   type AgentHostTransport,
   AgentHostUnfencedRuns,
 } from "@halonicjs/adapter-agent-host-client";
-import type { ServiceRegistry } from "@halonicjs/app";
+import type { ServiceRegistry, SignOutPlugin } from "@halonicjs/app";
 import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
 import { shellKeychain, type TauriIpc } from "@halonicjs/studio-services";
 import type { KeyboardPlatform } from "@halonicjs/studio-shell";
@@ -58,8 +58,7 @@ export function providePlugins(
     caller: new AgentHostPluginToolCaller(transport),
     handOver: new AgentHostPluginSecrets(transport),
     signIns,
-    // A plugin's sign-ins are signed in under its id.
-    signOut: async (plugin) => void (await signIns.signOutAll(plugin)),
+    signOut: agentHostPluginSignOut(transport),
     onReloadFailed: parts.onReloadFailed,
     unfencedRuns: desktopUnfencedRuns(new AgentHostUnfencedRuns(transport)),
     programs: desktopProgramsRun(transport, parts.platform),
@@ -71,4 +70,15 @@ export function providePlugins(
   reload();
   parts.onFocus(reload);
   services.provide(PluginsHostService, plugins.host);
+}
+
+/**
+ * Signs out every sign-in of a plugin at the agent host, which finds them from the saved grants,
+ * also for a plugin whose folder or trust is gone (`app.plugin-sign-out`). The plugins host and
+ * Settings › Trusted sources both sign a plugin out with it.
+ */
+export function agentHostPluginSignOut(transport: AgentHostTransport): SignOutPlugin {
+  const signIns = new AgentHostIntegrationSignIns(transport);
+  // A plugin's sign-ins are signed in under its id.
+  return async (plugin) => void (await signIns.signOutAll(plugin));
 }
