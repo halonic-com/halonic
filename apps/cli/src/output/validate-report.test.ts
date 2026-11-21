@@ -25,6 +25,7 @@ function loaded(issues: readonly WorkspaceIssue[], checked: number): LoadedWorks
     files: files as unknown as LoadedWorkspace["files"],
     issues,
     ignored: [],
+    leftOut: [],
   };
 }
 

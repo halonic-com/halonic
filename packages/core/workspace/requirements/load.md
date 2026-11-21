@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1522 (HAL-186 implementation plan, step 1a)
 
-When `loadWorkspace` reads a workspace through a `DefinitionSource`, the workspace package shall parse every file a registered kind places with that kind and its place id, return the parsed files sorted by path, return every error and warning with the file's path, the key path, the line and the column, list the files no kind places as ignored, and skip the reserved `.halonic/` folders without an issue.
+When `loadWorkspace` reads a workspace through a `DefinitionSource`, the workspace package shall parse every file a registered kind places with that kind and its place id, return the parsed files sorted by path, return every error and warning with the file's path, the key path, the line and the column, list the files no kind places as ignored, and skip the reserved `.halonic/` folders without an issue. It shall not list or read the folders it leaves out (`workspace.load-leaves-out-working-folders`), so their files aren't among the ignored.
 
 ## Examples
 

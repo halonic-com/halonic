@@ -1,7 +1,8 @@
 import type { HubUses } from "@halonicjs/format";
 import { err, ok, type Result } from "@halonicjs/std";
+import { documentsOf, leftOutDocumentFolders } from "./extract-documents.ts";
 import { gitIgnorePath } from "./init-workspace.ts";
-import { filesOf, type LoadedFileOf, type LoadedWorkspace } from "./load-workspace.ts";
+import { filesOf, type LoadedWorkspace } from "./load-workspace.ts";
 
 /** Which part of the new workspace a file is, so a report can group them. */
 export type ExtractPart =
@@ -43,7 +44,19 @@ export type ExtractError =
   /** No hub has this id; `hubs` lists the ones there are, sorted. */
   | { readonly kind: "unknown_hub"; readonly hub: string; readonly hubs: readonly string[] }
   /** The workspace has errors, so a copy would carry them, or miss what a broken file names. */
-  | { readonly kind: "has_errors"; readonly errors: number };
+  | { readonly kind: "has_errors"; readonly errors: number }
+  /**
+   * A `files` knowledge source the hub takes keeps documents in a folder the
+   * loader left out (`LoadedWorkspace.leftOut`), and the caller didn't list
+   * that folder's files: `extractHub` lists `folders` and plans again.
+   */
+  | { readonly kind: "left_out_documents"; readonly folders: readonly string[] };
+
+/** What `planHubExtract` takes besides the loaded workspace. */
+export interface PlanHubExtractOptions {
+  /** Every file in the workspace's left-out folders that the plan may need, as the source lists them. */
+  readonly leftOutFiles?: readonly string[];
+}
 
 /** The kinds of shared item a hub can use, with the key `uses` and an agent list them under. */
 const sharedKinds = [
@@ -79,8 +92,15 @@ const runFiles = /^(models\.yaml|providers\/[^/]+\.yaml|runtimes\/[^/]+\.yaml)$/
  * workflows. The original workspace is not changed.
  *
  * @param workspace - the workspace as `loadWorkspace` gave it
+ * A knowledge source's documents in a folder the loader left out, such as an
+ * agent's working folder, aren't among the loaded workspace's files. Without
+ * `options.leftOutFiles` the plan says so and names the folders, rather than
+ * quietly leave the documents behind.
+ *
  * @param hubId - the hub to take out, the name of its folder under `hubs/`
- * @returns the plan, or why there is none: an unknown hub, or a workspace with errors
+ * @param options - `leftOutFiles`, the files of the left-out folders the plan needs
+ * @returns the plan, or why there is none: an unknown hub, a workspace with
+ *   errors, or documents in a left-out folder that weren't listed
  *
  * @example
  * const plan = planHubExtract(await loadWorkspace(source), "family");
@@ -89,14 +109,11 @@ const runFiles = /^(models\.yaml|providers\/[^/]+\.yaml|runtimes\/[^/]+\.yaml)$/
 export function planHubExtract(
   workspace: LoadedWorkspace,
   hubId: string,
+  options: PlanHubExtractOptions = {},
 ): Result<ExtractPlan, ExtractError> {
-  const hubs = hubsOf(workspace);
-  if (!hubs.includes(hubId)) {
-    return err({ kind: "unknown_hub", hub: hubId, hubs });
-  }
-  const errors = workspace.issues.filter((issue) => issue.severity === "error").length;
-  if (errors > 0) {
-    return err({ kind: "has_errors", errors });
+  const refused = refusalOf(workspace, hubId, options);
+  if (refused !== null) {
+    return err(refused);
   }
 
   const uses = sharedItemsUsed(workspace, hubId);
@@ -107,7 +124,11 @@ export function planHubExtract(
     }
   };
 
-  const allPaths = [...workspace.files.map((file) => file.path), ...workspace.ignored];
+  const allPaths = [
+    ...workspace.files.map((file) => file.path),
+    ...workspace.ignored,
+    ...(options.leftOutFiles ?? []),
+  ];
   for (const path of allPaths) {
     if (path.startsWith(`hubs/${hubId}/`)) {
       add(path, "hub");
@@ -140,6 +161,31 @@ export function planHubExtract(
     },
     uses,
   });
+}
+
+/**
+ * Why the hub can't be planned, or `null` when it can: an unknown hub, a
+ * workspace with errors, or documents in a left-out folder whose files the
+ * caller didn't give.
+ */
+function refusalOf(
+  workspace: LoadedWorkspace,
+  hubId: string,
+  options: PlanHubExtractOptions,
+): ExtractError | null {
+  const hubs = hubsOf(workspace);
+  if (!hubs.includes(hubId)) {
+    return { kind: "unknown_hub", hub: hubId, hubs };
+  }
+  const errors = workspace.issues.filter((issue) => issue.severity === "error").length;
+  if (errors > 0) {
+    return { kind: "has_errors", errors };
+  }
+  if (options.leftOutFiles !== undefined) {
+    return null;
+  }
+  const folders = leftOutDocumentFolders(workspace, hubId, sharedItemsUsed(workspace, hubId));
+  return folders.length > 0 ? { kind: "left_out_documents", folders } : null;
 }
 
 /** The hubs of a workspace, by folder, sorted. */
@@ -243,29 +289,6 @@ function sharedPaths(
     }
   }
   return paths;
-}
-
-/**
- * The documents of a `files` knowledge source: the workspace's files under
- * its `config.path`, which is relative to the workspace root. A path that
- * is absolute or leaves the workspace gives none.
- */
-function documentsOf(source: LoadedFileOf<"knowledge">, allPaths: readonly string[]): string[] {
-  const folder = source.value.config["path"];
-  if (source.value.provider !== "files" || typeof folder !== "string" || isAbsolute(folder)) {
-    return [];
-  }
-  const parts = folder.split(/[\\/]+/).filter((part) => part !== "" && part !== ".");
-  if (parts.length === 0 || parts.includes("..")) {
-    return [];
-  }
-  const prefix = `${parts.join("/")}/`;
-  return allPaths.filter((path) => path.startsWith(prefix));
-}
-
-/** Whether a path starts at a root, `/` or `\`, or at a drive, such as `C:`. */
-function isAbsolute(path: string): boolean {
-  return /^([\\/]|[a-zA-Z]:)/.test(path);
 }
 
 /** The ids of one kind's files in one hub (`null`: the root). */

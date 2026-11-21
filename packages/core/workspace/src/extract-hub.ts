@@ -25,9 +25,15 @@ export interface ExtractedHub {
   readonly files: readonly string[];
 }
 
+/**
+ * Why a plan with the left-out folders listed failed: everything
+ * `planHubExtract` can say except that those folders weren't listed.
+ */
+type ListedExtractError = Exclude<ExtractError, { readonly kind: "left_out_documents" }>;
+
 /** Why `extractHub` wrote nothing. */
 export type ExtractHubError =
-  | ExtractError
+  | ListedExtractError
   /** The target already has files, and is left as it is. */
   | { readonly kind: "not_empty"; readonly location: string };
 
@@ -43,6 +49,10 @@ export interface ExtractHubOptions {
  * and removes what it wrote when a write fails. The new `workspace.yaml` is
  * the original with the hub's id, name and description put in, so its
  * comments and the rest of its settings stay as they were.
+ *
+ * When a knowledge source the hub takes keeps documents in a folder the
+ * loader left out, such as an agent's working folder, it lists that folder
+ * from `source` so the documents go along.
  *
  * @param workspace - the loaded workspace, as `loadWorkspace` gave it from `source`
  * @param source - the same workspace's files, to read the planned ones from
@@ -62,7 +72,7 @@ export async function extractHub(
   hubId: string,
   options: ExtractHubOptions = {},
 ): Promise<Result<ExtractedHub, ExtractHubError>> {
-  const planned = planHubExtract(workspace, hubId);
+  const planned = await planListingLeftOut(workspace, source, hubId);
   if (!planned.ok) {
     return planned;
   }
@@ -79,6 +89,28 @@ export async function extractHub(
     return copied;
   }
   return ok({ plan, location: target.location, files: copied.value.files });
+}
+
+/**
+ * The plan, with the files of the left-out folders it needs listed from the
+ * source when it needs any.
+ */
+async function planListingLeftOut(
+  workspace: LoadedWorkspace,
+  source: DefinitionSource,
+  hubId: string,
+): Promise<Result<ExtractPlan, ListedExtractError>> {
+  const planned = planHubExtract(workspace, hubId);
+  if (planned.ok || planned.error.kind !== "left_out_documents") {
+    return planned as Result<ExtractPlan, ListedExtractError>;
+  }
+  const lists = await Promise.all(planned.error.folders.map((folder) => source.list(folder)));
+  const listed = planHubExtract(workspace, hubId, { leftOutFiles: lists.flat() });
+  if (!listed.ok && listed.error.kind === "left_out_documents") {
+    // Given the listed files, the plan never asks for them again; this is a bug.
+    throw new Error(`hub extract asked again for ${listed.error.folders.join(", ")}`);
+  }
+  return listed as Result<ExtractPlan, ListedExtractError>;
 }
 
 /**
