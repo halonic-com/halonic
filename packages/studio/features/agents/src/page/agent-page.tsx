@@ -146,7 +146,7 @@ export function AgentScreen({
   Sections,
   modelRequest,
 }: AgentScreenProps) {
-  // After a Try again reads, the agent's name takes the focus the button had.
+  // After a Try again reads, or the not-live line goes, the agent's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
   const source = useMemo(
     () => ({
@@ -264,7 +264,14 @@ export function AgentScreen({
           ids={ids}
         />
       </header>
-      {load.kind === "ready" && <NotLiveLine host={host} agent={{ hubId, id }} name={name} />}
+      {load.kind === "ready" && (
+        <NotLiveLine
+          host={host}
+          agent={{ hubId, id }}
+          name={name}
+          onMadeLive={() => title.current?.focus()}
+        />
+      )}
       {saveFailed !== undefined && (
         <p role="alert" className="border-b border-border px-6 py-2 text-small text-danger">
           {pageWords.couldntSave(saveFailed)}

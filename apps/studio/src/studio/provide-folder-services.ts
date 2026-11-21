@@ -68,9 +68,11 @@ import { EngineNotAnswering, type KeyboardPlatform } from "@halonicjs/studio-she
 import { loadWorkspace } from "@halonicjs/workspace";
 import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
+import { folderLiveness } from "../changes/folder-liveness.ts";
 import { shareChoiceMemory } from "../changes/share-choice.ts";
 import { versionHistoryOf } from "../changes/version-history.ts";
-import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
+import { WatchedChanges } from "../changes/watched-changes.ts";
+import type { GitAnswer } from "../changes/workspace-changes.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
 import { answerChatOn, EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
@@ -187,7 +189,7 @@ export function provideFolderServices(
     InstructionTrustHostService,
     new WorkspaceInstructionTrust(instructionTrust, location),
   );
-  const changes = new WorkspaceChanges({
+  const changes = new WatchedChanges({
     git: async (args) =>
       (await ipc.invoke("git", { root: location, args: [...args] })) as GitAnswer,
     files: new TauriDefinitionStore(files, location),
@@ -201,6 +203,11 @@ export function provideFolderServices(
   services.provide(ChangesSourceService, changes);
   services.provide(VersionHistoryHostService, versionHistoryOf(changes));
   services.provide(ShareChoiceService, shareChoiceMemory(storageOf(window), location));
+  const { liveness, onChange: onLivenessChange } = folderLiveness({
+    changes,
+    saved: new TauriDefinitionStore(files, location),
+    events: scope.events,
+  });
   const transport = tauriAgentHostTransport(window);
   const engine =
     remoteEngine ??
@@ -258,7 +265,8 @@ export function provideFolderServices(
     AgentsHostService,
     new WorkspaceAgents({
       files: services.get(workspaceFilesKey),
-      onChange: (listener) => scope.events.on("files.changed", listener),
+      onChange: onLivenessChange,
+      liveness: async (path) => (await liveness.liveState(path)).state,
       // The background engine has no chat route yet, so its window answers "not answering".
       ...(engine instanceof EngineService ? { answerChat: answerChatOn(engine) } : {}),
       ...(transport === undefined
@@ -296,7 +304,8 @@ export function provideFolderServices(
     RoutinesHostService,
     new WorkspaceRoutines({
       files: services.get(workspaceFilesKey),
-      onChange: (listener) => scope.events.on("files.changed", listener),
+      onChange: onLivenessChange,
+      liveness: (path) => liveness.routineVersions(path),
       runs: services.get(RunsSourceService),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       now: () => new Date(),

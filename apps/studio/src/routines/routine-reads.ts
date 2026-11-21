@@ -1,5 +1,6 @@
 import { startsAProgram, workflowAgentsOf } from "@halonicjs/adapter-workspace-models";
 import type { RunSummary } from "@halonicjs/events";
+import type { Routine } from "@halonicjs/format";
 import { describeTrigger, routineKey } from "@halonicjs/routines";
 import { KindedError } from "@halonicjs/std";
 import type {
@@ -146,7 +147,16 @@ export function targetStartsProgram(workspace: LoadedWorkspace, target: RoutineT
 
 /** The name of what a routine starts, for the row's summary; its id when the file is missing. */
 export function targetName(workspace: LoadedWorkspace, file: PlacedFile): string {
-  const target = targetOfFile(file.value.run, file.hub);
+  return runTargetName(workspace, file.value.run, file.hub);
+}
+
+/** The name of what a routine's `run` starts, from the routine's hub; its id when the file is missing. */
+export function runTargetName(
+  workspace: LoadedWorkspace,
+  run: Routine["run"],
+  routineHub: string | null,
+): string {
+  const target = targetOfFile(run, routineHub);
   return (
     targetsOf(workspace, target.hubId).find(
       (one) => one.kind === target.kind && one.id === target.id,
