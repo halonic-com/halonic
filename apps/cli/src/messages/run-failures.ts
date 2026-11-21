@@ -127,6 +127,12 @@ const lineOne = {
     ),
   "unknown-model-alias": (run, failure) =>
     failedIn(run, phrase`hub ${failure.hub} has no model alias ${failure.alias}.`),
+  // The words of the models refusal, which docs.halonic.dev uses too (HAL-15330).
+  "key-origin-not-allowed": (run, failure) =>
+    failedIn(
+      run,
+      phrase`provider ${failure.provider} can't send key ${failure.key} to ${failure.origin}, because that address isn't allowed for this key.`,
+    ),
   // The same words as `halonic secret list` for the same file (HAL-12569).
   "secrets-file-readable": (run, failure) =>
     failedIn(run, phrase`the secrets file ${failure.file} can be read by other users.`),
@@ -271,6 +277,9 @@ const lineTwo = {
   // says where a model that needs no key comes from (HAL-12377).
   "unknown-model-alias": (_run, failure) =>
     phrase`Add ${failure.alias} to models.yaml, or set a model on the agent. For a test model with no key, copy models.yaml and providers/mock.yaml from the Acme example.`,
+  // The address is allowed per key on this computer, so the command takes no --dir.
+  "key-origin-not-allowed": (_run, failure) =>
+    phrase`Only if you recognise that address, allow it with halonic models allow-address ${shellWord(failure.key)} ${shellWord(failure.origin)}, then run again.`,
   "secrets-file-readable": (_run, failure) =>
     phrase`Run chmod 600 ${failure.file}, then run again.`,
   "unknown-provider": (_run, failure) =>

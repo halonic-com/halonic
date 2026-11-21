@@ -154,6 +154,15 @@ export type RunFailure =
       /** The id of the run's hub, such as "notes". */
       readonly hub: string;
     }
+  | {
+      readonly reason: "key-origin-not-allowed";
+      /** The provider's id, which is also its file's name, such as "gateway". */
+      readonly provider: string;
+      /** The name of the stored key, never its value. */
+      readonly key: string;
+      /** The address the provider would have sent the key to, such as "https://other.example.com". */
+      readonly origin: string;
+    }
   | ConfigFailure
   | StartFailure
   | {
@@ -380,7 +389,9 @@ function timeoutFailure(failed: RunFailedFacts, model: FailedModel | undefined):
  * bug: a provider file whose type Halonic can't call (HAL-12342), a model
  * alias the hub doesn't have, such as `default` in a workspace made with
  * plain `halonic init` (HAL-12377), a secrets file other users can read
- * (HAL-12569), a provider a model names that the workspace doesn't have, and
+ * (HAL-12569), a stored key whose list of addresses doesn't hold the one its
+ * provider would send it to (HAL-15330), a provider a model names that the
+ * workspace doesn't have, and
  * a workflow step the run can't go on from: for-each items that aren't a
  * list, an event with no transition, a task with no agent (HAL-14301). A
  * cause without the names its facts need is `error`. Studio reads its run
@@ -402,6 +413,12 @@ export function setupFailureOf(cause: RunFailureCause | undefined): RunFailure |
       return alias === undefined || hub === undefined
         ? undefined
         : { reason: "unknown-model-alias", alias, hub };
+    }
+    case "models.key-origin-not-allowed": {
+      const { provider, key, origin } = detail;
+      return provider === undefined || key === undefined || origin === undefined
+        ? undefined
+        : { reason: "key-origin-not-allowed", provider, key, origin };
     }
     case "secrets.file-readable": {
       const { file } = detail;
@@ -436,7 +453,8 @@ function knownCauseFailureOf(failed: RunFailedFacts): RunFailure | undefined {
  * its own, so a client can treat the run by the cause's own kind, the kind
  * `--json` shows in the run's `cause`, rather than as a broken run
  * (HAL-12377): `not_found` for a missing model alias, `denied` for a secrets
- * file other users can read (HAL-12569).
+ * file other users can read (HAL-12569) or a key's address that isn't allowed
+ * (HAL-15330).
  */
 export function isSetupCause(cause: RunFailureCause | undefined): cause is RunFailureCause {
   return setupFailureOf(cause) !== undefined;
