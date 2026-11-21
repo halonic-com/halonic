@@ -172,7 +172,7 @@ verifies("workflows.start.start-run", () => {
     // The chip sits on the card's top edge, out of the name's way, and is said once: by the dot.
     const chip = card?.querySelector<HTMLElement>(":scope > [aria-hidden='true']");
     expect(chip?.textContent).toBe("Failed");
-    expect(chip?.className).toContain("-top-5");
+    expect(chip?.className).toContain("bottom-full");
     expect(chip?.className).toContain("right-3");
     expect(nameOf(card)).toEqual(["draft", "AGENT STEP", "writer", "Failed"]);
     await click(
