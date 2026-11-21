@@ -32,7 +32,7 @@ import { StepEditDock, stepCardDocks } from "./docked-step-card.tsx";
 import { FlowView } from "./flow-view.tsx";
 import { insteadOfPage } from "./gone-state.tsx";
 import { GuideSlot } from "./guide-card.tsx";
-import { firstTestsPick, firstView, panelClass } from "./page-view.ts";
+import { firstTestsPick, firstView, panelClass, stepNamesOf } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
 import { ProgramStepsLine } from "./program-steps-line.tsx";
 import { type DockOpener, dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
@@ -179,6 +179,8 @@ export function WorkflowScreen({
   const dockStep = view === "flow" ? pickedStep : undefined;
   const fileProblems = settings.load.kind === "ready" ? settings.load.value.problems : [];
   const errors = countProblems(fileProblems).errors;
+  // A problem names its step as the canvas's card does (C544-3).
+  const stepName = stepNamesOf(load.kind === "ready" ? load.value.steps : undefined);
   const problems = useProblemsGate(errors);
   const cantStart = useStartRefusal(host, { hubId, id }, errors);
   // `halonic run reply` stops when two hubs have a `reply`, so the command then names the hub.
@@ -330,6 +332,7 @@ export function WorkflowScreen({
                 />
               }
               startOn={problemsAsk.startOn}
+              stepName={stepName}
               onOpenStep={(stepId) => {
                 setOpenStep(stepId);
                 setMadeTest(undefined);
@@ -362,6 +365,7 @@ export function WorkflowScreen({
               id={id}
               name={name}
               openStep={openStep}
+              problems={fileProblems}
               strip={strip}
               onClearStrip={() => {
                 setShownId(undefined);

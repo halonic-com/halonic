@@ -1,4 +1,5 @@
 import { Button, CloseIcon, EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
+import type { WorkflowProblem } from "../api.ts";
 import type { View } from "../canvas/geometry.ts";
 import type { ShownRun } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
@@ -14,6 +15,8 @@ export interface FlowViewProps {
   readonly id: string;
   readonly name: string;
   readonly openStep: string | undefined;
+  /** What the checks found in the workflow: each step's card shows its own (flow-workflows 4.4). */
+  readonly problems: readonly WorkflowProblem[];
   /** The shown run's strip and the step it failed in (D8); absent when no run is shown. */
   readonly strip: ShownRun | undefined;
   readonly onClearStrip: () => void;
@@ -38,6 +41,7 @@ export function FlowView({
   id,
   name,
   openStep,
+  problems,
   strip,
   onClearStrip,
   onSelectStep,
@@ -68,6 +72,7 @@ export function FlowView({
           key={`${workflowKey}/${openStep}`}
           workflow={load.value}
           selectedStep={openStep}
+          problems={problems}
           failedStep={strip?.failedStep}
           route={strip?.route}
           marks={strip?.marks}

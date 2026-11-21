@@ -12,7 +12,7 @@ import type { WorkflowConfiguration } from "../api.ts";
 import type { Load } from "../page/use-load.ts";
 import { type ConfigurationPage, configurationPages } from "./configuration-pages.ts";
 import { configurationWords as words } from "./configuration-words.ts";
-import { countProblems, problemRows } from "./problem-lines.ts";
+import { countProblems, problemRows, type StepNames } from "./problem-lines.ts";
 
 /** Props for {@link Configuration}. */
 export interface ConfigurationProps {
@@ -26,6 +26,8 @@ export interface ConfigurationProps {
   readonly tests: ReactNode;
   /** Called when a problem's step is picked; the page goes to Flow with that card open. */
   readonly onOpenStep: (stepId: string) => void;
+  /** How a problem names its step, as the canvas's card does; by its id when absent. */
+  readonly stepName?: StepNames | undefined;
 }
 
 /**
@@ -41,6 +43,7 @@ export function Configuration({
   tests,
   startOn = "general",
   onOpenStep,
+  stepName,
 }: ConfigurationProps) {
   const [page, setPage] = useState<ConfigurationPage>(startOn);
   const ids = useTabIds();
@@ -109,6 +112,7 @@ export function Configuration({
               configuration={configuration}
               tests={tests}
               onOpenStep={onOpenStep}
+              stepName={stepName}
             />
           </div>
         )}
@@ -173,11 +177,13 @@ function ConfigurationBody({
   configuration,
   tests,
   onOpenStep,
+  stepName,
 }: {
   readonly page: ConfigurationPage;
   readonly configuration: WorkflowConfiguration;
   readonly tests: ReactNode;
   readonly onOpenStep: (stepId: string) => void;
+  readonly stepName: StepNames | undefined;
 }) {
   if (page === "general") {
     return (
@@ -233,7 +239,7 @@ function ConfigurationBody({
     );
   }
   if (page === "tests") return tests;
-  const rows = problemRows(configuration.problems);
+  const rows = problemRows(configuration.problems, stepName);
   if (rows.length === 0) return <p className="text-fg-muted">{words.noProblems}</p>;
   return (
     <ul className="flex flex-col divide-y divide-border">
@@ -247,11 +253,11 @@ function ConfigurationBody({
           {row.stepId !== undefined && (
             <button
               type="button"
-              aria-label={words.openStep(row.stepId)}
+              aria-label={words.openStep(row.stepName ?? row.stepId)}
               className="focus-ring text-small text-accent-text underline"
               onClick={() => onOpenStep(row.stepId as string)}
             >
-              {row.stepId}
+              {row.stepName ?? row.stepId}
             </button>
           )}
         </li>

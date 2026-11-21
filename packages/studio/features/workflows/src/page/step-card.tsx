@@ -2,6 +2,8 @@ import { StatusChip } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef } from "react";
 import type { WorkflowStep } from "../api.ts";
 import type { Box } from "../canvas/geometry.ts";
+import { configurationWords } from "../configuration/configuration-words.ts";
+import type { CardProblems } from "../configuration/problem-lines.ts";
 import type { StepMark } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import { pageWords } from "./page-words.ts";
@@ -18,6 +20,8 @@ export interface StepCardProps {
   readonly failed?: boolean;
   /** How the step stands in the shown run: draws its status dot; absent when it was not reached. */
   readonly mark?: StepMark | undefined;
+  /** What the checks found in the step: its border and problem line (flow-workflows 4.4). */
+  readonly problems?: CardProblems | undefined;
   /** Take focus on mount, for the card a problem's link opened. */
   readonly focusOnMount?: boolean;
   /** Where the step leads, for a screen reader that can't see the arrows; absent for an end step. */
@@ -43,6 +47,7 @@ export function StepCard({
   selected,
   failed,
   mark,
+  problems,
   focusOnMount,
   waysOn,
   onSelect,
@@ -57,6 +62,7 @@ export function StepCard({
     start: `${id}-start`,
     agent: `${id}-agent`,
     mark: `${id}-mark`,
+    problems: `${id}-problems`,
     waysOn: `${id}-ways-on`,
   };
   const nameParts = [
@@ -65,11 +71,12 @@ export function StepCard({
     first && part.start,
     step.type === "task" && part.agent,
     mark !== undefined && part.mark,
+    problems !== undefined && part.problems,
   ].filter((partId) => partId !== false);
   useEffect(() => {
     if (focusOnMount) button.current?.focus();
   }, [focusOnMount]);
-  const ring = ringOf(failed === true, selected);
+  const ring = ringOf(failed === true, selected, problems?.severity);
   return (
     <>
       <button
@@ -136,6 +143,7 @@ export function StepCard({
             {step.agent ?? pageWords.noAgent}
           </span>
         )}
+        {problems !== undefined && <ProblemLine id={part.problems} problems={problems} />}
       </button>
       {/* Hidden, outside the button so it isn't part of the card's text; a description still reads it. */}
       {waysOn !== undefined && (
@@ -176,8 +184,39 @@ export function dotCentre(box: Box) {
   return { x: box.x + box.width - DOT_INSET, y: box.y + DOT_INSET };
 }
 
-/** A failed step shows the danger ring over the selection's: the run's outcome is the news (D8). */
-function ringOf(failed: boolean, selected: boolean): string {
+/**
+ * The problem line (flow-workflows 4.4): "✕ Uses a missing agent" in the colour of the worst
+ * problem, with each problem's full message as its tooltip. The card has no room for a fourth line,
+ * so the line hangs from its bottom edge at the left, as the Failed chip stands on its top edge at
+ * the right. A screen reader hears it in the card's name, after "Error" or "Warning".
+ */
+function ProblemLine({ id, problems }: { readonly id: string; readonly problems: CardProblems }) {
+  return (
+    <span
+      id={id}
+      title={problems.detail}
+      className="absolute top-full left-3 flex max-w-[calc(100%-1.5rem)] rounded-xs bg-surface"
+    >
+      <StatusChip tone={problems.severity === "error" ? "danger" : "attention"}>
+        <span aria-hidden="true">{problems.glyph} </span>
+        <span className="sr-only">{configurationWords[problems.severity]}: </span>
+        {problems.line}
+      </StatusChip>
+    </span>
+  );
+}
+
+/**
+ * A failed step shows the danger ring over the selection's: the run's outcome is the news (D8). A
+ * step with a problem has a border in its colour, which the selection's ring covers while it's picked.
+ */
+function ringOf(
+  failed: boolean,
+  selected: boolean,
+  problem: CardProblems["severity"] | undefined,
+): string {
   if (failed) return "border-danger ring-2 ring-danger";
-  return selected ? "border-accent ring-2 ring-accent" : "border-border";
+  if (selected) return "border-accent ring-2 ring-accent";
+  if (problem === "error") return "border-danger";
+  return problem === "warning" ? "border-attention" : "border-border";
 }

@@ -27,7 +27,8 @@ export const configurationWords = {
   error: "Error",
   warning: "Warning",
   noProblems: "No problems.",
-  openStep: (stepId: string) => `Open ${stepId}`,
+  /** A problem row's link, which names the step as its card does. */
+  openStep: (stepName: string) => `Open ${stepName}`,
   loading: (name: string) => `Loading ${name}'s settings`,
   loadFailedTitle: (name: string) => `Couldn't load ${name}'s settings`,
   tryAgain: "Try again",

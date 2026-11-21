@@ -1,6 +1,6 @@
 import { Button, MaximiseIcon, PlusIcon } from "@halonicjs/studio-kit";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { WorkflowView } from "../api.ts";
+import type { WorkflowProblem, WorkflowView } from "../api.ts";
 import { boxesFor } from "../canvas/auto-layout.ts";
 import {
   type Box,
@@ -11,9 +11,11 @@ import {
   type View,
   zoomAround,
 } from "../canvas/geometry.ts";
+import { cardProblems } from "../configuration/problem-lines.ts";
 import type { StepMark } from "../start/run-strip.ts";
 import { Arrows } from "./arrows.tsx";
 import { CanvasToolbar, newStepPlace, TOOLBAR_GUTTER } from "./canvas-toolbar.tsx";
+import { stepNamesOf } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
 import { PointOfLight } from "./point-of-light.tsx";
 import { cardExtent, DOT_VAR, dotCentre, StepCard } from "./step-card.tsx";
@@ -40,6 +42,7 @@ const FALLBACK_VIEWPORT = { width: 800, height: 600 };
 export function WorkflowCanvas({
   workflow,
   selectedStep,
+  problems = [],
   failedStep,
   route,
   marks,
@@ -59,6 +62,8 @@ export function WorkflowCanvas({
   readonly onView?: ((view: View) => void) | undefined;
   /** The card that starts picked, when the person came from a problem's link. */
   readonly selectedStep?: string | undefined;
+  /** What the checks found in the workflow: each card shows its own step's (flow-workflows 4.4). */
+  readonly problems?: readonly WorkflowProblem[] | undefined;
   /** The step the shown run failed in, ringed with its Failed chip. */
   readonly failedStep?: string | undefined;
   /** The steps the shown run went through, in order; the arrows it went along are drawn blue. */
@@ -106,6 +111,8 @@ export function WorkflowCanvas({
       ),
     [workflow],
   );
+
+  const stepName = useMemo(() => stepNamesOf(workflow.steps), [workflow]);
 
   const activeBox = active === undefined ? undefined : boxes.get(active);
   const activeMark = active === undefined ? undefined : marks?.[active];
@@ -243,6 +250,7 @@ export function WorkflowCanvas({
               selected={selected === step.id}
               failed={failedStep === step.id}
               mark={marks?.[step.id]}
+              problems={cardProblems(problems, step.id, stepName)}
               focusOnMount={selectedStep === step.id}
               waysOn={waysOnFrom(step.id, workflow, boxes)}
               onSelect={() => {
