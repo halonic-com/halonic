@@ -2,6 +2,7 @@ import { SecretText } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { acmeFolder } from "./first-run-model-choice.testing.ts";
+import { workspaceSavedKeys } from "./first-run-test-secrets.ts";
 
 const anthropic = { kind: "key", provider: "anthropic" } as const;
 const saved = "sk-ant-acme-saved-1";
@@ -43,6 +44,40 @@ verifies("studio.first-run-saved-key", () => {
       problem: { kind: "empty", keyStart: "sk-ant-" },
     });
     expect(folder.calls).toEqual([]);
+  });
+
+  it("asks whether a key is saved by the very name the test reads it by, never reading it", async () => {
+    const asked: string[] = [];
+    const keys = workspaceSavedKeys({
+      get: async (name) => {
+        asked.push(`get ${name}`);
+        return saved;
+      },
+      has: async (name) => {
+        asked.push(`has ${name}`);
+        return true;
+      },
+    });
+
+    for (const name of ["anthropic-api-key", "ANTHROPIC_API_KEY", "acme_key"]) {
+      asked.length = 0;
+      expect(await keys.stored(name)).toBe(true);
+      expect(asked).toEqual([`has ${name}`]);
+      expect(await keys.get(name)).toBe(saved);
+      expect(asked).toEqual([`has ${name}`, `get ${name}`]);
+    }
+  });
+
+  it("refuses Halonic's and a plugin's names alike for both questions", async () => {
+    const keys = workspaceSavedKeys({
+      get: async () => expect.unreachable("a refused name must never reach the keychain"),
+      has: async () => expect.unreachable("a refused name must never reach the keychain"),
+    });
+
+    for (const name of ["token-key", "plugin__weather__acme-key"]) {
+      await expect(keys.stored(name)).rejects.toThrow(RangeError);
+      await expect(keys.get(name)).rejects.toThrow(RangeError);
+    }
   });
 
   it("tests a pasted key over a saved one", async () => {

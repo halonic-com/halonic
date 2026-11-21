@@ -8,6 +8,7 @@ import type { ChatRequest, ChatResponse, Digest, Secrets } from "@halonicjs/port
 import type { SecretText } from "@halonicjs/studio-kit";
 import { reachesOnlyTheTestModel, trustContent, trustFingerprint } from "@halonicjs/workspace";
 import { FirstRunModelChoice } from "./first-run-model-choice.ts";
+import { workspaceSavedKeys } from "./first-run-test-secrets.ts";
 
 export const digest: Digest = {
   async sha256(data) {
@@ -157,14 +158,16 @@ export function acmeFolder(options: { files?: Record<string, string>; saves?: bo
             unsaved.clear();
           },
     keys: {
-      stored: async (name: string) => stored.has(name),
       save: async (name: string, key: SecretText) => {
         steps.push(`key: ${name}`);
         if (state.failKey !== undefined) throw state.failKey;
         stored.set(name, key.reveal());
       },
     },
-    saved: { get: async (name) => stored.get(name) ?? null },
+    saved: workspaceSavedKeys({
+      get: async (name) => stored.get(name) ?? null,
+      has: async (name) => stored.has(name),
+    }),
     trust,
     digest,
     provider: modelOf(calls, () => state.answer),

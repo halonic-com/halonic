@@ -25,7 +25,7 @@ import type { ModelKeys, ModelsFiles } from "@halonicjs/studio-feature-models/ap
 import { SecretText } from "@halonicjs/studio-kit";
 import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
 import { choicePreview } from "./first-run-choice-trust.ts";
-import { emptyKey, onlySaved, onlySecret } from "./first-run-test-secrets.ts";
+import { emptyKey, onlySaved, onlySecret, type SavedKeys } from "./first-run-test-secrets.ts";
 
 /** What the first run's model choice reads and writes, all for the one open folder. */
 export interface FirstRunModelChoiceParts {
@@ -41,9 +41,12 @@ export interface FirstRunModelChoiceParts {
    * the browser demo: Continue then changes nothing.
    */
   readonly settle: (() => Promise<void>) | undefined;
-  readonly keys: Pick<ModelKeys, "save" | "stored">;
-  /** The keys saved on this computer, read as a run reads them (`workspaceSecrets`). */
-  readonly saved: Secrets;
+  readonly keys: Pick<ModelKeys, "save">;
+  /**
+   * The keys saved on this computer, read as a run reads them (`workspaceSavedKeys`): the one
+   * lookup both "is a key saved?" and the test with the saved key use.
+   */
+  readonly saved: SavedKeys;
   readonly trust: Pick<
     WorkspaceTrust,
     "check" | "needsNoTrust" | "refresh" | "grant" | "isTrusted"
@@ -100,7 +103,7 @@ export class FirstRunModelChoice implements ModelChoiceService {
     let secrets = onlySecret(secretName, tested);
     if (choice.kind === "key" && tested === undefined) {
       // No key pasted: the test uses the saved one, read as a run reads it, or there is none to test.
-      if (secretName === undefined || !(await this.#parts.keys.stored(secretName))) {
+      if (secretName === undefined || !(await this.#parts.saved.stored(secretName))) {
         return { kind: "not-a-key", problem: keyProblem(choice.provider, "") ?? emptyKey };
       }
       secrets = onlySaved(secretName, this.#parts.saved);
@@ -121,7 +124,7 @@ export class FirstRunModelChoice implements ModelChoiceService {
   async keySaved(provider: FirstRunKeyProvider): Promise<boolean> {
     const edits = await this.#edits({ kind: "key", provider });
     const name = edits.ok ? edits.value.secretName : undefined;
-    return name !== undefined && this.#parts.keys.stored(name);
+    return name !== undefined && this.#parts.saved.stored(name);
   }
 
   async lineFacts(choice: ModelChoice): Promise<ModelChoiceLine | undefined> {
