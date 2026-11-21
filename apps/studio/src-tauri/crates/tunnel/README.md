@@ -11,6 +11,12 @@ The phone's end of the end-to-end session with the computer's remote gateway (tu
 - `Pairing` and `Reconnect`: the two handshakes, `Noise_XXpsk3_25519_ChaChaPoly_SHA256` and `Noise_IK_25519_ChaChaPoly_SHA256`, done by `snow`. Each takes frames in and gives frames out, so the tests run them against a fake host built on `snow`'s responder side. `SessionError` says what the phone can tell: `CantConfirm` (never Removed), `PairRefused`, or `Unreadable`.
 - `Session`: one gateway message per transport message, with the `rekey` frame every 10,000 messages or 30 minutes. It fails closed: after its first error, every call gives `Ended`.
 
-Still to come in this crate: the phone's connection states on top of the transport and the session.
+- `PhoneConnection`: a paired computer's connection, with the phone's states worked out only from what the phone can see.
+
+`tests/gateway.rs` runs the phone against the computer's real remote gateway in Node (`@halonicjs/adapter-remote-gateway`, started by its `phone-interop-host.test-helper.ts`). It needs pnpm and the workspace's packages, so plain `cargo test` ignores it; CI's Rust job runs it. After `pnpm install` at the repository root:
+
+```sh
+cargo test -p halonic-tunnel --test gateway -- --ignored
+```
 
 The requirements in `requirements/` are drafts until the trace check reads `cargo test` results. Until then, each test's name starts with the last part of the requirement it proves, for example `pairing_codes_` for `pairing-codes`.
