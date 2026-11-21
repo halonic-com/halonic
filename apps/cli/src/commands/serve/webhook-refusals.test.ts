@@ -57,6 +57,28 @@ verifies("cli.commands.serve.webhook-refusals", () => {
       expect(lines).toEqual([`✕ reports/gone didn't start on a web request: ${reason}`]);
     });
 
+    it("names the address and passes the answer on when the routine lookup fails", async () => {
+      const printed: Phrase[] = [];
+      const reported = reportWebhookRefusals(answering(400), {
+        routineName: async () => {
+          throw new Error("routines folder unreadable");
+        },
+        print: (line) => printed.push(line),
+      });
+
+      const response = await reported.handle(
+        new Request("http://localhost:4747/api/webhooks/reports/weekly-report", {
+          method: "POST",
+          body: "{}",
+        }),
+      );
+
+      expect(printed.map(plainText)).toEqual([
+        `✕ reports/weekly-report didn't start on a web request: ${reason}`,
+      ]);
+      expect(response.status).toBe(400);
+    });
+
     it("prints nothing for an unsigned request, a start, or a refusal outside webhooks", async () => {
       const quiet = [
         await printedFor(answering(401), "/api/webhooks/reports/weekly-report"),

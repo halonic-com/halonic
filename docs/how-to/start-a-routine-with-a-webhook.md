@@ -46,7 +46,9 @@ or agent with the request's body.
    New order starts on a web request at http://localhost:4747/api/webhooks/shop/new-order
    ```
 
-   The address ends with the routine's hub and the routine's id. A ✕ line
+   The address ends with the routine's hub and the routine's id. A routine
+   in the workspace itself, not in a hub, has `@workspace` in place of the
+   hub, such as `/api/webhooks/@workspace/new-order`. A ✕ line
    under it says why the routine won't start, such as a secret that isn't set.
 
 ## Sign a request

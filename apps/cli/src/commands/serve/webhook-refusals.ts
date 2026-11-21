@@ -33,7 +33,9 @@ export function reportWebhookRefusals(server: Server, report: WebhookRefusalRepo
       const path = new URL(request.url).pathname;
       if (!path.startsWith(webhookPathPrefix)) return response;
       const key = path.slice(webhookPathPrefix.length);
-      const name = printable((await report.routineName(key)) ?? key);
+      // A lookup that throws names the address instead: the line never stops the answer.
+      const found = await report.routineName(key).catch(() => null);
+      const name = printable(found ?? key);
       if (response.status === 500) {
         report.print(serveMessages.webhookFailed(name).phrase);
         return response;
