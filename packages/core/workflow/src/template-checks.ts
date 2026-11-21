@@ -1,6 +1,6 @@
 import type { Guard, WorkflowState } from "@halonicjs/format";
+import { nearMatch } from "@halonicjs/std";
 import { contextBefore, contextWrittenBy } from "./inputs.ts";
-import { nearName } from "./near-name.ts";
 import type { StateCheck } from "./state-checks.ts";
 import { placeholderPaths } from "./template.ts";
 import { issue, stateKey, type WorkflowIssue } from "./workflow-issue.ts";
@@ -122,14 +122,14 @@ function itemNameHint(root: string, itemName: string, as: string | undefined): s
   if (root === DEFAULT_ITEM_NAME && as !== undefined) {
     return `its items are named ${as} (as: ${as}). Write {{${as}}}, or remove as: ${as}.`;
   }
-  const near = nearName(root, [itemName, INDEX_NAME, ...SCOPE_ROOTS]);
+  const near = nearMatch(root, [itemName, INDEX_NAME, ...SCOPE_ROOTS]);
   const hint = near === undefined ? "" : ` Did you mean {{${near}}}?`;
   return `each item is named ${itemName}; a for-each step can read {{${itemName}}}, {{${INDEX_NAME}}}, input and context.${hint}`;
 }
 
 /** What to write instead of an unknown key: the near one, or the ones there are. */
 function namesHint(key: string, known: readonly string[]): string {
-  const near = nearName(key, known);
+  const near = nearMatch(key, known);
   if (near !== undefined) {
     return `Did you mean context.${near}?`;
   }
