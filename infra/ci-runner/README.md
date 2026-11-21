@@ -53,17 +53,17 @@ it in the `fast` job).
 | VM | Docker with `userns-remap`. One systemd unit per slot (`vm/halonic-runner@.service`). |
 | VM | `/etc/halonic-ci/app.pem`: the GitHub App's key (only permission: self-hosted runners), root-only `0400`. Never in the image, a container or a backup that leaves the VM. |
 | VM | Queue gate (C7): `vm/halonic-ci-gate.socket` listens on `/run/halonic-ci-gate/gate.sock`, which every container gets read-only. Each connection starts `vm/halonic-ci-gate@.service` (`vm/halonic-ci-gate.sh`), which takes no input and answers one fixed GraphQL query: `main`'s merge queue. Its token is `/etc/halonic-ci/queue-token`, root-only `0400`, handed to the service as a systemd credential under a throwaway user. |
-| VM | `/cache/trusted/{pnpm-store,ms-playwright}`: package and browser caches, no secrets, shared by all slots and kept between jobs, capped together at 20 GB (XFS project 300). `/cache/work/<slot>`: the job's work dir, quota-capped and wiped after every job. |
+| VM | `/cache/trusted/{pnpm-store,turbo,ms-playwright}`: package, Turbo and browser caches, no secrets, shared by all slots and kept between jobs, capped together at 20 GB (XFS project 300). `/cache/work/<slot>`: the job's work dir, quota-capped and wiped after every job. |
 
 Site data stays out of this repo: `/etc/halonic-ci/pool.env` (see `vm/pool.env.example`),
 `/etc/halonic-ci/slots` (the list of slot units) and `/etc/halonic-ci/site.nft` (the server's
 public range for the nftables rules).
 
 **The shared caches are writable from every job that runs here.** Every container mounts
-`/cache/trusted/pnpm-store` and `/cache/trusted/ms-playwright` read-write, so a job can change
+`/cache/trusted/pnpm-store`, `/cache/trusted/turbo` and `/cache/trusted/ms-playwright` read-write, so a job can change
 what later jobs read from them. That's acceptable only because the hook admits nothing but reviewed
 code (pushes to `main`, later merge groups). pnpm checks each package against the lockfile's
-integrity hash; the Playwright browsers aren't checked. A pool for pull requests would get a
+integrity hash; the Turbo cache and the Playwright browsers aren't checked. A pool for pull requests would get a
 read-only snapshot instead (C2, C8), never these folders.
 
 ## One job, one container
@@ -74,15 +74,14 @@ for it to exit and cleans up. systemd starts the next cycle.
 
 | Slot | Label | CPUs | Pinned to vCPUs | Memory (= swap) | Work dir |
 | --- | --- | --- | --- | --- | --- |
-| `large-1` … `large-8` | `halonic-ci-large` | 6 | 0-5, 6-11, … 42-47 (`(N-1)*6`–`N*6-1`) | 10 GB | 20 GB |
-| `small-1` … `small-3` | `halonic-ci-small` | 2 each | 42-47 (shared) | 3 GB | 6 GB |
+| `large-1` … `large-11` | `halonic-ci-large` | 6 | 0-5, 6-11, … 60-65 (`(N-1)*6`–`N*6-1`) | 10 GB | 20 GB |
+| `small-1` … `small-3` | `halonic-ci-small` | 2 each | 66-71 (shared) | 3 GB | 6 GB |
 
-Each slot is pinned to its own vCPUs (`--cpuset-cpus`), so a job sees only those (`nproc`, Node's
-`availableParallelism`) and test runners don't start a worker for each of the VM's 48. Eight large
-slots run the eight build shards at once; in the 96 GB VM they take 80 GB and the small slots 9 GB.
-The small slots share 42-47 with `large-8` on purpose: the large slots use all 48 vCPUs, and the
-small jobs are short and capped at 2 CPUs each, so `large-8` can run a little slower while they're
-busy. Separate CPUs for them need more vCPUs on the VM.
+The VM has 80 vCPUs (40 cores) and 128 GB. Each slot is pinned to its own vCPUs
+(`--cpuset-cpus`), so a job sees only those (`nproc`, Node's `availableParallelism`) and test
+runners don't start a worker for each of the VM's 80. The eleven large slots take vCPUs 0-65 and
+110 GB, the three small slots share 66-71 (capped at 2 CPUs each) and take 9 GB, and vCPUs 72-79
+are left for the VM itself.
 
 Every container: all capabilities dropped, `no-new-privileges`, Docker's default seccomp and
 AppArmor profiles, `--pids-limit 8192`, no host devices, no Docker socket. The image
@@ -95,6 +94,9 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   `0400` file, and unless `/etc/subuid` has the `dockremap` range (userns-remap on).
 - **Weekly audit (Timothy):** check the org audit log for any change to the `halonic-ci` runner
   group (repositories, workflows, public repos) and to the `halonic-ci-runners` App (C6).
+- **Pause:** while `/etc/halonic-ci/paused` exists, a slot registers no runner: each cycle sees
+  the file, waits 30 s and ends. A job already running finishes. Remove the file and the slots
+  take jobs again within a minute.
 - **Kill switch:** clear `CI_RUNNER_LARGE` and `CI_RUNNER_SMALL` (the next runs go back to
   GitHub-hosted). On the VM: `touch /etc/halonic-ci/paused` and stop the slots. If the VM is
   suspected compromised, also revoke the App key and rotate the Turbo signing key.

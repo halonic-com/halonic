@@ -206,6 +206,42 @@ test("the slot script reads the job's event file inside the container, never as 
   assert.doesNotMatch(slot, /\$WORK\/_temp/);
 });
 
+// Runs the shipped slot script with its pause path pointed at a temporary file and every outside
+// command it could call replaced by a stub that logs, so a test sees whether it went on to
+// register a runner. systemd doesn't re-check the unit's ConditionPathExists on a restart.
+const PAUSED_LINE = "PAUSED=/etc/halonic-ci/paused";
+const slotCycle = ({ paused, args = ["large-1"] }) => {
+  const bin = mkdtempSync(join(dir, "slot-bin-"));
+  const log = join(bin, "calls.log");
+  const pausedFile = join(bin, "paused");
+  writeFileSync(log, "");
+  if (paused) writeFileSync(pausedFile, "");
+  for (const name of ["curl", "openssl", "docker", "jq", "stat", "xfs_quota", "sleep"]) {
+    writeFileSync(join(bin, name), `#!/bin/sh\necho "${name} $*" >> ${log}\n`, { mode: 0o755 });
+  }
+  const slot = read("vm/halonic-runner-slot.sh");
+  assert.equal(slot.split(PAUSED_LINE).length, 2);
+  const script = join(bin, "slot.sh");
+  writeFileSync(script, slot.replace(PAUSED_LINE, `PAUSED=${pausedFile}`));
+  const res = spawnSync("/bin/bash", [script, ...args], { encoding: "utf8", env: { PATH: bin } });
+  return { ...res, calls: readFileSync(log, "utf8") };
+};
+
+test("a slot registers no runner while the pause file exists", () => {
+  const res = slotCycle({ paused: true });
+  assert.equal(res.status, 0, res.stderr);
+  assert.match(res.stdout, /slot large-1: paused/);
+  assert.equal(res.calls, "sleep 30\n");
+  // Not paused, the cycle goes on (here it stops at the VM's pool.env, which the test has none of).
+  const live = slotCycle({ paused: false });
+  assert.doesNotMatch(live.stdout, /paused/);
+  assert.match(live.stderr, /pool\.env/);
+  // The stop-time cleanup still removes stale registrations while paused.
+  const cleanup = slotCycle({ paused: true, args: ["large-1", "--cleanup"] });
+  assert.doesNotMatch(cleanup.stdout, /paused/);
+  assert.match(cleanup.stderr, /pool\.env/);
+});
+
 test("stopping the firewall unit leaves the CI VM's rules in place", () => {
   const unit = read("host/halonic-ci-nft.service");
   assert.doesNotMatch(unit, /^ExecStop/m);
