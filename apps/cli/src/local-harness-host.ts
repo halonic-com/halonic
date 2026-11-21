@@ -18,7 +18,6 @@ import {
   makePrivateFolder,
 } from "@halonicjs/adapter-fs-node";
 import { type GitRunnerOptions, lazyGitVcs } from "@halonicjs/adapter-git";
-import { NodeHarnessBridgeServer, providerHostClass } from "@halonicjs/adapter-harness-bridge";
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
 import {
@@ -28,7 +27,6 @@ import {
   RunInstructions,
   WorkspaceHarnessHost,
 } from "@halonicjs/adapter-harness-kit";
-import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { createHostSandbox, createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import { InstructionTrustService } from "@halonicjs/app";
 import type { HarnessAgent, HarnessRunsOptions } from "@halonicjs/engine";
@@ -58,8 +56,8 @@ import {
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { cliProviderKeys } from "./cli-provider-keys.ts";
 import { sweepingUnderHostLock, withoutHostLock } from "./fenced-sandbox.ts";
+import { localBridgeServers } from "./local-bridge-servers.ts";
 import { localProposalParts } from "./local-proposals.ts";
-import { proxySetting } from "./proxy-setting.ts";
 import { skillFileOf } from "./skill-file.ts";
 import { halonicVersion } from "./version.ts";
 import type { WorkspaceVersions } from "./workspace-versions.ts";
@@ -80,9 +78,6 @@ export function instructionTrustFolder(profile: ProfileFolder): string {
   return join(profile.root, "instruction-trust");
 }
 
-/** The folder in the profile where each run's bridge serves its Unix socket, as the agent host's. */
-const bridgeSocketsFolder = "bridges";
-
 /**
  * The Node parts a test replaces. Each one left out is this computer's: the
  * srt sandbox, the launcher, Claude Code and Codex, and a bridge on Node's
@@ -97,6 +92,12 @@ export interface LocalHarnessParts {
   readonly harnesses?: HarnessRunsOptions["harnesses"];
   /** Opens every run's bridge, whatever its placement; Node's, on the keys of `cliProviderKeys`, by default. */
   readonly bridgeServer?: HarnessBridgeServer;
+  /**
+   * What the Node bridges call a provider at its own `baseUrl` with; by
+   * default a client that checks the address as a connector's and never
+   * reaches one of Halonic's own ports.
+   */
+  readonly compatibleHttp?: HttpClient;
   /** The system the CLI runs on; `process.platform` by default. */
   readonly platform?: NodeJS.Platform;
   /** The variables every harness program gets; `PATH` and the locale from `process.env` by default. */
@@ -137,8 +138,11 @@ export interface LocalHarnessInput {
   readonly keyOrigins: KeyOrigins;
   /** Whether the command's trust check granted trust, so a key may go to a provider's own `baseUrl`. */
   readonly trusted: boolean;
-  /** What the bridge calls a provider at its own `baseUrl` with, as the engine's model calls do. */
-  readonly http: HttpClient;
+  /**
+   * Halonic's other ports on this computer, which a run's bridge never calls
+   * a provider on: `serve`'s, where it runs. Read on every call.
+   */
+  readonly ownPorts?: () => Iterable<number>;
   /** Hears the access each harness agent's bridge got: the provider and the secret's name, never a value. */
   reportAccess?(agent: BridgeAgent, choice: ProviderAccessChoice): void;
   readonly parts?: LocalHarnessParts;
@@ -303,49 +307,23 @@ async function installOf(harness: string, platform: NodeJS.Platform): Promise<Ha
   return { program: harness, packageFolder: null };
 }
 
-/** The test's one bridge server for both placements, else {@link nodeBridgeServers}. */
-async function bridgeServersOf(input: LocalHarnessInput, secrets: Secrets): Promise<BridgeServers> {
-  const given = input.parts?.bridgeServer;
-  if (given !== undefined) return { sandbox: given, "this-computer": given };
-  return await nodeBridgeServers(input, secrets);
-}
-
 /**
- * The bridge servers by placement (HAL-13090). A fenced run's bridge serves
- * a Unix socket in the profile where the platform lets a sandboxed program
- * reach one through its sandbox's proxy, as the agent host does (W9,
- * HAL-6316), else a loopback port. A run on this computer has no sandbox and
- * so no proxy, and the launcher refuses a socket bridge: its bridge always
- * serves a loopback port, still guarded by the run's own token. That program
- * already runs with the person's full rights, so loopback opens nothing it
- * couldn't reach anyway.
- *
- * Both reach Anthropic's and OpenAI's own hosts only, and a provider's own
- * `baseUrl` through the engine's `http`, whose address checks are a
- * connector's.
- *
- * @param secrets - the only secrets they may read: the keys the provider files name
+ * The test's one bridge server for both placements, else the Node bridge
+ * servers, which never call one of Halonic's own ports (HAL-15251).
  */
-async function nodeBridgeServers(
-  input: LocalHarnessInput,
-  secrets: Secrets,
-): Promise<BridgeServers> {
-  const platform = input.parts?.platform ?? process.platform;
-  const sockets = platform === "linux" || platform === "darwin";
-  const socketFolder = join(input.profile.root, bridgeSocketsFolder);
-  if (sockets) await makePrivateFolder(socketFolder);
-  const providers = createNodeHttpClient({ hostClass: providerHostClass, proxy: proxySetting });
-  const serverOn = (where: { socketFolder?: string }) =>
-    new NodeHarnessBridgeServer({
-      secrets,
-      fetch: (url, init) => providers.fetch(url, init),
-      compatibleFetch: (url, init) => input.http.fetch(url, init),
-      ...where,
-    });
-  return {
-    sandbox: serverOn(sockets ? { socketFolder } : {}),
-    "this-computer": serverOn({}),
-  };
+async function bridgeServersOf(input: LocalHarnessInput, secrets: Secrets): Promise<BridgeServers> {
+  const parts = input.parts ?? {};
+  if (parts.bridgeServer !== undefined) {
+    return { sandbox: parts.bridgeServer, "this-computer": parts.bridgeServer };
+  }
+  const compatibleHttp = parts.compatibleHttp;
+  return await localBridgeServers({
+    secrets,
+    platform: parts.platform ?? process.platform,
+    profile: input.profile,
+    ...(input.ownPorts === undefined ? {} : { ownPorts: input.ownPorts }),
+    ...(compatibleHttp === undefined ? {} : { compatibleHttp: () => compatibleHttp }),
+  });
 }
 
 /**

@@ -281,7 +281,9 @@ export async function openEngine(
     trusted: keys.trusted ?? true,
     ...(keys.reportAccess === undefined ? {} : { reportAccess: keys.reportAccess }),
     environment: profile,
-    harnessParts: fakes.parts,
+    // The fake provider answers the Node bridge's calls to a provider's own `baseUrl` too.
+    harnessParts:
+      keys.http === undefined ? fakes.parts : { ...fakes.parts, compatibleHttp: keys.http },
     ...(git ? { git: { git: await testGit() } } : {}),
     runConnectors: {
       factories: new ConnectorFactories([notes]),
