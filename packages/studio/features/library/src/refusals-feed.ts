@@ -10,7 +10,9 @@ import { refusalLimit } from "./connector-status-model.ts";
  *
  * It also keeps which listed tools wait for approval, as the last chat turn left them out: unlike
  * refusals, that is the current set, not a history. The app gives {@link RefusalsFeed.recordWaiting}
- * to the chat service as its `onWaiting`.
+ * to the chat service as its `onWaiting`, and {@link RefusalsFeed.recordWaitingOf} to a run's
+ * `reportWaiting`. A run reports only what waits, never that it stopped waiting, so the Library's
+ * approval calls {@link RefusalsFeed.dropWaiting} to take the approved tools off.
  *
  * Only refusals that come with a chat turn are kept. A refusal outside a chat (a call a
  * routine makes) is not in a turn's answer, so it is not here.
@@ -51,6 +53,27 @@ export class RefusalsFeed {
     if (same) return;
     this.waitingNow = waiting;
     for (const listener of [...this.listeners]) listener();
+  };
+
+  /**
+   * Replaces what waits for approval of one connector only, as a run's turn reports it for each
+   * connector that leaves tools out; the other connectors' waiting tools stay.
+   */
+  recordWaitingOf = (connectorId: string, waiting: readonly ChatTurnWaiting[]): void => {
+    const now = this.waiting(connectorId);
+    const own = waiting.filter((tool) => tool.source === connectorId);
+    const same =
+      own.length === now.length && own.every((tool, index) => tool.name === now[index]?.name);
+    if (same) return;
+    this.recordWaiting([...this.waitingNow.filter((tool) => tool.source !== connectorId), ...own]);
+  };
+
+  /** Takes the named tools of one connector off what waits for approval, as an approval does; the others stay. */
+  dropWaiting = (connectorId: string, names: readonly string[]): void => {
+    const approved = new Set(names);
+    this.recordWaiting(
+      this.waitingNow.filter((tool) => tool.source !== connectorId || !approved.has(tool.name)),
+    );
   };
 
   /** The listed tools of one connector that wait for approval, in the order the turn left them out. */

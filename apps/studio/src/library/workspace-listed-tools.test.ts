@@ -9,7 +9,7 @@ import {
   MemoryToolApprovalStore,
 } from "@halonicjs/adapter-memory";
 import type { ConnectorFactoryContext, ConnectorTool } from "@halonicjs/ports";
-import { ConnectorCouldntList } from "@halonicjs/studio-feature-library/api";
+import { ConnectorCouldntList, RefusalsFeed } from "@halonicjs/studio-feature-library/api";
 import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -51,6 +51,8 @@ function hostOf(
     trust?: Pick<WorkspaceTrust, "checkLoaded">;
     /** What starting the connector rejects with, instead of listing its tools. */
     listError?: unknown;
+    /** The Library's list, which hears what an approval saved. */
+    refusals?: RefusalsFeed;
   } = {},
 ) {
   const started: ConnectorFactoryContext[] = [];
@@ -72,6 +74,7 @@ function hostOf(
       if ("listError" in options) throw options.listError;
       return options.tools ?? [readNote];
     },
+    ...(options.refusals === undefined ? {} : { onApproved: options.refusals.dropWaiting }),
   });
   return { host, started, startedConfigs, approvals };
 }
@@ -387,5 +390,19 @@ verifies("studio.workspace-listed-tools", () => {
     await host.removeApproval("notes", "read_note");
 
     expect(heard).toEqual([]);
+  });
+});
+
+verifies("studio.workspace-connector-status", () => {
+  it("takes a tool a run left waiting off the Library's list once the Library approves it", async () => {
+    const refusals = new RefusalsFeed();
+    const { host } = hostOf({ refusals });
+    refusals.recordWaitingOf("notes", [{ source: "notes", name: "read_note" }]);
+    expect(refusals.waiting("notes")).toEqual([{ source: "notes", name: "read_note" }]);
+    const [row] = (await host.review("notes")).toReview;
+
+    await host.approve("notes", [{ name: "read_note", fingerprint: row?.fingerprint ?? "" }]);
+
+    expect(refusals.waiting("notes")).toEqual([]);
   });
 });
