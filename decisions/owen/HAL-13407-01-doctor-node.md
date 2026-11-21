@@ -1,6 +1,6 @@
 # Decision: the doctor's Node checks move to `packages/adapters/doctor-node`
 
-- Approval: [HAL-13407](/HAL/issues/HAL-13407), Liam's plan (two pull requests, this one a move)
+- Approval: HAL-13407, Liam's plan (two pull requests, this one a move)
 - Kind: internal
 
 The doctor's machine checks that need Node (command paths, the network, the
