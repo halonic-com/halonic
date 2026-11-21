@@ -210,6 +210,23 @@ for Codex. That is how a harness agent runs an open model, such as GLM through
 Z.ai's Anthropic-compatible address. Only the alias's own target counts, not
 its fallbacks (requirement `cli.harness-model-access`).
 
+Some models search the web by themselves, such as `perplexity/sonar` at
+OpenRouter. That search happens at the provider, outside Halonic's tools and
+approvals. A provider file can list such models in an optional `searchesWeb`
+(requirement `provider-searches-web`), each model id once:
+
+```yaml
+id: openrouter
+type: openai-compatible
+baseUrl: https://openrouter.ai/api/v1
+secret: OPENROUTER_API_KEY
+searchesWeb: [perplexity/sonar, perplexity/sonar-pro]
+```
+
+An id counts only when it matches an alias's `model` exactly. A suffix that
+turns search on for any model, such as OpenRouter's `:online`, isn't detected
+yet.
+
 An optional `harnessLimits` block bounds one step of a harness agent
 (requirement `agent-harness-limits`): `maxSteps` (model calls, 1 to 10000),
 `maxMinutes` (1 to 1440, not counting waits for a person's answer) and
