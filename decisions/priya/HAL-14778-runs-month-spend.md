@@ -2,6 +2,7 @@
 
 - Approval: HAL-14776
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:EE4uoxQXk8/3AU8OmSYZR+SsSrySD2QDsbSD/jlFjH1k2AE5mtYn14NcuawXcxkZPpqZC5T4UwqbCvLId0peAg==
 
 `halonic runs` now ends with one line for the current calendar month, such
 as "This month: about €0.42 of your €20.00 budget.", so a CLI user can see
