@@ -3,7 +3,6 @@
 - Task: HAL-9756
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-10612#document-ux-checklists-engine-summarize-changes (section 4, wording decided with the designer as a fallback state of the approved Changes page; a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:37RNWWi319pzQ9lOLje2Xh7GZtr0vog93lYB5klN7D/W2aePZC2RQ/f16f5x4bgViZnwMDcy2w3CfTMRUbIzDA==
 
 ## What changes
 
