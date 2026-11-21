@@ -112,16 +112,32 @@ verifies("first-run.setup-item", () => {
     );
     const pieces = [...root.querySelectorAll("[aria-hidden=true] > span")];
     const fills = pieces.map((piece) =>
-      ["bg-accent", "bg-accent-soft", "bg-border"].find((fill) => piece.classList.contains(fill)),
+      ["bg-accent", "bg-linear-to-r", "bg-border"].find((fill) => piece.classList.contains(fill)),
     );
-    expect(fills).toEqual(["bg-accent", "bg-accent-soft", "bg-border", "bg-border"]);
+    expect(fills).toEqual(["bg-accent", "bg-linear-to-r", "bg-border", "bg-border"]);
     for (const piece of pieces) {
       expect(piece.className).not.toContain("bg-surface-muted");
       expect(piece.className).toContain("forced-color-adjust-none");
     }
     expect(pieces[0]?.className).toContain("forced-colors:bg-[CanvasText]");
-    expect(pieces[1]?.className).toContain("forced-colors:bg-[Highlight]");
+    expect(pieces[1]?.className).toContain("forced-colors:from-[Highlight]");
     expect(pieces[2]?.className).toContain("forced-colors:border-[CanvasText]");
+  });
+
+  // C587: the current piece was a tint of the accent, about 1:1 against the later pieces.
+  it("fills the current piece half with the accent, not a tint, in every theme and in high contrast", () => {
+    const root = render(
+      <FirstRunSetupView item={item} answering close={() => {}} firstRun={firstRunOf(paused)} />,
+    );
+    const current = [...root.querySelectorAll("[aria-hidden=true] > span")][1]?.classList;
+    expect(current?.contains("bg-accent-soft")).toBe(false);
+    for (const stop of ["bg-origin-border", "from-accent", "from-50%", "to-border", "to-50%"]) {
+      expect(current?.contains(stop)).toBe(true);
+    }
+    for (const edge of ["forced-colors:from-[Highlight]", "forced-colors:to-[Canvas]"]) {
+      expect(current?.contains(edge)).toBe(true);
+    }
+    expect(current?.contains("forced-colors:border-[CanvasText]")).toBe(true);
   });
 
   it("takes the first run up again and opens Support reply on Continue", () => {
