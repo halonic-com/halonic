@@ -56,3 +56,21 @@ unchanged: the setting's value in mono and "only on your home network".
 
 Option 2 (a key over plain `http` to `100.64/10`) would send a key in the clear over a network
 Halonic can't tell apart from a carrier's. Option 3 (no change) doesn't help our own server.
+
+## Not in this change
+
+The Paperclip integration's sheet (`tool-paperclip-issues`, in `halonic-com/integrations`)
+moves to `{ fromSetting: url, class: private }` with its README in a separate pull request
+there, reviewed by Ravi, once this one merges.
+
+## Tests
+
+No test was weakened or removed. In the `private` class's test, `https://nas.example.com` moves
+from the refused list to the accepted one, which is the change itself; `https://localhost` and
+`https://app.localhost` join the refused list. New cases cover plain `http` to a private name,
+`privateNames` in the policy, the Node transport's `withPrivateNames`, the loader's
+`private-name-unchecked`, and the runner-level path above.
+
+## Covers
+
+- format.integration-host-class
