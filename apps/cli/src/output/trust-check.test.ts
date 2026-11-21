@@ -5,7 +5,7 @@ import type {
   ProviderTrustContent,
   TrustChanges,
 } from "@halonicjs/workspace";
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { plainText } from "../messages/phrase.ts";
 import { printable } from "./printable.ts";
 import { type FingerprintedCheck, shownDate, trustCheckLines } from "./trust-check.ts";
@@ -310,6 +310,88 @@ verifies("cli.trust-check", () => {
       "  crm           https://llm.example.com/v1 · gets the secret CRM_KEY",
     );
     expect(lines(check)).toContain("                Sends its key to https://llm.example.com.");
+  });
+
+  describe("a provider whose key has a list of addresses", () => {
+    const gateway: ProviderTrustContent = {
+      id: "gateway",
+      type: "openai-compatible",
+      baseUrl: "https://other.example.com/v1",
+      secret: "‹secret gw-key›",
+      local: false,
+    };
+    const newCheck = (provider: ProviderTrustContent): FingerprintedCheck => ({
+      status: "new",
+      content: { connectors: [], providers: [provider] },
+      fingerprint,
+      unpinned: [],
+    });
+    const withLists = (check: FingerprintedCheck, keyAddresses: ReadonlyMap<string, string[]>) =>
+      trustCheckLines(check, { ...facts, keyAddresses }).map(plainText);
+
+    it("says, with the command, that the list leaves out where the key goes", () => {
+      const shown = withLists(
+        newCheck(gateway),
+        new Map([["gw-key", ["https://llm.example.com"]]]),
+      );
+
+      expect(shown).toContain("                Sends its key to https://other.example.com.");
+      expect(shown).toContain(
+        '                ! Key "gw-key" isn\'t allowed to go to https://other.example.com, so a run with it fails. To allow it, run: halonic models allow-address gw-key https://other.example.com',
+      );
+    });
+
+    it("says it for a key that goes to its type's own address too", () => {
+      const claude: ProviderTrustContent = {
+        id: "claude",
+        type: "anthropic",
+        secret: "‹secret ANTHROPIC_KEY›",
+        local: false,
+      };
+      const shown = withLists(
+        newCheck(claude),
+        new Map([["ANTHROPIC_KEY", ["https://llm.example.com"]]]),
+      );
+
+      expect(shown).not.toContain("Sends its key to");
+      expect(shown.join("\n")).toContain(
+        'Key "ANTHROPIC_KEY" isn\'t allowed to go to https://api.anthropic.com',
+      );
+    });
+
+    it("says nothing more when the address is on the list, or the key has no list", () => {
+      for (const keyAddresses of [
+        new Map([["gw-key", ["https://llm.example.com", "https://other.example.com"]]]),
+        new Map<string, string[]>(),
+      ]) {
+        const shown = withLists(newCheck(gateway), keyAddresses);
+        expect(shown.join("\n")).not.toContain("isn't allowed");
+      }
+    });
+
+    it("says it on a changed provider's rows", () => {
+      const changes: TrustChanges = {
+        ...noChanges,
+        agents: noChanges,
+        integrations: noChanges,
+        providers: {
+          ...noChanges,
+          changed: [{ id: "gateway", before: gateway, after: gateway, fields: ["baseUrl"] }],
+        },
+        onlyRemoves: false,
+      };
+      const check: FingerprintedCheck = {
+        status: "changed",
+        content: { connectors: [], providers: [gateway] },
+        changes,
+        trustedAt,
+        fingerprint,
+        unpinned: [],
+      };
+      const shown = withLists(check, new Map([["gw-key", ["https://llm.example.com"]]]));
+
+      expect(shown.join("\n")).toContain('! Key "gw-key" isn\'t allowed');
+    });
   });
 
   it("shows a provider whose address changed as one changed address", () => {

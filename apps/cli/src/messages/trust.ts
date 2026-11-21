@@ -196,6 +196,14 @@ export const trustMessages = defineMessages("trust", {
    * never the path or user info.
    */
   keyDestination: (origin: string) => phrase`Sends its key to ${origin}.`,
+  /**
+   * With a !, under a model provider whose stored key has a list of addresses that leaves out
+   * where the provider sends it, so a run with it fails with `key-origin-not-allowed`
+   * (HAL-15346, the team's call under HAL-2282). The fix is the run error's own command.
+   * The key is named, never its value.
+   */
+  keyNotAllowedThere: (key: string, origin: string, command: string) =>
+    phrase`Key "${key}" isn't allowed to go to ${origin}, so a run with it fails. To allow it, run: ${command}`,
   /** A plugin connector's address: the plugin it runs (HAL-14860, decided by the team under HAL-2282). */
   pluginAddress: (plugin: string) => phrase`plugin ${plugin}`,
   /**

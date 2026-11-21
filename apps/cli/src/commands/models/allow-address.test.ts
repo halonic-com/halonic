@@ -60,6 +60,17 @@ verifies("cli.commands.models.allow-address", () => {
     ]);
   });
 
+  it("says that a key with no addresses before now goes only to this one", async () => {
+    const { code, io } = await allow(["openai-key", gateway]);
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout).toEqual([
+      `✓ Allowed ${gateway} for key "openai-key".`,
+      `Key "openai-key" had no addresses before, so it now goes only to ${gateway}. Allow every other address it needs the same way.`,
+    ]);
+    expect(await fixture.store().allowedOrigins("openai-key")).toEqual([gateway]);
+  });
+
   it("changes only the key it was given", async () => {
     await allow(["openai-key", gateway]);
 
@@ -67,6 +78,8 @@ verifies("cli.commands.models.allow-address", () => {
   });
 
   it("says that only the address part is kept when a path was typed", async () => {
+    await fixture.store().setAllowedOrigins("openai-key", ["https://api.example.com"]);
+
     const { code, io } = await allow(["openai-key", `${gateway}/v1/chat?x=1`]);
 
     expect(code).toBe(exitCode.ok);
@@ -98,7 +111,7 @@ verifies("cli.commands.models.allow-address", () => {
       `${gateway}:8443`,
     ]) {
       const { io } = await allow(["openai-key", lookAlike]);
-      expect(io.stdout.at(-1)).toContain("✓ Allowed");
+      expect(io.stdout).toEqual([`✓ Allowed ${lookAlike} for key "openai-key".`]);
     }
     expect(await fixture.store().allowedOrigins("openai-key")).toEqual([
       gateway,

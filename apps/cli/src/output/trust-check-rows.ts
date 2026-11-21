@@ -30,6 +30,7 @@ import { pluginMessages } from "../messages/plugin.ts";
 import { type PackageRegistry, type SecretPick, trustMessages } from "../messages/trust.ts";
 import type { PluginHosts } from "../sheet-hosts.ts";
 import { printable } from "./printable.ts";
+import { shellWord } from "./shell-word.ts";
 
 /**
  * The first column: a row's id, at least as wide as cli-output 3.5's example,
@@ -181,14 +182,28 @@ function secretPicks(connector: ConnectorTrustContent): SecretPick[] {
 }
 
 /**
+ * The addresses each stored model key may be sent to, by the key's name, for
+ * the keys that have a list. A key with no list isn't in it.
+ */
+export type KeyAddressLists = ReadonlyMap<string, readonly string[]>;
+
+/**
  * "  claude        https://api.anthropic.com/ · gets the secret ANTHROPIC_KEY":
  * where the provider sends its requests, or its type when the file names no
  * address and the adapter's own is used. A key that goes to another address than its
  * type's own gets a second line, "Sends its key to https://llm.example.com.".
+ * A key whose list leaves out where it goes then gets a ! line with the
+ * command that allows it, since a run with it would fail (HAL-15346).
+ *
+ * @param keyAddresses - the lists of the stored keys; left out, no list is checked
  */
-export function providerRow(provider: ProviderTrustContent): Phrase[] {
+export function providerRow(
+  provider: ProviderTrustContent,
+  keyAddresses: KeyAddressLists = new Map(),
+): Phrase[] {
   const address = provider.baseUrl ?? provider.type;
   const destination = keyDestination(provider);
+  const key = providerKeyName(provider);
   return [
     row(
       printable(provider.id),
@@ -197,7 +212,36 @@ export function providerRow(provider: ProviderTrustContent): Phrase[] {
     ...(destination === undefined || destination.isDefault
       ? []
       : [phrase`${underRow}${trustMessages.keyDestination(printable(destination.origin)).phrase}`]),
+    ...(destination === undefined || key === undefined
+      ? []
+      : notAllowedThere(key, destination.origin, keyAddresses.get(key))),
   ];
+}
+
+/**
+ * "! Key "gw-key" isn't allowed to go to https://other.example.com, …", with
+ * the command to paste, when the key has a list and the origin isn't on it.
+ * An address that can't be read gets no line, as no command could allow it;
+ * its run fails all the same.
+ */
+function notAllowedThere(
+  key: string,
+  origin: string,
+  allowed: readonly string[] | undefined,
+): Phrase[] {
+  if (allowed === undefined || allowed.includes(origin) || URL.parse(origin) === null) {
+    return [];
+  }
+  const command = `halonic models allow-address ${shellWord(key)} ${shellWord(origin)}`;
+  const words = trustMessages.keyNotAllowedThere(printable(key), printable(origin), command);
+  return [phrase`${underRow}${markPart("needsYou")} ${words.phrase}`];
+}
+
+/** The name of the secret that holds a provider's key, as stored, or `undefined` when it names none. */
+export function providerKeyName(provider: ProviderTrustContent): string | undefined {
+  return typeof provider.secret === "string"
+    ? /^‹secret (.+)›$/u.exec(provider.secret)?.[1]
+    : undefined;
 }
 
 /**

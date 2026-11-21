@@ -34,7 +34,7 @@ verifies("secrets-file.add-allowed-origin", () => {
 
     const outcome = await store.addAllowedOrigin("openai-key", `${gateway}/v1?x=1`);
 
-    expect(outcome).toEqual({ result: "added", origin: gateway });
+    expect(outcome).toEqual({ result: "added", origin: gateway, first: true });
     expect(await store.allowedOrigins("openai-key")).toEqual([gateway]);
   });
 
@@ -44,8 +44,9 @@ verifies("secrets-file.add-allowed-origin", () => {
     await store.set("other-key", "sk-other");
     await store.setAllowedOrigins("openai-key", ["https://api.example.com"]);
 
-    await store.addAllowedOrigin("openai-key", gateway);
+    const outcome = await store.addAllowedOrigin("openai-key", gateway);
 
+    expect(outcome).toEqual({ result: "added", origin: gateway, first: false });
     expect(await store.allowedOrigins("openai-key")).toEqual(["https://api.example.com", gateway]);
     expect(await store.allowedOrigins("other-key")).toBeUndefined();
   });
