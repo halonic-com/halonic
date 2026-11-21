@@ -6,6 +6,17 @@ import { firstRunSteps } from "../first-run-state.ts";
 import { setupWords } from "../first-run-words.ts";
 import { useFirstRunState } from "./first-run-bar.tsx";
 
+/**
+ * A progress piece's fill: done, current, or still to come. The later pieces take the border colour,
+ * not a surface, because a surface matches the Inbox's canvas and the line would vanish (C564). High
+ * contrast drops fills, so each piece sets a system colour or an edge of its own.
+ */
+function pieceFill(index: number, reached: number): string {
+  if (index < reached) return "bg-accent forced-colors:bg-[CanvasText]";
+  if (index === reached) return "bg-accent-soft forced-colors:bg-[Highlight]";
+  return "border border-transparent bg-border forced-colors:border-[CanvasText] forced-colors:bg-[Canvas]";
+}
+
 /** Props for {@link FirstRunSetupView}: the Inbox's, and the first run the item is about. */
 export interface FirstRunSetupViewProps extends SetupViewProps {
   readonly firstRun: FirstRun;
@@ -32,7 +43,7 @@ export function FirstRunSetupView({ item, firstRun, openItem, close }: FirstRunS
           {firstRunSteps.map((each, index) => (
             <span
               key={each}
-              className={`h-1 rounded-full ${index < reached ? "bg-accent" : "bg-surface-muted"}`}
+              className={`h-1 rounded-full forced-color-adjust-none ${pieceFill(index, reached)}`}
             />
           ))}
         </div>

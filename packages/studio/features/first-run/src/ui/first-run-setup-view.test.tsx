@@ -92,7 +92,7 @@ verifies("first-run.setup-item", () => {
     );
     expect(document.activeElement?.textContent).toBe("Finish your first run");
     const pieces = [...root.querySelectorAll("[aria-hidden=true] > span")];
-    expect(pieces.map((piece) => piece.className.includes("bg-accent"))).toEqual([
+    expect(pieces.map((piece) => piece.classList.contains("bg-accent"))).toEqual([
       true,
       false,
       false,
@@ -103,6 +103,25 @@ verifies("first-run.setup-item", () => {
       "Continue",
       "Dismiss",
     ]);
+  });
+
+  // C564: unfilled pieces were the Inbox's own canvas colour, so at Step 1 the line didn't show.
+  it("shows all four pieces, the current one apart, in every theme and in high contrast", () => {
+    const root = render(
+      <FirstRunSetupView item={item} answering close={() => {}} firstRun={firstRunOf(paused)} />,
+    );
+    const pieces = [...root.querySelectorAll("[aria-hidden=true] > span")];
+    const fills = pieces.map((piece) =>
+      ["bg-accent", "bg-accent-soft", "bg-border"].find((fill) => piece.classList.contains(fill)),
+    );
+    expect(fills).toEqual(["bg-accent", "bg-accent-soft", "bg-border", "bg-border"]);
+    for (const piece of pieces) {
+      expect(piece.className).not.toContain("bg-surface-muted");
+      expect(piece.className).toContain("forced-color-adjust-none");
+    }
+    expect(pieces[0]?.className).toContain("forced-colors:bg-[CanvasText]");
+    expect(pieces[1]?.className).toContain("forced-colors:bg-[Highlight]");
+    expect(pieces[2]?.className).toContain("forced-colors:border-[CanvasText]");
   });
 
   it("takes the first run up again and opens Support reply on Continue", () => {
