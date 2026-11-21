@@ -22,8 +22,8 @@ verifies("cli.commands.tools.connector-start", () => {
     expect(code).toBe(exitCode.unavailable);
     expect(stdout).toEqual([]);
     expect(stderr).toEqual([
-      "✕ The program notes-nope isn't on this computer.",
-      "  Install notes-nope, or change the command in library/connectors/notes-mcp.connector.yaml.",
+      "✕ Couldn't list the tools from notes-mcp: its program notes-nope isn't on this computer.",
+      "  Install it, or change the command in library/connectors/notes-mcp.connector.yaml.",
     ]);
   });
 
@@ -35,8 +35,9 @@ verifies("cli.commands.tools.connector-start", () => {
     expect(code).toBe(exitCode.unavailable);
     expect(JSON.parse(stdout.join("\n")).error).toEqual({
       kind: "unavailable",
-      message: "The program notes-nope isn't on this computer.",
-      fix: "Install notes-nope, or change the command in library/connectors/notes-mcp.connector.yaml.",
+      message:
+        "Couldn't list the tools from notes-mcp: its program notes-nope isn't on this computer.",
+      fix: "Install it, or change the command in library/connectors/notes-mcp.connector.yaml.",
       reason: "program-missing",
       program: "notes-nope",
     });
@@ -54,8 +55,8 @@ verifies("cli.commands.tools.connector-start", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(stderr).toEqual([
-      "✕ The secret notes-token isn't set on this computer.",
-      "  Save it with halonic secret set notes-token, or set HALONIC_SECRET_NOTES_TOKEN, then try again.",
+      "✕ Couldn't list the tools from notes-mcp: it needs the secret notes-token, which isn't set.",
+      "  Set it with: halonic secret set notes-token",
     ]);
     expect(kit.notes().servers.started).toEqual([]);
   });

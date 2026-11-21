@@ -31,8 +31,8 @@ export function connectorStartError(
     const program = printable(error.program);
     return new OwnLineError(
       "unavailable",
-      connectorStartMessages.programMissing(program),
-      connectorStartMessages.programMissingFix(program, connector, file),
+      connectorStartMessages.cantListProgramMissing(connector, program),
+      connectorStartMessages.cantListProgramMissingFix(connector, file),
       { reason: "program-missing", program: error.program },
     );
   }
@@ -40,8 +40,8 @@ export function connectorStartError(
     const secret = printable(error.secretName);
     return new OwnLineError(
       "invalid_input",
-      connectorStartMessages.secretMissing(secret),
-      connectorStartMessages.secretMissingFix(secret),
+      connectorStartMessages.cantListSecretMissing(connector, secret),
+      connectorStartMessages.cantListSecretMissingFix(secret),
       { reason: "secret-missing", secret: error.secretName },
     );
   }
