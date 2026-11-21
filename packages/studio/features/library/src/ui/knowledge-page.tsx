@@ -95,7 +95,7 @@ function LoadedKnowledgePage({
   if (failed && !loaded) {
     return (
       <LoadFailed
-        title={knowledgeWords.couldntLoad(item.id)}
+        title={knowledgeWords.couldntLoad}
         reason={failureReason}
         retryLabel={knowledgeWords.tryAgain}
         context={context}

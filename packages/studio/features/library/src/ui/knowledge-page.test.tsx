@@ -75,7 +75,7 @@ function setup(
     },
     Sections: () => null,
   } as unknown as ItemViewProps;
-  return { props, write, openItem, openPlace, runCommand, announceState, saving };
+  return { props, host, write, openItem, openPlace, runCommand, announceState, saving };
 }
 
 async function settled(): Promise<void> {
@@ -129,6 +129,26 @@ verifies("library.knowledge-page", () => {
       const root = render(<KnowledgePage {...props} />);
       expect(root.textContent).toBe("Loading the source…");
       expect(root.textContent).not.toContain("handbook");
+    });
+
+    it("says it couldn't load this source, never its file name, and Try again reads it again", async () => {
+      const { props, host } = setup();
+      const read = host.read;
+      let attempts = 0;
+      host.read = async (ref) => {
+        attempts += 1;
+        if (attempts === 1) throw new Error("unreadable");
+        return read(ref);
+      };
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const root = render(<KnowledgePage {...props} />);
+      await settled();
+      expect(root.textContent).toContain("Couldn't load this source");
+      expect(root.textContent).not.toContain("handbook");
+      await act(async () => button(root, "Try again").click());
+      await settled();
+      expect(root.textContent).not.toContain("Couldn't load");
+      expect(root.textContent).toContain("Handbook");
     });
 
     it("says what is missing: no summary, nobody using it, no notes line", async () => {
