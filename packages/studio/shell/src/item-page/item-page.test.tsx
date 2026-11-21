@@ -182,6 +182,39 @@ verifies("shell.item-page-header", () => {
     expect(nameField(container).value).toBe("Support reply");
   });
 
+  it("checks a new name with the page's check, and doesn't keep one it refuses", () => {
+    const onRename = vi.fn();
+    const check = (name: string) =>
+      name === "Mail triage" ? "A workflow called Mail triage already exists." : undefined;
+    const container = render(<Workflow onRename={onRename} check={check} />);
+    typeInto(nameField(container), "Mail triage");
+    const problemId = nameField(container).getAttribute("aria-describedby") ?? "";
+    expect(document.getElementById(problemId)?.textContent).toBe(
+      "A workflow called Mail triage already exists.",
+    );
+    press(nameField(container), "Enter");
+    expect(onRename).not.toHaveBeenCalled();
+  });
+
+  it("gives the page its h1 to focus, and a line under the header", () => {
+    let title: HTMLHeadingElement | null = null;
+    const container = render(
+      <Workflow
+        titleRef={(heading) => {
+          title = heading;
+        }}
+        notice={<p data-notice="">Changes not live yet</p>}
+      />,
+    );
+    const heading = container.querySelector("header h1") as HTMLHeadingElement;
+    expect(title).toBe(heading);
+    act(() => heading.focus());
+    expect(document.activeElement).toBe(heading);
+    expect(container.querySelector("header")?.nextElementSibling?.textContent).toBe(
+      "Changes not live yet",
+    );
+  });
+
   it("shows one view at a time, picked in the header", () => {
     const container = render(<Workflow />);
     const panel = container.querySelector('[role="tabpanel"]') as HTMLElement;
@@ -228,6 +261,24 @@ verifies("shell.item-page-header", () => {
     act(() => tabs.activate(replyTab));
     const panel = container.querySelector(`[data-tab-page="${replyTab}"] [role="tabpanel"]`);
     expect(panel?.textContent).toBe("runs view");
+  });
+
+  it("shows the view the page picks, and tells it which one the user picks", () => {
+    const picked: View[] = [];
+    let show = (_view: View) => {};
+    function Picking() {
+      const [view, setView] = useState<View>("runs");
+      show = setView;
+      return <Workflow view={view} onPickView={(next) => picked.push(next)} />;
+    }
+    const container = render(<Picking />);
+    const panel = () => container.querySelector('[role="tabpanel"]')?.textContent;
+    expect(panel()).toBe("runs view");
+    act(() => viewTab(container, "Flow").click());
+    expect(picked).toEqual(["flow"]);
+    expect(panel()).toBe("runs view");
+    act(() => show("configuration"));
+    expect(panel()).toBe("configuration view");
   });
 
   it("shows the first view when the view it was on is gone", () => {
