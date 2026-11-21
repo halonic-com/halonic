@@ -115,7 +115,7 @@ verifies("agent-host.integration-sign-in-routes", () => {
       });
     });
 
-    it("gives a cancelled sign-in's callback the 400 page", async () => {
+    it("gives a cancelled sign-in's callback a 400 page that says it was cancelled, and says so in the status", async () => {
       const { example, url } = await started();
       const callback = example.server.approve(await start(url));
 
@@ -125,8 +125,17 @@ verifies("agent-host.integration-sign-in-routes", () => {
       });
 
       expect(cancelled.status).toBe(204);
-      expect((await fetch(callback)).status).toBe(400);
-      expect(await states(url)).toMatchObject({ signIns: [{ state: "signedOut" }] });
+      const page = await fetch(callback);
+      expect(page.status).toBe(400);
+      expect(await page.text()).toContain("This sign-in was cancelled in Halonic.");
+      expect(await states(url)).toMatchObject({
+        signIns: [
+          {
+            state: "signedOut",
+            lastOutcome: { kind: "cancelled", signIn: rig.signInName },
+          },
+        ],
+      });
     });
   });
 

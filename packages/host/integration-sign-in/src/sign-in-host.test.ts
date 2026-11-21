@@ -164,6 +164,24 @@ verifies("integration-sign-in.sign-in-host", () => {
       ]);
     });
 
+    it("of a cancelled sign-in gets its flow's page that says so, and nothing is exchanged", async () => {
+      const test = exampleHost();
+      const parts = test.host.integration("example");
+      const started = await parts?.flow.start(signInName, port);
+      if (started?.kind !== "started") throw new Error("didn't start");
+      const state = new URL(started.authorizeUrl).searchParams.get("state") ?? "";
+      parts?.flow.cancel(signInName);
+
+      const page = await test.host.handleCallback(callback(started.callbackPath, state));
+
+      expect(page.status).toBe(400);
+      expect(await page.text()).toContain("This sign-in was cancelled in Halonic.");
+      expect(test.bodies).toEqual([]);
+      expect(await parts?.status()).toMatchObject([
+        { state: "signedOut", lastOutcome: { kind: "cancelled", signIn: signInName } },
+      ]);
+    });
+
     it("gets a plain 400 at a path no flow is waiting on, and nothing is exchanged", async () => {
       const test = exampleHost();
       test.host.integration("example");

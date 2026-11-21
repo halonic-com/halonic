@@ -128,7 +128,7 @@ verifies("sign-in-loopback.sign-in-launcher", () => {
   });
 
   describe("a cancel", () => {
-    it("makes the callback get the flow's 400 and stops the server", async () => {
+    it("ends with the flow's cancelled outcome, makes the callback get the flow's 400 and stops the server", async () => {
       const { rig, launcher, servers, visited } = setUp(undefined, false);
       track(launcher);
       await launcher.begin(signInName);
@@ -136,7 +136,7 @@ verifies("sign-in-loopback.sign-in-launcher", () => {
       await launcher.cancel(signInName);
       await vi.waitFor(async () => expect(await isListening(servers[0])).toBe(false));
 
-      expect(rig.outcomes).toEqual([]);
+      expect(rig.outcomes).toEqual([{ kind: "cancelled", signIn: signInName }]);
       const answer = await rig.flow.handleCallback(new Request(visited[0] as URL));
       expect(answer.status).toBe(400);
     });

@@ -124,9 +124,19 @@ export interface SignInFlow {
    * and nothing else happens.
    */
   handleCallback(request: Request): Promise<Response>;
-  /** Drops a pending sign-in, for "Cancel". Its callback then gets the 400. */
+  /**
+   * Drops a pending sign-in, for "Cancel", and tells `onOutcome` it was
+   * `cancelled`. For the rest of its wait, or until it starts again, its
+   * callback gets a page that says the sign-in was cancelled in Halonic, and
+   * nothing else happens. Without a
+   * pending sign-in of that name it does nothing.
+   */
   cancel(signIn: string): void;
-  /** Whether `pathname` is the callback path of a sign-in that may still be answered, so a server with several flows can pick the one that owns a request. */
+  /**
+   * Whether `pathname` is the callback path of a sign-in that may still be
+   * answered, or of one cancelled within its wait, so a server with several
+   * flows can pick the one that owns a request.
+   */
   handlesPath(pathname: string): boolean;
 }
 
@@ -144,19 +154,32 @@ export function createSignInFlow(given: SignInFlowSettings): SignInFlow {
   const settings = { ...given, http: createHttpsOnlyClient(given.http) };
   const pending = createPendingSignIns<IntegrationPendingDetails>(settings.clock);
   /** The callback paths that may still be answered, so a path is checked before `state` is read. */
-  const paths = new Map<string, { readonly signIn: string; readonly startedAt: Date }>();
+  const paths = new Map<string, CallbackPath>();
+  /**
+   * The callback paths of cancelled sign-ins, until their wait would have
+   * ended, so a person who finishes in the browser after "Cancel" learns why
+   * nothing happened.
+   */
+  const cancelledPaths = new Map<string, CallbackPath>();
 
   function forget(signIn: string): void {
     pending.cancel(signIn);
-    for (const [path, entry] of paths) {
-      if (entry.signIn === signIn) paths.delete(path);
-    }
+    removePathsOf(paths, signIn);
+    removePathsOf(cancelledPaths, signIn);
   }
 
   function forgetExpired(): void {
-    for (const [path, entry] of paths) {
-      if (hasPendingSignInExpired(entry, settings.clock.now())) paths.delete(path);
-    }
+    removeExpiredPaths(paths, settings.clock.now());
+    removeExpiredPaths(cancelledPaths, settings.clock.now());
+  }
+
+  function cancel(signIn: string): void {
+    forgetExpired();
+    const waiting = [...paths].filter(([, entry]) => entry.signIn === signIn);
+    forget(signIn);
+    if (waiting.length === 0) return;
+    for (const [path, entry] of waiting) cancelledPaths.set(path, entry);
+    settings.onOutcome?.({ kind: "cancelled", signIn });
   }
 
   async function start(signIn: string, port: number): Promise<StartResult> {
@@ -198,6 +221,9 @@ export function createSignInFlow(given: SignInFlowSettings): SignInFlow {
 
   async function handleCallback(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    if (request.method === "GET" && cancelledHere(url.pathname)) {
+      return page(400, "This sign-in was cancelled in Halonic. Start it again there to sign in.");
+    }
     const entry = paths.get(url.pathname);
     if (request.method !== "GET" || entry === undefined) {
       return page(400, "This sign-in link is no longer valid.");
@@ -299,12 +325,36 @@ export function createSignInFlow(given: SignInFlowSettings): SignInFlow {
     };
   }
 
-  function handlesPath(pathname: string): boolean {
-    forgetExpired();
-    return paths.has(pathname);
+  function cancelledHere(pathname: string): boolean {
+    // Only the cancelled paths: an expired pending one still gets its `linkNoLongerValid` outcome.
+    removeExpiredPaths(cancelledPaths, settings.clock.now());
+    return cancelledPaths.has(pathname);
   }
 
-  return { start, handleCallback, cancel: forget, handlesPath };
+  function handlesPath(pathname: string): boolean {
+    forgetExpired();
+    return paths.has(pathname) || cancelledPaths.has(pathname);
+  }
+
+  return { start, handleCallback, cancel, handlesPath };
+}
+
+/** One sign-in's callback path: whose it is and when it started, for its wait. */
+interface CallbackPath {
+  readonly signIn: string;
+  readonly startedAt: Date;
+}
+
+function removePathsOf(paths: Map<string, CallbackPath>, signIn: string): void {
+  for (const [path, entry] of paths) {
+    if (entry.signIn === signIn) paths.delete(path);
+  }
+}
+
+function removeExpiredPaths(paths: Map<string, CallbackPath>, now: Date): void {
+  for (const [path, entry] of paths) {
+    if (hasPendingSignInExpired(entry, now)) paths.delete(path);
+  }
 }
 
 /**
