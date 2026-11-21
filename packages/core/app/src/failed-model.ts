@@ -9,6 +9,16 @@ import { filesOf, type LoadedWorkspace, modelAliases } from "@halonicjs/workspac
 /** The event a failed run ends with. */
 export type RunFailedEvent = Extract<RunEvent, { type: "run.failed" }>;
 
+/**
+ * What `runFailureOf` reads of a `run.failed` event. A failed chat
+ * answer gives the same facts, without the time a run failed at
+ * (`chatFailureOf`).
+ */
+export type RunFailedFacts = Pick<
+  RunFailedEvent,
+  "error" | "reason" | "host" | "cause" | "sandboxReason" | "harnessCause" | "agent" | "changed"
+> & { readonly at?: string };
+
 /** The model a failed run called last, as the workspace describes it. */
 export interface FailedModel {
   /** Its alias, such as "smart", or `<provider>/<model>` when no alias points at it. */
