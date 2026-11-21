@@ -3,6 +3,7 @@
 - Task: HAL-15388
 - Approval: team decision, a wording follow-up from Julian's review of #4596 on HAL-15314; "model call limit" is the glossary name since HAL-14710 (Sofia, microcopy revision 117); the reviewer of the pull request on HAL-15388 signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:tTukh3lIICgR+1SlT7P3wg+z6GA/mPVxGyg20qNgcPoGcWZqz5FNOD/2U/aNzD9jWTrT6OkqxB78LtTAmlpADg==
 
 ## What changes
 
