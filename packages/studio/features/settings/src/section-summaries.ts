@@ -6,7 +6,7 @@ import { providerDefaults } from "./assistant/assistant-providers.ts";
 
 /**
  * The line under Assistant in the phone's list: "Not set up", else the model (or the provider
- * when no model is named) and the turn limit, "smart · turn limit 16".
+ * when no model is named) and the model call limit, "smart · model call limit 16".
  */
 export function assistantSummary(context: WorkspaceContext): string {
   const settings = context.services.get(HostSettingsService);
@@ -15,7 +15,7 @@ export function assistantSummary(context: WorkspaceContext): string {
     return providerDefaults[provider].label;
   }
   const model = settings.get(assistantPrefs.model) || providerDefaults[provider].label;
-  return `${model} · turn limit ${settings.get(assistantPrefs.turnLimit)}`;
+  return `${model} · model call limit ${settings.get(assistantPrefs.turnLimit)}`;
 }
 
 /**

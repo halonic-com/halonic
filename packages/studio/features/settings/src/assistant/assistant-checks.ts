@@ -60,7 +60,7 @@ export function checkSecretName(text: string): FieldCheck<string> {
 }
 
 /**
- * Checks the Turn limit box. Empty means the default 16 and gives `undefined`, so the setting is
+ * Checks the Model call limit box. Empty means the default 16 and gives `undefined`, so the setting is
  * put back to its default; anything but a whole number from 1 to 64 is an error.
  */
 export function checkTurnLimit(text: string): FieldCheck<number | undefined> {
