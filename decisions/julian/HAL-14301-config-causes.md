@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-14301 asks for this change, from Nina's C340 check on HAL-14271 (rows 7, 16 and 17, code row C29); Liam decided it as maintainer, wording under the HAL-2282 rule (it builds on the approved C336/C337 wording), and signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0vcvHpqwkbmMRsr4lqLM/CAt6ddrSDAhlZL2PCd9ISzDN4WxWgVIBpG+ulE9xnej4ZfUv7jwpxZmN34Rc5XXAw==
 - Task: HAL-14301
 
 ## What changes
