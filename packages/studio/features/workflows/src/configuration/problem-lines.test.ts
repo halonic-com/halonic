@@ -101,14 +101,16 @@ verifies("workflows.configuration.problem-lines", () => {
     const unknownAgent: WorkflowProblem = {
       severity: "error",
       code: "unknown-agent",
-      message: '"first" uses unknown agent "nobody-here"',
+      message: `"first" uses the agent "nobody-here", which its hub doesn't have`,
       stepId: "first",
     };
     const titles: Record<string, string> = { first: "Ask a missing agent" };
     const nameOf = (stepId: string) => titles[stepId] ?? stepId;
 
     const [row] = problemRows([unknownAgent], nameOf);
-    expect(row?.text).toBe('"Ask a missing agent" uses unknown agent "nobody-here"');
+    expect(row?.text).toBe(
+      `"Ask a missing agent" uses the agent "nobody-here", which its hub doesn't have`,
+    );
     expect([row?.stepId, row?.stepName]).toEqual(["first", "Ask a missing agent"]);
   });
 

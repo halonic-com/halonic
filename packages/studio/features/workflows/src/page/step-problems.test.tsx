@@ -24,7 +24,7 @@ const broken = {
 const unknownAgent: WorkflowProblem = {
   severity: "error",
   code: "unknown-agent",
-  message: '"first" uses unknown agent "nobody-here"',
+  message: `"first" uses the agent "nobody-here", which its hub doesn't have`,
   stepId: "first",
 };
 
@@ -67,7 +67,9 @@ verifies("workflows.page.step-problems", () => {
     expect(line?.textContent).toBe("✕ Error: Uses a missing agent");
     expect(line?.className).toContain("max-w-20");
     expect(line?.querySelector(".truncate")?.textContent).toBe("Uses a missing agent");
-    expect(line?.title).toBe('"Ask a missing agent" uses unknown agent "nobody-here"');
+    expect(line?.title).toBe(
+      `"Ask a missing agent" uses the agent "nobody-here", which its hub doesn't have`,
+    );
     expect(nameOf(first)).toBe(
       "Ask a missing agent AGENT STEP Start nobody-here ✕ Error: Uses a missing agent",
     );
@@ -118,7 +120,9 @@ verifies("workflows.configuration.problem-lines", () => {
     await act(async () => problems?.click());
 
     const row = page.querySelector("li");
-    expect(row?.textContent).toContain('"Ask a missing agent" uses unknown agent "nobody-here"');
+    expect(row?.textContent).toContain(
+      `"Ask a missing agent" uses the agent "nobody-here", which its hub doesn't have`,
+    );
     const link = row?.querySelector("button");
     expect(link?.textContent).toBe("Ask a missing agent");
     expect(link?.getAttribute("aria-label")).toBe("Open Ask a missing agent");

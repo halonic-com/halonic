@@ -8,7 +8,6 @@ import { parityLoadLimitMs, readParityCase } from "../test/parity-cases.spec.ts"
 // Each case breaks one rule of a workflow or one name it gives another file.
 const workflowCases = [
   "workflow/missing-initial",
-  "workflow/unknown-target",
   "workflow/dead-end",
   "workflow/unreachable",
   "workflow/no-final",
@@ -22,14 +21,32 @@ const workflowCases = [
   "workflow/parallel-without-branches",
   "workflow/subflow-without-target",
   "workflow/self-subflow",
-  "workflow/unknown-agent",
-  "workflow/unknown-branch-agent",
   "workflow/unknown-subflow",
   "workflow/unknown-method",
   "workflow/branch-unknown-method",
   "workflow/method-missing-argument",
   "workflow/method-extra-argument",
   "workflow/subflow-loop",
+];
+
+// The old loader's words for a missing agent or step, in the words Studio's step card uses
+// (HAL-15431, allowed difference missing-agent-and-step-words).
+const missingNameCases: readonly (readonly [string, readonly (readonly [string, string])[]])[] = [
+  [
+    "workflow/unknown-target",
+    [
+      ["error", '"start" goes to the step "finish", which this workflow doesn\'t have'],
+      ["warning", '"done" can never be reached'],
+    ],
+  ],
+  [
+    "workflow/unknown-agent",
+    [["error", '"start" uses the agent "auditor", which its hub doesn\'t have']],
+  ],
+  [
+    "workflow/unknown-branch-agent",
+    [["error", 'Branch "audit" of "start" uses the agent "auditor", which its hub doesn\'t have']],
+  ],
 ];
 
 // An issue about a map, such as a whole state, sits where the map's value
@@ -65,6 +82,21 @@ verifies("workspace.workflows", () => {
       expect(found.map((issue) => [issue.severity, issue.message])).toEqual(
         recording.diagnostics.map((diagnostic) => [diagnostic.severity, diagnostic.message]),
       );
+      const first = found[0];
+      expect(first && { file: first.file, path: first.path.join("."), line: first.line }).toEqual(
+        expectedPlace(caseId, parityCase.expect),
+      );
+    },
+    parityLoadLimitMs,
+  );
+
+  it.each(missingNameCases)(
+    "gives %s the old loader's issues in the step card's words, the first where its case file says",
+    async (caseId, issues) => {
+      const { parityCase, source } = readParityCase(caseId);
+      const workspace = await loadWorkspace(source);
+      const found = workspace.issues.filter((issue) => issue.source === "check");
+      expect(found.map((issue) => [issue.severity, issue.message])).toEqual(issues);
       const first = found[0];
       expect(first && { file: first.file, path: first.path.join("."), line: first.line }).toEqual(
         expectedPlace(caseId, parityCase.expect),
@@ -114,7 +146,7 @@ verifies("workspace.workflows", () => {
     expect(workspace.issues.map((issue) => [issue.path.join("."), issue.message])).toEqual([
       [
         "states.check.agent",
-        '"check" uses unknown agent "clerk". clerk is in the hub billing; a workflow can only use its own hub\'s agents.',
+        `"check" uses the agent "clerk", which its hub doesn't have. clerk is in the hub billing; a workflow can only use its own hub's agents.`,
       ],
     ]);
   });
