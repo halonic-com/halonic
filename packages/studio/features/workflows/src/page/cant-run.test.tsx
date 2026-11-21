@@ -35,6 +35,8 @@ async function open(
   options: {
     readonly workflow?: WorkflowView;
     readonly answers?: SandboxStartResult[];
+    /** Answers the check with this promise instead, so a test can open the start card first. */
+    readonly pending?: Promise<SandboxStartResult>;
     readonly phone?: boolean;
     readonly openAgent?: (id: string) => void;
     readonly announce?: (line: string) => void;
@@ -43,7 +45,9 @@ async function open(
 ) {
   const answers = [...(options.answers ?? [bubblewrapMissing])];
   const check = vi.fn(
-    async () => (answers.length > 1 ? answers.shift() : answers[0]) as SandboxStartResult,
+    async () =>
+      options.pending ??
+      ((answers.length > 1 ? answers.shift() : answers[0]) as SandboxStartResult),
   );
   const { host } = memoryHost([], [], [options.workflow ?? reply()], [], {
     startRun: async () => ({ runId: "run_mfx3k2a1_01jd8q" }),
@@ -101,6 +105,27 @@ verifies("workflows.page.cant-run", () => {
       .map((id) => document.getElementById(id)?.textContent);
     expect(described[0]).toBe(firstLine);
     expect(described[1]).toContain(reason);
+  });
+
+  it("makes an open start card's Start run unavailable too, keeping its input, once the check refuses", async () => {
+    let answer: (result: SandboxStartResult) => void = () => {};
+    const pending = new Promise<SandboxStartResult>((resolve) => {
+      answer = resolve;
+    });
+    const { page } = await open({ pending });
+    act(() => runOf(page)?.click());
+    const start = () => buttonNamed(page, "Start run") as HTMLButtonElement;
+    expect(start().hasAttribute("aria-disabled")).toBe(false);
+    await act(async () => answer(bubblewrapMissing));
+    expect(page.textContent).toContain("START A RUN");
+    expect(start().getAttribute("aria-disabled")).toBe("true");
+    expect(start().disabled).toBe(false);
+    expect(
+      document.getElementById(start().getAttribute("aria-describedby") ?? "")?.textContent,
+    ).toBe(firstLine);
+    await act(async () => start().click());
+    expect(page.textContent).not.toContain("Run started");
+    expect(page.querySelector("textarea")?.value).toBe("{}");
   });
 
   it("ends with the step, its program and the agent's settings, which open the agent", async () => {

@@ -1,6 +1,7 @@
 import { errorKindOf } from "@halonicjs/std";
 import {
   Button,
+  type ButtonUnavailable,
   Callout,
   type CalloutAction,
   type CalloutHandle,
@@ -31,6 +32,11 @@ export interface StartRunCardProps {
   readonly notAnswering: string;
   /** The errors that stop the workflow from running, and the way to Configuration › Problems. */
   readonly problems: StartProblems;
+  /**
+   * **Start run**'s `unavailable` while the page's Run is, such as while the sandbox can't start:
+   * a card opened before the check refused keeps its input, but can't start the run.
+   */
+  readonly unavailable?: ButtonUnavailable | undefined;
   readonly onStarted: (runId: string) => void;
   readonly onClose: () => void;
 }
@@ -109,6 +115,7 @@ export function StartRunCard({
   askTrust,
   notAnswering,
   problems,
+  unavailable,
   onStarted,
   onClose,
 }: StartRunCardProps) {
@@ -245,6 +252,7 @@ export function StartRunCard({
             size="sm"
             busy={busy}
             busyLabel={words.starting}
+            unavailable={unavailable}
             onClick={() => void submit()}
           >
             {words.startRun}
