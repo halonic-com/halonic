@@ -3,6 +3,7 @@
 - Task: HAL-14875
 - Approval: Liam asked for this change in his review of #4301 on HAL-13062, as the task HAL-14875 (https://paperclip.halonic.com/HAL/issues/HAL-14875), and reviews and signs it there. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:w1PQmNxw+Fz0RC4ea85Ri2nvvcOTDlMYzyJWxqvJoB/iLyucNaZxxQmo9u1FY2hpi3VEI5nUarUEikBYyIf7CQ==
 
 ## What changes
 
