@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: tunnel phase B build plan, decision 13 (HAL-12232); tasks HAL-12235 and HAL-14060
+- Source: tunnel phase B build plan, decision 13 (HAL-12232); tasks HAL-12235, HAL-14060 and HAL-12385
 
-The `FakeRemoteControl` shall be a `RemoteControl` that runs in the process, so Studio's Remote screens can be built and tested before the host's pairing service exists. It shall pass the `contracts.remote-control` suite. A test shall be able to play a phone that uses the code, tries a wrong code, connects and disconnects; add a paired phone without a pairing; move the tunnel, or make it fail to start with a reason; and make the host offer remote or not. A code shall end after 5 minutes and the wait for Allow after 2 minutes, by default, in simulated time that moves only when the test advances it, and 5 wrong tries shall end a code. A code that ends shall leave the pairing open and remote on, and a new code shall have its own life, so an older code's time running out ends nothing. A pairing that ends because the tunnel is down shall carry the tunnel's reason.
+The `FakeRemoteControl` shall be a `RemoteControl` that runs in the process, so Studio's Remote screens can be built and tested before the host's pairing service exists. It shall pass the `contracts.remote-control` suite. A test shall be able to play a phone that uses the code, tries a wrong code, connects and disconnects; add a paired phone without a pairing; move the tunnel, or make it fail to start with a reason; and make the host offer remote or not. A code shall end and the wait for Allow run out at `pairingRules`, by default, in simulated time that moves only when the test advances it, and `pairingRules.wrongTriesPerCode` wrong tries shall end a code. Once it has had `pairingRules.failedTriesPerMinute` failed tries within a minute, across every code, it shall refuse a wrong try until the first of them is a minute old. A code that ends shall leave the pairing open and remote on, and a new code shall have its own life, so an older code's time running out ends nothing. A pairing that ends because the tunnel is down shall carry the tunnel's reason.
 
 ## Examples
 

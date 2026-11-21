@@ -1,17 +1,19 @@
-import type {
-  CodeEndReason,
-  PairedPhone,
-  PairingEndReason,
-  PairingEvent,
-  PairingSession,
-  PhonePlatform,
-  RemoteControl,
-  RemoteState,
-  TunnelReason,
-  TunnelStatus,
+import {
+  type CodeEndReason,
+  type PairedPhone,
+  type PairingEndReason,
+  type PairingEvent,
+  type PairingSession,
+  type PhonePlatform,
+  pairingRules,
+  type RemoteControl,
+  type RemoteState,
+  type TunnelReason,
+  type TunnelStatus,
 } from "@halonicjs/ports";
 import { FakeTunnelTime } from "./fake-tunnel-provider.ts";
 import { Feed } from "./feed.ts";
+import type { PairTryRefusal } from "./remote-control.ts";
 
 /** What a {@link FakeRemoteControl} reports and how long its codes last. */
 export interface FakeRemoteControlOptions {
@@ -23,11 +25,11 @@ export interface FakeRemoteControlOptions {
   tunnelProviderId?: string;
   /** Where every time comes from. Defaults to a new {@link FakeTunnelTime}. */
   time?: FakeTunnelTime;
-  /** How long a code works, in simulated milliseconds. Defaults to 5 minutes. */
+  /** How long a code works, in simulated milliseconds. Defaults to `pairingRules.codeLifetimeMs`. */
   codeLifeMs?: number;
-  /** How long Allow is waited for. Defaults to 2 minutes. */
+  /** How long Allow is waited for. Defaults to `pairingRules.allowWaitMs`. */
   allowWaitMs?: number;
-  /** How many wrong tries end a code. Defaults to 5. */
+  /** How many wrong tries end a code. Defaults to `pairingRules.wrongTriesPerCode`. */
   triesPerCode?: number;
 }
 
@@ -142,9 +144,11 @@ class FakePairingSession implements PairingSession {
  * `newCode` never restarts the tunnel.
  *
  * A test plays the phone and the tunnel from outside: `phoneUsesCode`,
- * `wrongTry`, `phoneConnects` and `phoneDisconnects`, `setTunnel`, and
- * `addPhone` for a list without pairing. Codes run out and Allow times out
- * in simulated time, which moves only when the test advances it.
+ * `wrongTry` and `phoneTriesWrongCode`, `phoneConnects` and
+ * `phoneDisconnects`, `setTunnel`, and `addPhone` for a list without
+ * pairing. Codes run out and Allow times out in simulated time, which moves
+ * only when the test advances it. Like the host, the fake refuses every try
+ * for the rest of the minute once it has had `pairingRules.failedTriesPerMinute`.
  *
  * @example
  * const remote = new FakeRemoteControl();
@@ -163,14 +167,16 @@ export class FakeRemoteControl implements RemoteControl {
   private readonly readers = new Set<Feed<RemoteState>>();
   private codes = 0;
   private phonesAdded = 0;
+  /** When each failed try of the last minute was, across every code. */
+  private failedAt: number[] = [];
   private failure: TunnelReason | undefined;
 
   constructor(options: FakeRemoteControlOptions = {}) {
     this.time = options.time ?? new FakeTunnelTime();
     this.hostName = options.hostName ?? "Test laptop";
-    this.codeLifeMs = options.codeLifeMs ?? 5 * 60_000;
-    this.allowWaitMs = options.allowWaitMs ?? 2 * 60_000;
-    this.triesPerCode = options.triesPerCode ?? 5;
+    this.codeLifeMs = options.codeLifeMs ?? pairingRules.codeLifetimeMs;
+    this.allowWaitMs = options.allowWaitMs ?? pairingRules.allowWaitMs;
+    this.triesPerCode = options.triesPerCode ?? pairingRules.wrongTriesPerCode;
     this.current = {
       available: options.available ?? true,
       on: false,
@@ -287,13 +293,31 @@ export class FakeRemoteControl implements RemoteControl {
     return checkCode;
   }
 
-  /** A phone tried a wrong code; the last allowed try ends the code. Gives the tries left. */
+  /**
+   * A phone tried a wrong code; the last allowed try ends the code. Gives the
+   * tries left. Throws when no pairing waits for a phone, or the minute's
+   * failed tries are used up.
+   */
   wrongTry(): number {
     const pairing = this.waitingPairing("try a code");
+    if (this.rateLimited) throw new Error("the host takes no more tries this minute");
+    this.failedAt.push(this.time.now().getTime());
     pairing.wrongTries += 1;
     const left = this.triesPerCode - pairing.wrongTries;
     if (left === 0) this.endCode(pairing, "too-many-tries");
     return left;
+  }
+
+  /** A phone tried a wrong code: what the host tells it, as `remoteControlContract` drives it. Never throws. */
+  phoneTriesWrongCode(): PairTryRefusal {
+    if (this.rateLimited) return { reason: "rate-limited", triesLeft: 0 };
+    const pairing = this.pairingNow;
+    if (pairing === undefined || !pairing.codeWorks) return { reason: "code-ended", triesLeft: 0 };
+    if (pairing.phone !== undefined) return { reason: "code-used", triesLeft: 0 };
+    const triesLeft = this.wrongTry();
+    return triesLeft > 0
+      ? { reason: "wrong-code", triesLeft }
+      : { reason: "code-ended", triesLeft: 0 };
   }
 
   /** Adds a paired phone directly, as a store that already holds it would. */
@@ -388,6 +412,13 @@ export class FakeRemoteControl implements RemoteControl {
     pairing.codeWorks = false;
     delete pairing.phone;
     pairing.session.push({ type: "code-ended", reason });
+  }
+
+  /** Whether the minute's failed tries, across every code, are used up. */
+  private get rateLimited(): boolean {
+    const since = this.time.now().getTime() - 60_000;
+    this.failedAt = this.failedAt.filter((at) => at > since);
+    return this.failedAt.length >= pairingRules.failedTriesPerMinute;
   }
 
   /** Whether the pairing is still open and still shows that code, working. */

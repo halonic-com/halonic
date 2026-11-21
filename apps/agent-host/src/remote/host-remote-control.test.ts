@@ -90,6 +90,11 @@ async function host(setup: HostSetup = {}) {
     if (!use.used) throw new Error(`the code was refused: ${use.refusal.reason}`);
     return { ticket: admission.ticket, verdict: use.verdict };
   };
+  /** Plays the phone and the gateway (B3): message 1, then a message 3 that didn't decrypt. */
+  const phoneTriesWrongCode = () => {
+    const admission = desk.admit();
+    return admission.admitted ? admission.ticket.wrongTry() : admission.refusal;
+  };
   return {
     control,
     time,
@@ -99,6 +104,7 @@ async function host(setup: HostSetup = {}) {
     hostKey,
     sockets: advert.sockets,
     phoneUsesCode,
+    phoneTriesWrongCode,
   };
 }
 
@@ -119,12 +125,14 @@ async function openPairing(control: RemoteControl) {
 const android = { name: "Pixel 8", platform: "android" } as const;
 
 remoteControlContract("the agent host's", async () => {
-  const { control, phoneUsesCode } = await host();
+  const { control, time, phoneUsesCode, phoneTriesWrongCode } = await host();
   return {
     control,
     phoneUsesCode: async (code, phone) => {
       phoneUsesCode(code, phone);
     },
+    phoneTriesWrongCode: async () => phoneTriesWrongCode(),
+    advance: (ms) => time.advance(ms),
   };
 });
 
@@ -140,16 +148,6 @@ verifies("agent-host.remote-control", () => {
         hostName: "Test laptop",
         endpoints: ["tcp://192.168.1.20:4200", "https://gateway-4100.fake-tunnel.invalid"],
       });
-    });
-
-    it("ends a code no phone used after 5 minutes, and keeps the pairing open for a new one", async () => {
-      const { control, time } = await host();
-      const { session, next } = await openPairing(control);
-      await time.advance(5 * 60_000);
-      expect(await next()).toEqual({ type: "code-ended", reason: "code-expired" });
-      expect(await stateOf(control)).toMatchObject({ on: true, pairing: true });
-      await session.newCode();
-      expect(await next()).toMatchObject({ type: "code" });
     });
 
     it("tells the dialog and the phone that time ran out when Allow waits 2 minutes, or the phone leaves", async () => {

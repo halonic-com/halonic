@@ -158,6 +158,7 @@ export {
 } from "./recorded-registry.ts";
 export {
   type MakeRemoteControl,
+  type PairTryRefusal,
   type RemoteControlHarness,
   remoteControlContract,
 } from "./remote-control.ts";

@@ -9,18 +9,24 @@ import {
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 
+/** Lets the queued deliveries and simulated timers run. */
+const settle = () => new Promise<void>((resolve) => setImmediate(resolve));
+
 remoteControlContract("fake", async () => {
-  const control = new FakeRemoteControl();
+  const time = new FakeTunnelTime();
+  const control = new FakeRemoteControl({ time });
   return {
     control,
     phoneUsesCode: async (_code, phone) => {
       control.phoneUsesCode(phone);
     },
+    phoneTriesWrongCode: async () => control.phoneTriesWrongCode(),
+    advance: async (ms) => {
+      time.advance(ms);
+      await settle();
+    },
   };
 });
-
-/** Lets the queued deliveries and simulated timers run. */
-const settle = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 /** Collects a pairing's events in the background, so a test can look at them later. */
 function watch(session: PairingSession): PairingEvent[] {
@@ -42,58 +48,6 @@ function watchState(control: FakeRemoteControl): RemoteState[] {
 
 verifies("contracts.fake-remote-control", () => {
   describe("FakeRemoteControl", () => {
-    it("ends a code after 5 minutes, and keeps the pairing open and remote on for a new code", async () => {
-      const time = new FakeTunnelTime();
-      const control = new FakeRemoteControl({ time });
-      const session = await control.startPairing();
-      const seen = watch(session);
-      time.advance(5 * 60_000 - 1);
-      await settle();
-      expect(seen.at(-1)?.type).toBe("code");
-      time.advance(1);
-      await settle();
-      expect(seen.at(-1)).toEqual({ type: "code-ended", reason: "code-expired" });
-      expect(control.snapshot).toMatchObject({ on: true, pairing: true });
-      expect(() => control.phoneUsesCode({ name: "Pixel 8" })).toThrow();
-      await session.newCode();
-      await settle();
-      expect(seen.at(-1)).toMatchObject({ type: "code", qr: "halonic-pair:fake-2" });
-    });
-
-    it("gives a new code a life of its own, so the old code's time runs out on nothing", async () => {
-      const time = new FakeTunnelTime();
-      const control = new FakeRemoteControl({ time });
-      const session = await control.startPairing();
-      const seen = watch(session);
-      time.advance(4 * 60_000);
-      await session.newCode();
-      time.advance(60_000);
-      await settle();
-      expect(seen.map((event) => event.type)).toEqual(["code", "code"]);
-      control.phoneUsesCode({ name: "Pixel 8" });
-      await session.newCode();
-      time.advance(2 * 60_000);
-      await settle();
-      expect(seen.at(-1)).toMatchObject({ type: "code", qr: "halonic-pair:fake-3" });
-      time.advance(3 * 60_000);
-      await settle();
-      expect(seen.at(-1)).toEqual({ type: "code-ended", reason: "code-expired" });
-    });
-
-    it("waits 2 minutes for Allow, and a used code no longer runs out", async () => {
-      const time = new FakeTunnelTime();
-      const control = new FakeRemoteControl({ time });
-      const seen = watch(await control.startPairing());
-      time.advance(4 * 60_000);
-      expect(control.phoneUsesCode({ name: "Pixel 8" })).toMatch(/^[2-9A-HJKMNP-Z]{6}$/);
-      time.advance(60_000);
-      await settle();
-      expect(seen.at(-1)?.type).toBe("check");
-      time.advance(60_000);
-      await settle();
-      expect(seen.at(-1)).toEqual({ type: "code-ended", reason: "allow-timed-out" });
-    });
-
     it("counts wrong tries down and ends the code at the fifth", async () => {
       const control = new FakeRemoteControl();
       const seen = watch(await control.startPairing());
@@ -103,6 +57,16 @@ verifies("contracts.fake-remote-control", () => {
       expect(seen.at(-1)).toEqual({ type: "code-ended", reason: "too-many-tries" });
       expect(() => control.wrongTry()).toThrow();
       expect(() => control.phoneUsesCode({ name: "Pixel 8" })).toThrow();
+    });
+
+    it("refuses a wrong try once the minute's failed tries are used up", async () => {
+      const control = new FakeRemoteControl();
+      const session = await control.startPairing();
+      for (let code = 0; code < 2; code += 1) {
+        for (let tries = 0; tries < 5; tries += 1) control.wrongTry();
+        await session.newCode();
+      }
+      expect(() => control.wrongTry()).toThrow("no more tries this minute");
     });
 
     it("ends a pairing with the tunnel's reason when it can't start or goes down", async () => {
