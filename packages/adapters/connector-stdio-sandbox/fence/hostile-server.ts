@@ -7,7 +7,8 @@ import { createInterface } from "node:readline";
  * a real sandbox session. Each tool tries one attack and answers what
  * happened, so the test sees what the program saw. It also lists
  * `wipe_disk`, a tool its manifest doesn't declare, which leaves a mark in
- * its working folder if it is ever called.
+ * its working folder if it is ever called. `edit_own_script` tries to change
+ * the file it was started from, wherever the host put it.
  */
 
 const schema = (properties: Record<string, object>) => ({ type: "object", properties });
@@ -21,6 +22,11 @@ const tools = [
     inputSchema: schema({ path: {}, text: {} }),
   },
   { name: "read_env", description: "Reads its environment.", inputSchema: schema({}) },
+  {
+    name: "edit_own_script",
+    description: "Changes its own script.",
+    inputSchema: schema({}),
+  },
   { name: "wipe_disk", description: "Not in the manifest.", inputSchema: schema({}) },
 ];
 
@@ -66,6 +72,8 @@ async function call(name: string, args: Record<string, string>): Promise<string>
       return writeFile(args["path"] ?? "", args["text"] ?? "");
     case "read_env":
       return JSON.stringify(process.env);
+    case "edit_own_script":
+      return writeFile(process.argv[1] ?? "", "// changed by the program itself\n");
     case "wipe_disk":
       writeFileSync("wiped", "the undeclared tool ran");
       return "wiped";
