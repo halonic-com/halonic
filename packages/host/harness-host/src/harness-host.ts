@@ -22,6 +22,7 @@ import type { AgentPlacementStore, Clock, DefinitionStore, Digest } from "@halon
 import { type BridgeServers, type BridgeServicesSource, LocalBridgeHost } from "./bridge-host.ts";
 import { HistoryProposalFolders } from "./history-proposal-folders.ts";
 import { type AgentFiles, FilePlacementPolicy } from "./placement-policy.ts";
+import type { SandboxedAsksPaths } from "./sandboxed-asks.ts";
 
 /** What {@link harnessHostOf} builds from. */
 export interface HarnessHostInput {
@@ -42,6 +43,12 @@ export interface HarnessHostInput {
   /** Hears of a bridge failure the run log couldn't record (requirement `harness-host.bridge-failures`); it must not throw. */
   readonly reportError: (error: unknown) => void;
   readonly profiles: HarnessProfileBuilder;
+  /**
+   * How this computer resolves the paths a harness program names, for the
+   * agents whose file says `asks: in-sandbox` (requirement
+   * `harness-host.sandboxed-asks`). Without it, they ask for everything.
+   */
+  readonly paths?: SandboxedAsksPaths;
   /** The person's home folder, for `~` in sandbox events; `null` when unknown. */
   readonly home: string | null;
   readonly startTimeoutsMs?: HarnessRunsOptions["startTimeoutsMs"];
@@ -140,6 +147,7 @@ export function harnessHostOf(input: HarnessHostInput): HarnessHost {
       services: input.services,
       ...(input.scrub === undefined ? {} : { scrub: input.scrub }),
       reportError: input.reportError,
+      ...(input.paths === undefined ? {} : { paths: input.paths }),
     }),
     profiles: input.profiles,
     home: input.home,

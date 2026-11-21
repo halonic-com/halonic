@@ -20,6 +20,7 @@ import type {
   HarnessBridgeServer,
   ModelPrice,
 } from "@halonicjs/ports";
+import { type SandboxedAsksPaths, sandboxedAsks } from "./sandboxed-asks.ts";
 
 /** The agent a bridge serves; the engine's `HarnessAgent` has these and more. */
 export interface BridgeAgent {
@@ -96,21 +97,26 @@ export class LocalBridgeHost implements HarnessBridgeHost {
   readonly #services: BridgeServicesSource;
   readonly #scrub: (text: string) => string;
   readonly #reportError: (error: unknown) => void;
+  readonly #paths: SandboxedAsksPaths | undefined;
 
   /**
    * @param options.scrub - removes the values of the secrets the bridge reads from a text; none by default
    * @param options.reportError - hears of a bridge failure the run log couldn't record; it must not throw
+   * @param options.paths - how this computer resolves a program's paths; without it, an agent's
+   *   `asks: in-sandbox` lets nothing through (requirement `harness-host.sandboxed-asks`)
    */
   constructor(options: {
     servers: BridgeServers;
     services: BridgeServicesSource;
     scrub?: (text: string) => string;
     reportError: (error: unknown) => void;
+    paths?: SandboxedAsksPaths;
   }) {
     this.#servers = options.servers;
     this.#services = options.services;
     this.#scrub = options.scrub ?? ((text) => text);
     this.#reportError = options.reportError;
+    this.#paths = options.paths;
   }
 
   /** @throws what `servicesFor` throws, or the server's `open` when it can't listen */
@@ -127,6 +133,7 @@ export class LocalBridgeHost implements HarnessBridgeHost {
       ...(agent.file.model === undefined ? {} : { model: agent.file.model }),
       runsOn,
     });
+    const asks = sandboxedAsks(agent, services.approvals, recorder, this.#paths);
     const bridge = await this.#servers[runsOn].open({
       runId: agent.runId,
       agentId: agent.agentId,
@@ -134,7 +141,7 @@ export class LocalBridgeHost implements HarnessBridgeHost {
       price: (provider, model) => priceOf(services.prices, provider, model),
       recorder,
       tools: services.tools,
-      approvals: services.approvals,
+      approvals: asks.approvals,
       reportError: (failure) =>
         this.#recordFailure(recorder, agent.agentId, {
           kind: failure.kind,
@@ -150,6 +157,7 @@ export class LocalBridgeHost implements HarnessBridgeHost {
       ...(keyProviders === undefined ? {} : { keyProviders }),
       close: () => bridge.close(),
       providers: services.providers,
+      sessionOpened: asks.sessionOpened,
     };
   }
 
