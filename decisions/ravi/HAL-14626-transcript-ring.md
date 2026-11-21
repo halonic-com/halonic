@@ -3,6 +3,7 @@
 - Task: HAL-14626
 - Approval: a kit detail of the approved chat parts (HAL-13177), decided by the designer on HAL-14626 (HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:AQpCLx9wW0fhq3XVUO/RJW0OqdM/0hGe9AI+SJ7BYY7zmbCvHNXvQhamOD4k18ajG5SSDiZ7zoK58ud1rmKMAg==
 
 With a `notice`, the transcript's focus ring was open at the top: the notice was a sticky child of
 the scrolling region with a surface background, so it painted over the region's inset ring (and
