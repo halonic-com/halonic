@@ -369,6 +369,7 @@ screen unmounts it to close it.
 | `errorAction` | With `error`: the Callout's action in place of `retryLabel`, for a way on other than sending again: **Open run** |
 | `footnote` | One short line above the buttons, outside the body's scroll area: the trust check's last line |
 | `returnFocus` | Where focus goes on close when the opener has gone or is inert (23 A2) |
+| `focusTitle` | Focus starts on the title, for a Dialog that shows something to read first: Check this computer |
 
 Never wider than the window less 32px nor taller than the window less 64px; the body scrolls and
 the header, the footnote and the footer don't. When the window is short (`short:`, under 36em),
@@ -377,7 +378,7 @@ easing, nothing else moves.
 
 | State | What happens |
 | --- | --- |
-| Open | Focus on the first field of a form (or its `initialFocus`), or on Cancel in a confirmation |
+| Open | Focus on the title with `focusTitle`, else on the first field of a form (or its `initialFocus`), or on Cancel in a confirmation |
 | Cancel | Escape runs the same `onCancel` as Cancel. The overlay cancels only before anything was typed |
 | Incomplete | The confirming button stays pressable; the screen shows every field error, focuses the first |
 | Busy | The confirming button is busy; Cancel and ✕ are unavailable; Escape and the overlay wait |
@@ -897,6 +898,7 @@ open.
 | Prop | What it is |
 | --- | --- |
 | `summary` | The row's words. They wrap; they're never cut |
+| `openSummary` | The row's words while it's open, when they say what activating it does: "Show the report" · "Hide the report" |
 | `tone` | `label` (the default) in `text-body-strong`, or `value` in `text-body` |
 | `defaultOpen` | Open when it first renders; after that the user opens and closes it |
 | `label` | A caption above the row, for a summary that's only a value |
@@ -1518,6 +1520,10 @@ function ModelWait({ since }: { since: Date }) {
 - **Actions** are text buttons under the text, as on the LineFrame: **Something wrong?** after 10
   seconds, **Pick another model** at the last escalation. Cancel or Stop stays where the user
   started the wait.
+- **Keep room** with `keepRoomFor={{ reasons, actions }}` when the wait's later sentences and ways
+  out are known from the start, as on Welcome: the line is as high as the tallest of them from the
+  moment it shows, at any width, so a later reason or **Something wrong?** moves nothing. The words
+  it keeps room for are drawn unseen, outside the status region, so nobody hears them.
 - **Screen readers** hear what it waits for and the reason when the line appears and when they
   change, never the counting time: the time sits outside its status region. Call `useWaitedMs` in a
   small component of its own, as above, so only the line draws again each second.
