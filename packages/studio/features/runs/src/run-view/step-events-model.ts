@@ -2,10 +2,18 @@
 // 3, Every step): the step's model calls with their model and tokens, and
 // its tool calls with their arguments. The panel only draws what this
 // returns. A tool call that failed gets a quiet "✕ Didn't work" line
-// (HAL-12415, option a; microcopy 1.6, E1).
+// (HAL-12415, option a; microcopy 1.6, E1), with its cause when the engine
+// logged one (HAL-12471).
 
 import { shortRunId } from "@halonicjs/app";
-import { blockedSites, entryOf, type RunEvent, type StepBlockedSites } from "@halonicjs/events";
+import {
+  blockedSites,
+  entryOf,
+  type RunEvent,
+  type StepBlockedSites,
+  type ToolFailureCause,
+  toolFailureCauseOf,
+} from "@halonicjs/events";
 import { escapeHidden } from "@halonicjs/std";
 import { runPageWords, stepEventsWords, stepName } from "../run-words.ts";
 import { entrySiteLimit } from "./blocked-sites.tsx";
@@ -44,6 +52,13 @@ export interface FailedCall {
    * Absent for `error`, whose reason is only in the result's text.
    */
   readonly reason?: "no-answer";
+  /**
+   * Why it failed, when the engine logged a cause it knows on the result
+   * (`events.tool-result-cause`): it ran out of time, the engine stopped,
+   * the call wasn't made or the connector didn't start. A program's or a
+   * secret's `name` is escaped like every other value from the log.
+   */
+  readonly cause?: ToolFailureCause;
   /** The connector the tool came from, "notes-mcp", when the log names it right before the call. */
   readonly connector?: string;
 }
@@ -109,13 +124,32 @@ function failedCalls(events: readonly RunEvent[]): Map<number, FailedCall> {
     if (calledIndex === undefined) return;
     const called = events[calledIndex];
     if (called?.type !== "tool.called") return;
-    const connector = connectorBefore(events[calledIndex - 1], called.tool);
-    failures.set(called.seq, {
-      ...(event.outcome === "unknown" ? { reason: "no-answer" as const } : {}),
-      ...(connector === undefined ? {} : { connector: escapeHidden(connector) }),
-    });
+    failures.set(
+      called.seq,
+      failedCallOf(event, connectorBefore(events[calledIndex - 1], called.tool)),
+    );
   });
   return failures;
+}
+
+/** What the line under a failed call says, from its `tool.result` and the connector the log names. */
+function failedCallOf(
+  result: Extract<RunEvent, { type: "tool.result" }>,
+  connector: string | undefined,
+): FailedCall {
+  const cause = toolFailureCauseOf(result);
+  return {
+    ...(result.outcome === "unknown" ? { reason: "no-answer" as const } : {}),
+    ...(cause === undefined ? {} : { cause: escapedCause(cause) }),
+    ...(connector === undefined ? {} : { connector: escapeHidden(connector) }),
+  };
+}
+
+/** `cause` with the only text it can carry, a program's or a secret's name, escaped. */
+function escapedCause(cause: ToolFailureCause): ToolFailureCause {
+  return cause.code === "connector-not-started" && cause.name !== undefined
+    ? { ...cause, name: escapeHidden(cause.name) }
+    : cause;
 }
 
 /**
