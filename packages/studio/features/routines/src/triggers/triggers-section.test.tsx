@@ -253,3 +253,34 @@ verifies("routines.triggers.add-trigger-creates-routine", () => {
     expect(page.querySelectorAll("li")).toHaveLength(1);
   });
 });
+
+verifies("routines.triggers.agent-cant-run-note", () => {
+  const line =
+    "Halonic can't run an agent on its own yet, only as a step in a workflow. Add a trigger to a workflow that uses this agent instead.";
+
+  it("says an agent can't run on its own before Add trigger asks for its prompt", async () => {
+    const page = await show(<TriggersView host={hostWith([])} owner={agent} />);
+    const note = [...page.querySelectorAll("p")].find((one) => one.textContent === line);
+    expect(note).toBeDefined();
+    expect(page.querySelector("textarea")).toBeNull();
+    expect(button(page, "Add trigger")?.getAttribute("aria-describedby")).toBe(note?.id);
+  });
+
+  it("keeps the line above the Prompt once Add trigger was pressed", async () => {
+    const page = await show(<TriggersView host={hostWith([])} owner={agent} />);
+    await press(button(page, "Add trigger"));
+    const note = [...page.querySelectorAll("p")].find((one) => one.textContent === line);
+    const field = page.querySelector("textarea");
+    expect(note).toBeDefined();
+    expect(field).not.toBeNull();
+    if (note && field) {
+      expect(note.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
+  it("says nothing of it on a workflow", async () => {
+    const page = await show(<TriggersView host={hostWith([])} owner={workflow} />);
+    expect(page.textContent).not.toContain("can't run an agent");
+    expect(button(page, "Add trigger")?.hasAttribute("aria-describedby")).toBe(false);
+  });
+});
