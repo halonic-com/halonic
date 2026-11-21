@@ -287,8 +287,9 @@ export type DeployFailureCode =
  * What every {@link DeployTarget} method rejects with when it fails: an
  * `Error` with one of the kit's error kinds (`RunFailureKind`, which the
  * engine's type test keeps equal to `@halonicjs/std`'s `ErrorKind`), so
- * `errorKindOf` reads it and the command line's exit code needs no new number. The message and `fix` are
- * safe to show: no token, secret or host response body.
+ * `errorKindOf` reads it and the command line's exit code needs no new
+ * number. The message and `fix` are safe to show: no token, secret or host
+ * response body.
  *
  * `stopped` (kind `conflict`) is the abort of a request's signal. Its `live`
  * says what still serves, so the caller can say "Version 1 is still live."
