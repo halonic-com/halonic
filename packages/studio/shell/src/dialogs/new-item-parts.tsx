@@ -11,16 +11,18 @@ export interface NameAndHubRowProps {
 
 /**
  * The Name field of a "New …" dialog, with the Hub picker when there is more than one hub. On a
- * computer the picker sits at the right of the name, 160px wide; the name's column may shrink
- * below its input's own width, so the row never grows past the dialog. A phone has no room for
- * both, so the picker goes under the name.
+ * computer the picker sits at the right of the name, 160px wide. A phone has no room for both, so
+ * the picker goes under the name. Either way the name's column may shrink below its input's own
+ * width, so the row never grows past the dialog: an `auto` column would be at least as wide as the
+ * input, and at 195px the sheet would scroll sideways and cut the labels (HAL-14648).
  *
  * @example
  * <NameAndHubRow name={<Field label="Name">…</Field>} hub={<Field label="Hub">…</Field>} />
  */
 export function NameAndHubRow({ name, hub }: NameAndHubRowProps) {
   const phone = usePresentation() === "phone";
-  const columns = hub !== undefined && !phone ? "grid-cols-[minmax(0,1fr)_160px]" : "";
+  const columns =
+    hub !== undefined && !phone ? "grid-cols-[minmax(0,1fr)_160px]" : "grid-cols-[minmax(0,1fr)]";
   return (
     <div className={`grid gap-3 ${columns}`}>
       {name}
