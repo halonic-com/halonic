@@ -3,6 +3,7 @@ import { providerTypes } from "@halonicjs/adapter-workspace-models";
 import { type MoneyAmountOptions, moneyAmount } from "@halonicjs/app";
 import { type BusyRetries, isModelAlias, type RunFailure } from "@halonicjs/app/run-failure";
 import type { ModelSkipReason } from "@halonicjs/events";
+import { shellWord } from "../output/shell-word.ts";
 import { counted, listInWords, timesInWords } from "./counts.ts";
 import { defineMessages, type Message } from "./define.ts";
 import { errorMessages, issuesLink } from "./general.ts";
@@ -169,6 +170,24 @@ const lineOne = {
         );
     }
   },
+  // `changed` is left out when the check didn't answer, so all that is known is that they aren't trusted.
+  "instructions-not-trusted": (run, failure) => {
+    if (failure.changed === undefined) {
+      return failedIn(
+        run,
+        phrase`${failure.agent} didn't start, because its instructions aren't trusted on this computer.`,
+      );
+    }
+    return failure.changed
+      ? failedIn(
+          run,
+          phrase`${failure.agent} didn't start, because its instructions changed since they were trusted on this computer.`,
+        )
+      : failedIn(
+          run,
+          phrase`${failure.agent} didn't start, because nobody has trusted its instructions on this computer yet.`,
+        );
+  },
   error: (run, failure) => {
     // An empty message says no more than none at all.
     const message = failure.message?.trim() ?? "";
@@ -250,6 +269,9 @@ const lineTwo = {
         return phrase`Check that ${harnessName(failure.harness)} starts in a terminal and is signed in, then run it again.`;
     }
   },
+  // The command that shows the files and asks (HAL-13062, the board's C on HAL-10522).
+  "instructions-not-trusted": (run, failure) =>
+    phrase`Review them and trust them with ${suggestedCommand(`trust instructions ${shellWord(failure.agent)}`, run.dir)}, then run again.`,
   error: (run) => bugFix(run),
   internal: (run) => bugFix(run),
 } satisfies ByReason;

@@ -39,6 +39,8 @@ const modelFirstAnswerMs = 5 * 60_000;
  * - `disk-full`, `interrupted` and `answer-not-an-option` are `error` with
  *   `causeKnown`, as is an `error` whose cause is a bridge socket path that
  *   is too long (HAL-13862), and `harness-unavailable` is `error` (HAL-6451);
+ * - `instructions-not-trusted` is `error` when the log doesn't name the agent,
+ *   as for a parallel branch or a log from before the engine named it;
  * - `cancelled` isn't a failure, so {@link runFailureOf} gives it none.
  */
 export type RunFailure =
@@ -143,6 +145,13 @@ export type RunFailure =
       readonly cause?: "not-installed" | "signed-out";
       /** How long the engine waited for its first event. */
       readonly withinMs: number;
+    }
+  | {
+      readonly reason: "instructions-not-trusted";
+      /** The agent whose program didn't start. */
+      readonly agent: string;
+      /** A person had trusted other instructions for it; left out when the check didn't answer. */
+      readonly changed?: boolean;
     }
   | {
       readonly reason: "unknown-provider-type";
@@ -263,12 +272,24 @@ export function runFailureOf(
       return budgetFailure(failed);
     case "error":
       return knownCauseFailureOf(failed) ?? setupFailureOf(failed.cause) ?? generalFailure(failed);
-    case "harness-unavailable":
     case "instructions-not-trusted":
+      return untrustedFailure(failed);
+    case "harness-unavailable":
       return generalFailure(failed);
     default:
       return assertNever(reason, "run failure reason");
   }
+}
+
+/** `instructions-not-trusted` with the agent the check refused, when the log names it. */
+function untrustedFailure(failed: RunFailedEvent): RunFailure {
+  if (failed.agent === undefined) {
+    return generalFailure(failed);
+  }
+  const reason = "instructions-not-trusted";
+  return failed.changed === undefined
+    ? { reason, agent: failed.agent }
+    : { reason, agent: failed.agent, changed: failed.changed };
 }
 
 /** `budget` with the stop's figures; a monthly budget resets on the first of the next month (UTC). */
