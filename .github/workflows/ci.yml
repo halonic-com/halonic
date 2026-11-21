@@ -2417,7 +2417,9 @@ jobs:
           if ($p.ExitCode -ne 0) { throw "The installer exited with $($p.ExitCode)" }
           & net.exe user srt-sandbox *> $null
           if ($LASTEXITCODE -ne 0) { throw 'The installer did not set the sandbox up: no srt-sandbox account' }
-          if (-not (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\HalonicAgentSandbox')) { throw 'The installer did not set the sandbox up: no Installed apps entry' }
+          # This build is unsigned, and an unsigned helper adds no Installed
+          # apps entry (sandbox-elevate's SIGNER).
+          if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\HalonicAgentSandbox') { throw 'an unsigned install got an Installed apps entry' }
           $global:LASTEXITCODE = 0
       # Last, because it takes Halonic and the sandbox away.
       - name: Uninstall through its pages, with the sandbox removal
