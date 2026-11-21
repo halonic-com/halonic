@@ -153,20 +153,24 @@ describe("runs's sentences", () => {
   });
 
   it("says what the user answered at the wait step, guessing no verb", () => {
-    const answered = (event: string) =>
-      words(runsMessages.youAnswered(event, { day: "today", time: "14:02" }));
+    const answered = (event: string, answer = event) =>
+      words(runsMessages.youAnswered(event, answer, { day: "today", time: "14:02" }));
     expect([
       answered("approve"),
       answered("reject"),
       answered("hold"),
       answered("Approve"),
+      answered("escalate", "Send to a manager"),
+      answered("approve", "Ship it"),
     ]).toEqual([
       "you approved at 14:02",
       "you rejected at 14:02",
       "you answered hold at 14:02",
       "you answered Approve at 14:02",
+      "you answered Send to a manager at 14:02",
+      "you approved at 14:02",
     ]);
-    const approvedOn = (at: StartedAt) => words(runsMessages.youAnswered("approve", at));
+    const approvedOn = (at: StartedAt) => words(runsMessages.youAnswered("approve", "approve", at));
     expect([
       approvedOn({ day: "yesterday", time: "16:40" }),
       approvedOn({ day: "thisYear", date: { day: 3, month: 11 }, time: "09:12" }),

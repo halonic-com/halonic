@@ -119,11 +119,12 @@ export const runsMessages = defineMessages("runs", {
   /**
    * After the wait step's name, in place of a time, with a ! (cli-output 3.4,
    * revision 24). Only the exact events `approve` and `reject` get their own
-   * verb; any other reads "you answered hold at 14:02", as written in the
-   * workflow, so Halonic never guesses what an event means. An answer from
-   * an earlier day says which: "you approved yesterday at 16:40".
+   * verb; any other reads by `answer`, the label the wait step gave it (as
+   * Studio's Every step does) else the event as written in the workflow, so
+   * Halonic never guesses what an event means: "you answered hold at 14:02".
+   * An answer from an earlier day says which: "you approved yesterday at 16:40".
    */
-  youAnswered: (event: string, at: StartedAt) => {
+  youAnswered: (event: string, answer: string, at: StartedAt) => {
     const when = happenedInWords(at);
     if (event === "approve") {
       return phrase`you approved ${when}`;
@@ -131,7 +132,7 @@ export const runsMessages = defineMessages("runs", {
     if (event === "reject") {
       return phrase`you rejected ${when}`;
     }
-    return phrase`you answered ${event} ${when}`;
+    return phrase`you answered ${answer} ${when}`;
   },
   /** The same place, while the run is still waiting for the answer. */
   waitingSince: (time: string) => phrase`waiting for you since ${time}`,

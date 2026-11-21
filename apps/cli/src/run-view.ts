@@ -236,7 +236,14 @@ function stepRow(step: RunStep, definitions: RunDefinitions, clock: RunClock): P
     case "failed":
       return [name, runMessages.stepFacts(facts).phrase, [duration(end.tookMs)]];
     case "answered":
-      return [name, runsMessages.youAnswered(end.event, startedAt(new Date(end.at), clock)).phrase];
+      return [
+        name,
+        runsMessages.youAnswered(
+          end.event,
+          end.label ?? end.event,
+          startedAt(new Date(end.at), clock),
+        ).phrase,
+      ];
     case "waitingForYou":
       return [name, runsMessages.waitingSince(at(end.since)).phrase];
     case "waitingUntil":
