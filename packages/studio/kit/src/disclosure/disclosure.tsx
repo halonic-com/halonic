@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ChevronDownIcon } from "../icons/chevron-down-icon.tsx";
+import { WarningIcon } from "../icons/warning-icon.tsx";
 
 /** `label` for a summary that names something, `value` for a summary that's a value. */
 export type DisclosureTone = "label" | "value";
@@ -21,9 +22,17 @@ export interface DisclosureProps {
   readonly label?: string;
   /** Muted words after the summary that say what is inside: "Base URL, secret name, local". */
   readonly detail?: string;
+  /**
+   * `warning` puts the triangle in the attention colour before the words, hidden from screen
+   * readers: the rows inside carry the warning in words, so the row's name stays the same.
+   */
+  readonly mark?: "warning";
   /** What opens in place. Nothing in it is part of the row. */
   readonly children: ReactNode;
 }
+
+/** The warning mark before the words: 16px, in the attention colour like the Callout's. */
+const warningMarkClasses = "inline-grid size-icon-sm shrink-0 text-attention *:size-full";
 
 /**
  * The row: at least 48px, padded 0 16px like a List row, with the 20px chevron at the right.
@@ -67,6 +76,7 @@ export function Disclosure({
   defaultOpen = false,
   label,
   detail,
+  mark,
   children,
 }: DisclosureProps) {
   const hasLabel = label !== undefined && label !== "";
@@ -76,6 +86,11 @@ export function Disclosure({
         className={`${summaryClasses} ${tone === "label" ? "text-body-strong" : "text-body"}`}
       >
         {hasLabel ? <span className="sr-only">{`${label}, `}</span> : null}
+        {mark === "warning" ? (
+          <span aria-hidden="true" className={warningMarkClasses}>
+            <WarningIcon />
+          </span>
+        ) : null}
         <span className="min-w-0 flex-1 wrap-break-word">
           <SummaryWords summary={summary} openSummary={openSummary} />
           {detail === undefined || detail === "" ? null : (

@@ -468,19 +468,20 @@ function secretKinds(secrets: readonly TrustSecret[]): SecretKind[] {
 /** An Addresses row: a host, or R9's row for a host from a setting, set or not yet. */
 function AddressText({ address }: { readonly address: TrustAddress }) {
   if (address.set !== undefined) {
-    // R9 once set: the value as an address, then where it comes from in `fg-muted`.
+    // R9 once set: the value as an address in `fg`, then where it comes from in `fg-muted`.
     return (
       <>
-        <code className="font-mono">{address.set.value}</code>
+        <code className="font-mono text-fg">{address.set.value}</code>
         <span className="text-fg-muted"> {address.set.from}</span>
       </>
     );
   }
   if (address.where === undefined) return <code className="font-mono">{address.address}</code>;
-  // R9: the row in `fg`, where the host may be in `fg-muted`.
+  // R9: the row in `fg`, where the host may be in `fg-muted`. The Disclosure's body is
+  // `fg-muted`, so the row says `fg` itself.
   return (
     <>
-      {address.address}
+      <span className="text-fg">{address.address}</span>
       <span className="text-fg-muted"> · {address.where}</span>
     </>
   );

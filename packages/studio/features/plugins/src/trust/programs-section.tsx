@@ -21,7 +21,10 @@ import {
   VERSION,
 } from "./trust-text.ts";
 
-/** Programs (R20), open by itself when the plugin's code isn't in the sandbox (design section 3). */
+/**
+ * Programs (R20). When the plugin's code isn't in the sandbox, it opens by itself and its row
+ * gets the triangle; the words in its rows carry the warning (design section 3).
+ */
 export function ProgramsSection({
   programs,
   programsRun,
@@ -33,10 +36,12 @@ export function ProgramsSection({
   readonly fence: TrustFence;
   readonly onSetUpSandbox: (() => void) | undefined;
 }) {
+  const notFenced = fence?.state === "not-fenced";
   return (
     <Disclosure
       summary={sectionRow(PROGRAMS_SECTION, programs.length)}
-      defaultOpen={fence?.state === "not-fenced"}
+      defaultOpen={notFenced}
+      {...(notFenced ? { mark: "warning" } : {})}
     >
       <Items>
         {programs.map((program) => (
