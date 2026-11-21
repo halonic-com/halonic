@@ -95,3 +95,10 @@ export const announceIsOut = (version: string, current: string) => isOut(version
 /** What a screen reader hears while Check now is busy. */
 export const CHECKING_FOR_UPDATES = "Checking for updates";
 export const downloadingName = (version: string) => `Downloading Halonic ${version}`;
+
+/**
+ * Under Download or Restart to update when the update sets the agent sandbox up again (HAL-5404,
+ * HAL-14804): the muted helper style of Settings › Agent sandbox, no icon or warning colour.
+ */
+export const SETUP_AGAIN =
+  "After this update, Windows asks for administrator rights once to set up the agent sandbox again.";

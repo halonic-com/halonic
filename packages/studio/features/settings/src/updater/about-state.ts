@@ -25,6 +25,8 @@ export interface AboutView {
   readonly actions: readonly AboutAction[];
   /** The address of this update's release notes, when it has one to show beside the line. */
   readonly notesUrl: string | null;
+  /** The muted line under the buttons that the update asks for administrator rights once more. */
+  readonly setupAgain: string | null;
 }
 
 const whenOf = (status: UpdateStatus, now: Date): string | null =>
@@ -51,11 +53,23 @@ function progressOf(state: Extract<UpdateStatus["state"], { kind: "downloading" 
 }
 
 /**
+ * The line that the update sets the agent sandbox up again (`settings.about-setup-again`): only
+ * when the shell says it does, Studio installs the update itself, and the sandbox is set up here.
+ * A computer without the sandbox gets no prompt, so it gets no line either.
+ */
+function setupAgainLine(status: UpdateStatus, sandboxSetUp: boolean): string | null {
+  return status.sandboxSetupAgain === true && status.managed === null && sandboxSetUp
+    ? text.SETUP_AGAIN
+    : null;
+}
+
+/**
  * Words and buttons for each state of `settings.about-section`. A check that can't finish is a
  * calm muted line with its reason; nothing here shows raw error text. When another tool manages
- * updates, Studio downloads and installs nothing, so no state offers a button.
+ * updates, Studio downloads and installs nothing, so no state offers a button. `sandboxSetUp` says
+ * the agent sandbox is set up on this computer (ready, or set up but needing a repair).
  */
-export function aboutView(status: UpdateStatus, now: Date): AboutView {
+export function aboutView(status: UpdateStatus, now: Date, sandboxSetUp = false): AboutView {
   const { state } = status;
   const when = whenOf(status, now);
   const buttons = (...actions: AboutAction[]): readonly AboutAction[] =>
@@ -66,8 +80,10 @@ export function aboutView(status: UpdateStatus, now: Date): AboutView {
     progress: null,
     actions: [],
     notesUrl: null,
+    setupAgain: null,
     ...rest,
   });
+  const setupAgain = setupAgainLine(status, sandboxSetUp);
   switch (state.kind) {
     case "never-checked":
       return view(text.NOT_CHECKED);
@@ -86,6 +102,7 @@ export function aboutView(status: UpdateStatus, now: Date): AboutView {
         {
           actions: buttons("download"),
           notesUrl: state.notesUrl,
+          setupAgain,
         },
       );
     case "downloading":
@@ -106,6 +123,7 @@ export function aboutView(status: UpdateStatus, now: Date): AboutView {
       return view(text.ready(state.version), {
         actions: buttons("restart"),
         notesUrl: state.notesUrl,
+        setupAgain,
       });
     case "did-not-install":
       return view(text.didNotInstall(state.version, status.current), {
