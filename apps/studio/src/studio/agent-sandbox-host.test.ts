@@ -76,6 +76,27 @@ verifies("studio.agent-sandbox-host", () => {
     expect((await new AgentHostSandboxFacts(transport).check()).state).toBe(state);
   });
 
+  it("passes on a setup for an older release, and only then", async () => {
+    const { transport } = host({
+      "GET /v1/sandbox/capabilities": capabilities,
+      "GET /v1/sandbox/check": {
+        status: 200,
+        body: { ok: false, reason: "setup-needed", missing: [], setupAgain: true },
+      },
+    });
+    expect(await new AgentHostSandboxFacts(transport).check()).toEqual({
+      state: "needs-setup",
+      setupAgain: true,
+    });
+    const never = host({
+      "GET /v1/sandbox/capabilities": capabilities,
+      "GET /v1/sandbox/check": failing("setup-needed"),
+    });
+    expect(await new AgentHostSandboxFacts(never.transport).check()).toEqual({
+      state: "needs-setup",
+    });
+  });
+
   it("hands the section the reason's code, for the catalogue's words", async () => {
     const { transport } = host({
       "GET /v1/sandbox/capabilities": capabilities,

@@ -6,12 +6,10 @@ import type {
   Sandbox,
   SandboxCapabilities,
   SandboxCheck,
-  SandboxFix,
   SandboxNetwork,
   SandboxProfile,
   SandboxResidual,
   SandboxSession,
-  SandboxUnavailableReason,
 } from "@halonicjs/ports";
 import { HelperError } from "./elevate-helper.ts";
 import { describeForgetFailures, type ForgetResult, KeptGrants } from "./kept-grants.ts";
@@ -21,16 +19,7 @@ import { startSmallestSandbox } from "./ready-check.ts";
 import { assertSrtDeniesKeychain, bridgeNetwork } from "./srt-config.ts";
 import { type Runner, srtRunner } from "./srt-runner.ts";
 import { SrtSession } from "./srt-session.ts";
-
-/**
- * One reason the sandbox can't start, with the sentence that says what is
- * missing and, when this machine has one, the fix as data.
- */
-interface Unavailable {
-  reason: SandboxUnavailableReason;
-  missing: string;
-  fix?: SandboxFix;
-}
+import { firstWindowsUnavailable, type Unavailable } from "./unavailable.ts";
 
 /**
  * The ready check for each runner. A pass is kept for the rest of the process:
@@ -146,8 +135,14 @@ export class SrtSandbox implements Sandbox {
         ...(residuals.length > 0 ? { residuals } : {}),
       };
     }
-    const { reason, missing, fix } = unavailable;
-    return { ok: false, reason, missing: [missing], ...(fix === undefined ? {} : { fix }) };
+    const { reason, missing, fix, setupAgain } = unavailable;
+    return {
+      ok: false,
+      reason,
+      missing: [missing],
+      ...(fix === undefined ? {} : { fix }),
+      ...(setupAgain === undefined ? {} : { setupAgain }),
+    };
   }
 
   /**
@@ -313,22 +308,7 @@ export class SrtSandbox implements Sandbox {
   /** The first reason, in the order the port lists them, because its fix comes first. */
   async #firstUnavailable(): Promise<Unavailable | null> {
     const machine = this.#machine;
-    if (machine.platform === "win32") {
-      const state = await machine.windowsSandboxState();
-      if (state === "ok") return null;
-      if (state === "setup-conflict") {
-        return {
-          reason: "setup-conflict",
-          missing:
-            "srt's Windows install was set up with loopback open, which Halonic doesn't change; remove that setup first",
-        };
-      }
-      return {
-        reason: "setup-needed",
-        missing:
-          "srt's Windows install is missing; run `srt windows-install` once as an administrator",
-      };
-    }
+    if (machine.platform === "win32") return firstWindowsUnavailable(machine);
     if (machine.platform === "darwin") {
       if (!(await machine.hasSeatbelt())) {
         return { reason: "other", missing: "sandbox-exec is not installed" };

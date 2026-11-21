@@ -56,3 +56,39 @@ verifies("sandbox-srt.check", () => {
     });
   });
 });
+
+verifies("sandbox-srt.windows-setup-again", () => {
+  describe("SrtSandbox.check on Windows with a setup for an older srt", () => {
+    it("says setup-needed with setupAgain when the setup is there but older", async () => {
+      const machine = { ...windows("setup-needed"), windowsSetupOutdated: async () => true };
+      const check = await new SrtSandbox(machine).check();
+      expect(check).toMatchObject({ ok: false, reason: "setup-needed", setupAgain: true });
+      expect(check.missing[0]).toContain("older srt");
+    });
+
+    it("leaves setupAgain out without a setup, or on a machine that doesn't say", async () => {
+      const none = { ...windows("setup-needed"), windowsSetupOutdated: async () => false };
+      expect(await new SrtSandbox(none).check()).toEqual({
+        ok: false,
+        reason: "setup-needed",
+        missing: [
+          "srt's Windows install is missing; run `srt windows-install` once as an administrator",
+        ],
+      });
+      const silent = await new SrtSandbox(windows("setup-needed")).check();
+      expect(silent).not.toHaveProperty("setupAgain");
+    });
+
+    it("leaves setupAgain out when srt's status can't be read, and still says setup-needed", async () => {
+      const machine = {
+        ...windows("setup-needed"),
+        windowsSetupOutdated: async () => {
+          throw new Error("srt-win did not answer");
+        },
+      };
+      const check = await new SrtSandbox(machine).check();
+      expect(check).toMatchObject({ ok: false, reason: "setup-needed" });
+      expect(check).not.toHaveProperty("setupAgain");
+    });
+  });
+});

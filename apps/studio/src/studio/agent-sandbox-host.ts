@@ -83,7 +83,11 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
         ? { state: "ready", checkedAt, dockerDesktopVisible: true }
         : { state: "ready", checkedAt };
     }
-    if (check.reason === "setup-needed") return { state: "needs-setup" };
+    if (check.reason === "setup-needed") {
+      return check.setupAgain === true
+        ? { state: "needs-setup", setupAgain: true }
+        : { state: "needs-setup" };
+    }
     if (check.reason === "restart-needed") return { state: "restart-needed" };
     if (needsRepair.includes(check.reason)) {
       return { state: "needs-repair", reason: sandboxStartWords(check.reason).reason };

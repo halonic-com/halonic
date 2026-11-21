@@ -79,6 +79,13 @@ export interface Machine {
    */
   windowsSandboxState(): Promise<WindowsSandboxState>;
   /**
+   * Whether srt's Windows setup is on this machine but for an older setup
+   * version than this srt needs, so the setup has to run again (HAL-5404).
+   * False when there is no setup, when it is current, and on other systems. A
+   * machine without it counts as false.
+   */
+  windowsSetupOutdated?(): Promise<boolean>;
+  /**
    * Whether srt's profile read grant is on this machine, which lets every
    * sandboxed session read the user's profile (another program installed srt
    * without `--skip-profile-grant`). Also true when the grant can't be read:
@@ -303,6 +310,18 @@ export const systemMachine: Machine = {
     } catch {
       return "setup-needed"; // No srt-win, or it did not answer: not installed, as far as we can tell.
     }
+  },
+  async windowsSetupOutdated() {
+    if (process.platform !== "win32") return false;
+    const { getWindowsSandboxUserStatusAsync, resolveSrtWin, VENDORED_SRT_WIN_EXE } = await import(
+      "@anthropic-ai/sandbox-runtime"
+    );
+    const { markerVersion, setupVersion } = await getWindowsSandboxUserStatusAsync({
+      srtWin: resolveSrtWin({ path: VENDORED_SRT_WIN_EXE }),
+    });
+    return (
+      markerVersion !== undefined && setupVersion !== undefined && markerVersion < setupVersion
+    );
   },
   dockerDesktopVisible: () => dockerDesktopShows(dockerSocket, sharedWslFolder),
   async profileReadGranted() {
