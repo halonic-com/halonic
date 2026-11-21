@@ -30,9 +30,11 @@ export interface RunnerUnfencedWords {
 
 const whatTheSandboxNeeds = "What the sandbox needs";
 
-/** 23.3's and 23.3a's Docs link, per reason; every other reason links to what the sandbox needs. */
+/**
+ * 23.3's and 23.3a's Docs link, per reason; every other reason links to what the sandbox needs.
+ * `windows` and `no-sandbox` have their own words above.
+ */
 const docsLabels: Readonly<Partial<Record<RunnerUnfencedReason, string>>> = {
-  windows: "How to run Halonic in WSL 2",
   container: "Why the sandbox needs a real computer",
   "not-supported": "How to switch to WSL 2",
   "user-namespaces-restricted": "How to allow it on Ubuntu 24.04",

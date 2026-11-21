@@ -98,6 +98,7 @@ export {
   ModalRegionsProvider,
   type ModalRegionsProviderProps,
   type PushModalRegions,
+  useModalPolite,
 } from "./dialog/modal-regions.tsx";
 export { PaletteBox, type PaletteBoxProps } from "./dialog/palette-box.tsx";
 export {

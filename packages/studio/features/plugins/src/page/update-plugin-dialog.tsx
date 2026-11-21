@@ -1,8 +1,14 @@
+import type { RunnerUnfencedReason } from "@halonicjs/app";
 import { useState } from "react";
-import { messageOf } from "../message-of.ts";
 import { changeSummary } from "../trust/change-rows.ts";
 import { PluginTrustDialog } from "../trust/plugin-trust-dialog.tsx";
 import type { ProgramsRun } from "../trust/trust-text.ts";
+import {
+  type PluginUnfencedRuns,
+  trustFailureOf,
+  trustWithYes,
+  useTrustStatus,
+} from "../trust/unfenced-status.ts";
 import type { PluginActions, PluginUpdateCheck } from "./plugin-actions.ts";
 import type { InstalledPlugin } from "./plugin-pages.ts";
 
@@ -13,6 +19,8 @@ export interface UpdatePluginDialogProps {
   readonly found: Extract<PluginUpdateCheck, { kind: "available" }>;
   readonly applyUpdate: NonNullable<PluginActions["applyUpdate"]>;
   readonly programsRun?: ProgramsRun;
+  /** The host's sandbox status and saved yes, read when the check opens; without it, T9. */
+  readonly unfencedRuns?: PluginUnfencedRuns | undefined;
   /** After **Trust and update** is saved. */
   readonly onUpdated: () => void;
   /** **Keep** *version* and Escape: everything stays as it was. */
@@ -34,24 +42,27 @@ export function UpdatePluginDialog({
   found,
   applyUpdate,
   programsRun,
+  unfencedRuns,
   onUpdated,
   onKeep,
 }: UpdatePluginDialogProps) {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | undefined>(undefined);
+  const status = useTrustStatus(unfencedRuns);
 
-  async function confirm() {
+  async function confirm(allow: RunnerUnfencedReason | undefined) {
     setBusy(true);
     setFailure(undefined);
     try {
-      await applyUpdate(plugin.plugin, {
-        version: found.manifest.version,
-        toCommit: found.toCommit,
-      });
-      onUpdated();
-      return;
+      const approved = { version: found.manifest.version, toCommit: found.toCommit };
+      if (
+        await trustWithYes(allow, unfencedRuns, status, () => applyUpdate(plugin.plugin, approved))
+      ) {
+        onUpdated();
+        return;
+      }
     } catch (error) {
-      setFailure(messageOf(error));
+      setFailure(trustFailureOf(error));
     }
     setBusy(false);
   }
@@ -66,9 +77,11 @@ export function UpdatePluginDialog({
       }
       update={{ keep: plugin.manifest?.version ?? "", toCommit: found.toCommit }}
       programsRun={programsRun}
+      fence={status.fence}
+      unfencedYes={status.yes}
       busy={busy}
       failure={failure}
-      onTrust={() => void confirm()}
+      onTrust={(allow) => void confirm(allow)}
       onNotNow={onKeep}
     />
   );
