@@ -27,6 +27,7 @@ function folderWith(files: Record<string, string> = {}) {
       },
       undo: () => false,
       step: 0,
+      pending: {},
     },
     onChange: () => () => undefined,
     runs: { list: async () => [], subscribe: () => () => undefined, log: async () => [] },

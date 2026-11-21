@@ -1,7 +1,7 @@
 import type { AgentPlacement, PlacementSubject } from "@halonicjs/app";
 import type {
-  AgentPlacementState,
   AgentRef,
+  SavedFilePlacement,
   ThisComputerChoice,
 } from "@halonicjs/studio-feature-agents/api";
 
@@ -16,6 +16,11 @@ export interface AgentPlacementParts {
    * unsaved text. Throws when the hub has no such agent.
    */
   bytesOf(ref: AgentRef): Promise<Uint8Array>;
+  /**
+   * Whether this Studio's runs can start an agent outside its sandbox, as its harness host says
+   * (`studioStartsUnfenced`); it can't when left out.
+   */
+  readonly studioStartsUnfenced?: boolean;
 }
 
 /**
@@ -35,8 +40,13 @@ export class AgentPlacementChoices {
     this.#parts = parts;
   }
 
+  /** Whether this Studio can itself start an agent set to On this computer. */
+  get studioStartsUnfenced(): boolean {
+    return this.#parts.studioStartsUnfenced ?? false;
+  }
+
   /** Where the agent runs; a choice for an earlier version of its file is on hold. */
-  async where(ref: AgentRef): Promise<AgentPlacementState> {
+  async where(ref: AgentRef): Promise<SavedFilePlacement> {
     const answer = await this.#parts.placement.where(await this.#subjectOf(ref));
     const fingerprint = answer.agentFingerprint;
     if (answer.runsOn === "this-computer") {
@@ -85,7 +95,9 @@ export class AgentPlacementChoices {
  */
 export function choicesHere(choices: AgentPlacementChoices | undefined): AgentPlacementChoices {
   if (choices === undefined) {
-    throw new Error("Halonic can't choose where agents run from here.");
+    throw new Error(
+      "Halonic can't choose where agents run in the browser. Open this workspace in the desktop app to choose.",
+    );
   }
   return choices;
 }

@@ -60,6 +60,8 @@ export function setup(
       get step() {
         return step;
       },
+      // Each change here is saved at once.
+      pending: {},
     },
     onChange: (listener) => {
       listeners.add(listener);
