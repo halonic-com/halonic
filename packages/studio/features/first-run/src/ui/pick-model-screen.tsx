@@ -61,7 +61,12 @@ export function PickModelScreen({ pick, onBack }: PickModelScreenProps) {
   );
 }
 
-/** The three options as one group, named by the heading; an option that is off isn't a radio. */
+/**
+ * The three options as one group, named by the heading; an option that is off isn't a radio.
+ * A fieldset, not a radiogroup: the key option holds the provider switch's radiogroup and the
+ * key field, which a radiogroup may not contain. The options' radios share one name, so the
+ * arrow keys still move between them.
+ */
 function Options(props: {
   readonly pick: PickModel;
   readonly state: PickModelState;
@@ -71,7 +76,11 @@ function Options(props: {
   const { pick, state, keyField } = props;
   const name = useId();
   return (
-    <div role="radiogroup" aria-labelledby={props.labelId} className="flex flex-col gap-2">
+    // min-w-0 lets it shrink with the screen instead of growing to its content.
+    <fieldset
+      aria-labelledby={props.labelId}
+      className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0"
+    >
       {state.keysOff ? (
         <OffOption title={words.key} why={words.keysOff} />
       ) : (
@@ -83,7 +92,7 @@ function Options(props: {
           onTick={() => pick.pick("key")}
         >
           <KeyBody pick={pick} state={state} keyField={keyField} />
-          {state.picked === "key" && <Message state={state} />}
+          <Message state={state} />
         </OptionCard>
       )}
       {state.local.kind === "desktop-only" ? (
@@ -102,7 +111,7 @@ function Options(props: {
           onTick={() => pick.pick("local")}
         >
           <LocalBody pick={pick} state={state} />
-          {state.picked === "local" && <Message state={state} />}
+          <Message state={state} />
         </OptionCard>
       )}
       <OptionCard
@@ -114,7 +123,7 @@ function Options(props: {
       >
         <Callout tone="attention">{words.sampleNote}</Callout>
       </OptionCard>
-    </div>
+    </fieldset>
   );
 }
 
