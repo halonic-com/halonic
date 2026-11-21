@@ -36,6 +36,8 @@ export function ConnectorSecretsSection({
   const [states, setStates] = useState<Readonly<Record<string, ConnectorSecretState>>>({});
   // The names joined, so a new array with the same names doesn't read the keychain again.
   const nameList = names.join("\n");
+  // The names the keychain last answered for: nothing shows until it has answered for these.
+  const [answeredFor, setAnsweredFor] = useState<string | undefined>(undefined);
   // Saves and removes so far, and the count at each name's latest one, so a check that started
   // before a save or remove doesn't put back the state that save or remove replaced.
   const changes = useRef({ count: 0, latest: new Map<string, number>() });
@@ -54,13 +56,16 @@ export function ConnectorSecretsSection({
       const read = await secretStates(secrets, nameList.split("\n"));
       if (!current) return;
       setStates((now) => answersStillCurrent(read, now, changes.current.latest, startedAfter));
+      setAnsweredFor(nameList);
     })();
     return () => {
       current = false;
     };
   }, [secrets, nameList]);
 
-  if (names.length === 0) return null;
+  // Nothing until the keychain has answered for these names, as the plugin fields in Settings,
+  // so a stored secret never shows "Not set" first (C551 S6).
+  if (names.length === 0 || answeredFor !== nameList) return null;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
       <h2 id={headingId} className="text-heading text-fg">
@@ -92,6 +97,16 @@ interface SecretRowProps {
 function SecretRow({ name, sourceName, secrets, state, onState }: SecretRowProps) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const entry = useRef<HTMLInputElement>(null);
+  // Set by a Remove that worked: **Remove** goes with the value, so focus goes to the entry once
+  // it says "Not set", where typing the value again undoes it (C551 S3).
+  const focusEntry = useRef(false);
+
+  useEffect(() => {
+    if (!focusEntry.current) return;
+    focusEntry.current = false;
+    entry.current?.focus();
+  }, [state]);
 
   async function save() {
     if (draft === "") return;
@@ -118,6 +133,7 @@ function SecretRow({ name, sourceName, secrets, state, onState }: SecretRowProps
     try {
       await secrets.remove(name);
       setError(null);
+      focusEntry.current = true;
       onState("not-set");
     } catch (failure) {
       setError(words.notRemoved(errorReasonFor(failure)));
@@ -136,6 +152,7 @@ function SecretRow({ name, sourceName, secrets, state, onState }: SecretRowProps
     <div className="flex flex-col gap-1">
       <Field label={name} hint={hint} error={error}>
         <Input
+          ref={entry}
           type="password"
           autoComplete="off"
           spellCheck={false}

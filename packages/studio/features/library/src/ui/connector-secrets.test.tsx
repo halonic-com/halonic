@@ -3,6 +3,7 @@ import { workspaceSecretWriter } from "@halonicjs/ports";
 import { type ItemViewProps, limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ConnectorSecrets } from "../connector-secrets-host.ts";
 import { ConnectorSecretsService } from "../connector-secrets-host.ts";
@@ -16,6 +17,7 @@ import {
 } from "../listed-tools-host.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ConnectorPage } from "./connector-page.tsx";
+import { ConnectorSecretsSection } from "./connector-secrets-section.tsx";
 
 afterEach(unmountAll);
 
@@ -164,8 +166,26 @@ async function typeAndLeave(input: HTMLInputElement, text: string): Promise<void
 async function press(root: HTMLElement, label: string): Promise<void> {
   const button = [...root.querySelectorAll("button")].find((b) => b.textContent === label);
   if (button === undefined) throw new Error(`No button ${label}`);
-  act(() => button.click());
+  act(() => {
+    button.focus();
+    button.click();
+  });
   await settled();
+}
+
+/** A promise the test settles, for a keychain or a listing that answers only when told. */
+function answerLater<T>(): {
+  readonly promise: Promise<T>;
+  readonly answer: (value: T) => void;
+  readonly fail: (error: Error) => void;
+} {
+  let answer: (value: T) => void = () => {};
+  let fail: (error: Error) => void = () => {};
+  const promise = new Promise<T>((resolve, reject) => {
+    answer = resolve;
+    fail = reject;
+  });
+  return { promise, answer, fail };
 }
 
 /** The page's text and every entry's value, so a value that leaks anywhere is found. */
@@ -216,7 +236,7 @@ describe("a connector's secrets on its page", () => {
       expect(root.textContent).toContain("Not set");
     });
 
-    it("keeps Set when you save before the first check answers (HAL-15130)", async () => {
+    it("keeps Set when you save while a later check is still out (HAL-15130)", async () => {
       const store = keychain();
       // A slow keychain: `has` reads when asked, but answers only once the test lets it.
       const pending: (() => void)[] = [];
@@ -227,17 +247,32 @@ describe("a connector's secrets on its page", () => {
           return new Promise((resolve) => pending.push(() => resolve(stored)));
         },
       };
-      const root = render(<ConnectorPage {...page({ secrets: slow })} />);
-      await settled();
+      // The section shows once the first check has answered; a new keychain for the same names
+      // reads them again while it stays on screen.
+      const container = document.createElement("div");
+      document.body.append(container);
+      const root = createRoot(container);
+      const section = (secrets: ConnectorSecrets) => (
+        <ConnectorSecretsSection secrets={secrets} names={["NOTES_TOKEN"]} sourceName="Notes" />
+      );
+      try {
+        act(() => root.render(section(store)));
+        await settled();
+        act(() => root.render(section(slow)));
+        await settled();
 
-      await typeAndLeave(entry(root), typedValue);
-      expect(store.values.get("NOTES_TOKEN")).toBe(typedValue);
-      expect(pending).toHaveLength(1);
-      for (const answer of pending) answer();
-      await settled();
+        await typeAndLeave(entry(container), typedValue);
+        expect(store.values.get("NOTES_TOKEN")).toBe(typedValue);
+        expect(pending).toHaveLength(1);
+        for (const answer of pending) answer();
+        await settled();
 
-      expect(root.textContent).not.toContain("Not set");
-      expect(entry(root).placeholder).toBe("Type a new value to replace it");
+        expect(container.textContent).not.toContain("Not set");
+        expect(entry(container).placeholder).toBe("Type a new value to replace it");
+      } finally {
+        act(() => root.unmount());
+        container.remove();
+      }
     });
 
     it("says why a save failed, keeps the one saved before, and never shows the value", async () => {
@@ -349,6 +384,82 @@ describe("a connector's secrets on its page", () => {
       const root = render(<ConnectorPage {...page({ secrets: store }, "phone")} />);
       await settled();
       expect(root.querySelector('input[type="password"]')).toBeNull();
+    });
+  });
+});
+
+describe("a connector's secrets keep focus and wait for the keychain", () => {
+  verifies("library.connector-secrets-focus", () => {
+    it("shows nothing until a slow keychain answers, then Set, never Not set first", async () => {
+      const store = keychain();
+      store.values.set("NOTES_TOKEN", typedValue);
+      const has = answerLater<boolean>();
+      const root = render(
+        <ConnectorPage {...page({ secrets: { ...store, has: () => has.promise } })} />,
+      );
+      await settled();
+      expect(root.querySelector('input[type="password"]')).toBeNull();
+      expect(root.textContent).not.toContain("Not set");
+
+      has.answer(true);
+      await settled();
+      expect(entry(root).placeholder).toBe("Type a new value to replace it");
+      expect(root.textContent).toContain("Set");
+      expect(root.textContent).not.toContain("Not set");
+    });
+
+    it("moves focus to the entry after Remove, and keeps it on Remove when it fails", async () => {
+      const store = keychain();
+      store.values.set("NOTES_TOKEN", typedValue);
+      const root = render(<ConnectorPage {...page({ secrets: store })} />);
+      await settled();
+
+      store.failWith = lockedKeychain();
+      await press(root, "Remove");
+      expect(document.activeElement?.textContent).toBe("Remove");
+      expect(root.textContent).toContain("The keychain is locked.");
+
+      delete store.failWith;
+      await press(root, "Remove");
+      expect(store.values.has("NOTES_TOKEN")).toBe(false);
+      expect(document.activeElement).toBe(entry(root));
+      expect(root.textContent).toContain("Not set");
+    });
+
+    it("keeps Try again busy while it lists, then focuses the line that replaced it", async () => {
+      const store = keychain();
+      const listing = answerLater<ListedToolsSnapshot>();
+      const review = vi
+        .fn<ListedToolsHost["review"]>()
+        .mockRejectedValueOnce(
+          new ConnectorCouldntList({ reason: "secret-missing", secret: "NOTES_TOKEN" }),
+        )
+        .mockReturnValueOnce(listing.promise);
+      const tools = { ...toolsReading(store), review };
+      const root = render(<ConnectorPage {...page({ secrets: store, tools })} />);
+      await settled();
+      await typeAndLeave(entry(root), typedValue);
+
+      await press(root, "Try again");
+      const tryAgain = document.activeElement;
+      expect(tryAgain?.textContent).toBe("Try again");
+      expect(tryAgain?.getAttribute("aria-busy")).toBe("true");
+
+      listing.answer(snapshot());
+      await settled();
+      expect(document.activeElement?.tagName).toBe("P");
+      expect(document.activeElement?.textContent).toBe("1 tool is waiting for your approval");
+    });
+
+    it("focuses the new failure line when Try again fails again", async () => {
+      const store = keychain();
+      const tools = toolsReading(store);
+      const root = render(<ConnectorPage {...page({ secrets: store, tools })} />);
+      await settled();
+
+      await press(root, "Try again");
+      expect(document.activeElement?.tagName).toBe("P");
+      expect(document.activeElement?.textContent).toContain("Couldn't list the tools");
     });
   });
 });
