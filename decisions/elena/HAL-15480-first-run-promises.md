@@ -3,6 +3,7 @@
 - Task: HAL-15480
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15471#document-c584 (rows 4, 6 and 7; small fixes to an approved screen that make its behaviour match the board's words in C520-9, so a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qoqk/zbgkKTLwalpibBUZXHNECqdD/25venJ1mVG5YhOhajZjHLiyjUU+bENkqjwJHkRdI3yAGyb0AfBQRvtDg==
 
 ## What changes
 
