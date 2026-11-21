@@ -152,11 +152,12 @@ export interface WorkflowArrow {
  * One change of the arrows out of a step, from its docked card:
  * - `add`: a new arrow to the step `to`, on done, after the step's other arrows;
  * - `move`: the step's arrow at `index` (in file order, from 0) one place up (`-1`) or down (`1`),
- *   which changes which arrow wins when several fit.
+ *   which changes which arrow wins when several fit. `to` is where that arrow goes as the card
+ *   showed it, so a card that is out of date can't move another arrow.
  */
 export type WorkflowArrowChange =
   | { readonly kind: "add"; readonly to: string }
-  | { readonly kind: "move"; readonly index: number; readonly by: -1 | 1 };
+  | { readonly kind: "move"; readonly index: number; readonly by: -1 | 1; readonly to: string };
 
 /** One workflow as its page draws it. */
 export interface WorkflowView extends WorkflowRef {
@@ -404,8 +405,9 @@ export interface WorkflowsHost {
   /**
    * Adds or moves one arrow out of the step `stepId`, as one undoable change that saves itself; the
    * file keeps its comments. Present whenever {@link WorkflowsHost.changeStep} is. Rejects a step
-   * that isn't there, an arrow to a step that isn't there, an arrow that can't move that way, or
-   * with the reason the file couldn't be changed.
+   * that isn't there, an end step, an arrow to a step that isn't there, an arrow that can't move
+   * that way or no longer goes where the card showed it, or with the reason the file couldn't be
+   * changed.
    */
   changeArrows?(ref: WorkflowRef, stepId: string, change: WorkflowArrowChange): Promise<void>;
   /**

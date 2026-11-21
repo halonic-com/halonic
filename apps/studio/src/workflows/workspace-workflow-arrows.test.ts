@@ -90,19 +90,19 @@ verifies("studio.workspace-workflow-arrows", () => {
     const { host, store, changes } = setup();
     store[path] = sortFile;
 
-    await host.changeArrows(reply, "sort", { kind: "move", index: 0, by: 1 });
+    await host.changeArrows(reply, "sort", { kind: "move", index: 0, by: 1, to: "approve" });
     let sortArrows = (await host.read(reply)).arrows.filter((arrow) => arrow.from === "sort");
     expect(sortArrows.map((arrow) => arrow.to)).toEqual(["draft", "approve"]);
     expect(sortArrows[1]?.condition).toEqual({ equals: ["{{context.category}}", "refund"] });
 
-    await host.changeArrows(reply, "sort", { kind: "move", index: 1, by: -1 });
+    await host.changeArrows(reply, "sort", { kind: "move", index: 1, by: -1, to: "approve" });
     sortArrows = (await host.read(reply)).arrows.filter((arrow) => arrow.from === "sort");
     expect(sortArrows.map((arrow) => arrow.to)).toEqual(["approve", "draft"]);
     expect(changes).toHaveLength(2);
     expect(store[path]).not.toContain("event: done");
   });
 
-  it("refuses a step or a target that isn't there and a move off the list, writing nothing", async () => {
+  it("refuses a step or a target that isn't there, an end step and a move off the list, writing nothing", async () => {
     const { host, store, changes } = setup();
     store[path] = sortFile;
 
@@ -112,15 +112,35 @@ verifies("studio.workspace-workflow-arrows", () => {
     await expect(
       host.changeArrows(reply, "sort", { kind: "add", to: "gone" }),
     ).rejects.toMatchObject({ kind: "invalid_input" });
+    await expect(
+      host.changeArrows(reply, "done", { kind: "add", to: "sort" }),
+    ).rejects.toMatchObject({
+      kind: "invalid_input",
+      message: expect.stringContaining("no arrows"),
+    });
     for (const move of [
-      { index: 0, by: -1 },
-      { index: 1, by: 1 },
-      { index: 2, by: -1 },
+      { index: 0, by: -1, to: "approve" },
+      { index: 1, by: 1, to: "draft" },
+      { index: 2, by: -1, to: "draft" },
     ] as const) {
       await expect(
         host.changeArrows(reply, "sort", { kind: "move", ...move }),
       ).rejects.toMatchObject({ kind: "invalid_input" });
     }
     expect(changes).toEqual([]);
+  });
+
+  it("refuses a move of an arrow that no longer goes where the card showed it", async () => {
+    const { host, store, changes } = setup();
+    store[path] = sortFile;
+
+    // The card still shows `draft` second, but the file has it first by now.
+    await expect(
+      host.changeArrows(reply, "sort", { kind: "move", index: 1, by: -1, to: "draft" }),
+    ).resolves.toBeUndefined();
+    await expect(
+      host.changeArrows(reply, "sort", { kind: "move", index: 1, by: -1, to: "draft" }),
+    ).rejects.toMatchObject({ kind: "invalid_input", message: expect.stringContaining("changed") });
+    expect(changes).toHaveLength(1);
   });
 });

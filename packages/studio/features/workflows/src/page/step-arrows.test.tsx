@@ -41,11 +41,19 @@ type ChangeArrows = NonNullable<WorkflowsHost["changeArrows"]>;
 
 /**
  * The page over a host whose arrows change as the file would: an added arrow comes last, a moved
- * one swaps places. `fail` makes every change fail instead.
+ * one swaps places. `fail` makes every change fail instead, `held` makes each change wait until
+ * the returned `release` is called, and `canChangeArrows: false` leaves `changeArrows` out.
  */
-async function showPage({ fail = false } = {}) {
-  let view = reply;
+async function showPage({
+  fail = false,
+  held = false,
+  canChangeArrows = true,
+  workflow = reply,
+} = {}) {
+  let view = workflow;
+  let release: () => void = () => {};
   const changeArrows = vi.fn<ChangeArrows>(async (_ref, stepId, change) => {
+    if (held) await new Promise<void>((resolve) => (release = resolve));
     if (fail) throw new KindedError("invalid_input", "The file can't be changed.");
     view = { ...view, arrows: changedArrows(view.arrows, stepId, change) };
     notify([]);
@@ -53,7 +61,7 @@ async function showPage({ fail = false } = {}) {
   const { host, change: notify } = memoryHost([], [], [], [], {
     read: async () => view,
     changeStep: async () => {},
-    changeArrows,
+    ...(canChangeArrows ? { changeArrows } : {}),
   });
   const announce = vi.fn();
   const toasts = createToastStore();
@@ -68,7 +76,7 @@ async function showPage({ fail = false } = {}) {
       />
     </ToastStoreProvider>,
   );
-  return { page, changeArrows, announce, toasts };
+  return { page, changeArrows, announce, toasts, release: () => release() };
 }
 
 function changedArrows(
@@ -157,6 +165,7 @@ verifies("workflows.page.step-arrows", () => {
       kind: "move",
       index: 1,
       by: -1,
+      to: "write",
     });
     expect(arrowsSection(page).rows[0]).toBe("1 → write on done");
     expect(announce).toHaveBeenCalledWith("Arrow 2 is now first.");
@@ -175,6 +184,35 @@ verifies("workflows.page.step-arrows", () => {
       ["Move up", true],
       ["Move down", false],
     ]);
+    const last = openMenu(page, "More actions for arrow 2").map((one) => [
+      one.textContent,
+      one.getAttribute("aria-disabled") === "true",
+    ]);
+    expect(last).toEqual([
+      ["Move up", false],
+      ["Move down", true],
+    ]);
+  });
+
+  it("moves once when Move up is picked again before the first move is written", async () => {
+    const { page, changeArrows, release } = await showPage({ held: true });
+    await pick(page, "sort");
+
+    await menuPick(page, "More actions for arrow 2", "Move up");
+    await menuPick(page, "More actions for arrow 2", "Move up");
+    await act(async () => release());
+
+    expect(changeArrows).toHaveBeenCalledOnce();
+    expect(arrowsSection(page).rows).toEqual([
+      "1 → write on done",
+      "2 → approve on done if category = refund",
+    ]);
+  });
+
+  it("has no arrows section where the host can't change arrows", async () => {
+    const { page } = await showPage({ canChangeArrows: false });
+    await pick(page, "sort");
+    expect(arrowsSection(page).section).toBeUndefined();
   });
 
   it("adds an arrow on done to the step picked in Go to…, and says so", async () => {
@@ -228,5 +266,26 @@ verifies("workflows.page.step-arrows", () => {
 
     await act(async () => from[1]?.click());
     expect(page.querySelector("aside h2")?.textContent).toBe("Step approve");
+    // The new card's title takes the focus the button had, so a screen reader hears where it is.
+    expect(document.activeElement).toBe(page.querySelector("aside h2"));
+  });
+
+  it("lists a step with two arrows in once, and not the step's own arrow to itself", async () => {
+    const { page } = await showPage({
+      workflow: {
+        ...reply,
+        arrows: [
+          ...reply.arrows,
+          { from: "sort", to: "write", event: "retry" },
+          { from: "write", to: "write", event: "again" },
+        ],
+      },
+    });
+    await pick(page, "write");
+
+    const from = [...page.querySelectorAll<HTMLButtonElement>("aside section button")]
+      .map((button) => button.textContent ?? "")
+      .filter((text) => text.startsWith("From "));
+    expect(from).toEqual(["From sort", "From approve"]);
   });
 });

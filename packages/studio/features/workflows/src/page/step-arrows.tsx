@@ -40,6 +40,9 @@ export function StepArrows({ stepId, arrows, stepIds, change, announce }: StepAr
   const [target, setTarget] = useState("");
   // The row whose ⋮ takes focus once the moved arrow is drawn in its new place.
   const [focusRow, setFocusRow] = useState<number | undefined>();
+  // Set while a move is written: the rows still show the old order, so a second move would pick
+  // the arrow by its old place.
+  const moving = useRef(false);
 
   useEffect(() => {
     if (focusRow === undefined) return;
@@ -49,7 +52,14 @@ export function StepArrows({ stepId, arrows, stepIds, change, announce }: StepAr
   }, [focusRow, arrows]);
 
   const move = async (index: number, by: -1 | 1) => {
-    if (!(await change({ kind: "move", index, by }))) return;
+    const arrow = arrows[index];
+    if (moving.current || arrow === undefined) return;
+    moving.current = true;
+    try {
+      if (!(await change({ kind: "move", index, by, to: arrow.to }))) return;
+    } finally {
+      moving.current = false;
+    }
     setFocusRow(index + by);
     announce?.(words.moved(index + 1, index + by + 1));
   };
