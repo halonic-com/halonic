@@ -1,5 +1,5 @@
 import type { Plugin } from "@halonicjs/format";
-import { Callout, useOpenExternal } from "@halonicjs/studio-kit";
+import { type ButtonSize, Callout, useOpenExternal, usePresentation } from "@halonicjs/studio-kit";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { messageOf } from "../message-of.ts";
 import type { PluginSettingsReader } from "../settings/plugin-settings-section.tsx";
@@ -205,7 +205,9 @@ interface SignInBlockProps {
  * until the host
  * reports the sign-in differently from when it opened, the person cancels, or the host's wait
  * ends. A sign-in that fails the same way twice in a row reads the same, so that wait ends only
- * by **Cancel** or the host's wait.
+ * by **Cancel** or the host's wait. Focus follows the person: onto **Cancel** when the wait
+ * starts from the block's button, and back to the block's button when the wait ends while they
+ * were on its row (C569).
  */
 function SignInBlock({
   service,
@@ -220,6 +222,8 @@ function SignInBlock({
   announceState,
 }: SignInBlockProps) {
   const openExternal = useOpenExternal();
+  // On a phone the block's buttons are touch buttons, as the 44px rule asks (C569).
+  const buttonSize: ButtonSize = usePresentation() === "phone" ? "touch" : "sm";
   const [busy, setBusy] = useState(false);
   const [line, setLine] = useState<string | undefined>(undefined);
   // Set while the browser sign-in is open: where the sign-in stood when the browser opened, and
@@ -230,7 +234,8 @@ function SignInBlock({
   >(undefined);
   const block = useRef<HTMLLIElement>(null);
   const waitingRow = useRef<HTMLDivElement>(null);
-  // The wait ended while the person was on its row, so focus goes to the button back in its place.
+  const cancelButton = useRef<HTMLButtonElement>(null);
+  // The person was on the row that the wait swaps, so focus goes to the button in its place.
   const refocus = useRef(false);
   const state = facts === undefined ? "cannotSignIn" : status?.state;
   const announceKey = `sign-in:${plugin}:${name}`;
@@ -252,10 +257,12 @@ function SignInBlock({
     return () => clearTimeout(timer);
   }, [waiting]);
 
+  // When the wait starts, focus goes to Cancel (C569); when it ends, to the state's button.
   useEffect(() => {
-    if (waiting !== undefined || !refocus.current) return;
+    if (!refocus.current) return;
     refocus.current = false;
-    block.current?.querySelector("button")?.focus();
+    if (waiting === undefined) block.current?.querySelector("button")?.focus();
+    else cancelButton.current?.focus();
   }, [waiting]);
 
   async function signIn() {
@@ -268,7 +275,9 @@ function SignInBlock({
       // promise. It opens only the approved sign-in page (`signInPage`).
       const address = signIns.start(plugin, name).then((answered) => signInPage(answered, facts));
       await openExternal(address);
-      setWaiting({ from: status, page: await address });
+      const page = await address;
+      refocus.current = hasFocus(block.current);
+      setWaiting({ from: status, page });
       announceState?.(announceKey, waitingForBrowser(service));
     } catch (error) {
       setLine(startFailedLine(error));
@@ -340,6 +349,8 @@ function SignInBlock({
           ref={waitingRow}
           service={service}
           busy={busy}
+          cancelRef={cancelButton}
+          size={buttonSize}
           onOpenAgain={openAgain}
           onCancel={() => void cancel()}
         />
@@ -347,6 +358,7 @@ function SignInBlock({
         <StateRow
           state={state}
           busy={busy}
+          size={buttonSize}
           actions={actions}
           onSignIn={signIn}
           onSignOut={signOut}

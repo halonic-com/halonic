@@ -3,7 +3,12 @@
  * section with it, and the person's moves (pressing a button, coming back to the window).
  */
 import type { Plugin } from "@halonicjs/format";
-import { type ExternalAddress, OpenExternalProvider } from "@halonicjs/studio-kit";
+import {
+  type ExternalAddress,
+  OpenExternalProvider,
+  type Presentation,
+  PresentationProvider,
+} from "@halonicjs/studio-kit";
 import { act } from "react";
 import type { PluginSettingsReader } from "../settings/plugin-settings-section.tsx";
 import {
@@ -67,19 +72,22 @@ export async function show(
     readonly off?: { readonly reason: string };
     readonly viewOnly?: boolean;
     readonly announced?: string[];
+    readonly presentation?: Presentation;
   } = {},
 ) {
   const view = render(
-    <OpenExternalProvider openExternal={signIns.openExternal}>
-      <PluginSignInsSection
-        plugin={options.plugin ?? acmeWithSignIn()}
-        settings={settingsWith(options.values ?? { clientId: "abc123" })}
-        signIns={signIns}
-        off={options.off}
-        viewOnly={options.viewOnly ?? false}
-        announceState={(key, text) => options.announced?.push(`${key}: ${text}`)}
-      />
-    </OpenExternalProvider>,
+    <PresentationProvider presentation={options.presentation ?? "desktop"}>
+      <OpenExternalProvider openExternal={signIns.openExternal}>
+        <PluginSignInsSection
+          plugin={options.plugin ?? acmeWithSignIn()}
+          settings={settingsWith(options.values ?? { clientId: "abc123" })}
+          signIns={signIns}
+          off={options.off}
+          viewOnly={options.viewOnly ?? false}
+          announceState={(key, text) => options.announced?.push(`${key}: ${text}`)}
+        />
+      </OpenExternalProvider>
+    </PresentationProvider>,
   );
   await act(async () => {});
   return view;
