@@ -5,7 +5,9 @@ import { startsAProgram } from "@halonicjs/adapter-workspace-models";
 // trust prompt and the working-folder check only read those for agents
 // whose file names a harness. So a run that would switch such an agent
 // doesn't start: the program would get sites and a folder no one was shown
-// or checked.
+// or checked. And `asks` is followed only by Claude Code, so a run that
+// would start an agent that names it in another program doesn't start
+// either: the file would promise asking that no one does (HAL-14992).
 
 import { KindedError } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
@@ -16,8 +18,10 @@ import { programAgentsOf, type SandboxGateRun } from "./sandbox-gate.ts";
 
 /**
  * Refuses a run whose harness would move an agent from Halonic's own loop
- * into a program while its file names allowed sites or a working folder.
- * A run without a harness of its own, or with `halonic`, always passes.
+ * into a program while its file names allowed sites or a working folder,
+ * or would start an agent whose file names `asks` in a program other than
+ * Claude Code (requirement `cli.run-harness-asks`). A run without a
+ * harness of its own, or with `halonic`, always passes.
  *
  * @param ending - what line 1 ends with: "Nothing ran." for `run`, "Nothing was sent." for `runs send`
  * @throws KindedError `invalid_input` naming the first such agent (exit 2); nothing ran
@@ -36,6 +40,13 @@ export function checkHarnessOverride(
         "invalid_input",
         plainText(runMessages.uncheckedHarnessFields(agent.name, ending.phrase).phrase),
         { fix: plainText(runMessages.uncheckedHarnessFieldsFix(agent.name).phrase) },
+      );
+    }
+    if (agent.asks !== undefined && run.harness !== "claude-code") {
+      throw new KindedError(
+        "invalid_input",
+        plainText(runMessages.asksOnlyInClaudeCode(agent.name, ending.phrase).phrase),
+        { fix: plainText(runMessages.asksOnlyInClaudeCodeFix(agent.name).phrase) },
       );
     }
   }

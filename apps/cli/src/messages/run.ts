@@ -142,6 +142,15 @@ export const runMessages = defineMessages("run", {
   /** Its fix. */
   uncheckedHarnessFieldsFix: (agent: string) =>
     phrase`Name a harness in ${printable(agent)}'s file and trust the workspace again, or remove allowed sites and the working folder from it.`,
+  /**
+   * `--harness` would start an agent whose file names `asks` in a program
+   * other than Claude Code, which doesn't follow it (exit 2, HAL-14992).
+   */
+  asksOnlyInClaudeCode: (agent: string, ending: Phrase) =>
+    phrase`${printable(agent)}'s file says when it asks before it acts, which only Claude Code follows, and this run starts it in another program. ${ending}`,
+  /** Its fix. It names no `--harness`: `runs send` has none (HAL-12597). */
+  asksOnlyInClaudeCodeFix: (agent: string) =>
+    phrase`Run it in Claude Code, or remove asks from ${printable(agent)}'s file.`,
   /** No workflow, or more than one, on the command line (exit 2). */
   takesOneWorkflow: (given: readonly string[]) =>
     given.length === 0

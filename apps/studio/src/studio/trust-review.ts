@@ -290,9 +290,13 @@ function agentRow(agent: AgentTrustContent): TrustRowView {
       ...(agent.workingFolder === undefined
         ? []
         : [["Working folder", agent.workingFolder] as const]),
+      ...(agent.asks === "in-sandbox" ? [["Without asking", inSandboxCalls] as const] : []),
     ],
   };
 }
+
+/** What an agent with `asks: in-sandbox` does without a person's OK (team wording, HAL-14992). */
+const inSandboxCalls = "edits and runs commands in its working folder, inside the sandbox";
 
 /** One Changed row per agent, saying what is different. */
 function agentChangeRows(agent: ChangedAgent): TrustRowView[] {
@@ -309,6 +313,13 @@ function agentChangeRows(agent: ChangedAgent): TrustRowView[] {
     content.workingFolder ?? defaultWorkingFolder(content.id);
   if (folder(before) !== folder(after)) {
     lines.push(["Working folder", `${folder(before)} → ${folder(after)}`]);
+  }
+  if (before.asks !== after.asks) {
+    lines.push(
+      after.asks === "in-sandbox"
+        ? ["Now without asking", "edits and runs commands in its working folder"]
+        : ["Asks again", "before it edits or runs a command"],
+    );
   }
   return [{ id: agent.id, detail: harnessName(after.harness), lines }];
 }
