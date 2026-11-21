@@ -3,6 +3,7 @@
 - Task: HAL-15412
 - Approval: the reviewer approves this note in their review of this pull request on HAL-15412. A team decision with no board card (HAL-2282 rule): Mara's words as the designer, from her design check C569 on HAL-15385, no new wording.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jkIEAxPZx6ywT+c/u5OONc/DTId72uzVfe/A0QqyW6SADcIwUVtrC1B5FuL5UFgQzyPxS8CDjVAjZrHi7LB1AQ==
 
 ## What changes
 
