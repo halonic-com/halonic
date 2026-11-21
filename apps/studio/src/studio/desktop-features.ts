@@ -52,7 +52,7 @@ import {
   TrustedSourcesService,
   WorkspacePageService,
 } from "@halonicjs/studio-feature-workspace/api";
-import type { ShellOptions } from "@halonicjs/studio-shell";
+import { FilesWithErrorsService, type ShellOptions } from "@halonicjs/studio-shell";
 
 /**
  * The features of the desktop app, and the services the app gives them for each open folder.
@@ -77,6 +77,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
   ],
   hostServices: [
     FilesHostService,
+    FilesWithErrorsService,
     CollectionHostService,
     ConnectorStatusHostService,
     KnowledgeHostService,
