@@ -1,5 +1,6 @@
 import type { RunEvent, RunSummary } from "@halonicjs/events";
-import { WorkspaceWorkflows, type WorkspaceWorkflowsParts } from "./workspace-workflows.ts";
+import { WorkspaceWorkflows } from "./workspace-workflows.ts";
+import type { WorkspaceWorkflowsParts } from "./workspace-workflows-parts.ts";
 
 /** Acme's workflow `reply`: one final step. */
 export const replyFile =
