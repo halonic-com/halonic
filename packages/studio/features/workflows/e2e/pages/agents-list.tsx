@@ -1,10 +1,7 @@
-import {
-  type AgentListing,
-  type AgentsHost,
-  loadAgentsPage,
-} from "@halonicjs/studio-feature-agents/api";
+import { type AgentListing, loadAgentsPage } from "@halonicjs/studio-feature-agents/api";
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
+import { madeUpAgentsHost } from "./made-up-agents.ts";
 
 /** The Agents list with two groups (hubs), from made-up agents (HAL-11861). */
 const hubs = [
@@ -35,58 +32,7 @@ const agents: AgentListing[] = [
   },
   { hubId: "sales", id: "follow-up", name: "Follow-up", model: "smart" },
 ];
-const host: AgentsHost = {
-  hubs: () => hubs,
-  list: async () => agents,
-  read: async (ref) => {
-    const found = agents.find((agent) => agent.hubId === ref.hubId && agent.id === ref.id);
-    if (found === undefined) throw new Error("not found");
-    return found;
-  },
-  settings: async (ref) => {
-    const found = agents.find((agent) => agent.hubId === ref.hubId && agent.id === ref.id);
-    if (found === undefined) throw new Error("not found");
-    return {
-      instructions: "",
-      output: { type: "text" },
-      maxSteps: 6,
-      params: {},
-      harness: "halonic",
-      skills: [],
-      knowledge: [],
-      connectors: [],
-      subagents: [],
-      agentSteps: [],
-      ...found,
-    };
-  },
-  update: async () => undefined,
-  nameOf: (ref) => agents.find((agent) => agent.hubId === ref.hubId && agent.id === ref.id)?.name,
-  modelAliases: async () => ["fast", "smart"],
-  defaultModel: async () => "fast",
-  toolOptions: async () => ({ skills: [], knowledge: [], connectors: [] }),
-  addAgentStep: async (_ref, { name }) => name.toLowerCase(),
-  team: async (ref) =>
-    agents
-      .filter((agent) => agent.hubId === ref.hubId)
-      .map((agent) => ({ ...agent, subagents: [] })),
-  harnessReadiness: async () => ({ status: "ready", version: "1.0.0" }),
-  openHarnessSignIn: async () => ({ opened: true }),
-  answer: async () => ({ messages: [], end: { reason: "answered" } }),
-  // A browser page, so where agents run can't be chosen here.
-  placement: async () => undefined,
-  chooseThisComputer: async () => {
-    throw new Error("Halonic can't choose where agents run from here.");
-  },
-  chooseSandbox: async () => {
-    throw new Error("Halonic can't choose where agents run from here.");
-  },
-  filePath: async (ref) => `hubs/${ref.hubId}/agents/${ref.id}.agent.yaml`,
-  trash: async () => ({ undo: async () => undefined }),
-  referencesTo: async () => [],
-  subscribe: () => () => undefined,
-  create: async ({ hubId, name }) => ({ hubId, id: name.toLowerCase() }),
-};
+const host = madeUpAgentsHost(hubs, agents);
 
 const AgentsView = lazy(async () => ({ default: (await loadAgentsPage()).AgentsView }));
 

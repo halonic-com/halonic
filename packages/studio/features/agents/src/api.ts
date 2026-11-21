@@ -491,3 +491,9 @@ export const AgentsHostService: ServiceKey<AgentsHost> = serviceKey<AgentsHost>(
  * with made-up data. The app never calls it: the feature registers the page itself.
  */
 export const loadAgentsPage = () => import("./list/agents-page.tsx");
+
+/**
+ * Loads an agent's page, for the CI screenshot of the agent map (`docs/guides/e2e-screenshots.md`),
+ * which draws it with made-up data. The app never calls it: the feature registers the page itself.
+ */
+export const loadAgentScreen = () => import("./page/agent-page.tsx");
