@@ -35,6 +35,12 @@ async function showPage(edits: Partial<Edits>, view: WorkflowView = reply, phone
   return { page, toasts, replace };
 }
 
+/** The card on the canvas whose title reads `title`. */
+const cardNamed = (page: HTMLElement, title: string) =>
+  [...page.querySelectorAll<HTMLElement>("button[aria-pressed]")].find(
+    (card) => card.querySelector("[title]")?.textContent === title,
+  );
+
 const toolbar = (page: HTMLElement) => page.querySelector("[role=group][aria-label='Flow tools']");
 
 /** A button's text without the parts that match `leaveOut`: what shows, or what a screen reader hears. */
@@ -81,6 +87,7 @@ verifies("workflows.canvas.toolbar", () => {
       { hubId: "acme", id: "reply" },
       "task",
       expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
+      undefined,
     );
 
     await replace({ ...reply, steps: [...reply.steps, { id: "step-1", type: "task" }] });
@@ -90,11 +97,51 @@ verifies("workflows.canvas.toolbar", () => {
     expect(added?.getAttribute("aria-pressed")).toBe("true");
   });
 
+  it("adds a step right of the picked one, below the card already there, with an arrow from it", async () => {
+    const edits = editsThatWork();
+    const placed = {
+      ...reply,
+      layout: { start: { x: 0, y: 0 }, write: { x: 240, y: 0 }, done: { x: 480, y: 0 } },
+    };
+    const { page } = await showPage(edits, placed);
+
+    await act(async () => cardNamed(page, "start")?.click());
+    await act(async () => buttonNamed(toolbar(page) as HTMLElement, "Step")?.click());
+
+    expect(edits.addStep).toHaveBeenCalledWith(
+      { hubId: "acme", id: "reply" },
+      "task",
+      { x: 240, y: 120 },
+      "start",
+    );
+  });
+
+  it("adds a step as with nothing picked when an End is picked: right of the right-most card, no arrow", async () => {
+    const edits = editsThatWork();
+    const placed = { ...reply, layout: { start: { x: 0, y: 0 }, done: { x: 480, y: 0 } } };
+    const { page } = await showPage(edits, placed);
+
+    await act(async () => cardNamed(page, "done")?.click());
+    await act(async () => buttonNamed(toolbar(page) as HTMLElement, "Wait")?.click());
+
+    expect(edits.addStep).toHaveBeenCalledWith(
+      expect.anything(),
+      "wait",
+      { x: 720, y: 0 },
+      undefined,
+    );
+  });
+
   it("adds a wait step with Wait", async () => {
     const edits = editsThatWork();
     const { page } = await showPage(edits);
     await act(async () => buttonNamed(toolbar(page) as HTMLElement, "Wait")?.click());
-    expect(edits.addStep).toHaveBeenCalledWith(expect.anything(), "wait", expect.anything());
+    expect(edits.addStep).toHaveBeenCalledWith(
+      expect.anything(),
+      "wait",
+      expect.anything(),
+      undefined,
+    );
   });
 
   it("opens the new step's card with focus, and at 200 % pans the step clear of it", async () => {
@@ -172,5 +219,13 @@ verifies("workflows.canvas.toolbar", () => {
       ]),
     ).toEqual({ x: 500, y: 140 });
     expect(newStepPlace([])).toEqual({ x: 0, y: 0 });
+  });
+
+  it("places a new step right of the picked card, or at the next free spot below when a card is there", () => {
+    const card = { width: 200, height: 72 };
+    const picked = { x: 0, y: 133, ...card };
+    expect(newStepPlace([picked, { x: 600, y: 0, ...card }], picked)).toEqual({ x: 240, y: 140 });
+    const taken = [picked, { x: 240, y: 140, ...card }, { x: 260, y: 260, ...card }];
+    expect(newStepPlace(taken, picked)).toEqual({ x: 240, y: 380 });
   });
 });

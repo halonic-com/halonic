@@ -2,7 +2,7 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-9957 (T7 PR 4); HAL-413 (problem lines); flow-workflows 4.4; UX checklist 3.5; HAL-15120 (C544 finding 10: a new step's problems in the file's words); HAL-15140 (C544-3: a step by its name)
+- Source: HAL-9957 (T7 PR 4); HAL-413 (problem lines); flow-workflows 4.4; UX checklist 3.5; HAL-15120 (C544 finding 10: a new step's problems in the file's words); HAL-15140 (C544-3: a step by its name); HAL-15206 (a wait step's card and row both say answers)
 
 When the checks find problems in a workflow, the workflows feature shall write each one as its glyph (✕ for an error, △ for a warning) and a short line of about 25 characters that starts with a capital and leaves out the step's name, list errors before warnings, and for several problems on one card say "✕ 2 problems" or "△ 2 warnings"; a problem of the whole workflow shall be a sentence, and a check with no written line shall show the core's own message. Configuration › Problems shall show, for every problem, followed by the step it links to, a sentence in Studio's words for the checks a newly added step gets (`task-without-agent`, `dead-end`, `unreachable`, `wait-without-events`), which leaves out the step's name and says what to do, and the core's full message for the other checks. Wherever Studio names a step in a problem (the core's message and the row's link), it shall name it as its card on the canvas does: by its title, or by its id when it has none; `halonic validate` keeps the id, as the file uses it.
 
@@ -10,7 +10,7 @@ When the checks find problems in a workflow, the workflows feature shall write e
 
 - Given a `dead-end` error on Review, then the card reads "✕ Has no way out"; the row on Configuration › Problems says "Has no way out. Add an arrow from it on its card, or make it an End.", then links to Review.
 - Given a new agent step `step-1`, then its rows say "Has no agent, so every run fails here. Pick one on its card, or make it a Wait." and "Can't be reached: no arrow leads to it.", not the core's `agent: <id>`.
-- Given a new wait step `wait-1`, then its row says "Gives a person no answers to pick, such as approve. Add them in the workflow's file.".
+- Given a new wait step `wait-1`, then its card reads "△ Has no answers to pick" and its row says "Gives a person no answers to pick, such as approve. Add them in the workflow's file.".
 - Given an `unknown-gets` error, then its row shows the core's full message.
 - Given the step `first`, titled "Ask a missing agent", uses the missing agent `nobody-here`, then its row says `"Ask a missing agent" uses unknown agent "nobody-here"` and its link reads "Ask a missing agent"; a step with no title is named by its id in both.
 - Given a warning and then an error, then the error row comes first.

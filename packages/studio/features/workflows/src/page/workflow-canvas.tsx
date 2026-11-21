@@ -141,7 +141,10 @@ export function WorkflowCanvas({
     fitAll();
   }, [boxes]);
   const addStep = async (type: "task" | "wait") => {
-    const id = await edit?.addStep(type, newStepPlace(boxes.values()));
+    // A new step follows the picked one, with an arrow from it; an End has no way on (C544-10).
+    const from = workflow.steps.find((step) => step.id === selected && step.type !== "final")?.id;
+    const after = from === undefined ? undefined : boxes.get(from);
+    const id = await edit?.addStep(type, newStepPlace(boxes.values(), after), from);
     if (id === undefined) return;
     setSelected(id);
     onSelectStep?.(id);
@@ -295,10 +298,14 @@ export function WorkflowCanvas({
 
 /** What the canvas's toolbar asks of the page. */
 export interface CanvasEdit {
-  /** Adds a step of the kind at the place; resolves to its id, or `undefined` when it wasn't added. */
+  /**
+   * Adds a step of the kind at the place, with an arrow from the step `from` when one is given;
+   * resolves to its id, or `undefined` when it wasn't added.
+   */
   readonly addStep: (
     type: "task" | "wait",
     at: { readonly x: number; readonly y: number },
+    from?: string,
   ) => Promise<string | undefined>;
   /** Forgets the steps' places, so each takes the automatic one; resolves to whether it did. */
   readonly autoLayout: () => Promise<boolean>;

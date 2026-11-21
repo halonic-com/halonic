@@ -1,4 +1,4 @@
-import { parseFile } from "@halonicjs/format";
+import { parseFile, type Transition, type WorkflowState } from "@halonicjs/format";
 import { KindedError } from "@halonicjs/std";
 import type {
   WorkflowArrowChange,
@@ -130,6 +130,30 @@ function asSentence(text: string): string {
   const trimmed = text.trim();
   const capital = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
   return /[.!?]$/.test(capital) ? capital : `${capital}.`;
+}
+
+/**
+ * The edits that give the picked step `from` an arrow on done to `to`, the step the canvas's
+ * toolbar is adding after it (C544-10), after its other arrows. None when `from` ends the
+ * workflow, or already has an on-done arrow without a condition: the first arrow that matches
+ * wins, so the new one would never fire. With only conditional arrows, the new one is the
+ * "otherwise".
+ *
+ * @param written - `from`'s arrows as its file writes them (see {@link writtenArrows})
+ */
+export function arrowToNewStep(
+  from: string,
+  state: WorkflowState,
+  written: readonly unknown[] | undefined,
+  to: string,
+): readonly YamlEdit[] {
+  if (state.type === "final" || state.on.some(isPlainDone)) return [];
+  return arrowEdits(from, [to], written, { kind: "add", to });
+}
+
+/** Whether the arrow fires whenever the step is done: on done, with no condition and no timer. */
+function isPlainDone(arrow: Transition): boolean {
+  return arrow.event === "done" && arrow.when === undefined && arrow.after === undefined;
 }
 
 /** The map at `key` of `value`, or `undefined` when there is none. */

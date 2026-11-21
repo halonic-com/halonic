@@ -26,6 +26,7 @@ import { programOf } from "./step-program.ts";
 import {
   arrowChangeLabel,
   arrowEdits,
+  arrowToNewStep,
   checkArrowChange,
   writtenArrows,
 } from "./workflow-arrow-edits.ts";
@@ -258,22 +259,31 @@ export class WorkspaceWorkflows implements WorkflowsHost {
   }
 
   /**
-   * Adds the step at the end of the file's steps, with its place in `layout`, as one undoable
-   * change; the file keeps its comments and the order of its keys.
+   * Adds the step at the end of the file's steps, with its place in `layout`, and the arrow from
+   * the picked step `from` that {@link arrowToNewStep} decides on, as one undoable change; the file
+   * keeps its comments and the order of its keys.
    */
   async addStep(
     ref: WorkflowRef,
     type: "task" | "wait",
     at: { readonly x: number; readonly y: number },
+    from?: string,
   ): Promise<string> {
     const { file, text } = await this.#fileOf(ref);
-    const id = uniqueName(type === "wait" ? "wait" : "step", Object.keys(file.value.states), {
-      numbered: true,
-    });
-    this.#edit(file.path, text, `Added step ${id} to workflow ${file.value.name}`, [
+    const stepIds = Object.keys(file.value.states);
+    const id = uniqueName(type === "wait" ? "wait" : "step", stepIds, { numbered: true });
+    const edits: YamlEdit[] = [
       { kind: "set", path: ["states", id], value: type === "wait" ? { type: "wait" } : {} },
       { kind: "set", path: ["layout", id], value: { x: at.x, y: at.y } },
-    ]);
+    ];
+    if (from !== undefined) {
+      const picked = Object.hasOwn(file.value.states, from) ? file.value.states[from] : undefined;
+      if (picked === undefined) throw stepGone(from);
+      const read = readYaml(text);
+      const written = read.ok ? writtenArrows(read.value.data, from) : undefined;
+      edits.push(...arrowToNewStep(from, picked, written, id));
+    }
+    this.#edit(file.path, text, `Added step ${id} to workflow ${file.value.name}`, edits);
     return id;
   }
 

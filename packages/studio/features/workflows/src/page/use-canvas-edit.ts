@@ -24,8 +24,8 @@ export function useCanvasEdit(
       text: errorReasonFor(error),
     });
   return {
-    addStep: (type, at) =>
-      addStep.call(host, ref, type, at).catch((error: unknown) => {
+    addStep: (type, at, from) =>
+      addStep.call(host, ref, type, at, from).catch((error: unknown) => {
         failed(error);
         return undefined;
       }),
