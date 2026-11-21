@@ -277,9 +277,9 @@ async function listenOnComputer(
         folder: root,
         home,
       }),
-      // Read at every request too, from the live version a run uses: a rename saved in an
-      // agent file shows once a new live version holds it.
-      agentNames: workspaceAgentNames(() => versions.latest()),
+      // Read at every request too, from the live version as it is now: a rename shows once
+      // it is committed, before a run starts from that commit.
+      agentNames: workspaceAgentNames(() => versions.live()),
     },
     studioPage: openStudioPageFolder(studioFolderOf(setup)),
     requestCounts: openDiskRequestCountStore(countFolder, parts.clock),

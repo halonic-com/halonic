@@ -6,7 +6,7 @@
 // before any run starts from it. A run's connectors start from the version
 // it read, with the grant of that version's trust check (HAL-7500).
 
-import { LiveRoutines, liveVersionOf, runSourceFor } from "@halonicjs/app";
+import { LiveRoutines, type LiveVersion, liveVersionOf, runSourceFor } from "@halonicjs/app";
 import type { RunDefinitions } from "@halonicjs/engine";
 import type { RunVersion } from "@halonicjs/events";
 import type { DefinitionSource, TrustGrant } from "@halonicjs/ports";
@@ -175,6 +175,18 @@ export class WatchedVersions implements WorkspaceVersions {
   /** The version read last: the first one, until a run starts from a newer one. */
   latest(): LoadedWorkspace {
     return this.#latest.workspace;
+  }
+
+  /**
+   * The live version as it is now: the version at the newest commit, or the
+   * saved files with history off. Unlike {@link latest}, it follows a new
+   * commit before any run starts from it. The load at a commit is kept, so
+   * a call while nothing moved only looks up the commit. It doesn't change
+   * {@link latest}.
+   */
+  async live(): Promise<LoadedWorkspace> {
+    const live = await liveVersionOf(this.#history?.vcs ?? null);
+    return (await this.#versionAt(runVersionOfLive(live))).workspace;
   }
 
   /** Sets the checks each later run's version passes first; until then, none, and no grant. */
@@ -346,6 +358,22 @@ async function loadVersion(source: DefinitionSource): Promise<LoadedVersion> {
     if (text !== null) fileTexts.set(file.path, text);
   }
   return { workspace, fileTexts };
+}
+
+/**
+ * The version a read of the live version loads: the commit, the saved files
+ * with history off, or none, the one read last, when the history has no
+ * commit any more.
+ */
+function runVersionOfLive(live: LiveVersion): RunVersion | undefined {
+  switch (live.kind) {
+    case "commit":
+      return { reads: "live-version", commit: live.commit.hash, versionDate: live.commit.date };
+    case "history-off":
+      return { reads: "saved-files" };
+    case "none-yet":
+      return undefined;
+  }
 }
 
 /** Whether the workspace is local only; without a workspace.yaml that parsed, the format default: not. */

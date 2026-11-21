@@ -2,9 +2,14 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
+import { testGit } from "@halonicjs/adapter-git/testing";
 import { verifies } from "@halonicjs/testing-spec";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { openGitHistory } from "../../run-workspace.ts";
+import { openWorkspaceDir } from "../../workspace-dir.ts";
+import { WatchedVersions } from "../routines/watch-versions.ts";
 import { workspaceAgentNames } from "./agent-names.ts";
 
 let root: string;
@@ -16,6 +21,9 @@ beforeEach(() => {
 afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
+
+/** This test starts a real git repository and commits twice, which can take longer than 5 s on a busy runner. */
+const slowTest = { timeout: 60_000 };
 
 const agent = (id: string, name: string) => `id: ${id}\nname: ${name}\ninstructions: Help Acme.\n`;
 
@@ -36,7 +44,7 @@ describe("the agents' names a served workspace gives its waiting list", () => {
         "hubs/support/agents/writer.agent.yaml": agent("writer", "Writer"),
         "hubs/support/agents/sorter.agent.yaml": agent("sorter", "Sorter"),
       });
-      const names = await workspaceAgentNames(() => workspace)();
+      const names = await workspaceAgentNames(async () => workspace)();
       expect(Object.fromEntries(names)).toEqual({ writer: "Writer", sorter: "Sorter" });
     });
 
@@ -50,7 +58,7 @@ describe("the agents' names a served workspace gives its waiting list", () => {
       const files = filesOf(workspace, "agent");
       expect(files).toHaveLength(2);
       const first = files[0]?.value.name;
-      expect((await workspaceAgentNames(() => workspace)()).get("writer")).toBe(first);
+      expect((await workspaceAgentNames(async () => workspace)()).get("writer")).toBe(first);
     });
 
     it("reads the workspace served now at every call", async () => {
@@ -58,12 +66,56 @@ describe("the agents' names a served workspace gives its waiting list", () => {
         "hubs/support/hub.yaml": "id: support\nname: Support\n",
         "hubs/support/agents/writer.agent.yaml": agent("writer", "Writer"),
       });
-      const names = workspaceAgentNames(() => served);
+      const names = workspaceAgentNames(async () => served);
       expect((await names()).get("writer")).toBe("Writer");
       served = await workspaceOf({
         "hubs/support/agents/writer.agent.yaml": agent("writer", "Copywriter"),
       });
       expect((await names()).get("writer")).toBe("Copywriter");
     });
+
+    it(
+      "names a renamed agent once the rename is committed, before a run starts",
+      slowTest,
+      async () => {
+        await workspaceOf({
+          "hubs/support/hub.yaml": "id: support\nname: Support\n",
+          "hubs/support/agents/writer.agent.yaml": agent("writer", "Writer"),
+        });
+        const git = await testGit();
+        const vcs = new GitVcs(root, {
+          runner: await GitRunner.create({ git }),
+          author: { name: "Test", email: "test@example.com" },
+        });
+        await vcs.init();
+        const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: root });
+        const commitAll = async () => {
+          await vcs.stage(await dir.store.list());
+          await vcs.commit("A version");
+        };
+        await commitAll();
+        const versions = await WatchedVersions.open(dir, (folder) =>
+          openGitHistory(folder, { git }),
+        );
+        try {
+          const names = workspaceAgentNames(() => versions.live());
+          expect((await names()).get("writer")).toBe("Writer");
+
+          writeFileSync(
+            join(root, "hubs/support/agents/writer.agent.yaml"),
+            agent("writer", "Copywriter"),
+          );
+          // Saved but not committed: the live version still names it Writer.
+          expect((await names()).get("writer")).toBe("Writer");
+          await commitAll();
+
+          expect((await names()).get("writer")).toBe("Copywriter");
+          // No run started from the new version, so the one read last is still the first.
+          expect(filesOf(versions.latest(), "agent")[0]?.value.name).toBe("Writer");
+        } finally {
+          await versions.close();
+        }
+      },
+    );
   });
 });

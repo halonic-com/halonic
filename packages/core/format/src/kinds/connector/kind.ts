@@ -1,9 +1,13 @@
-import { isHalonicSecretName, isPluginSecretName, passesNameRule } from "@halonicjs/ports";
+import { passesNameRule } from "@halonicjs/ports";
 import type { Path } from "@halonicjs/schema-kit";
 import { isSecretVariableName } from "@halonicjs/std";
 import type { FileKind, KindCheckProblem } from "../../kind.ts";
 import { checkKeysIn } from "../../shared/key-in-value.ts";
-import { checkSecretName, looksLikeKey } from "../../shared/secret-name.ts";
+import {
+  checkReservedSecretName,
+  checkSecretName,
+  looksLikeKey,
+} from "../../shared/secret-name.ts";
 import { approveAll, Connector } from "./schema.ts";
 
 /** `library/connectors/<id>.connector.yaml`, shared at the root or a hub's own. */
@@ -65,16 +69,9 @@ const reservedNameMessage =
  */
 function checkSecretNames(connector: Connector): KindCheckProblem[] {
   return secretNames(connector).flatMap(([name, path]) => {
-    const problem = checkSecretName(name, path);
-    if (problem !== undefined) {
-      return [problem];
-    }
-    if (isHalonicSecretName(name) || isPluginSecretName(name)) {
-      return [
-        { severity: "error", code: "secret-name-reserved", path, message: reservedNameMessage },
-      ];
-    }
-    return [];
+    const problem =
+      checkSecretName(name, path) ?? checkReservedSecretName(name, path, reservedNameMessage);
+    return problem === undefined ? [] : [problem];
   });
 }
 

@@ -1,6 +1,6 @@
 import type { FileKind, KindCheckProblem } from "../../kind.ts";
 import { isMap, renameKey } from "../../shared/legacy-keys.ts";
-import { checkSecretName } from "../../shared/secret-name.ts";
+import { checkReservedSecretName, checkSecretName } from "../../shared/secret-name.ts";
 import { Routine } from "./schema.ts";
 import { WEBHOOK_REFUSED_HEADERS } from "./webhook-headers.ts";
 
@@ -21,16 +21,28 @@ export const routineKind: FileKind<Routine> = {
   check: checkRoutine,
 };
 
+/*
+ * The words are the team's, as the connector's are: a small wording on a
+ * check already approved (HAL-14566).
+ */
+const reservedNameMessage =
+  "This secret name belongs to Halonic or to a plugin, so a webhook can't use it. Store the value under a name of your own, such as acme-hook.";
+
 /**
- * A webhook's secret is named in the file, so a bad name or a pasted key is
- * caught here, and so is a header the run must not read.
+ * A webhook's secret is named in the file, so a bad name, a pasted key or a
+ * name that belongs to Halonic or a plugin is caught here, and so is a
+ * header the run must not read.
  */
 function checkRoutine(routine: Routine): KindCheckProblem[] {
   const { trigger } = routine;
   if (!("webhook" in trigger)) {
     return [];
   }
-  const problem = checkSecretName(trigger.webhook.secret, ["trigger", "webhook", "secret"]);
+  const { secret } = trigger.webhook;
+  const secretPath = ["trigger", "webhook", "secret"];
+  const problem =
+    checkSecretName(secret, secretPath) ??
+    checkReservedSecretName(secret, secretPath, reservedNameMessage);
   const problems: KindCheckProblem[] = problem === undefined ? [] : [problem];
   const seen = new Set<string>();
   trigger.webhook.headers.forEach((header, index) => {

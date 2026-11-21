@@ -37,6 +37,17 @@ verifies("format.routine-webhook", () => {
     expect(problems.length).toBeGreaterThan(0);
   });
 
+  it("refuses a secret name that belongs to Halonic, at the secret", () => {
+    const problems = problemsOf(
+      "routine",
+      routine("trigger: { webhook: { secret: serve-password } }"),
+    );
+    expect(problems.map((problem) => `${problem.path.join(".")} ${problem.code}`)).toEqual([
+      "trigger.webhook.secret secret-name-reserved",
+    ]);
+    expect(problems[0]?.message).toContain("a webhook can't use it");
+  });
+
   it("refuses a webhook with no secret", () => {
     expect(problemsOf("routine", routine("trigger: { webhook: {} }")).length).toBeGreaterThan(0);
   });
