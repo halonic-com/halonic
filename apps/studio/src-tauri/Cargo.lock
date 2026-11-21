@@ -1742,6 +1742,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-secret-broker"
+version = "0.1.0"
+dependencies = [
+ "halonic-secrets",
+ "halonic-shell-log",
+ "halonic-trust-store",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "halonic-secrets"
 version = "0.1.0"
 
