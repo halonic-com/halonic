@@ -32,9 +32,12 @@ export function useStartRefusal(host: WorkflowsHost, ref: WorkflowRef) {
 export function StartRow({
   refusal: { id, refusal },
   startCommand,
+  showStartCommand,
 }: {
   readonly refusal: { readonly id: string; readonly refusal: StartRefusal | undefined };
   readonly startCommand: string | undefined;
+  /** False when the page starts the run itself or the files have errors. */
+  readonly showStartCommand: boolean;
 }) {
   const className =
     "flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-6 py-2 text-small text-fg-muted";
@@ -46,5 +49,5 @@ export function StartRow({
       </div>
     );
   }
-  return <StartCommand command={startCommand} />;
+  return showStartCommand ? <StartCommand command={startCommand} /> : null;
 }

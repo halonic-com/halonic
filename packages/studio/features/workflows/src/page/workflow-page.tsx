@@ -244,9 +244,8 @@ export function WorkflowScreen({
       {/* With a Run button, the page starts it itself, so the terminal line would only repeat it. */}
       <StartRow
         refusal={cantStart}
-        startCommand={
-          !startRun && settings.load.kind === "ready" && errors === 0 ? startCommand : undefined
-        }
+        startCommand={startCommand}
+        showStartCommand={!startRun && settings.load.kind === "ready" && errors === 0}
       />
       <div className="flex min-h-0 flex-1">
         <TabPanel
