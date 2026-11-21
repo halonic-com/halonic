@@ -43,11 +43,18 @@ it in the `fast` job).
 | Host | `host/halonic-ci-status.*`: a read-only status feed, fetched from the VM every minute over SSH with a key that can run only the status command. |
 | VM | Docker with `userns-remap`. One systemd unit per slot (`vm/halonic-runner@.service`). |
 | VM | `/etc/halonic-ci/app.pem`: the GitHub App's key (only permission: self-hosted runners), root-only `0400`. Never in the image, a container or a backup that leaves the VM. |
-| VM | `/cache/trusted/{pnpm-store,ms-playwright}`: package and browser caches, no secrets, writable only by jobs the hook lets through. `/cache/work/<slot>`: the job's work dir, quota-capped and wiped after every job. |
+| VM | `/cache/trusted/{pnpm-store,ms-playwright}`: package and browser caches, no secrets, shared by all slots and kept between jobs. `/cache/work/<slot>`: the job's work dir, quota-capped and wiped after every job. |
 
 Site data stays out of this repo: `/etc/halonic-ci/pool.env` (see `vm/pool.env.example`),
 `/etc/halonic-ci/slots` (the list of slot units) and `/etc/halonic-ci/site.nft` (the server's
 public range for the nftables rules).
+
+**The shared caches are writable from every job that runs here.** Every container mounts
+`/cache/trusted/pnpm-store` and `/cache/trusted/ms-playwright` read-write, so a job can change
+what later jobs read from them. That's acceptable only because the hook admits nothing but reviewed
+code (pushes to `main`, later merge groups). pnpm checks each package against the lockfile's
+integrity hash; the Playwright browsers aren't checked. A pool for pull requests would get a
+read-only snapshot instead (C2, C8), never these folders.
 
 ## One job, one container
 
@@ -75,8 +82,11 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   queue gate refuses cross-repository pull requests (C7).
 - **Runner update:** new version and checksum in `vm/Dockerfile`, build the image in the VM,
   set `IMAGE=` in `pool.env`, restart the slots.
-- **Weekly** (`vm/halonic-ci-maint.timer`, Sunday 04:00): prunes images and stale work dirs, and
-  empties the shared caches when `/cache` is over 75 %.
+- **Weekly** (`vm/halonic-ci-maint.timer`, Sunday 04:00): prunes images and stale work dirs. When
+  `/cache` is over 75 %, it pauses the slots, lets running jobs finish (up to 2 hours), empties the
+  shared caches and starts the slots again.
+- **Firewall first:** `host/halonic-ci-nft.service` is required by `libvirtd.service`. If the rules
+  don't load (a missing `/etc/halonic-ci/site.nft`, say), libvirtd and the CI VM don't start.
 - **Status:** the host writes `/srv/ci/status/ci-status.json` and `jobs.jsonl` (per job: event,
   ref, seconds, `mem_peak`, `cpu_seconds`). On GitHub, a job's `runnerName` starting with `hci-`
   ran here.

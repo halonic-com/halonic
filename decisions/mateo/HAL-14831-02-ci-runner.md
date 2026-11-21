@@ -35,3 +35,14 @@ The board built the runners from its own copies of the scripts, ahead of review.
 keeps fork and pull request code off the server is the hook, so it needs a reviewed home in the repo
 and a test that fails when it lets the wrong job through. Changes after this merge are made here and
 deployed from here.
+
+## Tests
+
+No test was weakened or skipped. `infra/ci-runner/hook.test.mjs` is new, and
+`check.absolute-paths-inline-allow` comes with its own test.
+
+## Covers
+
+- .github/
+- tooling/check/
+- check.absolute-paths-inline-allow

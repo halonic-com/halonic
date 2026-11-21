@@ -17,6 +17,10 @@ if j=$(timeout 20 ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyCheck
     r=$(jq -r .runner <<<"$line")
     grep -q "\"runner\":\"$r\"" "$OUT/jobs.jsonl" || echo "$line" >> "$OUT/jobs.jsonl"
   done
+  # keep the last 5000 jobs
+  if [ "$(wc -l < "$OUT/jobs.jsonl")" -gt 6000 ]; then
+    tail -n 5000 "$OUT/jobs.jsonl" > "$OUT/.jobs.tmp" && mv -f "$OUT/.jobs.tmp" "$OUT/jobs.jsonl"
+  fi
   chmod 644 "$OUT/jobs.jsonl"
 else
   jq -nc --argjson now "$now" --arg st "$state" '{schema:1, generated_at:$now, ok:false, vm_state:$st, error:"CI VM did not answer"}' > "$OUT/.ci-status.tmp"
