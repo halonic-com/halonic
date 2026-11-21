@@ -952,6 +952,12 @@ press tint, but the arrows still reach it, and Tab enters the List at the first 
 inert. Unlike the Button's, an unavailable row's `reason` is the text itself: the
 List draws it in place of the meta line and points `aria-describedby` at it.
 
+A row can also hold `under`, a part under its meta line (a setup step's WaitingLine while it
+checks), and `actions` (`{ label, onClick }[]`), text buttons under its text, as a setup step's
+Check again, Open Models and Something wrong? (`kit.list-row-actions`). Each action is a cell of
+the grid after the main cell, so → reaches it and the List stays one Tab stop; a click on one
+doesn't open the row.
+
 ```tsx
 <List
   label="Models"
@@ -1076,6 +1082,33 @@ edge while it isn't done. A done step has a filled `success` circle with a tick,
 `label`. `onOpen` gets the steps still to do; a done step's row is `inert`, so it does nothing,
 doesn't look pressable, and Tab enters at the first step still to do. The card draws its
 "N of 3 done" line.
+
+A step that checks something takes a `check` (first-run-progress 3.1, `kit.setup-steps-check`).
+`{ state: "checking", what, since }` turns its circle `running` and puts a WaitingLine under the
+hint, counting from `since` (nothing shows before 2 seconds). `{ state: "problem", cause, actions }`
+draws an amber "!" in the circle, puts the cause in the hint's place, and the actions under it.
+Amber, not red: nothing has run yet. The screen runs the check and stops it at 5 seconds; the row
+only draws it. The row keeps its chevron and still opens, and a problem never locks another step.
+Say the problem in the step's `label` too ("Step 1 of 3: Connect a model, problem").
+
+```tsx
+const step = {
+  id: "model",
+  title: "Connect a model",
+  hint: "Start Ollama, or add a key for a cloud model.",
+  done: false,
+  label: "Step 1 of 3: Connect a model, problem",
+  check: {
+    state: "problem",
+    cause: <>Ollama isn't answering at <code>localhost:11434</code>. Start Ollama, or add an API key for a cloud model.</>,
+    actions: [
+      { label: "Check again", onClick: checkAgain },
+      { label: "Open Models", onClick: openModels },
+      { label: "Something wrong?", onClick: openCheck },
+    ],
+  },
+};
+```
 
 ```tsx
 <SetupSteps

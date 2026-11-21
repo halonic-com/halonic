@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
+import type { GridCellProps } from "../grid-navigation/use-grid-navigation.ts";
 import { ChevronRightIcon } from "../icons/chevron-right-icon.tsx";
+import { lineActionClasses } from "../line-frame/line-frame.tsx";
 import { StatusChip } from "../status-chip/status-chip.tsx";
-import type { AnyListRow, ListColumn } from "./list-props.ts";
+import type { AnyListRow, ListColumn, ListRowAction } from "./list-props.ts";
 import { RowColumns } from "./row-columns.tsx";
 import { Leading, lineFit, MetaLine } from "./row-parts.tsx";
 
@@ -71,9 +73,46 @@ export interface RowContentProps {
   readonly afterCheck: boolean;
   /** The List's columns: the row lays its cells out in them. */
   readonly columns: readonly ListColumn[] | undefined;
+  /** The grid's props for the row's action at `index`, a cell of its own. */
+  readonly actionCell: (index: number) => GridCellProps;
 }
 
-/** The main cell's inside: the icon or avatar, the title, the meta line and the trailing part. */
+/**
+ * The row's text buttons, under its text, wrapping onto a second line when they don't fit. They
+ * sit inside the main cell, so a click on one stops there and doesn't open the row too.
+ */
+function RowActions({
+  actions,
+  actionCell,
+}: {
+  readonly actions: readonly ListRowAction[];
+  readonly actionCell: (index: number) => GridCellProps;
+}) {
+  return (
+    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+      {actions.map((action, index) => (
+        <button
+          key={action.label}
+          type="button"
+          className={lineActionClasses}
+          {...actionCell(index)}
+          onClick={(event) => {
+            event.stopPropagation();
+            action.onClick();
+          }}
+          onAuxClick={(event) => event.stopPropagation()}
+        >
+          {action.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The main cell's inside: the icon or avatar, the title, the meta line, what goes under it, the
+ * actions and the trailing part.
+ */
 export function RowContent({
   row,
   phone,
@@ -82,6 +121,7 @@ export function RowContent({
   reasonId,
   afterCheck,
   columns,
+  actionCell,
 }: RowContentProps) {
   if (columns !== undefined) {
     return (
@@ -110,6 +150,10 @@ export function RowContent({
       <div className="flex min-w-0 flex-1 flex-col">
         <span className={`${titleFit(row)} text-body-strong ${titleColour(row)}`}>{row.title}</span>
         <MetaLine row={row} text={meta} id={reasonId} chip={trailingBelow ? trailing : undefined} />
+        {row.under}
+        {row.actions === undefined || row.actions.length === 0 ? null : (
+          <RowActions actions={row.actions} actionCell={actionCell} />
+        )}
       </div>
       {showTrailingRight ? <span className="flex shrink-0 items-center">{trailing}</span> : null}
       {chevron ? (

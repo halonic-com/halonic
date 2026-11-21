@@ -225,6 +225,7 @@ export type {
   ListGroup,
   ListProps,
   ListRow,
+  ListRowAction,
   ListSelection,
 } from "./list/list-props.ts";
 export {
@@ -278,6 +279,7 @@ export { MAX_SERIES, OTHER_NAME, type Series } from "./series-chart/series.ts";
 export { SeriesChart, type SeriesChartProps } from "./series-chart/series-chart.tsx";
 export {
   type SetupStep,
+  type SetupStepCheck,
   SetupSteps,
   type SetupStepsProps,
 } from "./setup-steps/setup-steps.tsx";

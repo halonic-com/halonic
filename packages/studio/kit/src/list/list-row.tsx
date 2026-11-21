@@ -164,6 +164,8 @@ export interface RowShared<Id extends string> {
   readonly chevrons: boolean | undefined;
   readonly hasMore: boolean;
   readonly hasCheck: boolean;
+  /** The grid's columns for actions, between the main cell and the More button. */
+  readonly actionColumns: number;
   readonly grid: GridNavigation;
   readonly onOpen: ((id: Id) => void) | undefined;
   readonly onOpenInNewTab: ((id: Id) => void) | undefined;
@@ -228,6 +230,7 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
   const state = rowStateClasses[rowState(isUnavailable, isInert, isSelected || isCurrent)];
   const cells = cellClasses({ look, ...place, state, hasCheck, hasMore });
   const mainColumn = firstFocusColumn(hasCheck);
+  const mainCell = grid.cell(row.id, mainColumn);
   const more = moreClasses[phone ? "phone" : "desktop"];
   // An inert row gets no handlers, so a click, Enter or Space does nothing.
   const { onClick, onAuxClick, onKeyDown } = rowHandlers({
@@ -260,7 +263,13 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
       <td
         // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a cell of the grid above
         role="gridcell"
-        {...grid.cell(row.id, mainColumn)}
+        {...mainCell}
+        // Only its own focus: focus moving to one of the row's actions, inside it, bubbles here.
+        onFocus={(event) => {
+          if (event.target === event.currentTarget) {
+            mainCell.onFocus();
+          }
+        }}
         // Also on the cell, where focus is, so a screen reader says the row is the current one.
         aria-current={isCurrent ? true : undefined}
         aria-label={shared.columns === undefined ? row.label : undefined}
@@ -278,6 +287,7 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
           reasonId={reasonId}
           afterCheck={hasCheck}
           columns={shared.columns}
+          actionCell={(index) => grid.cell(row.id, mainColumn + 1 + index)}
         />
       </td>
       {hasMore ? (
@@ -285,7 +295,7 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
           row={row}
           dense={dense}
           grid={grid}
-          column={mainColumn + 1}
+          column={mainColumn + 1 + shared.actionColumns}
           className={`${cells.end} ${more.width} ${more.padding}`}
         />
       ) : null}
@@ -297,7 +307,7 @@ interface MoreCellProps<Id extends string> {
   readonly row: AnyListRow<Id>;
   readonly dense: boolean;
   readonly grid: GridNavigation;
-  /** The More button's column: 1, or 2 after a checkbox cell. */
+  /** The More button's column: after the main cell's, and after a checkbox's and the actions'. */
   readonly column: number;
   readonly className: string;
 }
