@@ -207,7 +207,7 @@ export function runCause(failure: RunFailure): DoctorCause {
   }
 }
 
-/** The line above that shows this very failure: the same alias without a key, the same server, or the sandbox. */
+/** The line above that shows this very failure: the same alias without a key, the same server, or the sandbox with the same reason. */
 function causeShownOn(
   cause: DoctorCause,
   failure: RunFailure,
@@ -227,10 +227,10 @@ function causeShownOn(
     );
     return shown ? "models" : undefined;
   }
-  if (cause.startsWith("sandbox.") && sandbox.status === "failed" && !("timedOut" in sandbox)) {
-    return "sandbox";
-  }
-  return undefined;
+  // Only the same reason: a sandbox that broke differently since the run is a different cause.
+  if (failure.reason !== "sandbox-not-ready" || sandbox.status !== "failed") return undefined;
+  if ("timedOut" in sandbox) return undefined;
+  return sandbox.reason === failure.code ? "sandbox" : undefined;
 }
 
 /**

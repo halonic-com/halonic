@@ -244,6 +244,19 @@ verifies("app.doctor-last-run", () => {
     expect(line?.causeShownOn).toBe("sandbox");
   });
 
+  it("doesn't point at a Sandbox line that failed for another reason", () => {
+    const failed = sandboxLine(
+      { ok: false, reason: "bubblewrap-missing", missing: ["bwrap not found"] },
+      { files: "shared", strength: "os" },
+    );
+    const line = lastRunLine(
+      { ...run, failure: { reason: "sandbox-not-ready", code: "not-supported" } },
+      { sandbox: failed },
+    );
+    expect(line?.cause).toBe("sandbox.not-supported");
+    expect(line).not.toHaveProperty("causeShownOn");
+  });
+
   it("names each line's actions by id", () => {
     const trust = (value: "trusted" | "new") =>
       doctorLineActions({ check: "workspace", status: "ok", name: "acme", trust: value });
