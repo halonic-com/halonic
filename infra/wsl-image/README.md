@@ -31,6 +31,11 @@ runs it as root from Windows, with `wsl.exe` by its full path and no shell:
 %SystemRoot%\System32\wsl.exe -d halonic -u root --cd / --exec /usr/local/sbin/halonic-runtime install <version> <sha256> < runtime.tar.gz
 ```
 
+The shell runs `install` each time it starts the host in the distro and `status`
+names another `current` than the runtime beside the app (`halonic-runtime.tar.gz`
+and its `halonic-runtime.json`, from `runtime-archive.sh`), with a 5-minute limit
+(HAL-14644).
+
 | Command | What it does |
 | --- | --- |
 | `install <version> <sha256>` | reads the archive on standard input, checks its SHA-256, unpacks it as root's files, switches `current`, keeps the version before as `previous` and removes older ones |

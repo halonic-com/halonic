@@ -1,8 +1,12 @@
 //! What the page is told about the security updates and the default distro.
 
-use halonic_agent_host::WslError;
+use std::path::PathBuf;
 
-use super::{DistroStartChecks, answer, cleanup_log, default_distro, security_update_log};
+use halonic_agent_host::{BundledRuntime, RuntimeUpdate, WslError};
+
+use super::{
+    DistroStartChecks, answer, cleanup_log, default_distro, runtime_ending, security_update_log,
+};
 
 /// 2026-11-15T12:00:00Z.
 const NOW: i64 = 1_794_744_000;
@@ -174,4 +178,63 @@ fn the_security_update_log_says_what_the_updater_did_and_why_it_didnt_finish() {
             format!("security updates: they didn't finish, starting anyway: {reason}")
         );
     }
+}
+
+fn shipped() -> BundledRuntime {
+    BundledRuntime {
+        version: "0.1.1+0123456789ab".to_owned(),
+        sha256: "0".repeat(64),
+        archive: PathBuf::from("halonic-runtime.tar.gz"),
+    }
+}
+
+/// Requirement `distro-runtime`: an installed or already current runtime,
+/// or a build that ships none, lets the host start, and the log says which.
+#[test]
+fn the_runtime_install_logs_what_it_did_and_lets_the_host_start() {
+    let installed = runtime_ending(
+        Some("0.1.0"),
+        Ok(Some((shipped(), RuntimeUpdate::Installed))),
+    );
+    assert_eq!(
+        installed,
+        (
+            "runtime: installed 0.1.1+0123456789ab (was 0.1.0)".to_owned(),
+            Ok(())
+        )
+    );
+    let current = runtime_ending(
+        Some("0.1.1+0123456789ab"),
+        Ok(Some((shipped(), RuntimeUpdate::AlreadyCurrent))),
+    );
+    assert_eq!(
+        current,
+        ("runtime: 0.1.1+0123456789ab is current".to_owned(), Ok(()))
+    );
+    let none_shipped = runtime_ending(Some("0.1.0"), Ok(None));
+    assert_eq!(
+        none_shipped,
+        (
+            "runtime: this build ships none, keeping the distro's (0.1.0)".to_owned(),
+            Ok(())
+        )
+    );
+}
+
+/// Requirement `distro-runtime`: a failed install refuses the start only
+/// when the distro has no runtime to start.
+#[test]
+fn a_failed_runtime_install_refuses_the_start_only_with_no_runtime_left() {
+    let (line, outcome) = runtime_ending(Some("0.1.0"), Err(WslError::TimedOut));
+    assert_eq!(
+        line,
+        "runtime: couldn't install this build's, starting 0.1.0: The step took too long and was stopped."
+    );
+    assert_eq!(outcome, Ok(()));
+
+    let (line, outcome) = runtime_ending(None, Err(WslError::ChecksumDiffers));
+    let reason = "the runtime couldn't be installed in Halonic's WSL distro: \
+                  The runtime archive isn't the one this release expects.";
+    assert_eq!(line, format!("runtime: {reason}"));
+    assert_eq!(outcome, Err(reason.to_owned()));
 }

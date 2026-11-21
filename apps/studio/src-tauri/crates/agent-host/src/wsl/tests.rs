@@ -10,9 +10,10 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::time::Duration;
 
 #[cfg(unix)]
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use super::{SettingCopy, WslError, lists_distro, run_runtime_step, send_archive, send_setting};
 #[cfg(unix)]
@@ -81,7 +82,7 @@ fn runtime_update_streams_the_checked_archive_to_the_updater() {
     let archive = temp_file("tar.gz", ARCHIVE);
     let received = temp_file("received", b"");
     let (updater, _script) = ending_with(0, &received);
-    send_archive(updater, &archive, ARCHIVE_SHA).expect("installed");
+    send_archive(updater, &archive, ARCHIVE_SHA, Duration::MAX).expect("installed");
     assert_eq!(std::fs::read(&*received).expect("read"), ARCHIVE);
 }
 
@@ -99,7 +100,7 @@ fn runtime_update_reports_the_updaters_reason() {
     ] {
         let (updater, _script) = ending_with(code, &received);
         assert_eq!(
-            send_archive(updater, &archive, ARCHIVE_SHA),
+            send_archive(updater, &archive, ARCHIVE_SHA, Duration::MAX),
             Err(expected.clone())
         );
         let (updater, _script) = ending_with(code, &received);

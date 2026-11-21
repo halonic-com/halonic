@@ -15,13 +15,19 @@
 //! no session can run yet, so a `bwrap` never holds them off. The updater
 //! runs them at most once a day; the result is logged and the host starts
 //! whatever it says.
+//!
+//! And the runtime this Studio ships (HAL-14644): installed by the updater's
+//! `install` step before the host starts in the distro, when the distro's
+//! `current` runtime is another version or none, so a Studio update brings
+//! its runtime and a distro set up without one gets it.
 
 use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use halonic_agent_host::{
-    RuntimeStep, SecurityUpdates, WslError, halonic_is_default, run_runtime_step_within,
-    runtime_command, security_updates,
+    BundledRuntime, RuntimeStep, RuntimeUpdate, SecurityUpdates, WslError, bundled_runtime,
+    current_runtime, halonic_is_default, run_runtime_step_within, runtime_command,
+    security_updates, update_runtime,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Manager, Runtime};
@@ -141,6 +147,67 @@ fn cleanup_log(result: Result<String, WslError>) -> String {
         Ok(printed) => format!("import mounts: {}", printed.trim()),
         Err(error) => {
             format!("import mounts: the clean-up didn't finish, starting anyway: {error}")
+        }
+    }
+}
+
+/// How long installing the runtime may take before it is stopped: the
+/// archive is sent and unpacked in the distro, which WSL may start first. A
+/// stuck install must not hold up the start for good.
+const RUNTIME_INSTALL_LIMIT: Duration = Duration::from_secs(300);
+
+/// Installs the runtime beside the app in `app_folder` into the distro
+/// behind `wsl`, unless the updater's `status` names it as `current`, and
+/// logs what happened. A build that ships no runtime keeps the distro's.
+///
+/// # Errors
+///
+/// Only when the runtime couldn't be installed and the distro has none to
+/// start; with one, the host starts on it and the log says why.
+pub(super) fn install_bundled_runtime(wsl: &Path, app_folder: &Path) -> Result<(), String> {
+    let status = runtime_command(wsl, RuntimeStep::Status)
+        .and_then(|command| run_runtime_step_within(command, STATUS_LIMIT));
+    let current = status.ok().as_deref().and_then(current_runtime);
+    let update = bundled_runtime(app_folder).and_then(|bundled| {
+        bundled
+            .map(|bundled| {
+                update_runtime(wsl, &bundled, current.as_deref(), RUNTIME_INSTALL_LIMIT)
+                    .map(|update| (bundled, update))
+            })
+            .transpose()
+    });
+    let (line, outcome) = runtime_ending(current.as_deref(), update);
+    halonic_shell_log::record("wsl", line);
+    outcome
+}
+
+/// The log line for the runtime's install, and whether the host may start:
+/// it may unless the install failed with no runtime in the distro.
+fn runtime_ending(
+    current: Option<&str>,
+    update: Result<Option<(BundledRuntime, RuntimeUpdate)>, WslError>,
+) -> (String, Result<(), String>) {
+    let kept = current.unwrap_or("none");
+    match update {
+        Ok(None) => (
+            format!("runtime: this build ships none, keeping the distro's ({kept})"),
+            Ok(()),
+        ),
+        Ok(Some((bundled, RuntimeUpdate::AlreadyCurrent))) => {
+            (format!("runtime: {} is current", bundled.version), Ok(()))
+        }
+        Ok(Some((bundled, RuntimeUpdate::Installed))) => (
+            format!("runtime: installed {} (was {kept})", bundled.version),
+            Ok(()),
+        ),
+        Err(error) if current.is_some() => (
+            format!("runtime: couldn't install this build's, starting {kept}: {error}"),
+            Ok(()),
+        ),
+        Err(error) => {
+            let reason =
+                format!("the runtime couldn't be installed in Halonic's WSL distro: {error}");
+            (format!("runtime: {reason}"), Err(reason))
         }
     }
 }

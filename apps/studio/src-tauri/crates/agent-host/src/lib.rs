@@ -8,6 +8,7 @@
 //! and output instead (`relay.rs`). Nothing here knows Tauri, so it builds
 //! and tests anywhere.
 
+mod bundled_runtime;
 mod console_window;
 mod default_distro;
 mod error;
@@ -25,20 +26,24 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
+pub use bundled_runtime::{
+    BundledRuntime, RUNTIME_ARCHIVE, RUNTIME_MANIFEST, RuntimeUpdate, bundled_runtime,
+    update_runtime,
+};
 use console_window::{new_command, without_console_window};
 pub use default_distro::halonic_is_default;
 pub use error::{AgentHostError, StartCause};
 pub use handshake::{Handshake, read_handshake};
 use relay::Relay;
 pub use routes::{Answer, LineSplitter, LineTooLong, Method, Route, find_route};
-pub use runtime_status::runtime_installed;
+pub use runtime_status::{current_runtime, runtime_installed};
 pub use security_updates::{OVERDUE_AFTER_DAYS, SecurityUpdates, security_updates};
 use stderr_log::log_stderr;
 pub use wsl::{
     DISTRO, DISTRO_HOST, DISTRO_PROFILE_FOLDER, DISTRO_USER, RUNTIME_UPDATER, RuntimeStep,
     SettingCopy, WslError, copy_sandbox_setting, distro_host_command, distro_installed,
-    distro_installed_within, file_sha256, install_runtime, run_runtime_step,
-    run_runtime_step_within, runtime_command, setting_copy_command, wsl_exe,
+    distro_installed_within, file_sha256, install_runtime, install_runtime_within,
+    run_runtime_step, run_runtime_step_within, runtime_command, setting_copy_command, wsl_exe,
 };
 
 /// The host's executable name, without the `.exe` Windows adds.
