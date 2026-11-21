@@ -292,12 +292,12 @@ verifies("studio.sandbox-setup-through-shell", () => {
       { kind: "setup", how: "still-running", repairing: false },
     ],
     [
-      { outcome: "failed", reason: "The system cannot find the file specified." } as const,
+      { outcome: "failed", reason: "Access is denied. (os error 5)" } as const,
       {
         kind: "setup",
         how: "failed",
-        reason:
-          "Windows couldn't start the sandbox helper: The system cannot find the file specified.",
+        reason: "Windows couldn't start Halonic's sandbox helper.",
+        details: "Access is denied. (os error 5)",
       },
     ],
   ])("ends the shell's %o without asking the host", async (elevation, outcome) => {
