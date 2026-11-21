@@ -20,6 +20,7 @@ import type {
   Version,
   VersionInput,
 } from "@halonicjs/studio-feature-source-control/api";
+import { wakeOn } from "./changes-wakes.ts";
 import { historyArgs, versionsFromLog } from "./history-log.ts";
 import { lastVersionDiffArgs, lastVersionFromDiff } from "./last-version.ts";
 import { SharedCopy } from "./shared-copy.ts";
@@ -76,6 +77,8 @@ export class WorkspaceChanges implements ChangesSource {
   readonly #options: WorkspaceChangesOptions;
   readonly #merge: UpdatesMerge;
   readonly #sharedCopy: SharedCopy;
+  /** Whether the last read found a repository and git; true until a read says otherwise. */
+  #repository = true;
 
   constructor(options: WorkspaceChangesOptions) {
     this.#options = options;
@@ -112,6 +115,12 @@ export class WorkspaceChanges implements ChangesSource {
   }
 
   async read(): Promise<ChangesRead> {
+    const read = await this.#read();
+    this.#repository = read.kind === "ready";
+    return read;
+  }
+
+  async #read(): Promise<ChangesRead> {
     const inside = await this.#run(["rev-parse", "--is-inside-work-tree"]);
     if (inside === "no-git") return { kind: "no-git" };
     // Git refuses a folder owned by someone else with the same exit code as "no repository here";
@@ -312,10 +321,7 @@ export class WorkspaceChanges implements ChangesSource {
   }
 
   subscribe(listener: () => void): () => void {
-    const stops = [this.#options.onFocus(listener), this.#options.onFilesChanged(listener)];
-    return () => {
-      for (const stop of stops) stop();
-    };
+    return wakeOn(this.#options, () => this.#repository, listener);
   }
 
   /**
