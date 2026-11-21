@@ -54,6 +54,10 @@ export interface ProviderAccessInput {
    * alias of its hub's models; left out for no model or a `provider/model` name.
    * The engine then asks the program for the alias's model on every call,
    * which the program's own sign-in can't serve.
+   *
+   * Set it only after the built-in loop's key check (`cli.harness-model-access`:
+   * trust, the key's allowed addresses, the harness's route) has passed for the
+   * alias: rule 0 gives the key on this computer too and checks no trust itself.
    */
   readonly aliasProvider?: string;
 }
