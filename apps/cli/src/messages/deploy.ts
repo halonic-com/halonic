@@ -71,7 +71,7 @@ export const deployMessages = defineMessages("deploy", {
   /** A line from the target the user must see, such as the lock lost after the switch. The deploy is live. */
   warning: (message: string) => phrase`${markPart("needsYou")} ${message}`,
 
-  /** A host that isn't one lowercase word, so no package name is made from it. */
+  /** A host that isn't lowercase letters and digits joined by single hyphens, so no package name is made from it. */
   notAHost: (host: string) => phrase`"${host}" isn't a deploy host.`,
   notAHostFix: () => phrase`Set host in deployments.yaml to cloudflare, then run again.`,
   /** The deploy target for a deployment's `host` isn't installed (wording with Sofia, flow section 9). */

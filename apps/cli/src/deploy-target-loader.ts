@@ -27,7 +27,8 @@ const targetMethods = [
 ] as const satisfies readonly (keyof DeployTarget)[];
 
 /**
- * A host as `deployments.yaml` names it: one lowercase word, so the package
+ * A host as `deployments.yaml` names it: lowercase letters and digits, with
+ * single hyphens between parts (`cloudflare`, `foo-bar`), so the package
  * name made from it is always a bare package name, never a path to a file.
  */
 const hostPattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
@@ -36,7 +37,7 @@ const hostPattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
  * The package that deploys to `host`, such as
  * `@halonicjs/target-cloudflare-deploy` for "cloudflare".
  *
- * @throws KindedError `invalid_input` for a host that isn't one lowercase word
+ * @throws KindedError `invalid_input` for a host that doesn't match `hostPattern`
  */
 export function deployTargetPackage(host: string): string {
   if (!hostPattern.test(host)) {
@@ -54,7 +55,7 @@ export function deployTargetPackage(host: string): string {
  * only the targets they use: the name is computed, and the package's
  * `deployTarget` export is checked against the port before it's used.
  *
- * @throws KindedError `invalid_input` for a host that isn't one lowercase word
+ * @throws KindedError `invalid_input` for a host that doesn't match `hostPattern`
  * @throws KindedError `not_found` when the package isn't installed
  * @throws KindedError `internal` when its `deployTarget` is missing, serves
  *   another host, was built for another port version or lacks a method
