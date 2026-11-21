@@ -54,6 +54,22 @@ export const routinesMessages = defineMessages("routines", {
    */
   webhookRoutinesCantStart: (count: number, dir?: string) =>
     phrase`${markPart("needsYou")} ${counted(count, "routine", "routines")} can't start on a web request ${markPart("separator")} ${suggestedCommand("serve", dir)}`,
+  /**
+   * The Next column of a routine that is on in a workspace that isn't
+   * trusted here, so nothing starts it: the Studio's chip (HAL-15525).
+   */
+  pausedUntilTrusted: () => phrase`${markPart("needsYou")} Paused until trusted`,
+  /**
+   * The line above the list when the workspace isn't trusted on this
+   * computer, so `watch` and the Studio start none of its routines
+   * (HAL-15525): "! Acme isn't trusted on this computer yet, so its
+   * routines don't start · halonic trust". `dir` is the user's own `--dir`.
+   */
+  notTrustedPaused: (workspace: string, dir?: string) =>
+    phrase`${markPart("needsYou")} ${workspace} isn't trusted on this computer yet, so its routines don't start ${markPart("separator")} ${suggestedCommand("trust", dir)}`,
+  /** The same, when the workspace changed since it was trusted, in `run`'s words. */
+  changedPaused: (workspace: string, dir?: string) =>
+    phrase`${markPart("needsYou")} ${workspace} changed since you trusted it, so its routines don't start ${markPart("separator")} ${suggestedCommand("trust", dir)}`,
   /** The Next column of a routine that is off. */
   off: () => phrase`Off`,
   /** The Next column of a routine no clock starts: manual, a signal, mail, or a schedule that doesn't parse. */

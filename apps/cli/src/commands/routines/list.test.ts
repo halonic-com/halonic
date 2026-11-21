@@ -414,6 +414,7 @@ verifies("cli.commands.routines.list", () => {
           lastRun: { runId: done.id, status: "completed", startedAt: done.start },
         },
       ],
+      trusted: true,
     });
   });
 
