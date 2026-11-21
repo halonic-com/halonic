@@ -78,6 +78,7 @@ export function doctorWorkspace(input: DoctorWorkspaceInput): DoctorWorkspace {
       fileProblems === 0 &&
       reachesOnlyTheTestModel(trustContentInputOf(workspace, input.integrations)),
     ...(fileProblems === 0 ? {} : { fileProblems }),
+    ...(settings?.privacy.localOnly === true ? { localOnly: true } : {}),
   };
 }
 
@@ -101,7 +102,7 @@ export function doctorWorkspace(input: DoctorWorkspaceInput): DoctorWorkspace {
 export function doctorProvider(provider: Provider): DoctorProvider | undefined {
   const named = { provider: provider.id, name: provider.name ?? provider.id };
   if (provider.type === "mock") {
-    return { ...named, runs: "without-a-key" };
+    return { ...named, runs: "without-a-key", testModel: true };
   }
   if (provider.local) {
     const address = providerAddress(provider);

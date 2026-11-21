@@ -203,6 +203,7 @@ verifies("cli.doctor-workspace", () => {
       provider: "mock",
       name: "Test model",
       runs: "without-a-key",
+      testModel: true,
     });
   });
 
