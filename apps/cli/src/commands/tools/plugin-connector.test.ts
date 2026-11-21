@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { beforeEach, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { toolsKit } from "../../test/tools-kit.spec.ts";
 
@@ -11,8 +11,11 @@ const notAddedLine =
   "The plugin files isn't added, so it has no tools yet. Add it with halonic plugin add <folder or git address>.";
 
 verifies("cli.commands.tools.plugin-connector", () => {
-  it("says a plugin connector's tools need no approval, starts nothing and exits 0", async () => {
+  beforeEach(async () => {
     await kit.notes().rewriteConnector("transport:\n  plugin:\n    id: files\n");
+  });
+
+  it("says a plugin connector's tools need no approval, starts nothing and exits 0", async () => {
     kit.notes().addPlugin("files");
 
     const review = await kit.tools(["review", "notes-mcp"]);
@@ -23,8 +26,6 @@ verifies("cli.commands.tools.plugin-connector", () => {
   });
 
   it("says when the connector's plugin isn't added, and still exits 0", async () => {
-    await kit.notes().rewriteConnector("transport:\n  plugin:\n    id: files\n");
-
     const review = await kit.tools(["review", "notes-mcp"]);
     expect(review).toEqual({ code: exitCode.ok, stdout: [pluginLine, notAddedLine], stderr: [] });
     const approve = await kit.tools(["approve", "notes-mcp", "--all"]);
@@ -32,7 +33,7 @@ verifies("cli.commands.tools.plugin-connector", () => {
   });
 
   it("gives --json the reason as needsNoApproval, not as an error", async () => {
-    await kit.notes().rewriteConnector("transport:\n  plugin:\n    id: files\n");
+    kit.notes().addPlugin("files");
 
     const review = await kit.tools(["review", "notes-mcp", "--json"]);
     expect(review.code).toBe(exitCode.ok);
@@ -40,6 +41,7 @@ verifies("cli.commands.tools.plugin-connector", () => {
       ok: true,
       source: "notes-mcp",
       needsNoApproval: "plugin",
+      pluginState: "on",
     });
     const approve = await kit.tools(["approve", "notes-mcp", "--all", "--json"]);
     expect(JSON.parse(approve.stdout.join("\n"))).toMatchObject({
@@ -54,5 +56,46 @@ verifies("cli.commands.tools.plugin-connector", () => {
 
     const { stdout } = await kit.tools(["review", "notes-mcp", "--json"]);
     expect(JSON.parse(stdout.join("\n"))).toMatchObject({ ok: true, needsNoApproval: "built_in" });
+  });
+
+  it("names the added plugin a typo is close to, after the line that it isn't added", async () => {
+    kit.notes().addPlugin("filez");
+
+    const review = await kit.tools(["review", "notes-mcp"]);
+    expect(review).toEqual({
+      code: exitCode.ok,
+      stdout: [pluginLine, notAddedLine, "Did you mean filez?"],
+      stderr: [],
+    });
+    const json = await kit.tools(["review", "notes-mcp", "--json"]);
+    expect(JSON.parse(json.stdout.join("\n"))).toMatchObject({
+      ok: true,
+      pluginState: "not_added",
+    });
+  });
+
+  it("warns that a plugin changed since it was trusted is off, with the command that trusts it", async () => {
+    kit.notes().addPlugin("files", "changed");
+
+    const review = await kit.tools(["review", "notes-mcp"]);
+    expect(review).toEqual({
+      code: exitCode.ok,
+      stdout: [pluginLine],
+      stderr: ["! files is off: changed since you trusted it · halonic trust --plugin files"],
+    });
+    const json = await kit.tools(["review", "notes-mcp", "--json"]);
+    expect(JSON.parse(json.stdout.join("\n"))).toMatchObject({ ok: true, pluginState: "off" });
+  });
+
+  it("warns that a plugin not trusted yet, or one that can't be read, is off", async () => {
+    kit.notes().addPlugin("files", "notTrusted");
+    expect((await kit.tools(["approve", "notes-mcp", "--all"])).stderr).toEqual([
+      "! files is off: not trusted yet · halonic trust --plugin files",
+    ]);
+
+    kit.notes().addPlugin("files", "broken");
+    expect((await kit.tools(["review", "notes-mcp"])).stderr).toEqual([
+      "! files can't be read or checked, so it's off. See halonic plugin list.",
+    ]);
   });
 });

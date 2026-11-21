@@ -21,7 +21,14 @@ import {
   UsageError,
 } from "../../command.ts";
 import { type ConnectorMachine, nodeConnectorMachine } from "../../connector-machine.ts";
-import type { Phrase } from "../../messages/phrase.ts";
+import {
+  type AddedPlugins,
+  addedPluginsOf,
+  type ConnectorPlugin,
+  connectorPlugin,
+} from "../../connector-plugin.ts";
+import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
+import { pluginMessages } from "../../messages/plugin.ts";
 import { suggestedCommand } from "../../messages/suggested-command.ts";
 import { toolsMessages } from "../../messages/tools.ts";
 import { nearMatch } from "../../near-match.ts";
@@ -38,13 +45,13 @@ export interface ToolsMachine extends ConnectorMachine {
   /** Where the approvals of listed tools are kept. */
   readonly approvals: ToolApprovalStore;
   readonly digest: Digest;
-  /** Whether a plugin with this id is added to the profile, for a plugin's connector. */
-  pluginAdded(id: string): Promise<boolean>;
+  /** The plugins added on this computer, for a plugin connector's plugin. */
+  readonly plugins: AddedPlugins;
 }
 
 /**
- * The connector machine, and the approvals in the profile folder's
- * `tool-approvals`, which Studio reads too.
+ * The connector machine, the approvals in the profile folder's
+ * `tool-approvals`, which Studio reads too, and the profile's plugins.
  *
  * @throws RangeError when `HALONIC_HOME` or the home folder isn't absolute
  */
@@ -56,8 +63,7 @@ export function nodeToolsMachine(): ToolsMachine {
       toolApprovalFolder(profileFolder(nodeProfileEnvironment())),
     ),
     digest: webCryptoDigest,
-    pluginAdded: async (id) =>
-      (await openPluginService({}).load()).some((entry) => entry.folder === id),
+    plugins: addedPluginsOf(openPluginService({})),
   };
 }
 
@@ -182,27 +188,57 @@ export function isOffered(source: ToolSource, listedName: string): boolean {
   return allowsTool(source.connector, listedName);
 }
 
+/** What `review` and `approve` show for a connector with no listed tools to approve. */
+export interface NoToolsShown {
+  readonly lines: readonly Phrase[];
+  /** A `!` line when the plugin is off, so an agent gets none of its tools yet. */
+  readonly warnings: readonly Phrase[];
+  readonly json: JsonFields;
+}
+
 /**
  * What `review` and `approve` say, and exit 0 on, for a connector with no
- * listed tools to approve. `--json` gets the reason as `needsNoApproval`.
- * A plugin's connector whose plugin isn't added gets a second line saying so.
+ * listed tools to approve. `--json` gets the reason as `needsNoApproval`,
+ * and for a plugin's connector the plugin's state as `pluginState`. A plugin
+ * that isn't added gets a second line saying so (HAL-13716), and a third
+ * naming a near id when one is close; one that is off gets a `!` warning
+ * (HAL-14296).
  */
 export async function noToolsToApprove(
   why: NoToolsToApprove,
   source: ToolSource,
-  machine: Pick<ToolsMachine, "pluginAdded">,
-): Promise<{ readonly lines: readonly Phrase[]; readonly json: JsonFields }> {
+  machine: Pick<ToolsMachine, "plugins">,
+): Promise<NoToolsShown> {
   const json = { needsNoApproval: why };
   const { transport } = source.connector;
   if (!("plugin" in transport)) {
-    return { lines: [toolsMessages.onlyBuiltIn(source.shown).phrase], json };
+    return { lines: [toolsMessages.onlyBuiltIn(source.shown).phrase], warnings: [], json };
   }
   const lines = [toolsMessages.pluginTools(source.shown).phrase];
   const { id } = transport.plugin;
-  if (!(await machine.pluginAdded(id))) {
+  const plugin = connectorPlugin(id, await machine.plugins());
+  if (plugin.state === "not_added") {
     lines.push(toolsMessages.pluginNotAdded(printable(id)).phrase);
+    if (plugin.near !== undefined) {
+      lines.push(toolsMessages.didYouMean(printable(plugin.near)).phrase);
+    }
+    return { lines, warnings: [], json: { ...json, pluginState: plugin.state } };
   }
-  return { lines, json };
+  return {
+    lines,
+    warnings: pluginOffLines(plugin, printable(id)),
+    json: { ...json, pluginState: plugin.state },
+  };
+}
+
+/** The `!` line for a plugin that is added but off, or none when it's on. */
+function pluginOffLines(plugin: Exclude<ConnectorPlugin, { state: "not_added" }>, id: string) {
+  if (plugin.state === "on") return [];
+  const said =
+    plugin.state === "broken"
+      ? pluginMessages.pluginBroken(id)
+      : pluginMessages.pluginOff(plugin.why, id);
+  return [phrase`${markPart("needsYou")} ${said.phrase}`];
 }
 
 /** The check, unless none of its listed tools can be on: then why, as the error. */
