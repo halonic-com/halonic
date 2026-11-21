@@ -14,11 +14,13 @@ import { render, unmountAll } from "../test-support/render.tsx";
 import { StudioWindow } from "./studio-window.tsx";
 import { StudioWorkspace } from "./studio-workspace.ts";
 
+let media: FakeMediaQueries;
 let restoreMedia: () => void;
 let restoreModal: () => void;
 
 beforeEach(() => {
-  restoreMedia = new FakeMediaQueries(1280).install();
+  media = new FakeMediaQueries(1280);
+  restoreMedia = media.install();
   restoreModal = fakeShowModal();
 });
 
@@ -103,5 +105,18 @@ verifies("shell.item-tab-names", () => {
     act(() => names.learn("support-reply", "Support reply"));
 
     expect(tabs.state).toBe(before);
+  });
+  it("names the phone's page and the window again too, as a phone keeps its own pages (PT1, HAL-14489)", () => {
+    const names = workflowNames();
+    const tabs = renderWindow(names);
+    act(() => tabs.openHere(supportReply));
+    act(() => media.resize(400));
+    const topBar = () => document.querySelector("header p")?.textContent;
+    expect(topBar()).toBe("support-reply");
+
+    act(() => names.learn("support-reply", "Support reply"));
+
+    expect(topBar()).toBe("Support reply");
+    expect(document.title.startsWith("Support reply · ")).toBe(true);
   });
 });

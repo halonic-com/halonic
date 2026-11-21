@@ -68,6 +68,12 @@ verifies("library.collection-page", () => {
       );
     });
 
+    it("lines the chips up with the title and the grid, with no padding of their own (CP1)", async () => {
+      const { root } = await opened(sourceOf([swim, trip]));
+      const row = root.querySelector('[role="radiogroup"]') as HTMLElement;
+      expect(row.className).not.toContain("px-4");
+    });
+
     it("shows a column per field with * for required and ƒ for computed", async () => {
       const { root } = await opened(sourceOf([swim]));
       const headers = [...root.querySelectorAll("th")].map((header) => header.textContent);

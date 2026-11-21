@@ -47,6 +47,8 @@ export interface FilterPicker {
 interface RowLabel {
   /** What the row filters, for screen readers: "Hub", "Filters". */
   readonly label: string;
+  /** No side padding, so the chips line up with the page's own edge (the collection page). Off by default. */
+  readonly flush?: boolean;
 }
 
 /** One-of: a radio group, where exactly one chip is on and the arrow keys move it. */
@@ -112,8 +114,13 @@ const unavailableChip = [
   "aria-disabled:text-forced-disabled aria-disabled:border-forced-disabled",
 ].join(" ");
 
-/** 8px between chips, 16px between wrapped lines, padding 8px 16px. Never scrolls sideways. */
-const rowClasses = "flex flex-wrap gap-x-2 gap-y-4 px-4 py-2";
+/**
+ * 8px between chips, 16px between wrapped lines, padding 8px 16px, or 8px 0 when `flush`. Never
+ * scrolls sideways.
+ */
+function rowClasses(flush: boolean | undefined): string {
+  return `flex flex-wrap gap-x-2 gap-y-4 ${flush === true ? "" : "px-4 "}py-2`;
+}
 
 /**
  * A row of chips that filters a list (component specs 15.7). With `options` it's one-of, a radio
@@ -133,7 +140,10 @@ export function FilterChips<Value extends string>(props: FilterChipsProps<Value>
   if (props.options === undefined) {
     return (
       // A fieldset is a group already; min-w-0 lets it wrap instead of growing to its content.
-      <fieldset aria-label={props.label} className={`${rowClasses} m-0 min-w-0 border-0`}>
+      <fieldset
+        aria-label={props.label}
+        className={`${rowClasses(props.flush)} m-0 min-w-0 border-0`}
+      >
         {props.pickers?.map((picker) => (
           <PickerChip key={picker.label} picker={picker} />
         ))}
@@ -150,7 +160,7 @@ export function FilterChips<Value extends string>(props: FilterChipsProps<Value>
 function OneOfChips<Value extends string>(props: FilterChipsOneOf<Value>) {
   const name = useId();
   return (
-    <div role="radiogroup" aria-label={props.label} className={rowClasses}>
+    <div role="radiogroup" aria-label={props.label} className={rowClasses(props.flush)}>
       {props.options.map((option) => {
         const on = option.value === props.value;
         return (

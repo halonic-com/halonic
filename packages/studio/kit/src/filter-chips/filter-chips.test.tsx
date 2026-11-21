@@ -28,6 +28,19 @@ verifies("kit.filter-chips", () => {
     expect(row.className).not.toContain("overflow-x");
   });
 
+  it("drops the row's 16px sides when flush, in both kinds of row (HAL-14489)", () => {
+    const { container } = render(
+      <>
+        <FilterChips label="Hub" options={hubs} value="all" onChange={() => undefined} flush />
+        <FilterChips label="Filters" toggles={[]} flush />
+      </>,
+    );
+    for (const row of container.children) {
+      expect(row.className).toContain("flex flex-wrap gap-x-2 gap-y-4 py-2");
+      expect(row.className).not.toContain("px-4");
+    }
+  });
+
   it("makes one-of chips a radio group of native radios named by their words", () => {
     const { container } = render(
       <FilterChips label="Hub" options={hubs} value="acme" onChange={() => undefined} />,
