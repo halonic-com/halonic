@@ -381,11 +381,25 @@ verifies("studio.workspace-agents-trash", () => {
       expect((await host.list()).map((agent) => agent.id)).toEqual(["writer"]);
     });
 
-    it("refuses Undo once something else changed, and an agent that isn't there", async () => {
-      const { host, store } = setup();
+    it("puts the agent back with Undo after something else changed", async () => {
+      const { host, store, changes } = setup();
       const trashed = await host.trash({ hubId: "acme", id: "writer" });
-      store["hubs/acme/agents/other.agent.yaml"] = "id: other\nname: Other\n";
       await host.create({ name: "Newer", hubId: "acme" });
+
+      await trashed.undo();
+
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toBe(writerFile);
+      expect(store["hubs/acme/agents/newer.agent.yaml"]).toBeDefined();
+      expect(changes.at(-1)).toEqual({
+        label: "Put back agent Writer",
+        changes: { "hubs/acme/agents/writer.agent.yaml": writerFile },
+      });
+    });
+
+    it("refuses Undo when a new file took the agent's place, and an agent that isn't there", async () => {
+      const { host } = setup();
+      const trashed = await host.trash({ hubId: "acme", id: "writer" });
+      await host.create({ name: "Writer", hubId: "acme" });
 
       await expect(trashed.undo()).rejects.toMatchObject({ kind: "conflict" });
       await expect(host.trash({ hubId: "acme", id: "gone" })).rejects.toMatchObject({

@@ -277,8 +277,8 @@ export interface NewAgent {
 /** An agent that was moved to the trash, and the way to bring it back. */
 export interface TrashedAgent {
   /**
-   * Puts the agent back. It is the workspace's undo, so it works only while the delete is still the
-   * newest change; after any other change it rejects with `conflict` and undoes nothing.
+   * Puts the agent back, after later changes too. It rejects with `conflict`, and undoes nothing,
+   * when a file has taken its place since.
    */
   undo(): Promise<void>;
 }
