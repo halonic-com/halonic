@@ -1,0 +1,16 @@
+# halonic-phone-tunnel
+
+The phone's tunnel service (tunnel D6, HAL-15157): what the Android shell's phone tunnel commands call. It runs a pairing with `halonic-tunnel`, keeps the computers the person allowed in `halonic-device-keys`' list with the phone's own key for each, and connects to them. Plain Rust with no Tauri types; the shell's `phone_tunnel` module wraps it.
+
+**Keys stay here.** The page gets only the answers in `answers` and the `PageStatus` the shell passes on: the check code, computer names and ids, endpoints, times and states. Never a private key, a session key, the pairing code or its psk. A computer's id is the hex of its static public key when the phone first paired with it.
+
+- `PhoneTunnel::pair_start`: reads the page's `PairingStart` again (the QR code's host key, the code, the endpoints; `start`), asks Android's local network question when an endpoint is on the Wi-Fi, ends any other pairing, and runs pairing messages 1 to 3. It answers the computer's name and the check code, or a `Problem`. The wait for the computer's Allow starts at once in the same task, so the connection never sits idle and the 130 seconds count from message 3.
+- `pair_wait`: collects that wait. Once allowed, the computer is listed with the phone's new key (pairing again keeps its id), any connection under an earlier key ends, and it answers the computer. `pair_cancel` ends the pairing, which ends it on the computer too; a waiting `pair_wait` answers `code-ended`. One pairing runs at a time.
+- `computers`, `forget`: the listed computers, Removed ones included; Forget ends the connection, then wipes the key and the details.
+- `connect`, `disconnect`: one connection per computer, at the first of its endpoints that opens. Connecting again answers `connecting`, and makes one that waits to reconnect try at once ("Try now"). The list follows the connection: connected, can't confirm (nothing cleared), and Removed, which wipes the key and the pin **before** the page hears of it. While reconnecting, the status says when the next try starts (`nextTryAtMs`).
+- `TunnelHost`: what the service needs from the shell. Android's local network question, passing a status on to the page (only while the window is on the app's own page, H1 on HAL-15181), and the shell log for failures no page waits for.
+- `Problem`: every failure as a typed `kind` (`wrong-code` with `triesLeft`, `code-ended`, `code-used`, `rate-limited`, `denied`, `timed-out`, `handshake-failed`, `cant-reach` with its `reason`, `no-local-network`, `unreadable`, `not-paired`, `key-unreadable`, `keys-unavailable`), never a raw message.
+
+Session messages (`hello`, `watch`…) aren't carried yet: D7 (HAL-15177) adds them to the same channel. TLS endpoints need the shell to give a `Dialer` with the platform verifier; until it does, they can't be reached.
+
+The tests run the service against the tunnel crate's fake host (`../tunnel/tests/support`) on loopback, with the fake key wrapper. The requirements in `requirements/` are drafts until the trace check reads `cargo test` results; until then each test's name starts with the last part of the requirement it proves.
