@@ -8,6 +8,6 @@ While Halonic can't run an agent on its own, the Triggers section on an agent sh
 
 ## Examples
 
-- Given the agent Writer with no routine, then the section says "Nothing starts this agent on its own yet; it runs when called." and then the line, before Add trigger is pressed; a screen reader reads the line with Add trigger.
+- Given the agent Writer with no routine, then the section says "No trigger starts this agent." and then the line, before Add trigger is pressed; a screen reader reads the line with Add trigger.
 - Given the agent Writer and Add trigger was pressed, then the line still shows, above the **Prompt**.
 - Given the workflow Reply, then the line isn't there.

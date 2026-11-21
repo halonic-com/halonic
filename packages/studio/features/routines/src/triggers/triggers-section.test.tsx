@@ -148,9 +148,7 @@ verifies("routines.triggers.lists-routines-that-start-it", () => {
 verifies("routines.triggers.empty-state", () => {
   it("says what the owner does with no routine, by kind", async () => {
     const page = await show(<TriggersView host={hostWith([])} owner={agent} />);
-    expect(page.textContent).toContain(
-      "Nothing starts this agent on its own yet; it runs when called.",
-    );
+    expect(page.textContent).toContain("No trigger starts this agent.");
     unmount();
     const workflow = await show(
       <TriggersView host={hostWith([])} owner={{ ...agent, kind: "workflow" }} />,
