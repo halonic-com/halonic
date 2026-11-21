@@ -15,4 +15,8 @@ export {
   runFailureOf,
   setupFailureOf,
 } from "./run-failure-facts.ts";
-export type { ProxyFailure, ProxyProblem } from "./run-failure-proxy.ts";
+export {
+  type ProxyFailure,
+  type ProxyProblem,
+  proxyFailureOf,
+} from "./run-failure-proxy.ts";

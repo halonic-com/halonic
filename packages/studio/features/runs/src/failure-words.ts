@@ -1,4 +1,4 @@
-import type { ProxyFailure } from "./run-view/proxy-failure.ts";
+import type { ProxyFailure } from "@halonicjs/app/run-failure";
 import { capitalised } from "./run-words.ts";
 
 /**

@@ -7,7 +7,7 @@
 // banner's button (`run-again.ts`); a banner adds the fixes that come before it (Copy command, or
 // Open Models where the cause is fixed in Models) and the links after it (Open Models, Copy details).
 
-import { setupFailureOf } from "@halonicjs/app/run-failure";
+import { proxyFailureOf, setupFailureOf } from "@halonicjs/app/run-failure";
 import type { RunEvent, RunFailureCause, RunSummary } from "@halonicjs/events";
 import { failureWords } from "../failure-words.ts";
 import { currentStepName } from "../list/run-row.ts";
@@ -16,7 +16,6 @@ import { capitalised } from "../run-words.ts";
 import { accountBanner } from "./account-banners.ts";
 import { apiOffOf } from "./api-off.ts";
 import { danger } from "./danger-banner.ts";
-import { proxyFailureOf } from "./proxy-failure.ts";
 import type { BannerFix, RunBanner, RunPageContext } from "./run-page-model.ts";
 
 /** The cause code the Studio gives a run it stopped because the workspace's trust was removed (`trustRemovedCause`). */
@@ -187,11 +186,14 @@ function proxyBanner(
   facts: FailureFacts,
   context: RunPageContext,
 ): RunBanner | undefined {
-  const failure = proxyFailureOf(summary);
-  if (facts.provider === undefined || failure === undefined) {
+  if (facts.provider === undefined) {
     return undefined;
   }
   const name = providerNameOf(facts.provider, context.providerName);
+  const failure = proxyFailureOf(summary.cause, name);
+  if (failure === undefined) {
+    return undefined;
+  }
   const shellSentence = summary.cause?.detail?.["message"];
   return danger(
     shellSentence === undefined
