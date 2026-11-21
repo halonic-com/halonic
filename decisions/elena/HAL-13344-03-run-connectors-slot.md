@@ -2,6 +2,7 @@
 
 - Approval: Liam signs this on HAL-13344 (item 4 of HAL-13318; Owen reviews the connector part)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/h/SRTnrthDCiRc+gu+2Vnc1u3MV3dFrKc4OhCOBYYPdMEFDVTqaAuvVmeUlsxXKSFpvqTeaW5XaXh34WtlYBA==
 
 `studio.engine-service` (draft) said the page refuses as `unavailable` every workflow with an agent
 that lists a connector, because the page could start none. Where the agent host runs, the page's
