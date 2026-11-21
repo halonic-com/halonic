@@ -39,7 +39,7 @@ export {
   type SignInGrant,
   type SignInGrants,
 } from "./sign-in-grants.ts";
-export { signInTokenName } from "./sign-in-token-name.ts";
+export { signInsInTokenNames, signInTokenName } from "./sign-in-token-name.ts";
 export {
   accessTokenMinimumLifeMs,
   createSignInTokens,

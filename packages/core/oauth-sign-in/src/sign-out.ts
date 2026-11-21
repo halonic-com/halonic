@@ -1,7 +1,7 @@
 import type { HttpClient, Secrets } from "@halonicjs/ports";
 import { type ApprovedSignIn, revokeWouldEndGrantOf } from "./approved-sign-in.ts";
 import { type RevokeResult, revokeToken } from "./revoke-token.ts";
-import type { SignInGrants } from "./sign-in-grants.ts";
+import type { SignInGrant, SignInGrants } from "./sign-in-grants.ts";
 
 /** What `signOut` needs. */
 export interface SignOutSettings {
@@ -38,8 +38,8 @@ export type SignOutResult =
  * user approved, then removes the grant. It uses the approved sign-in saved
  * with the grant, never the sheet's, so a changed sheet can't send the token
  * to another address, and it works when the sheet no longer has the sign-in.
- * The grant is removed even when the revoke fails; the caller tells the user
- * if the server didn't confirm.
+ * The grant is removed even when the revoke fails, or when it can't be opened
+ * to revoke it; the caller tells the user if the server didn't confirm.
  *
  * @param settings - the integration, the grant store and the ports
  * @param signIn - the sign-in's name in the sheet
@@ -54,7 +54,15 @@ export async function signOut(
   signIn: string,
   replacedBy?: ApprovedSignIn,
 ): Promise<SignOutResult> {
-  const grant = await settings.grants.find(settings.integration, signIn);
+  let grant: SignInGrant | undefined;
+  try {
+    grant = await settings.grants.find(settings.integration, signIn);
+  } catch {
+    // A grant that can't be opened, such as without the token key, can't be
+    // revoked, but it is still removed: a sign-out never leaves one behind.
+    await settings.grants.remove(settings.integration, signIn);
+    return { kind: "signedOut", revoke: "notConfirmed" };
+  }
   if (grant === undefined) {
     return { kind: "notSignedIn" };
   }
@@ -88,7 +96,9 @@ async function revokeAtApprovedUrl(
 ): Promise<RevokeResult["kind"]> {
   let clientSecret: string | undefined;
   if (approved.clientSecretName !== undefined) {
-    const secret = await settings.secrets.get(approved.clientSecretName);
+    // A secret that can't be read, such as a plugin's after its trust is gone,
+    // counts as missing: the grant is removed all the same.
+    const secret = await settings.secrets.get(approved.clientSecretName).catch(() => null);
     if (secret === null) {
       return "notConfirmed";
     }

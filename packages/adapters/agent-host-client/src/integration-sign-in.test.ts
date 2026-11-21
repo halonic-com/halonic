@@ -7,6 +7,7 @@ const statusRoute = "POST /v1/integrations/sign-in/status";
 const startRoute = "POST /v1/integrations/sign-in/start";
 const cancelRoute = "POST /v1/integrations/sign-in/cancel";
 const signOutRoute = "POST /v1/integrations/sign-in/sign-out";
+const signOutAllRoute = "POST /v1/integrations/sign-in/sign-out-all";
 
 verifies("agent-host-client.integration-sign-in", () => {
   describe("status", () => {
@@ -190,6 +191,29 @@ verifies("agent-host-client.integration-sign-in", () => {
 
       await expect(
         new AgentHostIntegrationSignIns(host).signOut("gitlab", "account"),
+      ).rejects.toMatchObject({ kind: "answer_invalid" });
+    });
+  });
+
+  describe("signOutAll", () => {
+    it("asks with the integration's name and answers each sign-in signed out", async () => {
+      const signedOut = [{ signIn: "account", result: { kind: "signedOut", revoke: "revoked" } }];
+      const host = new FakeHost().answer(signOutAllRoute, ok({ signedOut }));
+
+      const answer = await new AgentHostIntegrationSignIns(host).signOutAll("gitlab");
+
+      expect(answer).toEqual(signedOut);
+      expect(host.calls).toEqual([{ route: signOutAllRoute, body: { integration: "gitlab" } }]);
+    });
+
+    it("fails with answer_invalid for an answer that isn't the route's", async () => {
+      const host = new FakeHost().answer(
+        signOutAllRoute,
+        ok({ signedOut: [{ signIn: "account", result: { kind: "gone" } }] }),
+      );
+
+      await expect(
+        new AgentHostIntegrationSignIns(host).signOutAll("gitlab"),
       ).rejects.toMatchObject({ kind: "answer_invalid" });
     });
   });

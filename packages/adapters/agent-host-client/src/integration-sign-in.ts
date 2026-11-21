@@ -117,19 +117,29 @@ const statusSchema = s
 
 const startedSchema = s.object({ authorizeUrl: s.string() }).strict();
 
-const signedOutSchema = s
+const signOutResultSchema: Schema<IntegrationSignOutResult> = s.union([
+  s.object({ kind: s.literal("notSignedIn") }).strict(),
+  s
+    .object({
+      kind: s.literal("signedOut"),
+      revoke: s.enum(["revoked", "notConfirmed", "noRevokeUrl", "skipped"]),
+    })
+    .strict(),
+]);
+
+const signedOutSchema = s.object({ result: signOutResultSchema }).strict();
+
+const signedOutAllSchema = s
   .object({
-    result: s.union([
-      s.object({ kind: s.literal("notSignedIn") }).strict(),
-      s
-        .object({
-          kind: s.literal("signedOut"),
-          revoke: s.enum(["revoked", "notConfirmed", "noRevokeUrl", "skipped"]),
-        })
-        .strict(),
-    ]),
+    signedOut: s.array(s.object({ signIn: s.string(), result: signOutResultSchema }).strict()),
   })
   .strict();
+
+/** One sign-in that {@link AgentHostIntegrationSignIns.signOutAll} signed out, and how. */
+export interface IntegrationSignedOut {
+  readonly signIn: string;
+  readonly result: IntegrationSignOutResult;
+}
 
 /**
  * The page's way to an integration's sign-ins. The agent host runs the
@@ -188,5 +198,20 @@ export class AgentHostIntegrationSignIns {
     const route = "POST /v1/integrations/sign-in/sign-out";
     const answer = await this.#transport.request(route, { integration, signIn });
     return readAnswer(route, answer, signedOutSchema).result;
+  }
+
+  /**
+   * Signs out every sign-in of the integration that has a saved grant, also
+   * one its sheet no longer names or a plugin the trust no longer covers:
+   * each is revoked where it can be and its grant removed. Studio calls it
+   * when it removes a plugin's trust or the plugin.
+   *
+   * @returns each sign-in signed out and how; none for an integration the host runs no sign-ins for
+   * @throws {@link AgentHostError} when the host can't be reached or refuses (`sign_in_failed`)
+   */
+  async signOutAll(integration: string): Promise<readonly IntegrationSignedOut[]> {
+    const route = "POST /v1/integrations/sign-in/sign-out-all";
+    const answer = await this.#transport.request(route, { integration });
+    return readAnswer(route, answer, signedOutAllSchema).signedOut;
   }
 }

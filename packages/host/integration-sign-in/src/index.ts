@@ -17,9 +17,11 @@ export {
 export {
   createSignInHost,
   type IntegrationSignInParts,
+  type SignedOutSignIn,
   type SignInHost,
   type SignInHostSettings,
   type SignInIntegration,
   type SignInState,
   type SignInStatus,
 } from "./sign-in-host.ts";
+export { type SavedSignInsSignOut, signOutSavedSignIns } from "./sign-out-saved.ts";

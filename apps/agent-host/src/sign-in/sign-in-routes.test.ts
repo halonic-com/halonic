@@ -129,6 +129,64 @@ verifies("agent-host.integration-sign-in-routes", () => {
     });
   });
 
+  describe("signing out all of an integration's sign-ins", () => {
+    it("signs out a plugin whose trust was removed, so trusting it again finds it signed out", async () => {
+      const { example, url } = await started();
+      await fetch(example.server.approve(await start(url)));
+      example.setTrusted(false);
+
+      const response = await post(url, "/v1/integrations/sign-in/sign-out-all", {
+        integration: "example",
+      });
+
+      expect(await response.json()).toEqual({
+        signedOut: [
+          { signIn: rig.signInName, result: { kind: "signedOut", revoke: "notConfirmed" } },
+        ],
+      });
+      expect(example.savedTokenNames()).toEqual([]);
+      example.setTrusted(true);
+      expect(await states(url)).toMatchObject({ signIns: [{ state: "signedOut" }] });
+    });
+
+    it("revokes at the provider while the plugin is still trusted", async () => {
+      const { example, url } = await started();
+      await fetch(example.server.approve(await start(url)));
+
+      const response = await post(url, "/v1/integrations/sign-in/sign-out-all", {
+        integration: "example",
+      });
+
+      expect(await response.json()).toEqual({
+        signedOut: [{ signIn: rig.signInName, result: { kind: "signedOut", revoke: "revoked" } }],
+      });
+      expect(example.server.revokeRequests()).toHaveLength(1);
+    });
+
+    it("answers an empty list for a name the host runs no sign-ins for, also one that isn't a sheet name", async () => {
+      const { url } = await started();
+
+      for (const integration of ["unknown", "acme.weather"]) {
+        const response = await post(url, "/v1/integrations/sign-in/sign-out-all", { integration });
+        expect(await response.json()).toEqual({ signedOut: [] });
+      }
+    });
+
+    it("drops the parts of a plugin the trust doesn't cover, so its pending sign-in ends", async () => {
+      const { example, url } = await started();
+      const callback = example.server.approve(await start(url));
+      example.setTrusted(false);
+
+      expect(
+        (await post(url, "/v1/integrations/sign-in/status", { integration: "example" })).status,
+      ).toBe(404);
+
+      example.setTrusted(true);
+      expect((await fetch(callback)).status).toBe(400);
+      expect(example.savedTokenNames()).toEqual([]);
+    });
+  });
+
   describe("the callback", () => {
     it("gets a plain 400 page at a path nobody waits on, and exchanges nothing", async () => {
       const { example, url } = await started();

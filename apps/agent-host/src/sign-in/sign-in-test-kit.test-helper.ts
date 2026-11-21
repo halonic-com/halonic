@@ -1,7 +1,8 @@
 import { type IntegrationSheet, parseIntegrationSheet } from "@halonicjs/format";
 import { createSignInHost, type SignInHost } from "@halonicjs/host-integration-sign-in";
-import { createSignInGrants } from "@halonicjs/oauth-sign-in";
+import { createSignInGrants, signInsInTokenNames } from "@halonicjs/oauth-sign-in";
 import type { Clock } from "@halonicjs/ports";
+import { PluginRefusal } from "../plugin/plugin-refusal.ts";
 import { signInIntegration } from "./app-sign-in-integration.ts";
 
 /** The workspace secret the person picked for the sheet's client secret. */
@@ -43,6 +44,10 @@ export interface ExampleSignInHost<Server extends RigServer = RigServer> {
   forgetClientSecret(): void;
   /** Picks another workspace secret for the client secret. */
   pickClientSecret(name: string): void;
+  /** Takes the trust away, or gives it back, as for a plugin: untrusted, neither the sheet nor a secret can be read. */
+  setTrusted(trusted: boolean): void;
+  /** The token names of the grants saved now. */
+  savedTokenNames(): string[];
 }
 
 /**
@@ -61,9 +66,15 @@ export function exampleSignInHost<Server extends RigServer>(
     settings: { clientId: server.clientId } as Record<string, unknown>,
     secretNames: { [rig.clientSecretName]: pickedClientSecret } as Record<string, string>,
   };
+  let trusted = true;
   const integration = signInIntegration(
     { get: async (name) => workspace.get(name) ?? null },
-    { read: async () => ({ sheet: exampleSheet(rig), choices }) },
+    {
+      read: async () => {
+        if (!trusted) throw new PluginRefusal("plugin_not_trusted");
+        return { sheet: exampleSheet(rig), choices };
+      },
+    },
   );
   const host = createSignInHost({
     integration: (name) => (name === "example" ? integration : undefined),
@@ -75,6 +86,7 @@ export function exampleSignInHost<Server extends RigServer>(
       },
       rig.webDigest,
     ),
+    savedSignIns: async (name) => signInsInTokenNames(name, store.keys()),
     http: server.http,
     clock,
     digest: rig.webDigest,
@@ -93,5 +105,9 @@ export function exampleSignInHost<Server extends RigServer>(
     pickClientSecret(name) {
       choices = { ...choices, secretNames: { [rig.clientSecretName]: name } };
     },
+    setTrusted(value) {
+      trusted = value;
+    },
+    savedTokenNames: () => [...store.keys()],
   };
 }

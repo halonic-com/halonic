@@ -12,3 +12,10 @@ export const signInBody = s.object({ integration: sheetName, signIn: sheetName }
 
 /** What Studio gives to ask where an integration's sign-ins stand. */
 export const integrationBody = s.object({ integration: sheetName }).strict();
+
+/**
+ * What Studio gives to sign out every sign-in of an integration: any name a
+ * plugin's id can be. A name that isn't a sheet's holds no grant, so it signs
+ * out nothing.
+ */
+export const anyIntegrationBody = s.object({ integration: s.string().min(1).max(128) }).strict();

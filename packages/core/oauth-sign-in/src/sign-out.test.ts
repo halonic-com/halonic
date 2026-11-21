@@ -12,7 +12,7 @@ const refreshToken = "fake-refresh-token-0000000001";
 const accessToken = `fake-access-token-${"0".repeat(9)}1`;
 const fakeSecret = "fake-client-secret-0000000001";
 
-function setup(answer: () => Response, secretIsSet = true) {
+function setup(answer: () => Response, secret: "set" | "unset" | "unreadable" = "set") {
   const values = new Map<string, string>();
   const grants = createSignInGrants(
     {
@@ -23,7 +23,12 @@ function setup(answer: () => Response, secretIsSet = true) {
     webDigest,
   );
   const http = fakeProvider(answer);
-  const secrets = { get: async () => (secretIsSet ? fakeSecret : null) };
+  const secrets = {
+    get: async () => {
+      if (secret === "unreadable") throw new Error("the plugin isn't trusted");
+      return secret === "set" ? fakeSecret : null;
+    },
+  };
   const settings = {
     integration: "gitlab",
     grants,
@@ -135,16 +140,39 @@ verifies("oauth-sign-in.sign-out", () => {
     }
   });
 
-  it("removes the grant without a request when the client secret is not set", async () => {
-    const { settings, grants, http, save } = setup(ok, false);
-    await save();
+  it("removes the grant without a request when the client secret is not set or can't be read", async () => {
+    for (const secret of ["unset", "unreadable"] as const) {
+      const { settings, grants, http, save } = setup(ok, secret);
+      await save();
+
+      expect(await signOut(settings, "work-account")).toEqual({
+        kind: "signedOut",
+        revoke: "notConfirmed",
+      });
+      expect(http.received).toHaveLength(0);
+      expect(await grants.find("gitlab", "work-account")).toBeUndefined();
+    }
+  });
+
+  it("removes a grant it can't open, sends nothing and says notConfirmed", async () => {
+    const removed: string[] = [];
+    const { settings: usual, grants } = setup(ok);
+    const settings = {
+      ...usual,
+      grants: {
+        ...grants,
+        find: async () => {
+          throw new Error("the token key is missing");
+        },
+        remove: async (_integration: string, signIn: string) => void removed.push(signIn),
+      },
+    };
 
     expect(await signOut(settings, "work-account")).toEqual({
       kind: "signedOut",
       revoke: "notConfirmed",
     });
-    expect(http.received).toHaveLength(0);
-    expect(await grants.find("gitlab", "work-account")).toBeUndefined();
+    expect(removed).toEqual(["work-account"]);
   });
 
   it("sends nothing when the approved sign-in has no revoke endpoint", async () => {

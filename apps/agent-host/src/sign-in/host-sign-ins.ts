@@ -1,12 +1,16 @@
 import { FileRecordStore } from "@halonicjs/adapter-fs-node";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
-import { createTokenStore } from "@halonicjs/adapter-token-store";
+import { createTokenStore, storedTokenNames } from "@halonicjs/adapter-token-store";
 import {
   createSignInHost,
   type SignInHost,
   type SignInIntegration,
 } from "@halonicjs/host-integration-sign-in";
-import { createSignInGrants, tokenRequestTimeoutMs } from "@halonicjs/oauth-sign-in";
+import {
+  createSignInGrants,
+  signInsInTokenNames,
+  tokenRequestTimeoutMs,
+} from "@halonicjs/oauth-sign-in";
 import type { HttpClient } from "@halonicjs/ports";
 import { type ProfileFolder, tokenFolders } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
@@ -40,8 +44,9 @@ export interface HostSignInsOptions {
  */
 export function openHostSignIns(options: HostSignInsOptions): SignInHost {
   const clock = systemClock;
+  const records = new FileRecordStore(tokenFolders(options.profile).integrationSignIns);
   const tokens = createTokenStore({
-    records: new FileRecordStore(tokenFolders(options.profile).integrationSignIns),
+    records,
     secrets: tokenKeySecrets(options.profile, options.env),
     clock,
   });
@@ -56,6 +61,7 @@ export function openHostSignIns(options: HostSignInsOptions): SignInHost {
   return createSignInHost({
     integration: (name) => options.integration(name),
     grants: createSignInGrants(tokens, webCryptoDigest),
+    savedSignIns: async (name) => signInsInTokenNames(name, await storedTokenNames(records)),
     http,
     clock,
     digest: webCryptoDigest,

@@ -39,6 +39,7 @@ export {
 } from "./harness-profiles.ts";
 export {
   AgentHostIntegrationSignIns,
+  type IntegrationSignedOut,
   type IntegrationSignInFailure,
   type IntegrationSignInOutcome,
   type IntegrationSignInState,
