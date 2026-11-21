@@ -5,6 +5,11 @@
 # signed helper, and then checks the sandbox as the person installing. This
 # script elevates nothing.
 #
+# With -CheckOnly it runs only the host's `--sandbox-check`. The installer now
+# starts the helper itself, from its own window, and runs this for the check
+# after it (HAL-14812): a prompt asked for by a hidden PowerShell three programs
+# down didn't show on a tester's PC, and the step waited for ever.
+#
 # It prints one line, the reason, and exits with:
 #   0   set up, and the check passed
 #   10  Windows didn't give administrator rights (refused, closed, or no admin password)
@@ -17,7 +22,8 @@ param(
   [Parameter(Mandatory)][string]$HostExe,
   [Parameter(Mandatory)][string]$ProfileFolder,
   # srt gives its own administrator prompt 120 seconds, so this is longer.
-  [int]$SetupSeconds = 300
+  [int]$SetupSeconds = 300,
+  [switch]$CheckOnly
 )
 $ErrorActionPreference = 'Stop'
 
@@ -31,7 +37,8 @@ function Read-Json([string]$path) {
 $out = Join-Path $env:TEMP "halonic-sandbox-setup-$PID.json"
 Remove-Item $out -ErrorAction SilentlyContinue
 try {
-  $p = Start-Process $HostExe -ArgumentList '--profile-folder', "`"$ProfileFolder`"", '--sandbox-setup' `
+  $command = if ($CheckOnly) { '--sandbox-check' } else { '--sandbox-setup' }
+  $p = Start-Process $HostExe -ArgumentList '--profile-folder', "`"$ProfileFolder`"", $command `
     -RedirectStandardOutput $out -PassThru -WindowStyle Hidden
 } catch {
   Write-Output ("the setup couldn't start: " + $_.Exception.Message)
@@ -46,6 +53,11 @@ if (-not $p.WaitForExit($SetupSeconds * 1000)) {
 $setup = Read-Json $out
 Remove-Item $out -ErrorAction SilentlyContinue
 if ($setup -and $setup.ok -eq $true) { exit 0 }
+# The check gives what is missing, each as a sentence, and no outcome.
+if ($CheckOnly -and $setup -and $setup.missing) {
+  Write-Output (($setup.missing | ForEach-Object { [string]$_ }) -join '; ')
+  exit 12
+}
 if ($setup -and $setup.outcome -eq 'cancelled') { exit 10 }
 if ($setup -and $setup.reason) { Write-Output ([string]$setup.reason) }
 else { Write-Output "the setup ended with code $($p.ExitCode) and no reason" }
