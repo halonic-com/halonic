@@ -2,7 +2,7 @@
 
 - Approval: HAL-12412, from Sofia's UX check S2 on HAL-12390; a team decision on an approved screen (HAL-2282)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jA2fi1dAEfkjmzy9KMRw1hEEORsLHo4J54a1e+zIuYknftr2KxAhef9UunQXw42l3++WGaLerypoUWNsVA02Dw==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cZuzfJsAORHzXmHQWOEwOwO7KVJyCHmzU70yLbQWSAj1S4BdbEgY3yOHHWXJDqd7+CbZYvvoNQcdtHbA3LhbDA==
 
 The run page's **Run again** and the Run panel's **Start run** said a failed start in two
 different ways. The UX check (row S2, rule E5) asks for one: the reason lower case after the colon
