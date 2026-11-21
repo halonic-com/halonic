@@ -1,5 +1,13 @@
 import { type MenuItem, type Tab, TabPanel, useTabIds } from "@halonicjs/studio-kit";
-import { type ReactNode, type Ref, useEffect, useId, useRef, useState } from "react";
+import {
+  type ReactNode,
+  type Ref,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import type { CloseStack } from "../close-stack/close-stack.ts";
 import { useBackLinkSlot } from "../page/back-link-slot.tsx";
 import { panelEdgeLimits } from "../panels/panel-width.ts";
@@ -20,6 +28,16 @@ export interface ItemPageChat {
   readonly render: (close: () => void) => ReactNode;
 }
 
+/** What a page can ask of its {@link ItemPage}, through `handle`. */
+export interface ItemPageHandle<Id extends string> {
+  /**
+   * Shows `view` as if the user had picked it, such as for a link in the chat: the shell remembers
+   * it for the tab, reopens a panel the user closed, opens the panel's own screen in a narrow tab,
+   * and moves focus to `focus()`'s element once the view is drawn, or else to the panel.
+   */
+  show(view: Id, focus?: () => HTMLElement | null): void;
+}
+
 /** Props for {@link ItemPage}. */
 export interface ItemPageProps<Id extends string> {
   /** The kind's 16px icon. */
@@ -33,13 +51,12 @@ export interface ItemPageProps<Id extends string> {
   /** The page's `h1`, for a page that moves the focus to its title. */
   readonly titleRef?: Ref<HTMLHeadingElement> | undefined;
   readonly actions?: readonly MenuItem[] | undefined;
-  /** The page's views, the first one shown when the tab first opens the item. */
+  /** The page's views, in the header's order. */
   readonly views: readonly [Tab<Id>, ...Tab<Id>[]];
-  /**
-   * The view shown, for a page that picks it itself, such as a chat's link to a view; with it the
-   * shell doesn't remember the view, and `onPickView` hears the user's picks.
-   */
-  readonly view?: Id | undefined;
+  /** The view a tab shows when it first opens the item; the first of `views` when unset. */
+  readonly firstView?: Id | undefined;
+  /** Lets the page show a view itself, such as from a link in its chat. */
+  readonly handle?: Ref<ItemPageHandle<Id>> | undefined;
   /** Hears the view the user picks in the header. */
   readonly onPickView?: ((view: Id) => void) | undefined;
   /** The item's own controls in the header's right end: ▶ Run. */
@@ -54,11 +71,24 @@ export interface ItemPageProps<Id extends string> {
   readonly children: (view: Id) => ReactNode;
 }
 
-/** Where focus goes once the page has drawn the layout a control asked for. */
-type FocusTarget = "views" | "chat" | "ask" | "show-panel" | "back-to-chat" | "maximise";
+/**
+ * Where focus goes once the page has drawn the layout a control asked for; `panel` with the
+ * element a shown view names, else the panel itself.
+ */
+type FocusTarget =
+  | "views"
+  | "chat"
+  | "ask"
+  | "show-panel"
+  | "back-to-chat"
+  | "maximise"
+  | { readonly panel: (() => HTMLElement | null) | undefined };
 
 /** The page's element for `target`, its header controls found by their ids under `idBase`. */
 function focusTarget(page: HTMLElement, idBase: string, target: FocusTarget): HTMLElement | null {
+  if (typeof target === "object") {
+    return target.panel?.() ?? document.getElementById(`${idBase}-panel`);
+  }
   switch (target) {
     case "views":
       return page.querySelector<HTMLElement>('header [role="tab"][aria-selected="true"]');
@@ -98,19 +128,19 @@ export function ItemPage<Id extends string>({
   closeStack,
   end,
   notice,
-  view: pickedView,
+  firstView,
+  handle,
   onPickView,
   ...header
 }: ItemPageProps<Id>) {
   const tabIds = useTabIds();
   const backLink = useBackLinkSlot();
-  const [rememberedView, remember] = useRememberedView(
+  const [view, remember] = useRememberedView(
     views.map((candidate) => candidate.id),
-    views[0].id,
+    firstView ?? views[0].id,
   );
-  const view = pickedView ?? rememberedView;
   const pick = (next: Id) => {
-    if (pickedView === undefined) remember(next);
+    remember(next);
     onPickView?.(next);
   };
   const page = useRef<HTMLDivElement>(null);
@@ -160,6 +190,21 @@ export function ItemPage<Id extends string>({
     setChoices((current) => ({ ...current, ...next }));
     setFocus(then);
   };
+  // A view the page shows has to be seen: focus never lands on something hidden (flow-agents 3.4).
+  // The handle stays the same object, so it reads the layout of the latest render.
+  const latest = useRef({ layout, remember });
+  latest.current = { layout, remember };
+  useImperativeHandle(
+    handle,
+    () => ({
+      show: (next, focusOn) => {
+        latest.current.remember(next);
+        setChoices((current) => ({ ...current, ...revealPanel(latest.current.layout) }));
+        setFocus({ panel: focusOn });
+      },
+    }),
+    [],
+  );
   const viewLabel = views.find((candidate) => candidate.id === view)?.label ?? views[0].label;
   const shown = shownParts(layout);
 
@@ -234,6 +279,7 @@ export function ItemPage<Id extends string>({
         ) : null}
         <div
           id={`${idBase}-panel`}
+          tabIndex={-1}
           hidden={!shown.panel}
           className={panelClasses(shown.split, maximised)}
           style={
@@ -249,6 +295,12 @@ export function ItemPage<Id extends string>({
       </div>
     </div>
   );
+}
+
+/** The choices that bring the panel into view: back beside the chat, or as its own screen. */
+function revealPanel(layout: ItemLayout): Partial<ChosenLayout> {
+  if (layout.shows !== "chat") return {};
+  return layout.panelControl === "reopen" ? { panelClosed: false } : { panelScreen: true };
 }
 
 /**
@@ -302,7 +354,9 @@ function chatClasses(layout: ItemLayout): string {
  */
 function panelClasses(split: boolean, maximised: boolean): string {
   if (maximised) {
-    return "absolute inset-28 min-h-0 overflow-y-auto rounded-md border border-border bg-surface shadow-3";
+    return "absolute inset-28 min-h-0 overflow-y-auto rounded-md border border-border bg-surface shadow-3 outline-none";
   }
-  return split ? "min-h-0 shrink-0 overflow-y-auto border-s border-border" : "";
+  return split
+    ? "min-h-0 shrink-0 overflow-y-auto border-s border-border outline-none"
+    : "outline-none";
 }
