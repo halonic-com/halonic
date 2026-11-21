@@ -16,8 +16,14 @@ function oneOf(names: readonly string[]): string {
   return names.length < 2 ? last : `${names.slice(0, -1).join(", ")} or ${last}`;
 }
 
-/** The end of a secret's line: Studio has no way yet to set a connector's secret (HAL-14995). */
-const cantSetSecrets = "Studio can't set a connector's secrets yet.";
+/**
+ * The end of a secret's line (HAL-14995): where the page has a Secrets section, set it there;
+ * elsewhere, as in the browser, Studio has no way to set a connector's secret.
+ */
+function secretEnding(secretsOnPage: boolean, oneOfSeveral = false): string {
+  if (!secretsOnPage) return "Studio can't set a connector's secrets yet.";
+  return `Set ${oneOfSeveral ? "the right one" : "it"} under Secrets, then try again.`;
+}
 
 /** The words of the listed-tools review screen (microcopy 27, HAL-751). */
 export const listedToolsWords = {
@@ -121,14 +127,15 @@ export const listedToolsWords = {
     /**
      * Studio reads a connector's secrets from the keychain, and `halonic secret set` writes the
      * profile's secrets file, so the line gives no command: none would help (HAL-14995).
+     * `secretsOnPage` says the page has a Secrets section to set it in.
      */
-    secretMissing: (source: string, secret: string) =>
-      `Couldn't list the tools: ${source} needs the secret ${secret}, which isn't set for Studio. ${cantSetSecrets}`,
-    secretRefused: (source: string, secret: string) =>
-      `Couldn't list the tools: ${source} didn't accept the secret ${secret}. ${cantSetSecrets}`,
+    secretMissing: (source: string, secret: string, secretsOnPage: boolean) =>
+      `Couldn't list the tools: ${source} needs the secret ${secret}, which isn't set for Studio. ${secretEnding(secretsOnPage)}`,
+    secretRefused: (source: string, secret: string, secretsOnPage: boolean) =>
+      `Couldn't list the tools: ${source} didn't accept the secret ${secret}. ${secretEnding(secretsOnPage)}`,
     /** When the connector declares more than one secret, so Halonic can't tell which one was refused. */
-    secretRefusedOneOf: (source: string, secrets: readonly string[]) =>
-      `Couldn't list the tools: ${source} didn't accept one of its secrets, ${oneOf(secrets)}. ${cantSetSecrets}`,
+    secretRefusedOneOf: (source: string, secrets: readonly string[], secretsOnPage: boolean) =>
+      `Couldn't list the tools: ${source} didn't accept one of its secrets, ${oneOf(secrets)}. ${secretEnding(secretsOnPage, true)}`,
     /** When the server asks for a secret the connector doesn't declare: setting one can't help. */
     secretRefusedNoneSent: (source: string) =>
       `Couldn't list the tools: the server for ${source} asked for a secret, and ${source} doesn't send one.`,

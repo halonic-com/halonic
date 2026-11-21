@@ -23,6 +23,8 @@ export interface ListedToolsWaitingProps {
   readonly viewOnly?: boolean;
   /** The words for an engine that isn't answering, for where Studio runs; the desktop app's by default. */
   readonly engine?: EngineWords;
+  /** The connector's page has a Secrets section, so a secret's line says to set it there. */
+  readonly secretsOnPage?: boolean;
 }
 
 /** The line for a screen the dialog alone can show, or `undefined` for one the page stays quiet on. */
@@ -84,6 +86,7 @@ export function ListedToolsWaiting({
   onReviewTrust,
   viewOnly = false,
   engine = engineWords["desktop-app"],
+  secretsOnPage = false,
 }: ListedToolsWaitingProps) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
   const state = useSyncExternalStore(subscribe, () => model.state);
@@ -115,7 +118,7 @@ export function ListedToolsWaiting({
       ) : null}
       {waiting === 0 && fallback?.kind === "load-failed" ? (
         <LoadFailed
-          line={loadFailureLine(fallback.error, sourceName, engine)}
+          line={loadFailureLine(fallback.error, sourceName, engine, secretsOnPage)}
           error={fallback.error}
           onTryAgain={() => void model.refresh()}
           onReviewTrust={onReviewTrust}
@@ -133,6 +136,7 @@ export function ListedToolsWaiting({
           model={model}
           sourceName={sourceName}
           engine={engine}
+          secretsOnPage={secretsOnPage}
           onClose={close}
         />
       ) : null}

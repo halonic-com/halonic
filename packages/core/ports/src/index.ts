@@ -429,7 +429,9 @@ export {
   secretKey,
   secretsVersion,
   tokenNamePrefix,
+  type WorkspaceSecretWriter,
   workspaceSecrets,
+  workspaceSecretWriter,
 } from "./secrets.ts";
 export { type TokenStore, tokenStoreVersion } from "./token-store.ts";
 export {

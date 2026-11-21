@@ -8,14 +8,16 @@ import {
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
 import type { ServiceRegistry } from "@halonicjs/app";
+import { workspaceSecretWriter } from "@halonicjs/ports";
 import { systemClock } from "@halonicjs/std";
 import type { GoogleSetupAccounts } from "@halonicjs/studio-feature-google-setup/api";
 import {
+  ConnectorSecretsService,
   ConnectorStatusHostService,
   ListedToolsHostService,
   type RefusalsFeed,
 } from "@halonicjs/studio-feature-library/api";
-import { secretsKey, tokenStoreKey } from "@halonicjs/studio-services";
+import { secretsKey, shellKeychain, tokenStoreKey } from "@halonicjs/studio-services";
 import { agentHostToolLister, noHttpInStudio } from "../connect/agent-host-tool-lister.ts";
 import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
 import { WorkspaceConnectorStatus } from "./workspace-connector-status.ts";
@@ -40,7 +42,9 @@ export interface LibraryServiceParts {
  * Gives the Library the workspace's connectors and what the engine refused from them
  * (`studio.workspace-connector-status`), and the review and approval of their listed tools
  * (`studio.workspace-listed-tools`). Without an agent host nothing can start a connector, so
- * the review is not provided and the Library shows none.
+ * the review is not provided and the Library shows none. A connector's secrets are set in the
+ * keychain the review reads them from, through `workspaceSecretWriter`, so a connector can't name
+ * Halonic's own secrets or a plugin's (`library.connector-secrets`, HAL-14995).
  */
 export function provideLibraryServices(
   services: ServiceRegistry,
@@ -58,6 +62,7 @@ export function provideLibraryServices(
     }),
   );
   if (parts.transport === undefined) return;
+  services.provide(ConnectorSecretsService, workspaceSecretWriter(shellKeychain(parts.ipc)));
   services.provide(
     ListedToolsHostService,
     new WorkspaceListedTools({

@@ -251,15 +251,71 @@ export function isPluginSecretName(name: string): boolean {
 export function workspaceSecrets(secrets: Secrets): Secrets {
   return {
     get: async (name) => {
-      if (isHalonicSecretName(name)) {
-        throw new RangeError("A workspace can't pick a secret that belongs to Halonic.");
-      }
-      if (isPluginSecretName(name)) {
-        throw new RangeError("A workspace can't pick a secret that belongs to a plugin.");
-      }
+      refuseOutsideWorkspace(name);
       return await secrets.get(name);
     },
   };
+}
+
+/**
+ * A store Studio writes a workspace's secrets to, such as a connector's: `set` and `remove` as in
+ * {@link SecretStore}, and `has`, which says whether a value is stored without reading it, so the
+ * page that shows "Set" never receives the value.
+ */
+export interface WorkspaceSecretWriter {
+  /**
+   * @throws RangeError when the name breaks the rule, or the value doesn't fit; the message never
+   *   repeats the value
+   */
+  set(name: string, value: string): Promise<void>;
+  /** Removing one that isn't stored succeeds and changes nothing. */
+  remove(name: string): Promise<void>;
+  /** Whether a value is stored under the name; never the value. */
+  has(name: string): Promise<boolean>;
+}
+
+/**
+ * The writing side of {@link workspaceSecrets}: a store as a workspace may write it, by any name it
+ * picks except Halonic's own and a plugin's, refused with the same messages and without asking the
+ * store. So a connector that names `token-key` or `plugin__weather__key` can't overwrite it.
+ *
+ * @throws RangeError from every method, for a name of Halonic's own or a plugin's; the message
+ *   never repeats the name
+ *
+ * @example
+ * const connectorSecrets = workspaceSecretWriter(keychain);
+ * await connectorSecrets.set("NOTES_TOKEN", typed);
+ * await connectorSecrets.set("serve-password", typed); // throws a RangeError
+ */
+export function workspaceSecretWriter(store: WorkspaceSecretWriter): WorkspaceSecretWriter {
+  return {
+    set: async (name, value) => {
+      refuseOutsideWorkspace(name);
+      await store.set(name, value);
+    },
+    remove: async (name) => {
+      refuseOutsideWorkspace(name);
+      await store.remove(name);
+    },
+    has: async (name) => {
+      refuseOutsideWorkspace(name);
+      return await store.has(name);
+    },
+  };
+}
+
+/**
+ * Refuses a name a workspace may not pick: one of Halonic's own or a plugin's.
+ *
+ * @throws RangeError with a fixed message that never repeats the name
+ */
+function refuseOutsideWorkspace(name: string): void {
+  if (isHalonicSecretName(name)) {
+    throw new RangeError("A workspace can't pick a secret that belongs to Halonic.");
+  }
+  if (isPluginSecretName(name)) {
+    throw new RangeError("A workspace can't pick a secret that belongs to a plugin.");
+  }
 }
 
 /**

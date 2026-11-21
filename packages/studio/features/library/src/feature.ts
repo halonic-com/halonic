@@ -1,6 +1,7 @@
 import type { LibraryItemKind } from "@halonicjs/app";
 import { defineFeature, type ItemRef, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { CollectionHostService } from "./collection-host.ts";
+import { ConnectorSecretsService } from "./connector-secrets-host.ts";
 import { ConnectorStatusHostService } from "./connector-status-host.ts";
 import { KnowledgeHostService } from "./knowledge-host.ts";
 import { LibraryItemsHostService } from "./library-items-host.ts";
@@ -48,8 +49,10 @@ export const libraryFeature = defineFeature({
   // Without an agent host nothing can start a connector, so the review is not provided (HAL-8868).
   // Without a skill host a skill's page says the skill isn't in the workspace (HAL-1303 P5c gives it one).
   // The place's New buttons and a collection's page look up their hosts too (HAL-11189).
+  // Only the desktop app gives a connector's secrets a place to be set (HAL-14995).
   wants: [
     ListedToolsHostService,
+    ConnectorSecretsService,
     SkillHostService,
     KnowledgeHostService,
     CollectionHostService,
