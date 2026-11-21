@@ -269,6 +269,8 @@ function harnessProblem(problem: HarnessProblem, shell: SignInShell): DoctorLine
         { fix: doctorMessages.signInForAgent(problem.agent, printable(command)).phrase },
       ];
     }
+    case "model-refused":
+      return modelRefusedItems(problem);
     case "unsupported":
       return [
         {
@@ -300,6 +302,21 @@ function harnessProblem(problem: HarnessProblem, shell: SignInShell): DoctorLine
         { fix: doctorMessages.pickModelWithoutSearch(printable(problem.alias)).phrase },
       ];
   }
+}
+
+/** The refusal a harness agent's run stops on, as one sentence, then its fix when it has one. */
+function modelRefusedItems(
+  problem: Extract<HarnessProblem, { problem: "model-refused" }>,
+): DoctorLineItem[] {
+  // A refusal's reason may start with a provider's id, in lower case.
+  const reason = problem.reason.charAt(0).toUpperCase() + problem.reason.slice(1);
+  const sentence = doctorMessages.agentModelRefused(
+    problem.agent,
+    printable(problem.alias),
+    printable(reason),
+  ).phrase;
+  if (problem.fix === undefined) return [{ sentence }];
+  return [{ sentence }, { fix: doctorMessages.modelRefusedFix(printable(problem.fix)).phrase }];
 }
 
 /** What is wrong with the Node.js that runs Halonic, and the fix. */

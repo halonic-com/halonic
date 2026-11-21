@@ -2,7 +2,11 @@
 // the trust check covers, its model aliases and the providers they use. The
 // doctor service asks the machine about them; this only reads the files.
 
-import { defaultLocalAddress, startsAProgram } from "@halonicjs/adapter-workspace-models";
+import {
+  defaultLocalAddress,
+  harnessCallsProviderType,
+  startsAProgram,
+} from "@halonicjs/adapter-workspace-models";
 import {
   type AliasProvider,
   type DoctorProvider,
@@ -76,7 +80,7 @@ export function doctorWorkspace(input: DoctorWorkspaceInput): DoctorWorkspace {
   // The Models line takes only aliases whose provider it was given.
   const listed = new Set(providers.map((provider) => provider.provider));
   const fileProblems = fileProblemsOf(workspace);
-  const webSearching = webSearchingAgents(workspace);
+  const webSearching = webSearchingAgents(workspace, harnessCallsProviderType);
   return {
     name: settings?.name ?? input.fallbackName,
     trust: trustSubjectOf(input),

@@ -306,6 +306,38 @@ verifies("app.doctor-harness-web-search", () => {
   });
 });
 
+verifies("app.doctor-agent-sign-in", () => {
+  it("says an agent's run stops on its model, with the refusal and its fix, starting as a sentence", () => {
+    const harnesses: HarnessesLine = {
+      check: "harnesses",
+      status: "warning",
+      installed: [],
+      problems: [
+        {
+          problem: "model-refused",
+          agentId: "writer",
+          agent: "Writer",
+          alias: "research",
+          reason: "provider zai names no secret.",
+          fix: "Add a secret to providers/zai.yaml.",
+        },
+        {
+          problem: "model-refused",
+          agentId: "scout",
+          agent: "Scout",
+          alias: "research",
+          reason: "Codex can't call provider claude.",
+        },
+      ],
+    };
+    expect(worded(harnesses).items).toEqual([
+      "Writer can't run with research. Provider zai names no secret.",
+      "fix: Fix: Add a secret to providers/zai.yaml.",
+      "Scout can't run with research. Codex can't call provider claude.",
+    ]);
+  });
+});
+
 describe("doctorLineWords", () => {
   it("keys the label as the CLI's catalogue does", () => {
     expect(doctorLineWords(workspace({}), face).label.key).toBe("doctor.workspaceLabel");

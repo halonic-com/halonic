@@ -79,6 +79,7 @@ export {
   type HarnessProblem,
   harnessesLine,
   type InstalledHarness,
+  type RefusedHarnessModel,
   type SignedOutAgent,
 } from "./doctor-checks.ts";
 export {
@@ -147,7 +148,11 @@ export {
   type LimitedCheck,
   type TimedOutLine,
 } from "./doctor-time-limit.ts";
-export { type WebSearchingAgent, webSearchingAgents } from "./doctor-web-search.ts";
+export {
+  type HarnessCallsProviderType,
+  type WebSearchingAgent,
+  webSearchingAgents,
+} from "./doctor-web-search.ts";
 export {
   EventBus,
   type EventListener,

@@ -33,6 +33,21 @@ const harnessRoutes: ReadonlyMap<string, { route: BridgeProvider; name: string }
   ["codex", { route: "openai", name: "Codex" }],
 ]);
 
+/**
+ * Whether the harness's program can call a provider of this type through
+ * the bridge: Claude Code one of type anthropic, Codex one of type openai or
+ * openai-compatible. {@link harnessModelAccess} refuses any other pair, so
+ * `halonic doctor` asks this to warn only about models a run can reach.
+ *
+ * @example
+ * harnessCallsProviderType("codex", "openai-compatible"); // true
+ * harnessCallsProviderType("claude-code", "openai-compatible"); // false
+ */
+export function harnessCallsProviderType(harness: string, providerType: string): boolean {
+  const route = bridgeRoutes.get(providerType);
+  return route !== undefined && harnessRoutes.get(harness)?.route === route;
+}
+
 /** A harness agent's keyed provider, from its model alias. */
 export interface HarnessModelAccess {
   /** The bridge route whose API the provider speaks. */
@@ -125,7 +140,7 @@ export async function harnessModelAccess(
       modelTexts.harnessTypeFix(file.id),
     );
   }
-  requireHarnessRoute(harness, route, file.id, file.type);
+  requireHarnessRoute(harness, file.id, file.type);
   if (file.secret === undefined) {
     throw new WorkspaceModelError(
       "not-for-harness",
@@ -148,17 +163,13 @@ export async function harnessModelAccess(
 }
 
 /**
- * Fails unless the harness's program calls `route`, so a key never goes to a
- * bridge route the program won't use, and the run fails before it starts.
+ * Fails unless the harness's program calls the route of the provider's type,
+ * so a key never goes to a bridge route the program won't use, and the run
+ * fails before it starts.
  */
-function requireHarnessRoute(
-  harness: string,
-  route: BridgeProvider,
-  providerId: string,
-  type: string,
-): void {
+function requireHarnessRoute(harness: string, providerId: string, type: string): void {
+  if (harnessCallsProviderType(harness, type)) return;
   const program = harnessRoutes.get(harness);
-  if (program?.route === route) return;
   throw new WorkspaceModelError(
     "not-for-harness",
     modelTexts.harnessRoute(program?.name ?? harness, providerId, type),

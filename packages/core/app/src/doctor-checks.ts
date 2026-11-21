@@ -55,12 +55,33 @@ export interface SignedOutAgent {
   settingsFolder: string;
 }
 
+/**
+ * A harness agent whose runs stop on its model alias, because the access
+ * `run` would give it refuses the alias's provider, as `harnessModelAccess`
+ * decides it: a provider its harness's program can't call, or one the
+ * workspace may not send a key to (HAL-15332).
+ */
+export interface RefusedHarnessModel {
+  /** The agent's id, as its file names it, such as "writer". */
+  agentId: string;
+  /** The agent's name as a person reads it, such as "Writer". */
+  agent: string;
+  /** The alias the agent's `model` names, such as "research". */
+  alias: string;
+  /** Why the run stops, as the refusal says it. */
+  reason: string;
+  /** The refusal's next step, without "Fix:"; left out when it has none. */
+  fix?: string;
+}
+
 /** One ! under the Harnesses line. Each names the harness, and `missing` and `signed-out` name the agent too. */
 export type HarnessProblem =
   /** "*Writer* uses *Codex*, and it isn't installed." One per agent, so each agent that can't start is named. */
   | { problem: "missing"; agent: string; harness: string; name: string }
   /** "*Writer* isn't signed in to *Claude Code*." The fix under it is the agent's own sign-in command. */
   | ({ problem: "signed-out" } & SignedOutAgent)
+  /** "*Writer* can't run with *research*. *reason*" The fix under it is the refusal's own. Shown instead of the sign-in. */
+  | ({ problem: "model-refused" } & RefusedHarnessModel)
   /** "*Claude Code 0.9.1* isn't supported. Halonic needs *1.0.0* or newer." */
   | { problem: "unsupported"; harness: string; name: string; version: string; supported: string }
   /** "Halonic found *Claude Code* but couldn't ask its version: *error*" */
@@ -77,8 +98,8 @@ export interface HarnessesLine extends DoctorLine {
   installed: InstalledHarness[];
   /**
    * Each agent whose harness is missing, then each harness that can't run,
-   * then each agent that isn't signed in, then each agent whose model
-   * searches the web by itself.
+   * then each agent whose run stops on its model, then each agent that isn't
+   * signed in, then each agent whose model searches the web by itself.
    */
   problems: HarnessProblem[];
 }
@@ -96,6 +117,7 @@ export interface HarnessesLine extends DoctorLine {
  * @param signedOut the agents whose harness says they aren't signed in, in their own settings folder
  * @param webSearching the harness agents whose model searches the web by itself, as
  *   `webSearchingAgents` finds them (requirement `app.doctor-harness-web-search`)
+ * @param refused the harness agents whose runs stop on their model alias, as the host decides it
  * @throws Error when an agent names a harness that isn't in `harnesses`, because the agent file's
  *   format only allows harnesses Halonic has
  *
@@ -112,6 +134,7 @@ export function harnessesLine(
   agents: readonly HarnessAgent[],
   signedOut: readonly SignedOutAgent[] = [],
   webSearching: readonly WebSearchingAgent[] = [],
+  refused: readonly RefusedHarnessModel[] = [],
 ): HarnessesLine | undefined {
   const byId = new Map(harnesses.map((harness) => [harness.id, harness]));
   for (const { agent, harness } of agents) {
@@ -125,6 +148,7 @@ export function harnessesLine(
   const problems: HarnessProblem[] = [
     ...missingProblems(byId, agents),
     ...harnessProblems(harnesses, agents),
+    ...refused.map((agent) => ({ problem: "model-refused" as const, ...agent })),
     ...signedOut.map((agent) => ({ problem: "signed-out" as const, ...agent })),
     ...webSearching.map((agent) => ({ problem: "searches-web" as const, ...agent })),
   ];

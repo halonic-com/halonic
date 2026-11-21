@@ -3,9 +3,16 @@
 // as `run` does, with the person's placement choice for the agent's file as
 // it is on disk and the access `run`'s own key services would give, so doctor
 // and run can't disagree. It also keeps the keys those runs get, so doctor
-// can check that each is saved (HAL-15086).
+// can check that each is saved (HAL-15086). An agent whose run would stop on
+// its model alias gets that refusal instead (HAL-15332).
 
-import type { DoctorWorkspace, PlacementReader, UsedSecret } from "@halonicjs/app";
+import { WorkspaceModelError } from "@halonicjs/adapter-workspace-models";
+import type {
+  DoctorWorkspace,
+  PlacementReader,
+  RefusedHarnessModel,
+  UsedSecret,
+} from "@halonicjs/app";
 import type { AccessAgent, ProviderAccessChoice } from "@halonicjs/host-harness-host";
 import { filesOf, type LoadedFileOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { comparedName } from "./doctor-workspace.ts";
@@ -38,19 +45,26 @@ export interface ProviderKeyAgents {
    * the run stops when it isn't saved, so doctor checks it.
    */
   readonly keys: readonly HarnessProviderKey[];
+  /** The harness agents whose run stops on their model alias in a hub, each once, with the refusal. */
+  readonly refused: readonly RefusedHarnessModel[];
 }
+
+/** What `run` does for an agent in each hub it can run in, or the refusal it stops on in one. */
+type AgentKeys =
+  | { readonly kind: "keys"; readonly keys: readonly (HarnessProviderKey | undefined)[] }
+  | { readonly kind: "refused"; readonly refused: RefusedHarnessModel };
 
 /**
  * The ids of the harness agents whose runs here get a provider key instead
- * of their own sign-in, and the keys they get. An agent `doctor` can't
- * decide for, because its file can't be read or `run` would stop on its
- * provider, isn't one of them, so the Harnesses line still asks about its
- * sign-in. An id two hubs use is one
- * only when both agents get a key: they share one settings folder.
+ * of their own sign-in, the keys they get, and the agents whose runs stop on
+ * their model alias, with the refusal `run` stops on (HAL-15332). An agent
+ * `doctor` can't decide for, because its file can't be read, is in none of
+ * them, so the Harnesses line still asks about its sign-in. An id two hubs
+ * use is one only when both agents get a key: they share one settings folder.
  *
  * @example
  * await agentsWithProviderKey({ workspace, placement, location: "/work/acme", readFile, access });
- * // { agents: Set { "writer" }, keys: [{ provider: "claude", secret: "anthropic-key" }] }
+ * // { agents: Set { "writer" }, keys: [{ provider: "claude", secret: "anthropic-key" }], refused: [] }
  */
 export async function agentsWithProviderKey(
   input: ProviderKeyAgentsInput,
@@ -61,42 +75,75 @@ export async function agentsWithProviderKey(
     agents.filter((_, index) => !keyedEverywhere(keysByAgent[index])).map((file) => file.value.id),
   );
   const keys = new Map<string, HarnessProviderKey>();
-  for (const key of keysByAgent.flatMap((agentKeys) => agentKeys ?? [])) {
-    if (key !== undefined && !keys.has(key.provider)) keys.set(key.provider, key);
+  const refused = new Map<string, RefusedHarnessModel>();
+  for (const agentKeys of keysByAgent) {
+    if (agentKeys?.kind === "refused" && !refused.has(agentKeys.refused.agentId)) {
+      refused.set(agentKeys.refused.agentId, agentKeys.refused);
+    }
+    if (agentKeys?.kind !== "keys") continue;
+    for (const key of agentKeys.keys) {
+      if (key !== undefined && !keys.has(key.provider)) keys.set(key.provider, key);
+    }
   }
   return {
     agents: new Set(
       agents.filter((file) => !signIn.has(file.value.id)).map((file) => file.value.id),
     ),
     keys: [...keys.values()],
+    refused: [...refused.values()],
   };
 }
 
 /** Whether the agent gets a key in every hub it can run in. */
-function keyedEverywhere(keys: readonly (HarnessProviderKey | undefined)[] | undefined): boolean {
-  return keys?.every((key) => key !== undefined) === true;
+function keyedEverywhere(agentKeys: AgentKeys | undefined): boolean {
+  return agentKeys?.kind === "keys" && agentKeys.keys.every((key) => key !== undefined);
 }
 
 /**
  * The key `run` gives the agent in `file` in each hub it can run in: its
  * own, or each hub of the workspace for an agent at the root, whose choice
  * is kept per hub. An entry is `undefined` where the run uses the program's
- * own sign-in instead; the whole is `undefined` for an agent in Halonic's
- * loop, in no hub, or when it can't tell.
+ * own sign-in instead. When the run would stop on the agent's model alias
+ * in a hub, the refusal instead. `undefined` for an agent in Halonic's loop,
+ * in no hub, or when it can't tell.
  */
 async function providerKeysOf(
   input: ProviderKeyAgentsInput,
   file: LoadedFileOf<"agent">,
-): Promise<(HarnessProviderKey | undefined)[] | undefined> {
-  const { harness } = file.value;
+): Promise<AgentKeys | undefined> {
+  const { harness, model } = file.value;
   if (harness === undefined || harness === "halonic") return undefined;
   const hubs = file.hub === null ? hubsOf(input.workspace) : [file.hub];
   if (hubs.length === 0) return undefined;
   try {
-    return await Promise.all(hubs.map((hub) => keyInHub(input, file, harness, hub)));
-  } catch {
-    return undefined;
+    const keys = await Promise.all(hubs.map((hub) => keyInHub(input, file, harness, hub)));
+    return { kind: "keys", keys };
+  } catch (error) {
+    if (!isModelRefusal(error) || model === undefined) return undefined;
+    const { id, name } = file.value;
+    const refused: RefusedHarnessModel = {
+      agentId: id,
+      agent: name,
+      alias: model,
+      reason: error.message,
+      ...(error.fix === undefined ? {} : { fix: error.fix }),
+    };
+    return { kind: "refused", refused };
   }
+}
+
+/**
+ * The refusals of a harness agent's model that stop its run. A workspace or
+ * provider address that isn't trusted yet isn't one: `run` asks for trust
+ * before it starts, and the Workspace line says so. Anything else, such as
+ * an unreadable file, leaves doctor unable to tell.
+ */
+function isModelRefusal(error: unknown): error is WorkspaceModelError {
+  return (
+    error instanceof WorkspaceModelError &&
+    error.code !== "untrusted-workspace" &&
+    error.code !== "untrusted-provider-address"
+  );
 }
 
 /** The provider key `run` gives the agent in `file` when it runs in `hub`, if it gives one. */

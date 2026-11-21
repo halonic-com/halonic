@@ -137,6 +137,37 @@ verifies("app.doctor-agent-sign-in", () => {
     expect(await keyedOf(workspace, placementOf())).toEqual(new Set());
   });
 
+  it("gives the refusal for an agent whose harness can't call its alias's provider, and no search warning (HAL-15332)", async () => {
+    const workspace = await workspaceOf({
+      ...files,
+      "providers/openrouter.yaml": [
+        "id: openrouter",
+        "name: OpenRouter",
+        "type: openai-compatible",
+        "baseUrl: https://openrouter.ai/api/v1",
+        "secret: OPENROUTER_API_KEY",
+        "searchesWeb: [perplexity/sonar]",
+        "",
+      ].join("\n"),
+      "models.yaml": "aliases:\n  research: { provider: openrouter, model: perplexity/sonar }\n",
+      "hubs/support/agents/writer.agent.yaml":
+        "id: writer\nname: Writer\nharness: claude-code\nmodel: research\n",
+    });
+
+    const found = await providerKeyAgentsOf(workspace, placementOf(), { trusted: true });
+    expect(found.agents.has("writer")).toBe(false);
+    expect(found.refused).toEqual([
+      {
+        agentId: "writer",
+        agent: "Writer",
+        alias: "research",
+        reason: expect.stringContaining("Claude Code can't call provider openrouter"),
+        fix: expect.stringContaining("Point the agent's model at an alias"),
+      },
+    ]);
+    expect(doctorWorkspaceOf(workspace).webSearching).toBeUndefined();
+  });
+
   it("names an agent whose model is an alias on this computer too, as run gives it the alias's key", async () => {
     const workspace = await workspaceOf({
       ...files,
