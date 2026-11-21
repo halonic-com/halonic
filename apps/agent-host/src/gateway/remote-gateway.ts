@@ -4,6 +4,7 @@ import {
   startGatewayListener,
 } from "@halonicjs/adapter-remote-gateway";
 import type { RunTable } from "../harness/run-table.ts";
+import type { GatewayAccess } from "./desk-access.ts";
 import type { GatewaySettings } from "./gateway-settings.ts";
 import { hostGatewaySource } from "./host-gateway-source.ts";
 import { NobodyPaired } from "./nobody-paired.ts";
@@ -29,6 +30,8 @@ export function gatewayPolicy(risky: RiskySwitch): GatewayPolicy {
  * The host's remote gateway: starts the listener when the setting turns it on
  * and closes it again (requirement `agent-host.remote-gateway`). Without a
  * ledger, which the host makes only when the gateway is on, it stays off.
+ * Without `access`, the host's pairing desk and paired phones
+ * (`agent-host.remote-gateway-access`), it refuses every phone.
  */
 export class RemoteGateway {
   #listener: GatewayListener | undefined;
@@ -37,17 +40,20 @@ export class RemoteGateway {
   readonly #ledger: RunLedger | undefined;
   readonly #runs: RunTable;
   readonly #risky: RiskySwitch;
+  readonly #access: GatewayAccess | undefined;
 
   constructor(
     settings: GatewaySettings,
     ledger: RunLedger | undefined,
     runs: RunTable,
     risky: RiskySwitch = riskyOff,
+    access?: GatewayAccess,
   ) {
     this.#settings = settings;
     this.#ledger = ledger;
     this.#runs = runs;
     this.#risky = risky;
+    this.#access = access;
   }
 
   /**
@@ -60,11 +66,11 @@ export class RemoteGateway {
   async start(log: (text: string) => void): Promise<number | undefined> {
     if (!this.#settings.enabled || this.#ledger === undefined) return undefined;
     try {
-      const nobodyPaired = new NobodyPaired();
+      const { phones, pairing } = this.#access ?? nobodyPaired();
       this.#listener = await startGatewayListener({
         source: hostGatewaySource(this.#ledger, this.#runs),
-        phones: nobodyPaired,
-        pairing: nobodyPaired,
+        phones,
+        pairing,
         policy: gatewayPolicy(this.#risky),
         onError: (error) => log(`A remote gateway connection failed: ${String(error)}\n`),
         ...(this.#settings.port === undefined ? {} : { port: this.#settings.port }),
@@ -79,4 +85,10 @@ export class RemoteGateway {
   async close(): Promise<void> {
     await this.#listener?.close();
   }
+}
+
+/** The access of a gateway with no pairing desk: no pairing opens and no phone is paired. */
+function nobodyPaired(): GatewayAccess {
+  const nobody = new NobodyPaired();
+  return { phones: nobody, pairing: nobody };
 }
