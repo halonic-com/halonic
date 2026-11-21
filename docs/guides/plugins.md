@@ -66,7 +66,8 @@ is the reference.
    Then list the connector, by its file name without `.connector.yaml`, in
    the agent: `connectors: [my-plugin]`. When the plugin reaches a host,
    also set `privacy.localOnly: false` in `workspace.yaml`; `halonic validate`
-   reports it while that is still `true`.
+   reports it while that is still `true`, and warns when no plugin with that
+   id is added on this computer.
 
 ## Run it and see errors
 

@@ -85,6 +85,15 @@ const IntegrationTransport = s
 /** A plugin's backend, started in the I5 runner. Same rules as a local integration. */
 const PluginTransport = s.object({ plugin: s.object({ id }).strict() }).strict();
 
+/** The keys that name a kind of transport, as the union below lists them. */
+const transportKinds = ["http", "stdio", "google", "integration", "plugin"];
+
+/** Whether `transport` is a map with exactly one key that names a kind of transport. */
+function namesOneTransport(transport: unknown): boolean {
+  if (typeof transport !== "object" || transport === null) return false;
+  return Object.keys(transport).filter((key) => transportKinds.includes(key)).length === 1;
+}
+
 /** The `tools.approve` value that makes every tool of the connector ask a person first. */
 export const approveAll = "all";
 
@@ -101,13 +110,21 @@ export const Connector = s
     id,
     name: s.string().optional(),
     description: s.string().optional(),
-    transport: s.union([
-      HttpTransport,
-      StdioTransport,
-      GoogleTransport,
-      IntegrationTransport,
-      PluginTransport,
-    ]),
+    /**
+     * A missing transport, or one that names none of the kinds or several,
+     * gets one message that names them all (HAL-15123), as a routine's
+     * trigger does, instead of Zod's "Invalid input". One kind with a
+     * mistake inside keeps Zod's message: "needs one of" would be wrong there.
+     */
+    transport: s.union(
+      [HttpTransport, StdioTransport, GoogleTransport, IntegrationTransport, PluginTransport],
+      {
+        error: (issue) =>
+          issue.code === "invalid_union" && !namesOneTransport(issue.input)
+            ? "transport needs exactly one of: http, stdio, google, integration or plugin."
+            : undefined,
+      },
+    ),
     /**
      * HTTP: the secret sent as a bearer token. Google: kept so older files
      * still read, but it names no secret: the account's Google setup keeps

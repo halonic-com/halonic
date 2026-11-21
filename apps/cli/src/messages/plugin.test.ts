@@ -29,6 +29,9 @@ verifies("cli.messages", () => {
     expect(words(pluginMessages.addNoTerminalFix("weather"))).toBe(
       "Review it with halonic trust --plugin weather, then pass --yes --fingerprint <fingerprint>.",
     );
+    expect(words(pluginMessages.noTerminalFix("weather", "hpf1:ab12"))).toBe(
+      "Read the list above, then run: halonic trust --plugin weather --yes --fingerprint hpf1:ab12",
+    );
   });
 });
 

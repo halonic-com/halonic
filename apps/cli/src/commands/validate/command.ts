@@ -1,5 +1,6 @@
 import { loadWorkspace, type WorkspaceIssue } from "@halonicjs/workspace";
 import type { CliCommand, CommandInput } from "../../command.ts";
+import { type AddedPlugin, addedPluginsOf } from "../../connector-plugin.ts";
 import { exitCode } from "../../exit-code.ts";
 import { validateMessages } from "../../messages/validate.ts";
 import {
@@ -8,6 +9,8 @@ import {
   validateLines,
   validateReport,
 } from "../../output/validate-report.ts";
+import { pluginConnectorProblems } from "../../plugin-connector-problems.ts";
+import { openPluginService } from "../../plugin-host.ts";
 import { computerSheetHosts } from "../../sheet-hosts.ts";
 import { dirOption, givenDir, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
 import { workspaceProblemsOf } from "../../workspace-problems.ts";
@@ -17,7 +20,8 @@ import { workspaceProblemsOf } from "../../workspace-problems.ts";
  * the workspace and lists what to fix, grouped by file (cli-output 3.2). It
  * starts nothing, so it needs no trust and no sandbox. It reads the installed
  * plugins and the local integrations, so `privacy.localOnly` counts the hosts
- * their sheets list.
+ * their sheets list, and a plugin connector whose plugin isn't added gets a
+ * warning.
  */
 export const validateCommand: CliCommand = {
   name: "validate",
@@ -35,9 +39,13 @@ export const validateCommand: CliCommand = {
     const strict = input.options["strict"] === true;
     const sheetHosts = await computerSheetHosts(workspace.root, workspace.shown);
     const loaded = await loadWorkspace(workspace.store, { sheetHosts });
+    const added = await addedPlugins();
     const report = validateReport({
       ...loaded,
-      issues: workspaceProblemsOf(loaded),
+      issues: [
+        ...workspaceProblemsOf(loaded),
+        ...(added === undefined ? [] : pluginConnectorProblems(loaded, added)),
+      ],
     });
     const dir = givenDir(input, workspace);
     return {
@@ -52,6 +60,15 @@ export const validateCommand: CliCommand = {
     };
   },
 };
+
+/**
+ * The plugins added on this computer, or `undefined` when the plugins folder
+ * can't be listed: `validate` then can't tell which are missing, so it
+ * reports none, and `plugin list` says why the folder can't be read.
+ */
+async function addedPlugins(): Promise<readonly AddedPlugin[] | undefined> {
+  return await addedPluginsOf(openPluginService({}))().catch(() => undefined);
+}
 
 /**
  * The folder in "Couldn't check ./downloads": the user's `--dir` as typed
