@@ -5,6 +5,13 @@ import { isSourceFile, isTestFile } from "../lib/source-files.ts";
 
 const measured = /\.(?:[cm]?[jt]sx?|css|rs|astro)$/;
 
+/**
+ * How far under the limit a pull request must leave a file it grows. A
+ * constant, not a `policy.json` setting: the merge base's copy of the guard
+ * reads the head's `policy.json` and refuses a setting it doesn't know.
+ */
+export const prHeadroomLines = 20;
+
 /** Generated files and test fixtures are exempt. */
 export function isExemptFromSize(file: string): boolean {
   return (
@@ -16,7 +23,7 @@ export function isExemptFromSize(file: string): boolean {
 /**
  * Keeps files and functions small, so agents can read a whole file and two
  * agents rarely edit the same one. With a base commit (a pull request), a
- * file the change grows must also stay `prHeadroomLines` under the limit.
+ * file the change grows must also stay {@link prHeadroomLines} under the limit.
  */
 export function checkFileSize(context: CheckContext, base = sizeBase()): Report {
   const report = new Report("file-size");
@@ -71,7 +78,7 @@ function checkHeadroom(
   { file, lines, base }: { file: string; lines: number; base: string },
   report: Report,
 ): void {
-  const { maxLines, prHeadroomLines } = context.policy.fileSize;
+  const { maxLines } = context.policy.fileSize;
   const room = maxLines - prHeadroomLines;
   if (lines <= room || lines > maxLines) {
     return;

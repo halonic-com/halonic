@@ -7,7 +7,8 @@
 ## What changes
 
 On a pull request, the `file-size` rule also fails a file the change grows to more than 480
-lines, 20 under the limit of 500 (`prHeadroomLines` in `tooling/check/policy.json`). CI compares
+lines, 20 under the limit of 500 (`prHeadroomLines` in
+`tooling/check/src/rules/file-size.ts`). CI compares
 each file with the main commit the merge ref is built on (`SIZE_BASE`, set only for
 `pull_request` runs); a local `pnpm check` compares with `origin/main`. A file the pull request
 doesn't grow passes, so a small fix never forces a split. The merge queue and `main` keep the
