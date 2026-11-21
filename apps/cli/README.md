@@ -86,11 +86,13 @@ shows as `./acme`, not as `../../…/acme`.
 
 ## Environment
 
-`HALONIC_HOME` picks the folder where Halonic keeps its data: trust records, runs, keys and
-plugins. Without it, Halonic uses `~/.local/share/halonic` on Linux (or `$XDG_DATA_HOME/halonic`),
-`~/Library/Application Support/halonic` on macOS and `%LOCALAPPDATA%\halonic` on Windows. The CLI
-and Studio share it, so set it in your shell's startup file (such as `~/.zshrc`) and reopen
-Halonic after you change it.
+`HALONIC_HOME` picks the folder where Halonic keeps its data: trust records, runs, plugins and the
+secrets you set with `halonic secret set`. Studio keeps its keys in the system keychain, so moving
+the folder doesn't move them. Without `HALONIC_HOME`, Halonic uses `~/.local/share/halonic` on Linux (or
+`$XDG_DATA_HOME/halonic`), `~/Library/Application Support/halonic` on macOS and
+`%LOCALAPPDATA%\halonic` on Windows. The CLI and Studio share it, so set it in your shell's startup
+file (such as `~/.zshrc`) and reopen Halonic after you change it. On Windows, set it as a user
+environment variable instead.
 
 To move your data, for example when a run says the bridge's socket path is too long (Linux takes
 at most 107 bytes, macOS 103), move the folder to a short path and point `HALONIC_HOME` at it.
