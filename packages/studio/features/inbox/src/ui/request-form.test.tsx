@@ -1,12 +1,7 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
-import {
-  createToastStore,
-  PresentationProvider,
-  type ToastStore,
-  ToastStoreProvider,
-} from "@halonicjs/studio-kit";
+import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,102 +12,32 @@ import {
   type InboxRequests,
   type RequestWorkflow,
 } from "../request/inbox-requests.ts";
-import { pendingApproval, waitingRun } from "../test-runs.test-helper.ts";
+import { waitingRun } from "../test-runs.test-helper.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { InboxView } from "./inbox-page.tsx";
+import {
+  button,
+  message,
+  open,
+  requestsStarting,
+  send,
+  settled,
+  support,
+  travel,
+  type,
+} from "./request-form.test-helper.tsx";
+
+function fakeRequests(offered: readonly RequestWorkflow[], start?: InboxRequests["start"]) {
+  const started = vi.fn(start ?? (async () => ({ runId: "r9", hubId: "acme" })));
+  return { requests: requestsStarting(offered, started), started };
+}
 
 beforeEach(fakeModal);
 afterEach(() => {
   unmountAll();
   restoreModal();
 });
-
-const support: RequestWorkflow = {
-  key: "support/support-reply",
-  name: "Support reply",
-  label: "Answer a customer's email",
-  description: 'A customer\'s email, for example: "Hi, my order #1042 arrived damaged."',
-};
-const travel: RequestWorkflow = {
-  key: "ops/book-travel",
-  name: "Book travel",
-  label: "Book travel",
-};
-
-async function settled(): Promise<void> {
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
-}
-
-function fakeRequests(offered: readonly RequestWorkflow[], start?: InboxRequests["start"]) {
-  const started = vi.fn(start ?? (async () => ({ runId: "r9", hubId: "acme" })));
-  const requests: InboxRequests = {
-    offered: async () => offered,
-    subscribe: () => () => {},
-    start: started,
-  };
-  return { requests, started };
-}
-
-async function open(
-  requests: InboxRequests | undefined,
-  options: {
-    phone?: boolean;
-    openRun?: (hubId: string, runId: string) => void;
-    openBudget?: () => void;
-  } = {},
-) {
-  const toasts: ToastStore = createToastStore();
-  const waiting = waitingRun("r1", {
-    approvals: [pendingApproval("call-1", "notes-mcp__create_note", new Date().toISOString())],
-  });
-  const runs = fakeRuns([waiting]);
-  const inbox = new Inbox(runs.runs);
-  const view = (
-    <ToastStoreProvider store={toasts}>
-      <InboxView
-        inbox={inbox}
-        requests={requests}
-        openRun={options.openRun}
-        openBudget={options.openBudget}
-      />
-    </ToastStoreProvider>
-  );
-  const root = render(
-    options.phone ? <PresentationProvider presentation="phone">{view}</PresentationProvider> : view,
-  );
-  await settled();
-  return { root, toasts, runs, inbox };
-}
-
-function message(root: HTMLElement): HTMLTextAreaElement {
-  const found = root.querySelector("textarea");
-  if (found === null) throw new Error("no Message field");
-  return found;
-}
-
-async function type(field: HTMLTextAreaElement, text: string) {
-  await act(async () => {
-    const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
-    set?.call(field, text);
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-}
-
-function button(root: HTMLElement, name: string): HTMLButtonElement {
-  const found = [...root.querySelectorAll("button")].find((b) => b.textContent?.startsWith(name));
-  if (found === undefined) throw new Error(`no button "${name}"`);
-  return found;
-}
-
-async function send(root: HTMLElement) {
-  await act(async () => {
-    button(root, "Send").click();
-  });
-  await settled();
-}
 
 verifies("inbox.request", () => {
   describe("what the pane offers", () => {

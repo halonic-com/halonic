@@ -1,18 +1,13 @@
-import { errorKindOf } from "@halonicjs/std";
 import {
   Button,
   type ButtonUnavailable,
   Callout,
-  type CalloutAction,
-  type CalloutHandle,
   CloseIcon,
-  CommandBox,
   Field,
   TextArea,
 } from "@halonicjs/studio-kit";
-import { errorReasonFor, lowerAfterColon } from "@halonicjs/studio-shell";
+import { StartFailedCallout } from "@halonicjs/studio-shell";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
-import { EngineNotAnswering, startRefusalOf } from "../api.ts";
 import { startWords as words } from "./start-words.ts";
 
 /** Props for {@link StartRunCard}. */
@@ -48,26 +43,6 @@ export interface StartProblems {
   readonly onOpen: () => void;
 }
 
-function reasonOf(error: unknown, notAnswering: string): string {
-  return lowerAfterColon(
-    error instanceof EngineNotAnswering ? notAnswering : errorReasonFor(error),
-  );
-}
-
-/**
- * The next step a refusal carries (`fix` of a kinded error). A refusal with one can't be cured by
- * starting again, so the card shows the step in place of **Try again**.
- */
-function fixOf(error: unknown): string | undefined {
-  if (typeof error !== "object" || error === null || !("fix" in error)) return undefined;
-  return typeof error.fix === "string" && error.fix.trim() !== "" ? error.fix : undefined;
-}
-
-/** The sentence as it ends, or with a full stop; a line that leads to a command keeps its colon. */
-function withFullStop(reason: string): string {
-  return /[.!?:]$/.test(reason) ? reason : `${reason}.`;
-}
-
 /** The input text as an object, or `undefined` when it isn't JSON for one. */
 function parseInput(text: string): Record<string, unknown> | undefined {
   try {
@@ -80,29 +55,13 @@ function parseInput(text: string): Record<string, unknown> | undefined {
   }
 }
 
-/** What a failed start shows: the line, and the next step when retrying can't help. */
-interface StartFailure {
-  readonly line: string;
-  readonly fix: string | undefined;
-  /** The command the next step leads to, which the card shows in a CommandBox (rule N2, HAL-12363). */
-  readonly command: string | undefined;
-  /** Refused because the workspace isn't trusted yet: **Review** opens the trust check. */
-  readonly untrusted: boolean;
-}
-
-function failureOf(error: unknown, notAnswering: string, canAskTrust: boolean): StartFailure {
-  const line = words.couldntStart(withFullStop(reasonOf(error, notAnswering)));
-  const untrusted = canAskTrust && errorKindOf(error) === "denied";
-  const refusal = startRefusalOf(error);
-  return refusal === undefined
-    ? { line, fix: fixOf(error), command: undefined, untrusted }
-    : { line, fix: refusal.fix, command: refusal.command, untrusted };
-}
-
 /**
  * The card **▶ Run** opens (`workflows.start.start-run`), docked at the right: the run's input and
  * **Start run**. A failed start stays in the card with the input kept, in a danger Callout that
- * takes focus, with **Try again** (D7), unless the refusal names a next step: then the step is the second line and there is no **Try again**. A step that leads to a command has the command in a CommandBox under it.
+ * takes focus: the shell's `StartFailedCallout`, as on the run page's **Run again** (UX check S1,
+ * S2 and S4, HAL-12390), with **Try again** (D7) unless the refusal names a next step that starting
+ * again can't help, the step as the second line, a step's command in a CommandBox under it, and
+ * **Copy details** for a failure Halonic can't explain or one that replaces the shell's own words.
  * A refusal because the workspace isn't trusted yet has **Review** instead, which opens the trust
  * check; once the person trusts it, the failure goes and **Start run** takes focus (C144 RT1).
  * While the workflow has errors, a danger Callout says how many, with **Open Problems**, in place
@@ -120,7 +79,6 @@ export function StartRunCard({
   onClose,
 }: StartRunCardProps) {
   const heading = useRef<HTMLHeadingElement>(null);
-  const callout = useRef<CalloutHandle>(null);
   const field = useRef<HTMLTextAreaElement>(null);
   const startButton = useRef<HTMLButtonElement>(null);
   const [text, setText] = useState("{}");
@@ -131,7 +89,7 @@ export function StartRunCard({
   const readFirstInput = useRef(firstTestInput);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | undefined>();
-  const [failure, setFailure] = useState<StartFailure | undefined>();
+  const [failure, setFailure] = useState<{ readonly error: unknown } | undefined>();
   useEffect(() => heading.current?.focus(), []);
   // The input starts from the first test's; typing before it has been read wins over it.
   useEffect(() => {
@@ -145,9 +103,6 @@ export function StartRunCard({
       stopped = true;
     };
   }, []);
-  useEffect(() => {
-    if (failure !== undefined) callout.current?.focus();
-  }, [failure]);
   // Each rejected input sends focus to the field once its error is its description, so the error
   // is read, as the Inbox request form's Send does (A7). A count, as the same error can come twice.
   const [rejected, setRejected] = useState(0);
@@ -179,7 +134,7 @@ export function StartRunCard({
       const { runId } = await start(input);
       onStarted(runId);
     } catch (error) {
-      setFailure(failureOf(error, notAnswering, askTrust !== undefined));
+      setFailure({ error });
     } finally {
       setBusy(false);
     }
@@ -228,16 +183,13 @@ export function StartRunCard({
         />
       </Field>
       {failure !== undefined && (
-        <Callout
-          tone="danger"
-          announce="focus"
-          ref={callout}
-          {...failureAction(failure, submit, () => void review())}
-        >
-          <p>{failure.line}</p>
-          {failure.fix !== undefined && <p>{withFullStop(failure.fix)}</p>}
-          {failure.command !== undefined && <CommandBox command={failure.command} />}
-        </Callout>
+        <StartFailedCallout
+          error={failure.error}
+          notAnswering={notAnswering}
+          tryAgain={submit}
+          review={askTrust === undefined ? undefined : () => void review()}
+          takeFocus
+        />
       )}
       {problems.errors > 0 && (
         <Callout tone="danger" action={{ label: words.openProblems, onClick: problems.onOpen }}>
@@ -264,14 +216,4 @@ export function StartRunCard({
       </div>
     </aside>
   );
-}
-
-/** **Review** on an untrusted refusal, **Try again** on another without a next step, else none. */
-function failureAction(
-  failure: StartFailure,
-  submit: () => Promise<void>,
-  review: () => void,
-): { readonly action?: CalloutAction } {
-  if (failure.untrusted) return { action: { label: words.review, onClick: review } };
-  return failure.fix === undefined ? { action: { label: words.tryAgain, onClick: submit } } : {};
 }

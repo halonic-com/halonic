@@ -1,4 +1,5 @@
 import { Button, Dialog, Field, Select, TextArea } from "@halonicjs/studio-kit";
+import { copyDetailsWords } from "@halonicjs/studio-shell";
 import { type Ref, useId, useState } from "react";
 import type { RequestWorkflow } from "../request/inbox-requests.ts";
 import type { RequestDraft } from "./request-form.tsx";
@@ -25,6 +26,8 @@ export interface RequestSheetProps {
   readonly runFailed?: { readonly line: string; readonly openRun?: () => void } | undefined;
   /** With a refusal for the month's budget: **Change budget**, under the fields. */
   readonly onChangeBudget?: (() => void) | undefined;
+  /** With a failure Halonic can't explain: **Copy details**, under the fields (22 F13). */
+  readonly onCopyDetails?: (() => void) | undefined;
   /** Starts the run; clears the message once it has started. Never rejects. */
   readonly onSend: (workflow: RequestWorkflow, message: string) => Promise<void>;
   /** Close: the sheet goes; the text stays, unless it was sent and the sheet waits. */
@@ -52,6 +55,7 @@ export function RequestSheet({
   notStarted,
   runFailed,
   onChangeBudget,
+  onCopyDetails,
   onSend,
   onClose,
   messageRef,
@@ -115,6 +119,13 @@ export function RequestSheet({
         <div>
           <Button variant="ghost" size="sm" onClick={onChangeBudget}>
             Change budget
+          </Button>
+        </div>
+      ) : null}
+      {notStarted !== "" && onCopyDetails !== undefined ? (
+        <div>
+          <Button variant="ghost" size="sm" onClick={onCopyDetails}>
+            {copyDetailsWords.label}
           </Button>
         </div>
       ) : null}

@@ -5,6 +5,7 @@
 
 import type { TauriHeldEngineLock } from "@halonicjs/adapter-fs-tauri";
 import { KindedError } from "@halonicjs/std";
+import { ErrorWithDetails } from "@halonicjs/studio-shell";
 
 /** The workspace's engine lock, as the shell holds it for the page (`TauriEngineLock`). */
 export interface PageEngineLock {
@@ -29,7 +30,8 @@ export interface EngineLockHold {
  * Takes the lock of the workspace called `name`; `onLost` hears once if another process later
  * takes it over.
  *
- * @throws KindedError `conflict` naming the workspace and the other process, or the lock's other refusals
+ * @throws KindedError `conflict` naming the workspace and the other process, `unavailable` when the
+ *   lock can't be written, or the lock's other refusals
  */
 export async function holdEngineLock(
   lock: PageEngineLock,
@@ -54,19 +56,49 @@ export async function holdEngineLock(
   }
 }
 
+/** The approved words for a lock the shell can't hold for this window (UX check S4, microcopy 22 F1 and F13). */
+const lockWords = {
+  cantWrite: "Halonic can't write to its data folder.",
+  unexplained: "The engine lock was refused.",
+} as const;
+
 /**
- * The lock's refusal as the page says it (HAL-13758): a `conflict` names the workspace and the
- * other process, which can be a terminal's `halonic serve` or another window; others stay as they are.
+ * The lock's refusal as the page says it. A `conflict` names the workspace and the other process,
+ * which can be a terminal's `halonic serve` or another window (HAL-13758). A lock the shell can't
+ * write says so in Halonic's words, and a folder that isn't open in this window is a failure
+ * Halonic can't explain; both keep the shell's words for **Copy details** (UX check S4, HAL-12390).
+ * Others stay as they are.
  */
 function lockRefusal(refusal: unknown, name: string): unknown {
-  if (!(refusal instanceof KindedError) || refusal.kind !== "conflict") return refusal;
-  const pid = pidOf(refusal.cause);
-  const holder = pid === undefined ? "" : ` (process ${pid})`;
-  return new KindedError(
-    "conflict",
-    `${name} is already running in another Halonic on this computer${holder}.`,
-    { fix: "Stop that one, then try again.", cause: refusal },
-  );
+  if (!(refusal instanceof KindedError)) return refusal;
+  const shellKind = shellKindOf(refusal.cause);
+  if (refusal.kind === "conflict") {
+    const pid = pidOf(refusal.cause);
+    const holder = pid === undefined ? "" : ` (process ${pid})`;
+    return new KindedError(
+      "conflict",
+      `${name} is already running in another Halonic on this computer${holder}.`,
+      { fix: "Stop that one, then try again.", cause: refusal },
+    );
+  }
+  if (shellKind === "io") {
+    return new ErrorWithDetails("unavailable", lockWords.cantWrite, refusal.message, {
+      cause: refusal,
+    });
+  }
+  if (shellKind === "folder_not_open") {
+    return new ErrorWithDetails("internal", lockWords.unexplained, refusal.message, {
+      cause: refusal,
+    });
+  }
+  return refusal;
+}
+
+/** The kind of the shell's own refusal (`conflict`, `io` or `folder_not_open`, see `engine_lock.rs`). */
+function shellKindOf(refusal: unknown): string | undefined {
+  if (typeof refusal !== "object" || refusal === null) return undefined;
+  const { kind } = refusal as Record<string, unknown>;
+  return typeof kind === "string" ? kind : undefined;
 }
 
 function pidOf(refusal: unknown): number | undefined {

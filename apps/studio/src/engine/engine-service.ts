@@ -129,7 +129,8 @@ export class EngineService {
    * same engine. A call that fails leaves nothing held, so the next call tries again.
    *
    * @throws KindedError `conflict` when another engine, the CLI's or another
-   *   window's, holds the workspace's lock, or `denied` when the workspace may start nothing
+   *   window's, holds the workspace's lock; `unavailable` when the lock can't be written; or
+   *   `denied` when the workspace may start nothing
    */
   async open(): Promise<AssembledEngine> {
     return (await this.#open()).engine;

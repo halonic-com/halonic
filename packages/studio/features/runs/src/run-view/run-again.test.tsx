@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+
+import { KindedError } from "@halonicjs/std";
 import { EngineNotAnswering, type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -193,6 +195,37 @@ verifies("runs.run-view.run-again", () => {
     );
     expect(root.textContent).not.toContain("isn't answering");
     expect(copyDetailsCount(root)).toBe(before + 1);
+  });
+
+  it("words a refusal as the Run panel does: its next step and its command, Try again only for a conflict", async () => {
+    const connector = Object.assign(
+      new KindedError("unavailable", "Reporter uses a connector, which Studio can't start yet.", {
+        fix: "To start it, run this in a terminal:",
+      }),
+      { command: "halonic run reply" },
+    );
+    const held = new KindedError(
+      "conflict",
+      "Acme is already running in another Halonic on this computer.",
+      { fix: "Stop that one, then try again." },
+    );
+    const startRun = vi.fn<RunStartHost["startRun"]>().mockRejectedValueOnce(connector);
+    const root = await open(failed, { startRun });
+    await act(async () => button(root, "Run again")?.click());
+    const lineOf = () => root.querySelector('section[aria-label="Run didn\'t start"]');
+    let line = lineOf();
+    expect(line?.textContent).toContain("To start it, run this in a terminal:");
+    expect(line?.querySelector("code")?.textContent).toBe("halonic run reply");
+    expect(line?.textContent).not.toContain("Try again");
+
+    startRun.mockRejectedValueOnce(held);
+    await act(async () => button(root, "Run again")?.click());
+    line = lineOf();
+    expect(line?.textContent).toContain(
+      "Couldn't start the run: Acme is already running in another Halonic on this computer.",
+    );
+    expect(line?.textContent).toContain("Stop that one, then try again.");
+    expect(line?.textContent).toContain("Try again");
   });
 
   it("says each failed start once", async () => {

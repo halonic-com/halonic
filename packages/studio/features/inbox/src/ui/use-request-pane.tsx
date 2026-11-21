@@ -1,6 +1,6 @@
 import { type RunsList, useRunEnd } from "@halonicjs/studio-feature-runs/api";
 import { Button, PlusIcon, type ToastMessage, useToastStore } from "@halonicjs/studio-kit";
-import type { EngineWords } from "@halonicjs/studio-shell";
+import { detailsOf, type EngineWords, useCopyDetails } from "@halonicjs/studio-shell";
 import {
   type MutableRefObject,
   type ReactNode,
@@ -16,11 +16,31 @@ import {
   type InboxRequests,
   type RequestWorkflow,
 } from "../request/inbox-requests.ts";
-import { notStartedLine } from "../request/not-started.ts";
+import { type NotStarted, notStartedOf } from "../request/not-started.ts";
 import { useOffered } from "../request/use-offered.ts";
 import { QuietLine } from "./quiet-line.tsx";
 import { emptyDraft, RequestForm } from "./request-form.tsx";
 import { RequestSheet } from "./request-sheet.tsx";
+
+/** No request has failed to start since the last Send. */
+const none: NotStarted = { line: "", copyDetails: false };
+
+/**
+ * What the form says when a request didn't start (UX check S6, HAL-12390): the "Not started:"
+ * line, and **Copy details** with what the host said when the line has it.
+ */
+function useNotStarted(words: EngineWords) {
+  const [state, setState] = useState<NotStarted & { readonly error?: unknown }>(none);
+  const copyDetails = useCopyDetails();
+  const copy = () => void copyDetails(detailsOf(state.line, state.error));
+  return {
+    line: state.line,
+    /** The form's and the sheet's **Copy details**, when the line has it. */
+    copy: state.copyDetails ? { onCopyDetails: copy } : {},
+    fail: (error: unknown) => setState({ ...notStartedOf(error, words), error }),
+    clear: () => setState(none),
+  };
+}
 
 /** A phone's **New request** row: 48px, a plus icon, `accent-text`, a `border` line under it. */
 const newRequestRowClasses = [
@@ -120,7 +140,7 @@ export function useRequestPane(options: {
   const [busy, setBusy] = useState(false);
   // A phone's sheet sent its request and waits for the card, which closes it (first-run 7.2).
   const [waiting, setWaiting] = useState(false);
-  const [notStarted, setNotStarted] = useState("");
+  const notStarted = useNotStarted(words);
   // The run the waiting sheet started, and what it said when it failed before its card arrived.
   const [sent, setSent] = useState<SentRequest>();
   const [runFailed, setRunFailed] = useState<{ line: string; hubId: string; runId: string }>();
@@ -201,7 +221,7 @@ export function useRequestPane(options: {
   }
   const send = async (workflow: RequestWorkflow, text: string) => {
     if (busy) return;
-    setNotStarted("");
+    notStarted.clear();
     setRunFailed(undefined);
     setBudgetStop(false);
     setBusy(true);
@@ -215,7 +235,7 @@ export function useRequestPane(options: {
         setWaiting(true);
       } else setDraft((d) => ({ ...d, message: "" }));
     } catch (error) {
-      setNotStarted(notStartedLine(error, words));
+      notStarted.fail(error);
       setBudgetStop(error instanceof BudgetUsedUp);
     } finally {
       setBusy(false);
@@ -258,8 +278,9 @@ export function useRequestPane(options: {
         draft={draft}
         onDraft={setDraft}
         busy={busy}
-        notStarted={notStarted}
+        notStarted={notStarted.line}
         {...(budgetStop && openBudget !== undefined && { onChangeBudget: openBudget })}
+        {...notStarted.copy}
         onSend={send}
         onEscape={onEscape}
         messageRef={message}
@@ -273,7 +294,7 @@ export function useRequestPane(options: {
           onDraft={setDraft}
           busy={busy}
           waiting={waiting}
-          notStarted={notStarted}
+          notStarted={notStarted.line}
           {...(runFailed !== undefined && {
             runFailed: {
               line: runFailed.line,
@@ -281,6 +302,7 @@ export function useRequestPane(options: {
             },
           })}
           {...(budgetStop && openBudget !== undefined && { onChangeBudget: openBudget })}
+          {...notStarted.copy}
           onSend={send}
           onClose={closeSheet}
           messageRef={message}
