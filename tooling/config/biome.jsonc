@@ -139,7 +139,12 @@
                   "caches": "The phone keeps nothing on disk (B7 item 12).",
                   "window": "The phone page reaches no web storage, so not the window object either (B7 item 12).",
                   "globalThis": "The phone page reaches no web storage, so not the global object either (B7 item 12).",
-                  "self": "The phone page reaches no web storage, so not the global object either (B7 item 12)."
+                  "self": "The phone page reaches no web storage, so not the global object either (B7 item 12).",
+                  "top": "The phone page reaches no web storage, so not the window object either (B7 item 12).",
+                  "parent": "The phone page reaches no web storage, so not the window object either (B7 item 12).",
+                  "frames": "The phone page reaches no web storage, so not the window object either (B7 item 12).",
+                  "opener": "The phone page reaches no web storage, so not the window object either (B7 item 12).",
+                  "document": "The phone page reaches no web storage, so not the document or its cookies either (B7 item 12)."
                 }
               }
             }

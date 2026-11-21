@@ -3,6 +3,14 @@
  * not in the desktop shell, so nothing under `src/phone/` imports `@halonicjs/studio-shell`
  * (`phone-boundary.test.ts`).
  */
+
+export type {
+  ComputerTunnel,
+  ComputerTunnelEvent,
+  ComputerTunnelRefusal,
+  ComputerTunnelSendResult,
+} from "./computer-tunnel.ts";
+export { GatewayClient } from "./gateway-client.ts";
 export {
   agentsAsOfText,
   asOfText,
@@ -33,3 +41,4 @@ export {
   type RemoteSession,
   type RemoteView,
 } from "./remote-view.ts";
+export { ANSWER_RISKY_ON_COMPUTER } from "./view-of.ts";
