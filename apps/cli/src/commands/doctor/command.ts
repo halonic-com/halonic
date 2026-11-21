@@ -1,5 +1,6 @@
 import { readFile, realpath } from "node:fs/promises";
 import { join } from "node:path";
+import { doctorWorkspace, usedConnectors } from "@halonicjs/adapter-doctor-node";
 import type { DoctorReport, DoctorWorkspace, ProfileProblem } from "@halonicjs/app";
 import { type Secrets, workspaceSecrets } from "@halonicjs/ports";
 import { filesOf, type LoadedWorkspace, loadWorkspace, settingsPath } from "@halonicjs/workspace";
@@ -16,7 +17,6 @@ import {
 } from "../../doctor-machine.ts";
 import { withPluginProblems } from "../../doctor-plugins.ts";
 import { agentsWithProviderKey, withHarnessProviderKeys } from "../../doctor-provider-keys.ts";
-import { doctorWorkspace, usedConnectors } from "../../doctor-workspace.ts";
 import { exitCode } from "../../exit-code.ts";
 import { doctorMessages } from "../../messages/doctor.ts";
 import { doctorReportLines } from "../../output/doctor-report.ts";

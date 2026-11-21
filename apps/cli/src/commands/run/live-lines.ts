@@ -7,12 +7,12 @@
 // repeats them word for word (requirement `cli.print-ahead`), so they come
 // from the same helpers `result.ts` uses.
 
+import { providerAddress } from "@halonicjs/adapter-doctor-node";
 import { runSteps, type StepEnd } from "@halonicjs/app";
 import { type WorkspaceModels, workspaceModelsOf } from "@halonicjs/app/run-failure";
 import { type RunEvent, summarize } from "@halonicjs/events";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { CommandContext } from "../../command.ts";
-import { providerAddress } from "../../doctor-workspace.ts";
 import { printable } from "../../output/printable.ts";
 import type { Progress } from "../../output/progress.ts";
 import type { RunClock } from "../../run-times.ts";
