@@ -39,6 +39,12 @@ const inWriter: WorkflowProblem = {
   code: "unknown-model-alias",
   message: 'Agent "writer" uses unknown model alias "smrt"',
 };
+/** The same error as the desktop host gives it, with the agent and the alias (UX check S7). */
+const writerAlias: WorkflowProblem = {
+  ...inWriter,
+  agent: { id: "writer", name: "Writer" },
+  modelAlias: "smrt",
+};
 /** An error in the workflow's own file. */
 const deadEnd: WorkflowProblem = {
   severity: "error",
@@ -70,6 +76,7 @@ async function open(
     readonly startRefusal?: StartRefusal;
     readonly sandbox?: "refuses";
     readonly phone?: boolean;
+    readonly openAgent?: (agentId: string) => void;
   } = {},
 ) {
   const started = vi.fn(async (_input: Record<string, unknown>) => ({ runId: "x" }));
@@ -99,6 +106,7 @@ async function open(
         hubId="acme"
         id="reply"
         sandboxStartCheck={{ check }}
+        {...(options.openAgent && { openAgent: options.openAgent })}
       />
     </PresentationProvider>,
   );
@@ -190,5 +198,31 @@ verifies("workflows.start.start-run", () => {
     expect(page.textContent).not.toContain("can't run");
     await act(async () => runOf(page)?.click());
     expect(page.textContent).toContain("START A RUN");
+  });
+
+  it("names an agent's missing model alias under the first line, with Open Writer (S7)", async () => {
+    const openAgent = vi.fn();
+    const { page } = await open([deadEnd, writerAlias], { openAgent });
+
+    expect(describing(page)).toEqual(["Support reply can't run: it has 2 problems."]);
+    const line = page.querySelector("[data-testid='missing-alias']");
+    expect(line?.textContent).toBe(
+      "Writer uses the model alias smrt, which this workspace doesn't have. Pick a model on Writer's page. Open Writer",
+    );
+    expect(line?.querySelector("code")?.textContent).toBe("smrt");
+    await act(async () => buttonNamed(page, "Open Writer")?.click());
+    expect(openAgent).toHaveBeenCalledWith("writer");
+    expect(buttonNamed(page, "Open Problems")).toBeDefined();
+  });
+
+  it("names the agent with no link when the page can't open agents, and nothing without the alias facts", async () => {
+    const { page, edit } = await open([writerAlias]);
+
+    expect(page.textContent).toContain("Pick a model on Writer's page.");
+    expect(buttonNamed(page, "Open Writer")).toBeUndefined();
+
+    await edit([inWriter]);
+    expect(page.querySelector("[data-testid='missing-alias']")).toBeNull();
+    expect(describing(page)).toEqual(["Support reply can't run: it has 1 problem."]);
   });
 });

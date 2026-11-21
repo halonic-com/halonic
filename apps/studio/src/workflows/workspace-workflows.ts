@@ -33,6 +33,7 @@ import {
   workflowFolder,
   workflowSuffix,
 } from "./workflow-files.ts";
+import { workflowProblemsOf } from "./workflow-problems.ts";
 import { stepEdits } from "./workflow-step-edits.ts";
 import { trashWorkflowFiles, workflowFilesOf, workflowUsersOf } from "./workflow-trash.ts";
 import { arrowsOf, stepsOf } from "./workflow-view.ts";
@@ -197,12 +198,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
         label: value.start.label,
         fields: [{ name: value.start.field }],
       },
-      problems: problemsOf(workspace, file).map((issue) => ({
-        severity: issue.severity,
-        code: issue.code,
-        message: issue.message,
-        stepId: issue.path[0] === "states" ? String(issue.path[1]) : undefined,
-      })),
+      problems: workflowProblemsOf(workspace, file),
     };
   }
 

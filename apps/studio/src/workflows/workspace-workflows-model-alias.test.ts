@@ -41,3 +41,52 @@ verifies("studio.workspace-workflows", () => {
     });
   });
 });
+
+verifies("studio.workflow-problem-agent", () => {
+  describe("the agent and the alias of a workflow's problem (S7)", () => {
+    /** Acme's Writer with `model: smrt` and a method `short` with `model: tiny`, neither in models.yaml. */
+    function withMissingAliases() {
+      const made = setup();
+      Object.assign(made.store, {
+        "models.yaml": "aliases:\n  default:\n    provider: mock\n    model: echo\n",
+        "providers/mock.yaml": "id: mock\nname: Test model\ntype: mock\nlocal: true\n",
+        "hubs/acme/agents/writer.agent.yaml":
+          "id: writer\nname: Writer\nmodel: smrt\ninstructions: Write.\nmethods:\n  short:\n    model: tiny\n    instructions: Be short.\n",
+        "hubs/acme/workflows/reply.workflow.yaml":
+          "id: reply\nname: Reply\ninitial: draft\nstates:\n  draft:\n    agent: writer\n    on:\n      - to: done\n  done:\n    type: final\n",
+      });
+      return made;
+    }
+
+    it("gives each missing alias with the agent that names it, the agent's own and a method's", async () => {
+      const { host } = withMissingAliases();
+
+      const { problems } = await host.configuration({ hubId: "acme", id: "reply" });
+
+      const writer = { id: "writer", name: "Writer" };
+      expect(problems).toContainEqual(
+        expect.objectContaining({ code: "unknown-model-alias", agent: writer, modelAlias: "smrt" }),
+      );
+      expect(problems).toContainEqual(
+        expect.objectContaining({ code: "unknown-model-alias", agent: writer, modelAlias: "tiny" }),
+      );
+    });
+
+    it("gives no agent for a problem in the workflow's own file", async () => {
+      const { host, store } = withMissingAliases();
+      Object.assign(store, {
+        "hubs/acme/agents/writer.agent.yaml": "id: writer\nname: Writer\ninstructions: Write.\n",
+        "hubs/acme/workflows/reply.workflow.yaml":
+          "id: reply\nname: Reply\ninitial: draft\nstates:\n  draft:\n    agent: writer\n  done:\n    type: final\n",
+      });
+
+      const { problems } = await host.configuration({ hubId: "acme", id: "reply" });
+
+      expect(problems.length).toBeGreaterThan(0);
+      for (const problem of problems) {
+        expect(problem.agent).toBeUndefined();
+        expect(problem.modelAlias).toBeUndefined();
+      }
+    });
+  });
+});

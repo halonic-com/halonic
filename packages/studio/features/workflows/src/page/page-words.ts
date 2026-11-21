@@ -118,6 +118,18 @@ export const pageWords = {
     problems: (name: string, errors: number) =>
       `${name} can't run: it has ${errors} ${errors === 1 ? "problem" : "problems"}.`,
     /**
+     * The problems band's next line for an agent that names a model alias the workspace doesn't
+     * have (UX check S7, HAL-12412): the words around the alias, which the band sets in code style.
+     * "*Writer* uses the model alias `smrt`, which this workspace doesn't have. Pick a model on
+     * *Writer*'s page."
+     */
+    missingAlias: {
+      before: (agent: string) => `${agent} uses the model alias `,
+      after: (agent: string) =>
+        `, which this workspace doesn't have. Pick a model on ${agent}'s page.`,
+    },
+    openAgent: (agent: string) => `Open ${agent}`,
+    /**
      * The first line of the band for a run the files say Studio can't start (C471-1). The reason
      * starts with an agent's name, so it keeps its capital (E5).
      */
