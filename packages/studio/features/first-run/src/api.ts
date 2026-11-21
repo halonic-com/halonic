@@ -5,7 +5,9 @@
 import type {
   ChoiceChange,
   ChoiceProblem,
+  FirstRunKeyProvider,
   KeyProblem,
+  LocalModels,
   ModelChoice,
   TestOutcome,
 } from "@halonicjs/app";
@@ -57,7 +59,7 @@ export const FirstRunService: ServiceKey<FirstRun> = serviceKey<FirstRun>("first
  * - `tested`: the test call's outcome. Only `ok` carries a `testId`, the one
  *   way to continue with that choice: the tested key stays in memory under it.
  * - `superseded`: a newer test started before this one ended, so this one keeps
- *   no key and gives no id; the screen shows the newer one.
+ *   no key and gives no outcome, passed or failed; the screen shows the newer one.
  */
 export type ModelChoiceTest =
   | { readonly kind: "not-a-key"; readonly problem: KeyProblem }
@@ -97,18 +99,31 @@ export interface ModelChoicePreview {
 }
 
 /**
+ * The trust line's facts for a choice before its test, so the line shows under
+ * Test and continue before it is pressed. It gives no fingerprint: Continue
+ * trusts only what {@link ModelChoiceService.preview} gave for the passed test,
+ * so the screen compares the two lines and asks again when they differ.
+ */
+export type ModelChoiceLine = Omit<ModelChoicePreview, "fingerprint">;
+
+/**
  * What Continue did:
  * - `ok`: the choice is saved. `changes` are the facts of the "Changed …"
  *   line; `trusted` says whether the folder is trusted now.
  * - not `ok`: the step that failed, and whether the key was saved before it.
- *   A key saved before a failed write stays saved, but the choice isn't.
+ *   A key saved before a failed write stays saved, but the choice isn't: its
+ *   edits are taken back.
  */
 export type ModelChoiceSaved =
   | { readonly ok: true; readonly changes: readonly ChoiceChange[]; readonly trusted: boolean }
   | {
       readonly ok: false;
-      /** `no-test`: no passed test has this id; `files`: a file stops the choice; `key`, `write`: saving the key or the files failed. */
-      readonly failed: "no-test" | "files" | "key" | "write";
+      /**
+       * `no-test`: no passed test has this id; `no-save`: nothing saves files here, such as the
+       * browser demo, so nothing changed; `files`: a file stops the choice; `key`, `write`: saving
+       * the key or the files failed.
+       */
+      readonly failed: "no-test" | "no-save" | "files" | "key" | "write";
       readonly keySaved: boolean;
       /** Why, in plain words for the log; never holds the key. */
       readonly reason: string;
@@ -120,14 +135,26 @@ export type ModelChoiceSaved =
  * {@link ModelChoiceService.preview} showed.
  */
 export interface ModelChoiceService {
-  /** Makes the one tiny test call for `choice`, with `key` for a key choice. A new test drops the last one's key. */
+  /**
+   * Makes the one tiny test call for `choice`, with `key` for a key choice. Without `key`, a key
+   * choice is tested with the key saved for it on this computer, which Continue then leaves as it
+   * is; `not-a-key` when none is saved. A new test drops the last one's key.
+   */
   test(choice: ModelChoice, key?: SecretText): Promise<ModelChoiceTest>;
+  /** Whether a key is saved on this computer for the provider, for "A key is saved for …". */
+  keySaved(provider: FirstRunKeyProvider): Promise<boolean>;
+  /** The trust line's facts for `choice` before its test; `undefined` when a file stops the choice. */
+  lineFacts(choice: ModelChoice): Promise<ModelChoiceLine | undefined>;
   /** The trust line's facts for a passed test, with nothing written; `undefined` for an unknown `testId`. */
   preview(testId: string): Promise<ModelChoicePreview | undefined>;
+  /** Which models Ollama on this computer has downloaded, for the local option's state line. */
+  localModels(): Promise<LocalModels>;
   /**
    * Saves the tested choice: the key, then the files, then the trust, but the
    * trust only when the files lead to `shownFingerprint`. The test's key is
-   * dropped afterwards, whatever happened.
+   * dropped afterwards, whatever happened. Saving the files saves the whole
+   * workspace now, so any other unsaved edit is saved with them, as autosave
+   * would a second later.
    */
   continue(testId: string, shownFingerprint: string | undefined): Promise<ModelChoiceSaved>;
 }

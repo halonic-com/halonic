@@ -115,8 +115,11 @@ function modelOf(calls: ModelCall[], answer: () => Answer) {
   });
 }
 
-/** An Acme folder and the choice service over it, with what each part saw. */
-export function acmeFolder(options: { files?: Record<string, string> } = {}) {
+/**
+ * An Acme folder and the choice service over it, with what each part saw.
+ * `saves: false` is a folder nothing saves, as in the browser demo.
+ */
+export function acmeFolder(options: { files?: Record<string, string>; saves?: boolean } = {}) {
   const disk = new Map(Object.entries(options.files ?? acmeFiles));
   const unsaved = new Map<string, string>();
   const stored = new Map<string, string>();
@@ -139,20 +142,29 @@ export function acmeFolder(options: { files?: Record<string, string> } = {}) {
     change: (label, changes) => {
       steps.push(`change: ${label}: ${Object.keys(changes).join(", ")}`);
       for (const [path, text] of Object.entries(changes)) unsaved.set(path, text);
+      return () => {
+        steps.push(`undo: ${label}`);
+        for (const path of Object.keys(changes)) unsaved.delete(path);
+      };
     },
-    settle: async () => {
-      steps.push("settle");
-      if (state.failSave !== undefined) throw state.failSave;
-      for (const [path, text] of unsaved) disk.set(path, text);
-      unsaved.clear();
-    },
+    settle:
+      options.saves === false
+        ? undefined
+        : async () => {
+            steps.push("settle");
+            if (state.failSave !== undefined) throw state.failSave;
+            for (const [path, text] of unsaved) disk.set(path, text);
+            unsaved.clear();
+          },
     keys: {
+      stored: async (name: string) => stored.has(name),
       save: async (name: string, key: SecretText) => {
         steps.push(`key: ${name}`);
         if (state.failKey !== undefined) throw state.failKey;
         stored.set(name, key.reveal());
       },
     },
+    saved: { get: async (name) => stored.get(name) ?? null },
     trust,
     digest,
     provider: modelOf(calls, () => state.answer),
@@ -162,8 +174,21 @@ export function acmeFolder(options: { files?: Record<string, string> } = {}) {
       return () => timers.splice(timers.indexOf(timer), 1);
     },
     newTestId: () => `test-${calls.length}`,
+    localModels: async () => ({ kind: "one", model: "llama3.2" }),
   });
-  return { service, disk, stored, calls, timers, steps, state, trust, granted, trustAsItIs };
+  return {
+    service,
+    disk,
+    unsaved,
+    stored,
+    calls,
+    timers,
+    steps,
+    state,
+    trust,
+    granted,
+    trustAsItIs,
+  };
 }
 
 /** A model that answers only when the call is aborted, as one that never answers in time. */
