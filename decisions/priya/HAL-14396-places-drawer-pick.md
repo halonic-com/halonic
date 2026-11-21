@@ -3,6 +3,7 @@
 - Task: HAL-14396
 - Approval: C361 PD1 and PD2 and C383 SP1, decided by the team on HAL-14396; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FFl5ZtrufLlRgHwg5ZTEfk9lorQUnD64u3s3uJgBd6iUA1xQ7XibYpRgv5/er+oFum3xobuRln+x0qLzG0RGCQ==
 
 ## What changes
 
