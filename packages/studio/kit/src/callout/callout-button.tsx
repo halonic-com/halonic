@@ -3,6 +3,15 @@ import { Button, OnTintContext } from "../button/button.tsx";
 import { Tooltip, type TooltipTriggerProps } from "../tooltip/tooltip.tsx";
 import type { CalloutAction } from "./callout.tsx";
 
+/**
+ * A label too long for the Callout wraps between words like every kit button's (HAL-14010), so
+ * at 200 % on a phone it isn't cut (WCAG 1.4.10, HAL-13770). On a phone its lines start at the
+ * left, in line with the text above, so the ↗ stays next to the last word (C399). These 6px and
+ * the button's own 2px keep a wrapped first line 8px off the border (C275 PX4); one line with
+ * them is 38px with the border, under the phone's 40px minimum, so it doesn't change.
+ */
+const labelClasses = "phone:text-start phone:py-1.5";
+
 /** Puts focus on an action that asks for it when it is drawn. */
 function focusOnMount(button: HTMLButtonElement | null): void {
   button?.focus();
@@ -41,13 +50,15 @@ export function CalloutButton({
       {...(focused && describedBy !== undefined ? { "aria-describedby": describedBy } : {})}
       {...trigger}
     >
-      {action.label}
-      {action.opens === undefined ? null : (
-        <>
-          <span aria-hidden="true"> ↗</span>
-          <span className="sr-only">. {action.opens}</span>
-        </>
-      )}
+      <span className={labelClasses}>
+        {action.label}
+        {action.opens === undefined ? null : (
+          <>
+            <span aria-hidden="true"> ↗</span>
+            <span className="sr-only">. {action.opens}</span>
+          </>
+        )}
+      </span>
     </Button>
   );
 

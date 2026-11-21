@@ -110,6 +110,19 @@ const toneIcons: Record<CalloutTone, ReactNode> = {
 const actionRow = "mt-2 -ml-2.5 phone:-ml-4 touch:-ml-4";
 
 /**
+ * On a phone an action is never wider than the row, so its label wraps instead of being cut
+ * (HAL-13770). A button is never wider than its box already (HAL-14010), but with `opens` that
+ * box is the Tooltip's wrapper, which is as wide as the label, so the cap goes on the row's child.
+ */
+const actionRowPhoneWrap = "phone:*:max-w-full";
+
+/**
+ * Side by side, two ghost buttons touch. That's fine while only their fills show, but in high
+ * contrast each has an outline, and the two would merge into one box (C399 CA1).
+ */
+const actionRowForcedColours = "forced-colors:gap-1";
+
+/**
  * A message that belongs to one place on a page and stays there until what it's about is dealt
  * with. It has no close button and never cuts its text. As wide as its column.
  *
@@ -230,7 +243,7 @@ function CalloutActions({
     return null;
   }
   return (
-    <div className={`${actionRow} flex flex-wrap`}>
+    <div className={`${actionRow} ${actionRowPhoneWrap} ${actionRowForcedColours} flex flex-wrap`}>
       {actions.map((one) => (
         <CalloutButton key={one.label} action={one} describedBy={describedBy} />
       ))}
