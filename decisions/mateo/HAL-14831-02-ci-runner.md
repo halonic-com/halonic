@@ -3,6 +3,7 @@
 - Task: HAL-14831 (plan revision 2, Julian's security verdict "approved with changes", the board's notes of 21 Nov that the runners are built and the files handed over)
 - Approval: the board asked for the as-built setup as a reviewed PR (HAL-14831, 21 Nov); Liam signs this note in review, then Julian checks it against C1–C6
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:e3+XgO58mGuxt6cqaB+KxdAWmXpQtp/BWVF4U1frkyhH5gy2H0+eLXtHlKPdSCXz31bsaRt8wL9Q6bUlTAzLCw==
 
 ## What changes
 
