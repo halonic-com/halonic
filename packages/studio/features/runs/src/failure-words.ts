@@ -236,6 +236,22 @@ export const failureWords = {
   noKey: (provider: string, model: string, alias: string | undefined) =>
     `${provider} has no API key on this computer, and ${modelOrAlias(model, alias)} needs one.`,
   addKey: "Add key",
+  /**
+   * R1's agent form (microcopy 15.3, C503 M2): a sandboxed harness agent's provider key isn't
+   * saved, so its program didn't start. A harness agent has no alias, so the line names the agent.
+   */
+  harnessNoKey: (provider: string, agent: string, program: string) =>
+    `${provider} has no API key on this computer, and ${agent} needs one to run in ${program}.`,
+  /**
+   * A sandboxed harness agent whose provider has its own Base URL, which Studio can't send its calls
+   * to yet (HAL-13798, C503 M3, R17's shape). Studio calls the field Base URL.
+   */
+  harnessBaseUrl: (agent: string, provider: string) =>
+    `${capitalised(agent)} didn't start: Studio can't send its model calls to ${provider}'s Base URL yet. Nothing ran.`,
+  /** R17's line before the command (9.6, revision 109). */
+  runInTerminal: "To run it, run this in a terminal:",
+  /** R17 on a phone, which has no terminal. */
+  runOnComputer: "Run it from the command line on your computer.",
   /** R2 (microcopy 15.3, P9): the provider turned the key away. */
   keyRefused: (provider: string, secret: string, model: string, alias: string | undefined) =>
     `${provider} didn't accept the key in the secret ${secret}, used by ${modelOrAlias(model, alias)}. It may be mistyped, revoked, or for another account.`,

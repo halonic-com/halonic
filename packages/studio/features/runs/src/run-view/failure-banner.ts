@@ -3,8 +3,9 @@
 // the model and its provider from the last model call, the agent from the last agent that started
 // or the branch whose answer wasn't an option, and the harness program and its limit from the last
 // `harness.started`. A setup cause the engine names, such as a provider type Halonic can't call, is
-// read from the summary's cause with the CLI's own facts (`setupFailureOf`). Run again is the
-// banner's button (`run-again.ts`); a banner adds the fixes that come before it (Copy command,
+// read from the summary's cause with the CLI's own facts (`setupFailureOf`), and a sandboxed
+// harness agent's key Studio refused from its own cause (`harness-key-banners.ts`). Run again is
+// the banner's button (`run-again.ts`); a banner adds the fixes that come before it (Copy command,
 // Open Models where the cause is fixed in Models, or See the step) and the links after it (Open
 // Models, Copy details).
 
@@ -22,6 +23,7 @@ import { capitalised } from "../run-words.ts";
 import { accountBanner } from "./account-banners.ts";
 import { apiOffOf } from "./api-off.ts";
 import { danger } from "./danger-banner.ts";
+import { harnessKeyBanner } from "./harness-key-banners.ts";
 import type { BannerFix, RunBanner, RunPageContext } from "./run-page-model.ts";
 
 /** The cause code the Studio gives a run it stopped because the workspace's trust was removed (`trustRemovedCause`). */
@@ -72,6 +74,10 @@ export function causeBanner(
   const setup = setupBanner(summary, workflow, step, phone);
   if (setup !== undefined) {
     return setup;
+  }
+  const harnessKey = harnessKeyBanner(summary, log, context, phone);
+  if (harnessKey !== undefined) {
+    return harnessKey;
   }
   if (summary.cause?.code === socketPathTooLongCode) {
     return danger([
