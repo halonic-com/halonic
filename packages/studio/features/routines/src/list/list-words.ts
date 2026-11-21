@@ -16,6 +16,9 @@ export const listWords = {
   emptyHub: (hubName: string) => `No routines in ${hubName} yet.`,
   noMatch: (query: string) => `No routines match "${query}".`,
   more: (name: string) => `More actions for ${name}`,
+  cantStart: "Can't start",
+  /** Read after "Can't start" by screen readers only, so the row's name says why (HAL-14940). */
+  cantStartWhy: (targetName: string) => `${targetName} isn't in this workspace`,
   off: "Off",
   needsSignIn: "Needs sign-in again",
   needsYou: "Needs you",

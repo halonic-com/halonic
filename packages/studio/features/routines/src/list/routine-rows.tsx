@@ -9,10 +9,21 @@ export function rowId(ref: RoutineRef): string {
 }
 
 /**
- * The one chip a row shows (flow-routines 2.1): "Off", else "Paused until trusted", else "Needs
- * sign-in", else "Needs you"; a routine that is fine and on has none.
+ * The one chip a row shows (flow-routines 2.1): "Can't start", else "Off", else "Paused until
+ * trusted", else "Needs sign-in", else "Needs you"; a routine that is fine and on has none. "Can't
+ * start" comes first because turning the routine on or trusting the workspace wouldn't help: only
+ * picking another workflow or agent does (HAL-14940).
  */
 function Chip({ listing }: { readonly listing: RoutineListing }) {
+  if (!listing.targetFound) {
+    return (
+      <StatusChip tone="danger">
+        {listWords.cantStart}
+        {/* The row's name is its text, so this makes it "… Can't start: support-reply isn't in this workspace". */}
+        <span className="sr-only">: {listWords.cantStartWhy(listing.targetName)}</span>
+      </StatusChip>
+    );
+  }
   if (!listing.enabled) return <StatusChip tone="neutral">{listWords.off}</StatusChip>;
   if (listing.pausedUntilTrusted) {
     return <StatusChip tone="attention">{listWords.pausedUntilTrusted}</StatusChip>;
@@ -28,8 +39,14 @@ function Chip({ listing }: { readonly listing: RoutineListing }) {
   return null;
 }
 
-function hasChip({ enabled, pausedUntilTrusted, needsSignIn, needsYou }: RoutineListing): boolean {
-  return !enabled || pausedUntilTrusted || needsSignIn || needsYou > 0;
+function hasChip(listing: RoutineListing): boolean {
+  const { targetFound, enabled, pausedUntilTrusted, needsSignIn, needsYou } = listing;
+  return !targetFound || !enabled || pausedUntilTrusted || needsSignIn || needsYou > 0;
+}
+
+/** Whether the row shows when the routine next starts: not when it is off or can't start. */
+function showsNextRun(listing: RoutineListing): listing is RoutineListing & { nextRun: string } {
+  return listing.enabled && listing.targetFound && listing.nextRun !== undefined;
 }
 
 function itemOf(listing: RoutineListing, now: Date): OverviewItem {
@@ -38,9 +55,7 @@ function itemOf(listing: RoutineListing, now: Date): OverviewItem {
     name: listing.name,
     description: listing.summary,
     detail: listing.summary,
-    ...(listing.enabled && listing.nextRun !== undefined
-      ? { usedBy: nextWhen(listing.nextRun, now) }
-      : {}),
+    ...(showsNextRun(listing) ? { usedBy: nextWhen(listing.nextRun, now) } : {}),
     avatar: <LetterTile name={listing.name} />,
     ...(hasChip(listing) ? { chips: <Chip listing={listing} /> } : {}),
   };

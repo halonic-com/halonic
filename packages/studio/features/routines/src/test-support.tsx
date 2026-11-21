@@ -42,6 +42,7 @@ export function listing(
     enabled: true,
     summary: `Daily at 07:30 → ${name}`,
     targetName: "Briefing",
+    targetFound: true,
     needsSignIn: false,
     needsYou: 0,
     pausedUntilTrusted: false,

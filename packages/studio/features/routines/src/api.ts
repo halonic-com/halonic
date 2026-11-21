@@ -48,6 +48,11 @@ export interface RoutineListing extends RoutineRef {
   readonly targetName: string;
   /** ISO time it next starts on its own; absent when it is off or its trigger isn't a clock. */
   readonly nextRun?: string | undefined;
+  /**
+   * Whether the workflow or agent it starts is in the workspace. When it isn't, the routine can't
+   * start, so the row shows "Can't start" and no next time.
+   */
+  readonly targetFound: boolean;
   /** Held for a Google sign-in, which the row shows as "Needs sign-in again". */
   readonly needsSignIn: boolean;
   /** Runs of this routine that wait for a person, which the row shows as "Needs you". */

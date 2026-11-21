@@ -62,6 +62,25 @@ verifies("studio.workspace-routines", () => {
     expect(view.problems.length).toBeGreaterThan(0);
   });
 
+  it("lists whether the workflow or agent a routine starts is in the workspace", async () => {
+    const { host } = setup({}, [], {
+      "hubs/acme/workflows/routines/no-agent.routine.yaml": weeklyFile.replace(
+        "agent: analyst",
+        "agent: nobody",
+      ),
+      "hubs/acme/workflows/routines/no-workflow.routine.yaml": weeklyFile.replace(
+        "  agent: analyst\n  prompt: Write the report.",
+        "  workflow: support-reply",
+      ),
+    });
+    const listed = await host.list();
+    const row = (id: string) => listed.find((each) => each.id === id);
+
+    expect(row("weekly-report")?.targetFound).toBe(true);
+    expect(row("no-agent")).toMatchObject({ targetFound: false, targetName: "nobody" });
+    expect(row("no-workflow")).toMatchObject({ targetFound: false, targetName: "support-reply" });
+  });
+
   it("reads a routine as the page draws it", async () => {
     const { host } = setup();
     const view = await host.read(weekly);

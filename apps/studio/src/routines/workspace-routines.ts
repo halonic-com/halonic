@@ -194,6 +194,7 @@ export class WorkspaceRoutines implements RoutinesHost {
         summary: summaryOf(workspace, file),
         targetName: targetName(workspace, file),
         nextRun: file.value.enabled ? this.#nextRunOf(file, now) : undefined,
+        targetFound: targetFound(workspace, targetOfFile(file.value.run, file.hub)),
         needsSignIn: false,
         needsYou: own.filter((run) => run.status === "waiting").length,
         pausedUntilTrusted: !trusted,

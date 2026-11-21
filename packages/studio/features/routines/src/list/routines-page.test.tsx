@@ -78,6 +78,34 @@ verifies("routines.list.rows-and-states", () => {
     expect(chips("E")).not.toMatch(/Off|Needs|Paused/);
   });
 
+  it("shows Can't start, says why to screen readers and shows no time when what a routine starts isn't there", async () => {
+    const rows = [
+      listing("acme", "morning", "Morning replies", {
+        summary: "Daily at 08:00 → support-reply",
+        targetName: "support-reply",
+        targetFound: false,
+        nextRun: tomorrow,
+      }),
+      listing("acme", "weekend", "Weekend", { enabled: false, targetFound: false, needsYou: 2 }),
+      listing("acme", "untrusted", "Untrusted", { targetFound: false, pausedUntilTrusted: true }),
+    ];
+    const page = await show(<RoutinesView host={memoryHost(hubs, rows).host} />);
+    const row = rowOf(page, "Morning replies");
+    const chip = [...row.querySelectorAll("span")].find((span) =>
+      span.className.includes("text-danger"),
+    );
+
+    expect(chip?.querySelector(".sr-only")?.textContent).toBe(
+      ": support-reply isn't in this workspace",
+    );
+    expect(row.textContent).toContain("Can't start: support-reply isn't in this workspace");
+    expect(row.textContent).not.toContain("next ");
+    expect(rowOf(page, "Weekend").textContent).toContain("Can't start");
+    expect(rowOf(page, "Weekend").textContent).not.toMatch(/Off|Needs you/);
+    expect(rowOf(page, "Untrusted").textContent).toContain("Can't start");
+    expect(rowOf(page, "Untrusted").textContent).not.toContain("Paused until trusted");
+  });
+
   it("shows only the empty state when there are no routines", async () => {
     const page = await show(<RoutinesView host={memoryHost(hubs, []).host} />);
 
