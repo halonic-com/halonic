@@ -85,9 +85,21 @@ export function hostPluginBackends(
       );
       return new RefusingConnector(connector, log);
     },
-    // A tool's own error, from the backend or a local tool, leaves the plugin's parts running.
-    runnerSurvives: (error) => error instanceof RunnerToolError || isConnectorToolError(error),
+    // A tool's own error, from the backend or a local tool, leaves the plugin's parts running,
+    // and so does one part that can't start: the others keep working.
+    runnerSurvives: (error) =>
+      error instanceof RunnerToolError || isConnectorToolError(error) || isPartStartRefusal(error),
   };
+}
+
+/**
+ * Whether `error` says one part of the plugin didn't start, while the others
+ * may: it can't run fenced here (`not_fenced`) or a setting it needs has no
+ * value. A plugin the trust no longer covers isn't one; it stops whole.
+ */
+function isPartStartRefusal(error: unknown): boolean {
+  if (error instanceof PluginRefusal) return error.code === "not_fenced";
+  return pluginPartUnavailableReason(error).kind === "settings-not-set";
 }
 
 /**

@@ -14,6 +14,9 @@ When Studio calls a tool of a trusted plugin on the agent host, the agent host s
 - Given a computer where the local tool's sandbox can't start,
   when Studio calls the local tool's tool,
   then the answer is 403 `not_fenced`, a call of the backend's tool still answers, and the log names the part and `sandbox-unavailable`.
+- Given a plugin whose backend runner is running and whose local tool can't run fenced or needs a setting that has no value,
+  when Studio calls the local tool's tool and then the backend's,
+  then the same runner answers the backend's call: no runner stops or starts.
 - Given a trusted plugin whose only part is a local tool,
   when Studio calls its tool,
   then the local tool answers and no runner starts.

@@ -34,9 +34,11 @@ export interface PluginLocalToolSessionsOptions {
   /**
    * What the program may never reach: the person's credential folders, such
    * as SSH keys, and Halonic's profile and data folder, which holds every
-   * plugin's folder.
+   * plugin's folder. Looked up again for each session, as a credential folder
+   * may appear while the host runs, and a connector on the agent host can
+   * last as long as the host does.
    */
-  readonly deniedPaths: readonly string[];
+  deniedPaths(): Promise<readonly string[]>;
   /** The Halonic bridge, or `null` for none. */
   readonly bridge: LocalToolPlace["bridge"];
   /** The `PATH` the program gets: the host's own. */
@@ -109,6 +111,7 @@ export class PluginLocalToolSessions {
       await Promise.allSettled(made.map((folder) => folders.remove(folder)));
     };
     try {
+      const deniedPaths = [...new Set(await this.#options.deniedPaths())];
       const copyFolder = await folders.create();
       made.push(copyFolder);
       const pluginCopy = join(copyFolder, copyName);
@@ -130,7 +133,7 @@ export class PluginLocalToolSessions {
         workingFolder,
         tempFolder,
         pluginCopy,
-        deniedPaths: this.#options.deniedPaths,
+        deniedPaths,
         bridge: this.#options.bridge,
         timeLimitMs: this.#options.timeLimitMs,
         path: this.#options.path,

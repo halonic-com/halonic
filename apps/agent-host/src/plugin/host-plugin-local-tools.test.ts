@@ -15,6 +15,7 @@ import {
   withLocalTool,
 } from "./host-plugin-backends.test-helper.ts";
 import { PluginRefusal } from "./plugin-refusal.ts";
+import { PluginTable } from "./plugin-table.ts";
 
 beforeEach(makePluginsFolder);
 afterEach(removePluginsFolder);
@@ -65,6 +66,39 @@ verifies("agent-host.plugin-local-tools", () => {
       const failed = await client.callTool("list-files", {}).catch((error: unknown) => error);
       expect(failed).not.toBeInstanceOf(PluginRefusal);
       expect(logged.join("")).toContain("(local:lister): settings-not-set.");
+    });
+
+    describe("through the plugin table, a local tool that can't start leaves the backend's runner running", () => {
+      it.each([
+        [
+          "not_fenced",
+          new LocalToolUnavailableError("acme:lister", {
+            kind: "sandbox-unavailable",
+            reason: "container",
+          }),
+        ],
+        ["settings-not-set", new LocalToolSettingsNotSetError("acme:lister", ["root"])],
+      ])("for %s", async (_code, startError) => {
+        const local = new FakeLocalTools();
+        local.startError = startError;
+        const { backends, seen } = await setup({ localTools: local.source });
+        const table = new PluginTable(backends);
+        expect(await table.call("acme", "echo", {})).toBe("answer from echo");
+        await expect(table.call("acme", "list-files", {})).rejects.toThrow();
+        expect(await table.call("acme", "echo", {})).toBe("answer from echo");
+        expect(seen).toEqual({ starts: 1, stops: 0 });
+        await table.closeAll();
+      });
+
+      it("but a plugin the trust no longer covers stops whole", async () => {
+        const local = new FakeLocalTools();
+        const { backends, seen } = await setup({ localTools: local.source });
+        const table = new PluginTable(backends);
+        expect(await table.call("acme", "echo", {})).toBe("answer from echo");
+        await put({ "acme/tools/server.js": "console.log('swapped');\n" });
+        expect(await refusedWith(table.call("acme", "list-files", {}))).toBe("plugin_not_trusted");
+        expect(seen).toEqual({ starts: 1, stops: 1 });
+      });
     });
 
     it("refuses to open for a fingerprint the folder no longer has, and starts no part", async () => {

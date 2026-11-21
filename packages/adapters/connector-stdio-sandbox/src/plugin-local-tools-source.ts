@@ -27,7 +27,7 @@ export interface PluginLocalToolsHost {
   /**
    * What a local tool's program may never reach: the person's credential
    * folders and Halonic's profile, each at its real place. Looked up again
-   * for each connector, as a credential folder may appear while the host runs.
+   * for each session, as a credential folder may appear while the host runs.
    */
   deniedPaths(): Promise<readonly string[]>;
   /** The Halonic bridge, or `null` for none. */
@@ -60,7 +60,7 @@ export function pluginLocalToolsSource(
     const sessions = new PluginLocalToolSessions({
       folders: host.folders,
       runners: host.runners,
-      deniedPaths: [...new Set(await host.deniedPaths())],
+      deniedPaths: () => host.deniedPaths(),
       bridge: host.bridge,
       path: host.path,
       timeLimitMs: host.timeLimitMs,

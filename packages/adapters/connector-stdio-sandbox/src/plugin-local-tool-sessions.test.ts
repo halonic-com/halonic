@@ -137,12 +137,16 @@ function checked(): TrustedPluginFolder {
 }
 
 function sessionsWith(
-  options: { settings?: PluginSettingValues; secrets?: TestSecrets } = {},
+  options: {
+    settings?: PluginSettingValues;
+    secrets?: TestSecrets;
+    deniedPaths?: () => Promise<readonly string[]>;
+  } = {},
 ): PluginLocalToolSessions {
   return new PluginLocalToolSessions({
     folders,
     runners: noRunners,
-    deniedPaths: [join(root, "data")],
+    deniedPaths: options.deniedPaths ?? (async () => [join(root, "data")]),
     bridge: null,
     path: "/usr/bin",
     timeLimitMs: 60_000,
@@ -244,5 +248,19 @@ verifies("connector-stdio-sandbox.plugin-local-tool-sessions", () => {
       await expect(sessions.prepare(set, checked())).rejects.toThrow("notes-key");
       expect(await folders.left()).toEqual([]);
     });
+  });
+});
+
+verifies("connector-stdio-sandbox.plugin-local-tool-denied-paths", () => {
+  it("looks the denied paths up again for each session", async () => {
+    const denied = [join(root, "data")];
+    const sessions = sessionsWith({ deniedPaths: async () => [...denied] });
+
+    const first = await sessions.prepare(set, checked());
+    denied.push(join(root, "home", ".aws"));
+    const second = await sessions.prepare(set, checked());
+
+    expect(first.profile.deniedPaths).toEqual([join(root, "data")]);
+    expect(second.profile.deniedPaths).toEqual([join(root, "data"), join(root, "home", ".aws")]);
   });
 });
