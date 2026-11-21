@@ -14,7 +14,11 @@ import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { closeAfterStop, stoppedCloseLimitMs } from "./close-after-stop.ts";
 import type { CommandContext } from "./command.ts";
-import { cliConnectorFactories, nodeConnectorMachine } from "./connector-machine.ts";
+import {
+  cliConnectorFactories,
+  connectorSessionLimitMs,
+  nodeConnectorMachine,
+} from "./connector-machine.ts";
 import { recordingSrtSandbox } from "./fenced-sandbox.ts";
 import { checkHarnessOverride } from "./harness-override.ts";
 import {
@@ -31,8 +35,9 @@ import type { Message } from "./messages/define.ts";
 import { markPart, type Phrase, phrase } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { openLocalIntegration } from "./open-local-integration.ts";
-import { openPluginBackend } from "./open-plugin-backend.ts";
 import { printable } from "./output/printable.ts";
+import { pluginConnectorSources } from "./plugin-connector-factory.ts";
+import { pluginPartReporter, type RunConnectorLines } from "./plugin-part-warnings.ts";
 import { checkRunSandbox, type SandboxGateRun, type UnsandboxedAgent } from "./sandbox-gate.ts";
 import {
   nodeSandboxGateHost,
@@ -47,6 +52,7 @@ import {
   type StuckTimerWatch,
   stuckTimerWatch,
 } from "./stuck-timers.ts";
+import { halonicVersion } from "./version.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 import type { WorkspaceVersions } from "./workspace-versions.ts";
@@ -192,7 +198,14 @@ export async function openWorkspaceEngine(
     ...(target.versions === undefined ? {} : { versions: target.versions }),
     workspaceRoot: target.dir.root,
     runConnectors: (
-      setup.runConnectors ?? ((trust) => computerRunConnectors(trust, target, setup.profile))
+      setup.runConnectors ??
+      ((trust) =>
+        computerRunConnectors(
+          trust,
+          target,
+          { warn: (line) => context.warn(line), debug: (line) => context.debug(line) },
+          setup.profile,
+        ))
     )(target.trust, target),
     secrets: context.secrets,
     keyOrigins: profileKeyOrigins(() => setup.profile ?? nodeProfileEnvironment()),
@@ -268,30 +281,45 @@ export async function checkEngineRuns(
 /**
  * This computer's connector programs, `PATH` and network, for
  * {@link WorkspaceEngineSetup.runConnectors}. A local integration starts in
- * the runner, behind the trust check and the start gate.
+ * the runner, behind the trust check and the start gate; so does a plugin's
+ * backend, and each of its local tools starts in a sandbox session of its own.
  */
 function computerRunConnectors(
   trust: TrustGrant | null,
   target: Pick<WorkspaceEngineTarget, "dir" | "workspace">,
+  lines: RunConnectorLines,
   environment: ProfileEnvironment = nodeProfileEnvironment(),
 ): LocalRunConnectorsInput {
   const profile = profileFolder(environment);
   const machine = nodeConnectorMachine(environment);
   const integrations = computerIntegrationMachine({ ...target, trust: machine, environment });
   const plugins = computerPluginMachine(integrations, { trust: machine, environment });
+  const fence = {
+    // Records each session's folders, so a sweep on this profile never takes a live one's grant (HAL-6780).
+    sandbox: recordingSrtSandbox(profile),
+    deniedPaths: [profile.root],
+  };
+  const pluginSources = pluginConnectorSources(
+    plugins,
+    {
+      ...fence,
+      env: process.env,
+      timeLimitMs: connectorSessionLimitMs,
+      onUnavailable: pluginPartReporter(lines, process.env["WSL_DISTRO_NAME"]),
+      onReleaseFailed: (error) =>
+        lines.debug(runMessages.cleanUpFailed("program-folders", reasonOf(error)).phrase),
+    },
+    { name: "halonic", version: halonicVersion },
+  );
   return {
     trust,
     // Workspace programs start in a sandbox session where the sandbox works (D45).
     factories: cliConnectorFactories(
       nodeProgramStarter,
       process.env,
-      {
-        // Records each session's folders, so a sweep on this profile never takes a live one's grant (HAL-6780).
-        sandbox: recordingSrtSandbox(profile),
-        deniedPaths: [profile.root],
-      },
+      fence,
       openLocalIntegration(integrations),
-      openPluginBackend(plugins),
+      pluginSources,
     ),
     // The CLI connects no built-in Google connector yet, the only kind that reads sign-ins.
     context: { http: machine.http, tokens: machine.tokens },

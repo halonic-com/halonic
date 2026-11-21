@@ -3,17 +3,20 @@ import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { LaunchFolders, RunnerSearch } from "@halonicjs/adapter-mcp";
-import type { LocalToolSet, PluginSettingValues, TrustedPluginFolder } from "@halonicjs/app";
+import {
+  type LocalToolSet,
+  LocalToolSettingsNotSetError,
+  type PluginSettingValues,
+  pluginPartUnavailableReason,
+  type TrustedPluginFolder,
+} from "@halonicjs/app";
 import { type Plugin, parseFile } from "@halonicjs/format";
 import type { HttpClient, Secrets } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { localToolLaunch } from "./local-tool-launch.ts";
 import { PluginFileChangedError } from "./plugin-copy.ts";
-import {
-  LocalToolSettingsNotSetError,
-  PluginLocalToolSessions,
-} from "./plugin-local-tool-sessions.ts";
+import { PluginLocalToolSessions } from "./plugin-local-tool-sessions.ts";
 
 /** A plugin with one local tool started by a script, with a setting and a secret. */
 const notesManifest = `id: notes
@@ -226,6 +229,11 @@ verifies("connector-stdio-sandbox.plugin-local-tool-sessions", () => {
       const refused = sessions.prepare(set, checked());
       await expect(refused).rejects.toThrow(LocalToolSettingsNotSetError);
       await expect(refused).rejects.toMatchObject({ settings: ["root"] });
+      // The plugin's connector names this part's reason, not a plain failure.
+      expect(pluginPartUnavailableReason(await refused.catch((error: unknown) => error))).toEqual({
+        kind: "settings-not-set",
+        settings: ["root"],
+      });
       expect(await folders.left()).toEqual([]);
     });
 

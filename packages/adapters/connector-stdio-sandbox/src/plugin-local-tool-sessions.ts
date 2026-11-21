@@ -10,6 +10,7 @@ import type { LaunchFolders, RunnerSearch } from "@halonicjs/adapter-mcp";
 import {
   type LocalToolOpening,
   type LocalToolSet,
+  LocalToolSettingsNotSetError,
   localToolConnectorConfig,
   localToolConnectorId,
   type PluginSettingValues,
@@ -20,7 +21,7 @@ import { type HttpClient, pluginSecrets, type Secrets } from "@halonicjs/ports";
 import { type LocalToolPlace, localToolLaunch, type StdioConfig } from "./local-tool-launch.ts";
 import { pinnedStart } from "./pinned-runner.ts";
 import { readSecretEnv } from "./plan-launch.ts";
-import { copyCheckedPlugin, type PluginCopyDisk, pluginCopyOnThisMachine } from "./plugin-copy.ts";
+import { copyCheckedPlugin, type PluginCopyDisk } from "./plugin-copy.ts";
 import { pluginLocalToolPlace } from "./plugin-local-tool-place.ts";
 import type { LocalToolSetup } from "./sandbox-connector.ts";
 
@@ -50,23 +51,6 @@ export interface PluginLocalToolSessionsOptions {
   settings(plugin: Plugin): Promise<PluginSettingValues>;
   /** How the plugin's checked files are read and copied; the real disk unless given. */
   readonly disk?: PluginCopyDisk;
-}
-
-/**
- * A local tool didn't start because a required setting it takes has no
- * value. The person fills it in under the plugin's settings.
- */
-export class LocalToolSettingsNotSetError extends Error {
-  override readonly name = "LocalToolSettingsNotSetError";
-  /** The settings' names, as the plugin's `ui.settings` declares them. */
-  readonly settings: readonly string[];
-
-  constructor(connectorId: string, settings: readonly string[]) {
-    super(
-      `Local tool "${connectorId}" doesn't start until these settings of its plugin are filled in: ${settings.join(", ")}.`,
-    );
-    this.settings = settings;
-  }
 }
 
 /** The folder in a session's copy folder that holds the plugin's files. */

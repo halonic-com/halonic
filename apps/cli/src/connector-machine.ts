@@ -20,7 +20,7 @@ import {
   type ProgramStarter,
 } from "@halonicjs/adapter-mcp";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
-import { ConnectorFactories } from "@halonicjs/app";
+import { ConnectorFactories, type PluginConnectorSources } from "@halonicjs/app";
 import type { ConnectorFactory, HttpClient, Sandbox, TokenStore } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
@@ -29,7 +29,7 @@ import {
   IntegrationConnectorFactory,
   type OpenIntegration,
 } from "./integration-connector-factory.ts";
-import { type OpenPluginBackend, PluginConnectorFactory } from "./plugin-connector-factory.ts";
+import { PluginConnectorFactory } from "./plugin-connector-factory.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { nodeSandboxWorks } from "./sandbox-works.ts";
 import { halonicVersion } from "./version.ts";
@@ -82,13 +82,14 @@ export interface ConnectorFence {
 }
 
 /** How long one connector's session may last: a run's connectors end with the run, so this only bounds a stuck one. */
-const connectorSessionLimitMs = 24 * 60 * 60_000;
+export const connectorSessionLimitMs = 24 * 60 * 60_000;
 /** How long one connector call may take. */
 const connectorCallLimitMs = 5 * 60_000;
 
 /**
- * The CLI's `stdio` and `http` factories, and `integration` when it is given
- * `openIntegration`. A `stdio` program starts with
+ * The CLI's `stdio` and `http` factories, `integration` when it is given
+ * `openIntegration`, and `plugin` when it is given `plugins`
+ * (`pluginConnectorSources`). A `stdio` program starts with
  * `starter`, inheriting `env`; a pinned one is found in `env` too.
  *
  * With a `fence`, a program starts in a sandbox session of its own while the
@@ -100,7 +101,7 @@ export function cliConnectorFactories(
   env: Readonly<Record<string, string | undefined>>,
   fence?: ConnectorFence,
   openIntegration?: OpenIntegration,
-  openPlugin?: OpenPluginBackend,
+  plugins?: PluginConnectorSources,
 ): ConnectorFactories {
   const clientInfo = { name: "halonic", version: halonicVersion };
   const runners = createRunnerSearch(env);
@@ -116,7 +117,7 @@ export function cliConnectorFactories(
     new McpHttpConnectorFactory({ clientInfo }),
     // Only with a way to open one in the runner: no in-process start for a local integration or a plugin's backend.
     ...(openIntegration === undefined ? [] : [new IntegrationConnectorFactory(openIntegration)]),
-    ...(openPlugin === undefined ? [] : [new PluginConnectorFactory(openPlugin)]),
+    ...(plugins === undefined ? [] : [new PluginConnectorFactory(plugins)]),
   ]);
 }
 

@@ -29,6 +29,11 @@ export interface RunReceipt {
   readonly estimatedCost?: number;
 }
 
+/** A part of a plugin as a run's warning names it: the backend, or a program by its escaped name. */
+export type PluginPartShown =
+  | { readonly kind: "backend" }
+  | { readonly kind: "program"; readonly name: string };
+
 /**
  * The sentences of `halonic run <workflow>` (cli-output 1.9 and 3.4): the
  * heading, the waiting line and the receipt. A failed run's two lines are
@@ -248,9 +253,16 @@ export const runMessages = defineMessages("run", {
     phrase`the scheduler's ${what} failed, try ${failures} of ${most}, retrying: ${reason}`,
   /**
    * A `--debug` line when a run's connectors failed to close after it ended,
-   * a leftover program copy couldn't be swept, or a harness run left something that couldn't be cleaned up. Nothing tries it again.
+   * a leftover program copy couldn't be swept, a harness run left something that couldn't be cleaned up,
+   * or a plugin program's session folders couldn't be removed. Nothing tries it again.
    */
-  cleanUpFailed: (what: "run-connectors" | "program-copies" | "harness-host", reason: string) => {
+  cleanUpFailed: (
+    what: "run-connectors" | "program-copies" | "harness-host" | "program-folders",
+    reason: string,
+  ) => {
+    if (what === "program-folders") {
+      return phrase`the engine couldn't remove the folders of a plugin program's session: ${reason}`;
+    }
     if (what === "run-connectors") {
       return phrase`the engine couldn't close a run's connectors: ${reason}`;
     }
@@ -287,6 +299,30 @@ export const runMessages = defineMessages("run", {
    */
   harnessSignedOut: (agent: string, type: string) =>
     phrase`${agent} runs in the sandbox, where its program can't use your own sign-in. If it fails as signed out, add a provider of type ${type} with a secret, and save the key with halonic secret set.`,
+  /**
+   * Line 1 of the warning for one part of a plugin, its backend or one of
+   * its programs, that can't start (HAL-12343), in the shape of
+   * `connectorStart.notStarted`. The plugin's other parts keep working. The
+   * reason follows on line 2 (C484-1, HAL-12343). The names arrive escaped.
+   */
+  pluginPartOff: (plugin: string, part: PluginPartShown) =>
+    part.kind === "backend"
+      ? phrase`The backend of the plugin ${plugin} didn't start, so its tools are off in this run.`
+      : phrase`The program ${part.name} of the plugin ${plugin} didn't start, so its tools are off in this run.`,
+  /** Line 2 for `sandbox-not-fenced`: the session opened, but not in a sandbox Halonic could confirm. */
+  pluginPartNotConfirmed: () =>
+    phrase`Halonic couldn't confirm that the sandbox limits this program on this computer.`,
+  /** The `--debug` line under it: the fence state the session reported, for an engineer. */
+  pluginPartFence: (fence: string) =>
+    phrase`the program's sandbox session opened with its fence ${fence}, so the program didn't start`,
+  /** Line 2 for `network-needs-srt`. */
+  pluginPartNetwork: () =>
+    phrase`It reaches the network, and the Windows 11 sandbox can't limit a program to single sites yet.`,
+  /** Line 2 for `settings-not-set`, with the settings' names escaped. No command sets them yet, so no fix line. */
+  pluginPartSettings: (settings: readonly string[]) =>
+    phrase`These settings of the plugin have no value: ${settings.join(", ")}.`,
+  /** Line 2 for `not-trusted` and `failed`: the error's own text, escaped, which says what to do. */
+  pluginPartError: (error: string) => phrase`${error}`,
   /** The same when a stopped command gave up waiting for the engine to close (HAL-6677). */
   closeAbandoned: (seconds: number) =>
     phrase`the engine didn't close within ${seconds} s of the stop; released its lock and ending without it`,
