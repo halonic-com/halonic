@@ -34,8 +34,8 @@ export interface WorkflowTrash {
 }
 
 /**
- * The workflow page's ⋮ and its Delete (`workflows.page.menu`): Delete moves the workflow to the
- * trash at once, with no dialog, and a strip with **Undo** then stands where the page was. Undo, or
+ * The workflow page's ⋮ and its Delete (`workflows.page.menu`): Delete deletes the workflow and its
+ * tests at once, with no dialog, and a strip with **Undo** then stands where the page was. Undo, or
  * the workspace's own undo, brings the page back and gives `title` the focus.
  */
 export function useWorkflowTrash(
@@ -49,7 +49,18 @@ export function useWorkflowTrash(
   const [removed, setRemoved] = useState<Removed>();
   // Set when the page comes back, so its title takes the focus once it is drawn again.
   const focusWhenBack = useRef(false);
+  // Set while a Delete runs, so a second pick of Delete in the meantime does nothing.
+  const deleting = useRef(false);
+  // The toast of a failed Delete, which stays until closed: its Try again belongs to this page.
+  const failedToast = useRef<string | undefined>(undefined);
   const inTrash = removed !== undefined;
+
+  // Leaving the page closes that toast, so Try again can't delete with no strip and no Undo to see.
+  useEffect(() => {
+    return () => {
+      if (failedToast.current !== undefined) toasts?.close(failedToast.current);
+    };
+  }, [toasts]);
 
   useEffect(() => {
     if (inTrash || !focusWhenBack.current) return;
@@ -77,18 +88,26 @@ export function useWorkflowTrash(
   if (trash === undefined) return { menu: null, strip: null };
 
   const onDelete = async () => {
+    if (deleting.current) return;
+    deleting.current = true;
+    failedToast.current = undefined;
     try {
-      // The warning doesn't wait on the workflows and routines being read: without them it has no line.
-      const users = await referencesTo?.({ hubId, id }).catch(() => undefined);
-      const trashed = await trash.call(host, { hubId, id });
+      // Who runs it is read while the files go: other workflows and routines don't change with the
+      // delete. A failed read only leaves the strip without its second line.
+      const [trashed, users] = await Promise.all([
+        trash.call(host, { hubId, id }),
+        referencesTo?.call(host, { hubId, id }).catch(() => undefined),
+      ]);
       setRemoved({ trashed, name, line: users && deleteWords.usersLine(users) });
     } catch (error) {
-      toasts?.show({
+      failedToast.current = toasts?.show({
         tone: "danger",
         title: deleteWords.couldntDelete(name, errorReasonFor(error)),
         sticky: true,
         action: { label: deleteWords.tryAgain, onClick: () => void onDelete() },
       });
+    } finally {
+      deleting.current = false;
     }
   };
   const onUndo = async () => {
