@@ -1,7 +1,7 @@
 # Decision: doctor's sentences move to a shared words package
 
-- Approval: Liam planned it on HAL-13406 (first-run-progress 4.2 and 7, sized on HAL-8005 item 1); Mateo checks it there and Julian signs, because Liam wrote it
-- Kind: internal
+- Approval: Liam planned it on HAL-13406 (first-run-progress 4.2 and 7, sized on HAL-8005 item 1); Mateo checked it on HAL-14801. It changes `tooling/check/policy.json`, a trust root, so both guardians sign: Julian, and Liam after Mateo's check
+- Kind: user-visible
 - Task: HAL-13406
 
 ## What changes
