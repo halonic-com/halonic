@@ -1,6 +1,7 @@
 import { printable } from "../output/printable.ts";
 import { counted, listInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
+import { docsBase } from "./docs.ts";
 import { phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 import { countInWords } from "./words.ts";
@@ -22,12 +23,14 @@ export const workflowMessages = defineMessages("workflow", {
    * as `init` lists its examples, since no command lists them (HAL-6007).
    * An id in several hubs shows once. An id is the author's text, so it is
    * escaped.
-   * "Workflows in acme: support-reply, weekly-report.", or "acme has no workflows yet."
+   * With none, it gives the next step: a recipe to start from (HAL-14776).
+   * "Workflows in acme: support-reply, weekly-report.", or "acme has no
+   * workflows yet. Add one from a recipe: https://docs.halonic.dev/examples/"
    */
   seeWorkflows: (workspace: string, ids: readonly string[]) => {
     const shown = [...new Set(ids)].map(printable);
     return shown.length === 0
-      ? phrase`${workspace} has no workflows yet.`
+      ? phrase`${workspace} has no workflows yet. Add one from a recipe: ${docsBase}/examples/`
       : phrase`Workflows in ${workspace}: ${shown.join(", ")}.`;
   },
   /**

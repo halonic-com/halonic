@@ -87,7 +87,7 @@ verifies("workflow.validate-input", () => {
 
     expect(code).toBe(exitCode.failed);
     expect(io.stdout.slice(1, 3)).toEqual([
-      "  5:51  ✕ start.field is email, but no step reads input.email. The steps read input.mail: use one of those names as field, or add input.email to a step's gets.  (unread-start-field)",
+      "  5:51  ✕ start.field is email, but no step reads input.email. The steps read input.mail: use that name as field, or add input.email to a step's gets.  (unread-start-field)",
       "",
     ]);
   });
