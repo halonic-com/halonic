@@ -34,7 +34,9 @@ function socketPathLimitOf(platform: NodeJS.Platform): { system: string; bytes: 
  * (`failureCauseOf`): the code `harness-bridge.socket-path-too-long` and the
  * path's length, the system and its limit, so a run that fails this way says
  * its cause is known instead of asking for a bug report (HAL-13862). The
- * path itself stays out of it: it names the user's folders.
+ * path itself stays out of it: it names the user's folders. The fix names
+ * `HALONIC_HOME`, as both hosts, the CLI and the agent host, make the socket
+ * folder in the profile folder, which it moves (HAL-13931).
  */
 class SocketPathTooLongError extends KindedError {
   readonly failureCause: { readonly code: string; readonly detail: Record<string, string> };
@@ -42,7 +44,7 @@ class SocketPathTooLongError extends KindedError {
   constructor(bytes: number, limit: { system: string; bytes: number }) {
     super(
       "invalid_input",
-      `The bridge's socket path would be ${bytes} bytes, and ${limit.system} takes at most ${limit.bytes}. Move Halonic's data to a shorter path.`,
+      `The bridge's socket path would be ${bytes} bytes, and ${limit.system} takes at most ${limit.bytes}. Move Halonic's data folder to a shorter path, such as ~/.halonic, and set HALONIC_HOME to that path.`,
     );
     this.failureCause = {
       code: "harness-bridge.socket-path-too-long",

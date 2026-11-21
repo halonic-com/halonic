@@ -11,7 +11,7 @@ import { failedWith, fixLine } from "./test/run-failure-fixtures.ts";
 verifies("cli.run-failure", () => {
   it("says a bridge socket path that is too long as the reason, with no report link", () => {
     const error =
-      "The bridge's socket path would be 161 bytes, and Linux takes at most 107. Move Halonic's data to a shorter path.";
+      "The bridge's socket path would be 161 bytes, and Linux takes at most 107. Move Halonic's data folder to a shorter path, such as ~/.halonic, and set HALONIC_HOME to that path.";
     const failed = {
       ...failedWith("error"),
       error,
