@@ -1,7 +1,7 @@
 import { secretVariableName } from "@halonicjs/adapter-env-secrets";
 import { providerTypes } from "@halonicjs/adapter-workspace-models";
 import { type MoneyAmountOptions, moneyAmount } from "@halonicjs/app";
-import type { BusyRetries, RunFailure } from "@halonicjs/app/run-failure";
+import { type BusyRetries, isModelAlias, type RunFailure } from "@halonicjs/app/run-failure";
 import type { ModelSkipReason } from "@halonicjs/events";
 import { counted, listInWords, timesInWords } from "./counts.ts";
 import { defineMessages, type Message } from "./define.ts";
@@ -49,12 +49,12 @@ const lineOne = {
   "key-refused": (run, failure) =>
     failedIn(
       run,
-      phrase`${failure.provider} didn't accept the key in the secret ${namedSecret(failure.secret)}, used by the model alias ${failure.alias}.`,
+      phrase`${failure.provider} didn't accept the key in the secret ${namedSecret(failure.secret)}, used by ${modelOrAlias(failure)}.`,
     ),
   "no-key": (run, failure) =>
     failedIn(
       run,
-      phrase`there's no key in the secret ${namedSecret(failure.secret)}, used by the model alias ${failure.alias}.`,
+      phrase`there's no key in the secret ${namedSecret(failure.secret)}, used by ${modelOrAlias(failure)}.`,
     ),
   "signed-out": (run, failure) =>
     failedIn(run, phrase`${failure.service} (${failure.account}) is signed out. Nothing was sent.`),
@@ -303,6 +303,13 @@ function saveKey(key: Phrase, secret: string): Phrase {
 /** Every key error names the secret and the variable Halonic reads it from, the same as the reader does. */
 function namedSecret(secret: string): string {
   return `${secret} (${secretVariableName(secret)})`;
+}
+
+/** "the model alias smart", or "the model gpt-4.1" when no alias points at the model (C457-1). */
+function modelOrAlias(failure: { readonly model: string; readonly alias: string }): Phrase {
+  return isModelAlias(failure.alias)
+    ? phrase`the model alias ${failure.alias}`
+    : phrase`the model ${failure.model}`;
 }
 
 /**

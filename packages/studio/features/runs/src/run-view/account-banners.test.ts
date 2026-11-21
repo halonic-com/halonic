@@ -99,6 +99,19 @@ verifies("runs.run-view.account-banners", () => {
       expect(fixesOf(banner)).toEqual([{ kind: "open-models", label: "Replace key" }]);
     });
 
+    // C457-1 on HAL-14694: the facts name a model no alias points at as `openai/gpt-4.1`.
+    it("names the model, not a model alias, when no alias points at it", () => {
+      expect(linesOf(bannerOf("key-refused", [call("openai", "gpt-4.1")]))).toEqual([
+        "OpenAI didn't accept the key in the secret openai-key, used by the model gpt-4.1. It may be mistyped, revoked, or for another account.",
+      ]);
+      const unset = bannerOf("key-refused", [
+        skipped("openai/gpt-4.1", "openai", "gpt-4.1", "no-key"),
+      ]);
+      expect(linesOf(unset)).toEqual([
+        "OpenAI has no API key on this computer, and the model gpt-4.1 needs one.",
+      ]);
+    });
+
     it("says to fix it on the computer on a phone", () => {
       const banner = bannerOf("key-refused", [call("openai", "gpt-4o")], true);
       expect(linesOf(banner)?.[1]).toBe("Fix this on your computer: Models");

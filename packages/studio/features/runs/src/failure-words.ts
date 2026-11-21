@@ -224,12 +224,12 @@ export const failureWords = {
   harnessStartFailed: (agent: string, harness: string, seconds: number, step: string) =>
     `${capitalised(agent)} didn't start: ${harness} didn't start on this computer, or didn't answer within ${seconds} ${seconds === 1 ? "second" : "seconds"}. Nothing ran in the step ${step}.`,
   /** R1 (microcopy 15.3): the provider's secret holds no key, so no key was sent. */
-  noKey: (provider: string, alias: string) =>
-    `${provider} has no API key on this computer, and the model alias ${alias} needs one.`,
+  noKey: (provider: string, model: string, alias: string | undefined) =>
+    `${provider} has no API key on this computer, and ${modelOrAlias(model, alias)} needs one.`,
   addKey: "Add key",
   /** R2 (microcopy 15.3, P9): the provider turned the key away. */
-  keyRefused: (provider: string, secret: string, alias: string) =>
-    `${provider} didn't accept the key in the secret ${secret}, used by the model alias ${alias}. It may be mistyped, revoked, or for another account.`,
+  keyRefused: (provider: string, secret: string, model: string, alias: string | undefined) =>
+    `${provider} didn't accept the key in the secret ${secret}, used by ${modelOrAlias(model, alias)}. It may be mistyped, revoked, or for another account.`,
   replaceKey: "Replace key",
   /** R3 (microcopy 15.3, revision 77): the tries only when the run log has them. */
   providerBusy: (provider: string, step: string) =>

@@ -7,6 +7,7 @@
 import {
   type FailedModel,
   failedModelOf,
+  isModelAlias,
   type RunFailure,
   runFailureOf,
 } from "@halonicjs/app/run-failure";
@@ -47,13 +48,18 @@ export function accountBanner(
   switch (failure.reason) {
     case "no-key":
       return withModelsFix(
-        failureWords.noKey(provider, failure.alias),
+        failureWords.noKey(provider, failure.model, aliasOf(failure.alias)),
         { label: failureWords.addKey },
         phone,
       );
     case "key-refused":
       return withModelsFix(
-        failureWords.keyRefused(provider, failure.secret, failure.alias),
+        failureWords.keyRefused(
+          provider,
+          failure.secret,
+          failure.model,
+          aliasOf(failure.alias),
+        ),
         { label: failureWords.replaceKey },
         phone,
       );
@@ -108,20 +114,19 @@ function withModelsFix(line: string, models: ModelsTarget, phone: boolean): RunB
 
 /** R5's **Open Models** at the alias's tab (15.3); none when the facts name no alias. */
 function aliasTab(alias: string): ModelsTarget {
-  return isAlias(alias) ? { alias } : {};
+  return isModelAlias(alias) ? { alias } : {};
+}
+
+/** The facts' alias, or `undefined` when no alias points at the model, so the line names the model. */
+function aliasOf(alias: string): string | undefined {
+  return isModelAlias(alias) ? alias : undefined;
 }
 
 /** R5, naming the alias unless no alias points at the model: the facts then name it `<provider>/<model>`. */
 function cloudModelMissing(provider: string, model: string, alias: string): string {
-  return isAlias(alias)
+  return isModelAlias(alias)
     ? failureWords.cloudModelMissing(provider, model, alias)
     : failureWords.cloudModelMissingNoAlias(provider, model);
-}
-
-/** Whether the facts name an alias; without one they name the model as `<provider>/<model>`. */
-function isAlias(alias: string): boolean {
-  // An alias is an id, which can't hold a "/".
-  return !alias.includes("/");
 }
 
 /** R4: **Run again** · link **Open *OpenAI* billing**, only for a provider whose billing page Halonic knows. */

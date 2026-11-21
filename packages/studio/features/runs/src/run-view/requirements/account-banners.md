@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-12411 (UX check R1 to R6 on HAL-12390, microcopy 15.3 and revision 113 of 1.6 on HAL-751; small wording on an approved screen, a team decision under HAL-2282); HAL-12464 (the facts shared with the CLI, approved by Liam)
+- Source: HAL-12411 (UX check R1 to R6 on HAL-12390, microcopy 15.3 and revision 113 of 1.6 on HAL-751; small wording on an approved screen, a team decision under HAL-2282); HAL-12464 (the facts shared with the CLI, approved by Liam); HAL-14694 (C457-1: a key line names the model when no alias points at it, a team decision under HAL-2282)
 
 When a run failed for a reason about the provider's account or the workspace's rules, the run page's banner shall say it in the danger tone, from the same facts as the CLI's failure lines (`app.run-failure`), with the model the run called last, its alias, the provider's secret and the agent:
 
@@ -13,7 +13,7 @@ When a run failed for a reason about the provider's account or the workspace's r
 - `model-missing` at a provider that runs elsewhere: "*Anthropic* doesn't have the model *claude-sonnet-9*, used by the model alias *smart*. Pick another model for *smart* in Models." with **Open Models**, which opens the alias's tab (*smart*) as `runs.run-view.failure-banners` does;
 - `local-only`: "*Acme* is local only, so Halonic sent nothing to *OpenAI*. *Sorter*'s model alias *smart* points to a cloud model." with **Choose a local model for *Sorter*** and without **Run again**, which would fail the same way.
 
-**Add key**, **Replace key** and **Choose a local model for *Sorter*** open the workspace page at Models, and **Open Models** the alias's tab; each is left out where the page can't do that, and on a phone the line "Fix this on your computer: Models" takes their place. They come before **Run again**, and there is no **Run again** for `local-only`. A banner names the provider as `runs.run-view.failure-banners` does, and the agent by its name from its file. While the log or the workspace's models aren't read, or when a fact is missing (such as a provider without a secret), the page's general banner shows. The engine's and the provider's own text shall never be on the banner.
+**Add key**, **Replace key** and **Choose a local model for *Sorter*** open the workspace page at Models, and **Open Models** the alias's tab; each is left out where the page can't do that, and on a phone the line "Fix this on your computer: Models" takes their place. They come before **Run again**, and there is no **Run again** for `local-only`. A banner names the provider as `runs.run-view.failure-banners` does, and the agent by its name from its file. While the log or the workspace's models aren't read, or when a fact is missing (such as a provider without a secret), the page's general banner shows. The engine's and the provider's own text shall never be on the banner. When no alias points at the model, the two key lines name the model instead of an alias: "…used by the model *gpt-4.1*." and "…and the model *gpt-4.1* needs one.", as the CLI's line 1 does.
 
 Limits, for the docs: **Add key**, **Replace key** and **Choose a local model** open Models at its start; going straight to the provider's key or the agent's model comes later. The engine doesn't retry a busy provider yet, so the tries don't show yet.
 

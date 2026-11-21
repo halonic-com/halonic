@@ -10,12 +10,15 @@ import type { FailedModel, FailedStart, RunFailedEvent } from "./failed-model.ts
 import { budgetStopOf, nextMonthStart } from "./run-failure-budget.ts";
 import { type ProxyFailure, proxyFailureOf } from "./run-failure-proxy.ts";
 
-/** What both key failures name: the provider, the secret that holds its key, and the alias that uses it. */
+/** What both key failures name: the provider, the secret that holds its key, and the model or alias that uses it. */
 interface KeyFacts {
   /** The provider as its file names it, such as "OpenAI", or else its id. */
   readonly provider: string;
   /** The secret's name in the provider file, such as `openai-key`. */
   readonly secret: string;
+  /** The model the provider was asked for, such as "gpt-4.1". */
+  readonly model: string;
+  /** Its alias, or `<provider>/<model>` when no alias points at it (see `isModelAlias`). */
   readonly alias: string;
 }
 
@@ -329,6 +332,7 @@ function keyFailure(failed: RunFailedEvent, model: FailedModel | undefined): Run
     reason: model.keyMissing ? "no-key" : "key-refused",
     provider: providerName(model),
     secret,
+    model: model.model,
     alias: model.alias,
   };
 }
@@ -440,6 +444,19 @@ function generalFailure(failed: RunFailedEvent): Extract<RunFailure, { reason: "
 }
 
 /** The provider as its file names it, such as "Ollama", or else its id. */
+/**
+ * Whether a failure's `alias` is a model alias, such as "smart". Without one, the facts name the
+ * model as `<provider>/<model>`, and a line names the model itself (C457-1 on HAL-14694).
+ *
+ * @example
+ * isModelAlias("smart"); // true
+ * isModelAlias("openai/gpt-4.1"); // false
+ */
+export function isModelAlias(alias: string): boolean {
+  // An alias is an id, which can't hold a "/".
+  return !alias.includes("/");
+}
+
 function providerName(model: FailedModel): string {
   return model.provider?.name ?? model.providerId;
 }
