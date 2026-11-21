@@ -1,5 +1,5 @@
 import { type RefObject, useEffect, useState } from "react";
-import type { InboxItem } from "../inbox-items.ts";
+import { type InboxItem, isRunItem } from "../inbox-items.ts";
 import { itemTitle } from "./inbox-row.tsx";
 
 /** What {@link useSentRequestCard} gives the Inbox page. */
@@ -26,8 +26,9 @@ export function useSentRequestCard(options: {
   const { items, openItem, sheetOpen, announce } = options;
   const [sent, setSent] = useState<ReadonlySet<string>>(new Set());
   useEffect(() => {
-    const arrived = items.find((item) => item.kind !== "setup" && sent.has(item.runId));
-    if (arrived === undefined || arrived.kind === "setup") return;
+    // Only a run's card is a request's card: a proposal of the run comes as news, not opened.
+    const arrived = items.filter(isRunItem).find((item) => sent.has(item.runId));
+    if (arrived === undefined) return;
     setSent((was) => new Set([...was].filter((runId) => runId !== arrived.runId)));
     if (sheetOpen?.current || focusIsInRequestForm()) openItem(arrived);
     else announce?.(`New in Needs you: ${itemTitle(arrived)}`);

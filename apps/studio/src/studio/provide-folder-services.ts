@@ -1,4 +1,8 @@
-import { AgentHostChat, AgentHostPlacementStore } from "@halonicjs/adapter-agent-host-client";
+import {
+  AgentHostChat,
+  AgentHostPlacementStore,
+  type AgentHostTransport,
+} from "@halonicjs/adapter-agent-host-client";
 import {
   TauriDefinitionStore,
   TauriEngineLock,
@@ -98,6 +102,7 @@ import { WorkspaceNoLimit } from "../models/workspace-no-limit.ts";
 import { WorkspaceProviderCheck } from "../models/workspace-provider-check.ts";
 import { providePlugins } from "../plugins/provide-plugins.ts";
 import { WorkspaceRoutines } from "../routines/workspace-routines.ts";
+import { hostProposalsOf } from "../runs/host-proposals.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
 import { openStudioRunConnectors } from "./open-run-connectors.ts";
@@ -179,7 +184,8 @@ export function provideFolderServices(
   provideModelChoice(services, { ipc, trust, keys, settle });
   services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
   services.provide(ProviderCheckService, new WorkspaceProviderCheck(new ShellHttpClient(ipc)));
-  provideWorkspaceRuns(services, { ipc, files, window, remoteEngine }, location);
+  const transport = tauriAgentHostTransport(window);
+  provideWorkspaceRuns(services, { ipc, files, window, remoteEngine, transport }, location);
   // One service for both ends: the run page saves a person's trust, and the engine checks it.
   const instructionTrust = new InstructionTrustService({
     store: new TauriInstructionTrustStore(ipc),
@@ -208,7 +214,6 @@ export function provideFolderServices(
     saved: new TauriDefinitionStore(files, location),
     events: scope.events,
   });
-  const transport = tauriAgentHostTransport(window);
   const engine =
     remoteEngine ??
     services.provide(
@@ -449,11 +454,13 @@ function provideWorkspaceRuns(
     files,
     window,
     remoteEngine,
+    transport,
   }: {
     ipc: TauriIpc;
     files: TauriFileShell;
     window: object;
     remoteEngine?: RemoteEngine | undefined;
+    transport: AgentHostTransport | undefined;
   },
   location: string,
 ): void {
@@ -465,6 +472,8 @@ function provideWorkspaceRuns(
     // Looked up on the first answer: the page's engine is provided after the runs.
     send: (...answer) => (remoteEngine ?? services.get(engineServiceKey)).send(...answer),
     ...(remoteEngine === undefined ? {} : { waiting: () => remoteEngine.waiting() }),
+    // Run proposals live in the agent host's records (HAL-10916); without the host there are none.
+    ...(transport === undefined ? {} : { proposals: hostProposalsOf(transport, location) }),
   });
   services.provide(RunsSourceService, runs);
   services.provide(InboxRunsService, runs);
