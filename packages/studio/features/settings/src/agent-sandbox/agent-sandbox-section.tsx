@@ -4,17 +4,19 @@ import {
   Button,
   Callout,
   Dialog,
+  DONE_LABEL_MS,
   ExternalLink,
   RefreshIcon,
   StatusChip,
   type StatusChipTone,
+  useModalPolite,
 } from "@halonicjs/studio-kit";
 import {
   copyDetailsWords,
   type SettingsSectionProps,
-  useCopyDetails,
+  useCopyDetailsInPlace,
 } from "@halonicjs/studio-shell";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { type AgentSandboxHost, AgentSandboxService, HostSettingsService } from "../api.ts";
 import { NewAgentsRunControl } from "./new-agents-run.tsx";
 import { NotAvailableLines } from "./not-available-lines.tsx";
@@ -186,17 +188,26 @@ export function AgentSandboxView({
   newAgents = null,
   notAvailable,
 }: AgentSandboxViewProps) {
-  const copyDetails = useCopyDetails();
+  // In place, as the Callout's own: toasts wait while the Settings dialog is open (C529-5).
+  const copyDetails = useCopyDetailsInPlace();
+  const copied = useCopiedLabel();
   const view = sandboxView(facts, new Date());
-  const copy = () => void copyDetails(view.details ?? "");
+  const copy = () => copyDetails(view.details ?? "");
   const buttons = {
     "check-again": { label: text.CHECK_AGAIN, onClick: onCheckAgain },
     remove: { label: text.REMOVE, onClick: onRemove },
-    "copy-details": { label: copyDetailsWords.label, onClick: copy },
+    "copy-details": {
+      label: copied.label,
+      onClick: () => void copy().then(copied.show),
+    },
   } as const;
   const calloutAction = {
     "try-again": { label: text.TRY_AGAIN, onClick: onSetUp },
-    "copy-details": { label: copyDetailsWords.label, onClick: copy },
+    "copy-details": {
+      label: copyDetailsWords.label,
+      doneLabel: copyDetailsWords.done,
+      onClick: copy,
+    },
   } as const;
   return (
     <div className="flex max-w-120 flex-col gap-4">
@@ -264,6 +275,28 @@ export function AgentSandboxView({
       {newAgents}
     </div>
   );
+}
+
+/**
+ * The ghost **Copy details**'s "Copied", as a Callout action's `doneLabel` (`kit.callout-done-label`):
+ * for 2 seconds after a copy that worked, said through the Settings dialog's polite region.
+ */
+function useCopiedLabel(): { readonly label: string; readonly show: (copied: boolean) => void } {
+  const modal = useModalPolite();
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (!shown) return;
+    const timer = setTimeout(() => setShown(false), DONE_LABEL_MS);
+    return () => clearTimeout(timer);
+  }, [shown]);
+  return {
+    label: shown ? copyDetailsWords.done : copyDetailsWords.label,
+    show: (copied) => {
+      if (!copied) return;
+      setShown(true);
+      modal?.say(copyDetailsWords.done);
+    },
+  };
 }
 
 /** The words under the chip: the Not available lines where the section has them, else the view's lead. */

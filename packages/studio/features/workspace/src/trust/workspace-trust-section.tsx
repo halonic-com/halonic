@@ -1,4 +1,12 @@
 import { Button, DashedRingIcon, Dialog, type ToastStore } from "@halonicjs/studio-kit";
+import {
+  copyDetailsWords,
+  detailsOf,
+  engineReasonFor,
+  engineWordsOf,
+  isUnexplained,
+  useCopyDetailsInPlace,
+} from "@halonicjs/studio-shell";
 import { useId, useRef, useState, useSyncExternalStore } from "react";
 import {
   changedSince,
@@ -20,7 +28,7 @@ import {
   UNREADABLE_LINE,
 } from "./trust-section-text.ts";
 import { useTrustCheck } from "./use-trust-check.tsx";
-import type { WorkspaceTrustControl } from "./workspace-trust-control.ts";
+import type { TrustGrantResult, WorkspaceTrustControl } from "./workspace-trust-control.ts";
 
 /** The props of {@link WorkspaceTrustSection}. */
 export interface WorkspaceTrustSectionProps {
@@ -54,11 +62,15 @@ export function WorkspaceTrustSection({ trust, name, toasts }: WorkspaceTrustSec
   const check = useTrustCheck(trust, name, toasts, () => action.current);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | undefined>();
+  // For an internal error only: what **Copy details** puts on the clipboard (microcopy 22 F13).
+  const [details, setDetails] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+  const copyDetails = useCopyDetailsInPlace();
 
   const confirmRemove = async () => {
     setBusy(true);
     setRemoveError(undefined);
+    setDetails(undefined);
     const result = await trust.remove();
     setBusy(false);
     if (result.ok) {
@@ -68,7 +80,11 @@ export function WorkspaceTrustSection({ trust, name, toasts }: WorkspaceTrustSec
       queueMicrotask(() => action.current?.focus());
       return;
     }
-    setRemoveError(removeFailed(name, result.reason));
+    const line = removeFailed(name, reasonOf(result));
+    setRemoveError(line);
+    if (result.error !== undefined && isUnexplained(result.error)) {
+      setDetails(detailsOf(line, result.error));
+    }
   };
 
   return (
@@ -95,6 +111,7 @@ export function WorkspaceTrustSection({ trust, name, toasts }: WorkspaceTrustSec
                   size="sm"
                   onClick={() => {
                     setRemoveError(undefined);
+                    setDetails(undefined);
                     setRemoving(true);
                   }}
                 >
@@ -122,6 +139,15 @@ export function WorkspaceTrustSection({ trust, name, toasts }: WorkspaceTrustSec
           confirm={{ label: REMOVE_TRUST, variant: "danger", busyLabel: REMOVING }}
           busy={busy}
           {...(removeError === undefined ? {} : { error: removeError })}
+          {...(details === undefined
+            ? {}
+            : {
+                errorAction: {
+                  label: copyDetailsWords.label,
+                  doneLabel: copyDetailsWords.done,
+                  onClick: () => copyDetails(details),
+                },
+              })}
           returnFocus={() => action.current}
           onConfirm={() => void confirmRemove()}
           onCancel={() => setRemoving(false)}
@@ -131,6 +157,16 @@ export function WorkspaceTrustSection({ trust, name, toasts }: WorkspaceTrustSec
       ) : null}
     </section>
   );
+}
+
+/**
+ * Why removing failed, without its closing full stop, as Trusted sources says it: an internal
+ * error reads "Halonic ran into a problem it can't explain yet", a refusal that names the problem
+ * (`declined`, `busy`, `io`) keeps its own words, and the raw message never shows.
+ */
+function reasonOf(result: Extract<TrustGrantResult, { ok: false }>): string {
+  if (result.error === undefined) return result.reason;
+  return engineReasonFor(result.error, engineWordsOf({}).notAnswering).replace(/\.+$/u, "");
 }
 
 export function StatusMark({ status }: { readonly status: WorkspaceTrustControl["status"] }) {
