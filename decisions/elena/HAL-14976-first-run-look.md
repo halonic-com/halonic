@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-8721 (the board approved the first-run sheets, sheet 05 shows the bar and the guide card); design check C520 on https://paperclip.halonic.com/HAL/issues/HAL-14970 (Sofia), task https://paperclip.halonic.com/HAL/issues/HAL-14976
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:OxaSu2aDvZVGfd4TANF29byVwgH+IgiwrZewdfo6owAJeKNVV4G5ByC6Z/rfV4ZFs1IC9Nqj4ARwnBNH15kfAQ==
 
 Sofia's design check C520 compared the first-run bar and guide card on `main` with the board-approved sheet 05
 and found four places where they differ. Matching the sheet is a detail of an approved screen, decided by the
