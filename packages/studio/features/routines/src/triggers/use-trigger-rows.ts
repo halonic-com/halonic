@@ -1,16 +1,24 @@
 import { useCallback, useEffect, useState } from "react";
-import type { RoutinesHost, TriggerOwner, TriggerRow } from "../api.ts";
+import type { RoutinesHost, TriggerOwner, TriggerRow, WorkflowWithAgent } from "../api.ts";
 import { failureReason } from "../page/page-words.ts";
 
-/** What the Triggers section has of the routines that start its owner. */
+/**
+ * What the Triggers section has of the routines that start its owner and, for an agent, of the
+ * workflows it is a step in (always none for a workflow).
+ */
 export type TriggerRowsLoad =
   | { readonly kind: "loading" }
   | { readonly kind: "failed"; readonly reason: string; readonly retrying: boolean }
-  | { readonly kind: "ready"; readonly rows: readonly TriggerRow[] };
+  | {
+      readonly kind: "ready";
+      readonly rows: readonly TriggerRow[];
+      readonly workflows: readonly WorkflowWithAgent[];
+    };
 
 /**
- * Reads the routines that start `owner`, and again each time the host says the routines may have
- * changed. A read after the first keeps what is shown, so a refresh never blanks the section.
+ * Reads the routines that start `owner`, and for an agent the workflows it is a step in, and again
+ * each time the host says the routines may have changed. A read after the first keeps what is
+ * shown, so a refresh never blanks the section.
  */
 export function useTriggerRows(
   host: RoutinesHost,
@@ -27,9 +35,13 @@ export function useTriggerRows(
 
   useEffect(() => {
     let current = true;
+    const owner = { kind, hubId, id };
     const read = () =>
-      host.startingRoutines({ kind, hubId, id }).then(
-        (rows) => current && setLoad({ kind: "ready", rows }),
+      Promise.all([
+        host.startingRoutines(owner),
+        kind === "agent" ? host.workflowsWithAgent(owner) : [],
+      ]).then(
+        ([rows, workflows]) => current && setLoad({ kind: "ready", rows, workflows }),
         (error: unknown) =>
           current &&
           setLoad((was) =>

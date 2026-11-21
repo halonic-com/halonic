@@ -137,7 +137,7 @@ verifies("routines.new.create", () => {
     await show(dialog({ starterTarget: async () => analyst }).node);
 
     expect(body()).toContain(
-      "This routine starts Analyst, but Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow, then pick it under Starts on the routine's page.",
+      "This routine starts Analyst, but Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow with the agent as a step, then pick it under Starts on the routine's page.",
     );
     expect(body()).not.toContain("when you press Run now");
     expect(body()).toContain("Prompt");

@@ -23,6 +23,7 @@ import {
   type TrashedRoutine,
   type TriggerOwner,
   type TriggerRow,
+  type WorkflowWithAgent,
 } from "@halonicjs/studio-feature-routines/api";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { editYaml } from "@halonicjs/yaml";
@@ -61,6 +62,7 @@ import {
   targetStartsProgram,
   targetsOf,
   targetWithPrompt,
+  workflowsWithAgent,
 } from "./routine-reads.ts";
 import { nextRunOf, nextTimesOf } from "./routine-times.ts";
 import { runNowFailureOf } from "./run-now-failure.ts";
@@ -373,6 +375,10 @@ export class WorkspaceRoutines implements RoutinesHost {
     if (choice === undefined)
       throw new Error(`The hub "${owner.hubId}" has no ${owner.kind} "${owner.id}".`);
     return this.#write(choice.name, owner.hubId, targetWithPrompt(choice, prompt));
+  }
+
+  async workflowsWithAgent(agent: TriggerOwner): Promise<readonly WorkflowWithAgent[]> {
+    return workflowsWithAgent(await this.#load(), agent);
   }
 
   /** The workflow or agent a Triggers section is on, as its hub lists it. */

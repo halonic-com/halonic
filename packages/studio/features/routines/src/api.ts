@@ -278,6 +278,12 @@ export interface TriggerOwner {
   readonly id: string;
 }
 
+/** A workflow in an agent's hub that runs the agent as a step. */
+export interface WorkflowWithAgent {
+  readonly id: string;
+  readonly name: string;
+}
+
 /** One row of a Triggers section: a routine that starts its workflow or agent. */
 export interface TriggerRow extends RoutineRef {
   readonly name: string;
@@ -388,6 +394,12 @@ export interface RoutinesHost {
    * workflow with input `{}`, or an agent with `prompt`. Writes nothing for an agent without a prompt.
    */
   addTrigger(owner: TriggerOwner, prompt?: string): Promise<RoutineRef>;
+  /**
+   * The workflows in the agent's hub that run it as a step, directly or in a workflow they call,
+   * in the hub's order, so the agent's Triggers section can lead to them while Halonic can't run an
+   * agent on its own.
+   */
+  workflowsWithAgent(agent: TriggerOwner): Promise<readonly WorkflowWithAgent[]>;
 }
 
 /**
@@ -417,11 +429,14 @@ export class RoutineInputRefused extends KindedError {
 }
 
 const agentCantRunWhy = "Halonic can't run an agent on its own yet, only as a step in a workflow.";
-const agentCantRunInstead = "Make a workflow, then pick it under Starts";
+/** What to do instead, everywhere: the same first half, then the step for where the person is. */
+const insteadFirst = "Make a workflow with the agent as a step";
+const agentCantRunInstead = `${insteadFirst}, then pick it under Starts`;
 
 /**
  * Why a routine can't start an agent yet (C52 claim 1.6) and what to do instead, written once for
- * the New routine dialog, the Starts card and Run now's refusal (HAL-14647).
+ * the New routine dialog, the Starts card, Run now's refusal (HAL-14647) and an agent's Triggers
+ * section (HAL-15452). The CLI's `halonic serve` says the same, ending in its own next step.
  */
 export const agentCantRunWords = {
   why: agentCantRunWhy,
@@ -429,6 +444,14 @@ export const agentCantRunWords = {
   instead: agentCantRunInstead,
   /** Both as one line, for the routine's own page, where Starts is. */
   line: `${agentCantRunWhy} ${agentCantRunInstead}.`,
+  /**
+   * On the agent's own Triggers section, which lists the workflows the agent is a step in, each
+   * with its own Add trigger, or offers New workflow when there is none.
+   */
+  onAgent: (inWorkflows: boolean) =>
+    inWorkflows
+      ? `${agentCantRunWhy} Add a trigger to a workflow it's a step in:`
+      : `${agentCantRunWhy} ${insteadFirst}, then add a trigger to that workflow.`,
 } as const;
 
 /** What {@link RoutinesHost.create} rejects with when the hub has no workflow and no agent to run. */

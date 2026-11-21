@@ -5,7 +5,13 @@ import { SECTION_ADD_STEP, type WorkspaceContext } from "@halonicjs/studio-shell
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it } from "vitest";
-import type { RoutineRef, RoutinesHost, TriggerOwner, TriggerRow } from "../api.ts";
+import type {
+  RoutineRef,
+  RoutinesHost,
+  TriggerOwner,
+  TriggerRow,
+  WorkflowWithAgent,
+} from "../api.ts";
 import { show, unmount } from "../test-support.tsx";
 import { TriggersSection, TriggersView } from "./triggers-section.tsx";
 
@@ -25,11 +31,13 @@ function hostWith(
     hubId: "acme",
     id: "writer-2",
   }),
+  workflows: readonly WorkflowWithAgent[] = [],
 ) {
   return {
     startingRoutines: async () => rows,
     ownerName: async () => "Writer",
     addTrigger,
+    workflowsWithAgent: async () => workflows,
     subscribe: () => () => {},
   } as unknown as RoutinesHost;
 }
@@ -41,14 +49,6 @@ const press = (element: Element | undefined) =>
 
 const button = (page: HTMLElement, label: string) =>
   [...page.querySelectorAll("button")].find((one) => one.textContent === label);
-
-/** Types into a React text area, as a person would. */
-const type = (field: HTMLTextAreaElement, text: string) =>
-  act(async () => {
-    const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
-    setValue?.call(field, text);
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-  });
 
 verifies("routines.triggers.lists-routines-that-start-it", () => {
   it("lists a row per routine with its sentence, name and Off chip, and opens it", async () => {
@@ -147,28 +147,27 @@ verifies("routines.triggers.lists-routines-that-start-it", () => {
 });
 
 verifies("routines.triggers.empty-state", () => {
-  it("says what the owner does with no routine, by kind", async () => {
-    const page = await show(<TriggersView host={hostWith([])} owner={agent} />);
-    expect(page.textContent).toContain("No trigger starts this agent.");
-    unmount();
-    const workflow = await show(
-      <TriggersView host={hostWith([])} owner={{ ...agent, kind: "workflow" }} />,
-    );
-    expect(workflow.textContent).toContain(
+  it("says what a workflow does with no routine, and leaves it to the line under it on an agent", async () => {
+    const page = await show(<TriggersView host={hostWith([])} owner={workflow} />);
+    expect(page.textContent).toContain(
       "Nothing starts this workflow on its own yet; it runs when called or with Run.",
     );
-    expect(workflow.textContent).toContain("Add trigger");
+    expect(page.textContent).toContain("Add trigger");
+    unmount();
+    const onAgent = await show(<TriggersView host={hostWith([])} owner={agent} />);
+    expect(onAgent.textContent).not.toContain("Nothing starts this agent");
+    expect(onAgent.textContent?.match(/on its own yet/g)).toHaveLength(1);
   });
 });
 
 verifies("routines.triggers.add-trigger-creates-routine", () => {
   it("opens the routine the host made for a workflow, with no prompt", async () => {
     const opened: string[] = [];
-    const made: (string | undefined)[] = [];
+    const made: string[] = [];
     const page = await show(
       <TriggersView
-        host={hostWith([], async (_owner, prompt) => {
-          made.push(prompt);
+        host={hostWith([], async (owner, prompt) => {
+          made.push(`${owner.kind}/${owner.id}/${prompt}`);
           return { hubId: "acme", id: "reply-2" };
         })}
         owner={workflow}
@@ -177,65 +176,8 @@ verifies("routines.triggers.add-trigger-creates-routine", () => {
     );
     await press(button(page, "Add trigger"));
     expect(page.querySelector("textarea")).toBeNull();
-    expect(made).toEqual([undefined]);
+    expect(made).toEqual(["workflow/reply/undefined"]);
     expect(opened).toEqual(["acme/reply-2/trigger"]);
-  });
-
-  it("asks an agent's prompt first, and makes the routine only with one", async () => {
-    const opened: string[] = [];
-    const made: (string | undefined)[] = [];
-    const page = await show(
-      <TriggersView
-        host={hostWith([], async (_owner, prompt) => {
-          made.push(prompt);
-          return { hubId: "acme", id: "writer-2" };
-        })}
-        owner={agent}
-        openRoutine={(hubId, id, step) => opened.push(`${hubId}/${id}/${step}`)}
-      />,
-    );
-    await press(button(page, "Add trigger"));
-    const field = page.querySelector("textarea");
-    expect(field?.value).toBe("");
-    expect(field?.placeholder).toBe("Describe what to do.");
-    expect(document.activeElement).toBe(field);
-    expect(page.textContent).toContain("Say what Writer should do.");
-    expect(made).toEqual([]);
-
-    await press(button(page, "Add trigger"));
-    expect(made).toEqual([]);
-    expect(field?.getAttribute("aria-invalid")).toBe("true");
-
-    if (field) await type(field, "Draft the newsletter");
-    await press(button(page, "Add trigger"));
-    expect(made).toEqual(["Draft the newsletter"]);
-    expect(opened).toEqual(["acme/writer-2/trigger"]);
-    expect(page.querySelector("textarea")).toBeNull();
-  });
-
-  it("hides an agent's prompt on Cancel, and makes nothing", async () => {
-    const made: (string | undefined)[] = [];
-    const page = await show(
-      <TriggersView
-        host={hostWith([], async (_owner, prompt) => {
-          made.push(prompt);
-          return { hubId: "acme", id: "writer-2" };
-        })}
-        owner={agent}
-      />,
-    );
-    await press(button(page, "Add trigger"));
-    await press(button(page, "Cancel"));
-    expect(page.querySelector("textarea")).toBeNull();
-    expect(button(page, "Cancel")).toBeUndefined();
-    expect(made).toEqual([]);
-  });
-
-  it("puts focus back on Add trigger after Cancel", async () => {
-    const page = await show(<TriggersView host={hostWith([])} owner={agent} />);
-    await press(button(page, "Add trigger"));
-    await press(button(page, "Cancel"));
-    expect(document.activeElement).toBe(button(page, "Add trigger"));
   });
 
   it("says why when the host can't, and keeps the rows", async () => {
@@ -254,33 +196,86 @@ verifies("routines.triggers.add-trigger-creates-routine", () => {
 });
 
 verifies("routines.triggers.agent-cant-run-note", () => {
-  const line =
-    "Halonic can't run an agent on its own yet, only as a step in a workflow. Add a trigger to a workflow that uses this agent instead.";
+  const why = "Halonic can't run an agent on its own yet, only as a step in a workflow.";
+  const paragraph = (page: HTMLElement, text: string) =>
+    [...page.querySelectorAll("p")].find((one) => one.textContent === text);
+  const workflows = [
+    { id: "briefing", name: "Briefing" },
+    { id: "digest", name: "Digest" },
+  ];
 
-  it("says an agent can't run on its own before Add trigger asks for its prompt", async () => {
-    const page = await show(<TriggersView host={hostWith([])} owner={agent} />);
-    const note = [...page.querySelectorAll("p")].find((one) => one.textContent === line);
-    expect(note).toBeDefined();
+  it("offers no Add trigger or Prompt on an agent", async () => {
+    const page = await show(
+      <TriggersView host={hostWith([], undefined, workflows)} owner={agent} />,
+    );
+    expect(button(page, "Add trigger")).toBeUndefined();
     expect(page.querySelector("textarea")).toBeNull();
-    expect(button(page, "Add trigger")?.getAttribute("aria-describedby")).toBe(note?.id);
   });
 
-  it("keeps the line above the Prompt once Add trigger was pressed", async () => {
-    const page = await show(<TriggersView host={hostWith([])} owner={agent} />);
-    await press(button(page, "Add trigger"));
-    const note = [...page.querySelectorAll("p")].find((one) => one.textContent === line);
-    const field = page.querySelector("textarea");
-    expect(note).toBeDefined();
-    expect(field).not.toBeNull();
-    if (note && field) {
-      expect(note.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  it("leads to an Add trigger for each workflow the agent is a step in", async () => {
+    const opened: string[] = [];
+    const made: string[] = [];
+    const page = await show(
+      <TriggersView
+        host={hostWith(
+          [],
+          async (owner, prompt) => {
+            made.push(`${owner.kind}/${owner.id}/${prompt}`);
+            return { hubId: "acme", id: "digest-2" };
+          },
+          workflows,
+        )}
+        owner={agent}
+        openRoutine={(hubId, id, step) => opened.push(`${hubId}/${id}/${step}`)}
+      />,
+    );
+    expect(paragraph(page, `${why} Add a trigger to a workflow it's a step in:`)).toBeDefined();
+    const offered = [...page.querySelectorAll("li button")].map((one) => one.textContent);
+    expect(offered).toEqual(["Add trigger to Briefing", "Add trigger to Digest"]);
+    await press(button(page, "Add trigger to Digest"));
+    expect(made).toEqual(["workflow/digest/undefined"]);
+    expect(opened).toEqual(["acme/digest-2/trigger"]);
+  });
+
+  it("says to make a workflow with it, and offers New workflow, when it is a step in none", async () => {
+    let asked = 0;
+    const page = await show(
+      <TriggersView
+        host={hostWith([])}
+        owner={agent}
+        newWorkflow={() => {
+          asked += 1;
+        }}
+      />,
+    );
+    expect(
+      paragraph(
+        page,
+        `${why} Make a workflow with the agent as a step, then add a trigger to that workflow.`,
+      ),
+    ).toBeDefined();
+    await press(button(page, "New workflow"));
+    expect(asked).toBe(1);
+  });
+
+  it("keeps the routines that start the agent above the line", async () => {
+    const page = await show(
+      <TriggersView host={hostWith([row("daily", "Daily")], undefined, workflows)} owner={agent} />,
+    );
+    const firstRow = page.querySelector("li");
+    const note = [...page.querySelectorAll("p")].find((one) => one.textContent?.startsWith(why));
+    expect(firstRow?.textContent).toContain("Daily at 07:30");
+    if (firstRow && note) {
+      expect(
+        firstRow.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     }
   });
 
   it("says nothing of it on a workflow", async () => {
     const page = await show(<TriggersView host={hostWith([])} owner={workflow} />);
     expect(page.textContent).not.toContain("can't run an agent");
-    expect(button(page, "Add trigger")?.hasAttribute("aria-describedby")).toBe(false);
+    expect(button(page, "New workflow")).toBeUndefined();
   });
 });
 
@@ -294,7 +289,7 @@ verifies("routines.triggers.add-trigger-from-page", () => {
     />
   );
 
-  it("shows an agent's Prompt at once, focused, when asked to start adding", async () => {
+  it("shows an agent's way in to its workflows, and makes nothing, when asked to start adding", async () => {
     const made: (string | undefined)[] = [];
     const host = hostWith([], async (_owner, prompt) => {
       made.push(prompt);
@@ -302,10 +297,8 @@ verifies("routines.triggers.add-trigger-from-page", () => {
     });
     const page = await show(section(host, agent, SECTION_ADD_STEP));
 
-    const field = page.querySelector("textarea");
-    expect(field).not.toBeNull();
-    expect(document.activeElement).toBe(field);
-    expect(page.textContent).toContain("Say what Writer should do.");
+    expect(page.querySelector("textarea")).toBeNull();
+    expect(page.textContent).toContain("Halonic can't run an agent on its own yet");
     expect(made).toEqual([]);
   });
 
@@ -322,8 +315,14 @@ verifies("routines.triggers.add-trigger-from-page", () => {
 
   it("shows the section as it is without the step, or with one it doesn't know", async () => {
     for (const step of [undefined, "rename"]) {
-      const page = await show(section(hostWith([]), agent, step));
-      expect(page.querySelector("textarea")).toBeNull();
+      const made: (string | undefined)[] = [];
+      const host = hostWith([], async (_owner, prompt) => {
+        made.push(prompt);
+        return { hubId: "acme", id: "reply-2" };
+      });
+      const page = await show(section(host, workflow, step));
+      expect(made).toEqual([]);
+      expect(page.textContent).toContain("Add trigger");
       unmount();
     }
   });
