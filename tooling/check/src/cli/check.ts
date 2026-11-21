@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { type CheckContext, loadContext } from "../lib/context.ts";
@@ -26,6 +27,8 @@ import { dcoRange } from "../rules/dco.ts";
  * packages in those folders, for a run that tested only them. With --report it also writes each package's requirement report to
  * test-results/requirements.md. The personal-terms guard has its own
  * command, `pnpm check:leaks`, because CI runs it with a secret.
+ * Outside CI, a file your branch grows is compared with `origin/main` for
+ * the file-size headroom, as CI does for a pull request (`SIZE_BASE`).
  */
 function parseArguments(
   argv: readonly string[],
@@ -65,6 +68,7 @@ function main(argv: readonly string[]): number {
     return 2;
   }
   const toRun = selectRules(selected);
+  compareSizesWithMain(toRun);
   const started = performance.now();
   let context: CheckContext;
   try {
@@ -100,6 +104,26 @@ function main(argv: readonly string[]): number {
     `check: ${errors} error(s), ${warnings} warning(s) in ${context.packages.length} packages and ${context.files.length} files (${seconds}s).`,
   );
   return errors === 0 ? 0 : 1;
+}
+
+/**
+ * Outside CI, sets `SIZE_BASE` to `origin/main`, so a local run fails a file
+ * your branch grows into the headroom, as the pull request's CI will.
+ */
+function compareSizesWithMain(toRun: readonly string[]): void {
+  if (
+    !toRun.includes("file-size") ||
+    process.env["CI"] === "true" ||
+    process.env["SIZE_BASE"] !== undefined
+  ) {
+    return;
+  }
+  try {
+    execFileSync("git", ["rev-parse", "--verify", "--quiet", "origin/main"], { stdio: "ignore" });
+    process.env["SIZE_BASE"] = "origin/main";
+  } catch {
+    console.log("file-size: no origin/main here, so the headroom of grown files isn't checked.");
+  }
 }
 
 function writeRequirementReports(context: CheckContext): void {

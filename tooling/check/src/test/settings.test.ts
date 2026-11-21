@@ -212,7 +212,7 @@ describe("tooling/check: settings files are read strictly", () => {
   it("fails on a typo in policy.json instead of skipping the limit", () => {
     const policy = (real: Record<string, unknown>) => ({
       ...real,
-      fileSize: { warnLines: 300, maxLine: 500, warnFunctionLines: 60 },
+      fileSize: { warnLines: 300, maxLine: 500, warnFunctionLines: 60, prHeadroomLines: 20 },
     });
     expect(() => runChecks([], { policy })).toThrow(
       "tooling/check/policy.json: fileSize.maxLines is missing.",

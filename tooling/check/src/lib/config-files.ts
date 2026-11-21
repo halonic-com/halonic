@@ -65,6 +65,8 @@ export interface Policy {
     readonly warnLines: number;
     readonly maxLines: number;
     readonly warnFunctionLines: number;
+    /** How far under `maxLines` a pull request must leave a file it grows. */
+    readonly prHeadroomLines: number;
   };
 }
 
@@ -85,6 +87,7 @@ export function parsePolicy(path: string, value: unknown): Policy {
     "warnLines",
     "maxLines",
     "warnFunctionLines",
+    "prHeadroomLines",
   ]);
   return {
     coreOrder: at.strings(policy["coreOrder"], "coreOrder"),
@@ -98,6 +101,7 @@ export function parsePolicy(path: string, value: unknown): Policy {
       warnLines: at.count(fileSize["warnLines"], "fileSize.warnLines"),
       maxLines: at.count(fileSize["maxLines"], "fileSize.maxLines"),
       warnFunctionLines: at.count(fileSize["warnFunctionLines"], "fileSize.warnFunctionLines"),
+      prHeadroomLines: at.count(fileSize["prHeadroomLines"], "fileSize.prHeadroomLines"),
     },
   };
 }

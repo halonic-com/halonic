@@ -99,6 +99,7 @@
   "fileSize": {
     "warnLines": 300,
     "maxLines": 500,
-    "warnFunctionLines": 60
+    "warnFunctionLines": 60,
+    "prHeadroomLines": 20
   }
 }
