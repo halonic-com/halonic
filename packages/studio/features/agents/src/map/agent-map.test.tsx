@@ -243,6 +243,18 @@ verifies("agents.map.clicks", () => {
     expect(buttonNamed(map, "Skill Tone")).toBeUndefined();
     expect(buttonNamed(map, "Routine Morning sort")).toBeUndefined();
   });
+
+  it("leaves a routine at the workspace's root as text, since it has no page", async () => {
+    const openRoutine = vi.fn();
+    const agents = memoryAgentsHost({
+      hubs: [{ id: "acme", name: "Acme Mail" }],
+      agents: [mailTriage],
+      routines: { "acme/triage": [{ hubId: null, id: "weekly-digest", name: "Weekly digest" }] },
+    });
+    const page = await openFlow({ agents, openRoutine });
+    expect(side(page, "What brings it work")).toEqual(["Routine Weekly digest"]);
+    expect(buttonNamed(page, "Routine Weekly digest")).toBeUndefined();
+  });
 });
 
 verifies("agents.map.workflow-card-steps", () => {

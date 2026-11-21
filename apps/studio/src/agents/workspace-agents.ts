@@ -40,7 +40,7 @@ import {
 } from "./agent-file.ts";
 import { paramsEdits, paramsOf } from "./agent-params.ts";
 import { type AgentPlacementChoices, choicesHere } from "./agent-placement-choices.ts";
-import { agentRoutinesOf, agentUsersOf, asksFirstOf, defaultModelOf } from "./agent-reads.ts";
+import { agentRoutinesOf, agentUsersOf, defaultModelOf, toolOptionsOf } from "./agent-reads.ts";
 import { type NewAgentsParts, placeNewAgent } from "./new-agent-placing.ts";
 
 /** What {@link WorkspaceAgents} needs of the workspace's files. */
@@ -242,31 +242,7 @@ export class WorkspaceAgents implements AgentsHost {
     ref: AgentRef,
   ): Promise<Readonly<Record<AgentToolList, readonly AgentToolOption[]>>> {
     await this.#find(ref);
-    const workspace = await this.#load();
-    const uses = filesOf(workspace, "hub").find((file) => file.hub === ref.hubId)?.value.uses;
-    const optionsOf = <Kind extends "skill" | "knowledge" | "connector">(
-      list: AgentToolList,
-      kind: Kind,
-    ) => {
-      const items = filesOf(workspace, kind);
-      const own = items.filter((item) => item.hub === ref.hubId);
-      const shared = items.filter(
-        (item) => item.hub === null && (uses === undefined || uses[list].includes(item.value.id)),
-      );
-      return [...own, ...shared].map((item) => item.value);
-    };
-    const named = (item: { readonly id: string; readonly name?: string | undefined }) => ({
-      id: item.id,
-      name: item.name ?? item.id,
-    });
-    return {
-      skills: optionsOf("skills", "skill").map(named),
-      knowledge: optionsOf("knowledge", "knowledge").map(named),
-      connectors: optionsOf("connectors", "connector").map((connector) => {
-        const asksFirst = asksFirstOf(connector.tools);
-        return { ...named(connector), ...(asksFirst !== undefined && { asksFirst }) };
-      }),
-    };
+    return toolOptionsOf(await this.#load(), ref.hubId);
   }
 
   /**

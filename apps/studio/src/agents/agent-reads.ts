@@ -1,4 +1,10 @@
-import type { AgentRef, AgentRoutine, AgentUser } from "@halonicjs/studio-feature-agents/api";
+import type {
+  AgentRef,
+  AgentRoutine,
+  AgentToolList,
+  AgentToolOption,
+  AgentUser,
+} from "@halonicjs/studio-feature-agents/api";
 import { filesOf, type LoadedWorkspace, resolveModel } from "@halonicjs/workspace";
 import { agentGone } from "./agent-file.ts";
 
@@ -60,4 +66,39 @@ export function asksFirstOf(tools: {
   const { allow } = tools;
   const count = tools.approve.filter((tool) => allow === undefined || allow.includes(tool)).length;
   return count === 0 ? undefined : count;
+}
+
+/**
+ * The skills, knowledge and connectors the hub can use: its own, then the shared ones, only those
+ * its `uses` lists when it has one (as the workspace check allows); connectors say which of their
+ * tools ask first.
+ */
+export function toolOptionsOf(
+  workspace: LoadedWorkspace,
+  hubId: string,
+): Readonly<Record<AgentToolList, readonly AgentToolOption[]>> {
+  const uses = filesOf(workspace, "hub").find((file) => file.hub === hubId)?.value.uses;
+  const optionsOf = <Kind extends "skill" | "knowledge" | "connector">(
+    list: AgentToolList,
+    kind: Kind,
+  ) => {
+    const items = filesOf(workspace, kind);
+    const own = items.filter((item) => item.hub === hubId);
+    const shared = items.filter(
+      (item) => item.hub === null && (uses === undefined || uses[list].includes(item.value.id)),
+    );
+    return [...own, ...shared].map((item) => item.value);
+  };
+  const named = (item: { readonly id: string; readonly name?: string | undefined }) => ({
+    id: item.id,
+    name: item.name ?? item.id,
+  });
+  return {
+    skills: optionsOf("skills", "skill").map(named),
+    knowledge: optionsOf("knowledge", "knowledge").map(named),
+    connectors: optionsOf("connectors", "connector").map((connector) => {
+      const asksFirst = asksFirstOf(connector.tools);
+      return { ...named(connector), ...(asksFirst !== undefined && { asksFirst }) };
+    }),
+  };
 }

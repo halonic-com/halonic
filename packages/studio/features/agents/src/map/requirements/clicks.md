@@ -15,3 +15,4 @@ When a card of the agent map is pressed, the agents feature shall open what it n
 - Given the map of "Mail triage", when "Sorter", who hands it work, is pressed, then the page of the agent "sorter" opens.
 - Given the map of "Mail triage", when the skill "Tone" is pressed, then Library opens on its skills.
 - Given an app that can't open pages, then the workflow "Support reply" is text, not a button.
+- Given the routine "Weekly digest" at the workspace's root, which has no page, then its card is text, not a button.

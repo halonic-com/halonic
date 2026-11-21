@@ -32,7 +32,7 @@ export interface AgentMapProps {
   readonly openSubagent: (agent: AgentListing) => void;
   /** Opens another agent's page, for one that hands it work; absent leaves its card as text. */
   readonly openAgent?: ((agent: AgentListing) => void) | undefined;
-  /** Opens a routine's page; absent leaves its card as text. */
+  /** Opens a routine's page; absent leaves its card as text, as does a routine at the root. */
   readonly openRoutine?: ((routine: AgentRoutine) => void) | undefined;
   /** Opens a workflow's page; absent leaves its card as text. */
   readonly openWorkflow?: ((workflow: AgentUser) => void) | undefined;
@@ -166,7 +166,8 @@ function mapSides(props: AgentMapProps): Record<MapSide, SideContent> {
         ...routines.map((routine) => (
           <Card
             key={`${routine.hubId ?? ""}/${routine.id}`}
-            onOpen={openRoutine && (() => openRoutine(routine))}
+            // A routine at the workspace's root has no page of its own yet, so its card is text.
+            onOpen={openRoutine && routine.hubId !== null ? () => openRoutine(routine) : undefined}
           >
             <Kind>{words.routine}</Kind>
             <span>{routine.name}</span>
