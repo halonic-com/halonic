@@ -715,35 +715,46 @@ Function ElevateSandboxHelper
   Push $1
   Push $2
   Push $3
-  ; SHELLEXECUTEINFOW, laid out for the 32-bit installer: SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NOASYNC, the
-  ; installer's window, "runas", the helper, "setup", no window of its own.
-  System::Call '*(&l4, i 0x140, p $HWNDPARENT, w "runas", w "$INSTDIR\halonic-sandbox-elevate.exe", w "setup", w "$INSTDIR", i 0, p 0, p 0, p 0, p 0, i 0, p 0, p 0) p .r0'
-  System::Call 'shell32::ShellExecuteExW(p r0) i .r1 ?e'
-  Pop $2
-  ${If} $1 = 0
-    ; ERROR_CANCELLED: the prompt was turned down or closed.
-    ${If} $2 = 1223
-      StrCpy $3 "refused"
-    ${Else}
-      StrCpy $3 "nostart"
-    ${EndIf}
+  Push $4
+  ; Held open, shared for reading only, until Windows has started it: until
+  ; then nothing can write, rename or delete the helper (HAL-14958). Not
+  ; held, it isn't started.
+  System::Call 'kernel32::CreateFileW(w "$INSTDIR\halonic-sandbox-elevate.exe", i 0x80000000, i 1, p 0, i 3, i 0, p 0) p .r4'
+  ${If} $4 = -1
+    StrCpy $3 "nostart"
   ${Else}
-    System::Call '*$0(i, i, p, p, p, p, p, i, p, p, p, p, i, p, p .r1)'
+    ; SHELLEXECUTEINFOW, laid out for the 32-bit installer: SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NOASYNC, the
+    ; installer's window, "runas", the helper, "setup", no window of its own.
+    System::Call '*(&l4, i 0x140, p $HWNDPARENT, w "runas", w "$INSTDIR\halonic-sandbox-elevate.exe", w "setup", w "$INSTDIR", i 0, p 0, p 0, p 0, p 0, i 0, p 0, p 0) p .r0'
+    System::Call 'shell32::ShellExecuteExW(p r0) i .r1 ?e'
+    Pop $2
+    System::Call 'kernel32::CloseHandle(p r4)'
     ${If} $1 = 0
-      StrCpy $3 "nostart"
-    ${Else}
-      System::Call 'kernel32::WaitForSingleObject(p r1, i ${SANDBOX_HELPER_MS}) i .r2'
-      ${If} $2 = 0
-        System::Call 'kernel32::GetExitCodeProcess(p r1, *i .r3)'
+      ; ERROR_CANCELLED: the prompt was turned down or closed.
+      ${If} $2 = 1223
+        StrCpy $3 "refused"
       ${Else}
-        ; Left running: a setup that finishes late still counts, and Studio
-        ; finds it set up.
-        StrCpy $3 "timeout"
+        StrCpy $3 "nostart"
       ${EndIf}
-      System::Call 'kernel32::CloseHandle(p r1)'
+    ${Else}
+      System::Call '*$0(i, i, p, p, p, p, p, i, p, p, p, p, i, p, p .r1)'
+      ${If} $1 = 0
+        StrCpy $3 "nostart"
+      ${Else}
+        System::Call 'kernel32::WaitForSingleObject(p r1, i ${SANDBOX_HELPER_MS}) i .r2'
+        ${If} $2 = 0
+          System::Call 'kernel32::GetExitCodeProcess(p r1, *i .r3)'
+        ${Else}
+          ; Left running: a setup that finishes late still counts, and Studio
+          ; finds it set up.
+          StrCpy $3 "timeout"
+        ${EndIf}
+        System::Call 'kernel32::CloseHandle(p r1)'
+      ${EndIf}
     ${EndIf}
+    System::Free $0
   ${EndIf}
-  System::Free $0
+  Pop $4
   ; The result goes on top of the stack, each register back as it was.
   Exch $3
   Exch
