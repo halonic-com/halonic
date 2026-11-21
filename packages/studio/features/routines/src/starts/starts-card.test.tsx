@@ -128,6 +128,23 @@ verifies("routines.starts.starts-card", () => {
     ]);
   });
 
+  it("says under the picker that an agent can't run on its own yet, and nothing for a workflow", async () => {
+    const line =
+      "Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow, then pick it under Starts.";
+    const { page } = await card(routineStarting(briefing));
+    expect(page.textContent).not.toContain(line);
+
+    await choose(
+      page.querySelector("select") as HTMLSelectElement,
+      JSON.stringify(["agent", "acme", "helper"]),
+    );
+    expect(page.textContent).toContain(line);
+    // The picker's hint, so a screen reader reads it with the picker.
+    const select = page.querySelector("select") as HTMLSelectElement;
+    const describedBy = select.getAttribute("aria-describedby")?.split(" ") ?? [];
+    expect(describedBy.map((id) => document.getElementById(id)?.textContent)).toContain(line);
+  });
+
   it("writes nothing when the picked agent is left for the routine's own workflow", async () => {
     const { page, saved } = await card(routineStarting({ ...briefing, input: '{"a":1}' }));
     const select = page.querySelector("select") as HTMLSelectElement;

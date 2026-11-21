@@ -1,5 +1,9 @@
 import { KindedError } from "@halonicjs/std";
-import { EngineNotAnswering, NothingToRun } from "@halonicjs/studio-feature-routines/api";
+import {
+  agentCantRunWords,
+  EngineNotAnswering,
+  NothingToRun,
+} from "@halonicjs/studio-feature-routines/api";
 import { StartRefused } from "@halonicjs/studio-feature-workflows/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -378,6 +382,8 @@ verifies("studio.workspace-routines", () => {
         "Set Analyst to Halonic on its Harness page to run it now.",
       ),
     ],
+    // The engine answered, but agent runs aren't built yet (HAL-14647).
+    ["while agent runs aren't built", new WindowCantStart(agentCantRunWords.line)],
     [
       "with a terminal command",
       new StartRefused({

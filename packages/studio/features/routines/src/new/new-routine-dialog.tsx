@@ -168,12 +168,20 @@ export function NewRoutineDialog({
           ) : undefined
         }
       />
-      {target && (
-        <NewItemNote id={noteId}>
-          {/* The engine can't run an agent from a routine yet (C52 claim 1.6), so that line says so. */}
-          {target.kind === "agent" ? words.agentCantRun(target.name) : words.runs(target.name)}
-        </NewItemNote>
-      )}
+      {/*
+        The note is the dialog's description, read when it opens; a change of hub changes it, so
+        this region, mounted from the start, reads the new line (WCAG 4.1.3, HAL-14647). While it
+        is empty, its negative margin takes back the gap the column gives it; it isn't hidden,
+        since a screen reader may not follow a live region that was.
+      */}
+      <div aria-live="polite" className="empty:-mt-3">
+        {target && (
+          <NewItemNote id={noteId}>
+            {/* The engine can't run an agent from a routine yet (C52 claim 1.6), so that line says so. */}
+            {target.kind === "agent" ? words.agentCantRun(target.name) : words.runs(target.name)}
+          </NewItemNote>
+        )}
+      </div>
       {agent && (
         <PromptField
           ref={promptField}

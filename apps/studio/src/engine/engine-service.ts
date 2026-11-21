@@ -54,6 +54,7 @@ import {
 import type { RunSummary, RunVersion } from "@halonicjs/events";
 import { isAgentRunsNotAvailable, type RunExecutor, type SendOptions } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
+import { agentCantRunWords } from "@halonicjs/studio-feature-routines/api";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import {
   filesOf,
@@ -65,7 +66,12 @@ import { studioConnectorCalls } from "../connect/studio-run-connectors.ts";
 import { type EngineLockHold, holdEngineLock } from "./engine-lock.ts";
 import { answerRefusalOf, refuseConnectorApprove } from "./engine-refusals.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
-import { agentRefusalOf, type PageRuns, workflowRefusalOf } from "./page-refusal.ts";
+import {
+  agentRefusalOf,
+  type PageRuns,
+  WindowCantStart,
+  workflowRefusalOf,
+} from "./page-refusal.ts";
 import type { EngineDecisions, StudioHarnessHost } from "./studio-harness-host.ts";
 
 export type { PageEngineLock } from "./engine-lock.ts";
@@ -231,8 +237,10 @@ export class EngineService {
    *
    * @param trigger the routine's key and the time the person asked for the run
    * @returns the new run's id
-   * @throws KindedError `unavailable` when the target is an agent, because agent runs aren't built yet
-   *   (`ports.agent-runs-not-available`), or what {@link EngineService.startRun} throws
+   * @throws WindowCantStart when the target is an agent, because agent runs aren't built yet
+   *   (`ports.agent-runs-not-available`): the routine's page says why in the New routine dialog's
+   *   words, not that the engine isn't answering (HAL-14647). Or what {@link EngineService.startRun}
+   *   throws
    */
   async startRoutine(
     start: RoutineRunStart,
@@ -258,7 +266,7 @@ export class EngineService {
       return { id };
     } catch (error) {
       if (!isAgentRunsNotAvailable(error)) throw error;
-      throw new KindedError("unavailable", "This window can't start an agent yet.");
+      throw new WindowCantStart(agentCantRunWords.line);
     }
   }
 

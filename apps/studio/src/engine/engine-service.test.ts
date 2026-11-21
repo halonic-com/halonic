@@ -300,15 +300,24 @@ verifies("studio.engine-service", () => {
       await service.close();
     });
 
-    it("refuses a routine's agent as `unavailable` while agent runs aren't built", async () => {
+    it("refuses a routine's agent in the window's own words while agent runs aren't built", async () => {
       const service = serviceOn(fakeShell());
 
-      await expect(
-        service.startRoutine(
+      const refusal = await service
+        .startRoutine(
           { agent: { hubId: "support", agentId: "writer", prompt: "Go." } },
           { routineKey: "support/weekly", at: "2026-11-15T10:00:00.000Z" },
-        ),
-      ).rejects.toMatchObject({ kind: "unavailable", fix: undefined });
+        )
+        .catch((error: unknown) => error);
+
+      // Its own class, so Run now doesn't call it an engine that isn't answering (HAL-14647).
+      expect(refusal).toBeInstanceOf(WindowCantStart);
+      expect(refusal).toMatchObject({
+        kind: "unavailable",
+        message:
+          "Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow, then pick it under Starts.",
+        fix: undefined,
+      });
       await service.close();
     });
 

@@ -1,12 +1,13 @@
 import { Callout, Card, Disclosure, Field, Select, TextArea } from "@halonicjs/studio-kit";
 import { useEffect, useState } from "react";
-import type {
-  RoutineStartField,
-  RoutinesHost,
-  RoutineTarget,
-  RoutineTargetChoice,
-  RoutineTrigger,
-  RoutineView,
+import {
+  agentCantRunWords,
+  type RoutineStartField,
+  type RoutinesHost,
+  type RoutineTarget,
+  type RoutineTargetChoice,
+  type RoutineTrigger,
+  type RoutineView,
 } from "../api.ts";
 import { failureReason } from "../page/page-words.ts";
 import { startsWords as words } from "./starts-words.ts";
@@ -74,7 +75,8 @@ export function StartsCard({ host, routine }: StartsCardProps) {
   return (
     <Card label={words.label}>
       <div className="flex flex-col gap-3">
-        <Field label={words.pick}>
+        {/* An agent can't run from a routine yet (C52 claim 1.6), so the picker says so under an agent (HAL-14647). */}
+        <Field label={words.pick} hint={target.kind === "agent" ? agentCantRunWords.line : null}>
           <Select
             options={options}
             value={current === undefined ? "" : targetKey(current)}

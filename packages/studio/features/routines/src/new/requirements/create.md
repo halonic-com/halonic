@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-1306 (T12 PR 4); flow-routines 2.2; microcopy 12.2; G5 T12-F19 and F20; HAL-12751; HAL-13498
+- Source: HAL-1306 (T12 PR 4); flow-routines 2.2; microcopy 12.2; G5 T12-F19 and F20; HAL-12751; HAL-13498; HAL-14647
 
-When the user chooses **New routine**, the routines feature shall ask for a name, and for a hub when there is more than one, in a "New routine" dialog that shows the file the routine will be written to and says what it will run, and, when it will run an agent, a **Prompt** that starts empty with the hint "Describe what to do." and the line "Say what *Name* should do.", create the routine through the host, close the dialog and open the routine in its tab, and, while the name is empty, not create anything and say "Give it a name." under the field, and while an agent's prompt is empty, not create anything, focus **Prompt** and mark "Say what *Name* should do." as its error. When the chosen hub has no workflow and no agent, the dialog shall say "Create a workflow or an agent first; a routine runs one of them." instead of offering Create, and, when the app can open the New workflow dialog, show **New workflow**, which closes the dialog and opens it.
+When the user chooses **New routine**, the routines feature shall ask for a name, and for a hub when there is more than one, in a "New routine" dialog that shows the file the routine will be written to and says what it will run, as the dialog's description and again, in a live region, when the hub changes, and, when it will run an agent, a **Prompt** that starts empty with the hint "Describe what to do." and the line "Say what *Name* should do.", create the routine through the host, close the dialog and open the routine in its tab, and, while the name is empty, not create anything and say "Give it a name." under the field, and while an agent's prompt is empty, not create anything, focus **Prompt** and mark "Say what *Name* should do." as its error. When the chosen hub has no workflow and no agent, the dialog shall say "Create a workflow or an agent first; a routine runs one of them." instead of offering Create, and, when the app can open the New workflow dialog, show **New workflow**, which closes the dialog and opens it.
 
 ## Examples
 
@@ -19,3 +19,4 @@ When the user chooses **New routine**, the routines feature shall ask for a name
 - Given the hub has nothing to run, then the dialog says "Create a workflow or an agent first; a routine runs one of them." and has no **Create**; given the app can open New workflow, **New workflow** closes the dialog and opens it, and otherwise there is no such button.
 - Given the window is a phone and the hub has nothing to run, then the dialog has no **New workflow**, as a phone doesn't edit workflows (UX 10.15).
 - Given the routines page, then Ctrl K's **New routine** opens the Routines place with the dialog open, and **New routine** on the list and in the empty state opens it too.
+- Given hubs "acme" and "research", where research has only the agent Researcher, then choosing research reads "This routine starts Researcher, but Halonic can't run an agent on its own yet, …" from the note's live region, which was there before the first hub's line.
