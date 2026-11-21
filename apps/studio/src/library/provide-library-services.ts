@@ -70,6 +70,7 @@ export function provideLibraryServices(
       tokens: services.get(tokenStoreKey),
       http: noHttpInStudio,
       listTools: agentHostToolLister(parts.transport),
+      onApproved: parts.refusals.dropWaiting,
     }),
   );
 }

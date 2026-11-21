@@ -28,3 +28,5 @@ When the desktop app opens a folder, it shall give the Library feature the folde
   then the status gives that refusal for `search`.
 - Given a run whose turn left the `lookup` tool of `mail` waiting for an approval,
   then the status gives `lookup` as waiting for `mail`.
+- Given that run, when a person approves `lookup` of `mail` in the Library,
+  then the status no longer gives `lookup` as waiting for `mail`.

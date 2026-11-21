@@ -33,7 +33,8 @@ folder's connector files with how each connects, and a list of what the page's e
 them and which of their listed tools wait for an approval. A Google connector's state is read from
 its account's setup record; any other connector shows as not checked yet. An agent's Try it chat
 records what its turns refused and left waiting; a run records only the tools it left waiting, not
-its refusals. When an engine runs the folder in the background, the page opens no engine of its
+its refusals. A Try it turn's waiting tools replace those of every connector, a run's report
+replaces only its connector's, and a tool approved in the Library comes off the list. When an engine runs the folder in the background, the page opens no engine of its
 own and nothing reaches the list yet. The list is kept in memory, so it starts empty each time the
 folder opens. It reads the files again when one changes or the window comes to the front
 (`studio.workspace-connector-status`).

@@ -76,4 +76,22 @@ verifies("library.refusals-feed", () => {
     expect(feed.waiting("mail")).toEqual([send]);
     expect(listener).toHaveBeenCalledTimes(3);
   });
+
+  it("takes approved tools of one connector off what waits, keeping the rest", () => {
+    const feed = new RefusalsFeed();
+    const listener = vi.fn();
+    feed.recordWaitingOf("notes", [
+      { source: "notes", name: "lookup" },
+      { source: "notes", name: "find" },
+    ]);
+    feed.recordWaitingOf("mail", [{ source: "mail", name: "lookup" }]);
+    feed.subscribe(listener);
+
+    feed.dropWaiting("notes", ["lookup"]);
+    feed.dropWaiting("notes", ["gone"]);
+
+    expect(feed.waiting("notes")).toEqual([{ source: "notes", name: "find" }]);
+    expect(feed.waiting("mail")).toEqual([{ source: "mail", name: "lookup" }]);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
 });
