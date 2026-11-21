@@ -131,6 +131,7 @@ verifies("agents.configuration.where-it-runs", () => {
       await chooseThisComputer(page);
       await act(async () => host.update(ref, { instructions: "Reply to everyone." }));
       await press(buttonNamed(page, words.reviewAndConfirm));
+      expect(document.activeElement?.textContent).toBe(words.cancel);
       const first = warning()?.querySelector("p");
       expect(first?.textContent).toBe(`${words.fileChanged("Writer")} ${words.seeWhatChanged}`);
       const link = buttonNamed(document.body, words.seeWhatChanged);
