@@ -188,6 +188,21 @@ verifies("routines.runs.view", () => {
     expect(page.textContent).not.toContain("No runs yet");
   });
 
+  it("breaks a long word in a refused start's row rather than widen the panel", async () => {
+    vi.setSystemTime(new Date(2026, 10, 3, 12, 0));
+    const at = new Date(2026, 10, 3, 8, 1).toISOString();
+    const longName = "attachments_from_the_customer_support_mailbox_forwarding_rule";
+    const sentence = `The input has no field ${longName}.`;
+    const skips = [{ reason: "start-refused" as const, sentence, from: at, to: at, count: 1 }];
+    const page = await openRuns(hostWith(async () => ({ runs: [], skips })));
+
+    // jsdom has no layout, so this checks the class that gives `overflow-wrap: anywhere`; skip and
+    // queue rows share it.
+    const row = sectionOf(page, "Earlier")?.querySelector("li");
+    expect(row?.textContent).toContain(longName);
+    expect(row?.classList.contains("wrap-anywhere")).toBe(true);
+  });
+
   it("says a range of skipped times within one day with the day once", async () => {
     vi.setSystemTime(new Date(2026, 10, 3, 12, 0));
     const skips = [
