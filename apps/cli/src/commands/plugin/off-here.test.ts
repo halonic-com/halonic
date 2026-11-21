@@ -104,7 +104,7 @@ async function addOff(): Promise<string> {
 
 const reasonLines = [
   "  Halonic is running inside a container, and the sandbox can't start there. Run Halonic on the computer itself, not in a container.",
-  "  Allow it in the Halonic desktop app. The halonic command runs plugin code only in the sandbox.",
+  "  Or allow this in the Halonic desktop app. The halonic command runs plugin code only in the sandbox.",
 ];
 
 verifies("cli.commands.plugin.off-here", () => {

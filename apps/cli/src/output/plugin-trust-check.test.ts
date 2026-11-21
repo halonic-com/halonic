@@ -202,3 +202,38 @@ verifies("app.plugin-program-secret-text", () => {
     );
   });
 });
+
+// The check shows what runs and where it came from, as `plugin list` writes
+// the source (HAL-15142).
+verifies("cli.commands.plugin.add", () => {
+  const fromLines = (copiedFrom?: Parameters<typeof pluginTrustCheckLines>[3]) => {
+    const lines = pluginTrustCheckLines(weatherContent(), folder, undefined, copiedFrom).map(
+      plainText,
+    );
+    const start = lines.indexOf("Folder");
+    return lines.slice(start, start + 3);
+  };
+
+  it("says under the folder which folder it was copied from, with the home folder as ~", () => {
+    const source = join(homedir(), "code", "weather");
+    expect(fromLines({ kind: "folder", path: source })).toEqual([
+      "Folder",
+      `  ${folder}`,
+      `  Copied from ~${sep}${join("code", "weather")}`,
+    ]);
+  });
+
+  it("writes a git source without its scheme and .git, with the short commit", () => {
+    const commit = "c9b6e41d0a2f4e8b9c7d6e5f4a3b2c1d0e9f8a7b";
+    const source = {
+      kind: "git",
+      address: "https://example.com/acme/weather.git",
+      commit,
+    } as const;
+    expect(fromLines(source)[2]).toBe("  Copied from example.com/acme/weather@c9b6e41");
+  });
+
+  it("has no Copied from line for a plugin that wasn't added through plugin add", () => {
+    expect(fromLines()).toEqual(["Folder", `  ${folder}`, ""]);
+  });
+});

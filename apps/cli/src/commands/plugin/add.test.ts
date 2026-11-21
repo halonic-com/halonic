@@ -138,6 +138,7 @@ verifies("cli.commands.plugin.add", () => {
         "",
         "Folder",
         `  ${entry?.status === "trusted" ? shownFolder(entry.location) : ""}`,
+        `  Copied from ${shownFolder(source)}`,
         "",
         "Files",
         "  backend/index.js",

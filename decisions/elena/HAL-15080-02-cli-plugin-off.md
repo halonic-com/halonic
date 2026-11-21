@@ -6,8 +6,9 @@
 
 ## What changes
 
-- New `cli.commands.plugin.off-here`: where a plugin's backend wouldn't run in the sandbox (the gate's own `runnerFence` from the platform and the srt check), `trust --plugin`, `plugin add` and `plugin list` say a trusted plugin with a backend is "trusted, but off on this computer until you allow plugins and integrations to run without the sandbox." with a !, then the reason and fix in `runnerUnfencedWords`' words and "Allow it in the Halonic desktop app. The halonic command runs plugin code only in the sandbox.". Trust is still saved and they still exit 0. `--json` gives `offOnThisComputer` with the reason code; `status` keeps its value, so scripts that read it don't break.
-- `cli.commands.trust.plugin`, `cli.commands.plugin.add` and `cli.commands.plugin.list` point to it for that case. Nothing else in them changes.
+- New `cli.commands.plugin.off-here`: where a plugin's backend wouldn't run in the sandbox (the gate's own `runnerFence` from the platform and the srt check), `trust --plugin`, `plugin add` and `plugin list` say a trusted plugin with a backend is "trusted, but off on this computer until you allow plugins and integrations to run without the sandbox." with a !, then the reason and fix in `runnerUnfencedWords`' words and "Or allow this in the Halonic desktop app. The halonic command runs plugin code only in the sandbox.". Trust is still saved and they still exit 0. `--json` gives `offOnThisComputer` with the reason code; `status` keeps its value, so scripts that read it don't break.
+- `cli.commands.trust.plugin`, `cli.commands.plugin.add` and `cli.commands.plugin.list` point to it for that case.
+- `cli.commands.plugin.add`: under Folder, the trust check (also `trust --plugin`'s, which is the same) adds "Copied from <source>", written as `plugin list` writes it: `~` for the home folder, a git address without its scheme and `.git`, then `@` and 7 characters of the commit. A plugin with no install record shows no such line. Nothing else in them changes.
 - The tests of those three commands now fix the fence to `fenced`, so they say what they said before on any computer. No test is weakened.
 
 ## Why
@@ -17,8 +18,9 @@
 ## Decided by the team
 
 - The words are R13's, so the CLI, the plugin page and the Plugins list (#4491) use one state: "off on this computer".
-- "Allow it in the Halonic desktop app" is true only for Studio's runs; the second sentence says the command still won't run it, so nobody expects a yes given in Studio to reach `halonic run`.
-- The trust check's Folder line naming the profile copy while `plugin list` names the source (C540's small item) isn't changed here; it's a layout question for Sofia on HAL-15080.
+- "Or allow this in the Halonic desktop app" is true only for Studio's runs; the second sentence says the command still won't run it, so nobody expects a yes given in Studio to reach `halonic run`.
+- Sofia confirmed the words on HAL-15142: line 3 starts "Or allow this", because line 2 already ends with a fix and this is the other way out, and "this" matches Studio's view-only line.
+- The trust check's Folder line named the profile copy while `plugin list` names the source (C540's small item). Sofia picked a "Copied from" line under Folder (HAL-15142): the check is where someone decides, so it shows what runs and where it came from. `plugin list` stays as it is.
 
 ## Covers
 

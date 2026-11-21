@@ -16,7 +16,7 @@ import { rowIndent } from "./trust-check-rows.ts";
  *
  * @example
  * offHereReasonLines("container");
- * // ["  Plugin code can't run in the sandbox inside a container. …", "  Allow it in the Halonic desktop app. …"]
+ * // ["  Plugin code can't run in the sandbox inside a container. …", "  Or allow this in the Halonic desktop app. …"]
  */
 export function offHereReasonLines(reason: RunnerUnfencedReason): Phrase[] {
   const words = runnerUnfencedWords(reason, "plugin");

@@ -81,10 +81,16 @@ export async function askToTrustPlugin(
   const json = { id, name: plugin.name, version: plugin.version, fingerprint };
   // The manifest's name is outside text (cli-output 5).
   const name = printable(plugin.name);
-  const check = pluginTrustCheckLines(entry.content, entry.location, answer.programsRun);
+  const install = await service.install(id);
+  const check = pluginTrustCheckLines(
+    entry.content,
+    entry.location,
+    answer.programsRun,
+    install?.source,
+  );
   const fix = pluginMessages.addNoTerminalFix(id);
   if (answer.fingerprint !== undefined && answer.fingerprint !== fingerprint) {
-    throw fingerprintNotCurrent(entry);
+    throw fingerprintNotCurrent(entry, { check, fingerprint });
   }
 
   const trusted = await answer.context.ask({

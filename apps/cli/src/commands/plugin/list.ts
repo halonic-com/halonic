@@ -7,11 +7,10 @@
 import type {
   LocalToolState,
   PluginEntry,
-  PluginInstall,
   PluginService,
   RunnerUnfencedReason,
 } from "@halonicjs/app";
-import { type ProfileEnvironment, withHomeAsTilde } from "@halonicjs/profile";
+import type { ProfileEnvironment } from "@halonicjs/profile";
 import type { CommandContext, CommandInput, CommandResult } from "../../command.ts";
 import { pluginStateOf } from "../../connector-plugin.ts";
 import { exitCode } from "../../exit-code.ts";
@@ -19,6 +18,7 @@ import { columns } from "../../messages/columns.ts";
 import { dimmed, markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { type PluginState, pluginMessages } from "../../messages/plugin.ts";
 import { offHereReasonLines } from "../../output/plugin-off-here.ts";
+import { shownPluginSource } from "../../output/plugin-source.ts";
 import { printable } from "../../output/printable.ts";
 import { rowIndent } from "../../output/trust-check-rows.ts";
 import {
@@ -28,9 +28,6 @@ import {
   programsRunFor,
 } from "../../plugin-host.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
-
-/** How many characters of a commit the list shows, as git does. */
-const shownCommitLength = 7;
 
 /**
  * Lists every plugin in the profile, lined up: its name, version, where it
@@ -93,7 +90,7 @@ async function pluginRow(
   { programsRun, offHere }: RunsHere,
 ): Promise<PluginRow> {
   const install = await service.install(entry.folder);
-  const source = install === null ? "" : shownSource(install.source, profile);
+  const source = install === null ? "" : shownPluginSource(install.source, profile);
   if (entry.status === "broken") {
     return {
       cells: [
@@ -149,17 +146,4 @@ function stateCell(state: PluginState, id: string): Phrase {
     return phrase`${markPart("done")} ${pluginMessages.state("on").phrase}`;
   }
   return phrase`${markPart("needsYou")} ${pluginMessages.stateWithFix(state, id).phrase}`;
-}
-
-/**
- * Where a plugin came from, as the list shows it: a git address without its
- * scheme and `.git`, with the short commit, or a folder with the home folder
- * written as `~`.
- */
-function shownSource(source: PluginInstall["source"], profile: ProfileEnvironment): string {
-  if (source.kind === "git") {
-    const address = source.address.replace(/^[a-z+]+:\/\//, "").replace(/\.git$/, "");
-    return `${address}@${source.commit.slice(0, shownCommitLength)}`;
-  }
-  return withHomeAsTilde(profile.platform, profile.homeFolder, source.path);
 }

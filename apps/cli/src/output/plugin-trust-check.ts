@@ -12,6 +12,7 @@
 import {
   declaredSignInTrustFacts,
   type LocalToolState,
+  type PluginInstall,
   type PluginTrustContent,
   type PluginTrustSection,
   pluginProgramSecretText,
@@ -27,6 +28,7 @@ import { markPart, type Phrase, phrase, plainText } from "../messages/phrase.ts"
 import { pluginMessages } from "../messages/plugin.ts";
 import { trustMessages } from "../messages/trust.ts";
 import { nodeProfileEnvironment } from "../workspace-runs.ts";
+import { shownPluginSource } from "./plugin-source.ts";
 import { printable } from "./printable.ts";
 import { hostText, row, rowIndent, shownHost, underRow } from "./trust-check-rows.ts";
 
@@ -45,6 +47,8 @@ const riskGroups: readonly { readonly risk: string; readonly heading: () => Mess
  * @param programsRun - whether the plugin's programs can run on this computer,
  *   as `PluginLocalTools.state()` says; without it, each program's Runs line
  *   says what holds either way
+ * @param copiedFrom - where `plugin add` copied it from (`PluginService.install`);
+ *   without it, no "Copied from" line
  *
  * @example
  * pluginTrustCheckLines(entry.content, entry.location);
@@ -55,11 +59,12 @@ export function pluginTrustCheckLines(
   content: PluginTrustContent,
   folder: string,
   programsRun?: ProgramsRun,
+  copiedFrom?: PluginInstall["source"],
 ): Phrase[] {
   return [
     pluginMessages.trustQuestion(printable(content.plugin.name)).phrase,
     ...pluginTrustSections(content).flatMap((name) => sectionLines(content, name, programsRun)),
-    ...locationLines(content, folder),
+    ...locationLines(content, folder, copiedFrom),
     phrase``,
     pluginMessages.notChecked().phrase,
   ];
@@ -124,19 +129,31 @@ function sectionLines(
 }
 
 /**
- * Where the plugin sits on disk, then the files its fingerprint covers: the
- * first ones and "and N more". Both come from the workspace, so each is
- * escaped. The folder is written in full, with only the home folder as `~`:
- * a person deciding to trust it should see exactly where it sits.
+ * Where the plugin sits on disk and where it was copied from, then the files
+ * its fingerprint covers: the first ones and "and N more". All come from the
+ * workspace, so each is escaped. The folder is written in full, with only the
+ * home folder as `~`: a person deciding to trust it should see exactly what
+ * runs, and where it came from as `plugin list` shows it (HAL-15142).
  */
-function locationLines(content: PluginTrustContent, folder: string): Phrase[] {
+function locationLines(
+  content: PluginTrustContent,
+  folder: string,
+  copiedFrom: PluginInstall["source"] | undefined,
+): Phrase[] {
   const { shown, more } = pluginTrustFiles(content);
   const files = shown.map((path) => phrase`${rowIndent}${printable(path)}`);
   if (more > 0) files.push(phrase`${rowIndent}${pluginMessages.moreFiles(more).phrase}`);
+  const from =
+    copiedFrom === undefined
+      ? []
+      : [
+          phrase`${rowIndent}${pluginMessages.copiedFrom(printable(shownPluginSource(copiedFrom, nodeProfileEnvironment()))).phrase}`,
+        ];
   return [
     phrase``,
     pluginMessages.folderHeading().phrase,
     phrase`${rowIndent}${printable(shownFolder(folder))}`,
+    ...from,
     ...(files.length === 0 ? [] : [phrase``, pluginMessages.filesHeading().phrase, ...files]),
   ];
 }

@@ -96,6 +96,8 @@ export const pluginMessages = defineMessages("plugin", {
   addressesHeading: () => phrase`Addresses`,
   /** The heading of the plugin's folder line, as the shared model words it. */
   folderHeading: () => phrase`${pluginTrustLocationHeadings.folder}`,
+  /** The line under the plugin's folder: where it was copied from, as `plugin list` writes it (HAL-15142). */
+  copiedFrom: (source: string) => phrase`Copied from ${source}`,
   /** The heading of the list of files the fingerprint covers. */
   filesHeading: () => phrase`${pluginTrustLocationHeadings.files}`,
   /** The last line of the file list when more files follow the ones shown. */
@@ -253,7 +255,7 @@ export const pluginMessages = defineMessages("plugin", {
     phrase`Added ${name} ${version}. It's trusted, but off on this computer until you allow plugins and integrations to run without the sandbox.`,
   /** Under the reason: where the yes can be given, and why not here. */
   offHereAllow: () =>
-    phrase`Allow it in the Halonic desktop app. The halonic command runs plugin code only in the sandbox.`,
+    phrase`Or allow this in the Halonic desktop app. The halonic command runs plugin code only in the sandbox.`,
   /** The state on its `plugin list` line, with a !. */
   offHereState: () => phrase`off on this computer`,
   /** Answer No, or Enter, with a !: exit 3. */
