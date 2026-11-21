@@ -2,7 +2,10 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
-import type { StartedRunner } from "@halonicjs/adapter-integration-runner";
+import {
+  PluginBackendStoppedError,
+  type StartedRunner,
+} from "@halonicjs/adapter-integration-runner";
 import {
   MemorySecrets,
   MemoryTokenStore,
@@ -22,7 +25,7 @@ import {
   type SandboxCheck,
   workspaceSecrets,
 } from "@halonicjs/ports";
-import { fixedClock } from "@halonicjs/std";
+import { findCause, fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PluginBackendMachine } from "./open-plugin-backend.ts";
@@ -359,7 +362,7 @@ verifies("cli.plugin-backend-start-told", () => {
     it("tells the machine `stopped` when the fence fails though the computer passed, and nothing runs (A23)", async () => {
       const { seen, client } = await setup({ proof: { state: "stopped" } });
       await expect(client().callTool("get-forecast", {})).rejects.toThrow(
-        /the sandbox failed its check, so nothing runs/,
+        /Halonic stopped the plugin weather/,
       );
       expect(seen.told).toEqual(["weather: stopped"]);
       expect(seen.stops).toBe(1);
@@ -369,6 +372,26 @@ verifies("cli.plugin-backend-start-told", () => {
       const { seen, client } = await setup({ hookThrows: true });
       expect(await client().callTool("get-forecast", {})).toBe("answer from get-forecast");
       expect(seen.told).toEqual(["weather: fenced"]);
+    });
+  });
+});
+
+verifies("cli.plugin-backend-stopped", () => {
+  describe("a start whose fence failed though the computer passed", () => {
+    it("fails with the plugin's id and says Halonic stopped it, not that the check failed", async () => {
+      const { client } = await setup({ proof: { state: "stopped" } });
+      const failure = await client()
+        .callTool("get-forecast", {})
+        .then(
+          () => undefined,
+          (error: unknown) => error,
+        );
+      const stopped = findCause(failure, PluginBackendStoppedError);
+      expect(stopped?.plugin).toBe("weather");
+      expect(stopped?.message).toBe(
+        "Halonic stopped the plugin weather: its sandbox didn't hold, so it didn't run. The next run that uses it tries the sandbox again.",
+      );
+      expect(String(failure)).not.toMatch(/failed its check/);
     });
   });
 });
