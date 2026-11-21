@@ -39,6 +39,13 @@ function radioNamed(page: HTMLElement, name: string) {
   );
 }
 
+/** The Callout box that says `text`: its fill class carries the tone. */
+function calloutSaying(within: HTMLElement, text: string) {
+  return [...within.querySelectorAll<HTMLElement>("[class*='-soft']")].find((box) =>
+    box.textContent?.includes(text),
+  );
+}
+
 /** The open warning, or `undefined`. */
 function warning() {
   return document.querySelector<HTMLDialogElement>("dialog[open]") ?? undefined;
@@ -100,6 +107,8 @@ verifies("agents.configuration.where-it-runs", () => {
       await chooseThisComputer(page);
       await act(async () => host.update(ref, { instructions: "Reply to everyone." }));
       expect(page.textContent).toContain(words.onHold("Writer"));
+      // C569 (HAL-15414): it asks the person to act before the agent runs, so it's amber attention.
+      expect(calloutSaying(page, words.onHold("Writer"))?.className).toContain("bg-attention-soft");
       expect(radioNamed(page, words.onThisComputer)?.checked).toBe(true);
       expect((await host.placement(ref))?.runsOn).toBe("on-hold");
 
@@ -141,6 +150,9 @@ verifies("agents.configuration.where-it-runs", () => {
       const page = await open(host);
       await press(radioNamed(page, words.onThisComputer));
       expect(warning()?.textContent).toContain(words.saveFirst("Writer"));
+      expect(calloutSaying(document.body, words.saveFirst("Writer"))?.className).toContain(
+        "bg-attention-soft",
+      );
       const confirm = buttonNamed(document.body, words.confirm);
       expect(confirm?.getAttribute("aria-disabled")).toBe("true");
       // Sofia (HAL-13232): a screen reader hears why the button is unavailable.

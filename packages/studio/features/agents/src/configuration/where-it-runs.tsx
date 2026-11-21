@@ -122,9 +122,10 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
     <>
       <Field label={words.label} error={error}>
         <div className="flex flex-col gap-3">
+          {/* Attention, not warning: both Callouts ask the person to act before the agent runs (C569). */}
           {placement.runsOn === "on-hold" && (
             <Callout
-              tone="warning"
+              tone="attention"
               action={{
                 label: words.reviewAndConfirm,
                 onClick: () => setWarning({ fingerprint: placement.fingerprint }),
@@ -158,7 +159,7 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
           <p>{words.warningAccess(settings.name)}</p>
           <p>{words.warningTrust(settings.name)}</p>
           {placement.unsaved && (
-            <Callout tone="warning">
+            <Callout tone="attention">
               <span id={saveFirstId}>{words.saveFirst(settings.name)}</span>
             </Callout>
           )}
