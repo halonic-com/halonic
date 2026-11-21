@@ -35,6 +35,7 @@ import { shownPath } from "../../shown-path.ts";
 import { dirOption, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
+import { trustInstructionsCommand } from "./instructions.ts";
 import { trustPlugin } from "./plugin.ts";
 
 /** What `trust` uses on this computer, so tests can hand it a memory store and a fixed clock. */
@@ -72,11 +73,15 @@ export function nodeTrustMachine(): TrustMachine {
 export function createTrustCommand(
   machine: () => TrustMachine,
   plugins: PluginSetup = {},
+  instructions: CliCommand = trustInstructionsCommand,
 ): CliCommand {
   return {
     name: "trust",
     usage:
       "[--dir <folder> | --plugin <id>] [--yes --fingerprint <fingerprint>] [--list] [--remove]",
+    subcommands: [instructions],
+    // So `halonic trust revoke` reaches `run`, which refuses it with the option it likely means.
+    argumentsBesideSubcommands: true,
     strayArgumentFix: optionForWord,
     summary: trustMessages.summary(),
     action: (input) => trustMessages.action(givenPlugin(input) ?? givenDir(input)),
@@ -97,6 +102,7 @@ export function createTrustCommand(
       },
     },
     async run(input, context) {
+      refuseWords(input.positionals);
       const plugin = input.options["plugin"];
       if (typeof plugin === "string") {
         return await trustPlugin(plugin, input, context, plugins);
@@ -370,6 +376,20 @@ function optionForWord(word: string): Message {
   return near === undefined
     ? usageMessages.useDirOption("trust", word)
     : trustMessages.optionNear(near);
+}
+
+/**
+ * `trust` takes no word besides its subcommand, as before it had one: one
+ * word gets the option it likely means (HAL-14124), several the usage line.
+ *
+ * @throws UsageError for any word
+ */
+function refuseWords(given: readonly string[]): void {
+  const shown = given.map(printable);
+  const [word] = shown;
+  if (word === undefined) return;
+  const problem = usageMessages.takesNoArguments("trust", shown);
+  throw shown.length === 1 ? new UsageError(problem, optionForWord(word)) : new UsageError(problem);
 }
 
 /** The `--plugin` id, made safe to print, for "✕ Couldn't trust weather: …". */

@@ -58,19 +58,32 @@ export class RunInstructions implements HarnessInstructionSource {
     };
   }
 
-  async #filesOf(agent: HarnessAgent): Promise<InstructionFile[]> {
-    const files: InstructionFile[] = [];
-    if (agent.file.instructions.trim() !== "") {
-      files.push({ name: "AGENTS.md", text: agent.file.instructions });
-    }
-    for (const id of agent.file.skills) {
-      files.push({
-        name: `skills/${id}/SKILL.md`,
-        text: await this.#options.skillTextOf(agent, id),
-      });
-    }
-    return files;
+  #filesOf(agent: HarnessAgent): Promise<InstructionFile[]> {
+    return instructionFilesOf(agent.file, (id) => this.#options.skillTextOf(agent, id));
   }
+}
+
+/**
+ * The instruction files of an agent's file, as a harness run gets them: its
+ * `instructions` as `AGENTS.md`, when there are any, and each selected skill
+ * as `skills/<id>/SKILL.md`. `halonic trust instructions` pins the same
+ * files, so what a person trusts is what the run's check sees.
+ *
+ * @param skillTextOf - the text of a skill's `SKILL.md`; throws when there is none
+ * @returns no files when the agent has no instructions and no skills
+ */
+export async function instructionFilesOf(
+  file: Pick<HarnessAgent["file"], "instructions" | "skills">,
+  skillTextOf: (skillId: string) => Promise<string>,
+): Promise<InstructionFile[]> {
+  const files: InstructionFile[] = [];
+  if (file.instructions.trim() !== "") {
+    files.push({ name: "AGENTS.md", text: file.instructions });
+  }
+  for (const id of file.skills) {
+    files.push({ name: `skills/${id}/SKILL.md`, text: await skillTextOf(id) });
+  }
+  return files;
 }
 
 /** The pin as the run log has it: a list of files with their digests. */
