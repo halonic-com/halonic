@@ -5,9 +5,9 @@ import { CHANGED_BADGE, loadFailed, TRY_AGAIN } from "./trust-section-text.ts";
 import { useTrustCheck } from "./use-trust-check.tsx";
 import type { WorkspaceTrustControl } from "./workspace-trust-control.ts";
 
-/** What the badge's tooltip says (states-flow-map T2): only what trust gates today (HAL-12409, C52 7.1). */
+/** What the badge's tooltip says (states-flow-map T2), true since HAL-12409 and HAL-13134. */
 export const notTrustedTooltip =
-  "Until you review this workspace, its routines and connectors won't start, and a provider won't send its key to another address. You can still read and edit everything.";
+  "Halonic won't start this workspace's programs or call real models until you review it. You can still read and edit everything.";
 
 /** The tooltip when the list of trusted workspaces can't be read (T4). */
 export const unreadableTooltip = "Halonic couldn't read its list of trusted workspaces.";
