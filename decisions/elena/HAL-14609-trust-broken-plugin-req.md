@@ -3,6 +3,7 @@
 - Task: HAL-14609 (follow-up to HAL-13799 and #4059, from the docs check on HAL-14605, N1)
 - Approval: HAL-14609 asks for this change; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:klPgfVsAkUzA1n6H89mOsGU6aXD1urcWgEeHdbHeAgQeWJF6S/gELilEoii3roWuob1uVud6uFEIY3j30W6XDw==
 
 ## What changes
 
