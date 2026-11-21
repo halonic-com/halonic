@@ -2,6 +2,7 @@
 
 - Approval: HAL-14863 (Noah's wording decision of 21 Nov, on HAL-14841)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:THGHiu4JAx2RpzTZ8lZV1Or3VSIfOV/98yT2ddvRV68zkKDde1Z684tZxNP+JT4rVqgWzXW0qfN9FPet7THuCA==
 
 Studio now asks Windows for the sandbox's administrator rights through the shell, which waits at most 5 minutes (HAL-14841, part 1). The section's own timer said 3 minutes, so a setup that Windows was still allowed to finish read as failed 2 minutes early. The section's limit now comes from one constant, `SETUP_LIMIT_MINUTES = 5`, next to a comment that points to the shell's limit, and the time-out lines say 5 minutes. Their pattern ("The sandbox isn't set up: the setup didn't finish within … minutes.") stays as approved.
 
