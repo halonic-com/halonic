@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { KindedError } from "@halonicjs/std";
+import { WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -82,10 +83,7 @@ verifies("inbox.approval-card", () => {
     it("says the workspace isn't trusted, with Review and no Try again, when the decision is denied", async () => {
       const review = vi.fn();
       const untrusted = async (): Promise<never> => {
-        throw new KindedError(
-          "denied",
-          "This workspace isn't trusted yet, so nothing was started.",
-        );
+        throw new WorkspaceUntrusted("This workspace isn't trusted yet, so nothing was started.");
       };
       const { root, later } = openCard({
         decisions: { approve: untrusted, reject: untrusted, askForChanges: untrusted },
@@ -107,12 +105,36 @@ verifies("inbox.approval-card", () => {
       );
     });
 
+    it("says Couldn't record your decision with the refusal's own sentence, no Review, for a denied that isn't about trust", async () => {
+      let shut = true;
+      const { root, sent, later } = openCard({
+        decisions: {
+          approve: async () => {
+            sent.push("approve");
+            if (shut) throw new KindedError("denied", "Acme isn't an opened folder.");
+            return waitingRun("r47");
+          },
+          reject: async () => waitingRun("r47"),
+          askForChanges: async () => waitingRun("r47"),
+        },
+        trust: { review: vi.fn(), granted: 0 },
+      });
+      later(2);
+      await press(button(root, "Approve"));
+      expect(root.querySelector("[role='alert']")?.textContent).toBe(
+        "Couldn't record your decision. Acme isn't an opened folder.Try again",
+      );
+      expect(root.textContent).not.toContain("isn't trusted yet");
+      shut = false;
+      await press(button(root, "Try again"));
+      expect(sent).toEqual(["approve", "approve"]);
+    });
+
     it("gives the untrusted line no Review when the window can't open the trust check", async () => {
       const { root, later } = openCard({
         decisions: {
           approve: async () => {
-            throw new KindedError(
-              "denied",
+            throw new WorkspaceUntrusted(
               "This workspace isn't trusted yet, so nothing was started.",
             );
           },

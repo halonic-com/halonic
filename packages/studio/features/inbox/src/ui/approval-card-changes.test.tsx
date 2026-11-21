@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { KindedError } from "@halonicjs/std";
+import { WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -140,8 +140,7 @@ verifies("inbox.approval-card", () => {
           approve: async () => waitingRun("r47"),
           reject: async () => waitingRun("r47"),
           askForChanges: async () => {
-            throw new KindedError(
-              "denied",
+            throw new WorkspaceUntrusted(
               "This workspace isn't trusted yet, so nothing was started.",
             );
           },

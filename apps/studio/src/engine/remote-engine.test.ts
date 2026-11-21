@@ -1,7 +1,11 @@
 import { runExecutorVersion } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { tauriEngineFetch } from "@halonicjs/studio-services";
-import { EngineNotAnswering } from "@halonicjs/studio-shell";
+import {
+  EngineNotAnswering,
+  isUntrustedRefusal,
+  WorkspaceUntrusted,
+} from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import type { RoutineRunStart } from "./engine-service.ts";
@@ -167,6 +171,26 @@ verifies("studio.remote-engine", () => {
         expect(error).toBeInstanceOf(KindedError);
         expect(error).toMatchObject({ kind, message });
       }
+    });
+
+    it("gives the engine's refusal of a workspace that isn't trusted its code, and no other 403", async () => {
+      const refusedWith = async (code: string) => {
+        const { engine } = remoteOn({
+          "POST /api/routines/{hub}/{routine}/run": () => ({
+            status: 403,
+            body: { code, message: "Refused." },
+          }),
+        });
+        return engine.startRoutine(nightly, nightlyTrigger).catch((e: unknown) => e);
+      };
+
+      const untrusted = await refusedWith("workspace_not_trusted");
+      const otherSite = await refusedWith("cross_site_request");
+
+      expect(untrusted).toBeInstanceOf(WorkspaceUntrusted);
+      expect(isUntrustedRefusal(untrusted)).toBe(true);
+      expect(otherSite).toMatchObject({ kind: "denied", message: "Refused." });
+      expect(isUntrustedRefusal(otherSite)).toBe(false);
     });
 
     it("fails Run now when the engine's answer names no run", async () => {
