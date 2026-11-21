@@ -3,6 +3,7 @@
 - Task: HAL-15086
 - Approval: Liam approves this note in his review of this pull request on HAL-15086. A team decision with no board card (HAL-2282 rule): the Secrets line's own words, no new wording.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:68VfJtRn+DoZL8oaP5n52IWv52CFaGtfiWCLisTyweUPB2mw+eXaCcILOhI2xhnxs6dLUAFLSoj4ZjtthHbXDA==
 
 ## What changes
 
