@@ -241,14 +241,17 @@ The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 | `busy` | While its request runs: the spinner takes the icon's place, `aria-busy`, clicks ignored |
 | `busyLabel` | The label while busy ("Creating…"). Both labels share one cell, so the width never changes |
 | `name` | A button with words only: what screen readers hear when the words leave something out, starting with those words ("Next: Approve this reply?, 2 left" for "Next: Approve this reply? · 2 left") |
-| `unavailable` | `{ reason }`: the `id` of the visible text that says why the button can't be used now |
+| `unavailable` | `{ reason }`: the `id` of the visible text that says why the button can't be used now; its first line is also the button's tooltip |
 | `type` | `submit` only for a form's confirming button |
 
 **There's no `disabled` prop.** A disabled button drops out of the Tab order, so someone on a
 keyboard loses their place and never hears why. A button that can't be used takes
 `unavailable={{ reason }}` instead: it stays focusable, ignores clicks (and doesn't submit its form),
-and screen readers hear the reason through `aria-describedby`. Write the reason next to it, never
-only in a tooltip.
+and screen readers hear the reason through `aria-describedby`. Hover and keyboard focus show the
+reason's first line as the button's tooltip, as any Tooltip shows: after 500ms of hover or at once
+on focus, and Escape hides it. The tooltip is hidden from screen readers, so they read the reason
+once. Write the reason next to it, never only in a tooltip: touch never shows one. A reason that
+names several ids gives the first one's first line, as laid out on the page.
 
 ```tsx
 <Button unavailable={{ reason: "updates-reason" }}>Make a version</Button>;
@@ -260,7 +263,7 @@ only in a tooltip.
 | Default | `primary` fill, `secondary` white with a `border-strong` edge, `ghost` no fill, `danger-outline` `surface` with a `danger` edge and `danger` text, `danger` fill |
 | Hover | `primary-hover`, `surface-subtle`, `surface-muted` with `fg` text, `danger-soft`, `danger-hover`; a press the same |
 | Focus | The standard focus ring |
-| Unavailable | 45% opacity, no hover change, `not-allowed` cursor; its reason is read with it |
+| Unavailable | 45% opacity, `not-allowed` cursor; hover and keyboard focus show the reason's first line as a Tooltip, and nothing else changes; its reason is read with it, once |
 | Busy | The spinner in the icon's place (in front of the label when there's no icon); the label stays |
 | Error | None: a failed action shows a toast or a field error, never a red button |
 
@@ -1823,6 +1826,7 @@ Spread the props `children` gets on the control: they link it to the tooltip.
 | `text` | A few words. Never anything you click |
 | `keys` | The control's shortcut, shown after the words and set as its `aria-keyshortcuts` |
 | `isName` | The text is the control's name, as on an icon button: it doesn't describe it too |
+| `visualOnly` | Screen readers already hear the text another way: it doesn't describe the control, and they skip it |
 | `showIf` | Asked each time it would show; it stays hidden when this says no |
 | `children` | Renders the control; a kit `Button` takes every prop it gets |
 
@@ -1840,6 +1844,10 @@ centred under the control by the same helper as the Menu, never native `title`.
 The control is described by the tooltip (`aria-describedby`), after an unavailable reason. When
 the tooltip only repeats the control's name, as on an icon button, set `isName`: the Tooltip can't
 tell by itself, and a screen reader would otherwise read the name twice. The shortcut stays.
+
+An unavailable `Button` has a tooltip of its own, with its reason's first line. While it has one,
+a Tooltip round it stays hidden, so only the reason shows; once the button is available again, the
+Tooltip shows as before.
 
 The control is wrapped in an `inline-flex` span, which gets the pointer and focus events. Where a
 Button has to stretch as a flex or grid child, give it a Tooltip only if the span may stay its
