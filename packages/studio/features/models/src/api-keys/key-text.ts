@@ -96,6 +96,52 @@ export function unavailableLine(reason: Extract<KeyEntry, { kind: "unavailable" 
   }
 }
 
+/** The words of a key's addresses (HAL-11872, the UX checklist on that task). */
+export const ADDRESS_LABEL = "Address";
+export const ADDRESS_HINT_BUILT_IN = "Halonic sends this key only to this address.";
+export const ADDRESS_HINT_CUSTOM =
+  "Enter the address your provider or gateway uses. Halonic sends this key only there.";
+export const ADDRESS_PLACEHOLDER = "https://gateway.example.com";
+export const ADD_ANOTHER_ADDRESS = "Add another address";
+export const NOT_BOUND_YET = "Not bound yet";
+export const NOT_BOUND_NOTICE =
+  "This key was saved before Halonic recorded addresses, so it has none yet. Enter the address and save to bind it. It keeps working as it does now until you do.";
+export const ADDRESSES_UNREADABLE =
+  "Can't read the addresses saved for this key. Halonic won't use this key until that is fixed.";
+export const ADDRESSES_RECOVERY =
+  "Check that your Halonic profile folder can be opened, then reload this page.";
+export const ADDRESS_UNENCRYPTED =
+  "This address isn't encrypted. Keys sent to it can be read on the way.";
+export const ADDRESSES_FULL =
+  "This key can't take more addresses. To start again, remove the key and save it with one address.";
+
+/** The error under the Address field, by what is wrong with the typed text. */
+export const ADDRESS_PROBLEM = {
+  empty: "Enter an address for this key.",
+  "not-an-address": "Enter a full address, starting with https:// or http://.",
+  "user-info": "Remove the user name and password from the address.",
+  scheme: "Use an address that starts with https:// or http://.",
+} as const;
+
+/** The line under the field once the typed text reads as an address. */
+export function allowedAddressLine(address: string, partDropped: boolean): string {
+  const line = `Allowed address: ${address}`;
+  return partDropped ? `${line}. Only the address part is kept.` : line;
+}
+
+/** The line after a save that kept an address: with a new key, or for the stored one. */
+export function addressSavedLine(address: string, withKey: boolean): string {
+  return withKey ? `Key saved. Address: ${address}` : `Address saved: ${address}`;
+}
+
+/** The button after the first address, and what a screen reader hears for it. */
+export function moreAddresses(count: number, secretName: string) {
+  return {
+    shown: `+${count} more`,
+    name: `Show ${count} more ${count === 1 ? "address" : "addresses"} for key ${secretName}`,
+  };
+}
+
 /** The line above the field on another device over https: encrypted, and the command still works. */
 export const OFF_HOST_HTTPS_LEAD =
   "You are not on the computer that runs halonic serve. Or, on that computer, run";

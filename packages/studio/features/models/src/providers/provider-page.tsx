@@ -128,6 +128,7 @@ function FoundProvider({
           providerName={providerName(entry.provider)}
           onFirstKey={() => offer(entry.provider)}
           focusRequest={focusRequest}
+          usualAddress={keys.addresses?.usualAddress(entry.provider)}
         />
       )}
     </>
