@@ -38,6 +38,12 @@ export interface RunStep {
    * `undefined` for a step whose agent didn't finish, or that has none.
    */
   readonly finished?: { readonly output: unknown };
+  /**
+   * The connectors that didn't start in the step (`connector.listing-failed`),
+   * each once, in the order they failed, so the step ran without their
+   * tools. Left out when every connector started.
+   */
+  readonly connectorsNotStarted?: readonly string[];
 }
 
 /** A step as it's being read from the log, before its end is known. */
@@ -47,6 +53,8 @@ interface OpenStep {
   agentId: string | undefined;
   /** The step's agent's `agent.finished`, once it has one. */
   finished: { readonly output: unknown } | undefined;
+  /** The connectors that didn't start in the step; every model turn logs them again. */
+  readonly connectorsNotStarted: Set<string>;
   /**
    * The tool calls the step's agents asked the user's OK for and haven't
    * had it yet, by call id. Parallel branches can each ask at once.
@@ -87,6 +95,7 @@ export function runSteps(events: readonly RunEvent[], summary: RunSummary): RunS
         enteredAt: event.at,
         agentId: undefined,
         finished: undefined,
+        connectorsNotStarted: new Set(),
         askingApproval: new Set(),
         waiting: undefined,
         answer: undefined,
@@ -102,6 +111,7 @@ export function runSteps(events: readonly RunEvent[], summary: RunSummary): RunS
       agentId: open.agentId,
       end: stillOpen(open, summary),
       ...finishedOf(open),
+      ...connectorsNotStartedOf(open),
     });
   }
   return steps;
@@ -125,9 +135,16 @@ function isTheEndState(step: OpenStep, event: RunEvent): boolean {
   return event.type === "run.completed" && event.state === step.stateId;
 }
 
-/** What an event inside a step says about it: the agent it ran, its approvals, and its wait and answer. */
+/**
+ * What an event inside a step says about it: the agent it ran, the
+ * connectors that didn't start, its approvals, and its wait and answer.
+ */
 function readInStep(step: OpenStep, event: RunEvent): void {
   switch (event.type) {
+    case "connector.listing-failed":
+      // A subagent's or a branch's connector too: the step ran without its tools.
+      step.connectorsNotStarted.add(event.connector);
+      break;
     case "agent.started":
       if (event.parent === undefined && event.state === step.stateId) {
         step.agentId ??= event.agent;
@@ -177,12 +194,20 @@ function closed(step: OpenStep, at: string, how: "done" | "failed"): RunStep {
     agentId: step.agentId,
     end,
     ...finishedOf(step),
+    ...connectorsNotStartedOf(step),
   };
 }
 
 /** The `finished` field of a {@link RunStep}, when the step's agent finished. */
 function finishedOf(step: OpenStep): Pick<RunStep, "finished"> {
   return step.finished === undefined ? {} : { finished: step.finished };
+}
+
+/** The `connectorsNotStarted` field of a {@link RunStep}, when a connector didn't start. */
+function connectorsNotStartedOf(step: OpenStep): Pick<RunStep, "connectorsNotStarted"> {
+  return step.connectorsNotStarted.size === 0
+    ? {}
+    : { connectorsNotStarted: [...step.connectorsNotStarted] };
 }
 
 /**

@@ -220,6 +220,30 @@ verifies("app.run-steps", () => {
   });
 });
 
+verifies("app.run-step-connectors", () => {
+  it("gives a step the connectors that didn't start in it, each once", () => {
+    const notStarted = (connector: string): RunEventBody => ({
+      type: "connector.listing-failed",
+      agent: "writer",
+      connector,
+      cause: { code: "connector-not-started", why: "program-missing", name: "npx-nope" },
+    });
+    const steps = stepsOf([
+      ...upToReview.slice(0, 4),
+      ["14:00:02", notStarted("handbook")],
+      ["14:00:05", notStarted("handbook")],
+      ["14:00:05", notStarted("tracker")],
+      ...finishedAt("14:00:09"),
+    ]);
+
+    expect(steps.map((step) => step.connectorsNotStarted)).toEqual([
+      undefined,
+      ["handbook", "tracker"],
+    ]);
+    expect(steps[0]).not.toHaveProperty("connectorsNotStarted");
+  });
+});
+
 verifies("app.run-step-entered", () => {
   it("says when the run entered each step", () => {
     const steps = stepsOf([...upToReview]);
