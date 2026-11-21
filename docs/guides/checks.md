@@ -1006,3 +1006,13 @@ as a repository secret: a pull request's own workflow can read those. Entries
 expire after 30 days. A run without the secrets, such as a fork, uses the local
 cache only. Local runs and agents don't use the remote cache: they have no
 token. `base-tests` stays uncached (`--force`). `actions/cache` stays as the fallback.
+
+On our own CI server (`infra/ci-runner`) the `build` job's local cache is
+`/cache/turbo`, a folder on the server's cache disk that every slot shares and
+keeps between jobs, like the pnpm store, instead of `actions/cache`, which took
+about 15 s of every shard (HAL-15467). Only pushes to `main` and merge groups
+run there, so the folder holds only reviewed code's results. Unlike the remote
+cache, it has no queue area: `main` can read what a merge group wrote, also
+from an entry that never merged. That is the same trust as the pnpm store,
+which the server's README describes. If the folder isn't mounted, the job says
+so in a warning and uses `actions/cache` as on GitHub's runners.
