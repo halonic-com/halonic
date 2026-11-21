@@ -1,0 +1,7 @@
+[Unit]
+Description=halonic-ci hourly check of the shared caches' quota
+[Timer]
+OnCalendar=hourly
+Persistent=true
+[Install]
+WantedBy=timers.target

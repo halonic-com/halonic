@@ -2,5 +2,5 @@
 Description=halonic-ci weekly cleanup
 [Service]
 Type=oneshot
-ExecStart=/usr/local/sbin/halonic-ci-maint.sh
+ExecStart=/usr/bin/flock /run/lock/halonic-ci-maint.lock /usr/local/sbin/halonic-ci-maint.sh
 TimeoutStartSec=3h

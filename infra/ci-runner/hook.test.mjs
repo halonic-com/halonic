@@ -240,3 +240,93 @@ test("each job container is capped and unprivileged (C5)", () => {
   assert.match(slot, /^JOB_WORK=\/home\/runner\/actions-runner\/_work /m);
   assert.ok(slot.includes('-v "$WORK:$JOB_WORK"'));
 });
+
+test("the slot script fails closed on the App key and userns-remap, and caps the shared caches", () => {
+  const slot = read("vm/halonic-runner-slot.sh");
+  assert.ok(slot.includes(`[ "$(stat -c '%u %a' "$KEY")" = "0 400" ] || fail`));
+  assert.ok(slot.includes('[ ! -L "$KEY" ] || fail'));
+  assert.ok(slot.includes('[[ "$BASE" =~ ^[1-9][0-9]*$ ]] || fail'));
+  assert.ok(slot.includes('[ "$TOKEN" != null ] || fail'));
+  assert.ok(slot.includes("limit -p bhard=$TRUSTED_QUOTA $TRUSTED_PROJ"));
+});
+
+test("the slot script reads the job's event file inside the container, never as root on the VM", () => {
+  const slot = read("vm/halonic-runner-slot.sh");
+  assert.ok(
+    slot.includes(
+      'timeout 10 docker exec "hci-$SLOT" timeout 5 head -c 1048576 "$JOB_WORK/_temp/_github_workflow/event.json"',
+    ),
+  );
+  assert.doesNotMatch(slot, /\$WORK\/_temp/);
+});
+
+test("stopping the firewall unit leaves the CI VM's rules in place", () => {
+  const unit = read("host/halonic-ci-nft.service");
+  assert.doesNotMatch(unit, /^ExecStop/m);
+  assert.match(unit, /^RequiredBy=libvirtd\.service$/m);
+  assert.match(read("host/halonic-ci.nft"), /^delete table inet halonic_ci$/m);
+});
+
+// Runs the shipped maintenance script with every command it calls replaced by a stub that logs
+// its arguments, so nothing touches the real /cache or /etc. `cachePct` is /cache's use,
+// `quota` the project report line for the shared caches (null: no project 300 yet).
+const maint = ({ args = [], cachePct = 40, quota = null }) => {
+  const bin = mkdtempSync(join(dir, "maint-bin-"));
+  const log = join(bin, "calls.log");
+  writeFileSync(log, "");
+  for (const tool of ["awk", "tail", "tr"]) {
+    const which = spawnSync("/bin/sh", ["-c", `command -v ${tool}`], { encoding: "utf8" });
+    symlinkSync(which.stdout.trim(), join(bin, tool));
+  }
+  const stub = (name, body = "") =>
+    writeFileSync(join(bin, name), `#!/bin/sh\necho "${name} $*" >> ${log}\n${body}\n`, {
+      mode: 0o755,
+    });
+  for (const name of ["docker", "systemctl", "logger", "touch", "rm", "seq", "sleep", "jq"]) {
+    stub(name);
+  }
+  stub("cat", "echo halonic-runner@large-1.service");
+  stub("df", `printf 'Use%%\\n %d%%\\n' ${cachePct}`);
+  stub("xfs_quota", quota === null ? "" : `echo '${quota}'`);
+  const res = spawnSync("/bin/bash", [join(here, "vm/halonic-ci-maint.sh"), ...args], {
+    encoding: "utf8",
+    env: { PATH: bin },
+  });
+  assert.equal(res.status, 0, res.stderr);
+  return readFileSync(log, "utf8");
+};
+const EMPTIED = "rm -rf /cache/trusted/pnpm-store/* /cache/trusted/ms-playwright/*";
+const GB20 = 20 * 1024 * 1024; // KiB
+
+test("the cache check empties the shared caches past 80 % of their quota, not before", () => {
+  const low = maint({ args: ["--caches"], quota: `#300 ${GB20 / 2} 0 ${GB20} 00 [--------]` });
+  assert.ok(!low.includes(EMPTIED), low);
+  assert.match(low, /caches 50% of quota/);
+  const high = maint({ args: ["--caches"], quota: `#300 ${GB20 * 0.85} 0 ${GB20} 00 [--------]` });
+  assert.ok(high.includes("touch /etc/halonic-ci/paused"), high);
+  assert.ok(high.includes(EMPTIED), high);
+  assert.ok(high.includes("rm -f /etc/halonic-ci/paused"), high);
+  assert.ok(high.includes("systemctl start halonic-runner@large-1.service"), high);
+  // The hourly check only checks: no pruning.
+  assert.doesNotMatch(high, /^docker /m);
+});
+
+test("the weekly cleanup prunes, and empties the caches when /cache passes 75 %", () => {
+  const calm = maint({});
+  assert.match(calm, /^docker image prune -f$/m);
+  assert.ok(!calm.includes(EMPTIED), calm);
+  assert.ok(maint({ cachePct: 80 }).includes(EMPTIED));
+});
+
+test("the cache check runs hourly and never alongside the weekly cleanup", () => {
+  assert.match(read("vm/halonic-ci-cache-check.timer"), /^OnCalendar=hourly$/m);
+  const lock = "/usr/bin/flock -n -E 0 /run/lock/halonic-ci-maint.lock";
+  assert.ok(
+    read("vm/halonic-ci-cache-check.service").includes(
+      `${lock} /usr/local/sbin/halonic-ci-maint.sh --caches`,
+    ),
+  );
+  assert.ok(
+    read("vm/halonic-ci-maint.service").includes("/usr/bin/flock /run/lock/halonic-ci-maint.lock "),
+  );
+});
