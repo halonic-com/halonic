@@ -702,6 +702,70 @@ FunctionEnd
   Call SetStep
 !macroend
 
+!ifdef SANDBOX_STEP
+; Halonic change (HAL-14812): the installer asks Windows for administrator
+; rights itself, with its own window as the prompt's owner, so the prompt comes
+; to the front. Asked for by a hidden PowerShell three programs down, it didn't
+; show on a tester's PC, and the step waited for ever. Starts the signed helper
+; (its manifest asks for the rights) and waits at most SANDBOX_HELPER_MS for
+; it. Pushes "refused", "nostart", "timeout" or the helper's exit code.
+!define SANDBOX_HELPER_MS 300000
+Function ElevateSandboxHelper
+  Push $0
+  Push $1
+  Push $2
+  Push $3
+  Push $4
+  ; Held open, shared for reading only, until Windows has started it: until
+  ; then nothing can write, rename or delete the helper (HAL-14958). Not
+  ; held, it isn't started.
+  System::Call 'kernel32::CreateFileW(w "$INSTDIR\halonic-sandbox-elevate.exe", i 0x80000000, i 1, p 0, i 3, i 0, p 0) p .r4'
+  ${If} $4 = -1
+    StrCpy $3 "nostart"
+  ${Else}
+    ; SHELLEXECUTEINFOW, laid out for the 32-bit installer: SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NOASYNC, the
+    ; installer's window, "runas", the helper, "setup", no window of its own.
+    System::Call '*(&l4, i 0x140, p $HWNDPARENT, w "runas", w "$INSTDIR\halonic-sandbox-elevate.exe", w "setup", w "$INSTDIR", i 0, p 0, p 0, p 0, p 0, i 0, p 0, p 0) p .r0'
+    System::Call 'shell32::ShellExecuteExW(p r0) i .r1 ?e'
+    Pop $2
+    System::Call 'kernel32::CloseHandle(p r4)'
+    ${If} $1 = 0
+      ; ERROR_CANCELLED: the prompt was turned down or closed.
+      ${If} $2 = 1223
+        StrCpy $3 "refused"
+      ${Else}
+        StrCpy $3 "nostart"
+      ${EndIf}
+    ${Else}
+      System::Call '*$0(i, i, p, p, p, p, p, i, p, p, p, p, i, p, p .r1)'
+      ${If} $1 = 0
+        StrCpy $3 "nostart"
+      ${Else}
+        System::Call 'kernel32::WaitForSingleObject(p r1, i ${SANDBOX_HELPER_MS}) i .r2'
+        ${If} $2 = 0
+          System::Call 'kernel32::GetExitCodeProcess(p r1, *i .r3)'
+        ${Else}
+          ; Left running: a setup that finishes late still counts, and Studio
+          ; finds it set up.
+          StrCpy $3 "timeout"
+        ${EndIf}
+        System::Call 'kernel32::CloseHandle(p r1)'
+      ${EndIf}
+    ${EndIf}
+    System::Free $0
+  ${EndIf}
+  Pop $4
+  ; The result goes on top of the stack, each register back as it was.
+  Exch $3
+  Exch
+  Pop $2
+  Exch
+  Pop $1
+  Exch
+  Pop $0
+FunctionEnd
+!endif
+
 Section WebView2
   ; Check if Webview2 is already installed and skip this section
   ${If} ${RunningX64}
@@ -946,20 +1010,34 @@ Section SandboxStep
       !insertmacro SetStep $LineSetup "◌ Setting up the agent sandbox…"
       ${IfNot} ${Silent}
         DetailPrint "   Windows is asking for administrator rights."
-        DetailPrint "   Check the taskbar if you don't see the request."
       ${EndIf}
-      ; The agent host asks Windows itself, through the signed helper, as
-      ; Settings › Agent sandbox does (HAL-1451). A silent install gets here
-      ; only from an elevated prompt (/SANDBOX=1, checked in .onInit), where
-      ; Windows doesn't ask.
-      Call ProfileFolder
-      Pop $1
-      nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\sandbox-step.ps1" -HostExe "$INSTDIR\halonic-agent-host.exe" -ProfileFolder "$1"'
+      ; The installer asks Windows itself and starts the signed helper from its
+      ; own window (HAL-14812), then the agent host checks the sandbox as the
+      ; person installing, without the rights. A silent install gets here only
+      ; from an elevated prompt (/SANDBOX=1, checked in .onInit), where Windows
+      ; doesn't ask.
+      StrCpy $SandboxReason ""
+      Call ElevateSandboxHelper
       Pop $2
-      Pop $SandboxReason
-      Push $SandboxReason
-      Call TrimEol
-      Pop $SandboxReason
+      ${If} $2 == "0"
+        Call ProfileFolder
+        Pop $1
+        nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\sandbox-step.ps1" -CheckOnly -HostExe "$INSTDIR\halonic-agent-host.exe" -ProfileFolder "$1"'
+        Pop $2
+        Pop $SandboxReason
+        Push $SandboxReason
+        Call TrimEol
+        Pop $SandboxReason
+      ${ElseIf} $2 == "refused"
+        StrCpy $2 "10"
+      ${ElseIf} $2 == "nostart"
+        StrCpy $SandboxReason "Windows couldn't start the sandbox helper"
+        StrCpy $2 "11"
+      ${ElseIf} $2 != "timeout"
+        ; The helper's own codes, 12 to 40, aren't this step's codes.
+        StrCpy $SandboxReason "the sandbox helper stopped with code $2"
+        StrCpy $2 "11"
+      ${EndIf}
       ${If} $2 == "0"
         StrCpy $SandboxOutcome "ready"
         !insertmacro SetStep $LineSetup "✓ Set up the agent sandbox"
@@ -967,6 +1045,10 @@ Section SandboxStep
       ${ElseIf} $2 == "10"
         StrCpy $SandboxOutcome "refused"
         !insertmacro SetStep $LineSetup "! The agent sandbox isn't set up: Windows didn't give administrator rights."
+        !insertmacro SetStep $LineCheck "○ Checking the agent sandbox, skipped"
+      ${ElseIf} $2 == "timeout"
+        StrCpy $SandboxOutcome "timeout"
+        !insertmacro SetStep $LineSetup "! The agent sandbox isn't set up yet: Windows didn't finish it within 5 minutes."
         !insertmacro SetStep $LineCheck "○ Checking the agent sandbox, skipped"
       ${ElseIf} $2 == "12"
         StrCpy $SandboxOutcome "checkfailed"
@@ -1694,6 +1776,8 @@ Function PageFinish
     Pop $0
     ${If} $SandboxOutcome == "refused"
       StrCpy $1 "Windows didn't give the installer administrator rights."
+    ${ElseIf} $SandboxOutcome == "timeout"
+      StrCpy $1 "Windows didn't finish setting it up within 5 minutes."
     ${ElseIf} $SandboxOutcome == "checkfailed"
       StrCpy $1 "It was set up, but didn't pass its check: $SandboxReason"
     ${Else}
@@ -1702,7 +1786,7 @@ Function PageFinish
     ; Three lines for the cause, so a long reason isn't cut (checklist 2.4).
     ${NSD_CreateLabel} 10u 12u 96% 32u "$1"
     Pop $0
-    ${NSD_CreateLabel} 10u 46u 96% 42u "Everything else works. Until the sandbox is set up, an agent can run on this computer only after a warning you confirm. To set it up later, open Settings › Agent sandbox in Halonic."
+    ${NSD_CreateLabel} 10u 46u 96% 42u "Everything else works. Until the sandbox is set up, an agent can run on this computer only after a warning you confirm. To set it up later, run this installer again."
     Pop $0
   ${EndIf}
 
