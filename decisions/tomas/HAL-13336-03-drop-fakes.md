@@ -16,8 +16,10 @@ The contract still runs in full, once, in workerd: `coordination.test.ts` runs i
 `DurableCoordination` against real `TestCoordinationObject`s and their real storage, the same run
 that `pnpm test:live` makes on a real Cloudflare account. The three `DurableCoordination` tests that
 didn't come from the contract (a fresh stub per call, the object names) moved into workerd with
-their names and checks. So `contracts.coordination` goes from 39 tests to 13: the same 13 checks,
-run once instead of three times. No other requirement or test file in the package loses a test.
+their names and checks. So in this package `contracts.coordination` goes from 39 tests to 13: the
+same 13 checks, run once instead of three times. Across the repository it goes from 52 tests to 26
+(and from 364 `expect` calls to 182), because the other adapters' runs of the contract don't change.
+No other requirement or test file loses a test.
 
 The package now runs 152 tests, all but the two of `napFor` in workerd. Coverage from that run is
 99.3% of lines and 93.6% of branches, over its floor of 90% / 85%.
