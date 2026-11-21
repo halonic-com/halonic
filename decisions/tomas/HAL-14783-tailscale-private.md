@@ -2,6 +2,7 @@
 
 - Approval: Liam decided option 1, with the `100.100.100.100` carve-out, on HAL-14783 (21 Nov, 05:34 UTC), and approves this note in his review of this pull request; Julian checks it as the second reviewer of a security change
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GpCO8YIolclSsTt4IcjXwjG+3BZvYOrh/oQDOuLHwQi1i/lUf07f970Rl76AHyJoQuSY32vo6tJl1ATKoCCLDg==
 - Task: HAL-14783
 
 ## What changes
