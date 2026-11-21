@@ -4,7 +4,7 @@ import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { RoutineTargetChoice } from "../api.ts";
+import type { NewRoutine, RoutineTargetChoice } from "../api.ts";
 import { buttonNamed, openDialogsInJsdom, show, typeInto, unmount } from "../test-support.tsx";
 import { NewRoutineDialog, type NewRoutineDialogProps } from "./new-routine-dialog.tsx";
 import { routineFilePath } from "./routine-file.ts";
@@ -20,10 +20,16 @@ const briefing: RoutineTargetChoice = {
   id: "briefing",
   name: "Briefing",
 };
+const analyst: RoutineTargetChoice = {
+  kind: "agent",
+  hubId: "acme",
+  id: "analyst",
+  name: "Analyst",
+};
 
 function dialog(props: Partial<NewRoutineDialogProps> = {}) {
   const onCreated = vi.fn();
-  const create = vi.fn(async (newRoutine: { name: string; hubId: string }) => ({
+  const create = vi.fn(async (newRoutine: NewRoutine) => ({
     hubId: newRoutine.hubId,
     id: "morning-digest",
   }));
@@ -51,6 +57,10 @@ function nameField(): HTMLInputElement {
   return input;
 }
 
+function promptField(): HTMLTextAreaElement | null {
+  return document.querySelector<HTMLTextAreaElement>("dialog textarea, [role=dialog] textarea");
+}
+
 const body = () => document.body.textContent ?? "";
 
 /** What the dialog's `aria-describedby` reads: empty when it names nothing. */
@@ -71,6 +81,7 @@ verifies("routines.new.create", () => {
       "It runs Briefing when you press Run now. Pick when it runs on its own next.",
     );
     expect(body()).not.toContain("Hub");
+    expect(promptField()).toBeNull();
     expect(document.activeElement).toBe(nameField());
   });
 
@@ -95,19 +106,41 @@ verifies("routines.new.create", () => {
     expect(description()).toContain("It runs Briefing when you press Run now.");
   });
 
-  it("names the hub's first agent and says Halonic can't run an agent on its own yet", async () => {
-    const analyst: RoutineTargetChoice = {
-      kind: "agent",
-      hubId: "acme",
-      id: "analyst",
-      name: "Analyst",
-    };
+  it("names the hub's first agent, says Halonic can't run an agent on its own yet, and asks what it should do", async () => {
     await show(dialog({ starterTarget: async () => analyst }).node);
 
     expect(body()).toContain(
       "This routine starts Analyst, but Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow, then pick it under Starts on the routine's page.",
     );
     expect(body()).not.toContain("when you press Run now");
+    expect(body()).toContain("Prompt");
+    expect(promptField()?.value).toBe("");
+    expect(promptField()?.placeholder).toBe("Describe what to do.");
+    expect(body()).toContain("Say what Analyst should do.");
+  });
+
+  it("creates nothing for an agent until a prompt is typed, then hands the prompt over trimmed", async () => {
+    const { node, create, onCreated } = dialog({ starterTarget: async () => analyst });
+    await show(node);
+    await typeInto(nameField(), "Morning digest");
+
+    await act(async () => buttonNamed(document.body, "Create")?.click());
+    expect(create).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(promptField());
+    expect(promptField()?.getAttribute("aria-invalid")).toBe("true");
+
+    const field = promptField();
+    if (field === null) throw new Error("no prompt field");
+    await typeInto(field, "  Sum up the inbox\n\n");
+    expect(body()).not.toContain("Say what Analyst should do.");
+    await act(async () => buttonNamed(document.body, "Create")?.click());
+
+    expect(create).toHaveBeenCalledWith({
+      name: "Morning digest",
+      hubId: "acme",
+      prompt: "Sum up the inbox",
+    });
+    expect(onCreated).toHaveBeenCalledWith({ hubId: "acme", id: "morning-digest" });
   });
 
   it("shows the file the name makes, with -2 when the id is taken, and follows the hub", async () => {

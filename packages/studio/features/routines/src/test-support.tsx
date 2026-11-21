@@ -99,11 +99,18 @@ export function buttonNamed(page: HTMLElement, text: string): HTMLButtonElement 
   );
 }
 
-/** Types into an input the way a person does, so React sees the change. */
-export async function typeInto(input: HTMLInputElement, value: string): Promise<void> {
+/** Types into an input or a text area the way a person does, so React sees the change. */
+export async function typeInto(
+  field: HTMLInputElement | HTMLTextAreaElement,
+  value: string,
+): Promise<void> {
+  const prototype =
+    field instanceof HTMLTextAreaElement
+      ? HTMLTextAreaElement.prototype
+      : HTMLInputElement.prototype;
   await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
-    input.dispatchEvent(new Event("input", { bubbles: true }));
+    Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(field, value);
+    field.dispatchEvent(new Event("input", { bubbles: true }));
   });
 }
 

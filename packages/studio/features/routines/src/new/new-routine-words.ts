@@ -7,6 +7,9 @@ export const newRoutineWords = {
   nameField: "Name",
   hubField: "Hub",
   nameMissing: "Give it a name.",
+  promptField: "Prompt",
+  promptPlaceholder: "Describe what to do.",
+  promptNeeded: (agentName: string) => `Say what ${agentName} should do.`,
   runs: (targetName: string) =>
     `It runs ${targetName} when you press Run now. Pick when it runs on its own next.`,
   agentCantRun: (agentName: string) =>

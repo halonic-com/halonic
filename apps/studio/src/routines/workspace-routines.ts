@@ -42,6 +42,7 @@ import {
 import {
   idOf,
   mailboxesOf,
+  NEW_ROUTINE_PROMPT,
   nameKey,
   type PlacedFile,
   routineFiles,
@@ -314,7 +315,7 @@ export class WorkspaceRoutines implements RoutinesHost {
     return choices.find((one) => one.kind === "workflow") ?? choices[0];
   }
 
-  async create({ name, hubId }: NewRoutine): Promise<RoutineRef> {
+  async create({ name, hubId, prompt = "" }: NewRoutine): Promise<RoutineRef> {
     // The hubs are known once the workspace has loaded.
     await this.#load();
     if (!this.#hubs.some((hub) => hub.id === hubId)) {
@@ -322,7 +323,11 @@ export class WorkspaceRoutines implements RoutinesHost {
     }
     const choice = await this.starterTarget(hubId);
     if (choice === undefined) throw new NothingToRun();
-    return this.#write(name, hubId, targetFor(choice));
+    // An agent's prompt is its real task, so no stand-in is written for it.
+    if (choice.kind === "agent" && prompt.trim() === "") {
+      throw new KindedError("invalid_input", `Say what ${choice.name} should do.`);
+    }
+    return this.#write(name, hubId, targetFor(choice, prompt));
   }
 
   async startingRoutines(owner: TriggerOwner): Promise<readonly TriggerRow[]> {
@@ -350,7 +355,7 @@ export class WorkspaceRoutines implements RoutinesHost {
     );
     if (choice === undefined)
       throw new Error(`The hub "${owner.hubId}" has no ${owner.kind} "${owner.id}".`);
-    return this.#write(choice.name, owner.hubId, targetFor(choice));
+    return this.#write(choice.name, owner.hubId, targetFor(choice, NEW_ROUTINE_PROMPT));
   }
 
   /** Writes a new manual routine that starts `target`, with an id taken from `name` (`-2` when the hub has it). */
