@@ -129,6 +129,12 @@ With `--json`, the check is `secrets`, with `missing` and `unreadable`: each a
 list of the secrets and what uses them, such as
 `{"check": "secrets", "status": "failed", "missing": [{"secret": "anthropic-key", "usedBy": [{"kind": "provider", "id": "claude"}]}], "unreadable": []}`.
 
+`doctor` checks the command line's secrets: the `HALONIC_SECRET_<NAME>`
+variables and the file `halonic secret set` writes. Studio keeps the keys and
+connector secrets you save in it in your system's keychain, and the two don't
+read each other's. A secret you set with `halonic secret set` still shows in
+Studio as "isn't set for Studio": save it in Studio too.
+
 ### Sandbox
 
 **Checks:** whether the sandbox that agents run in can start on this computer.
