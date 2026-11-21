@@ -986,7 +986,8 @@ and records the feature that added each (`Registered`). A bad id, a repeated id 
   the window draws its view (`StripProps`) at the top of the panel on the desktop and under the
   top bar on a phone, and the view decides from `context.shown()` whether it draws anything.
   `help.add` (`shell.help-menu`) adds a group of items to the Help menu, which the sidebar opens
-  from **Help** just above Settings while any group has items.
+  from **Help** just above Settings while any group has items; the phone's More page lists the
+  same groups after Settings.
   A settings section names its `scope` (`workspace`, `display` or `host`: where its values are
   saved), may give a `summary` for the phone's list and `phone: false` to stay off a phone. The
   settings list shows the workspace's group, then "On this computer", each by `order`

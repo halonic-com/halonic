@@ -435,6 +435,7 @@ function StudioWindowBody(props: StudioWindowProps) {
             badge={props.phoneBadge}
             desktopBadges={headerBadges}
             onSettings={() => openSettings()}
+            help={help}
             settingsPlace={host === "desktop-app" ? "app" : "served"}
             settingsSections={sections}
             regionFormat={props.regionFormat}
