@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-13731 (from Nina's C220 check on HAL-13670); Liam chose on HAL-13735 to keep this next to Mateo's HAL-13714 line, checked before it; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ibNfPQ/7jtjJI0p7QMjF6DlSWCGBf0oDl9GXxx0PyFvEu2JRDPCNfoepqaBvFQSrgFybTDjWAzB9k/+tR82LAQ==
 
 With a connector whose program exits as soon as it starts (for example `command: false`),
 `halonic run` warned "To see why, run halonic tools review …", and `tools review` then said
