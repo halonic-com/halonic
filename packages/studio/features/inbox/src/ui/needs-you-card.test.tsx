@@ -156,10 +156,10 @@ verifies("inbox.home", () => {
     );
     await settled();
     expect(rows(home)).toEqual([
-      "Approve this reply?Support reply · a person step · Waiting 1 h",
-      "Approve this reply?Support reply · a person step · Waiting 1 h",
+      "Approve this reply?Support reply · run r2 · a person step · Waiting 1 h",
+      "Approve this reply?Support reply · run r3 · a person step · Waiting 1 h",
     ]);
-    // One line for both, so the run's id that the Inbox's line gains (HAL-12528) shows here too.
+    // One line for both, so the run's short id that tells them apart (HAL-12528) shows here too.
     expect(rows(home)).toEqual(rows(page).slice(0, 2));
   });
 

@@ -13,7 +13,7 @@ The Inbox feature shall add Home's Needs you, whose heading count shall be the w
   then Needs you reads "Needs you, 1 waiting" and shows the row "Sorter wants to use create_note (notes-mcp)".
 - Given a run of Support reply waiting at a person step,
   when Home opens,
-  then its row reads as in the Inbox: "Approve this reply?" over "Support reply · a person step · Waiting 2 h".
+  then its row reads as in the Inbox: "Approve this reply?" over "Support reply · run 891b5a · a person step · Waiting 2 h".
 - Given that row,
   when you press Enter on it,
   then the Inbox opens with that item's card open.
