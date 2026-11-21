@@ -46,10 +46,12 @@ export interface DoctorWorkspaceInput {
  *   that checks trust.
  * - **Aliases:** those of `models.yaml` in its order, then each hub's own
  *   that point somewhere new, so a hub's alias without a key is warned
- *   about too.
- * - **Providers:** each one an alias uses, once, with how it runs (see
- *   {@link doctorProvider}). One that has no file is left out, with its
- *   aliases: `halonic validate` reports it.
+ *   about too. Then each `provider/model` an agent names directly whose
+ *   provider no alias uses, such as `claude/claude-sonnet-5-5`, so its key
+ *   is checked too, with the same words (HAL-14661).
+ * - **Providers:** each one those use, once, in the order they're first
+ *   used, with how it runs (see {@link doctorProvider}). One that has no
+ *   file is left out, with its aliases: `halonic validate` reports it.
  * - **Secrets:** each one a run needs that the Models line doesn't check,
  *   with what uses it (see {@link usedSecrets}).
  * - **Default model:** the workspace's, when it is an alias no file has and
@@ -65,7 +67,7 @@ export interface DoctorWorkspaceInput {
 export function doctorWorkspace(input: DoctorWorkspaceInput): DoctorWorkspace {
   const { workspace } = input;
   const settings = filesOf(workspace, "workspace")[0]?.value;
-  const allAliases = workspaceAliases(workspace);
+  const allAliases = withDirectModels(workspaceAliases(workspace), workspace);
   const providerFiles = usedProviderFiles(workspace, allAliases);
   const providers = providerFiles.flatMap((file) => doctorProvider(file) ?? []);
   // The Models line takes only aliases whose provider it was given.
@@ -176,6 +178,34 @@ function workspaceAliases(workspace: LoadedWorkspace): AliasProvider[] {
     }
   }
   return aliases;
+}
+
+/**
+ * The aliases, then each `provider/model` an agent of the root or a hub
+ * names as its `model`, or a method's, whose provider no alias uses, each
+ * once, in the agents' order. Its name stands where an alias would, so the
+ * Models line says "claude/claude-sonnet-5-5 needs an API key for Anthropic.".
+ */
+function withDirectModels(
+  aliases: readonly AliasProvider[],
+  workspace: LoadedWorkspace,
+): AliasProvider[] {
+  const all = [...aliases];
+  const providers = new Set(aliases.map((alias) => alias.provider));
+  const names = new Set<string>();
+  for (const { hub, value: agent } of filesOf(workspace, "agent")) {
+    const models = [agent.model, ...Object.values(agent.methods).map((method) => method.model)];
+    for (const name of models) {
+      if (name === undefined) continue;
+      const target = resolveModel(workspace, hub, name);
+      // An alias is listed already; a name no alias or provider resolves isn't a provider's.
+      if (target === undefined || target.alias !== undefined) continue;
+      if (providers.has(target.provider) || names.has(name)) continue;
+      names.add(name);
+      all.push({ alias: name, provider: target.provider });
+    }
+  }
+  return all;
 }
 
 /** The file of every provider the aliases use, in the order they're first used, that has one. */

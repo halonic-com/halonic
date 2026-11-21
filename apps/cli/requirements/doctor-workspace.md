@@ -2,15 +2,18 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-2270; the `DoctorWorkspace` input of `app.doctor-service`; file problems from HAL-6613
+- Source: HAL-2270; the `DoctorWorkspace` input of `app.doctor-service`; file problems from HAL-6613; a provider named directly, HAL-14661
 
-The `halonic doctor` command shall read from the workspace's files the workspace's name, every connector and agent for the trust check, the model aliases of `models.yaml` and of each hub, and how each provider those aliases use is reached. The test model shall need no key. A provider with `local: true` shall be reached at the host of its `baseUrl`, or at its server's default address. Any other provider shall need the key in its `secret` when it names one. A provider without a file, or on this computer at an unknown address, shall be left out together with its aliases. The command shall also read whether a run in the workspace can only reach the test model, by the rule `halonic run` skips trust by (`reachesOnlyTheTestModel`), so the Workspace line doesn't ask for a trust `run` doesn't need (HAL-6007). It shall also read how many errors `halonic validate` finds in the workspace's files; a workspace with any is never on the test model only, since the file left out may be a provider's (HAL-6613).
+The `halonic doctor` command shall read from the workspace's files the workspace's name, every connector and agent for the trust check, the model aliases of `models.yaml` and of each hub, then each `provider/model` an agent of the root or a hub names directly, as its model or a method's, whose provider no alias uses, and how each provider those use is reached, in the order they're first used. The test model shall need no key. A provider with `local: true` shall be reached at the host of its `baseUrl`, or at its server's default address. Any other provider shall need the key in its `secret` when it names one. A provider without a file, or on this computer at an unknown address, shall be left out together with its aliases. The command shall also read whether a run in the workspace can only reach the test model, by the rule `halonic run` skips trust by (`reachesOnlyTheTestModel`), so the Workspace line doesn't ask for a trust `run` doesn't need (HAL-6007). It shall also read how many errors `halonic validate` finds in the workspace's files; a workspace with any is never on the test model only, since the file left out may be a provider's (HAL-6613).
 
 ## Examples
 
 - Given `models.yaml` with smart and writer on Anthropic and local on Ollama, and a hub that points local at Anthropic,
   when the workspace is read,
   then the aliases are smart, local and writer in that order, then the hub's local on Anthropic, and the providers are Anthropic with its secret and Ollama at `localhost:11434`.
+- Given `models.yaml` with local on Ollama and the agent Writer with `model: claude/claude-sonnet-5-5`, whose provider file names the secret `anthropic-key`,
+  when the workspace is read,
+  then the aliases are local, then `claude/claude-sonnet-5-5` on claude, and the providers are Ollama, then claude with `anthropic-key`.
 - Given the alias fast on a provider that has no file,
   when the workspace is read,
   then neither fast nor that provider is listed.

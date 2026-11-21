@@ -372,3 +372,31 @@ verifies("app.doctor-secrets", () => {
     expect(report.summary.needsFixing).toBe(false);
   });
 });
+
+verifies("app.doctor-agent-sign-in", () => {
+  it("doesn't ask about the sign-in of an agent whose runs get a provider key (HAL-14661)", async () => {
+    const { service } = doctor({
+      codexHarness: {
+        id: "codex",
+        name: "Codex",
+        signIn: { program: "codex", args: ["login"], folderVariable: "CODEX_HOME" },
+        detect: async (options) =>
+          options?.settingsFolder === undefined
+            ? { status: "ready", version: "0.9.2" }
+            : { status: "signed-out", version: "0.9.2" },
+      },
+    });
+    const agents = [agent("Writer", "codex"), agent("Reviewer", "codex")];
+
+    const report = await service.check({
+      ...workspace({ agents }),
+      harnessSettingsFolder: (agentId, harnessId) => `/data/${agentId}/${harnessId}`,
+      agentsWithProviderKey: new Set(["writer"]),
+    });
+
+    // Writer's runs use the key, so only Reviewer is named, with today's words.
+    expect(answered(report.harnesses).problems).toEqual([
+      expect.objectContaining({ problem: "signed-out", agent: "Reviewer" }),
+    ]);
+  });
+});

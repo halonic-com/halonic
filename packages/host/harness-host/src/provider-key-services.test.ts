@@ -192,4 +192,24 @@ verifies("harness-host.provider-key-services", () => {
       });
     });
   });
+
+  describe("accessFor", () => {
+    it("decides as servicesFor does, without the app's key check or reading the key (HAL-14661)", async () => {
+      const keys = servicesWith({ "anthropic-key": key });
+
+      expect(await keys.accessFor(coder)).toEqual({
+        kind: "key",
+        provider: "anthropic",
+        providerId: "claude",
+        secret: "anthropic-key",
+        baseUrl: "https://llm.acme.test/anthropic",
+      });
+      expect(await keys.accessFor({ ...coder, runsOn: "this-computer" })).toEqual({
+        kind: "sign-in",
+        provider: "anthropic",
+        reason: "this-computer",
+      });
+      expect([...checked, ...asked]).toEqual([]);
+    });
+  });
 });
