@@ -23,3 +23,4 @@ A distro got a changed updater only through a new image import, and the setup ca
 ## Covers
 
 - sandbox-srt.wsl-runtime
+- .github/
