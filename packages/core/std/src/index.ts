@@ -3,6 +3,7 @@
 export { parseAmount } from "./amount.ts";
 export { asciiHost } from "./ascii-host.ts";
 export { AssertionError, assert, assertDefined, assertNever } from "./assert.ts";
+export { AsyncFeed } from "./async-feed.ts";
 export { decodeBase64url, encodeBase64url } from "./base64url.ts";
 export { canonicalJson } from "./canonical-json.ts";
 export { type Clock, fixedClock, fixedClockStart, systemClock } from "./clock.ts";
