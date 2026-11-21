@@ -3,6 +3,7 @@
 - Task: HAL-14552 (Sofia's C415 check, finding SK1)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14536#document-c415 (Sofia's C415 check, SK1: File Explorer with backslashes on Windows, Finder on macOS, "your file manager" on Linux; the first line stays)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:G160Vb8aY+HURQL5gncVxNpEnFxqbfOrlZbbWSsj0Z/rEg2U1QSXVFJSoOD09fVjOsgiTHCxkItaH+YeAqDPAw==
 
 ## What changes
 
