@@ -1,7 +1,7 @@
 import type { RemoteControl } from "@halonicjs/ports";
 import { Dialog } from "@halonicjs/studio-kit";
 import { useState } from "react";
-import { type PairingView, usePairing } from "./pairing-flow.ts";
+import { type CheckEvent, type PairingView, usePairing } from "./pairing-flow.ts";
 import { CheckStep, CodeStep, EndedStep, FailedStep, PairedStep } from "./pairing-steps.tsx";
 import * as words from "./pairing-words.ts";
 
@@ -31,7 +31,8 @@ export interface PairDialogProps {
 export function PairDialog(props: PairDialogProps) {
   const pairing = usePairing(props.remote);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
+  // A failed answer belongs to the check it answered, so a later Check the code starts clear.
+  const [failed, setFailed] = useState<{ readonly check: CheckEvent; readonly error: string }>();
   const view = pairing.view;
 
   // The dialog goes either way; a failed end is said by the opener, which stays on screen.
@@ -42,15 +43,22 @@ export function PairDialog(props: PairDialogProps) {
     });
   };
 
-  const answer = (allow: boolean, phoneName: string) => {
+  const answer = (allow: boolean, check: CheckEvent) => {
+    const { phoneName } = check;
     setBusy(true);
-    setError(undefined);
+    setFailed(undefined);
     (allow ? pairing.allow() : pairing.deny())
-      .catch(() => setError(allow ? words.allowFailed(phoneName) : words.denyFailed(phoneName)))
+      .catch(() =>
+        setFailed({
+          check,
+          error: allow ? words.allowFailed(phoneName) : words.denyFailed(phoneName),
+        }),
+      )
       .finally(() => setBusy(false));
   };
 
   if (view.stage === "check") {
+    const error = failed?.check === view.check ? failed.error : undefined;
     return (
       <Dialog
         size="md"
@@ -60,9 +68,9 @@ export function PairDialog(props: PairDialogProps) {
         cancelLabel={words.DONT_ALLOW}
         busy={busy}
         {...(error === undefined ? {} : { error })}
-        onConfirm={() => answer(true, view.check.phoneName)}
+        onConfirm={() => answer(true, view.check)}
         // Don't allow refuses the phone; Escape and the ✕ only close, which ends the pairing too.
-        onCancel={(reason) => (reason === "button" ? answer(false, view.check.phoneName) : close())}
+        onCancel={(reason) => (reason === "button" ? answer(false, view.check) : close())}
       >
         <CheckStep check={view.check} provider={props.provider} />
       </Dialog>
