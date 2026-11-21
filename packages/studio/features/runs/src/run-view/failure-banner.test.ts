@@ -279,6 +279,12 @@ verifies("runs.run-view.failure-banners", () => {
       expect(banner?.kind === "callout" ? banner.fixes : undefined).toBeUndefined();
     });
 
+    it("says to run it on the computer on a phone", () => {
+      expect(lines(causeBanner(readable({ file }), undefined, context, true))).toEqual([
+        "Support reply stopped in the step Draft: the secrets file /profile/secrets/secrets.json can be read by other users. Run chmod 600 /profile/secrets/secrets.json on your computer, then run again.",
+      ]);
+    });
+
     it("keeps the general banner for a cause that doesn't name the file", () => {
       expect(causeBanner(readable({}), undefined, context, false)).toBeUndefined();
     });
