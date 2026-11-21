@@ -3,6 +3,7 @@
 - Task: HAL-15331
 - Approval: team decision under the HAL-2282 rule for small wording on approved screens (Iris's flow check C561, finding 2, on HAL-15313); the reviewer of the pull request on HAL-15331 signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Q/XSWkLwAy5vne+HeJ+sc389HHw2FpD85IOciE0aVS9z+KVA9MYMZk/3hPFcb89O0MMVACqnC4URoDTUxy6KCQ==
 
 ## What changes
 
