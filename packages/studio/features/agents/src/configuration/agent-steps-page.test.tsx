@@ -90,6 +90,15 @@ verifies("agents.configuration.agent-steps", () => {
     expect(topCard(page)?.textContent).toContain("All of Writer's tools");
   });
 
+  it("shows the card's rows in the order Instructions, Output, Model, Model call limit, Tools", async () => {
+    const page = await openAgentSteps(host([draftReply]));
+    await act(async () => buttonNamed(page, "draft-reply")?.click());
+    const labels = [...(topCard(page)?.querySelectorAll("dl > div > dt") ?? [])].map(
+      (label) => label.textContent,
+    );
+    expect(labels).toEqual(["Instructions", "Output", "Model", "Model call limit", "Tools"]);
+  });
+
   it("says None when an agent step may use no tools", async () => {
     const page = await openAgentSteps(host([{ id: "check", instructions: "Check.", tools: [] }]));
     await act(async () => buttonNamed(page, "check")?.click());

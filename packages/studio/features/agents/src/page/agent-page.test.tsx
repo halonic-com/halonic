@@ -129,7 +129,7 @@ verifies("agents.page.frame", () => {
     expect(readStatus(page)).toBeNull();
 
     await act(async () => vi.advanceTimersByTime(300));
-    expect(readStatus(page)?.textContent).toContain("Loading sorter");
+    expect(readStatus(page)?.textContent).toContain("Loading Sorter");
     expect(page.textContent).not.toContain("Still loading");
 
     await act(async () => vi.advanceTimersByTime(10_000));

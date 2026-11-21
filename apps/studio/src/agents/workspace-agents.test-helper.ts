@@ -10,7 +10,7 @@ const replyFile =
 export function setup(
   extra: Pick<
     WorkspaceAgentsParts,
-    "newAgents" | "liveness" | "answerChat" | "detectHarness" | "versionDialog"
+    "newAgents" | "liveness" | "answerChat" | "detectHarness" | "versionDialog" | "trust"
   > = {},
 ) {
   const store: Record<string, string> = {
