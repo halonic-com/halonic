@@ -182,9 +182,18 @@ export function FileView({ item, context }: ItemViewProps) {
   // typing never waits for the check. The first check is what other files looked like before
   // this tab's changes; later ones are compared with it. A check that follows no edit here moves
   // that baseline on, so another file's change is never blamed on this tab. The same check
-  // finds out whether a YAML file can still be read.
+  // finds out whether a YAML file can still be read: the strip is said once, politely, when the
+  // file turns unreadable, not again while it stays so, and not for a file that opens that way.
   useEffect(() => {
     let stopped = false;
+    // Whether the last check could read the file; unset before the first check.
+    let readable: boolean | undefined;
+    const sayIfTurnedUnreadable = (line: number | null) => {
+      if (line !== null && readable === true) {
+        announcer.current.announce(filesWords.cantBeRead(fileName(path), line));
+      }
+      readable = line === null;
+    };
     let timer: ReturnType<typeof setTimeout> | undefined;
     let before: ReadonlyMap<string, number> | undefined;
     let last: ReadonlyMap<string, number> = new Map();
@@ -202,6 +211,7 @@ export function FileView({ item, context }: ItemViewProps) {
         ([all, line]) => {
           if (stopped || turn !== newest) return;
           setSyntaxLine(line);
+          sayIfTurnedUnreadable(line);
           const now = problemsElsewhere(path, all);
           if (before === undefined) before = now;
           else if (editsAtStart === editsAtLast) before = withNewSince(before, last, now);

@@ -77,6 +77,7 @@ verifies("kit.status-chip", () => {
     expect(dot.getAttribute("aria-hidden")).toBe("true");
     expect(dot.className).toContain("size-1.5 shrink-0 rounded-full bg-current");
     expect(dot.className).toContain("forced-color-adjust-none");
+    expect(dot.className).toContain("forced-colors:bg-[CanvasText]");
     expect(dot.className).not.toContain("animate");
     expect(chip.textContent).toBe("Needs you");
   });

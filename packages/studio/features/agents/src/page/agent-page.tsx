@@ -39,7 +39,7 @@ import { forgetFreshAgent, isFreshAgent } from "./fresh-agents.ts";
 import { NotLiveLine } from "./not-live-line.tsx";
 import { PageCard } from "./page-card.tsx";
 import { pageWords } from "./page-words.ts";
-import { RenameField } from "./rename-field.tsx";
+import { RenameField, titleClasses } from "./rename-field.tsx";
 import { RunsView } from "./runs-view.tsx";
 import { useAgentCards } from "./use-agent-cards.ts";
 import { type Load, useLoad } from "./use-load.ts";
@@ -239,20 +239,22 @@ export function AgentScreen({
         }
       >
         <div className="flex min-w-0 items-center gap-3">
-          <LetterTile name={name} />
-          <div className="flex flex-col">
-            <p className="text-caption text-fg-muted">{pageWords.kind}</p>
-            {/* On a phone the top bar already names the agent, so the page keeps only its type. */}
-            <h1 ref={titleRef} tabIndex={-1} className="sr-only">
-              {name}
-            </h1>
-            {!phone && load.kind === "ready" && (
-              <RenameField
-                name={name}
-                takenNames={takenNames}
-                onRename={(next) => void save({ name: next })}
-              />
-            )}
+          <div className="relative flex min-w-0 items-center gap-3">
+            <LetterTile name={name} />
+            <div className="flex flex-col">
+              <p className="text-caption text-fg-muted">{pageWords.kind}</p>
+              {/* On a phone the top bar already names the agent, so the page keeps only its type. */}
+              <h1 ref={titleRef} tabIndex={-1} className={titleClasses(phone)}>
+                <span className="sr-only">{name}</span>
+              </h1>
+              {!phone && load.kind === "ready" && (
+                <RenameField
+                  name={name}
+                  takenNames={takenNames}
+                  onRename={(next) => void save({ name: next })}
+                />
+              )}
+            </div>
           </div>
           {load.kind === "ready" && trash.menu}
         </div>

@@ -347,12 +347,13 @@ export class WorkspaceAgents implements AgentsHost {
     }
     // Each model setting is its own field, so typing in one doesn't merge with another.
     const fields = edits.map((edit) => edit.path.join(".")).join(",");
+    // Named before the change, which tells listeners, so a tab named again reads the new name.
+    if (change.name !== undefined) this.#names.set(`${ref.hubId}/${ref.id}`, change.name);
     this.#parts.files.change(
       `Changed agent ${change.name ?? ref.id}`,
       { [path]: edited.value.text },
       { coalesceKey: `agent:${path}:${fields}` },
     );
-    if (change.name !== undefined) this.#names.set(`${ref.hubId}/${ref.id}`, change.name);
   }
 
   /** Throws `conflict` when one of the subagents `next` adds would hand work back to the agent. */

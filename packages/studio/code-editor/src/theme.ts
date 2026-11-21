@@ -18,7 +18,17 @@ const frame = EditorView.theme({
   ".cm-scroller": { fontFamily: "inherit", lineHeight: "var(--text-code--line-height)" },
   ".cm-content": { caretColor: "var(--color-fg)" },
   ".cm-cursor": { borderLeftColor: "var(--color-fg)" },
-  "&.cm-focused": { outline: "none", boxShadow: "var(--focus-ring-inset)" },
+  // As the kit's focus-ring-inset: high contrast drops the shadow, so the outline shows there.
+  "&.cm-focused": {
+    outline: "2px solid transparent",
+    outlineOffset: "-2px",
+    boxShadow: "var(--focus-ring-inset)",
+  },
+  // A theme can't put "&" inside an @media block, so in high contrast the scroller, which fills
+  // the editor and holds the focused content, draws the Highlight ring over that outline.
+  "@media (forced-colors: active)": {
+    ".cm-scroller:focus-within": { outline: "2px solid Highlight", outlineOffset: "-2px" },
+  },
   ".cm-gutters": {
     color: "var(--color-fg-subtle)",
     backgroundColor: "var(--color-surface-subtle)",

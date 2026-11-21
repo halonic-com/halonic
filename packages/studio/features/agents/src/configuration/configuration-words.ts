@@ -120,8 +120,8 @@ export const configurationWords = {
     knowledge: "No more knowledge to add.",
     connectors: "No more connectors to add.",
   },
-  /** After either line; it opens Library on that list's tab. */
-  openLibrary: "Open Library ›",
+  /** After either line; it opens Library on that list's tab. It shows a "›" after it that isn't read. */
+  openLibrary: "Open Library",
   /** Under a list, for each item its file names that the hub can't use (microcopy 8.5, MA16, HAL-12870). */
   missingTool: {
     skills: (name: string) => `This hub can't use a skill called ${name}.`,

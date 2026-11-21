@@ -9,7 +9,12 @@ import { memoryAgentsHost } from "./memory-host.ts";
 function registered() {
   const providers: SearchProviderContribution[] = [];
   const commands: { id: string; title: string; run: (context: never) => void }[] = [];
-  const kinds: { tab?: { describe: (item: never, context: never) => { label: string } } }[] = [];
+  const kinds: {
+    tab?: {
+      describe: (item: never, context: never) => { label: string };
+      subscribe?: (listener: () => void, context: never) => () => void;
+    };
+  }[] = [];
   const studio = {
     places: { add: () => undefined },
     itemKinds: { add: (kind: (typeof kinds)[number]) => kinds.push(kind) },
@@ -74,5 +79,26 @@ verifies("agents.list.find", () => {
     expect(tab?.describe({ kind: "agent", hub: "acme", id: "ghost" } as never, context)).toEqual({
       label: "ghost",
     });
+  });
+});
+
+verifies("agents.page.rename", () => {
+  it("names the tab again after a rename (AG2, HAL-14377)", async () => {
+    const tab = registered().kinds[0]?.tab;
+    const renamed = memoryAgentsHost({
+      hubs: [{ id: "acme", name: "Acme" }],
+      agents: [{ hubId: "acme", id: "writer", name: "Writer" }],
+    });
+    const own = {
+      services: { get: (key: unknown) => (key === AgentsHostService ? renamed : undefined) },
+    } as never;
+    const item = { kind: "agent", hub: "acme", id: "writer" } as never;
+    const labels: string[] = [];
+
+    const stop = tab?.subscribe?.(() => labels.push(tab.describe(item, own).label), own);
+    await renamed.update({ hubId: "acme", id: "writer" }, { name: "Reply writer" });
+    stop?.();
+
+    expect(labels.at(-1)).toBe("Reply writer");
   });
 });
