@@ -122,6 +122,43 @@ verifies("check.affected-tests", () => {
       });
     });
 
+    test("selects the publish tests for the published code, not for a test file there", () => {
+      const withPublish = [
+        ...packages,
+        workspacePackage("tooling/publish", "@halonicjs/tooling-publish"),
+        workspacePackage("apps/studio", "@halonicjs/studio"),
+      ];
+      expect(testSelection(["packages/core/format/src/a.ts"], withPublish)).toEqual({
+        kind: "some",
+        packages: ["@halonicjs/format", "@halonicjs/tooling-publish"],
+      });
+      expect(testSelection(["packages/core/format/src/a.test.ts"], withPublish)).toEqual({
+        kind: "some",
+        packages: ["@halonicjs/format"],
+      });
+      expect(testSelection(["apps/cli/src/main.ts"], withPublish)).toEqual({
+        kind: "some",
+        packages: ["@halonicjs/tooling-publish", "halonic"],
+      });
+      expect(testSelection(["apps/cli/src/main.test.ts"], withPublish)).toEqual({
+        kind: "some",
+        packages: ["halonic"],
+      });
+      expect(testSelection(["examples/acme/workspace.yaml"], withPublish)).toEqual({
+        kind: "some",
+        packages: [
+          "@halonicjs/test-runner",
+          "@halonicjs/tooling-publish",
+          "@halonicjs/workspace",
+          "halonic",
+        ],
+      });
+      expect(testSelection(["apps/studio/src/main.ts"], withPublish)).toEqual({
+        kind: "some",
+        packages: ["@halonicjs/studio"],
+      });
+    });
+
     test("selects a package whose tests verify a changed package's requirements", () => {
       const verifiers = new Map([["@halonicjs/format", ["@halonicjs/workspace"]]]);
       expect(testSelection(["packages/core/format/src/a.ts"], packages, verifiers)).toEqual({
