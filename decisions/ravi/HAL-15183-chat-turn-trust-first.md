@@ -4,6 +4,7 @@
   Liam signs this note as reviewer. A team decision with no board card (HAL-2282 rule): it changes
   which existing refusal a caller gets, not a flow or a screen.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xwB3un+IxyjfaOlQJg1fRDFCUUyY66kfmEQc4LRLWwQorN5voU7zd+LH07lUNAzz6xj+1y/aoFkej9Vxs6Z4DA==
 - Task: HAL-15183
 
 ## What changes
