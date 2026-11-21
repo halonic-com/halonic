@@ -174,13 +174,15 @@ export const runsListMessages = defineMessages("runsList", {
   /**
    * The last line of a list that shows runs: what this calendar month (UTC)
    * has spent, by the rule of the Studio's Spend tile and the monthly budget
-   * stop, then the monthly budget, or how to set one (HAL-14778). `spent` is
-   * written by {@link estimatedSpend}.
+   * stop, then the monthly budget, or where to set one: the workspace file
+   * or Studio's Budget block (HAL-14778, HAL-15121). "Estimated spend" is
+   * Studio's word for the same amount. `spent` is written by
+   * {@link estimatedSpend}.
    */
   thisMonth: (spent: string, budget?: string) =>
     budget === undefined
-      ? phrase`This month: ${spent}. Set budget.monthly to cap it.`
-      : phrase`This month: ${spent} of your ${budget} budget.`,
+      ? phrase`Estimated spend this month: ${spent}. To cap it, set budget.monthly in workspace.yaml or in Studio's Settings ${markPart("studioPath")} Models.`
+      : phrase`Estimated spend this month: ${spent} of your ${budget} budget.`,
 
   /** No real runs at all, whatever the filters. */
   noRunsYet: (workspace: string, dir?: string) =>

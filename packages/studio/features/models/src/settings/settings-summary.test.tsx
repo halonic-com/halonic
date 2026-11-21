@@ -107,7 +107,7 @@ verifies("models.settings.settings-summary", () => {
         workspace: "version: 1\nid: acme\nname: Acme\nbudget: { currency: EUR, monthly: 50 }\n",
       }),
     );
-    expect(line).toBe("3 aliases · 2 providers · budget €50.00 a month");
+    expect(line).toBe("3 aliases · 2 providers · budget €50.00 per month");
   });
 
   it("uses the singular and leaves out a budget that isn't set", async () => {
