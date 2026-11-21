@@ -116,7 +116,7 @@ export async function loadWorkspace(source: DefinitionSource): Promise<LoadedWor
     }
     issues.push(...outcome.issues);
   }
-  issues.push(...checkWorkspace(files, read));
+  issues.push(...checkWorkspace(files, read, paths));
   return { location: source.location, version, files, issues: byFile(issues), ignored };
 }
 

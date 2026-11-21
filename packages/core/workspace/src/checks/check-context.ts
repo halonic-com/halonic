@@ -53,11 +53,18 @@ function failedFileId(file: ReadFile): string | undefined {
 export class CheckContext {
   readonly files: readonly LoadedFile[];
   private readonly read: ReadonlyMap<string, ReadFile>;
+  private readonly listed: ReadonlySet<string>;
   private readonly positions = new Map<string, (path: Path) => SourcePosition>();
 
-  constructor(files: readonly LoadedFile[], read: readonly ReadFile[]) {
+  constructor(files: readonly LoadedFile[], read: readonly ReadFile[], listed: readonly string[]) {
     this.files = files;
     this.read = new Map(read.map((file) => [file.path, file]));
+    this.listed = new Set(listed);
+  }
+
+  /** Whether the workspace has a file at this path, of any kind or of none, such as a README. */
+  hasFile(path: string): boolean {
+    return this.listed.has(path);
   }
 
   /** The parsed files of one kind, sorted by path; with `hub`, only those in that hub (`null`: the root). */
