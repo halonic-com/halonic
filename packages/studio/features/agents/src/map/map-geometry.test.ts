@@ -11,6 +11,24 @@ import {
 const centre = { x: 400, y: 100, width: 200, height: 120 };
 const card = (x: number, y: number) => ({ x, y, width: 160, height: 40 });
 
+/** Whether a line's path (`M x y` then `H`/`V` parts) runs inside a box; touching its edge doesn't count. */
+const crosses = (
+  path: string,
+  box: { x: number; y: number; width: number; height: number },
+): boolean => {
+  const [, ...steps] = path.match(/[MHV] [\d. ]+/g) ?? [];
+  let [x, y] = (path.match(/^M ([\d.]+) ([\d.]+)/) ?? []).slice(1).map(Number) as [number, number];
+  return steps.some((step) => {
+    const to = Number(step.slice(2));
+    const [x1, x2, y1, y2] = step.startsWith("H")
+      ? [Math.min(x, to), Math.max(x, to), y, y]
+      : [x, x, Math.min(y, to), Math.max(y, to)];
+    if (step.startsWith("H")) x = to;
+    else y = to;
+    return x2 > box.x && x1 < box.x + box.width && y2 > box.y && y1 < box.y + box.height;
+  });
+};
+
 verifies("agents.map.lines-and-fit", () => {
   it("never scales a map that fits above its natural size", () => {
     expect(fitScale({ width: 900, height: 400 }, { width: 1400, height: 900 })).toBe(1);
@@ -101,6 +119,25 @@ verifies("agents.map.lines-and-fit", () => {
     expect(mapLines(centre, { in: [], use: [card(24, 336)], out: [] })[0]?.path).toBe(
       "M 500 220 V 278 H 104 V 336",
     );
+  });
+
+  it("turns the lines below under + Add subagent when the right side is the taller one", () => {
+    // Three workflows and agents on the left above + Add trigger (224–256), three subagents on the
+    // right above + Add subagent (300–336), three tools below their heading at 360 (HAL-15063).
+    const addTrigger = { x: 0, y: 224, width: 160, height: 32 };
+    const addSubagent = { x: 800, y: 300, width: 160, height: 36 };
+    const sides = {
+      in: [card(0, 40), card(0, 104), card(0, 168)],
+      use: [card(24, 384), card(446, 384), card(840, 384)],
+      out: [card(800, 116), card(800, 184), card(800, 252)],
+    };
+    const lines = mapLines(centre, sides, { top: 336, bottom: 360 });
+    // Halfway between the ports would be (220 + 384) / 2 = 302, through + Add subagent.
+    expect(lines[5]?.path).toBe("M 550 220 V 348 H 920 V 384");
+    const boxes = [centre, addTrigger, addSubagent, ...sides.in, ...sides.use, ...sides.out];
+    for (const line of lines) {
+      for (const box of boxes) expect(crosses(line.path, box), line.path).toBe(false);
+    }
   });
 
   it("draws one straight line when two ports are less than 8 px out of line", () => {

@@ -14,6 +14,7 @@ The agents feature shall join each card on a side of the agent map to the centre
 - Given the same map and panel on a phone, then it shows at its natural size and the panel scrolls.
 - Given a card on the left whose middle is higher than its port on the centre card, then its line goes right, turns down halfway, and goes right again into the port.
 - Given the left side ends in "+ Add trigger" lower than the centre card, then the lines to the cards below turn halfway between "+ Add trigger" and the heading of what it can use, not along the button.
+- Given three subagents on the right, so "+ Add subagent" ends lower than "+ Add trigger", then the lines to the cards below turn between "+ Add subagent" and the heading of what it can use, and no line runs through a card or an add button.
 - Given "Writer"'s middle is 4 pixels off its port on the centre card, then its line is one straight line at the centre port's height; 8 pixels or more off, it turns.
 - Given the centre card's middle port at 526.5 pixels across and "Refund policy"'s middle at 526, then both ports are at 527 and the line down is straight.
 - Given the map is fitted, then there is no Zoom in, Zoom out or Fit button.
