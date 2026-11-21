@@ -201,6 +201,22 @@ the desktop app. Halonic builds the sandbox's rules; a plugin can't ask for
 more. See [the plugins page of the
 security docs](../security/plugins.md).
 
+When a part of a plugin can't start in a run, the run goes on without that
+part's tools. `halonic run` warns once for each part and reason, with the
+reason and its fix under it:
+
+```text
+! The program lister of the plugin files didn't start, so its tools are off in this run.
+  Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. …
+  More: https://docs.halonic.dev/security/sandbox/#container (container)
+```
+
+The run's log records the same as a `connector.part-off` event: the agent,
+the connector, the part (`backend`, or `local:` and the program's id) and a
+reason code, such as `sandbox-unavailable`, never an error's text. The
+plugin's other parts keep working. `halonic run --json` lists the event with
+the run's others.
+
 ### `ui`
 
 `ui` describes what Studio draws. It carries no code.
