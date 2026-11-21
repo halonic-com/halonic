@@ -20,6 +20,7 @@ import {
   type RenamedFile,
   type RenameImpact,
 } from "@halonicjs/studio-feature-files/api";
+import type { KeyboardPlatform } from "@halonicjs/studio-shell";
 import { loadWorkspace, placeOf } from "@halonicjs/workspace";
 import { defaultYamlLimits, editYaml, readYaml } from "@halonicjs/yaml";
 import { checkedSource, unsavedSource } from "../library/workspace-library-items.ts";
@@ -60,6 +61,26 @@ export interface FilesHostParts {
   };
   /** Calls `listener` after every change of the workspace's files and every save; returns the way to stop. */
   readonly onChange: (listener: () => void) => () => void;
+  /** The computer's operating system, which names the file manager a refusal sends a person to. */
+  readonly platform: KeyboardPlatform;
+}
+
+/**
+ * A workspace folder as a person finds it on their computer: the path the way the file manager
+ * writes it, and that file manager's name (HAL-14552).
+ *
+ * @example
+ * folderInFileManager("skills/refunds", "windows"); // "skills\\refunds in File Explorer"
+ */
+function folderInFileManager(folder: string, platform: KeyboardPlatform): string {
+  switch (platform) {
+    case "windows":
+      return `${folder.replaceAll("/", "\\")} in File Explorer`;
+    case "macos":
+      return `${folder} in Finder`;
+    case "linux":
+      return `${folder} in your file manager`;
+  }
 }
 
 const libraryKinds: ReadonlySet<string> = new Set([
@@ -337,7 +358,9 @@ export class WorkspaceFilesHost implements FilesHost {
       throw new KindedError(
         "unavailable",
         "Studio can't delete a skill that has other files in its folder yet.",
-        { fix: `To delete ${skill}, delete the folder ${folder} in File Explorer.` },
+        {
+          fix: `To delete ${skill}, delete the folder ${folderInFileManager(folder, this.#parts.platform)}.`,
+        },
       );
     }
     throw new KindedError(

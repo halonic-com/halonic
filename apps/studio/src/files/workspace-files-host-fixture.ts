@@ -1,3 +1,4 @@
+import type { KeyboardPlatform } from "@halonicjs/studio-shell";
 import { WorkspaceFilesHost } from "./workspace-files-host.ts";
 
 export function setup(
@@ -5,6 +6,7 @@ export function setup(
   pending: Record<string, string | null> = {},
   more: Record<string, string> = {},
   outside: { held?: string[]; reloaded?: { path: string }[]; theirs?: string | null } = {},
+  platform: KeyboardPlatform = "linux",
 ) {
   const watching: {
     changed?: (changes: { path: string; kind: "changed" | "removed" }[]) => void;
@@ -78,6 +80,7 @@ export function setup(
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
+    platform,
   });
   const save = () => {
     current = { ...current };
