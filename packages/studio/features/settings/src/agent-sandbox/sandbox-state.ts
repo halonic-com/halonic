@@ -38,16 +38,33 @@ export type SandboxCheckFacts =
   | { readonly state: "restart-needed" }
   /** The first check hasn't answered yet: no result to show, and no failure either. */
   | { readonly state: "checking" }
-  /** The check itself didn't happen or couldn't be read. */
-  | { readonly state: "unknown"; readonly reason: string };
+  /**
+   * The check itself didn't happen or couldn't be read. `details`, for an internal error only, is
+   * what **Copy details** puts on the clipboard (microcopy 22 F13).
+   */
+  | { readonly state: "unknown"; readonly reason: string; readonly details?: string };
 
-/** How the last setup, repair or removal ended, when it failed. */
+/**
+ * How the last setup, repair or removal ended, when it failed. A `failed` command's `details`, for
+ * an internal error only, is what **Copy details** puts on the clipboard (microcopy 22 F13).
+ */
 export type SandboxOutcome =
   | { readonly kind: "setup"; readonly how: "cancelled" }
   | { readonly kind: "setup"; readonly how: "timed-out"; readonly repairing: boolean }
-  | { readonly kind: "setup"; readonly how: "failed" | "check_failed"; readonly reason: string }
+  | {
+      readonly kind: "setup";
+      readonly how: "failed";
+      readonly reason: string;
+      readonly details?: string;
+    }
+  | { readonly kind: "setup"; readonly how: "check_failed"; readonly reason: string }
   | { readonly kind: "remove"; readonly how: "cancelled" }
-  | { readonly kind: "remove"; readonly how: "failed"; readonly reason: string }
+  | {
+      readonly kind: "remove";
+      readonly how: "failed";
+      readonly reason: string;
+      readonly details?: string;
+    }
   | { readonly kind: "remove"; readonly how: "in-use"; readonly runs: number };
 
 /**
@@ -76,7 +93,7 @@ export interface SandboxFacts {
 }
 
 export type ChipTone = "attention" | "neutral" | "success" | "warning";
-export type SandboxAction = "remove" | "check-again";
+export type SandboxAction = "remove" | "check-again" | "copy-details";
 
 export interface SandboxStep {
   readonly mark: "done" | "doing" | "waiting";
@@ -87,8 +104,14 @@ export interface SandboxStep {
 export interface SandboxView {
   readonly chip: { readonly label: string; readonly tone: ChipTone } | null;
   readonly lead: string;
-  /** The failure Callout, with **Try again** when the same command can run again. */
-  readonly callout: { readonly line: string; readonly action: "try-again" | null } | null;
+  /**
+   * The failure Callout, with **Try again** when the same command can run again, or **Copy details**
+   * for an internal error, which trying again would only hit again (microcopy 22 F13).
+   */
+  readonly callout: {
+    readonly line: string;
+    readonly action: "try-again" | "copy-details" | null;
+  } | null;
   readonly steps: readonly SandboxStep[];
   /** The guide for what the check found, after the buttons. */
   readonly docs: { readonly name: string; readonly href: string } | null;
@@ -103,6 +126,8 @@ export interface SandboxView {
   readonly secondary: readonly SandboxAction[];
   /** **Check again** is busy: a check is out. */
   readonly checkBusy: boolean;
+  /** What **Copy details** puts on the clipboard, when the Callout or the buttons offer it. */
+  readonly details: string | null;
 }
 
 const none = {
@@ -114,6 +139,7 @@ const none = {
   primary: null,
   secondary: [],
   checkBusy: false,
+  details: null,
 } as const;
 
 /**
@@ -136,9 +162,12 @@ export function sandboxView(facts: SandboxFacts, now: Date = new Date()): Sandbo
 
   if (running) return busyView(running, check);
 
+  const view = checkedView(check, facts.place === "served", callout, now);
   return {
-    ...checkedView(check, facts.place === "served", callout, now),
+    ...view,
     checkBusy: facts.rechecking === true,
+    // The Callout's internal error comes first: it is the newer one.
+    details: (outcome && "details" in outcome ? outcome.details : undefined) ?? view.details,
   };
 }
 
@@ -187,7 +216,8 @@ function checkedView(
         chip: null,
         lead: text.cannotCheck(check.reason),
         callout,
-        secondary: ["check-again"],
+        secondary: check.details === undefined ? ["check-again"] : ["check-again", "copy-details"],
+        details: check.details ?? null,
       };
     case "needs-setup":
       return {
@@ -268,7 +298,10 @@ function calloutFor(outcome: SandboxOutcome): SandboxView["callout"] {
       case "cancelled":
         return { line: text.REMOVE_DENIED, action: null };
       case "failed":
-        return { line: text.removeFailed(outcome.reason), action: null };
+        return {
+          line: text.removeFailed(outcome.reason),
+          action: outcome.details === undefined ? null : "copy-details",
+        };
       case "in-use":
         return { line: text.removeInUse(outcome.runs), action: null };
     }
@@ -282,7 +315,10 @@ function calloutFor(outcome: SandboxOutcome): SandboxView["callout"] {
         action: "try-again",
       };
     case "failed":
-      return { line: text.failedSetUp(outcome.reason), action: "try-again" };
+      return {
+        line: text.failedSetUp(outcome.reason),
+        action: outcome.details === undefined ? "try-again" : "copy-details",
+      };
     case "check_failed":
       return { line: text.failedCheck(outcome.reason), action: "try-again" };
   }

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { ClipboardProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -368,6 +369,38 @@ it("shows no path or stack when the check, a setup or a removal throws", async (
     "The sandbox isn't set up: Halonic ran into a problem it can't explain yet.",
   );
   expect(view.textContent).not.toMatch(/srv|ENOENT|host\.ts/);
+});
+
+it("offers Copy details, not Try again, when a check or a setup hits an internal error", async () => {
+  const leak = new Error("spawn halonic-sandbox ENOENT");
+  const writeClipboard = vi.fn(async (_text: string) => true);
+  const { host } = fakeHost(needsSetup);
+  host.check.mockRejectedValueOnce(leak);
+  const view = render(
+    <ClipboardProvider writeClipboard={writeClipboard}>
+      <AgentSandboxHostView host={host} place="app" announce={vi.fn()} />
+    </ClipboardProvider>,
+  );
+  await act(async () => {});
+  await click(button(view, "Copy details"));
+  expect(writeClipboard).toHaveBeenLastCalledWith(
+    expect.stringMatching(
+      /^Couldn't check the sandbox: Halonic ran into .*\nError: spawn halonic-sandbox ENOENT/,
+    ),
+  );
+
+  host.check.mockResolvedValue(needsSetup);
+  await click(button(view, "Check again"));
+  expect(view.textContent).not.toContain("Copy details");
+  host.setUp.mockRejectedValueOnce(leak);
+  await click(button(view, "Set up the sandbox"));
+  expect(view.textContent).not.toContain("Try again");
+  await click(button(view, "Copy details"));
+  expect(writeClipboard).toHaveBeenLastCalledWith(
+    expect.stringMatching(
+      /^The sandbox isn't set up: Halonic ran into .*\nError: spawn halonic-sandbox ENOENT/,
+    ),
+  );
 });
 
 it("shows a checking line, not an error, while the first check is out", async () => {

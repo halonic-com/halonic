@@ -8,7 +8,11 @@ import {
   StatusChip,
   type StatusChipTone,
 } from "@halonicjs/studio-kit";
-import type { SettingsSectionProps } from "@halonicjs/studio-shell";
+import {
+  copyDetailsWords,
+  type SettingsSectionProps,
+  useCopyDetails,
+} from "@halonicjs/studio-shell";
 import { type ReactNode, useState } from "react";
 import { type AgentSandboxHost, AgentSandboxService, HostSettingsService } from "../api.ts";
 import { NewAgentsRunControl } from "./new-agents-run.tsx";
@@ -163,10 +167,17 @@ export function AgentSandboxView({
   onCheckAgain,
   newAgents = null,
 }: AgentSandboxViewProps) {
+  const copyDetails = useCopyDetails();
   const view = sandboxView(facts, new Date());
+  const copy = () => void copyDetails(view.details ?? "");
   const buttons = {
     "check-again": { label: text.CHECK_AGAIN, onClick: onCheckAgain },
     remove: { label: text.REMOVE, onClick: onRemove },
+    "copy-details": { label: copyDetailsWords.label, onClick: copy },
+  } as const;
+  const calloutAction = {
+    "try-again": { label: text.TRY_AGAIN, onClick: onSetUp },
+    "copy-details": { label: copyDetailsWords.label, onClick: copy },
   } as const;
   return (
     <div className="flex max-w-120 flex-col gap-4">
@@ -190,7 +201,7 @@ export function AgentSandboxView({
       {view.callout ? (
         <Callout
           tone="warning"
-          {...(view.callout.action ? { action: { label: text.TRY_AGAIN, onClick: onSetUp } } : {})}
+          {...(view.callout.action ? { action: calloutAction[view.callout.action] } : {})}
         >
           {view.callout.line}
         </Callout>

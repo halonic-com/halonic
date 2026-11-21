@@ -1,13 +1,17 @@
 import { Button, Dialog, EmptyState, SkeletonBar, ViewOnlyLine } from "@halonicjs/studio-kit";
 import {
+  copyDetailsWords,
+  detailsOf,
   type EngineWords,
   engineReasonFor,
   engineWordsOf,
   focusSectionHeading,
+  isUnexplained,
   type SettingsSectionProps,
   type SettingsSurface,
   sectionHeading,
   sectionHeadingLevel,
+  useCopyDetails,
 } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type TrustedSource, type TrustedSourcesHost, TrustedSourcesService } from "../api.ts";
@@ -69,6 +73,9 @@ export function TrustedSourcesView({
   // Try again keeps the error on screen with its button busy, and swaps in the list only once it reads.
   const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState<string | undefined>();
+  // For an internal error only: what **Copy details** puts on the clipboard (microcopy 22 F13).
+  const [details, setDetails] = useState<string | undefined>();
+  const copyDetails = useCopyDetails();
   const root = useRef<HTMLDivElement | null>(null);
   const alive = useRef(true);
   const removeButtons = useRef(new Map<string, HTMLButtonElement>());
@@ -117,12 +124,15 @@ export function TrustedSourcesView({
   const confirmRemove = async (source: TrustedSource) => {
     setBusy(true);
     setError(undefined);
+    setDetails(undefined);
     try {
       await host.remove(source.location);
     } catch (reason) {
       if (!alive.current) return;
+      const line = text.removeFailed(source.name, reasonOf(reason, notAnswering));
       setBusy(false);
-      setError(text.removeFailed(source.name, reasonOf(reason, notAnswering)));
+      setError(line);
+      setDetails(isUnexplained(reason) ? detailsOf(line, reason) : undefined);
       return;
     }
     if (!alive.current) return;
@@ -192,6 +202,7 @@ export function TrustedSourcesView({
                 }}
                 onClick={() => {
                   setError(undefined);
+                  setDetails(undefined);
                   setRemoving(source);
                 }}
               >
@@ -221,6 +232,14 @@ export function TrustedSourcesView({
           confirm={{ label: text.REMOVE_TRUST, variant: "danger", busyLabel: text.REMOVING }}
           busy={busy}
           {...(error === undefined ? {} : { error })}
+          {...(details === undefined
+            ? {}
+            : {
+                errorAction: {
+                  label: copyDetailsWords.label,
+                  onClick: () => void copyDetails(details),
+                },
+              })}
           returnFocus={() => {
             const next = focusAfter.current;
             focusAfter.current = undefined;

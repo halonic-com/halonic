@@ -53,6 +53,14 @@ verifies("settings.agent-sandbox-state", () => {
     expect(v.lead).toBe("Couldn't check the sandbox: the host didn't answer.");
     expect(v.secondary).toEqual(["check-again"]);
     expect(v.primary).toBeNull();
+    expect(v.details).toBeNull();
+  });
+
+  it("offers Copy details when the check hit an internal error", () => {
+    const check = { state: "unknown", reason: "it broke.", details: "Error: boom" } as const;
+    const v = view({ check });
+    expect(v.secondary).toEqual(["check-again", "copy-details"]);
+    expect(v.details).toBe("Error: boom");
   });
 
   it("words when it checked from the clock at drawing, not from when the check ran", () => {
@@ -203,6 +211,20 @@ verifies("settings.agent-sandbox-state", () => {
       expect(callout({ kind: "remove", how: "cancelled" })?.action).toBeNull();
       expect(callout({ kind: "remove", how: "failed", reason: "Windows said no." })?.line).toBe(
         "The sandbox wasn't removed: Windows said no.",
+      );
+    });
+
+    it("offers Copy details instead of Try again for an internal error", () => {
+      const reason = "Halonic ran into a problem it can't explain yet.";
+      const details = "Error: boom";
+      expect(callout({ kind: "setup", how: "failed", reason, details })?.action).toBe(
+        "copy-details",
+      );
+      expect(callout({ kind: "remove", how: "failed", reason, details })?.action).toBe(
+        "copy-details",
+      );
+      expect(view({ outcome: { kind: "remove", how: "failed", reason, details } }).details).toBe(
+        details,
       );
     });
   });

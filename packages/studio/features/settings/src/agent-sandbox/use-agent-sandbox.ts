@@ -1,5 +1,5 @@
 import { sandboxStartWords } from "@halonicjs/app";
-import { engineReasonFor, engineWordsOf } from "@halonicjs/studio-shell";
+import { detailsOf, engineReasonFor, engineWordsOf, isUnexplained } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentSandboxHost } from "../api.ts";
 import {
@@ -59,7 +59,8 @@ export function useAgentSandbox(
     try {
       return await host.check();
     } catch (error) {
-      return { state: "unknown", reason: `${reasonOf(error)}.` };
+      const reason = `${reasonOf(error)}.`;
+      return { state: "unknown", reason, ...detailsFor(text.cannotCheck(reason), error) };
     }
   }, [host]);
 
@@ -181,6 +182,11 @@ function reasonOf(error: unknown): string {
   return engineReasonFor(error, engineWordsOf({}).notAnswering).replace(/\.+$/, "");
 }
 
+/** For an internal error only, what **Copy details** puts on the clipboard under `line` (F13). */
+function detailsFor(line: string, error: unknown): { details?: string } {
+  return isUnexplained(error) ? { details: detailsOf(line, error) } : {};
+}
+
 /** What a setup, repair or removal left: the failure if there was one, else the check that followed. */
 type Ended =
   | { readonly outcome: SandboxOutcome; readonly check?: undefined }
@@ -206,13 +212,16 @@ async function runCommand(
   const command = joining
     ? host.follow(removing ? "remove" : "setup", { signal })
     : start.call(host, { signal });
-  const failure = await command.catch(
-    (error: unknown): SandboxOutcome => ({
+  const failure = await command.catch((error: unknown): SandboxOutcome => {
+    const reason = `${reasonOf(error)}.`;
+    const line = removing ? text.removeFailed(reason) : text.failedSetUp(reason);
+    return {
       kind: removing ? "remove" : "setup",
       how: "failed",
-      reason: `${reasonOf(error)}.`,
-    }),
-  );
+      reason,
+      ...detailsFor(line, error),
+    };
+  });
   if (failure === undefined) return undefined;
   if (failure !== null) return { outcome: failure };
   onChecking();
