@@ -2,6 +2,7 @@
 
 - Approval: HAL-14316; split from HAL-14298 (C340 C30 (a), Nina's check on HAL-14271, row 10); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LxIk17tEusciUYf//rC/6e3hZWlf5U4dGjJp2ZW3PMUCbV+5oBHp8Jx2c/+MD59MaIbXOqHc2i1glFkEk84qDQ==
 
 ## What changes
 
