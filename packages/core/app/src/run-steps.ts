@@ -13,7 +13,13 @@ import type { RunEvent, RunSummary } from "@halonicjs/events";
 export type StepEnd =
   | { readonly kind: "done"; readonly tookMs: number }
   | { readonly kind: "failed"; readonly tookMs: number }
-  | { readonly kind: "answered"; readonly event: string; readonly at: string }
+  /** A wait step the user answered, with the label the step gave that answer when it gave one. */
+  | {
+      readonly kind: "answered";
+      readonly event: string;
+      readonly at: string;
+      readonly label?: string;
+    }
   | { readonly kind: "waitingForYou"; readonly since: string }
   | { readonly kind: "waitingUntil"; readonly due: string }
   | { readonly kind: "waitingForChildRun"; readonly childRunId: string }
@@ -62,8 +68,8 @@ interface OpenStep {
   readonly askingApproval: Set<string>;
   /** The wait step's wait that hasn't been answered yet, from its `run.waiting`. */
   waiting: Extract<RunEvent, { type: "run.waiting" }> | undefined;
-  /** The event the user sent to the wait step. */
-  answer: { readonly event: string; readonly at: string } | undefined;
+  /** The event the user sent to the wait step, with the step's label for it. */
+  answer: { readonly event: string; readonly at: string; readonly label?: string } | undefined;
 }
 
 /**
@@ -170,7 +176,11 @@ function readInStep(step: OpenStep, event: RunEvent): void {
       break;
     case "event.received":
       if (step.waiting !== undefined) {
-        step.answer = { event: event.event, at: event.at };
+        const label = answerLabel(step.waiting, event.event);
+        step.answer =
+          label === undefined
+            ? { event: event.event, at: event.at }
+            : { event: event.event, at: event.at, label };
         step.waiting = undefined;
       }
       break;
@@ -180,6 +190,23 @@ function readInStep(step: OpenStep, event: RunEvent): void {
       step.waiting = undefined;
       break;
   }
+}
+
+/**
+ * The label a wait step gave an answer (`events.answer-labels`), the words the Inbox card offered
+ * for it; `undefined` when the step gave that event none. Only the step's own labels count, so an
+ * event named `constructor` or `toString` never finds an `Object.prototype` member.
+ *
+ * @example
+ * answerLabel({ ...waiting, labels: { escalate: "Send to a manager" } }, "escalate"); // "Send to a manager"
+ * answerLabel(waiting, "constructor"); // undefined
+ */
+export function answerLabel(
+  waiting: Extract<RunEvent, { type: "run.waiting" }>,
+  event: string,
+): string | undefined {
+  const labels = waiting.labels;
+  return labels !== undefined && Object.hasOwn(labels, event) ? labels[event] : undefined;
 }
 
 /** A step that ended at `at`: answered, if the user answered it, else done or failed. */

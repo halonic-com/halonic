@@ -343,11 +343,14 @@ export const everyStepWords = {
   /** mc 15.2 revision 70, "Cancelled, the step's timeline line". */
   cancelled: "Cancelled in this step",
   budget: (took: string) => `Budget reached after ${took}`,
-  /** The user's answer at a wait step; "approve" and "reject" read as verbs, any other event as written. */
-  answered: (event: string, time: string) => {
+  /**
+   * The user's answer at a wait step; "approve" and "reject" read as verbs, any other event by
+   * `answer`: the label the step gave it, as the Inbox card shows it, else the event's id.
+   */
+  answered: (event: string, answer: string, time: string) => {
     if (event === "approve") return `You approved at ${time}`;
     if (event === "reject") return `You rejected at ${time}`;
-    return `You answered ${event} at ${time}`;
+    return `You answered ${answer} at ${time}`;
   },
   waitingForYou: "Waiting for you",
   waitingForApproval: "Waiting for your approval",

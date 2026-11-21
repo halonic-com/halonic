@@ -28,4 +28,23 @@ verifies("runs.run-view.receipt-approvals", () => {
       "Review: answered hold by you at 10:44",
     ]);
   });
+
+  it("uses the step's own labels only, so an event named constructor reads as its id (HAL-15090)", () => {
+    const labelled: RunEventBody = {
+      type: "run.waiting",
+      state: "review",
+      events: ["constructor", "toString"],
+      labels: { escalate: "Send to a manager" },
+    };
+    const events = logOf(id, [
+      [1, labelled],
+      [2, received("constructor")],
+      [3, labelled],
+      [4, received("toString")],
+    ]);
+    expect(approvalLines(events).map((entry) => entry.text)).toEqual([
+      "Review: answered constructor by you at 10:42",
+      "Review: answered toString by you at 10:44",
+    ]);
+  });
 });

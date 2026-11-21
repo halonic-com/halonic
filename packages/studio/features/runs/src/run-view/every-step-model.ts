@@ -119,7 +119,7 @@ function howItWent(
       return {
         mark: "done",
         state: words.state.done,
-        line: words.answered(end.event, clockTime(new Date(end.at))),
+        line: words.answered(end.event, end.label ?? end.event, clockTime(new Date(end.at))),
       };
     case "failed":
       if (summary.reason === "cancelled") {
