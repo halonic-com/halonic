@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-14841 (Liam's decisions of 21 Nov), HAL-14812
 
-Where Studio runs on Windows with the agent host beside the shell, the Studio app shall set the sandbox up for Settings › Agent sandbox and the Inbox setup card through the shell's `sandbox_elevate` with `setup`, which asks Windows for administrator rights from Studio's own window, and not through the agent host's hidden PowerShell. It shall send only the helper's exit code to the host's `POST /v1/sandbox/setup/elevated` and take the host's answer, so the setup is done only when the host's unelevated check passes. A turned-down prompt shall end as cancelled; the shell's time limit shall end as a setup that didn't finish, and an earlier helper still running as a setup still running, both without asking the host; Windows' reason a helper didn't start shall end as a failure that says so. Elsewhere, and when the shell doesn't say the host runs beside it, the host shall run the setup as before.
+Where Studio runs on Windows with the agent host beside the shell, the Studio app shall set the sandbox up for Settings › Agent sandbox and the Inbox setup card through the shell's `sandbox_elevate` with `setup`, which asks Windows for administrator rights from Studio's own window, and not through the agent host's hidden PowerShell. It shall send only the helper's exit code to the host's `POST /v1/sandbox/setup/elevated` and take the host's answer, so the setup is done only when the host's unelevated check passes. A turned-down prompt shall end as cancelled; the shell's time limit shall end as a setup that didn't finish, and an earlier helper still running as a setup still running, both without asking the host; a helper the shell couldn't start, or couldn't wait for, shall end as a failure that reads "Windows couldn't start Halonic's sandbox helper.", with Windows' message and code kept only for **Copy details**. Elsewhere, and when the shell doesn't say the host runs beside it, the host shall run the setup as before.
 
 ## Examples
 
@@ -23,3 +23,6 @@ Where Studio runs on Windows with the agent host beside the shell, the Studio ap
 - Given the helper of an earlier press still runs,
   when the section sets the sandbox up again,
   then it ended as a setup still running and Windows wasn't asked again.
+- Given Windows refused to start the helper with "Access is denied. (os error 5)",
+  when the section sets the sandbox up,
+  then it ended as a failure that reads "Windows couldn't start Halonic's sandbox helper." and its details hold Windows' message and code.

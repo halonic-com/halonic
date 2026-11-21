@@ -252,6 +252,20 @@ verifies("settings.agent-sandbox-state", () => {
         details,
       );
     });
+
+    it("keeps Windows' message for Copy details when it couldn't start the helper", () => {
+      const outcome = {
+        kind: "setup",
+        how: "failed",
+        reason: "Windows couldn't start Halonic's sandbox helper.",
+        details: "Access is denied. (os error 5)",
+      } as const;
+      expect(callout(outcome)).toMatchObject({
+        line: "The sandbox isn't set up: Windows couldn't start Halonic's sandbox helper.",
+        action: "copy-details",
+      });
+      expect(view({ outcome }).details).toBe("Access is denied. (os error 5)");
+    });
   });
 
   it("only looks in served Studio", () => {
