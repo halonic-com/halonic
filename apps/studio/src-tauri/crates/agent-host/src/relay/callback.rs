@@ -1,7 +1,9 @@
-//! Whether a first request is the one Google's browser redirect sends: the
-//! only request the relay passes without the host's token (HAL-10028). The
-//! relay judges the whole head before it forwards a byte of it; the host
-//! still checks `Host`, `Origin` and `state` itself.
+//! Whether a first request is one a browser redirect sends back from a
+//! sign-in: the only requests the relay passes without the host's token.
+//! Google's callback (HAL-10028) has one fixed path; an integration's sign-in
+//! (HAL-13427) has a new random one for each start. The relay judges the whole
+//! head before it forwards a byte of it; the host still checks `Host`,
+//! `Origin`, the path and `state` itself.
 
 /// The most of a head the relay keeps while it waits for its end.
 pub(super) const HEAD_LIMIT: usize = 16 * 1024;
@@ -11,8 +13,56 @@ pub(super) const HEAD_LIMIT: usize = 16 * 1024;
 pub(super) const QUERY_LIMIT: usize = 2 * 1024;
 
 const HEAD_END: &[u8] = b"\r\n\r\n";
-const REQUEST_START: &[u8] = b"GET /v1/google/callback";
 const REQUEST_END: &[u8] = b" HTTP/1.1";
+
+/// The method and path of a callback: a fixed start, then a random part of
+/// exactly `random` base64url characters (none for Google's).
+struct CallbackPath {
+    start: &'static [u8],
+    random: usize,
+}
+
+/// The callbacks the relay passes without the token, and only these.
+const CALLBACK_PATHS: [CallbackPath; 2] = [
+    // Google's sign-in (`relayCallbackPath` of the agent host).
+    CallbackPath {
+        start: b"GET /v1/google/callback",
+        random: 0,
+    },
+    // An integration's sign-in: `/sign-in/` and a `createState` value, 32
+    // random bytes in base64url (`signInCallbackPrefix` of the agent host).
+    CallbackPath {
+        start: b"GET /sign-in/",
+        random: 43,
+    },
+];
+
+impl CallbackPath {
+    /// How many bytes the method and path take, random part included.
+    fn length(&self) -> usize {
+        self.start.len() + self.random
+    }
+
+    /// True when `sent`, at most [`Self::length`] bytes, could be the start of
+    /// this method and path.
+    fn could_start(&self, sent: &[u8]) -> bool {
+        sent.len() <= self.length()
+            && sent
+                .iter()
+                .enumerate()
+                .all(|(at, &byte)| match self.start.get(at) {
+                    Some(&expected) => byte == expected,
+                    None => is_base64url(byte),
+                })
+    }
+
+    /// True when `sent` holds this whole method and path, then a space or `?`.
+    fn is_started_by(&self, sent: &[u8]) -> bool {
+        sent.len() > self.length()
+            && self.could_start(&sent[..self.length()])
+            && matches!(sent[self.length()], b' ' | b'?')
+    }
+}
 
 /// Headers that make a request carry a body or leave HTTP/1.1, so a head is
 /// refused whatever their value.
@@ -26,8 +76,8 @@ const REFUSED_HEADERS: [&[u8]; 4] = [
 /// What the bytes a connection sent so far say.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Judgement {
-    /// Too little to tell: what came so far is the start of
-    /// `GET /v1/google/callback`, or all of it.
+    /// Too little to tell: what came so far is the start of a callback's
+    /// method and path, or all of it.
     Undecided,
     /// The head is not complete, and what came so far could still be a callback.
     Waiting,
@@ -42,12 +92,11 @@ pub(super) enum Judgement {
 
 /// Judges the bytes a connection sent so far, all of them from its first.
 pub(super) fn judge(sent: &[u8]) -> Judgement {
-    if !starts_like_callback(sent) {
-        return Judgement::Another;
-    }
-    if sent.len() <= REQUEST_START.len() {
-        return Judgement::Undecided;
-    }
+    let path = match callback_path_of(sent) {
+        PathSoFar::Unfinished => return Judgement::Undecided,
+        PathSoFar::Another => return Judgement::Another,
+        PathSoFar::Callback(path) => path,
+    };
     let Some(at) = sent
         .windows(HEAD_END.len())
         .position(|part| part == HEAD_END)
@@ -59,24 +108,35 @@ pub(super) fn judge(sent: &[u8]) -> Judgement {
         };
     };
     let length = at + HEAD_END.len();
-    if length <= HEAD_LIMIT && is_callback_head(&sent[..at]) {
+    if length <= HEAD_LIMIT && is_callback_head(&sent[..at], path) {
         Judgement::Callback(length)
     } else {
         Judgement::Refused
     }
 }
 
-/// True while `sent` could still become `GET /v1/google/callback` followed by
-/// a space or `?`: any other first bytes are not a callback's.
-fn starts_like_callback(sent: &[u8]) -> bool {
-    if sent.len() <= REQUEST_START.len() {
-        return REQUEST_START.starts_with(sent);
+/// What the first bytes of a request say about its method and path.
+enum PathSoFar {
+    /// They could still become a callback's.
+    Unfinished,
+    /// They are a callback's whole method and path, then a space or `?`.
+    Callback(&'static CallbackPath),
+    /// They are not a callback's, whatever comes after.
+    Another,
+}
+
+fn callback_path_of(sent: &[u8]) -> PathSoFar {
+    if let Some(path) = CALLBACK_PATHS.iter().find(|path| path.is_started_by(sent)) {
+        return PathSoFar::Callback(path);
     }
-    sent.starts_with(REQUEST_START) && matches!(sent[REQUEST_START.len()], b' ' | b'?')
+    if CALLBACK_PATHS.iter().any(|path| path.could_start(sent)) {
+        return PathSoFar::Unfinished;
+    }
+    PathSoFar::Another
 }
 
 /// Checks a head without its closing blank line.
-fn is_callback_head(head: &[u8]) -> bool {
+fn is_callback_head(head: &[u8], path: &CallbackPath) -> bool {
     // A bare CR or LF, or any control byte, could be read as a line end by
     // one parser and not by another.
     let lines_are_crlf = head.iter().enumerate().all(|(at, &byte)| match byte {
@@ -93,13 +153,14 @@ fn is_callback_head(head: &[u8]) -> bool {
     let Some(request_line) = lines.next() else {
         return false;
     };
-    is_request_line(request_line) && lines.all(is_allowed_header)
+    is_request_line(request_line, path) && lines.all(is_allowed_header)
 }
 
-/// `GET /v1/google/callback`, then `?query` of at most [`QUERY_LIMIT`]
-/// plain bytes, then ` HTTP/1.1`, byte for byte.
-fn is_request_line(line: &[u8]) -> bool {
-    let Some(target_and_version) = line.strip_prefix(REQUEST_START) else {
+/// The callback's method and path, which [`judge`] has checked already, then
+/// `?query` of at most [`QUERY_LIMIT`] plain bytes, then ` HTTP/1.1`, byte for
+/// byte.
+fn is_request_line(line: &[u8], path: &CallbackPath) -> bool {
+    let Some(target_and_version) = line.get(path.length()..) else {
         return false;
     };
     let Some(rest) = target_and_version.strip_prefix(b"?") else {
@@ -141,6 +202,11 @@ fn is_allowed_header(line: &[u8]) -> bool {
             .split(|&byte| byte == b',')
             .any(|option| option.trim_ascii().eq_ignore_ascii_case(b"upgrade"));
     !refused && !upgrades
+}
+
+/// A character of base64url without padding: `A-Z`, `a-z`, `0-9`, `-`, `_`.
+fn is_base64url(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_'
 }
 
 /// A non-empty header name of HTTP token characters (RFC 9110, 5.6.2).
@@ -293,5 +359,67 @@ mod tests {
         }
         let spaced = "GET /v1/google/callback HTTP/1.1\r\nHost : x\r\n\r\n";
         assert_eq!(callback(spaced), Judgement::Callback(spaced.len()));
+    }
+
+    /// A sign-in's random part as `createState` makes it: 43 base64url characters.
+    const RANDOM: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJ0123-_Q";
+
+    #[test]
+    fn relay_callback_judges_a_sign_in_path_with_its_random_part() {
+        assert_eq!(RANDOM.len(), 43);
+        let plain = format!("GET /sign-in/{RANDOM} HTTP/1.1\r\nHost: 127.0.0.1:1\r\n\r\n");
+        assert_eq!(callback(&plain), Judgement::Callback(plain.len()));
+        let query = format!("GET /sign-in/{RANDOM}?state=a&code=b HTTP/1.1\r\n\r\n");
+        assert_eq!(callback(&query), Judgement::Callback(query.len()));
+    }
+
+    #[test]
+    fn relay_callback_waits_while_a_sign_in_path_is_still_coming() {
+        assert_eq!(callback("GET /sign-"), Judgement::Undecided);
+        assert_eq!(callback("GET /sign-in/abc"), Judgement::Undecided);
+        let whole = format!("GET /sign-in/{RANDOM}");
+        assert_eq!(callback(&whole), Judgement::Undecided);
+        assert_eq!(callback(&format!("{whole} HTTP")), Judgement::Waiting);
+    }
+
+    #[test]
+    fn relay_callback_leaves_a_sign_in_path_of_another_shape_to_the_token_rules() {
+        let short = &RANDOM[1..];
+        for path in [
+            format!("/sign-in/{short}"),
+            format!("/sign-in/{RANDOM}a"),
+            format!("/sign-in/{RANDOM}/"),
+            format!("/sign-in/{RANDOM}/x"),
+            format!("/sign-in/{short}="),
+            format!("/sign-in/{short}."),
+            format!("/sign-in/{short}%"),
+            format!("/sign-in//{short}"),
+            format!("/Sign-in/{RANDOM}"),
+            "/sign-in/".to_owned(),
+            "/sign-in".to_owned(),
+        ] {
+            let sent = format!("GET {path} HTTP/1.1\r\n\r\n");
+            assert_eq!(callback(&sent), Judgement::Another, "{path:?}");
+        }
+        let post = format!("POST /sign-in/{RANDOM} HTTP/1.1\r\n\r\n");
+        assert_eq!(callback(&post), Judgement::Another);
+    }
+
+    #[test]
+    fn relay_callback_holds_a_sign_in_head_to_the_same_rules() {
+        let line = format!("GET /sign-in/{RANDOM}");
+        for head in [
+            format!("{line} HTTP/1.0\r\n\r\n"),
+            format!("{line}?a=b#frag HTTP/1.1\r\n\r\n"),
+            format!("{line}?{} HTTP/1.1\r\n\r\n", "a".repeat(QUERY_LIMIT + 1)),
+            format!("{line} HTTP/1.1\r\nContent-Length: 0\r\n\r\n"),
+            format!("{line} HTTP/1.1\r\nConnection: Upgrade\r\n\r\n"),
+            format!("{line} HTTP/1.1\r\nA: b\nc\r\n\r\n"),
+            format!("{line} HTTP/1.1\r\nCookie: {}\r\n\r\n", "a".repeat(20_000)),
+        ] {
+            assert_eq!(callback(&head), Judgement::Refused, "{head:.80?}");
+        }
+        let at = format!("{line}?{} HTTP/1.1\r\n\r\n", "a".repeat(QUERY_LIMIT));
+        assert!(matches!(callback(&at), Judgement::Callback(_)));
     }
 }
