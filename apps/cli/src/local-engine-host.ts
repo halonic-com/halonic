@@ -30,7 +30,6 @@ import {
   FileToolApprovalStore,
   FileTrustStore,
   FolderBlobStore,
-  FolderDefinitionStore,
   FolderRunStore,
   type HeldLock,
   holdLock,
@@ -93,6 +92,7 @@ import { plainText } from "./messages/phrase.ts";
 import { workspaceMessages } from "./messages/workspace.ts";
 import { openProgramFolders, type ProgramFolders } from "./program-folders.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
+import { workspaceStore } from "./workspace-store.ts";
 import type { WorkspaceVersions } from "./workspace-versions.ts";
 
 export { engineLockFile, routineStateCollection, runTimerCollection };
@@ -306,7 +306,7 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
       environment,
       workspace: () => input.versions?.latest() ?? input.workspace,
       ...(input.versions === undefined ? {} : { versions: input.versions }),
-      store: new FolderDefinitionStore(location),
+      store: workspaceStore(location, location, profile),
       digest: webCryptoDigest,
       clock: input.clock ?? systemClock,
       openRuns: () => openRunsOf(new FolderRunStore(folders.runsFolder())),

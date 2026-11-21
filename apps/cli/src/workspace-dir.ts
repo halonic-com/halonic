@@ -1,6 +1,5 @@
 import { access, constants } from "node:fs/promises";
 import { basename, resolve } from "node:path";
-import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import type { DefinitionStore } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { isUnreadable, settingsPath } from "@halonicjs/workspace";
@@ -8,6 +7,7 @@ import type { CliOption, CommandContext, CommandInput } from "./command.ts";
 import { plainText } from "./messages/phrase.ts";
 import { workspaceMessages } from "./messages/workspace.ts";
 import { shownPath } from "./shown-path.ts";
+import { workspaceStore } from "./workspace-store.ts";
 
 /**
  * `--dir <folder>`, the one option for the workspace folder (cli-output
@@ -54,7 +54,7 @@ export function workspaceDir(input: CommandInput, cwd: string): WorkspaceDir {
 
 /**
  * Finds the workspace the command was pointed at (see {@link workspaceDir})
- * and opens its files.
+ * and opens its files, with the profile fenced off (HAL-15201).
  *
  * @throws NoWorkspaceError when the folder has no `workspace.yaml`, or doesn't exist.
  * @throws KindedError `invalid_input` when the folder, or its `workspace.yaml`, can't be read.
@@ -64,7 +64,7 @@ export async function openWorkspaceDir(
   context: Pick<CommandContext, "cwd">,
 ): Promise<OpenWorkspaceDir> {
   const dir = workspaceDir(input, context.cwd);
-  const store = new FolderDefinitionStore(dir.root, dir.shown);
+  const store = workspaceStore(dir.root, dir.shown);
   if ((await readSettings(store, dir.root)) === null) {
     throw new NoWorkspaceError();
   }
