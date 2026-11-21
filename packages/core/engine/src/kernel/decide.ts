@@ -349,7 +349,11 @@ function follow(draft: Draft, from: string, event: string): void {
   if (transition === null) {
     // The workflow file's own mistake, so a host can say so, with the events
     // the step does take, comma-separated, as `validate` names them (HAL-14301).
-    const takes = acceptedEvents(draft.workflow, from).join(",");
+    // When it does take this event but no `when` of those transitions passed,
+    // it says `guarded` instead, and leaves the event out of `takes`.
+    const accepted = acceptedEvents(draft.workflow, from);
+    const guarded = accepted.includes(event);
+    const takes = accepted.filter((accepts) => accepts !== event).join(",");
     fail(
       draft,
       from,
@@ -360,7 +364,12 @@ function follow(draft: Draft, from: string, event: string): void {
       {
         kind: "invalid_input",
         code: "workflow.no-transition",
-        detail: { state: from, event, ...(takes === "" ? {} : { takes }) },
+        detail: {
+          state: from,
+          event,
+          ...(guarded ? { guarded: "true" } : {}),
+          ...(takes === "" ? {} : { takes }),
+        },
       },
     );
     return;

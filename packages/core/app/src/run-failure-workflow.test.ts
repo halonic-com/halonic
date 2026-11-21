@@ -70,10 +70,15 @@ verifies("app.run-failure", () => {
         reason: "no-transition",
         event: "done",
         takes: [],
+        guarded: false,
       });
       const named = { ...transition, detail: { ...transition.detail, takes: "approve,reject" } };
       expect(runFailureOf(failedWith("error", { cause: named }), undefined)).toMatchObject({
         takes: ["approve", "reject"],
+      });
+      const guarded = { ...transition, detail: { ...transition.detail, guarded: "true" } };
+      expect(runFailureOf(failedWith("error", { cause: guarded }), undefined)).toMatchObject({
+        guarded: true,
       });
       const noAgent = { kind, code: "workflow.task-without-agent", detail: { state: "draft" } };
       expect(runFailureOf(failedWith("error", { cause: noAgent }), undefined)).toEqual({

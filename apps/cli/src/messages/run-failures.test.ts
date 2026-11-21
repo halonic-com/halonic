@@ -290,23 +290,35 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
   });
 
   it("names a step's event without a transition, and a task step without an agent (HAL-14301)", () => {
-    expect(lines({ reason: "no-transition", event: "done", takes: ["finished"] })).toEqual([
+    expect(
+      lines({ reason: "no-transition", event: "done", takes: ["finished"], guarded: false }),
+    ).toEqual([
       "Support reply failed in the step Draft a reply: it ended with the event done, but its transitions only take finished.",
       "Remove event: finished, or add a transition without event.",
     ]);
-    expect(lines({ reason: "no-transition", event: "done", takes: ["approve", "reject"] })).toEqual(
-      [
-        "Support reply failed in the step Draft a reply: it ended with the event done, but its transitions only take approve or reject.",
-        "Remove their event, or add a transition without event.",
-      ],
-    );
-    expect(lines({ reason: "no-transition", event: "done", takes: [] })).toEqual([
+    expect(
+      lines({
+        reason: "no-transition",
+        event: "done",
+        takes: ["approve", "reject"],
+        guarded: false,
+      }),
+    ).toEqual([
+      "Support reply failed in the step Draft a reply: it ended with the event done, but its transitions only take approve or reject.",
+      "Remove their event, or add a transition without event.",
+    ]);
+    expect(lines({ reason: "no-transition", event: "done", takes: [], guarded: false })).toEqual([
       "Support reply failed in the step Draft a reply: it ended with the event done, and it has no transition.",
       "Add a transition without event.",
     ]);
-    expect(lines({ reason: "no-transition", event: "approve", takes: ["reject"] })[1]).toBe(
-      "Add a transition with event: approve.",
-    );
+    expect(
+      lines({ reason: "no-transition", event: "approve", takes: ["reject"], guarded: false })[1],
+    ).toBe("Add a transition with event: approve.");
+    // Liam's review: every done transition has a when, and none passed (HAL-14301).
+    expect(lines({ reason: "no-transition", event: "done", takes: [], guarded: true })).toEqual([
+      "Support reply failed in the step Draft a reply: its transitions for done all have a when that didn't pass.",
+      "Add a transition for done without when, as the last one, so the run always has somewhere to go.",
+    ]);
     expect(lines({ reason: "task-without-agent" })).toEqual([
       "Support reply failed in the step Draft a reply: the step names no agent.",
       "Give it an agent (agent: <id>), or make it a wait step.",

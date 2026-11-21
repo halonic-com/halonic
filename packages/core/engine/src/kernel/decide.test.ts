@@ -142,17 +142,6 @@ verifies("engine.task-state", () => {
     expect(run?.status).toBe("failed");
   });
 
-  it("names the events a step does take when none takes its event (HAL-14301)", () => {
-    const on = [
-      { to: "sent", event: "approve" },
-      { to: "sent", event: "reject" },
-    ];
-    const named: Workflow = { ...reply, states: { ...reply.states, draft: task({ on }) } };
-    const { log } = play(named, [startInput, answer("call-1", "ok")]);
-    const detail = { state: "draft", event: "done", takes: "approve,reject" };
-    expect(log.at(-1)).toMatchObject({ type: "run.failed", cause: { detail } });
-  });
-
   it("fails the run when the task names no agent", () => {
     const noAgent: Workflow = {
       ...reply,

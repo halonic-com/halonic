@@ -25,8 +25,10 @@ export type ConfigFailure =
       readonly reason: "no-transition";
       /** The event the step ended with, such as "done". */
       readonly event: string;
-      /** The events the step's transitions do take, in file order; empty when it has none. */
+      /** The other events the step's transitions take, in file order; empty when it has none. */
       readonly takes: readonly string[];
+      /** Whether the step has transitions for the event, but the `when` of each didn't pass. */
+      readonly guarded: boolean;
     }
   | { readonly reason: "task-without-agent" };
 
@@ -64,10 +66,14 @@ function workflowFailureOf(
         : { reason: "items-not-a-list", items, gives };
     }
     case "workflow.no-transition": {
-      const { event, takes } = detail;
-      return event === undefined
-        ? undefined
-        : { reason: "no-transition", event, takes: takes === undefined ? [] : takes.split(",") };
+      const { event, takes, guarded } = detail;
+      if (event === undefined) return undefined;
+      return {
+        reason: "no-transition",
+        event,
+        takes: takes === undefined ? [] : takes.split(","),
+        guarded: guarded === "true",
+      };
     }
     case "workflow.task-without-agent":
       return { reason: "task-without-agent" };
