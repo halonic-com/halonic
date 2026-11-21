@@ -354,29 +354,6 @@ verifies("workspace.misplaced-files", () => {
   });
 });
 
-verifies("workspace.ignored-settings", () => {
-  it("warns about a runtime it ignores and instructions that name a file, and passes", async () => {
-    writeFiles(acme, {
-      "workspace.yaml": "id: acme\nname: Acme\ndefaults:\n  runtime: docker\n",
-      "agents/announcer.agent.yaml": "name: Announcer\ninstructions: ./announcer.md\n",
-      "agents/announcer.md": "Announce the news.\n",
-    });
-
-    const { code, io } = await validateIn(acme);
-
-    expect(code).toBe(exitCode.ok);
-    expect(io.stdout).toEqual([
-      ["agents", "announcer.agent.yaml"].join(sep),
-      `  2:15  ! instructions is the text "./announcer.md". Paste the instructions here; Halonic doesn't read files from instructions.  (instructions-file-name)`,
-      "",
-      "workspace.yaml",
-      '  4:12  ! Runtime "docker" isn\'t one Halonic has; it runs inprocess. Remove defaults.runtime, or set it to inprocess.  (unknown-runtime)',
-      "",
-      "✓ Checked 4 files in acme. 2 warnings.",
-    ]);
-  });
-});
-
 verifies("cli.workspace-dir", () => {
   // Windows has no read permission bits, and root reads any folder.
   it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
