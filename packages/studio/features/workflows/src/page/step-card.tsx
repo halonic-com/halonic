@@ -83,7 +83,8 @@ export function StepCard({
         // Dragging the background pans; a press on a card must not start that.
         onPointerDown={(event) => event.stopPropagation()}
         style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
-        className={`absolute flex flex-col items-start justify-center gap-0.5 rounded-lg border bg-surface px-3 text-left ${ring}`}
+        // Keyboard focus wears Studio's ring with its gap, outside the selection's border (C332 SC1).
+        className={`focus-ring absolute flex flex-col items-start justify-center gap-0.5 rounded-lg border bg-surface px-3 text-left ${ring}`}
       >
         <span id={part.kind} className="text-caption text-fg-muted">
           {pageWords.stepKind[step.type]}

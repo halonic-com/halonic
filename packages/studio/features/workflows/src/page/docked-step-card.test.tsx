@@ -44,6 +44,10 @@ const reply: WorkflowView = {
     { from: "write", to: "done" },
   ],
   layout: {},
+  agents: [
+    { id: "writer", name: "Reply writer" },
+    { id: "sorter", name: "Sorter" },
+  ],
 };
 
 type ChangeStep = NonNullable<WorkflowsHost["changeStep"]>;
@@ -107,7 +111,15 @@ function field(page: HTMLElement, label: string) {
   return (id === null || id === undefined ? undefined : document.getElementById(id)) as
     | HTMLInputElement
     | HTMLTextAreaElement
+    | HTMLSelectElement
     | undefined;
+}
+
+async function choose(select: HTMLSelectElement, value: string) {
+  await act(async () => {
+    select.value = value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
 }
 
 async function pick(page: HTMLElement, stepId: string) {
@@ -148,7 +160,60 @@ verifies("workflows.page.step-card", () => {
 
     await pick(page, "start");
     expect(docked(page)?.querySelector("h2")?.textContent).toBe("Step start");
+    await choose(field(page, "Agent") as HTMLSelectElement, "sorter");
     expect(docked(page)?.textContent).toContain("The agent gets the run input.");
+  });
+
+  it("shows Prompt only once an agent is picked, and keeps its text for when one is", async () => {
+    const changeStep = vi.fn<ChangeStep>(async () => {});
+    const { page } = await showPage(changeStep);
+    await pick(page, "write");
+
+    await choose(field(page, "Agent") as HTMLSelectElement, "");
+    expect(field(page, "Prompt")).toBeUndefined();
+    expect(docked(page)?.textContent).not.toContain("The agent gets the run input.");
+    expect(changeStep).toHaveBeenLastCalledWith(expect.anything(), "write", { agent: "" });
+
+    await choose(field(page, "Agent") as HTMLSelectElement, "writer");
+    expect(field(page, "Prompt")?.value).toBe("Answer {{input.message}}");
+    expect(changeStep).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows the step's Type and Agent, with the hub's agents and the no-agent line", async () => {
+    const { page } = await showPage();
+    await pick(page, "write");
+    const agent = field(page, "Agent") as HTMLSelectElement;
+    expect(field(page, "Type")?.value).toBe("task");
+    expect(agent.value).toBe("writer");
+    expect([...agent.options].map((option) => option.text)).toEqual([
+      "No agent",
+      "Reply writer",
+      "Sorter",
+    ]);
+
+    await pick(page, "start");
+    expect(field(page, "Agent")?.value).toBe("");
+    expect(docked(page)?.textContent).toContain("No agent: this step passes the data straight on.");
+
+    await pick(page, "done");
+    expect(field(page, "Type")?.value).toBe("final");
+    expect(field(page, "Agent")).toBeUndefined();
+  });
+
+  it("saves a pick at once, and shows the fields of the kind picked", async () => {
+    const changeStep = vi.fn<ChangeStep>(async () => {});
+    const { page } = await showPage(changeStep);
+    await pick(page, "write");
+
+    await choose(field(page, "Agent") as HTMLSelectElement, "sorter");
+    expect(changeStep).toHaveBeenLastCalledWith(expect.anything(), "write", { agent: "sorter" });
+
+    await choose(field(page, "Type") as HTMLSelectElement, "wait");
+    expect(changeStep).toHaveBeenLastCalledWith(expect.anything(), "write", { type: "wait" });
+    expect(changeStep).toHaveBeenCalledTimes(2);
+    expect(field(page, "Agent")).toBeUndefined();
+    expect(field(page, "Prompt")).toBeUndefined();
+    expect(field(page, "Description")).toBeDefined();
   });
 
   it("saves a field when it is left, as one change of the step", async () => {
