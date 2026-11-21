@@ -93,11 +93,16 @@ verifies("studio.workspace-workflow-trash", () => {
       "    items: input.mails",
       "    on:",
       "      - to: done",
+      "  ask:",
+      "    workflow: reply",
+      "    on:",
+      "      - to: done",
       "  done:",
       "    type: final",
       "",
     ].join("\n");
 
+    // `ask` is an agent step: the engine ignores its `workflow`, so it shows no error and doesn't count.
     expect(await host.referencesTo(reply)).toEqual({ routines: 2, steps: 2 });
   });
 });

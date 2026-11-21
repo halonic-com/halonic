@@ -302,4 +302,20 @@ verifies("workflows.page.menu", () => {
 
     expect(toasts.list()).toEqual([]);
   });
+
+  it("closes the failure's toast when Delete is picked from ⋮ again, so none is left behind", async () => {
+    const trash = vi
+      .fn<() => Promise<TrashedWorkflow>>()
+      .mockRejectedValueOnce(new KindedError("unavailable", "The file is read-only."))
+      .mockResolvedValue({ undo: async () => {} });
+    const { page, toasts } = await showPage({ trash });
+    await pickDelete(page);
+    expect(toasts.list()).toHaveLength(1);
+
+    await pickDelete(page);
+
+    expect(trash).toHaveBeenCalledTimes(2);
+    expect(page.textContent).toContain("This workflow was deleted");
+    expect(toasts.list()).toEqual([]);
+  });
 });

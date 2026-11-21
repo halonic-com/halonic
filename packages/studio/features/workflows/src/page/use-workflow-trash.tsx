@@ -90,6 +90,9 @@ export function useWorkflowTrash(
   const onDelete = async () => {
     if (deleting.current) return;
     deleting.current = true;
+    // A Delete picked from ⋮ while the last failure's toast is up replaces that toast: left open,
+    // the page would lose track of it and couldn't close it when the person leaves.
+    if (failedToast.current !== undefined) toasts?.close(failedToast.current);
     failedToast.current = undefined;
     try {
       // Who runs it is read while the files go: other workflows and routines don't change with the

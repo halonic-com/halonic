@@ -35,8 +35,8 @@ export function workflowFilesOf(
 
 /**
  * What runs the workflow `ref`: the routines that start it (a routine that names no hub starts its
- * own hub's), and the steps of its hub's other workflows that name it, as a `workflow` or a
- * `foreach` step does. Its own steps go with it, so they don't count.
+ * own hub's), and the `workflow` and `foreach` steps of its hub's other workflows that name it: the
+ * engine ignores `workflow` on any other step. Its own steps go with it, so they don't count.
  */
 export function workflowUsersOf(
   workspace: LoadedWorkspace,
@@ -48,8 +48,13 @@ export function workflowUsersOf(
   const steps = filesOf(workspace, "workflow")
     .filter((one) => one.hub === hubId && one.value.id !== id)
     .flatMap((one) => Object.values(one.value.states))
-    .filter((state) => state.workflow === id).length;
+    .filter((state) => runsAWorkflow(state.type) && state.workflow === id).length;
   return { routines, steps };
+}
+
+/** Whether a step of this kind runs the workflow it names: other kinds ignore `workflow`. */
+function runsAWorkflow(type: string | undefined): boolean {
+  return type === "workflow" || type === "foreach";
 }
 
 /**
