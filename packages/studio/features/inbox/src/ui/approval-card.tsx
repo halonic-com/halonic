@@ -334,7 +334,8 @@ interface DecisionBarProps {
 /**
  * The bar under the card, outside its scroll area (INBOX-CARD-18): Reject, Ask for changes and
  * Approve, right-aligned. While one is sent it is busy and the others ignore presses but keep
- * focus. A failed decision says so in the always-mounted alert slot above the buttons.
+ * focus. A failed decision says so in the always-mounted alert slot above the buttons; its
+ * **Try again** moves focus to the decision it sends again.
  */
 function DecisionBar({
   state,
@@ -350,6 +351,13 @@ function DecisionBar({
   const unavailable = unavailableWhile(engine.answering ?? true, reasonId);
   const busy = (decision: Decision) => state.kind === "deciding" && state.decision === decision;
   const failed = state.kind === "open" ? state.failed : null;
+  const reject = useRef<HTMLButtonElement>(null);
+  // **Try again** leaves the alert slot while the decision is sent, so it hands focus to the
+  // decision's own button, busy until the answer comes back, rather than to the page (C560).
+  const retry = (decision: Decision) => {
+    (decision === "approve" ? approve : reject).current?.focus();
+    onDecide(decision);
+  };
   return (
     <div
       className="flex flex-col gap-2 border-t border-border p-4"
@@ -358,7 +366,7 @@ function DecisionBar({
     >
       <NotAnsweringLine id={reasonId} {...engine} />
       <FailedLine
-        onRetry={failed === null ? null : () => onDecide(failed)}
+        onRetry={failed === null ? null : () => retry(failed)}
         detail={state.kind === "open" ? state.detail : null}
         manual={state.kind === "open" ? state.manual : null}
         elsewhere={state.kind === "open" && state.elsewhere ? { openRun: onOpenRun } : null}
@@ -366,6 +374,7 @@ function DecisionBar({
       />
       <div className="flex flex-wrap justify-end gap-2">
         <Button
+          ref={reject}
           unavailable={unavailable}
           busy={busy("reject")}
           busyLabel={busyLabels.reject}
