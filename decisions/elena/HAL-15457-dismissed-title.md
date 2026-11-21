@@ -2,6 +2,7 @@
 
 - Approval: HAL-15457 (row 20 of words check C580 on HAL-15449; a wording fix on an approved screen, decided by the team under HAL-2282); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:x8SlralglCjzROLxA3gWnN7DLAIMo0cFBnb//6HccYR5DIckw1xD1KRtCiq+1Iluv3mNyWulOYMNiZea01GdDg==
 
 ## What changes
 
