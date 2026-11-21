@@ -1,6 +1,7 @@
 import {
   Button,
   Menu,
+  type MenuItem,
   MoreIcon,
   TrashStrip,
   usePresentation,
@@ -34,6 +35,8 @@ export interface AgentTrash {
    * the agent's name (UX 9.13), wherever the page puts it.
    */
   readonly menu: ReactNode;
+  /** The same menu's entries, for a page whose header draws the ⋮ itself (the shell's `ItemPage`). */
+  readonly actions: readonly MenuItem[];
   /** The strip with Undo that replaces the page after Delete, or `null` while the agent is there. */
   readonly strip: ReactNode;
 }
@@ -108,6 +111,12 @@ export function useAgentTrash({
         }),
     );
 
+  const actions: readonly MenuItem[] = [
+    ...(openFile === undefined || phone
+      ? []
+      : [{ id: "open-as-file", label: deleteWords.openAsFile, onSelect: onOpenAsFile }]),
+    { id: "delete", label: deleteWords.delete, danger: true, onSelect: onDelete },
+  ];
   const moreMenu = (
     <Menu
       align="end"
@@ -120,12 +129,7 @@ export function useAgentTrash({
           label={deleteWords.pageMenuLabel(name)}
         />
       )}
-      entries={[
-        ...(openFile === undefined || phone
-          ? []
-          : [{ id: "open-as-file", label: deleteWords.openAsFile, onSelect: onOpenAsFile }]),
-        { id: "delete", label: deleteWords.delete, danger: true, onSelect: onDelete },
-      ]}
+      entries={actions}
     />
   );
   const menu = inTopBar ? <PhoneTopBarActions>{moreMenu}</PhoneTopBarActions> : moreMenu;
@@ -143,5 +147,5 @@ export function useAgentTrash({
         />
       </div>
     );
-  return { menu, strip };
+  return { menu, actions, strip };
 }

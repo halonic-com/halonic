@@ -7,7 +7,7 @@ import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { AgentScreen } from "../page/agent-page.tsx";
-import { buttonNamed, show, typeInto, typeIntoArea, unmount } from "../test-support.tsx";
+import { buttonNamed, show, typeInto, typeIntoArea, unmount, viewPanel } from "../test-support.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
 afterEach(() => {
@@ -31,7 +31,8 @@ async function openConfiguration(agents = host(), presentation: "desktop" | "pho
   return { page, agents };
 }
 
-const textarea = (page: HTMLElement) => page.querySelector("textarea") as HTMLTextAreaElement;
+const textarea = (page: HTMLElement) =>
+  viewPanel(page).querySelector("textarea") as HTMLTextAreaElement;
 
 verifies("agents.configuration.behaviour", () => {
   it("lists Behaviour only, with no Save button, and hints while Instructions is empty", async () => {
