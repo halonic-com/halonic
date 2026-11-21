@@ -30,6 +30,7 @@ import { ApprovalCard } from "./approval-card.tsx";
 import type { NextItem } from "./card-parts.tsx";
 import { countDetail, inboxRow, itemTitle, lateCount } from "./inbox-row.tsx";
 import { failureReason, isSignedOut, loadFailed, StaleLine } from "./load-lines.tsx";
+import { NothingOpen, nothingWaiting } from "./nothing-open.tsx";
 import { NoticesSection } from "./notices-section.tsx";
 import { ProposalCard } from "./proposal-card.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
@@ -45,16 +46,6 @@ import { type TrustReview, useTrustReview } from "./workspace-trust.ts";
 /** The Library's command that opens New connector; the Inbox can't import the Library, so it runs it by id. */
 const newConnectorCommand = "library.new-connector";
 const openBudgetCommand = "workspace.open-budget";
-
-/**
- * The Inbox's empty state (microcopy 10.1). The desktop list says the short line and the right pane
- * only the description, so the title shows once; a phone has no pane beside the list, so the list
- * shows both in full.
- */
-const nothingWaiting = {
-  title: "Nothing is waiting for you",
-  description: "Approvals and questions from your runs show up here.",
-};
 
 /** The Inbox place's page: the open workspace's Inbox, from `InboxService`. */
 export function InboxPage({ context }: PlaceViewProps) {
@@ -472,32 +463,5 @@ function OpenCard({
       waiting={items.some((waiting) => waiting.key === item.key)}
       trust={trust}
     />
-  );
-}
-
-/**
- * The right pane with nothing open (UX checklist 2.3): the request form when the workspace offers
- * one (`form`), else a line.
- */
-function NothingOpen({
-  loaded,
-  waiting,
-  children: form,
-}: {
-  readonly loaded: boolean;
-  readonly waiting: number;
-  readonly children: ReactNode;
-}) {
-  if (!loaded) return null;
-  if (form !== null) return form;
-  if (waiting > 0) {
-    return (
-      <p className="m-auto p-6 text-center text-body text-fg-muted">
-        Pick something on the left to see it here.
-      </p>
-    );
-  }
-  return (
-    <p className="m-auto p-6 text-center text-body text-fg-muted">{nothingWaiting.description}</p>
   );
 }
