@@ -14,6 +14,16 @@ export {
   triesLeftText,
 } from "./phone-forms.ts";
 export {
+  type FoundComputer,
+  type PairingCheck,
+  type PairingProblem,
+  type PairingProblemScreen,
+  type PairingStart,
+  type PhonePairing,
+  type PhoneRoute,
+  problemScreen,
+} from "./phone-pairing.ts";
+export {
   type PhoneState,
   type PhoneStatusChange,
   type PhoneStatusLabel,
