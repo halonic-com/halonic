@@ -87,6 +87,17 @@ verifies("agents.chat.try-it", () => {
     expect(buttonNamed(page, "Try again")).toBeUndefined();
     expect(announce).toHaveBeenCalledExactlyOnceWith("Stopped by you.");
   });
+
+  it("stops the reply when the page closes, and announces nothing", async () => {
+    const { host, requests, finish } = scriptedHost();
+    const announce = vi.fn();
+    const page = await show(<Chat host={host} announce={announce} />);
+    await sendMessage(page, "Sort this mail");
+    unmount();
+    expect(requests[0]?.signal?.aborted).toBe(true);
+    await finish({ messages: [], end: { reason: "stopped", toolsRan: false } });
+    expect(announce).not.toHaveBeenCalled();
+  });
 });
 
 verifies("agents.chat.reply-ends", () => {

@@ -80,8 +80,11 @@ export function TryItChatView(props: TryItChatViewProps) {
       setDraft((current) => (current === message ? "" : current));
     });
   };
-  const send = async () => {
-    if (findSecretShape(draft) !== undefined) {
+  // Send anyway skips only the key check: a quiet engine or a workspace that isn't trusted holds
+  // it as it holds Send.
+  const send = async ({ keyChecked = false } = {}) => {
+    if (chat.engineQuiet) return;
+    if (!keyChecked && findSecretShape(draft) !== undefined) {
       setHeldForKey(true);
       return;
     }
@@ -117,7 +120,7 @@ export function TryItChatView(props: TryItChatViewProps) {
         <TryItBoxLine
           problem={problem}
           name={name}
-          actions={{ ...props.ways, sendAnyway: () => sendNow() }}
+          actions={{ ...props.ways, sendAnyway: () => void send({ keyChecked: true }) }}
         />
       </div>
     );
