@@ -5,6 +5,7 @@ import { codexHarness } from "@halonicjs/adapter-harness-codex";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import {
+  forgetPendingFile,
   keptGrantsRecordFolder,
   SrtSandbox,
   setupAfterHelper,
@@ -45,6 +46,12 @@ import { randomLaunchToken } from "./server/launch-token.ts";
 import { hostIntegrationSignIns } from "./sign-in/host-sign-ins.ts";
 import { takeStandardOutput } from "./stdio/standard-output.ts";
 import { openTerminal } from "./terminal/open-terminal.ts";
+
+/** The files in the profile a sandbox keeps: the kept-grant record, and the mark a removal with administrator rights leaves (HAL-5404 S2). */
+export interface ProfileFiles {
+  recordFolder?: string;
+  forgetPendingFile?: string;
+}
 
 /** Where the host talks to the program that started it. */
 export interface HostIo {
@@ -117,12 +124,12 @@ export async function run(
   makeSandbox: (
     sweepRoots: readonly string[],
     sharedFolders: readonly string[],
-    recordFolder?: string,
-  ) => SrtSandbox = (roots, sharedFolders, recordFolder) =>
+    inProfile?: ProfileFiles,
+  ) => SrtSandbox = (roots, sharedFolders, inProfile = {}) =>
     new SrtSandbox(undefined, undefined, null, {
       sweepRoots: roots,
       sharedFolders,
-      ...(recordFolder === undefined ? {} : { recordFolder }),
+      ...inProfile,
     }),
   gateway: GatewaySettings = gatewayOff,
 ): Promise<number> {
@@ -130,8 +137,9 @@ export async function run(
     io.write(`halonic-agent-host ${version}\n`);
     return 0;
   }
-  const sandboxExit = sandboxCommand(args, argumentAfter(args, "--profile-folder"), io, () =>
-    makeSandbox([], []),
+  const profileFolder = argumentAfter(args, "--profile-folder");
+  const sandboxExit = sandboxCommand(args, profileFolder, io, () =>
+    makeSandbox([], [], profileFilesOf(profileFolder, { record: false, mark: true })),
   );
   if (sandboxExit !== undefined) return await sandboxExit;
   const given = sweepRoots(args);
@@ -139,7 +147,6 @@ export async function run(
     io.writeError(given.error);
     return 2;
   }
-  const profileFolder = argumentAfter(args, "--profile-folder");
   // Says why it doesn't sweep only when it was asked to.
   const warn = (text: string) => {
     if (given.roots.length > 0) io.writeError(text);
@@ -149,7 +156,7 @@ export async function run(
   const sandbox = makeSandbox(
     lock === null ? [] : given.roots,
     sharedFolders,
-    profileFolder === undefined ? undefined : keptGrantsRecordFolder(profileFolder),
+    profileFilesOf(profileFolder, { record: true, mark: lock !== null }),
   );
   // Right after the lock is taken, so a host starting next skips its sweep
   // before any session of ours could lose a grant to it.
@@ -186,6 +193,23 @@ export async function run(
       io.writeError(`The host lock couldn't be released: ${String(error)}\n`);
     });
   }
+}
+
+/**
+ * The files in the profile the sandbox keeps: the kept-grant record when it
+ * serves, and the mark a removal with administrator rights leaves. Only the
+ * lock's holder gets the mark, as it takes back what the removal left
+ * (HAL-5404 S2); a sandbox command gets it to leave it.
+ */
+function profileFilesOf(
+  profileFolder: string | undefined,
+  { record, mark }: { record: boolean; mark: boolean },
+): ProfileFiles {
+  if (profileFolder === undefined) return {};
+  return {
+    ...(record ? { recordFolder: keptGrantsRecordFolder(profileFolder) } : {}),
+    ...(mark ? { forgetPendingFile: forgetPendingFile(profileFolder) } : {}),
+  };
 }
 
 /** Removes the WSL setup; not served without a profile, nor inside the distro, which has no `wsl.exe`. */

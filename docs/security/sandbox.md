@@ -112,6 +112,14 @@ use Halonic inside WSL 2 on this computer. On `main`, `halonic sandbox setup`
 runs that install with one administrator prompt (its requirement is still a
 draft).
 
+Removing the sandbox (Settings › Agent sandbox, or the uninstaller) also takes
+back the write access srt kept on your folders between sessions. A removal that
+runs with administrator rights, such as a silent uninstall from an elevated
+prompt, can't do that part safely, so it leaves it for later: Halonic takes the
+access back the next time it starts as you, without administrator rights. If
+you never start Halonic again after such an uninstall, the access stays on your
+folders until you run `srt-win acl forget --all` yourself.
+
 ## "This computer" has none of it
 
 Nothing makes this choice yet. Studio's Settings › Agent sandbox saves a
