@@ -49,14 +49,16 @@ try {
 
   # The script itself, as the installer runs it, on this computer's real key:
   # whatever is set up here is at most setup version 99, and a bad number
-  # can't be checked.
+  # can't be checked. (No -SetupVersion at all: Windows PowerShell drops an
+  # empty argument to a program, so -SetupVersion '' would leave it without a
+  # value.)
   $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $guard -SetupVersion 99 | Out-String).Trim()
   Write-Output "script, 99: exit $LASTEXITCODE, '$out'"
   if ($LASTEXITCODE -ne 0) { throw 'script, 99: expected exit 0' }
   $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $guard -RecordFile $record | Out-String).Trim()
   Write-Output "script, record of 4: exit $LASTEXITCODE, '$out'"
   if ($LASTEXITCODE -ne 0) { throw 'script, record of 4: expected exit 0' }
-  $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $guard -SetupVersion '' | Out-String).Trim()
+  $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $guard | Out-String).Trim()
   Write-Output "script, no setup version: exit $LASTEXITCODE, '$out'"
   if ($LASTEXITCODE -ne 2) { throw 'script, no setup version: expected exit 2' }
   $global:LASTEXITCODE = 0
