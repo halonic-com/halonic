@@ -3,6 +3,7 @@
 - Task: HAL-12216
 - Approval: C285 TB1, decided by the team on HAL-14002 and checked by Sofia in C296 (HAL-14032); C361 WF1 and WF2, decided by the team on HAL-14396; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:w0essx14Yi4LrHsrrz+Z6Qvzk1is645zUCQaoTqZpmVw6ITV+1ZoNi8pxUgJwRAV5BvQfAQ5cAjr4mNYKec/DA==
 
 ## What changes
 
