@@ -102,6 +102,15 @@ verifies("source-control.changes-phone", () => {
       expect(root.textContent).toContain("Halonic on your computer isn't answering.");
       expect(root.textContent).toContain("Try again");
     });
+    it("says the folder is part of a larger repository without See them with git", async () => {
+      const root = await openPhonePage(fakeSource({ kind: "nested-repository" }));
+      expect(root.textContent).toContain(
+        "Your folder is part of a larger git repository, so Halonic can't show its changes here.",
+      );
+      expect(root.textContent).not.toContain("See them with git");
+      expect(root.textContent).not.toContain("Couldn't load changes");
+      expect(root.querySelector("button")).toBeNull();
+    });
     it("says the share address is on the computer, with no way to add one", async () => {
       const root = await openPhonePage(changedModels());
       expect(root.textContent).toContain("Only on your computer.");

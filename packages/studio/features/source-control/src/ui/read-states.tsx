@@ -1,4 +1,4 @@
-import { EmptyState, ExternalLink, List } from "@halonicjs/studio-kit";
+import { Callout, EmptyState, ExternalLink, List } from "@halonicjs/studio-kit";
 import { useRef, useState } from "react";
 import type { ChangesList, ChangesListState } from "../changes-list.ts";
 import { pageWords, phoneWords, stateWords } from "../changes-words.ts";
@@ -6,7 +6,8 @@ import { loadFailureReason } from "../load-failure.ts";
 
 /**
  * What the Changes page shows in place of its list when a read didn't give one (states D1): the
- * first read's skeleton, why a read failed, a folder without history, and a computer without git.
+ * first read's skeleton, why a read failed, a folder without history, a computer without git, and a
+ * folder inside a larger repository.
  */
 
 /** Runs `work`, and says while it runs so a button can show it's busy. */
@@ -133,5 +134,18 @@ export function NoGit({ list, phone }: { readonly list: ChangesList; readonly ph
         {stillMissing ? stateWords.stillNoGit : null}
       </p>
     </>
+  );
+}
+
+/**
+ * A folder inside a larger git repository: the shell won't run git on a repository whose top is
+ * outside the opened folder. Nothing here can change that, so no Try again and no Turn on history,
+ * which would make a second repository.
+ */
+export function NestedRepository({ phone }: { readonly phone: boolean }) {
+  return (
+    <Callout tone="info">
+      {phone ? phoneWords.nestedRepository : stateWords.nestedRepository}
+    </Callout>
   );
 }

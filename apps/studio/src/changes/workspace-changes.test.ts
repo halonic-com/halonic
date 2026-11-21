@@ -135,12 +135,34 @@ verifies("source-control.changes-page", () => {
       });
     });
 
+    it("reads a folder inside a larger repository when the shell refuses rev-parse as not opened", async () => {
+      const { changes } = history(async () => {
+        throw { kind: "folder_not_opened", message: "the folder is not an opened folder" };
+      });
+      await expect(changes.read()).resolves.toEqual({ kind: "nested-repository" });
+    });
+
+    it("makes nothing when the shell refuses git init as not opened, so the read says why", async () => {
+      const calls: string[][] = [];
+      const { changes } = history(async (args) => {
+        calls.push([...args]);
+        throw { kind: "folder_not_opened", message: "the folder is not an opened folder" };
+      });
+      await expect(changes.turnOnHistory()).resolves.toBeUndefined();
+      await expect(changes.read()).resolves.toEqual({ kind: "nested-repository" });
+      expect(calls).toEqual([
+        ["init", "--quiet"],
+        ["rev-parse", "--is-inside-work-tree"],
+      ]);
+    });
+
     it("lets any other refusal from the shell through", async () => {
-      const refusal = { kind: "folder_not_opened", message: "not opened" };
+      const refusal = { kind: "timed_out", message: "git took too long" };
       const { changes } = history(async () => {
         throw refusal;
       });
       await expect(changes.read()).rejects.toBe(refusal);
+      await expect(changes.turnOnHistory()).rejects.toBe(refusal);
     });
 
     it("turns history on: the .studio line in a new .gitignore, then git init", async () => {

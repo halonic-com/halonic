@@ -112,7 +112,13 @@ export class WorkspaceChanges implements ChangesSource {
   }
 
   async read(): Promise<ChangesRead> {
-    const inside = await this.#run(["rev-parse", "--is-inside-work-tree"]);
+    let inside: GitAnswer | "no-git";
+    try {
+      inside = await this.#run(["rev-parse", "--is-inside-work-tree"]);
+    } catch (error) {
+      if (isFolderNotOpened(error)) return { kind: "nested-repository" };
+      throw error;
+    }
     if (inside === "no-git") return { kind: "no-git" };
     // Git refuses a folder owned by someone else with the same exit code as "no repository here";
     // saying "turn on history" for it would be wrong.
@@ -204,7 +210,15 @@ export class WorkspaceChanges implements ChangesSource {
   async turnOnHistory(): Promise<void> {
     // The ignore line first, so a failed init never leaves `.studio/` showing up as changed.
     await ignoreStudioFolder(this.#options.files);
-    const init = await this.#run(["init", "--quiet"]);
+    let init: GitAnswer | "no-git";
+    try {
+      init = await this.#run(["init", "--quiet"]);
+    } catch (error) {
+      // Nothing was made: the list reads again, and the read says the folder is inside a larger
+      // repository, since the shell refuses `rev-parse` there the same way.
+      if (isFolderNotOpened(error)) return;
+      throw error;
+    }
     if (init === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
     if (init.code !== 0) throw new KindedError("unavailable", readableProblem(init));
   }
@@ -465,6 +479,19 @@ function shareReason(answer: GitAnswer): string {
 function isGitNotFound(error: unknown): boolean {
   return (
     typeof error === "object" && error !== null && "kind" in error && error.kind === "git_not_found"
+  );
+}
+
+/**
+ * Whether the shell refused because the repository's top is outside the opened folder: a
+ * workspace folder inside a larger repository (`GitRefusal.kind`).
+ */
+function isFolderNotOpened(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "kind" in error &&
+    error.kind === "folder_not_opened"
   );
 }
 
