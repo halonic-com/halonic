@@ -75,7 +75,7 @@ export function StatusBox({
       setChecking(false);
     };
     return (
-      <div {...focusable} className="outline-none">
+      <div {...focusable} className="focus-ring rounded-sm">
         <Callout tone="danger" title={cantLoadTitle(plugin.name)}>
           <p>{CANT_LOAD_LINE}</p>
           <Problems problems={plugin.problems} />
@@ -102,7 +102,7 @@ export function StatusBox({
   const trusted = trustedDay(plugin.trustedAt, now());
   const box = statusWords(plugin.status, plugin, trusted);
   return (
-    <div {...focusable} className="flex gap-2 rounded-md bg-surface-subtle p-3 outline-none">
+    <div {...focusable} className="flex gap-2 rounded-md bg-surface-subtle p-3 focus-ring">
       <span
         aria-hidden="true"
         className="inline-grid size-icon-sm shrink-0 place-items-center *:size-full"

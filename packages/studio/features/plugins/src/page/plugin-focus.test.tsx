@@ -105,4 +105,16 @@ verifies("plugins.plugin-page", () => {
     expect(document.body.textContent).toContain("Up to date (1.2.0)");
     expect(document.activeElement).toBe(statusBox());
   });
+
+  it("shows the focus ring on the status box when it takes focus", async () => {
+    await show(weather(), () => ({}));
+    expect(statusBox()?.classList).toContain("focus-ring");
+    expect(statusBox()?.classList).not.toContain("outline-none");
+  });
+
+  it("shows the focus ring on the can't-load box when it takes focus", async () => {
+    await show(broken, () => ({}));
+    expect(statusBox()?.classList).toContain("focus-ring");
+    expect(statusBox()?.classList).not.toContain("outline-none");
+  });
 });
