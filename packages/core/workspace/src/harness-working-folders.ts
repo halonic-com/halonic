@@ -6,7 +6,7 @@
 // one of them (`ConnectorFactoryContext.workingFolders`).
 
 import { defaultWorkingFolder } from "@halonicjs/format";
-import { filesOf, type LoadedWorkspace } from "./load-workspace.ts";
+import { filesOf, type LoadedFileOf, type LoadedWorkspace } from "./load-workspace.ts";
 
 /**
  * The working folder of every harness agent in the workspace, in every hub:
@@ -24,8 +24,21 @@ import { filesOf, type LoadedWorkspace } from "./load-workspace.ts";
  * harnessWorkingFolders(workspace); // ["files/agents/coder", "scripts"]
  */
 export function harnessWorkingFolders(workspace: LoadedWorkspace): string[] {
+  return harnessWorkingFoldersOf(filesOf(workspace, "agent"));
+}
+
+/**
+ * The same folders as {@link harnessWorkingFolders}, from agent files the
+ * caller parsed itself: the loader works them out before it loads the rest
+ * of the workspace, so it can leave them out
+ * (`workspace.load-leaves-out-working-folders`).
+ *
+ * @example
+ * harnessWorkingFoldersOf(agentFiles); // ["files/agents/coder", "scripts"]
+ */
+export function harnessWorkingFoldersOf(agents: readonly LoadedFileOf<"agent">[]): string[] {
   const folders = new Set<string>();
-  for (const { value: agent } of filesOf(workspace, "agent")) {
+  for (const { value: agent } of agents) {
     if (agent.harness === undefined || agent.harness === "halonic") continue;
     folders.add(agent.workingFolder ?? defaultWorkingFolder(agent.id));
   }
