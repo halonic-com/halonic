@@ -29,8 +29,8 @@ The build puts the payload's manifest (each file's SHA-256, size and executable 
 
 ```
 halonic-agent-host --profile-folder <folder> [--version | --sandbox-check | --sandbox-setup | --sandbox-remove]
-halonic-agent-host --profile-folder <folder> [--sweep-root <folder> …]
-halonic-agent-host --profile-folder <folder> --stdio --relay-host 127.0.0.1:<port> [--sweep-root <folder> …]
+halonic-agent-host --profile-folder <folder> [--keychain-relay] [--sweep-root <folder> …]
+halonic-agent-host --profile-folder <folder> --stdio --relay-host 127.0.0.1:<port> [--keychain-relay] [--sweep-root <folder> …]
 halonic-agent-host <unpacked program> [arguments]
 ```
 
@@ -134,12 +134,20 @@ The host first prints one line, `{"token":"<43 characters>"}` (no `url`: the rel
 | `end` | 3 | none | the sender sends no more on this connection (half-close) |
 | `reset` | 4 | none | the sender dropped the connection; nothing more goes either way |
 
-- **Ids.** The relay numbers its connections 1, 2, 3, …, and never reuses an id. A frame for an id that has closed (sent before the relay saw the host's `reset`) is dropped. An `open` for an id that isn't new, any other frame for an id never opened, an unknown kind or a length over 64 KiB breaks the stream.
+- **Ids.** Id 0 is the host's own, never a client's (see "The host's own secrets in the keychain" below); without `--keychain-relay`, any frame on it breaks the stream. The relay numbers its connections 1, 2, 3, …, and never reuses an id. A frame for an id that has closed (sent before the relay saw the host's `reset`) is dropped. An `open` for an id that isn't new, any other frame for an id never opened, an unknown kind or a length over 64 KiB breaks the stream.
 - **`Host`.** A request must name the relay, `127.0.0.1:<port>` or `localhost:<port>` with the port of `--relay-host`, so DNS rebinding against the relay's port gets `421`. Without a `--relay-host` on `127.0.0.1` the host exits with 2.
 - **Sign-in callbacks.** The only routes served without the token. An integration's sign-in comes back to `GET /sign-in/<random>` (43 base64url characters) on the relay's port, the one other shape Studio's relay passes on without the token, with the same checks and page headers as Google's. Google's: over frames it is `GET /v1/google/callback` (on the host's own port, `/api/google/callback`), the one request Studio's relay passes on without the token, and the sign-in's redirect names the relay's port and that path. It has the same `Host`, `Origin` and `state` checks, and its page is sent with `Cache-Control: no-store`, `Referrer-Policy: no-referrer` and `Connection: close`, so the connection ends with the answer.
 - **Limits.** The time limits apply as on loopback. The host keeps at most 256 connections open and answers an `open` past that with `reset`. All connections share one input, so the host can't make the relay wait on one: a connection with more than 4 MiB the host hasn't read yet is reset. The relay must read the host's output all the time, and keep a slow reader's backlog per connection.
 - **Standard output is frames only.** Once the host serves, anything else that would print there goes to standard error.
 - **Stop.** The host stops when its standard input ends, as on loopback, with exit code 0. When the stream breaks, it says why on standard error and exits with 1.
+
+## The host's own secrets in the keychain
+
+The host keeps secrets of its own: today `remote-host-key`, the static key paired phones pin. Started by the CLI, it keeps them in the profile's secrets file. Started by Studio with `--keychain-relay`, it keeps them in the OS keychain through Studio's shell, because the host can't reach the keychain itself (on Windows it runs inside Halonic's WSL distro). Requirement `agent-host.keychain-secrets`.
+
+- **The channel.** After the handshake the host sends its requests on connection id 0: over the relay's frame stream with `--stdio`, and otherwise as the same frames on standard input and output, which then carry nothing else (anything else that prints goes to standard error). A request is one `data` frame holding `{"op":"get"|"set"|"delete","name":"remote_host_key"}` (with `"value"` for `set`); the shell answers on id 0 with `{"ok":true,"value":…}` or `{"ok":false,"kind":…,"message":…}`. The host sends one request at a time, never names anything but its own secrets, and stops when the shell sends anything but the answer it waits for. The shell's side is `studio.src-tauri.crates.agent-host.host-secrets-channel`.
+- **No fallback.** When the keychain can't be used, the host fails with the shell's reason; it never writes the secrets file instead.
+- **The move out of the file.** When it starts serving, and before the first use, the host moves each of its secrets out of the secrets file: written to the keychain, read back and compared, and only then removed from the file. When both hold the same value, the file's copy goes. When they differ, neither changes, the host says that the keychain's value wins, and it refuses to use the secret until only one is left. What it says never holds a value or a hash of one.
 
 ## The sandbox over loopback
 

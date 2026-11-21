@@ -24,6 +24,8 @@ export class TestRelay {
   readonly received: Frame[] = [];
   /** The handshake line the host printed before the frames, once it has; see the constructor. */
   handshake: string | undefined;
+  /** Takes the frames the host sends on its own id 0, as the shell's secrets channel does. */
+  onHostFrame: ((frame: Frame) => void) | undefined;
   private readonly connections = new Map<number, FramedConnection>();
   private lastId = 0;
 
@@ -43,6 +45,7 @@ export class TestRelay {
       }
       for (const frame of decoder.push(frames)) {
         this.received.push(frame);
+        if (frame.connection === 0) this.onHostFrame?.(frame);
         this.connections.get(frame.connection)?.receive(frame.kind, frame.bytes);
       }
     });
