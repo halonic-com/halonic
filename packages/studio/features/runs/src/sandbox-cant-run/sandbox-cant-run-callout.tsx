@@ -88,7 +88,7 @@ export function SandboxCantRunCallout({
           {cantRunWords.checkAgain}
         </Button>
         <ExternalLink href={`${cantRunWords.docsBase}/${words.docsKey}`}>
-          {cantRunWords.docs}
+          {words.docsName}
         </ExternalLink>
         {unknown ? (
           <Button

@@ -348,13 +348,15 @@ function modelOutOfMemory(
  * `model-missing`: only a local provider can lack a model it was asked for; a provider that is
  * cloud or no longer in the workspace keeps the general banner. Ollama's line tells
  * how to pull it and offers the command; another local provider says to download it there.
+ * "Pick another model in Models" is done on the alias's tab, so Open Models opens it when the
+ * log names the alias (RQ1).
  */
 function modelMissing(
   facts: FailureFacts,
   context: RunPageContext,
   phone: boolean,
 ): RunBanner | undefined {
-  const { provider, model } = facts;
+  const { provider, model, alias } = facts;
   if (provider === undefined || model === undefined || context.providerKind(provider) !== "local") {
     return undefined;
   }
@@ -370,7 +372,7 @@ function modelMissing(
     ? failureWords.modelMissingOllama(model)
     : failureWords.modelMissingOther(name, model);
   const copy: BannerFix = { kind: "copy-command", command: failureWords.ollamaPullCommand(model) };
-  return danger([line], { ...(ollama ? { fixes: [copy] } : {}), links: [openModels] });
+  return danger([line], { ...(ollama ? { fixes: [copy] } : {}), links: [openModelsAt(alias)] });
 }
 
 /** `model-timeout`: Run again is the button; nothing the person set caused it. */
@@ -406,10 +408,9 @@ function modelNoTools(facts: FailureFacts, step: string, phone: boolean): RunBan
     return undefined;
   }
   const line = failureWords.modelNoTools(model, alias, step);
-  const open: BannerFix = alias === undefined ? openModels : { kind: "open-models", alias };
   return phone
     ? danger([line, failureWords.fixOnComputer(failureWords.modelsPlace)])
-    : danger([line], { fixes: [open] });
+    : danger([line], { fixes: [openModelsAt(alias)] });
 }
 
 /** F21: needs the log, for the program and the limit it was given. */
@@ -431,6 +432,11 @@ function harnessStartFailed(
 }
 
 const openModels: BannerFix = { kind: "open-models" };
+
+/** Open Models at the alias's tab, for a banner whose fix is the alias's model; the page without one. */
+function openModelsAt(alias: string | undefined): BannerFix {
+  return alias === undefined ? openModels : { kind: "open-models", alias };
+}
 
 /** A banner whose fix is in Models: Open Models, or on a phone a line saying to fix it on the computer. */
 function fixInModels(lines: readonly string[], phone: boolean): RunBanner {
