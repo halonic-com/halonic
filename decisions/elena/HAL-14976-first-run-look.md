@@ -20,6 +20,11 @@ team (HAL-2282), so the requirements change to say what the sheet draws:
 - `first-run.guide-card` (C520-7): the email's label reads "The email", without the colon, as it does above the
   quote on the sheet, and **Run again** sets `again`. The test checks both.
 
+Noah checked the PR against sheet 05 (https://paperclip.halonic.com/HAL/issues/HAL-15135): the bar's place, the
+wording and the button marks match. On his word the card is drawn as the kit's `Card` is (`surface`, a
+`text-section` title, 16px on every side), the quote is square on the bar's side, and the button is large. The card
+stays 320px wide, as the docked Run card is, so the canvas keeps its width when the Run form replaces it.
+
 No behaviour changes: the same card shows in the same cases, and its button does the same.
 
 ## Covers

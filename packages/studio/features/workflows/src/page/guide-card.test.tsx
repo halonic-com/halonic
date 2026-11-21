@@ -84,7 +84,12 @@ verifies("workflows.page.guide-card", () => {
     // Sheet 05: its own border and corners, as tall as its content, the title over a divider.
     expect(card?.className).toContain("rounded-md");
     expect(card?.className).toContain("self-start");
+    // A card as the kit's, not a popup: `surface`, and a gap from the canvas on every side.
+    expect(card?.className.split(" ")).toContain("bg-surface");
+    expect(card?.className.split(" ")).toContain("m-4");
+    expect(card?.className).not.toContain("ms-0");
     expect(card?.querySelector("h2")?.className).toContain("border-b");
+    expect(card?.querySelector("h2")?.className).toContain("text-section");
     // At the right: after the canvas's panel, in the same row.
     const panel = page.querySelector("[role=tabpanel]") as HTMLElement;
     expect(panel.parentElement).toBe(card?.parentElement);
@@ -100,6 +105,8 @@ verifies("workflows.page.guide-card", () => {
       "Sam writes that an order arrived damaged.",
     ]);
     expect(quote?.firstElementChild?.className).toContain("text-caption");
+    // Square on the bar's side, so the bar stays straight.
+    expect(quote?.className).toContain("rounded-e-sm");
   });
 
   it("draws the button full width with a ›, or with the refresh mark when it runs again", async () => {
@@ -107,6 +114,7 @@ verifies("workflows.page.guide-card", () => {
     const page = await show(screen(guide));
     const first = buttonNamed(page, "Run your first workflow") as HTMLButtonElement;
     expect(first.className).toContain("w-full");
+    expect(first.className).toContain("min-h-control-lg");
     expect(first.lastElementChild?.getAttribute("aria-hidden")).toBe("true");
     expect(first.querySelectorAll("svg")).toHaveLength(1);
     const chevron = first.querySelector("svg")?.outerHTML;
