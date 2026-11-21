@@ -3,6 +3,7 @@
 - Task: HAL-13770
 - Approval: decided by the team on HAL-13770 (Sofia, a wording detail of the banner approved on HAL-13725, HAL-2282 rule; from her check HAL-13765 of #4020). Liam signs on review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:sZ6s/NOLBJM1BJcQIXSocAqB51wAy0lorCrGBdRXLETO4ur78StkB5D106VbdXbv2RxPAf1oxcmsDblM5pTSDg==
 
 For the shell's `proxy` refusal (`proxy.unreachable`), the run page's `model-unreachable`
 banner said the same fact twice, with two colons: "Halonic couldn't reach *Claude* at
