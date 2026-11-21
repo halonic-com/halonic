@@ -2,7 +2,6 @@
 
 - Approval: HAL-15401, from words check C571 (HAL-15387); team wording on an approved screen (HAL-2282), for Liam's review
 - Kind: user-visible
-- Signature:
 
 The trust check and Studio's trust review say an agent with
 `asks: in-sandbox` will edit and run commands in its working folder, inside
