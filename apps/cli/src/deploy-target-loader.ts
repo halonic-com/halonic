@@ -7,6 +7,7 @@ import {
 import { KindedError } from "@halonicjs/std";
 import { deployMessages } from "./messages/deploy.ts";
 import { plainText } from "./messages/phrase.ts";
+import { halonicVersion } from "./version.ts";
 
 /** Imports a package by name; `import()` itself outside tests. */
 export type ImportPackage = (name: string) => Promise<unknown>;
@@ -87,7 +88,7 @@ export async function loadDeployTarget(
   if (entry.version !== deployTargetVersion) {
     throw unusable(
       pkg,
-      `it was built for deploy targets version ${entry.version}, and this halonic uses version ${deployTargetVersion}`,
+      `it was built for deploy targets version ${entry.version}, not ${deployTargetVersion}`,
     );
   }
   const target: unknown = entry.create(context);
@@ -102,9 +103,11 @@ function hostName(host: string): string {
 }
 
 function unusable(pkg: string, reason: string): KindedError {
-  return new KindedError("internal", plainText(deployMessages.targetUnusable(pkg, reason).phrase), {
-    fix: plainText(deployMessages.targetUnusableFix(pkg).phrase),
-  });
+  return new KindedError(
+    "internal",
+    plainText(deployMessages.targetUnusable(pkg, halonicVersion, reason).phrase),
+    { fix: plainText(deployMessages.targetUnusableFix(pkg, halonicVersion).phrase) },
+  );
 }
 
 /** The module's `deployTarget`, when it has the shape of a {@link DeployTargetEntry}. */

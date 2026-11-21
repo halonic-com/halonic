@@ -4,6 +4,7 @@ import { FakeDeployTarget, fakeDeployTargetEntry } from "@halonicjs/testing-cont
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { deployTargetPackage, loadDeployTarget } from "./deploy-target-loader.ts";
+import { halonicVersion } from "./version.ts";
 
 const context = {
   who: "sam@example.com",
@@ -64,7 +65,7 @@ verifies("cli.deploy-target-loader", () => {
       kind: "not_found",
       message:
         "Deploying to Cloudflare needs the package @halonicjs/target-cloudflare-deploy, and it isn't installed. Nothing changed on Cloudflare.",
-      fix: "Install it next to halonic, then run again: npm install @halonicjs/target-cloudflare-deploy",
+      fix: "Install it next to halonic with npm install -g @halonicjs/target-cloudflare-deploy, then run again.",
     });
   });
 
@@ -89,7 +90,7 @@ verifies("cli.deploy-target-loader", () => {
       [{ deployTarget: { ...entry, host: "other" } }, "its target serves other, not fake"],
       [
         { deployTarget: { ...entry, version: 99 } },
-        "it was built for deploy targets version 99, and this halonic uses version 1",
+        "it was built for deploy targets version 99, not 1",
       ],
       [
         { deployTarget: { ...entry, create: () => ({ plan() {}, deploy() {} }) } },
@@ -100,8 +101,8 @@ verifies("cli.deploy-target-loader", () => {
       const { importPackage } = packages({ "@halonicjs/target-fake-deploy": module });
       expect(await failureOf(loadDeployTarget("fake", context, importPackage))).toEqual({
         kind: "internal",
-        message: `The installed @halonicjs/target-fake-deploy can't be used by this halonic: ${reason}.`,
-        fix: "Install the @halonicjs/target-fake-deploy that matches your halonic version, then run again.",
+        message: `The installed @halonicjs/target-fake-deploy doesn't work with Halonic ${halonicVersion}: ${reason}.`,
+        fix: `Install the @halonicjs/target-fake-deploy that matches Halonic ${halonicVersion}, then run again.`,
       });
     }
   });

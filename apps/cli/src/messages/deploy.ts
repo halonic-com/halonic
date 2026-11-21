@@ -56,16 +56,16 @@ export const deployMessages = defineMessages("deploy", {
   warning: (message: string) => phrase`${markPart("needsYou")} ${message}`,
 
   /** A host that isn't one lowercase word, so no package name is made from it. */
-  notAHost: (host: string) => phrase`"${host}" is not a deploy host.`,
-  notAHostFix: () => phrase`Check host in deployments.yaml.`,
+  notAHost: (host: string) => phrase`"${host}" isn't a deploy host.`,
+  notAHostFix: () => phrase`Set host in deployments.yaml to cloudflare, then run again.`,
   /** The deploy target for a deployment's `host` isn't installed (wording with Sofia, flow section 9). */
   targetMissing: (host: string, pkg: string) =>
     phrase`Deploying to ${host} needs the package ${pkg}, and it isn't installed. Nothing changed on ${host}.`,
   targetMissingFix: (pkg: string) =>
-    phrase`Install it next to halonic, then run again: npm install ${pkg}`,
+    phrase`Install it next to halonic with npm install -g ${pkg}, then run again.`,
   /** The package is there but doesn't give a target this halonic can use. */
-  targetUnusable: (pkg: string, reason: string) =>
-    phrase`The installed ${pkg} can't be used by this halonic: ${reason}.`,
-  targetUnusableFix: (pkg: string) =>
-    phrase`Install the ${pkg} that matches your halonic version, then run again.`,
+  targetUnusable: (pkg: string, halonic: string, reason: string) =>
+    phrase`The installed ${pkg} doesn't work with Halonic ${halonic}: ${reason}.`,
+  targetUnusableFix: (pkg: string, halonic: string) =>
+    phrase`Install the ${pkg} that matches Halonic ${halonic}, then run again.`,
 });

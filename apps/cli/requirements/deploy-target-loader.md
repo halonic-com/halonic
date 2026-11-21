@@ -13,7 +13,7 @@ When `halonic deploy` needs the deploy target for a deployment's `host`, the CLI
   then the CLI gets the target that package's `deployTarget` creates.
 - Given `@halonicjs/target-cloudflare-deploy` not installed,
   when the target is loaded,
-  then it stops with exit 4: "Deploying to Cloudflare needs the package @halonicjs/target-cloudflare-deploy, and it isn't installed. Nothing changed on Cloudflare." and the fix "Install it next to halonic, then run again: npm install @halonicjs/target-cloudflare-deploy".
+  then it stops with exit 4: "Deploying to Cloudflare needs the package @halonicjs/target-cloudflare-deploy, and it isn't installed. Nothing changed on Cloudflare." and the fix "Install it next to halonic with npm install -g @halonicjs/target-cloudflare-deploy, then run again.".
 - Given an installed target package built for another port version,
   when the target is loaded,
-  then it stops with exit 1 and names both versions.
+  then it stops with exit 1, names Halonic's version and both port versions: "The installed @halonicjs/target-cloudflare-deploy doesn't work with Halonic 0.1.0: it was built for deploy targets version 2, not 1."
