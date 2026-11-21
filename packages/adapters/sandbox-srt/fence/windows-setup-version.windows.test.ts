@@ -3,7 +3,6 @@ import {
   resolveSrtWin,
   VENDORED_SRT_WIN_EXE,
 } from "@anthropic-ai/sandbox-runtime";
-import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import record from "../windows-setup-version.json" with { type: "json" };
 
@@ -13,15 +12,17 @@ import record from "../windows-setup-version.json" with { type: "json" };
  * one this srt needs. Run by the `sandbox-windows` CI job after srt's install
  * (`vitest.fence-windows.config.ts`), which runs for every change to the
  * lockfile, so for every bump of sandbox-runtime.
+ *
+ * It checks the Windows example of `sandbox-srt.windows-setup-version` but
+ * isn't wrapped in `verifies`: the trace check reads only the package's
+ * result file from Linux, where this file doesn't run.
  */
-verifies("sandbox-srt.windows-setup-version", () => {
-  describe("srt's Windows setup version", () => {
-    it("is the recorded one, needed and installed", async () => {
-      const user = await getWindowsSandboxUserStatusAsync({
-        srtWin: resolveSrtWin({ path: VENDORED_SRT_WIN_EXE }),
-      });
-      expect(user.setupVersion).toBe(record.setupVersion);
-      expect(user.markerVersion).toBe(record.setupVersion);
+describe("srt's Windows setup version", () => {
+  it("is the recorded one, needed and installed", async () => {
+    const user = await getWindowsSandboxUserStatusAsync({
+      srtWin: resolveSrtWin({ path: VENDORED_SRT_WIN_EXE }),
     });
+    expect(user.setupVersion).toBe(record.setupVersion);
+    expect(user.markerVersion).toBe(record.setupVersion);
   });
 });
