@@ -58,7 +58,7 @@ verifies("studio.workflow-problem-agent", () => {
       return made;
     }
 
-    it("gives each missing alias with the agent that names it, the agent's own and a method's", async () => {
+    it("gives the agent's own missing alias, and a method's problem only the agent", async () => {
       const { host } = withMissingAliases();
 
       const { problems } = await host.configuration({ hubId: "acme", id: "reply" });
@@ -67,9 +67,12 @@ verifies("studio.workflow-problem-agent", () => {
       expect(problems).toContainEqual(
         expect.objectContaining({ code: "unknown-model-alias", agent: writer, modelAlias: "smrt" }),
       );
-      expect(problems).toContainEqual(
-        expect.objectContaining({ code: "unknown-model-alias", agent: writer, modelAlias: "tiny" }),
+      const aliasProblems = problems.filter((one) => one.code === "unknown-model-alias");
+      expect(aliasProblems).toHaveLength(2);
+      expect(aliasProblems.map((one) => one.modelAlias)).toEqual(
+        expect.arrayContaining(["smrt", undefined]),
       );
+      for (const problem of aliasProblems) expect(problem.agent).toEqual(writer);
     });
 
     it("gives no agent for a problem in the workflow's own file", async () => {

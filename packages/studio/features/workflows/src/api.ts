@@ -209,7 +209,7 @@ export interface WorkflowProblem {
   readonly stepId?: string | undefined;
   /** The agent whose file it is in, for an error of an agent a step names; absent for the workflow's own file. */
   readonly agent?: WorkflowAgentChoice | undefined;
-  /** For `unknown-model-alias`: the model alias the agent names, which the workspace doesn't have. */
+  /** For `unknown-model-alias` on the agent's own `model`: that alias, which the workspace doesn't have. */
   readonly modelAlias?: string | undefined;
 }
 
