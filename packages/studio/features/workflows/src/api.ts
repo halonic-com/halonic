@@ -240,6 +240,24 @@ export interface WorkflowTests {
   readonly ranAt?: string | undefined;
 }
 
+/** A workflow that was moved to the trash, and the way to bring it back. */
+export interface TrashedWorkflow {
+  /**
+   * Puts the workflow and its tests back. It is the workspace's undo, so it works only while the
+   * delete is still the newest change; after any other change it rejects with `conflict` and
+   * undoes nothing.
+   */
+  undo(): Promise<void>;
+}
+
+/** What runs a workflow, counted for the warning of its delete. */
+export interface WorkflowUsers {
+  /** The routines that start it. */
+  readonly routines: number;
+  /** The steps of the hub's other workflows that run it. */
+  readonly steps: number;
+}
+
 /** A hub a new workflow can go in. */
 export interface WorkflowHub {
   readonly id: string;
@@ -354,6 +372,18 @@ export interface WorkflowsHost {
    * a step that isn't there, and a prompt the file gives as data.
    */
   changeStep?(ref: WorkflowRef, stepId: string, change: WorkflowStepChange): Promise<void>;
+  /**
+   * Moves the workflow's file and its test files to the trash as one change, with no dialog.
+   * Routines and steps that run it are left as they are and show an error until they name another
+   * workflow. Absent while the app can't change the workflow's files, so the page has no ⋮.
+   * Rejects with `not_found` when the workflow isn't there, and with the reason it couldn't.
+   */
+  trash?(ref: WorkflowRef): Promise<TrashedWorkflow>;
+  /**
+   * What runs the workflow, for the warning after its delete. Present whenever
+   * {@link WorkflowsHost.trash} is. Rejects with the reason the workspace couldn't be read.
+   */
+  referencesTo?(ref: WorkflowRef): Promise<WorkflowUsers>;
   /**
    * Makes the workflow `start → done` in the hub, with the id taken from its name (`-2` when the
    * id is taken), and returns where it is. Rejects with the reason it couldn't be written.

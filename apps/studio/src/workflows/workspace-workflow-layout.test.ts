@@ -20,6 +20,8 @@ function setup(more = "") {
         changes.push(label);
         for (const [file, text] of Object.entries(made)) if (text !== null) store[file] = text;
       },
+      undo: () => false,
+      step: 0,
     },
     onChange: () => () => {},
     runs: { list: async () => [], subscribe: () => () => {}, log: async () => [] },

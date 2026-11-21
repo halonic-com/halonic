@@ -30,7 +30,7 @@ import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
 import { StepEditDock, stepCardDocks } from "./docked-step-card.tsx";
 import { FlowView } from "./flow-view.tsx";
-import { goneState } from "./gone-state.tsx";
+import { insteadOfPage } from "./gone-state.tsx";
 import { GuideSlot } from "./guide-card.tsx";
 import { firstTestsPick, firstView, panelClass } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
@@ -43,6 +43,7 @@ import { useCanvasEdit } from "./use-canvas-edit.ts";
 import { useOpenProblems } from "./use-open-problems.ts";
 import { useRename } from "./use-rename.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
+import { useWorkflowTrash } from "./use-workflow-trash.tsx";
 import { WorkflowName } from "./workflow-name.tsx";
 import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
 import { type WorkflowView, workflowTabs } from "./workflow-tabs.ts";
@@ -95,7 +96,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
 
 /**
  * The workflow page's frame (`workflows.page`): full width, with no ⤢, no ✕ and no chat column
- * until the Assistant lands. The header has the letter avatar, "WORKFLOW" and the name; under it
+ * until the Assistant lands. The header has the letter avatar, "WORKFLOW", the name and ⋮; under it
  * is the canvas, a skeleton when the file takes over 300 ms, or why it couldn't be read.
  */
 export function WorkflowScreen({
@@ -207,8 +208,14 @@ export function WorkflowScreen({
   };
   const guideSlot = { guide, workflow: { hubId, id }, view, docked, phone };
   const guidePage = { openRunForm: openStart };
-  const gone = goneState(load, goToWorkflows);
-  if (gone !== undefined) return gone;
+  const trash = useWorkflowTrash(
+    host,
+    { hubId, id },
+    { name, ready: load.kind === "ready" },
+    title,
+  );
+  const instead = insteadOfPage(trash.strip, load, goToWorkflows);
+  if (instead !== undefined) return instead;
   return (
     <div className="flex size-full min-h-0 flex-col">
       <header
@@ -232,6 +239,7 @@ export function WorkflowScreen({
               />
             </h1>
           </div>
+          {trash.menu}
         </div>
         <TabList
           label={configurationWords.tabs}
