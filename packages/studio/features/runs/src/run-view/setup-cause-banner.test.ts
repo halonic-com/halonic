@@ -62,10 +62,89 @@ verifies("runs.run-view.failure-banners", () => {
       expect(fixes(banner)).toBeUndefined();
     });
 
+    it("says a provider a model alias names that the workspace doesn't have, with Open Models", () => {
+      const run = setupFailure("models.no-provider", { provider: "anthropic", alias: "smart" });
+      const banner = causeBanner(run, undefined, context, false);
+      expect(lines(banner)).toEqual([
+        "Support reply failed in the step Draft: the model alias smart names the provider anthropic, which the workspace doesn't have.",
+        "Add the provider anthropic in Models, or point the model alias smart at a provider the workspace has.",
+      ]);
+      expect(fixes(banner)).toEqual([{ kind: "open-models" }]);
+    });
+
+    it("says an agent's provider/model shorthand names a provider it doesn't have", () => {
+      const run = setupFailure("models.no-provider", { provider: "mok", model: "mok/echo" });
+      const banner = causeBanner(run, undefined, context, true);
+      expect(lines(banner)).toEqual([
+        "Support reply failed in the step Draft: the model mok/echo names the provider mok, which the workspace doesn't have.",
+        "Add the provider mok in Models, or change mok/echo to a provider the workspace has.",
+        "Fix this on your computer: Models",
+      ]);
+      expect(fixes(banner)).toBeUndefined();
+    });
+
+    it("says for-each items that aren't a list, with the CLI's fix and See the step", () => {
+      const notAList = setupFailure("workflow.items-not-a-list", {
+        items: "{{input.topics}}",
+        gives: "text",
+      });
+      const banner = causeBanner(notAList, undefined, context, false);
+      expect(lines(banner)).toEqual([
+        "Support reply failed in the step Draft: its items ({{input.topics}}) are a text, not a list.",
+        'Pass a JSON list, such as ["Monday", "Tuesday"].',
+      ]);
+      expect(fixes(banner)).toEqual([{ kind: "see-step" }]);
+
+      const nothing = setupFailure("workflow.items-not-a-list", {
+        items: "{{steps.find.topics}}",
+        gives: "nothing",
+      });
+      expect(lines(causeBanner(nothing, undefined, context, false))).toEqual([
+        "Support reply failed in the step Draft: its items ({{steps.find.topics}}) give nothing.",
+        'Read the list from input or context, such as "{{context.steps.find.topics}}".',
+      ]);
+    });
+
+    it("says an event no transition takes, and the transition to add", () => {
+      const only = setupFailure("workflow.no-transition", {
+        event: "done",
+        takes: "approve,reject",
+        guarded: "false",
+      });
+      const banner = causeBanner(only, undefined, context, false);
+      expect(lines(banner)).toEqual([
+        "Support reply failed in the step Draft: it ended with the event done, but its transitions only take approve or reject.",
+        "Remove their event, or add a transition without event.",
+      ]);
+      expect(fixes(banner)).toEqual([{ kind: "see-step" }]);
+
+      const guarded = setupFailure("workflow.no-transition", {
+        event: "done",
+        takes: "",
+        guarded: "true",
+      });
+      expect(lines(causeBanner(guarded, undefined, context, false))).toEqual([
+        "Support reply failed in the step Draft: its transitions for done all have a when that didn't pass.",
+        "Add a transition for done without when, as the last one, so the run always has somewhere to go.",
+      ]);
+    });
+
+    it("says a task step that names no agent", () => {
+      const run = setupFailure("workflow.task-without-agent", {});
+      const banner = causeBanner(run, undefined, context, false);
+      expect(lines(banner)).toEqual([
+        "Support reply failed in the step Draft: the step names no agent.",
+        "Give it an agent (agent: <id>), or make it a wait step.",
+      ]);
+      expect(fixes(banner)).toEqual([{ kind: "see-step" }]);
+    });
+
     it("keeps the general banner for a cause nobody knows, or one without its names", () => {
       for (const run of [
         setupFailure("workflow.something-new", { step: "draft" }),
         setupFailure("models.unknown-model-alias", { alias: "smart" }),
+        setupFailure("models.no-provider", { alias: "smart" }),
+        setupFailure("workflow.items-not-a-list", { items: "{{input.topics}}" }),
       ]) {
         expect(causeBanner(run, [], context, false)).toBeUndefined();
         const general = runBanner({ summary: run }, context);
