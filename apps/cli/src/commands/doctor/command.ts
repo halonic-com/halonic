@@ -1,6 +1,7 @@
 import { realpath } from "node:fs/promises";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import type { DoctorReport } from "@halonicjs/app";
+import { workspaceSecrets } from "@halonicjs/ports";
 import { filesOf, loadWorkspace, settingsPath } from "@halonicjs/workspace";
 import type { CliCommand, CommandInput } from "../../command.ts";
 import { commandPaths, nodeCommandSearch } from "../../command-paths.ts";
@@ -57,7 +58,8 @@ export function createDoctorCommand(
         read === null
           ? null
           : await withHarnessSettingsFolders(withWindowsDrive(read, computer), computer.profile);
-      const doctor = await doctorService(computer, context.secrets, workspace);
+      // The store as a run reads it, so `doctor` can't call set a name a run refuses.
+      const doctor = await doctorService(computer, workspaceSecrets(context.secrets), workspace);
       const report = await doctor.check(workspace?.workspace ?? null);
       const lines = doctorReportLines(report, {
         version: halonicVersion,
@@ -144,9 +146,9 @@ function withWindowsDrive(
  * with its `check` and `status` (`ok`, `warning` or `failed`), and the counts.
  */
 function doctorJson(report: DoctorReport) {
-  const { workspace, models, sandbox, harnesses, node, network, disk, summary } = report;
+  const { workspace, models, secrets, sandbox, harnesses, node, network, disk, summary } = report;
   return {
-    checks: [workspace, models, sandbox, harnesses, node, network, disk].filter(
+    checks: [workspace, models, secrets, sandbox, harnesses, node, network, disk].filter(
       (line) => line !== undefined,
     ),
     problems: summary.problems,

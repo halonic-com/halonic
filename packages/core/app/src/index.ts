@@ -96,6 +96,13 @@ export {
 } from "./doctor-models-line.ts";
 export { type MxcLine, mxcLine } from "./doctor-mxc-line.ts";
 export {
+  type SecretsFound,
+  type SecretsLine,
+  type SecretUser,
+  secretsLine,
+  type UsedSecret,
+} from "./doctor-secrets-line.ts";
+export {
   type DoctorProvider,
   type DoctorReport,
   DoctorService,

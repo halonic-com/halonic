@@ -153,3 +153,25 @@ describe("doctor's sentences", () => {
     ]);
   });
 });
+
+verifies("cli.doctor-secrets", () => {
+  it("names each missing secret, what uses it and the command that sets it", () => {
+    const files = { kind: "connector", id: "files" } as const;
+    const notes = { kind: "connector", id: "notes" } as const;
+    const mock = { kind: "provider", id: "mock" } as const;
+    const friday = { kind: "routine", id: "friday-digest" } as const;
+    expect([
+      words(doctorMessages.secretsLabel()),
+      words(doctorMessages.secretNotSet("files-token", [files], "files-token")),
+      words(doctorMessages.secretNotSet("shared token", [files, notes, mock], '"shared token"')),
+      words(doctorMessages.secretUnreadable("files-token", [files])),
+      words(doctorMessages.secretNotSet("friday-hook", [friday], "friday-hook")),
+    ]).toEqual([
+      "Secrets",
+      "files-token isn't set (connector files) · halonic secret set files-token",
+      'shared token isn\'t set (connectors files and notes, provider mock) · halonic secret set "shared token"',
+      "couldn't read files-token from the secret store (connector files)",
+      "friday-hook isn't set (routine friday-digest) · halonic secret set friday-hook",
+    ]);
+  });
+});

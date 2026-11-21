@@ -33,6 +33,7 @@ export const doctorMessages = defineMessages("doctor", {
     phrase`Halonic ${version} ${markPart("separator")} ${system}`,
   workspaceLabel: () => phrase`Workspace`,
   modelsLabel: () => phrase`Models`,
+  secretsLabel: () => phrase`Secrets`,
   sandboxLabel: () => phrase`Sandbox`,
   harnessesLabel: () => phrase`Harnesses`,
   nodeLabel: () => phrase`Node.js`,
@@ -100,6 +101,23 @@ export const doctorMessages = defineMessages("doctor", {
   /** Models ✕, `model-unreachable`'s sentence. */
   notAnswering: (server: string, address: string) =>
     phrase`${server} isn't answering at ${address}`,
+
+  /**
+   * Secrets ✕, one line per secret, in the form of the Models line's key
+   * line (C14 on HAL-14257, decided by the team on HAL-14269):
+   * "files-token isn't set (connector files) · halonic secret set files-token".
+   * `secretWord` is the name as one shell word, so the command can be copied
+   * and run. The secret's value is never shown.
+   */
+  secretNotSet: (secret: string, users: readonly SecretUserName[], secretWord: string) =>
+    phrase`${secret} isn't set (${usedBy(users)}) ${markPart("separator")} halonic secret set ${secretWord}`,
+  /**
+   * Secrets !, one line per secret the store couldn't be asked about, such
+   * as with a locked keychain: "couldn't read files-token from the secret
+   * store (connector files)".
+   */
+  secretUnreadable: (secret: string, users: readonly SecretUserName[]) =>
+    phrase`couldn't read ${secret} from the secret store (${usedBy(users)})`,
 
   /** Sandbox ✓: "ready · bubblewrap". */
   sandboxReady: (kind: string) => phrase`ready ${markPart("separator")} ${kind}`,
@@ -194,6 +212,28 @@ export const doctorMessages = defineMessages("doctor", {
 /** "an https://", "a socks5://": "an" before a vowel, or an "h" read as "aitch". */
 function withArticle(scheme: string): string {
   return /^[aeiouh]/iu.test(scheme) ? `an ${scheme}` : `a ${scheme}`;
+}
+
+/** What reads a secret: a connector, a model provider or a webhook routine, by the id in its file. */
+export interface SecretUserName {
+  readonly kind: "connector" | "provider" | "routine";
+  readonly id: string;
+}
+
+/** "connector files", "connectors files and notes, provider mock", "routine friday-digest". */
+function usedBy(users: readonly SecretUserName[]): string {
+  const kinds = [
+    { kind: "connector", one: "connector", many: "connectors" },
+    { kind: "provider", one: "provider", many: "providers" },
+    { kind: "routine", one: "routine", many: "routines" },
+  ] as const;
+  return kinds
+    .map(({ kind, one, many }) => {
+      const ids = users.filter((user) => user.kind === kind).map((user) => user.id);
+      return ids.length === 0 ? "" : `${ids.length === 1 ? one : many} ${listed(ids)}`;
+    })
+    .filter((part) => part !== "")
+    .join(", ");
 }
 
 function loadedModel({ name, size }: LoadedModelSize): string {

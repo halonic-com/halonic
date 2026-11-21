@@ -69,6 +69,7 @@ export function workspace(
     ...(parts.tooManyFilesToWatch === undefined
       ? {}
       : { tooManyFilesToWatch: parts.tooManyFilesToWatch }),
+    ...(parts.secrets === undefined ? {} : { secrets: parts.secrets }),
   };
 }
 
@@ -83,6 +84,10 @@ interface Machine {
   /** The sandbox choice; the host has none when left out. */
   choice?: SandboxChoice | null;
   secrets?: Record<string, string>;
+  /** Secret names the store throws for, such as with a locked keychain. */
+  unreadable?: readonly string[];
+  /** Secret names the store never answers for, such as with a keychain prompt nobody answers. */
+  hanging?: readonly string[];
   /** What the host found wrong with Node.js; the host checks nothing when left out. */
   node?: NodeProblem | null;
   /** What the host found wrong with the network settings; the host checks nothing when left out. */
@@ -110,6 +115,8 @@ export function doctor(machine: Machine = {}) {
   const secrets: Secrets = {
     get: async (name) => {
       asked.push(name);
+      if (machine.unreadable?.includes(name) === true) throw new Error("The keychain is locked.");
+      if (machine.hanging?.includes(name) === true) return new Promise<never>(() => undefined);
       return machine.secrets?.[name] ?? null;
     },
   };
