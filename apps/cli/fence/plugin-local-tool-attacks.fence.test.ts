@@ -87,13 +87,9 @@ beforeEach(async () => {
   acme = inBase("acme");
   profile = inBase("profile");
   home = inBase("home");
+  // Acme stays local-only, as every new workspace starts: the plugin's local tool declares
+  // no network, so it counts as local and is offered (HAL-15094).
   await cp(acmeExample, acme, { recursive: true });
-  // The attacks need the plugin offered whatever the workspace's privacy setting; local-only runs are tested elsewhere.
-  const settings = await readFile(join(acme, "workspace.yaml"), "utf8");
-  await writeFile(
-    join(acme, "workspace.yaml"),
-    settings.replace("localOnly: true", "localOnly: false"),
-  );
   for (const name of ["HALONIC_HOME", "HOME"]) saved[name] = process.env[name];
   // The command reads the profile and the home folder from the environment, as a person's does.
   process.env["HALONIC_HOME"] = profile;
