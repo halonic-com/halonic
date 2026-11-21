@@ -127,11 +127,19 @@ verifies("cli.commands.trust.instructions", () => {
 
       expect(code).toBe(exitCode.ok);
       const shown = asked;
-      expect(shown).toContain("Instructions of coder");
-      expect(shown).toMatch(/^ +AGENTS\.md$/mu);
-      expect(shown).toMatch(/^ +skills\/review\/SKILL\.md$/mu);
+      expect(shown).toContain("Trust check for coder's instructions");
+      // The intro starts at the left edge, as `halonic trust`'s does.
+      expect(shown).toMatch(
+        /^Before coder runs in Claude Code on this computer, check what its instructions tell it to do\.$/mu,
+      );
+      // Each row names the workspace file to read, not the run's own copy.
+      expect(shown).toMatch(/^ {2}Instructions {3}hubs\/lab\/agents\/coder\.agent\.yaml$/mu);
+      expect(shown).toMatch(
+        /^ {2}Skill review {3}hubs\/lab\/library\/skills\/review\/SKILL\.md$/mu,
+      );
+      expect(shown).not.toContain("AGENTS.md");
       expect(shown).toMatch(/^ +sha256:[0-9a-f]{64}$/mu);
-      expect(io.stdout).toEqual(["✓ coder's instructions are trusted. It can run now."]);
+      expect(io.stdout).toEqual(["✓ coder's instructions are trusted on this computer."]);
       expect(await trustedForCoder()).not.toBeNull();
     });
 
@@ -160,8 +168,26 @@ verifies("cli.commands.trust.instructions", () => {
 
       const shown = asked;
       expect(shown).toContain("These changed since you trusted them on this computer.");
-      expect(shown).toMatch(/^ +Changed +skills\/review\/SKILL\.md$/mu);
-      expect(shown).toMatch(/^ {4,}AGENTS\.md$/mu);
+      expect(shown).toMatch(
+        /^ +Skill review +hubs\/lab\/library\/skills\/review\/SKILL\.md +Changed$/mu,
+      );
+      expect(shown).toMatch(/^ +Instructions +hubs\/lab\/agents\/coder\.agent\.yaml$/mu);
+    });
+
+    it("lists a removed skill, without a file when it's gone", async () => {
+      await trustCoder("--yes", "--fingerprint", await currentFingerprint());
+      writeFiles({
+        "hubs/lab/agents/coder.agent.yaml":
+          "id: coder\nname: Coder\nharness: claude-code\ninstructions: Write the change.\n",
+      });
+      rmSync(join(folder, "acme", "hubs/lab/library/skills/review"), { recursive: true });
+      const io = captureIo(folder);
+
+      await runCli(["trust", "instructions", "coder", "--dir", "acme"], io, commands(), {
+        terminal: terminalTyping("n"),
+      });
+
+      expect(asked).toMatch(/^ +Skill review +Removed$/mu);
     });
   });
 
@@ -188,10 +214,22 @@ verifies("cli.commands.trust.instructions", () => {
       const again = await trustCoder("--yes", "--fingerprint", fingerprint);
 
       expect(first.code).toBe(exitCode.ok);
-      expect(first.io.stdout).toEqual(["✓ coder's instructions are trusted. It can run now."]);
+      expect(first.io.stdout).toEqual(["✓ coder's instructions are trusted on this computer."]);
       expect(again.io.stdout).toEqual([
         "✓ coder's instructions are already trusted on this computer. Nothing changed.",
       ]);
+    });
+
+    it("says the instructions changed when they did", async () => {
+      await trustCoder("--yes", "--fingerprint", await currentFingerprint());
+      writeFiles({ "hubs/lab/library/skills/review/SKILL.md": skill("Review it twice.") });
+
+      const { code, io } = await trustCoder();
+
+      expect(code).toBe(exitCode.notTrusted);
+      expect(io.stderr).toContain(
+        "✕ coder's instructions changed since they were trusted on this computer, and there's no terminal to ask you.",
+      );
     });
 
     it("refuses a fingerprint from before a file changed", async () => {
@@ -214,8 +252,25 @@ verifies("cli.commands.trust.instructions", () => {
       expect(io.stderr[0]).toBe(
         "✕ --yes needs --fingerprint, so you trust exactly the instructions you reviewed.",
       );
+      expect(io.stderr[1]).toBe(
+        "  Run halonic trust instructions coder --dir acme to see the files and their fingerprint.",
+      );
       expect(await trustedForCoder()).toBeNull();
     });
+  });
+
+  it("needs no trust for an agent in Halonic's own loop", async () => {
+    writeFiles({
+      "hubs/lab/agents/writer.agent.yaml": "id: writer\nname: Writer\ninstructions: Write.\n",
+    });
+    const io = captureIo(folder);
+
+    const code = await runCli(["trust", "instructions", "writer", "--dir", "acme"], io, commands());
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout).toEqual([
+      "✓ writer runs in Halonic's own loop, so its instructions need no trust.",
+    ]);
   });
 
   it("names an agent the workspace doesn't have", async () => {

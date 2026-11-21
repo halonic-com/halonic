@@ -1,6 +1,6 @@
 import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { FileAgentPlacementStore } from "@halonicjs/adapter-fs-node";
+import { FileAgentPlacementStore, FileInstructionTrustStore } from "@halonicjs/adapter-fs-node";
 import { AgentPlacement, agentFingerprint } from "@halonicjs/app";
 import type { Harness, HarnessBridgeServer, Sandbox, SandboxCheck } from "@halonicjs/ports";
 import { placementFolder, profileFolder } from "@halonicjs/profile";
@@ -8,6 +8,7 @@ import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
+import { instructionTrustFolder } from "../../local-harness-host.ts";
 import { runCli } from "../../run-cli.ts";
 import { savedFile } from "../../test/acme-proposals.ts";
 import {
@@ -23,7 +24,9 @@ import { trustInstructions } from "../../test/trust-instructions.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { webCryptoDigest } from "../../workspace-runs.ts";
 import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
+import { createTrustInstructionsCommand } from "../trust/instructions.ts";
 import { runCommandWith } from "./command.ts";
+import type { RunSetup } from "./run.ts";
 
 // `halonic run` with an agent in Claude Code, through the real engine and the
 // CLI's harness host, in a workspace with history off. The Node parts that
@@ -49,6 +52,8 @@ let harnessStarts: number;
 let sandboxChecks: number;
 /** A person's "On this computer" choices, in the profile's folder, where the engine reads them too. */
 let placement: AgentPlacement;
+/** One setup per test, so a second run in it gets the next run id, not the first one's again. */
+let setup: RunSetup;
 
 beforeEach(async () => {
   writes = {};
@@ -57,6 +62,7 @@ beforeEach(async () => {
   harnessStarts = 0;
   sandboxChecks = 0;
   acmeRuns = await makeAcmeRuns("run-harness-on");
+  setup = acmeRunsSetup(acmeRuns);
   placement = new AgentPlacement({
     store: new FileAgentPlacementStore(placementFolder(profileFolder(acmeRuns.profile))),
     digest: webCryptoDigest,
@@ -183,7 +189,6 @@ async function chooseThisComputer(): Promise<void> {
 }
 
 async function runChange(...args: string[]): Promise<{ code: number; io: CapturedIo }> {
-  const setup = acmeRunsSetup(acmeRuns);
   const io = captureIo(acmeRuns.acme);
   const command = runCommandWith({
     ...setup,
@@ -298,4 +303,47 @@ verifies("cli.run-proposal", () => {
     expect(code).toBe(exitCode.notTrusted);
     expect(workingFolders).toEqual([]);
   });
+});
+
+verifies("cli.run-failed-instructions", () => {
+  /** `halonic trust instructions coder` with no terminal, then with the fingerprint it printed. */
+  async function trustCoderInstructions(): Promise<number> {
+    const trust = createTrustInstructionsCommand(() => ({
+      store: new FileInstructionTrustStore(instructionTrustFolder(profileFolder(acmeRuns.profile))),
+      clock: fixedClock(engineStart),
+    }));
+    const trustAgain = (...args: string[]) =>
+      runCli(["instructions", "coder", ...args], captureIo(acmeRuns.acme), [trust]);
+    const shown = captureIo(acmeRuns.acme);
+    await runCli(["instructions", "coder"], shown, [trust]);
+    return await trustAgain("--yes", "--fingerprint", shown.stdout.at(-1) ?? "");
+  }
+
+  it(
+    "says how to trust instructions nobody trusted, and runs once they are",
+    slowTest,
+    async () => {
+      await trustWorkspace();
+      writes = { "change.txt": "The change.\n" };
+
+      const refused = await runChange();
+
+      expect(refused.code).toBe(exitCode.failed);
+      expect(harnessStarts).toBe(0);
+      const shown = [...refused.io.stdout, ...refused.io.stderr].join("\n");
+      expect(shown).toContain(
+        "coder didn't start, because its instructions aren't trusted on this computer yet.",
+      );
+      expect(shown).toContain(
+        "Review and trust them with halonic trust instructions coder, then run again.",
+      );
+      expect(shown).not.toContain("can't tell the cause");
+
+      expect(await trustCoderInstructions()).toBe(exitCode.ok);
+      const { code } = await runChange();
+
+      expect(code).toBe(exitCode.ok);
+      expect(harnessStarts).toBe(1);
+    },
+  );
 });

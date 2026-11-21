@@ -351,12 +351,29 @@ verifies("app.run-failure", () => {
     it.each([
       "budget",
       "harness-unavailable",
-      "instructions-not-trusted",
       "error",
       "sandbox-start-failed",
       "harness-start-failed",
     ] as const)("gives %s the engine's message", (reason) => {
       expect(runFailureOf(failedWith(reason), calledModel())).toEqual(general);
+    });
+
+    it("gives instructions-not-trusted the agent and whether its instructions changed", () => {
+      const failed = failedWith("instructions-not-trusted", { agent: "coder", changed: true });
+      expect(runFailureOf(failed, undefined)).toEqual({
+        reason: "instructions-not-trusted",
+        agent: "coder",
+        changed: true,
+      });
+      const unanswered = failedWith("instructions-not-trusted", { agent: "coder" });
+      expect(runFailureOf(unanswered, undefined)).toEqual({
+        reason: "instructions-not-trusted",
+        agent: "coder",
+      });
+    });
+
+    it("gives instructions-not-trusted the engine's message when the log names no agent", () => {
+      expect(runFailureOf(failedWith("instructions-not-trusted"), calledModel())).toEqual(general);
     });
 
     it("gives an unknown address, a missing secret and an older log the engine's message", () => {
