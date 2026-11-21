@@ -70,3 +70,8 @@ export function Labelled({
     </p>
   );
 }
+
+/** A section's list of things, under its row. */
+export function Items({ children }: { readonly children: ReactNode }) {
+  return <ul className="mt-2 mb-3 flex list-none flex-col gap-3">{children}</ul>;
+}

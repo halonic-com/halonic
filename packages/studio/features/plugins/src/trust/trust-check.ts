@@ -8,7 +8,14 @@ import {
 import { type Plugin, placedSecrets } from "@halonicjs/format";
 import type { PluginToolRisk } from "../page/plugin-pages.ts";
 import { clientSecretHosts, clientSecretNames } from "../sign-in/client-secret-hosts.ts";
-import { hostWords, type SecretKind, secretHow, type TrustCounts } from "./trust-text.ts";
+import {
+  ADDRESS_CLASS_WORDS,
+  hostWords,
+  type SecretKind,
+  secretHow,
+  settingAddressRow,
+  type TrustCounts,
+} from "./trust-text.ts";
 
 /** A tool for agents, as Tools for agents lists it. */
 export interface TrustTool {
@@ -27,6 +34,8 @@ export interface TrustProgram {
   /** The pinned version of a package; a script in the plugin folder has none. */
   readonly version: string | undefined;
   readonly canReach: readonly string[];
+  /** How many tools for agents it offers, which stay off with it (R11, R11b). */
+  readonly tools: number;
 }
 
 /** A secret the plugin declares, as Secrets lists it. Never a value. */
@@ -62,9 +71,12 @@ export interface TrustSignIn {
 
 /** One address the plugin may reach. */
 export interface TrustAddress {
+  /** The host, or for a host from a setting R9's "The address you enter in …" row. */
   readonly address: string;
   /** Only a program reaches it: "(the program)". */
   readonly program: boolean;
+  /** For a host from a setting: where it may be, as the sheet declares it (R9). */
+  readonly where?: string | undefined;
 }
 
 /** What In Studio lists: what Halonic draws for the plugin, each title with where it shows. */
@@ -183,22 +195,35 @@ function programOf(local: LocalTool): TrustProgram {
     command: [start, ...local.args].join(" "),
     version: pinned?.version,
     canReach: local.network,
+    tools: local.tools.length,
   };
 }
 
-/** The backend's hosts, then each program's that the backend doesn't already reach. */
+/**
+ * The backend's hosts, then each program's that the backend doesn't already reach. A host from a
+ * setting is its own row, with the class the sheet declares, so "only the addresses above" stays
+ * true before the setting is filled in (R9; programs can't name one).
+ */
 function addressesOf(
   plugin: Plugin,
   labelOf: (setting: string) => string | undefined,
 ): TrustAddress[] {
-  const backend = unique((plugin.backend?.hosts ?? []).map((host) => hostWords(host, labelOf)));
+  const backend = new Map<string, TrustAddress>();
+  for (const host of plugin.backend?.hosts ?? []) {
+    const address =
+      typeof host === "string"
+        ? { address: host, program: false }
+        : {
+            address: settingAddressRow(plugin.name, labelOf(host.fromSetting) ?? host.fromSetting),
+            program: false,
+            where: ADDRESS_CLASS_WORDS[host.class],
+          };
+    if (!backend.has(address.address)) backend.set(address.address, address);
+  }
   const programs = unique((plugin.localTools ?? []).flatMap((local) => local.network)).filter(
-    (address) => !backend.includes(address),
+    (address) => !backend.has(address),
   );
-  return [
-    ...backend.map((address) => ({ address, program: false })),
-    ...programs.map((address) => ({ address, program: true })),
-  ];
+  return [...backend.values(), ...programs.map((address) => ({ address, program: true }))];
 }
 
 /** Core's text starts lowercase, after a name in the CLI's row; here it stands on its own line. */

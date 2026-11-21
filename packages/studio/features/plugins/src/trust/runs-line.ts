@@ -1,10 +1,10 @@
-// The trust check's "Runs" line with and without the sandbox: microcopy 24.1 R1 to R8, approved
+// The trust check's "Runs" line with and without the sandbox: microcopy 24.1 R1 to R11b, approved
 // by the board on HAL-1949, and the rules of the "Runs" line design sections 2, 3 and 7
 // (HAL-1873). The reason, fix and docs link come from core's `runnerUnfencedWords`, the one place
 // they're written.
 
 import { type RunnerFence, type RunnerUnfencedWords, runnerUnfencedWords } from "@halonicjs/app";
-import { TRUST_CHECK_LAST_LINE } from "./trust-text.ts";
+import { type ProgramsRun, runsLine, TRUST_CHECK_LAST_LINE } from "./trust-text.ts";
 
 /**
  * Whether plugin code runs in the sandbox on this computer, as the trust check shows it (the
@@ -111,4 +111,56 @@ export function needsUnfencedYes(
 export interface UnfencedYes {
   readonly reason: string;
   readonly on: string;
+}
+
+/** Under a program's Runs value on Windows, in amber with the triangle (R10). */
+export const PROGRAM_WINDOWS_ADDRESSES =
+  "On Windows, the sandbox can't hold a program to the addresses it lists, so it may reach others.";
+
+/** R11b's fix and its link, which opens Settings › Agent sandbox. */
+export const PROGRAM_SET_UP_FIX =
+  "Set it up in Settings › Agent sandbox, or use Halonic inside WSL 2.";
+export const SET_UP_AGENT_SANDBOX = "Set up the agent sandbox";
+
+/**
+ * A program's row in Programs, for this computer (the "Runs" line design section 6): where it
+ * runs, with R10 under it on Windows; or off, because the agent sandbox isn't set up on Windows
+ * (R11b, with its fix) or can't start here (R11).
+ */
+export type ProgramRow =
+  | { readonly kind: "runs"; readonly runs: string; readonly windows: boolean }
+  | { readonly kind: "off"; readonly runs: string; readonly setUp: boolean };
+
+/**
+ * The row for a program offering `tools` tools for agents. On Windows plugin code is never in the
+ * sandbox (`windows`, condition (b)), so the fence's reason says the computer is Windows. A
+ * program only ever starts in the agent sandbox; one that can't start says so, and that its tools
+ * stay off.
+ *
+ * @example
+ * programRow("sandbox-unavailable", { state: "not-fenced", reason: "container" }, 2).runs;
+ * // "Doesn't start on this computer: the sandbox can't start here. The tools that use it stay off."
+ */
+export function programRow(programsRun: ProgramsRun, fence: TrustFence, tools: number): ProgramRow {
+  const windows = fence?.state === "not-fenced" && fence.reason === "windows";
+  const off = tools === 1 ? "The tool that uses it stays off." : "The tools that use it stay off.";
+  if (programsRun === "sandbox-unavailable") {
+    return windows
+      ? {
+          kind: "off",
+          runs: `Off on this computer until you set up the agent sandbox. ${off}`,
+          setUp: true,
+        }
+      : {
+          kind: "off",
+          runs: `Doesn't start on this computer: the sandbox can't start here. ${off}`,
+          setUp: false,
+        };
+  }
+  // A program that doesn't run here reaches nothing, so R10 has nothing to warn about.
+  return {
+    kind: "runs",
+    runs: runsLine(programsRun),
+    windows: windows && programsRun !== "needs-desktop-app",
+  };
 }
