@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { removalAfterHelper, removalBeforeHelper } from "./after-helper.ts";
 import type { RemovalSteps } from "./elevate-helper.ts";
 import { HELPER_CANCELLED } from "./elevate-helper.ts";
-import { grantsKeptLine } from "./orphaned-grants.ts";
+import { removedGrantsKept } from "./orphaned-grants.ts";
 
 /** The user's half of a removal, with what it was asked kept. */
 function steps(elevated: boolean, failed: string[] = []) {
@@ -69,7 +69,18 @@ verifies("sandbox-srt.removal-around-helper", () => {
       expect(await removalAfterHelper(0, "win32", given, (line) => logged.push(line))).toEqual({
         ok: true,
       });
-      expect(logged).toEqual([await grantsKeptLine({ orphaned: async () => false })]);
+      const expected: string[] = [];
+      await removedGrantsKept({ orphaned: async () => false }, (line) => expected.push(line));
+      expect(logged).toEqual(expected);
+    });
+
+    it("says the kept grants go at the next start when srt will see them as orphaned", async () => {
+      const { given } = steps(true);
+      given.orphaned = async () => true;
+      expect(await removalAfterHelper(0, "win32", given, quiet)).toEqual({
+        ok: true,
+        keptAccess: "until_next_start",
+      });
     });
 
     it("says the prompt was cancelled for the helper's cancelled code, and logs nothing", async () => {

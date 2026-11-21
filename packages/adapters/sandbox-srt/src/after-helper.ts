@@ -7,7 +7,7 @@ import {
 } from "./elevate-helper.ts";
 import { KeptGrants } from "./kept-grants.ts";
 import { systemRemovalSteps } from "./machine.ts";
-import { grantsKeptLine } from "./orphaned-grants.ts";
+import { removedGrantsKept } from "./orphaned-grants.ts";
 import { promptCancelled, type SandboxRemoval, type SandboxSetup } from "./srt-sandbox.ts";
 
 /**
@@ -73,7 +73,8 @@ export async function removalBeforeHelper(
  * code, and `failed` with the helper's reason sentence and its code for any
  * other code, as {@link SrtSandbox.remove}'s do. A removal done on Windows by
  * a process with administrator rights left the user's kept grants recorded,
- * so it logs that, as {@link SrtSandbox.remove} does (HAL-7585). Never throws.
+ * so it logs that and gives what {@link removedGrantsKept} gives, as
+ * {@link SrtSandbox.remove} does (HAL-7585). Never throws.
  */
 export async function removalAfterHelper(
   exitCode: number,
@@ -92,7 +93,7 @@ export async function removalAfterHelper(
     return { ok: false, outcome: "failed", reason, code: exitCode };
   }
   if (platform === "win32" && (await steps.elevated().catch(() => true))) {
-    warn(await grantsKeptLine(steps));
+    return await removedGrantsKept(steps, warn);
   }
   return { ok: true };
 }
