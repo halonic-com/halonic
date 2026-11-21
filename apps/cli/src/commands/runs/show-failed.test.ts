@@ -1,3 +1,5 @@
+import { rm } from "node:fs/promises";
+import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
@@ -254,6 +256,47 @@ verifies("cli.commands.runs.show", () => {
         "✕ Mail triage was cancelled before it started.",
         "  Sent nothing",
       ]);
+    });
+
+    verifies("cli.run-failed-start-agent-name", () => {
+      const launcherRefused = (id: string) =>
+        triage(id, [
+          [today("10:20:00"), { type: "state.entered", state: "read" }],
+          [
+            today("10:20:00"),
+            { type: "sandbox.started", state: "read", agent: "writer", timeoutMs: 30_000 },
+          ],
+          [
+            today("10:20:01"),
+            {
+              type: "run.failed",
+              state: "read",
+              error: "a program started without a fence can't reach a bridge on a Unix socket",
+              reason: "this-computer-start-failed",
+            },
+          ],
+        ]);
+
+      it("names the step's agent as its file names it", async () => {
+        await storeRuns(launcherRefused("run_mfx3k2a1_0a0a01"));
+
+        const { io } = await showIn(acme, "0a0a01");
+
+        expect(io.stdout.at(-3)).toBe(
+          "✕ Mail triage failed in the step Read the email: Writer didn't start on this computer: a program started without a fence can't reach a bridge on a Unix socket.",
+        );
+      });
+
+      it("names it by its id once the workspace no longer has it", async () => {
+        await rm(join(acme, "hubs/support/agents/writer.agent.yaml"));
+        await storeRuns(launcherRefused("run_mfx3k2a1_0a0a02"));
+
+        const { io } = await showIn(acme, "0a0a02");
+
+        expect(io.stdout.at(-3)).toMatch(
+          /^✕ Mail triage failed in the step Read the email: writer didn't start on this computer: /,
+        );
+      });
     });
   });
 });

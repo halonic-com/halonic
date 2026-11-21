@@ -5,6 +5,7 @@
 
 import { type RunDetail, runWait, shortRunId } from "@halonicjs/app";
 import {
+  type FailedStart,
   failedModelOf,
   failedStartOf,
   type RunFailedEvent,
@@ -19,7 +20,7 @@ import { runFailedLines } from "../../messages/run-failures.ts";
 import { type CancelledAt, runsMessages } from "../../messages/runs.ts";
 import { stepName } from "../../messages/step-name.ts";
 import { runFailureDetails } from "../../run-failure-details.ts";
-import { hasAgentOutput, type RunDefinitions, receiptOf } from "../../run-view.ts";
+import { agentName, hasAgentOutput, type RunDefinitions, receiptOf } from "../../run-view.ts";
 import { waitDescription } from "./listed-run.ts";
 
 /**
@@ -85,7 +86,7 @@ function failedEnding(
   const failure = runFailureOf(
     failed,
     failedModelOf(run.events, models()),
-    failedStartOf(run.events, failed),
+    namedStart(failedStartOf(run.events, failed), definitions),
   );
   let lines: Phrase[];
   if (failure === undefined) {
@@ -109,6 +110,20 @@ function failedEnding(
     ...rest,
     ...(receipt.length === 0 ? [] : [phrase`  ${receipt}`]),
   ];
+}
+
+/**
+ * The failed step's start with its agent as its file names it, "Writer"
+ * rather than `writer`, as the run's other lines and Studio name it
+ * (HAL-15203); an agent the workspace no longer has keeps its id.
+ */
+function namedStart(
+  started: FailedStart | undefined,
+  definitions: RunDefinitions,
+): FailedStart | undefined {
+  return started === undefined
+    ? undefined
+    : { ...started, agent: agentName(started.agent, definitions) };
 }
 
 /**

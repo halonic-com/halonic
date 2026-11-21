@@ -278,7 +278,7 @@ function markOf(step: RunStep): Mark {
 }
 
 /** An agent's name, or its id when it's no longer in the workspace, made printable. */
-function agentName(agentId: string, definitions: RunDefinitions): string {
+export function agentName(agentId: string, definitions: RunDefinitions): string {
   return printable(definitions.agent(agentId)?.name ?? agentId);
 }
 
