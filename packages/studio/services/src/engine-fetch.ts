@@ -108,6 +108,7 @@ class EngineStream {
   readonly #ipc: TauriIpc;
   readonly #channel: TauriChannel;
   readonly #encoder = new TextEncoder();
+  // Set before the constructor returns: the `ReadableStream` constructor runs `start` at once.
   #controller!: ReadableStreamDefaultController<Uint8Array>;
   #finished = false;
 

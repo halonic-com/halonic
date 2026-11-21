@@ -1,6 +1,6 @@
 import { runExecutorVersion } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
-import { tauriEngineFetch } from "@halonicjs/studio-services";
+import { EngineCallRefused, tauriEngineFetch } from "@halonicjs/studio-services";
 import {
   EngineNotAnswering,
   isUntrustedRefusal,
@@ -54,6 +54,31 @@ function remoteOn(routes: Record<string, (call: EngineCall) => EngineAnswer>) {
 }
 
 const run = (id: string, status = "running") => ({ id, status, lastSeq: 1 });
+
+/**
+ * An engine whose `GET /api/run-updates` answers with `frames`, then ends unless `open` keeps it
+ * going; `requests` holds what the page asked for.
+ */
+function feedEngine(frames: string[], { open = false } = {}) {
+  const requests: Request[] = [];
+  const encoder = new TextEncoder();
+  const fetch = async (request: Request) => {
+    requests.push(request);
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const frame of frames) controller.enqueue(encoder.encode(frame));
+        if (!open) controller.close();
+        // As `tauriEngineFetch` does: aborting the request breaks off its body.
+        request.signal.addEventListener("abort", () => controller.error(request.signal.reason));
+      },
+    });
+    return new Response(body, { headers: { "Content-Type": "text/event-stream" } });
+  };
+  return { engine: new RemoteEngine({ fetch, reportError: vi.fn() }), requests };
+}
+
+const changedFrame = (runId: string) =>
+  `event: changed\ndata: ${JSON.stringify({ runId, status: "running", seq: 2 })}\n\n`;
 const nightly: RoutineRunStart = {
   workflow: { hubId: "acme", workflowId: "digest", input: {} },
 };
@@ -82,6 +107,23 @@ verifies("studio.remote-engine", () => {
 
       expect(engine).toBeUndefined();
       expect(reportError).not.toHaveBeenCalled();
+    });
+
+    it("gives none, and reports the status, when the engine refuses hello", async () => {
+      const reportError = vi.fn();
+      const { ipc } = engineShell({
+        "GET /api/hello": () => ({
+          status: 401,
+          body: { code: "unauthenticated", message: "A launch token is needed." },
+        }),
+      });
+
+      const engine = await openRemoteEngine({ fetch: tauriEngineFetch(ipc), reportError });
+
+      expect(engine).toBeUndefined();
+      expect(reportError).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 401, code: "unauthenticated" }),
+      );
     });
 
     it("gives none, and reports why, when the call fails another way", async () => {
@@ -253,6 +295,48 @@ verifies("studio.remote-engine", () => {
           cause: expect.objectContaining({ kind: "engine_unavailable" }),
         });
       }
+    });
+
+    it("follows the run changes, then says the feed ended when the engine closed it", async () => {
+      const { engine, requests } = feedEngine([
+        changedFrame("r1"),
+        ": keep-alive\n\n",
+        changedFrame("r2"),
+      ]);
+      const changed = vi.fn();
+      const ended = vi.fn();
+
+      engine.followRuns({ changed, ended });
+
+      await vi.waitFor(() => expect(ended).toHaveBeenCalledWith());
+      expect(changed).toHaveBeenCalledTimes(2);
+      expect(new URL(requests[0]?.url ?? "").pathname).toBe("/api/run-updates");
+    });
+
+    it("says why the feed ended when the engine has gone", async () => {
+      const gone = async () => {
+        throw new EngineCallRefused("engine_unavailable", "No engine runs for this workspace.");
+      };
+      const engine = new RemoteEngine({ fetch: gone, reportError: vi.fn() });
+      const ended = vi.fn();
+
+      engine.followRuns({ changed: vi.fn(), ended });
+
+      await vi.waitFor(() => expect(ended).toHaveBeenCalledWith(expect.any(EngineNotAnswering)));
+    });
+
+    it("stops the feed when the page stops following, and says nothing more", async () => {
+      const { engine, requests } = feedEngine([changedFrame("r1")], { open: true });
+      const changed = vi.fn();
+      const ended = vi.fn();
+
+      const stop = engine.followRuns({ changed, ended });
+      await vi.waitFor(() => expect(changed).toHaveBeenCalledTimes(1));
+      stop();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(requests[0]?.signal.aborted).toBe(true);
+      expect(ended).not.toHaveBeenCalled();
     });
 
     it("leaves the page nothing to refuse ahead of the engine", () => {

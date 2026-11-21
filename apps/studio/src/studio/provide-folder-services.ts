@@ -459,7 +459,14 @@ function provideWorkspaceRuns(
     onFocus: (listener) => focusOf(window, listener),
     // Looked up on the first answer: the page's engine is provided after the runs.
     send: (...answer) => (remoteEngine ?? services.get(engineServiceKey)).send(...answer),
-    ...(remoteEngine === undefined ? {} : { waiting: () => remoteEngine.waiting() }),
+    ...(remoteEngine === undefined
+      ? {}
+      : {
+          waiting: () => remoteEngine.waiting(),
+          // The engine says when a run changed, so the runs aren't read every 10 s.
+          followRuns: (listener) => remoteEngine.followRuns(listener),
+          reportError: (error) => console.error("The background engine's run changes", error),
+        }),
   });
   services.provide(RunsSourceService, runs);
   services.provide(InboxRunsService, runs);
