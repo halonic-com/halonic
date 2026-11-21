@@ -68,6 +68,7 @@ import {
   agentRefusalOf,
   agentStartRefusalOf,
   type PageRuns,
+  routineRefusalOf,
   workflowRefusalOf,
 } from "./page-refusal.ts";
 
@@ -403,7 +404,10 @@ export class EngineService {
       const onSkipsSaved = () => this.#skips.tell();
       const routineOptions = { ...this.#options, onSkipsSaved };
       const routines = pageRoutines(workspace, routineOptions, async ({ hubId, workflowId }) => {
-        await this.check({ hubId, workflowId });
+        // A routine's step keeps it starting on time, where Run's `halonic run` starts it once.
+        await this.check({ hubId, workflowId }).catch((error: unknown) => {
+          throw routineRefusalOf(error);
+        });
         await this.#refuseUntrusted(workspace);
       });
       const fromWorkspace = workspaceExecutorOptions({

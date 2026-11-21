@@ -91,6 +91,46 @@ export function skipOf(stored: StoredSkip): RoutineSkip {
   return { reason: stored.reason, from, to, count };
 }
 
+/**
+ * The newest due time of a routine when its start was refused: the newest skip row is a refused
+ * start, and no run of the routine started after it. `undefined` otherwise, as when a run or
+ * another skip came later.
+ *
+ * @param skips the routine's skip rows, newest first, as the scheduler keeps them
+ * @param runs the routine's runs, newest first
+ */
+export function lastRefusedAt(
+  skips: readonly StoredSkip[],
+  runs: readonly RunSummary[],
+): string | undefined {
+  const newest = skips[0];
+  if (newest?.reason !== "start-refused") return undefined;
+  const lastRun = runs[0];
+  if (lastRun !== undefined && Date.parse(lastRun.startedAt) >= Date.parse(newest.to)) {
+    return undefined;
+  }
+  return newest.to;
+}
+
+/**
+ * Each routine's {@link lastRefusedAt}, in {@link routineFiles}'s order and ready to spread into its listing: `{}` when there is none.
+ * A routine whose skips can't be read counts as having none, so one failed read doesn't fail the list.
+ */
+export function refusedOf(
+  workspace: LoadedWorkspace,
+  runs: readonly { readonly summary: RunSummary }[],
+  skips: ((key: string) => Promise<readonly StoredSkip[]>) | undefined,
+): Promise<{ readonly refusedAt?: string }[]> {
+  return Promise.all(
+    routineFiles(workspace).map(async (file) => {
+      const key = routineKeyOf(file);
+      const stored = (await skips?.(key).catch(() => [])) ?? [];
+      const refusedAt = lastRefusedAt(stored, runsOf(runs, key));
+      return refusedAt === undefined ? {} : { refusedAt };
+    }),
+  );
+}
+
 /** The workflows of a hub, then its agents, each in the hub's order, that a routine of the hub can start. */
 export function targetsOf(workspace: LoadedWorkspace, hubId: string | null): RoutineTargetChoice[] {
   const inHub = (file: { readonly hub: string | null }) => file.hub === hubId && hubId !== null;

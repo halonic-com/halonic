@@ -57,6 +57,22 @@ verifies("routines.list.rows-and-states", () => {
     expect(rowOf(page, "Weekly report").textContent).not.toContain("next ");
   });
 
+  it("says a routine couldn't start at its newest due time in place of the next time, but not when it is off", async () => {
+    const refusedAt = new Date(Date.now() - 60_000);
+    const clock = `${String(refusedAt.getHours()).padStart(2, "0")}:${String(refusedAt.getMinutes()).padStart(2, "0")}`;
+    const rows = [
+      listing("acme", "tick", "Tick", { nextRun: tomorrow, refusedAt: refusedAt.toISOString() }),
+      listing("acme", "quiet", "Quiet", { enabled: false, refusedAt: refusedAt.toISOString() }),
+    ];
+    const page = await show(<RoutinesView host={memoryHost(hubs, rows).host} />);
+
+    expect(rowOf(page, "Tick").textContent).toMatch(
+      new RegExp(`couldn't start (at|yesterday) ${clock}`),
+    );
+    expect(rowOf(page, "Tick").textContent).not.toContain("next ");
+    expect(rowOf(page, "Quiet").textContent).not.toContain("couldn't start");
+  });
+
   it("shows one chip: Off, else Paused until trusted, else Needs sign-in again, else Needs you", async () => {
     const rows = [
       listing("acme", "a", "A", { enabled: false, needsSignIn: true, pausedUntilTrusted: true }),

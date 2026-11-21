@@ -72,6 +72,22 @@ const daysBetween = (from: Date, to: Date): number =>
   Math.round((startOfDay(to).getTime() - startOfDay(from).getTime()) / 86_400_000);
 
 /**
+ * When a routine's newest due time was refused, for its row in place of the next time: "couldn't
+ * start at 19:41" today, then "couldn't start yesterday 19:41", "couldn't start Mon 19:41" within
+ * the week and the date after that (C552-5, HAL-15269).
+ */
+export function refusedWhen(iso: string, now: Date): string {
+  const moment = new Date(iso);
+  const clock = `${String(moment.getHours()).padStart(2, "0")}:${String(moment.getMinutes()).padStart(2, "0")}`;
+  const ago = daysBetween(moment, now);
+  if (ago <= 0) return `couldn't start at ${clock}`;
+  if (ago === 1) return `couldn't start yesterday ${clock}`;
+  const day = shortDays[moment.getDay()];
+  if (ago < 7) return `couldn't start ${day} ${clock}`;
+  return `couldn't start ${day} ${moment.getDate()} ${shortMonths[moment.getMonth()]} ${clock}`;
+}
+
+/**
  * When a routine next starts, for its row: "next today 07:30", "next tomorrow 07:30", "next Mon
  * 07:30" within the week, then the date ("next Fri 20 Nov 07:30"), with the year when it isn't this
  * year's.

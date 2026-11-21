@@ -68,6 +68,11 @@ export interface RoutineListing extends RoutineRef {
   readonly needsYou: number;
   /** The workspace isn't trusted, so routines wait; the row shows "Paused until trusted". */
   readonly pausedUntilTrusted: boolean;
+  /**
+   * ISO time of its newest due time when that start was refused and no run started since; the row
+   * says "Couldn't start at 19:41" in place of the next time. Absent otherwise.
+   */
+  readonly refusedAt?: string | undefined;
 }
 
 /** When a routine starts, as the When card's fields hold it; one shape per {@link RoutineTriggerKind}. */

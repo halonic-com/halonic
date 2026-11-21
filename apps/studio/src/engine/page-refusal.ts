@@ -150,6 +150,23 @@ function withNextStep(
       });
 }
 
+/**
+ * The next step of a routine's refused start (HAL-15269): a connector only a terminal can start
+ * needs `halonic routines watch`, which keeps the routine starting on time, where `halonic run`
+ * would start it once. A refusal with a step in Studio, such as the Harness page, and any other
+ * error stay as they are, since `routines watch` refuses an agent in a harness program too.
+ *
+ * @param error what the page's check before a start threw
+ */
+export function routineRefusalOf(error: unknown): unknown {
+  if (!(error instanceof StartRefused) || error.command === undefined) return error;
+  return new KindedError("unavailable", error.message, { fix: routineWatchStep });
+}
+
+/** The step a routine's start refused for a connector gives, with the command in it. */
+export const routineWatchStep =
+  "To keep it starting on time, run this in a terminal: halonic routines watch";
+
 /** The step in Studio that lets the page start an agent in a harness program. */
 function harnessPageStep(agent: Agent): string {
   return `Set ${agent.name} to Halonic on its Harness page to run it now.`;
