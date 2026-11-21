@@ -2,6 +2,7 @@
 
 - Approval: HAL-14777; triaged on HAL-14776 (C480 P5, Kim's re-run on HAL-14760, question 16); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SDnxndWeLKM6ym5XOEAJ09dScCp2Ulbk5SGii/2pqsfw/l8Nq2FO2QHYgW397XSmNcu9Q73fF7FXQ5HTZHPICw==
 
 ## What changes
 
