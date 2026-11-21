@@ -16,7 +16,10 @@ design check C471-6 on HAL-14728).
 
 No test was weakened or removed. One test was added for a refusal's next step and its command,
 without **Try again**, and a lock another Halonic holds, with **Try again**.
+The Run card's Problems tests moved from `start-run.test.tsx` to their own file,
+`start-run-problems.test.tsx`, unchanged, so `start-run.test.tsx` stays under the file-size limit.
 
 ## Covers
 
 - runs.run-view.run-again
+- packages/studio/features/workflows/src/start/start-run.test.tsx
