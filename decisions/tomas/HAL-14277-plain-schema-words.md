@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this change on HAL-14277 (https://paperclip.halonic.com/HAL/issues/HAL-14277), from Nina's check C337 (HAL-14257, rows 17–20 and 24–26, code row C19). A team decision with no board card (HAL-2282 rule): it builds on the approved C336 wording.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:CWHyhBN1uQs7QT68/+cOq5L5KeEpU2L997P58H2BX+lGnxyfg3yU2czUoACquZP0G9Z9o7E5TzC68UdvsYXFBA==
 
 ## What changes
 
