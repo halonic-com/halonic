@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-14850 (Liam's security review of halonic#4276: removing a plugin's trust or the plugin signs out its sign-ins)
+- Source: HAL-14850 (Liam's security review of halonic#4276: removing a plugin's trust or the plugin signs out its sign-ins); HAL-14918 (an integration the host runs no sign-ins for, such as a plugin in a single-executable host)
 
-The host shall sign out every sign-in of an integration that has a saved grant, found from the saved grants and never from the sheet, so that it works when the sheet no longer has the sign-in or can't be read: each sign-in is revoked at the address the person approved, where there is one, and its grant is removed whether or not the revoke succeeded. Afterwards, and when asked to forget an integration, the host shall drop that integration's parts, so a pending sign-in of it ends and the next use builds them anew; the grants stay when it only forgets. For an integration the app doesn't name it shall sign out nothing. A process that runs no refresh of the grants, such as the CLI, shall sign out the saved sign-ins the same way, over https only.
+The host shall sign out every sign-in of an integration that has a saved grant, found from the saved grants and never from the sheet, so that it works when the sheet no longer has the sign-in or can't be read: each sign-in is revoked at the address the person approved, where there is one, and its grant is removed whether or not the revoke succeeded. Afterwards, and when asked to forget an integration, the host shall drop that integration's parts, so a pending sign-in of it ends and the next use builds them anew; the grants stay when it only forgets. For an integration the app doesn't name, so the host has no parts for it, such as a plugin in a single-executable host, it shall still sign out the saved grants, since another host on the same profile may have saved them: without the integration's secrets, so a revoke goes out only for a sign-in that needs no client secret, and each grant is removed all the same. A process that runs no refresh of the grants, such as the CLI, shall sign out the saved sign-ins the same way, over https only.
 
 ## Examples
 
@@ -20,9 +20,15 @@ The host shall sign out every sign-in of an integration that has a saved grant, 
 - Given a sign-in that was started and not finished,
   when every sign-in is signed out,
   then its callback gets the plain 400 page and the integration's new parts say `signedOut`.
-- Given an integration the app doesn't name,
+- Given a grant another host saved for a plugin that this host doesn't name, as in a single-executable host, whose sign-in needs a client secret,
   when every sign-in is signed out,
-  then nothing is signed out and the saved grants stay.
+  then no secret is read, nothing is sent, the result says `notConfirmed` and no grant is left.
+- Given the same for a sign-in that needs no client secret,
+  when every sign-in is signed out,
+  then the refresh token is sent to the approved address, the result says `revoked` and no grant is left.
+- Given an integration the app doesn't name and that has no saved grant,
+  when every sign-in is signed out,
+  then nothing is signed out and the other integrations' grants stay.
 - Given a signed-in integration,
   when the host forgets it,
   then its parts are new and its grant stays.
