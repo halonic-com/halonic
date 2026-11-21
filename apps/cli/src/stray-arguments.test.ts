@@ -8,17 +8,20 @@ import { captureIo } from "./test/capture-io.ts";
 
 const everyCommand = Object.values(commands);
 
-/** Every command that runs, as the words that reach it, such as `["secret", "list"]`. */
+/**
+ * Every command that runs, as the words that reach it, such as `["secret", "list"]`.
+ * A command with subcommands counts too when words beside them reach it,
+ * such as `trust` beside `trust instructions`.
+ */
 function runnableCommands(
   list: readonly CliCommand[],
   above: readonly string[] = [],
 ): { readonly words: readonly string[]; readonly command: CliCommand }[] {
   return list.flatMap((command) => {
     const words = [...above, command.name];
-    if (command.subcommands !== undefined) {
-      return runnableCommands(command.subcommands, words);
-    }
-    return [{ words, command }];
+    if (command.subcommands === undefined) return [{ words, command }];
+    const itself = command.argumentsBesideSubcommands === true ? [{ words, command }] : [];
+    return [...itself, ...runnableCommands(command.subcommands, words)];
   });
 }
 

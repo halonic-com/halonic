@@ -1,4 +1,5 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FileInstructionTrustStore, FileTrustStore } from "@halonicjs/adapter-fs-node";
@@ -36,10 +37,14 @@ function skill(body: string): string {
   return `---\nname: Review\ndescription: Reviews a change.\n---\n${body}\n`;
 }
 
-/** What is trusted for the coder in Acme, or `null`. */
+/**
+ * What is trusted for the coder in Acme, or `null`. Keyed by the real path
+ * the command takes: on Windows only this `realpath` also expands short
+ * folder names such as `RUNNER~1`, which `realpathSync` leaves.
+ */
 async function trustedForCoder() {
   return await instructionStore.get({
-    location: realpathSync(join(folder, "acme")),
+    location: await realpath(join(folder, "acme")),
     agent: "coder",
   });
 }
