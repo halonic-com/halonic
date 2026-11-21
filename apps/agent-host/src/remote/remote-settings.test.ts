@@ -3,29 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
+import { MemoryFile } from "./memory-file.test-helper.ts";
 import { type PrivateFile, privateFileAt } from "./private-file.ts";
 import { RemoteSettings, remoteSettingsOff } from "./remote-settings.ts";
-
-/** A file in memory that counts its writes, and can be told to fail them. */
-class MemoryFile implements PrivateFile {
-  text: string | undefined;
-  writes = 0;
-  failing = false;
-
-  constructor(text?: string) {
-    this.text = text;
-  }
-
-  async read(): Promise<string | undefined> {
-    return this.text;
-  }
-
-  async write(text: string): Promise<void> {
-    if (this.failing) throw new Error("the disk is full");
-    this.writes += 1;
-    this.text = text;
-  }
-}
 
 async function settingsOn(file: PrivateFile) {
   const logged: string[] = [];

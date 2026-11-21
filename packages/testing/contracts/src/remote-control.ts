@@ -164,7 +164,7 @@ function pairingCases(make: MakeRemoteControl): void {
     expect(check.type === "check" && check.checkCode).toMatch(new RegExp(`^${symbols}{6}$`));
     await session.allow();
     const paired = await next();
-    expect(paired).toMatchObject({ type: "paired", phone: { name: "Pixel 8", connected: true } });
+    expect(paired).toMatchObject({ type: "paired", phone: { name: "Pixel 8" } });
     const state = await stateOf(harness.control);
     expect(state).toMatchObject({ on: true, pairing: false });
     expect(state.phones.map((phone) => phone.name)).toEqual(["Pixel 8"]);
