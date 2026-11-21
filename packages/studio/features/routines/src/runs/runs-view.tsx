@@ -213,7 +213,9 @@ function RunRow({
 
 /**
  * A time that didn't start, or a queue: plain muted text, not a link, no id or chip. `name`, when
- * given, is what a screen reader hears instead of the text.
+ * given, is what a screen reader hears instead of the text. A refusal's sentence is the engine's
+ * own and can hold a long field or step name, so the row breaks long words rather than widen the
+ * panel on a phone.
  */
 function QuietRow({
   text,
@@ -225,7 +227,7 @@ function QuietRow({
   readonly name?: string | undefined;
 }) {
   return (
-    <li className="min-h-control-md px-2 py-1 text-small text-fg-muted">
+    <li className="min-h-control-md px-2 py-1 text-small text-fg-muted wrap-anywhere">
       {hidden !== undefined && <span className="sr-only">{hidden}</span>}
       {name === undefined ? (
         text

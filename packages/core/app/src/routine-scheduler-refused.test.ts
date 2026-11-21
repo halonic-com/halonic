@@ -51,6 +51,47 @@ verifies("app.scheduler-keeps-refused-starts", () => {
       ]);
     });
 
+    it("keeps the refusal's next step with its sentence, a row per step", async () => {
+      const { scheduler, at, state } = refusing();
+      await scheduler.tick();
+      const running = "Acme is already running in another Halonic on this computer.";
+      state.refusal = new KindedError("conflict", running, {
+        fix: "Stop that one, then try again.",
+      });
+      at("2026-11-03T08:00:20Z");
+      await scheduler.tick();
+      state.refusal = new KindedError("conflict", running);
+      at("2026-11-03T09:00:20Z");
+      await scheduler.tick();
+      const rows = await scheduler.skippedTimes("p/hourly");
+      expect(rows.map(({ sentence, fix, count }) => ({ sentence, fix, count }))).toEqual([
+        { sentence: running, fix: undefined, count: 1 },
+        { sentence: running, fix: "Stop that one, then try again.", count: 1 },
+      ]);
+      expect(rows[0]).not.toHaveProperty("fix");
+    });
+
+    it("marks a next step that leads to a command, as a row of its own", async () => {
+      const { scheduler, at, state } = refusing();
+      await scheduler.tick();
+      const window = "This window can't run Briefing.";
+      const fix = "Run it in a terminal:";
+      state.refusal = new KindedError("invalid_input", window, { fix });
+      at("2026-11-03T08:00:20Z");
+      await scheduler.tick();
+      state.refusal = Object.assign(new KindedError("invalid_input", window, { fix }), {
+        command: "halonic run briefing",
+      });
+      at("2026-11-03T09:00:20Z");
+      await scheduler.tick();
+      const rows = await scheduler.skippedTimes("p/hourly");
+      expect(rows.map(({ fix, toCommand, count }) => ({ fix, toCommand, count }))).toEqual([
+        { fix, toCommand: true, count: 1 },
+        { fix, toCommand: undefined, count: 1 },
+      ]);
+      expect(rows[1]).not.toHaveProperty("toCommand");
+    });
+
     it("keeps no sentence for an error without a kind or an internal one, and makes a row per sentence", async () => {
       const { scheduler, at, state } = refusing();
       await scheduler.tick();
