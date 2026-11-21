@@ -3,6 +3,7 @@
 - Task: HAL-14848
 - Approval: Sofia asked for this UX fix on HAL-14848 (https://paperclip.halonic.com/HAL/issues/HAL-14848) and on HAL-12367, as a team decision with no board card (HAL-2282 rule). Liam signs this note at code review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5+eN1/BThveqSoX7dcOWWbnNG6RIAv1eR9rr+tvA9LQbbEnZe6DoQOT7mNDFgjWYNFDXbjQrpIjPZEGdJXePBw==
 
 ## What changes
 
