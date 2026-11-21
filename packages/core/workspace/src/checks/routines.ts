@@ -1,5 +1,11 @@
 import type { FileProblem } from "@halonicjs/format";
-import { CronError, checkTimeZone, parseCron, parseEvery } from "@halonicjs/routines";
+import {
+  CronError,
+  checkTimeZone,
+  parseCron,
+  parseEvery,
+  triggerValueProblems,
+} from "@halonicjs/routines";
 import { inputReads, missingStartFields, nearName, readsWholeInput } from "@halonicjs/workflow";
 import type { LoadedFileOf, WorkspaceIssue } from "../load-workspace.ts";
 import type { CheckContext } from "./check-context.ts";
@@ -30,6 +36,9 @@ interface RoutineProblem {
  * `input.<key>` is a warning, with "Did you mean" for a close one (HAL-14316).
  * An input without a field the workflow's first step reads is an error: the
  * run would start with nothing where that field goes (HAL-14777).
+ *
+ * Each `{{…}}` in its input or prompt that isn't a value of its trigger is an
+ * error too, since the run would get an empty text (HAL-14298).
  */
 export function checkRoutines(context: CheckContext): WorkspaceIssue[] {
   const issues: WorkspaceIssue[] = [];
@@ -41,6 +50,11 @@ export function checkRoutines(context: CheckContext): WorkspaceIssue[] {
       targetProblem(context, routine),
       mailProblem(context, routine),
       triggerProblem(routine),
+      ...triggerValueProblems(routine.value).map((problem) => ({
+        ...problem,
+        path: [...problem.path],
+        code: "unknown-trigger-value",
+      })),
     ];
     for (const problem of problems) {
       if (problem !== null) {

@@ -4,13 +4,17 @@ import { expect, it } from "vitest";
 import type { PlacedRoutine } from "./due.ts";
 import { routineStart } from "./routine-start.ts";
 
-function placed(run: object, hub: string | null = "h"): PlacedRoutine {
+function placed(
+  run: object,
+  hub: string | null = "h",
+  trigger: object = { manual: true },
+): PlacedRoutine {
   const routine = {
     version: 1,
     id: "r1",
     name: "r1",
     enabled: true,
-    trigger: { manual: true },
+    trigger,
     overlap: "skip",
     catchUp: "last",
     run,
@@ -41,7 +45,8 @@ verifies("routines.routine-start", () => {
   });
 
   it("fills the prompt of an agent with the mail message", () => {
-    const routine = placed({ agent: "a", prompt: "Mail: {{trigger.message.subject}}" });
+    const mail = { mail: { connector: "gmail", query: "in:inbox", every: "2m" } };
+    const routine = placed({ agent: "a", prompt: "Mail: {{trigger.message.subject}}" }, "h", mail);
     expect(routineStart(routine, { at, lastRun: null, message: { subject: "Hi" } })).toEqual({
       agent: "a",
       hub: "h",
@@ -50,10 +55,12 @@ verifies("routines.routine-start", () => {
   });
 
   it("fills the prompt of an agent with the signal's data", () => {
-    const routine = placed({
-      agent: "a",
-      prompt: "Tell the team {{trigger.signal.vendor}} was paid.",
-    });
+    const onPaid = { signal: { name: "invoice.paid" } };
+    const routine = placed(
+      { agent: "a", prompt: "Tell the team {{trigger.signal.vendor}} was paid." },
+      "h",
+      onPaid,
+    );
     const signal = { vendor: "Acme" };
     expect(routineStart(routine, { at, lastRun: null, signal })).toMatchObject({
       prompt: "Tell the team Acme was paid.",
@@ -65,5 +72,19 @@ verifies("routines.routine-start", () => {
     expect(routineStart(own, { at, lastRun })).toMatchObject({ hub: "other" });
     const workspace = placed({ agent: "a", prompt: "p" }, null);
     expect(routineStart(workspace, { at, lastRun })).toMatchObject({ hub: null });
+  });
+});
+
+verifies("routines.trigger-values", () => {
+  it("starts nothing when an input names a value the trigger doesn't have, instead of dropping the key", () => {
+    const routine = placed({ workflow: "digest", input: { day: "{{trigger.date}}" } });
+    expect(() => routineStart(routine, { at, lastRun })).toThrow(
+      "{{trigger.date}} isn't a trigger value. Use {{trigger.at}} or {{trigger.lastRun}}.",
+    );
+  });
+
+  it("starts nothing when a prompt would read an empty value", () => {
+    const routine = placed({ agent: "a", prompt: "Today is {{trigger.today}}." });
+    expect(() => routineStart(routine, { at, lastRun })).toThrow("{{trigger.today}}");
   });
 });
