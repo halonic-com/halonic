@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-4291 (checklist 3.1 to 3.3, 3.9, 3.10); microcopy 23.3; `app.sandbox-start-words`; `app.sandbox-start-check`. The words are placeholders until HAL-1784 is approved: reviewers check the keys.
+- Source: HAL-4291 (checklist 3.1 to 3.3, 3.9, 3.10); microcopy 23.3; `app.sandbox-start-words`; `app.sandbox-start-check`.
 
 The runs feature shall give the pages that start runs one Callout, and one check behind it, for a sandbox that can't start. A page shall check once when it opens, where it has a control that would start a program in the sandbox and the workspace provides `sandboxStartCheckKey`. Only a check that refuses shall disable anything: before it answers, where nothing can check, and when the check itself can't run, the controls stay as they are.
 
@@ -10,7 +10,7 @@ While the check refuses, the Callout shall show, in the warning tone and in this
 
 - "*Support reply* can't run: the sandbox can't start on this computer.", which every control it disables names as its description;
 - for `other` (and a code Halonic doesn't know) only, the reason sentence;
-- the fix for the can't-run Callout from `sandboxStartWords`, with the command it names as code; on a phone, the phone fix;
+- the fix for the can't-run Callout from `sandboxStartWords`, with the command it names as code; on a phone, the can't-run Callout's fix for a phone;
 - **Check again** and a link, "Read the guide", to the docs section for the reason;
 - then the page's own last line, in muted text.
 

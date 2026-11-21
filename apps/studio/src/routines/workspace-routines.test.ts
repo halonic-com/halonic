@@ -1,94 +1,17 @@
-import type { RunSummary } from "@halonicjs/events";
 import { KindedError } from "@halonicjs/std";
 import { EngineNotAnswering, NothingToRun } from "@halonicjs/studio-feature-routines/api";
 import { StartRefused } from "@halonicjs/studio-feature-workflows/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { WindowCantStart } from "../engine/page-refusal.ts";
-import { WorkspaceRoutines, type WorkspaceRoutinesParts } from "./workspace-routines.ts";
-
-const analystFile = "id: analyst\nname: Analyst\nmodel: fast\ninstructions: Report.\n";
-const replyFile = "id: reply\nname: Reply\ninitial: first\nstates:\n  first:\n    type: final\n";
-const weeklyFile = [
-  "# Sent to the team.",
-  "name: Weekly report",
-  "trigger:",
-  '  schedule: "0 9 * * 1"',
-  "  timezone: Europe/Amsterdam",
-  "run:",
-  "  agent: analyst",
-  "  prompt: Write the report.",
-  "",
-].join("\n");
-const weekly = { hubId: "acme", id: "weekly-report" } as const;
-const now = new Date("2026-11-17T08:00:00Z");
-
-function setup(
-  extra: Partial<WorkspaceRoutinesParts> = {},
-  runs: Partial<RunSummary>[] = [],
-  hub: Record<string, string> = {},
-) {
-  const store: Record<string, string> = {
-    "hubs/acme/hub.yaml": "id: acme\nname: Acme\n",
-    "hubs/beta/hub.yaml": "id: beta\nname: Beta\n",
-    "hubs/acme/agents/analyst.agent.yaml": analystFile,
-    "hubs/acme/workflows/reply.workflow.yaml": replyFile,
-    "hubs/acme/workflows/routines/weekly-report.routine.yaml": weeklyFile,
-    ...hub,
-  };
-  const undoSteps: Record<string, string>[] = [];
-  const changes: { label: string; changes: Record<string, string | null> }[] = [];
-  const fileListeners = new Set<() => void>();
-  const runListeners = new Set<() => void>();
-  const host = new WorkspaceRoutines({
-    files: {
-      read: async (path) => store[path] ?? null,
-      list: async (dir) =>
-        Object.keys(store)
-          .filter((path) => path.startsWith(`${dir}/`))
-          .sort(),
-      change: (label, made) => {
-        const before = { ...store };
-        undoSteps.push(before);
-        changes.push({ label, changes: made });
-        for (const [path, text] of Object.entries(made)) {
-          if (text === null) delete store[path];
-          else store[path] = text;
-        }
-      },
-      undo: () => {
-        const before = undoSteps.pop();
-        if (before === undefined) return false;
-        for (const path of Object.keys(store)) delete store[path];
-        Object.assign(store, before);
-        return true;
-      },
-      get step() {
-        return undoSteps.length;
-      },
-    },
-    onChange: (listener) => {
-      fileListeners.add(listener);
-      return () => fileListeners.delete(listener);
-    },
-    runs: {
-      list: async () => runs.map((summary) => ({ summary: summary as RunSummary })),
-      subscribe: (listener) => {
-        runListeners.add(listener);
-        return () => runListeners.delete(listener);
-      },
-    },
-    timeZone: "UTC",
-    now: () => now,
-    ...extra,
-  });
-  return { store, changes, fileListeners, runListeners, host };
-}
-
-const weeklyRun = {
-  kind: "run",
-  trigger: { type: "schedule", routineId: "acme/weekly-report", at: "2026-11-16T08:00:00Z" },
-} as const;
+import {
+  analystFile,
+  replyFile,
+  setup,
+  weekly,
+  weeklyFile,
+  weeklyRun,
+} from "./workspace-routines.test-helper.ts";
 
 verifies("studio.workspace-routines", () => {
   it("lists a routine with its words, its target and its next time", async () => {
@@ -150,6 +73,27 @@ verifies("studio.workspace-routines", () => {
       everLive: true,
       changesNotLive: false,
     });
+  });
+
+  it("says whether what a routine starts runs a program, through the workflow's agents", async () => {
+    const coder = "id: coder\nname: Coder\nharness: claude-code\n";
+    const startsReply = weeklyFile.replace(
+      "  agent: analyst\n  prompt: Write the report.",
+      "  workflow: reply",
+    );
+    const own = setup();
+    expect((await own.host.read(weekly)).startsProgram).toBe(false);
+    const agent = setup({}, [], {
+      "hubs/acme/agents/analyst.agent.yaml": `${analystFile}harness: codex\n`,
+    });
+    expect((await agent.host.read(weekly)).startsProgram).toBe(true);
+    const workflow = setup({}, [], {
+      "hubs/acme/agents/coder.agent.yaml": coder,
+      "hubs/acme/workflows/reply.workflow.yaml":
+        "id: reply\nname: Reply\ninitial: first\nstates:\n  first:\n    agent: coder\n    on: [{ to: done }]\n  done:\n    type: final\n",
+      "hubs/acme/workflows/routines/weekly-report.routine.yaml": startsReply,
+    });
+    expect((await workflow.host.read(weekly)).startsProgram).toBe(true);
   });
 
   it("rejects a routine the workspace doesn't have as not found", async () => {

@@ -57,6 +57,7 @@ import {
   targetFor,
   targetFound,
   targetName,
+  targetStartsProgram,
   targetsOf,
 } from "./routine-reads.ts";
 import { nextTimesOf, triggerProblems } from "./routine-times.ts";
@@ -221,6 +222,7 @@ export class WorkspaceRoutines implements RoutinesHost {
       targetName: targetName(workspace, file),
       target,
       targetState: targetFound(workspace, target) ? "ready" : "not-found",
+      startsProgram: targetStartsProgram(workspace, target),
       overlap: value.overlap,
       catchUp: value.catchUp,
       file: file.path,
