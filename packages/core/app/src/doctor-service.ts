@@ -15,6 +15,13 @@ import {
   type SignedOutAgent,
 } from "./doctor-checks.ts";
 import {
+  type DefaultModelLine,
+  defaultModelLine,
+  type LastRunInput,
+  type LastRunLine,
+  lastRunLine,
+} from "./doctor-first-run.ts";
+import {
   type DiskLine,
   diskLine,
   type NetworkLine,
@@ -79,7 +86,13 @@ export type DoctorProvider =
       /** The name of the secret that holds its key. */
       secret: string;
     }
-  | { provider: string; name: string; runs: "without-a-key" };
+  | {
+      provider: string;
+      name: string;
+      runs: "without-a-key";
+      /** The built-in test model, Sample answers, rather than a provider that only needs no key. */
+      testModel?: boolean;
+    };
 
 /** The workspace `doctor` runs in. */
 export interface DoctorWorkspace {
@@ -128,6 +141,13 @@ export interface DoctorWorkspace {
    * agents' own sign-ins.
    */
   harnessSettingsFolder?: (agentId: string, harnessId: string) => string | undefined;
+  /** Whether `workspace.yaml` sets `privacy.localOnly: true`, for the Default model line. */
+  localOnly?: boolean;
+  /**
+   * The workspace's last run, when it failed, as the host read it from its
+   * log, for Studio's Last run line. Left out, there is no such line.
+   */
+  lastRun?: LastRunInput;
 }
 
 /** What {@link DoctorService} needs from the host. */
@@ -194,6 +214,14 @@ export interface DoctorReport {
   /** Only when the host found a problem with the network settings. */
   network?: NetworkLine;
   disk: DiskLine | TimedOutLine<"disk">;
+  /**
+   * Only with a `default` alias: where it points, and why it can't be used
+   * yet. Studio's first run shows it; `halonic doctor` doesn't, and it isn't
+   * counted in the summary (HAL-13406).
+   */
+  defaultModel?: DefaultModelLine;
+  /** Only when the host gave a failed last run. Studio shows it, and it isn't counted in the summary. */
+  lastRun?: LastRunLine;
   /** The counts under the lines, and whether `doctor` exits 1. */
   summary: DoctorSummary;
 }
@@ -251,6 +279,7 @@ export class DoctorService {
       if (models !== undefined) report.models = models;
       const secretsFound = lineOf(secrets, "secrets", secretsLine);
       if (secretsFound !== undefined) report.secrets = secretsFound;
+      Object.assign(report, firstRunLines(workspace, report));
     }
     const choice = this.options.sandboxChoice?.current() ?? null;
     const mxc = choice === null ? undefined : mxcLine(choice);
@@ -423,6 +452,27 @@ function agentSettingsFolders(workspace: DoctorWorkspace | null): AgentSettingsF
     if (settingsFolder === undefined) return [];
     return [{ agent: agent.name, harness: agent.harness, settingsFolder }];
   });
+}
+
+/** Studio's Default model and Last run lines, each only when it applies. */
+function firstRunLines(
+  workspace: DoctorWorkspace,
+  report: Omit<DoctorReport, "summary">,
+): Pick<DoctorReport, "defaultModel" | "lastRun"> {
+  const defaultModel = defaultModelLine({
+    aliases: workspace.aliases,
+    providers: workspace.providers,
+    models: report.models,
+    localOnly: workspace.localOnly === true,
+  });
+  const lines: Pick<DoctorReport, "defaultModel" | "lastRun"> =
+    defaultModel === undefined ? {} : { defaultModel };
+  const lastRun =
+    workspace.lastRun === undefined
+      ? undefined
+      : lastRunLine(workspace.lastRun, { ...report, ...lines });
+  if (lastRun !== undefined) lines.lastRun = lastRun;
+  return lines;
 }
 
 /** The Node.js and Network lines, each only when the host found a problem. */

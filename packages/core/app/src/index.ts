@@ -71,6 +71,23 @@ export {
   type SignedOutAgent,
 } from "./doctor-checks.ts";
 export {
+  type AnyDoctorLine,
+  type DefaultModelCause,
+  type DefaultModelInput,
+  type DefaultModelLine,
+  type DefaultModelTarget,
+  type DoctorAction,
+  type DoctorCause,
+  type DoctorLineId,
+  defaultAlias,
+  defaultModelLine,
+  doctorLineActions,
+  type LastRunInput,
+  type LastRunLine,
+  lastRunLine,
+  runCause,
+} from "./doctor-first-run.ts";
+export {
   type DataSpace,
   type DiskLine,
   diskLine,
