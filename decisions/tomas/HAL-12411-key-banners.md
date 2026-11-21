@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12411 (UX check R1 to R6 on HAL-12390, microcopy 15.3 and revision 113 of 1.6 on HAL-751; small wording on an approved screen, a team decision under HAL-2282); facts shared with the CLI approved by Liam on HAL-12464
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BQALabuXRvc30MXZWEnSkXpt+obDHaMvr4AJjGW2s2EZ96eOLTA8oQaVFlQBa9EUkwtqTt4eTgjtljtOB6BpCQ==
 - Task: HAL-12411
 
 A run that failed with `key-refused`, `provider-busy`, `out-of-credit`, `local-only`, or
