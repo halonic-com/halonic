@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: mockup-trust rev 2 (HAL-1018), states-flow-map 2.5 and 2.6 (HAL-5878), the CLI's trust check (cli-output 3.5); HAL-1291, HAL-8559
+- Source: mockup-trust rev 2 (HAL-1018), states-flow-map 2.5 and 2.6 (HAL-5878), the CLI's trust check (cli-output 3.5); HAL-1291, HAL-8559; a local integration's secret picks are HAL-14734, in Mara's words on HAL-14737
 
-The desktop app shall build the trust check from the same check the CLI uses, in the CLI's words. For a workspace nobody has trusted it shall give the title "Trust *name*?", a summary that names what the workspace will start, pass, list and allow (counts of 0 left out), and Programs, Agents and Addresses sections that have rows, each with its count. For a workspace whose record no longer matches it shall give "*name* changed since you trusted it on *date*", a summary of what is new and changed, the New and Changed rows and how many items are unchanged. A program whose version isn't pinned shall carry its warning and be named for the person to confirm. A trusted workspace shall have nothing to review. Saving a person's trust shall save exactly the fingerprint that was shown, check again, and say why when it saved nothing.
+The desktop app shall build the trust check from the same check the CLI uses, in the CLI's words. For a workspace nobody has trusted it shall give the title "Trust *name*?", a summary that names what the workspace will start, pass, list and allow (counts of 0 left out), and Programs, Agents and Addresses sections that have rows, each with its count. For a workspace whose record no longer matches it shall give "*name* changed since you trusted it on *date*", a summary of what is new and changed, the New and Changed rows and how many items are unchanged. A connector that runs a local integration shall be listed under Addresses with its folder, `integrations/<folder>`, and a `Gets secrets` line naming the workspace secret each secret of the integration's sheet gets, as `my-notes-key as notes-key` (just the name when both are the same), never a value. A program whose version isn't pinned shall carry its warning and be named for the person to confirm. A trusted workspace shall have nothing to review. Saving a person's trust shall save exactly the fingerprint that was shown, check again, and say why when it saved nothing.
 
 ## Examples
 
@@ -16,3 +16,5 @@ The desktop app shall build the trust check from the same check the CLI uses, in
   then nothing is saved and the answer says the workspace changed.
 - Given a trusted connector's program later resolves to another path,
   then the check reads "Acme changed since you trusted it on 3 Nov" and "1 changed program since you trusted this on 3 Nov."
+- Given a connector that runs the local integration in `integrations/notes` and gives the sheet's secret notes-key the workspace secret my-notes-key,
+  then its row under Addresses reads `integrations/notes` with the line "Gets secrets: my-notes-key as notes-key".
