@@ -67,8 +67,11 @@ export interface Version {
 
 /** What {@link ChangesSource.getUpdates} found. */
 export type UpdatesResult =
-  /** The shared copy had `count` newer versions; they are in the workspace now. */
-  | { readonly kind: "got"; readonly count: number }
+  /**
+   * The shared copy had `count` newer versions; they are in the workspace now. `people` recorded
+   * them, each name once, in the order they first appear.
+   */
+  | { readonly kind: "got"; readonly count: number; readonly people: readonly string[] }
   /** The shared copy has nothing newer. */
   | { readonly kind: "up-to-date" }
   /** The shared copy and this workspace both have versions the other lacks; nothing was changed. */

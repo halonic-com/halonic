@@ -242,11 +242,14 @@ export const identityWords = {
 export const updatesWords = {
   getUpdates: "Get updates",
   gettingUpdates: "Getting updates…",
-  /** The toast: "Got 2 versions from the shared copy". One phrase, no full stop. */
-  got: (count: number) =>
-    count === 1
-      ? "Got 1 version from the shared copy"
-      : `Got ${count} versions from the shared copy`,
+  /**
+   * The toast: "Got 2 versions from Sam", or "from the team" when more than one person recorded
+   * them. One phrase, no full stop.
+   */
+  got: (count: number, people: readonly string[]) => {
+    const from = people.length === 0 ? "the shared copy" : mergeWords.who(people);
+    return count === 1 ? `Got 1 version from ${from}` : `Got ${count} versions from ${from}`;
+  },
   upToDate: "Already up to date",
   /** The toast's title when nothing could be got; the reason and "Nothing changed here." follow. */
   failed: "Couldn't get versions",
