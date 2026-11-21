@@ -283,6 +283,29 @@ verifies("words.doctor-lines", () => {
   });
 });
 
+verifies("app.doctor-harness-web-search", () => {
+  it("names the agent, alias, model and provider, with a fix that points the alias elsewhere", () => {
+    const harnesses: HarnessesLine = {
+      check: "harnesses",
+      status: "warning",
+      installed: [],
+      problems: [
+        {
+          problem: "searches-web",
+          agent: "Writer",
+          alias: "research",
+          model: "perplexity/sonar",
+          provider: "OpenRouter",
+        },
+      ],
+    };
+    expect(worded(harnesses).items).toEqual([
+      "Writer uses research (perplexity/sonar at OpenRouter), which searches the web by itself, outside Halonic's tools and approvals.",
+      "fix: Fix: to keep its searches inside Halonic, point research in models.yaml at a model that doesn't search by itself.",
+    ]);
+  });
+});
+
 describe("doctorLineWords", () => {
   it("keys the label as the CLI's catalogue does", () => {
     expect(doctorLineWords(workspace({}), face).label.key).toBe("doctor.workspaceLabel");

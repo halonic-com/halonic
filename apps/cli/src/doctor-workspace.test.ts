@@ -405,3 +405,29 @@ verifies("cli.doctor-secrets", () => {
     ]);
   });
 });
+
+verifies("app.doctor-harness-web-search", () => {
+  it("gives the doctor each harness agent whose alias searches the web, and nothing without one", async () => {
+    const files = {
+      "workspace.yaml": acmeSettings,
+      "providers/openrouter.yaml":
+        "id: openrouter\nname: OpenRouter\ntype: openai-compatible\nsecret: openrouter\nsearchesWeb: [perplexity/sonar]\n",
+      "models.yaml": "aliases:\n  research: { provider: openrouter, model: perplexity/sonar }\n",
+    };
+    const doctorOf = async (agent: string) =>
+      doctorWorkspace({
+        workspace: await workspaceOf({ ...files, "agents/writer.agent.yaml": agent }),
+        integrations: [],
+        location: root,
+        fallbackName: "acme",
+        commandPaths: new Map(),
+      });
+
+    const harness = await doctorOf("id: writer\nname: Writer\nharness: codex\nmodel: research\n");
+    expect(harness.webSearching).toEqual([
+      { agent: "Writer", alias: "research", model: "perplexity/sonar", provider: "OpenRouter" },
+    ]);
+    const loop = await doctorOf("id: writer\nname: Writer\nmodel: research\n");
+    expect(loop).not.toHaveProperty("webSearching");
+  });
+});

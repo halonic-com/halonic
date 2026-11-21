@@ -4,6 +4,7 @@
 // file names facts, never sentences.
 
 import type { HarnessDetection, HarnessSignIn } from "@halonicjs/ports";
+import type { WebSearchingAgent } from "./doctor-web-search.ts";
 
 /** A line's mark: ✓ `ok`, ! `warning`, ✕ `failed`. The same values `--json` prints. */
 export type DoctorStatus = "ok" | "warning" | "failed";
@@ -63,7 +64,9 @@ export type HarnessProblem =
   /** "*Claude Code 0.9.1* isn't supported. Halonic needs *1.0.0* or newer." */
   | { problem: "unsupported"; harness: string; name: string; version: string; supported: string }
   /** "Halonic found *Claude Code* but couldn't ask its version: *error*" */
-  | { problem: "failed"; harness: string; name: string; error: string };
+  | { problem: "failed"; harness: string; name: string; error: string }
+  /** "*Writer* uses *research* (*perplexity/sonar* at *OpenRouter*), which searches the web by itself, …" One per agent. */
+  | ({ problem: "searches-web" } & WebSearchingAgent);
 
 /** The Harnesses line of `halonic doctor` (P5 on HAL-2264). */
 export interface HarnessesLine extends DoctorLine {
@@ -72,7 +75,11 @@ export interface HarnessesLine extends DoctorLine {
   status: "ok" | "warning";
   /** The harnesses that are ready, in the order given. */
   installed: InstalledHarness[];
-  /** Each agent whose harness is missing, then each harness that can't run, then each agent that isn't signed in. */
+  /**
+   * Each agent whose harness is missing, then each harness that can't run,
+   * then each agent that isn't signed in, then each agent whose model
+   * searches the web by itself.
+   */
   problems: HarnessProblem[];
 }
 
@@ -87,6 +94,8 @@ export interface HarnessesLine extends DoctorLine {
  * @param harnesses every harness Halonic can start other than its own, with what `detect()` found
  * @param agents the workspace's agents whose harness isn't Halonic's own, or none outside a workspace
  * @param signedOut the agents whose harness says they aren't signed in, in their own settings folder
+ * @param webSearching the harness agents whose model searches the web by itself, as
+ *   `webSearchingAgents` finds them (requirement `app.doctor-harness-web-search`)
  * @throws Error when an agent names a harness that isn't in `harnesses`, because the agent file's
  *   format only allows harnesses Halonic has
  *
@@ -102,6 +111,7 @@ export function harnessesLine(
   harnesses: readonly DetectedHarness[],
   agents: readonly HarnessAgent[],
   signedOut: readonly SignedOutAgent[] = [],
+  webSearching: readonly WebSearchingAgent[] = [],
 ): HarnessesLine | undefined {
   const byId = new Map(harnesses.map((harness) => [harness.id, harness]));
   for (const { agent, harness } of agents) {
@@ -116,6 +126,7 @@ export function harnessesLine(
     ...missingProblems(byId, agents),
     ...harnessProblems(harnesses, agents),
     ...signedOut.map((agent) => ({ problem: "signed-out" as const, ...agent })),
+    ...webSearching.map((agent) => ({ problem: "searches-web" as const, ...agent })),
   ];
   if (installed.length === 0 && problems.length === 0) return undefined;
 

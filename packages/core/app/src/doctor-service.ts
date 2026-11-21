@@ -50,6 +50,7 @@ import {
   signedOutAgents,
 } from "./doctor-sign-ins.ts";
 import { lineOf, type TimedOutLine, type timedOut, withinLimit } from "./doctor-time-limit.ts";
+import type { WebSearchingAgent } from "./doctor-web-search.ts";
 import { workspaceModels } from "./doctor-workspace-models.ts";
 import type { ResourceReport } from "./resource-report.ts";
 import type { SandboxChoiceService } from "./sandbox-choice.ts";
@@ -138,6 +139,11 @@ export interface DoctorWorkspace {
    * agents' own sign-ins.
    */
   harnessSettingsFolder?: (agentId: string, harnessId: string) => string | undefined;
+  /**
+   * The harness agents whose model searches the web by itself, as
+   * `webSearchingAgents` finds them. The Harnesses line warns about each.
+   */
+  webSearching?: readonly WebSearchingAgent[];
   /** Whether `workspace.yaml` sets `privacy.localOnly: true`, for the Default model line. */
   localOnly?: boolean;
   /**
@@ -292,7 +298,12 @@ export class DoctorService {
     const noSandbox = choice === null ? undefined : noSandboxLine(choice);
     if (noSandbox !== undefined) report.noSandbox = noSandbox;
     const harnessLine = lineOf(harnesses, "harnesses", (found) =>
-      harnessesLine(found.detected, harnessAgents(workspace), found.signedOut),
+      harnessesLine(
+        found.detected,
+        harnessAgents(workspace),
+        found.signedOut,
+        workspace?.webSearching,
+      ),
     );
     if (harnessLine !== undefined) report.harnesses = harnessLine;
     const found = { ...report, ...hostFoundLines(node, this.options.network) };

@@ -10,6 +10,7 @@ import {
   trustContentInputOf,
   trustSubjectOf,
   type UsedSecret,
+  webSearchingAgents,
 } from "@halonicjs/app";
 import type { Connector, Provider } from "@halonicjs/format";
 import { isSecretName, secretKey } from "@halonicjs/ports";
@@ -59,6 +60,8 @@ export interface DoctorWorkspaceInput {
  * - **File problems:** the errors `halonic validate` finds. Each leaves a
  *   file out, so a workspace with any is never on the test model only:
  *   the file left out may be a provider's (HAL-6613).
+ * - **Web search:** the harness agents whose model searches the web by
+ *   itself, as `webSearchingAgents` finds them (HAL-13603).
  *
  * @example
  * doctorWorkspace({ workspace, integrations: [], location: "/work/acme", fallbackName: "acme", commandPaths });
@@ -73,6 +76,7 @@ export function doctorWorkspace(input: DoctorWorkspaceInput): DoctorWorkspace {
   // The Models line takes only aliases whose provider it was given.
   const listed = new Set(providers.map((provider) => provider.provider));
   const fileProblems = fileProblemsOf(workspace);
+  const webSearching = webSearchingAgents(workspace);
   return {
     name: settings?.name ?? input.fallbackName,
     trust: trustSubjectOf(input),
@@ -85,6 +89,7 @@ export function doctorWorkspace(input: DoctorWorkspaceInput): DoctorWorkspace {
       fileProblems === 0 &&
       reachesOnlyTheTestModel(trustContentInputOf(workspace, input.integrations)),
     ...(fileProblems === 0 ? {} : { fileProblems }),
+    ...(webSearching.length === 0 ? {} : { webSearching }),
     ...(settings?.privacy.localOnly === true ? { localOnly: true } : {}),
   };
 }

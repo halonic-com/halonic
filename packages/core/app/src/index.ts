@@ -146,6 +146,7 @@ export {
   type LimitedCheck,
   type TimedOutLine,
 } from "./doctor-time-limit.ts";
+export { type WebSearchingAgent, webSearchingAgents } from "./doctor-web-search.ts";
 export {
   EventBus,
   type EventListener,
