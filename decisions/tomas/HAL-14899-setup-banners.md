@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-14899 (asked for by Liam in his review of halonic#4245 on HAL-14301; the words build on the approved C336/C337 wording, a team decision under HAL-2282); Julian signs this note in his review of halonic#4480
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:Jz/DmOthJyUDtUDNYwCgyq0mJndcVU14PZ6S0+viOtmBeoc2hAgcgCzJ5LbZJjlnaJMbBIc4v1GK4TtHFrIYAQ==
 - Task: HAL-14899
 
 ## What changes
