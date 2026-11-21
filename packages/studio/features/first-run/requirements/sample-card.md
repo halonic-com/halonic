@@ -1,6 +1,6 @@
 # first-run.sample-card
 
-- Status: active
+- Status: retired
 - Since: unreleased
 - Source: HAL-1308 (T15); flow-first-run 3.3 (revision 15); microcopy 5
 

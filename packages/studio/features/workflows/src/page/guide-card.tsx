@@ -1,5 +1,5 @@
 import { Button } from "@halonicjs/studio-kit";
-import { useEffect, useId, useState } from "react";
+import { type RefObject, useEffect, useId, useState } from "react";
 import type { WorkflowGuide, WorkflowGuideCard, WorkflowGuidePage, WorkflowRef } from "../api.ts";
 import type { WorkflowView } from "./workflow-tabs.ts";
 
@@ -21,7 +21,21 @@ export function useGuideCard(
     changed();
     return stop;
   }, [guide]);
-  return guide?.card(workflow);
+  return cardOf(guide, workflow);
+}
+
+/** The guide's card, or none when the guide fails to give one: its fault mustn't break the page. */
+function cardOf(
+  guide: WorkflowGuide | undefined,
+  workflow: WorkflowRef,
+): WorkflowGuideCard | undefined {
+  if (guide === undefined) return undefined;
+  try {
+    return guide.card(workflow);
+  } catch (error) {
+    console.error(`The guide couldn't give a card for "${workflow.id}".`, error);
+    return undefined;
+  }
 }
 
 /** Props for {@link GuideSlot}. */
@@ -36,6 +50,8 @@ export interface GuideSlotProps {
   readonly page: WorkflowGuidePage;
   /** Where this slot is: above the canvas, used on a phone, or at its right, used on the desktop. */
   readonly at: "top" | "right";
+  /** The card's button, which takes focus back when the Run form it opened closes. */
+  readonly button: RefObject<HTMLButtonElement | null>;
 }
 
 /**
@@ -43,12 +59,21 @@ export interface GuideSlotProps {
  * other card is docked at the right. The page has two slots, and only the one for the layout
  * draws: `top` on a phone, `right` on the desktop.
  */
-export function GuideSlot({ guide, workflow, view, docked, phone, page, at }: GuideSlotProps) {
+export function GuideSlot({
+  guide,
+  workflow,
+  view,
+  docked,
+  phone,
+  page,
+  at,
+  button,
+}: GuideSlotProps) {
   const card = useGuideCard(guide, workflow);
   if (card === undefined || view !== "flow" || docked || phone !== (at === "top")) {
     return null;
   }
-  return <GuideCard card={card} page={page} phone={phone} />;
+  return <GuideCard card={card} page={page} phone={phone} button={button} />;
 }
 
 /** Props for {@link GuideCard}. */
@@ -58,6 +83,8 @@ export interface GuideCardProps {
   readonly page: WorkflowGuidePage;
   /** On a phone the card sits above the canvas, full width; on the desktop at the right. */
   readonly phone: boolean;
+  /** Where the page keeps the card's button, to give it focus back. */
+  readonly button?: RefObject<HTMLButtonElement | null> | undefined;
 }
 
 /**
@@ -65,7 +92,7 @@ export interface GuideCardProps {
  * run's: a region named by its title, the lines, and one primary button. It isn't a dialog and has
  * no ✕, so the canvas stays usable beside it.
  */
-export function GuideCard({ card, page, phone }: GuideCardProps) {
+export function GuideCard({ card, page, phone, button }: GuideCardProps) {
   const headingId = useId();
   return (
     <aside
@@ -73,7 +100,7 @@ export function GuideCard({ card, page, phone }: GuideCardProps) {
       className={phone ? classes.phone : classes.desktop}
       data-guide-card=""
     >
-      <h2 id={headingId} className="text-body-strong">
+      <h2 id={headingId} className="text-title wrap-anywhere">
         {card.title}
       </h2>
       {card.lines.map((line, index) => (
@@ -86,7 +113,12 @@ export function GuideCard({ card, page, phone }: GuideCardProps) {
         </p>
       ))}
       <div>
-        <Button variant="primary" size="sm" onClick={() => card.action.run(page)}>
+        <Button
+          ref={button ?? null}
+          variant="primary"
+          size="sm"
+          onClick={() => card.action.run(page)}
+        >
           {card.action.label}
         </Button>
       </div>

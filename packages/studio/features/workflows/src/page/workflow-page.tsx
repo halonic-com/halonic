@@ -35,7 +35,7 @@ import { GuideSlot } from "./guide-card.tsx";
 import { firstTestsPick, firstView, panelClass } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
 import { ProgramStepsLine } from "./program-steps-line.tsx";
-import { dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
+import { type DockOpener, dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
 import { unavailableFor, useRunGate } from "./run-gate.ts";
 import { StartRow, useStartRefusal } from "./start-row.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
@@ -141,7 +141,8 @@ export function WorkflowScreen({
   const workflowKey = `${hubId}/${id}`;
   const keep = useCallback((next: View) => setKept({ of: workflowKey, view: next }), [workflowKey]);
   const [openStep, setOpenStep] = useState<string | undefined>();
-  const { dock, setDock, closeDock, runButton, rowCard, setRowCard } = useDock(title);
+  const { dock, setDock, openDock, closeDock, runButton, guideButton, rowCard, setRowCard } =
+    useDock(title);
   const [shownId, setShownId] = useState<string | undefined>();
   const showView = (next: WorkflowView) => {
     // The row's card goes with the Runs view, as it did when the view kept it.
@@ -200,13 +201,13 @@ export function WorkflowScreen({
   const canvasEdit = useCanvasEdit(host, { hubId, id }, name, phone);
   const rename = useRename(host, { hubId, id }, name, everyWorkflow.load, announce);
   // Run and a guide's button open the start form the same way, and neither while Run can't start.
-  const openStart = () => {
+  const openStart = (opener: DockOpener) => {
     if (startRun === undefined || runUnavailable !== undefined) return;
     setRowCard(undefined);
-    setDock("start");
+    openDock(opener);
   };
-  const guideSlot = { guide, workflow: { hubId, id }, view, docked, phone };
-  const guidePage = { openRunForm: openStart };
+  const guideSlot = { guide, workflow: { hubId, id }, view, docked, phone, button: guideButton };
+  const guidePage = { openRunForm: () => openStart("guide") };
   const gone = goneState(load, goToWorkflows);
   if (gone !== undefined) return gone;
   return (
@@ -253,7 +254,7 @@ export function WorkflowScreen({
               variant="primary"
               size="sm"
               unavailable={runUnavailable}
-              onClick={openStart}
+              onClick={() => openStart("run")}
             >
               {startWords.run}
             </Button>
