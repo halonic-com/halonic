@@ -1799,15 +1799,6 @@ Function un.RemoveSandbox
   DetailPrint "   If it was set up, Windows asks for administrator rights."
   Call un.ProfileFolder
   Pop $1
-  ; A removal with administrator rights leaves the access the sandbox kept on
-  ; the user's folders, and a mark in the profile: the agent host takes that
-  ; access back the next time it starts as the user (HAL-5404 S2). A mark
-  ; that was there before may be from an earlier such removal, so it counts
-  ; only when this one ran with administrator rights too.
-  StrCpy $3 1
-  ${If} ${FileExists} "$1\agent-host\forget-pending"
-    System::Call 'shell32::IsUserAnAdmin() i .r3'
-  ${EndIf}
   nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\sandbox-remove.ps1" -HostExe "$INSTDIR\halonic-agent-host.exe" -ProfileFolder "$1"'
   Pop $2
   Pop $SandboxReason
@@ -1817,11 +1808,13 @@ Function un.RemoveSandbox
   ${If} $2 == "0"
     StrCpy $SandboxOutcome "removed"
     DetailPrint "✓ Removed the agent sandbox"
-    ${If} $3 <> 0
-    ${AndIf} ${FileExists} "$1\agent-host\forget-pending"
-      StrCpy $SandboxOutcome "removed_kept"
-      DetailPrint "   Its access to your project folders is removed the next time you start ${PRODUCTNAME}."
-    ${EndIf}
+  ${ElseIf} $2 == "2"
+    ; With administrator rights the removal leaves the access the sandbox
+    ; kept on the user's folders; the agent host takes it back the next time
+    ; it starts as the user (HAL-5404 S2).
+    StrCpy $SandboxOutcome "removed_kept"
+    DetailPrint "✓ Removed the agent sandbox"
+    DetailPrint "   Its access to your project folders is removed the next time you start ${PRODUCTNAME}."
   ${ElseIf} $2 == "20"
     StrCpy $SandboxOutcome "none"
   ${ElseIf} $2 == "10"

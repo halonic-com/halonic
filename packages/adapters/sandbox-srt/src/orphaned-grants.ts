@@ -1,5 +1,6 @@
 import type { KeptGrants } from "./kept-grants.ts";
 import type { Machine } from "./machine.ts";
+import type { SandboxRemoval } from "./srt-sandbox.ts";
 
 const grantsKeptElevated =
   "Removed the Windows sandbox, but skipped forgetting its kept access grants: this removal ran with administrator rights. Remove it again without them to forget the grants.";
@@ -13,13 +14,23 @@ const takeBackElevated =
   "Didn't take back the access the Windows sandbox kept on your folders after a removal with administrator rights: this process runs with administrator rights too.";
 
 /**
- * The log line for a removal that skipped the user's kept grants for its
- * administrator rights (HAL-7585): it says they go at the next start only
- * when that start will see them, as srt then lists kept grants while its
- * sandbox account is gone (see {@link KeptGrants.orphaned}). Never rejects.
+ * What a removal that skipped the user's kept grants for its administrator
+ * rights gives (HAL-7585). It logs that they go at the next start only when
+ * that start will see them, as srt then lists kept grants while its sandbox
+ * account is gone (see {@link KeptGrants.orphaned}), and only then sets
+ * `keptAccess`, so the uninstaller's last page can say so (HAL-15004).
+ * Never rejects.
  */
-export async function grantsKeptLine(grants: Pick<KeptGrants, "orphaned">): Promise<string> {
-  return (await grants.orphaned()) ? grantsKeptOrphaned : grantsKeptElevated;
+export async function removedGrantsKept(
+  grants: Pick<KeptGrants, "orphaned">,
+  warn: (message: string) => void,
+): Promise<SandboxRemoval> {
+  if (!(await grants.orphaned())) {
+    warn(grantsKeptElevated);
+    return { ok: true };
+  }
+  warn(grantsKeptOrphaned);
+  return { ok: true, keptAccess: "until_next_start" };
 }
 
 /**

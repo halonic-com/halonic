@@ -16,7 +16,7 @@ import type {
 import { HelperError } from "./elevate-helper.ts";
 import { describeForgetFailures, type ForgetResult, KeptGrants } from "./kept-grants.ts";
 import { type Machine, systemMachine } from "./machine.ts";
-import { grantsKeptLine, takeBackOrphaned } from "./orphaned-grants.ts";
+import { removedGrantsKept, takeBackOrphaned } from "./orphaned-grants.ts";
 import { appArmorFix, installFix } from "./package-manager.ts";
 import { startSmallestSandbox } from "./ready-check.ts";
 import { assertSrtDeniesKeychain, bridgeNetwork } from "./srt-config.ts";
@@ -54,9 +54,9 @@ export type SandboxSetup =
   | { ok: true }
   | { ok: false; outcome: "cancelled" | "failed" | "check_failed"; reason: string; code?: number };
 
-/** What removing the sandbox gave: done, or how it ended and why not, in one line. */
+/** What removing the sandbox gave: done (see {@link removedGrantsKept}), or why not, in one line. */
 export type SandboxRemoval =
-  | { ok: true }
+  | { ok: true; keptAccess?: "until_next_start" }
   | { ok: false; outcome: "cancelled" | "failed"; reason: string; code?: number };
 
 /** Why a setup or a removal didn't happen when the administrator prompt was turned down. */
@@ -198,7 +198,7 @@ export class SrtSandbox implements Sandbox {
       if (removed === "cancelled") {
         return { ok: false, outcome: "cancelled", reason: promptCancelled };
       }
-      if (removed === "grants_kept") this.#warn(await grantsKeptLine(this.#grants));
+      if (removed === "grants_kept") return await removedGrantsKept(this.#grants, this.#warn);
     } catch (error) {
       return { ok: false, outcome: "failed", ...failure(error) };
     }

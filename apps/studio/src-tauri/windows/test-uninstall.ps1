@@ -118,6 +118,17 @@ if (-not (Sandbox-IsSetUp)) {
   if ($LASTEXITCODE -ne 0) { throw "The sandbox setup before the uninstall failed: $out" }
 }
 if (-not (Sandbox-IsSetUp)) { throw 'The sandbox account is missing after the setup' }
+# A write grant srt keeps, as a session leaves on its working folder. The
+# removal with administrator rights leaves it listed while the sandbox account
+# is gone, so the done page must say when it goes (HAL-5404 S2, HAL-15004).
+$srtWin = Join-Path $InstallFolder 'srt-win.exe'
+$sandboxSid = (& $srtWin user status | ConvertFrom-Json).user.sid
+if (-not $sandboxSid) { throw "srt-win user status names no sandbox account" }
+$keptFolder = Join-Path $env:RUNNER_TEMP 'uninstall-kept-grant'
+New-Item -ItemType Directory -Force $keptFolder | Out-Null
+@{ read = @(); write = @($keptFolder); denyRead = @(); denyWrite = @() } | ConvertTo-Json -Compress |
+  & $srtWin acl grant --holder-pid $PID --sandbox-user-sid $sandboxSid --persistent
+if ($LASTEXITCODE -ne 0) { throw "srt-win acl grant --persistent ended with $LASTEXITCODE" }
 
 # 1. The page; Enter cancels and removes nothing.
 $h = Open-Uninstaller '10-uninstall'
@@ -146,10 +157,9 @@ Wait-Button $h '&Close' 300
 Save-Picture $h '12-uninstalled'
 $done = Must-Find $h '✓ The agent sandbox is removed.' 'Static'
 # The runner's uninstaller runs with administrator rights, so the removal left
-# the access the sandbox kept on the user's folders, and the mark that has the
-# agent host take it back at its next start (HAL-5404 S2): the page says when
-# it goes, lined up under the first line's text, past its ✓.
-if (-not (Test-Path (Join-Path $profileFolder 'agent-host\forget-pending'))) { throw 'The removal with administrator rights left no mark' }
+# the grant kept above, which the agent host takes back at its next start
+# (HAL-5404 S2): the page says when it goes, lined up under the first line's
+# text, past its ✓.
 $kept = Must-Find $h 'Its access to your project folders is removed the next time you start Halonic.' 'Static'
 $first = New-Object U+RECT
 $second = New-Object U+RECT
