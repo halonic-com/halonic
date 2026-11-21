@@ -19,7 +19,8 @@ export const providerKind: FileKind<Provider> = {
  * The secret is named in the file, so a bad name or a pasted key is caught
  * here, not at run time. A key pasted into `options` is caught too, and so
  * is a type Halonic can't call, or a `baseUrl` it can't reach, which would
- * only fail once a run reached the model (HAL-14260).
+ * only fail once a run reached the model (HAL-14260), and a model listed
+ * twice in `searchesWeb`.
  */
 function checkProvider(provider: Provider): KindCheckProblem[] {
   const problem =
@@ -29,7 +30,29 @@ function checkProvider(provider: Provider): KindCheckProblem[] {
     ...checkBaseUrl(provider),
     ...(problem === undefined ? [] : [problem]),
     ...checkKeysIn(provider.options, ["options"], "provider-option"),
+    ...checkSearchesWebOnce(provider),
   ];
+}
+
+/**
+ * `duplicate` on each `searchesWeb` entry after the first with the same id.
+ * The list is a set; a repeat is most likely a typo for another model.
+ */
+function checkSearchesWebOnce(provider: Provider): KindCheckProblem[] {
+  const seen = new Set<string>();
+  const problems: KindCheckProblem[] = [];
+  (provider.searchesWeb ?? []).forEach((model, index) => {
+    if (seen.has(model)) {
+      problems.push({
+        severity: "error",
+        code: "duplicate",
+        path: ["searchesWeb", index],
+        message: `searchesWeb lists ${model} twice in providers/${provider.id}.yaml`,
+      });
+    }
+    seen.add(model);
+  });
+  return problems;
 }
 
 /**
