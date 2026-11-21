@@ -1,96 +1,34 @@
 // The job-started hook is the boundary that keeps fork and pull request code off our CI
 // server (HAL-14831, Julian's C1/C2). These tests run the hook as shipped against sample
-// events; only its two fixed paths are pointed at temporary files.
+// events (hook-run.mjs); C7's queue checks are in queue-gate.test.mjs.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { after, test } from "node:test";
+import { test } from "node:test";
+import {
+  CI_MAIN,
+  CI_QUEUE,
+  CONF_LINE,
+  dir,
+  EVENT_LINE,
+  events,
+  GATE_LINE,
+  here,
+  POOL_QUEUE,
+  REPO,
+  read,
+  refused,
+  run,
+  shipped,
+} from "./hook-run.mjs";
+// C7's queue checks: imported so CI's fast job, which names only this file, runs them too.
+import "./queue-gate.test.mjs";
 
-const here = new URL(".", import.meta.url).pathname;
-const read = (file) => readFileSync(join(here, file), "utf8");
-const REPO = "halonic-com/halonic";
-const CI_MAIN = `${REPO}/.github/workflows/ci.yml@refs/heads/main`;
-const CI_QUEUE = `${REPO}/.github/workflows/ci.yml@refs/heads/gh-readonly-queue/main/pr-1-abc`;
-
-const dir = mkdtempSync(join(tmpdir(), "halonic-ci-hook-"));
-after(() => rmSync(dir, { recursive: true, force: true }));
-const conf = join(dir, "pool.conf");
-const eventFile = join(dir, "event.json");
-
-const CONF_LINE = "CONF=/etc/halonic-ci/pool.conf";
-const EVENT_LINE = "EVENT_FILE=/home/runner/actions-runner/_work/_temp/_github_workflow/event.json"; // leak-guard: allow absolute-path the hook's event path inside the image
-const shipped = read("vm/job-started.sh");
-const hook = join(dir, "job-started.sh");
-writeFileSync(
-  hook,
-  shipped.replace(CONF_LINE, `CONF=${conf}`).replace(EVENT_LINE, `EVENT_FILE=${eventFile}`),
-);
-
-const repository = { full_name: REPO, fork: false };
-const events = {
-  pushMain: { ref: "refs/heads/main", pusher: { name: "halonic-dev" }, repository },
-  pushBranch: { ref: "refs/heads/feature", pusher: { name: "halonic-dev" }, repository },
-  mergeGroup: {
-    merge_group: {
-      base_ref: "refs/heads/main",
-      head_ref: "refs/heads/gh-readonly-queue/main/pr-1-abc",
-    },
-    repository,
-  },
-  mergeGroupRelease: {
-    merge_group: {
-      base_ref: "refs/heads/release/1",
-      head_ref: "refs/heads/gh-readonly-queue/release/1/pr-1",
-    },
-    repository,
-  },
-  ownPr: { pull_request: { head: { repo: { full_name: REPO } } }, repository },
-  forkPr: { pull_request: { head: { repo: { full_name: "someone/halonic" } } }, repository },
-  forkRepoPush: {
-    ref: "refs/heads/main",
-    pusher: { name: "someone" },
-    repository: { full_name: "someone/halonic", fork: true },
-  },
-  dispatch: { ref: "refs/heads/main", inputs: {}, repository },
-};
-
-const POOL_PUSH = 'ALLOWED_EVENTS="push"\nSMOKE_BRANCH=""\nSMOKE_WORKFLOW=""\n';
-const POOL_QUEUE = 'ALLOWED_EVENTS="push merge_group"\nSMOKE_BRANCH=""\nSMOKE_WORKFLOW=""\n';
-
-// Runs the hook. `event` is written to the fixed event path unless it's null; `env`
-// overrides the variables the runner sets.
-const run = ({ pool = POOL_PUSH, poolMode = 0o444, event, env = {}, path = process.env.PATH }) => {
-  rmSync(conf, { force: true });
-  rmSync(eventFile, { force: true });
-  if (pool !== null) {
-    writeFileSync(conf, pool);
-    chmodSync(conf, poolMode);
-  }
-  if (event !== null) writeFileSync(eventFile, JSON.stringify(event));
-  const res = spawnSync("/bin/bash", [hook], {
-    encoding: "utf8",
-    env: {
-      PATH: path,
-      GITHUB_EVENT_PATH: eventFile,
-      GITHUB_REPOSITORY: REPO,
-      GITHUB_EVENT_NAME: "push",
-      GITHUB_WORKFLOW_REF: CI_MAIN,
-      ...env,
-    },
-  });
-  return { ok: res.status === 0, out: res.stdout + res.stderr };
-};
-const refused = (res, reason) => {
-  assert.equal(res.ok, false, `expected a refusal, got: ${res.out}`);
-  assert.match(res.out, /::error title=halonic-ci refused this job::/);
-  assert.match(res.out, reason);
-};
-
-test("the shipped hook has the two fixed paths these tests replace", () => {
+test("the shipped hook has the three fixed paths these tests replace", () => {
   assert.equal(shipped.split(CONF_LINE).length, 2);
   assert.equal(shipped.split(EVENT_LINE).length, 2);
+  assert.equal(shipped.split(GATE_LINE).length, 2);
   assert.match(shipped, /^set -euo pipefail$/m);
 });
 

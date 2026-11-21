@@ -24,7 +24,13 @@ server by the board supervisor after it merges; the server doesn't pull from the
    - the repository must be `halonic-com/halonic` in both the event and the environment, and not a fork;
    - **every `pull_request` is refused**, whatever `pool.conf` says;
    - a push must be to `main` and run `ci.yml@refs/heads/main`; a merge group must target `main`
-     and run `ci.yml` from `gh-readonly-queue/main/*`;
+     and run `ci.yml` from its own `gh-readonly-queue/main/pr-<n>-<sha>` ref;
+   - **a merge group must hold only our own pull requests (C7):** the hook asks the VM's queue
+     gate for `main`'s merge queue, finds the entry whose pull request is `<n>` and whose head
+     commit is the group's commit, and refuses the job if that entry or any entry ahead of it
+     (their code is in the group's commit too) is cross-repository or has a head repository
+     owned outside `halonic-com`. A gate or API failure, GraphQL errors, no queue, an entry not
+     found or more than 100 entries is a refusal;
    - the event must be in `ALLOWED_EVENTS` (`"push"` now; `merge_group` only after T1);
    - `set -euo pipefail`: a missing `jq`, event file or pool file is a refusal.
 4. **Fork run approval** (repo setting): a maintainer approves every outside contributor's run.
@@ -34,7 +40,8 @@ are empty except during a smoke test. That branch's code is **not reviewed** and
 writable shared caches, so use only a branch that only admins can push to, and empty both again
 right after the test.
 
-`node --test infra/ci-runner/hook.test.mjs` runs the hook as shipped against sample events (CI runs
+`node --test infra/ci-runner/hook.test.mjs` runs the hook as shipped against sample events and a
+stand-in queue gate, and the gate against a stub API (`queue-gate.test.mjs`, imported; CI runs
 it in the `fast` job).
 
 ## Layout
@@ -45,6 +52,7 @@ it in the `fast` job).
 | Host | `host/halonic-ci-status.*`: a read-only status feed, fetched from the VM every minute over SSH with a key that can run only the status command. |
 | VM | Docker with `userns-remap`. One systemd unit per slot (`vm/halonic-runner@.service`). |
 | VM | `/etc/halonic-ci/app.pem`: the GitHub App's key (only permission: self-hosted runners), root-only `0400`. Never in the image, a container or a backup that leaves the VM. |
+| VM | Queue gate (C7): `vm/halonic-ci-gate.socket` listens on `/run/halonic-ci-gate/gate.sock`, which every container gets read-only. Each connection starts `vm/halonic-ci-gate@.service` (`vm/halonic-ci-gate.sh`), which takes no input and answers one fixed GraphQL query: `main`'s merge queue. Its token is `/etc/halonic-ci/queue-token`, root-only `0400`, handed to the service as a systemd credential under a throwaway user. |
 | VM | `/cache/trusted/{pnpm-store,ms-playwright}`: package and browser caches, no secrets, shared by all slots and kept between jobs, capped together at 20 GB (XFS project 300). `/cache/work/<slot>`: the job's work dir, quota-capped and wiped after every job. |
 
 Site data stays out of this repo: `/etc/halonic-ci/pool.env` (see `vm/pool.env.example`),
@@ -90,9 +98,20 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
 - **Kill switch:** clear `CI_RUNNER_LARGE` and `CI_RUNNER_SMALL` (the next runs go back to
   GitHub-hosted). On the VM: `touch /etc/halonic-ci/paused` and stop the slots. If the VM is
   suspected compromised, also revoke the App key and rotate the Turbo signing key.
+- **Queue gate (C7) and its token:** the token is a fine-grained personal access token of
+  `halonic-dev`, for `halonic-com/halonic` only, read-only (metadata, contents, pull requests),
+  with an expiry. Install it with `install -m 0400 -o root -g root /dev/stdin
+  /etc/halonic-ci/queue-token` (paste, then Ctrl-D), never in `pool/` (the folder jobs see), the
+  image, the repo or a backup that leaves the VM. Copy `vm/halonic-ci-gate.sh` to
+  `/usr/local/sbin/` (root, `0755`), the two units to `/etc/systemd/system/`, then
+  `systemctl daemon-reload && systemctl enable --now halonic-ci-gate.socket`. Check it from the VM
+  with `curl -s --unix-socket /run/halonic-ci-gate/gate.sock http://gate/ | head -c 300`.
+  **To rotate:** make the new token, install it the same way (the next connection reads it; no
+  restart), check as above, then delete the old token on GitHub. When the token expires or is
+  revoked, every merge group is refused, which fails safe.
 - **Merge groups on:** `ALLOWED_EVENTS="push merge_group"` in the VM's
-  `/etc/halonic-ci/pool/pool.conf` (applies at once), only after Julian has checked T1 and the
-  queue gate refuses cross-repository pull requests (C7).
+  `/etc/halonic-ci/pool/pool.conf` (applies at once), only after the queue gate is deployed and
+  Julian has checked T1 against it.
 - **Runner update:** new version and checksum in `vm/Dockerfile`, build the image in the VM,
   set `IMAGE=` in `pool.env`, restart the slots.
 - **Weekly** (`vm/halonic-ci-maint.timer`, Sunday 04:00): prunes images and stale work dirs. When
@@ -120,4 +139,4 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
 - A check that nothing trusts the server's public IP (C4).
 - Paperclip's cpuset kept off the CI CPUs.
 - The runner group restricted to `ci.yml`.
-- The queue gate refusing cross-repository pull requests (C7), and the real-fork test (T1).
+- The real-fork test (T1).

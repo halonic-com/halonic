@@ -93,6 +93,7 @@ docker run --rm --name "hci-$SLOT" --hostname "$NAME" --init \
   --tmpfs "/tmp:rw,exec,nosuid,nodev,size=$TMPFS" \
   -v "$RUN:/run/halonic-ci:ro" \
   -v /etc/halonic-ci/pool:/etc/halonic-ci:ro \
+  -v /run/halonic-ci-gate:/run/halonic-ci-gate:ro \
   -v "$WORK:$JOB_WORK" \
   -v "$TRUSTED/pnpm-store:/cache/pnpm-store" \
   -v "$TRUSTED/ms-playwright:/cache/ms-playwright" \

@@ -8,6 +8,7 @@ deny() { echo "::error title=halonic-ci refused this job::$1. These runners only
 REPO=halonic-com/halonic
 CONF=/etc/halonic-ci/pool.conf
 EVENT_FILE=/home/runner/actions-runner/_work/_temp/_github_workflow/event.json  # leak-guard: allow absolute-path written by the runner inside the image
+GATE=/run/halonic-ci-gate/gate.sock  # the VM's queue gate (C7), mounted read-only; it holds the token, we never see it
 
 command -v jq >/dev/null 2>&1 || deny "jq missing in image"
 [ -r "$CONF" ] || deny "pool config missing"
@@ -38,7 +39,34 @@ case "$kind" in
     deny "pull request from $(ev .pull_request.head.repo.full_name)" ;;
   merge_group)
     [ "$(ev .merge_group.base_ref)" = "refs/heads/main" ] || deny "merge group not for main"
-    case "$WF" in "$REPO/.github/workflows/ci.yml@refs/heads/gh-readonly-queue/main/"*) ;; *) deny "workflow $WF" ;; esac ;;
+    head_ref=$(ev .merge_group.head_ref); head_sha=$(ev .merge_group.head_sha)
+    [[ "$head_ref" =~ ^refs/heads/gh-readonly-queue/main/pr-([0-9]{1,9})-[0-9a-f]{40}$ ]] || deny "merge group ref $head_ref"
+    pr=${BASH_REMATCH[1]}
+    [[ "$head_sha" =~ ^[0-9a-f]{40}$ ]] || deny "merge group commit $head_sha"
+    [ "$WF" = "$REPO/.github/workflows/ci.yml@$head_ref" ] || deny "workflow $WF"
+    # C7: the group's commit holds the code of its own pull request and of every entry ahead of
+    # it, so each of those must come from a halonic-com/halonic branch, not a fork.
+    command -v curl >/dev/null 2>&1 || deny "curl missing in image"
+    [ -S "$GATE" ] || deny "queue gate not available"
+    queue=$(curl -fsS --max-time 15 --max-filesize 1048576 --unix-socket "$GATE" http://halonic-ci-gate/queue) \
+      || deny "queue gate did not answer"
+    verdict=$(jq -r --argjson pr "$pr" --arg sha "$head_sha" '
+      if (.errors // []) != [] then "GitHub API errors"
+      elif .data.repository.mergeQueue == null then "no merge queue for main"
+      else .data.repository.mergeQueue.entries as $e
+        | [$e.nodes[] | select(.pullRequest.number == $pr and .headCommit.oid == $sha)] as $hit
+        | if ($hit | length) != 1 then
+            (if $e.pageInfo.hasNextPage then "pull request #\($pr) not in the first 100 queue entries"
+             else "pull request #\($pr) at \($sha) not in the merge queue" end)
+          else [$e.nodes[] | select(.position <= $hit[0].position)
+                | select(.pullRequest.isCrossRepository != false
+                         or .pullRequest.headRepositoryOwner.login != "halonic-com")
+                | .pullRequest.number] as $bad
+            | if $bad != [] then "merge group holds a pull request from outside halonic-com: #\($bad | map(tostring) | join(", #"))"
+              else "ok" end
+          end
+      end' <<<"$queue" 2>/dev/null) || deny "queue gate answer unreadable"
+    [ "$verdict" = ok ] || deny "$verdict" ;;
   push)
     ref=$(ev .ref)
     if [ "$ref" = "refs/heads/main" ]; then
