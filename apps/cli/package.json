@@ -56,6 +56,7 @@
     "@halonicjs/std": "workspace:*",
     "@halonicjs/target-node-runtime": "workspace:*",
     "@halonicjs/test-runner": "workspace:*",
+    "@halonicjs/workflow": "workspace:*",
     "@halonicjs/workspace": "workspace:*"
   },
   "devDependencies": {

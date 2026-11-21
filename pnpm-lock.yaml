@@ -551,6 +551,9 @@ importers:
       '@halonicjs/test-runner':
         specifier: workspace:*
         version: link:../../packages/core/test-runner
+      '@halonicjs/workflow':
+        specifier: workspace:*
+        version: link:../../packages/core/workflow
       '@halonicjs/workspace':
         specifier: workspace:*
         version: link:../../packages/core/workspace
