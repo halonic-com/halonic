@@ -102,13 +102,17 @@ export const trustMessages = defineMessages("trust", {
     phrase`gets the ${names.length === 1 ? "secret" : "secrets"} ${listed(names)}`,
   /**
    * The workspace secrets a local integration's connector picks, after its
-   * folder: "gets the secrets my-notes-key as notes-key and backup", where
+   * folder: "gets the secrets backup and my-notes-key as notes-key", where
    * "as" names the secret in the integration's sheet when it differs (Mara,
-   * HAL-14737).
+   * HAL-14737). The picks that keep their name come first, so "as" ends the
+   * list and never reads as a second name for the secret before it (Mara,
+   * C569).
    */
   getsPickedSecrets: (picks: readonly SecretPick[]) =>
     phrase`gets the ${picks.length === 1 ? "secret" : "secrets"} ${listed(
-      picks.map(({ secret, as }) => (secret === as ? secret : `${secret} as ${as}`)),
+      sameNamesFirst(picks).map(({ secret, as }) =>
+        secret === as ? secret : `${secret} as ${as}`,
+      ),
     )}`,
   /**
    * The variables a program takes from the person's environment, after its
@@ -321,6 +325,16 @@ function changeParts(changes: TrustChangeCounts): string[] {
       rows.changed > 0 ? counted(rows.changed, `changed ${one}`, `changed ${many}`) : undefined,
     ].filter((part) => part !== undefined),
   );
+}
+
+/**
+ * The picks whose workspace secret has the sheet's name, then the renamed ones,
+ * each group in the order it came in: "sync-key, backup as api-key and
+ * my-notes-key as notes-key" (Mara, C569).
+ */
+function sameNamesFirst(picks: readonly SecretPick[]): SecretPick[] {
+  const isSameName = (pick: SecretPick) => pick.secret === pick.as;
+  return [...picks.filter(isSameName), ...picks.filter((pick) => !isSameName(pick))];
 }
 
 /** "A", "A and B", "A, B and C". */

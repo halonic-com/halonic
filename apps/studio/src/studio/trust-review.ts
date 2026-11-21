@@ -272,12 +272,14 @@ function addressRow(connector: ConnectorTrustContent): TrustRowView {
 /**
  * A local integration's connector: the folder it runs, then the workspace
  * secret each secret of the integration's sheet gets, by name only, as
- * "my-notes-key as notes-key and sync-key" when the names differ (HAL-14734,
+ * "sync-key and my-notes-key as notes-key" when the names differ (HAL-14734,
  * words from HAL-14737). Joined with "and", as the CLI does: a comma would
- * read as two names for the secret before it (C552).
+ * read as two names for the secret before it (C552). The picks that keep
+ * their name come first, as in the CLI, so "as" never reads as a second name
+ * either (C569).
  */
 function integrationConnectorRow(connector: ConnectorTrustContent): TrustRowView {
-  const picks = secretPicks(connector).map(({ secret, as }) =>
+  const picks = sameNamesFirst(secretPicks(connector)).map(({ secret, as }) =>
     secret === as ? secret : `${secret} as ${as}`,
   );
   return {
@@ -412,6 +414,16 @@ function counted(count: number, noun: string): string {
   return `${count} ${plural}`;
 }
 
+/**
+ * The picks whose workspace secret has the sheet's name, then the renamed ones,
+ * each group in the order it came in: "sync-key, backup as api-key and
+ * my-notes-key as notes-key" (C569).
+ */
+function sameNamesFirst(picks: readonly SecretPick[]): SecretPick[] {
+  const isSameName = (pick: SecretPick) => pick.secret === pick.as;
+  return [...picks.filter(isSameName), ...picks.filter((pick) => !isSameName(pick))];
+}
+
 /** "A", "A and B", "A, B and C". */
 function listed(names: readonly string[]): string {
   const last = names.at(-1) ?? "";
@@ -446,11 +458,17 @@ function secretNames(connector: ConnectorTrustContent): string[] {
   return [...new Set(namesOf(references))].sort();
 }
 
+/** A workspace secret a local integration gets, and the name its sheet reads it as. */
+interface SecretPick {
+  readonly secret: string;
+  readonly as: string;
+}
+
 /**
  * The workspace secret each secret of a local integration's sheet gets,
  * sorted by the sheet's name. A connector's own `secret` keeps its name.
  */
-function secretPicks(connector: ConnectorTrustContent): { secret: string; as: string }[] {
+function secretPicks(connector: ConnectorTrustContent): SecretPick[] {
   const own = namesOf([connector.secret]).map((name) => ({ secret: name, as: name }));
   const picks = Object.entries(record(connector.settings["secrets"]))
     .sort(([first], [second]) => first.localeCompare(second, "en"))

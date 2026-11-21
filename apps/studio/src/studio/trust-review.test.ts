@@ -43,7 +43,7 @@ verifies("studio.workspace-trust-review", () => {
       {
         id: "notes",
         detail: "integrations/notes",
-        lines: [["Gets secrets", "backup as api-key, my-notes-key as notes-key and sync-key"]],
+        lines: [["Gets secrets", "sync-key, backup as api-key and my-notes-key as notes-key"]],
       },
       { id: "tasks", detail: "integrations/tasks", lines: [] },
     ]);
