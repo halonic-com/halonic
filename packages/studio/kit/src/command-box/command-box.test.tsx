@@ -232,7 +232,8 @@ verifies("kit.command-box-wrap", () => {
     const { text } = parts(container);
     const row = text.parentElement as HTMLElement;
     expect(row.className.split(" ")).toContain("flex-wrap");
-    // flex-1 alone has a 0 basis: the box would shrink beside the button instead of wrapping.
-    expect(text.className.split(" ")).toEqual(expect.arrayContaining(["flex-1", "basis-40"]));
+    // A 0 basis would let the box shrink beside the button instead of wrapping. Its 192px basis
+    // (kit.command-box) is wider than 160px, so the button wraps before the box gets that narrow.
+    expect(text.className.split(" ")).toEqual(expect.arrayContaining(["grow", "basis-48"]));
   });
 });
