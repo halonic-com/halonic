@@ -47,6 +47,15 @@ const noTestPattern =
   /^(docs\/|decisions\/|\.changeset\/.*\.md$|\.github\/(ISSUE_TEMPLATE\/|CODEOWNERS$|pull_request_template\.md$))|(^|\/)(README|AGENTS|CHANGELOG)\.md$/;
 
 /**
+ * Folders outside every package that no package's tests read, though they
+ * aren't docs. `infra/ci-runner/` holds the CI server's scripts; its own
+ * test runs in ci.yml's "Infra tests" step, not in a package (HAL-15286).
+ * Every other folder under `infra/` still tests everything. A folder ends
+ * in `/`.
+ */
+export const noPackageTestPaths: readonly string[] = ["infra/ci-runner/"];
+
+/**
  * Docs a package's tests read, by path, with the packages whose tests read
  * them. Every other doc is read by no test.
  */
@@ -98,7 +107,12 @@ function packagesReading(
     const bundled = publishedCodePaths.some((path) => file.startsWith(path)) && !isTestFile(file);
     return bundled ? [owner.manifest.name, ...publishedCodeReaders] : [owner.manifest.name];
   }
-  return readersOf(file) ?? (noTestPattern.test(file) ? [] : undefined);
+  return readersOf(file) ?? (readByNoTest(file) ? [] : undefined);
+}
+
+/** Whether a file outside every package is one no package's tests read. */
+function readByNoTest(file: string): boolean {
+  return noTestPattern.test(file) || noPackageTestPaths.some((path) => file.startsWith(path));
 }
 
 function matchesPath(file: string, path: string): boolean {
@@ -213,8 +227,9 @@ function requirementOwners(
  * (`verifiers`), the readers of a changed file in `examples/` or
  * `docsReaders`, `publishedCodeReaders` for a changed non-test file under
  * `publishedCodePaths`, or "all" when a changed file is one of
- * `fullSuitePaths`, lies outside every package and isn't docs, or when the
- * list of changed files is empty (it couldn't be read).
+ * `fullSuitePaths`, lies outside every package and isn't docs or in
+ * `noPackageTestPaths`, or when the list of changed files is empty (it
+ * couldn't be read).
  */
 export function testSelection(
   changed: readonly string[],
