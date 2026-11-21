@@ -1,88 +1,21 @@
 // @vitest-environment jsdom
-import type { ChatAnswer, SandboxStartCheck, SandboxStartResult } from "@halonicjs/app";
+import type { SandboxStartCheck, SandboxStartResult } from "@halonicjs/app";
 import { KindedError } from "@halonicjs/std";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import type { AgentChatRequest, AgentHarnessId } from "../api.ts";
+import type { AgentHarnessId } from "../api.ts";
 import type { HarnessStrip } from "../configuration/harness-strip.ts";
-import { memoryAgentsHost } from "../memory-host.ts";
 import { buttonNamed, show, typeIntoArea, unmount } from "../test-support.tsx";
-import { TryItChatView } from "./try-it-chat.tsx";
-import { ASK_ENGINE_EVERY_MS, useTryItChat } from "./use-try-it-chat.ts";
+import { Chat, said, scriptedHost, sendMessage } from "./try-it-test-support.tsx";
+
+const ways = { goToKeyField: vi.fn(), openHarness: vi.fn() };
 
 afterEach(() => {
   unmount();
   vi.clearAllMocks();
 });
-
-const sorter = {
-  hubId: "acme",
-  id: "sorter",
-  name: "Sorter",
-  description: "Sorts incoming mail by topic",
-};
-
-/** A host whose answers the test gives one by one, and what each request held. */
-function scriptedHost() {
-  const requests: AgentChatRequest[] = [];
-  const pending: ((answer: ChatAnswer | Error) => void)[] = [];
-  const host = memoryAgentsHost({
-    hubs: [{ id: "acme", name: "Acme" }],
-    agents: [sorter],
-    answer: (_ref, request) => {
-      // A copy, since the chat's conversation grows after the request.
-      requests.push({ ...request, messages: [...request.messages] });
-      return new Promise((resolve, reject) => {
-        pending.push((answer) => (answer instanceof Error ? reject(answer) : resolve(answer)));
-      });
-    },
-  });
-  /** Ends the oldest answer still being written. */
-  const finish = async (answer: ChatAnswer | Error) => {
-    await act(async () => pending.shift()?.(answer));
-  };
-  return { host, requests, finish };
-}
-
-const ways = { goToKeyField: vi.fn(), openHarness: vi.fn() };
-
-function Chat({
-  host,
-  announce,
-  harnessStrip = null,
-  harness = "claude-code",
-  sandboxStartCheck,
-}: {
-  readonly host: ReturnType<typeof memoryAgentsHost>;
-  readonly announce: (text: string, politeness?: "polite" | "assertive") => void;
-  readonly harnessStrip?: HarnessStrip | null;
-  readonly harness?: AgentHarnessId;
-  readonly sandboxStartCheck?: SandboxStartCheck;
-}) {
-  const chat = useTryItChat({ host, agent: sorter, name: "Sorter", announce });
-  return (
-    <TryItChatView
-      chat={chat}
-      name="Sorter"
-      description={sorter.description}
-      harness={harness}
-      harnessStrip={harnessStrip}
-      ways={ways}
-      sandboxStartCheck={sandboxStartCheck}
-      announce={announce}
-    />
-  );
-}
-
-async function sendMessage(page: HTMLElement, text: string) {
-  await typeIntoArea(page.querySelector("textarea") as HTMLTextAreaElement, text);
-  await act(async () => buttonNamed(page, "Send")?.click());
-}
-
-const said = (page: HTMLElement) =>
-  [...page.querySelectorAll("[data-chat-message] p")].map((line) => line.textContent);
 
 verifies("agents.chat.try-it", () => {
   it("shows the empty draft: the heading, the description and the box", async () => {
@@ -238,7 +171,7 @@ verifies("agents.chat.box-lines", () => {
 
   it("holds a message that looks like it has a key, with the way to the key field", async () => {
     const { host, requests } = scriptedHost();
-    const page = await show(<Chat host={host} announce={vi.fn()} />);
+    const page = await show(<Chat host={host} announce={vi.fn()} ways={ways} />);
     await sendMessage(page, `My key is ${key}`);
     expect(requests).toHaveLength(0);
     expect((page.querySelector("textarea") as HTMLTextAreaElement).value).toBe(`My key is ${key}`);
@@ -282,7 +215,9 @@ verifies("agents.chat.box-lines", () => {
     "makes Send wait when the harness is %s, with the line as its reason",
     async (strip, line) => {
       const { host, requests } = scriptedHost();
-      const page = await show(<Chat host={host} announce={vi.fn()} harnessStrip={strip} />);
+      const page = await show(
+        <Chat host={host} announce={vi.fn()} harnessStrip={strip} ways={ways} />,
+      );
       const status = page.querySelector("[role=status]") as HTMLElement;
       expect(status.textContent).toContain(line);
       await sendMessage(page, "Sort this mail");
@@ -295,160 +230,6 @@ verifies("agents.chat.box-lines", () => {
     },
   );
 });
-
-verifies("agents.chat.not-trusted", () => {
-  /** A chat in a workspace this computer doesn't trust, with the gate a test answers. */
-  async function untrusted(ask?: () => Promise<"trusted" | "declined">) {
-    let trusted = false;
-    const requests: AgentChatRequest[] = [];
-    const host = memoryAgentsHost({
-      hubs: [{ id: "acme", name: "Acme" }],
-      agents: [sorter],
-      answer: async (_ref, request) => {
-        requests.push(request);
-        return { messages: [], end: { reason: "answered" } };
-      },
-      trust: {
-        mayStart: () => trusted,
-        ask:
-          ask &&
-          (async () => {
-            const answer = await ask();
-            trusted = answer === "trusted";
-            return answer;
-          }),
-        workspaceName: "Acme",
-      },
-    });
-    const toasts = createToastStore();
-    const page = await show(
-      <ToastStoreProvider store={toasts}>
-        <Chat host={host} announce={vi.fn()} />
-      </ToastStoreProvider>,
-    );
-    const box = () => (page.querySelector("textarea") as HTMLTextAreaElement).value;
-    return { page, requests, toasts, box };
-  }
-
-  it("sends nothing, keeps the message and says why when there is no gate", async () => {
-    const { page, requests, toasts, box } = await untrusted();
-    await sendMessage(page, "Sort this mail");
-    expect(requests).toHaveLength(0);
-    expect(box()).toBe("Sort this mail");
-    expect(toasts.list()).toMatchObject([
-      { tone: "warning", title: "Not started: Acme isn't trusted yet" },
-    ]);
-  });
-
-  it("sends the message once the person trusts the workspace in the gate", async () => {
-    const ask = vi.fn(async () => "trusted" as const);
-    const { page, requests, toasts, box } = await untrusted(ask);
-    await sendMessage(page, "Sort this mail");
-    expect(ask).toHaveBeenCalledTimes(1);
-    expect(requests.map((request) => request.messages.at(-1)?.content)).toEqual(["Sort this mail"]);
-    expect(box()).toBe("");
-    expect(toasts.list()).toHaveLength(0);
-  });
-
-  /** A chat whose engine refuses each answer as `denied`, as an untrusted workspace's engine does. */
-  async function refusedByEngine(ask?: () => Promise<"trusted" | "declined">) {
-    const { host, requests, finish } = scriptedHost();
-    const withGate = Object.assign(host, {
-      askTrust: ask,
-      workspaceName: () => "Acme",
-    });
-    const toasts = createToastStore();
-    const page = await show(
-      <ToastStoreProvider store={toasts}>
-        <Chat host={withGate} announce={vi.fn()} />
-      </ToastStoreProvider>,
-    );
-    await sendMessage(page, "Sort this mail");
-    await finish(new KindedError("denied", "This workspace isn't trusted."));
-    const box = () => (page.querySelector("textarea") as HTMLTextAreaElement).value;
-    return { page, requests, toasts, box };
-  }
-
-  it("puts the message back and says why when the engine refuses it, with no failure line", async () => {
-    const { page, toasts, box } = await refusedByEngine();
-    expect(box()).toBe("Sort this mail");
-    expect(said(page)).toEqual([]);
-    expect(page.querySelector(".text-danger")).toBeNull();
-    expect(toasts.list()[0]?.title).toBe("Not started: Acme isn't trusted yet");
-  });
-
-  it("opens the gate when the engine refuses, and sends the message again once trusted", async () => {
-    const ask = vi.fn(async () => "trusted" as const);
-    const { page, requests, box } = await refusedByEngine(ask);
-    expect(ask).toHaveBeenCalledTimes(1);
-    expect(requests.map((request) => request.messages.at(-1)?.content)).toEqual([
-      "Sort this mail",
-      "Sort this mail",
-    ]);
-    expect(said(page)).toEqual(["Sort this mail"]);
-    expect(box()).toBe("");
-  });
-
-  it("keeps the message and shows the toast after Not now", async () => {
-    const { page, requests, toasts, box } = await untrusted(async () => "declined");
-    await sendMessage(page, "Sort this mail");
-    expect(requests).toHaveLength(0);
-    expect(box()).toBe("Sort this mail");
-    expect(toasts.list()[0]?.title).toBe("Not started: Acme isn't trusted yet");
-  });
-});
-
-verifies("agents.chat.engine-quiet", () => {
-  const line = "The engine isn't answering. Showing what it said last.";
-
-  /** A chat whose first answer failed because the engine stopped answering. */
-  async function quietChat() {
-    const { host, requests, finish } = scriptedHost();
-    const page = await show(<Chat host={host} announce={vi.fn()} />);
-    await sendMessage(page, "Sort this mail");
-    await finish(new KindedError("unavailable", "The engine isn't answering."));
-    return { host, requests, page };
-  }
-
-  it("keeps the transcript under the line, and Send waits with the line as its reason", async () => {
-    const { requests, page } = await quietChat();
-    expect(page.textContent).toContain(line);
-    expect(said(page)).toEqual(["Sort this mail", "Stopped when Halonic's engine stopped."]);
-    await sendMessage(page, "And this one?");
-    expect(requests).toHaveLength(1);
-    expect((page.querySelector("textarea") as HTMLTextAreaElement).value).toBe("And this one?");
-    const send = buttonNamed(page, "Send") as HTMLButtonElement;
-    const reason = document.getElementById(send.getAttribute("aria-describedby") ?? "");
-    expect(reason?.textContent).toBe(line);
-  });
-
-  it("drops the line when the engine answers as the window comes to the front", async () => {
-    const { requests, page } = await quietChat();
-    await act(async () => window.dispatchEvent(new Event("focus")));
-    expect(page.textContent).not.toContain(line);
-    await sendMessage(page, "And this one?");
-    expect(requests).toHaveLength(2);
-  });
-
-  it("asks every 5 seconds and keeps the line until the engine answers", async () => {
-    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
-    try {
-      const { host, page } = await quietChat();
-      const list = vi
-        .spyOn(host, "list")
-        .mockRejectedValueOnce(new KindedError("unavailable", "The engine isn't answering."));
-      await act(async () => vi.advanceTimersByTime(ASK_ENGINE_EVERY_MS));
-      expect(list).toHaveBeenCalledTimes(1);
-      expect(page.textContent).toContain(line);
-      await act(async () => vi.advanceTimersByTime(ASK_ENGINE_EVERY_MS));
-      expect(list).toHaveBeenCalledTimes(2);
-      expect(page.textContent).not.toContain(line);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-});
-
 verifies("agents.chat.sandbox", () => {
   /** A check that answers each call with the next of `answers`; the last one repeats. */
   function checkSaying(...answers: SandboxStartResult[]) {
