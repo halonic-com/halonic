@@ -1,0 +1,14 @@
+{
+  "identifier": "desktop-sandbox-elevate",
+  "description": "On Windows, the app's own page may start the agent sandbox's signed helper with Windows' administrator prompt, through sandbox_elevate (HAL-14841), for Settings › Agent sandbox and the Inbox setup card. The page names only the verb, setup or remove: the shell starts the halonic-sandbox-elevate.exe the installer put beside the app, with that one argument, owned by the app's window, and waits at most five minutes. It is local only, so the Studio the computer serves gets none of it.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "windows"
+  ],
+  "permissions": [
+    "allow-sandbox-elevate"
+  ]
+}

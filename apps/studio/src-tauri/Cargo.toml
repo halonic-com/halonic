@@ -87,6 +87,11 @@ tauri-plugin-updater = { version = "=2.14.1", default-features = false, features
 # resolves, with no features of our own, so it adds nothing to the build.
 reqwest = { version = "=0.13.5", default-features = false }
 
+# The agent sandbox's administrator prompt, asked for from the shell's own
+# window (HAL-14841). Windows only: no other system has the sandbox setup.
+[target.'cfg(windows)'.dependencies]
+halonic-elevate-start = { path = "crates/elevate-start" }
+
 # The pairing scanner (HAL-12246, build plan decision 16 on HAL-12232): the
 # official barcode-scanner plugin, approved in board decision 4c. The shell
 # loads only its Kotlin side and drives it from Rust (src/pair_scan.rs); the

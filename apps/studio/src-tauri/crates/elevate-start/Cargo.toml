@@ -1,0 +1,33 @@
+[package]
+name = "halonic-elevate-start"
+description = "Starts Halonic's sandbox helper with Windows' administrator prompt from the Studio shell's own window, one at a time, with a time limit."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# The Windows calls need `unsafe`. As in process-probe (HAL-2719) and
+# sandbox-elevate, this crate turns the workspace's `unsafe_code = "forbid"`
+# off in its own Cargo.toml, every block has a `// SAFETY:` comment, and
+# nothing unsafe leaves the `windows` module. These are the workspace lints
+# with that one change.
+[lints.rust]
+unsafe_code = "allow"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+undocumented_unsafe_blocks = "deny"
+
+# Pinned to the version already in Cargo.lock, so this crate adds no new
+# code to the build. Only the windows-sys features it calls are turned on.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.61.2", features = [
+  "Win32_Foundation",
+  "Win32_System_Com",
+  # SHELLEXECUTEINFOW names a registry key, so Windows' Shell needs it.
+  "Win32_System_Registry",
+  "Win32_System_Threading",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+] }

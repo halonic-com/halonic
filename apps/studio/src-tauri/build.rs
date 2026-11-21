@@ -77,6 +77,7 @@ fn main() {
         "wsl_removal_offered",
         "wsl_backup_choose",
         "wsl_backup_reveal",
+        "sandbox_elevate",
         "blob_put",
         "blob_get",
         "record_append",

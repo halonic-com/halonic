@@ -1471,6 +1471,11 @@ jobs:
       # works without unlocking (HAL-4499).
       - name: Keychain contract (Credential Manager)
         run: cargo test --locked -p halonic-keychain -- --ignored
+      # Studio's start of the sandbox helper with ShellExecuteExW runas, its
+      # wait and its time limit (HAL-14841). The runner's user is an
+      # administrator with UAC off, so Windows starts it with no prompt.
+      - name: Sandbox helper's start from Studio (runas, wait, time limit)
+        run: cargo test --locked -p halonic-elevate-start -- --ignored
       # The helper reads a publisher as Windows shows it, here PowerShell's
       # own signed program, and refuses a changed copy (HAL-7385, S-4).
       - name: Sandbox helper's signature check

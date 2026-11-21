@@ -1640,6 +1640,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-elevate-start"
+version = "0.1.0"
+dependencies = [
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "halonic-file-identity"
 version = "0.1.0"
 dependencies = [
@@ -1769,6 +1776,7 @@ dependencies = [
  "halonic-command-paths",
  "halonic-connect",
  "halonic-device-keys",
+ "halonic-elevate-start",
  "halonic-git-guard",
  "halonic-host-settings",
  "halonic-http-guard",
