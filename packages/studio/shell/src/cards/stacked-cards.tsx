@@ -201,7 +201,13 @@ interface TopCardProps {
   readonly children: ReactNode;
 }
 
-/** The card on top: `surface-raised` with `shadow-2`, its header, then the body the feature draws. */
+/**
+ * The card on top: `surface-raised` with `shadow-2`, its header, then the body the feature draws.
+ * The card is the container its header measures, so it follows the panel's width, not the
+ * window's. Under 30rem (a phone, a narrow panel) the path can't be read in one row, so ← and the
+ * breadcrumb give way to one ← that names where it goes, "← Writer", and the title wraps to two
+ * lines instead of being cut; its name still says the whole path (Sofia with Noah, HAL-14707).
+ */
 function TopCard({ card, look, behind, itemPath, stack, onGoBack, children }: TopCardProps) {
   const titleId = useId();
   return (
@@ -212,14 +218,27 @@ function TopCard({ card, look, behind, itemPath, stack, onGoBack, children }: To
     >
       <header className="flex flex-col gap-1 border-b border-border px-4 pt-3 pb-3">
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<BackIcon />}
-            label="Back"
-            onClick={() => onGoBack(stack.length - 2)}
-          />
-          <CardBreadcrumb itemPath={itemPath} stack={stack} onGoBack={onGoBack} />
+          <div className="flex min-w-0 flex-1 items-center gap-1 @max-[30rem]:hidden">
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<BackIcon />}
+              label="Back"
+              onClick={() => onGoBack(stack.length - 2)}
+            />
+            <CardBreadcrumb itemPath={itemPath} stack={stack} onGoBack={onGoBack} />
+          </div>
+          <div className="hidden min-w-0 flex-1 @max-[30rem]:flex">
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<BackIcon />}
+              onClick={() => onGoBack(stack.length - 2)}
+            >
+              <span className="sr-only">Back to </span>
+              <span className="min-w-0 truncate">{backName(itemPath, stack)}</span>
+            </Button>
+          </div>
           <Button
             variant="ghost"
             size="sm"
@@ -233,7 +252,7 @@ function TopCard({ card, look, behind, itemPath, stack, onGoBack, children }: To
           data-top-card-title=""
           tabIndex={-1}
           aria-label={topCardName(itemPath, stack)}
-          className="truncate rounded-xs text-heading text-fg focus-ring"
+          className="truncate rounded-xs text-heading text-fg focus-ring @max-[30rem]:line-clamp-2 @max-[30rem]:whitespace-normal @max-[30rem]:wrap-break-word"
         >
           {card.title}
         </h2>
@@ -243,6 +262,11 @@ function TopCard({ card, look, behind, itemPath, stack, onGoBack, children }: To
       </div>
     </section>
   );
+}
+
+/** Where ← goes: the card under the top one, or the item itself from the first card. */
+function backName(itemPath: readonly string[], stack: CardStack): string | undefined {
+  return stack.length > 1 ? stack.at(-2)?.title : itemPath.at(-1);
 }
 
 /**
@@ -258,10 +282,10 @@ function closeLabel(stack: CardStack): string {
  * panel, full height, its edge a border and a soft shadow, or the whole panel under 720px.
  */
 const topCardClasses: Readonly<Record<Exclude<StackLook, "none">, string>> = {
-  full: "absolute flex flex-col rounded-md border border-border bg-surface-raised shadow-2",
+  full: "@container absolute flex flex-col rounded-md border border-border bg-surface-raised shadow-2",
   docked:
-    "absolute inset-y-0 end-0 flex w-120 max-w-full flex-col border-s border-border bg-surface-raised shadow-2",
-  "docked-covering": "absolute inset-0 flex flex-col bg-surface-raised",
+    "@container absolute inset-y-0 end-0 flex w-120 max-w-full flex-col border-s border-border bg-surface-raised shadow-2",
+  "docked-covering": "@container absolute inset-0 flex flex-col bg-surface-raised",
 };
 
 interface CardBreadcrumbProps {
