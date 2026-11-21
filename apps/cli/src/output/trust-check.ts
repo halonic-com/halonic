@@ -42,8 +42,9 @@ export interface TrustCheckFacts {
    */
   readonly sandboxWorks?: boolean;
   /**
-   * The `backend.hosts` of each plugin installed here, by its id, shown under
-   * a plugin connector's row (HAL-14860). Left out, no plugin's hosts are shown.
+   * The hosts each plugin installed here may reach, its backend's and its
+   * local tools', by its id, shown under a plugin connector's row (HAL-14860,
+   * HAL-15094). Left out, no plugin's hosts are shown.
    */
   readonly pluginHosts?: PluginHosts;
 }

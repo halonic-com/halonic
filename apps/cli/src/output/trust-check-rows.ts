@@ -100,13 +100,14 @@ export function programSites(connector: ConnectorTrustContent): string[] {
  * A local integration's connector names its folder, with the secret each of
  * its sheet's secrets gets.
  * A plugin connector names its plugin, "  orders        plugin acme-orders",
- * and, when the plugin is installed here and its backend lists hosts, the
- * line "Reaches api.acme.example." under it (HAL-14860). The hosts come from
+ * and, when the plugin is installed here and its backend or a local tool
+ * may reach hosts, the line "Reaches api.acme.example." under it (HAL-14860,
+ * HAL-15094). The hosts come from
  * `pluginHosts`, the installed plugins' manifests, which the plugin's own
  * trust check covered; they show what the connector reaches and aren't in
  * the workspace's fingerprint.
  *
- * @param pluginHosts - the `backend.hosts` of each installed plugin, by its id; left out, none are shown
+ * @param pluginHosts - the hosts each installed plugin may reach, by its id; left out, none are shown
  */
 export function addressRows(
   connector: ConnectorTrustContent,

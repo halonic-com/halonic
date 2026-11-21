@@ -32,6 +32,7 @@ export {
 } from "./kinds/connector/schema.ts";
 export {
   connectorIsLocalWith,
+  pluginHosts,
   runsInRunner,
   type SheetHosts,
   sheetHostsOf,
