@@ -17,6 +17,8 @@ export interface StepPanelProps {
   readonly workflowName: (workflowId: string) => string;
   /** Opens a child run's page; without it the child run is named but not a link. */
   readonly openRun: ((runId: string) => void) | undefined;
+  /** Opens a plugin's own page, for a connector that didn't start for its plugin's trust; without it the plugin is named but not a link. */
+  readonly openPlugin?: ((pluginId: string) => void) | undefined;
   /** ✕, Escape, and Back on a phone. Focus goes back to the entry. */
   readonly onClose: () => void;
   /** On a phone the panel fills the screen over the page, with Back, instead of standing beside it. */
@@ -45,6 +47,7 @@ export function StepPanel({
   log,
   workflowName,
   openRun,
+  openPlugin,
   onClose,
   phone = false,
   live = false,
@@ -155,7 +158,7 @@ export function StepPanel({
                     </pre>
                   </Disclosure>
                   {call.failed === undefined ? null : (
-                    <FailedCallLine tool={call.tool} failed={call.failed} />
+                    <FailedCallLine tool={call.tool} failed={call.failed} openPlugin={openPlugin} />
                   )}
                 </li>
               ))}

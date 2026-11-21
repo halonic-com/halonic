@@ -1,10 +1,14 @@
 import type { ToolFailureCause, ToolNotMadeReason } from "@halonicjs/events";
+import { inlineLinkClasses } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import { failedCallWords } from "./failed-call-words.ts";
 import { fillWords } from "./fill-words.tsx";
 import type { ConnectorNotStarted, ConnectorStartCause, FailedCall } from "./step-events-model.ts";
 
 type FailedCallKey = keyof typeof failedCallWords;
+
+/** Opens a plugin's own page by its id; `undefined` where the window can't open tabs. */
+type OpenPlugin = ((pluginId: string) => void) | undefined;
 
 /**
  * "✕ Didn't work: the tool `search_pages` (*notion*) didn't answer within 60 seconds, …", under a
@@ -14,12 +18,17 @@ type FailedCallKey = keyof typeof failedCallWords;
 export function FailedCallLine({
   tool,
   failed,
+  openPlugin,
 }: {
   readonly tool: string;
   readonly failed: FailedCall;
+  /** Opens a plugin's page, for the plugin a connector didn't start for; without it its name isn't a link. */
+  readonly openPlugin?: OpenPlugin;
 }) {
   return (
-    <QuietFailureLine className="px-4 pb-3">{failedCallSentence(tool, failed)}</QuietFailureLine>
+    <QuietFailureLine className="px-4 pb-3">
+      {failedCallSentence(tool, failed, openPlugin)}
+    </QuietFailureLine>
   );
 }
 
@@ -38,7 +47,8 @@ export function ConnectorNotStartedLine({
     <QuietFailureLine className="py-1.5">
       {fillWords(failedCallWords, listingKeys[connectorStartKey(cause)], {
         connector: <em>{connector}</em>,
-        name: namedInCause(cause),
+        // Not a link yet: this line has its own requirement, which doesn't say so.
+        name: namedInCause(cause, undefined),
       })}
     </QuietFailureLine>
   );
@@ -67,7 +77,7 @@ function QuietFailureLine({
  * line, else only that it didn't work. Names from the log (the tool, the connector, a program or
  * a secret) show in code style or italics, never as part of a sentence a value could change.
  */
-function failedCallSentence(tool: string, failed: FailedCall): ReactNode[] {
+function failedCallSentence(tool: string, failed: FailedCall, openPlugin: OpenPlugin): ReactNode[] {
   const toolName = <code className="font-mono">{tool}</code>;
   const connector = failed.connector === undefined ? undefined : <em>{failed.connector}</em>;
   const values = {
@@ -93,7 +103,7 @@ function failedCallSentence(tool: string, failed: FailedCall): ReactNode[] {
     case "connector-not-started":
       return fillWords(failedCallWords, connectorStartKey(cause), {
         ...values,
-        name: namedInCause(cause),
+        name: namedInCause(cause, openPlugin),
       });
   }
 }
@@ -109,7 +119,8 @@ const notMadeKeys: Readonly<Record<ToolNotMadeReason, FailedCallKey>> = {
 /**
  * The line for a connector that didn't start: the program or the secret it missed, or the plugin
  * that isn't trusted yet or changed since, when the cause names it, else only that it didn't
- * start. The plugin line has no button: the plugin's own page has the trust step (HAL-15278).
+ * start. The plugin line has no button: the plugin's own page has the trust step, and the plugin's
+ * name is the way there (HAL-15278, HAL-15453).
  */
 function connectorStartKey(cause: ConnectorStartCause): StartLineKey {
   if (cause.name === undefined) return "notStarted";
@@ -130,12 +141,23 @@ function connectorStartKey(cause: ConnectorStartCause): StartLineKey {
 /**
  * The name a connector-start cause holds: a plugin in italics, as the connector is, since both
  * are names from the workspace; a program or a secret in code style.
+ *
+ * Where the window can open tabs, the plugin's name is an inline link to its own page, which has
+ * the trust step, so the line stays quiet but still leads to the fix (HAL-15453). The name in the
+ * sentence says where it goes, as "its plugin *files* isn't trusted yet".
  */
-function namedInCause(cause: ConnectorStartCause): ReactNode {
-  return cause.why === "plugin-not-trusted" || cause.why === "plugin-changed" ? (
-    <em>{cause.name}</em>
-  ) : (
-    <code className="font-mono">{cause.name}</code>
+function namedInCause(cause: ConnectorStartCause, openPlugin: OpenPlugin): ReactNode {
+  const { name } = cause;
+  if (cause.why !== "plugin-not-trusted" && cause.why !== "plugin-changed") {
+    return <code className="font-mono">{name}</code>;
+  }
+  if (openPlugin === undefined || name === undefined) {
+    return <em>{name}</em>;
+  }
+  return (
+    <button type="button" className={inlineLinkClasses} onClick={() => openPlugin(name)}>
+      <em>{name}</em>
+    </button>
   );
 }
 
