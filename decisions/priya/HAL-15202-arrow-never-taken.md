@@ -2,6 +2,7 @@
 
 - Approval: HAL-15202, from Iris's flow check C548 (findings 1 and 4) on the board-approved docked step card (flow-workflows 5.3); a small change on an approved screen, decided by the team and written on the task; Sofia confirmed the wording on HAL-15220
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KpIi7wsCC0/TYFulzJfn6J/hZ3EOp19hPFiPbYWnTiNHKYls4MriixvwEuoVcGQYXguNm0rY9D92sVgz5V8+AQ==
 
 The requirement workflows.page.step-arrows gains two things, and one existing rule narrows; workflows.page.step-card gains an example:
 
