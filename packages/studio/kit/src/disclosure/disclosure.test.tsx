@@ -167,3 +167,25 @@ verifies("kit.disclosure", () => {
     expect(container.firstElementChild?.tagName).toBe("DETAILS");
   });
 });
+
+verifies("kit.disclosure-warning-mark", () => {
+  it("puts the triangle in the attention colour before the words, hidden from screen readers", () => {
+    const { container } = render(
+      <Disclosure summary="Programs (1)" mark="warning">
+        Text
+      </Disclosure>,
+    );
+    const { summary } = parts(container);
+    const mark = summary.querySelector("svg")?.parentElement as HTMLElement;
+    expect(mark.getAttribute("aria-hidden")).toBe("true");
+    expect(mark.className).toContain("text-attention");
+    expect(mark.nextElementSibling?.textContent).toBe("Programs (1)");
+    expect(spokenText(summary)).toBe("Programs (1)");
+  });
+
+  it("has no triangle without the mark", () => {
+    const { container } = render(<Disclosure summary="Programs (1)">Text</Disclosure>);
+    // The chevron is the summary's only icon.
+    expect(parts(container).summary.querySelectorAll("svg")).toHaveLength(1);
+  });
+});

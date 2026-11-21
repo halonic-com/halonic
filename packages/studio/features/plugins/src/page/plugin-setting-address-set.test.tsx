@@ -86,3 +86,16 @@ verifies("plugins.plugin-trust-setting-address-set", () => {
     expect(rows()).toContain(notEntered);
   });
 });
+
+verifies("plugins.plugin-trust-row-marks", () => {
+  it("shows a set value in the text colour and only where it comes from in the muted colour", async () => {
+    await review(async () => ({ station: "192.168.1.20" }));
+
+    const value = [...(document.querySelector("dialog")?.querySelectorAll("code") ?? [])].find(
+      (code) => code.textContent === "192.168.1.20",
+    );
+    expect(value?.className).toContain("text-fg");
+    expect(value?.className).not.toContain("text-fg-muted");
+    expect(value?.nextElementSibling?.className).toContain("text-fg-muted");
+  });
+});
