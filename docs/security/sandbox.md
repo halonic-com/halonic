@@ -8,7 +8,7 @@ list of what it is meant to stop. Workspace trust is a separate check; see
 Three kinds of program use the sandbox: an agent that runs in Claude Code or
 Codex, the program of a workspace `stdio` connector that a run starts
 (requirement `cli.connector-sandbox`, in the CLI and in the agent host), and a
-plugin's local tools. An agent in Halonic's own harness starts no program, so
+plugin's local tools. An agent in Halonic's own loop starts no program, so
 it has none.
 
 Which commands run an agent in Claude Code or Codex depends on the version.

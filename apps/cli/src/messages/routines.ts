@@ -20,6 +20,15 @@ import { trustMessages } from "./trust.ts";
  * own words come from `describeTrigger` in `@halonicjs/routines`, as the
  * Studio writes them.
  */
+/**
+ * The fix for a routine whose agent is in a harness: `watch` has no
+ * `--harness` to move it, as `run` does, so the agent or the routine changes
+ * (HAL-11908), in `validate`'s words for the built-in loop (HAL-15396).
+ */
+function harnessFix() {
+  return phrase`Set the agent to Halonic's own loop, or turn the routine off.`;
+}
+
 export const routinesMessages = defineMessages("routines", {
   summary: () => phrase`List the workspace's routines, or start them on time`,
   /** `list`'s line in `halonic routines --help`: the same list as `halonic routines` (HAL-15082). */
@@ -154,6 +163,19 @@ export const routinesMessages = defineMessages("routines", {
   routineCantStart: (name: string, dir?: string) =>
     phrase`${markPart("failed")} ${name} can't start until its file is fixed ${markPart("separator")} ${suggestedCommand("validate", dir)}`,
   /**
+   * A line of `watch` for a routine that is on and runs an agent in a harness
+   * (Claude Code or Codex): the watch leaves it out and starts the others
+   * (HAL-15396), as it does a routine whose file has errors. `harness` is the
+   * id an agent file writes; the line shows its name, as doctor does.
+   * "✕ Daily notes can't start: routines can't run agents in Claude Code yet,
+   * and Coder is in Claude Code. Set the agent to Halonic's own loop, or turn
+   * the routine off."
+   */
+  harnessRoutineCantStart: (routine: string, agent: string, harness: string) => {
+    const name = trustMessages.harnessName(harness).phrase;
+    return phrase`${markPart("failed")} ${routine} can't start: routines can't run agents in ${name} yet, and ${agent} is in ${name}. ${harnessFix()}`;
+  },
+  /**
    * The line under {@link watching} for each webhook routine that is on: the
    * watch never starts it, `halonic serve` does (HAL-14299).
    */
@@ -206,8 +228,7 @@ export const routinesMessages = defineMessages("routines", {
    * The fix when a routine's agent is in a harness: `watch` has no `--harness`
    * to move it, as `run` does, so the agent or the routine changes (HAL-11908).
    */
-  harnessNotAvailableFix: () =>
-    phrase`Set the agent to Halonic's own harness, or turn the routine off.`,
+  harnessNotAvailableFix: () => harnessFix(),
   /** A skill an agent selected that the version a run reads doesn't have: the harness run doesn't start. */
   noSkillInVersion: (hubId: string, skillId: string) =>
     phrase`The version this run reads has no skill ${skillId} for hub ${hubId}.`,

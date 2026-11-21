@@ -1,12 +1,16 @@
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import type { RunEvent, RunEventBody, RunParent, RunTrigger } from "@halonicjs/events";
 import type { ProfileEnvironment } from "@halonicjs/profile";
+import { fixedClock } from "@halonicjs/std";
 import type { RunSetup } from "../commands/run/run.ts";
+import { openWorkspaceDir } from "../workspace-dir.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "../workspace-runs.ts";
+import { cliTrustService, readWorkspaceTrust } from "../workspace-trust.ts";
 import { removeTestFolder } from "./remove-folder.ts";
-import { testRunSetup } from "./run-setup.ts";
+import { engineStart, testRunSetup } from "./run-setup.ts";
 
 /**
  * A folder for the `halonic runs` tests: Acme's workspace with its Support
@@ -66,6 +70,23 @@ export function acmeRunsSetup(runs: AcmeRuns): RunSetup {
     ...testRunSetup(runs.folder, runs.profile),
     clock: () => ({ now, timeZone: "UTC" }),
   };
+}
+
+/**
+ * Trusts Acme as it is now, in the trust store {@link acmeRunsSetup} reads,
+ * as `halonic trust` would.
+ *
+ * @throws when Acme has a connector the trust check refuses
+ */
+export async function trustAcmeRuns(runs: AcmeRuns): Promise<void> {
+  const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: runs.acme });
+  const { subject } = await readWorkspaceTrust(dir, { path: undefined, endings: [] });
+  const store = new FileTrustStore(join(runs.folder, "trust"));
+  const trust = cliTrustService(store, fixedClock(engineStart));
+  const check = await trust.check(subject);
+  if (check.status === "refused") throw new Error("Acme has no connector to refuse.");
+  const granted = await trust.grant(subject, check.fingerprint, "cli");
+  if (!granted.ok) throw new Error("The test couldn't trust Acme.");
 }
 
 /** Deletes the {@link AcmeRuns} folder, trying again as {@link removeTestFolder} does. */
