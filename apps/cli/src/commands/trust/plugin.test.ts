@@ -328,6 +328,9 @@ verifies("cli.commands.trust.plugin", () => {
     expect(io.stderr[0]).toBe(
       "✕ Couldn't trust weather: ui.settings.units.choices[1]: don't use control characters or text-direction marks",
     );
+    expect(io.stderr.join("\n")).toContain(
+      "Remove it with halonic plugin remove weather, then add a version that works.",
+    );
     expect([...io.stdout, ...io.stderr].join("\n")).not.toContain("\u202E");
     expect(await plugins()).toEqual(["broken"]);
   });
