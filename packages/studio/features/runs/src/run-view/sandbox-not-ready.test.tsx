@@ -133,7 +133,7 @@ verifies("runs.run-view.sandbox-not-ready", () => {
     expect(inBanner().map((one) => one.textContent)).toEqual(["Run again"]);
   });
 
-  it("offers Run again straight away, and no check, for a reason a check can't clear", async () => {
+  it("offers Run again straight away, to press after the save, and no check, for a reason a check can't clear", async () => {
     const check = vi.fn(async (): Promise<SandboxStartResult> => ({ ok: true }));
     const startRun = vi.fn();
     const root = await open([runStarted, ...log("not-offered")], check, false, undefined, {
@@ -142,7 +142,9 @@ verifies("runs.run-view.sandbox-not-ready", () => {
     const inBanner = () => [...(banner(root)?.querySelectorAll("button") ?? [])];
 
     expect(inBanner().map((one) => one.textContent)).toEqual(["Run again"]);
-    expect(banner(root)?.textContent).toContain(sandboxStartWords("not-offered").calloutFix);
+    expect(banner(root)?.textContent).toContain(
+      `${sandboxStartWords("not-offered").calloutFix}Run again after you save the file.Nothing ran.`,
+    );
     expect(banner(root)?.textContent).not.toContain("The sandbox works now");
     await act(async () => inBanner()[0]?.click());
     expect(check).not.toHaveBeenCalled();
@@ -152,6 +154,7 @@ verifies("runs.run-view.sandbox-not-ready", () => {
   it("has no button for a reason a check can't clear where the page can't run again", async () => {
     const root = await open(log("not-offered"), async () => ({ ok: true }));
     expect(banner(root)?.querySelectorAll("button")).toHaveLength(0);
+    expect(banner(root)?.textContent).not.toContain("Run again after you save the file.");
   });
 
   it("links the guide for the reason, named for where it goes (R9)", async () => {

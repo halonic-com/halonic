@@ -24,7 +24,8 @@ export function sandboxNotReadyReason(
 /**
  * The reasons a check on this computer can't clear. `not-offered` is about where the agent is set
  * to run, not about the computer: the check could pass while the run would be refused again
- * (HAL-12804). The fix is a file save, and Run again is the honest test of it.
+ * (HAL-12804). The fix is a file save, and Run again is the honest test of it, so the banner says
+ * to press it after the save.
  */
 const notCheckableReasons: ReadonlySet<string> = new Set(["not-offered"]);
 
@@ -59,7 +60,8 @@ export function sandboxNotReadyAgent(log: readonly RunEvent[] | undefined): stri
  * "Nothing ran.", **Check again** and a link to the guide named for the reason. A passing check says the sandbox works
  * and turns the button into **Run again**; nothing runs by itself. Without a `check` (a served
  * page) there is no button. For a reason a check can't clear ({@link checkable}) the banner offers
- * **Run again** straight away, or no button where the page can't run again. The button stays, busy, while a check runs, so it keeps focus; the
+ * **Run again** straight away, with a line that says to press it after the fix, or no button where
+ * the page can't run again. The button stays, busy, while a check runs, so it keeps focus; the
  * answer is said through `announce`, and a passing check moves focus to the banner.
  */
 export function SandboxNotReadyBanner({
@@ -113,7 +115,8 @@ export function SandboxNotReadyBanner({
   }, [ready]);
   const runAgainAction = runAgain && { label: runPageWords.runAgain, onClick: runAgain.start };
   const checkAction = check && { label: runPageWords.sandboxCheckAgain, onClick: again };
-  const action = ready || !checkable(shownReason) ? runAgainAction : checkAction;
+  const runsUnchecked = !checkable(shownReason);
+  const action = ready || runsUnchecked ? runAgainAction : checkAction;
   return (
     <section aria-label={runPageWords.failedName}>
       <Callout
@@ -124,6 +127,9 @@ export function SandboxNotReadyBanner({
         <span className="block">{runPageWords.sandboxNotReady(name)}</span>
         <span className="block">{words.reason}</span>
         <span className="block">{phone ? words.phoneFix : words.calloutFix}</span>
+        {runsUnchecked && runAgainAction !== undefined ? (
+          <span className="block">{runPageWords.sandboxRunAgainAfterFix}</span>
+        ) : null}
         <span className="block">{runPageWords.sandboxNothingRan}</span>
         {ready ? <span className="block">{runPageWords.sandboxReady(name)}</span> : null}
         {checked?.kind === "failed" ? (

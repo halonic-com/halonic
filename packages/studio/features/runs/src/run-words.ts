@@ -272,6 +272,11 @@ export const runPageWords = {
   /** Said, and shown, when a press of **Check again** finds the sandbox ready; **Run again** replaces the button. */
   sandboxReady: (name: string) => `The sandbox works now. You can run ${name}.`,
   sandboxCheckFailed: "Halonic couldn't check the sandbox. Try again.",
+  /**
+   * After the fix of a reason a check can't clear, where **Run again** shows at once: pressing it
+   * before the fix is saved fails the same way (C544-7).
+   */
+  sandboxRunAgainAfterFix: "Run again after you save the file.",
   budgetName: "Stopped at its budget",
   /** One tool approval (mc 15.2): who asks and what for, in the words of the Inbox card's title. */
   approval: (what: string, sends: boolean) =>

@@ -68,7 +68,7 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
   "sign-in-needed":
     "The sandbox needs you to sign in to its service first. Sign in, then run it again.",
   "not-offered":
-    "Halonic can't run Claude Code or Codex agents outside the sandbox yet. Save a change to this agent's file, which puts it back in the sandbox, then run it again.",
+    "Halonic can't run Claude Code or Codex agents outside the sandbox yet. Save any change to this agent's file, even one added space. A changed file undoes the choice to run the agent outside the sandbox. Then run it again.",
   other:
     "Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer, then run it again.",
 };
@@ -123,7 +123,8 @@ const fixes: Readonly<Record<WordedReason, string>> = {
     "install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep.",
   "ripgrep-missing": "install it, for example on macOS with brew install ripgrep.",
   "sign-in-needed": "sign in to the sandbox's service.",
-  "not-offered": "save a change to this agent's file, which puts it back in the sandbox.",
+  "not-offered":
+    "save any change to this agent's file, even one added space. A changed file undoes the choice to run the agent outside the sandbox.",
   other: "see what the sandbox needs on this computer.",
 };
 
