@@ -78,6 +78,14 @@ export const pageWords = {
     /** "Arrow 2 is now first.": the arrow's old number and its new place. */
     moved: (number: number, place: number) =>
       `Arrow ${number} is now ${places[place - 1] ?? `number ${place}`}.`,
+    /**
+     * Under the row of an arrow an earlier one always beats (the core's `unguarded-shadow`, C548 1):
+     * "Never taken: arrow 1 always matches first".
+     */
+    neverTakenRow: (beatenBy: number) => `Never taken: arrow ${beatenBy} always matches first`,
+    /** Announced after a move or an add that left an arrow never taken. */
+    neverTaken: (number: number, beatenBy: number) =>
+      `Arrow ${number} is never taken: arrow ${beatenBy} always matches first.`,
     /** The expanded row's fields (flow-workflows 5.3). */
     fields: {
       to: "To",

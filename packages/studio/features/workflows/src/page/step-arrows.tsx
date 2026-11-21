@@ -8,9 +8,12 @@ import {
 } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import type { WorkflowArrow, WorkflowArrowChange, WorkflowArrowFieldChange } from "../api.ts";
+import { problemGlyph } from "../configuration/problem-lines.ts";
 import { ArrowFields } from "./arrow-fields.tsx";
 import { conditionWords } from "./condition-words.ts";
+import { neverTaken } from "./never-taken.ts";
 import { pageWords } from "./page-words.ts";
+import { type NamedStep, nameOf, stepNames } from "./step-names.ts";
 
 const words = pageWords.arrows;
 
@@ -30,8 +33,8 @@ export interface StepArrowsProps {
   readonly stepId: string;
   /** The step's arrows, in the order its file lists them. */
   readonly arrows: readonly WorkflowArrow[];
-  /** Every step of the workflow, which **Go to…** and an arrow's **To** offer. */
-  readonly stepIds: readonly string[];
+  /** Every step of the workflow, which **Go to…** (all but this one) and an arrow's **To** offer. */
+  readonly steps: readonly NamedStep[];
   /** The step is a wait, so its arrows can fire after a time. */
   readonly isWait: boolean;
   /** Makes one change of the step's arrows; resolves to whether it was written. */
@@ -50,17 +53,57 @@ function whenItFires(arrow: WorkflowArrow): string {
     : `${fires} ${words.when(conditionWords(arrow.condition))}`;
 }
 
+/** `arrows` with the one at `index` moved one place up (`-1`) or down (`1`), as a move writes it. */
+function swapped(arrows: readonly WorkflowArrow[], index: number, by: -1 | 1): WorkflowArrow[] {
+  const next = [...arrows];
+  const [arrow] = next.splice(index, 1);
+  if (arrow !== undefined) next.splice(index + by, 0, arrow);
+  return next;
+}
+
+/**
+ * `line` as announced after a change of the arrows, followed by "Arrow 2 is never taken: arrow 1
+ * always matches first." when the change left one of the arrows at `places` (from 0) never taken.
+ */
+function withNeverTaken(
+  line: string,
+  arrows: readonly WorkflowArrow[],
+  places: readonly number[],
+): string {
+  const beatenBy = neverTaken(arrows);
+  for (const place of places) {
+    const earlier = beatenBy[place];
+    if (earlier !== undefined) return `${line} ${words.neverTaken(place + 1, earlier)}`;
+  }
+  return line;
+}
+
+/** Under a row's words, for an arrow an earlier one always beats: "△ Never taken: arrow 1 always matches first". */
+function NeverTakenLine({ beatenBy }: { readonly beatenBy: number | undefined }) {
+  if (beatenBy === undefined) return null;
+  return (
+    <span className="block px-2 text-caption text-warning">
+      <span aria-hidden="true">{problemGlyph.warning} </span>
+      {words.neverTakenRow(beatenBy)}
+    </span>
+  );
+}
+
 /**
  * The step card's "Arrows (first match wins)" (`workflows.page.step-arrows`, flow-workflows 5.3):
  * the step's arrows numbered in file order, as "1 → draft on done", each with ⋮ › **Move up** and
  * **Move down**, then **Go to…** and **Add**, which adds an arrow on done to the step picked there.
  * A moved arrow keeps focus on its row's ⋮, now in its new place. Pressing a row expands it to
  * the arrow's fields (see {@link ArrowFields}); one row is expanded at a time.
+ *
+ * Steps are named as their cards on the canvas name them (C548 4). An arrow that an earlier one
+ * always beats says so on its row, and a move or an add that makes one says so as it is announced
+ * (C548 1): the canvas draws such an arrow like any other.
  */
 export function StepArrows({
   stepId,
   arrows,
-  stepIds,
+  steps,
   isWait,
   change,
   announce,
@@ -78,6 +121,8 @@ export function StepArrows({
   const moving = useRef(false);
   // The expanded row, by its place in the list.
   const [expanded, setExpanded] = useState<number | undefined>();
+  const names = stepNames(steps);
+  const beatenBy = neverTaken(arrows);
 
   useEffect(() => {
     if (focusRow === undefined) return;
@@ -99,7 +144,8 @@ export function StepArrows({
     // An expanded row stays expanded on the arrow it shows, which changed places.
     if (expanded === index) setExpanded(index + by);
     else if (expanded === index + by) setExpanded(index);
-    announce?.(words.moved(index + 1, index + by + 1));
+    const line = words.moved(index + 1, index + by + 1);
+    announce?.(withNeverTaken(line, swapped(arrows, index, by), [index, index + by]));
   };
   const add = async () => {
     // Add with no step picked goes to the picker, which says what it needs.
@@ -109,9 +155,21 @@ export function StepArrows({
     }
     if (!(await change({ kind: "add", to: target }))) return;
     setTarget("");
-    announce?.(words.added(stepId, target));
+    // The new arrow is on done without a condition. When an earlier arrow always beats it, its
+    // fields open, so its condition is one step away.
+    const added = [...arrows, { from: stepId, to: target }];
+    if (neverTaken(added)[arrows.length] !== undefined) setExpanded(arrows.length);
+    announce?.(
+      withNeverTaken(words.added(nameOf(names, stepId), nameOf(names, target)), added, [
+        arrows.length,
+      ]),
+    );
   };
-  const options: readonly SelectOption[] = stepIds.map((id) => ({ value: id, label: id }));
+  // An arrow back to the step itself, on done, would run it again for ever, so Go to… leaves the
+  // step out; an arrow's own To still offers it, for a wait or a retry that needs one.
+  const options: readonly SelectOption[] = steps
+    .filter((step) => step.id !== stepId)
+    .map((step) => ({ value: step.id, label: nameOf(names, step.id) }));
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
@@ -134,9 +192,10 @@ export function StepArrows({
                     icon={<ChevronDownIcon />}
                     onClick={() => setExpanded(expanded === index ? undefined : index)}
                   >
-                    <span className="font-medium">{words.to(arrow.to)}</span>{" "}
+                    <span className="font-medium">{words.to(nameOf(names, arrow.to))}</span>{" "}
                     <span className="text-fg-muted">{whenItFires(arrow)}</span>
                   </Button>
+                  <NeverTakenLine beatenBy={beatenBy[index]} />
                 </span>
                 <Menu
                   align="end"
@@ -169,7 +228,7 @@ export function StepArrows({
                 <ArrowFields
                   arrow={arrow}
                   id={fieldsId}
-                  stepIds={stepIds}
+                  steps={steps}
                   fromWait={isWait}
                   set={(field: WorkflowArrowFieldChange) =>
                     change({ kind: "set", index, ...field })
@@ -205,13 +264,16 @@ export function StepArrows({
 export interface ArrowsInProps {
   /** The steps with an arrow to this one, each once, in the file's order. */
   readonly from: readonly string[];
+  /** Every step of the workflow, to name those in `from` as the canvas does. */
+  readonly steps: readonly NamedStep[];
   /** Opens a step's card, so the flow can be walked backwards. */
   readonly onOpen: (stepId: string) => void;
 }
 
 /** The step card's "Arrows in" (UX checklist 10.8, a11y 7.2): "From triage", each opening its step. */
-export function ArrowsIn({ from, onOpen }: ArrowsInProps) {
+export function ArrowsIn({ from, steps, onOpen }: ArrowsInProps) {
   const headingId = useId();
+  const names = stepNames(steps);
   if (from.length === 0) return null;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-1">
@@ -222,7 +284,7 @@ export function ArrowsIn({ from, onOpen }: ArrowsInProps) {
         {from.map((stepId) => (
           <li key={stepId}>
             <Button variant="ghost" size="sm" onClick={() => onOpen(stepId)}>
-              {words.from(stepId)}
+              {words.from(nameOf(names, stepId))}
             </Button>
           </li>
         ))}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { WorkflowArrow, WorkflowArrowFieldChange } from "../api.ts";
 import { keyCheck, noCheck, pickNow } from "./field-saving.ts";
 import { pageWords } from "./page-words.ts";
+import { type NamedStep, nameOf, stepNames } from "./step-names.ts";
 
 const words = pageWords.arrows.fields;
 
@@ -12,8 +13,8 @@ export interface ArrowFieldsProps {
   readonly arrow: WorkflowArrow;
   /** The id of the fields' group, which the row's button controls. */
   readonly id: string;
-  /** Every step of the workflow, which **To** offers. */
-  readonly stepIds: readonly string[];
+  /** Every step of the workflow, which **To** offers, named as the canvas names them. */
+  readonly steps: readonly NamedStep[];
   /** The arrow leaves a wait step, so it can fire after a time instead of on an event. */
   readonly fromWait: boolean;
   /** Saves one field of the arrow; resolves to whether it was written. */
@@ -51,14 +52,7 @@ function conditionCheck(text: string): string | null {
  * JSON says "This isn't valid JSON." under it and isn't saved, so the file keeps the condition it
  * had; empty takes the condition out. A wait step's arrow offers "Use a timer instead".
  */
-export function ArrowFields({
-  arrow,
-  id,
-  stepIds,
-  fromWait,
-  set,
-  reportNotSaved,
-}: ArrowFieldsProps) {
+export function ArrowFields({ arrow, id, steps, fromWait, set, reportNotSaved }: ArrowFieldsProps) {
   const to = useAutoSaved(arrow.to, (next) => set({ field: "to", value: next }), noCheck);
   const event = useAutoSaved(
     arrow.event ?? "",
@@ -88,9 +82,10 @@ export function ArrowFields({
     setTimer(checked);
     if (!checked && arrow.after !== undefined) void set({ field: "after", value: undefined });
   };
-  const options: readonly SelectOption[] = stepIds.map((stepId) => ({
-    value: stepId,
-    label: stepId,
+  const names = stepNames(steps);
+  const options: readonly SelectOption[] = steps.map((step) => ({
+    value: step.id,
+    label: nameOf(names, step.id),
   }));
 
   return (

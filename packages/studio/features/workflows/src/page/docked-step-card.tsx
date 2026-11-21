@@ -29,6 +29,7 @@ import { keyCheck, noCheck, pickNow } from "./field-saving.ts";
 import { pageWords } from "./page-words.ts";
 import type { Dock } from "./run-dock.tsx";
 import { ArrowsIn, StepArrows } from "./step-arrows.tsx";
+import type { NamedStep } from "./step-names.ts";
 import type { WorkflowLoad } from "./use-workflow.ts";
 
 const words = pageWords.stepCard;
@@ -43,7 +44,7 @@ export interface DockedStepCardProps {
   /** Saves one change of the step; resolves to whether it was written. */
   readonly save: (change: WorkflowStepChange) => Promise<boolean>;
   /** Every step of the workflow, in the file's order, which the step's arrows can go to. */
-  readonly stepIds: readonly string[];
+  readonly steps: readonly NamedStep[];
   /** The workflow's arrows: the step's own, and those into it for **Arrows in**. */
   readonly arrows: readonly WorkflowArrow[];
   /** Adds, moves or changes one of the step's arrows; resolves to whether it was written. Absent: no arrows section. */
@@ -109,7 +110,7 @@ export function DockedStepCard({
   workflowName,
   agents,
   save,
-  stepIds,
+  steps,
   arrows,
   changeArrows,
   onOpenStep,
@@ -225,14 +226,14 @@ export function DockedStepCard({
             <StepArrows
               stepId={step.id}
               arrows={arrows.filter((arrow) => arrow.from === step.id)}
-              stepIds={stepIds}
+              steps={steps}
               isWait={kind === "wait"}
               change={changeArrows}
               announce={announce}
               reportNotSaved={setArrowFieldsNotSaved}
             />
           )}
-          <ArrowsIn from={stepsInto(step.id, arrows)} onOpen={onOpenStep} />
+          <ArrowsIn from={stepsInto(step.id, arrows)} steps={steps} onOpen={onOpenStep} />
         </div>
       </SidePanel>
     </div>
@@ -354,7 +355,7 @@ export function StepEditDock({
       workflowName={view.name}
       agents={view.agents ?? []}
       save={save}
-      stepIds={view.steps.map((one) => one.id)}
+      steps={view.steps}
       arrows={view.arrows}
       changeArrows={saveArrows}
       onOpenStep={onOpenStep}
