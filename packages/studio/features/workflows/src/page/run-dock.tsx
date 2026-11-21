@@ -10,7 +10,7 @@ import { StepInRunCard } from "../runs/step-card.tsx";
 import { stepInRun } from "../runs/step-in-run.ts";
 import type { RunsLoad } from "../runs/use-runs.ts";
 import { shownRun } from "../start/run-strip.ts";
-import { StartRunCard } from "../start/start-card.tsx";
+import { type StartProblems, StartRunCard } from "../start/start-card.tsx";
 import { startWords } from "../start/start-words.ts";
 
 /** The run the page started, as its row and strip say it, once the runs have it; absent before. */
@@ -75,6 +75,8 @@ interface RunDockProps {
   readonly workflow: WorkflowRef;
   /** The workflow's name, for the start card's title. */
   readonly workflowName: string;
+  /** The workflow's errors, which the start card shows in place of **Start run**. */
+  readonly problems: StartProblems;
   readonly notAnswering: string;
   readonly shown: ReturnType<typeof useShownRun>;
   /** Where the run card notes its run, so the Inbox leaves it out of its news; see `ShownRuns`. */
@@ -146,6 +148,7 @@ export function RunDock({
   host,
   workflow,
   workflowName,
+  problems,
   notAnswering,
   shown,
   shownRuns,
@@ -191,6 +194,7 @@ export function RunDock({
         start={(input) => startRun.call(host, workflow, input)}
         {...trustAsker(host)}
         notAnswering={notAnswering}
+        problems={problems}
         onStarted={started}
         onClose={onClose}
       />

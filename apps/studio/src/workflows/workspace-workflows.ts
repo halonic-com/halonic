@@ -17,12 +17,13 @@ import {
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
 import { type PageRuns, workflowRefusalOf } from "../engine/page-refusal.ts";
+import { checkedSource } from "../library/workspace-library-items.ts";
 import { programOf } from "./step-program.ts";
 import {
   endedIn,
   newWorkflowText,
+  problemsOf,
   testFile,
-  unsavedSource,
   withTestCase,
   workflowFolder,
   workflowSuffix,
@@ -150,7 +151,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     const [workspace, runs] = await Promise.all([this.#load(), this.#parts.runs.list()]);
     const listings = filesOf(workspace, "workflow").flatMap((file) => {
       if (file.hub === null) return [];
-      const issues = workspace.issues.filter((issue) => issue.file === file.path);
+      const issues = problemsOf(workspace, file);
       const own = runs.filter(
         ({ summary }) =>
           summary.kind === "run" &&
@@ -240,14 +241,12 @@ export class WorkspaceWorkflows implements WorkflowsHost {
         label: value.start.label,
         fields: [{ name: value.start.field }],
       },
-      problems: workspace.issues
-        .filter((issue) => issue.file === file.path)
-        .map((issue) => ({
-          severity: issue.severity,
-          code: issue.code,
-          message: issue.message,
-          stepId: issue.path[0] === "states" ? String(issue.path[1]) : undefined,
-        })),
+      problems: problemsOf(workspace, file).map((issue) => ({
+        severity: issue.severity,
+        code: issue.code,
+        message: issue.message,
+        stepId: issue.path[0] === "states" ? String(issue.path[1]) : undefined,
+      })),
     };
   }
 
@@ -455,7 +454,8 @@ export class WorkspaceWorkflows implements WorkflowsHost {
 
   /** Loads the workspace from its files as they are now, and keeps its hubs for {@link WorkspaceWorkflows.hubs}. */
   async #load() {
-    const workspace = await loadWorkspace(unsavedSource(this.#parts.files));
+    // The checks' files, so an agent's `model:` alias is checked against models.yaml.
+    const workspace = await loadWorkspace(checkedSource(this.#parts.files));
     this.#hubs = filesOf(workspace, "hub").map((file) => ({
       id: file.value.id,
       name: file.value.name,

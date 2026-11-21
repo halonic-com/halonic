@@ -29,8 +29,17 @@ export interface StartRunCardProps {
   readonly askTrust?: () => Promise<"trusted" | "declined">;
   /** The reason of an engine that can't be reached, in the words for where Studio runs. */
   readonly notAnswering: string;
+  /** The errors that stop the workflow from running, and the way to Configuration › Problems. */
+  readonly problems: StartProblems;
   readonly onStarted: (runId: string) => void;
   readonly onClose: () => void;
+}
+
+/** What {@link StartRunCard} needs to say the workflow can't run yet. */
+export interface StartProblems {
+  /** The errors in the workflow and in the agents it names; warnings don't count, as they don't stop a run. */
+  readonly errors: number;
+  readonly onOpen: () => void;
 }
 
 function reasonOf(error: unknown, notAnswering: string): string {
@@ -90,6 +99,8 @@ function failureOf(error: unknown, notAnswering: string, canAskTrust: boolean): 
  * takes focus, with **Try again** (D7), unless the refusal names a next step: then the step is the second line and there is no **Try again**. A step that leads to a command has the command in a CommandBox under it.
  * A refusal because the workspace isn't trusted yet has **Review** instead, which opens the trust
  * check; once the person trusts it, the failure goes and **Start run** takes focus (C144 RT1).
+ * While the workflow has errors, a danger Callout says how many, with **Open Problems**, in place
+ * of **Start run** (X2).
  */
 export function StartRunCard({
   workflowName,
@@ -97,6 +108,7 @@ export function StartRunCard({
   start,
   askTrust,
   notAnswering,
+  problems,
   onStarted,
   onClose,
 }: StartRunCardProps) {
@@ -220,8 +232,13 @@ export function StartRunCard({
           {failure.command !== undefined && <CommandBox command={failure.command} />}
         </Callout>
       )}
+      {problems.errors > 0 && (
+        <Callout tone="danger" action={{ label: words.openProblems, onClick: problems.onOpen }}>
+          <p>{words.hasProblems(workflowName, problems.errors)}</p>
+        </Callout>
+      )}
       <div className="flex flex-wrap gap-2">
-        {failure === undefined && (
+        {failure === undefined && problems.errors === 0 && (
           <Button
             ref={startButton}
             variant="primary"

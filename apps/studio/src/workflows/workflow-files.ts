@@ -1,6 +1,6 @@
-import type { DefinitionSource } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { WorkflowRef } from "@halonicjs/studio-feature-workflows/api";
+import type { LoadedFileOf, LoadedWorkspace, WorkspaceIssue } from "@halonicjs/workspace";
 import { editYaml, readYaml, writeYamlFile } from "@halonicjs/yaml";
 
 /** Where the workflow files of a hub are kept. */
@@ -77,21 +77,27 @@ export function endedIn(runId: string, state: string | null): string {
 }
 
 /**
- * The workspace's hubs and its library as files, with unsaved changes applied. Only `hubs/` and
- * `library/` are listed: a workflow is checked against the agents and workflows of its own hub,
- * and its agents' connectors may sit in the workspace's library (HAL-13344).
+ * What the checks found in the workflow's file, and the errors in the files of the agents its steps
+ * name: such an agent can't run, so neither can the workflow. A workflow names only its own hub's
+ * agents. The agents' warnings stay on their own files, as they don't stop a run.
  */
-export function unsavedSource(files: {
-  read(path: string): Promise<string | null>;
-  list(dir: string): Promise<string[]>;
-}): DefinitionSource {
-  return {
-    location: "workspace:unsaved",
-    list: async () => {
-      const [hubs, library] = await Promise.all([files.list("hubs"), files.list("library")]);
-      return [...hubs, ...library];
-    },
-    read: (path) => files.read(path),
-    version: async () => "unsaved",
-  };
+export function problemsOf(
+  workspace: LoadedWorkspace,
+  file: LoadedFileOf<"workflow">,
+): WorkspaceIssue[] {
+  const agentFiles = new Set(
+    agentsNamed(file.value).map((agent) => `hubs/${file.hub}/agents/${agent}.agent.yaml`),
+  );
+  return workspace.issues.filter(
+    (issue) =>
+      issue.file === file.path || (issue.severity === "error" && agentFiles.has(issue.file)),
+  );
+}
+
+/** The agents a workflow's steps run: a task's or a for-each's `agent`, and each parallel branch's. */
+function agentsNamed(workflow: LoadedFileOf<"workflow">["value"]): string[] {
+  return Object.values(workflow.states).flatMap((state) => [
+    ...(state.agent === undefined ? [] : [state.agent]),
+    ...Object.values(state.branches ?? {}).map((branch) => branch.agent),
+  ]);
 }

@@ -10,6 +10,12 @@ export const startWords = {
   inputField: "Input (JSON)",
   inputNotObject: "The input has to be a JSON object, such as {}.",
   startRun: "Start run",
+  /** X2 (HAL-14323, decided by the team from c343): in place of Start run while the workflow has errors. */
+  hasProblems: (name: string, errors: number) =>
+    errors === 1
+      ? `${name} has 1 problem. Fix it before it can run.`
+      : `${name} has ${errors} problems. Fix them before it can run.`,
+  openProblems: "Open Problems",
   starting: "Starting…",
   /** Decided by the team (HAL-10225): the card between Start run and the run showing in the runs. */
   waitingForRun: "Run started. Waiting for it to appear…",

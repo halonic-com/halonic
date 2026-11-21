@@ -7,7 +7,7 @@ import {
   usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { WorkflowConfiguration } from "../api.ts";
 import type { Load } from "../page/use-load.ts";
 import { type ConfigurationPage, configurationPages } from "./configuration-pages.ts";
@@ -45,6 +45,7 @@ export function Configuration({
   const [page, setPage] = useState<ConfigurationPage>(startOn);
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
+  const pageList = useFocusOnProblems(startOn === "problems" && load.kind === "ready");
   if (load.kind === "failed") {
     return (
       <EmptyState
@@ -61,6 +62,7 @@ export function Configuration({
   return (
     <div className={phone ? "flex min-h-0 flex-1 flex-col" : "flex min-h-0 flex-1"}>
       <div
+        ref={pageList}
         className={
           phone
             ? "border-b border-border px-4 py-3"
@@ -113,6 +115,26 @@ export function Configuration({
       </TabPanel>
     </div>
   );
+}
+
+/**
+ * Puts the focus on the picked page in the page list once, when `ready`: Configuration opened on
+ * Problems by the start card's **Open Problems**, which closes the card the focus was in, so it
+ * would fall to the page's body (C471-5). A moment later, after the shell focused the page's heading
+ * as the tab showed. Returns the ref for the element that holds the page list.
+ */
+function useFocusOnProblems(ready: boolean) {
+  const pageList = useRef<HTMLDivElement>(null);
+  const focused = useRef(false);
+  useEffect(() => {
+    if (!ready || focused.current) return;
+    const timer = window.setTimeout(() => {
+      focused.current = true;
+      pageList.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [ready]);
+  return pageList;
 }
 
 /** The list's tabs; Problems carries the number of errors, read as "Problems, 1 error". */

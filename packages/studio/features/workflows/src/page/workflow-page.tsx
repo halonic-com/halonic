@@ -39,6 +39,7 @@ import { unavailableFor, useRunGate } from "./run-gate.ts";
 import { StartRow, useStartRefusal } from "./start-row.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
+import { useOpenProblems } from "./use-open-problems.ts";
 import { useRename } from "./use-rename.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
 import { WorkflowName } from "./workflow-name.tsx";
@@ -161,6 +162,7 @@ export function WorkflowScreen({
     testsMade.current += 1;
     setMadeTest({ name: undefined, n: testsMade.current });
   });
+  const problemsAsk = useOpenProblems(view, madeTest, { setDock, setMadeTest, showView });
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
   // A step picked on the canvas is the dock's business only while the canvas shows.
@@ -274,7 +276,7 @@ export function WorkflowScreen({
         >
           {view === "configuration" && (
             <Configuration
-              key={madeTest?.n ?? 0}
+              key={problemsAsk.key}
               name={name}
               load={settings.load}
               retry={settings.retry}
@@ -288,7 +290,7 @@ export function WorkflowScreen({
                   notAnswering={notAnswering}
                 />
               }
-              startOn={madeTest === undefined ? undefined : "tests"}
+              startOn={problemsAsk.startOn}
               onOpenStep={(stepId) => {
                 setOpenStep(stepId);
                 setMadeTest(undefined);
@@ -343,6 +345,7 @@ export function WorkflowScreen({
           host={host}
           workflow={{ hubId, id }}
           workflowName={name}
+          problems={{ errors, onOpen: problemsAsk.open }}
           notAnswering={notAnswering}
           shown={shown}
           shownRuns={shownRuns}
