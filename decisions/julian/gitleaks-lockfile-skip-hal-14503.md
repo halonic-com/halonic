@@ -3,6 +3,7 @@
 - Task: HAL-14503
 - Approval: the task asks for this change (HAL-14503, follow-up from HAL-10997); `.github/` is the guard's own path, so Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:rjmLnJMtUqGNwe8DNVzjQlSbITHVCsr+AW0JqTmuA945vqp3SttSzeA/+qpRJXd6FjU6ZZLRnl0EPdMgVyogBQ==
 
 ## What changes
 
