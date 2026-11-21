@@ -207,12 +207,11 @@ verifies("workflows.start.start-run", () => {
     expect(page.textContent).toContain("Showing run 01jd8q · failed in Draft");
     const card = page.querySelector<HTMLElement>(".ring-danger");
     expect(card?.textContent).toContain("draft");
-    // The chip sits on the card's top edge, out of the name's way and left of the dot, and is said
-    // once: by the dot.
+    // The chip sits on the card's top edge, out of the name's way, and is said once: by the dot.
     const chip = card?.querySelector<HTMLElement>(":scope > [aria-hidden='true']");
     expect(chip?.textContent).toBe("Failed");
-    expect(chip?.className).toContain("-translate-y-1/2");
-    expect(chip?.className).toContain("right-8");
+    expect(chip?.className).toContain("bottom-full");
+    expect(chip?.className).toContain("right-3");
     expect(nameOf(card)).toEqual(["draft", "AGENT STEP", "writer", "Failed"]);
     await click(
       page.querySelector<HTMLButtonElement>("button[aria-label='Stop showing this run']") ??

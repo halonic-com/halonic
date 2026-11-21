@@ -351,12 +351,12 @@ for (const shown of canvasRuns) {
         );
       }
       if (shown === "first") {
-        // When the first step fails, Start and Failed are both centred on its top edge (HAL-14627).
+        // When the first step fails, Start and Failed both stand on its top edge (HAL-14627).
         const failed = await page
           .locator("button.ring-danger > [aria-hidden='true']")
           .boundingBox();
-        const middle = (box: typeof chip) => (box?.y ?? 0) + (box?.height ?? 0) / 2;
-        expect(Math.abs(middle(chip) - middle(failed))).toBeLessThanOrEqual(1);
+        const bottom = (box: typeof chip) => (box?.y ?? 0) + (box?.height ?? 0);
+        expect(Math.abs(bottom(chip) - bottom(failed))).toBeLessThanOrEqual(1);
       }
       const spilled = await page
         .locator("button[aria-pressed]")
