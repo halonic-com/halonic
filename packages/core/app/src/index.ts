@@ -187,7 +187,12 @@ export {
   type LiveVersionReader,
   liveVersionOf,
 } from "./live-version.ts";
-export { integrationsFolder, readLocalIntegrations } from "./local-integrations.ts";
+export {
+  integrationsFolder,
+  type LocalIntegrationSheet,
+  readIntegrationSheets,
+  readLocalIntegrations,
+} from "./local-integrations.ts";
 export {
   type DownloadedModelSource,
   detectLocalModels,

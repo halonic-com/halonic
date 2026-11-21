@@ -5,7 +5,8 @@
 // (`TrustedRunnerStart`) reads it, so the code hash a person trusts is the
 // one checked when the integration starts.
 
-import type { Digest, FolderEntry, FolderReader } from "@halonicjs/ports";
+import { type IntegrationSheet, parseFile } from "@halonicjs/format";
+import type { DefinitionSource, Digest, FolderEntry, FolderReader } from "@halonicjs/ports";
 import type { LocalIntegrationInput } from "@halonicjs/workspace";
 import { type IntegrationFolder, readIntegrationFolder } from "./integration-folder.ts";
 
@@ -49,6 +50,87 @@ export async function readLocalIntegrations(
     integrations.push({ sheet: read.sheet, settings: {}, folder, code: read.code });
   }
   return integrations;
+}
+
+/** A local integration's sheet, and the folder it is in, such as `integrations/home-station`. */
+export interface LocalIntegrationSheet {
+  readonly folder: string;
+  readonly sheet: IntegrationSheet;
+}
+
+/**
+ * The sheet of each local integration in `workspace`'s `integrations/`
+ * folder, in the order of their folders' names: the sheets alone, without
+ * the code hash, from a version of the workspace such as the live version
+ * a run starts (HAL-14860). So `privacy.localOnly` counts the hosts of the
+ * sheets the run will use, not of the files as saved.
+ *
+ * As {@link readLocalIntegrations} does, it leaves out a sheet that can't
+ * be read or doesn't parse, a folder whose id an earlier folder already
+ * has, and every folder when `integrations/` can't be listed. A connector
+ * to a left-out integration then isn't local.
+ *
+ * Unlike {@link readLocalIntegrations}, it reads only the sheet, so a
+ * folder `readIntegrationFolder` would leave out (such as one with a link
+ * in it or too many files) still counts here. That fails closed: the run's
+ * connectors read the folder whole and refuse to start that integration.
+ *
+ * @param workspace - the workspace's files, such as a `VersionSource` at the live commit
+ *
+ * @example
+ * await readIntegrationSheets(new VersionSource(vcs, commit, store.location));
+ * // [{ folder: "integrations/home-station", sheet: { id: "home-station", hosts: [], … } }]
+ */
+export async function readIntegrationSheets(
+  workspace: DefinitionSource,
+): Promise<LocalIntegrationSheet[]> {
+  const sheets: LocalIntegrationSheet[] = [];
+  const ids = new Set<string>();
+  for (const folder of await sheetFolders(workspace)) {
+    const sheet = await readSheet(workspace, `${folder}/${sheetName}`);
+    if (sheet === undefined || ids.has(sheet.id)) continue;
+    ids.add(sheet.id);
+    sheets.push({ folder, sheet });
+  }
+  return sheets;
+}
+
+/**
+ * Every folder in `workspace` with an `integrations/<folder>/integration.yaml`,
+ * by the folder's name. It sorts the folders, not the sheets' paths, the
+ * way {@link readLocalIntegrations} does: `integrations/a-b/integration.yaml`
+ * sorts before `integrations/a/integration.yaml`, but `integrations/a` sorts
+ * before `integrations/a-b`, and with a shared id the first folder wins.
+ */
+async function sheetFolders(workspace: DefinitionSource): Promise<string[]> {
+  let paths: string[];
+  try {
+    paths = await workspace.list(integrationsFolder);
+  } catch {
+    return [];
+  }
+  const folders: string[] = [];
+  for (const path of paths) {
+    const parts = path.split("/");
+    if (parts.length !== 3 || parts[0] !== integrationsFolder || parts[2] !== sheetName) continue;
+    folders.push(`${parts[0]}/${parts[1]}`);
+  }
+  return folders.sort(compareText);
+}
+
+/** The sheet at `path`, or `undefined` when it can't be read or doesn't parse as a sheet. */
+async function readSheet(
+  workspace: DefinitionSource,
+  path: string,
+): Promise<IntegrationSheet | undefined> {
+  try {
+    const text = await workspace.read(path);
+    if (text === null) return undefined;
+    const parsed = parseFile("integration", text);
+    return parsed.ok ? parsed.value.value : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**

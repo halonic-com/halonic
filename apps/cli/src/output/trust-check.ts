@@ -11,9 +11,10 @@ import { dayInWords, localDay } from "../messages/dates.ts";
 import type { Message } from "../messages/define.ts";
 import { markPart, type Phrase, phrase } from "../messages/phrase.ts";
 import { type RowChanges, type TrustChangeCounts, trustMessages } from "../messages/trust.ts";
+import type { PluginHosts } from "../sheet-hosts.ts";
 import { printable } from "./printable.ts";
 import {
-  addressRow,
+  addressRows,
   agentFieldChanges,
   agentRow,
   integrationChanges,
@@ -40,6 +41,11 @@ export interface TrustCheckFacts {
    * then, since without a sandbox nothing keeps it to them. Left out means no.
    */
   readonly sandboxWorks?: boolean;
+  /**
+   * The `backend.hosts` of each plugin installed here, by its id, shown under
+   * a plugin connector's row (HAL-14860). Left out, no plugin's hosts are shown.
+   */
+  readonly pluginHosts?: PluginHosts;
 }
 
 /** A check with a fingerprint: every status but `refused`, which stops before any line is shown. */
@@ -95,7 +101,7 @@ export function trustCheckLines(check: FingerprintedCheck, rawFacts: TrustCheckF
     ),
     ...agentsSection(agents.flatMap((agent) => agentRow(agent))),
     ...section(trustMessages.addressesHeading(), [
-      ...addresses(connectors).map((row) => addressRow(row)),
+      ...addresses(connectors).flatMap((row) => addressRows(row, facts.pluginHosts)),
       ...integrations.flatMap(integrationRows),
       ...providers.flatMap(providerRow),
     ]),
@@ -158,7 +164,7 @@ function changedLines(
       ),
     ]),
     ...section(trustMessages.addressesHeading(), [
-      ...rowsOf(addresses, (row) => [addressRow(row)]),
+      ...rowsOf(addresses, (row) => addressRows(row, facts.pluginHosts)),
       ...changes.integrations.added.flatMap((row) => tagged(integrationRows(row), newRow)),
       ...changes.integrations.changed.flatMap(integrationChanges),
       ...changes.providers.added.flatMap((row) => tagged(providerRow(row), newRow)),

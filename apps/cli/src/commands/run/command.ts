@@ -7,6 +7,7 @@ import { engineHttp } from "../../engine-http.ts";
 import { nodeHarnessPrograms } from "../../harness-programs.ts";
 import { inputValueName, runMessages } from "../../messages/run.ts";
 import { nodeSandboxWorks } from "../../sandbox-works.ts";
+import { installedPluginHosts } from "../../sheet-hosts.ts";
 import { dirOption } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { runWorkflow } from "./instructions-prompt.ts";
@@ -24,6 +25,7 @@ export const computerRunSetup: RunSetup = {
     clock: systemClock,
     commandSearch: nodeCommandSearch(),
     sandboxWorks: nodeSandboxWorks,
+    pluginHosts: () => installedPluginHosts(),
   }),
   http: engineHttp(),
   harnesses: nodeHarnessPrograms,

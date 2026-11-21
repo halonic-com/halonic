@@ -159,6 +159,13 @@ export const trustMessages = defineMessages("trust", {
    * never the path or user info.
    */
   keyDestination: (origin: string) => phrase`Sends its key to ${origin}.`,
+  /** A plugin connector's address: the plugin it runs (HAL-14860, decided by the team under HAL-2282). */
+  pluginAddress: (plugin: string) => phrase`plugin ${plugin}`,
+  /**
+   * Under a plugin connector, the hosts the installed plugin's backend lists (HAL-14860), each
+   * once, already escaped, such as "Reaches api.acme.example and the address in the setting region_url.".
+   */
+  pluginReaches: (hosts: readonly string[]) => phrase`Reaches ${listed(hosts)}.`,
   /** The label above the full fingerprint, which is never shortened. */
   fingerprintHeading: () => phrase`Fingerprint`,
 
