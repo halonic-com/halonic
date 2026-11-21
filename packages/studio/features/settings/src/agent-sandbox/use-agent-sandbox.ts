@@ -97,11 +97,8 @@ export function useAgentSandbox(
       setRunning(null);
       setOutcome(resultOf(ended, verb));
       setCheck((now) => ended.check ?? afterResult(ended.outcome as SandboxOutcome, now));
-      if (verb === "remove") {
-        announceRef.current(removalLine(ended));
-      } else if (ended.check?.state === "ready") {
-        announceRef.current(text.announceReady(checkedAtLabel(ended.check.checkedAt, new Date())));
-      }
+      const line = endedLine(verb, ended, joining);
+      if (line !== null) announceRef.current(line);
     },
     [host, readCheck],
   );
@@ -181,15 +178,26 @@ function checkedLine(facts: SandboxCheckFacts): string {
     .lead;
 }
 
+/** What the live region says when a press ends: a removal's result, or a setup that left it Ready. */
+function endedLine(verb: SandboxRunning["verb"], ended: Ended, joining: boolean): string | null {
+  if (verb === "remove") return removalLine(ended, !joining);
+  if (ended.check?.state !== "ready") return null;
+  return text.announceReady(checkedAtLabel(ended.check.checkedAt, new Date()));
+}
+
 /**
  * What a removal left, said once for a screen reader (HAL-15091): the Callout's line, or, when it
- * worked, "Sandbox removed." and the first line of the state it left (HAL-15430).
+ * worked, "Sandbox removed." and the first line of the state it left (HAL-15430). After a press
+ * the section moves focus to the Callout, which says its own line, so the live region says only
+ * what the Callout doesn't: nothing for a failure, the state's first line for a removal that
+ * worked (C574, HAL-15438).
  */
-function removalLine(ended: Ended): string {
-  if (ended.check === undefined) return outcomeLine(ended.outcome);
-  if (ended.outcome !== null) return outcomeLine(ended.outcome);
+function removalLine(ended: Ended, focused: boolean): string | null {
+  if (ended.check === undefined) return focused ? null : outcomeLine(ended.outcome);
+  if (ended.outcome !== null) return focused ? null : outcomeLine(ended.outcome);
   const facts = { available: true, place: "app", running: null, outcome: null } as const;
-  return text.announceRemoved(sandboxView({ ...facts, check: ended.check }).lead);
+  const lead = sandboxView({ ...facts, check: ended.check }).lead;
+  return focused ? lead : text.announceRemoved(lead);
 }
 
 /** What the section shows: a removal that worked says so in a note (C575, HAL-15432). */

@@ -285,7 +285,8 @@ export function AgentSandboxView({
         <ol
           ref={statusRef}
           tabIndex={-1}
-          className="flex flex-col gap-1 text-small"
+          // Only code focuses it, so it wears the kit's ring, not the browser's outline (C574).
+          className="focus-ring flex flex-col gap-1 rounded-sm text-small"
           aria-live="polite"
         >
           {view.steps.map((step) => (
