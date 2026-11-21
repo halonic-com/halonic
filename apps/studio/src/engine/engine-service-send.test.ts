@@ -96,7 +96,7 @@ verifies("studio.engine-service", () => {
       ).rejects.toMatchObject({
         kind: "unavailable",
         message:
-          "This window can't run tools from github yet. To approve this one, run this in a terminal:",
+          "Studio can't run tools from github yet. To approve this one, run this in a terminal:",
         fix: "halonic runs send run1 approve",
       });
 
@@ -118,7 +118,7 @@ verifies("studio.engine-service", () => {
         service.send("run1", "approve", undefined, { callId: "c1" }),
       ).rejects.toMatchObject({
         message:
-          "This window can't run tools from Notes yet. To approve this one, run this in a terminal:",
+          "Studio can't run tools from Notes yet. To approve this one, run this in a terminal:",
       });
 
       vi.restoreAllMocks();

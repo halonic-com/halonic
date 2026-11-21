@@ -49,7 +49,7 @@ export async function refuseConnectorApprove(
   const name = connectorNameOf(workspace, run.hubId, call.connector);
   throw new KindedError(
     "unavailable",
-    `This window can't run tools from ${name} yet. To approve this one, run this in a terminal:`,
+    `Studio can't run tools from ${name} yet. To approve this one, run this in a terminal:`,
     { fix: `halonic runs send ${shortRunId(runId)} approve` },
   );
 }
