@@ -13,8 +13,11 @@ export const deleteWords = {
   pageMenuLabel: (name: string) => `More actions for ${name}`,
   /** The toast's title; with a second line it is a sentence and ends with a full stop. */
   moved: (name: string, withLine: boolean) => `Deleted ${name}${withLine ? "." : ""}`,
-  /** The page strip's text; a sentence when a second line follows. */
-  pageMoved: (withLine: boolean) => `This agent was deleted${withLine ? "." : ""}`,
+  /**
+   * The page strip's text; a sentence when a second line follows. It names the agent, because the
+   * page with its name is gone, as the workflow page's strip does (C565 6).
+   */
+  pageMoved: (name: string, withLine: boolean) => `${name} was deleted${withLine ? "." : ""}`,
   /**
    * The second line, when workflow steps run the agent: what breaks, and how to fix it (microcopy
    * 8.1). It counts steps, not workflows, and names only the parts that apply (HAL-3276).

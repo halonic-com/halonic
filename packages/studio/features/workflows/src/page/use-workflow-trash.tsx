@@ -1,17 +1,9 @@
 import { Button, Menu, MoreIcon, TrashStrip, useToastStore } from "@halonicjs/studio-kit";
 import { errorReasonFor, PhoneTopBarActions, useInPhoneTopBar } from "@halonicjs/studio-shell";
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
-import type { TrashedWorkflow, WorkflowRef, WorkflowsHost } from "../api.ts";
+import type { WorkflowRef, WorkflowsHost } from "../api.ts";
 import { deleteWords } from "./delete-words.ts";
-
-/** What the page knows of a workflow it has moved to the trash. */
-interface Removed {
-  readonly trashed: TrashedWorkflow;
-  /** The name shown at Delete: once the workflow is in the trash, the page can't read it. */
-  readonly name: string;
-  /** Who runs it and now shows an error, or `undefined` when nothing does. */
-  readonly line: string | undefined;
-}
+import { type LeftDeleted, showLeftDeletedToast } from "./left-deleted-toast.ts";
 
 /** What {@link useWorkflowTrash} needs to know of the page's workflow. */
 export interface ShownWorkflow {
@@ -36,7 +28,8 @@ export interface WorkflowTrash {
 /**
  * The workflow page's ⋮ and its Delete (`workflows.page.menu`): Delete deletes the workflow and its
  * tests at once, with no dialog, and a strip with **Undo** then stands where the page was. Undo, or
- * the workspace's own undo, brings the page back and gives `title` the focus.
+ * the workspace's own undo, brings the page back and gives `title` the focus. Leaving the page while
+ * the workflow is still deleted hands Undo to a toast that stays.
  */
 export function useWorkflowTrash(
   host: WorkflowsHost,
@@ -46,7 +39,7 @@ export function useWorkflowTrash(
 ): WorkflowTrash {
   const toasts = useToastStore();
   const inTopBar = useInPhoneTopBar();
-  const [removed, setRemoved] = useState<Removed>();
+  const [removed, setRemoved] = useState<LeftDeleted>();
   // Set when the page comes back, so its title takes the focus once it is drawn again.
   const focusWhenBack = useRef(false);
   // Set while a Delete runs, so a second pick of Delete in the meantime does nothing.
@@ -61,6 +54,24 @@ export function useWorkflowTrash(
       if (failedToast.current !== undefined) toasts?.close(failedToast.current);
     };
   }, [toasts]);
+
+  // Leaving the page with the strip up would take Undo with it, and Back skips a deleted page: a
+  // toast that stays keeps the way back (C565 6).
+  const leaving = useRef({ host, toasts, hubId, id, removed });
+  leaving.current = { host, toasts, hubId, id, removed };
+  useEffect(
+    () => () => {
+      const left = leaving.current;
+      if (left.removed === undefined || left.toasts === null) return;
+      showLeftDeletedToast(
+        left.host,
+        left.toasts,
+        { hubId: left.hubId, id: left.id },
+        left.removed,
+      );
+    },
+    [],
+  );
 
   useEffect(() => {
     if (inTrash || !focusWhenBack.current) return;

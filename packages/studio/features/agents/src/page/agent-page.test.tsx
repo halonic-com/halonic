@@ -327,7 +327,7 @@ verifies("agents.page.menu", () => {
 
     await pick(topBar, "Delete");
 
-    expect(page.textContent).toContain("This agent was deleted");
+    expect(page.textContent).toContain("Sorter was deleted");
     expect(menuButton(topBar)).toBeNull();
     expect(document.activeElement?.textContent).toBe("Undo");
     topBar.remove();
@@ -347,7 +347,7 @@ verifies("agents.page.menu", () => {
 
     await pick(page, "Delete");
 
-    expect(page.textContent).toContain("This agent was deleted");
+    expect(page.textContent).toContain("Sorter was deleted");
     expect(document.activeElement?.textContent).toBe("Undo");
     expect(toasts.list()).toEqual([]);
     expect(page.textContent).not.toContain("AGENT");
@@ -375,11 +375,11 @@ verifies("agents.page.menu", () => {
     const { page } = await open(host);
 
     await pick(page, "Delete");
-    expect(page.textContent).toContain("This agent was deleted");
+    expect(page.textContent).toContain("Sorter was deleted");
 
     await act(async () => kept.trashed?.undo());
     await settled();
-    expect(page.textContent).not.toContain("This agent was deleted");
+    expect(page.textContent).not.toContain("Sorter was deleted");
     expect(page.textContent).toContain("AGENT");
     expect(document.activeElement).toBe(page.querySelector("h1"));
   });
@@ -417,7 +417,7 @@ verifies("agents.page.menu", () => {
 
     await pick(page, "Delete");
 
-    expect(page.textContent).toContain("This agent was deleted.");
+    expect(page.textContent).toContain("Sorter was deleted.");
     expect(page.textContent).toContain(
       "1 workflow step now shows an error until you pick another agent.",
     );

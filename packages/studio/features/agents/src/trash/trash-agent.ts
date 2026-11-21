@@ -83,10 +83,47 @@ export async function putBackAgent(
   }
 }
 
+/** How {@link showDeletedToast} shows the toast. */
+export interface DeletedToastOptions {
+  /** Stays until closed, for a page that was left with its strip: the toast is the only Undo left. */
+  readonly sticky?: boolean;
+  /** Called once the toast's Undo has put the agent back. */
+  readonly onRestored?: (() => void) | undefined;
+}
+
 /**
- * Moves an agent to the trash with no dialog. A row's delete says so with a toast that has Undo and,
- * when workflows run the agent, a second line about them; a page that is open says it itself and
- * passes `quiet`. When it can't be moved, a toast that stays says why and offers Try again.
+ * Says that an agent was deleted, with a toast that has Undo and, when workflows run the agent, a
+ * second line about them. The toast closes by itself once the agent is back some other way.
+ */
+export function showDeletedToast(
+  host: AgentsHost,
+  toasts: ToastStore,
+  request: TrashRequest,
+  trashed: TrashedAgent,
+  line: string | undefined,
+  options: DeletedToastOptions = {},
+): void {
+  const { name, hubId, id } = request;
+  const toastId = toasts.show({
+    tone: "success",
+    title: deleteWords.moved(name, line !== undefined),
+    ...(line === undefined ? {} : { text: line }),
+    ...(options.sticky === true ? { sticky: true } : {}),
+    action: {
+      label: deleteWords.undo,
+      onClick: () =>
+        void putBackAgent(trashed, name, toasts).then((restored) => {
+          if (restored) options.onRestored?.();
+        }),
+    },
+  });
+  closeWhenBack(host, toasts, { hubId, id }, toastId);
+}
+
+/**
+ * Moves an agent to the trash with no dialog. A row's delete says so with {@link showDeletedToast};
+ * a page that is open says it itself and passes `quiet`. When it can't be moved, a toast that stays
+ * says why and offers Try again.
  *
  * @returns whether the agent is in the trash
  */
@@ -102,19 +139,7 @@ export async function trashAgent(
     const trashed = await host.trash({ hubId, id });
     options.onTrashed?.(trashed, line);
     if (options.quiet !== true && toasts !== null) {
-      const toastId = toasts.show({
-        tone: "success",
-        title: deleteWords.moved(name, line !== undefined),
-        ...(line === undefined ? {} : { text: line }),
-        action: {
-          label: deleteWords.undo,
-          onClick: () =>
-            void putBackAgent(trashed, name, toasts).then((restored) => {
-              if (restored) options.onRestored?.();
-            }),
-        },
-      });
-      closeWhenBack(host, toasts, { hubId, id }, toastId);
+      showDeletedToast(host, toasts, request, trashed, line, { onRestored: options.onRestored });
     }
     return true;
   } catch (error) {

@@ -13,6 +13,11 @@ export const deleteWords = {
    */
   deleted: (name: string, withLine: boolean) => `${name} was deleted${withLine ? "." : ""}`,
   /**
+   * The toast that keeps Undo once the page of a deleted workflow is left, worded as the Agents
+   * list's toast; a sentence when a second line follows (C565 6).
+   */
+  deletedToast: (name: string, withLine: boolean) => `Deleted ${name}${withLine ? "." : ""}`,
+  /**
    * The second line, when routines or other workflows' steps run the workflow: one sentence that
    * says what breaks and how to fix it, naming only the parts that apply (microcopy 8.1, HAL-3276).
    */
