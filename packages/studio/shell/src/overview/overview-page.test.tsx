@@ -28,6 +28,7 @@ const words: OverviewWords = {
   sharedSection: (workspace) => `Shared in ${workspace}`,
   emptySection: (name) => `No skills in ${name} yet`,
   noMatch: (query) => `No skills match "${query}".`,
+  shownCount: (count) => (count === 1 ? "1 skill." : `${count} skills.`),
   nothingYet: { title: "No skills yet" },
 };
 
@@ -117,6 +118,27 @@ verifies("shell.overview.search", () => {
     expect(field.value).toBe("");
     expect(press.defaultPrevented).toBe(true);
     expect(headings(page)).toContain("beta");
+  });
+
+  it("reads how many items a search or hub change left, or the no-match line, and not a refresh", () => {
+    const announceState = vi.fn();
+    const page = show({ announceState });
+    expect(announceState).not.toHaveBeenCalled();
+
+    type(search(page), "draft");
+    expect(announceState).toHaveBeenLastCalledWith("overview-list", "1 skill.");
+    type(search(page), "zzz");
+    expect(announceState).toHaveBeenLastCalledWith("overview-list", 'No skills match "zzz".');
+    type(search(page), "");
+    expect(announceState).toHaveBeenLastCalledWith("overview-list", "3 skills.");
+    press(page, 'input[type="radio"][value="hub:beta"]');
+    expect(announceState).toHaveBeenLastCalledWith("overview-list", "1 skill.");
+
+    const calls = announceState.mock.calls.length;
+    act(() => {
+      search(page).focus();
+    });
+    expect(announceState).toHaveBeenCalledTimes(calls);
   });
 });
 

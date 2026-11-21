@@ -17,9 +17,8 @@ import {
   useToastStore,
 } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, NameField, RenameSheet } from "@halonicjs/studio-shell";
-import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
+import { type RefObject, useCallback, useRef, useState } from "react";
 import { type RoutinesHost, RoutinesHostService, type RoutineView } from "../api.ts";
-import { trashRoutine } from "../list/trash-routine.ts";
 import { RulesSection } from "../rules/rules-section.tsx";
 import { RunsView } from "../runs/runs-view.tsx";
 import { runsWords } from "../runs/runs-words.ts";
@@ -32,6 +31,7 @@ import { runRoutineNow } from "./run-now.ts";
 import { type RunNowGate, useRunNowGate } from "./run-now-gate.ts";
 import { TRIGGER_STEP } from "./trigger-step.ts";
 import { useRoutine } from "./use-routine.ts";
+import { useRoutineTrash } from "./use-routine-trash.tsx";
 import { useTriggerFocus } from "./use-trigger-focus.ts";
 
 /** The file tab's item kind and hub part (the Files feature's `FILE_KIND` and `FILE_HUB`): files belong to the workspace folder. */
@@ -119,16 +119,8 @@ export function RoutineScreen({
   const gate = useRunNowGate(host, routine, sandboxStartCheck);
   const views = routineTabs(runs.load);
   // After Undo brings a deleted routine back, its name takes the focus once the page is drawn again.
-  const focusWhenBack = useRef(false);
-  const ready = load.kind === "ready";
-  useEffect(() => {
-    if (!ready || !focusWhenBack.current) return;
-    focusWhenBack.current = false;
-    focusTitle();
-  }, [ready, focusTitle]);
-  const restored = useCallback(() => {
-    focusWhenBack.current = true;
-  }, []);
+  const trash = useRoutineTrash(host, load, focusTitle);
+  if (trash.strip !== null) return trash.strip;
   if (load.kind === "failed" && load.gone && goToRoutines !== undefined) {
     return <ItemGone kindName="routine" place="Routines" onGoTo={goToRoutines} />;
   }
@@ -141,7 +133,7 @@ export function RoutineScreen({
         name={name}
         tabs={{ ids, views, selected: view, onSelect: setView }}
         title={title}
-        onRestored={restored}
+        onDelete={trash.onDelete}
         openRun={openRun}
         openFile={openFile}
         gate={gate}
@@ -299,7 +291,7 @@ function RoutineHeader({
   name,
   title,
   tabs,
-  onRestored,
+  onDelete,
   openRun,
   openFile,
   gate,
@@ -316,8 +308,8 @@ function RoutineHeader({
     readonly selected: RoutineViewId;
     readonly onSelect: (view: RoutineViewId) => void;
   };
-  /** Called once Undo has put a deleted routine back. */
-  readonly onRestored: () => void;
+  /** Deletes the routine, for the ⋮ menu's Delete. */
+  readonly onDelete: (routine: RoutineView) => void;
   readonly openRun: ((runId: string) => void) | undefined;
   readonly openFile: ((path: string) => void) | undefined;
   /** Whether Run now can start a run while the sandbox can't start, and its button. */
@@ -396,7 +388,7 @@ function RoutineHeader({
                 id: "delete",
                 label: pageWords.delete,
                 danger: true,
-                onSelect: () => void trashRoutine(host, toasts, routine, { onRestored }),
+                onSelect: () => onDelete(routine),
               },
             ]}
             trigger={(trigger) => (

@@ -73,7 +73,7 @@ export function StartsCard({ host, routine }: StartsCardProps) {
     })),
   ];
   return (
-    <Card label={words.label}>
+    <Card label={words.label} headingLevel={2}>
       <div className="flex flex-col gap-3">
         {/* An agent can't run from a routine yet (C52 claim 1.6), so the picker says so under an agent (HAL-14647). */}
         <Field label={words.pick} hint={target.kind === "agent" ? agentCantRunWords.line : null}>

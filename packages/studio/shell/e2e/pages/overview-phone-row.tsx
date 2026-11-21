@@ -18,6 +18,7 @@ const words: OverviewWords = {
   sharedSection: (workspace) => `Shared in ${workspace}`,
   emptySection: (name) => `No skills in ${name} yet`,
   noMatch: (query) => `No skills match "${query}".`,
+  shownCount: (count) => (count === 1 ? "1 skill." : `${count} skills.`),
   nothingYet: { title: "No skills yet" },
 };
 

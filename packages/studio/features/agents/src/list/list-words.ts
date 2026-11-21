@@ -14,6 +14,8 @@ export const listWords = {
   nothingYetTitle: "No agents yet",
   emptyHub: (hubName: string) => `No agents in ${hubName} yet.`,
   noMatch: (query: string) => `No agents match "${query}".`,
+  /** Read after a search or a hub change (HAL-14241). */
+  shownCount: (count: number) => (count === 1 ? "1 agent." : `${count} agents.`),
   more: (name: string) => `More actions for ${name}`,
 } as const;
 

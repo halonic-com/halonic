@@ -66,7 +66,8 @@ async function openPage(
 /** Each day's heading, then the sentence a screen reader hears for each of its rows. */
 function shown(root: HTMLElement): string[] {
   return [...root.querySelectorAll('[role="grid"] tr')].map((row) => {
-    const heading = row.querySelector("h3");
+    // An h2 under the page's h1, as Workflows and Routines head their groups (HAL-14241).
+    const heading = row.querySelector("h2");
     return heading === null
       ? (row.querySelector(".sr-only")?.textContent ?? "")
       : `# ${heading.textContent}`;
@@ -174,6 +175,8 @@ verifies("runs.list", () => {
       expect(list.requestedWorkflow).toBeUndefined();
       await click(control(root, "Workflow: Support reply"));
       expect(shown(root)).toHaveLength(3);
+      // The chip is gone; focus stays in the filters, on the chip before it (HAL-14241).
+      expect(document.activeElement).toBe(control(root, "Test runs"));
     });
 
     it("takes the request while the page is already open, and only once", async () => {

@@ -15,6 +15,8 @@ export const listWords = {
   nothingYetTitle: "No routines yet",
   emptyHub: (hubName: string) => `No routines in ${hubName} yet.`,
   noMatch: (query: string) => `No routines match "${query}".`,
+  /** Read after a search or a hub change (HAL-14241). */
+  shownCount: (count: number) => (count === 1 ? "1 routine." : `${count} routines.`),
   more: (name: string) => `More actions for ${name}`,
   off: "Off",
   needsSignIn: "Needs sign-in again",

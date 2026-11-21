@@ -102,6 +102,22 @@ verifies("routines.runs.view", () => {
     expect(opened).toEqual(["run_9hv3bw"]);
   });
 
+  it("names a run row as the Runs list does, not as its loose words", async () => {
+    const runs = [run("81d0ae", { startedBy: "run-now" }), run("891b5a", { outcome: "waiting" })];
+    const page = await openRuns(
+      hostWith(async () => ({ runs, skips: [] })),
+      () => {},
+    );
+
+    const names = [...page.querySelectorAll("li button")].map((row) =>
+      row.getAttribute("aria-label"),
+    );
+    expect(names).toEqual([
+      expect.stringMatching(/^Run 891b5a, needs you\. Started: On schedule, \d\d:\d\d\.$/),
+      expect.stringMatching(/^Run 81d0ae, done\. Started: Run now, \d\d:\d\d\.$/),
+    ]);
+  });
+
   it("stacks a run row in two lines on a phone", async () => {
     const runs = { runs: [run("a1b2")], skips: [] };
     const page = await show(

@@ -13,12 +13,12 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function routineWith(trigger: RoutineTrigger): RoutineView {
+function routineWith(trigger: RoutineTrigger, enabled = true): RoutineView {
   return {
     hubId: "acme",
     id: "daily",
     name: "Daily",
-    enabled: true,
+    enabled,
     trigger,
     triggerSentence: "Weekdays at 07:30",
     summary: "Weekdays at 07:30 → Briefing",
@@ -34,7 +34,7 @@ function routineWith(trigger: RoutineTrigger): RoutineView {
   };
 }
 
-async function card(trigger: RoutineTrigger, announced: string[] = []) {
+async function card(trigger: RoutineTrigger, announced: string[] = [], enabled = true) {
   const saved: RoutineChanges[] = [];
   const host = {
     mailboxes: async () => [],
@@ -45,7 +45,7 @@ async function card(trigger: RoutineTrigger, announced: string[] = []) {
   } as unknown as RoutinesHost;
   const page = await show(
     <FieldAnnounceProvider announce={(text) => announced.push(text)}>
-      <WhenCard host={host} routine={routineWith(trigger)} announce={() => {}} />
+      <WhenCard host={host} routine={routineWith(trigger, enabled)} announce={() => {}} />
     </FieldAnnounceProvider>,
   );
   return { page, saved };
@@ -124,7 +124,7 @@ verifies("routines.when.advanced", () => {
     await act(async () => vi.advanceTimersByTime(600));
     await act(async () => vi.advanceTimersToNextFrame());
     expect(announced).toEqual([
-      "Schedule (cron): Cron needs 5 fields (minute hour day month weekday), got 3.",
+      "Schedule (cron): Cron needs 5 fields (minute hour day month weekday), got 3. Still runs on the last valid schedule until the cron is fixed.",
     ]);
 
     await leave(cron);
@@ -133,11 +133,37 @@ verifies("routines.when.advanced", () => {
     expect(announced).toHaveLength(1);
   });
 
+  it("leaves out the last-valid-schedule sentence while the routine is off", async () => {
+    vi.useFakeTimers();
+    const announced: string[] = [];
+    const { page } = await card(weekdays, announced, false);
+    const cron = control(page, "Schedule (cron)");
+    cron.focus();
+    await type(cron, "0 8 *");
+    await act(async () => vi.advanceTimersByTime(600));
+    await act(async () => vi.advanceTimersToNextFrame());
+    expect(announced).toEqual([
+      "Schedule (cron): Cron needs 5 fields (minute hour day month weekday), got 3.",
+    ]);
+    expect(page.textContent).not.toContain("Still runs on the last valid schedule");
+  });
+
   it("opens Advanced by itself for a schedule the chips can't show", async () => {
     const { page } = await card({ kind: "schedule", cron: "0 9 1 * *" });
     expect(page.querySelector("details")?.open).toBe(true);
     const closed = await card(weekdays);
     expect(closed.page.querySelector("details")?.open).toBe(false);
+  });
+
+  it("drops its own inset on a phone, where the Disclosure's is enough", async () => {
+    const schedule = await card({ kind: "schedule", cron: "0 9 1 * *" });
+    expect(schedule.page.querySelector("details .pb-3")?.className).toContain("phone:px-0");
+    const onlyWhen = await card({
+      kind: "signal",
+      name: "mail.tagged",
+      when: { exists: "mail.id" },
+    });
+    expect(onlyWhen.page.querySelector("details .pb-3")?.className).toContain("phone:px-0");
   });
 
   it("writes the schedule without a time zone for 'No time zone'", async () => {

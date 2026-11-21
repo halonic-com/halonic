@@ -1,4 +1,10 @@
-import { Button, EmptyState, StatusChip, usePresentation } from "@halonicjs/studio-kit";
+import {
+  Button,
+  ChevronRightIcon,
+  EmptyState,
+  StatusChip,
+  usePresentation,
+} from "@halonicjs/studio-kit";
 import type { ItemPageSectionViewProps } from "@halonicjs/studio-shell";
 import { useState } from "react";
 import {
@@ -136,7 +142,7 @@ function RowButton({
   return (
     <button
       type="button"
-      className={`flex w-full justify-between gap-2 text-left ${
+      className={`flex w-full justify-between gap-2 rounded-sm px-2 text-left hover:bg-surface-muted focus-ring ${
         phone ? "min-h-control-md items-start py-2" : "items-center py-1"
       }`}
       onClick={() => openRoutine?.(row.hubId ?? owner.hubId, row.id)}
@@ -150,11 +156,15 @@ function RowButton({
         )}
         {!row.enabled && <span className="text-small text-fg-muted">{row.name}</span>}
       </span>
-      {!row.enabled && (
-        <span className="shrink-0">
-          <StatusChip tone="neutral">{triggersWords.off}</StatusChip>
-        </span>
-      )}
+      <span className="flex shrink-0 items-center gap-2">
+        {!row.enabled && <StatusChip tone="neutral">{triggersWords.off}</StatusChip>}
+        {/* On a phone the Off chip takes the chevron's place (flow-routines 5.5). */}
+        {!phone && openRoutine !== undefined && (
+          <span className="size-icon-md text-fg-subtle *:size-full" aria-hidden="true">
+            <ChevronRightIcon />
+          </span>
+        )}
+      </span>
     </button>
   );
 }

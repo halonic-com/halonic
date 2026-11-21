@@ -163,6 +163,7 @@ export function overviewWords(
     sharedSection: (workspaceName) => `Shared in ${workspaceName}`,
     emptySection: (sectionName) => `No ${plural} in ${sectionName} yet.`,
     noMatch: (query) => `No ${plural} ${matches} “${query}”.`,
+    shownCount: (count) => `${countLine(kind, count)}.`,
     nothingYet: {
       ...nothingYet,
       ...(phoneKnowledge ? { description: phoneKnowledgeDescription } : {}),

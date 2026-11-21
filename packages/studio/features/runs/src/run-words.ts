@@ -118,8 +118,16 @@ export const rowLabelWords = {
     time: string,
     test: boolean,
   ) =>
-    `Run ${shortId}, ${workflow}, ${what}. Started by ${startedBy}, ${time}${test ? ", test run" : ""}.`,
+    `Run ${shortId}, ${workflow}, ${endSentence(what)} Started by ${startedBy}, ${time}${test ? ", test run" : ""}.`,
 };
+
+/**
+ * Ends a part of a row's name with a full stop, unless it ends in its own: a waiting run's question
+ * "Approve this reply?" stays as it is, not "reply?." (HAL-14241).
+ */
+function endSentence(words: string): string {
+  return /[.?!]$/.test(words) ? words : `${words}.`;
+}
 
 /** The cost part of a run's line (mc 15.2, W1 and revision 68). */
 export const costWords = {

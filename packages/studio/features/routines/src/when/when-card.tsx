@@ -87,6 +87,7 @@ export function WhenCard({
   return (
     <Card
       label={words.label}
+      headingLevel={2}
       actions={
         !manual && (
           <>

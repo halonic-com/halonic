@@ -53,6 +53,7 @@ export function WorkflowsPage({ context }: PlaceViewProps) {
       : (ref: WorkflowRef) => openItemInNewTab({ kind: "workflow", hub: ref.hubId, id: ref.id });
   return (
     <WorkflowsView
+      announceState={(key, text) => context.announcer.announceState(key, text)}
       host={context.services.get(WorkflowsHostService)}
       engine={engineWordsOf(context)}
       {...(open ? { open } : {})}
@@ -70,6 +71,8 @@ export interface WorkflowsViewProps {
   readonly openInNewTab?: (ref: WorkflowRef) => void;
   /** What the page calls the engine when it can't read, for this window's host; the desktop app's by default. */
   readonly engine?: EngineWords;
+  /** Reads how many items a search or hub change left (`announcer.announceState`); absent in tests that don't listen. */
+  readonly announceState?: ((key: string, text: string) => void) | undefined;
 }
 
 /**
@@ -81,7 +84,13 @@ export interface WorkflowsViewProps {
  * @example
  * <WorkflowsView host={host} open={openWorkflowTab} />
  */
-export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsViewProps) {
+export function WorkflowsView({
+  host,
+  open,
+  openInNewTab,
+  engine,
+  announceState,
+}: WorkflowsViewProps) {
   const words = engine ?? engineWordsOf({});
   const phone = usePresentation() === "phone";
   const [load, setLoad] = useState<Load>({ kind: "loading" });
@@ -177,6 +186,7 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
         <LoadFailed error={load.error} words={words} retrying={load.retrying} tryAgain={tryAgain} />
       ) : (
         <OverviewPage
+          announceState={announceState}
           hubs={workflowHubs(host.hubs(), listings)}
           words={{
             searchLabel: listWords.searchLabel,
@@ -188,6 +198,7 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
             sharedSection: (workspace) => workspace,
             emptySection: (hubName) => listWords.emptyHub(hubName),
             noMatch: listWords.noMatch,
+            shownCount: listWords.shownCount,
             nothingYet: {
               title: listWords.nothingYetTitle,
               description: listWords.sentence,

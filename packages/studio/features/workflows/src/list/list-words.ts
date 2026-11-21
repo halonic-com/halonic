@@ -18,6 +18,8 @@ export const listWords = {
   nothingYetTitle: "No workflows yet",
   emptyHub: (hubName: string) => `No workflows in ${hubName} yet.`,
   noMatch: (query: string) => `No workflows match "${query}".`,
+  /** Read after a search or a hub change (HAL-14241). */
+  shownCount: (count: number) => (count === 1 ? "1 workflow." : `${count} workflows.`),
   more: (name: string) => `More actions for ${name}`,
   needsYou: (count: number) => `${count} needs you`,
   running: (count: number) => `${count} running`,

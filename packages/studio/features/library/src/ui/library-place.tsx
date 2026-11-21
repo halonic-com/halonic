@@ -231,6 +231,7 @@ function LibraryKindView({ context, sub }: PlaceViewProps) {
         host={host}
         kind={kind}
         onKindChange={show}
+        announceState={(key, text) => context.announcer.announceState(key, text)}
         onOpen={(each, entry) => openItem?.(refOf(each, entry))}
         onOpenInNewTab={(each, entry) => openItemInNewTab?.(refOf(each, entry))}
         {...openAsFile}

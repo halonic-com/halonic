@@ -64,6 +64,19 @@ verifies("kit.card", () => {
     expect(section.querySelector("h1, h2, h3, h4")).toBeNull();
   });
 
+  it("draws a caption label as a heading when given a level, with the caption's look", () => {
+    const { container } = render(
+      <Card label="When" headingLevel={2}>
+        Every weekday at 9:00
+      </Card>,
+    );
+    const section = container.querySelector("section") as HTMLElement;
+    const heading = section.querySelector("h2") as HTMLElement;
+    expect(nameOf(section)).toBe("When");
+    expect(heading.textContent).toBe("When");
+    expect(heading.className).toContain("text-label uppercase text-fg-muted");
+  });
+
   it("takes a title or a label, never both, and an interactive card holds no actions", () => {
     const run = <button type="button">Run</button>;
     // @ts-expect-error A card has a title or a label, not both.
