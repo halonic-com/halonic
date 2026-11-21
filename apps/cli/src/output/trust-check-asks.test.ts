@@ -62,7 +62,7 @@ verifies("cli.trust-check-asks", () => {
 
   it("says so in a Changed row when an agent turns in-sandbox on, or off again", () => {
     expect(agentsSection(asksChange(coder, inSandbox)).slice(2)).toEqual([
-      "  coder         now edits and runs commands in its working folder without asking   Changed",
+      "  coder         now edits and runs commands in its working folder without asking, inside the sandbox   Changed",
     ]);
     expect(agentsSection(asksChange(inSandbox, coder)).slice(2)).toEqual([
       "  coder         asks again before it edits or runs a command   Changed",

@@ -31,7 +31,8 @@ export function checkHarnessOverride(
   run: SandboxGateRun,
   ending: Message,
 ): void {
-  if (!startsAProgram(run.harness)) return;
+  const { harness } = run;
+  if (harness === undefined || !startsAProgram(harness)) return;
   for (const { value: agent } of programAgentsOf(workspace, run)) {
     const switched = !startsAProgram(agent.harness);
     const unchecked = (agent.allowedSites ?? []).length > 0 || agent.workingFolder !== undefined;
@@ -42,10 +43,10 @@ export function checkHarnessOverride(
         { fix: plainText(runMessages.uncheckedHarnessFieldsFix(agent.name).phrase) },
       );
     }
-    if (agent.asks !== undefined && run.harness !== "claude-code") {
+    if (agent.asks !== undefined && harness !== "claude-code") {
       throw new KindedError(
         "invalid_input",
-        plainText(runMessages.asksOnlyInClaudeCode(agent.name, ending.phrase).phrase),
+        plainText(runMessages.asksOnlyInClaudeCode(agent.name, harness, ending.phrase).phrase),
         { fix: plainText(runMessages.asksOnlyInClaudeCodeFix(agent.name).phrase) },
       );
     }

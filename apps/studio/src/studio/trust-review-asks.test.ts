@@ -53,7 +53,7 @@ verifies("studio.trust-review-asks", () => {
 
   it("says so in its Changed row when an agent turns in-sandbox on, or off again", () => {
     expect(agentRows(asksChange(coder, inSandbox))?.[0]?.lines).toEqual([
-      ["Now without asking", "edits and runs commands in its working folder"],
+      ["Now without asking", "edits and runs commands in its working folder, inside the sandbox"],
     ]);
     expect(agentRows(asksChange(inSandbox, coder))?.[0]?.lines).toEqual([
       ["Asks again", "before it edits or runs a command"],
