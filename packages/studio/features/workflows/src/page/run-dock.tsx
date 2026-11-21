@@ -112,7 +112,7 @@ function WaitingForRun({ onClose }: { readonly onClose: () => void }) {
     <aside
       role="status"
       aria-label={startWords.cardKind}
-      className="flex w-80 max-w-full shrink-0 items-start justify-between gap-3 border-s border-border p-4 text-small text-fg-muted"
+      className="flex w-80 max-w-full shrink-0 items-start @max-[800px]:w-full justify-between gap-3 border-s border-border p-4 text-small text-fg-muted"
     >
       <p ref={line} tabIndex={-1} className="outline-none">
         {startWords.waitingForRun}
@@ -128,7 +128,7 @@ function WaitingForRun({ onClose }: { readonly onClose: () => void }) {
   );
 }
 
-/** Whether {@link RunDock} shows a card for these props, following its branches; on a phone the card then takes the page's body. */
+/** Whether {@link RunDock} shows a card for these props, following its branches; on a phone, or a body under 800 px, the card then takes the page's body. */
 export function dockHasCard({
   dock,
   host,

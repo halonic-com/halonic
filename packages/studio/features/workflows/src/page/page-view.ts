@@ -1,3 +1,5 @@
+import { besideDockedCard } from "../runs/docked-card.ts";
+
 /**
  * The page's tabs, the same union as `WorkflowView` in `workflow-page.tsx`. Kept here rather than
  * imported, so this file doesn't import the page that imports it.
@@ -17,13 +19,20 @@ export function firstTestsPick(startOnTests: boolean | undefined) {
 /**
  * The tab panel's layout: Flow fills it with the canvas, Runs with its list and a run's card side by
  * side (each scrolls and keeps its own inset), and Configuration scrolls. On a phone a docked card
- * takes the page's body, so the panel hides behind it: beside the card it would have no room.
+ * takes the page's body, so the panel hides behind it: beside the card it would have no room. So
+ * it does on a desktop body under 800 px, as at 200 % zoom (DW1).
  */
 export function panelClass(
   view: WorkflowView,
   { phone, docked }: { readonly phone: boolean; readonly docked: boolean },
 ): string {
   if (phone && docked) return "hidden";
+  const layout = viewLayout(view);
+  return docked ? `${layout} ${besideDockedCard}` : layout;
+}
+
+/** The panel's layout for one tab, with no card docked. */
+function viewLayout(view: WorkflowView): string {
   switch (view) {
     case "flow":
       return "flex min-h-0 min-w-0 flex-1 flex-col";

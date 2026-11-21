@@ -9,6 +9,7 @@ import {
 import { type ReactNode, useMemo, useRef } from "react";
 import { flushSync } from "react-dom";
 import type { WorkflowRef } from "../api.ts";
+import { besideDockedCard } from "./docked-card.ts";
 import { RunCard } from "./run-card.tsx";
 import { realRunsOf, runRowsOf, runSections } from "./runs-model.ts";
 import { runsWords as words } from "./runs-words.ts";
@@ -156,8 +157,12 @@ export function RunsView({
     );
   return (
     <>
-      {/* On a phone a run's card takes the tab: beside it, the list would have no room. */}
-      <Inset hidden={phone && open !== undefined && openedRun !== undefined}>
+      {/* On a phone a run's card takes the tab: beside it, the list would have no room. So it does
+          in a body under 800 px (DW1). */}
+      <Inset
+        hidden={phone && open !== undefined && openedRun !== undefined}
+        besideCard={open !== undefined && openedRun !== undefined}
+      >
         <div className="flex max-w-186 flex-col gap-6">
           {section(words.now, sections.now)}
           {section(words.earlier, sections.earlier)}
@@ -195,16 +200,23 @@ export function RunsView({
 function Inset({
   children,
   hidden = false,
+  besideCard = false,
 }: {
   readonly children: ReactNode;
   readonly hidden?: boolean;
+  /** A run's card is docked beside it, so it hides where the card takes the body. */
+  readonly besideCard?: boolean;
 }) {
   return (
-    <div
-      data-testid="runs-inset"
-      className={hidden ? "hidden" : "min-w-0 flex-1 overflow-auto p-6"}
-    >
+    <div data-testid="runs-inset" className={insetClass(hidden, besideCard)}>
       {children}
     </div>
   );
+}
+
+/** The inset's layout: hidden on a phone behind a card, and under 800 px beside one (DW1). */
+function insetClass(hidden: boolean, besideCard: boolean): string {
+  if (hidden) return "hidden";
+  const layout = "min-w-0 flex-1 overflow-auto p-6";
+  return besideCard ? `${layout} ${besideDockedCard}` : layout;
 }
