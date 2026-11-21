@@ -108,8 +108,9 @@ server at any other address shows as not answering until you run
 Not in 0.1.0: on `main` only.
 
 **Checks:** the secrets a run in this workspace needs that the Models line
-doesn't check: the `secret` of an `http` connector and the `secretEnv` of a
-program connector, for each connector an agent lists under `connectors`; the
+doesn't check: the `secret` of an `http` connector, the `secretEnv` of a
+program connector and the workspace secrets a local integration's connector
+picks for its sheet, for each connector an agent lists under `connectors`; the
 `secret` of a provider the aliases use whose key the Models line doesn't check,
 such as the test model or a model server on this computer; the webhook `secret`
 of each routine that isn't `enabled: false`; and the `secret` of a provider
