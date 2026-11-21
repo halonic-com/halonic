@@ -427,7 +427,7 @@ async function chooseThisComputer(): Promise<void> {
     clock: fixedClock(Date.parse("2026-11-19T10:00:00.000Z")),
   });
   const file = new Uint8Array(await readFile(join(acme, "hubs/lab/agents/coder.agent.yaml")));
-  const subject = { location: await realpath(acme), agent: "coder", file };
+  const subject = { location: await realpath(acme), hub: "lab", agent: "coder", file };
   const shown = await agentFingerprint(file, webCryptoDigest);
   expect((await placement.chooseThisComputer(subject, shown)).ok).toBe(true);
 }
