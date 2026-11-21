@@ -2,7 +2,8 @@ import type { Clock, Digest } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import type { PluginSource } from "./plugin-installs.ts";
-import { type PluginEntry, PluginService, type ReadPlugin } from "./plugin-service.ts";
+import { PluginService } from "./plugin-service.ts";
+import type { PluginEntry, ReadPlugin } from "./plugin-service-types.ts";
 import { weatherManifest } from "./testing/plugin-fixtures.ts";
 import { TestFolderReader } from "./testing/test-folder-reader.ts";
 import { TestPluginFolder } from "./testing/test-plugin-folder.ts";
@@ -52,6 +53,7 @@ async function setup() {
     trust,
     records: new TestRecordStore(),
     clock,
+    signOut: async () => undefined,
   });
   const added = await service.add(weatherSource(), { from, replace: false });
   if (!added.ok || added.value.status !== "new") throw new Error("expected a new plugin");

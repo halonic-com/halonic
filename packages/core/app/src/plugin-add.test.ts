@@ -4,7 +4,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { MAX_PLUGIN_ENTRIES } from "./plugin-folder.ts";
 import type { PluginSource } from "./plugin-installs.ts";
-import { type AddedPluginEntry, PluginService } from "./plugin-service.ts";
+import { PluginService } from "./plugin-service.ts";
+import type { AddedPluginEntry } from "./plugin-service-types.ts";
 import { weatherManifest } from "./testing/plugin-fixtures.ts";
 import { TestFolderReader } from "./testing/test-folder-reader.ts";
 import { TestPluginFolder } from "./testing/test-plugin-folder.ts";
@@ -58,6 +59,7 @@ function setup(halonicData?: readonly string[]) {
     trust,
     records: new TestRecordStore(),
     clock,
+    signOut: async () => undefined,
     ...(halonicData === undefined ? {} : { halonicData }),
   });
   return { folder, service };

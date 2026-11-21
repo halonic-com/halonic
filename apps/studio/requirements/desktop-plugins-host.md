@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-9377 (design check A4, HAL-9316)
 
-The desktop app shall give the plugins feature a host built on core's `PluginService` over the shell's plugins folder, the profile's plugin records, the trust records the CLI shares and the keychain. Its feed shall list every plugin folder, a plugin that can't load by its folder's name with its problems, and shall tell its listeners only when a read finds something different. A read that fails shall keep the plugins the feed had. Trusting only the plugin as the page showed it, removing trust, removing a plugin and Check again shall each read the folder again.
+The desktop app shall give the plugins feature a host built on core's `PluginService` over the shell's plugins folder, the profile's plugin records, the trust records the CLI shares and the keychain. Its feed shall list every plugin folder, a plugin that can't load by its folder's name with its problems, and shall tell its listeners only when a read finds something different. A read that fails shall keep the plugins the feed had. Trusting only the plugin as the page showed it, removing trust, removing a plugin and Check again shall each read the folder again. Removing trust and removing a plugin shall first sign out the plugin's sign-ins at the agent host (`app.plugin-sign-out`).
 
 ## Examples
 
@@ -32,3 +32,6 @@ The desktop app shall give the plugins feature a host built on core's `PluginSer
 - Given a change that was saved,
   when reading the plugins folder again fails,
   then the action still succeeds and the failure is reported separately.
+- Given a plugin,
+  when its trust is removed,
+  then the agent host is asked to sign out the plugin's sign-ins.

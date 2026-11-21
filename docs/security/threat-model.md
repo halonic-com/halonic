@@ -405,7 +405,11 @@ settings or client secret reads the plugin's folder and checks the trust
 record again, and a plugin that isn't there, changed or lost its trust answers
 `404 unknown_integration`. The client secret is read only from that plugin's
 own handed-over secrets, and the backend gets the access token only through
-the kit, which places it (`agent-host.plugin-sign-ins`). A local integration
+the kit, which places it (`agent-host.plugin-sign-ins`). Removing a plugin's
+trust or the plugin signs out each of its grants first, found from the grants
+and not the sheet: revoked where it can be, and deleted also when the revoke
+fails, so a plugin added later under the same id isn't signed in
+(`app.plugin-sign-out`). A local integration
 that isn't a plugin still can't declare a sign-in (`sign-ins-not-allowed`),
 because only a plugin's trust check shows a sign-in's hosts. The callback has the
 same `Host` and `Origin` checks and the same defence, the sign-in's `state`

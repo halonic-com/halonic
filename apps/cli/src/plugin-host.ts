@@ -1,7 +1,8 @@
 // The one way a command opens the plugin service on this computer: the
 // profile's plugins folder and records, the trust records every plugin
-// shares with workspaces, and the CLI's digest, so every `halonic plugin`
-// command and `halonic trust --plugin` read one plugin the same way.
+// shares with workspaces, the profile's sign-in grants, which removing a
+// plugin or its trust signs out, and the CLI's digest, so every `halonic
+// plugin` command and `halonic trust --plugin` read one plugin the same way.
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -13,7 +14,7 @@ import {
 } from "@halonicjs/adapter-fs-node";
 import { bothSpellings } from "@halonicjs/adapter-system-node";
 import { type DeletePluginSecret, type LocalToolState, PluginService } from "@halonicjs/app";
-import type { Clock } from "@halonicjs/ports";
+import type { Clock, HttpClient } from "@halonicjs/ports";
 import {
   type ProfileEnvironment,
   pluginRecordsFolder,
@@ -23,7 +24,9 @@ import {
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { GitExporter } from "./commands/plugin/git-source.ts";
+import { cliPluginSignOut } from "./plugin-sign-out.ts";
 import { nodeLocalToolState } from "./sandbox-works.ts";
+import { chainedSecrets } from "./secret-host.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import { cliTrustService } from "./workspace-trust.ts";
 
@@ -37,6 +40,8 @@ export interface PluginSetup {
   readonly exportGit?: GitExporter;
   /** Whether a plugin's programs can run here; this computer's srt sandbox is asked by default. */
   readonly localToolState?: () => Promise<LocalToolState>;
+  /** Where removing a plugin or its trust revokes its sign-ins; the Node client for public hosts by default. */
+  readonly http?: HttpClient;
 }
 
 /**
@@ -70,7 +75,8 @@ export async function programsRunFor(
  * const entries = await openPluginService({}).load();
  */
 export function openPluginService(setup: PluginSetup, cwd?: string): PluginService {
-  const profile = profileFolder(setup.profile ?? nodeProfileEnvironment());
+  const environment = setup.profile ?? nodeProfileEnvironment();
+  const profile = profileFolder(environment);
   const clock = setup.clock ?? systemClock;
   const folder = pluginsFolder(profile);
   return new PluginService({
@@ -80,6 +86,12 @@ export function openPluginService(setup: PluginSetup, cwd?: string): PluginServi
     trust: cliTrustService(new FileTrustStore(trustFolder(profile)), clock),
     records: new FileRecordStore(pluginRecordsFolder(profile)),
     clock,
+    signOut: cliPluginSignOut({
+      profile,
+      secrets: chainedSecrets(environment.variables, () => environment),
+      clock,
+      ...(setup.http === undefined ? {} : { http: setup.http }),
+    }),
     halonicData: halonicDataFolders(profile.root, cwd),
   });
 }

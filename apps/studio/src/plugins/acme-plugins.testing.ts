@@ -59,6 +59,7 @@ export function acme() {
     trust,
     records: new MemoryRecordStore(),
     clock,
+    signOut: async () => undefined,
   });
   return { service, reader };
 }

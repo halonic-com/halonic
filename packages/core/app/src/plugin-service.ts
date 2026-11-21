@@ -6,7 +6,8 @@
 // forgets a person's trust, keeps each plugin's setting values, which only
 // removing the plugin deletes, and gives the tools and UI of the trusted
 // ones. The CLI and the Studio call it; it reaches the folder, the trust
-// records and the setting values only through ports.
+// records and the setting values only through ports. What it gives and takes
+// is in `plugin-service-types.ts`.
 
 import type { Plugin } from "@halonicjs/format";
 import type {
@@ -26,105 +27,32 @@ import {
   trustedPluginUi,
 } from "./plugin-contributions.ts";
 import { type PluginProblem, readPluginFolder } from "./plugin-folder.ts";
-import { type PluginInstall, PluginInstalls, type PluginSource } from "./plugin-installs.ts";
+import { type PluginInstall, PluginInstalls } from "./plugin-installs.ts";
 import { pluginSecretNames } from "./plugin-secret-names.ts";
 import {
   notAFolderProblem,
   readFailedProblem,
   unsafeNameProblem,
 } from "./plugin-service-problems.ts";
+import type {
+  AddedPluginEntry,
+  AddPluginOptions,
+  BrokenPlugin,
+  DeletePluginSecret,
+  PluginAddRefusal,
+  PluginEntry,
+  PluginRemoveRefusal,
+  PluginTrustRefusal,
+  SignOutPlugin,
+} from "./plugin-service-types.ts";
 import {
   type PluginSettingProblem,
   PluginSettings,
   type PluginSettingValues,
 } from "./plugin-settings.ts";
 import { overlapsHalonicData, PluginSourceSnapshot, sourceFolder } from "./plugin-source.ts";
-import type { PluginTrustCheck } from "./plugin-trust.ts";
-import type { PersonTrustOrigin, TrustRefusal } from "./trust-record.ts";
+import type { PersonTrustOrigin } from "./trust-record.ts";
 import type { TrustService } from "./trust-service.ts";
-
-/** A plugin folder that can't be read or checked. It gives no tools and no UI. */
-export interface BrokenPlugin {
-  readonly status: "broken";
-  /** The plugin folder's name, in the profile's plugin folder. */
-  readonly folder: string;
-  /** Every problem found, for Studio's row and the CLI. Never empty. */
-  readonly problems: readonly PluginProblem[];
-}
-
-/** A plugin that was read and checked, with whether it is trusted. Only `trusted` has a grant. */
-export type ReadPlugin = PluginTrustCheck & {
-  /** The plugin folder's name, which is the plugin's id. */
-  readonly folder: string;
-  /** The plugin folder's resolved real path: the trust record's key. */
-  readonly location: string;
-  readonly plugin: Plugin;
-};
-
-/** One plugin folder, as {@link PluginService.load} found it. */
-export type PluginEntry = BrokenPlugin | ReadPlugin;
-
-/** A plugin {@link PluginService.add} placed, as `load` gives it, and what it left out of the copy. */
-export type AddedPluginEntry = PluginEntry & {
-  /**
-   * The paths the sandbox denies in a home folder that the source held and
-   * the copy leaves out, by path from the source folder and sorted, such as
-   * `.ssh` or `keys/.npmrc`. Private workspace names (`.git`, `.env`) are
-   * left out too, but not named here.
-   */
-  readonly leftOut: readonly string[];
-};
-
-/**
- * Why a person's trust in a plugin wasn't saved: the plugin changed since
- * they were shown it, or it can't be read or checked now.
- */
-export type PluginTrustRefusal =
-  | TrustRefusal
-  | { readonly kind: "broken"; readonly problems: readonly PluginProblem[] };
-
-/**
- * Why a plugin wasn't added: its source can't be read or checked, or a
- * plugin with its id, in any case, is already added. Nothing was written to
- * the plugins folder.
- */
-export type PluginAddRefusal =
-  | { readonly kind: "broken"; readonly problems: readonly PluginProblem[] }
-  | { readonly kind: "taken"; readonly id: string; readonly name: string }
-  /** The source is, holds or is inside Halonic's own data (see `overlapsHalonicData`). */
-  | { readonly kind: "halonic-data" };
-
-/** How {@link PluginService.add} adds a plugin. */
-export interface AddPluginOptions {
-  /** Where the source came from, for the install record. */
-  readonly from: PluginSource;
-  /**
-   * Put it in place of the plugin with exactly the same id, for a new
-   * commit of the same plugin. Without it, an id already added is `taken`.
-   */
-  readonly replace: boolean;
-}
-
-/**
- * Deletes one secret from the host's `Secrets`, by the name it is stored
- * under. `Secrets` is read-only in core, so the host passes its own writer.
- * Deleting a name that isn't there must succeed, so a remove that stopped
- * part way can run again.
- */
-export type DeletePluginSecret = (storedName: string) => Promise<void>;
-
-/**
- * Why a plugin wasn't removed: one of its secrets couldn't be deleted. Its
- * trust may be gone, but its folder, settings and other secrets are kept,
- * so removing it again finishes the job.
- */
-export interface PluginRemoveRefusal {
-  readonly kind: "secret";
-  /** The secret's name as the plugin declares it, never its value. */
-  readonly secret: string;
-  /** What the host's secret writer said. */
-  readonly reason: string;
-}
 
 /** What {@link PluginService} needs from the host. */
 export interface PluginServiceOptions {
@@ -141,6 +69,11 @@ export interface PluginServiceOptions {
   /** Dates each saved setting value. */
   readonly clock: Clock;
   /**
+   * Signs out the plugin's sign-ins when its trust is forgotten or it is
+   * removed, so a plugin added later under the same id isn't signed in.
+   */
+  readonly signOut: SignOutPlugin;
+  /**
    * Halonic's own data folders on this computer that a plugin's source must
    * stay clear of, each absolute and in every spelling the host knows (as
    * written, with links resolved): the profile folder, and the open
@@ -154,7 +87,7 @@ export interface PluginServiceOptions {
  * Finds, checks and trusts the plugins in the profile's plugin folder.
  *
  * @example
- * const plugins = new PluginService({ plugins: folderReader, writer, digest, trust, records, clock });
+ * const plugins = new PluginService({ plugins: folderReader, writer, digest, trust, records, clock, signOut });
  * const entries = await plugins.load();
  * for (const entry of entries) {
  *   if (entry.status === "broken") showProblems(entry.folder, entry.problems);
@@ -302,16 +235,26 @@ export class PluginService {
 
   /**
    * Forgets the trust in the plugin `id`, so it gives no tools and no UI
-   * until a person trusts it again. Its settings and secrets stay: only
-   * removing the plugin deletes them. Nothing happens when its folder is
-   * gone, so removing a plugin forgets its trust before its folder.
+   * until a person trusts it again, and signs out each of its sign-ins first,
+   * while the plugin can still read its client secret for the revoke. Its
+   * settings and secrets stay: only removing the plugin deletes them. The
+   * trust is forgotten also when the sign-out fails, and then the sign-out's
+   * error is thrown, so running it again finishes the job. When its folder
+   * is gone only the sign-out runs, so removing a plugin forgets its trust
+   * before its folder.
    *
    * @param id - the plugin's id, which is its folder's name
-   * @throws a `RangeError` when `id` isn't a single folder name
+   * @throws a `RangeError` when `id` isn't a single folder name, and what the sign-out throws
    */
   async revoke(id: string): Promise<void> {
-    const location = await this.#options.plugins.locationOf(pluginFolderOf(id));
-    if (location !== null) await this.#options.trust.revoke(location);
+    const folder = pluginFolderOf(id);
+    try {
+      await this.#options.signOut(folder);
+    } finally {
+      // A sign-in that couldn't be signed out never keeps a plugin trusted.
+      const location = await this.#options.plugins.locationOf(folder);
+      if (location !== null) await this.#options.trust.revoke(location);
+    }
   }
 
   /**
@@ -381,10 +324,11 @@ export class PluginService {
 
   /**
    * Removes the plugin `id` and everything kept for it, in this order, so a
-   * folder is never gone while its trust, secrets or settings are left:
+   * folder is never gone while its trust, sign-ins, secrets or settings are left:
    *
-   * 1. its trust, when its entry is a real folder (a link is never trusted,
-   *    and is never followed);
+   * 1. its sign-ins, signed out with `signOut`, and then its trust, when its
+   *    entry is a real folder (a link is never trusted, and is never
+   *    followed); a sign-out that fails is thrown once the trust is gone;
    * 2. every secret it declares now or declared when it was added, with
    *    `deleteSecret`; at the first that fails it stops, naming it;
    * 3. its settings and its install record;
@@ -396,7 +340,7 @@ export class PluginService {
    *
    * @param id - the plugin's id, which is its folder's name
    * @throws a `RangeError` when `id` isn't a single folder name, and what
-   *   the trust store, the records or the plugins folder throw
+   *   the sign-out, the trust store, the records or the plugins folder throw
    */
   async remove(
     id: string,
@@ -405,6 +349,7 @@ export class PluginService {
     const folder = pluginFolderOf(id);
     const entry = await this.#topEntry(folder);
     if (entry?.kind === "folder") await this.revoke(folder);
+    else await this.#options.signOut(folder);
     for (const [secret, storedName] of Object.entries(
       await this.#storedSecretNames(entry, folder),
     )) {

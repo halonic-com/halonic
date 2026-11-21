@@ -527,9 +527,15 @@ importers:
       '@halonicjs/host-harness-host':
         specifier: workspace:*
         version: link:../../packages/host/harness-host
+      '@halonicjs/host-integration-sign-in':
+        specifier: workspace:*
+        version: link:../../packages/host/integration-sign-in
       '@halonicjs/host-server':
         specifier: workspace:*
         version: link:../../packages/host/server
+      '@halonicjs/oauth-sign-in':
+        specifier: workspace:*
+        version: link:../../packages/core/oauth-sign-in
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../packages/core/ports

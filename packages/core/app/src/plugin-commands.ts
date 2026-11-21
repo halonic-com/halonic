@@ -8,14 +8,14 @@ import type { FolderReader, TrustGrant } from "@halonicjs/ports";
 import type { Result } from "@halonicjs/std";
 import type { CommandBus, CommandMap, CommandSpec } from "./command-bus.ts";
 import type { PluginSource } from "./plugin-installs.ts";
+import type { PluginService } from "./plugin-service.ts";
 import type {
   DeletePluginSecret,
   PluginAddRefusal,
   PluginEntry,
   PluginRemoveRefusal,
-  PluginService,
   PluginTrustRefusal,
-} from "./plugin-service.ts";
+} from "./plugin-service-types.ts";
 
 /** What `plugins.add` takes: the plugin's files, read through their own reader, and where they came from. */
 export interface AddPluginCommand {

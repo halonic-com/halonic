@@ -299,20 +299,20 @@ export {
   PluginLocalTools,
   type PluginLocalToolsOptions,
 } from "./plugin-local-tools.ts";
-export { pluginSecretNames } from "./plugin-secret-names.ts";
-export {
-  type AddedPluginEntry,
-  type AddPluginOptions,
-  type BrokenPlugin,
-  type DeletePluginSecret,
-  type PluginAddRefusal,
-  type PluginEntry,
-  type PluginRemoveRefusal,
-  PluginService,
-  type PluginServiceOptions,
-  type PluginTrustRefusal,
-  type ReadPlugin,
-} from "./plugin-service.ts";
+export { pluginSecretName, pluginSecretNames } from "./plugin-secret-names.ts";
+export { PluginService, type PluginServiceOptions } from "./plugin-service.ts";
+export type {
+  AddedPluginEntry,
+  AddPluginOptions,
+  BrokenPlugin,
+  DeletePluginSecret,
+  PluginAddRefusal,
+  PluginEntry,
+  PluginRemoveRefusal,
+  PluginTrustRefusal,
+  ReadPlugin,
+  SignOutPlugin,
+} from "./plugin-service-types.ts";
 export {
   type PluginSettingProblem,
   PluginSettings,

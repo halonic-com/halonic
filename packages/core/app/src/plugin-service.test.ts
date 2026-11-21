@@ -1,7 +1,8 @@
 import type { Clock, Digest, TrustRecord } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
-import { type PluginEntry, PluginService, type ReadPlugin } from "./plugin-service.ts";
+import { PluginService } from "./plugin-service.ts";
+import type { PluginEntry, ReadPlugin } from "./plugin-service-types.ts";
 import { weatherManifest } from "./testing/plugin-fixtures.ts";
 import { TestFolderReader } from "./testing/test-folder-reader.ts";
 import { TestPluginFolder } from "./testing/test-plugin-folder.ts";
@@ -53,7 +54,15 @@ function setup(reader = plugins(), store = new TestTrustStore()) {
   const trust = new TrustService({ store, digest, clock, appVersion: "0.1.0" });
   const records = new TestRecordStore();
   const writer = new TestPluginFolder(reader);
-  const service = new PluginService({ plugins: reader, writer, digest, trust, records, clock });
+  const service = new PluginService({
+    plugins: reader,
+    writer,
+    digest,
+    trust,
+    records,
+    clock,
+    signOut: async () => undefined,
+  });
   return { trust, service };
 }
 
