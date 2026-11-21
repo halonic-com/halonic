@@ -48,8 +48,13 @@ interface OpenBridge {
   bridge: OpenHarnessBridge;
   channel: CallChannel;
   stream: NdjsonStream;
-  /** Gives the bridge the host's own session a run starts in, whose fence its approvals read. */
-  sessionOpened: (session: SandboxSession) => void;
+  /**
+   * Binds the bridge to the host's own session a run starts in, whose fence its
+   * approvals read. The first session binds it for good.
+   *
+   * @returns false when the bridge is already bound to another session
+   */
+  bindSession: (sessionId: string, session: SandboxSession) => boolean;
 }
 
 /**
@@ -285,7 +290,7 @@ async function openBridge(
     stream.end();
     return undefined;
   }
-  const id = bridges.add({ bridge, channel, stream, sessionOpened: asks.sessionOpened });
+  const id = bridges.add({ bridge, channel, stream, bindSession: sessionBinder(asks) });
   const { url, token, socketPath } = bridge;
   stream.send({
     type: "opened",
@@ -295,6 +300,25 @@ async function openBridge(
     ...(socketPath === undefined ? {} : { socketPath }),
   });
   return { id, channel };
+}
+
+/**
+ * Binds a bridge to the first session a run starts it in. `sandboxedAsks`
+ * keeps only the latest session it is given, so a second session would swap
+ * the fence the first run's calls are judged by: Studio can name any bridge
+ * id, and a run in an unfenced session would then get its calls let through
+ * under another session's fence.
+ */
+function sessionBinder(asks: {
+  sessionOpened: (session: SandboxSession) => void;
+}): OpenBridge["bindSession"] {
+  let boundTo: string | undefined;
+  return (sessionId, session) => {
+    if (boundTo !== undefined) return boundTo === sessionId;
+    boundTo = sessionId;
+    asks.sessionOpened(session);
+    return true;
+  };
 }
 
 /** The agent as {@link sandboxedAsks} reads it: without a harness, its `asks` lets nothing through. */

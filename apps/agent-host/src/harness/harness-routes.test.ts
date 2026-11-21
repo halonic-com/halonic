@@ -134,7 +134,7 @@ async function started(): Promise<{ url: string; session: string; bridge: string
     bridge: { url: "http://127.0.0.1:4100", token: bridgeToken, close: async () => {} },
     channel: new CallChannel(stream),
     stream,
-    sessionOpened: () => {},
+    bindSession: () => true,
   });
   server = await startHostServer(
     token,

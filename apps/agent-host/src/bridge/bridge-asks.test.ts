@@ -32,12 +32,16 @@ const task: HarnessTask = {
   prompt: "Write a haiku.",
 };
 
+/** How many runs the harness started since the test began. */
+let starts = 0;
+
 /** A harness whose runs end only when cancelled. */
 const harness: Harness = {
   id: "fake",
   name: "Fake",
   detect: async () => ({ status: "ready", version: "1.0.0" }),
   start: (): HarnessRun => {
+    starts += 1;
     let cancel: () => void = () => {};
     const cancelled = new Promise<void>((resolve) => {
       cancel = resolve;
@@ -78,6 +82,7 @@ async function startedWith(fence: SandboxFence) {
   const sessions = new SessionTable();
   bridges = new BridgeTable();
   runs = new RunTable();
+  starts = 0;
   const opened: BridgeApprovals[] = [];
   const serverFor = () => ({
     open: async (options: HarnessBridgeOptions) => {
@@ -93,9 +98,12 @@ async function startedWith(fence: SandboxFence) {
     ...bridgeRoutes(serverFor, bridges, undefined, paths),
     ...harnessRoutes({ harnesses: [harness], sessions, bridges, runs }),
   ]);
-  const session = { fence, profile: { workingFolder, timeLimitMs: 60_000 }, close: async () => {} };
-  const sessionId = (await sessions.add(session as unknown as SandboxSession)) ?? "";
-  return { url: server.url, sessionId, opened };
+  const addSession = async (sessionFence: SandboxFence) => {
+    const profile = { workingFolder, timeLimitMs: 60_000 };
+    const session = { fence: sessionFence, profile, close: async () => {} };
+    return (await sessions.add(session as unknown as SandboxSession)) ?? "";
+  };
+  return { url: server.url, sessionId: await addSession(fence), opened, addSession };
 }
 
 function post(url: string, path: string, body: unknown, signal: AbortSignal): Promise<Response> {
@@ -132,13 +140,18 @@ async function openAsStudio(url: string, body: OpenBridgeBody) {
   return { bridge: first.bridge, calls };
 }
 
-/** Starts a run on `bridge` in the session, and waits until the host says it started. */
-async function startRun(url: string, sessionId: string, bridge: string): Promise<void> {
+/**
+ * Starts a run on `bridge` in the session, and waits until the host says it started.
+ *
+ * @returns the host's answer, whose body is read only when it isn't a stream
+ */
+async function startRun(url: string, sessionId: string, bridge: string): Promise<Response> {
   const stop = new AbortController();
   stopped.push(stop);
   const body = { harness: "fake", task, session: sessionId, bridge };
-  const lines = readLines(await post(url, "/v1/harnesses/runs/start", body, stop.signal));
-  await lines.next();
+  const response = await post(url, "/v1/harnesses/runs/start", body, stop.signal);
+  if (response.ok) await readLines(response).next();
+  return response;
 }
 
 async function* readLines(response: Response): AsyncGenerator<unknown> {
@@ -212,5 +225,33 @@ verifies("agent-host.sandboxed-asks", () => {
 
     expect(await askEdit(opened[0])).toEqual({ approved: false });
     expect(studio.calls.map((call) => call.method)).toEqual(["approvals.request"]);
+  });
+
+  it("refuses a run on a bridge a run started in another session, and keeps the first fence", async () => {
+    const { url, sessionId, opened, addSession } = await startedWith({
+      state: "not-fenced",
+      reason: "probe",
+    });
+    const fencedId = await addSession({ state: "fenced" });
+    const studio = await openAsStudio(url, inSandbox);
+    await startRun(url, sessionId, studio.bridge);
+
+    const second = await startRun(url, fencedId, studio.bridge);
+
+    expect(second.status).toBe(409);
+    expect(await second.json()).toMatchObject({ error: { kind: "bridge_in_use" } });
+    expect(starts).toBe(1);
+    expect(await askEdit(opened[0])).toEqual({ approved: false });
+    expect(studio.calls.map((call) => call.method)).toEqual(["approvals.request"]);
+  });
+
+  it("starts a second run on the bridge in the same session", async () => {
+    const { url, sessionId } = await startedWith({ state: "fenced" });
+    const studio = await openAsStudio(url, inSandbox);
+    await startRun(url, sessionId, studio.bridge);
+
+    const second = await startRun(url, sessionId, studio.bridge);
+
+    expect(second.status).toBe(200);
   });
 });

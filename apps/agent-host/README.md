@@ -114,7 +114,7 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `POST /v1/integrations/sign-in/status` with `{"integration"}` | `{"signIns":[{"signIn","state","lastOutcome"?}]}`; `state` is `signedIn`, `signedOut`, `approvalChanged` or `cannotSignIn` |
 | `POST /v1/integrations/sign-in/cancel` with `{"integration","signIn"}` | `204` |
 | `POST /v1/integrations/sign-in/sign-out` with `{"integration","signIn"}` | `{"result"}`: `{"kind":"notSignedIn"}` or `{"kind":"signedOut","revoke"}` |
-| `POST /v1/harnesses/runs/start` | an NDJSON stream: the run's id, then its events (below) |
+| `POST /v1/harnesses/runs/start` | an NDJSON stream: the run's id, then its events (below), or `409 bridge_in_use` when a run already started the bridge in another session |
 | `POST /v1/harnesses/runs/send` with `{"run","input"}` | `{"sent":true}`, or `409 send_failed` when the run refuses the input |
 | `POST /v1/harnesses/runs/cancel` with `{"run"}` | `{"cancelled":true}` |
 | `GET /v1/remote/state` | an NDJSON stream of the `RemoteState`, the current one first, then each change. Until the gateway takes pairings (B3, B8) every launch answers `"available":false` and never changes it |
