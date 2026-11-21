@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
 import { PresentationProvider } from "@halonicjs/studio-kit";
+import { SECTION_ADD_STEP, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it } from "vitest";
 import type { RoutineRef, RoutinesHost, TriggerOwner, TriggerRow } from "../api.ts";
 import { show, unmount } from "../test-support.tsx";
-import { TriggersView } from "./triggers-section.tsx";
+import { TriggersSection, TriggersView } from "./triggers-section.tsx";
 
 afterEach(unmount);
 
@@ -282,5 +283,50 @@ verifies("routines.triggers.agent-cant-run-note", () => {
     const page = await show(<TriggersView host={hostWith([])} owner={workflow} />);
     expect(page.textContent).not.toContain("can't run an agent");
     expect(button(page, "Add trigger")?.hasAttribute("aria-describedby")).toBe(false);
+  });
+});
+
+verifies("routines.triggers.add-trigger-from-page", () => {
+  /** The section as the agent's Configuration draws it, asked for `step`. */
+  const section = (host: RoutinesHost, owner: TriggerOwner, step?: string) => (
+    <TriggersSection
+      item={{ kind: owner.kind, hub: owner.hubId, id: owner.id }}
+      context={{ services: { get: () => host } } as unknown as WorkspaceContext}
+      {...(step !== undefined && { step })}
+    />
+  );
+
+  it("shows an agent's Prompt at once, focused, when asked to start adding", async () => {
+    const made: (string | undefined)[] = [];
+    const host = hostWith([], async (_owner, prompt) => {
+      made.push(prompt);
+      return { hubId: "acme", id: "writer-2" };
+    });
+    const page = await show(section(host, agent, SECTION_ADD_STEP));
+
+    const field = page.querySelector("textarea");
+    expect(field).not.toBeNull();
+    expect(document.activeElement).toBe(field);
+    expect(page.textContent).toContain("Say what Writer should do.");
+    expect(made).toEqual([]);
+  });
+
+  it("makes a workflow's routine once when asked to start adding", async () => {
+    const made: (string | undefined)[] = [];
+    const host = hostWith([], async (_owner, prompt) => {
+      made.push(prompt);
+      return { hubId: "acme", id: "reply-2" };
+    });
+    await show(section(host, workflow, SECTION_ADD_STEP));
+
+    expect(made).toEqual([undefined]);
+  });
+
+  it("shows the section as it is without the step, or with one it doesn't know", async () => {
+    for (const step of [undefined, "rename"]) {
+      const page = await show(section(hostWith([]), agent, step));
+      expect(page.querySelector("textarea")).toBeNull();
+      unmount();
+    }
   });
 });

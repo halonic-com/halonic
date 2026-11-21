@@ -11,7 +11,7 @@ import { fakeShowModal } from "../test-support/fake-show-modal.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import { MapTarget } from "../test-support/map-target.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import type { ItemPageSectionViewProps } from "./item-page-sections.tsx";
+import { type ItemPageSectionViewProps, SECTION_ADD_STEP } from "./item-page-sections.tsx";
 import { type ItemViewProps, itemOfLocationKey } from "./item-view.tsx";
 import { StudioWindow } from "./studio-window.tsx";
 import { StudioWorkspace } from "./studio-workspace.ts";
@@ -39,7 +39,7 @@ let imports = 0;
 /**
  * The panel's view: its `h1` names the item, worded by a service from its feature's context. It
  * places every section, then lists them by name and draws Usage alone, as a page with a list of
- * pages does.
+ * pages does. Then it asks for the add step twice: Usage alone, and every section at once.
  */
 function PanelView({ item, context, Sections, sections = [] }: ItemViewProps) {
   return (
@@ -58,14 +58,26 @@ function PanelView({ item, context, Sections, sections = [] }: ItemViewProps) {
       <div className="only">
         <Sections only="usage" />
       </div>
+      <div className="asked">
+        <Sections only="usage" step={SECTION_ADD_STEP} />
+      </div>
+      <div className="all-asked">
+        <Sections step={SECTION_ADD_STEP} />
+      </div>
     </>
   );
 }
 
-/** A section's view: its `p` names the item and the heading only the models feature's context reaches. */
+/**
+ * A section's view: its `p` names the item, the heading only the models feature's context reaches,
+ * and the step it was asked for, if any.
+ */
 function sectionView(name: string) {
-  return function SectionView({ item, context }: ItemPageSectionViewProps) {
-    return <p className="section">{`${name} ${item.id} ${context.services.get(ModelsHeading)}`}</p>;
+  return function SectionView({ item, context, step }: ItemPageSectionViewProps) {
+    const asked = step === undefined ? "" : ` on ${step}`;
+    return (
+      <p className="section">{`${name} ${item.id} ${context.services.get(ModelsHeading)}${asked}`}</p>
+    );
   };
 }
 const ModelsSection = sectionView("Models");
@@ -188,6 +200,29 @@ verifies("shell.item-page-sections", () => {
     expect(titles.map((title) => title.textContent)).toEqual(["Usage", "Broken", "Models"]);
     const alone = [...container.querySelectorAll("main .only p.section")];
     expect(alone.map((section) => section.textContent)).toEqual(["Usage weather models"]);
+  });
+});
+
+verifies("shell.item-page-section-step", () => {
+  it("gives the step to the one section asked for, and to none when every section is drawn", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const shell = createShell({
+      features: [pluginsFeature, modelsFeature],
+      timers: new FakeTimers(),
+    });
+    const { container, workspace } = renderWindow(shell);
+    act(() =>
+      workspace.tabs.openHere({ key: "plugin-panel/this-computer/weather", title: "Weather" }),
+    );
+    await settle();
+
+    const text = (selector: string) =>
+      [...container.querySelectorAll(selector)].map((section) => section.textContent);
+    expect(text("main .asked p.section")).toEqual(["Usage weather models on add"]);
+    expect(text("main .all-asked p.section")).toEqual([
+      "Usage weather models",
+      "Models weather models",
+    ]);
   });
 });
 

@@ -2,7 +2,7 @@
 
 import { KindedError } from "@halonicjs/std";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
-import { createCloseStack } from "@halonicjs/studio-shell";
+import { createCloseStack, type SectionsProps } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -155,15 +155,25 @@ verifies("agents.map.add-button-per-side", () => {
     );
   });
 
-  it("ends the left side in Add trigger once Triggers is added, which opens it", async () => {
-    const Sections = ({ only }: { readonly only?: string }) => <p>Section {only}</p>;
+  it("ends the left side in Add trigger once Triggers is added, which opens it on its add step", async () => {
+    const Sections = ({ only, step }: SectionsProps) => (
+      <p>
+        Section {only} on {step ?? "nothing"}
+      </p>
+    );
     const page = await openFlow({ sections: [{ id: "triggers", title: "Triggers" }], Sections });
     expect(side(page, "What brings it work").at(-1)).toBe("+ Add trigger");
     await act(async () => buttonNamed(page, "+ Add trigger")?.click());
     expect(tabNamed(page, "Configuration")?.getAttribute("aria-selected")).toBe("true");
-    expect(page.textContent).toContain("Section triggers");
+    // The section is asked to start adding, so Triggers shows its Prompt at once (C561 4.2).
+    expect(page.textContent).toContain("Section triggers on add");
     // The section has no heading of its own, so its page's tab takes the focus the button had.
     expect(document.activeElement).toBe(tabNamed(page, "Triggers"));
+
+    // Picked by hand, the page shows the section as it is.
+    await act(async () => tabNamed(page, "Tools")?.click());
+    await act(async () => tabNamed(page, "Triggers")?.click());
+    expect(page.textContent).toContain("Section triggers on nothing");
   });
 
   it("opens Configuration › Tools from Add a tool, with the focus on its first heading", async () => {

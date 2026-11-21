@@ -5,8 +5,8 @@ import {
   StatusChip,
   usePresentation,
 } from "@halonicjs/studio-kit";
-import type { ItemPageSectionViewProps } from "@halonicjs/studio-shell";
-import { useEffect, useId, useRef, useState } from "react";
+import { type ItemPageSectionViewProps, SECTION_ADD_STEP } from "@halonicjs/studio-shell";
+import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import {
   type RoutinesHost,
   RoutinesHostService,
@@ -21,13 +21,14 @@ import { triggersWords } from "./triggers-words.ts";
 import { useTriggerRows } from "./use-trigger-rows.ts";
 
 /** The **Triggers** section on an agent's or a workflow's page: the routines that start it. */
-export function TriggersSection({ item, context }: ItemPageSectionViewProps) {
+export function TriggersSection({ item, context, step }: ItemPageSectionViewProps) {
   const kind = item.kind === "workflow" ? "workflow" : "agent";
   const { openItem } = context;
   return (
     <TriggersView
       host={context.services.get(RoutinesHostService)}
       owner={{ kind, hubId: item.hub, id: item.id }}
+      startAdding={step === SECTION_ADD_STEP}
       {...(openItem && {
         openRoutine: (hubId: string, id: string, step?: string) =>
           openItem({ kind: "routine", hub: hubId, id }, step === undefined ? {} : { step }),
@@ -45,6 +46,11 @@ export interface TriggersViewProps {
    * aren't buttons.
    */
   readonly openRoutine?: (hubId: string, id: string, step?: string) => void;
+  /**
+   * Set when the page asks the section to start adding, such as the agent map's **Add trigger**:
+   * the section then does what its own Add trigger does, once, so an agent's Prompt shows at once.
+   */
+  readonly startAdding?: boolean;
 }
 
 /**
@@ -55,8 +61,10 @@ export interface TriggersViewProps {
  * agent's prompt, since that is the agent's real task, and makes the routine only once one is typed.
  * Above it, an agent's section says that a routine can't run an agent yet
  * (`routines.triggers.agent-cant-run-note`), so nobody writes that task before learning it.
+ * Opened with `startAdding`, it presses its own Add trigger once it is drawn
+ * (`routines.triggers.add-trigger-from-page`).
  */
-export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
+export function TriggersView({ host, owner, openRoutine, startAdding = false }: TriggersViewProps) {
   const { load, retry } = useTriggerRows(host, owner);
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string>();
@@ -106,6 +114,15 @@ export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
     }
     return make(prompt);
   };
+
+  // Once per drawn section, so a second run of the effect can't make a workflow's routine twice.
+  const startedAdding = useRef(false);
+  const addOnStart = useEffectEvent(() => void add());
+  useEffect(() => {
+    if (!startAdding || startedAdding.current) return;
+    startedAdding.current = true;
+    addOnStart();
+  }, [startAdding]);
 
   const cancel = () => {
     setAsking(undefined);
