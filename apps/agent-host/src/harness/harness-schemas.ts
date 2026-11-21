@@ -12,8 +12,10 @@ const task = portSchema<HarnessTask>(
       hubId: id,
       agentId: id,
       instructions: s.string(),
+      instructionsFolder: absolutePath.optional(),
       prompt: s.string(),
       model: id.optional(),
+      modelForEveryCall: s.literal(true).optional(),
     })
     .strict(),
 );

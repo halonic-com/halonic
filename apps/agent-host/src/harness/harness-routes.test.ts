@@ -92,6 +92,8 @@ class FakeRun implements HarnessRun {
 const runs: FakeRun[] = [];
 /** What each `detect()` was asked. */
 const detected: HarnessDetectOptions[] = [];
+/** The task each `start()` was given. */
+const startedTasks: HarnessTask[] = [];
 const harness: Harness = {
   id: "fake",
   name: "Fake",
@@ -99,7 +101,8 @@ const harness: Harness = {
     detected.push(options);
     return { status: "ready", version: "1.0.0" };
   },
-  start: (_task, session, bridge) => {
+  start: (startedTask, session, bridge) => {
+    startedTasks.push(startedTask);
     const run = new FakeRun(session, bridge);
     runs.push(run);
     return run;
@@ -208,6 +211,38 @@ describe("harness routes", () => {
     expect(await rest(lines)).toEqual([{ type: "event", event: finished }, { type: "finished" }]);
     const late = await request(url, "/v1/harnesses/runs/cancel", { run: id });
     expect(late.status).toBe(404);
+  });
+
+  it("passes the run's instructions folder and an alias's model on to the harness", async () => {
+    const { url, ...ids } = await started();
+    const withFolder: HarnessTask = {
+      ...task,
+      instructionsFolder: join(tmpdir(), "halonic-instructions", "run_1"),
+      model: "acme-large",
+      modelForEveryCall: true,
+    };
+    const answer = await request(url, "/v1/harnesses/runs/start", {
+      harness: "fake",
+      task: withFolder,
+      ...ids,
+    });
+    expect(answer.status).toBe(200);
+    expect(startedTasks.at(-1)).toEqual(withFolder);
+  });
+
+  it("refuses an instructions folder that isn't absolute, and a modelForEveryCall that isn't true", async () => {
+    const { url, ...ids } = await started();
+    for (const wrong of [
+      { ...task, instructionsFolder: "instructions/run_1" },
+      { ...task, modelForEveryCall: false },
+    ]) {
+      const answer = await request(url, "/v1/harnesses/runs/start", {
+        harness: "fake",
+        task: wrong,
+        ...ids,
+      });
+      expect(answer.status).toBe(400);
+    }
   });
 
   it("passes an answer to the run, and says why when the run refuses one", async () => {
