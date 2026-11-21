@@ -167,6 +167,7 @@ async function serveVersions(
   } satisfies VersionChecks);
 
   const engine = await openWorkspaceEngine(context, setup, {
+    holder: "serve",
     dir,
     workspace,
     versions,

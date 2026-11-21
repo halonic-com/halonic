@@ -190,6 +190,7 @@ class EngineOnSend implements Pick<RunExecutor, "send"> {
       run.harness,
     );
     this.engine = await openWorkspaceEngine(this.context, this.setup, {
+      holder: "runsSend",
       dir,
       workspace,
       trust,

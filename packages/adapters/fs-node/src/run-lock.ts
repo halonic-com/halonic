@@ -137,13 +137,17 @@ export async function readTakenLock(file: string, system: BusySystem): Promise<F
   return found;
 }
 
-/** The record this process writes into a lock it takes, taken now. */
-export function ownRecord(): RunLockRecord {
+/**
+ * The record this process writes into a lock it takes, taken now, naming
+ * `holder` when it is given.
+ */
+export function ownRecord(holder?: string): RunLockRecord {
   return {
     version: runLockFormat,
     pid: process.pid,
     host: hostname(),
     takenAt: new Date().toISOString(),
+    ...(holder === undefined ? {} : { holder }),
   };
 }
 
@@ -184,7 +188,7 @@ export function parseRecord(text: string): RunLockRecord | null {
   } catch {
     return null;
   }
-  const { version, pid, host, takenAt } = (parsed ?? {}) as Partial<RunLockRecord>;
+  const { version, pid, host, takenAt, holder } = (parsed ?? {}) as Partial<RunLockRecord>;
   const valid =
     Number.isSafeInteger(version) &&
     // 0 and negative ids name process groups for `process.kill`, never one process.
@@ -192,7 +196,12 @@ export function parseRecord(text: string): RunLockRecord | null {
     (pid as number) > 0 &&
     typeof host === "string" &&
     typeof takenAt === "string";
-  return valid ? { version: version as number, pid: pid as number, host, takenAt } : null;
+  if (!valid) {
+    return null;
+  }
+  const record = { version: version as number, pid: pid as number, host, takenAt };
+  // A holder that isn't text is left out: the record is still a lock.
+  return typeof holder === "string" ? { ...record, holder } : record;
 }
 
 /** What a lock is judged against: this computer's name, and whether a process runs here. */

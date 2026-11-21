@@ -123,7 +123,13 @@ export async function runWorkflow(
     (setup.harnesses ?? nodeHarnessPrograms)(),
   );
   const workflow = workflowToRun(workspace, typed, { name: workspaceName, dir: typedDir }, harness);
-  const target = { dir, workspace, runs: [workflow], ending: runMessages.nothingRan() };
+  const target = {
+    holder: "run" as const,
+    dir,
+    workspace,
+    runs: [workflow],
+    ending: runMessages.nothingRan(),
+  };
   // Before trust: a run the sandbox can't start has nothing to trust (HAL-6580).
   const sandboxChecked = await checkHarnessAgents(setup, target, workflow);
   const trust = await checkRunTrust(

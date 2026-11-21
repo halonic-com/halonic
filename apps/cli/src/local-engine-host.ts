@@ -112,6 +112,24 @@ export type EngineErrorSource =
 
 export type { RoutineEngine, RoutineTicks };
 
+/**
+ * Each CLI command that opens an engine: the words its lock names it by,
+ * and whether it runs until someone stops it with Ctrl C, as a watch does,
+ * or ends by itself, as a run does.
+ */
+const engineHolders = {
+  run: { command: "run", runsUntilStopped: false },
+  runsSend: { command: "runs send", runsUntilStopped: false },
+  routinesWatch: { command: "routines watch", runsUntilStopped: true },
+  serve: { command: "serve", runsUntilStopped: true },
+} as const;
+
+/** A CLI command that opens an engine, such as `routinesWatch` for `halonic routines watch`. */
+export type EngineHolder = keyof typeof engineHolders;
+
+/** One entry of {@link engineHolders}. */
+type EngineHolderEntry = (typeof engineHolders)[EngineHolder];
+
 /** What {@link openLocalEngine} builds the engine from. */
 export interface LocalEngineInput {
   /** The loaded workspace, checked for errors and trusted before a run starts. */
@@ -178,6 +196,12 @@ export interface LocalEngineInput {
   readonly harnessParts?: LocalHarnessParts;
   /** Where the profile folder is; this process's by default. */
   readonly environment?: ProfileEnvironment;
+  /**
+   * The command that opens the engine, written into its lock, so a command
+   * the lock refuses can name it (HAL-14299). Left out, the lock names only
+   * the process.
+   */
+  readonly holder?: EngineHolder;
   /** Which git makes the copies a live run's programs start in, and the harness runs' worktrees; the one on the `PATH` by default. */
   readonly git?: GitRunnerOptions;
   /** The time; the computer's clock by default. */
@@ -253,6 +277,7 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
   await makePrivateFolder(folders.folder);
   let engine: LocalEngine | undefined;
   const lock = await holdEngineLock(join(folders.folder, engineLockFile), {
+    ...(input.holder === undefined ? {} : { holder: engineHolders[input.holder].command }),
     onLost: (error) => {
       input.reportError(error, "engine-lock");
       void engine?.close().catch((closeError) => input.reportError(closeError, "engine-lock"));
@@ -429,6 +454,9 @@ async function openRunsOf(runs: RunStore): Promise<ReadonlySet<string>> {
 /**
  * Takes the engine's lock, or refuses with a `conflict` the CLI can show:
  * the lock's own error names a path in the profile, so it is only the cause.
+ * A lock a CLI command holds is named by that command, and one that runs
+ * until it is stopped says how to stop it, since waiting would never end
+ * (HAL-14299).
  */
 async function holdEngineLock(
   file: string,
@@ -440,10 +468,24 @@ async function holdEngineLock(
     if (!(error instanceof LockHeldError)) {
       throw error;
     }
-    const message = workspaceMessages.engineOpen(error.holder?.pid);
+    const record = error.holder;
+    const holder = engineHolderOf(record?.holder);
+    const message =
+      record === null || holder === undefined
+        ? workspaceMessages.engineOpen(record?.pid)
+        : workspaceMessages.engineOpenBy(holder.command, record.pid);
+    const fix =
+      holder?.runsUntilStopped === true
+        ? workspaceMessages.engineOpenStopFix()
+        : workspaceMessages.engineOpenFix();
     throw new KindedError("conflict", plainText(message.phrase), {
-      fix: plainText(workspaceMessages.engineOpenFix().phrase),
+      fix: plainText(fix.phrase),
       cause: error,
     });
   }
+}
+
+/** The command a lock names, when it is one of the CLI's; any other text names none. */
+function engineHolderOf(text: string | undefined): EngineHolderEntry | undefined {
+  return Object.values(engineHolders).find((each) => each.command === text);
 }

@@ -82,6 +82,7 @@ verifies("cli.local-engine", () => {
         },
       },
       {
+        holder: "run",
         dir,
         workspace,
         trust,
@@ -219,6 +220,7 @@ async function runReportWithNotes(trust: TrustGrant | null): Promise<NotesRun> {
       }),
     },
     {
+      holder: "run",
       dir,
       workspace,
       trust,
