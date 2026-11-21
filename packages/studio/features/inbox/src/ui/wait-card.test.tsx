@@ -186,6 +186,36 @@ verifies("inbox.wait-card", () => {
       expect(decided).not.toMatch(/continues|finished/);
     });
 
+    it("brings the answered line and what follows it into view, in a short window too (HAL-13918)", async () => {
+      const scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+      try {
+        const { root, later } = openCard();
+        later(2);
+        await press(button(root, "Approve"));
+        const bar = root.querySelector("[role='group']")?.parentElement;
+        expect(bar?.textContent).toContain("Nothing else is waiting for you.");
+        expect(scrollIntoView.mock.contexts).toEqual([bar]);
+        expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+      } finally {
+        delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+      }
+    });
+
+    it("closes cleanly when scrollIntoView returns a promise, as it does in Chromium (HAL-13918)", async () => {
+      // React keeps whatever an effect returns as its clean-up, and a promise isn't a function.
+      Element.prototype.scrollIntoView = () => Promise.resolve();
+      try {
+        const { root, later } = openCard();
+        later(2);
+        await press(button(root, "Approve"));
+        expect(root.querySelector("[role='group']")).not.toBeNull();
+        expect(unmountAll).not.toThrow();
+      } finally {
+        delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+      }
+    });
+
     it("says only who rejected and when, for the step's own reject", async () => {
       const { root, later } = openCard();
       later(181);
