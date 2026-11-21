@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-8613; HAL-984 design section 6; wording and flow approved by the board on HAL-8619 (19 Nov); `plugins.plugin-sign-in-text`
+- Source: HAL-8613; HAL-984 design section 6; wording and flow approved by the board on HAL-8619 (19 Nov); the team's wording with the designer on HAL-13419; `plugins.plugin-sign-in-text`
 
-When the app gives the plugin page the agent host's sign-ins, the Studio shall show a plugin whose backend has sign-ins a Sign-ins section next to its settings, with one block per sign-in: its purpose as plain text, the trust check line and, when the hosts differ, the token host warning (`plugins.plugin-sign-in-text`), then where it stands. Signed out, it shall offer **Sign in**, which starts the sign-in at the host and opens the address it answers in the browser; signed in, "Signed in" with **Sign out**; with a saved sign-in for one that changed, the reason and **Sign in again**; and when a setting the sign-in reads is missing or wrong, "Fill in this sign-in's settings first." with no button and no trust line. It shall read where the sign-ins stand when the page opens, after a sign-out and whenever the window gets focus, because the person signs in in the browser and comes back. It shall show how the last sign-in ended, a refusal to start in words (a missing client secret, missing settings, a setup where the callback can't arrive), and after a sign-out the provider didn't confirm, that the token may still work. While the plugin is off it shall show what each sign-in does without buttons and without asking the host; on a view-only page, where they stand without buttons. A plugin without sign-ins shall show no section.
+When the app gives the plugin page the agent host's sign-ins, the Studio shall show a plugin whose backend has sign-ins a Sign-ins section next to its settings, with one block per sign-in: its purpose as plain text, the trust check line and, when the hosts differ, the token host warning (`plugins.plugin-sign-in-text`), then where it stands. Signed out, it shall offer **Sign in**, which starts the sign-in at the host and opens the address it answers in the browser; signed in, "Signed in" with **Sign out**; with a saved sign-in for one that changed, the reason and **Sign in again**; and when a setting the sign-in reads is missing or wrong, "This sign-in needs a setting that's missing or not valid. Check Settings." with no button and no trust line. It shall read where the sign-ins stand when the page opens, after a sign-out and whenever the window gets focus, because the person signs in in the browser and comes back. It shall show how the last sign-in ended, unless the block already gives that reason for **Sign in again**, a refusal to start in words (a missing client secret, missing settings, a setup where the callback can't arrive), and after a sign-out the provider didn't confirm, that the token may still work. While the plugin is off it shall show what each sign-in does without buttons and without asking the host; on a view-only page, where they stand without buttons. A plugin without sign-ins shall show no section.
 
 ## Examples
 
@@ -18,13 +18,13 @@ When the app gives the plugin page the agent host's sign-ins, the Studio shall s
   then the block says "Signed in" and offers **Sign out**.
 - Given the client secret isn't set,
   when the person presses **Sign in**,
-  then the browser doesn't open and the block says "The client secret isn't set. Set it in Settings."
+  then the browser doesn't open and the block says "The client secret is missing. Add it in Settings."
 - Given the provider didn't confirm the revoke,
   when the person signs out,
   then the block says the token may still work there until it expires.
 - Given a saved sign-in for a sign-in that changed,
   then the block says why and offers **Sign in again**.
 - Given the client ID isn't set,
-  then the block says "Fill in this sign-in's settings first." and has no button.
+  then the block says "This sign-in needs a setting that's missing or not valid. Check Settings." and has no button.
 - Given the plugin is off,
   then the section shows the trust check line and no button, and the host isn't asked.

@@ -63,6 +63,7 @@ async function show(
     readonly values?: Record<string, string>;
     readonly off?: { readonly reason: string };
     readonly viewOnly?: boolean;
+    readonly announced?: string[];
   } = {},
 ) {
   const view = render(
@@ -73,6 +74,7 @@ async function show(
         signIns={signIns}
         off={options.off}
         viewOnly={options.viewOnly ?? false}
+        announceState={(key, text) => options.announced?.push(`${key}: ${text}`)}
       />
     </OpenExternalProvider>,
   );
@@ -134,9 +136,7 @@ verifies("plugins.plugin-sign-ins", () => {
       await press("Sign in");
 
       expect(signIns.opened).toEqual([]);
-      expect(view.querySelector('[role="status"]')?.textContent).toBe(
-        "The client secret isn't set. Set it in Settings.",
-      );
+      expect(view.textContent).toContain("The client secret is missing. Add it in Settings.");
     });
 
     it("shows how the last sign-in ended", async () => {
@@ -146,7 +146,7 @@ verifies("plugins.plugin-sign-ins", () => {
       ];
       const view = await show(signIns);
 
-      expect(view.querySelector('[role="status"]')?.textContent).toBe("You cancelled the sign-in.");
+      expect(view.textContent).toContain("You cancelled the sign-in.");
     });
   });
 
@@ -170,7 +170,7 @@ verifies("plugins.plugin-sign-ins", () => {
 
       await press("Sign out");
 
-      expect(view.querySelector('[role="status"]')?.textContent).toBe(
+      expect(view.textContent).toContain(
         "You're signed out here. acme didn't confirm, so the token may still work there until it expires.",
       );
     });
@@ -200,7 +200,9 @@ verifies("plugins.plugin-sign-ins", () => {
     const view = await show(new FakeSignIns(), { values: {} });
 
     expect(view.textContent).toContain("Access to your Acme account.");
-    expect(view.textContent).toContain("Fill in this sign-in's settings first.");
+    expect(view.textContent).toContain(
+      "This sign-in needs a setting that's missing or not valid. Check Settings.",
+    );
     expect(view.textContent).not.toContain("Signs in to your");
     expect(button("Sign in")).toBeUndefined();
   });
@@ -240,7 +242,63 @@ verifies("plugins.plugin-sign-ins", () => {
     };
     const view = await show(signIns);
 
-    expect(view.textContent).toContain("Couldn't load acme's sign-ins:");
+    expect(view.querySelector(".text-body-strong")?.textContent).toBe(
+      "Couldn't load acme's sign-ins",
+    );
+    expect(view.textContent).toContain("Halonic ran into a problem it can't explain yet.");
+  });
+
+  it("says once, not twice, that the sign-in changed", async () => {
+    const signIns = new FakeSignIns();
+    signIns.statuses = [
+      { signIn: "account", state: "approvalChanged", lastOutcome: { kind: "signInChanged" } },
+    ];
+    const view = await show(signIns);
+
+    const said = view.textContent?.split(
+      "This integration's sign-in changed since you approved it.",
+    );
+    expect(said).toHaveLength(2);
+  });
+});
+
+verifies("plugins.plugin-sign-in-announced", () => {
+  it("reads a new line under a sign-in once through the window's announcer", async () => {
+    const signIns = new FakeSignIns();
+    signIns.startError = Object.assign(new Error("not set"), { kind: "client_secret_missing" });
+    const announced: string[] = [];
+    await show(signIns, { announced });
+
+    await press("Sign in");
+
+    expect(announced).toEqual([
+      "sign-in:acme:account: The client secret is missing. Add it in Settings.",
+    ]);
+  });
+
+  it("reads how a sign-in ended when the person comes back to the window", async () => {
+    const signIns = new FakeSignIns();
+    const announced: string[] = [];
+    await show(signIns, { announced });
+    signIns.statuses = [
+      { signIn: "account", state: "signedOut", lastOutcome: { kind: "cancelled" } },
+    ];
+
+    await act(async () => window.dispatchEvent(new Event("focus")));
+
+    expect(announced).toEqual(["sign-in:acme:account: You cancelled the sign-in."]);
+  });
+
+  it("doesn't read the line already there when the page opens", async () => {
+    const signIns = new FakeSignIns();
+    signIns.statuses = [
+      { signIn: "account", state: "signedOut", lastOutcome: { kind: "cancelled" } },
+    ];
+    const announced: string[] = [];
+    const view = await show(signIns, { announced });
+
+    expect(view.textContent).toContain("You cancelled the sign-in.");
+    expect(announced).toEqual([]);
   });
 });
 
@@ -269,7 +327,7 @@ verifies("plugins.plugin-sign-in-page", () => {
     await press("Sign in");
 
     expect(signIns.opened).toEqual([]);
-    expect(view.querySelector('[role="status"]')?.textContent).toBe(
+    expect(view.textContent).toContain(
       "Couldn't start the sign-in: the page to open isn't on auth.example.com.",
     );
   });

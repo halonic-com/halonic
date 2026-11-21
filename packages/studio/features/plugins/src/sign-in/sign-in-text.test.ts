@@ -123,7 +123,7 @@ verifies("plugins.plugin-sign-in-text", () => {
         "The sign-in didn't finish. Try again.",
       );
       expect(outcomeLine("Acme", { kind: "unexpectedAnswer", status: 500 })).toBe(
-        "The sign-in didn't finish: Acme's answer couldn't be used.",
+        "The sign-in didn't finish: Halonic couldn't use Acme's answer.",
       );
     });
   });
