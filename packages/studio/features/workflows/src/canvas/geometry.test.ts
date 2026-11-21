@@ -2,12 +2,14 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import {
   boundsOf,
+  boxAt,
   CARD_SIZE,
   fitView,
   MAX_ZOOM,
   MIN_ZOOM,
   panBy,
   panToShow,
+  toCanvas,
   zoomAround,
 } from "./geometry.ts";
 
@@ -112,5 +114,22 @@ verifies("workflows.canvas.focus-in-view", () => {
     const small = { x: 56, y: 0, width: 300, height: 100 };
     const big = card(100, 100);
     expect(shown(panToShow(zoomed, big, small), big).topLeft).toEqual({ x: 72, y: 16 });
+  });
+});
+
+verifies("workflows.canvas.drag-to-connect", () => {
+  it("finds the canvas point under a screen point at any zoom and pan", () => {
+    const view = { zoom: 0.5, pan: { x: 100, y: 40 } };
+    expect(toCanvas(view, { x: 200, y: 140 })).toEqual({ x: 200, y: 200 });
+  });
+
+  it("finds the card a point is on, edges included, and none off them", () => {
+    const boxes = new Map([
+      ["start", card(0, 0)],
+      ["done", card(0, 136)],
+    ]);
+    expect(boxAt(boxes, { x: 100, y: 150 })).toBe("done");
+    expect(boxAt(boxes, { x: 200, y: 72 })).toBe("start");
+    expect(boxAt(boxes, { x: 100, y: 100 })).toBeUndefined();
   });
 });
