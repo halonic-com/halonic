@@ -110,4 +110,19 @@ verifies("engine.connector-listing-failed", () => {
     expect(failure).not.toHaveProperty("cause.name");
     expect(JSON.stringify(failure)).not.toContain(secretValue);
   });
+
+  it("logs a plugin's backend with no sandbox as sandbox-not-ready, with no name", async () => {
+    const notFenced = Object.assign(new Error("the sandbox isn't available here (bwrap-missing)"), {
+      name: "PluginBackendNotFencedError",
+      reason: "bwrap-missing",
+    });
+    const { log } = await runWithBrokenListing(notFenced);
+
+    const [failure] = listingFailures(log);
+    expect(failure).toMatchObject({
+      cause: { code: "connector-not-started", why: "sandbox-not-ready" },
+    });
+    expect(failure).not.toHaveProperty("cause.name");
+    expect(JSON.stringify(failure)).not.toContain("bwrap-missing");
+  });
 });
