@@ -128,15 +128,15 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
     // host starts it again, every screen's Check again included (HAL-16277, C701-2). Reinstalling
     // brings back the runtime Studio ships, for an install that fails every time.
     reason: "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish.",
-    fix: "choose Check again, and Halonic finishes the setup as the sandbox starts. If it still doesn't finish, reinstall Halonic Studio.",
+    fix: "choose Check again, and Halonic finishes the setup as the sandbox starts. If it still doesn't finish, reinstall the Halonic desktop app.",
     cantRunFix:
-      "Choose Check again, and Halonic finishes setting up its own Linux system for the sandbox. If that setup still doesn't finish, reinstall Halonic Studio.",
+      "Choose Check again, and Halonic finishes setting up its own Linux system for the sandbox. If that setup still doesn't finish, reinstall the Halonic desktop app.",
     settingsFix:
-      "Choose Check again, and Halonic finishes the setup. If it still doesn't finish, reinstall Halonic Studio.",
+      "Choose Check again, and Halonic finishes the setup. If it still doesn't finish, reinstall the Halonic desktop app.",
     // Served Studio, which a phone opens, comes from `halonic serve` and has no host check, so its
     // Check again never reaches the Studio shell that installs the runtime (C701-2).
     phoneFix:
-      "open Halonic Studio, and it finishes the setup. If it still doesn't finish, reinstall Halonic Studio.",
+      "open the Halonic desktop app, and it finishes the setup. If it still doesn't finish, reinstall the Halonic desktop app.",
   },
   "setup-conflict": {
     // srt's install won't replace another program's setup unless forced, and Halonic never forces
