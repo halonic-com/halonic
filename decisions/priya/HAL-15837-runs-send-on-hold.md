@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-15837 (C636 items 4 and 5 in HAL-15823, decided by Liam; words checked by Sofia on HAL-15847, a team call under HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9ntpHi6tGzmzZvJutUVzYy5Wc4kyypy8XBeVqBVSt9L8AKIHiPtjZvA549abSRIBE7TTAOx/czQcY//Hxab3BQ==
 
 `halonic runs send` opens its own engine and can start an agent on this computer, as `halonic run`, `halonic serve` and `halonic routines watch` can. Those three print a `!` line for each agent set to "On this computer" or on hold since its file changed; `runs send` printed none. The agent on hold never ran outside the sandbox (the engine checks the file on every path), but the user wasn't told. The HTTP connector secret line on the Library's connector page listed only `halonic run` and `halonic routines watch` as the runs that use the secret, so it left out `runs send` and would go stale with the next command.
 
