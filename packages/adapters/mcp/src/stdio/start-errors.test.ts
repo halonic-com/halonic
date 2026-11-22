@@ -9,6 +9,7 @@ import { unusedRunners } from "../pinned/fake-runners.spec.ts";
 import { runnerRefusedError } from "../pinned/find-runner.ts";
 import { McpStoppedError } from "../protocol/errors.ts";
 import { McpSession } from "../protocol/session.ts";
+import { keyLineRemoved, longLineRemoved } from "./error-output.ts";
 import { contractServer, FakeProgram, FakeStarter, unusedFolders } from "./fake-program.spec.ts";
 import { nodeProgramStarter } from "./node-program-starter.ts";
 import {
@@ -31,23 +32,33 @@ function silentTransport() {
   return { program, transport: new StdioTransport(program, limits) };
 }
 
+/** What a `notes` connector is set up with besides its starter. */
+interface NotesSetup {
+  /** The connector's `secretEnv`: variable names to secret names. */
+  readonly secretEnv?: Record<string, string>;
+  /** The secrets that are set, by name. */
+  readonly secrets?: Record<string, string>;
+  /** What the program inherits, `PATH` included. */
+  readonly inheritedEnv?: Record<string, string>;
+}
+
 /** A trusted `notes` connector whose programs `starter` starts. */
-function notesConnector(starter: FakeStarter, secretEnv: Record<string, string> = {}) {
+function notesConnector(starter: FakeStarter, setup: NotesSetup = {}) {
   const config: ConnectorConfig = {
     id: "notes",
     transport: { kind: "stdio", command: "notes-mcp", args: [], env: {} },
-    secretEnv,
+    secretEnv: setup.secretEnv ?? {},
   };
   const factory = new McpStdioConnectorFactory({
     starter,
     folders: unusedFolders,
     runners: unusedRunners,
-    inheritedEnv: { PATH: "/usr/bin" },
+    inheritedEnv: setup.inheritedEnv ?? { PATH: "/usr/bin" },
     clientInfo: { name: "halonic", version: "0.1.0" },
     limits: { requestTimeoutMs: 5000, maxMessageBytes: 1024, stopGraceMs: 100 },
   });
   return factory.create(config, {
-    secrets: new MemorySecrets(),
+    secrets: new MemorySecrets(setup.secrets),
     tokens: new MemoryTokenStore(),
     http: { fetch: async () => new Response("unused") },
     workspaceRoot: resolve("/workspaces/acme"),
@@ -90,7 +101,7 @@ verifies("mcp.connector-start-errors", () => {
 
   it("names a secret that isn't set, never a value", async () => {
     const client = notesConnector(new FakeStarter(contractServer([])), {
-      NOTES_TOKEN: "notes-token",
+      secretEnv: { NOTES_TOKEN: "notes-token" },
     });
     const refused = await client.listTools().catch((error: unknown) => error);
     expect(refused).toBeInstanceOf(SecretNotSetError);
@@ -98,7 +109,7 @@ verifies("mcp.connector-start-errors", () => {
     await client.close();
   });
 
-  it("names a program that stopped right after it started, never its output", async () => {
+  it("names a program that stopped right after it started, never its output in the message", async () => {
     const client = notesConnector(
       new FakeStarter((_message, program) => {
         program.writeError("notes-mcp: no such option\n");
@@ -114,7 +125,40 @@ verifies("mcp.connector-start-errors", () => {
       code: "unavailable",
       message:
         "The program notes-mcp stopped right after it started, before it answered initialize.",
+      errorOutput: ["notes-mcp: no such option"],
     });
+    await client.close();
+  });
+
+  it("keeps the stopped program's last error output apart, without its secrets", async () => {
+    const token = "acme-notes-token-0001";
+    const inherited = "acme-inherited-password";
+    const client = notesConnector(
+      new FakeStarter((_message, program) => {
+        program.writeError(`token ${token} rejected\n`);
+        program.writeError(`database password ${inherited} refused\n`);
+        program.writeError(`try ghp_${"Zz9".repeat(8)} instead\n`);
+        // The token starts before the tail's 300-character cut and ends after it.
+        program.writeError(`${"x".repeat(290)}${token}\n`);
+        program.exit(3);
+      }),
+      {
+        secretEnv: { NOTES_TOKEN: "notes-token" },
+        secrets: { "notes-token": token },
+        inheritedEnv: { PATH: "/usr/bin", NOTES_DB_PASSWORD: inherited },
+      },
+    );
+    const refused = await client.listTools().catch((error: unknown) => error);
+    expect(refused).toBeInstanceOf(ProgramStoppedAtStartError);
+    expect(refused).toMatchObject({
+      errorOutput: [
+        "token [secret removed] rejected",
+        "database password [secret removed] refused",
+        keyLineRemoved,
+        longLineRemoved,
+      ],
+    });
+    expect(String(refused)).not.toContain(token);
     await client.close();
   });
 

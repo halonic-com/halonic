@@ -48,14 +48,25 @@ export class SecretNotSetError extends Error {
  * such as the program's own output. Its `name` is its own, so a reader that
  * needs no adapter can tell it by name and field (`connectorStartFailureOf`
  * of `@halonicjs/ports`).
+ *
+ * The last lines the program wrote to its standard error, with keys and
+ * personal data removed, are kept apart in `errorOutput`, as
+ * `ConnectorStoppedError` keeps them, for a command the person runs in
+ * their own terminal to show. Never put them in a log or an event.
  */
 export class ProgramStoppedAtStartError extends McpStoppedError {
   override readonly name = "ProgramStoppedAtStartError";
   /** The program as the connector's `command` names it, such as `notes-mcp`. */
   readonly program: string;
+  /**
+   * The program's last error output, cleaned (`cleanErrorOutput`): the
+   * program's text, not ours. Empty when the connector keeps none.
+   */
+  readonly errorOutput: readonly string[];
 
-  constructor(program: string) {
+  constructor(program: string, errorOutput: readonly string[] = []) {
     super(`The program ${program} stopped right after it started, before it answered initialize.`);
     this.program = program;
+    this.errorOutput = errorOutput;
   }
 }

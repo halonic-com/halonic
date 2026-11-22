@@ -134,8 +134,34 @@ verifies("cli.commands.tools.connector-start", () => {
     ]);
   });
 
+  it("shows the last lines a program that stopped wrote, made safe for the terminal and cut short", async () => {
+    await programStopsAtStart();
+    kit.notes().servers.errorOutput = [
+      "notes: starting",
+      "notes: cannot open the database",
+      "",
+      `\u001b[2Jnotes: ${"x".repeat(250)}`,
+      `notes: try ghp_${"Zz9".repeat(8)} instead`,
+      "",
+    ].join("\n");
+
+    const { code, stderr } = await kit.tools(["review", "notes-mcp"]);
+
+    expect(code).toBe(exitCode.unavailable);
+    expect(stderr).toEqual([
+      "✕ Couldn't list the tools from notes-mcp: its program notes-quits stopped right after it started.",
+      "  The program said:",
+      "    notes: cannot open the database",
+      `    \\u001b[2Jnotes: ${"x".repeat(184)}…`,
+      "    [line removed: it held something shaped like a key]",
+      "  To see all of it, run the command and args from library/connectors/notes-mcp.connector.yaml yourself.",
+    ]);
+  });
+
   it("gives approve's --json the cause and the program that stopped, and approves nothing", async () => {
     await programStopsAtStart();
+    // What the program said is for the terminal only: --json stays as it was.
+    kit.notes().servers.errorOutput = "notes: cannot open the database\n";
 
     const { code, stdout } = await kit.tools(["approve", "notes-mcp", "archive", "--json"]);
 

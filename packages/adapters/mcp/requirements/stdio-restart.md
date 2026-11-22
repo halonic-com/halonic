@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-4564 (Tomas's decision, 10 Nov 2026, from HAL-2544 and Liam's review of halonic#1066 on HAL-3620)
+- Source: HAL-4564 (Tomas's decision, 10 Nov 2026, from HAL-2544 and Liam's review of halonic#1066 on HAL-3620); HAL-15620 (Liam: a line cut before cleaning can hold the start of a secret)
 
-When a stdio connector's program stops after it started, for any reason other than the connector being closed, the call waiting on it shall fail with an error that names the tool and says it wasn't tried again, and it shall not be sent again, because the tool may already have had an effect. The next call shall start the program again, once for calls that arrive together, through the same checks as the first start: the trust grant, `checkPackageRunnerLaunch`, the registry lookup and the runner lookup for a pin, and a new launch folder, after the stopped program's folder is deleted. A connector shall start its program again at most 3 times within any 10 minutes; a start that fails before the program runs doesn't count. Past that it shall report itself stopped, refuse every later call without starting anything, and stay stopped until it is created again. The report's message shall be ours, with the last lines the program wrote to its standard error kept apart, at most 10 lines of at most 300 characters, with every secret the connector gave it, any line holding text shaped like a key, e-mail addresses, the person's home folder and their user name removed.
+When a stdio connector's program stops after it started, for any reason other than the connector being closed, the call waiting on it shall fail with an error that names the tool and says it wasn't tried again, and it shall not be sent again, because the tool may already have had an effect. The next call shall start the program again, once for calls that arrive together, through the same checks as the first start: the trust grant, `checkPackageRunnerLaunch`, the registry lookup and the runner lookup for a pin, and a new launch folder, after the stopped program's folder is deleted. A connector shall start its program again at most 3 times within any 10 minutes; a start that fails before the program runs doesn't count. Past that it shall report itself stopped, refuse every later call without starting anything, and stay stopped until it is created again. The report's message shall be ours, with the last lines the program wrote to its standard error kept apart, at most 10 lines of at most 300 characters, with every secret the connector gave it, any line holding text shaped like a key, any line that was longer than 300 characters (only its start was kept, which can hold the start of a secret), e-mail addresses, the person's home folder and their user name removed.
 
 ## Examples
 
@@ -17,3 +17,6 @@ When a stdio connector's program stops after it started, for any reason other th
 - Given a program that ends at every start, writing a secret it was given and an e-mail address to its standard error,
   when it has been started 4 times within 10 minutes and the next call arrives,
   then that call fails as stopped, nothing more starts, and the error output holds `[secret removed]` and `[e-mail removed]` instead.
+- Given a program that writes a secret it was given starting before character 300 of a line and ending after it,
+  when its error output is cleaned,
+  then that whole line is `[line removed: too long to check]` and no part of the secret is left.
