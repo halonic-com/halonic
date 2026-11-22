@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-15132, from the team decision on HAL-14642 (option 1, once repair covers it) and HAL-14644; Liam signs this note in review on HAL-15132
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:va5pOWhq2ffONwg4dxNrUFymCEU23T6F8qOFIIbygXyIUvDC2TXYHf3olzPQJOvTUruMuxMWyhYj20dx3ZOIDw==
 
 The `Sandbox` port's closed list of reasons gains `runtime-missing`, right
 after `distro-missing`, and the port goes to version 10
