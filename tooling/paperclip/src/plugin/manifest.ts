@@ -29,6 +29,8 @@ export const manifest: PaperclipPluginManifestV1 = {
     "secrets.read-ref",
     // pr_status and my_prs: GitHub reads only, with the same token and origin guard.
     "agent.tools.register",
+    // Counts only (wakes, dones, monitors, GitHub requests, tool calls), no task text.
+    "metrics.write",
   ],
   entrypoints: { worker: "dist/worker.js" },
   instanceConfigSchema: {

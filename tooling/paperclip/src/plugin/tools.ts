@@ -12,6 +12,7 @@ import { prStatus, statusText } from "../pr-tools/pr-status.ts";
 import { type GitHubGet, gitHubReader } from "../pr-watcher/github.ts";
 import { readSettings, requestTimeoutMs } from "./job.ts";
 import { manifest } from "./manifest.ts";
+import { countingGet, type MetricsApi, writeMetrics } from "./metrics.ts";
 
 /**
  * The agent tools `pr_status` and `my_prs`. Like the watcher, they read
@@ -20,7 +21,7 @@ import { manifest } from "./manifest.ts";
  */
 
 /** The part of the plugin context the tools use, so tests can fake it. */
-export interface ToolsApi {
+export interface ToolsApi extends MetricsApi {
   readonly tools: Pick<PluginToolsClient, "register">;
   readonly agents: Pick<PluginAgentsClient, "get">;
   readonly config: PluginConfigClient;
@@ -68,21 +69,37 @@ async function run(
   runCtx: ToolRunContext,
   body: (get: GitHubGet, repos: readonly string[]) => Promise<ToolResult>,
 ): Promise<ToolResult> {
+  let requests = () => 0;
+  let result: ToolResult;
   try {
     const settings = readSettings(await ctx.config.get(runCtx.companyId));
     if (settings.token === undefined) {
       return { error: `${name}: no GitHub token is set in the plugin's settings.` };
     }
     const token = await ctx.secrets.resolve(settings.token, { companyId: runCtx.companyId });
-    const get = gitHubReader({
-      fetch: (url, init) =>
-        ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) }),
-      token,
-    });
-    return await withTimeout(body(get, settings.repos), toolTimeoutMs, name);
+    const counted = countingGet(
+      gitHubReader({
+        fetch: (url, init) =>
+          ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) }),
+        token,
+      }),
+    );
+    requests = counted.requests;
+    result = await withTimeout(body(counted.get, settings.repos), toolTimeoutMs, name);
   } catch (error) {
-    return { error: `${name}: ${(error as Error).message}` };
+    result = { error: `${name}: ${(error as Error).message}` };
   }
+  // The agent gets its answer even when the metrics don't save.
+  await writeMetrics(
+    ctx,
+    { "tools.calls": 1, "tools.github_requests": requests() },
+    {
+      companyId: runCtx.companyId,
+      tool: name,
+      outcome: result.error === undefined ? "ok" : "error",
+    },
+  );
+  return result;
 }
 
 /** Registers `pr_status` and `my_prs` as the manifest declares them. */

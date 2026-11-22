@@ -3,6 +3,7 @@ import type { ToolResult, ToolRunContext } from "@paperclipai/plugin-sdk";
 import { createTestHarness } from "@paperclipai/plugin-sdk/testing";
 import { describe, expect, test } from "vitest";
 import { recording } from "../pr-watcher/fakes.test-helper.ts";
+import { fakeMetrics } from "./fake-host.test-helper.ts";
 import { manifest } from "./manifest.ts";
 import { readPrParams, registerTools, type ToolsApi } from "./tools.ts";
 import { plugin } from "./worker.ts";
@@ -22,7 +23,9 @@ type Handler = (params: unknown, runCtx: ToolRunContext) => Promise<ToolResult>;
 function fakeTools(config: Record<string, unknown>, answers: Record<string, unknown>) {
   const handlers = new Map<string, Handler>();
   const sent: string[] = [];
+  const { metrics: client, written: metrics } = fakeMetrics();
   const ctx = {
+    metrics: client,
     tools: {
       register: (name: string, _declaration: unknown, fn: Handler) => handlers.set(name, fn),
     },
@@ -46,7 +49,7 @@ function fakeTools(config: Record<string, unknown>, answers: Record<string, unkn
     if (handler === undefined) throw new Error(`${name} isn't registered`);
     return handler(params, runCtx);
   };
-  return { call, sent };
+  return { call, sent, metrics };
 }
 
 verifies("paperclip.pr-tools", () => {
@@ -113,5 +116,37 @@ verifies("paperclip.pr-tools", () => {
     expect(readPrParams({ pr: 1, repo: "other/repo" }, repos)).toBe(
       "repo must be one of: halonic-com/halonic.",
     );
+  });
+});
+
+verifies("paperclip.agent-tools-metrics", () => {
+  test("a tool call saves one call and its GitHub requests, tagged with the tool and outcome", async () => {
+    const { call, sent, metrics } = fakeTools(
+      { githubToken: token },
+      {
+        "/repos/halonic-com/halonic/pulls?state=open&per_page=100&page=1": [],
+      },
+    );
+    await call("my_prs", {});
+    await call("pr_status", { pr: "https://github.com/someone/else/pull/7" });
+    expect(metrics).toEqual([
+      { name: "tools.calls", value: 1, tags: { companyId: "acme", tool: "my_prs", outcome: "ok" } },
+      {
+        name: "tools.github_requests",
+        value: sent.length,
+        tags: { companyId: "acme", tool: "my_prs", outcome: "ok" },
+      },
+      {
+        name: "tools.calls",
+        value: 1,
+        tags: { companyId: "acme", tool: "pr_status", outcome: "error" },
+      },
+      {
+        name: "tools.github_requests",
+        value: 0,
+        tags: { companyId: "acme", tool: "pr_status", outcome: "error" },
+      },
+    ]);
+    expect(sent.length).toBeGreaterThan(0);
   });
 });

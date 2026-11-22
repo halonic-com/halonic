@@ -6,13 +6,16 @@ import {
   type PluginLogger,
   type PluginSecretsClient,
 } from "@paperclipai/plugin-sdk";
-import { discoverPulls } from "../pr-watcher/discover.ts";
+import { discoverPulls, type FoundPulls } from "../pr-watcher/discover.ts";
 import { gitHubReader } from "../pr-watcher/github.ts";
-import { tick } from "../pr-watcher/watch.ts";
+import { countMonitors, type MonitorCounts } from "../pr-watcher/monitors.ts";
+import type { TaskRow } from "../pr-watcher/paperclip.ts";
+import { type TickSummary, tick } from "../pr-watcher/watch.ts";
 import { type HostApi, paperclipHost } from "./host.ts";
+import { countingGet, type MetricsApi, writeMetrics } from "./metrics.ts";
 
 /** The part of the plugin context the job uses, so tests can fake it. */
-export interface JobApi extends HostApi {
+export interface JobApi extends HostApi, MetricsApi {
   readonly companies: Pick<PluginCompaniesClient, "list">;
   readonly config: PluginConfigClient;
   readonly secrets: Pick<PluginSecretsClient, "resolve">;
@@ -77,6 +80,49 @@ async function companySettings(
   }
 }
 
+/** What one pass for one company counted. */
+interface PassCounts {
+  readonly summary: TickSummary;
+  readonly monitors: MonitorCounts;
+  readonly requests: number;
+  readonly durationMs: number;
+}
+
+/**
+ * Logs a pass and saves its metrics. In a dry run `done` and `woken` count
+ * what it would have done. A metric that doesn't save is logged, not thrown.
+ */
+async function recordPass(
+  ctx: JobApi,
+  companyId: string,
+  dryRun: boolean,
+  { summary, monitors, requests, durationMs }: PassCounts,
+): Promise<void> {
+  const failure = await writeMetrics(
+    ctx,
+    {
+      "pr_watcher.tasks_with_pr": summary.checked,
+      "pr_watcher.done": summary.done,
+      "pr_watcher.woken": summary.woken,
+      "pr_watcher.failed": summary.failed.length,
+      "pr_watcher.github_requests": requests,
+      "pr_watcher.duration_ms": durationMs,
+      "monitors.set": monitors.set,
+      "monitors.fired": monitors.fired,
+      "monitors.set_on_pr_tasks": monitors.setOnPrTasks,
+      "monitors.fired_on_pr_tasks": monitors.firedOnPrTasks,
+    },
+    { companyId, dryRun: String(dryRun) },
+  );
+  if (failure !== undefined) {
+    ctx.logger.error(`PR watcher: couldn't save its metrics: ${failure.message}`, { companyId });
+  }
+  ctx.logger.info(
+    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.failed.length} failed, ${requests} GitHub requests, ${monitors.firedOnPrTasks} monitors fired on those tasks${dryRun ? " (dry run)" : ""}.`,
+    { companyId },
+  );
+}
+
 /** One watcher pass for one company. Returns how many tasks it couldn't check. */
 async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<number> {
   const settings = await companySettings(ctx, companyId);
@@ -90,22 +136,41 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
   }
   // Read at run time and never logged or kept (the SDK's secrets rule).
   const token = await ctx.secrets.resolve(settings.token, { companyId });
-  const get = gitHubReader({
-    fetch: (url, init) =>
-      ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) }),
-    token,
-  });
+  const { get, requests } = countingGet(
+    gitHubReader({
+      fetch: (url, init) =>
+        ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) }),
+      token,
+    }),
+  );
+  const paperclip = paperclipHost(ctx, companyId);
+  // Kept from the pass, so the monitors are counted without reading the tasks twice.
+  let tasks: TaskRow[] = [];
+  let found: FoundPulls = new Map();
+  const started = Date.now();
   const summary = await tick({
-    paperclip: paperclipHost(ctx, companyId),
+    paperclip: {
+      ...paperclip,
+      openTasks: async () => {
+        tasks = await paperclip.openTasks();
+        return tasks;
+      },
+    },
     get,
-    discover: () => discoverPulls(get, settings.repos, now),
+    discover: async () => {
+      found = await discoverPulls(get, settings.repos, now);
+      return found;
+    },
     dryRun: settings.dryRun,
     log: (line) => ctx.logger.info(line, { companyId }),
   });
-  ctx.logger.info(
-    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.failed.length} failed${settings.dryRun ? " (dry run)" : ""}.`,
-    { companyId },
-  );
+  const prTasks = new Set([...found].filter(([, pulls]) => pulls.length > 0).map(([id]) => id));
+  await recordPass(ctx, companyId, settings.dryRun, {
+    summary,
+    monitors: countMonitors(tasks, prTasks, now),
+    requests: requests(),
+    durationMs: Date.now() - started,
+  });
   return summary.failed.length;
 }
 
