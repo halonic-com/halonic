@@ -294,7 +294,9 @@ verifies("cli.commands.google.sign-in", () => {
       const { code, io } = await signIn(args, fakeBrowser(goodAnswer).machine);
 
       expect(code).toBe(exitCode.usage);
-      expect(io.stderr[0]).toBe("✕ halonic google sign-in needs the setup's ref, which Studio's sign-in step shows.");
+      expect(io.stderr[0]).toBe(
+        "✕ halonic google sign-in needs the setup's ref, which Studio's sign-in step shows.",
+      );
     }
   });
 

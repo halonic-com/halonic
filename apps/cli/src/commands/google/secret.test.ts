@@ -134,7 +134,9 @@ verifies("cli.commands.google.secret", () => {
     const { code, io } = await googleSecret([]);
 
     expect(code).toBe(exitCode.usage);
-    expect(io.stderr[0]).toBe("✕ halonic google secret needs the setup's ref, which Studio's sign-in step shows.");
+    expect(io.stderr[0]).toBe(
+      "✕ halonic google secret needs the setup's ref, which Studio's sign-in step shows.",
+    );
   });
 
   it("exits 4 for an account that has no setup, without asking", async () => {

@@ -28,7 +28,8 @@ export const googleMessages = defineMessages("google", {
   secretSummary: () => phrase`Save the client secret of a Google account`,
   /** What `secret` was doing, for "✕ Couldn't save the client secret: …". */
   secretAction: () => phrase`save the client secret`,
-  secretNeedsAccount: () => phrase`halonic google secret needs the setup's ref, which Studio's sign-in step shows.`,
+  secretNeedsAccount: () =>
+    phrase`halonic google secret needs the setup's ref, which Studio's sign-in step shows.`,
   secretUsage: () => phrase`halonic google secret <ref>`,
   /** Someone typed the secret after the account, where the shell would keep it. */
   secretAsArgument: () => phrase`A client secret can't be given as an argument.`,
@@ -77,7 +78,8 @@ export const googleMessages = defineMessages("google", {
   signInSummary: () => phrase`Sign a Google account in, in the browser of this computer`,
   /** What `sign-in` was doing, for "✕ Couldn't sign in: …". */
   signInAction: () => phrase`sign in`,
-  signInNeedsMore: () => phrase`halonic google sign-in needs the setup's ref, which Studio's sign-in step shows.`,
+  signInNeedsMore: () =>
+    phrase`halonic google sign-in needs the setup's ref, which Studio's sign-in step shows.`,
   signInUsage: () => phrase`halonic google sign-in <ref> [--connection <id>] [--dir <folder>]`,
   signInConnectionOption: () =>
     phrase`Check that the account is set up for this connector; it signs in the address of the account's own connector either way.`,
