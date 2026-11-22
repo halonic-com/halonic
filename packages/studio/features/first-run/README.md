@@ -32,7 +32,7 @@ In a workspace that isn't the sample, Home's Get set up section shows three step
 **Connect your own model**, **Make your first agent** and **Run it once**, done by the rules of
 `first-run.own-progress`. Step 1 asks a local provider with the Models feature's `ProviderCheckService`, gives up
 after 5 seconds, and offers **Check again** and **Open Models** when it doesn't answer. The card stays for the
-visit in which the last step gets done; `SampleWorkspace`'s `ownCardMemory` and `recordOwnCard` remember it per
+visit in which the last step gets done, ending with "You're set up. Get set up won't show here again."; `SampleWorkspace`'s `ownCardMemory` and `recordOwnCard` remember it per
 folder, so it is gone the next time Home opens.
 
 `ModelChoiceHostService` is the engine side of the Pick a model screen's **Test and continue**: the app

@@ -22,6 +22,11 @@ export const ownCardWords = {
   /** The list's name, as the section's heading reads. */
   heading: "Get set up",
   caption: (done: number) => `${done} of 3 done`,
+  /**
+   * The finished card's closing line, in the shape of the sample card's "You've seen it work.":
+   * it says why the card won't be there the next time Home opens (C614, HAL-15681).
+   */
+  finished: "You're set up. Get set up won't show here again.",
   /** The row's name for a screen reader: "Step 1 of 3: Connect your own model, not done". */
   stepLabel: (number: number, title: string, state: "done" | "not done" | "problem") =>
     `Step ${number} of 3: ${title}, ${state}`,
