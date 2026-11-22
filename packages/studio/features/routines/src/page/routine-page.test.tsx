@@ -398,20 +398,18 @@ verifies("routines.page.run-now", () => {
 
   it("starts the run, also while the routine is off, says it stays off, and offers Open run", async () => {
     const opened: string[] = [];
-    const running = hostRunning(
+    const { host: running, runNow } = hostRunning(
       { started: true, runId: "run_1", shortId: "abc123" },
       { ...daily, enabled: false },
     );
-    const runs = vi.fn(running.host.runs);
-    const host = { ...running.host, runs } as RoutinesHost;
+    const runs = vi.fn(running.runs);
+    const host = { ...running, runs } as RoutinesHost;
     const { page, toasts } = await showWithToasts(host, (runId) => opened.push(runId));
     const readsBefore = runs.mock.calls.length;
 
     await act(async () => runNowButton(page)?.click());
 
-    expect(running.runNow).toHaveBeenCalledWith(
-      expect.objectContaining({ hubId: "acme", id: "daily" }),
-    );
+    expect(runNow).toHaveBeenCalledWith(expect.objectContaining({ hubId: "acme", id: "daily" }));
     expect(toasts.list()[0]).toMatchObject({
       title: "Run started · Daily · Run abc123",
       text: "It stays off, so it runs only when you press Run now.",
