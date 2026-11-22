@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-15734 asks for this change, from flow check C619 (HAL-15724). The team decides it under the HAL-2282 rule, since it rewords a message that is already there for one case. Liam signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:C2ZW+lS68wiWxJQDsTKfpDx2Za3h7R0polpAmaSYKwQFEk28VimfYjewxGpjfJRNwSB07unOqeIxrj5ALkWhCg==
 
 ## What changes
 
