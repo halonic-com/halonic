@@ -56,6 +56,12 @@ export interface RoutineListing extends RoutineRef {
    */
   readonly changesNotLive?: boolean | undefined;
   /**
+   * True while no version holds the routine, in a folder that keeps history, so the scheduler leaves
+   * it out: the row says "Not live yet" after its summary, and no next time, when it is on. Absent
+   * where the host can't say.
+   */
+  readonly neverLive?: boolean | undefined;
+  /**
    * Whether the workflow or agent it starts is in the workspace. When it isn't, the routine can't
    * start, so the row shows "Can't start", why, and no next time.
    */

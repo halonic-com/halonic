@@ -88,6 +88,25 @@ verifies("routines.list.rows-and-states", () => {
     expect(rowOf(page, "Daily at 07:30").textContent).not.toContain("not live");
   });
 
+  it("says Not live yet after the summary, and no time, for a routine that is on and was never live", async () => {
+    const rows = [
+      listing("acme", "hourly", "Hourly ping", {
+        summary: "Every hour → Ping",
+        nextRun: tomorrow,
+        neverLive: true,
+      }),
+      listing("acme", "quiet", "Quiet", { enabled: false, nextRun: tomorrow, neverLive: true }),
+    ];
+    const page = await show(<RoutinesView host={memoryHost(hubs, rows).host} />);
+    const hourly = rowOf(page, "Hourly ping").textContent;
+
+    expect(hourly).toContain("Every hour → Ping · Not live yet");
+    expect(hourly).not.toContain("next ");
+    expect(hourly).not.toContain("Changes not live");
+    expect(rowOf(page, "Quiet").textContent).toContain("Off");
+    expect(rowOf(page, "Quiet").textContent).not.toContain("Not live yet");
+  });
+
   it("shows one chip: Off, else Paused until trusted, else Needs sign-in again, else Needs you", async () => {
     const rows = [
       listing("acme", "a", "A", { enabled: false, needsSignIn: true, pausedUntilTrusted: true }),
