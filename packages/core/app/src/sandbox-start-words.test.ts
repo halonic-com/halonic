@@ -89,14 +89,34 @@ verifies("app.sandbox-start-words", () => {
     expect(sandboxStartWords("from-the-future").key).toBe("sandbox-start.other");
   });
 
-  it("points the fixes the CLI words as WSL 2 to Settings", () => {
-    for (const code of ["distro-missing", "runtime-missing", "setup-conflict", "setup-needed"]) {
+  it("points setup-needed to Settings, whose own button is the fix there", () => {
+    const words = sandboxStartWords("setup-needed");
+    expect(words.fix).toBe("open Settings and set up the sandbox there.");
+    expect(words.calloutFix).toBe("Open Settings and set up the sandbox there.");
+    expect(words.fix).not.toContain("WSL 2");
+    expect(words.settingsFix).toBeNull();
+  });
+
+  it("gives distro-missing and runtime-missing the CLI's WSL 2 fix everywhere, Settings too", () => {
+    for (const code of ["distro-missing", "runtime-missing"]) {
       const words = sandboxStartWords(code);
-      expect(words.fix).toBe("open Settings and set up the sandbox there.");
-      expect(words.calloutFix).toBe("Open Settings and set up the sandbox there.");
-      expect(words.fix).not.toContain("WSL 2");
-      expect(words.settingsFix).toBeNull();
+      expect(words.fix, code).toBe("use Halonic inside WSL 2 on this computer.");
+      expect(words.calloutFix, code).toBe("Use Halonic inside WSL 2 on this computer.");
+      expect(words.fix, code).not.toContain("Settings");
+      expect(words.settingsFix, code).toBe(words.calloutFix);
     }
+  });
+
+  it("says to remove the other program's setup for setup-conflict, then where to go on", () => {
+    const words = sandboxStartWords("setup-conflict");
+    expect(words.calloutFix).toBe(
+      "Remove the other program's sandbox setup, then set up the sandbox in Settings.",
+    );
+    expect(words.cantRunFix).toBe(words.calloutFix);
+    expect(words.settingsFix).toBe(
+      "Remove the other program's sandbox setup, then choose Check again.",
+    );
+    expect(words.fix).not.toContain("WSL 2");
   });
 
   it("says the sandbox can't start on this version of Windows, names no version, and points to another sandbox in Settings", () => {

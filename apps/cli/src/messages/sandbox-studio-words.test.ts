@@ -7,18 +7,13 @@ import { sandboxMessages } from "./sandbox.ts";
 
 /**
  * The codes whose fix Studio words differently from the CLI on purpose: the
- * CLI says "use Halonic inside WSL 2" because 0.1 has no Studio on Windows
- * (HAL-7540), or names `halonic sandbox setup` for `setup-needed` (HAL-15808),
- * and Studio points to Settings. A new difference is a decision: add the code
+ * CLI names `halonic sandbox setup` for `setup-needed` (HAL-15808) and says
+ * "use Halonic inside WSL 2" for `setup-conflict` (HAL-7540), where Studio
+ * points to Settings, after removing the other program's setup for
+ * `setup-conflict` (HAL-16233). A new difference is a decision: add the code
  * here with its reason.
  */
-const fixDiffersOnPurpose: readonly string[] = [
-  "windows",
-  "distro-missing",
-  "runtime-missing",
-  "setup-conflict",
-  "setup-needed",
-];
+const fixDiffersOnPurpose: readonly string[] = ["windows", "setup-conflict", "setup-needed"];
 
 /**
  * The codes whose reason Studio words differently on purpose: in the CLI,

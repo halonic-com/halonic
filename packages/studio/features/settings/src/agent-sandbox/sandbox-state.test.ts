@@ -112,9 +112,21 @@ verifies("settings.agent-sandbox-state", () => {
   });
 
   it("leaves the fix out where it is the section's own set-up button", () => {
+    const v = view({ check: { state: "unavailable", code: "setup-needed" } });
+    expect(v.lead).toBe("The sandbox's one-time setup isn't done for this version of Halonic.");
+  });
+
+  it("gives the WSL 2 fix for Halonic's Linux system, which the set-up button can't install", () => {
     const v = view({ check: { state: "unavailable", code: "distro-missing" } });
     expect(v.lead).toBe(
-      "WSL works, but Halonic's own Linux system for the sandbox isn't installed.",
+      "WSL works, but Halonic's own Linux system for the sandbox isn't installed. Use Halonic inside WSL 2 on this computer.",
+    );
+  });
+
+  it("says to remove another program's setup, then check again, for a setup conflict", () => {
+    const v = view({ check: { state: "unavailable", code: "setup-conflict" } });
+    expect(v.lead).toBe(
+      "Another program set up the sandbox on this computer, in a way Halonic can't use. Remove the other program's sandbox setup, then choose Check again.",
     );
   });
 

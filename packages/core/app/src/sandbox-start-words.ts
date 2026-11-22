@@ -20,7 +20,8 @@ import { type SandboxUnavailableReason, sandboxUnavailableReasons } from "@halon
  * - `phoneFix`: the fix for someone on a phone, who has to do it on the computer.
  * - `cantRunPhoneFix`: the can't-run Callout's fix for someone on a phone, so it names the thing too.
  * - `settingsFix`: the fix as Settings › Agent sandbox shows it, or `null` where the section's own
- *   set-up button is the fix (microcopy 23.3a).
+ *   set-up button is the fix (microcopy 23.3a). It differs from `calloutFix` where the person
+ *   does the fix differently from Settings itself.
  * - `command`: the command the fixes name, word for word as they write it, so a screen can show it
  *   as code; absent when the fix names none.
  * - `docsKey`: the docs page and section that explain it, relative to the docs address.
@@ -42,13 +43,15 @@ export interface SandboxStartWords {
 
 /**
  * A reason's source words: the sentence, the fix fragment, the can't-run Callout's fix when the
- * fix alone says "it" (else the fix with a capital letter), the command the fix names, the docs
+ * fix alone says "it" (else the fix with a capital letter), Settings' fix when the person does it
+ * differently from there (else the fix with a capital letter), the command the fix names, the docs
  * section and the link's name, when it has its own.
  */
 type Words = Readonly<{
   reason: string;
   fix: string;
   cantRunFix?: string;
+  settingsFix?: string;
   command?: string;
   docsSection?: string;
   docsName?: string;
@@ -57,8 +60,15 @@ type Words = Readonly<{
 /** The link's name for a reason whose docs have no guide of its own. */
 const generalDocsName = "What the sandbox needs";
 
-/** Where Studio sends the fixes the CLI words as "use Halonic inside WSL 2" (0.1 has no Studio on Windows, HAL-7540). */
+/** Where Studio sends a fix that Settings' own set-up button does, so Settings shows no fix for it. */
 const inSettings = "open Settings and set up the sandbox there.";
+
+/**
+ * The fix for Halonic's WSL distro, as the CLI words it (HAL-16186). Studio can't import the
+ * distro or finish its runtime yet, and Settings' button doesn't either, so it doesn't point
+ * there (HAL-16200, HAL-16233).
+ */
+const insideWsl = "use Halonic inside WSL 2 on this computer.";
 
 const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   windows: {
@@ -106,15 +116,18 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   },
   "distro-missing": {
     reason: "WSL works, but Halonic's own Linux system for the sandbox isn't installed.",
-    fix: inSettings,
+    fix: insideWsl,
   },
   "runtime-missing": {
     reason: "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish.",
-    fix: inSettings,
+    fix: insideWsl,
   },
   "setup-conflict": {
+    // srt's install won't replace another program's setup unless forced, and Halonic never forces
+    // it (HAL-16200). Once it is gone the reason is `setup-needed`, which Settings' button fixes.
     reason: "Another program set up the sandbox on this computer, in a way Halonic can't use.",
-    fix: inSettings,
+    fix: "remove the other program's sandbox setup, then set up the sandbox in Settings.",
+    settingsFix: "Remove the other program's sandbox setup, then choose Check again.",
   },
   "setup-needed": {
     reason: "The sandbox's one-time setup isn't done for this version of Halonic.",
@@ -209,7 +222,15 @@ const onTheComputer = "On the computer Halonic runs on: ";
  */
 export function sandboxStartWords(code: string): SandboxStartWords {
   const reason = isSandboxStartReason(code) ? code : "other";
-  const { reason: sentence, fix, cantRunFix, command, docsSection, docsName } = words[reason];
+  const {
+    reason: sentence,
+    fix,
+    cantRunFix,
+    settingsFix,
+    command,
+    docsSection,
+    docsName,
+  } = words[reason];
   const ownFix = cantRunFix ?? capitalised(fix);
   return {
     key: `sandbox-start.${reason}`,
@@ -219,7 +240,7 @@ export function sandboxStartWords(code: string): SandboxStartWords {
     cantRunFix: ownFix,
     phoneFix: `${onTheComputer}${fix}`,
     cantRunPhoneFix: `${onTheComputer}${lowerFirst(ownFix)}`,
-    settingsFix: fix === inSettings ? null : capitalised(fix),
+    settingsFix: fix === inSettings ? null : (settingsFix ?? capitalised(fix)),
     ...(command === undefined ? {} : { command }),
     docsKey: docsSection === undefined ? "security/sandbox/" : `security/sandbox/#${docsSection}`,
     docsName: docsName ?? generalDocsName,
