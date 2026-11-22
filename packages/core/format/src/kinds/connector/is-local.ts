@@ -1,11 +1,12 @@
 import type { IntegrationHost } from "../integration/schema.ts";
+import { isLoopback, parseUrlHost } from "../integration/url-host.ts";
 import type { Connector } from "./schema.ts";
 
 /**
  * Whether a connector counts as local for `privacy.localOnly`: its own
  * `local` setting when it has one, otherwise true for a program on this
- * machine (stdio) and for an HTTP server at `localhost` or a loopback address
- * written as numbers. Any other name counts as outside, as the transport
+ * machine (stdio) and for an HTTP server at `localhost`, `[::1]` or a
+ * `127.0.0.0/8` address written as four decimal numbers. Any other name counts as outside, as the transport
  * treats it (`connectorHostClass`): a name can resolve anywhere.
  *
  * A plugin's backend or a local integration runs code whose sheet says
@@ -37,11 +38,8 @@ export function connectorIsLocal(
   if ("google" in transport || "integration" in transport || "plugin" in transport) {
     return false;
   }
-  const host = hostOf(transport.http.url);
-  if (host === undefined) {
-    return false;
-  }
-  return host === "localhost" || host === "::1" || isLoopbackIpv4(host);
+  const hostname = loopbackCandidate(transport.http.url);
+  return hostname !== undefined && isLoopback(hostname);
 }
 
 /**
@@ -62,29 +60,20 @@ export function outsideHosts(hosts: readonly IntegrationHost[]): IntegrationHost
 }
 
 /**
- * Whether `host` is an IPv4 address in 127.0.0.0/8 written as four decimal
- * numbers. Other spellings count as not local, which is the safe side.
+ * The host of an absolute `http` or `https` URL, as `URL` reads it, or
+ * undefined when it isn't plainly written. As for `URL`, the host part ends at
+ * the first `/`, `\`, `?` or `#`, and the user info before its last `@` is
+ * dropped. The host itself must pass the strict reading of `parseUrlHost`
+ * (lower-case name, dotted IPv4, `URL`'s own IPv6 form), so a host `URL`
+ * would read differently is never taken for this computer. The core has no
+ * `URL` class (plan 4.1).
  */
-function isLoopbackIpv4(host: string): boolean {
-  const parts = /^127\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
-  return parts?.slice(1).every((part) => Number(part) <= 255) ?? false;
-}
-
-/**
- * The host of an absolute URL, lowercased and without brackets, port or user
- * info. The core has no `URL` class (plan 4.1), so this reads it by hand.
- */
-function hostOf(url: string): string | undefined {
-  const afterScheme = /^[a-z][a-z0-9+.-]*:\/\/([^/?#]*)/i.exec(url);
-  if (afterScheme === null) {
+function loopbackCandidate(url: string): string | undefined {
+  const parts = /^(https?):\/\/([^/\\?#]*)/i.exec(url);
+  if (parts === null) {
     return undefined;
   }
-  const authority = afterScheme[1] ?? "";
-  const hostAndPort = authority.slice(authority.lastIndexOf("@") + 1).toLowerCase();
-  if (hostAndPort.startsWith("[")) {
-    const end = hostAndPort.indexOf("]");
-    return end === -1 ? undefined : hostAndPort.slice(1, end);
-  }
-  const colon = hostAndPort.indexOf(":");
-  return colon === -1 ? hostAndPort : hostAndPort.slice(0, colon);
+  const authority = parts[2] ?? "";
+  const hostAndPort = authority.slice(authority.lastIndexOf("@") + 1);
+  return parseUrlHost(`${parts[1]}://${hostAndPort}`)?.hostname;
 }
