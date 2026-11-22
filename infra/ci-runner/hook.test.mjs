@@ -277,7 +277,8 @@ const maint = ({ args = [], cachePct = 40, quota = null }) => {
   assert.equal(res.status, 0, res.stderr);
   return readFileSync(log, "utf8");
 };
-const EMPTIED = "rm -rf /cache/trusted/pnpm-store/* /cache/trusted/ms-playwright/*";
+const EMPTIED =
+  "rm -rf /cache/trusted/pnpm-store/* /cache/trusted/turbo/* /cache/trusted/ms-playwright/*";
 const GB20 = 20 * 1024 * 1024; // KiB
 
 test("the cache check empties the shared caches past 80 % of their quota, not before", () => {

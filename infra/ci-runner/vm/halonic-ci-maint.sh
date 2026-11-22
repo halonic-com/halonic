@@ -25,7 +25,7 @@ if [ "${use:-0}" -gt 75 ] || [ "$tuse" -ge 80 ]; then
     sleep 10
   done
   systemctl stop 'halonic-runner@*'
-  rm -rf /cache/trusted/pnpm-store/* /cache/trusted/ms-playwright/*
+  rm -rf /cache/trusted/pnpm-store/* /cache/trusted/turbo/* /cache/trusted/ms-playwright/*
   rm -f /etc/halonic-ci/paused
   systemctl start $(cat /etc/halonic-ci/slots)
   logger -t halonic-ci-maint "emptied the shared caches, /cache was ${use}%, caches ${tuse}% of quota"
