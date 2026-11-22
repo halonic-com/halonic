@@ -21,6 +21,13 @@ folder: the page has no copy at a commit yet. The requirement says that the trus
 version's connector files and commands, not the program files on disk, and HAL-16260 follows it up. The
 gap was approved on HAL-14229 (Q3).
 
+It also builds on HAL-16324, which made every start, send and routine's start read the files as saved
+then. That rule now reads the version a start reads then: the live version, or the saved files with
+history off or while nothing is live. So with history, the engine's models, budget, trust check and Local
+only come from the live version, and a saved change of Local only reopens the engine only once it is made
+live. HAL-16324's three examples now say "history off", the case they test. The budget is the one the
+latest start read.
+
 ## Why
 
 In the Studio, a saved change counted before it was made live, which the CLI never does (HAL-14229). Once
