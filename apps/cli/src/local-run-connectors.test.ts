@@ -107,7 +107,7 @@ verifies("cli.local-engine", () => {
     expect(asked).toEqual([{ location: folder, connector: "mail" }]);
     expect(check).toEqual({
       allowed: false,
-      reason: `sending is off for the connector "mail": the CLI can't switch it on yet`,
+      reason: `sending is off for the connector "mail". Halonic can't switch it on yet.`,
     });
   });
 

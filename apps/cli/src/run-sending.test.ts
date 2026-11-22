@@ -69,18 +69,18 @@ verifies("cli.commands.google.allow-sending", () => {
     expect(await sending.checkSending({ location, connector: "mailbox" })).toEqual({
       allowed: false,
       reason:
-        'sending is off for the connector "mailbox": to switch it on, run halonic google allow-sending mailbox on',
+        'sending is off for the connector "mailbox". To switch it on, run halonic google allow-sending mailbox on.',
     });
   });
 
-  it("says the CLI can't switch it on yet for a connector that isn't a Google one", async () => {
+  it("says Halonic can't switch it on yet for a connector that isn't a Google one", async () => {
     const saved = savedSettings();
     await saved.setAllowSending({ location, connector: "notes" }, false);
     const sending = runSendingSettings(saved, await acmeWithConnectors());
 
     expect(await sending.checkSending({ location, connector: "notes" })).toEqual({
       allowed: false,
-      reason: `sending is off for the connector "notes": the CLI can't switch it on yet`,
+      reason: `sending is off for the connector "notes". Halonic can't switch it on yet.`,
     });
   });
 
@@ -94,7 +94,7 @@ verifies("cli.commands.google.allow-sending", () => {
     expect(await sending.checkSending({ location, connector: "mailbox" })).toEqual({
       allowed: false,
       reason:
-        "the settings can't be read: to switch it on, run halonic google allow-sending mailbox on",
+        "the settings can't be read. To switch it on, run halonic google allow-sending mailbox on.",
       error,
     });
   });

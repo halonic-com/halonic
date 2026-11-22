@@ -189,11 +189,13 @@ export const pageWords = {
     /**
      * The same line for an agent step's model alias (C605, decided by the team with Sofia): the
      * agent's page can't change an agent step's model, so it leads to Models. "*Writer*'s agent
-     * step *short* uses the model alias `tiny`, which this workspace doesn't have. Add it in Models."
+     * step `short` uses the model alias `tiny`, which this workspace doesn't have. Add it in Models."
+     * The band shows the step's name in code style, like the alias, since a step name is often an
+     * ordinary word (C645, HAL-15897); so the line is split around both.
      */
     missingStepAlias: {
-      before: (agent: string, agentStep: string) =>
-        `${agent}'s agent step ${agentStep} uses the model alias `,
+      before: (agent: string) => `${agent}'s agent step `,
+      between: " uses the model alias ",
       after: ", which this workspace doesn't have. Add it in Models.",
     },
     openAgent: (agent: string) => `Open ${agent}`,

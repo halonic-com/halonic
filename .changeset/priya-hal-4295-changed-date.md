@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-In Studio, confirming again after an agent's file changed says on which day and at what time the file changed, when a version shows it.
+When an agent's file changed after you chose On this computer, Studio's confirm-again warning now says on which day and at what time it changed, when the workspace's versions show it.

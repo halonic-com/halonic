@@ -104,8 +104,7 @@ verifies("cli.runs-show-sending-off", () => {
       "",
       "✓ Read the email   Writer · default   1 s",
       "",
-      "! The call to send_mail was refused: sending is off for mail, so nothing was sent.",
-      "  To switch it on, run halonic google allow-sending mail on",
+      "! The call to send_mail (mail) wasn't made, because sending is turned off. To switch it on, run halonic google allow-sending mail on.",
       "",
       "✓ Mail triage finished in 18 s.",
       "  Sent nothing",
@@ -118,18 +117,20 @@ verifies("cli.runs-show-sending-off", () => {
 
     const { stdout } = await show("--dir", ".");
 
-    expect(stdout[5]).toBe("  To switch it on, run halonic google allow-sending --dir . mail on");
+    expect(stdout[4]).toBe(
+      "! The call to send_mail (mail) wasn't made, because sending is turned off. To switch it on, run halonic google allow-sending --dir . mail on.",
+    );
   });
 
-  it("says the CLI can't switch sending on for a connector that isn't a Google one", async () => {
+  it("says Halonic can't switch sending on for a connector that isn't a Google one", async () => {
     await mailConnector("  stdio:\n    command: node\n");
     await storeRuns(acmeRuns, triagedAfter([sendingOff("m-1")]));
 
     const { stdout } = await show();
 
     expect(stdout.slice(4, 6)).toEqual([
-      "! The call to send_mail was refused: sending is off for mail, so nothing was sent.",
-      "  The halonic command can't switch sending on for it yet.",
+      "! The call to send_mail (mail) wasn't made, because sending is turned off. Halonic can't switch it on for mail yet.",
+      "",
     ]);
   });
 
