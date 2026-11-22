@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { recording } from "../pr-watcher/fakes.test-helper.ts";
+import { gitHubReader } from "../pr-watcher/github.ts";
 import { type FakeIssue, fakeHost, fakeJobContext } from "./fake-host.test-helper.ts";
 import { readSettings, runWatcher } from "./job.ts";
 
@@ -81,6 +82,14 @@ verifies("paperclip.pr-watcher-plugin", () => {
     });
     expect(writes[0]).toEqual({ kind: "update", issueId: "task-4485", patch: { status: "done" } });
   });
+
+  test("names itself in a User-Agent on every GitHub request", async () => {
+    // GitHub answered 403 to the trial install of 22 Nov: the host adds no User-Agent.
+    const { ctx, sent } = setUp({ githubToken: token, dryRun: false });
+    await runWatcher(ctx, now);
+    expect(sent.length).toBeGreaterThan(0);
+    expect(sent.every((request) => request.userAgent === "halonic-agent-tools")).toBe(true);
+  });
 });
 
 verifies("paperclip.pr-watcher-read-only", () => {
@@ -100,6 +109,18 @@ verifies("paperclip.pr-watcher-read-only", () => {
 });
 
 describe("the job", () => {
+  test("names GitHub's reason when it refuses a request", async () => {
+    const message = "Request forbidden by administrative rules.";
+    const get = gitHubReader({
+      fetch: async () => new Response(JSON.stringify({ message }), { status: 403 }),
+    });
+    await expect(get("/repos/halonic-com/halonic/pulls")).rejects.toThrow(
+      `GitHub: GET /repos/halonic-com/halonic/pulls answered 403: ${message}.`,
+    );
+    const bare = gitHubReader({ fetch: async () => new Response("oops", { status: 502 }) });
+    await expect(bare("/rate_limit")).rejects.toThrow("GitHub: GET /rate_limit answered 502.");
+  });
+
   test("logs a company that fails, and fails at the end", async () => {
     const { ctx, logs } = setUp({ githubToken: token }, () =>
       Promise.reject(new Error("secret not found")),

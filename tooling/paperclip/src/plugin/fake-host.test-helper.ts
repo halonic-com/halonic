@@ -66,6 +66,7 @@ export interface SentRequest {
   readonly url: string;
   readonly method: string;
   readonly authorization: string | undefined;
+  readonly userAgent: string | undefined;
 }
 
 /**
@@ -112,7 +113,12 @@ export function fakeJobContext(options: {
     http: {
       fetch: async (url: string, init?: RequestInit) => {
         const headers = (init?.headers ?? {}) as Record<string, string>;
-        sent.push({ url, method: init?.method ?? "GET", authorization: headers["authorization"] });
+        sent.push({
+          url,
+          method: init?.method ?? "GET",
+          authorization: headers["authorization"],
+          userAgent: headers["user-agent"],
+        });
         signals.push(init?.signal);
         const { pathname, search } = new URL(url);
         const body = options.answers[pathname + search];
