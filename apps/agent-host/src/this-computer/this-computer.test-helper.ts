@@ -3,9 +3,20 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { pinInstructions } from "@halonicjs/adapter-harness-kit";
-import { MemoryAgentPlacementStore, MemoryTrustStore } from "@halonicjs/adapter-memory";
-import { AgentPlacement } from "@halonicjs/app";
-import type { Clock, InstructionPin, SandboxProfile, TrustStore } from "@halonicjs/ports";
+import {
+  MemoryAgentPlacementStore,
+  MemoryInstructionTrustStore,
+  MemoryTrustStore,
+} from "@halonicjs/adapter-memory";
+import { AgentPlacement, InstructionTrustService } from "@halonicjs/app";
+import {
+  type Clock,
+  type InstructionPin,
+  type InstructionTrustStore,
+  instructionTrustKey,
+  type SandboxProfile,
+  type TrustStore,
+} from "@halonicjs/ports";
 import { agentsTrustContent, filesOf, loadWorkspace } from "@halonicjs/workspace";
 import type { BuiltProfile } from "../harness/host-profiles.ts";
 import { webCryptoDigest } from "../harness/host-profiles.ts";
@@ -32,6 +43,8 @@ export interface ThisComputerSetup {
   readonly root: string;
   readonly trust: MemoryTrustStore;
   readonly placements: MemoryAgentPlacementStore;
+  /** The instructions the person trusted, as Studio's trust dialog saves them. */
+  readonly instructionTrust: MemoryInstructionTrustStore;
   /** The profiles the host "built", by temp folder; the gate reads them as unopened. */
   readonly unopened: Map<string, BuiltProfile>;
   /** A profile the host built for the coder, kept in `unopened`. */
@@ -41,6 +54,10 @@ export interface ThisComputerSetup {
   readonly gate: UnfencedGate;
   /** A gate over the same workspace and profiles, but with another trust store. */
   gateWith(trustStore: TrustStore | undefined): UnfencedGate;
+  /** A gate over the same workspace and profiles, but with another instruction trust store. */
+  gateWithInstructionTrust(store: InstructionTrustStore | undefined): UnfencedGate;
+  /** Saves the person's trust in the coder's instructions as the workspace's files make them now. */
+  trustCoderInstructions(): Promise<void>;
   /** Saves a trust record that lists the coder as its file is now. */
   trustCoder(): Promise<void>;
   /** Saves the person's "On this computer" choice for an agent's file as it is now; the coder's by default. */
@@ -66,6 +83,7 @@ export async function thisComputerSetup(): Promise<ThisComputerSetup> {
   }
   const trust = new MemoryTrustStore();
   const placements = new MemoryAgentPlacementStore();
+  const instructionTrust = new MemoryInstructionTrustStore();
   const built = builtFor(root);
   const unopened = new Map([[built.profile.tempFolder, built]]);
   const madeInstructions = new Map([
@@ -77,6 +95,7 @@ export async function thisComputerSetup(): Promise<ThisComputerSetup> {
     placements,
     profiles: { unopened: (tempFolder) => unopened.get(tempFolder) },
     instructions: { pinOf: (folder) => madeInstructions.get(folder) },
+    instructionTrust,
     digest: webCryptoDigest,
     clock,
   };
@@ -86,11 +105,18 @@ export async function thisComputerSetup(): Promise<ThisComputerSetup> {
     root,
     trust,
     placements,
+    instructionTrust,
     unopened,
     built,
     madeInstructions,
     gate,
     gateWith: (trustStore) => new UnfencedGate({ ...options, trustStore }),
+    gateWithInstructionTrust: (store) => new UnfencedGate({ ...options, instructionTrust: store }),
+    trustCoderInstructions: async () => {
+      const service = new InstructionTrustService({ store: instructionTrust, clock });
+      const key = instructionTrustKey(root, "lab", "coder");
+      await service.trust(key, await pinInstructions(coderInstructions));
+    },
     trustCoder: async () => {
       const workspace = await loadWorkspace(new FolderDefinitionStore(root, root));
       const agents = filesOf(workspace, "agent").map((each) => each.value);

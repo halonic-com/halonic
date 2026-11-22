@@ -5,14 +5,17 @@
 // itself, and opens only with a profile it built for that agent.
 
 import { pinInstructions } from "@halonicjs/adapter-harness-kit";
-import { AgentPlacement } from "@halonicjs/app";
+import { AgentPlacement, InstructionTrustService } from "@halonicjs/app";
 import type { Agent } from "@halonicjs/format";
-import type {
-  AgentPlacementStore,
-  Clock,
-  Digest,
-  SandboxProfile,
-  TrustStore,
+import {
+  type AgentPlacementStore,
+  type Clock,
+  type Digest,
+  type InstructionPin,
+  type InstructionTrustStore,
+  instructionTrustKey,
+  type SandboxProfile,
+  type TrustStore,
 } from "@halonicjs/ports";
 import { canonicalJson } from "@halonicjs/std";
 import type { HostRunInstructions } from "../harness/host-instructions.ts";
@@ -37,7 +40,8 @@ export interface UnfencedRefusal {
     | "unknown_agent"
     | "workspace_not_trusted"
     | "not_on_this_computer"
-    | "profile_not_built";
+    | "profile_not_built"
+    | "instructions_not_trusted";
   readonly message: string;
 }
 
@@ -59,6 +63,15 @@ export interface UnfencedGateOptions {
    * `` !`command` `` lines, run without asking anyone.
    */
   readonly instructions: Pick<HostRunInstructions, "pinOf">;
+  /**
+   * The instructions a person trusted for each agent, in the user's profile:
+   * `<profile>/instruction-trust`, the folder Studio's trust dialog writes
+   * (`FileInstructionTrustStore`). `undefined` without a profile folder, so
+   * no instructions folder passes. Neither the trust record nor the "On this
+   * computer" choice covers the skills' texts, and the page's own check
+   * counts for nothing here.
+   */
+  readonly instructionTrust: InstructionTrustStore | undefined;
   readonly digest: Digest;
   readonly clock: Clock;
 }
@@ -78,7 +91,11 @@ export interface UnfencedGateOptions {
  *    built with no instructions folder, or with one this host made holding
  *    exactly the agent's instructions and skills as the workspace's own
  *    files on disk make them (the page sends the texts, so they count only
- *    when they are the workspace's).
+ *    when they are the workspace's);
+ * 5. a person trusted those instructions as they are now, by the same pin
+ *    and record as the engine's instruction trust check
+ *    (`engine.harness-instructions-trust`); a skill changed on disk since,
+ *    by a fenced agent or a `git pull`, doesn't pass.
  *
  * What it passes, the built profile with its agent and instructions folder,
  * is what the session keeps, so a run's start can be held to it
@@ -87,6 +104,7 @@ export interface UnfencedGateOptions {
 export class UnfencedGate {
   readonly #options: UnfencedGateOptions;
   readonly #placement: AgentPlacement;
+  readonly #instructionTrust: InstructionTrustService | undefined;
 
   constructor(options: UnfencedGateOptions) {
     this.#options = options;
@@ -95,6 +113,10 @@ export class UnfencedGate {
       digest: options.digest,
       clock: options.clock,
     });
+    this.#instructionTrust =
+      options.instructionTrust === undefined
+        ? undefined
+        : new InstructionTrustService({ store: options.instructionTrust, clock: options.clock });
   }
 
   /** @returns the profile the host built, or why the session doesn't open */
@@ -139,26 +161,58 @@ export class UnfencedGate {
         "The agent host didn't build this profile for this agent, or a session already opened with it.",
       );
     }
-    if (!(await this.#holdsTheWorkspacesInstructions(built, found))) {
+    const pin = await this.#workspacePinOf(built, found);
+    if (pin === undefined) {
       return refusal(
         403,
         "profile_not_built",
         "The profile's instructions folder isn't one the agent host made from this workspace's own instructions and skills, so the agent doesn't leave the sandbox with it.",
       );
     }
+    if (pin !== null && !(await this.#isTrustedByPerson(root, request, pin))) {
+      return refusal(
+        403,
+        "instructions_not_trusted",
+        "Nobody on this computer trusted this agent's instructions and skills as they are now, so it doesn't leave the sandbox with them.",
+      );
+    }
     return built;
   }
 
   /**
-   * Whether `built` has no instructions folder, or one this host made that
-   * holds what the agent's file and the workspace's skill files make, by pin.
+   * The pin of `built`'s instructions folder when this host made it holding
+   * exactly what the agent's file and the workspace's skill files make.
+   *
+   * @returns `null` when `built` has no instructions folder, so there is
+   * nothing to trust; `undefined` when its folder doesn't hold those
    */
-  async #holdsTheWorkspacesInstructions(built: BuiltProfile, found: AgentFile): Promise<boolean> {
-    if (built.instructionsFolder === null) return true;
+  async #workspacePinOf(
+    built: BuiltProfile,
+    found: AgentFile,
+  ): Promise<InstructionPin | null | undefined> {
+    if (built.instructionsFolder === null) return null;
     const made = this.#options.instructions.pinOf(built.instructionsFolder);
-    if (made === undefined || found.instructions === undefined) return false;
+    if (made === undefined || found.instructions === undefined) return undefined;
     const own = await pinInstructions(found.instructions);
-    return made.digest === own.digest;
+    return made.digest === own.digest ? own : undefined;
+  }
+
+  /**
+   * Whether the person's record trusts `pin` for the agent. Never rejects:
+   * no store, a record it can't read, or anything but `trusted` is a no.
+   */
+  async #isTrustedByPerson(
+    root: string,
+    request: UnfencedOpenRequest,
+    pin: InstructionPin,
+  ): Promise<boolean> {
+    if (this.#instructionTrust === undefined) return false;
+    const key = instructionTrustKey(root, request.hubId, request.agentId);
+    try {
+      return (await this.#instructionTrust.check(key, pin)).kind === "trusted";
+    } catch {
+      return false;
+    }
   }
 
   /**

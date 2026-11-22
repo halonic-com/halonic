@@ -1,7 +1,7 @@
-import { rm } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pinInstructions } from "@halonicjs/adapter-harness-kit";
-import type { TrustStore } from "@halonicjs/ports";
+import type { InstructionTrustStore, TrustStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -38,9 +38,10 @@ function request(fields: Partial<UnfencedOpenRequest> = {}): UnfencedOpenRequest
   };
 }
 
-/** Trusts the coder and chooses this computer for it, so only the check under test can refuse. */
+/** Trusts the coder and its instructions and chooses this computer for it, so only the check under test can refuse. */
 async function chosen(): Promise<void> {
   await setup.trustCoder();
+  await setup.trustCoderInstructions();
   await setup.chooseThisComputer();
 }
 
@@ -204,8 +205,53 @@ verifies("agent-host.unfenced-gate", () => {
       expect(await setup.gate.check(request())).toMatchObject({ kind: "profile_not_built" });
     });
 
-    it("passes a profile built with no instructions folder, and keeps that it has none", async () => {
+    it("refuses instructions the person didn't trust, or a skill changed on disk since they did", async () => {
+      await setup.trustCoder();
+      await setup.chooseThisComputer();
+      // The page's engine checks instruction trust too, but the gate doesn't rely on the page.
+      expect(await setup.gate.check(request())).toMatchObject({
+        status: 403,
+        kind: "instructions_not_trusted",
+      });
+      await setup.trustCoderInstructions();
+      expect(await setup.gate.check(request())).toBe(setup.built);
+      // A fenced agent, or a `git pull`, adds `hooks:` to the skill; the host's folder holds the new text.
+      const withHooks = reviewSkillText.replace(
+        "description: Review the change.\n",
+        "description: Review the change.\nhooks:\n  SessionStart: [{ command: ./x }]\n",
+      );
+      await writeFile(join(setup.root, reviewSkillPath), withHooks);
+      const changed = await pinInstructions([
+        { name: "AGENTS.md", text: "Write the change." },
+        { name: "skills/review/SKILL.md", text: withHooks },
+      ]);
+      setup.madeInstructions.set(setup.built.instructionsFolder ?? "", changed);
+      expect(await setup.gate.check(request())).toMatchObject({
+        status: 403,
+        kind: "instructions_not_trusted",
+      });
+    });
+
+    it("refuses instructions when the instruction trust record can't be read, or the host has no profile folder", async () => {
       await chosen();
+      const unreadable: InstructionTrustStore = {
+        get: () => Promise.reject(new Error("The record is not valid JSON.")),
+        save: (record) => setup.instructionTrust.save(record),
+        remove: (key) => setup.instructionTrust.remove(key),
+      };
+      expect(await setup.gateWithInstructionTrust(unreadable).check(request())).toMatchObject({
+        status: 403,
+        kind: "instructions_not_trusted",
+      });
+      expect(await setup.gateWithInstructionTrust(undefined).check(request())).toMatchObject({
+        kind: "instructions_not_trusted",
+      });
+    });
+
+    it("passes a profile built with no instructions folder, and keeps that it has none", async () => {
+      await setup.trustCoder();
+      await setup.chooseThisComputer();
+      // With no instructions there is nothing to trust, as in the engine.
       const without = { ...setup.built, instructionsFolder: null };
       setup.unopened.set(setup.built.profile.tempFolder, without);
       expect(await setup.gate.check(request())).toBe(without);
