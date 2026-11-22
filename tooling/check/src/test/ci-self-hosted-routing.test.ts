@@ -41,6 +41,7 @@ const kept = [
   "tauri",
   "live-cloud",
   "fail-fast",
+  "merged",
   "ci-ok",
 ];
 
