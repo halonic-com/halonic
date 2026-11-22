@@ -11,4 +11,5 @@ When the workflow page is opened, or asked again while it is open, with steps to
 - Given Support reply runs Sorter in `triage` (titled "Read the email") and `draft` (no title), when Sorter's map opens it, then Flow shows with `triage` and `draft` outlined, no step card is open, "2 steps use Sorter: Read the email, draft" and "Pick a step or an empty spot to clear." show over the canvas, and the first line is read once.
 - Given it runs Sorter only in `triage`, then "1 step uses Sorter: Read the email" is read.
 - Given the page shows Configuration, when it is asked again to outline `triage`, then it goes to Flow with `triage` outlined.
+- Given a phone, when Sorter's map opens Support reply, then its page shows on Flow with `triage` and `draft` outlined, view-only: no toolbar, no ports.
 - Given the steps are outlined, when the user clicks `draft`, then no step is outlined, the line is gone and `draft`'s card opens.
