@@ -1988,10 +1988,11 @@ FunctionEnd
 
 ; Removes the agent sandbox (flow 2.7, CHECK I9), and sets $SandboxOutcome to
 ; "removed", "removed_kept" (removed, but the access it kept on the user's
-; folders goes at Halonic's next start, so only if it's installed again),
-; "removed_manual" (removed, but some access it kept stays until a removal
-; without administrator rights, which nothing here can run yet, HAL-15836,
-; HAL-16077), "none" (nothing was set up, nothing asked), "refused", "failed"
+; folders stays until a removal without administrator rights: Halonic's next
+; start doesn't take it back with WSL chosen, nor once the installer has set
+; the sandbox up again, HAL-16082), "removed_manual" (removed, but some access
+; it kept stays until such a removal, HAL-15836), both ended by installing
+; again with the sandbox step on and uninstalling normally, "none" (nothing was set up, nothing asked), "refused", "failed"
 ; (with $SandboxReason) or "skipped" (a silent uninstall without administrator
 ; rights, which can't ask).
 Function un.RemoveSandbox
@@ -2024,15 +2025,16 @@ Function un.RemoveSandbox
     DetailPrint "✓ Removed the agent sandbox"
   ${ElseIf} $2 == "2"
     ; With administrator rights the removal leaves the access the sandbox
-    ; kept on the user's folders; the agent host takes it back the next time
-    ; it starts as the user (HAL-5404 S2).
+    ; kept on the user's folders (HAL-5404 S2). A start of Halonic doesn't
+    ; reliably take it back (HAL-16082), so the step given is a removal
+    ; without administrator rights: install again, then uninstall normally.
     StrCpy $SandboxOutcome "removed_kept"
     DetailPrint "✓ Removed the agent sandbox"
-    DetailPrint "   Its access to your project folders stays until you install ${PRODUCTNAME} again and start it."
+    DetailPrint "   It still has access to your project folders. To end that, install ${PRODUCTNAME} again with $\"Set up the agent sandbox$\" on, then uninstall it normally, not as administrator."
   ${ElseIf} $2 == "3"
     StrCpy $SandboxOutcome "removed_manual"
     DetailPrint "✓ Removed the agent sandbox"
-    DetailPrint "   It may still have access to some of your project folders. ${PRODUCTNAME} can't end that yet. To get help, open an issue at github.com/halonic-com/halonic/issues."
+    DetailPrint "   It may still have access to some of your project folders. To end that, install ${PRODUCTNAME} again with $\"Set up the agent sandbox$\" on, then uninstall it normally, not as administrator."
   ${ElseIf} $2 == "20"
     StrCpy $SandboxOutcome "none"
   ${ElseIf} $2 == "10"
@@ -2081,13 +2083,14 @@ Function un.PageDone
       System::Call '*$3(i, i, i .r5)'
       System::Free $3
       IntOp $5 $5 - $4
-      ; Halonic is gone now, so the next start that takes the access back is
-      ; one after installing it again (HAL-15836). Two lines high, four for
-      ; the longer one, so a wrap at a larger scaling isn't cut off.
+      ; Halonic is gone now, so the step that ends the access is installing
+      ; it again with the sandbox step on and uninstalling it normally, whose
+      ; removal runs without administrator rights (HAL-16082). Four lines
+      ; high, so a wrap at a larger scaling isn't cut off.
       ${If} $SandboxOutcome == "removed_kept"
-        ${NSD_CreateLabel} $4 12u $5 20u "Its access to your project folders stays until you install ${PRODUCTNAME} again and start it."
+        ${NSD_CreateLabel} $4 12u $5 40u "It still has access to your project folders. To end that, install ${PRODUCTNAME} again with $\"Set up the agent sandbox$\" on, then uninstall it normally, not as administrator."
       ${Else}
-        ${NSD_CreateLabel} $4 12u $5 40u "It may still have access to some of your project folders. ${PRODUCTNAME} can't end that yet. To get help, open an issue at github.com/halonic-com/halonic/issues."
+        ${NSD_CreateLabel} $4 12u $5 40u "It may still have access to some of your project folders. To end that, install ${PRODUCTNAME} again with $\"Set up the agent sandbox$\" on, then uninstall it normally, not as administrator."
       ${EndIf}
       Pop $0
     ${EndIf}
