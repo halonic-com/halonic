@@ -85,6 +85,7 @@ export {
   phoneProblemWords,
   problemWords,
 } from "./problem-screen.tsx";
+export { PromptBox, type PromptTarget } from "./prompt-box.tsx";
 export {
   type PhoneRemote,
   RECONNECT_TO_ANSWER,
@@ -96,6 +97,7 @@ export {
   type RemoteSession,
   type RemoteView,
 } from "./remote-view.ts";
+export { promptWords, sendOutcomeLine } from "./send-words.ts";
 export { StaleBanner, type StaleBannerOf, type StaleBannerProps } from "./stale-banner.tsx";
 export { type Standing, StandingScreen } from "./standing-screen.tsx";
 export {
