@@ -1,42 +1,21 @@
 // @vitest-environment jsdom
-import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
-import { act, useState } from "react";
+import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ProposalDecided, ProposalDecisions } from "../proposal-decisions.ts";
+import { unmountAll } from "../test-support/render.tsx";
 import {
-  type ProposalDecided,
-  type ProposalDecisions,
-  ProposalGoneError,
-} from "../proposal-decisions.ts";
-import type { ProposalItem } from "../proposal-items.ts";
-import { render, unmountAll } from "../test-support/render.tsx";
-import { ProposalCard } from "./proposal-card.tsx";
+  buttons,
+  press,
+  proposal,
+  renderCard,
+  shownText,
+  wrote,
+} from "./proposal-card.test-helper.tsx";
 
 afterEach(() => {
   unmountAll();
 });
-
-const finishedAt = new Date(2026, 10, 12, 6, 12);
-
-function proposal(fields: Partial<ProposalItem> = {}): ProposalItem {
-  return {
-    kind: "proposal",
-    key: "proposal:run_mfx3k2a1_0001JD8Q",
-    runId: "run_mfx3k2a1_0001JD8Q",
-    changes: 2,
-    items: ["support-triage"],
-    itemNames: ["Support triage"],
-    files: [
-      { path: "notes/a.md", change: "modified", decision: "undecided" },
-      { path: "notes/b.md", change: "added", decision: "undecided" },
-    ],
-    ending: "finished",
-    since: finishedAt.toISOString(),
-    ...fields,
-  };
-}
-
-const wrote = (undo: string): ProposalDecided => ({ undo, changedSinceRun: [], cantBeWritten: [] });
 
 function fakeDecisions(overrides: Partial<ProposalDecisions> = {}) {
   return {
@@ -50,40 +29,8 @@ function fakeDecisions(overrides: Partial<ProposalDecisions> = {}) {
 }
 
 function open(decisions: ProposalDecisions | undefined, item = proposal()) {
-  const toasts = createToastStore();
   const onDecided = vi.fn();
-  const root = render(
-    <ToastStoreProvider store={toasts}>
-      <ProposalCard
-        item={item}
-        now={new Date(2026, 10, 12, 9, 0)}
-        facts={{ hubId: "support", workflow: "Support triage", startedBy: "a schedule" }}
-        decisions={decisions}
-        onDecided={onDecided}
-        onOpenRun={() => {}}
-      />
-    </ToastStoreProvider>,
-  );
-  return { root, toasts, onDecided };
-}
-
-/**
- * The words a button shows: with a `busyLabel` the kit keeps both copies in the button and hides the
- * one not in use with `invisible`, which screen readers skip too.
- */
-function shownText(element: Element | null | undefined): string | undefined {
-  const copy = element?.cloneNode(true);
-  if (!(copy instanceof Element)) return undefined;
-  for (const hidden of copy.querySelectorAll(".invisible")) hidden.remove();
-  return copy.textContent?.trim();
-}
-
-function buttons(root: HTMLElement, name: string): HTMLButtonElement[] {
-  return [...root.querySelectorAll("button")].filter((b) => shownText(b) === name);
-}
-
-async function press(button: HTMLButtonElement | undefined) {
-  await act(async () => button?.click());
+  return { ...renderCard(decisions, item, onDecided), onDecided };
 }
 
 verifies("inbox.proposal-page", () => {
@@ -437,89 +384,5 @@ verifies("inbox.proposal-page", () => {
     const [toast] = toasts.list();
     await act(async () => toast && toasts.close(toast.id));
     expect(decisions.settle).toHaveBeenCalledWith("run_mfx3k2a1_0001JD8Q");
-  });
-});
-
-const gone = () => Promise.reject(new ProposalGoneError("The run's branch was deleted."));
-
-verifies("inbox.proposal-page-states", () => {
-  describe("a proposal whose texts are gone", () => {
-    it("offers only Remove once the host says so, and focuses its line", async () => {
-      const { root } = open(fakeDecisions({ accept: vi.fn(gone) }));
-      await press(buttons(root, "Accept")[0]);
-
-      const line = [...root.querySelectorAll("p")].find(
-        (p) => p.textContent === "This proposal can't be opened any more.",
-      );
-      expect(line).toBeDefined();
-      expect(document.activeElement).toBe(line);
-      expect(buttons(root, "Remove")).toHaveLength(1);
-      for (const name of ["Accept", "Reject", "Accept all", "Reject all"]) {
-        expect(buttons(root, name)).toEqual([]);
-      }
-      expect(root.querySelector('[role="alert"]')).toBeNull();
-    });
-
-    it("removes it with no dialog, and has the Inbox read its items again", async () => {
-      const decisions = fakeDecisions({ reject: vi.fn(gone) });
-      const { root, onDecided } = open(decisions);
-      await press(buttons(root, "Reject all")[0]);
-      await press(buttons(root, "Remove")[0]);
-
-      expect(decisions.remove).toHaveBeenCalledWith("run_mfx3k2a1_0001JD8Q");
-      expect(onDecided).toHaveBeenCalledTimes(1);
-      expect(root.querySelector('[role="dialog"]')).toBeNull();
-    });
-
-    it("says a failed Remove with its reason, and keeps Remove to try again", async () => {
-      const remove = vi
-        .fn<() => Promise<void>>()
-        .mockRejectedValueOnce(new Error("The agent host isn't answering."))
-        .mockResolvedValueOnce(undefined);
-      const { root, onDecided } = open(fakeDecisions({ accept: vi.fn(gone), remove }));
-      await press(buttons(root, "Accept")[0]);
-      await press(buttons(root, "Remove")[0]);
-
-      expect(root.querySelector('[role="alert"]')?.textContent).toBe(
-        "Couldn't remove this proposal. The agent host isn't answering.",
-      );
-      expect(onDecided).not.toHaveBeenCalled();
-      await press(buttons(root, "Remove")[0]);
-      expect(onDecided).toHaveBeenCalledTimes(1);
-      expect(root.querySelector('[role="alert"]')).toBeNull();
-    });
-  });
-
-  it("shows the decisions the Inbox read again, such as one from another window", async () => {
-    let refresh: (item: ProposalItem) => void = () => {};
-    function Refreshing() {
-      const [item, setItem] = useState(proposal());
-      refresh = setItem;
-      return (
-        <ProposalCard
-          item={item}
-          now={new Date(2026, 10, 12, 9, 0)}
-          facts={undefined}
-          decisions={fakeDecisions()}
-          onDecided={() => {}}
-        />
-      );
-    }
-    const root = render(
-      <ToastStoreProvider store={createToastStore()}>
-        <Refreshing />
-      </ToastStoreProvider>,
-    );
-    expect(buttons(root, "Accept")).toHaveLength(2);
-
-    const decidedElsewhere = proposal({
-      files: [
-        { path: "notes/a.md", change: "modified", decision: "accepted" },
-        { path: "notes/b.md", change: "added", decision: "undecided" },
-      ],
-    });
-    await act(async () => refresh(decidedElsewhere));
-    expect(buttons(root, "Accept")).toHaveLength(1);
-    expect(root.textContent).toContain("Accepted");
   });
 });
