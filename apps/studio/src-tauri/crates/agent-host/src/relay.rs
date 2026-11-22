@@ -462,4 +462,6 @@ fn spawn(name: &str, work: impl FnOnce() + Send + 'static) {
 #[cfg(test)]
 mod callback_tests;
 #[cfg(test)]
+mod limits_tests;
+#[cfg(test)]
 mod tests;
