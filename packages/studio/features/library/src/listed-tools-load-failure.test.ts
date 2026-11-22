@@ -42,13 +42,13 @@ verifies("library.listed-tools-waiting", () => {
           text: " stopped right after it started. To see why, run the command and args from ",
         },
         { text: "its connector file" },
-        { text: " yourself." },
+        { text: " yourself. Studio can't give you a line to copy for a Windows folder yet." },
       ]);
       expect(line).toMatchObject({ button: "try-again", copyDetails: false });
       expect(line.command).toBeUndefined();
     });
 
-    it("names a stopped program's file, and ends in a colon for the line to run under it", () => {
+    it("names a stopped program's file, and points to the line to run under it with a colon", () => {
       const line = loadFailureLine(
         new ConnectorCouldntList({
           reason: "program-stopped",
@@ -61,7 +61,7 @@ verifies("library.listed-tools-waiting", () => {
       );
 
       expect(refusalLineText(line.parts)).toBe(
-        "Couldn't list the tools: notes-mcp's program sh stopped right after it started. To see why, run the command and args from library/connectors/notes-mcp.connector.yaml yourself:",
+        "Couldn't list the tools: notes-mcp's program sh stopped right after it started. To see why, run its command from library/connectors/notes-mcp.connector.yaml in a terminal. The line below doesn't set its env or secrets, so set any it needs first:",
       );
       expect(line.parts).toContainEqual({
         text: "library/connectors/notes-mcp.connector.yaml",
@@ -74,7 +74,7 @@ verifies("library.listed-tools-waiting", () => {
       });
     });
 
-    it("names a stopped program's file with a full stop where there is no line to run", () => {
+    it("names a stopped program's file and says a Windows folder gets no line to run", () => {
       const line = loadFailureLine(
         new ConnectorCouldntList({
           reason: "program-stopped",
@@ -86,7 +86,7 @@ verifies("library.listed-tools-waiting", () => {
       );
 
       expect(refusalLineText(line.parts)).toMatch(
-        / from library\/connectors\/notes-mcp\.connector\.yaml yourself\.$/u,
+        / run the command and args from library\/connectors\/notes-mcp\.connector\.yaml yourself\. Studio can't give you a line to copy for a Windows folder yet\.$/u,
       );
       expect(line.command).toBeUndefined();
     });

@@ -131,9 +131,12 @@ export const listedToolsWords = {
     ],
     /**
      * The CLI's cause and fix for the same program (HAL-15606, C600 #1c): what the program wrote
-     * isn't shown, so the person runs it to see why. The file is named as the CLI names it, and
-     * `withCommand` ends the line with a colon, for the box with the line to run that follows it
-     * (C634 #5).
+     * isn't shown, so the person runs it to see why. The file is named as the CLI names it.
+     * `withCommand` points to the box with the line to run that follows it, in microcopy 11.4's
+     * "in a terminal" (C634 #5, C650 row 6); without it the line keeps the CLI's own sentence,
+     * which sends the person to the file. The line in the box leaves out the connector's env and
+     * secrets, and a Windows folder gets none, so the line says which, as a program that needs a
+     * secret stops differently by hand (C651 #4).
      */
     programStopped: (
       source: string,
@@ -144,12 +147,18 @@ export const listedToolsWords = {
       { text: `Couldn't list the tools: ${source}'s program ` },
       { text: program, code: true },
       {
-        text: " stopped right after it started. To see why, run the command and args from ",
+        text: withCommand
+          ? " stopped right after it started. To see why, run its command from "
+          : " stopped right after it started. To see why, run the command and args from ",
       },
       ...(file === undefined
         ? [{ text: "its connector file" }]
         : [{ text: file, code: true as const }]),
-      { text: withCommand ? " yourself:" : " yourself." },
+      {
+        text: withCommand
+          ? " in a terminal. The line below doesn't set its env or secrets, so set any it needs first:"
+          : " yourself. Studio can't give you a line to copy for a Windows folder yet.",
+      },
     ],
     /**
      * Studio reads a connector's secrets from the keychain, and `halonic secret set` writes the
