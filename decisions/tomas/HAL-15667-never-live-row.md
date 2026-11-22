@@ -3,6 +3,7 @@
 - Task: HAL-15667
 - Approval: Liam approves this change on HAL-15667 (https://paperclip.halonic.com/HAL/issues/HAL-15667), for HAL-15667. A team decision with no board card (HAL-2282 rule): Sofia picked the words on HAL-15668, and the change makes the row say what the scheduler already does.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kGqTKkLYTrsDhO+F3hxzRstrSCM9cdhexSMrqyiHgStjHsikMIc/5tUBtArRnpmrcEKt96zSuhx2bqkh3VqFDQ==
 
 ## What changes
 
