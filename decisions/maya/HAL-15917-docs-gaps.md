@@ -3,6 +3,7 @@
 - Task: HAL-15917 (words check C648, HAL-15907)
 - Approval: team wording, no behaviour change (HAL-2282); Liam signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:IftywBKc4VyGSt1AhseNM3JKudXB6qDhsIfrHnCfW94trtsr194eRWDfDK5+UN5S7EGZWm/Vd0X/dxD1tPzCCg==
 
 ## What changes
 
