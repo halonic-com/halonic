@@ -166,8 +166,8 @@ describe("a connector's page with only the keyboard", () => {
 
       expect(askTrust).toHaveBeenCalledOnce();
       expect(review).toHaveBeenCalledTimes(2);
-      expect(root.textContent).toContain("1 tool is waiting for your approval");
-      expect(document.activeElement?.textContent).toBe("1 tool is waiting for your approval");
+      expect(root.textContent).toContain("1 tool is off until you review it");
+      expect(document.activeElement?.textContent).toBe("1 tool is off until you review it");
     });
 
     it("leaves the line as it was on Not now", async () => {
