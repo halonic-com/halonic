@@ -86,7 +86,8 @@ export function parseFile<Name extends KindName>(
   );
   const parsed = parse(fileKind.schema, prepared.data);
   if (!parsed.ok) {
-    const issues = wordIssues(parsed.error, prepared.data);
+    const worded = wordIssues(parsed.error, prepared.data);
+    const issues = fileKind.wordIssues?.(worded, prepared.data) ?? worded;
     const problems = issues.map((issue) => schemaProblem(issue, source));
     // An id that is wrong in itself, such as `in process`, is the one to fix first.
     const idFailed = problems.some((problem) => formatPath(problem.path) === "id");

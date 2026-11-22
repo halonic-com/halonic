@@ -7,6 +7,7 @@ import {
   IntegrationSheet,
   isPlacedSecret,
 } from "./schema.ts";
+import { wordSecretIssues } from "./secret-words.ts";
 import { checkSignIns } from "./sign-in-checks.ts";
 
 /**
@@ -20,6 +21,7 @@ export const integrationKind: FileKind<IntegrationSheet> = {
   schema: IntegrationSheet,
   places: [],
   idFromPlace: "none",
+  wordIssues: wordSecretIssues,
   check: checkIntegrationSheet,
 };
 
