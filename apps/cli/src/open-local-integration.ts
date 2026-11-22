@@ -25,6 +25,7 @@ import {
   integrationsFolder,
   type RunnerStartGate,
   readIntegrationFolder,
+  runnerUnfencedWords,
   type TrustCheck,
   TrustedRunnerStart,
 } from "@halonicjs/app";
@@ -205,7 +206,8 @@ class LocalIntegrationOpening {
    * it (microcopy 24.1 R18, its fix decided by the team on HAL-15144). A
    * saved yes that can't be read blocks the start too, and names its file. Where Studio's yes
    * doesn't reach the command (Windows with the WSL sandbox), the fix sends the run to Studio,
-   * where the yes applies, and says why (C612, then C666 #3).
+   * where the yes applies, and says why (C612, then C666 #3); the reason before it is R3's, with
+   * its fix, in place of the raw code (C665-57).
    */
   async #needsYes(reason: string): Promise<string> {
     const reaches = (await this.#machine.studioYesReaches?.()) ?? true;
@@ -216,6 +218,19 @@ class LocalIntegrationOpening {
     if (unreadable !== undefined) {
       return `the sandbox isn't available here (${reason}) and the saved yes to run without it can't be read (${JSON.stringify(unreadable)}), so nothing runs.${allow}`;
     }
+    if (!reaches) {
+      const words = runnerUnfencedWords(reason, "integration");
+      return `${afterColon(words.reason)} ${words.fix}${allow}`;
+    }
     return `the sandbox isn't available here (${reason}) and running without it isn't allowed yet.${allow}`;
   }
+}
+
+/** The words that may start R3's reason and read in lower case after "didn't start:". */
+const sentenceOpeners = new Set(["On", "The", "This", "Your"]);
+
+/** R3's reason as the rest of a sentence: "On Windows, …" reads "on Windows, …". */
+function afterColon(reason: string): string {
+  const firstWord = reason.split(" ")[0]?.replace(/,$/, "") ?? "";
+  return sentenceOpeners.has(firstWord) ? reason.charAt(0).toLowerCase() + reason.slice(1) : reason;
 }

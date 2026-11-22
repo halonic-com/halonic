@@ -342,7 +342,7 @@ verifies("cli.open-local-integration", () => {
     it("sends the run to Studio when Studio's yes doesn't reach the command", async () => {
       const { seen, client } = await setup({ check: onWindows, studioYesReaches: false });
       await expect(client().callTool("read-note", {})).rejects.toThrow(
-        /^Connector "notes" didn't start: the sandbox isn't available here \(windows\) and running without it isn't allowed yet\. Start the run in Halonic Studio, where you can allow it: on this computer, the halonic command can't see a yes given in Studio\.$/,
+        /^Connector "notes" didn't start: on Windows, integration code can't run in the sandbox in this version of Halonic\. Use Halonic inside WSL 2 on this computer\. Start the run in Halonic Studio, where you can allow it: on this computer, the halonic command can't see a yes given in Studio\.$/,
       );
       expect(seen.starts).toBe(0);
     });
@@ -432,7 +432,7 @@ verifies("cli.local-integration-unfenced-yes", () => {
     it("sends the run to Studio when Studio's yes doesn't reach the command", async () => {
       const { seen, client } = await setup({ check: onWindows, studioYesReaches: false });
       await expect(client().callTool("read-note", {})).rejects.toThrow(
-        /^Connector "notes" didn't start: the sandbox isn't available here \(windows\) and running without it isn't allowed yet\. Start the run in Halonic Studio, where you can allow it: on this computer, the halonic command can't see a yes given in Studio\.$/,
+        /^Connector "notes" didn't start: on Windows, integration code can't run in the sandbox in this version of Halonic\. Use Halonic inside WSL 2 on this computer\. Start the run in Halonic Studio, where you can allow it: on this computer, the halonic command can't see a yes given in Studio\.$/,
       );
       expect(seen.starts).toBe(0);
     });

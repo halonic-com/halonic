@@ -44,7 +44,7 @@ verifies("cli.profile-outside-workspace", () => {
         `your profile folder ${join("~", "acme", ".profile")} is inside this workspace.`,
       );
       expect(io.stderr[1]).toContain(
-        "A change to this workspace could change what you trust. Move the profile folder out, set HALONIC_HOME to its new place.",
+        "A change to this workspace could change what you trust. Move the profile folder out, then set HALONIC_HOME to its new place.",
       );
       expect(io.stderr[1]).not.toContain("puts it there");
     });

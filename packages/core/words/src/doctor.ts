@@ -276,14 +276,19 @@ export const doctorMessages = defineMessages("doctor", {
   proxyReason: (reason: string) => phrase`${reason}`,
 
   // The Profile line (HAL-15201): the reason and the fix every other command refuses the workspace with.
-  /** Profile ✕ when a variable put the profile folder in the workspace, with its path: "Your profile folder ~/acme/.profile is inside this workspace." (C637, C646) */
-  profileInWorkspace: (profile: string) =>
-    phrase`Your profile folder ${profile} is inside this workspace.`,
-  /** The refusal's fix, which is Studio's: always names `HALONIC_HOME`, led by the variable that moved the profile when that's another one (HAL-15232, C646). */
-  profileInWorkspaceFix: (variable: string) =>
+  /**
+   * Profile ✕ when a variable put the profile folder in the workspace, with its path and the
+   * reasons, led by the variable that moved it when that's another than `HALONIC_HOME`: "Your
+   * profile folder ~/acme/.profile is inside this workspace. XDG_DATA_HOME puts it there. A change
+   * to this workspace could change what you trust." (C637, C646, C665-90)
+   */
+  profileInWorkspace: (profile: string, variable: string) =>
     variable === "HALONIC_HOME"
-      ? phrase`Fix: a change to this workspace could change what you trust. Move the profile folder out, set HALONIC_HOME to its new place.`
-      : phrase`Fix: ${variable} puts it there. A change to this workspace could change what you trust. Move the profile folder out, set HALONIC_HOME to its new place.`,
+      ? phrase`Your profile folder ${profile} is inside this workspace. A change to this workspace could change what you trust.`
+      : phrase`Your profile folder ${profile} is inside this workspace. ${variable} puts it there. A change to this workspace could change what you trust.`,
+  /** The fix, which starts with a step as every other doctor fix does and always names `HALONIC_HOME` (HAL-15232, C665-90). */
+  profileInWorkspaceFix: () =>
+    phrase`Fix: move the profile folder out, then set HALONIC_HOME to its new place.`,
   /** Profile ✕ when the workspace is inside the profile folder: "This workspace is inside your profile folder ~/.local/share/halonic." */
   workspaceInProfile: (profile: string) =>
     phrase`This workspace is inside your profile folder ${profile}.`,
