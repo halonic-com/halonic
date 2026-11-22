@@ -33,7 +33,12 @@ export class TestPhoneTunnel implements ComputerTunnel {
     if (!this.#open || sessionGeneration !== generation) return { sent: false, reason: "not-open" };
     const message: unknown = JSON.parse(text);
     this.sent.push(message);
-    await this.#client.sendJson(message);
+    try {
+      await this.#client.sendJson(message);
+    } catch {
+      // The port never rejects: a socket that broke while sending is a session no longer open.
+      return { sent: false, reason: "not-open" };
+    }
     return { sent: true };
   }
 
