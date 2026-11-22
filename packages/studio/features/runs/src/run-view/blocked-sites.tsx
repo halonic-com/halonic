@@ -1,5 +1,5 @@
 import type { StepBlockedSites } from "@halonicjs/events";
-import { ChevronRightIcon, inlineLinkClasses, WarningIcon } from "@halonicjs/studio-kit";
+import { ChevronRightIcon, standaloneLinkClasses, WarningIcon } from "@halonicjs/studio-kit";
 import type { Ref } from "react";
 import { fill, fillText, SiteNameText, stepSummaryText, triesText } from "./blocked-sites-text.tsx";
 
@@ -112,7 +112,7 @@ function Action({ agent, place, onOpenAllowedSites }: BlockedSitesPanelProps) {
     <button
       type="button"
       onClick={onOpenAllowedSites}
-      className={`inline-flex items-center gap-0.5 self-start text-small ${inlineLinkClasses} [&>svg]:size-4`}
+      className={`inline-flex items-center gap-0.5 self-start text-small ${standaloneLinkClasses} [&>svg]:size-4`}
     >
       {fill("sandbox.blocked-sites.action", { agent })}
       <ChevronRightIcon />

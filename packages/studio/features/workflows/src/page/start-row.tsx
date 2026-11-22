@@ -111,9 +111,6 @@ export function ProblemsBand({
   );
 }
 
-/** **Open *Writer*** and **Open *file*** end the sentence on a desktop and sit on their own line on a phone. */
-const openLinkLine = "phone:block";
-
 /** "*Writer* has 1 problem that stops it." · **Open writer.agent.yaml**, at its first error. */
 function BlockingFileLine({
   file,
@@ -130,15 +127,13 @@ function BlockingFileLine({
       {openFileAt === undefined ? null : (
         <>
           {" "}
-          <span className={openLinkLine}>
-            <button
-              type="button"
-              className={inlineLinkClasses}
-              onClick={() => openFileAt(file.path, file.firstError.line)}
-            >
-              {words.openFile(fileName)}
-            </button>
-          </span>
+          <button
+            type="button"
+            className={inlineLinkClasses}
+            onClick={() => openFileAt(file.path, file.firstError.line)}
+          >
+            {words.openFile(fileName)}
+          </button>
         </>
       )}
     </span>
@@ -162,13 +157,9 @@ function MissingAliasLine({
       {openAgent === undefined ? null : (
         <>
           {" "}
-          {/* On a phone the link is 48 px tall, which would push its line down inside the
-              sentence, so it gets a line of its own there (C564 B). */}
-          <span className={openLinkLine}>
-            <button type="button" className={inlineLinkClasses} onClick={() => openAgent(agent.id)}>
-              {words.openAgent(agent.name)}
-            </button>
-          </span>
+          <button type="button" className={inlineLinkClasses} onClick={() => openAgent(agent.id)}>
+            {words.openAgent(agent.name)}
+          </button>
         </>
       )}
     </span>

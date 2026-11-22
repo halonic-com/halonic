@@ -1,5 +1,5 @@
 import { Button } from "../button/button.tsx";
-import { inlineLinkClasses } from "../external-link/external-link.tsx";
+import { standaloneLinkClasses } from "../external-link/external-link.tsx";
 
 /** One thing a chat line offers: "Try again", "Open Models ›", "Sign in with Google". */
 export interface ChatAction {
@@ -33,7 +33,7 @@ export function ChatActions({ actions }: ChatActionsProps) {
           <button
             key={action.label}
             type="button"
-            className={`text-small font-medium ${inlineLinkClasses}`}
+            className={`text-small font-medium ${standaloneLinkClasses}`}
             onClick={action.onClick}
           >
             {action.label}

@@ -219,15 +219,14 @@ verifies("workflows.start.start-run", () => {
     expect(buttonNamed(page, "Open Problems")).toBeDefined();
   });
 
-  // jsdom lays nothing out, so this checks the class: on a phone the link is 48 px tall and would
-  // push the sentence's last line down, so it gets its own line there and stays inline on a
-  // desktop (C564 B).
-  it("puts Open Writer on its own line on a phone only", async () => {
+  // The kit's inline link keeps its line's height on a phone (C606-3), so Open Writer ends the
+  // sentence there too, with no line of its own (C564 B is no longer needed).
+  it("ends the sentence with Open Writer, on a phone too", async () => {
     const { page } = await open([deadEnd, writerAlias], { openAgent: vi.fn() });
 
     const holder = buttonNamed(page, "Open Writer")?.parentElement;
-    expect(holder?.hasAttribute("data-testid")).toBe(false);
-    expect(holder?.className.split(" ")).toEqual(["phone:block"]);
+    expect(holder?.getAttribute("data-testid")).toBe("missing-alias");
+    expect(holder?.textContent?.endsWith("Pick a model on Writer's page. Open Writer")).toBe(true);
   });
 
   it("names the agent with no link when the page can't open agents, and nothing without the alias facts", async () => {
