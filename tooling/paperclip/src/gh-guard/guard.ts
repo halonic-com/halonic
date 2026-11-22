@@ -69,6 +69,7 @@ export function redirectMessage(call: StatusCall): string {
       : []),
     `In Claude Code, load it first: ToolSearch "select:${claudeToolName(call.tool)}".`,
     "gh still answers what no tool does: `gh pr view <n> --comments` or `--json body,files`,",
+    "a run's jobs and steps: `gh run view <id> --json jobs` or `--job <job id>`,",
     "and a failure log: `gh run list -w ci.yml -b <branch> -L 1 --json databaseId`, then `gh run view <id> --log-failed`.",
     "",
   ].join("\n");
