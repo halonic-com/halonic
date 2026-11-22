@@ -3,8 +3,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { describe, expect, it } from "vitest";
 import { cliListedToolApproval } from "./cli-listed-tool-approval.ts";
+import { waitingReporter } from "./engine-reporters.ts";
 import { type Phrase, plainText } from "./messages/phrase.ts";
-import { waitingReporter } from "./workspace-engine.ts";
 
 const location = "/work/acme";
 const pin: ConnectorPin = {

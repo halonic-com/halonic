@@ -8,7 +8,7 @@
 // it (Liam, HAL-4349).
 
 import { nodeProgramStarter } from "@halonicjs/adapter-mcp";
-import type { ChatTurnWaiting, HttpClient, Secrets, TrustGrant } from "@halonicjs/ports";
+import type { HttpClient, Secrets, TrustGrant } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
@@ -21,6 +21,7 @@ import {
   nodeConnectorMachine,
 } from "./connector-machine.ts";
 import { engineErrorReporter } from "./engine-error-reporter.ts";
+import { accessReporter, waitingReporter } from "./engine-reporters.ts";
 import { recordingSrtSandbox } from "./fenced-sandbox.ts";
 import { checkHarnessOverride } from "./harness-override.ts";
 import {
@@ -34,7 +35,6 @@ import {
 import { computerIntegrationMachine, computerPluginMachine } from "./local-integration-machine.ts";
 import type { LocalRunConnectorsInput } from "./local-run-connectors.ts";
 import type { Message } from "./messages/define.ts";
-import { markPart, type Phrase, phrase } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { openLocalIntegration } from "./open-local-integration.ts";
 import { printable } from "./output/printable.ts";
@@ -56,6 +56,7 @@ import {
   stuckTimerWatch,
 } from "./stuck-timers.ts";
 import { halonicVersion } from "./version.ts";
+import type { CommandRunFiles } from "./version-files.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 import type { WorkspaceVersions } from "./workspace-versions.ts";
@@ -101,6 +102,12 @@ export interface WorkspaceEngineTarget {
   /** For `routines watch`, whose runs read the live version at each start; see `LocalEngineInput.versions`. */
   readonly versions?: WorkspaceVersions;
   /**
+   * For `run` and `runs send`: the files of the version the run reads,
+   * which the sandbox check and the harness read each agent's file from.
+   * Left out, as for `routines watch`, the check reads them from disk.
+   */
+  readonly runFiles?: CommandRunFiles;
+  /**
    * The grant from the command's trust check (`checkRunTrust`), which the
    * runs' connectors start with: `null` when the runs reach only the test
    * model, so no connector program starts.
@@ -138,7 +145,10 @@ export interface WorkspaceEngineTarget {
 }
 
 /** What {@link checkEngineRuns} checks: the workspace and its runs, without the engine's own options. */
-export type EngineRunsTarget = Pick<WorkspaceEngineTarget, "dir" | "workspace" | "runs" | "ending">;
+export type EngineRunsTarget = Pick<
+  WorkspaceEngineTarget,
+  "dir" | "workspace" | "runs" | "ending" | "runFiles"
+>;
 
 /** A workspace's engine, open until {@link LocalEngine.close}, with the signal to follow its runs with. */
 export interface WorkspaceEngine extends LocalEngine {
@@ -207,6 +217,7 @@ export async function openWorkspaceEngine(
     workspace: target.workspace,
     holder: target.holder,
     ...(target.versions === undefined ? {} : { versions: target.versions }),
+    ...(target.runFiles === undefined ? {} : { runFiles: target.runFiles }),
     workspaceRoot: target.dir.root,
     runConnectors: (
       setup.runConnectors ??
@@ -280,7 +291,13 @@ export async function checkEngineRuns(
   target: EngineRunsTarget,
 ): Promise<PlacedAgent[]> {
   const host = setup.sandboxGate?.() ?? nodeSandboxGateHost(setup.profile);
-  const machine = await sandboxGateMachine(host, target.dir.root);
+  const onDisk = await sandboxGateMachine(host, target.dir.root);
+  const { runFiles } = target;
+  // The agents' files the run reads, so the choice checked is the one the harness checks.
+  const machine =
+    runFiles === undefined
+      ? onDisk
+      : { ...onDisk, readFile: (path: string) => runFiles.loadedFile(path) };
   const placed = new Map<string, PlacedAgent>();
   for (const run of target.runs) {
     checkHarnessOverride(target.workspace, run, target.ending);
@@ -351,56 +368,6 @@ function computerRunConnectors(
     // The CLI connects no built-in Google connector yet, the only kind that reads sign-ins.
     context: { http: machine.http, tokens: machine.tokens },
     dispose: () => integrations.dispose(),
-  };
-}
-
-/**
- * The engine's `reportWaiting`: a warning naming the command that reviews
- * the tools a turn left out, shown with or without `--debug`. A run asks
- * about them at every step, so each warning is written once for each
- * connector and set of tools.
- *
- * @example
- * const reportWaiting = waitingReporter((line) => context.warn(line));
- * reportWaiting("notes", [{ source: "notes", name: "lookup" }]);
- * // ! The tool lookup of notes is off until you review it. To review it, run halonic tools review notes
- */
-export function waitingReporter(
-  warn: (line: Phrase) => void,
-): (connector: string, waiting: readonly ChatTurnWaiting[]) => void {
-  const told = new Set<string>();
-  return (connector, waiting) => {
-    const names = waiting.map((tool) => tool.name).join(", ");
-    const key = `${connector}\n${names}`;
-    if (told.has(key)) return;
-    told.add(key);
-    const line = runMessages.toolsWaiting(
-      printable(connector),
-      waiting.map((tool) => tool.name),
-      `halonic tools review ${printable(connector)}`,
-    );
-    warn(phrase`${markPart("needsYou")} ${line.phrase}`);
-  };
-}
-
-/**
- * What the CLI says of each harness agent's access to its model (HAL-12784):
- * the key it spends in a `--debug` line, by provider and secret name, and a
- * warning when a sandboxed agent has no key and may run signed out. On this
- * computer the program's own sign-in works, so nothing is said.
- */
-export function accessReporter(
-  context: Pick<CommandContext, "debug" | "warn">,
-): NonNullable<LocalEngineInput["reportAccess"]> {
-  return (agent, choice) => {
-    const name = printable(agent.agentId);
-    if (choice.kind === "key") {
-      context.debug(
-        runMessages.harnessKey(name, printable(choice.providerId), printable(choice.secret)).phrase,
-      );
-    } else if (choice.reason === "no-keyed-provider") {
-      context.warn(runMessages.harnessSignedOut(name, choice.provider).phrase);
-    }
   };
 }
 

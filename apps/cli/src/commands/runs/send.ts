@@ -42,8 +42,9 @@ import { stepName } from "../../messages/step-name.ts";
 import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import { endedAt, type RunClock } from "../../run-times.ts";
-import { loadSendWorkspace } from "../../run-workspace.ts";
+import { loadSendWorkspace, openGitHistory } from "../../run-workspace.ts";
 import { placedWarning, type SandboxGateRun, sandboxRunOf } from "../../sandbox-gate.ts";
+import { CommandRunFiles } from "../../version-files.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceEngine, type WorkspaceEngine } from "../../workspace-engine.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
@@ -87,7 +88,8 @@ export async function sendToRun(
   const workspace = await openWorkspaceDir(input, context);
   const runs = await openWorkspaceRuns(workspace.root, setup.profile);
   const dir = givenDir(input, workspace);
-  const loaded = await loadSendWorkspace(workspace, setup.history);
+  const send = await loadSendWorkspace(workspace, setup.history);
+  const loaded = send.workspace;
   const named = { event, typed, name: printable(workspaceNameOf(loaded, workspace)), dir };
   const lookup = await new RunHistory(runs).showRun(typed);
   switch (lookup.found) {
@@ -115,6 +117,11 @@ export async function sendToRun(
   const engine = new EngineOnSend(context, setup, {
     dir: workspace,
     workspace: loaded,
+    runFiles: new CommandRunFiles(
+      workspace,
+      { version: send.version, loaded: send },
+      setup.history ?? openGitHistory,
+    ),
     run: sandboxRunOf(lookup.run),
     typedDir: dir,
   });
@@ -156,6 +163,8 @@ export async function sendToRun(
 interface SendTarget {
   readonly dir: OpenWorkspaceDir;
   readonly workspace: LoadedWorkspace;
+  /** The files of the version the run reads, which "On this computer" is checked against. */
+  readonly runFiles: CommandRunFiles;
   /** The run's hub, workflow and harness, which the sandbox is checked for. */
   readonly run: SandboxGateRun;
   /** The user's own `--dir`, which the trust fix repeats. */
@@ -183,7 +192,7 @@ class EngineOnSend implements Pick<RunExecutor, "send"> {
   }
 
   async send(runId: string, event: string): Promise<RunSummary> {
-    const { dir, workspace, run, typedDir } = this.target;
+    const { dir, workspace, runFiles, run, typedDir } = this.target;
     const nothingSent = sandboxMessages.nothingSent();
     const trust = await checkRunTrust(
       dir,
@@ -197,6 +206,7 @@ class EngineOnSend implements Pick<RunExecutor, "send"> {
       holder: "runsSend",
       dir,
       workspace,
+      runFiles,
       trust,
       runs: [run],
       ending: nothingSent,

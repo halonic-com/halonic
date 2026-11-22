@@ -120,6 +120,12 @@ export interface LocalHarnessInput {
    * agent's file from the run's version. Without it, from disk.
    */
   readonly versions?: Pick<WorkspaceVersions, "agentFileOf" | "skillTextOf">;
+  /**
+   * The agents' files of the version a run read, for `run` and `runs send`,
+   * whose definitions come from the live version: the placement check
+   * hashes the agent's file from there, never from disk. `versions` wins.
+   */
+  readonly agentFiles?: Pick<WorkspaceVersions, "agentFileOf">;
   /** The workspace's files, which Accept writes and a proposal's base is read from. */
   readonly store: DefinitionStore;
   readonly digest: Digest;
@@ -332,14 +338,17 @@ async function bridgeServersOf(input: LocalHarnessInput, secrets: Secrets): Prom
 
 /**
  * The agents' files, found by hub and id in the loaded workspace: as the
- * run's version has them when runs start from versions, else as they are on
- * disk now.
+ * run's version has them when the command gave its files, else as they are
+ * on disk now.
  */
-function agentFilesOf(input: LocalHarnessInput): AgentFiles {
+export function agentFilesOf(
+  input: Pick<LocalHarnessInput, "versions" | "agentFiles" | "workspace" | "location">,
+): AgentFiles {
   return {
     bytesOf: async (hubId, agentId, run) => {
-      if (input.versions !== undefined) {
-        return await input.versions.agentFileOf(run, hubId, agentId);
+      const ofVersion = input.versions ?? input.agentFiles;
+      if (ofVersion !== undefined) {
+        return await ofVersion.agentFileOf(run, hubId, agentId);
       }
       const file = filesOf(input.workspace(), "agent").find(
         (each) => each.hub === hubId && each.value.id === agentId,
