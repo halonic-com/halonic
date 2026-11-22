@@ -186,7 +186,8 @@ Routines start on time only while this workspace is open in Halonic Studio or `h
 
 Acme has one routine, the weekly report, set for Monday at 9:00. This command
 lists your routines and when each runs next. It starts nothing. Your "Next"
-date will differ: it is the next Monday at 09:00. To run routines at their set times, keep
+date will differ: it is the next Monday at 09:00, and it reads "Next tomorrow 09:00"
+when that is the next day. To run routines at their set times, keep
 `halonic routines watch` open in a terminal, and stop it with Ctrl C.
 
 ## Use a real model
