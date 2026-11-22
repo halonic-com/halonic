@@ -2,6 +2,7 @@
 
 - Approval: HAL-16550
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:NcjFWD0Ccq332b3GNHP7vDNbta5t4vxRRsPlD1KyzsUCvXGpiKSemaLApc0QltVXPPS2egXDWIGafPq5e0ouCQ==
 
 Slice S1-1b of the selling layer (design on HAL-12483, section 2) adds an
 optional `organisations` list to `users.config` in `deployments.yaml`: an
