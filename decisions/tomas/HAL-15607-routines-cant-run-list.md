@@ -3,7 +3,6 @@
 - Task: HAL-15607
 - Approval: HAL-15607 (flow check C600 findings 2 and 3 on HAL-15594; wording built on the approved Routines list and routine page, decided by the team under the HAL-2282 rule). Liam signs this note at code review.
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:XQXrfRJ6NxM3dcrps8O8m6jgEE+P59vzFYV5lwmSfEwLCwX5mVYorAyz6JgQby3dZTPTVJwB+MDy1kjw7GMJCA==
 
 ## What changes
 
@@ -18,7 +17,9 @@ showed its next time and `halonic routines` said "Next tomorrow 08:00". Now:
   own yet, only as a step in a workflow. Make a workflow with the agent as a step, then have the
   routine start that workflow." `--json` gives `nextRun: null` and a new field `startsAgent`, which
   core's routine list now gives. The exit code stays 0: the file has no error and `halonic
-  validate` passes, and exit 1 points at `halonic validate`.
+  validate` passes, and exit 1 points at `halonic validate`. In a workspace that isn't trusted
+  here, such a routine still says "✕ Can't start", not "! Paused until trusted" (HAL-15525), since
+  trusting the workspace wouldn't start it; it alone doesn't bring the line naming `halonic trust`.
 
 **A routine's page whose read fails** said "The engine isn't answering. It may still be starting."
 for any error without a reason of its own, such as the shell's git failing. It now uses the shell's
