@@ -129,8 +129,9 @@ function Section({ title, children }: { readonly title: string; readonly childre
 
 /**
  * "No runs yet." with what the Routines list's row says: why it can't start, that it is off or
- * paused until trusted, in the row's order; else when it runs next, or how to start one by hand. A
- * next time shows only for a routine that will start on its own then (C587 #1).
+ * paused until trusted (with **Review**, which opens the trust check), in the row's order; else when
+ * it runs next, or how to start one by hand. A next time shows only for a routine that will start
+ * on its own then (C587 #1).
  */
 function NoRuns({ host, routine }: { readonly host: RoutinesHost; readonly routine: RoutineView }) {
   const held = heldWords(routine);
@@ -138,7 +139,17 @@ function NoRuns({ host, routine }: { readonly host: RoutinesHost; readonly routi
   const next = useNextTimes(host, routine, automatic, routine)?.times[0];
   const description =
     held ?? (next === undefined ? runsWords.emptyManual : runsWords.emptyAfter(nextRunWords(next)));
-  return <EmptyState title={runsWords.emptyTitle} description={description} />;
+  // Paused says where trust happens: Review opens the window's trust check (C656 #4).
+  const review = held === runsWords.emptyPaused ? host.askTrust?.bind(host) : undefined;
+  return (
+    <EmptyState
+      title={runsWords.emptyTitle}
+      description={description}
+      {...(review !== undefined && {
+        action: { label: runsWords.review, onClick: () => void review() },
+      })}
+    />
+  );
 }
 
 /** Why the routine won't start on its own, as its row's chip and line say; `undefined` when it will. */
