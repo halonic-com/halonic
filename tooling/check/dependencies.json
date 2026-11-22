@@ -32,6 +32,16 @@
       ],
       "reason": "Versions and changelogs for what we ship, the CLI and the Studio app (D9)."
     },
+    "@changesets/git": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/root"
+      ],
+      "layers": [
+        "tooling"
+      ],
+      "reason": "Part of @changesets/cli, listed only so its patch is pinned to one version: the patch limits how many git processes `changeset version` starts at once (HAL-15966). Nothing imports it."
+    },
     "@cloudflare/workers-types": {
       "category": "dev-tooling",
       "allowedIn": [
