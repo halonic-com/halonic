@@ -27,7 +27,8 @@ const stepLines: Readonly<Record<string, string>> = {
   "final-has-transitions": "Is an end, but has arrows",
   "task-without-agent": "Has no agent",
   "wait-without-events": "Has no answers to pick",
-  "wait-arrow-without-event": "Never taken: no answer",
+  // A bare arrow on a wait takes `done`, which the Inbox's wait card offers as Done (C665 85).
+  "wait-arrow-without-event": "Taken on Done",
   "unguarded-shadow": "Never taken",
   "not-a-choice": "Compares with a non-option",
   "ignored-key": "Has a key it ignores",
@@ -66,8 +67,9 @@ const rowSentences: Readonly<Record<string, string>> = {
     "Gives a person no answers to pick, such as approve. Add them in the workflow's file.",
   "unguarded-shadow": neverTakenSentence("Has an arrow that's", "the same event", "its card"),
   // The core says "transition" and "event"; Studio says arrow and answer (microcopy 1.2).
+  // Such an arrow takes `done`, so only an answer Done takes it (C665 86).
   "wait-arrow-without-event":
-    "Has an arrow with no answer, so it's never taken: a person picks from its named answers. Give the arrow an answer, or a timer, in the workflow's file.",
+    "Has an arrow with no answer, so it's taken only if someone answers Done. Give the arrow an answer, or a timer, in the workflow's file.",
 };
 
 /**
@@ -81,6 +83,9 @@ const plateSentences: Readonly<
   // An arrow without an event fires on done; a timer arrow is never shadowed.
   "unguarded-shadow": (arrow, nameOf) =>
     neverTakenSentence("This arrow is", arrow.event ?? "done", `${nameOf(arrow.from)}'s card`),
+  // In place of the core's "transition … event" with the step's id (C665 87, as C633 41 did above).
+  "wait-arrow-without-event": () =>
+    "This arrow has no answer, so it's taken only if someone answers Done. Give it an answer, or a timer, in the workflow's file.",
 };
 
 /**
