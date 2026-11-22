@@ -37,12 +37,15 @@ import { pageWords } from "./page-words.ts";
 import { RemoveStepButton } from "./remove-step-button.tsx";
 import type { Dock } from "./run-dock.tsx";
 import { ArrowsIn, StepArrows } from "./step-arrows.tsx";
-import type { NamedStep } from "./step-names.ts";
+import { type NamedStep, nameOf, stepNames } from "./step-names.ts";
 import { missingAgentSentence, StepProblemsCallout } from "./step-problems-callout.tsx";
 import { useRemoving } from "./use-removing.ts";
 import type { WorkflowLoad } from "./use-workflow.ts";
 
 const words = pageWords.stepCard;
+
+/** The steps of a workflow not read yet, one list so the card's hooks keep their inputs. */
+const noSteps: readonly NamedStep[] = [];
 
 /** Props for {@link DockedStepCard}. */
 export interface DockedStepCardProps {
@@ -253,11 +256,13 @@ export function DockedStepCard({
 
 /**
  * How the page changes a step from its card, its fields or its arrows: through the host, saying
- * why on a toast when it can't. Resolves to whether it was written, so a field keeps what wasn't.
+ * why on a toast when it can't, with the step named as its card on the canvas names it among
+ * `steps`. Resolves to whether it was written, so a field keeps what wasn't.
  */
 export function useChangeStep<Change>(
   apply: ((stepId: string, change: Change) => Promise<void>) | undefined,
   stepId: string | undefined,
+  steps: readonly NamedStep[],
 ): ((change: Change) => Promise<boolean>) | undefined {
   const toasts = useToastStore();
   const change = useCallback(
@@ -269,13 +274,13 @@ export function useChangeStep<Change>(
       } catch (error) {
         toasts?.show({
           tone: "danger",
-          title: words.couldntSave(stepId),
+          title: words.couldntSave(nameOf(stepNames(steps), stepId)),
           text: errorReasonFor(error),
         });
         return false;
       }
     },
-    [apply, stepId, toasts],
+    [apply, stepId, steps, toasts],
   );
   return apply === undefined || stepId === undefined ? undefined : change;
 }
@@ -349,14 +354,17 @@ export function StepEditDock({
   onClose,
 }: StepEditDockProps) {
   const view = workflow.kind === "ready" ? workflow.value : undefined;
+  const steps = view?.steps ?? noSteps;
   const { changeStep, changeArrows } = host;
   const save = useChangeStep<WorkflowStepChange>(
     changeStep && view && ((stepId, change) => changeStep.call(host, view, stepId, change)),
     pickedStep,
+    steps,
   );
   const saveArrows = useChangeStep<WorkflowArrowChange>(
     changeArrows && view && ((stepId, change) => changeArrows.call(host, view, stepId, change)),
     pickedStep,
+    steps,
   );
   const removing = useRemoving(host, view);
   const key = view === undefined ? "" : `workflow/${view.hubId}/${view.id}/step`;

@@ -72,7 +72,8 @@ export const pageWords = {
     description: "Description",
     /** Save model 8.4: a key pasted into a field is not saved. */
     looksLikeKey: "This looks like a key. Keep it as a secret instead?",
-    couldntSave: (stepId: string) => `Couldn't change step ${stepId}`,
+    /** `name` as its card on the canvas names the step (`stepNames`). */
+    couldntSave: (name: string) => `Couldn't change step ${name}`,
     /** Removing a step (flow-workflows 4.6, UX checklist 10.10). */
     remove: "Remove step",
     firstStep:
