@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { WorkspaceAgents, type WorkspaceAgentsParts } from "./workspace-agents.ts";
+import { WorkspaceAgents } from "./workspace-agents.ts";
+import type { WorkspaceAgentsParts } from "./workspace-agents-parts.ts";
 
 /** A workspace with the one agent `writer` in the hub `acme`; it is only read here. */
 const store: Record<string, string> = {

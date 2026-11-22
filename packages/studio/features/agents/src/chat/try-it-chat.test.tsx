@@ -182,7 +182,7 @@ verifies("agents.chat.reply-ends", () => {
     expect(buttonNamed(page, "Try again")).toBeDefined();
   });
 
-  it("offers Open Models › after Try again when the model's key was the cause, and only then", async () => {
+  it("offers Open Models › before Try again when the model's key was the cause, and only then", async () => {
     const { host, finish } = scriptedHost();
     const goToKeyField = vi.fn();
     const ways = { goToKeyField, openHarness: () => {} };
@@ -202,7 +202,7 @@ verifies("agents.chat.reply-ends", () => {
     const line = page.querySelectorAll(".text-danger")[1]?.parentElement;
     expect(
       [...(line?.querySelectorAll("button") ?? [])].map((button) => button.textContent),
-    ).toEqual(["Try again", "Open Models ›"]);
+    ).toEqual(["Open Models ›", "Try again"]);
     await act(async () => buttonNamed(page, "Open Models")?.click());
     expect(goToKeyField).toHaveBeenCalledOnce();
   });
@@ -329,6 +329,18 @@ verifies("agents.chat.sandbox", () => {
     });
     expect(requests).toHaveLength(0);
     expect(box.value).toBe("Sort this mail");
+  });
+
+  it("reads only the Callout's first line, once, and keeps its buttons out of the live region", async () => {
+    const { page, announce } = await chatWith(checkSaying(refused));
+    const live = page.querySelectorAll("[role=status], [aria-live]");
+    for (const region of live) {
+      expect(region.querySelector("button, a")).toBeNull();
+      expect(region.textContent).not.toContain("Check again");
+    }
+    expect(announce.mock.calls).toEqual([
+      ["Sorter can't run: the sandbox can't start on this computer."],
+    ]);
   });
 
   it("lets the message go and puts focus in the box once Check again finds the sandbox ready", async () => {

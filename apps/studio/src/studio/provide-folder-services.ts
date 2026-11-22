@@ -249,6 +249,8 @@ export function provideFolderServices(
       // Looked up when Review and make live is pressed, as for the routines below.
       versionDialog: (paths, options) =>
         services.get(VersionDialogService).open(paths, { makesLive: options?.name }),
+      // Send checks first, so the trust check opens; the engine still refuses with `denied`.
+      trust: { mayStart: () => trust.mayStartNow(), askTrust, workspaceName: name },
     }),
   );
   // The status bar's Review trusts the workspace too; a refusal on the page then goes (C552, C596).

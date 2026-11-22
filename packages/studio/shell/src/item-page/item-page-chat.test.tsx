@@ -225,6 +225,20 @@ verifies("shell.item-page-chat", () => {
     expect(panelBox(container).style.width).toBe("700px");
   });
 
+  it("tells the chat whether the panel shows beside it", () => {
+    const panelSaid: ItemPageChat = {
+      startsOpen: true,
+      render: (_close, panelShown) => <p>{panelShown ? "panel beside" : "chat alone"}</p>,
+    };
+    const container = renderItem(panelSaid);
+    expect(chat(container)?.textContent).toBe("panel beside");
+    press(container, "Close Flow");
+    expect(chat(container)?.textContent).toBe("chat alone");
+    press(container, "Flow");
+    FakeResizeObserver.resize(800);
+    expect(chat(container)?.textContent).toBe("chat alone");
+  });
+
   it("gives the whole tab to the view with no chat for the kind", () => {
     const container = renderItem(undefined, "Workflow");
     expect(chat(container)).toBeNull();

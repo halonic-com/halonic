@@ -1,5 +1,4 @@
 import { Button, EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
-import type { AgentListing } from "../api.ts";
 import { pageWords } from "./page-words.ts";
 import type { Load } from "./use-load.ts";
 
@@ -12,7 +11,8 @@ export function AgentRead({
   name,
   retry,
 }: {
-  readonly load: Load<AgentListing>;
+  /** The agent's read, or what else the page waits on before it shows the agent. */
+  readonly load: Load<unknown>;
   readonly name: string;
   readonly retry: () => void;
 }) {

@@ -1,6 +1,10 @@
 import type { SandboxStartCheck } from "@halonicjs/app";
 import { findSecretShape } from "@halonicjs/std";
-import { SandboxCantRunCallout, useSandboxStart } from "@halonicjs/studio-feature-runs/api";
+import {
+  cantRunWords,
+  SandboxCantRunCallout,
+  useSandboxStart,
+} from "@halonicjs/studio-feature-runs/api";
 import {
   type ChatAction,
   ChatComposer,
@@ -11,7 +15,7 @@ import {
   ChatToolLine,
   ChatTranscript,
 } from "@halonicjs/studio-kit";
-import { Fragment, type ReactNode, useId, useRef, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type { AgentHarnessId } from "../api.ts";
 import type { HarnessStrip } from "../configuration/harness-strip.ts";
 import { type BoxLineActions, boxProblem, makesSendWait, TryItBoxLine } from "./box-line.tsx";
@@ -106,20 +110,15 @@ export function TryItChatView(props: TryItChatViewProps) {
     void send({ keyChecked: true });
   };
 
+  const sandboxRefused = problem?.kind === "sandbox";
+  // The Callout stays out of the box's status region, so its buttons aren't read with it; only its
+  // first line is read, once, when it shows (C516 S-5).
+  const announce = props.announce;
+  useEffect(() => {
+    if (sandboxRefused) announce?.(cantRunWords.cantRun(name));
+  }, [sandboxRefused, announce, name]);
   const line = () => {
-    if (problem === undefined) return undefined;
-    // The same Callout as Run, under the box; once the sandbox works, the box takes focus.
-    if (problem.kind === "sandbox") {
-      return (
-        <SandboxCantRunCallout
-          name={name}
-          start={sandbox}
-          firstLineId={lineId}
-          announce={props.announce}
-          onReady={() => box.current?.focus()}
-        />
-      );
-    }
+    if (problem === undefined || problem.kind === "sandbox") return undefined;
     return (
       <div id={lineId}>
         <TryItBoxLine problem={problem} name={name} actions={{ ...props.ways, sendAnyway }} />
@@ -174,6 +173,16 @@ export function TryItChatView(props: TryItChatViewProps) {
           textRef={box}
           line={line()}
         />
+        {/* The same Callout as Run, under the box; once the sandbox works, the box takes focus. */}
+        {sandboxRefused ? (
+          <SandboxCantRunCallout
+            name={name}
+            start={sandbox}
+            firstLineId={lineId}
+            announce={announce}
+            onReady={() => box.current?.focus()}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -215,7 +224,8 @@ function Step({ step }: { readonly step: ReplyStep }) {
  * The line a reply ends with (mc 8.3; states H13, H23, H24). Try again only when no tool ran,
  * since sending again could repeat what a tool did; after a tool, the sentence says to send a new
  * message instead. A failure because of the model's key also leads to Models, as a failed run
- * does (microcopy 15.3). A reply that was simply answered has no line.
+ * does (microcopy 15.3), and comes first: until the key is fixed, Try again fails the same way
+ * (microcopy 1.6 E2). A reply that was simply answered has no line.
  */
 function EndLine({
   end,
@@ -244,7 +254,7 @@ function EndLine({
     case "failed":
     case "engine-stopped":
       return (
-        <ChatEndLine tone="danger" actions={[...(end.toolsRan ? [] : again), ...fixKey]}>
+        <ChatEndLine tone="danger" actions={[...fixKey, ...(end.toolsRan ? [] : again)]}>
           {tryItWords.endedBadly(name, end)}
         </ChatEndLine>
       );
