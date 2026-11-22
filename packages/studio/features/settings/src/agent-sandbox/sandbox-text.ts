@@ -94,7 +94,7 @@ export const REMOVED_KEPT_ACCESS =
   "It still has access to your project folders until you quit Halonic and open it again normally, not as administrator.";
 /** The same, when the next start doesn't end it: only a removal without administrator rights does (HAL-15836). */
 export const REMOVED_KEPT_ACCESS_MANUAL =
-  "It may still have access to some of your project folders. To end that, remove the sandbox again without administrator rights: quit Halonic, open it again normally, not as administrator, then set the sandbox up again and remove it.";
+  "It may still have access to some of your project folders. To end that, remove the sandbox again without administrator rights: quit Halonic, open it again normally, not as administrator, then set the sandbox up again and remove it. Windows asks for administrator rights for each.";
 export const removedLine = (keptAccess?: KeptAccess) => {
   if (keptAccess === undefined) return REMOVED;
   return `${REMOVED} ${keptAccess === "manual" ? REMOVED_KEPT_ACCESS_MANUAL : REMOVED_KEPT_ACCESS}`;

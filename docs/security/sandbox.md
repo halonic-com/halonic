@@ -160,17 +160,18 @@ command line inside WSL don't end it. "It may still have access to some of your
 project folders" (`manual`, srt still lists its sandbox account, or its status
 can't be read) means the next start won't end it.
 
-For `manual` there is one step: remove the sandbox again without administrator
-rights. Only that removal takes the access back; a start doesn't, so quitting
-Halonic and opening it again is not enough on its own. Each place says how to
-do it from there:
+For `manual` the fix is the same everywhere: remove the sandbox again without
+administrator rights. Only that removal takes the access back; a start
+doesn't, so quitting Halonic and opening it again is not enough on its own.
+Each place says how to do it from there:
 
 - `halonic sandbox remove`: run `halonic sandbox remove` from a terminal that
   isn't running as administrator. That works only in a terminal on Windows
   itself, not inside WSL. Running it again is fine after a removal.
 - Settings: quit Halonic and open it again normally, not as administrator, then
   set the sandbox up again and remove it. Settings offers removal only for a
-  sandbox that is set up.
+  sandbox that is set up, so this takes two administrator prompts, one for the
+  setup and one for the removal, and Settings says so.
 - The uninstaller's last page, for when Halonic is already gone: install
   Halonic again with "Set up the agent sandbox" on, then uninstall it normally,
   not as administrator. A normal uninstall runs without administrator rights,
