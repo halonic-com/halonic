@@ -190,8 +190,9 @@ it, until HAL-16015 is done.
 ## Reviewer path list
 
 `reviewerFor({ files, changedLines, sensitive })` answers `julian` or `liam`
-by the rules of HAL-14809. Scripts that route pull requests import it from
-here, so there is only one list.
+by the rules of HAL-14809 (widened on 22 Nov). Pass each changed
+`package.json`'s diff in `patches`, or that manifest counts as Liam's. Scripts
+that route pull requests import it from here, so there is only one list.
 
 ## Merge queue fill order (`queue.prio`)
 

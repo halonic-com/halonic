@@ -54,12 +54,15 @@ export {
 } from "./pr-watcher/watch.ts";
 export {
   isLiamPath,
+  isTestPath,
   julianLineLimit,
   liamFiles,
   liamFolders,
+  liamPackageFields,
   liamWords,
   type RoutedPull,
   reviewerFor,
+  touchesPackageFields,
 } from "./reviewer-paths.ts";
 export {
   agingPoints,

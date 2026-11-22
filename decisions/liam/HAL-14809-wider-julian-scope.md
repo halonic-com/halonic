@@ -1,0 +1,32 @@
+# Decision: Julian's review scope widens: 800 lines, wording files and package manifests
+
+- Approval: the board asked for it on HAL-14809 (Timothy, 22 Nov); Liam named the paths there; Julian reviews and signs it there
+- Kind: internal
+
+`paperclip.reviewer-paths` changes in four ways, so fewer pull requests wait for Liam:
+
+- Julian's line limit goes from 400 to 800 changed lines, and a pull request that only
+  changes tests and Markdown has no line limit.
+- The words `sandbox`, `secret`, `sign-in`, `oauth`, `keychain` and `trust` no longer
+  count in tests, Markdown and wording files (`messages/`, `*-words.ts`); they still count
+  in code.
+- A package's `package.json` is Julian's when the lockfile doesn't change and no field
+  that publishes, installs or pins something does (`version`, `private`, `publishConfig`,
+  `bin`, install and publish scripts, `engines`, `pnpm`). The root `package.json` stays
+  Liam's.
+- The reviewer path list itself becomes Liam's, so Julian doesn't approve a change to his
+  own scope.
+
+The examples change to match. `pr_status` passes each manifest's diff so it can tell.
+
+## Why
+
+At 10:18 on 22 Nov, 37 pull requests waited for review, and most of the ones only Liam
+could approve were there because of size or a word in a wording file, not a sensitive path.
+CI, the guard, native code, secrets, sign-in, sandbox and trust code, dependencies and
+releases stay with Liam.
+
+## Covers
+
+- paperclip.reviewer-paths
+- tooling/paperclip/src/reviewer-paths.test.ts

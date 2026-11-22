@@ -100,7 +100,9 @@ export async function prStatus(get: GitHubGet, repo: string, number: number): Pr
   const [ciOkOnHead, comments, files, review, inQueue, compare] = await Promise.all([
     ciOkOf(get, repo, pull),
     everyPage(get, `/repos/${repo}/issues/${number}/comments`) as Promise<PullComment[]>,
-    everyPage(get, `/repos/${repo}/pulls/${number}/files`) as Promise<{ filename: string }[]>,
+    everyPage(get, `/repos/${repo}/pulls/${number}/files`) as Promise<
+      { filename: string; patch?: string }[]
+    >,
     latestReview(get, repo, number, head),
     open ? inMergeQueue(get, repo, number) : Promise.resolve(false),
     open
@@ -118,6 +120,9 @@ export async function prStatus(get: GitHubGet, repo: string, number: number): Pr
     files: files.map((file) => file.filename),
     changedLines,
     sensitive: false,
+    patches: Object.fromEntries(
+      files.flatMap((file) => (file.patch === undefined ? [] : [[file.filename, file.patch]])),
+    ),
   });
   const found = approvals(comments, { head, author, reviewer });
   return {
