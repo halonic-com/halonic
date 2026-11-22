@@ -98,9 +98,29 @@ const leaky: readonly CheckFact[] = [
   { check: "google", step: 4, steps: 7, startedAt: new Date(2026, 10, 8), email },
 ];
 
+// The host's facts are checked only for `check` and `status`, so a number or a closed code can
+// hold any text when they reach the report. `as never` puts it where the types wouldn't let it.
+const unchecked: readonly CheckFact[] = [
+  { check: "workspace", status: "failed", name: all, trust: "new", fileProblems: all as never },
+  {
+    check: "last-run",
+    status: "failed",
+    runId: all,
+    step: all as never,
+    steps: step as never,
+    stepName: step,
+    agentName: all,
+    durationMs: 6800,
+    failure: { reason: "key-refused", provider: all, secret: key, model: all, alias: all },
+    cause: "last-run.key-refused",
+  },
+  { check: "sandbox", status: "failed", reason: all as never, missing: [all] },
+  { check: "google", step: all as never, steps: 7, startedAt: new Date(2026, 10, 8), email },
+];
+
 verifies("check-computer.report", () => {
   describe("holds no key, email address, step name, workspace name or path", () => {
-    const report = checkReport(leaky, {
+    const report = checkReport([...leaky, ...unchecked], {
       about: "Halonic 0.1.0 · macOS arm64",
       at: new Date(),
       demo: false,
@@ -122,6 +142,13 @@ verifies("check-computer.report", () => {
       expect(report).toContain("another provider: key can't be read");
       expect(report).toContain("failed at step 2 of 3 · cause unknown");
       expect(report).toContain("setup at step 4 of 7, started 8 Nov");
+    });
+
+    it("says a text in a number or a reason code without it", () => {
+      expect(report).toContain("not trusted yet · problems in its files");
+      expect(report).toContain("failed at a step · cause last-run.key-refused");
+      expect(report).toContain("can't start · unknown");
+      expect(report).toContain("setup, started 8 Nov");
     });
   });
 });

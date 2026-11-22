@@ -59,17 +59,28 @@ function modelsMark({ servers, keys, sampleAnswers, tests }: ModelsFact): CheckM
   return sampleAnswers || keys.length > 0 ? "info" : "pass";
 }
 
+/** How many causes the marks count: each ✕ is a problem and each ! a warning (4.2). */
+export function markCounts(marks: readonly CheckMark[]): { problems: number; warnings: number } {
+  return {
+    problems: marks.filter((mark) => mark === "problem").length,
+    warnings: marks.filter((mark) => mark === "warning").length,
+  };
+}
+
+/** "1 problem", "2 warnings": a count and its word. */
+export function countWords(count: number, word: "problem" | "warning"): string {
+  return `${count} ${word}${count === 1 ? "" : "s"}`;
+}
+
 /**
  * The heading: "1 problem", "1 problem · 1 warning", "1 warning" or "No problems found", counting
  * the marks, which are causes, not lines (4.2).
  */
 export function checkHeading(marks: readonly CheckMark[]): string {
-  const counts = [...countOf(marks, "problem"), ...countOf(marks, "warning")];
+  const { problems, warnings } = markCounts(marks);
+  const counts = [
+    ...(problems === 0 ? [] : [countWords(problems, "problem")]),
+    ...(warnings === 0 ? [] : [countWords(warnings, "warning")]),
+  ];
   return counts.length === 0 ? "No problems found" : counts.join(" · ");
-}
-
-function countOf(marks: readonly CheckMark[], mark: "problem" | "warning"): string[] {
-  const count = marks.filter((each) => each === mark).length;
-  if (count === 0) return [];
-  return [`${count} ${mark}${count === 1 ? "" : "s"}`];
 }

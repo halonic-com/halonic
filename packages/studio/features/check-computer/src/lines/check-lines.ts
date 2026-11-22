@@ -159,6 +159,9 @@ function actionsOf(fact: CheckFact): readonly CheckAction[] {
       return modelsActions(fact);
     case "google":
       return ["continue-setup", "start-over"];
+    case "last-run":
+      // A run the window can't open gets no button that goes nowhere.
+      return fact.hub === undefined ? [] : ["open-run"];
     default:
       return doctorLineActions(fact);
   }
@@ -181,5 +184,6 @@ export function checkLine(fact: CheckFact, context: LinesContext): CheckLine {
     mark: checkMark(fact),
     sentences: sentencesOf(fact, context),
     actions: actionsOf(fact),
+    fact,
   };
 }

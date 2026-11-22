@@ -1,5 +1,5 @@
 import type { DoctorAction } from "@halonicjs/app";
-import type { CheckLineId } from "../check-facts.ts";
+import type { CheckFact, CheckLineId } from "../check-facts.ts";
 import type { CheckMark } from "../check-marks.ts";
 
 /** A part of a sentence: plain words, or a name the screen sets as code, such as `localhost:11434`. */
@@ -25,6 +25,8 @@ export interface CheckLine {
   /** The first is beside the label; the rest under it. Never empty. */
   readonly sentences: readonly LineSentence[];
   readonly actions: readonly CheckAction[];
+  /** The facts the line was made from, for what its buttons open, such as the run of Last run. */
+  readonly fact: CheckFact;
 }
 
 /** A sentence of what the line found. */
