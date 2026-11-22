@@ -3,6 +3,7 @@
 - Task: HAL-15778
 - Approval: Liam's review of #4773 (HAL-15619) asked for it; Liam reviews it as a security PR and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+CWD/GJUfOPEqVvh0Y4tZS6OHt3tSVnUCoS1dhtfugy18qt9zjBc2qlx6OctbGdp1YmS/ITGUwa8btCSvDxkAA==
 
 ## What changes
 
