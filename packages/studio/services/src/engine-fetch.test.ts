@@ -30,6 +30,19 @@ async function opened(channels: string[]): Promise<string> {
   return channels[0] as string;
 }
 
+/**
+ * Node's `Request` passes its init signal's abort on only while the `Request` itself is alive: it
+ * links the two weakly. The fake shell's pending answer doesn't keep it alive the way the real shell
+ * does, so garbage collection while a test waits could drop the abort and leave the test hanging.
+ * A test that aborts later makes its request here, which holds it until the file ends.
+ */
+const heldRequests: Request[] = [];
+function heldRequest(url: string, init: RequestInit): Request {
+  const request = new Request(url, init);
+  heldRequests.push(request);
+  return request;
+}
+
 verifies("services.engine-fetch", () => {
   describe("a JSON route", () => {
     it("sends the route's name, params and body, and answers with the engine's status and body", async () => {
@@ -138,7 +151,7 @@ verifies("services.engine-fetch", () => {
       const reason = new Error("left the page");
 
       const answer = tauriEngineFetch(shell)(
-        new Request("http://engine.invalid/api/chat-turn", {
+        heldRequest("http://engine.invalid/api/chat-turn", {
           method: "POST",
           body: "{}",
           signal: controller.signal,
@@ -180,7 +193,7 @@ verifies("services.engine-fetch", () => {
       const controller = new AbortController();
 
       const answer = tauriEngineFetch(shell)(
-        new Request("http://engine.invalid/api/hello", { signal: controller.signal }),
+        heldRequest("http://engine.invalid/api/hello", { signal: controller.signal }),
       );
       await vi.waitFor(() => expect(shell.callsOf("engine_request")).toHaveLength(1));
       controller.abort("stopped");
@@ -249,7 +262,7 @@ verifies("services.engine-fetch", () => {
       const reason = new Error("closed");
 
       const response = await tauriEngineFetch(shell)(
-        new Request(runEvents, { signal: controller.signal }),
+        heldRequest(runEvents, { signal: controller.signal }),
       );
       const channel = await opened(channels);
       controller.abort(reason);
@@ -269,7 +282,7 @@ verifies("services.engine-fetch", () => {
       const reason = new Error("closed");
 
       const response = tauriEngineFetch(shell)(
-        new Request(runEvents, { signal: controller.signal }),
+        heldRequest(runEvents, { signal: controller.signal }),
       );
       await vi.waitFor(() => expect(shell.callsOf("engine_stream")).toHaveLength(1));
       controller.abort(reason);
