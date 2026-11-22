@@ -41,6 +41,8 @@ export interface ProposalItem {
   readonly since: string;
   /** ISO time it was settled, for an item under the Done heading (Q10); absent while it is open. */
   readonly settledAt?: string;
+  /** Nothing is left to decide in it, but it isn't settled yet (Q10); absent while it is open. */
+  readonly decided?: true;
 }
 
 /** A run's proposal and its run, as the Inbox's runs give them. */
@@ -50,8 +52,24 @@ export interface RunProposalEntry {
   readonly run: RunSummary | undefined;
 }
 
+/** A load's proposals that aren't settled: those open in Needs you, and those decided. */
+export interface ProposalLists {
+  /** {@link proposalItems} of the entries. */
+  readonly open: readonly ProposalItem[];
+  /** {@link decidedItems} of the entries. */
+  readonly decided: readonly ProposalItem[];
+}
+
+/** The open and the decided proposals of entries that come with their runs. */
+export function proposalListsOf(
+  entries: readonly RunProposalEntry[],
+  nameOfItem: (itemId: string) => string,
+): ProposalLists {
+  return { open: proposalItemsOf(entries, nameOfItem), decided: decidedItems(entries, nameOfItem) };
+}
+
 /** {@link proposalItems} of entries that come with their runs. */
-export function proposalItemsOf(
+function proposalItemsOf(
   entries: readonly RunProposalEntry[],
   nameOfItem: (itemId: string) => string,
 ): ProposalItem[] {
@@ -61,6 +79,20 @@ export function proposalItemsOf(
     (runId) => runOf.get(runId),
     nameOfItem,
   );
+}
+
+/**
+ * The proposals of these entries with nothing left to decide that aren't settled yet: the page
+ * settles one once its Undo toasts have gone. The open one's row stays in Needs you, muted, until
+ * another row is selected (Q10). Each keeps its key, `proposal:<runId>`, so it matches that row.
+ */
+function decidedItems(
+  entries: readonly RunProposalEntry[],
+  nameOfItem: (itemId: string) => string,
+): ProposalItem[] {
+  return entries
+    .filter(({ record }) => record.settled === undefined && !isOpen(record))
+    .map(({ record, run }) => ({ ...proposalItem(record, run, nameOfItem), decided: true }));
 }
 
 /**

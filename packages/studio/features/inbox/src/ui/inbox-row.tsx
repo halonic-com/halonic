@@ -4,7 +4,7 @@ import { type ListRow, StatusChip } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import { type InboxItem, isRunItem, type SetupItem } from "../inbox-items.ts";
 import { approvalTitle } from "../plain/approval-text.ts";
-import { proposalMeta, proposalTitle } from "../plain/proposal-text.ts";
+import { doneOutcome, proposalMeta, proposalTitle } from "../plain/proposal-text.ts";
 import { isLate, movesOnMeta, waitingFor } from "../plain/waiting-time.ts";
 import type { ProposalItem } from "../proposal-items.ts";
 import type { RunFacts, RunFactsOf } from "./run-facts.ts";
@@ -73,14 +73,17 @@ function setupRow(item: SetupItem): ListRow {
 
 /**
  * A proposal's row (HAL-11945 Q1 and Q2): its title, how and when its run ended, and a neutral
- * **Proposal** chip. Nothing has stopped, so it is never amber and never late.
+ * **Proposal** chip. Nothing has stopped, so it is never amber and never late. Once nothing is left
+ * to decide, the row is muted and says what the proposal came to in place of when its run ended:
+ * "Accepted 2 of 3 changes" (Q10).
  */
 function proposalRow(item: ProposalItem, now: Date): ListRow {
   return {
     id: item.key,
     title: itemTitle(item),
-    meta: proposalMeta(item, now),
+    meta: item.decided === true ? doneOutcome(item.files) : proposalMeta(item, now),
     trailing: <StatusChip tone="neutral">Proposal</StatusChip>,
+    ...(item.decided === true ? { muted: true } : {}),
   };
 }
 
