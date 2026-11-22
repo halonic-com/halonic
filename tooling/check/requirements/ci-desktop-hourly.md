@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-15889 (board decision, 22 Nov)
 
-`.github/workflows/ci.yml` shall run the macOS and Windows set (the jobs that skip in merge groups) hourly and on a manual start, on the newest `main`, and skip its Linux jobs there; a push to `main` shall not start that set. No run of it shall cancel another that is in progress, and pull requests and merge groups shall run as before.
+The `.github/workflows/ci.yml` workflow shall run the macOS and Windows set (the jobs that skip in merge groups) hourly and on a manual start, on the newest `main`, and skip its Linux jobs there; a push to `main` shall not start that set. No run of it shall cancel another that is in progress, and pull requests and merge groups shall run as before.
 
 ## Examples
 
