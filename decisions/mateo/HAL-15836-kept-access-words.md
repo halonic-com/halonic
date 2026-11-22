@@ -2,6 +2,7 @@
 
 - Approval: Liam decided this fix in the description of HAL-15836 (C636 items 1 to 3); he signs this note in review on HAL-15836
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QH9qHdSIFbByMAEmRcBEJ/z4fpHrbCNXzDaHV32CBCiGhx+YtgCFCkBKloWtxWbSQPDYoJV8NLqQW57kYXsMDg==
 
 C636 (HAL-15823, items 1 to 3) found that what Halonic says after a sandbox
 removal with administrator rights doesn't match what happens. Liam decided the
