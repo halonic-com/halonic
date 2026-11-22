@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for this in the review of #4780 on HAL-15590, carried to HAL-15648; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:h0o05/KUbjh7v44ZEyPtYnTNgKVYhi7NGkGe1BCS9PPBkncBrvsu1neYxacjcIj8tcMz5gtZHKMVoybblLmkAg==
 - Task: HAL-15648
 
 ## What changes
