@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-12240; phase B build plan decision 18 (HAL-12232); tunnel phase B screens, decision 4 and "Accessibility and motion" (HAL-12206)
+- Source: HAL-12240; HAL-15415 (its `name`); phase B build plan decision 18 (HAL-12232); tunnel phase B screens, decision 4 and "Accessibility and motion" (HAL-12206)
 
-Where `as` is `"status"` (the phone's connection label), the kit's `HeaderBadge` shall be a real `<button type="button">` in the top bar itself, not on a line of its own: at least 32px high with a 48px target, radius 8px, `text-body-strong`, an 8px dot, its words, and a 16px chevron, with the dot and the chevron hidden from screen readers. Its `tone` shall set its look: `success` a `surface-muted` fill with `fg` words and a `success` dot, `waiting` the same with an `attention` dot, `attention` an `attention-soft` fill with `attention` words and dot, and `danger` a `danger-soft` fill with `danger` words and dot. Its name shall be its words, with a middle dot read as a comma, then a full stop and its `action` ("Can't reach your computer. Details"). It shall wrap at large text instead of being cut, show the standard focus ring, and call its `onClick` when tapped.
+Where `as` is `"status"` (the phone's connection label), the kit's `HeaderBadge` shall be a real `<button type="button">` in the top bar itself, not on a line of its own: at least 32px high with a 48px target, radius 8px, `text-body-strong`, an 8px dot, its words, and a 16px chevron, with the dot and the chevron hidden from screen readers. Its `tone` shall set its look: `success` a `surface-muted` fill with `fg` words and a `success` dot, `waiting` the same with an `attention` dot, `attention` an `attention-soft` fill with `attention` words and dot, and `danger` a `danger-soft` fill with `danger` words and dot. Its name shall be its words, with a middle dot read as a comma, then a full stop and its `action` ("Can't reach your computer. Details"), unless it is given a `name`, which shall then be its name as given ("Reconnecting. Details" for the words "Reconnecting…"). It shall wrap at large text instead of being cut, show the standard focus ring, and call its `onClick` when tapped.
 
 ## Examples
 
@@ -17,3 +17,6 @@ Where `as` is `"status"` (the phone's connection label), the kit's `HeaderBadge`
 - Given that label on a phone,
   when the user taps it,
   then its `onClick` is called once, and it is not on a line of its own.
+- Given the label "Reconnecting…" with the tone `waiting` and the name "Reconnecting. Details",
+  when it renders,
+  then it is named "Reconnecting. Details", without the ellipsis.
