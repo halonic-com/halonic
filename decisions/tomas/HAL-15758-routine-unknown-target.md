@@ -3,6 +3,7 @@
 - Task: HAL-15758
 - Approval: the task HAL-15758 asks for this change, from flow check C626 #5 (HAL-15750). The team decides it under the HAL-2282 rule, since it rewords a message that is already there to the words an approved screen uses. Liam signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2MOimN2bo6YinySi1jQmmtsXIUxb3jr2zK6w7wxmJbKFxQjlumgN/4Ow85V4MMhEdGy1Q7dZb+RAWSZZ2rqOBA==
 
 ## What changes
 
