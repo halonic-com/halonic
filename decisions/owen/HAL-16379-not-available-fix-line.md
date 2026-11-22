@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16379, design check C701 rows 1 to 3 on HAL-16371 (Noah); small fixes on an approved screen, decided by the team (HAL-2282), words and layout chosen by the designer on the task; Liam signs this note in review on HAL-16379
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9PuqJ2YEbKMTJDkGGwF3nYvdKi/kS6vqCJJAjgnIfoazPiOdjf51iTJ/SB0F5pa3QMn07Q2RjoV3bM4zfijkAQ==
 
 Design check C701 found three slips in #5138:
 
