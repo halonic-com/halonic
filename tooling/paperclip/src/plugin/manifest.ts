@@ -249,6 +249,23 @@ export const manifest: PaperclipPluginManifestV1 = {
         },
       },
     },
+    {
+      name: "merge_speed",
+      displayName: "Merge speed",
+      description:
+        "Merges per hour, the share of pull requests dropped from the merge queue without merging, and the time in the queue of the merged ones, from the PR watcher's last GitHub snapshot. Queue exits count only from the board check's first pass. Pull request numbers and times only.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          hours: {
+            type: "integer",
+            minimum: 1,
+            maximum: 168,
+            description: "How many hours back; 6 by default.",
+          },
+        },
+      },
+    },
   ],
 };
 
