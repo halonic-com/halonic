@@ -35,6 +35,10 @@ the log, and stores nothing else. The log is written in `seq` order.
 - The events a waiting state accepts are its transitions' events, each once,
   in file order, without its timers. They are listed in `run.waiting`.
 
+A transition's `event` must be an id: lowercase letters, digits, `-` and `_`,
+starting with a letter or digit. `halonic validate` refuses `approve now` at
+the event (`format.workflow-event-id`).
+
 The functions are `selectTransition` and `acceptedEvents`.
 
 ## Guards
