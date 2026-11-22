@@ -2,14 +2,14 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1708 (board, HAL-1601 proposal 2); sandbox-screens (HAL-1747) 2; microcopy 23.2; ux-checklists-sandbox (HAL-1833) Part 2; Julian's conditions (HAL-1673) and the hint's wording (HAL-6208); `events.blocked-sites`, `std.site-name`
+- Source: HAL-1708 (board, HAL-1601 proposal 2); sandbox-screens (HAL-1747) 2; microcopy 23.2; ux-checklists-sandbox (HAL-1833) Part 2; Julian's conditions (HAL-1673) and the hint's wording (HAL-6208); `events.blocked-sites`, `std.site-name`; HAL-15789 (attention tone, as the without-the-sandbox shield, HAL-15659)
 
 The run view shall name each site a step's sandbox refused once, with its tries, from the step's `blockedSites`:
 
-- under the step's meta line, a row in warning tone, never danger: "Blocked 3 sites", "Blocked 1 site" for one;
+- under the step's meta line, a row in the attention tone (amber), never danger: "Blocked 3 sites", "Blocked 1 site" for one;
 - in the step's open entry, a Blocked sites panel: one row per site, most tries first, then A to Z, with "1 try", "12 tries" or, over 999, "999+ tries" at the right; at most 5 rows, then "and 7 more sites", which isn't a link; a hint that says why, how to allow a site and that the agent can then send that site anything it can read; and one action, "Open *Writer*'s allowed sites", which opens the agent's allowed sites and never adds a site itself, and shows only where the page can open them. On a phone the action is the line "Fix this on your computer, in *Writer*'s file.", with no link;
 - in the run log view, "Blocked: registry.npmjs.org (12 tries)" once per site per step, at most 20, then "and 3 more sites";
-- under the step's meta line, the "Blocked 3 sites" line is a child row in the timeline with the warning icon, which opens the step's entry;
+- under the step's meta line, the "Blocked 3 sites" line is a child row in the timeline with the warning icon in the attention tone (amber), which opens the step's entry;
 - in the failed banner of a run stopped by blocked sites (a failure with no specific reason, in a step the sandbox refused sites in), the several-sites sentence with the site with the most tries as its example, or for one site "The sandbox stopped Reporter from reaching api.example.net, which isn't in its allowed sites.", and **See the step**, which opens the failed step's entry.
 
 A site's name shall be plain text, never a link, with the part before its registrable domain in `fg-muted` and the domain in `fg` weight 500, capped and escaped by `siteName`.

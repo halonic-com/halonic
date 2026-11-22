@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-The 'without the sandbox' line on a run is amber, like the Full access chip.
+The shield on a run's "Ran on this computer, without the sandbox" line is amber, like the Full access chip.
