@@ -172,13 +172,21 @@ function causeLines(
         connectorStartMessages.pluginStoppedNext(name),
       ];
     case "unfenced-not-allowed":
-      return [
-        connectorStartMessages.unfencedNotAllowed(
-          runnerUnfencedWords(cause.name, "integration").reason,
-        ),
-        connectorStartMessages.unfencedNotAllowedFix(connectors.studioYesReaches ?? true),
-      ];
+      return unfencedNotAllowedLines(cause.name, connectors.studioYesReaches ?? true);
   }
+}
+
+/**
+ * A local integration the gate refused to start without the sandbox: R3's
+ * reason, then R18's fix, or R3's own fix where Studio's yes doesn't reach the
+ * command (`cli.local-integration-unfenced-yes`).
+ */
+function unfencedNotAllowedLines(sandboxReason: string, studioYesReaches: boolean): Message[] {
+  const words = runnerUnfencedWords(sandboxReason, "integration");
+  return [
+    connectorStartMessages.unfencedNotAllowed(words.reason),
+    connectorStartMessages.unfencedNotAllowedFix(studioYesReaches ? undefined : words.fix),
+  ];
 }
 
 /**
