@@ -3,6 +3,7 @@
 - Task: HAL-16359
 - Approval: Liam asked for this check on HAL-16359; he reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:NeZfoSEbrY9jqWdqpH16ilOSfEb1RkLMg2KrOJIa3yWY2/bHnsJJ+cCU2PW0Yswl9jBW44FpE1KKY5DN/lCCAA==
 
 ## What changes
 
