@@ -3,7 +3,12 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
-import { acmeProposalsSetup, editSaved, proposeIn } from "../../test/acme-proposals.ts";
+import {
+  acmeProposalsSetup,
+  deleteProposalTexts,
+  editSaved,
+  proposeIn,
+} from "../../test/acme-proposals.ts";
 import { type AcmeRuns, makeAcmeRuns, removeAcmeRuns, writeFiles } from "../../test/acme-runs.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { proposalsCommandWith } from "./command.ts";
@@ -115,6 +120,19 @@ verifies("cli.commands.proposals.show", () => {
       expect(io.stderr).toEqual([
         "✕ No changes from run 01jd8x are waiting in Acme.",
         `  See the proposals with halonic proposals --dir .${sep}acme.`,
+      ]);
+    });
+
+    it("says to remove a proposal whose changes were deleted outside Halonic", async () => {
+      await proposeIn(acmeRuns, "run_mfx3k2a1_01jd8q", { "notes/today.md": "Three tickets.\n" });
+      await deleteProposalTexts(acmeRuns);
+
+      const { code, io } = await proposalsIn(acmeRuns.acme, "show", "01jd8q");
+
+      expect(code).toBe(exitCode.unavailable);
+      expect(io.stderr).toEqual([
+        "✕ Run 01jd8q's changes were deleted outside Halonic, so they can't be shown or accepted.",
+        "  Remove them from the list with halonic proposals reject 01jd8q.",
       ]);
     });
 

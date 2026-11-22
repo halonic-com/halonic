@@ -1,3 +1,4 @@
+import { shellWord } from "../output/shell-word.ts";
 import { counted, listInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { dim, phrase } from "./phrase.ts";
@@ -76,12 +77,17 @@ export const proposalsMessages = defineMessages("proposals", {
   wroteNothing: () => phrase`No file was written.`,
   /**
    * Files the person changed since the run: they stay undecided. Reject keeps them, as Studio's
-   * line for such a file says (C682 2).
+   * line for such a file says (C682 2), and the line names the command (C681 37).
    */
-  changedOnDisk: (paths: readonly string[]) =>
-    paths.length === 1
-      ? phrase`${listInWords(paths)} changed since the run, so it wasn't written. To keep it as it is now, reject it.`
-      : phrase`${listInWords(paths)} changed since the run, so they weren't written. To keep them as they are now, reject them.`,
+  changedOnDisk: (paths: readonly string[], runId: string, dir?: string) => {
+    const [only, ...others] = paths;
+    if (only !== undefined && others.length === 0) {
+      const reject = suggestedCommand("proposals reject", dir, `${runId} ${shellWord(only)}`);
+      return phrase`${only} changed since the run, so it wasn't written. To keep it as it is now, reject it with ${reject}.`;
+    }
+    const reject = suggestedCommand("proposals reject", dir, `${runId} <file>`);
+    return phrase`${listInWords(paths)} changed since the run, so they weren't written. To keep them as they are now, reject each with ${reject}.`;
+  },
   /** The `--json` error when a file changed since the run (`conflict`). */
   changedOnDiskFailure: () => phrase`Some files changed since the run, so they weren't written.`,
   /** Files Accept may never write. */
@@ -117,7 +123,7 @@ export const proposalsMessages = defineMessages("proposals", {
   unavailable: (runId: string) =>
     phrase`Run ${runId}'s changes were deleted outside Halonic, so they can't be shown or accepted.`,
   unavailableFix: (runId: string, dir?: string) =>
-    phrase`Reject it with ${suggestedCommand("proposals reject", dir, runId)} to remove it.`,
+    phrase`Remove them from the list with ${suggestedCommand("proposals reject", dir, runId)}.`,
   /** Usage: `show`, `accept` and `reject` take one run id, and a file for the last two. */
   takesOneRunId: () => phrase`Give one run id.`,
   takesRunIdAndFile: () => phrase`Give one run id, and a file if you want to decide only that one.`,
