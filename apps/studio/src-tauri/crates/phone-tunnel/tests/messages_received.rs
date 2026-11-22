@@ -87,6 +87,35 @@ async fn phone_tunnel_messages_end_only_the_session_the_page_names() {
     assert!(phone.session_opened(&id).await > first);
 }
 
+// Multi-threaded: the paused host holds one worker while the test runs on.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn phone_tunnel_messages_pass_nothing_on_from_a_session_the_page_ended() {
+    let mut phone = Phone::new("messages-ended-by-page", LocalNetwork::Allowed);
+    let gateway = Gateway::start().await;
+    let (id, mut server, mut session, first) = connected(&mut phone, &gateway).await;
+    let (resume, paused) = std::sync::mpsc::channel();
+    *phone.host.pause.lock().unwrap() = Some(paused);
+    let refused = r#"{"type":"event","sessionId":"s1","seq":1}"#;
+    let waiting = r#"{"type":"event","sessionId":"s1","seq":2}"#;
+
+    // The page refuses the first message and ends the session while the
+    // second one already waits to be passed on (Liam on HAL-16120).
+    host_sends(&mut server, &mut session, refused.as_bytes()).await;
+    host_sends(&mut server, &mut session, waiting.as_bytes()).await;
+    assert!(matches!(phone.next_told().await, Told::Message { text, .. } if text == refused));
+    assert!(phone.tunnel.end_session(&id, first));
+    resume.send(()).unwrap();
+
+    assert!(closed(&mut server).await);
+    let mut again = gateway.accept().await;
+    gateway.reconnect(&mut again).await;
+    let told = phone.next_told().await;
+    assert!(
+        matches!(&told, Told::Opened { generation, .. } if *generation > first),
+        "{told:?}"
+    );
+}
+
 #[tokio::test]
 async fn phone_tunnel_messages_end_a_session_whose_message_isnt_text() {
     let mut phone = Phone::new("messages-not-text", LocalNetwork::Allowed);

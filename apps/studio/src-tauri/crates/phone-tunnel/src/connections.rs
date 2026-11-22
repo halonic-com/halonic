@@ -178,6 +178,13 @@ impl Connections {
         }
     }
 
+    /// Whether `generation` is the session open on the computer's current
+    /// connection. Generations aren't reused, so this also means the
+    /// connection that opened it is still the current one.
+    pub(crate) fn is_open(&self, computer: &ComputerId, generation: u64) -> bool {
+        self.session(computer, generation).is_some()
+    }
+
     /// Like [`Self::session`], and forgets the session, so nothing more is
     /// sent into it while it ends.
     pub(crate) fn take_session(

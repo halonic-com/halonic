@@ -27,7 +27,13 @@ The page sees message text and generations, never a key, a psk or a session key 
 list gains these two. Nothing else in it changes, and `served_page_tests.rs` checks that the
 served page is refused both, and gets no session event.
 
+`phone-tunnel-messages` gains one sentence and one example, from Liam's review on HAL-16120: a
+host message that was already on its way when the page ended its session isn't passed on. The
+page refused that session, so it mustn't hear more under its generation. Nothing else in the
+requirement changes.
+
 ## Covers
 
 - studio.src-tauri.served-page
+- studio.src-tauri.crates.phone-tunnel.phone-tunnel-messages
 - apps/studio/src-tauri/capabilities/phone-tunnel.json

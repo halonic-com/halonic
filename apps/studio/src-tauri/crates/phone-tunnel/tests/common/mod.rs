@@ -86,6 +86,10 @@ pub struct Recorder {
     statuses: UnboundedSender<(String, PageStatus)>,
     told: UnboundedSender<Told>,
     pub logs: Mutex<Vec<String>>,
+    /// When set, the next host message holds the service up, after it is
+    /// told, until the test sends on the other end: a page busy with one
+    /// message while the next ones wait in the connection's channel.
+    pub pause: Mutex<Option<std::sync::mpsc::Receiver<()>>>,
 }
 
 impl TunnelHost for Recorder {
@@ -121,6 +125,10 @@ impl TunnelHost for Recorder {
             generation,
             text: text.to_owned(),
         });
+        let paused = self.pause.lock().unwrap().take();
+        if let Some(resume) = paused {
+            let _ = resume.recv();
+        }
     }
 
     fn log(&self, line: &str) {
@@ -150,6 +158,7 @@ impl Phone {
             statuses: sender,
             told: telling,
             logs: Mutex::new(Vec::new()),
+            pause: Mutex::new(None),
         });
         let tunnel = PhoneTunnel::new(
             list(&folder),

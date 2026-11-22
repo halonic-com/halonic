@@ -8,7 +8,7 @@ When a session to a paired computer opens, the phone shall tell the page, under 
 
 When the page sends a message, the phone shall seal it only into the session of the computer and generation the page names, and only while that session is open. It shall refuse, and send nothing, in this order: when no session of that generation is open on that computer (before the handshake has finished, after a reconnect, for another computer, after a disconnect, Removed or Forget), `not-open`; when the text is more than 65,519 bytes of UTF-8, counted before any parsing, `too-large`; when it isn't exactly one JSON object, with nothing after it and one `type` key, whose `type` is one of the six messages a phone sends, `not-allowed`. It shall read nothing of the message but its `type`. A refusal shall leave the session open. It shall never queue a message or send one again.
 
-When the page ends the open session of a generation, the phone shall drop that connection and reconnect after its backoff, without the time the session lasted starting the backoff again; for any other generation it shall do nothing. No message text shall reach the log.
+When the page ends the open session of a generation, the phone shall drop that connection and reconnect after its backoff, without the time the session lasted starting the backoff again; for any other generation it shall do nothing. It shall pass on no host message of the ended session, not even one that arrived before the page ended it. No message text shall reach the log.
 
 ## Examples
 
@@ -27,3 +27,6 @@ When the page ends the open session of a generation, the phone shall drop that c
 - Given an open session,
   when the page ends it,
   then the phone reconnects after its backoff, and the page hears of a session with a higher generation.
+- Given an open session whose host has sent two messages,
+  when the page ends it after the first,
+  then the page hears nothing of the second, and next hears of a session with a higher generation.

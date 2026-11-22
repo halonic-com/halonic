@@ -200,11 +200,15 @@ impl<S: DeviceKeyStore + 'static> Passing<S> {
     /// A host message of the open session, passed on as text. One that
     /// isn't UTF-8 can't be, so its session ends as if the page had
     /// refused it.
+    ///
+    /// Messages still waiting here when the page ended the session are
+    /// dropped: the page refused one of them and mustn't hear more under
+    /// that generation (Liam on HAL-16120).
     fn on_message(&mut self, message: Vec<u8>) {
         let Some(open) = self.session else {
             return;
         };
-        if !self.connections.is_current(&self.computer, self.serial) {
+        if !self.connections.is_open(&self.computer, open.generation) {
             return;
         }
         match String::from_utf8(message) {
