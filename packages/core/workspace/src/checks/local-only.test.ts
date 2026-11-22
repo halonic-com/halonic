@@ -129,10 +129,9 @@ verifies("workspace.local-only-sheet-hosts", () => {
 
   it("doesn't count local: true for a sheet it wasn't given, and says the sheet is why", async () => {
     const none: SheetHosts = { plugins: new Map(), integrations: new Map() };
-    const why = `so nothing says which hosts it reaches, and it isn't local: set privacy.localOnly: false in workspace.yaml to use it`;
     expect(await issuesIn(true, { ...local, ...runners }, none)).toEqual([
-      `error library/connectors/notes.connector.yaml local: The sheet of the integration in integrations/notes can't be read, ${why}`,
-      `error library/connectors/orders.connector.yaml local: The plugin acme-orders isn't installed here or can't be read, ${why}`,
+      `error library/connectors/notes.connector.yaml local: The sheet of the integration in integrations/notes can't be read, so nothing says which hosts it reaches, and it isn't local: set privacy.localOnly: false in workspace.yaml to use it`,
+      `error library/connectors/orders.connector.yaml local: The plugin acme-orders isn't added here or can't be read, so nothing says which hosts it reaches: add the plugin first, then Halonic can tell whether it's local`,
     ]);
   });
 
