@@ -14,6 +14,7 @@ import type { HarnessAgent, HarnessProfile, ProgramHarness } from "@halonicjs/en
 import { SCHEMA_VERSION } from "@halonicjs/format";
 import type { Digest, Harness, HarnessBridge, Sandbox, SandboxProfile } from "@halonicjs/ports";
 import { type ProfileFolder, workspaceFolders } from "@halonicjs/profile";
+import { type BuiltProfiles, isBuiltProfile } from "../sandbox/built-profiles.ts";
 import { namedWorkspace } from "../server/named-workspace.ts";
 
 /**
@@ -75,14 +76,15 @@ export interface HostHarnessProfilesOptions {
 
 /**
  * Builds harness profiles for the workspaces the launcher named, and removes
- * each session's temp folder when the session closes.
+ * each session's temp folder when the session closes. The sandbox routes open
+ * a session only for a profile built here, once (see {@link BuiltProfiles}).
  *
  * @example
  * const profiles = new HostHarnessProfiles(options);
  * const sandbox = profiles.removingTempFolders(srt);
  * const built = await profiles.profileOf(workspace, agent, bridge, null);
  */
-export class HostHarnessProfiles {
+export class HostHarnessProfiles implements BuiltProfiles {
   readonly #options: HostHarnessProfilesOptions;
   readonly #byWorkspace = new Map<string, Promise<WorkspaceProfiles>>();
   /** The hosts made so far; a session's temp folder is removed by the one that made it. */
@@ -138,6 +140,17 @@ export class HostHarnessProfiles {
     if (real === undefined) return undefined;
     const { host } = await this.#profilesOf(real);
     return host.agentSettingsFolder(agentId, harness);
+  }
+
+  /**
+   * Takes a profile built here whose session hasn't opened, so no other
+   * session opens with it. `profile` may add the harness's variables to it.
+   */
+  take(profile: SandboxProfile): boolean {
+    const unopened = this.#unopened.get(profile.tempFolder);
+    if (unopened === undefined || !isBuiltProfile(unopened.built.profile, profile)) return false;
+    this.#opening(profile);
+    return true;
   }
 
   /**

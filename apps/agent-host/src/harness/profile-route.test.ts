@@ -70,7 +70,7 @@ beforeEach(async () => {
     stream,
     bindSession: () => true,
   });
-  server = await startHostServer(token, [profileRoute(profiles, bridges)]);
+  server = await startHostServer(token, [profileRoute(profiles, bridges, () => false)]);
 });
 
 afterEach(async () => {
@@ -206,7 +206,7 @@ verifies("agent-host.profile-route", () => {
       bindSession: () => true,
     });
     const windows = await startHostServer(token, [
-      profileRoute(hostProfiles("win32", {}), bridges),
+      profileRoute(hostProfiles("win32", {}), bridges, () => false),
     ]);
     try {
       const response = await fetch(`${windows.url}/v1/harnesses/profile`, {

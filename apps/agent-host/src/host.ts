@@ -45,6 +45,7 @@ import {
   type ServedRemoteHome,
 } from "./remote/host-remote.ts";
 import { remoteRoutes } from "./remote/remote-routes.ts";
+import { noBuiltProfiles } from "./sandbox/built-profiles.ts";
 import { hostSandboxChoice } from "./sandbox/choice-host.ts";
 import { sandboxChoiceRoutes } from "./sandbox/choice-routes.ts";
 import { removeThroughShellRoutes } from "./sandbox/remove-through-shell-routes.ts";
@@ -333,7 +334,12 @@ async function hostServices(
   const routes = [
     healthRoute(version),
     // A session's temp folder, made with its harness profile, goes when the session closes.
-    ...sandboxRoutes(folders.profiles?.removingTempFolders(sandbox) ?? sandbox, sessions),
+    // Sessions open only for the profiles the host built for Studio's harness runs.
+    ...sandboxRoutes(
+      folders.profiles?.removingTempFolders(sandbox) ?? sandbox,
+      sessions,
+      folders.profiles ?? noBuiltProfiles,
+    ),
     ...(choice === undefined ? [] : sandboxChoiceRoutes(choice)),
     ...setupRoutes(setupJobs, sessions),
     ...removeThroughShellRoutes(setupJobs, sessions, {

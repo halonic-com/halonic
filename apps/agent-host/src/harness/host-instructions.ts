@@ -82,6 +82,11 @@ export class HostRunInstructions {
     return this.#made.get(folder);
   }
 
+  /** Whether this host made `folder`, as it answered it, and hasn't removed it since. */
+  has(folder: string): boolean {
+    return this.#made.has(folder);
+  }
+
   /** Removes a folder this host made; any other path is left alone. It doesn't throw. */
   async release(folder: string): Promise<void> {
     if (!this.#made.delete(folder)) return;

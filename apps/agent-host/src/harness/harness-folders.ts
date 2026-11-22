@@ -49,7 +49,11 @@ export function harnessFolders(
     routes: [
       ...(profiles === undefined
         ? []
-        : [profileRoute(profiles, bridges), settingsFolderRoute(profiles)]),
+        : [
+            // A run's instructions folder is one the host made here, never another path.
+            profileRoute(profiles, bridges, (folder) => instructions?.has(folder) === true),
+            settingsFolderRoute(profiles),
+          ]),
       ...(proposals === undefined
         ? []
         : [
