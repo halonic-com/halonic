@@ -173,6 +173,9 @@ catalogs:
     '@changesets/cli':
       specifier: ^3.0.3
       version: 3.0.3
+    '@changesets/git':
+      specifier: 4.0.1
+      version: 4.0.1
     '@cloudflare/workers-types':
       specifier: 5.20260730.1
       version: 5.20260730.1
@@ -281,6 +284,7 @@ overrides:
 
 patchedDependencies:
   '@anthropic-ai/sandbox-runtime@0.0.82': f644cdac2fe8312bef2173b99fdebcc0c7fe31049c8d6e58c13616e7ea83e535
+  '@changesets/git@4.0.1': 21dc06947411909ed9f92f895278221e717d5caeca25628e1eea1821604c9173
 
 importers:
 
@@ -292,6 +296,9 @@ importers:
       '@changesets/cli':
         specifier: 'catalog:'
         version: 3.0.3
+      '@changesets/git':
+        specifier: 'catalog:'
+        version: 4.0.1(patch_hash=21dc06947411909ed9f92f895278221e717d5caeca25628e1eea1821604c9173)
       node:
         specifier: runtime:^26.12.0
         version: runtime:26.13.0
@@ -7351,7 +7358,7 @@ snapshots:
     dependencies:
       '@changesets/config': 4.0.1
       '@changesets/format': 0.1.3
-      '@changesets/git': 4.0.1
+      '@changesets/git': 4.0.1(patch_hash=21dc06947411909ed9f92f895278221e717d5caeca25628e1eea1821604c9173)
       '@changesets/should-skip-package': 1.0.0
       '@changesets/types': 7.0.0
       import-meta-resolve: 4.2.0
@@ -7378,7 +7385,7 @@ snapshots:
       '@changesets/config': 4.0.1
       '@changesets/errors': 1.0.0
       '@changesets/get-dependents-graph': 3.0.0
-      '@changesets/git': 4.0.1
+      '@changesets/git': 4.0.1(patch_hash=21dc06947411909ed9f92f895278221e717d5caeca25628e1eea1821604c9173)
       '@changesets/pre': 3.0.0
       '@changesets/read': 1.0.1
       '@changesets/should-skip-package': 1.0.0
@@ -7414,7 +7421,7 @@ snapshots:
       '@changesets/types': 7.0.0
       semver: 7.8.6
 
-  '@changesets/git@4.0.1':
+  '@changesets/git@4.0.1(patch_hash=21dc06947411909ed9f92f895278221e717d5caeca25628e1eea1821604c9173)':
     dependencies:
       '@changesets/errors': 1.0.0
       '@changesets/types': 7.0.0
@@ -7435,7 +7442,7 @@ snapshots:
 
   '@changesets/read@1.0.1':
     dependencies:
-      '@changesets/git': 4.0.1
+      '@changesets/git': 4.0.1(patch_hash=21dc06947411909ed9f92f895278221e717d5caeca25628e1eea1821604c9173)
       '@changesets/parse': 1.0.0
       '@changesets/types': 7.0.0
 
