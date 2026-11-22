@@ -82,6 +82,7 @@ beforeEach(async () => {
     channel: new CallChannel(stream),
     stream,
     bindSession: () => true,
+    keyProviders: [],
   });
   sandbox = new FakeSandbox();
   sessions = new SessionTable();
@@ -126,7 +127,11 @@ const notBuilt = { error: expect.objectContaining({ kind: "profile_not_built" })
 function changes(profile: SandboxProfile): Record<string, SandboxProfile> {
   return {
     workingFolder: { ...profile, workingFolder: join(root, "home") },
-    deniedPaths: { ...profile, deniedPaths: [] },
+    // A built profile may deny nothing (on Windows, a home with nothing to hide).
+    deniedPaths: {
+      ...profile,
+      deniedPaths: profile.deniedPaths.length > 0 ? [] : [join(root, "home")],
+    },
     readOnlyPaths: { ...profile, readOnlyPaths: [...profile.readOnlyPaths, join(root, "home")] },
     settingsFolder: { ...profile, settingsFolder: join(root, "home") },
     allowedSites: { ...profile, network: { ...profile.network, allowedSites: ["*"] } },
