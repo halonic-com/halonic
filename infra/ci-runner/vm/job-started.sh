@@ -42,10 +42,12 @@ WF="${GITHUB_WORKFLOW_REF:-}"
 gate_ready() { command -v curl >/dev/null 2>&1 || deny "curl missing in image"; [ -S "$GATE" ] || deny "queue gate not available"; }
 gate() { curl -fsS --max-time 15 --max-filesize 1048576 --unix-socket "$GATE" "http://halonic-ci-gate/$1"; }
 # A shared cache mounted here must be read-only or an overlay (the fast slot's per-job upper layer
-# over the read-only shared folder), never the shared folder itself (C2/C8).
+# over the read-only shared folder), never the shared folder itself (C2/C8). Under gVisor, which
+# fast slots run in, every mount shows as its file proxy's ("9p"); there the slot script checks the
+# overlay on the VM before the container starts, so the hook accepts 9p on the fast pool only.
 cache_safe() {
-  awk -v m="$1" '$5 == m { split($0, p, " - "); split(p[2], f, " ")
-      if (f[1] == "overlay" || $6 ~ /^ro(,|$)/) ok = 1; else bad = 1 }
+  awk -v m="$1" -v fast="$([ "$POOL" = fast ] && echo 1)" '$5 == m { split($0, p, " - "); split(p[2], f, " ")
+      if (f[1] == "overlay" || $6 ~ /^ro(,|$)/ || (fast && f[1] == "9p")) ok = 1; else bad = 1 }
     END { exit !(ok && !bad) }' "$MOUNTS"
 }
 case "$kind" in

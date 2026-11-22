@@ -1,0 +1,20 @@
+[Unit]
+Description=halonic-ci gate answer for the fast pool (HAL-15972), one per connection
+CollectMode=inactive-or-failed
+
+[Service]
+ExecStart=/usr/local/sbin/halonic-ci-gate.sh --pr-only
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+# The token file is root-only 0400 on the VM; only this service's own user can read the copy.
+LoadCredential=github-token:/etc/halonic-ci/queue-token
+DynamicUser=yes
+RuntimeMaxSec=30
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

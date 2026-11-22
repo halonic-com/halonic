@@ -3,7 +3,6 @@
 - Task: HAL-15972 (the board's decision on the task: "Yes go ahead", Timothy, 22 Nov; the team rule is on HAL-15971)
 - Approval: the board approved fast-track pull request checks on our CI server (HAL-15972, Timothy, 22 Nov); Liam signs this note in review, Julian checks C1–C8 on the task
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:a/2zOFp1X0O1ASrIl2Sq+pg9uC3pAkI62/BOW2YSmPTXMjxVPdprvB+3wnyNJS21ZhnWWSC2lJz1Z/3XZcR2DQ==
 
 ## What changes
 
@@ -25,6 +24,16 @@
   a config that says so or lists `pull_request`. A fast slot mounts each shared cache as an overlay
   whose read-only lower layer is the shared folder and whose upper layer is the job's own, in the
   slot's quota and deleted after the job, never `/cache/trusted` read-write.
+- After Julian's security review (C8, HAL-15972): a fast slot's container runs under gVisor
+  (`--runtime=runsc`) on its own Docker network `halonic-ci-fast` with no traffic between
+  containers, and the slot refuses to start when Docker has no `runsc` runtime or the network is
+  missing or allows that traffic. It mounts its own gate socket, `/run/halonic-ci-gate-fast`
+  (`vm/halonic-ci-gate-fast.socket` and `@.service`, new: 4 connections, at most 10 a minute),
+  where the gate runs with `--pr-only` and refuses anything but `GET /pr/<n>`, so fast jobs can't
+  hold the merge queue's 16 connections. The gate now gives a whole request 5 s, not 5 s per
+  line. Inside gVisor every mount shows as `9p`, so the slot script checks on the VM that each
+  cache is an overlay before the container starts, and the hook accepts `9p` cache mounts on the
+  fast pool only. `fast-N` and `large-(12-N)` refuse to start while the other runs.
 - `vm/pool-fast.conf` (new): the fast pool's config, pull requests only. `vm/pool.conf` says
   pull requests never go there.
 - Tests: `fast-pool.test.mjs` (new, imported by `hook.test.mjs` so CI's `fast` job runs it), and
@@ -35,6 +44,10 @@
     assertions are unchanged and still pass: both pull requests are refused on that pool;
   - the C5 slot test looks for the pool mount as `-v "$POOL_DIR:/etc/halonic-ci:ro"`, and checks
     that every slot other than a fast one gets `/etc/halonic-ci/pool`.
+  In `queue-gate.test.mjs`, the C7 unit test looks for the gate mount as
+  `-v "$GATE_DIR:/run/halonic-ci-gate:ro"` and checks that every slot but a fast one gets
+  `/run/halonic-ci-gate`. `slotCycle` in `hook.test.mjs` takes stub bodies for `docker` and
+  `systemctl`; its existing test is unchanged.
 - `README.md`: what the fast pool admits, the overlays, the slot table and how to switch it on.
 
 ## Why
@@ -53,10 +66,13 @@ Julian's OK; until `CI_RUNNER_FAST` is set (separate `ci.yml` pull request), no 
 
 ## Tests
 
-No test was weakened or skipped. Three assertions follow the code (above); 11 tests are new.
-`node --test infra/ci-runner/hook.test.mjs`: 41 pass. Breaking the hook's pool, cache, label or
-open-state check each makes a new test fail.
+No test was weakened or skipped. Four assertions follow the code (above); 15 tests are new.
+`node --test infra/ci-runner/hook.test.mjs`: 45 pass. Breaking the hook's pool, cache, label or
+open-state check, the slot's gVisor, network or shared-CPU check, or the gate's `--pr-only`
+refusal each makes a new test fail. gVisor itself isn't in CI; the README's switch-on steps end
+with a smoke test on the VM.
 
 ## Covers
 
 - infra/ci-runner/hook.test.mjs
+- infra/ci-runner/queue-gate.test.mjs

@@ -63,6 +63,7 @@ it in the `fast` job).
 | VM | Docker with `userns-remap`. One systemd unit per slot (`vm/halonic-runner@.service`). |
 | VM | `/etc/halonic-ci/app.pem`: the GitHub App's key (only permission: self-hosted runners), root-only `0400`. Never in the image, a container or a backup that leaves the VM. |
 | VM | Queue gate (C7): `vm/halonic-ci-gate.socket` listens on `/run/halonic-ci-gate/gate.sock`, which every container gets read-only. Each connection starts `vm/halonic-ci-gate@.service` (`vm/halonic-ci-gate.sh`), which answers one of two fixed GraphQL queries: one pull request's state, owner, head commit and labels for `GET /pr/<n>` (1-9 digits, the only input that reaches a query), `main`'s merge queue for anything else. Its token is `/etc/halonic-ci/queue-token`, root-only `0400`, handed to the service as a systemd credential under a throwaway user. |
+| VM | Fast pool (HAL-15972): fast slots' containers run under gVisor (`runsc`) on the Docker network `halonic-ci-fast` (no traffic between its containers, and none to the merge-group jobs on the default bridge), and get the gate as `vm/halonic-ci-gate-fast.socket` (`/run/halonic-ci-gate-fast/gate.sock`, 4 connections, at most 10 a minute, pull request queries only) instead of the merge queue's. |
 | VM | `/cache/trusted/{pnpm-store,turbo,ms-playwright}`: package, Turbo and browser caches, no secrets, shared by all slots and kept between jobs, capped together at 20 GB (XFS project 300). `/cache/work/<slot>`: the job's work dir, quota-capped and wiped after every job. |
 
 Site data stays out of this repo: `/etc/halonic-ci/pool.env` (see `vm/pool.env.example`),
@@ -80,7 +81,10 @@ an overlay on the VM: the shared folder is its read-only lower layer, and every 
 upper layer under `/cache/overlay/<slot>`, counted in the slot's quota and deleted with the job. A
 fast-track job reads what reviewed runs cached; nothing it writes reaches another job. It gets no
 Turbo token either (`ci.yml` asks for one only off pull requests, and the cache hands a write token
-only to a push to `main`). The shared folders keep changing under a running overlay (other slots
+only to a push to `main`). The job runs under gVisor, which gives it a kernel of its own in user
+space, so a kernel bug it finds doesn't reach the VM, the App key or the merge-group jobs (C8).
+Inside gVisor every mount shows as its file proxy's (`9p`), so the slot script checks on the VM that
+each cache is an overlay before the container starts. The shared folders keep changing under a running overlay (other slots
 write to them, the weekly cleanup deletes old Turbo entries); a file that changes mid-job reads as
 a cache miss at worst.
 
@@ -141,10 +145,30 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
 - **Merge groups on:** `ALLOWED_EVENTS="push merge_group"` in the VM's
   `/etc/halonic-ci/pool/pool.conf` (applies at once), only after the queue gate is deployed and
   Julian has checked T1 against it.
-- **Fast pool on** (only after Julian's OK on HAL-15972): deploy the new gate script, then put
-  `vm/pool-fast.conf` at `/etc/halonic-ci/pool-fast/pool.conf` (root, `0444`). A fast slot takes
-  a large slot's CPUs, so stop and disable `large-11` before you enable `fast-1` (`large-10` for
-  `fast-2`, `large-9` for `fast-3`), and update `/etc/halonic-ci/slots`. Then set
+- **Fast pool on** (only after Julian's OK on HAL-15972). A fast slot refuses to start until
+  each of these is in place:
+  1. **gVisor:** install `runsc` from gVisor's apt repository and register it in
+     `/etc/docker/daemon.json` as `"runtimes": {"runsc": {"path": "/usr/bin/runsc",
+     "runtimeArgs": ["--host-uds=open", "--overlay2=root:self"]}}`, then restart Docker.
+     `--host-uds=open` lets a job reach the gate socket mounted into it (nothing else is
+     mounted); `--overlay2=root:self` keeps the container's own writes on disk instead of in its
+     memory limit.
+  2. **Network:** `docker network create -o com.docker.network.bridge.enable_icc=false
+     halonic-ci-fast`.
+  3. **Gate:** deploy the new `vm/halonic-ci-gate.sh` and the two `vm/halonic-ci-gate-fast*`
+     units like the merge queue's, then `systemctl enable --now halonic-ci-gate-fast.socket`.
+     `PollLimitBurst` needs systemd 255 or later (older ones ignore it).
+  4. Put `vm/pool-fast.conf` at `/etc/halonic-ci/pool-fast/pool.conf` (root, `0444`). A fast slot
+     takes a large slot's CPUs, so stop and disable `large-11` before you enable `fast-1`
+     (`large-10` for `fast-2`, `large-9` for `fast-3`; each refuses to start while its twin
+     runs), and update `/etc/halonic-ci/slots`.
+  5. **Smoke test** with one fast slot before setting the variable for everyone: a labelled test
+     pull request should pass the hook, and the status feed should show its memory and CPU. Not
+     tried yet under gVisor: Docker's `userns-remap`, the slot's cgroup path (memory sampling and
+     `docker update`) and Chromium (may need `--no-sandbox`). If one doesn't work, stop and say so
+     on HAL-15972; fast slots don't run without gVisor.
+
+  Then set
   `CI_RUNNER_FAST` to `{"group":"halonic-ci","labels":["halonic-ci-fast"]}`. Off: clear
   `CI_RUNNER_FAST`, then stop the fast slots and start the large ones again.
 - **Runner update:** new version and checksum in `vm/Dockerfile`, build the image in the VM,

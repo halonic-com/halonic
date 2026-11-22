@@ -4,7 +4,7 @@
 // hook as shipped (hook-run.mjs) and the gate's script against a stub curl.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
@@ -156,6 +156,30 @@ test("fast pool: refuses a job that sees a shared cache read-write (C2/C8)", () 
   refused(fast({ mountinfo: "" }), /shared cache \/cache\/pnpm-store is not read-only/);
   const oneRw = mounts("overlay").replace(/^.*\/cache\/turbo.*$/m, mounts("rw").split("\n")[1]);
   refused(fast({ mountinfo: oneRw }), /shared cache \/cache\/turbo is not read-only/);
+  // Under gVisor every mount shows as 9p; the slot script checks the overlay on the VM instead.
+  assert.equal(fast({ mountinfo: mounts("9p") }).ok, true);
+});
+
+test("fast pool: fast slots run under gVisor, on their own network, with their own gate socket", () => {
+  const slot = read("vm/halonic-runner-slot.sh");
+  assert.ok(
+    slot.includes(
+      'SANDBOX=(--runtime=runsc --network="$FAST_NET"); GATE_DIR=/run/halonic-ci-gate-fast',
+    ),
+  );
+  assert.ok(slot.includes('--security-opt no-new-privileges "${SANDBOX[@]}" \\'));
+  assert.ok(
+    slot.includes('[ "$(findmnt -n -o FSTYPE --mountpoint "$OVL_MNT/$c")" = overlay ] || fail'),
+  );
+  const socket = read("vm/halonic-ci-gate-fast.socket");
+  assert.match(socket, /^ListenStream=\/run\/halonic-ci-gate-fast\/gate\.sock$/m);
+  assert.match(socket, /^MaxConnections=4$/m);
+  assert.match(socket, /^PollLimitBurst=10$/m);
+  const unit = read("vm/halonic-ci-gate-fast@.service");
+  assert.match(unit, /^ExecStart=\/usr\/local\/sbin\/halonic-ci-gate\.sh --pr-only$/m);
+  // The same sandboxing as the merge queue's gate, apart from the description and the mode.
+  const strip = (text) => text.replace(/^(Description|ExecStart)=.*$/gm, "");
+  assert.equal(strip(unit), strip(read("vm/halonic-ci-gate@.service")));
 });
 
 test("fast pool: fast slots get their own pool config and the shared caches only as overlays", () => {
@@ -178,7 +202,8 @@ test("fast pool: fast slots get their own pool config and the shared caches only
 });
 
 // Runs the VM's gate with a stub curl that logs the query it was sent, for request line `first`.
-const gateQuery = (first) => {
+// Returns "" when the gate asked GitHub nothing.
+const gateQuery = (first, args = []) => {
   const bin = mkdtempSync(join(dir, "fast-gate-bin-"));
   const creds = mkdtempSync(join(dir, "fast-gate-creds-"));
   writeFileSync(join(creds, "github-token"), "github_pat_TEST123\n");
@@ -186,13 +211,13 @@ const gateQuery = (first) => {
   writeFileSync(join(bin, "curl"), `#!/bin/bash\necho "$*" >> ${log}\nprintf '{}'\n`, {
     mode: 0o755,
   });
-  const res = spawnSync("/bin/bash", [join(here, "vm/halonic-ci-gate.sh")], {
+  const res = spawnSync("/bin/bash", [join(here, "vm/halonic-ci-gate.sh"), ...args], {
     encoding: "utf8",
     input: `${first}\r\nHost: halonic-ci-gate\r\n\r\n`,
     env: { PATH: `${bin}:${process.env.PATH}`, CREDENTIALS_DIRECTORY: creds },
   });
   assert.equal(res.status, 0, res.stderr);
-  return readFileSync(log, "utf8");
+  return existsSync(log) ? readFileSync(log, "utf8") : "";
 };
 
 test("fast pool: the gate asks about the pull request only for a plain number", () => {
@@ -212,5 +237,12 @@ test("fast pool: the gate asks about the pull request only for a plain number", 
     const query = gateQuery(first);
     assert.match(query, /mergeQueue\(branch: \\"main\\"\)/, first);
     assert.doesNotMatch(query, /pullRequest\(number/, first);
+  }
+});
+
+test("fast pool: the fast slots' gate socket answers pull request queries only", () => {
+  assert.match(gateQuery("GET /pr/42 HTTP/1.1", ["--pr-only"]), /pullRequest\(number: 42\)/);
+  for (const first of ["GET /queue HTTP/1.1", "GET /pr/0 HTTP/1.1", ""]) {
+    assert.equal(gateQuery(first, ["--pr-only"]), "", first);
   }
 });

@@ -112,11 +112,15 @@ export const POOL_QUEUE = 'ALLOWED_EVENTS="push merge_group"\nSMOKE_BRANCH=""\nS
 export const POOL_FAST = 'POOL="fast"\nALLOWED_EVENTS="pull_request"\n';
 
 // /proc/self/mountinfo lines for the three shared caches: `kind` "overlay" (a fast slot's),
-// "ro" (read-only bind) or "rw" (the shared folder itself, bind-mounted read-write).
-const mountLine = (point, kind) =>
-  kind === "overlay"
-    ? `801 790 0:61 / ${point} rw,relatime master:1 - overlay overlay rw,lowerdir=/cache/trusted/x`
-    : `802 790 253:2 /trusted/x ${point} ${kind},relatime - xfs /dev/vdb rw,prjquota`;
+// "9p" (any mount as gVisor shows it), "ro" (read-only bind) or "rw" (the shared folder itself,
+// bind-mounted read-write).
+const mountLine = (point, kind) => {
+  if (kind === "overlay") {
+    return `801 790 0:61 / ${point} rw,relatime master:1 - overlay overlay rw,lowerdir=/cache/trusted/x`;
+  }
+  if (kind === "9p") return `30 1 0:7 / ${point} rw,relatime - 9p none rw,trans=fd,rfdno=4,wfdno=4`;
+  return `802 790 253:2 /trusted/x ${point} ${kind},relatime - xfs /dev/vdb rw,prjquota`;
+};
 export const mounts = (kind) =>
   ["/cache/pnpm-store", "/cache/turbo", "/cache/ms-playwright"]
     .map((point) => mountLine(point, kind))
