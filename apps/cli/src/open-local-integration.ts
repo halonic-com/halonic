@@ -183,8 +183,18 @@ class LocalIntegrationOpening {
     );
     if (gated.run === "unfenced") this.#machine.startedUnfenced?.(gated.reason);
     if (gated.run === "fenced" || gated.run === "unfenced") return gated.runner;
-    if (gated.run === "stopped") throw new Error("the sandbox failed its check, so nothing runs");
+    if (gated.run === "stopped") throw new Error(this.#stopped());
     throw new Error(this.#needsYes(gated.reason));
+  }
+
+  /**
+   * Why a start whose fence proof failed started nothing (HAL-15666). The
+   * computer passed the sandbox check, so it never says the check failed; the
+   * words are the plugin's (`cli.plugin-backend-stopped`), naming the folder.
+   */
+  #stopped(): string {
+    const name = this.#request.folder;
+    return `Halonic stopped the integration ${name}: the sandbox didn't work as the integration started, so nothing ran. Halonic tries ${name} in the sandbox again the next time a run uses it.`;
   }
 
   /**

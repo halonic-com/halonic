@@ -136,6 +136,8 @@ async function setup(
     savedYes?: string;
     /** The saved yes's file, as the machine reports it when the yes can't be read. */
     unreadableYes?: string;
+    /** What a fenced runner's fence proof says; it holds unless a test says otherwise. */
+    fenceProof?: StartedRunner["fence"];
   } = {},
 ) {
   const { check = passes, runnerBuilt = true, beforeTrustCheck, trustedSettings } = options;
@@ -221,7 +223,10 @@ async function setup(
       seen.entries.push(`${start.entry.file}#${start.entry.exportName}`);
       seen.settings.push(start.settings);
       const runner: StartedRunner = {
-        fence: { state: start.sandbox === launcher ? "off" : "fenced" },
+        fence:
+          start.sandbox === launcher
+            ? { state: "off" }
+            : (options.fenceProof ?? { state: "fenced" }),
         declaration: { name: "notes", version: "1.0.0", tools: [readNote] },
         stopped: new Promise(() => {}),
         callTool: async (name) => (options.tool ? options.tool(start.http) : `answer from ${name}`),
@@ -410,6 +415,24 @@ verifies("cli.local-integration-unfenced-yes", () => {
         `the saved yes to run without it can't be read (${JSON.stringify(file)}), so nothing runs. To allow it, trust this workspace in Studio on this computer.`,
       );
       expect(seen.starts).toBe(0);
+    });
+  });
+});
+
+verifies("cli.local-integration-stopped", () => {
+  describe("openLocalIntegration where the runner's fence doesn't hold", () => {
+    it("names the integration it stopped, never says the check failed, and tries again at the next start", async () => {
+      const { seen, client } = await setup({
+        fenceProof: { state: "not-fenced", reason: "the canary file was readable" },
+      });
+      const call = client().callTool("read-note", {});
+      await expect(call).rejects.toThrow(
+        "Connector \"notes\" didn't start: Halonic stopped the integration notes: the sandbox didn't work as the integration started, so nothing ran. Halonic tries notes in the sandbox again the next time a run uses it.",
+      );
+      await expect(call).rejects.not.toThrow(/failed its check/);
+      expect(seen.stops).toBe(1);
+      await expect(client().callTool("read-note", {})).rejects.toThrow(/Halonic stopped/);
+      expect(seen.starts).toBe(2);
     });
   });
 });

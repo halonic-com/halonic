@@ -195,6 +195,9 @@ verifies("plugins.plugin-cards", () => {
     expect(view.querySelector('[aria-live="polite"] p')?.textContent).toBe(
       "Halonic stopped Weather: its sandbox didn't hold, so it didn't run. Open Weather to check again.",
     );
+    // The name is untrusted text, so both sentences isolate it from the words around it.
+    const names = view.querySelectorAll('[aria-live="polite"] p bdi');
+    expect([...names].map((name) => name.textContent)).toEqual(["Weather", "Weather"]);
     expect(button(view, "Refresh Today's weather")).toBeDefined();
     act(() => button(view, "Weather").click());
     expect(details).toHaveBeenCalledOnce();

@@ -12,9 +12,26 @@ export function isPluginStopped(error: unknown): boolean {
     : false;
 }
 
-/** The first sentence: "Halonic stopped Tides: its sandbox didn't hold, so it didn't run." */
+/**
+ * The first sentence as text: "Halonic stopped Tides: its sandbox didn't hold, so it didn't run."
+ * For the dialog's alert, which takes only text; a card uses {@link StoppedLine}.
+ */
 export function stoppedLine(name: string): string {
   return `Halonic stopped ${name}: its sandbox didn't hold, so it didn't run.`;
+}
+
+/** The first sentence with the plugin's name in `<bdi>`, as {@link CheckAgainLine} has it. */
+export function StoppedLine({
+  name,
+}: {
+  /** The plugin's name, which is untrusted text. */
+  readonly name: string;
+}) {
+  return (
+    <>
+      Halonic stopped <bdi>{name}</bdi>: its sandbox didn't hold, so it didn't run.
+    </>
+  );
 }
 
 /**

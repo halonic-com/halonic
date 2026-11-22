@@ -15,7 +15,7 @@ import { errorReasonFor } from "@halonicjs/studio-shell";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { fromPlugin, TRY_AGAIN } from "../commands/command-text.ts";
 import type { PluginToolCaller } from "../commands/plugin-command-dialog.tsx";
-import { CheckAgainLine, isPluginStopped, stoppedLine } from "../commands/plugin-stopped.tsx";
+import { CheckAgainLine, isPluginStopped, StoppedLine } from "../commands/plugin-stopped.tsx";
 import { cantRunLine } from "../commands/tools-cant-run.ts";
 import { PluginResult } from "../ui/plugin-result.tsx";
 import {
@@ -234,7 +234,7 @@ function CardAnswer({
             icon={<WarningIcon />}
             line={
               <>
-                {stoppedLine(plugin)} <CheckAgainLine name={plugin} onOpen={onOpenPlugin} />
+                <StoppedLine name={plugin} /> <CheckAgainLine name={plugin} onOpen={onOpenPlugin} />
               </>
             }
             action={TRY_AGAIN}
