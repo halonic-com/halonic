@@ -285,6 +285,8 @@ export const updatesWords = {
     "Get these updates with git instead: open a terminal in this workspace's folder and run",
   leftToGitCommand: "git pull --no-rebase",
   leftToGitAfter: "If git reports conflicts, settle them and commit, then come back here.",
+  /** The how-to's title, linked under the steps (C714 row 7); its address is `leftToGitHowTo`. */
+  leftToGitHowToTitle: "Get updates for files Halonic leaves to git",
 };
 
 /** Choosing per item when both sides changed (checklist part 2, 2.8; microcopy revision 94, 16). */

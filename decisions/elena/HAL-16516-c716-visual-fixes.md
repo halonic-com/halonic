@@ -12,7 +12,13 @@ the steps under Get updates in an info Callout: the lead sentence, the command i
 command moved into its box. The Callout goes when Get updates is pressed again. The requirement
 `source-control.get-updates-per-item` says so, and its example's refusal text is the shorter one.
 The tests that expected the steps in the refusal and the toast now expect them on the page, and a
-new UI test checks the Callout, its command, its copy button and that it goes away.
+new UI test checks the Callout, its command, its copy button, its link and that it goes away.
+
+**The how-to link (C714 row 7, HAL-16518).** The words check asked for the command to copy (done
+above) and a link to the new how-to, `docs/how-to/get-updates-for-files-halonic-leaves-to-git.md`.
+The Callout ends with an `ExternalLink` "Get updates for files Halonic leaves to git" to that page
+on GitHub, as the proxy how-to link in run failures does until docs.halonic.dev has it. Bundled
+here because it's the same Callout; a third stacked PR would go past the two-PR stack.
 
 **Trust check, Gets secrets (row 2).** A program's secret names are the env var names it gets, so
 the line now has the `code` tone, in mono like `PATH` under it. The requirement

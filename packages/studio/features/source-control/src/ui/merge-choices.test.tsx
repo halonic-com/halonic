@@ -262,7 +262,7 @@ verifies("source-control.get-updates-per-item", () => {
       expect(toasts.list().at(-1)?.action?.label).toBe("Try again");
     });
 
-    it("shows the git steps under Get updates, the command in a box to copy, until it's pressed again", async () => {
+    it("shows the git steps under Get updates, the command in a box to copy and the how-to, until it's pressed again", async () => {
       const { fake, root } = await openPage({ started: merge([item("a.md", "m\n", "s\n")]) });
       fake.failMerge(
         new KindedError("conflict", "updates change .env.example, which Halonic leaves to git."),
@@ -276,6 +276,8 @@ verifies("source-control.get-updates-per-item", () => {
       expect(root.textContent).toContain(
         "If git reports conflicts, settle them and commit, then come back here.",
       );
+      const howTo = root.querySelector<HTMLAnchorElement>('a[href$="halonic-leaves-to-git.md"]');
+      expect(howTo?.textContent).toContain("Get updates for files Halonic leaves to git");
       fake.failMerge(new KindedError("unavailable", "The shared copy can't be reached."));
       await press("Get updates");
       expect(root.textContent).not.toContain("git pull --no-rebase");
