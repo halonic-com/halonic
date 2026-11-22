@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-With `--debug` on Windows, a `halonic` command now says why it doesn't sweep the sandbox's kept access as a note about the host lock, not as a clean-up that failed.
+With `--debug` on Windows, the sandbox's notes about its host lock no longer show as "couldn't clean up after a harness run".
