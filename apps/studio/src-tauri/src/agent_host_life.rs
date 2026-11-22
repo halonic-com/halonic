@@ -10,7 +10,7 @@ use super::{AgentHostState, running_host};
 /// page starts loading another document, or its window closes.
 pub fn end_page_streams<R: Runtime>(app: &AppHandle<R>, page: &str) {
     if let Some(state) = app.try_state::<AgentHostState>() {
-        state.end_streams(|key| key.page == page);
+        state.streams.end(|key| key.page == page);
     }
 }
 

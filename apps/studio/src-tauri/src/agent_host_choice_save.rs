@@ -86,7 +86,7 @@ fn save_choice<R: Runtime>(app: &AppHandle<R>, backend: Option<&str>) -> Result<
     put_copy_back_when_unsaved(saved, put_back)?;
     if moves_host(before.map(|(kind, _)| kind), after) {
         drop(host.take());
-        state.end_streams(|_| true);
+        state.streams.end(|_| true);
     }
     Ok(())
 }
