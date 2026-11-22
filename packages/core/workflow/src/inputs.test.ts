@@ -53,6 +53,22 @@ verifies("workflow.context-before", () => {
     });
     expect(contextBefore(writes, "end")).toEqual(["left", "results", "right", "turns"]);
   });
+
+  // New (HAL-15394).
+  it("follows a misspelled transition to its likely state only when asked", () => {
+    const typo = workflowOf({
+      id: "typo",
+      name: "Typo",
+      initial: "draft",
+      states: {
+        draft: { agent: "a", output: "reply", on: [{ to: "reveiw" }] },
+        review: { agent: "a", on: [{ to: "end" }] },
+        end: { type: "final" },
+      },
+    });
+    expect(contextBefore(typo, "review")).toEqual([]);
+    expect(contextBefore(typo, "review", { followGuesses: true })).toEqual(["reply"]);
+  });
 });
 
 verifies("workflow.with-gets", () => {

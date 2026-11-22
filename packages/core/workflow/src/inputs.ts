@@ -1,4 +1,5 @@
 import type { Workflow, WorkflowState } from "@halonicjs/format";
+import { likelyTarget } from "./likely-target.ts";
 import { getPath, render, renderText } from "./template.ts";
 
 /** A state's `input`: one template, or a map of templates. */
@@ -66,15 +67,29 @@ function renderMap(map: Record<string, unknown>, scope: unknown): Record<string,
   return Object.fromEntries(Object.entries(map).map(([key, value]) => [key, render(value, scope)]));
 }
 
+/** How {@link contextBefore} follows transitions. */
+export interface ContextBeforeOptions {
+  /**
+   * Count a transition to an unknown state as going to the state its "Did you
+   * mean" names, as `validateWorkflow` does, so a misspelled `to:` doesn't
+   * also make the keys before it unknown (HAL-15394). Off by default.
+   */
+  readonly followGuesses?: boolean;
+}
+
 /**
  * The context keys a state can read, sorted: the workflow's initial context,
  * and the keys every state that can run before it writes (see
  * {@link contextWrittenBy}). Those are found by following transitions back
  * from the state.
  */
-export function contextBefore(workflow: Workflow, stateId: string): string[] {
+export function contextBefore(
+  workflow: Workflow,
+  stateId: string,
+  options: ContextBeforeOptions = {},
+): string[] {
   const keys = new Set(Object.keys(workflow.context));
-  for (const earlier of statesBefore(workflow, stateId)) {
+  for (const earlier of statesBefore(workflow, stateId, options)) {
     const state = workflow.states[earlier];
     for (const key of state ? contextWrittenBy(state) : []) {
       keys.add(key);
@@ -100,11 +115,18 @@ export function contextWrittenBy(state: WorkflowState): string[] {
 }
 
 /** Every state with a path of transitions to `stateId`. The state itself counts only on a loop. */
-function statesBefore(workflow: Workflow, stateId: string): Set<string> {
+function statesBefore(
+  workflow: Workflow,
+  stateId: string,
+  { followGuesses = false }: ContextBeforeOptions,
+): Set<string> {
   const comesFrom = new Map<string, string[]>();
   for (const [from, state] of Object.entries(workflow.states)) {
     for (const transition of state.on) {
-      comesFrom.set(transition.to, [...(comesFrom.get(transition.to) ?? []), from]);
+      const to = followGuesses ? likelyTarget(workflow, transition.to) : transition.to;
+      if (to !== undefined) {
+        comesFrom.set(to, [...(comesFrom.get(to) ?? []), from]);
+      }
     }
   }
   const seen = new Set<string>();
