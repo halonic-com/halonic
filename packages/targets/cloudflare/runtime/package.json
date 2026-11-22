@@ -17,6 +17,7 @@
     "@halonicjs/adapter-env-secrets": "workspace:*",
     "@halonicjs/adapter-password-pbkdf2": "workspace:*",
     "@halonicjs/adapter-token-store": "workspace:*",
+    "@halonicjs/engine": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/host-server": "workspace:*",
     "@halonicjs/ports": "workspace:*",
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
+    "@halonicjs/adapter-memory": "workspace:*",
     "@halonicjs/target-cloudflare-testing": "workspace:*",
     "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",

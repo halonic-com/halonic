@@ -3793,6 +3793,9 @@ importers:
       '@halonicjs/adapter-token-store':
         specifier: workspace:*
         version: link:../../../adapters/token-store
+      '@halonicjs/engine':
+        specifier: workspace:*
+        version: link:../../../core/engine
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../../core/format
@@ -3812,6 +3815,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
         version: 5.20260730.1
+      '@halonicjs/adapter-memory':
+        specifier: workspace:*
+        version: link:../../../adapters/memory
       '@halonicjs/target-cloudflare-testing':
         specifier: workspace:*
         version: link:../testing
