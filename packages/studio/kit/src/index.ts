@@ -119,6 +119,7 @@ export {
   type ExternalLinkProps,
   inlineLinkClasses,
   isWebAddress,
+  standaloneLinkClasses,
 } from "./external-link/external-link.tsx";
 export {
   type ExternalAddress,

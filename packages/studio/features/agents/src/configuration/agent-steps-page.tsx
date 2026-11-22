@@ -4,8 +4,8 @@ import {
   EmptyState,
   Field,
   Input,
-  inlineLinkClasses,
   PlusIcon,
+  standaloneLinkClasses,
   TextArea,
 } from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
@@ -65,7 +65,7 @@ export function AgentStepsPage({ host, settings, openAgentStep }: AgentStepsPage
             ) : (
               <button
                 type="button"
-                className={`self-start ${inlineLinkClasses}`}
+                className={`self-start ${standaloneLinkClasses}`}
                 onClick={() => openAgentStep(step)}
               >
                 {step.id}

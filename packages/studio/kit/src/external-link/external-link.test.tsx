@@ -3,7 +3,12 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { expect, it, vi } from "vitest";
 import { click, render } from "../test/render.tsx";
-import { ExternalLink, inlineLinkClasses, isWebAddress } from "./external-link.tsx";
+import {
+  ExternalLink,
+  inlineLinkClasses,
+  isWebAddress,
+  standaloneLinkClasses,
+} from "./external-link.tsx";
 import { type OpenExternal, OpenExternalProvider } from "./open-external.tsx";
 
 const audiencePage = "https://console.cloud.google.com/auth/audience?project=halonic-x";
@@ -42,10 +47,21 @@ verifies("kit.external-link", () => {
     expect(link.className).not.toContain("hover:underline");
   });
 
-  it("has a 48px hit area on a touch screen and is 48px high on a phone", () => {
+  it("has a 48px hit area on a touch screen and on a phone, and stays inline (C606-3)", () => {
     const { link } = renderLink();
     expect(link.className).toContain("touch:hit-touch");
-    expect(link.className).toContain("phone:min-h-touch");
+    expect(link.className).toContain("phone:hit-touch");
+    // A taller box would stretch the line the link sits on; the e2e test reads the real lines.
+    expect(link.className).not.toContain("min-h-touch");
+    expect(link.className).not.toContain("inline-flex");
+  });
+
+  it("is 48px high on a phone when it stands on a line of its own", () => {
+    const classes = standaloneLinkClasses.split(" ");
+    expect(classes).toEqual(expect.arrayContaining(inlineLinkClasses.split(" ")));
+    expect(classes).toEqual(
+      expect.arrayContaining(["phone:inline-flex", "phone:min-h-touch", "phone:items-center"]),
+    );
   });
 
   it("is the link colour and underlined in high contrast, also on a button", () => {

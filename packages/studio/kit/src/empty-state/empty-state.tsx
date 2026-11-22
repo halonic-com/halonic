@@ -1,6 +1,6 @@
 import type { ReactNode, Ref } from "react";
 import { Button, type ButtonSize } from "../button/button.tsx";
-import { inlineLinkClasses } from "../external-link/external-link.tsx";
+import { standaloneLinkClasses } from "../external-link/external-link.tsx";
 import { assignRef } from "../field/control.ts";
 import { AlertIcon } from "../icons/alert-icon.tsx";
 
@@ -239,7 +239,7 @@ function actionLink(link: EmptyStateAction | undefined): ReactNode {
   return (
     <button
       type="button"
-      className={`text-body ${inlineLinkClasses}`}
+      className={`text-body ${standaloneLinkClasses}`}
       aria-busy={link.busy === true}
       onClick={link.onClick}
     >
