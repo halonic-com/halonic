@@ -32,6 +32,17 @@ export function budgetStopOf(
 }
 
 /**
+ * Whether a `budget` stop is a meter's (requirement `engine.plan-stops`):
+ * a `limit_reached` cause whose code starts with `plan.`, such as
+ * `plan.cost`, rather than the workspace's own `budget.run` or
+ * `budget.month`. The app can't import the engine's `isPlanStop`, so it
+ * reads the cause the same way.
+ */
+export function isMeterStop(cause: RunFailureCause | undefined): boolean {
+  return cause?.kind === "limit_reached" && cause.code?.startsWith("plan.") === true;
+}
+
+/**
  * The first of the month after `at` (UTC), when a monthly budget starts
  * again, as an ISO date.
  *

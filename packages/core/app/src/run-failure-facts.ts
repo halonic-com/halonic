@@ -7,7 +7,7 @@
 import type { RunFailureCause } from "@halonicjs/events";
 import { assertNever } from "@halonicjs/std";
 import type { FailedModel, FailedStart, RunFailedFacts } from "./failed-model.ts";
-import { budgetStopOf, nextMonthStart } from "./run-failure-budget.ts";
+import { budgetStopOf, isMeterStop, nextMonthStart } from "./run-failure-budget.ts";
 import type { ConfigFailure } from "./run-failure-config.ts";
 import type { KeyAddressFailure } from "./run-failure-key-address.ts";
 import { type ProxyFailure, proxyFailureOf } from "./run-failure-proxy.ts";
@@ -45,6 +45,8 @@ const modelFirstAnswerMs = 5 * 60_000;
  *   `causeKnown`, as is an `error` whose cause is a bridge socket path that
  *   is too long (HAL-13862) or an answer that isn't the JSON its step asks
  *   for (HAL-14301), and `harness-unavailable` is `error` (HAL-6451);
+ * - a `budget` stop a meter made, with a `plan.` cause, is `error` with
+ *   `causeKnown` until its own facts follow (HAL-16571, HAL-16574);
  * - `instructions-not-trusted` is `error` when the log doesn't name the agent,
  *   as for a parallel branch or a log from before the engine named it;
  * - `cancelled` isn't a failure, so {@link runFailureOf} gives it none.
@@ -192,7 +194,8 @@ export type RunFailure =
  * whose model, provider file or started step can't be found. `disk-full`,
  * `interrupted` and `answer-not-an-option` have a known cause, so they get
  * `causeKnown` (HAL-6451), as does an `error` whose cause is
- * `harness-bridge.socket-path-too-long` (HAL-13862).
+ * `harness-bridge.socket-path-too-long` (HAL-13862) and a `budget` stop a
+ * meter made, with a `plan.` cause (HAL-16571).
  *
  * @param model - from `failedModelOf`; `undefined` when the run called no model
  * @param started - from `failedStartOf`; read for `sandbox-start-failed`,
@@ -292,8 +295,16 @@ function untrustedFailure(failed: RunFailedFacts): RunFailure {
     : { reason, agent: failed.agent, changed: failed.changed };
 }
 
-/** `budget` with the stop's figures; a monthly budget resets on the first of the next month (UTC). */
+/**
+ * `budget` with the stop's figures; a monthly budget resets on the first of the next month (UTC).
+ * A meter's `plan.` stop keeps the engine's message, which says what was reached, with its cause
+ * known, so no line asks for a bug report. Its own facts, worded from its code and detail, wait
+ * for the first host that gives a meter (requirement `app.run-failure-plan-stop`).
+ */
 function budgetFailure(failed: RunFailedFacts): RunFailure {
+  if (isMeterStop(failed.cause)) {
+    return { ...generalFailure(failed), causeKnown: true };
+  }
   const stop = budgetStopOf(failed.cause, failed.error);
   if (stop === undefined) {
     return generalFailure(failed);
