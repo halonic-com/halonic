@@ -195,6 +195,15 @@ verifies("app.run-short-id", () => {
     it("is the last 6 characters of the id, as stored", () => {
       expect(shortRunId("run_mfx3k2a1_a1b2c3d4")).toBe("b2c3d4");
     });
+
+    it.each([
+      ["a for-each item's child", "run_mfx3k2a1_a17k2m9p.3.1", "7k2m9p.3.1"],
+      ["a workflow step's child", "run_mfx3k2a1_a17k2m9p.4", "7k2m9p.4"],
+      ["a grandchild", "run_mfx3k2a1_a17k2m9p.3.1.2.0", "7k2m9p.3.1.2.0"],
+      ["a long child part, never cut", "run_x_a17k2m9p.12.104", "7k2m9p.12.104"],
+    ])("starts %s with its top-level run's short id", (_, runId, shortId) => {
+      expect(shortRunId(runId)).toBe(shortId);
+    });
   });
 
   describe("findRun", () => {
@@ -271,6 +280,49 @@ verifies("app.run-short-id", () => {
     it.each(["a1b2c3d4", "c3d4", "zzzzzz", ""])("finds nothing from %j", async (typed) => {
       expect(await new RunHistory(oneRun()).findRun(typed)).toEqual({ found: "none" });
     });
+
+    function family(): MemoryRuns {
+      const store = new MemoryRuns();
+      store.add("run_mfx3k2a1_a17k2m9p", at(1), [started("triage")]);
+      store.add("run_mfx3k2a1_a17k2m9p.3.1", at(2), [started("reply")]);
+      store.add("run_mfx3k2a1_a17k2m9p.4", at(3), [started("digest")]);
+      store.add("run_mfx3k2a1_a17k2m9p.3.1.2.0", at(4), [started("check")]);
+      return store;
+    }
+
+    it.each([
+      ["7k2m9p.3.1", "run_mfx3k2a1_a17k2m9p.3.1"],
+      ["7K2M9P.4", "run_mfx3k2a1_a17k2m9p.4"],
+      ["7k2m9p.3.1.2.0", "run_mfx3k2a1_a17k2m9p.3.1.2.0"],
+      ["7k2m9p", "run_mfx3k2a1_a17k2m9p"],
+    ])("finds a run of a family from its short id %s", async (typed, runId) => {
+      expect(await new RunHistory(family()).findRun(typed)).toEqual({ found: "one", run: runId });
+    });
+
+    it("still finds a child from the old 6-character short id", async () => {
+      expect(await new RunHistory(family()).findRun("9p.3.1")).toEqual({
+        found: "one",
+        run: "run_mfx3k2a1_a17k2m9p.3.1",
+      });
+    });
+
+    it("finds several runs when two families' children end in the same short id", async () => {
+      const store = new MemoryRuns();
+      store.add("run_aaaa_017k2m9p.3.1", at(1), [started("reply")]);
+      store.add("run_bbbb_997k2m9p.3.1", at(2), [started("reply")]);
+
+      expect(await new RunHistory(store).findRun("7K2M9P.3.1")).toEqual({
+        found: "several",
+        shortId: "7k2m9p.3.1",
+      });
+    });
+
+    it.each(["7k2m9p.3", "k2m9p.3.1", "a7k2m9p.3.1"])(
+      "finds nothing from %j, which no child's id ends in or isn't a short id",
+      async (typed) => {
+        expect(await new RunHistory(family()).findRun(typed)).toEqual({ found: "none" });
+      },
+    );
   });
 
   describe("showRun", () => {

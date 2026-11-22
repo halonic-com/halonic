@@ -222,7 +222,7 @@ const workflowName = (id: string) => (id === "verify" ? "Verify" : id);
 verifies("runs.run-view.child-runs", () => {
   it("names the child run a step started, with its short id", () => {
     expect(stepChildRuns(withChildren, "step-1", workflowName)).toEqual([
-      { runId: "run_a_01jd8q.4", started: "Started Verify", link: "Run jd8q.4" },
+      { runId: "run_a_01jd8q.4", started: "Started Verify", link: "Run 01jd8q.4" },
     ]);
   });
 

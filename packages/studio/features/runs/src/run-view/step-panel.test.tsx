@@ -412,7 +412,7 @@ verifies("runs.run-view.child-runs", () => {
 
     // The fake source names every workflow Support reply.
     const child = root.querySelector("aside li");
-    expect(child?.textContent).toBe("Started Support reply→Run m9p.13");
+    expect(child?.textContent).toBe("Started Support reply→Run 7k2m9p.13");
     act(() => child?.querySelector("button")?.click());
     expect(openOther).toHaveBeenCalledWith(`${runId}.13`);
     expect(root.querySelector("aside")?.textContent).not.toContain("made no model or tool calls");
@@ -422,7 +422,7 @@ verifies("runs.run-view.child-runs", () => {
     const root = await openRun();
     act(() => entry(root, 3).click());
 
-    expect(root.querySelector("aside li")?.textContent).toBe("Started Support reply→Run m9p.13");
+    expect(root.querySelector("aside li")?.textContent).toBe("Started Support reply→Run 7k2m9p.13");
     expect(root.querySelector("aside li button")).toBeNull();
   });
 });
