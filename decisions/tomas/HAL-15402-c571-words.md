@@ -3,6 +3,7 @@
 - Task: HAL-15402
 - Approval: words check C571 (HAL-15387), rows 11, 62 and 63, a team decision on details of approved screens and output with no board card (HAL-2282 rule); Liam reviews it and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/lnQDjJ6CQ/BeaJp3uGGaKP9XCVjUXSGOCXAX4tJbiK1InvLu1YOprStD1wqCoN4Ey8YV/tm8IwXAGINUDWQBw==
 
 ## What changes
 
