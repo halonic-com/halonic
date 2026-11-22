@@ -1,4 +1,11 @@
 // What the package exports for the first run's model choice, kept out of index.ts to keep that file short.
+
+export {
+  FirstRunModelChoice,
+  type FirstRunModelChoiceParts,
+  type ModelChoiceTrust,
+} from "./first-run-model-choice.ts";
+export { type SavedKeys, workspaceSavedKeys } from "./first-run-test-secrets.ts";
 export {
   choiceModel,
   choiceProvider,
@@ -31,13 +38,14 @@ export {
   testOutcome,
   testReplyOptions,
 } from "./model-choice-reply.ts";
-export type {
-  ChoiceKey,
-  ModelChoiceFileReads,
-  ModelChoiceKeySave,
-  ModelChoiceLine,
-  ModelChoicePreview,
-  ModelChoiceSaved,
-  ModelChoiceService,
-  ModelChoiceTest,
+export {
+  type ChoiceKey,
+  choiceKey,
+  type ModelChoiceFileReads,
+  type ModelChoiceKeySave,
+  type ModelChoiceLine,
+  type ModelChoicePreview,
+  type ModelChoiceSaved,
+  type ModelChoiceService,
+  type ModelChoiceTest,
 } from "./model-choice-service.ts";

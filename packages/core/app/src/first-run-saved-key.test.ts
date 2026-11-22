@@ -1,8 +1,8 @@
-import { SecretText } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { acmeFolder } from "./first-run-model-choice.testing.ts";
+import { acmeFolder } from "./first-run-model-choice.test-helper.ts";
 import { workspaceSavedKeys } from "./first-run-test-secrets.ts";
+import { choiceKey } from "./model-choice-service.ts";
 
 const anthropic = { kind: "key", provider: "anthropic" } as const;
 const saved = "sk-ant-acme-saved-1";
@@ -83,7 +83,7 @@ verifies("studio.first-run-saved-key", () => {
   it("tests a pasted key over a saved one", async () => {
     const folder = withSavedKey();
 
-    await folder.service.test(anthropic, new SecretText("sk-ant-acme-new-2"));
+    await folder.service.test(anthropic, choiceKey("sk-ant-acme-new-2"));
 
     expect(folder.calls.map((call) => call.key)).toEqual(["sk-ant-acme-new-2"]);
   });

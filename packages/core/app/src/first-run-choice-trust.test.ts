@@ -1,14 +1,14 @@
-import { choiceProvider, type ModelChoice } from "@halonicjs/app";
-import { SecretText } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { acmeFiles, acmeFolder } from "./first-run-model-choice.testing.ts";
+import { acmeFiles, acmeFolder } from "./first-run-model-choice.test-helper.ts";
+import { choiceProvider, type ModelChoice } from "./model-choice.ts";
+import { choiceKey } from "./model-choice-service.ts";
 
 const anthropic: ModelChoice = { kind: "key", provider: "anthropic" };
 const llama: ModelChoice = { kind: "local", model: "llama3.2" };
 
 async function passed(folder: ReturnType<typeof acmeFolder>, choice: ModelChoice) {
-  const key = choice.kind === "key" ? new SecretText("sk-ant-api03-acme-test") : undefined;
+  const key = choice.kind === "key" ? choiceKey("sk-ant-api03-acme-test") : undefined;
   const tested = await folder.service.test(choice, key);
   if (tested.kind !== "tested" || tested.outcome !== "ok") throw new Error("the test didn't pass");
   return tested.testId;

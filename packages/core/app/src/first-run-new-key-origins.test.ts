@@ -1,14 +1,14 @@
-import { SecretText } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { acmeFiles, acmeFolder } from "./first-run-model-choice.testing.ts";
+import { acmeFiles, acmeFolder } from "./first-run-model-choice.test-helper.ts";
+import { type ChoiceKey, choiceKey } from "./model-choice-service.ts";
 
 const anthropic = { kind: "key", provider: "anthropic" } as const;
 const pasted = "sk-ant-acme-new-1";
 const proxy = "https://proxy.acme.test";
 
 /** Tests the choice, with `key` pasted or none, and continues with the passed test. */
-async function testAndContinue(folder: ReturnType<typeof acmeFolder>, key?: SecretText) {
+async function testAndContinue(folder: ReturnType<typeof acmeFolder>, key?: ChoiceKey) {
   const tested = await folder.service.test(anthropic, key);
   if (tested.kind !== "tested" || tested.outcome !== "ok") throw new Error("the test didn't pass");
   return await folder.service.continue(tested.testId, undefined);
@@ -25,7 +25,7 @@ verifies("studio.first-run-new-key-origins", () => {
     folder.stored.set("team-key", "sk-ant-acme-earlier-1");
     folder.origins.set("team-key", [proxy]);
 
-    expect(await testAndContinue(folder, new SecretText(pasted))).toMatchObject({ ok: true });
+    expect(await testAndContinue(folder, choiceKey(pasted))).toMatchObject({ ok: true });
 
     expect([...folder.stored]).toEqual([["team-key", pasted]]);
     expect(folder.origins.get("team-key")).toBeUndefined();

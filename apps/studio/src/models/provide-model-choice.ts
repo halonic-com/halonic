@@ -3,16 +3,16 @@ import { readOllamaTags } from "@halonicjs/adapter-http-kit";
 import { workspaceProvider } from "@halonicjs/adapter-workspace-models";
 import {
   detectLocalModels,
+  FirstRunModelChoice,
   ollamaDownloadedModelSource,
   type ServiceRegistry,
   workspaceFilesKey,
+  workspaceSavedKeys,
 } from "@halonicjs/app";
 import { ModelChoiceHostService } from "@halonicjs/studio-feature-first-run/api";
 import { type ModelKeys, ModelsFilesService } from "@halonicjs/studio-feature-models/api";
 import { ShellHttpClient, shellKeychain, type TauriIpc } from "@halonicjs/studio-services";
 import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
-import { FirstRunModelChoice } from "./first-run-model-choice.ts";
-import { workspaceSavedKeys } from "./first-run-test-secrets.ts";
 
 /** What the first run's model choice needs from the open folder's services. */
 export interface ModelChoiceParts {
@@ -48,9 +48,10 @@ export function provideModelChoice(services: ServiceRegistry, parts: ModelChoice
       digest: webCryptoDigest,
       // The test call goes the way a run's calls go, with only the one key it tests as its secrets.
       provider: (file, secrets) => workspaceProvider(file, { secrets, http }),
-      setTimer: (callback, delayMs) => {
-        const timer = setTimeout(callback, delayMs);
-        return () => clearTimeout(timer);
+      timeLimit: (delayMs) => {
+        const limit = new AbortController();
+        const timer = setTimeout(() => limit.abort(), delayMs);
+        return { signal: limit.signal, stop: () => clearTimeout(timer) };
       },
       newTestId: () => crypto.randomUUID(),
       localModels: () => detectLocalModels(ollamaDownloadedModelSource(() => readOllamaTags(http))),

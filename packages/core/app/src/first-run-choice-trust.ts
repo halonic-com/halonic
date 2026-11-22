@@ -3,10 +3,8 @@
 // the difference the change makes to the folder's trust content, never written
 // by hand, and Continue may trust only what the line showed.
 
-import type { TrustCheck } from "@halonicjs/app";
 import type { Provider } from "@halonicjs/format";
 import type { Digest } from "@halonicjs/ports";
-import type { ModelChoicePreview } from "@halonicjs/studio-feature-first-run/api";
 import {
   type ProviderTrustContent,
   providersTrustContent,
@@ -14,6 +12,8 @@ import {
   trustChanges,
   trustFingerprint,
 } from "@halonicjs/workspace";
+import type { ModelChoicePreview } from "./model-choice-service.ts";
+import type { TrustCheck } from "./trust-service.ts";
 
 /** What the preview reads: the folder's last trust check and the provider file the change adds. */
 export interface ChoiceTrustInput {
@@ -85,7 +85,11 @@ function addsOnly(before: TrustContent, after: TrustContent, id: string): boolea
   );
 }
 
-/** The host and port of a local provider's address, such as `localhost:11434`; `trustUrl` already made it a valid URL. */
+/**
+ * The host and port of a local provider's address, such as `localhost:11434`. `trustUrl` already
+ * wrote it as `scheme://host[:port]/…`, in lower case, without user info or a default port, so
+ * the part after `//` is the host as a URL gives it. Core has no `URL` class.
+ */
 function hostOf(baseUrl: string | undefined): string | undefined {
-  return baseUrl === undefined ? undefined : new URL(baseUrl).host;
+  return baseUrl === undefined ? undefined : /^[a-z][a-z0-9+.-]*:\/\/([^/?#]*)/i.exec(baseUrl)?.[1];
 }

@@ -20,6 +20,38 @@ export interface ChoiceKey {
   readonly isEmpty: boolean;
 }
 
+/** What a {@link ChoiceKey} shows wherever it's turned into text by accident. */
+const hiddenKey = "[secret]";
+
+class HiddenChoiceKey implements ChoiceKey {
+  readonly #value: string;
+
+  constructor(value: string) {
+    this.#value = value;
+  }
+
+  reveal(): string {
+    return this.#value;
+  }
+
+  get isEmpty(): boolean {
+    return this.#value === "";
+  }
+
+  toString(): string {
+    return hiddenKey;
+  }
+
+  toJSON(): string {
+    return hiddenKey;
+  }
+}
+
+/** A {@link ChoiceKey} holding `text`: in a template string, a log line or JSON it shows `[secret]`. */
+export function choiceKey(text: string): ChoiceKey {
+  return new HiddenChoiceKey(text);
+}
+
 /**
  * What testing a choice on the model screen found (first-run-flow 3.3):
  * - `not-a-key`: the pasted text can't be a key; nothing was called.
@@ -121,9 +153,11 @@ export interface ModelChoiceService {
   /**
    * Saves the tested choice: the key, then the files, then the trust, but the
    * trust only when the files lead to `shownFingerprint`. The test's key is
-   * dropped afterwards, whatever happened. Saving the files saves the whole
-   * workspace now, so any other unsaved edit is saved with them, as autosave
-   * would a second later.
+   * dropped afterwards, whatever happened. How the files are saved is the
+   * host's: the desktop app saves the whole workspace now, so any other unsaved
+   * edit is saved with them, as autosave would a second later; `halonic serve`
+   * is to commit only the choice files, and refuse when they hold changes of
+   * their own (HAL-14808).
    */
   continue(testId: string, shownFingerprint: string | undefined): Promise<ModelChoiceSaved>;
 }
@@ -142,4 +176,6 @@ export interface ModelChoiceFileReads {
 export interface ModelChoiceKeySave {
   /** Stores the key under the secret name, replacing any. It rejects when it can't; the key is never in the error. */
   save(secretName: string, key: ChoiceKey): Promise<void>;
+  /** Removes the key under the secret name and the origins stored beside it (HAL-16409). */
+  remove(secretName: string): Promise<void>;
 }

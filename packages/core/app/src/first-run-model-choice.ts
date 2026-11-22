@@ -1,35 +1,49 @@
+import { type Provider, parseFile } from "@halonicjs/format";
+import type { Digest, LlmProvider, Secrets } from "@halonicjs/ports";
+import { choicePreview } from "./first-run-choice-trust.ts";
+import { emptyKey, onlySaved, onlySecret, type SavedKeys } from "./first-run-test-secrets.ts";
+import type { LocalModels } from "./local-models.ts";
 import {
-  type ChoiceEdits,
-  type ChoiceProblem,
-  choiceEdits,
   choiceProvider,
   type FirstRunKeyProvider,
   keyProblem,
-  type LocalModels,
   type ModelChoice,
-  modelTestRequest,
-  type TestResult,
-  testOutcome,
   testTimeLimitMs,
-} from "@halonicjs/app";
-import { type Provider, parseFile } from "@halonicjs/format";
-import type { Digest, LlmProvider, Secrets } from "@halonicjs/ports";
-import type {
-  ModelChoiceLine,
-  ModelChoicePreview,
-  ModelChoiceSaved,
-  ModelChoiceService,
-  ModelChoiceTest,
-} from "@halonicjs/studio-feature-first-run/api";
-import type { ModelKeys, ModelsFiles } from "@halonicjs/studio-feature-models/api";
-import { SecretText } from "@halonicjs/studio-kit";
-import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
-import { choicePreview } from "./first-run-choice-trust.ts";
-import { emptyKey, onlySaved, onlySecret, type SavedKeys } from "./first-run-test-secrets.ts";
+} from "./model-choice.ts";
+import { type ChoiceEdits, type ChoiceProblem, choiceEdits } from "./model-choice-edits.ts";
+import { modelTestRequest, type TestResult, testOutcome } from "./model-choice-reply.ts";
+import {
+  type ChoiceKey,
+  choiceKey,
+  type ModelChoiceFileReads,
+  type ModelChoiceKeySave,
+  type ModelChoiceLine,
+  type ModelChoicePreview,
+  type ModelChoiceSaved,
+  type ModelChoiceService,
+  type ModelChoiceTest,
+} from "./model-choice-service.ts";
+import type { TrustCheck } from "./trust-service.ts";
+
+/** The open folder's trust as the model choice reads and grants it: Studio's `WorkspaceTrust` is one. */
+export interface ModelChoiceTrust {
+  /** The last finished trust check; `undefined` when none has finished or the last one failed. */
+  readonly check: TrustCheck | undefined;
+  /** Whether the last check found nothing to trust: the folder reaches only the test model. */
+  readonly needsNoTrust: boolean;
+  /** Checks the folder's trust again. */
+  refresh(): Promise<void>;
+  /** Saves a person's trust in exactly the check with `shownFingerprint`; never rejects. */
+  grant(
+    shownFingerprint: string,
+  ): Promise<{ readonly ok: true } | { readonly ok: false; readonly reason: string }>;
+  /** Whether the last check found the folder trusted. */
+  isTrusted(): boolean;
+}
 
 /** What the first run's model choice reads and writes, all for the one open folder. */
 export interface FirstRunModelChoiceParts {
-  readonly files: Pick<ModelsFiles, "readModels" | "readWorkspace" | "readProvider">;
+  readonly files: ModelChoiceFileReads;
   /**
    * Changes files as one undo step, without saving them. Returns the way to take that step back,
    * which does nothing once a newer step was made.
@@ -41,21 +55,21 @@ export interface FirstRunModelChoiceParts {
    * the browser demo: Continue then changes nothing.
    */
   readonly settle: (() => Promise<void>) | undefined;
-  readonly keys: Pick<ModelKeys, "save" | "remove">;
+  readonly keys: ModelChoiceKeySave;
   /**
    * The keys saved on this computer, read as a run reads them (`workspaceSavedKeys`): the one
    * lookup both "is a key saved?" and the test with the saved key use.
    */
   readonly saved: SavedKeys;
-  readonly trust: Pick<
-    WorkspaceTrust,
-    "check" | "needsNoTrust" | "refresh" | "grant" | "isTrusted"
-  >;
+  readonly trust: ModelChoiceTrust;
   readonly digest: Digest;
   /** Makes a provider from its file, as a run does (`workspaceProvider`). */
   readonly provider: (file: Provider, secrets: Secrets) => LlmProvider;
-  /** Calls `callback` after `delayMs`; returns the way to cancel it. */
-  readonly setTimer: (callback: () => void, delayMs: number) => () => void;
+  /**
+   * A signal that aborts after `delayMs`, and the way to stop its timer. The host makes it: core
+   * code sees the Web types but has no `AbortController` or timers.
+   */
+  readonly timeLimit: (delayMs: number) => { readonly signal: AbortSignal; stop(): void };
   readonly newTestId: () => string;
   /** Which models Ollama on this computer has downloaded (`detectLocalModels`). */
   readonly localModels: () => Promise<LocalModels>;
@@ -65,7 +79,7 @@ export interface FirstRunModelChoiceParts {
 interface PassedTest {
   readonly id: string;
   readonly choice: ModelChoice;
-  readonly key: SecretText | undefined;
+  readonly key: ChoiceKey | undefined;
 }
 
 /**
@@ -86,16 +100,16 @@ export class FirstRunModelChoice implements ModelChoiceService {
     this.#parts = parts;
   }
 
-  async test(choice: ModelChoice, key?: SecretText): Promise<ModelChoiceTest> {
+  async test(choice: ModelChoice, key?: ChoiceKey): Promise<ModelChoiceTest> {
     this.#passed = undefined;
     this.#shown = undefined;
     const mine = ++this.#latest;
-    let tested: SecretText | undefined;
+    let tested: ChoiceKey | undefined;
     if (choice.kind === "key" && key !== undefined) {
       const text = key.reveal();
       const problem = keyProblem(choice.provider, text);
       if (problem !== undefined) return { kind: "not-a-key", problem };
-      tested = new SecretText(text.trim());
+      tested = choiceKey(text.trim());
     }
     const edits = await this.#edits(choice);
     if (!edits.ok) return { kind: "files", problem: edits.problem };
@@ -277,15 +291,14 @@ export class FirstRunModelChoice implements ModelChoiceService {
     edits: { file: Provider },
     secrets: Secrets,
   ): Promise<TestResult> {
-    const limit = new AbortController();
-    const stop = this.#parts.setTimer(() => limit.abort(), testTimeLimitMs(choice));
+    const limit = this.#parts.timeLimit(testTimeLimitMs(choice));
     try {
       const model = this.#parts.provider(edits.file, secrets);
       return { reply: await model.chat(modelTestRequest(choice, limit.signal)) };
     } catch (error) {
       return { error };
     } finally {
-      stop();
+      limit.stop();
     }
   }
 }
