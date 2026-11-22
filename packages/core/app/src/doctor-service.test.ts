@@ -1,7 +1,7 @@
 import { err, ok } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import type { DoctorProvider } from "./doctor-service.ts";
+import type { DoctorProvider } from "./doctor-models-line.ts";
 import type { SandboxBackendStatus, SandboxChoice } from "./sandbox-choice.ts";
 import {
   agent,

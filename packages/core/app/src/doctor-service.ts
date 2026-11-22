@@ -34,17 +34,12 @@ import {
   type SandboxLine,
   sandboxLine,
   type WorkspaceLine,
-  workspaceLine,
 } from "./doctor-lines.ts";
-import type { AliasProvider, ModelsLine } from "./doctor-models-line.ts";
+import type { AliasProvider, DoctorProvider, ModelsLine } from "./doctor-models-line.ts";
 import { type MxcLine, mxcLine } from "./doctor-mxc-line.ts";
 import { type NoSandboxLine, noSandboxLine } from "./doctor-no-sandbox-line.ts";
-import {
-  type SecretsFound,
-  type SecretsLine,
-  secretsLine,
-  type UsedSecret,
-} from "./doctor-secrets-line.ts";
+import type { DoctorPluginProblem, PluginsLine } from "./doctor-plugins-line.ts";
+import type { SecretsFound, SecretsLine, UsedSecret } from "./doctor-secrets-line.ts";
 import {
   type AgentSettingsFolder,
   type DoctorHarness,
@@ -52,39 +47,11 @@ import {
 } from "./doctor-sign-ins.ts";
 import { lineOf, type TimedOutLine, type timedOut, withinLimit } from "./doctor-time-limit.ts";
 import type { WebSearchingAgent } from "./doctor-web-search.ts";
-import { workspaceModels } from "./doctor-workspace-models.ts";
+import { workspaceLines } from "./doctor-workspace-lines.ts";
 import type { ResourceReport } from "./resource-report.ts";
 import type { SandboxChoiceService } from "./sandbox-choice.ts";
 import type { SaveTimers } from "./save-scheduler.ts";
 import type { TrustCheck, TrustSubject } from "./trust-service.ts";
-
-/**
- * A provider the workspace's aliases use, as the host reads it from its
- * file. The host decides how it runs, because only the host knows each
- * adapter's default address.
- */
-export type DoctorProvider =
-  | {
-      provider: string;
-      name: string;
-      runs: "on-this-computer";
-      /** Where Halonic reaches it, such as "localhost:11434". */
-      address: string;
-    }
-  | {
-      provider: string;
-      name: string;
-      runs: "with-a-key";
-      /** The name of the secret that holds its key. */
-      secret: string;
-    }
-  | {
-      provider: string;
-      name: string;
-      runs: "without-a-key";
-      /** The built-in test model, Sample answers, rather than a provider that only needs no key. */
-      testModel?: boolean;
-    };
 
 /** The workspace `doctor` runs in. */
 export interface DoctorWorkspace {
@@ -167,6 +134,12 @@ export interface DoctorWorkspace {
    * (HAL-15332).
    */
   refusedHarnessModels?: readonly RefusedHarnessModel[];
+  /**
+   * What is wrong with the plugins the workspace's connectors use, as the
+   * host found them in the profile. Left out, or empty, there is no Plugins
+   * line (HAL-14296).
+   */
+  pluginProblems?: readonly DoctorPluginProblem[];
 }
 
 /** What {@link DoctorService} needs from the host. */
@@ -221,6 +194,8 @@ export interface DoctorReport {
   models?: ModelsLine | TimedOutLine<"models">;
   /** Only inside a workspace, while a secret it uses isn't set or couldn't be read. */
   secrets?: SecretsLine | TimedOutLine<"secrets">;
+  /** Only inside a workspace, while a plugin one of its connectors uses isn't added, is off or can't be read. */
+  plugins?: PluginsLine;
   sandbox: SandboxLine | TimedOutLine<"sandbox">;
   /** Only where MXC is offered and the sandbox choice has started. */
   mxc?: MxcLine;
@@ -248,7 +223,8 @@ export interface DoctorReport {
 /**
  * Checks that this computer can run Halonic, for `halonic doctor`
  * (requirement `app.doctor-service`). It reads the workspace's trust, its
- * models, its secrets (`app.doctor-secrets`), the sandbox, the harnesses and
+ * models, its secrets (`app.doctor-secrets`), the plugins its connectors use
+ * as the host found them (`app.doctor-plugins`), the sandbox, the harnesses and
  * the disk at the same time, so one slow check doesn't wait for another,
  * and it never calls a provider over the internet. A check that hasn't answered after 5 seconds ends as a
  * warning, so one that hangs doesn't hold up the report.
@@ -293,11 +269,7 @@ export class DoctorService {
       disk: lineOf(resources, "disk", diskLine),
     };
     if (workspace !== null) {
-      report.workspace = lineOf(trust, "workspace", (found) => trustLine(workspace, found));
-      const models = workspaceModels(workspace, resources, keys);
-      if (models !== undefined) report.models = models;
-      const secretsFound = lineOf(secrets, "secrets", secretsLine);
-      if (secretsFound !== undefined) report.secrets = secretsFound;
+      Object.assign(report, workspaceLines(workspace, { trust, resources, keys, secrets }));
       Object.assign(report, firstRunLines(workspace, report));
     }
     const choice = this.options.sandboxChoice?.current() ?? null;
@@ -394,15 +366,6 @@ export class DoctorService {
 /** Whether each provider's key is stored, by provider id, as {@link DoctorService} found it. */
 type StoredKeys = Map<string, boolean | "unreadable">;
 
-/** The Workspace line by the trust check's status, or ✓ when it wasn't read. */
-function trustLine(workspace: DoctorWorkspace, trust: TrustCheck["status"] | null): WorkspaceLine {
-  return workspaceLine(workspace.name, trust ?? "not-needed", {
-    windowsDrive: workspace.windowsDrive,
-    fileProblems: workspace.fileProblems,
-    tooManyFilesToWatch: workspace.tooManyFilesToWatch,
-  });
-}
-
 /** The workspace's agents that run in a harness other than Halonic's own loop. */
 function harnessAgents(workspace: DoctorWorkspace | null): HarnessAgent[] {
   if (workspace === null) return [];
@@ -468,12 +431,13 @@ function hostFoundLines(
 }
 
 function linesOf(report: Omit<DoctorReport, "summary">): DoctorLine[] {
-  const { workspace, models, secrets, sandbox, mxc, noSandbox, harnesses, node, network, disk } =
-    report;
+  const { workspace, models, secrets, plugins, sandbox, mxc, noSandbox, harnesses } = report;
+  const { node, network, disk } = report;
   return [
     workspace,
     models,
     secrets,
+    plugins,
     sandbox,
     mxc,
     noSandbox,

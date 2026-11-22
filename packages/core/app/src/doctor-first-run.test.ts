@@ -9,8 +9,8 @@ import {
   lastRunLine,
 } from "./doctor-first-run.ts";
 import { sandboxLine } from "./doctor-lines.ts";
+import type { DoctorProvider } from "./doctor-models-line.ts";
 import { modelsLine } from "./doctor-models-line.ts";
-import type { DoctorProvider } from "./doctor-service.ts";
 import {
   answered,
   anthropic,

@@ -1,8 +1,13 @@
 // The doctor's Models line for a workspace: the providers its aliases use,
 // with what the resource report and the stored keys found for each.
 
-import { type ModelProviderState, type ModelsLine, modelsLine } from "./doctor-models-line.ts";
-import type { DoctorProvider, DoctorWorkspace } from "./doctor-service.ts";
+import {
+  type DoctorProvider,
+  type ModelProviderState,
+  type ModelsLine,
+  modelsLine,
+} from "./doctor-models-line.ts";
+import type { DoctorWorkspace } from "./doctor-service.ts";
 import { type TimedOutLine, timedOut, timedOutLine } from "./doctor-time-limit.ts";
 import type { ProviderModels, Resources } from "./resource-report.ts";
 

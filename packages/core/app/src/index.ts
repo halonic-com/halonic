@@ -117,6 +117,7 @@ export {
 } from "./doctor-lines.ts";
 export {
   type AliasProvider,
+  type DoctorProvider,
   type ModelProblem,
   type ModelProviderState,
   type ModelsLine,
@@ -125,6 +126,11 @@ export {
 } from "./doctor-models-line.ts";
 export { type MxcLine, mxcLine } from "./doctor-mxc-line.ts";
 export {
+  type DoctorPluginProblem,
+  type PluginsLine,
+  pluginsLine,
+} from "./doctor-plugins-line.ts";
+export {
   type SecretsFound,
   type SecretsLine,
   type SecretUser,
@@ -132,7 +138,6 @@ export {
   type UsedSecret,
 } from "./doctor-secrets-line.ts";
 export {
-  type DoctorProvider,
   type DoctorReport,
   DoctorService,
   type DoctorServiceOptions,
