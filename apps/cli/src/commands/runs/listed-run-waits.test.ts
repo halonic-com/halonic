@@ -165,7 +165,7 @@ describe("listedRun: waits and Needs you", () => {
     });
   });
 
-  it('shows a run asked "Allow this address?" in Studio as Needs you, as Studio does', () => {
+  it('shows a run asked "Allow this address?" in Studio as Needs you, naming the dialog and Studio', () => {
     const question = { provider: "gateway", key: "gateway-key", origin: "https://gw.example" };
     const summary = runOf(
       [
@@ -178,7 +178,7 @@ describe("listedRun: waits and Needs you", () => {
 
     expect(row(summary)).toMatchObject({
       status: "needsYou",
-      what: "Waiting for your answer in the step Draft a reply",
+      what: 'Waiting for your answer in Studio: "Allow this address?" in the step Draft a reply',
     });
   });
 
