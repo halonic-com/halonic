@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15707 (team wording call on words check C618 #3; small wording on an approved screen, HAL-2282); the package owner's reviewer (Liam) approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0dcvzyKji8LzAKOF1c08dMT1AtI6QC9Cy3ZdUkmY15HhGhafyYjokuy5nLvoNE4HZzrBGUG0qBahztOhTLbeAQ==
 - Task: HAL-12248
 
 ## What changes
