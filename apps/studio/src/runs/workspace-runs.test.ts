@@ -152,6 +152,23 @@ verifies("studio.workspace-runs", () => {
     expect(runs.providerKind("gone")).toBeUndefined();
   });
 
+  it("tells the test model by its file's type, whatever its id", async () => {
+    const { engine } = await waitingRun();
+    const definitions = new MemoryDefinitionStore({
+      "workspace.yaml": "id: acme\nname: Acme\n",
+      "providers/scripted.yaml": "id: scripted\nname: Scripted\ntype: mock\n",
+      "providers/ollama.yaml": "id: ollama\nname: Ollama\ntype: ollama\nlocal: true\n",
+    });
+    const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions });
+
+    expect(runs.isTestModel("scripted")).toBeUndefined();
+    await runs.list();
+
+    expect(runs.isTestModel("scripted")).toBe(true);
+    expect(runs.isTestModel("ollama")).toBe(false);
+    expect(runs.isTestModel("gone")).toBeUndefined();
+  });
+
   it("names a provider as its file does, and nothing for one without a name or the workspace lacks", async () => {
     const { engine } = await waitingRun();
     const definitions = new MemoryDefinitionStore({

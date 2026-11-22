@@ -104,5 +104,27 @@ verifies("inbox.answered-view", () => {
         report.mockRestore();
       }
     });
+
+    it("shows a recorded answer as recorded when a view's claims throws, and says why on the console", async () => {
+      const report = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const inbox = emptyInbox();
+        const broken = new Error("claims failed");
+        inbox.addAnsweredView({
+          ...finishedApprove,
+          claims: () => {
+            throw broken;
+          },
+        });
+        const { root } = finishingCard(inbox);
+        await press(button(root, "Approve"));
+        expect(report).toHaveBeenCalledWith(expect.any(String), broken);
+        expect(root.querySelector("[role='group']")?.textContent).toContain(
+          "Approved by you at 10:44. The run finished.",
+        );
+      } finally {
+        report.mockRestore();
+      }
+    });
   });
 });

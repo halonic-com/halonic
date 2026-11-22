@@ -1,7 +1,14 @@
 import { isHostTooOld } from "@halonicjs/ports";
 import { markHiddenName } from "@halonicjs/std";
-import { Button, type ButtonUnavailable, type CalloutHandle, Tooltip } from "@halonicjs/studio-kit";
-import { engineWords, type ItemRef, type ViewRef } from "@halonicjs/studio-shell";
+import { sampleAnswersWord } from "@halonicjs/studio-feature-runs/api";
+import {
+  Button,
+  type ButtonUnavailable,
+  type CalloutHandle,
+  StatusChip,
+  Tooltip,
+} from "@halonicjs/studio-kit";
+import { engineWords, type ViewRef } from "@halonicjs/studio-shell";
 import {
   type ReactNode,
   type RefCallback,
@@ -12,10 +19,9 @@ import {
   useState,
 } from "react";
 import { type AfterAnswer, afterAnswer, type InboxDecisions } from "../decide.ts";
-import type { Inbox } from "../inbox.ts";
 import type { WaitItem } from "../inbox-items.ts";
 import { decidedAt, movesOnLine, waitingSince } from "../plain/waiting-time.ts";
-import { AnsweredView } from "./answered-view.tsx";
+import { AnsweredView, type AnsweredViews, claimedView } from "./answered-view.tsx";
 import {
   type BackLink,
   CardHeader,
@@ -69,18 +75,16 @@ export interface WaitCardProps extends EngineState {
    */
   readonly trust?: TrustReview | undefined;
   /**
+   * The run's replies came from the test model (`runs.sample-chip`): the card carries the
+   * "Sample answers" chip above its title. `false` when left out.
+   */
+  readonly sample?: boolean;
+  /**
    * The views that may take the card's place once answered (`Inbox.addAnsweredView`), and what
    * they get to close or open with. Without it, or when none claims the answer, the card keeps its
    * decided bar.
    */
   readonly answeredViews?: AnsweredViews | undefined;
-}
-
-/** Where {@link WaitCardProps.answeredViews} comes from, and what a view that claims an answer gets. */
-export interface AnsweredViews {
-  readonly inbox: Pick<Inbox, "answeredView">;
-  readonly close: () => void;
-  readonly openItem?: ((item: ItemRef) => void) | undefined;
 }
 
 type CardState =
@@ -211,11 +215,9 @@ export function WaitCard(props: WaitCardProps) {
   async function answer(event: string) {
     if (!guard.allows() || state.kind !== "open") return;
     setState({ kind: "answering", event });
+    let after: AfterAnswer;
     try {
-      const run = await decisions.answer(item, event);
-      const after = afterAnswer(run);
-      const view = props.answeredViews?.inbox.answeredView(item, event, after);
-      setState({ kind: "answered", event, at: now(), after, view });
+      after = afterAnswer(await decisions.answer(item, event));
     } catch (error) {
       setState({
         kind: "open",
@@ -226,12 +228,18 @@ export function WaitCard(props: WaitCardProps) {
         detail: failureDetailOf(error),
         untrusted: wasRefusedUntrusted(error),
       });
+      return;
     }
+    // Outside the `try`: the answer is recorded by now, so a view that fails to claim it must not
+    // reopen the card for a second answer.
+    const view = claimedView(props.answeredViews, item, event, after);
+    setState({ kind: "answered", event, at: now(), after, view });
   }
 
   const card = (
     <section ref={section} aria-labelledby={titleId} className={cardClasses}>
       <div className={cardBodyClasses}>
+        <SampleAnswersChip shown={props.sample === true} />
         <CardHeader
           titleId={titleId}
           // Filled in from the run's context, so it can hold model output: mark what's hidden.
@@ -300,6 +308,16 @@ function withClaimedView(
       props={{ item, close: views.close, openItem: views.openItem }}
       fallback={card}
     />
+  );
+}
+
+/** The "Sample answers" chip above the title, on its own line (`runs.sample-chip`). */
+function SampleAnswersChip({ shown }: { readonly shown: boolean }) {
+  if (!shown) return null;
+  return (
+    <span className="flex">
+      <StatusChip tone="outline">{sampleAnswersWord}</StatusChip>
+    </span>
   );
 }
 

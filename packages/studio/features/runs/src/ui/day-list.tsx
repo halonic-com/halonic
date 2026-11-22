@@ -5,6 +5,7 @@ import {
   StatusChip,
   useTooltip,
 } from "@halonicjs/studio-kit";
+import { sampleAnswersWord } from "../list/run-model-path.ts";
 import type { RunRow } from "../list/run-row.ts";
 import { dayGroups } from "../list/runs-filter.ts";
 import { pageWords } from "../run-words.ts";
@@ -19,6 +20,15 @@ export const runColumns: readonly ListColumn[] = [
 ];
 
 /**
+ * The rows that may carry the "Sample answers" chip (`runs.sample-chip`): runs that wait or are
+ * done, not a test case's, whose test model is the test's own and no stand-in for a real one.
+ */
+export function sampleCandidates(rows: readonly RunRow[]): string[] {
+  const shown = new Set(["needs-you", "waiting", "done"]);
+  return rows.filter((row) => !row.test && shown.has(row.standing)).map((row) => row.id);
+}
+
+/**
  * The runs in one list, under an `h2` for each day they started, right under the page's `h1` as
  * Workflows and Routines head their groups; ↑ ↓ pass over them. A click or Enter on a row opens
  * its run.
@@ -26,10 +36,13 @@ export const runColumns: readonly ListColumn[] = [
 export function DayList({
   rows,
   openRow,
+  samples,
   now,
 }: {
   readonly rows: readonly RunRow[];
   readonly openRow: ((id: string) => void) | undefined;
+  /** The ids of the runs on Sample answers, whose rows carry its chip. */
+  readonly samples: ReadonlySet<string>;
   readonly now: Date;
 }) {
   return (
@@ -38,7 +51,7 @@ export function DayList({
       groups={dayGroups(rows, now).map((group) => ({
         id: group.day,
         heading: { name: group.day },
-        rows: group.rows.map(listRow),
+        rows: group.rows.map((row) => listRow(row, samples.has(row.id))),
       }))}
       groupHeadingLevel={2}
       columns={runColumns}
@@ -49,16 +62,18 @@ export function DayList({
 
 /**
  * A run as a List row: its chip, short id, what ran over its line with its
- * Test tag, what started it, with the routine's name in a tooltip, and when
+ * Test tag or Sample answers chip, what started it, with the routine's name in a tooltip, and when
  * it started. A failed row's line is the kit's error reason, in `danger`,
- * with the Failed chip.
+ * with the Failed chip. The tag sits after the title, and on a phone under the line, so the full
+ * name fits.
  */
-function listRow(row: RunRow): ListColumnsRow {
+function listRow(row: RunRow, sample: boolean): ListColumnsRow {
+  const tag = tagOf(row, sample);
   return {
     id: row.id,
     title: row.workflow,
     meta: row.line,
-    ...(row.test ? { tag: <StatusChip tone="outline">{pageWords.testTag}</StatusChip> } : {}),
+    ...(tag === undefined ? {} : { tag: <StatusChip tone="outline">{tag}</StatusChip> }),
     cells: {
       status: {
         value: (
@@ -78,9 +93,16 @@ function listRow(row: RunRow): ListColumnsRow {
       },
       when: { value: row.time, ...(row.took === undefined ? {} : { detail: row.took }) },
     },
-    label: row.label,
+    // The sentence ends with a full stop; a run on Sample answers says so before it.
+    label: sample && !row.test ? `${row.label.slice(0, -1)}, on ${sampleAnswersWord}.` : row.label,
     ...(row.standing === "failed" ? { error: { reason: row.line, chip: row.chip.word } } : {}),
   };
+}
+
+/** The tag after the title: Test for a test case's run, else Sample answers on that path. */
+function tagOf(row: RunRow, sample: boolean): string | undefined {
+  if (row.test) return pageWords.testTag;
+  return sample ? sampleAnswersWord : undefined;
 }
 
 /**

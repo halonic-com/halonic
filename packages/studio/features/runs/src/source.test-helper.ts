@@ -9,6 +9,7 @@ export function runnable(id: string, name: string): RunnableWorkflow {
 }
 const providerKinds: Readonly<Record<string, ProviderKind>> = {
   mock: "local",
+  scripted: "local",
   ollama: "local",
   claude: "cloud",
 };
@@ -17,7 +18,8 @@ const morningBrief: RunRoutine = { name: "Morning brief", schedule: "Weekdays at
 /**
  * A source whose runs, logs and failures a test sets; every run is in
  * Support reply, made no tool call and costs euros. A run without a log
- * in `initialLogs` has an empty one. Its one hub is `acme`, named Acme. Its providers are `mock` and `ollama` (local) and `claude` (cloud). Its one routine is
+ * in `initialLogs` has an empty one. Its one hub is `acme`, named Acme. Its providers are `mock` and `ollama` (local) and `claude` (cloud), and `scripted`, a second
+ * test model (`type: mock`) beside `mock`. Its one routine is
  * `acme/morning-brief`, Morning brief, on weekdays at 08:00.
  */
 export function fakeSource(
@@ -49,6 +51,7 @@ export function fakeSource(
       return workflows;
     },
     providerKind: (id) => providerKinds[id],
+    isTestModel: (id) => (id in providerKinds ? id === "mock" || id === "scripted" : undefined),
     currency: () => "EUR",
     monthlyBudget: () => monthly,
     subscribe: (listener) => {

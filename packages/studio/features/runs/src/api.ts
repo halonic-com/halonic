@@ -9,6 +9,13 @@ import type { WorkspaceModels } from "@halonicjs/app/run-failure";
 import type { LoggedInstructionPin, RunEvent, RunSummary } from "@halonicjs/events";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
+export {
+  type RunModelPath,
+  runModelPath,
+  sampleAnswersWord,
+  useRunModelPath,
+  useSampleRuns,
+} from "./list/run-model-path.ts";
 export { type RunChip, type RunRow, runRow, startedBy } from "./list/run-row.ts";
 export type { WorkflowRef } from "./list/runs-filter.ts";
 export {
@@ -132,6 +139,12 @@ export interface RunsSource {
    * has no such provider. The run page's banners read it to tell a local model from a cloud one.
    */
   readonly providerKind: (providerId: string) => ProviderKind | undefined;
+  /**
+   * Whether the provider with this id is the built-in test model (`type: mock`), as its file says,
+   * whatever its id; `undefined` when the workspace has no such provider. The "Sample answers"
+   * chip reads it through {@link runModelPath}; without it no run shows the chip.
+   */
+  readonly isTestModel?: (providerId: string) => boolean | undefined;
   /**
    * The provider's `name` as its file gives it, such as "OpenAI" or "LM Studio"; `undefined` when
    * the file names none or the workspace has no such provider. The run page's banners name a

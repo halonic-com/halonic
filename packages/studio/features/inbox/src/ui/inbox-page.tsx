@@ -1,4 +1,9 @@
-import { type RunsList, RunsListService } from "@halonicjs/studio-feature-runs/api";
+import {
+  type RunsList,
+  RunsListService,
+  type RunsSource,
+  useRunModelPath,
+} from "@halonicjs/studio-feature-runs/api";
 import { Button, EmptyState, List, usePresentation } from "@halonicjs/studio-kit";
 import {
   type EngineWords,
@@ -295,6 +300,7 @@ export function InboxView({
               trust={trust}
               openPage={openPage}
               runFacts={runFacts}
+              runsSource={runs?.source}
               announce={announce}
               now={now}
               answering={state.error === undefined}
@@ -326,6 +332,7 @@ function OpenCard({
   trust,
   openPage,
   runFacts,
+  runsSource,
   announce,
 }: {
   readonly item: InboxItem;
@@ -339,6 +346,8 @@ function OpenCard({
   readonly trust: TrustReview | undefined;
   readonly openPage: ((item: ItemRef) => void) | undefined;
   readonly runFacts: RunFactsOf | undefined;
+  /** The runs' source, to tell a run on Sample answers; without it no card carries that chip. */
+  readonly runsSource: RunsSource | undefined;
   readonly announce: ((line: string) => void) | undefined;
   readonly next: NextItem | null;
   readonly now: () => Date;
@@ -354,6 +363,11 @@ function OpenCard({
     inbox.takeAside(item.key);
   }, [inbox, item.key]);
   const facts = item.kind === "setup" ? undefined : runFacts?.(item.runId);
+  // Read each time the card opens: a waiting run may still call a model once it is answered.
+  const modelPath = useRunModelPath(
+    item.kind === "wait" ? runsSource : undefined,
+    item.kind === "wait" ? item.runId : undefined,
+  );
   // Open run needs the run's hub, which the Runs list gives; without it the card has no button.
   const openThisRun =
     openRun === undefined || facts === undefined
@@ -436,6 +450,7 @@ function OpenCard({
       waiting={items.some((waiting) => waiting.key === item.key)}
       trust={trust}
       answeredViews={{ inbox, close, openItem: openPage }}
+      sample={modelPath === "sample"}
     />
   );
 }

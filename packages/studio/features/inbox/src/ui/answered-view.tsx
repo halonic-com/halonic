@@ -1,6 +1,9 @@
-import { loadView, type ViewRef } from "@halonicjs/studio-shell";
+import { type ItemRef, loadView, type ViewRef } from "@halonicjs/studio-shell";
 import { type ComponentType, type ReactNode, useEffect, useState } from "react";
 import type { AnsweredViewProps } from "../answered-view.ts";
+import type { AfterAnswer } from "../decide.ts";
+import type { Inbox } from "../inbox.ts";
+import type { WaitItem } from "../inbox-items.ts";
 
 /** Props for {@link AnsweredView}. */
 export interface AnsweredViewLoaderProps {
@@ -28,4 +31,30 @@ export function AnsweredView({ view, props, fallback }: AnsweredViewLoaderProps)
     };
   }, [view]);
   return View === null ? fallback : <View {...props} />;
+}
+
+/** Where a wait card's `answeredViews` comes from, and what a view that claims an answer gets. */
+export interface AnsweredViews {
+  readonly inbox: Pick<Inbox, "answeredView">;
+  readonly close: () => void;
+  readonly openItem?: ((item: ItemRef) => void) | undefined;
+}
+
+/**
+ * The view that claims a recorded answer, if any. A `claims` that throws is logged and claims
+ * nothing, so the card keeps its decided bar.
+ */
+export function claimedView(
+  views: AnsweredViews | undefined,
+  item: WaitItem,
+  event: string,
+  after: AfterAnswer,
+): ViewRef | undefined {
+  if (views === undefined) return undefined;
+  try {
+    return views.inbox.answeredView(item, event, after);
+  } catch (error) {
+    console.error("Couldn't find the view after your answer.", error);
+    return undefined;
+  }
 }
