@@ -71,7 +71,8 @@ export function validateFails(report: ValidateReport, strict: boolean): boolean 
 /**
  * The lines of `halonic validate`, in the order of cli-output 3.2: one block
  * per file in path order, its errors before its warnings, then the line
- * about hidden problems when the cap left some out, then the summary.
+ * about hidden problems when the cap left some out, the line about provider
+ * files when a problem asks for one, then the summary.
  *
  * @example
  * validateLines(report, { workspace: "acme", all: false, strict: false });
@@ -94,8 +95,21 @@ export function validateLines(report: ValidateReport, view: ValidateView): Phras
   return [
     ...byFile(shown).flatMap((block) => [...fileLines(block), []]),
     ...hidden,
+    ...providerFileHelp(shown),
     summaryLine(report, view),
   ];
+}
+
+/**
+ * The line that points at the provider file's reference, when a shown problem
+ * asks for a file in `providers/`. A near provider's "Did you mean mock?" asks
+ * for no file, so it gets no line, and the line shows once however many ask.
+ */
+function providerFileHelp(shown: readonly WorkspaceIssue[]): Phrase[] {
+  const asksForFile = shown.some(
+    (problem) => problem.code === "unknown-provider" && problem.message.includes("providers/"),
+  );
+  return asksForFile ? [validateMessages.providerFile().phrase] : [];
 }
 
 /** The last line: ✕ with the counts when the command fails, else ✓ with the warnings. */

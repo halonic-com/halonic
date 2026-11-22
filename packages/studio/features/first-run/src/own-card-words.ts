@@ -30,8 +30,16 @@ export const ownCardWords = {
   /** The row's name for a screen reader: "Step 1 of 3: Connect your own model, not done". */
   stepLabel: (number: number, title: string, state: "done" | "not done" | "problem") =>
     `Step ${number} of 3: ${title}, ${state}`,
-  /** What step 1 waits for while it asks a local provider (first-run-progress 3.1). */
-  checking: (name: string) => `Checking ${name}`,
+  /**
+   * What step 1 waits for while it asks a local provider (first-run-progress 3.1): "Checking Ollama
+   * at localhost:11434…", or "Checking Ollama…" without an address. It comes in parts, because the
+   * card draws the address as code.
+   */
+  checking: (name: string, address: string | undefined) => ({
+    before: address === undefined ? `Checking ${name}` : `Checking ${name} at `,
+    address,
+    after: "…",
+  }),
   /** Step 1's cause when the local provider doesn't answer (first-run-progress 3.1). */
   notAnswering: (name: string, address: string | undefined) =>
     `${name} isn't answering${address === undefined ? "" : ` at ${address}`}. Start ${name}, or add an API key for a cloud model.`,

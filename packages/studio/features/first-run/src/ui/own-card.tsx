@@ -124,17 +124,12 @@ function modelRow(
   const done = model.status === "done";
   const row = { id: "model", title, hint, done } as const;
   if (model.status === "checking") {
-    const where =
-      model.address === undefined ? null : (
-        <>
-          {" "}
-          at <code>{model.address}</code>
-        </>
-      );
+    const { before, address, after } = ownCardWords.checking(providerName, model.address);
     const what = (
       <>
-        {ownCardWords.checking(providerName)}
-        {where}…
+        {before}
+        {address === undefined ? null : <code>{address}</code>}
+        {after}
       </>
     );
     const label = ownCardWords.stepLabel(1, title, "not done");

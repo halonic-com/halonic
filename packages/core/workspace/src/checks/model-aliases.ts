@@ -42,11 +42,16 @@ export function modelsFileFailed(context: CheckContext): boolean {
 }
 
 /**
- * What validate says about an alias in `models.yaml` on a provider no file
- * names. It ends with the fix, as the run view's banner for the same cause
- * does, so validate isn't the one place that leaves it out (C618, HAL-15709).
+ * What validate says about an alias in `models.yaml` or a `hub.yaml` on a
+ * provider no file names. It ends with the fix, as the run view's banner for
+ * the same cause does, so validate isn't the one place that leaves it out
+ * (C618, HAL-15709), and both files' aliases read the same (C638, HAL-15830).
  */
-function unknownProviderMessage(alias: string, provider: string, providers: Set<string>): string {
+export function unknownProviderMessage(
+  alias: string,
+  provider: string,
+  providers: Set<string>,
+): string {
   const near = nearMatch(provider, providers);
   const fix =
     near === undefined
