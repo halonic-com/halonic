@@ -171,7 +171,7 @@ export async function checkNestedInside(
     if (!isInside(top, await realpath(folder))) {
       throw new RepositoryRefusedError(
         `The repository nested at ${nested} keeps its git files outside the workspace, which Halonic doesn't allow.`,
-        "Move its git files into the workspace, as git submodule absorbgitdirs does for a submodule, then try again.",
+        "Move its git files into the workspace (for a submodule: git submodule absorbgitdirs), then try again.",
       );
     }
   }
