@@ -17,21 +17,7 @@ impl Shared {
         mut output: impl Read,
         secrets: Option<&SecretRequests>,
     ) {
-        let mut header = [0_u8; HEADER_LENGTH];
-        while output.read_exact(&mut header).is_ok() {
-            let id = u32::from_be_bytes([header[0], header[1], header[2], header[3]]);
-            let kind = header[4];
-            let length = u32::from_be_bytes([header[5], header[6], header[7], header[8]]);
-            let Ok(length) = usize::try_from(length) else {
-                break;
-            };
-            if length > FRAME_LIMIT {
-                break;
-            }
-            let mut bytes = vec![0_u8; length];
-            if output.read_exact(&mut bytes).is_err() {
-                break;
-            }
+        while let Some(HostFrame { id, kind, bytes }) = read_host_frame(&mut output) {
             let passed = match (id, secrets) {
                 (HOST_SECRETS_ID, Some(secrets)) => secrets.pass(kind, bytes),
                 _ => self.pass_to_client(id, kind, bytes),
@@ -91,4 +77,29 @@ impl Shared {
         self.close(id);
         Ok(())
     }
+}
+
+/// One frame the host wrote to its standard output.
+pub(crate) struct HostFrame {
+    pub(crate) id: u32,
+    pub(crate) kind: u8,
+    pub(crate) bytes: Vec<u8>,
+}
+
+/// Reads the host's next frame from `output`: `None` when the output ended
+/// or failed, ended in the middle of a frame, or announced more than
+/// [`FRAME_LIMIT`] bytes. The stream can't go on after any of them.
+pub(crate) fn read_host_frame(output: &mut impl Read) -> Option<HostFrame> {
+    let mut header = [0_u8; HEADER_LENGTH];
+    output.read_exact(&mut header).ok()?;
+    let id = u32::from_be_bytes([header[0], header[1], header[2], header[3]]);
+    let kind = header[4];
+    let length = u32::from_be_bytes([header[5], header[6], header[7], header[8]]);
+    let length = usize::try_from(length).ok()?;
+    if length > FRAME_LIMIT {
+        return None;
+    }
+    let mut bytes = vec![0_u8; length];
+    output.read_exact(&mut bytes).ok()?;
+    Some(HostFrame { id, kind, bytes })
 }

@@ -39,4 +39,4 @@ Without `--keychain-relay` (the CLI's `halonic serve`, a headless Linux), the ho
 
 ## What it doesn't cover
 
-Studio passing `--keychain-relay` and its keychain backend is slice 3 of the plan on HAL-14090; until then no launch uses it. The remote control's host key (`sharedHostKey`, requirement `agent-host.remote-host-key`) reads from this store once the remote control is wired into the host (HAL-12237). `token-key` stays in the environment or the secrets file until the CLI can reach the keychain (HAL-14148).
+Studio's side, which starts the real host with `--keychain-relay` and answers from the OS keychain, beside the shell and in Halonic's WSL distro alike, is the shell's requirement. The remote control's host key (`sharedHostKey`, requirement `agent-host.remote-host-key`) reads from this store once the remote control is wired into the host (HAL-12237). `token-key` stays in the environment or the secrets file until the CLI can reach the keychain (HAL-14148).

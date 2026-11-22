@@ -1,0 +1,169 @@
+//! The host's secrets channel when it serves on loopback (macOS, Linux):
+//! after the handshake line its standard output carries only frames on
+//! id 0, its secret requests, and the shell answers each on its standard
+//! input (requirement `host-secrets-channel`). The frames, the answers and
+//! the rules are the relay's (`relay/secrets.rs`); there are just no
+//! clients' connections beside them.
+//!
+//! One thread reads the host's frames, another answers the requests and
+//! alone writes to the host's input, so a keychain that waits for the person
+//! never holds up reading, and stopping never waits for a write. Anything
+//! but one request at a time on id 0 closes the host's input, so the host
+//! stops.
+
+use std::io::{Read, Write};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::thread;
+
+use halonic_secrets::SecretBackend;
+
+use crate::host_secrets::{HOST_SECRETS_ID, answer};
+use crate::relay::{DATA, HostFrame, frame, read_host_frame};
+
+/// What goes to the thread that holds the host's input.
+enum ToHost {
+    /// A request to answer.
+    Request(Vec<u8>),
+    /// Close the host's input, so it stops.
+    Close,
+}
+
+/// The shell's end of the channel for one host. Dropping it closes the
+/// host's input.
+pub(crate) struct LoopbackSecrets {
+    to_host: Sender<ToHost>,
+    stopped: Arc<AtomicBool>,
+}
+
+impl LoopbackSecrets {
+    /// Starts answering the requests the host writes to `output`, its
+    /// standard output after the handshake line, with `backend`, on `input`,
+    /// its standard input.
+    pub(crate) fn serve(
+        input: impl Write + Send + 'static,
+        output: impl Read + Send + 'static,
+        backend: Arc<dyn SecretBackend>,
+    ) -> Self {
+        let (to_host, received) = mpsc::channel();
+        let stopped = Arc::new(AtomicBool::new(false));
+        let in_flight = Arc::new(AtomicBool::new(false));
+        let answering = Answering {
+            backend,
+            in_flight: Arc::clone(&in_flight),
+            stopped: Arc::clone(&stopped),
+        };
+        spawn("host-secrets-answer", move || {
+            answering.run(input, &received)
+        });
+        let reading = Reading {
+            to_host: to_host.clone(),
+            in_flight,
+            stopped: Arc::clone(&stopped),
+        };
+        spawn("host-secrets-read", move || reading.run(output));
+        Self { to_host, stopped }
+    }
+
+    /// True once the channel stopped: the host broke its rules, or its
+    /// output ended. Its input is closed then, so it stops.
+    pub(crate) fn is_stopped(&self) -> bool {
+        self.stopped.load(Ordering::SeqCst)
+    }
+
+    /// Closes the host's input once any answer being written is. Stopping
+    /// twice does nothing.
+    pub(crate) fn stop(&self) {
+        self.stopped.store(true, Ordering::SeqCst);
+        // The thread holding the input may have ended already; then it's closed.
+        let _ = self.to_host.send(ToHost::Close);
+    }
+}
+
+impl Drop for LoopbackSecrets {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
+impl std::fmt::Debug for LoopbackSecrets {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("LoopbackSecrets")
+            .field("stopped", &self.is_stopped())
+            .finish_non_exhaustive()
+    }
+}
+
+/// The thread that reads the host's frames.
+struct Reading {
+    to_host: Sender<ToHost>,
+    /// Set when a request arrives, cleared just before its answer is written.
+    in_flight: Arc<AtomicBool>,
+    stopped: Arc<AtomicBool>,
+}
+
+impl Reading {
+    /// Passes each request on until the output ends or breaks the rules,
+    /// then closes the host's input.
+    fn run(self, mut output: impl Read) {
+        while let Some(HostFrame { id, kind, bytes }) = read_host_frame(&mut output) {
+            let one_request = id == HOST_SECRETS_ID
+                && kind == DATA
+                && !self.in_flight.swap(true, Ordering::SeqCst);
+            if !one_request || self.to_host.send(ToHost::Request(bytes)).is_err() {
+                break;
+            }
+        }
+        self.stopped.store(true, Ordering::SeqCst);
+        let _ = self.to_host.send(ToHost::Close);
+    }
+}
+
+/// The thread that answers requests and alone writes to the host's input.
+struct Answering {
+    backend: Arc<dyn SecretBackend>,
+    in_flight: Arc<AtomicBool>,
+    stopped: Arc<AtomicBool>,
+}
+
+impl Answering {
+    /// Answers each request in order until a close, a refused request or a
+    /// failed write, then drops `input`, which closes it.
+    fn run(self, mut input: impl Write, received: &Receiver<ToHost>) {
+        for message in received {
+            let ToHost::Request(request) = message else {
+                break;
+            };
+            let Ok(answer) = answer(self.backend.as_ref(), &request) else {
+                break;
+            };
+            // The channel may have stopped while the keychain worked, on a
+            // second request for one: then the host gets no answer.
+            if self.stopped.load(Ordering::SeqCst) {
+                break;
+            }
+            // Cleared first: the host may send its next request as soon as
+            // it has this answer.
+            self.in_flight.store(false, Ordering::SeqCst);
+            let written = input
+                .write_all(&frame(HOST_SECRETS_ID, DATA, &answer))
+                .and_then(|()| input.flush());
+            if written.is_err() {
+                break;
+            }
+        }
+        self.stopped.store(true, Ordering::SeqCst);
+        drop(input);
+    }
+}
+
+fn spawn(name: &str, work: impl FnOnce() + Send + 'static) {
+    // Without the thread, the pipe end it was given is dropped: the host's
+    // input or output closes, so the host stops and the shell starts a new one.
+    let _ = thread::Builder::new().name(name.to_owned()).spawn(work);
+}
+
+#[cfg(test)]
+mod tests;
