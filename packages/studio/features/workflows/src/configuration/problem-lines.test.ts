@@ -20,6 +20,8 @@ verifies("workflows.configuration.problem-lines", () => {
   it("writes a short line for a step's problem, without the step's name", () => {
     expect(problemLine(problem("dead-end", "error", "review"))).toBe("Has no way out");
     expect(problemLine(problem("unreachable", "warning", "review"))).toBe("Can't be reached");
+    // An arrow that is never taken says so in the step card row's words (C592 3).
+    expect(problemLine(problem("unguarded-shadow", "warning", "review"))).toBe("Never taken");
   });
 
   it("writes a sentence for a problem of the whole workflow", () => {

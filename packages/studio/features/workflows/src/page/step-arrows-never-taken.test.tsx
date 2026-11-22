@@ -110,6 +110,20 @@ verifies("workflows.page.step-arrows", () => {
     );
   });
 
+  it("reads a never-taken arrow's line with its row's button", async () => {
+    const { page } = await showPage(vi.fn, { workflow: triage });
+    await pick(page, "Classify it");
+    await menuPick(page, "More actions for arrow 1", "Move down");
+
+    const [first, second] = [...(arrowsSection(page).section?.querySelectorAll("li") ?? [])].map(
+      (row) => row.querySelector<HTMLButtonElement>("button[aria-expanded]"),
+    );
+    expect(first?.hasAttribute("aria-describedby")).toBe(false);
+    const line = page.ownerDocument.getElementById(second?.getAttribute("aria-describedby") ?? "");
+    expect(line?.textContent).toBe("△ Never taken: arrow 1 always matches first");
+    expect(line?.querySelector('[aria-hidden="true"]')?.textContent).toBe("△ ");
+  });
+
   it("marks no arrow on other events or with a timer", async () => {
     const { page } = await showPage(vi.fn, { workflow: triage });
     await pick(page, "Check the draft");

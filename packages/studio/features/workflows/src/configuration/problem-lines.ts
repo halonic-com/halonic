@@ -25,7 +25,7 @@ const stepLines: Readonly<Record<string, string>> = {
   "final-has-transitions": "Is an end, but has arrows",
   "task-without-agent": "Has no agent",
   "wait-without-events": "Has no answers to pick",
-  "unguarded-shadow": "Never fires",
+  "unguarded-shadow": "Never taken",
   "not-a-choice": "Compares with a non-option",
   "ignored-key": "Has a key it ignores",
   "unknown-item-name": "Uses a name its items lack",

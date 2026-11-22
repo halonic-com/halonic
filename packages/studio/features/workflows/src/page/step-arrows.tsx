@@ -81,11 +81,21 @@ function withNeverTaken(
   return line;
 }
 
-/** Under a row's words, for an arrow an earlier one always beats: "△ Never taken: arrow 1 always matches first". */
-function NeverTakenLine({ beatenBy }: { readonly beatenBy: number | undefined }) {
+/**
+ * Under a row's words, for an arrow an earlier one always beats: "△ Never taken: arrow 1 always
+ * matches first". It is a check's warning, so it takes the attention tone the canvas gives the same
+ * check (C592 1); the row's button is described by it, so it is read with the row (C592 2).
+ */
+function NeverTakenLine({
+  id,
+  beatenBy,
+}: {
+  readonly id: string;
+  readonly beatenBy: number | undefined;
+}) {
   if (beatenBy === undefined) return null;
   return (
-    <span className="block px-2 text-caption text-warning">
+    <span id={id} className="block px-2 text-caption text-attention">
       <span aria-hidden="true">{problemGlyph.warning} </span>
       {words.neverTakenRow(beatenBy)}
     </span>
@@ -114,6 +124,8 @@ export function StepArrows({
 }: StepArrowsProps) {
   const headingId = useId();
   const fieldsId = useId();
+  // Each row's never-taken line is `${neverTakenId}-<place>`, which its button is described by.
+  const neverTakenId = useId();
   const list = useRef<HTMLOListElement>(null);
   const goToPicker = useRef<HTMLElement>(null);
   const [target, setTarget] = useState("");
@@ -192,6 +204,9 @@ export function StepArrows({
                     size="sm"
                     aria-expanded={expanded === index}
                     {...(expanded === index ? { "aria-controls": fieldsId } : {})}
+                    {...(beatenBy[index] === undefined
+                      ? {}
+                      : { "aria-describedby": `${neverTakenId}-${index}` })}
                     icon={<ChevronDownIcon />}
                     onClick={() => setExpanded(expanded === index ? undefined : index)}
                   >
@@ -202,7 +217,7 @@ export function StepArrows({
                       <span className="text-fg-muted">{whenItFires(arrow)}</span>
                     </span>
                   </Button>
-                  <NeverTakenLine beatenBy={beatenBy[index]} />
+                  <NeverTakenLine id={`${neverTakenId}-${index}`} beatenBy={beatenBy[index]} />
                 </span>
                 <Menu
                   align="end"
