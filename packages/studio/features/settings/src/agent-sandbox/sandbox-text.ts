@@ -137,10 +137,11 @@ export const NEW_AGENTS_HINT =
  * decision by Sofia on HAL-13232, the same fact as the Harness page's `studioCantStart`. It
  * names the sandbox rather than "this way", because here the line sits under a Select that
  * shows the sandbox by default (Sofia, C595 on HAL-15572). The dialog for On this computer says
- * it too, under its body (C596 on HAL-15584).
+ * it too, under its body (C596 on HAL-15584). Like `studioCantStart`, it says halonic in a terminal
+ * rather than a list of commands (Sofia on HAL-15847, HAL-15848).
  */
 export const NEW_AGENTS_STUDIO_CANT_START =
-  "Studio can't start agents outside the sandbox yet; halonic run and halonic serve on this computer can.";
+  "Studio can't start agents outside the sandbox yet; halonic in a terminal on this computer can.";
 export const NEW_AGENTS_VIEW_ONLY =
   "View only here. Change where agents run on the computer running Halonic.";
 export const newAgentsNotSaved = "Couldn't save where new agents run on this computer.";

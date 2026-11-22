@@ -131,10 +131,11 @@ export const configurationWords = {
     /**
      * Under On this computer while this Studio can't start an agent outside its sandbox
      * (`studioStartsUnfenced`). Team decision by Sofia on HAL-13232, building on microcopy 23.4.
-     * It names `halonic run` too, which starts such an agent after its `!` line (HAL-15508).
+     * It says halonic in a terminal rather than listing the commands that start such an agent
+     * (`run`, `serve`, `runs send`), so it doesn't go stale (Sofia on HAL-15847, HAL-15848).
      */
     studioCantStart:
-      "Studio can't start it this way yet; halonic run and halonic serve on this computer can.",
+      "Studio can't start it this way yet; halonic in a terminal on this computer can.",
     /**
      * Under On this computer while the choice is on hold, in place of `studioCantStart`: the agent
      * runs in the sandbox until then, wherever it starts. Team decision on HAL-15640 (C605).

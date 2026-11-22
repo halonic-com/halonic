@@ -156,7 +156,7 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
     // The same fact as Settings' and the Harness page's line under On this computer (Sofia,
     // HAL-13232), and the way back that page offers (C596 on HAL-15584).
     reason:
-      "Studio can't start Claude Code or Codex agents outside the sandbox; halonic serve on this computer can.",
+      "Studio can't start Claude Code or Codex agents outside the sandbox yet; halonic in a terminal on this computer can.",
     fix: "set this agent back to In a sandbox on its Harness page.",
   },
   other: {
