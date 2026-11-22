@@ -23,6 +23,9 @@ export function gitHubReader(options: { fetch: Fetch; token?: string | undefined
   const headers: Record<string, string> = {
     accept: "application/vnd.github+json",
     "x-github-api-version": "2022-11-28",
+    // GitHub refuses a request without a User-Agent with 403, and the host's
+    // outbound HTTP doesn't add one.
+    "user-agent": "halonic-agent-tools",
   };
   if (options.token !== undefined && options.token !== "") {
     headers["authorization"] = `Bearer ${options.token}`;
@@ -34,10 +37,22 @@ export function gitHubReader(options: { fetch: Fetch; token?: string | undefined
     }
     const response = await options.fetch(url.href, { method: "GET", headers });
     if (!response.ok) {
-      throw new Error(`GitHub: GET ${url.pathname} answered ${response.status}.`);
+      const reason = await gitHubMessage(response);
+      throw new Error(`GitHub: GET ${url.pathname} answered ${response.status}${reason}.`);
     }
     return response.json();
   };
+}
+
+/** GitHub's own reason for a refusal, from its `message` field, or nothing. */
+async function gitHubMessage(response: Pick<Response, "json">): Promise<string> {
+  try {
+    const body = (await response.json()) as { message?: unknown } | null;
+    return typeof body?.message === "string" ? `: ${body.message}` : "";
+  } catch {
+    // An error without a JSON body still reports its status.
+    return "";
+  }
 }
 
 interface CheckRun {
