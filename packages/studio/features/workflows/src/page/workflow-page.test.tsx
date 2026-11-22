@@ -456,9 +456,8 @@ verifies("workflows.runs.runs-view", () => {
     const { source } = memoryRuns([runSummary({ id: "run_a_01done1", status: "completed" })]);
     const calls: string[] = [];
     const list = {
-      showWorkflow: (workflow: { hubId: string; id: string }) => {
-        calls.push(`show ${workflow.hubId}/${workflow.id}`);
-      },
+      showWorkflow: (workflow: { hubId: string; id: string }) =>
+        void calls.push(`show ${workflow.hubId}/${workflow.id}`),
     };
     const services = new Map<unknown, unknown>([
       [WorkflowsHostService, host],
