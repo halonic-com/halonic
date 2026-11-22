@@ -3,6 +3,7 @@
 - Task: HAL-16448 (finding 1 of the c710 check on HAL-16446)
 - Approval: team decision on HAL-16448 under HAL-2282 (small wording that builds on the refusal approved in #5219)
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:IsEvvDvq3iiSXL6wvgxSkkvdka1dqsVf1jwn6NM8n3PoOghAB14IJb4h95WNbOvPcLb3pB7q87RxRsmlBd0mBg==
 
 ## What changes
 
