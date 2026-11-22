@@ -80,7 +80,9 @@ reading a secret. No webhooks, agent tools, UI, files or processes.
   `PR_WATCHER_GITHUB_TOKEN`, a read-only fine-grained token), `repos`
   (default `halonic-com/halonic`) and `dryRun`. **Dry run is on unless it is
   set to `false`**: the job then only logs what it would do. A company
-  without a token is skipped.
+  without a token is skipped. `githubToken` is declared `type: "string"`
+  with `format: "secret-ref"`: the host stores the secret binding there, but
+  checks the field with the binding replaced by its secret id.
 - **Trust:** a plugin worker runs with the host's rights and no sandbox. The
   token is read at run time and never logged or kept.
 

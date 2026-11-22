@@ -19,4 +19,17 @@ verifies("paperclip.pr-watcher-plugin", () => {
       "PR watcher: no GitHub token set for this company, skipped.",
     ]);
   });
+
+  // The host's plugin-config-validator swaps a stored secret binding for its id string
+  // before it checks the schema, so an object schema here refuses every saved token.
+  test("declares each secret setting as a string, the shape the host checks", () => {
+    const settings = Object.entries(manifest.instanceConfigSchema?.["properties"] ?? {});
+    const secrets = settings.filter(([, schema]) => schema.format === "secret-ref");
+    expect(secrets.map(([key]) => key)).toEqual(["githubToken"]);
+    for (const [, schema] of secrets) {
+      expect(schema).toMatchObject({ type: "string" });
+      expect(schema).not.toHaveProperty("properties");
+      expect(schema).not.toHaveProperty("required");
+    }
+  });
 });
