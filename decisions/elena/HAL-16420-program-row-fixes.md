@@ -3,6 +3,7 @@
 - Task: HAL-16420
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16420 (the visual check C706 rows 1 and 4 on HAL-16419, following mockup-trust section 5 and microcopy 4.3, which the board approved; a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kTT/IMehYudjBJbVRbK7hHe0Y2YvFYjzPMGTq53S08UDmqUVgFDb856XKXCXGfnSZpdwml91PN0i60vYahn/CQ==
 
 ## What changes
 
