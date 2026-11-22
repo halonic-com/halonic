@@ -3,13 +3,12 @@
 // the same steps `halonic runs show` prints. The page only draws what
 // this returns.
 
-import { type RunStep, runSteps, type StepEnd, shortRunId } from "@halonicjs/app";
+import { eventsBySteps, type RunStep, runSteps, type StepEnd, shortRunId } from "@halonicjs/app";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { RunWorkflow } from "../api.ts";
 import { everyStepWords, stepName } from "../run-words.ts";
 import { clockTime, dueWords, tookWords } from "../time-words.ts";
 import { slowStepLine } from "./slow-step.ts";
-import { eventsBySteps } from "./step-events-model.ts";
 import { type StepGroup, stepGroups } from "./step-groups.ts";
 
 /** The 16px dot's mark (component specs 23.5); the run page has no "not reached" entries yet. */
