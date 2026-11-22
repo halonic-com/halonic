@@ -3,7 +3,7 @@ import type { SeatId, SeatRole } from "../records.ts";
 /**
  * One seat as the board set it in the plugin's settings. The folder and the
  * expected account are sign-in details: they stay in the worker, and nothing
- * the plugin logs, stores or answers carries them.
+ * the plugin logs, stores or answers carries them (see `PublicSeat`).
  */
 export interface SeatSetting {
   readonly id: SeatId;
@@ -18,6 +18,13 @@ export interface SeatsSettings {
   readonly seats: readonly SeatSetting[];
   /** Off unless the board turns it on: then `seats.check` only proposes moves. */
   readonly movesEnabled: boolean;
+}
+
+/** What a route may show about a seat. */
+export interface PublicSeat {
+  readonly id: SeatId;
+  readonly role: SeatRole;
+  readonly resetGroup: string | undefined;
 }
 
 const roles: readonly SeatRole[] = ["pool", "reserve", "paid-api"];
@@ -39,6 +46,10 @@ export function readSeatsSettings(config: Readonly<Record<string, unknown>>): Se
     }
   }
   return { seats, movesEnabled: config["movesEnabled"] === true };
+}
+
+export function publicSeat(seat: SeatSetting): PublicSeat {
+  return { id: seat.id, role: seat.role, resetGroup: seat.resetGroup };
 }
 
 function readSeat(entry: unknown): SeatSetting | undefined {

@@ -5,9 +5,8 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
  * history the seat forecast needs and proposes moves. Its own plugin, apart
  * from Agent tools, so the board installs, stops and trusts it on its own.
  *
- * This is the skeleton: its settings and its own database schema. The
- * board-only routes, the `seats.read` job and the page come in later pull
- * requests.
+ * This is the skeleton: settings, its own database schema and the board-only
+ * routes. The `seats.read` job and the page come in later pull requests.
  */
 export const manifest: PaperclipPluginManifestV1 = {
   id: "halonic.seats",
@@ -22,6 +21,8 @@ export const manifest: PaperclipPluginManifestV1 = {
     "database.namespace.migrate",
     "database.namespace.read",
     "database.namespace.write",
+    // Board-only routes: every route below says `auth: "board"`, and src/seats/plugin/routes.ts checks it again.
+    "api.routes.register",
   ],
   entrypoints: { worker: "worker.js" },
   database: {
@@ -84,6 +85,24 @@ export const manifest: PaperclipPluginManifestV1 = {
       },
     },
   },
+  apiRoutes: [
+    {
+      routeKey: "seats.list",
+      method: "GET",
+      path: "/seats",
+      auth: "board",
+      capability: "api.routes.register",
+      companyResolution: { from: "query", key: "companyId" },
+    },
+    {
+      routeKey: "seats.manual-reset",
+      method: "POST",
+      path: "/seats/:seatId/manual-reset",
+      auth: "board",
+      capability: "api.routes.register",
+      companyResolution: { from: "query", key: "companyId" },
+    },
+  ],
 };
 
 // biome-ignore lint/style/noDefaultExport: the plugin host reads the manifest from the default export.
