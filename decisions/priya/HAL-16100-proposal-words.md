@@ -3,6 +3,7 @@
 - Task: HAL-16100
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16100 (a team decision with no board card, HAL-2282 rule: wording on the approved Inbox; finding 5 of flow check C672 on HAL-16091, with the words of row 23 of words check C671 on HAL-16090, task HAL-16104)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:CRrjx6n1csLS6sVLHAELadOf0z6sFWnfHhb7XG03qAFtlIs4RHj1GC5zp2MejsxdSeig5mJyFZAOBj6vzs35Dg==
 
 ## What changes
 
