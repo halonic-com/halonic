@@ -1,5 +1,5 @@
 // Runs the job-started hook as shipped against sample events, for hook.test.mjs and
-// queue-gate.test.mjs. Only its three fixed paths are pointed at temporary files, and the VM's
+// queue-gate.test.mjs. Only its four fixed paths are pointed at temporary files, and the VM's
 // queue gate is a stand-in that answers what a test tells it to.
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
@@ -21,14 +21,17 @@ export const dir = mkdtempSync(join(tmpdir(), "halonic-ci-hook-"));
 after(() => rmSync(dir, { recursive: true, force: true }));
 const conf = join(dir, "pool.conf");
 const eventFile = join(dir, "event.json");
+const mountsFile = join(dir, "mountinfo");
 
 export const CONF_LINE = "CONF=/etc/halonic-ci/pool.conf";
 export const EVENT_LINE =
   "EVENT_FILE=/home/runner/actions-runner/_work/_temp/_github_workflow/event.json"; // leak-guard: allow absolute-path the hook's event path inside the image
 export const GATE_LINE = "GATE=/run/halonic-ci-gate/gate.sock";
+export const MOUNTS_LINE = "MOUNTS=/proc/self/mountinfo";
 export const shipped = read("vm/job-started.sh");
 const gateSock = join(dir, "gate.sock");
 const gateAnswer = join(dir, "gate-answer.json");
+const gateAsked = join(dir, "gate-asked.log");
 const hookWith = (name, sock) => {
   const file = join(dir, name);
   writeFileSync(
@@ -36,7 +39,8 @@ const hookWith = (name, sock) => {
     shipped
       .replace(CONF_LINE, `CONF=${conf}`)
       .replace(EVENT_LINE, `EVENT_FILE=${eventFile}`)
-      .replace(GATE_LINE, `GATE=${sock}`),
+      .replace(GATE_LINE, `GATE=${sock}`)
+      .replace(MOUNTS_LINE, `MOUNTS=${mountsFile}`),
   );
   return file;
 };
@@ -44,19 +48,22 @@ const hook = hookWith("job-started.sh", gateSock);
 export const hookNoGate = hookWith("job-started-no-gate.sh", join(dir, "absent.sock"));
 
 // A stand-in for the VM's queue gate, in its own process because spawnSync blocks this one. It
-// answers every request with the status and body in gate-answer.json at that moment.
+// answers every request with the status and body in gate-answer.json at that moment, and logs
+// each request's path to gate-asked.log.
 const gate = spawn(
   process.execPath,
   [
     "-e",
     `const fs = require("node:fs");
      require("node:http").createServer((req, res) => {
+       fs.appendFileSync(process.argv[3], req.url + "\\n");
        const { status, body } = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
        res.writeHead(status, { "Content-Type": "application/json" });
        res.end(body);
      }).listen(process.argv[1], () => console.log("ready"));`,
     gateSock,
     gateAnswer,
+    gateAsked,
   ],
   { stdio: ["ignore", "pipe", "inherit"] },
 );
@@ -89,10 +96,35 @@ export const events = {
     repository: { full_name: "someone/halonic", fork: true },
   },
   dispatch: { ref: "refs/heads/main", inputs: {}, repository },
+  // A pull request from our own branch, number 42 at SHA (the fast pool, HAL-15972).
+  fastPr: {
+    pull_request: {
+      number: 42,
+      head: { sha: SHA, repo: { full_name: REPO } },
+      base: { repo: { full_name: REPO } },
+    },
+    repository,
+  },
 };
 
 export const POOL_PUSH = 'ALLOWED_EVENTS="push"\nSMOKE_BRANCH=""\nSMOKE_WORKFLOW=""\n';
 export const POOL_QUEUE = 'ALLOWED_EVENTS="push merge_group"\nSMOKE_BRANCH=""\nSMOKE_WORKFLOW=""\n';
+export const POOL_FAST = 'POOL="fast"\nALLOWED_EVENTS="pull_request"\n';
+
+// /proc/self/mountinfo lines for the three shared caches: `kind` "overlay" (a fast slot's),
+// "9p" (any mount as gVisor shows it), "ro" (read-only bind) or "rw" (the shared folder itself,
+// bind-mounted read-write).
+const mountLine = (point, kind) => {
+  if (kind === "overlay") {
+    return `801 790 0:61 / ${point} rw,relatime master:1 - overlay overlay rw,lowerdir=/cache/trusted/x`;
+  }
+  if (kind === "9p") return `30 1 0:7 / ${point} rw,relatime - 9p none rw,trans=fd,rfdno=4,wfdno=4`;
+  return `802 790 253:2 /trusted/x ${point} ${kind},relatime - xfs /dev/vdb rw,prjquota`;
+};
+export const mounts = (kind) =>
+  ["/cache/pnpm-store", "/cache/turbo", "/cache/ms-playwright"]
+    .map((point) => mountLine(point, kind))
+    .join("\n");
 
 // The merge queue as GitHub's GraphQL API returns it. Each entry: [number, head commit, the
 // head repository's owner, isCrossRepository]; positions count from 1 in this order.
@@ -117,7 +149,8 @@ export const queue = (...entries) =>
 export const QUEUE_OK = queue(own(5), own(7, SHA), [9, "d".repeat(40), "someone", true]);
 
 // Runs the hook. `event` is written to the fixed event path unless it's null; `env`
-// overrides the variables the runner sets; `gate` is the queue gate's answer.
+// overrides the variables the runner sets; `gate` is the queue gate's answer; `mountinfo` is
+// the job's mount table. The result's `asked` lists the paths the hook asked the gate for.
 export const run = ({
   pool = POOL_PUSH,
   poolMode = 0o444,
@@ -125,9 +158,12 @@ export const run = ({
   env = {},
   path = process.env.PATH,
   gate = { status: 200, body: QUEUE_OK },
+  mountinfo = mounts("overlay"),
   script = hook,
 }) => {
   writeFileSync(gateAnswer, JSON.stringify(gate));
+  writeFileSync(gateAsked, "");
+  writeFileSync(mountsFile, `${mountinfo}\n`);
   rmSync(conf, { force: true });
   rmSync(eventFile, { force: true });
   if (pool !== null) {
@@ -146,7 +182,8 @@ export const run = ({
       ...env,
     },
   });
-  return { ok: res.status === 0, out: res.stdout + res.stderr };
+  const asked = readFileSync(gateAsked, "utf8").split("\n").filter(Boolean);
+  return { ok: res.status === 0, out: res.stdout + res.stderr, asked };
 };
 export const refused = (res, reason) => {
   assert.equal(res.ok, false, `expected a refusal, got: ${res.out}`);

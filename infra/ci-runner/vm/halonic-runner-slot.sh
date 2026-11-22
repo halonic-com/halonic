@@ -14,29 +14,68 @@ if [ "${2:-}" != "--cleanup" ] && [ -e "$PAUSED" ]; then
   sleep 30
   exit 0
 fi
+fail() { echo "slot ${SLOT}: $1" >&2; exit 1; }
+# A fast slot runs unreviewed code (HAL-15972), so only under gVisor (runsc), which gives the job a
+# kernel of its own in user space: a kernel bug the job finds doesn't reach this VM, the App key or
+# the merge-group jobs (C8). It also gets its own Docker network, where containers can't reach each
+# other or the merge-group jobs on the default bridge. Checked first: without both, no fast runner.
+FAST_NET=halonic-ci-fast
+# fast-N and large-(12-N) share CPUs (below), so one never starts while the other runs.
+case "$SLOT" in fast-[1-3]) TWIN=large-$((12-${SLOT#fast-}));; large-9|large-10|large-11) TWIN=fast-$((12-${SLOT#large-}));; *) TWIN="";; esac
+if [ -n "$TWIN" ] && [ "${2:-}" != "--cleanup" ] && systemctl is-active -q "halonic-runner@$TWIN.service"; then
+  fail "$TWIN runs on the same CPUs; stop and disable it first"
+fi
+if [[ "$SLOT" == fast-* ]] && [ "${2:-}" != "--cleanup" ]; then
+  rts=" $(docker info --format '{{range $k, $v := .Runtimes}}{{$k}} {{end}}' 2>/dev/null || true) "
+  [[ "$rts" == *" runsc "* ]] || fail "Docker has no runsc runtime (gVisor); fast slots run only under it"
+  icc=$(docker network inspect -f '{{index .Options "com.docker.network.bridge.enable_icc"}}' "$FAST_NET" 2>/dev/null || true)
+  [ "$icc" = false ] || fail "Docker network $FAST_NET missing or lets containers reach each other"
+fi
 . /etc/halonic-ci/pool.env   # APP_ID INSTALLATION_ID ORG RUNNER_GROUP_ID IMAGE
 KEY=/etc/halonic-ci/app.pem
 TRUSTED=/cache/trusted; TRUSTED_PROJ=300; TRUSTED_QUOTA=20g
-fail() { echo "slot ${SLOT}: $1" >&2; exit 1; }
 # Fail closed: the App key must be a root-only 0400 file, not a link.
 [ -f "$KEY" ] && [ ! -L "$KEY" ] || fail "$KEY missing or not a file"
 [ "$(stat -c '%u %a' "$KEY")" = "0 400" ] || fail "$KEY must be owned by root with mode 0400"
 case "$SLOT" in
   large-*) LABEL=halonic-ci-large; CPUS=6;  MEM=10g; MEM_START=4g; QUOTA=20g; TMPFS=1g ;;
   small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=3g;  MEM_START=2g; QUOTA=6g;  TMPFS=512m ;;
+  fast-[1-3]) LABEL=halonic-ci-fast; CPUS=6; MEM=10g; MEM_START=4g; QUOTA=20g; TMPFS=1g ;;
   *) echo "unknown slot $SLOT" >&2; exit 2 ;;
 esac
 N=${SLOT##*-}
-case "$SLOT" in large-*) PROJ=$((100+N));; small-*) PROJ=$((200+N));; esac
+case "$SLOT" in large-*) PROJ=$((100+N));; small-*) PROJ=$((200+N));; fast-*) PROJ=$((400+N));; esac
 # Each slot gets its own CPUs, so a job sees only those (nproc, Node's availableParallelism).
 # With --cpus alone it saw all of the VM's, and test runners started a worker per CPU and ran
 # out of memory. vCPUs 2k and 2k+1 are SMT siblings, so 6 in a row are 3 whole cores.
 # On the 80-vCPU VM, the eleven large slots take 0-65 and the three small slots share 66-71, each
 # capped at 2 CPUs (--cpus). 72-79 stay free for the VM itself (Docker, systemd, the status feed).
+# A fast slot takes the CPUs of a large slot from the top (fast-1 those of large-11, fast-2 of
+# large-10, fast-3 of large-9), so run either one, never both (checked at the top).
 case "$SLOT" in
   large-*) CPUSET="$(( (N-1)*6 ))-$(( N*6-1 ))" ;;
   small-*) CPUSET="66-71" ;;
+  fast-*)  CPUSET="$(( (11-N)*6 ))-$(( (12-N)*6-1 ))" ;;
 esac
+# Fast slots take pull requests (HAL-15972), so they get their own pool config, and the other
+# slots refuse to start with a config that would let a pull request in.
+case "$SLOT" in
+  fast-*) POOL_DIR=/etc/halonic-ci/pool-fast
+          grep -qx 'POOL="fast"' "$POOL_DIR/pool.conf" || fail "$POOL_DIR/pool.conf must say POOL=\"fast\"" ;;
+  *)      POOL_DIR=/etc/halonic-ci/pool
+          if grep -Eq '^(POOL=.*fast|ALLOWED_EVENTS=.*pull_request)' "$POOL_DIR/pool.conf"; then
+            fail "$POOL_DIR/pool.conf lets pull requests in; only fast slots take them"
+          fi ;;
+esac
+# A fast slot's jobs are unreviewed code, so they never get the shared caches read-write (C2/C8).
+# Each cache is an overlay: the shared folder is its read-only lower layer, and every write goes
+# to an upper layer of this job's own, under the job's quota and deleted after it.
+OVL=/cache/overlay/$SLOT; OVL_MNT=/run/halonic-ci-ovl/$SLOT; CACHES="pnpm-store turbo ms-playwright"
+unmount_caches() {
+  for c in $CACHES; do umount "$OVL_MNT/$c" 2>/dev/null || true; done
+  rm -rf "$OVL" "$OVL_MNT"
+}
+[ "$LABEL" != halonic-ci-fast ] || unmount_caches
 
 b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
 now=$(date +%s)
@@ -77,6 +116,25 @@ rm -rf "$RUN" "$WORK"; install -d -m 0700 -o "$RUID" -g "$RUID" "$RUN" "$WORK"
 umask 077; jq -r .encoded_jit_config <<<"$RESP" > "$RUN/jitconfig"; chown "$RUID:$RUID" "$RUN/jitconfig"; chmod 0400 "$RUN/jitconfig"
 unset RESP TOKEN JWT
 xfs_quota -x -c "project -s -p $WORK $PROJ" -c "limit -p bhard=$QUOTA $PROJ" /cache >/dev/null
+CACHE_SRC=$TRUSTED
+if [ "$LABEL" = halonic-ci-fast ]; then
+  for c in $CACHES; do
+    install -d -m 0755 -o "$RUID" -g "$RUID" "$OVL/$c/upper"; install -d -m 0700 "$OVL/$c/work" "$OVL_MNT/$c"
+  done
+  xfs_quota -x -c "project -s -p $OVL $PROJ" /cache >/dev/null
+  for c in $CACHES; do
+    mount -t overlay overlay -o "lowerdir=$TRUSTED/$c,upperdir=$OVL/$c/upper,workdir=$OVL/$c/work" "$OVL_MNT/$c"
+    # Under gVisor the job sees every mount as its file proxy's, so only here can it be checked.
+    [ "$(findmnt -n -o FSTYPE --mountpoint "$OVL_MNT/$c")" = overlay ] || fail "$OVL_MNT/$c is not an overlay"
+  done
+  CACHE_SRC=$OVL_MNT
+fi
+# What only a fast slot's container gets: gVisor, its own network and its own gate socket, which
+# answers pull request queries only, so its jobs can't hold the merge queue's gate (HAL-15972).
+SANDBOX=(); GATE_DIR=/run/halonic-ci-gate
+if [ "$LABEL" = halonic-ci-fast ]; then
+  SANDBOX=(--runtime=runsc --network="$FAST_NET"); GATE_DIR=/run/halonic-ci-gate-fast
+fi
 # The shared caches get one project quota too (set once: new files inherit the project).
 (
   flock 9
@@ -91,21 +149,22 @@ install -d -m 0755 /var/log/halonic-ci
 cleanup() {
   docker rm -f "hci-$SLOT" >/dev/null 2>&1 || true
   rm -rf "$RUN" "$WORK" "$STATE"
+  [ "$LABEL" != halonic-ci-fast ] || unmount_caches
 }
 trap cleanup EXIT
 echo "slot $SLOT: runner $NAME (id $RUNNER_ID) waiting for a job"
 STARTED=$(date +%s)
 docker run --rm --name "hci-$SLOT" --hostname "$NAME" --init \
   --cpus "$CPUS" --cpuset-cpus "$CPUSET" --memory "$MEM_START" --memory-swap "$MEM_START" --pids-limit 8192 \
-  --cap-drop ALL --security-opt no-new-privileges \
+  --cap-drop ALL --security-opt no-new-privileges "${SANDBOX[@]}" \
   --tmpfs "/tmp:rw,exec,nosuid,nodev,size=$TMPFS" \
   -v "$RUN:/run/halonic-ci:ro" \
-  -v /etc/halonic-ci/pool:/etc/halonic-ci:ro \
-  -v /run/halonic-ci-gate:/run/halonic-ci-gate:ro \
+  -v "$POOL_DIR:/etc/halonic-ci:ro" \
+  -v "$GATE_DIR:/run/halonic-ci-gate:ro" \
   -v "$WORK:$JOB_WORK" \
-  -v "$TRUSTED/pnpm-store:/cache/pnpm-store" \
-  -v "$TRUSTED/turbo:/cache/turbo" \
-  -v "$TRUSTED/ms-playwright:/cache/ms-playwright" \
+  -v "$CACHE_SRC/pnpm-store:/cache/pnpm-store" \
+  -v "$CACHE_SRC/turbo:/cache/turbo" \
+  -v "$CACHE_SRC/ms-playwright:/cache/ms-playwright" \
   "$IMAGE" &
 DPID=$!
 

@@ -166,7 +166,9 @@ test("C7: the gate runs on the VM with the token as a credential; jobs get its s
   const socket = read("vm/halonic-ci-gate.socket");
   assert.match(socket, /^ListenStream=\/run\/halonic-ci-gate\/gate\.sock$/m);
   const slot = read("vm/halonic-runner-slot.sh");
-  assert.ok(slot.includes("-v /run/halonic-ci-gate:/run/halonic-ci-gate:ro"));
+  // Every slot but a fast one gets this socket; a fast slot gets its own (fast-pool.test.mjs).
+  assert.ok(slot.includes("SANDBOX=(); GATE_DIR=/run/halonic-ci-gate\n"));
+  assert.ok(slot.includes('-v "$GATE_DIR:/run/halonic-ci-gate:ro"'));
   // The token stays outside the pool folder, the only part of /etc/halonic-ci a job sees.
   assert.doesNotMatch(slot, /queue-token/);
 });

@@ -15,6 +15,7 @@ import {
   events,
   GATE_LINE,
   here,
+  MOUNTS_LINE,
   POOL_QUEUE,
   REPO,
   read,
@@ -22,13 +23,16 @@ import {
   run,
   shipped,
 } from "./hook-run.mjs";
-// C7's queue checks: imported so CI's fast job, which names only this file, runs them too.
+// C7's queue checks and the fast pool's: imported so CI's fast job, which names only this file,
+// runs them too.
 import "./queue-gate.test.mjs";
+import "./fast-pool.test.mjs";
 
-test("the shipped hook has the three fixed paths these tests replace", () => {
+test("the shipped hook has the four fixed paths these tests replace", () => {
   assert.equal(shipped.split(CONF_LINE).length, 2);
   assert.equal(shipped.split(EVENT_LINE).length, 2);
   assert.equal(shipped.split(GATE_LINE).length, 2);
+  assert.equal(shipped.split(MOUNTS_LINE).length, 2);
   assert.match(shipped, /^set -euo pipefail$/m);
 });
 
@@ -44,7 +48,7 @@ test("merge groups are refused while the pool is push only, accepted once switch
   assert.equal(run({ pool: POOL_QUEUE, event: events.mergeGroup, env }).ok, true);
 });
 
-test("refuses every pull request, even with pull_request in the pool's list", () => {
+test("refuses every pull request outside the fast pool, even with pull_request in the pool's list", () => {
   const pool = 'ALLOWED_EVENTS="push merge_group pull_request"\n';
   const env = { GITHUB_EVENT_NAME: "pull_request" };
   refused(run({ pool, event: events.ownPr, env }), /pull request from halonic-com\/halonic/);
@@ -182,7 +186,8 @@ test("each job container is capped and unprivileged (C5)", () => {
   assert.ok(slot.includes('--cpuset-cpus "$CPUSET"'), "slot script lacks --cpuset-cpus");
   assert.match(slot, /--tmpfs "\/tmp:rw,exec,nosuid,nodev,/);
   // The pool config is mounted read-only, the work dir is the one the hook expects.
-  assert.ok(slot.includes("-v /etc/halonic-ci/pool:/etc/halonic-ci:ro"));
+  assert.ok(slot.includes('-v "$POOL_DIR:/etc/halonic-ci:ro"'));
+  assert.match(slot, /^ {2}\*\) {6}POOL_DIR=\/etc\/halonic-ci\/pool$/m);
   assert.match(slot, /^JOB_WORK=\/home\/runner\/actions-runner\/_work /m);
   assert.ok(slot.includes('-v "$WORK:$JOB_WORK"'));
 });
@@ -225,14 +230,27 @@ test("the slot script reads the job's event file inside the container, never as 
 // command it could call replaced by a stub that logs, so a test sees whether it went on to
 // register a runner. systemd doesn't re-check the unit's ConditionPathExists on a restart.
 const PAUSED_LINE = "PAUSED=/etc/halonic-ci/paused";
-const slotCycle = ({ paused, args = ["large-1"] }) => {
+const slotCycle = ({ paused, args = ["large-1"], docker = "", systemctl = "exit 3" }) => {
   const bin = mkdtempSync(join(dir, "slot-bin-"));
   const log = join(bin, "calls.log");
   const pausedFile = join(bin, "paused");
   writeFileSync(log, "");
   if (paused) writeFileSync(pausedFile, "");
-  for (const name of ["curl", "openssl", "docker", "jq", "stat", "xfs_quota", "sleep"]) {
-    writeFileSync(join(bin, name), `#!/bin/sh\necho "${name} $*" >> ${log}\n`, { mode: 0o755 });
+  const bodies = { docker, systemctl };
+  for (const name of [
+    "curl",
+    "openssl",
+    "docker",
+    "jq",
+    "stat",
+    "xfs_quota",
+    "sleep",
+    "systemctl",
+  ]) {
+    const body = bodies[name] ?? "";
+    writeFileSync(join(bin, name), `#!/bin/sh\necho "${name} $*" >> ${log}\n${body}\n`, {
+      mode: 0o755,
+    });
   }
   const slot = read("vm/halonic-runner-slot.sh");
   assert.equal(slot.split(PAUSED_LINE).length, 2);
@@ -255,6 +273,40 @@ test("a slot registers no runner while the pause file exists", () => {
   const cleanup = slotCycle({ paused: true, args: ["large-1", "--cleanup"] });
   assert.doesNotMatch(cleanup.stdout, /paused/);
   assert.match(cleanup.stderr, /pool\.env/);
+});
+
+test("a fast slot starts only under gVisor and on its own network without container traffic (C8)", () => {
+  // `docker info` lists the runtimes; `docker network inspect` the network's enable_icc option.
+  const docker = ({ runtimes, icc }) =>
+    `case "$1" in info) echo "${runtimes}";; network) [ -n "${icc}" ] && echo "${icc}" || exit 1;; esac`;
+  const fast = (setup) => slotCycle({ paused: false, args: ["fast-1"], docker: docker(setup) });
+  const noRunsc = fast({ runtimes: "io.containerd.runc.v2 runc ", icc: "false" });
+  assert.equal(noRunsc.status, 1);
+  assert.match(noRunsc.stderr, /Docker has no runsc runtime \(gVisor\)/);
+  for (const icc of ["", "true"]) {
+    const res = fast({ runtimes: "runc runsc ", icc });
+    assert.equal(res.status, 1);
+    assert.match(res.stderr, /Docker network halonic-ci-fast missing or lets containers reach/);
+  }
+  // Both in place, the cycle goes on (and stops at the VM's pool.env, which the test has none of).
+  const ok = fast({ runtimes: "runc runsc ", icc: "false" });
+  assert.doesNotMatch(ok.stderr, /runsc|halonic-ci-fast/);
+  assert.match(ok.stderr, /pool\.env/);
+  // A large slot doesn't ask.
+  assert.doesNotMatch(slotCycle({ paused: false }).calls, /^docker /m);
+});
+
+test("a fast slot and the large slot whose CPUs it takes never run at once", () => {
+  const ready = 'case "$1" in info) echo "runsc ";; network) echo false;; esac';
+  const both = { paused: false, docker: ready, systemctl: "exit 0" };
+  const fast = slotCycle({ ...both, args: ["fast-1"] });
+  assert.equal(fast.status, 1);
+  assert.match(fast.stderr, /large-11 runs on the same CPUs/);
+  assert.match(fast.calls, /^systemctl is-active -q halonic-runner@large-11\.service$/m);
+  assert.match(slotCycle({ ...both, args: ["large-9"] }).stderr, /fast-3 runs on the same CPUs/);
+  // Other large slots have no twin, and an idle twin doesn't stop a slot.
+  assert.match(slotCycle({ ...both, args: ["large-8"] }).stderr, /pool\.env/);
+  assert.match(slotCycle({ paused: false, docker: ready, args: ["fast-2"] }).stderr, /pool\.env/);
 });
 
 test("stopping the firewall unit leaves the CI VM's rules in place", () => {
