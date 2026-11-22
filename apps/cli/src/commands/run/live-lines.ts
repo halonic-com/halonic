@@ -1,6 +1,7 @@
 // What `halonic run` shows while the run goes (cli-output 3.4, "Live, in a
 // terminal", and 1.5): the heading as soon as the run starts, each step's
-// ✓ (or ✕, !) line as soon as the step ends, and the live ◌ line of the step
+// ✓ (or ✕, !) line as soon as the step ends, with a dim line under it for
+// each of its tool calls that failed, and the live ◌ line of the step
 // that is running, "◌ Draft a reply    Writer · smart · waiting for
 // Anthropic (12 s)". The finished lines are printed ahead, and the result
 // repeats them word for word (requirement `cli.print-ahead`), so they come
@@ -72,7 +73,7 @@ export function liveLines(
   facts: LiveLinesFacts,
 ): LiveLines {
   let known: KnownRun | undefined;
-  /** Lines printed ahead after the heading: the empty line, then the step lines. */
+  /** Steps whose lines are printed ahead, after the heading and an empty line. */
   let printedSteps = 0;
   let progress: Progress | undefined;
 
@@ -89,11 +90,11 @@ export function liveLines(
     const finished = steps.filter((step) => isFinished(step.end.kind)).length;
     if (finished <= printedSteps) return;
     endProgress();
-    const lines = runStepLines(events, summary, run.definitions, facts.clock);
+    const groups = runStepLines(events, summary, run.definitions, facts.clock);
     if (printedSteps === 0) {
       context.printAhead([]);
     }
-    for (const line of lines.slice(printedSteps, finished)) {
+    for (const line of groups.slice(printedSteps, finished).flat()) {
       context.printAhead(line);
     }
     printedSteps = finished;

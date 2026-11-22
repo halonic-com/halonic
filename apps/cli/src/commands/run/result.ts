@@ -20,7 +20,7 @@ import {
   type RunDefinitions,
   runViewDefinitions,
   stepColumns,
-  stepLines,
+  stepLineGroups,
 } from "../../run-view.ts";
 import { workflowTitle } from "../runs/listed-run.ts";
 import {
@@ -73,7 +73,7 @@ export function runProgress(run: RunDetail, facts: RunResultFacts): CommandResul
   const { summary, events } = run;
   const definitions = runViewDefinitions(facts.workspace, summary);
   const title = workflowTitle(definitions.workflow, summary);
-  const steps = runStepLines(events, summary, definitions, facts.clock);
+  const steps = runStepLines(events, summary, definitions, facts.clock).flat();
   const debugText = failedRunDebugText(run);
   return {
     ...(debugText === undefined ? {} : { debugText }),
@@ -118,17 +118,23 @@ export function runHeading(
 }
 
 /**
- * The step lines, in the workflow's own columns rather than those of the
- * steps that ran: a step's line is printed as soon as it ends, and the
- * result repeats it word for word (`live-lines.ts`).
+ * The step lines, one group for each step: its line, in the workflow's own
+ * columns rather than those of the steps that ran, then a dim line for each
+ * of its tool calls that failed, as `halonic runs show` prints them
+ * (requirement `cli.run-live-failed-call`). A step's group is printed as
+ * soon as the step ends, and the result repeats it word for word
+ * (`live-lines.ts`).
  */
 export function runStepLines(
   events: readonly RunEvent[],
   summary: RunSummary,
   definitions: RunDefinitions,
   clock: RunClock,
-): Phrase[] {
-  return stepLines(events, summary, definitions, clock, stepColumns(definitions));
+): Phrase[][] {
+  return stepLineGroups(events, summary, definitions, clock, {
+    output: false,
+    widths: stepColumns(definitions),
+  });
 }
 
 /** "! Didn't use --event reject: the run ended first.", dim, after a blank line. */
