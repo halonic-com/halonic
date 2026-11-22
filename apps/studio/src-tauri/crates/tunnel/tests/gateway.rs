@@ -255,8 +255,8 @@ async fn connect(host: &Host, keys: PhoneKeys) -> (PhoneConnection, UnboundedRec
         next(&mut events).await,
         PhoneEvent::Status(PhoneStatus::Connecting)
     );
-    assert_eq!(next(&mut events).await, PhoneEvent::SessionOpened);
-    phone.send(hello()).await.expect("hello goes out");
+    assert_eq!(next(&mut events).await, PhoneEvent::SessionOpened(1));
+    phone.send(1, hello()).await.expect("hello goes out");
     assert_eq!(
         next(&mut events).await,
         PhoneEvent::Status(PhoneStatus::Connected)

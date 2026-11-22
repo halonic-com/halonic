@@ -81,13 +81,20 @@ pub enum PhoneStatus {
     Closed,
 }
 
+/// A session's number on its connection: 1 for the first, and never
+/// given again by that connection. A message is sent into a numbered
+/// session, so one meant for a session that has ended never goes out on the
+/// next.
+pub type SessionNumber = u64;
+
 /// What a phone connection reports, in order.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PhoneEvent {
     Status(PhoneStatus),
     /// A new session is open: the page sends `hello` on it.
-    SessionOpened,
-    /// A gateway message from the host, decrypted.
+    SessionOpened(SessionNumber),
+    /// A gateway message from the host, decrypted, in the session last
+    /// reported open.
     Message(Vec<u8>),
     /// While Reconnecting: the next try starts after this wait, for
     /// "Trying again in N seconds". Reported after the status and after
@@ -96,7 +103,12 @@ pub enum PhoneEvent {
 }
 
 enum Command {
-    Send(Vec<u8>, oneshot::Sender<Result<(), SendError>>),
+    Send(
+        SessionNumber,
+        Vec<u8>,
+        oneshot::Sender<Result<(), SendError>>,
+    ),
+    EndSession(SessionNumber),
     TryNow,
     Pause,
     Resume,
@@ -134,18 +146,29 @@ impl PhoneConnection {
             unconfirmed: false,
             connection: None,
             stage: Stage::Waiting,
+            sessions: 0,
         };
         tokio::spawn(worker.run(transport_events, command_receiver));
         Ok((Self { commands }, event_receiver))
     }
 
-    /// Seals and sends one gateway message. Fails unless a session is open.
-    pub async fn send(&self, message: Vec<u8>) -> Result<(), SendError> {
+    /// Seals and sends one gateway message into the session `session`.
+    /// Fails, and sends nothing, unless that session is the open one.
+    pub async fn send(&self, session: SessionNumber, message: Vec<u8>) -> Result<(), SendError> {
         let (reply, answer) = oneshot::channel();
         self.commands
-            .send(Command::Send(message, reply))
+            .send(Command::Send(session, message, reply))
             .map_err(|_| SendError::NotOpen)?;
         answer.await.unwrap_or(Err(SendError::NotOpen))
+    }
+
+    /// Ends the session `session`, when the app refuses what the host sent
+    /// in it. The phone reconnects after its backoff, which goes on from
+    /// where it was however long the session lasted, so a host can't make
+    /// the phone reconnect faster by misbehaving. Does nothing unless that
+    /// session is the open one.
+    pub fn end_session(&self, session: SessionNumber) {
+        let _ = self.commands.send(Command::EndSession(session));
     }
 
     /// Tries to reconnect at once instead of after the wait ("Try now").
@@ -200,6 +223,8 @@ struct Worker {
     /// The open connection, which frames go out on; none between connections.
     connection: Option<ConnectionId>,
     stage: Stage,
+    /// Sessions opened so far: the open one's number, while one is open.
+    sessions: SessionNumber,
 }
 
 impl Worker {
@@ -313,7 +338,8 @@ impl Worker {
                     if self.status != PhoneStatus::Connected {
                         self.set_status(PhoneStatus::Connecting);
                     }
-                    let _ = self.events.send(PhoneEvent::SessionOpened);
+                    self.sessions += 1;
+                    let _ = self.events.send(PhoneEvent::SessionOpened(self.sessions));
                 }
                 Err(error) => self.handshake_failed(error),
             },
@@ -358,9 +384,10 @@ impl Worker {
 
     async fn on_command(&mut self, command: Command) {
         match command {
-            Command::Send(message, reply) => {
-                let _ = reply.send(self.seal_and_send(&message).await);
+            Command::Send(session, message, reply) => {
+                let _ = reply.send(self.seal_and_send(session, &message).await);
             }
+            Command::EndSession(session) => self.end_session(session),
             Command::TryNow => self.transport.try_now(),
             Command::Pause => self.transport.pause(),
             Command::Resume => self.transport.resume(),
@@ -368,7 +395,14 @@ impl Worker {
         }
     }
 
-    async fn seal_and_send(&mut self, message: &[u8]) -> Result<(), SendError> {
+    async fn seal_and_send(
+        &mut self,
+        number: SessionNumber,
+        message: &[u8],
+    ) -> Result<(), SendError> {
+        if number != self.sessions {
+            return Err(SendError::NotOpen);
+        }
         let (Stage::Session(session), Some(connection)) = (&mut self.stage, self.connection) else {
             return Err(SendError::NotOpen);
         };
@@ -393,6 +427,16 @@ impl Worker {
             }
             Ok(None) => {}
             Err(_) => self.drop_connection(),
+        }
+    }
+
+    /// Refuses the open connection when `number` is its session.
+    fn end_session(&mut self, number: SessionNumber) {
+        if number != self.sessions || !matches!(self.stage, Stage::Session(_)) {
+            return;
+        }
+        if let Some(connection) = self.lost_connection() {
+            self.transport.refuse_connection(connection);
         }
     }
 
