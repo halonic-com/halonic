@@ -175,6 +175,19 @@ export interface ProviderCheck {
     readonly type: string;
     readonly baseUrl?: string | undefined;
   }): Promise<boolean>;
+  /**
+   * Whether Check waits for the person to trust the workspace: the provider has an address that
+   * isn't on this computer, and the workspace isn't trusted yet. Missing means it never waits.
+   */
+  waitsForTrust?(provider: {
+    readonly type: string;
+    readonly baseUrl?: string | undefined;
+  }): boolean;
+  /**
+   * Calls `onChange` when the answers above may have changed, as when the workspace is trusted;
+   * returns the function that stops it. Missing means they never change.
+   */
+  subscribe?(onChange: () => void): () => void;
 }
 
 /** The provider check of the open folder. It is optional. */

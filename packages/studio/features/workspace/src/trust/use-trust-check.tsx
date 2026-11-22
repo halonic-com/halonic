@@ -43,6 +43,9 @@ export function useTrustCheck(
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [yesNotSaved, setYesNotSaved] = useState(0);
+  // Trusts refused because the workspace changed under the open check: each one keeps the
+  // notice and moves focus to Not now, so a second press can't trust the new check unread (C711).
+  const [changedRefused, setChangedRefused] = useState(0);
   // Whoever asked for the open check, answered once when it closes.
   const answer = useRef<((answer: TrustAnswer) => void) | undefined>(undefined);
   useEffect(() => () => answer.current?.("declined"), []);
@@ -51,6 +54,7 @@ export function useTrustCheck(
     setOpened(undefined);
     setBusy(false);
     setError(undefined);
+    setChangedRefused(0);
     const asked = answer.current;
     answer.current = undefined;
     asked?.(said);
@@ -96,12 +100,14 @@ export function useTrustCheck(
           busy={busy}
           error={error}
           yesNotSaved={yesNotSaved}
+          changedRefused={changedRefused}
           onNotNow={() => close("declined")}
           onTrust={(allowUnfenced) => {
             // Trust saves only the check the person was shown. One that changed since is shown
             // as the check now, and the next Trust saves it.
             if (review.fingerprint !== opened) {
               setOpened(review.fingerprint);
+              setChangedRefused((count) => count + 1);
               setError("Couldn't save trust: this workspace changed. Nothing was started.");
               return;
             }

@@ -1,12 +1,13 @@
 import type { Provider } from "@halonicjs/format";
 import { Button, StatusChip, usePresentation } from "@halonicjs/studio-kit";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ProviderCheck } from "../api.ts";
 import { providerName } from "./provider-rows.ts";
 import {
   CHECK,
   CHECK_AGAIN,
   CHECK_HINT,
+  CHECK_WAITS_FOR_TRUST,
   CHECKING,
   checkAnnouncement,
   checkChipDetail,
@@ -85,7 +86,8 @@ function ResultLine({ result, phone, program }: ResultLineProps) {
  * (`models.providers.check`): one secondary button, **Check again** once there is a result, and
  * under it one status line with the last result. The button reads "Checking…" and stays focused while it asks. The result lasts until the
  * page closes; it is not written to a file. Nothing shows for a cloud provider or one with no
- * address. On a phone the button is full width and the result is a tone chip, **Answering** or
+ * address. Until the workspace is trusted, a provider whose address isn't on this computer gets one
+ * muted line instead, and Check once it's trusted. On a phone the button is full width and the result is a tone chip, **Answering** or
  * **Not answering**, with "at localhost:11434 · checked 10:42" under it and no dot.
  *
  * @example
@@ -102,10 +104,20 @@ export function CheckProvider({ check, provider, now = () => new Date() }: Check
       alive.current = false;
     };
   }, []);
-  const address = check?.addressOf(provider);
+  // Read again when the check says its answers changed: trusting the workspace shows Check
+  // without reopening the page.
+  const subscribe = useCallback(
+    (onChange: () => void) => check?.subscribe?.(onChange) ?? (() => {}),
+    [check],
+  );
+  const address = useSyncExternalStore(subscribe, () => check?.addressOf(provider));
+  const waits = useSyncExternalStore(subscribe, () => check?.waitsForTrust?.(provider) === true);
   // A result for another address (the base URL was edited since) is no longer the answer.
   const current = result?.address === address ? result : undefined;
-  if (check === undefined || !provider.local || address === undefined) return null;
+  if (check === undefined || !provider.local) return null;
+  if (address === undefined) {
+    return waits ? <p className="text-small text-fg-muted">{CHECK_WAITS_FOR_TRUST}</p> : null;
+  }
   const program = localProgramName(provider.type, providerName(provider));
 
   async function run(asked: ProviderCheck, where: string) {
