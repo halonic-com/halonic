@@ -49,7 +49,7 @@ export const sandboxSetupMessages = defineMessages("sandboxSetup", {
     phrase`It still has access to your project folders. To end that, run halonic sandbox remove again from a terminal that isn't running as administrator.`,
   /** The same, when the next start doesn't end it: only a removal without administrator rights does. */
   keptAccessManual: () =>
-    phrase`It may still have access to some of your project folders. To end that, run halonic sandbox remove again from a terminal that isn't running as administrator.`,
+    phrase`It may still have access to some of your project folders. To end that, remove the sandbox again without administrator rights: run halonic sandbox remove from a terminal that isn't running as administrator.`,
 
   cancelled: () =>
     phrase`The sandbox isn't set up: Windows didn't give Halonic administrator rights. If you don't have an administrator password, ask whoever manages this computer.`,

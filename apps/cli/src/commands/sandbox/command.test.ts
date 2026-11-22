@@ -239,7 +239,7 @@ verifies("cli.commands.sandbox.remove", () => {
     const kept = await sandboxCli(manual, ["remove", "--yes"]);
     expect(kept.io.stdout).toEqual([
       "✓ Removed the agent sandbox",
-      "  It may still have access to some of your project folders. To end that, run halonic sandbox remove again from a terminal that isn't running as administrator.",
+      "  It may still have access to some of your project folders. To end that, remove the sandbox again without administrator rights: run halonic sandbox remove from a terminal that isn't running as administrator.",
     ]);
     const manualJson = await sandboxCli(manual, ["remove", "--yes", "--json"]);
     expect(JSON.parse(manualJson.io.stdout.join("\n"))).toMatchObject({

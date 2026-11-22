@@ -159,23 +159,28 @@ command line inside WSL don't end it. "It may still have access to some of your
 project folders" (`manual`, srt still lists its sandbox account, or its status
 can't be read) means the next start won't end it.
 
-For `manual`, the CLI says to run `halonic sandbox remove` again from a
-terminal that isn't running as administrator. That works only in a terminal on
-Windows itself, not inside WSL, and not for a removal you can't run again
-because Halonic is already gone. The step that works whatever you chose is the
-one the uninstaller's last page gives: install Halonic again with "Set up the agent sandbox" on, then uninstall
-it normally, not as administrator. A normal uninstall runs without
-administrator rights, so its removal takes the access back. To keep using
-Halonic, install it again afterwards.
+For `manual` there is one step: remove the sandbox again without administrator
+rights. Only that removal takes the access back; a start doesn't, so quitting
+Halonic and opening it again is not enough on its own. Each place says how to
+do it from there:
 
-Settings and `halonic sandbox remove` give a shorter step, because they say
-this only where it works: Halonic running on Windows itself, with the Windows
-sandbox chosen. In Settings, quit Halonic and open it again normally, not as
-administrator; when it says the sandbox may still have access, then also set
-the sandbox up again and remove it. In a terminal, run `halonic sandbox remove`
-again from a terminal that isn't running as administrator. All three steps do
-the same thing: a start or a removal without administrator rights takes the
-access back.
+- `halonic sandbox remove`: run `halonic sandbox remove` from a terminal that
+  isn't running as administrator. That works only in a terminal on Windows
+  itself, not inside WSL. Running it again is fine after a removal.
+- Settings: quit Halonic and open it again normally, not as administrator, then
+  set the sandbox up again and remove it. Settings offers removal only for a
+  sandbox that is set up.
+- The uninstaller's last page, for when Halonic is already gone: install
+  Halonic again with "Set up the agent sandbox" on, then uninstall it normally,
+  not as administrator. A normal uninstall runs without administrator rights,
+  so its removal takes the access back. To keep using Halonic, install it
+  again afterwards.
+
+For `until_next_start`, a start is enough: Settings says to quit Halonic and
+open it again normally, not as administrator. The CLI names its `manual` step
+there too, `halonic sandbox remove` from a terminal that isn't running as
+administrator, because a removal without administrator rights also takes the
+access back and a user can check that it ran.
 
 ## "This computer" has none of it
 
