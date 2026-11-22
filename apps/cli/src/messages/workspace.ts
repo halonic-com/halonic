@@ -30,8 +30,14 @@ export const workspaceMessages = defineMessages("workspace", {
    */
   fileProblems: (workspace: string, count: number, files: readonly string[], nothingDone: Phrase) =>
     phrase`${workspace} has ${counted(count, "problem", "problems")} in ${filesInWords(files)}. ${nothingDone}`,
-  /** Its fix; `dir` is the user's own `--dir`. */
-  fileProblemsFix: (dir?: string) => phrase`See them with: ${suggestedCommand("validate", dir)}`,
+  /**
+   * Its fix, "See it with: halonic validate" for one problem and "See them
+   * with: …" for more (C591 row 17); `dir` is the user's own `--dir`.
+   */
+  fileProblemsFix: (count: number, dir?: string) =>
+    count === 1
+      ? phrase`See it with: ${suggestedCommand("validate", dir)}`
+      : phrase`See them with: ${suggestedCommand("validate", dir)}`,
   noWorkspaceFix: () =>
     phrase`Run it inside a workspace, create one with halonic init, or copy the example with halonic init --example acme.`,
   /**

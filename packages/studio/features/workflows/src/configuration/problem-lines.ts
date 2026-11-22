@@ -47,6 +47,9 @@ const rowSentences: Readonly<Record<string, string>> = {
   unreachable: "Can't be reached: no arrow leads to it.",
   "wait-without-events":
     "Gives a person no answers to pick, such as approve. Add them in the workflow's file.",
+  // The core says "transition"; Studio says arrow (microcopy 1.2), as the card's row does (C591 row 13).
+  "unguarded-shadow":
+    "Has an arrow that's never taken: an earlier arrow on the same event always matches first. Change the order or the conditions in Arrows on its card.",
 };
 
 /** The sentence of a check that is about the whole workflow, not one step. */

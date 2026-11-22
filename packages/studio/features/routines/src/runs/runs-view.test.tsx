@@ -108,6 +108,8 @@ verifies("routines.runs.view", () => {
   });
 
   it("names a run row as the Runs list does, not as its loose words", async () => {
+    // At midday, an hour ago is still today, so the row says a time rather than "yesterday".
+    vi.setSystemTime(new Date(2026, 10, 3, 12, 0));
     const runs = [run("81d0ae", { startedBy: "run-now" }), run("891b5a", { outcome: "waiting" })];
     const page = await openRuns(
       hostWith(async () => ({ runs, skips: [] })),

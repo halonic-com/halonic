@@ -46,6 +46,11 @@ function useReasonLine(reason: string | undefined): string | undefined {
  * The first line of the first text a reason names, as the page shows it: "Broken flow can't run: it
  * has 1 problem." A reason can name several ids, in the order the page shows them (Run's).
  *
+ * A line that ends in ":" leads into what follows it, such as a command in "Not in Studio yet"
+ * reasons (microcopy 1.1), which the tooltip doesn't show. So its last sentence is left out: "Studio
+ * can't check these again yet. To check them, sign in again in a terminal:" becomes "Studio can't
+ * check these again yet." (C591 row 6).
+ *
  * @param reason - the `reason` of `unavailable`: one id, or several separated by spaces
  */
 export function firstLineOf(reason: string): string | undefined {
@@ -54,7 +59,8 @@ export function firstLineOf(reason: string): string | undefined {
   if (element === null) {
     return undefined;
   }
-  return firstLine(shownText(element));
+  const line = firstLine(shownText(element));
+  return line === undefined ? undefined : withoutLeadIn(line);
 }
 
 /**
@@ -64,6 +70,22 @@ export function firstLineOf(reason: string): string | undefined {
 function shownText(element: HTMLElement): string {
   // biome-ignore lint/performance/useDomNodeTextContent: the layout is the point: lines and what's hidden
   return typeof element.innerText === "string" ? element.innerText : (element.textContent ?? "");
+}
+
+/**
+ * The line without the sentence that leads into what follows it, when it ends in ":". A line of one
+ * sentence stays as it is: it is all the reason there is.
+ */
+function withoutLeadIn(line: string): string {
+  if (!line.endsWith(":")) {
+    return line;
+  }
+  // A sentence ends at a stop followed by a space, so "halonic.yaml" stays whole.
+  const lastSentenceEnd = [...line.matchAll(/[.!?…](?= )/g)].at(-1);
+  if (lastSentenceEnd === undefined) {
+    return line;
+  }
+  return line.slice(0, lastSentenceEnd.index + 1);
 }
 
 function firstLine(text: string): string | undefined {

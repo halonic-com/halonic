@@ -164,7 +164,7 @@ verifies("cli.run", () => {
     expect(io.stdout).toEqual([]);
     expect(io.stderr).toEqual([
       "✕ Couldn't run support-reply: Acme has 1 problem in hubs/support/agents/sorter.agent.yaml. Nothing ran.",
-      "  See them with: halonic validate",
+      "  See it with: halonic validate",
     ]);
     expect(io.stderr.join("\n")).not.toContain("report it");
   });
@@ -274,7 +274,7 @@ verifies("cli.json-lines", () => {
         kind: "invalid_input",
         code: "workspace-file-problems",
         message: "Acme has 1 problem in hubs/support/agents/sorter.agent.yaml. Nothing ran.",
-        fix: "See them with: halonic validate",
+        fix: "See it with: halonic validate",
       },
     });
   });

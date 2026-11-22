@@ -67,7 +67,7 @@ verifies("cli.workspace-file-problems", () => {
     expect(io.stdout).toEqual([]);
     expect(io.stderr.slice(0, 2)).toEqual([
       "✕ Couldn't test acme: Acme has 1 problem in hubs/support/workflows/support-reply.workflow.yaml. Nothing ran.",
-      "  See them with: halonic validate",
+      "  See it with: halonic validate",
     ]);
   });
 });
@@ -121,7 +121,7 @@ verifies("cli.commands.test.run-tests", () => {
       expect(io.stdout).toEqual([]);
       expect(io.stderr.slice(0, 2)).toEqual([
         "✕ Couldn't test acme: Acme has 1 problem in hubs/support/workflows/support-reply.test.yaml. Nothing ran.",
-        "  See them with: halonic validate",
+        "  See it with: halonic validate",
       ]);
     });
 
