@@ -174,7 +174,7 @@ verifies("first-run.setup-item", () => {
       {
         tone: "info",
         title: "First run dismissed.",
-        text: "To bring it back, pick Help › First run › Show the guide.",
+        text: "To bring it back, pick Help › First run › Show the guide again.",
       },
     ]);
   });

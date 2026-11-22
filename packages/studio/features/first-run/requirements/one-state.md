@@ -15,7 +15,7 @@ When a folder that stays open is shown again, or another window saves the device
   when the user presses **Skip, I'll explore** in the demo,
   then the second window's folder sees the first run paused in the demo without being shown again.
 - Given a folder still holds the first run as on there,
-  when **Show the guide** in another folder has begun it again over there,
+  when **Show the guide again** in another folder has begun it again over there,
   then a run or **Skip, I'll explore** in the first folder leaves it on over there.
 - Given a folder of the Acme sample that is open but not remembered as the demo,
   when **Open demo** opens that folder,

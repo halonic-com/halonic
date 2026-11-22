@@ -1,7 +1,7 @@
 # Decision: C629 words for a stopped plugin, the Dismiss toast and New code's marks
 
 - Task: HAL-15792 (words check C629, HAL-15781)
-- Approval: team wording on approved screens (HAL-2282); Sofia wrote the words in C629; Liam signs this note
+- Approval: team wording on approved screens (HAL-2282); Sofia wrote the words in C629 and C633; Liam signs this note
 - Kind: user-visible
 
 ## What changes
@@ -25,6 +25,10 @@ The others:
 
 - `first-run.setup-item` (row 27): the Dismiss toast's title is "First run dismissed.", with a full stop, because
   the toast has a second sentence (microcopy 1.3).
+- `first-run.setup-item` and `first-run.one-state` (C633 row 35, HAL-15802): the toast's second sentence is "To bring
+  it back, pick Help › First run › Show the guide again.", because #4733 renamed the Help item to **Show the guide
+  again** (the board's C520-9) and the toast still named the old item. The requirements' other mentions of the item
+  and the unreleased changeset `first-run-dismiss-help.md` follow.
 - The phone's pairing problem screen (row 33): "choose **New code**" is marked in `generic.body`, `used.next` and
   `used.nextTyped`, as **Make a new code** is next to them. No requirement quotes these lines.
 
@@ -42,3 +46,4 @@ button is there.
 - agent-host-client.plugins
 - agent-host.plugin-routes
 - first-run.setup-item
+- first-run.one-state
