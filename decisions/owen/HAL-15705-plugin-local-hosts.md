@@ -2,6 +2,7 @@
 
 - Approval: HAL-15705
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:r2H3qdQiNhfCfYDf+bExPv9iVLaQQH96y9oby+dumKU9tfpTDpfvR823Xft90PP0lwgz+CRjEFUUwSZrdIqNCQ==
 
 `studio.trust-review-plugin-hosts` says a plugin connector's row in the
 Studio's workspace trust check lists the hosts the plugin reaches "as
