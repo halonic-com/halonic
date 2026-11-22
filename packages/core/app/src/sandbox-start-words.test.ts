@@ -97,14 +97,26 @@ verifies("app.sandbox-start-words", () => {
     expect(words.settingsFix).toBeNull();
   });
 
-  it("gives distro-missing and runtime-missing the CLI's WSL 2 fix everywhere, Settings too", () => {
-    for (const code of ["distro-missing", "runtime-missing"]) {
-      const words = sandboxStartWords(code);
-      expect(words.fix, code).toBe("use Halonic inside WSL 2 on this computer.");
-      expect(words.calloutFix, code).toBe("Use Halonic inside WSL 2 on this computer.");
-      expect(words.fix, code).not.toContain("Settings");
-      expect(words.settingsFix, code).toBe(words.calloutFix);
-    }
+  it("gives distro-missing the CLI's WSL 2 fix everywhere, Settings too", () => {
+    const words = sandboxStartWords("distro-missing");
+    expect(words.fix).toBe("use Halonic inside WSL 2 on this computer.");
+    expect(words.calloutFix).toBe("Use Halonic inside WSL 2 on this computer.");
+    expect(words.fix).not.toContain("Settings");
+    expect(words.settingsFix).toBe(words.calloutFix);
+  });
+
+  it("says to try again for runtime-missing, then to reinstall Halonic Studio, Settings with Check again", () => {
+    const words = sandboxStartWords("runtime-missing");
+    expect(words.calloutFix).toBe(
+      "Try again, and Halonic finishes the setup as the sandbox starts. If it still doesn't finish, reinstall Halonic Studio.",
+    );
+    expect(words.cantRunFix).toBe(
+      "Try again, and Halonic finishes setting up its own Linux system for the sandbox. If that setup still doesn't finish, reinstall Halonic Studio.",
+    );
+    expect(words.settingsFix).toBe(
+      "Choose Check again, and Halonic finishes the setup. If it still doesn't finish, reinstall Halonic Studio.",
+    );
+    expect(words.fix).not.toContain("WSL 2");
   });
 
   it("says to remove the other program's setup for setup-conflict, then where to go on", () => {

@@ -64,9 +64,9 @@ const generalDocsName = "What the sandbox needs";
 const inSettings = "open Settings and set up the sandbox there.";
 
 /**
- * The fix for Halonic's WSL distro, as the CLI words it (HAL-16186). Studio can't import the
- * distro or finish its runtime yet, and Settings' button doesn't either, so it doesn't point
- * there (HAL-16200, HAL-16233).
+ * The fix for a missing Halonic WSL distro, as the CLI words it (HAL-16186). Studio can't import
+ * the distro yet, and Settings' button doesn't either, so it doesn't point there (HAL-16200,
+ * HAL-16233).
  */
 const insideWsl = "use Halonic inside WSL 2 on this computer.";
 
@@ -119,8 +119,15 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
     fix: insideWsl,
   },
   "runtime-missing": {
+    // Studio installs the runtime each time it starts the agent host, and anything that needs the
+    // host starts it again, Settings' Check again included (HAL-16277). Reinstalling brings back
+    // the runtime Studio ships, for an install that fails every time.
     reason: "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish.",
-    fix: insideWsl,
+    fix: "try again, and Halonic finishes the setup as the sandbox starts. If it still doesn't finish, reinstall Halonic Studio.",
+    cantRunFix:
+      "Try again, and Halonic finishes setting up its own Linux system for the sandbox. If that setup still doesn't finish, reinstall Halonic Studio.",
+    settingsFix:
+      "Choose Check again, and Halonic finishes the setup. If it still doesn't finish, reinstall Halonic Studio.",
   },
   "setup-conflict": {
     // srt's install won't replace another program's setup unless forced, and Halonic never forces

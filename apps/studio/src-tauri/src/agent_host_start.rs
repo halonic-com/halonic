@@ -150,9 +150,10 @@ fn install_runtime_beside_shell(wsl: &Path) -> Result<(), HostRefusal> {
 }
 
 /// The refusal for a distro left without a runtime to start: the sandbox
-/// reason `runtime-missing` (HAL-15132), so Studio sends the person to the
-/// repair without a running host to ask, and the start cause that Welcome
-/// counts as a sandbox not set up yet.
+/// reason `runtime-missing` (HAL-15132), so Studio can word it without a
+/// running host to ask and tell the person to try again, which installs the
+/// runtime again (HAL-16277), and the start cause that Welcome counts as a
+/// sandbox not set up yet.
 fn runtime_missing(error: String) -> HostRefusal {
     unavailable(error)
         .with_reason("runtime-missing")

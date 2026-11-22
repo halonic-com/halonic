@@ -36,10 +36,13 @@ port change, as in versions 6 and 8. Nothing else in the port changes.
 
 - Every catalogue that words each code words `runtime-missing`: "Halonic's own
   Linux system for the sandbox is installed, but its setup didn't finish."
-  Studio's fix points to Settings, as for `distro-missing`; the CLI's says to
-  use Halonic inside WSL 2 (HAL-7540). The compiler finds a catalogue that
-  misses it.
-- Settings › Agent sandbox reads it as Needs repair, like `distro-missing`.
+  Studio's fix says to try again, because Studio installs the runtime each
+  time it starts the agent host, and to reinstall Halonic Studio if that keeps
+  failing (HAL-16277); the CLI's says to use Halonic inside WSL 2 (HAL-7540).
+  The compiler finds a catalogue that misses it.
+- Settings › Agent sandbox reads it as Not available, with **Check again**,
+  like `distro-missing`: its **Repair the sandbox** button can't install the
+  runtime (HAL-16200; this first said Needs repair).
 - The sandbox choice counts it as a one-time setup, and the runner's reasons
   list it.
 - `sandbox-check-reason.test.ts` pins the list and its order, and the
