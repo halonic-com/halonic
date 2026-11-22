@@ -24,7 +24,8 @@ import type { InboxNotices } from "./notices/inbox-notices.ts";
 import {
   doneItems,
   type ProposalItem,
-  proposalItemsOf,
+  type ProposalLists,
+  proposalListsOf,
   type RunProposalEntry,
 } from "./proposal-items.ts";
 import type { InboxSetupSource, SetupEntry, SetupFocus } from "./setup-source.ts";
@@ -73,6 +74,8 @@ export interface InboxState {
   readonly items: readonly InboxItem[];
   /** The proposals settled in the last 30 days, the one settled last first: the Done heading's. */
   readonly done: readonly ProposalItem[];
+  /** The proposals with nothing left to decide, not settled yet: not counted, see `decidedItems`. */
+  readonly decided: readonly ProposalItem[];
   /** Whether a list has loaded once, so "nothing waiting" can be told from "not loaded yet". */
   readonly loaded: boolean;
   /**
@@ -103,7 +106,7 @@ export class Inbox {
   extraNotices: InboxNotices | undefined;
   /** The runs other pages show and announce, so the Inbox's "Waiting for you" leaves them out. */
   readonly shownRuns = new ShownRuns();
-  #state: InboxState = { items: [], done: [], loaded: false, error: undefined };
+  #state: InboxState = { items: [], done: [], decided: [], loaded: false, error: undefined };
   readonly #runs: InboxRuns;
   readonly #listeners = new Set<() => void>();
   readonly #stopWatching: () => void;
@@ -112,8 +115,8 @@ export class Inbox {
   /** Each setup source's items from its last load that succeeded, kept while it fails. */
   readonly #setupItems = new Map<InboxSetupSource, readonly SetupItem[]>();
   readonly #answeredViews = new Set<InboxAnsweredView>();
-  /** The proposals from the last load that succeeded, kept while it fails. */
-  #proposalItems: readonly ProposalItem[] = [];
+  /** The open and the decided proposals from the last load that succeeded, kept while it fails. */
+  #proposals: ProposalLists = { open: [], decided: [] };
   /** The done proposals from the last load that succeeded, kept while it fails. */
   #doneItems: readonly ProposalItem[] = [];
   /**
@@ -230,7 +233,7 @@ export class Inbox {
     });
     const nameOfItem = (id: string) => this.#runs.itemName?.(id) ?? id;
     if (proposals.status === "fulfilled") {
-      this.#proposalItems = proposalItemsOf(proposals.value, nameOfItem);
+      this.#proposals = proposalListsOf(proposals.value, nameOfItem);
     } else {
       error ??= proposals.reason;
     }
@@ -243,9 +246,10 @@ export class Inbox {
       items: needsYouOrder(
         setups,
         items.filter((item) => !this.#answered.has(answerId(item))),
-        this.#proposalItems,
+        this.#proposals.open,
       ),
       done: this.#doneItems,
+      decided: this.#proposals.decided,
       loaded: true,
       error,
     });

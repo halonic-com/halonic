@@ -64,7 +64,13 @@ verifies("inbox.live", () => {
     const inbox = new Inbox(runs);
     const listener = vi.fn();
     inbox.subscribe(listener);
-    expect(inbox.state).toEqual({ items: [], done: [], loaded: false, error: undefined });
+    expect(inbox.state).toEqual({
+      items: [],
+      done: [],
+      decided: [],
+      loaded: false,
+      error: undefined,
+    });
 
     await settled();
     expect(inbox.state.loaded).toBe(true);

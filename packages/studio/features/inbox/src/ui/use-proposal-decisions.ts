@@ -47,7 +47,8 @@ const pastTense = { accept: "Accepted", reject: "Rejected" } as const;
  * Accept and Reject on the open proposal (HAL-11945 Q6, Q7): each decision is one undo step, with
  * a toast and its **Undo** (see {@link useUndoSteps}).
  *
- * @param onDecided after each decision or Undo, so the Inbox reads its items again
+ * @param onDecided after each decision or Undo, and once the proposal settles, so the Inbox reads
+ *   its items again and the proposal moves to Done (Q10)
  */
 export function useProposalDecisions(
   item: ProposalItem,
@@ -63,6 +64,9 @@ export function useProposalDecisions(
   const [announcement, setAnnouncement] = useState("");
   const [decided, setDecided] = useState(0);
   const { runId } = item;
+  // Settling comes after the page has gone, so it calls the latest `onDecided`, not the first.
+  const latestOnDecided = useRef(onDecided);
+  latestOnDecided.current = onDecided;
   useFilesFromRefresh(item.files, pending, setFiles);
 
   function setDecisions(paths: readonly string[], decision: ProposalFile["decision"]) {
@@ -72,7 +76,7 @@ export function useProposalDecisions(
     );
   }
 
-  const undoSteps = useUndoSteps(decisions, runId, (paths) => {
+  const undoSteps = useUndoSteps(decisions, runId, latestOnDecided, (paths) => {
     setDecisions(paths, "undecided");
     onDecided();
   });
@@ -165,11 +169,13 @@ const decidedWords = { accept: "accepted", reject: "rejected" } as const;
  * once a decision on its way and any Undo pressed are done and the last toast has gone, so every
  * **Undo** keeps working while it shows; the host leaves a proposal still undecided open.
  *
+ * @param settled once the proposal has settled
  * @param undone after an Undo, with the paths the host put back to undecided
  */
 function useUndoSteps(
   decisions: ProposalDecisions | undefined,
   runId: string,
+  settled: { readonly current: () => void },
   undone: (paths: readonly string[]) => void,
 ) {
   const toasts = useToastStore();
@@ -188,6 +194,7 @@ function useUndoSteps(
         settleWhenToastsClose(toasts, shown.current, async () => {
           await Promise.allSettled([...inFlight.current]);
           await decisions.settle(runId);
+          settled.current();
         });
       });
     },

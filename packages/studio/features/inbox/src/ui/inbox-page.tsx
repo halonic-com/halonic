@@ -35,6 +35,7 @@ import { DoneProposalCard, DoneSection } from "./done-proposals.tsx";
 import { ListHeader, listPaneClass, nextItem } from "./inbox-page-parts.tsx";
 import { countDetail, inboxRow, lateCount } from "./inbox-row.tsx";
 import { failureReason, isSignedOut, loadFailed, StaleLine } from "./load-lines.tsx";
+import { needsYouListed } from "./needs-you-listed.ts";
 import { NothingOpen, nothingWaiting } from "./nothing-open.tsx";
 import { NoticesSection } from "./notices-section.tsx";
 import { ProposalCard } from "./proposal-card.tsx";
@@ -177,6 +178,7 @@ export function InboxView({
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
   const state = useSyncExternalStore(subscribe, () => inbox.state);
   const { open, focus, openItem, openAt } = useOpenItem(inbox, state.items);
+  const listed = needsYouListed(state.items, state.decided, open, openAt.current);
   const retry = () => void inbox.refresh();
   // A list that opens over a failed load checks again at once, so it doesn't say the last poll's
   // failure until the next one (HAL-13801 SO4).
@@ -242,8 +244,8 @@ export function InboxView({
                 headingRef: needsYouHeading,
                 ...countDetail(waitingCount(state.items), lateCount(state.items, now())),
               }}
-              rows={state.items.map((item) => inboxRow(item, now(), runFacts))}
-              onOpen={(key) => openItem(state.items.find((item) => item.key === key) ?? null)}
+              rows={listed.map((item) => inboxRow(item, now(), runFacts))}
+              onOpen={(key) => openItem(listed.find((item) => item.key === key) ?? null)}
               {...(open === null ? {} : { current: open.key })}
               empty={
                 phone
