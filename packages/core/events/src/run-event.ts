@@ -4,6 +4,7 @@ import type { ConnectorListingFailedEvent } from "./connector-listing-failed.ts"
 import type { ConnectorPartOffEvent } from "./connector-part-off.ts";
 import type { ConnectorStartedEvent } from "./connector-started.ts";
 import type { KeyOriginAnsweredEvent } from "./key-origin-answered.ts";
+import type { KeyOriginAskedEvent } from "./key-origin-asked.ts";
 import type {
   ApprovalResolver,
   CantTryStep,
@@ -27,7 +28,7 @@ import type {
   ToolVerb,
   Usage,
 } from "./run-basics.ts";
-import type { LoggedSandboxBlock } from "./sandbox-blocked.ts";
+import type { SandboxBlockedEvent } from "./sandbox-blocked.ts";
 import type { SandboxOpenedView } from "./sandbox-opened.ts";
 
 // Every event name and field here is part of the run log, which users keep on
@@ -258,24 +259,11 @@ export type RunEventBody =
    * this event have neither it nor `sandbox.opened`.
    */
   | { type: "sandbox.off"; state: string; agent: string; chosenAt: string }
-  /**
-   * A step's sandbox refused an access (requirement `events.sandbox-blocked`).
-   * `count` is the running total of refused accesses to this target (or to
-   * `others`) in the step so far: the engine logs a target's first block at
-   * once and the total at the end of the step. A later event replaces an
-   * earlier count, it doesn't add to it: events with 1 and then 7 for one
-   * target mean 7 refused accesses.
-   */
-  | {
-      type: "sandbox.blocked";
-      state: string;
-      agent: string;
-      block: LoggedSandboxBlock;
-      count: number;
-    }
+  | SandboxBlockedEvent
   | ConnectorStartedEvent
   | ConnectorListingFailedEvent
   | ConnectorPartOffEvent
+  | KeyOriginAskedEvent
   | KeyOriginAnsweredEvent
   /**
    * A step is about to make a connector call that can change things

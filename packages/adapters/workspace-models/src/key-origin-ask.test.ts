@@ -21,6 +21,12 @@ const call: ChatTurnRequest = {
   tools: [],
 };
 const model = { model: "model-1" } as unknown as ResolvedModel;
+const asked = { type: "key-origin.asked", provider: "gateway", key: "fake-key", origin: gateway };
+
+/** Lets every pending step run, so a call that asks is waiting for its answer. */
+async function untilWaiting(): Promise<void> {
+  await new Promise((settle) => setTimeout(settle, 0));
+}
 
 function refusal(): WorkspaceModelError {
   return new WorkspaceModelError(
@@ -100,6 +106,7 @@ verifies("cli.key-origin-ask", () => {
     ]);
     expect(ask.saved).toEqual([["fake-key", gateway]]);
     expect(scope.written).toEqual([
+      asked,
       {
         type: "key-origin.answered",
         provider: "gateway",
@@ -124,7 +131,10 @@ verifies("cli.key-origin-ask", () => {
     expect(failure).toMatchObject({ code: "key-origin-not-allowed" });
     expect(resolver.calls()).toBe(1);
     expect(ask.saved).toEqual([]);
-    expect(scope.written).toMatchObject([{ type: "key-origin.answered", answer: "not-allowed" }]);
+    expect(scope.written).toMatchObject([
+      asked,
+      { type: "key-origin.answered", answer: "not-allowed" },
+    ]);
   });
 
   it("asks nobody when the host may not ask, such as for a scheduled run", async () => {
@@ -153,18 +163,18 @@ verifies("cli.key-origin-ask", () => {
     expect(ask.asked).toEqual([]);
   });
 
-  it("fails with the refusal after the wait times out, closes the question and logs nothing", async () => {
+  it("fails with the refusal after the wait times out, closes the question and logs no answer", async () => {
     const ask = askOf(undefined);
     const scope = scopeOf();
     const asking = askingModelResolver(resolverOf(refusal()).resolve, ask.options)(call, scope);
-    await Promise.resolve();
-    await Promise.resolve();
+    await untilWaiting();
+    expect(scope.written).toEqual([asked]);
 
     ask.timers[0]?.callback();
 
     await expect(asking).rejects.toMatchObject({ code: "key-origin-not-allowed" });
     expect(ask.signals[0]?.aborted).toBe(true);
-    expect(scope.written).toEqual([]);
+    expect(scope.written).toEqual([asked]);
   });
 
   it("fails with the refusal when the call is stopped while it waits, and asks nobody once it is stopped", async () => {
@@ -172,14 +182,14 @@ verifies("cli.key-origin-ask", () => {
     const ask = askOf(undefined);
     const scope = scopeOf(stop);
     const asking = askingModelResolver(resolverOf(refusal()).resolve, ask.options)(call, scope);
-    await Promise.resolve();
-    await Promise.resolve();
+    await untilWaiting();
+    expect(scope.written).toEqual([asked]);
 
     stop.stop(new Error("The run was cancelled."));
 
     await expect(asking).rejects.toMatchObject({ code: "key-origin-not-allowed" });
     expect(ask.signals[0]?.aborted).toBe(true);
-    expect(scope.written).toEqual([]);
+    expect(scope.written).toEqual([asked]);
     const later = askOf("allowed");
     await expect(
       askingModelResolver(resolverOf(refusal()).resolve, later.options)(call, scope),

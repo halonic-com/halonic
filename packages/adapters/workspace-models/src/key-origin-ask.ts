@@ -54,9 +54,10 @@ export const keyOriginWaitMs = 10 * 60 * 1000;
 
 /**
  * `resolve`, with Studio's question for a key that may not go to its provider's address
- * (requirements `cli.key-origin-ask` and `cli.key-origin-ask-refused-once`). When `resolve` refuses with `key-origin-not-allowed` and
- * `mayAsk` says yes, it asks once. An `allowed` or `not-allowed` answer goes to the run's log as
- * `key-origin.answered`. After `allowed` it calls `resolve` again, once, with every check made
+ * (requirements `cli.key-origin-ask` and `cli.key-origin-ask-refused-once`). When `resolve`
+ * refuses with `key-origin-not-allowed` and `mayAsk` says yes, it writes `key-origin.asked` to
+ * the run's log, so the run page can say the step waits for an answer, and asks once. An
+ * `allowed` or `not-allowed` answer goes to the run's log as `key-origin.answered`. After `allowed` it calls `resolve` again, once, with every check made
  * again; after `not-allowed`, a stop or no answer in time, it throws the refusal. Once a person
  * said `not-allowed` in a run, the same key and address in that run fail with the refusal and
  * nobody is asked again. Any other error is thrown as it is.
@@ -101,8 +102,8 @@ class RunRefusals {
 }
 
 /**
- * Whether `error` is a refusal the person was asked about and allowed. Writes the answer, if
- * there was one, to the run's log, and remembers a `not-allowed` for the run.
+ * Whether `error` is a refusal the person was asked about and allowed. Writes the question and
+ * the answer, if there was one, to the run's log, and remembers a `not-allowed` for the run.
  */
 async function askedAndAllowed(
   error: unknown,
@@ -115,6 +116,7 @@ async function askedAndAllowed(
   if (refusals.has(scope?.runId, refused)) return false;
   if (!(await options.mayAsk(scope))) return false;
   const question = scope === undefined ? refused : { ...refused, runId: scope.runId };
+  await scope?.log?.append({ type: "key-origin.asked", ...refused });
   const answer = await answerOf(question, scope, options);
   if (answer === undefined) return false;
   await scope?.log?.append({ type: "key-origin.answered", ...refused, answer });
