@@ -1,3 +1,5 @@
+import { pageWords } from "../page/page-words.ts";
+
 /** The Routines list's words (microcopy 12.1, flow-routines 2.1). */
 export const listWords = {
   title: "Routines",
@@ -22,6 +24,11 @@ export const listWords = {
   needsSignIn: "Needs sign-in again",
   needsYou: "Needs you",
   pausedUntilTrusted: "Paused until trusted",
+  /**
+   * After the row's summary while its saved changes aren't live, in the page's words, so the row's
+   * live summary doesn't read as a lost change (HAL-15485).
+   */
+  changesNotLive: pageWords.changesNotLive,
 } as const;
 
 /** The words of a routine's ⋮ menu and of deleting it: no dialog, and Undo; there is no trash, saving deletes the file (flow-routines 2.4, microcopy 12.3). */
