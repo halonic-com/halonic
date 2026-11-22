@@ -1,3 +1,4 @@
+import type { PluginsFolderAccess } from "@halonicjs/app";
 import { counted, groupedDigits } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { markPart, type Phrase, phrase } from "./phrase.ts";
@@ -160,6 +161,26 @@ export const doctorMessages = defineMessages("doctor", {
   /** Under {@link pluginBroken}, in `halonic plugin`'s words for it. `pluginWord` is the id as one shell word. */
   removeBrokenPlugin: (pluginWord: string) =>
     phrase`Fix: remove it with halonic plugin remove ${pluginWord}, then add a version that works.`,
+  /**
+   * Plugins !, when the person may not list the plugins folder itself, so
+   * every plugin in it is off and none is at fault (HAL-15785): "The plugins
+   * folder ~/.local/share/halonic/plugins can't be read, so weather is off."
+   */
+  pluginsFolderUnreadable: (folder: string, plugins: readonly string[]) =>
+    phrase`The plugins folder ${folder} can't be read, so ${listed(plugins)} ${plugins.length === 1 ? "is" : "are"} off.`,
+  /**
+   * Under {@link pluginsFolderUnreadable}, the fix `halonic plugin list`
+   * gives for it. `folderWord` is the folder as one shell word.
+   */
+  fixPluginsFolder: (access: PluginsFolderAccess, folderWord: string) => {
+    if (access === "windows") {
+      return phrase`Fix: give your user account access to it in the folder's Properties, under Security, then run halonic doctor again.`;
+    }
+    if (access === "another-user") {
+      return phrase`Fix: it belongs to another user, so run sudo chown "$(id -un)" ${folderWord}, then chmod 700 ${folderWord}, then run halonic doctor again.`;
+    }
+    return phrase`Fix: run chmod 700 ${folderWord}, then run halonic doctor again.`;
+  },
 
   /** Sandbox ✓: "ready · bubblewrap". */
   sandboxReady: (kind: string) => phrase`ready ${markPart("separator")} ${kind}`,
