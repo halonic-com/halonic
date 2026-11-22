@@ -11,19 +11,18 @@
 //! page can't end them itself, and a quiet stream would stay open in the
 //! host for as long as the shell runs.
 
-use std::collections::HashMap;
 use std::process::Command;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use halonic_agent_host::{AgentHost, Answer, LineSplitter, Method, Route, find_route};
 use serde::Serialize;
 use serde_json::Value;
-use tauri::async_runtime::JoinHandle;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime, Webview};
 use tauri_plugin_http::reqwest;
+
+use crate::page_streams::{OpenRefusal, PageStreams, StreamKey};
 
 #[path = "agent_host_choice.rs"]
 mod choice;
@@ -101,9 +100,8 @@ enum Launch {
 #[derive(Default)]
 pub struct AgentHostState {
     host: Mutex<Option<AgentHost>>,
-    streams: Mutex<HashMap<StreamKey, OpenStream>>,
-    /// Tells a stream from an earlier one the page gave the same id.
-    next_serial: AtomicU64,
+    /// The streams pages have open on the host, with no limit per page.
+    streams: PageStreams,
     client: Mutex<Option<reqwest::Client>>,
     /// The distro's start checks as read when the host there started, or
     /// `None` for a host beside the shell.
@@ -111,20 +109,6 @@ pub struct AgentHostState {
     /// How far Studio's start has got, for `start_status`.
     progress: StartProgress,
     launch: Launch,
-}
-
-/// A stream, by the page that opened it and the id that page gave it.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct StreamKey {
-    page: String,
-    stream: u64,
-}
-
-/// A stream the page has opened. `task` is `None` while the shell waits
-/// for the host to answer; then it is the task passing on the lines.
-struct OpenStream {
-    serial: u64,
-    task: Option<JoinHandle<()>>,
 }
 
 impl AgentHostState {
@@ -162,49 +146,6 @@ impl AgentHostState {
             .map_err(unavailable)?;
         *client = Some(built.clone());
         Ok(built)
-    }
-
-    /// Notes a stream the page is opening, before the host is called, so
-    /// the page can end it at once. Answers the stream's serial.
-    fn open_stream(&self, key: &StreamKey) -> Result<u64, HostRefusal> {
-        let mut streams = self.streams.lock().map_err(|_| poisoned())?;
-        if streams.contains_key(key) {
-            return Err(HostRefusal::new(
-                "stream_in_use",
-                format!("the page already has a stream {}", key.stream),
-            ));
-        }
-        let serial = self.next_serial.fetch_add(1, Ordering::Relaxed);
-        streams.insert(key.clone(), OpenStream { serial, task: None });
-        Ok(serial)
-    }
-
-    /// Forgets a stream that has ended on its own, unless the page has
-    /// since opened another under the same id.
-    fn forget_stream(&self, key: &StreamKey, serial: u64) {
-        if let Ok(mut streams) = self.streams.lock()
-            && streams.get(key).is_some_and(|open| open.serial == serial)
-        {
-            streams.remove(key);
-        }
-    }
-
-    /// Ends the streams `ends` picks. Aborting a stream's task drops its
-    /// response, which hangs up on the host; a stream the host hasn't
-    /// answered yet is hung up on when it answers.
-    fn end_streams(&self, ends: impl Fn(&StreamKey) -> bool) {
-        let Ok(mut streams) = self.streams.lock() else {
-            return;
-        };
-        streams.retain(|key, open| {
-            if !ends(key) {
-                return true;
-            }
-            if let Some(task) = open.task.take() {
-                task.abort();
-            }
-            false
-        });
     }
 }
 
@@ -265,32 +206,41 @@ pub async fn agent_host_stream<R: Runtime>(
         page: webview.label().to_owned(),
         stream,
     };
-    let serial = app.state::<AgentHostState>().open_stream(&key)?;
+    let serial = app
+        .state::<AgentHostState>()
+        .streams
+        .open(&key)
+        .map_err(|refusal| open_refusal(refusal, &key))?;
     let response = match send(&app, route, body).await {
         Ok(response) => response,
         Err(refusal) => {
-            app.state::<AgentHostState>().forget_stream(&key, serial);
+            app.state::<AgentHostState>().streams.forget(&key, serial);
             return Err(refusal);
         }
     };
     if response.status() != reqwest::StatusCode::OK {
-        app.state::<AgentHostState>().forget_stream(&key, serial);
+        app.state::<AgentHostState>().streams.forget(&key, serial);
         let answer = read_answer(response).await?;
         return Ok(StreamStart::Refused { answer });
     }
-    let state = app.state::<AgentHostState>();
-    let mut streams = state.streams.lock().map_err(|_| poisoned())?;
+    let task_app = app.clone();
+    let task_key = key.clone();
     // The page may have ended the stream, or reloaded, while the host
-    // answered. Then the response is dropped here, which hangs up.
-    let Some(open) = streams.get_mut(&key).filter(|open| open.serial == serial) else {
+    // answered. Then no task starts, and dropping the response hangs up.
+    let started = app
+        .state::<AgentHostState>()
+        .streams
+        .start(&key, serial, move || {
+            tauri::async_runtime::spawn(forward_lines(
+                task_app, task_key, serial, response, channel,
+            ))
+        });
+    if !started {
         return Err(HostRefusal::new(
             "stream_ended",
             "the page ended the stream before the agent host opened it",
         ));
-    };
-    let task =
-        tauri::async_runtime::spawn(forward_lines(app.clone(), key, serial, response, channel));
-    open.task = Some(task);
+    }
     Ok(StreamStart::Opened { stream })
 }
 
@@ -301,7 +251,23 @@ pub fn agent_host_stream_end<R: Runtime>(webview: Webview<R>, stream: u64) {
     let page = webview.label();
     webview
         .state::<AgentHostState>()
-        .end_streams(|key| key.page == page && key.stream == stream);
+        .streams
+        .end(|key| key.page == page && key.stream == stream);
+}
+
+fn open_refusal(refusal: OpenRefusal, key: &StreamKey) -> HostRefusal {
+    match refusal {
+        OpenRefusal::InUse => HostRefusal::new(
+            "stream_in_use",
+            format!("the page already has a stream {}", key.stream),
+        ),
+        // The agent host's list has no limit per page, so this doesn't come.
+        OpenRefusal::TooMany => HostRefusal::new(
+            "too_many_streams",
+            "the page has as many agent host streams open as it may",
+        ),
+        OpenRefusal::Poisoned => poisoned(),
+    }
 }
 
 fn named_route(name: &str, answer: Answer) -> Result<Route, HostRefusal> {
@@ -411,7 +377,7 @@ async fn forward_lines<R: Runtime>(
     drop(response);
     // The page may have gone; then nobody hears how it ended.
     let _ = channel.send(ending);
-    app.state::<AgentHostState>().forget_stream(&key, serial);
+    app.state::<AgentHostState>().streams.forget(&key, serial);
 }
 
 /// Sends each line until the stream ends, and answers how it ended.

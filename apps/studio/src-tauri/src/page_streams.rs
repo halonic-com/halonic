@@ -19,7 +19,7 @@ pub struct StreamKey {
 
 /// A stream the page has opened. `task` is `None` until the other end has
 /// answered; then it is the task passing on what comes.
-struct OpenStream {
+pub(crate) struct OpenStream {
     serial: u64,
     task: Option<JoinHandle<()>>,
 }
@@ -121,5 +121,20 @@ impl PageStreams {
             .lock()
             .map(|streams| streams.len())
             .unwrap_or(0)
+    }
+
+    /// The list itself, for tests that look inside it.
+    #[cfg(test)]
+    pub(crate) fn lock(
+        &self,
+    ) -> std::sync::LockResult<std::sync::MutexGuard<'_, HashMap<StreamKey, OpenStream>>> {
+        self.streams.lock()
+    }
+}
+
+/// A list with no limit per page, as the agent host's streams have.
+impl Default for PageStreams {
+    fn default() -> Self {
+        Self::new(usize::MAX)
     }
 }
