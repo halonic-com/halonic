@@ -49,7 +49,8 @@ export function checkGitAddress(address: string): void {
     if (ssh !== null) throw refused(`write it as ${ssh}`);
     throw refused("only https:// and ssh:// addresses are allowed");
   }
-  if (url.password !== "") throw refused("it has a password in it; use a key or a token instead");
+  if (url.password !== "")
+    throw refused("it has a password in it. Leave it out, or use an ssh:// address with a key");
   if (url.hostname === "" || url.hostname.startsWith("-")) throw refused("its host is not valid");
 }
 
@@ -72,7 +73,7 @@ export function checkGitExport(address: string, ref = "HEAD"): void {
   checkGitAddress(address);
   const url = parseAddress(address);
   if (url?.protocol === "https:" && url.username !== "") {
-    throw refused("it has a user name in it; leave it out, since the address is kept as written");
+    throw refused("it has a user name in it, which halonic plugin list would show. Leave it out");
   }
   if (ref !== "HEAD" && !isPlainRef(ref)) {
     throw new Error(`Can't use "${ref}" as a commit: use a branch, a tag or a full commit id.`);
