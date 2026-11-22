@@ -2,6 +2,7 @@
 
 - Approval: the task to build this is HAL-15846; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lrAk9MbfAcdK+blQ5eCJFBaVYnUF6s/rAQyfEkiYG5h9MXmSA0+X1pZbAIe/Q9tMZKgplLEcFRQJAQ6c+RGSDw==
 - Task: HAL-15846
 
 ## What changes
