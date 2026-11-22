@@ -52,6 +52,7 @@ verifies("inbox.proposal-items", () => {
         changes: 3,
         items: ["support-triage"],
         itemNames: ["Support triage"],
+        files: paths.map((path) => ({ path, change: "modified", decision: "undecided" })),
         ending: "finished",
         since: "2026-11-10T10:12:00.000Z",
       },

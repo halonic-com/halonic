@@ -1,6 +1,11 @@
 import type { AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
 import { AgentHostError, AgentHostRunProposals } from "@halonicjs/adapter-agent-host-client";
-import type { ProposedRecord } from "@halonicjs/app";
+import type { ProposalTarget, ProposedRecord } from "@halonicjs/app";
+import type {
+  ProposalDecided,
+  ProposalDecisions,
+  ProposalUndone,
+} from "@halonicjs/studio-feature-inbox/api";
 
 /**
  * The workspace's open run proposals from the agent host, for
@@ -28,3 +33,39 @@ export function hostProposalsOf(
 }
 
 const servesNone = new Set(["not_found", "unknown_workspace"]);
+
+/**
+ * Accept, Reject, Undo and settle on the workspace's run proposals through the agent host, for
+ * the Inbox's proposal page (`studio.workspace-proposal-decisions`). The host writes the files and
+ * keeps each undo step; Studio holds only its id. A folder that isn't trusted yet lists no
+ * proposals, so nothing reaches these; should something, it is refused without asking the host.
+ */
+export function hostProposalDecisionsOf(
+  transport: AgentHostTransport,
+  location: string,
+  trusted: () => boolean,
+): ProposalDecisions {
+  const proposals = new AgentHostRunProposals(transport, location);
+  const whenTrusted = <T>(call: () => Promise<T>): Promise<T> =>
+    trusted() ? call() : Promise.reject(new Error(untrusted));
+  return {
+    accept: (runId: string, target: ProposalTarget) =>
+      whenTrusted(async (): Promise<ProposalDecided> => {
+        const { undo, changedOnDisk, refused } = await proposals.accept(runId, target);
+        return { undo, changedSinceRun: changedOnDisk, cantBeWritten: refused.map((r) => r.path) };
+      }),
+    reject: (runId: string, target: ProposalTarget) =>
+      whenTrusted(async (): Promise<ProposalDecided> => {
+        const { undo } = await proposals.reject(runId, target);
+        return { undo, changedSinceRun: [], cantBeWritten: [] };
+      }),
+    undo: (undo: string) =>
+      whenTrusted(async (): Promise<ProposalUndone> => {
+        const { changedOnDisk, refused } = await proposals.restore(undo, "before");
+        return { leftAlone: [...changedOnDisk, ...refused.map((r) => r.path)] };
+      }),
+    settle: (runId: string) => whenTrusted(async () => void (await proposals.settle(runId))),
+  };
+}
+
+const untrusted = "This workspace isn't trusted yet, so Studio can't change its files.";
