@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16112 (C673 row 8, a team decision on an approved screen, first-run-flow 3.4, HAL-2282); Julian signs it, as Liam wrote the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:FtjZT8KSsQsPQLipTcEdAdtlk8eeUtRu7avJ0cagN31GP4HzYSl4ebNcWdsRe08ksfL0UpcVtw4GIB9IvGfUCA==
 
 `workflows.page.guide-run` said a guide's caption shows as a quiet line under the drawing. On a
 phone it now shows as one more quiet line in the docked run card, after the guide's notes, and
