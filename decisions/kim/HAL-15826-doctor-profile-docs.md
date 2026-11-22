@@ -3,6 +3,7 @@
 - Task: HAL-15826
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15826 (found in the C635 docs check, HAL-15822). A team decision with no board card.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:YkIYSZbHbwGXiWcbw0jTN7TGOLw0YukBQkWgeEFznjh36Vnx+8y1K8QYFFTUGqdD/RMXfgwCyxN1/iHAT9PIDw==
 
 ## What changes
 
