@@ -2,7 +2,7 @@
 
 - Approval: decided by the team under HAL-2282 (Mateo with Noah, option 2 on HAL-15850), the work is HAL-15851; Liam reviews it and signs this note as the CTO
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yjlrkhQLZQL9VEeFyyi+9E6McwMAl3Vn9eK2xdTTFitn+xBVOoPLOW3jPROZiy7AZN2YbIXqWfvGIbypee51Cg==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/vTvCVZl5Tv/gWzUTS88tieBoJG0HoOWoJIE7h10vWTcTPP7k4czJUzSeVVobiIaS6+xV6VfTSUFWkEeJBLuDA==
 
 After a removal with administrator rights that kept some access to the
 user's project folders (`keptAccess: "manual"`), Settings › Agent sandbox
