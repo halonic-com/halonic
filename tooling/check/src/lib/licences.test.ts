@@ -1,5 +1,11 @@
 import { describe, expect, test } from "vitest";
-import { findLicenceProblems, isAllowedExpression, type LicencePolicy } from "./licences.ts";
+import {
+  emptyListingProblem,
+  findLicenceProblems,
+  isAllowedExpression,
+  type LicencePolicy,
+  parseLicenceListing,
+} from "./licences.ts";
 
 const allowed = new Set(["MIT", "Apache-2.0"]);
 
@@ -56,5 +62,21 @@ describe("findLicenceProblems", () => {
     );
     expect(problems).toHaveLength(1);
     expect(problems[0]).toContain('"loose"');
+  });
+});
+
+describe("the pnpm licence listing", () => {
+  test("reads each package with its licence", () => {
+    const output = JSON.stringify({ MIT: [{ name: "a", versions: ["1.0.0"] }] });
+    expect(parseLicenceListing(output)).toEqual([
+      { name: "a", versions: ["1.0.0"], licence: "MIT" },
+    ]);
+    expect(emptyListingProblem(parseLicenceListing(output))).toBeUndefined();
+  });
+
+  test("fails when the listing of all packages is empty, instead of passing with nothing checked", () => {
+    for (const output of ["", "  \n", "{}"]) {
+      expect(emptyListingProblem(parseLicenceListing(output))).toMatch(/no licence was checked/);
+    }
   });
 });

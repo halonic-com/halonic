@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { parseArgs } from "node:util";
 import { findRepoRoot, listWorkspacePackages, owningPackage } from "@halonicjs/tooling-check";
 import {
+  describePullRequest,
   fetchOpenPullRequests,
   type OpenPullRequest,
   type PackageFolder,
@@ -33,10 +34,6 @@ function originRepo(root: string): string | undefined {
   } catch {
     return undefined;
   }
-}
-
-function describe(pullRequest: OpenPullRequest): string {
-  return `  #${pullRequest.number}  ${pullRequest.headRefName}  ${pullRequest.title}`;
 }
 
 async function main(argv: readonly string[]): Promise<number> {
@@ -83,7 +80,7 @@ async function main(argv: readonly string[]): Promise<number> {
     console.log(
       list.length === 0
         ? `No open pull request changes ${target.name}.`
-        : `${list.length} open pull request(s) change ${target.name}:\n${list.map(describe).join("\n")}`,
+        : `${list.length} open pull request(s) change ${target.name}:\n${list.map(describePullRequest).join("\n")}`,
     );
     return 0;
   }
@@ -91,7 +88,7 @@ async function main(argv: readonly string[]): Promise<number> {
     console.log("No open pull requests.");
   }
   for (const [name, list] of [...touches].sort(([a], [b]) => a.localeCompare(b))) {
-    console.log(`${name}\n${list.map(describe).join("\n")}`);
+    console.log(`${name}\n${list.map(describePullRequest).join("\n")}`);
   }
   return 0;
 }

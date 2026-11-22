@@ -7,7 +7,7 @@ import {
   parseDecisionNote,
 } from "./decision-notes.ts";
 import { guardDependencyChanged, guardDependencyFiles } from "./guard-dependencies.ts";
-import { guardedPaths, onlyExtraExportsChanged, policyFile } from "./guarded-paths.ts";
+import { fallsUnder, guardedPaths, onlyExtraExportsChanged, policyFile } from "./guarded-paths.ts";
 import { approversFile, type GitObjects } from "./signatures.ts";
 
 /**
@@ -303,5 +303,5 @@ function guardDependencyFilesChanged(run: NoteCheckRun): string[] {
 
 /** Whether `file` is one of `paths`, or under one that ends in `/`. */
 function matches(paths: readonly string[], file: string): boolean {
-  return paths.some((path) => (path.endsWith("/") ? file.startsWith(path) : file === path));
+  return paths.some((path) => fallsUnder(path, file));
 }

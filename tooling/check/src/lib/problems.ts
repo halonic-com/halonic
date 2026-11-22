@@ -51,10 +51,20 @@ export function formatProblem(problem: Problem): string {
   return `${location}: ${label} [${problem.rule}] ${problem.message}`;
 }
 
+/** Escapes a workflow command's message: a line break would end the command and start another. */
+function escapeData(text: string): string {
+  return text.replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
+}
+
+/** Escapes a workflow command's property, such as a file name, which also may not hold `:` or `,`. */
+function escapeProperty(text: string): string {
+  return escapeData(text).replaceAll(":", "%3A").replaceAll(",", "%2C");
+}
+
 /** Formats a finding as a GitHub Actions annotation, so it shows on the pull request diff. */
 export function formatAnnotation(problem: Problem): string {
   const command = problem.severity === "error" ? "error" : "warning";
   const line = problem.line === undefined ? "" : `,line=${problem.line}`;
-  const message = problem.message.replaceAll("%", "%25").replaceAll("\n", "%0A");
-  return `::${command} file=${problem.file}${line},title=${problem.rule}::${message}`;
+  const file = escapeProperty(problem.file);
+  return `::${command} file=${file}${line},title=${escapeProperty(problem.rule)}::${escapeData(problem.message)}`;
 }

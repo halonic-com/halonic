@@ -23,6 +23,8 @@ verifies("check.guard-own-paths", () => {
     ["tooling/check/", "tooling/check/src/guard/guard.ts"],
     ["tooling/config/src/vitest-preset.ts", "tooling/config/src/vitest-preset.ts"],
     ["turbo.json", "turbo.json"],
+    [".gitattributes", ".gitattributes"],
+    [".gitattributes", "apps/studio/.gitattributes"],
   ])("fails when a file under %s changes: %s", async (path, file) => {
     const errors = await errorsOf({
       baseOutside: { [file]: "before\n" },
@@ -51,6 +53,7 @@ verifies("check.guard-own-paths", () => {
       "tooling/checker/x.ts": "export {};\n",
       "turbo.json.bak": "{}\n",
       ".githubx/notes.md": "x\n",
+      "docs/x.gitattributes": "x\n",
       "packages/testing/parity/src/compare.ts": "export {};\n",
     };
     expect(await errorsOf({ headOutside: nearby })).toEqual([]);

@@ -2,10 +2,12 @@ import { execFileSync } from "node:child_process";
 import { closeSync, openSync, readSync } from "node:fs";
 import { join } from "node:path";
 import {
+  emptyListingProblem,
   findLicenceProblems,
   findVendoredProblems,
   type InstalledPackage,
   type LicencePolicy,
+  parseLicenceListing,
 } from "../lib/licences.ts";
 import { findRepoRoot, listRepoFiles, readJson } from "../lib/workspace.ts";
 
@@ -19,11 +21,6 @@ import { findRepoRoot, listRepoFiles, readJson } from "../lib/workspace.ts";
  * third-party licence and isn't on the `vendored` list.
  */
 
-interface LicenceEntry {
-  readonly name: string;
-  readonly versions: readonly string[];
-}
-
 function listInstalled(root: string, production: boolean): InstalledPackage[] {
   const args = ["--recursive", "licenses", "list", "--json", ...(production ? ["--prod"] : [])];
   const output = execFileSync("pnpm", args, {
@@ -31,13 +28,7 @@ function listInstalled(root: string, production: boolean): InstalledPackage[] {
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
   });
-  const byLicence = JSON.parse(output.trim() === "" ? "{}" : output) as Record<
-    string,
-    LicenceEntry[]
-  >;
-  return Object.entries(byLicence).flatMap(([licence, entries]) =>
-    entries.map((entry) => ({ name: entry.name, versions: entry.versions, licence })),
-  );
+  return parseLicenceListing(output);
 }
 
 /** The start of a file, enough for its licence header. */
@@ -56,8 +47,11 @@ function main(): number {
   const policy = readJson<LicencePolicy>(join(root, "tooling/check/licences.json"));
   const shipped = listInstalled(root, true);
   const shippedNames = new Set(shipped.map((pkg) => pkg.name));
-  const devOnly = listInstalled(root, false).filter((pkg) => !shippedNames.has(pkg.name));
+  const all = listInstalled(root, false);
+  const devOnly = all.filter((pkg) => !shippedNames.has(pkg.name));
+  const empty = emptyListingProblem(all);
   const problems = [
+    ...(empty === undefined ? [] : [empty]),
     ...findLicenceProblems(shipped, policy, "shipped"),
     ...findLicenceProblems(devOnly, policy, "dev"),
     ...findVendoredProblems(listRepoFiles(root), (file) => readHead(join(root, file)), policy),

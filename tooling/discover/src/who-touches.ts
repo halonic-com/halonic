@@ -144,3 +144,18 @@ export function resolvePackage(query: string, packages: readonly PackageFolder[]
     (pkg) => pkg.directory.split("/").at(-1) === trimmed || pkg.name.split("/").at(-1) === trimmed,
   );
 }
+
+/**
+ * One line for an open pull request. Its title and branch come from
+ * anyone who can open one, also from a fork, so control and formatting
+ * characters (terminal escapes, line breaks, direction marks) are shown
+ * as `\u{…}` instead of reaching the terminal.
+ */
+export function describePullRequest(pullRequest: OpenPullRequest): string {
+  const shown = (text: string): string =>
+    text.replace(
+      /[\p{Cc}\p{Cf}\u2028\u2029]/gu,
+      (char) => `\\u{${char.codePointAt(0)?.toString(16)}}`,
+    );
+  return `  #${pullRequest.number}  ${shown(pullRequest.headRefName)}  ${shown(pullRequest.title)}`;
+}
