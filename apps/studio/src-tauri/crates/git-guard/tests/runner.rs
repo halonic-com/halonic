@@ -104,6 +104,10 @@ fn git_hardening_never_runs_a_pager_editor_or_diff_program_in_the_config() {
 fn repo_config_neutralises_a_planted_filter_and_keeps_the_content() {
     let sandbox = Sandbox::new();
     sandbox.init_repository();
+    sandbox.write("notes.md", "acme notes\n");
+    sandbox.write("todo.txt", "acme todo\n");
+    sandbox.git_ok("add -A");
+    sandbox.git_ok("commit -m first-note");
     let filter = sandbox.planted("filter");
     // A name with `=` in it, which `-c` would split in the wrong place.
     for name in ["x", "a=b"] {
@@ -112,16 +116,21 @@ fn repo_config_neutralises_a_planted_filter_and_keeps_the_content() {
         ));
     }
     sandbox.write(".git/info/attributes", "*.md filter=x\n*.txt filter=a=b\n");
-    sandbox.write("notes.md", "acme notes\n");
-    sandbox.write("todo.txt", "acme todo\n");
-    sandbox.git_ok("add -A");
-    sandbox.git_ok("commit -m first-note");
-    std::fs::remove_file(sandbox.acme.join("notes.md")).expect("the file is removed");
-    sandbox.git_ok("checkout -- notes.md");
-    assert_eq!(sandbox.git_ok("diff HEAD --stat"), "");
+    // git can only tell a changed file from an unchanged one by cleaning it.
+    sandbox.write("notes.md", "changed\n");
+    sandbox.write("todo.txt", "changed\n");
+    assert_eq!(sandbox.git_ok("diff --name-only"), "notes.md\ntodo.txt\n");
+    sandbox.git_ok("status");
+    // Storing the files without the filter is refused (`filter-writes`).
+    assert_eq!(
+        sandbox.git("add -A").map(|_| ()),
+        Err(GitError::FilterNotRun {
+            subcommand: "add".to_owned(),
+            filter: "x".to_owned(),
+        })
+    );
     assert_eq!(sandbox.marks(), Vec::<String>::new());
     // Without the runner, the same repository runs the filter.
-    sandbox.write("notes.md", "changed\n");
     plain_git(&sandbox.acme, &["add", "-A"]);
     assert_eq!(sandbox.marks(), ["filter.ran"]);
 }
@@ -131,15 +140,25 @@ fn repo_config_neutralises_a_planted_filter_and_keeps_the_content() {
 fn repo_config_follows_includes() {
     let sandbox = Sandbox::new();
     sandbox.init_repository();
+    sandbox.write("notes.md", "acme notes\n");
+    sandbox.git_ok("add -A");
+    sandbox.git_ok("commit -m first-note");
     sandbox.write(
         "extra.config",
         &format!("[filter \"x\"]\n\tclean = {}\n", sandbox.planted("filter")),
     );
     sandbox.append_config("[include]\n\tpath = ../extra.config\n");
     sandbox.write(".git/info/attributes", "* filter=x\n");
-    sandbox.write("notes.md", "acme notes\n");
-    sandbox.git_ok("add -A");
+    sandbox.write("notes.md", "changed\n");
     sandbox.git_ok("status");
+    // The included filter counts as blanked, so `add` is refused.
+    assert_eq!(
+        sandbox.git("add -A").map(|_| ()),
+        Err(GitError::FilterNotRun {
+            subcommand: "add".to_owned(),
+            filter: "x".to_owned(),
+        })
+    );
     assert_eq!(sandbox.marks(), Vec::<String>::new());
 }
 
