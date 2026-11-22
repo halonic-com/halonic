@@ -402,8 +402,11 @@ signs and then the `- Signature:` line. The author adds that line under
 on the pushed head and adds their line under the first; the text they sign is the
 same, because it leaves out every signature line. The key comes from `PAPERCLIP_AGENT_PRIVATE_KEY`, and
 the tool never writes it anywhere. It refuses a note that already has two
-signatures or one from the same key, a malformed note or one already on `main`,
-and a key that `approvers.json` pins neither for the note's kind nor as a guardian.
+signatures from other keys or a still-matching one from the same key, a malformed
+note or one already on `main`, and a key that `approvers.json` pins neither for the
+note's kind nor as a guardian. When your own line no longer matches (a rebase
+changed a covered file), it prints a new line and says it replaces your old one:
+swap the line in the same push, without removing the old one first.
 
 A pull request that adds a file under `decisions/` with any other name than
 `decisions/<branch-name>.md` fails the note check ("isn't this branch's note;
