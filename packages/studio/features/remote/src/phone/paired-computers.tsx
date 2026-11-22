@@ -255,7 +255,8 @@ function ComputerRow({
 
 /**
  * A computer this phone can't read (microcopy 28): no name, route, day or dot, because it can't
- * be tried at all, and faded. Its Forget says which row it is, numbered when there are several.
+ * be tried at all. Only its tile is faded, so its words and Forget stay readable (C667 #1). Its
+ * Forget says which row it is, numbered when there are several.
  */
 function UnreadableRow({
   computer,
@@ -272,7 +273,7 @@ function UnreadableRow({
   return (
     <li className="flex items-center gap-4 px-4 py-3">
       <LaptopTile dim />
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5 opacity-60">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <p className="text-fg">{computersWords.unreadable.name}</p>
         <p className="text-small text-fg-muted">{computersWords.unreadable.body}</p>
       </div>
