@@ -2,6 +2,7 @@
 
 - Approval: HAL-15609 (flow check C600 #5a and #5b on HAL-15594; a toast on an approved screen, decided by the team under HAL-2282); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:1cbFY6Yq5EXgSo523EvsH4/p2+7svus9vibNAS5IEV4+zZ9NuTF9MqVItoAAFIyBC9ZkfeDUhYqqFqE6peE3Cg==
 
 ## What changes
 
