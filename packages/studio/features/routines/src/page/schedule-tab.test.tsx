@@ -15,7 +15,7 @@ const scheduleTab = (page: HTMLElement) =>
 verifies("routines.starts.starts-card", () => {
   it("counts the missing input on the Schedule tab while the engine refuses the start", async () => {
     const refused = await show(
-      screenOf(hostReading(() => ({ ...daily, inputMissing: true })).host),
+      screenOf(hostReading(() => ({ ...daily, inputMissing: "Add mail under run.input." })).host),
     );
 
     // What stops a start is counted on the Schedule tab (flow-routines 3.6, RT2 of HAL-15304).

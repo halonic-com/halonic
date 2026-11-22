@@ -287,7 +287,7 @@ function routineTabs(
   const own = runs.kind === "ready" ? runs.runs.runs : [];
   const waiting = own.filter((run) => run.outcome === "waiting").length;
   const going = own.some((run) => run.outcome === "running");
-  const errors = routine?.inputMissing === true ? 1 : 0;
+  const errors = routine?.inputMissing !== undefined ? 1 : 0;
   return [
     {
       id: "schedule",

@@ -158,10 +158,11 @@ export interface RoutineView extends RoutineRef {
    */
   readonly problems: readonly string[];
   /**
-   * True when its input lacks a field its workflow's first step reads, so the engine refuses to
-   * start it (`missing-routine-input`, as `halonic validate` says). Absent where the host can't say.
+   * Set when its input lacks a field its workflow's first step reads, so the engine refuses to start
+   * it (`missing-routine-input`): that error's sentence as {@link problems} has it, so the Starts
+   * card shows it once (HAL-15721). Absent when the input has the field or the host can't say.
    */
-  readonly inputMissing?: boolean | undefined;
+  readonly inputMissing?: string | undefined;
   /**
    * The errors among them that stop it from starting, as {@link RoutineListing.problems} has them,
    * so the Runs view says what the list says (HAL-15524). Absent where the host can't say.
