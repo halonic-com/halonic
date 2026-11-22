@@ -22,23 +22,21 @@
 // connector that isn't `stdio` where it does. An Approve of a connector's tool call
 // the window can't make (no agent host, or a run the CLI started at a commit) is
 // refused the same way, with the CLI line that sends it (`engine-refusals.ts`).
-// Nothing starts from a workspace that isn't trusted, unless it reaches only
-// the test model, the CLI's rule (HAL-1984, HAL-12409): the engine checks it
-// on the workspace it loaded, when it opens and before each start, and it
-// closes when the trust is removed while it is open (HAL-12799), ending the runs it stopped
-// right then, so no page keeps saying they're going (HAL-13678). A start that the shell refuses
-// because Remove trust closed the folder is refused as untrusted too (`engine-trust.ts`).
-// While it is open, it starts the workspace's routines on time, as
-// `halonic routines watch` does (`pageRoutines`, HAL-14205).
+// Each start reads the files as saved then (`engine-saved-files.ts`, HAL-16324). Nothing starts
+// from a workspace that isn't trusted, unless it reaches only the test model, the CLI's rule
+// (HAL-1984, HAL-12409): the engine checks it when it opens and before each start, and closes
+// when the trust is removed while it is open (HAL-12799), ending the runs it stopped right then
+// (HAL-13678). A start the shell refuses because Remove trust closed the folder is refused as
+// untrusted too (`engine-trust.ts`). While it is open, it starts the workspace's routines on
+// time, as `halonic routines watch` does (`pageRoutines`, HAL-14205).
 
 import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
-import { TauriBlobStore, TauriRecordStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
+import { TauriRecordStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
 import { nodeSchedulerFactory } from "@halonicjs/adapter-scheduler-node";
 import {
   routineStateCollection,
   runTimerCollection,
   type WorkflowRef,
-  workspaceBudget,
   workspaceExecutorOptions,
 } from "@halonicjs/adapter-workspace-models";
 import type { startOfDueRun } from "@halonicjs/app";
@@ -57,12 +55,19 @@ import {
   loadWorkspace,
   runDefinitionsOf,
 } from "@halonicjs/workspace";
-import { studioConnectorCalls } from "../connect/studio-run-connectors.ts";
 import { openEngineHarnessHost } from "./engine-harness-host.ts";
 import { type EngineLockHold, holdEngineLock } from "./engine-lock.ts";
 import { answerRefusalOf, refuseConnectorApprove } from "./engine-refusals.ts";
 import { savedFiles, startRoutineOn } from "./engine-routine-start.ts";
 import { pageRoutines, routineSkipsOf, SkipListeners } from "./engine-routines.ts";
+import { engineRunsOptions, openRunsOf } from "./engine-runs-options.ts";
+import {
+  hasRunGoing,
+  localOnlyChangedRefusal,
+  refuseWhileRunsGo,
+  routineLocalOnlyStep,
+  SavedWorkspace,
+} from "./engine-saved-files.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
 import {
   closeAndEndStoppedRuns,
@@ -99,7 +104,10 @@ export type { EngineServiceOptions, StudioRunConnectors } from "./engine-service
 /** An open engine and the workspace it was built on. */
 interface OpenEngine {
   readonly engine: AssembledEngine;
+  /** The workspace as it was when the engine opened; its id names the routines' records. */
   readonly workspace: LoadedWorkspace;
+  /** The workspace as saved at the latest start, which the engine's runs read. */
+  readonly saved: SavedWorkspace;
   readonly lock: EngineLockHold;
   /** The runs the engine keeps, read before an answer is sent. */
   readonly runs: TauriRunStore;
@@ -157,10 +165,31 @@ export class EngineService {
    */
   openForStart(): Promise<AssembledEngine> {
     return this.#untrustedWhenFolderClosed(async () => {
-      const { engine, workspace } = await this.#open();
-      await refuseUntrusted(this.#options.mayStart, workspace);
+      const { engine, saved } = await this.#onSavedFiles();
+      await refuseUntrusted(this.#options.mayStart, saved.latest());
       return engine;
     });
+  }
+
+  /**
+   * The open engine ({@link EngineService.open}) on the files as saved now, which its runs read
+   * from here on. A save that turned local only on or off closes it and opens a new one.
+   *
+   * @throws KindedError `unavailable` when local only changed while a run is going, which closing
+   *   would stop, or what {@link EngineService.open} throws
+   */
+  async #onSavedFiles(): Promise<OpenEngine> {
+    const opening = this.#open();
+    const open = await opening;
+    if (open.saved.take(await loadWorkspace(this.#options.definitions))) return open;
+    await refuseWhileRunsGo(open.runs, this.#options.name);
+    return this.#reopen(opening);
+  }
+
+  /** Closes the engine `opening` opened, unless another call did already, and opens a new one. */
+  async #reopen(opening: Promise<OpenEngine>): Promise<OpenEngine> {
+    if (this.#opening === opening) await this.close();
+    return this.#open();
   }
 
   /**
@@ -260,8 +289,9 @@ export class EngineService {
     options?: SendOptions,
   ): Promise<RunSummary> {
     return this.#untrustedWhenFolderClosed(async () => {
-      const { engine, workspace, runs } = await this.#forAnswer();
+      const { engine, saved, runs } = await this.#forAnswer();
       const { startsConnectors } = this.pageRuns;
+      const workspace = saved.latest();
       await refuseConnectorApprove({ runs, workspace, startsConnectors }, runId, event, options);
       return engine.executor.send(runId, event, payload, options);
     });
@@ -284,10 +314,10 @@ export class EngineService {
 
   /** The open engine, for an answer: as for a start, with the lock's `conflict` as `unavailable`. */
   async #forAnswer(): Promise<OpenEngine> {
-    const open = await this.#open().catch((error: unknown) => {
+    const open = await this.#onSavedFiles().catch((error: unknown) => {
       throw answerRefusalOf(error);
     });
-    await refuseUntrusted(this.#options.mayStart, open.workspace);
+    await refuseUntrusted(this.#options.mayStart, open.saved.latest());
     return open;
   }
 
@@ -321,7 +351,7 @@ export class EngineService {
     if (opening === undefined) return;
     const open = await opening.catch(() => undefined);
     if (open === undefined) return;
-    const may = await this.#options.mayStart(open.workspace).catch(() => false);
+    const may = await this.#options.mayStart(open.saved.latest()).catch(() => false);
     // Not when the engine was closed or opened afresh meanwhile: that one was checked as it opened.
     if (may || this.#opening !== opening) return;
     this.#opening = undefined;
@@ -356,12 +386,14 @@ export class EngineService {
       // Before the scheduler and the harness host start, so an untrusted workspace's
       // routines don't fire and its open harness runs don't resume either.
       await refuseUntrusted(this.#options.mayStart, workspace);
+      const saved = new SavedWorkspace(workspace);
+      const { latest } = saved;
       const runConnectors = await this.#options.openRunConnectors?.();
       const connectors = runConnectors?.connectors;
       const runStore = new TauriRunStore(ipc, location);
       // Set once the engine is built; a bridge opens only during a run, so after that.
       let executor: LocalExecutor | undefined;
-      const harnessHost = await openEngineHarnessHost(this.#options, workspace, {
+      const harnessHost = await openEngineHarnessHost(this.#options, latest, {
         approvalsOf: (runId) => executor?.bridgeApprovals(runId),
         remoteDecisionsOf: (runId) => executor?.bridgeRemoteDecisions(runId),
       });
@@ -373,14 +405,16 @@ export class EngineService {
         await this.check({ hubId, workflowId }).catch((error: unknown) => {
           throw routineRefusalOf(error);
         });
-        await refuseUntrusted(this.#options.mayStart, workspace);
+        await this.#takeForRoutine(saved, runStore);
+        await refuseUntrusted(this.#options.mayStart, latest());
       });
       const fromWorkspace = workspaceExecutorOptions({
         workspace,
+        latest,
         secrets: this.#options.secrets,
         http: this.#options.http,
         clock,
-        isTrusted: () => this.#options.isTrusted(workspace),
+        isTrusted: () => this.#options.isTrusted(latest()),
         keyOrigins: this.#options.keyOrigins,
         // The approvals given in the Library, read at the start of every turn. Without an
         // agent host no connector starts, so no listed tool is offered.
@@ -397,31 +431,7 @@ export class EngineService {
         executor: {
           // "Allow this address?" (HAL-11873), only with the window's prompt.
           ...withKeyOriginPrompt(fromWorkspace, { ...this.#options, runs: runStore }),
-          runs: {
-            store: runStore,
-            blobs: new TauriBlobStore(ipc, location),
-            ids: this.#options.ids,
-            definitionsOf: async (hubId, workflowId) =>
-              runDefinitionsOf(workspace, hubId, workflowId),
-            budget: workspaceBudget(() => workspace),
-            // Each harness step asks again, so trust removed where this window doesn't hear it
-            // (`halonic trust --remove`) still starts no harness program (HAL-12811). The trust
-            // itself, not `mayStart`: a resumed run's step runs from its kept definitions, which
-            // can have a harness agent the loaded workspace no longer has.
-            mayStartHarness: () => this.#options.isTrusted(workspace).catch(() => false),
-            ...(connectors === undefined
-              ? {}
-              : {
-                  runConnectors: connectors,
-                  connectorCalls: studioConnectorCalls(location, reportError),
-                }),
-            ...(harnessHost === undefined
-              ? {}
-              : {
-                  harnesses: harnessHost.harnesses,
-                  proposalFolders: harnessHost.proposalFolders,
-                }),
-          },
+          runs: engineRunsOptions(this.#options, { runStore, latest, connectors, harnessHost }),
         },
         coordination: new NodeCoordination({
           store: new TauriRecordStore(ipc, location),
@@ -440,20 +450,30 @@ export class EngineService {
       executor = engine.executor;
       // Straight away, as `routines watch` does, so the times missed while no engine ran start now.
       routines.catchUp().catch(reportError);
-      return { engine, workspace, lock, runs: runStore };
+      return { engine, workspace, saved, lock, runs: runStore };
     } catch (error) {
       await lock.held.release();
       throw error;
     }
   }
-}
 
-/**
- * The runs the engine hasn't ended, whose proposal folders stay at the
- * host's start: those waiting for a person, and those it will end as
- * interrupted on its first run.
- */
-async function openRunsOf(runs: TauriRunStore): Promise<ReadonlySet<string>> {
-  const open = await runs.list({ status: ["running", "waiting"] });
-  return new Set(open.map((run) => run.id));
+  /**
+   * Takes the saved files for a routine's start, which goes on the engine without
+   * {@link EngineService.openForStart}. When local only changed, the start is refused, and the
+   * engine opens anew once no run is going: not here, since the scheduler waits for this tick and
+   * closing waits for the scheduler, so afterwards, for the next tick.
+   *
+   * @throws KindedError `unavailable` when local only changed
+   */
+  async #takeForRoutine(saved: SavedWorkspace, runs: TauriRunStore): Promise<void> {
+    if (saved.take(await loadWorkspace(this.#options.definitions))) return;
+    const opening = this.#opening;
+    // With a run going, the next tick asks again.
+    hasRunGoing(runs)
+      .then(async (going) => {
+        if (!going && opening !== undefined) await this.#reopen(opening);
+      })
+      .catch(this.#options.reportError);
+    throw localOnlyChangedRefusal(this.#options.name, routineLocalOnlyStep);
+  }
 }

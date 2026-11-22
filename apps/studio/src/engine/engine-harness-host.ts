@@ -1,7 +1,7 @@
 // The harness host an open engine runs its harness agents in, with the
 // engine's decisions and the parts a sandboxed agent's provider key is served
-// from (HAL-13795). The key parts are bound to the workspace the engine loaded
-// as its own model calls are, so a harness agent and a model call refuse a key
+// from (HAL-13795). The key parts are bound to the workspace as last saved
+// (`engine-saved-files.ts`), as the engine's own model calls are, so a harness agent and a model call refuse a key
 // alike.
 
 import {
@@ -26,17 +26,17 @@ export type HarnessHostOptions = Pick<
  * and a run of an agent in a harness fails at its harness step.
  *
  * @example
- * const host = await openEngineHarnessHost(options, workspace, { approvalsOf, remoteDecisionsOf });
+ * const host = await openEngineHarnessHost(options, latest, { approvalsOf, remoteDecisionsOf });
  */
 export async function openEngineHarnessHost(
   options: HarnessHostOptions,
-  workspace: LoadedWorkspace,
+  latest: () => LoadedWorkspace,
   decisions: EngineDecisions,
 ): Promise<StudioHarnessHost | undefined> {
   try {
     return await options.openHarnessHost?.({
       ...decisions,
-      ...engineKeyParts(options, workspace),
+      ...engineKeyParts(options, latest),
     });
   } catch (error) {
     options.reportError(error);
@@ -45,17 +45,20 @@ export async function openEngineHarnessHost(
 }
 
 /**
- * The key parts of the workspace the engine loaded: the keychain, and the
+ * The key parts of the workspace as last saved: the keychain, and the
  * model calls' checks bound to the workspace's trust and the keys' allowed
  * addresses.
  */
-function engineKeyParts(options: HarnessHostOptions, workspace: LoadedWorkspace): StudioKeyParts {
+function engineKeyParts(
+  options: HarnessHostOptions,
+  latest: () => LoadedWorkspace,
+): StudioKeyParts {
   return {
-    workspace: () => workspace,
+    workspace: latest,
     secrets: options.secrets,
     requireKeyMayGo: async (file) =>
       requireKeyMayGo(file, {
-        trusted: await options.isTrusted(workspace),
+        trusted: await options.isTrusted(latest()),
         keyOrigins: options.keyOrigins,
       }),
     aliases: {
