@@ -8,9 +8,11 @@
 Words check C691 (HAL-16270, rows 65 and 69) found two lines of `check-computer.lines` that don't match the screens around them. Nothing showed these lines before this pull request wires the dialog up.
 
 - **Models, a key Halonic can't read:** "Anthropic: Halonic couldn't read its key from this computer's key store." becomes "Anthropic: Halonic couldn't read its key from your system keychain." with "Fix: check that your system keychain is unlocked, then check again." The Models page, where the person put the key, calls it "system keychain" ("Kept in your system keychain, never in files."), and the line had no step.
-- **Sandbox, ready:** "Ready · Fenced by the system" (and "In a virtual machine", "On another computer", "No fence") becomes "Ready · Seatbelt" on macOS and "Ready · bubblewrap" on Linux, the kind `halonic doctor` prints, as first-run-progress 4.2 approved ("Ready · Seatbelt (or bubblewrap)", "CLI doctor, as written"). "Fence" is a word no screen uses, and "Ready · No fence" said two opposite things. On Windows the agent host runs on Windows itself or in Halonic's WSL distro, which the page can't tell apart, so the line says only "Ready" until the host names its own kind.
+- **Sandbox, ready:** "Ready · Fenced by the system" (and "In a virtual machine", "On another computer", "No fence") becomes "Ready · Seatbelt" on macOS, "Ready · bubblewrap" on Linux and inside Halonic's WSL distro, and "Ready · Sandbox for Windows" for srt's Windows mode: the kind `halonic doctor` prints, as first-run-progress 4.2 approved ("Ready · Seatbelt (or bubblewrap)", "CLI doctor, as written"). "Fence" is a word no screen uses, and "Ready · No fence" said two opposite things. The agent host names the kind on its Sandbox line (`agent-host.doctor-sandbox-kind`, HAL-16290), because on Windows only the host knows whether it runs on Windows itself or in Halonic's WSL distro; when it names none, the line says only "Ready". "Sandbox for Windows" is the name Settings › Agent sandbox already gives srt's Windows mode, so a person meets one name.
 
-The requirement gains two examples; none is removed. The test for the ready sandbox now expects "Ready" without a kind and "Ready · Seatbelt" with one; the two key tests expect the new sentence and its fix. No test is dropped or skipped.
+The requirement gains two examples; none is removed. The test for the ready sandbox now expects "Ready" without a kind and "Ready · Seatbelt", "Ready · bubblewrap" and "Ready · Sandbox for Windows" with one; the two key tests expect the new sentence and its fix. No test is dropped or skipped.
+
+`agent-host-client.doctor` also checks a ready Sandbox line's `sandboxKind` against the kinds the host names, as it checks the ids and actions, so the page never words a kind it doesn't know. The requirement gains that sentence and two examples; none is removed, and its tests only gain a kind and a case.
 
 ## Why
 
@@ -18,4 +20,5 @@ Team wording on an approved screen (first-run-progress 4.2 on HAL-7986, approved
 
 ## Covers
 
+- agent-host-client.doctor
 - check-computer.lines

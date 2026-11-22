@@ -239,15 +239,17 @@ verifies("check-computer.lines", () => {
         scheme: "socks5",
       })[0],
     ).toContain("HTTPS_PROXY");
-    const ready: CheckFact = {
+    const ready = {
       check: "sandbox",
       status: "ok",
       capabilities: { files: "shared", strength: "os" },
-    };
+    } as const;
     expect(sentences(ready)).toEqual(["Ready"]);
-    expect(
-      checkLine(ready, { ...own, sandboxKind: "Seatbelt" }).sentences.map(sentenceText),
-    ).toEqual(["Ready · Seatbelt"]);
+    expect(sentences({ ...ready, sandboxKind: "seatbelt" })).toEqual(["Ready · Seatbelt"]);
+    expect(sentences({ ...ready, sandboxKind: "bubblewrap" })).toEqual(["Ready · bubblewrap"]);
+    expect(sentences({ ...ready, sandboxKind: "windows" })).toEqual([
+      "Ready · Sandbox for Windows",
+    ]);
     const cantStart = sentences({
       check: "sandbox",
       status: "failed",

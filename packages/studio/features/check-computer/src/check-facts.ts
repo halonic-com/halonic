@@ -84,11 +84,20 @@ export type LastRunFact = LastRunLine & {
   readonly hub?: string;
 };
 
+/** The kind of sandbox the agent host runs, as it names it (`agent-host.doctor-sandbox-kind`). */
+export type SandboxKind = "bubblewrap" | "seatbelt" | "windows";
+
+/**
+ * The Sandbox line as the agent host answers it: a ready one names the kind of sandbox the host
+ * runs. On Windows only the host knows whether it runs on Windows itself or in Halonic's WSL distro.
+ */
+export type SandboxFact = SandboxLine & { readonly sandboxKind?: SandboxKind };
+
 /** The lines the agent host answers, as the doctor's facts. */
 export type HostFact =
   | WorkspaceLine
   | TimedOutLine<"workspace">
-  | SandboxLine
+  | SandboxFact
   | TimedOutLine<"sandbox">
   | HarnessesLine
   | TimedOutLine<"harnesses">
