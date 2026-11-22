@@ -104,9 +104,9 @@ cloned workspace can't trust itself.
 - **The sandbox has limits.** It sets no CPU or memory limits, so a local
   tool's program has none. A backend worker brings its own memory limit: on
   its JavaScript heap, and on Linux, where `prlimit` is installed, on the
-  whole process. Windows is a preview: there a backend worker may run only
-  when MXC fences it, on Windows 11, with only its heap limited, and no app
-  uses MXC yet. Without MXC it starts only with your yes to run it without
+  whole process. Windows is a preview: there MXC could fence a backend
+  worker, on Windows 11, with only its heap limited, but no app uses MXC yet.
+  Without MXC it starts only with your yes to run it without
   the sandbox, given in Studio's trust check, and then in the launcher's
   sandbox, which doesn't fence it. Without that yes it doesn't start. And
   a program that is allowed a host can send anything there.
