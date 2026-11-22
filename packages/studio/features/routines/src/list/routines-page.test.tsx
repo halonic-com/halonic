@@ -120,6 +120,19 @@ verifies("routines.list.rows-and-states", () => {
     expect(row.textContent).not.toContain("next ");
   });
 
+  it("shows Can't start for a routine whose input lacks what its workflow reads", async () => {
+    const problem =
+      "Morning replies starts support-reply without mail, which its first step reads. Add mail under run.input.";
+    const rows = [
+      listing("acme", "morning", "Morning replies", { problems: [problem], nextRun: tomorrow }),
+    ];
+    const page = await show(<RoutinesView host={memoryHost(hubs, rows).host} />);
+
+    // RT2 of HAL-15304: the list showed "next Mon 07:30" for a start the engine refuses.
+    expect(rowOf(page, "Morning replies").textContent).toContain("Can't start");
+    expect(rowOf(page, "Morning replies").textContent).not.toContain("next ");
+  });
+
   it("shows only the empty state when there are no routines", async () => {
     const page = await show(<RoutinesView host={memoryHost(hubs, []).host} />);
 

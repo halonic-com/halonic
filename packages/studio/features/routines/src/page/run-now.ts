@@ -1,6 +1,16 @@
 import { copyText, type ToastMessage, type ToastStore } from "@halonicjs/studio-kit";
-import { engineWordsOf, startFailureOf, withFullStop } from "@halonicjs/studio-shell";
-import type { RoutinesHost, RoutineView, RunNowRefusal } from "../api.ts";
+import {
+  engineWordsOf,
+  errorReasonFor,
+  startFailureOf,
+  withFullStop,
+} from "@halonicjs/studio-shell";
+import {
+  EngineNotAnswering,
+  type RoutinesHost,
+  type RoutineView,
+  type RunNowRefusal,
+} from "../api.ts";
 import { cantStartWords } from "../cant-start.ts";
 import { failureReason, runNowWords } from "./page-words.ts";
 
@@ -67,7 +77,9 @@ export async function runRoutineNow(
     });
   } catch (error) {
     toasts?.show(
-      startFailedToast(error, routine, () => runRoutineNow(host, toasts, routine, openRun)),
+      startFailedToast(error, routine, () =>
+        runRoutineNow(host, toasts, routine, openRun, trustedJustNow),
+      ),
     );
   }
 }
@@ -75,8 +87,9 @@ export async function runRoutineNow(
 /**
  * The toast of a start that failed (UX check S3 and S5, HAL-12390): "Couldn't start *Daily*.", then
  * the reason with the next step and its command after it, as the Run panel's shared start-failure
- * line has them (`startFailureOf`). So the window's refusal keeps its own words and only an engine
- * that can't be reached says it isn't answering. A toast has no room for a CommandBox, so the
+ * line has them (`startFailureOf`). So the window's refusal keeps its own words, only an engine
+ * that can't be reached says it isn't answering, in the words for where Studio runs, and a failure
+ * without a reason says Halonic can't explain it (RT3 and RT4 of HAL-15304). A toast has no room for a CommandBox, so the
  * command ends the line and **Copy command** copies it; a start that may work a second time, such
  * as a workspace another Halonic was running, offers **Try again**.
  */
@@ -87,11 +100,11 @@ function startFailedToast(
 ): ToastMessage {
   const { notAnswering } = engineWordsOf({});
   const { fix, command, tryAgain: mayWork } = startFailureOf(error, notAnswering);
-  const text = [
-    failureReason(error, notAnswering),
-    fix === undefined ? undefined : withFullStop(fix),
-    command,
-  ]
+  // The toast's text is a sentence of its own, so the reason keeps its capital, unlike the shared
+  // line's, which follows a lead's colon.
+  const reason =
+    error instanceof EngineNotAnswering ? notAnswering : withFullStop(errorReasonFor(error));
+  const text = [reason, fix === undefined ? undefined : withFullStop(fix), command]
     .filter((part) => part !== undefined)
     .join(" ");
   const copyCommand =

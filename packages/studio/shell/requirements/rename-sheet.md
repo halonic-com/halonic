@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-13651; HAL-14489 (NS1, NS2); microcopy 12.3; phone layout 1.1
+- Source: HAL-13651; HAL-14489 (NS1, NS2); HAL-15336 (RT17 of HAL-15304); microcopy 12.3; phone layout 1.1; component specs 15.3
 
-Where an item page on a phone has no name field, the shell's rename sheet shall show "Rename _kind_" as the kit's form sheet, with its title focused, ✕ to close and one field, **Name**, that starts with the item's name, and the button **Rename**. When **Rename** is pressed with an empty name, the sheet shall say "Give it a name." under the field and read it out, also while Name has the focus, rename nothing and stay open. When **Rename** is pressed with the same name, the sheet shall close and rename nothing. Otherwise it shall rename the item to the trimmed name once and close.
+Where an item page on a phone has no name field, the shell's rename sheet shall show "Rename _kind_" as the kit's form sheet, with ✕ to close and one field, **Name**, that starts with the item's name and takes the focus with its text selected, and the button **Rename**. When **Rename** is pressed with an empty name, the sheet shall say "Give it a name." under the field and read it out, also while Name has the focus, rename nothing and stay open. When **Rename** is pressed with the same name, the sheet shall close and rename nothing. Otherwise it shall rename the item to the trimmed name once and close.
 
 ## Examples
 

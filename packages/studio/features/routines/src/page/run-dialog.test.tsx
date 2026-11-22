@@ -106,6 +106,23 @@ verifies("routines.page.run-dialog", () => {
     expect(runNow).not.toHaveBeenCalled();
   });
 
+  it("keeps Run now as it reads while Make live first runs, and focuses it once back", async () => {
+    let answer: (made: "made") => void = () => {};
+    const { host } = hostMakingLive(changed, "made", {
+      makeLive: () => new Promise((resolve) => (answer = resolve)),
+    });
+    const { page } = await showWithToasts(host);
+
+    await act(async () => runNowButton(page)?.click());
+    await act(async () => dialogButton("Make live first")?.click());
+    // Only the pressed button waits: Run now doesn't say "Starting…" (RT7 of HAL-15304).
+    expect(dialogButton("Run now")?.getAttribute("aria-busy")).not.toBe("true");
+
+    await act(async () => answer("made"));
+    await settle();
+    expect(document.activeElement).toBe(dialogButton("Run now"));
+  });
+
   it("stays as it was when the version isn't made", async () => {
     const { host } = hostMakingLive(changed, "cancelled");
     const { page } = await showWithToasts(host);

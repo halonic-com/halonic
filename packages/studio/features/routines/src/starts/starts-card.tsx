@@ -100,6 +100,7 @@ export function StartsCard({ host, routine }: StartsCardProps) {
             name={name}
             start={current?.start}
             input={target.input}
+            inputMissing={waiting === undefined && routine.inputMissing === true}
             onChange={(input) => void save({ ...target, input })}
           />
         ) : (
@@ -147,11 +148,14 @@ function WorkflowInput({
   name,
   start,
   input,
+  inputMissing,
   onChange,
 }: {
   readonly name: string;
   readonly start: RoutineStartField | undefined;
   readonly input: string;
+  /** Whether the engine refuses the start because the input lacks a field its first step reads. */
+  readonly inputMissing: boolean;
   readonly onChange: (input: string) => void;
 }) {
   const value = start === undefined ? undefined : startValue(input, start.field);
@@ -164,6 +168,7 @@ function WorkflowInput({
         name={name}
         start={start}
         value={value}
+        refused={inputMissing && !hasField(input, start.field)}
         onChange={(text) => onChange(withStartValue(input, start.field, text))}
       />
       <Disclosure summary={words.advanced} defaultOpen={!onlyStartField(input, start.field)}>
@@ -175,22 +180,34 @@ function WorkflowInput({
   );
 }
 
-/** The workflow's own start field, such as "Answer a customer's email": written as it is typed. */
+/**
+ * The workflow's own start field, such as "Answer a customer's email": written as it is typed.
+ * Empty, it says what that means: a field the input lacks while the engine refuses the start for
+ * it is an error; one that holds empty text starts a run with nothing to work on.
+ */
 function StartField({
   name,
   start,
   value,
+  refused,
   onChange,
 }: {
   readonly name: string;
   readonly start: RoutineStartField;
   readonly value: string;
+  /** Whether the input lacks this field and the engine refuses the start for it. */
+  readonly refused: boolean;
   readonly onChange: (text: string) => void;
 }) {
   const [draft, setDraft] = useState<string | undefined>();
   const text = draft ?? value;
+  const empty = text.trim() === "";
   return (
-    <Field label={start.label} hint={text.trim() === "" ? words.startEmpty(name) : undefined}>
+    <Field
+      label={start.label}
+      hint={empty && !refused ? words.startEmpty(name) : undefined}
+      error={empty && refused ? words.startMissing(name) : null}
+    >
       <TextArea
         value={text}
         minRows={3}
@@ -293,6 +310,11 @@ function startValue(input: string, field: string): string | undefined {
   const object = jsonObject(input) ?? {};
   const value = Object.hasOwn(object, field) ? object[field] : "";
   return typeof value === "string" ? value : undefined;
+}
+
+/** Whether the input holds the field at all, even as empty text. */
+function hasField(input: string, field: string): boolean {
+  return Object.hasOwn(jsonObject(input) ?? {}, field);
 }
 
 /** The input with the start field set to `text`, keeping everything else it holds. */

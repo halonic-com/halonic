@@ -49,7 +49,8 @@ verifies("routines.new.create", () => {
     await typeInto(nameField() as HTMLInputElement, "Morning digest");
     await act(async () => buttonNamed(document.body, "Create")?.click());
 
-    expect(open).toHaveBeenCalledWith({ hubId: "acme", id: "morning-digest" });
+    // On its Trigger picker, as Add trigger opens a routine (flow-routines 2.2, RT1 of HAL-15304).
+    expect(open).toHaveBeenCalledWith({ hubId: "acme", id: "morning-digest" }, "trigger");
     expect(nameField()).toBeNull();
     expect(body()).toContain("Morning digest");
   });

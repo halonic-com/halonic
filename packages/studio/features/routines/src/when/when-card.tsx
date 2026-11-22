@@ -113,6 +113,7 @@ export function WhenCard({
           {...(addConnector && { addConnector })}
           focusTrigger={focusTrigger ?? false}
           onTriggerFocused={onTriggerFocused}
+          next={<NextTimesLines shown={shown} atNextCheck={times?.atNextCheck === true} />}
           onChange={(trigger) => void changeTrigger(trigger)}
         />
         {blocked && (
@@ -124,7 +125,6 @@ export function WhenCard({
           <p className="text-small text-fg-muted">{newTriggerNotLive}</p>
         )}
         {manual && <p className="text-small text-fg-muted">{words.manualOnly}</p>}
-        <NextTimesLines shown={shown} atNextCheck={times?.atNextCheck === true} />
         {mail && <p className="text-small text-fg-muted">{words.mailNotChecked}</p>}
         {failure !== undefined && <Callout tone="danger">{failure}</Callout>}
       </div>

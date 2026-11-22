@@ -109,7 +109,7 @@ verifies("routines.page.run-now-failed", () => {
 
     expect(toasts.list()[0]).toMatchObject({
       title: "Couldn't start Daily.",
-      text: "The engine isn't answering.",
+      text: "The engine isn't answering. It may still be starting.",
       action: { label: "Try again" },
     });
   });

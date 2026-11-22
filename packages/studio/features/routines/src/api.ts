@@ -143,6 +143,11 @@ export interface RoutineView extends RoutineRef {
   readonly live?: RoutineLiveValues | undefined;
   /** Mistakes the checks found, such as a bad cron or an unknown time zone, in the engine's words. */
   readonly problems: readonly string[];
+  /**
+   * True when its input lacks a field its workflow's first step reads, so the engine refuses to
+   * start it (`missing-routine-input`, as `halonic validate` says). Absent where the host can't say.
+   */
+  readonly inputMissing?: boolean | undefined;
 }
 
 /** The changes a person makes on the page; each field present is written, the others stay as they are. */

@@ -1,5 +1,5 @@
-import { Button, Field, FilterChips, Input, Select } from "@halonicjs/studio-kit";
-import { useEffect, useRef, useState } from "react";
+import { Button, Field, FilterChips, Input, Select, usePresentation } from "@halonicjs/studio-kit";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { RoutineMailbox, RoutineTrigger } from "../api.ts";
 import { ScheduleAdvanced, SignalFields } from "./advanced-fields.tsx";
 import {
@@ -35,6 +35,8 @@ export interface TriggerFieldsProps {
   readonly focusTrigger?: boolean;
   /** Called once the picker has taken the focus. */
   readonly onTriggerFocused?: (() => void) | undefined;
+  /** The next start times: under the fields, and above a schedule's Advanced (flow-routines 3.1). */
+  readonly next?: ReactNode;
 }
 
 /**
@@ -51,13 +53,17 @@ export function TriggerFields({
   onChange,
   focusTrigger,
   onTriggerFocused,
+  next,
 }: TriggerFieldsProps) {
   const picker = useRef<HTMLElement>(null);
+  const phone = usePresentation() === "phone";
   useEffect(() => {
     if (!focusTrigger) return;
-    picker.current?.focus();
+    // On a phone the picker is a button that opens its sheet, which is the step itself (flow 5.1).
+    if (phone) picker.current?.click();
+    else picker.current?.focus();
     onTriggerFocused?.();
-  }, [focusTrigger, onTriggerFocused]);
+  }, [focusTrigger, onTriggerFocused, phone]);
   const [triedMail, setTriedMail] = useState(false);
   // The error belongs to the list it was shown for: connectors that arrive take it away.
   const triggerError = triedMail ? mailboxProblem(mailboxes) : null;
@@ -95,7 +101,7 @@ export function TriggerFields({
         </div>
       )}
       {trigger.kind === "schedule" && (
-        <ScheduleFields trigger={trigger} enabled={enabled} onChange={onChange} />
+        <ScheduleFields trigger={trigger} enabled={enabled} next={next} onChange={onChange} />
       )}
       {trigger.kind === "signal" && <SignalFields trigger={trigger} onChange={onChange} />}
       {trigger.kind === "mail" && (
@@ -107,21 +113,25 @@ export function TriggerFields({
           onChange={(interval) => onChange({ kind: "every", interval })}
         />
       )}
+      {trigger.kind !== "schedule" && next}
     </div>
   );
 }
 
 /**
- * Days and At for a simple schedule; for a more detailed one, only the line that says so. Advanced
- * (cron and time zone) is under both, and opens by itself when the chips can't show the schedule.
+ * Days and At for a simple schedule; for a more detailed one, only the line that says so. Then
+ * the next start times, and Advanced (cron and time zone) last, which opens by itself when the
+ * chips can't show the schedule (flow-routines 3.1).
  */
 function ScheduleFields({
   trigger,
   enabled,
+  next,
   onChange,
 }: {
   readonly trigger: Extract<RoutineTrigger, { kind: "schedule" }>;
   readonly enabled: boolean;
+  readonly next: ReactNode;
   readonly onChange: (trigger: RoutineTrigger) => void;
 }) {
   const schedule = simpleSchedule(trigger.cron);
@@ -134,6 +144,7 @@ function ScheduleFields({
       ) : (
         <SimpleScheduleFields trigger={trigger} schedule={schedule} onChange={onChange} />
       )}
+      {next}
       <ScheduleAdvanced
         trigger={trigger}
         enabled={enabled}
@@ -177,6 +188,10 @@ function SimpleScheduleFields({
   return (
     <>
       <div className="flex flex-col gap-1">
+        {/* Labelled like At (flow-routines 3.1); the chips' group already says "Days" to screen readers. */}
+        <span aria-hidden="true" className="text-caption text-fg-muted">
+          {words.days}
+        </span>
         <FilterChips
           label={words.days}
           toggles={WEEK_DAYS.map((day) => ({

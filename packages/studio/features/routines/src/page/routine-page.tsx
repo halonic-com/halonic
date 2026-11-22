@@ -118,7 +118,7 @@ export function RoutineScreen({
   const routine = load.kind === "ready" ? load.routine : undefined;
   const runs = useRoutineRuns(host, routine);
   const gate = useRunNowGate(host, routine, sandboxStartCheck);
-  const views = routineTabs(runs.load);
+  const views = routineTabs(runs.load, routine);
   // After Undo brings a deleted routine back, its name takes the focus once the page is drawn again.
   const trash = useRoutineTrash(host, load, focusTitle);
   if (trash.strip !== null) return trash.strip;
@@ -248,15 +248,26 @@ function ScheduleView({
 type RoutineViewId = "schedule" | "runs";
 
 /**
- * The tabs: Schedule, and Runs with the number of runs that wait for a person (amber), else a
- * still dot while one runs.
+ * The tabs: Schedule, with the error that stops the routine's start (red) while its input lacks a
+ * field the engine needs (flow-routines 3.6), and Runs with the number of runs that wait for a
+ * person (amber), else a still dot while one runs.
  */
-function routineTabs(runs: RoutineRunsLoad): readonly Tab<RoutineViewId>[] {
+function routineTabs(
+  runs: RoutineRunsLoad,
+  routine: RoutineView | undefined,
+): readonly Tab<RoutineViewId>[] {
   const own = runs.kind === "ready" ? runs.runs.runs : [];
   const waiting = own.filter((run) => run.outcome === "waiting").length;
   const going = own.some((run) => run.outcome === "running");
+  const errors = routine?.inputMissing === true ? 1 : 0;
   return [
-    { id: "schedule", label: runsWords.scheduleTab },
+    {
+      id: "schedule",
+      label: runsWords.scheduleTab,
+      ...(errors > 0 && {
+        count: { value: errors, tone: "danger" as const, name: runsWords.scheduleErrors(errors) },
+      }),
+    },
     {
       id: "runs",
       label: runsWords.tab,

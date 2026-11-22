@@ -2,11 +2,11 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-1306 (T12 PR 7); flow-routines 3.3, 3.4 and 3.5; microcopy 12.3
+- Source: HAL-1306 (T12 PR 7); flow-routines 3.1, 3.3, 3.4, 3.5 and 5.1; microcopy 12.3; HAL-15336 (RT1 and RT14 of HAL-15304)
 
-The When card shall let a person pick what starts the routine (Manual only, On a schedule, Every …) and write it at once: picking the kind it already has writes nothing, and picking another writes that kind's default; for a schedule the card shall show seven day chips (Mo to Su) and a time field that write the shortest cron line and keep the time zone, and shall keep the last day on with the hint "Pick at least one day." until another day is on; a schedule more detailed than the chips shall show no chips and say so; for Every … the card shall show a count of one or more and a unit (minutes, hours, days) that write `<count><m|h|d>`, and shall leave the fields empty for an interval the form can't show. On a phone the count and the unit shall share one row and both end inside the card at 320px, the unit as wide as its word while there's room; when the row is too narrow for both, the unit shall go under the count so the number and the word both show; this holds for Check every under New mail too.
+The When card shall let a person pick what starts the routine (Manual only, On a schedule, Every …) and write it at once: picking the kind it already has writes nothing, and picking another writes that kind's default; for a schedule the card shall show seven day chips (Mo to Su) under the label "Days" and a time field, which write the shortest cron line and keep the time zone, followed by the next start times and then Advanced, and shall keep the last day on with the hint "Pick at least one day." until another day is on; a schedule more detailed than the chips shall show no chips and say so; for Every … the card shall show a count of one or more and a unit (minutes, hours, days) that write `<count><m|h|d>`, and shall leave the fields empty for an interval the form can't show. On a phone the count and the unit shall share one row and both end inside the card at 320px, the unit as wide as its word while there's room; when the row is too narrow for both, the unit shall go under the count so the number and the word both show; this holds for Check every under New mail too.
 
-When the routine's page is asked for its Trigger picker, it shall show the Schedule view and give the picker the focus once the When card is drawn, also when the page is already open.
+When the routine's page is asked for its Trigger picker, it shall show the Schedule view and give the picker the focus once the When card is drawn, also when the page is already open; on a phone it shall open the picker's sheet.
 
 ## Examples
 
