@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
 import { render, unmountAll } from "../test/render.tsx";
-import { MiddleCut } from "./middle-cut.tsx";
+import { breakableAtSeparators, MiddleCut } from "./middle-cut.tsx";
 
 afterEach(unmountAll);
 
@@ -26,5 +26,16 @@ describe("MiddleCut", () => {
     const folder = "/work/projects/Customer Support/Halonic Workspaces/Q3 Renewals";
     const { container } = render(<MiddleCut id="folder" text={folder} />);
     expect(container.querySelector("#folder")?.textContent).toBe(folder);
+  });
+});
+
+describe("breakableAtSeparators", () => {
+  it("allows a break before each separator after the first character, and keeps the text", () => {
+    const path = "/hubs/support/agents/triage.agent.yaml changed";
+    const { container } = render(<span>{breakableAtSeparators(path)}</span>);
+    const line = container.firstElementChild;
+    expect(line?.querySelectorAll("wbr")).toHaveLength(3);
+    expect(line?.innerHTML).toContain("<wbr>/triage.agent.yaml changed");
+    expect(line?.textContent).toBe(path);
   });
 });

@@ -1,4 +1,10 @@
-import { Button, type ButtonVariant, CommandBox, inlineLinkClasses } from "@halonicjs/studio-kit";
+import {
+  Button,
+  type ButtonVariant,
+  breakableAtSeparators,
+  CommandBox,
+  inlineLinkClasses,
+} from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useId, useRef } from "react";
 import {
   beforeAcceptLines,
@@ -210,6 +216,7 @@ function AllButtons({ state }: { readonly state: ProposalDecisionState }) {
         verb="reject"
         target="all"
         label="Reject all"
+        busyLabel="Rejecting all…"
         variant="secondary"
       />
       {canAccept(state) ? (
@@ -218,6 +225,7 @@ function AllButtons({ state }: { readonly state: ProposalDecisionState }) {
           verb="accept"
           target="all"
           label="Accept all"
+          busyLabel="Accepting all…"
           variant="primary"
         />
       ) : null}
@@ -270,8 +278,9 @@ const decidedWords: Partial<Record<ProposalFile["decision"], string>> = {
 /**
  * One change (Q5, Q6): its line, then **Reject** and **Accept** as plain words, or what was
  * decided, muted. The line keeps at least 16 rem, so in a narrow pane the buttons wrap under it
- * instead of squeezing a path until it breaks mid-word (C667 #2). A file changed since the run
- * keeps only **Reject** (C665 26).
+ * instead of squeezing a path until it breaks mid-word (C667 #2). A path still too long for the
+ * line wraps before a "/" first, as MiddleCut's end does, and inside a name only when one name
+ * alone is too long (C678 #2). A file changed since the run keeps only **Reject** (C665 26).
  */
 function ChangeRow({
   file,
@@ -298,7 +307,7 @@ function ChangeRow({
     <li className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="min-w-0 flex-1 basis-64 text-body wrap-break-word">
-          {changeLine(file)}
+          {breakableAtSeparators(changeLine(file))}
         </span>
         {decided === undefined && buttons ? (
           <span className="flex gap-2">
@@ -307,6 +316,7 @@ function ChangeRow({
               verb="reject"
               target={target}
               label="Reject"
+              busyLabel="Rejecting…"
               variant="ghost"
               {...(changedSinceRun ? { buttonRef: nextRef } : {})}
             />
@@ -316,6 +326,7 @@ function ChangeRow({
                 verb="accept"
                 target={target}
                 label="Accept"
+                busyLabel="Accepting…"
                 variant="ghost"
                 buttonRef={nextRef}
               />
@@ -335,13 +346,16 @@ function ChangeRow({
 /**
  * A decision's button (Q6): busy while it is sent, keeping focus; while another is sent it is
  * unavailable (`aria-disabled`, so it stays focusable) and points at the busy one, as a Dialog's
- * Cancel points at its busy confirming button (C667 #4).
+ * Cancel points at its busy confirming button (C667 #4). Like that button, the busy one says what
+ * is under way ("Accepting…"), so the reason the others point at isn't just "Accept" (C678 #1); the
+ * kit keeps its width.
  */
 function DecideButton({
   state,
   verb,
   target,
   label,
+  busyLabel,
   variant,
   buttonRef,
 }: {
@@ -349,6 +363,7 @@ function DecideButton({
   readonly verb: ProposalVerb;
   readonly target: DecisionTarget;
   readonly label: string;
+  readonly busyLabel: string;
   readonly variant: ButtonVariant;
   readonly buttonRef?: (button: HTMLButtonElement | null) => void;
 }) {
@@ -362,6 +377,7 @@ function DecideButton({
       size="sm"
       variant={variant}
       busy={busy}
+      busyLabel={busyLabel}
       unavailable={waiting ? { reason: busyId } : undefined}
       onClick={() => state.decide(verb, target)}
     >

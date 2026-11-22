@@ -24,9 +24,10 @@ export function middleCutAt(text: string): number {
 
 /**
  * `end` with a line break allowed before each "/" or "\" after its first character, so an end too
- * wide for its row wraps between folder names before it wraps inside one.
+ * wide for its row wraps between folder names before it wraps inside one. For a path on a line of
+ * its own too, such as a proposal's change; its text stays the same.
  */
-function breakableAtSeparators(end: string): ReactNode {
+export function breakableAtSeparators(end: string): ReactNode {
   const separators = [...end.matchAll(/[/\\]/g)].map((match) => match.index);
   const starts = [0, ...separators.filter((index) => index > 0)];
   return starts.map((start, index) => (

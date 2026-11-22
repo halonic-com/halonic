@@ -67,8 +67,19 @@ function open(decisions: ProposalDecisions | undefined, item = proposal()) {
   return { root, toasts, onDecided };
 }
 
+/**
+ * The words a button shows: with a `busyLabel` the kit keeps both copies in the button and hides the
+ * one not in use with `invisible`, which screen readers skip too.
+ */
+function shownText(element: Element | null | undefined): string | undefined {
+  const copy = element?.cloneNode(true);
+  if (!(copy instanceof Element)) return undefined;
+  for (const hidden of copy.querySelectorAll(".invisible")) hidden.remove();
+  return copy.textContent?.trim();
+}
+
 function buttons(root: HTMLElement, name: string): HTMLButtonElement[] {
-  return [...root.querySelectorAll("button")].filter((b) => b.textContent?.trim() === name);
+  return [...root.querySelectorAll("button")].filter((b) => shownText(b) === name);
 }
 
 async function press(button: HTMLButtonElement | undefined) {
@@ -134,7 +145,7 @@ verifies("inbox.proposal-page", () => {
       const primary = [...root.querySelectorAll("button")].filter((b) =>
         b.classList.contains("bg-primary"),
       );
-      expect(primary.map((b) => b.textContent?.trim())).toEqual(["Accept all"]);
+      expect(primary.map((b) => shownText(b))).toEqual(["Accept all"]);
       for (const button of [...buttons(root, "Accept"), ...buttons(root, "Reject")]) {
         expect(button.className).toContain("text-fg-muted");
         expect(button.className).not.toContain("border-border-strong");
@@ -147,6 +158,18 @@ verifies("inbox.proposal-page", () => {
       const line = root.querySelector("li span");
       expect(line?.textContent).toBe("notes/a.md changed");
       expect(line?.classList.contains("basis-64")).toBe(true);
+    });
+
+    // C678 #2: at 360 a long path broke as "…/agents/tri | age.agent.yaml".
+    it("lets a long path wrap before each / first, and inside a name only when it must", () => {
+      const path = "hubs/support/workflows/triage/agents/triage.agent.yaml";
+      const item = proposal({ files: [{ path, change: "modified", decision: "undecided" }] });
+      const { root } = open(fakeDecisions(), item);
+      const line = root.querySelector("li span");
+      expect(line?.textContent).toBe(`${path} changed`);
+      expect(line?.querySelectorAll("wbr")).toHaveLength(5);
+      expect(line?.innerHTML).toContain("<wbr>/triage.agent.yaml changed");
+      expect(line?.classList.contains("wrap-break-word")).toBe(true);
     });
 
     // C667 #3: flow-inbox 5.6 point 2, "a plain line in text-small fg-muted".
@@ -228,7 +251,7 @@ verifies("inbox.proposal-page", () => {
       const others = [...root.querySelectorAll("button")].filter(
         (b) =>
           b !== busy &&
-          ["Reject all", "Accept all", "Reject", "Accept"].includes(b.textContent?.trim() ?? ""),
+          ["Reject all", "Accept all", "Reject", "Accept"].includes(shownText(b) ?? ""),
       );
       expect(busy?.getAttribute("aria-disabled")).toBeNull();
       expect(others).toHaveLength(5);
@@ -242,6 +265,35 @@ verifies("inbox.proposal-page", () => {
 
       expect(root.querySelectorAll('[aria-disabled="true"]')).toHaveLength(0);
     });
+
+    // C678 #1: the busy button said "Accept", so a faded Reject's reason read just "Accept".
+    it.each([
+      ["Accept", "Accepting…"],
+      ["Reject", "Rejecting…"],
+      ["Accept all", "Accepting all…"],
+      ["Reject all", "Rejecting all…"],
+    ])(
+      "says %s is under way while it is sent, so the others' reason reads %s",
+      async (label, busyLabel) => {
+        let answer: (decided: ProposalDecided) => void = () => {};
+        const pending = () => new Promise<ProposalDecided>((resolve) => (answer = resolve));
+        const decisions = fakeDecisions({ accept: vi.fn(pending), reject: vi.fn(pending) });
+        const { root } = open(decisions);
+
+        await press(buttons(root, label)[0]);
+
+        const busy = root.querySelector<HTMLButtonElement>('[aria-busy="true"]');
+        expect(shownText(busy)).toBe(busyLabel);
+        const other = root.querySelector('[aria-disabled="true"]');
+        const reason = other?.getAttribute("aria-describedby")?.split(" ");
+        expect(reason).toContain(busy?.id);
+        expect(shownText(root.querySelector(`[id="${busy?.id}"]`))).toBe(busyLabel);
+
+        await act(async () => answer(wrote("u1")));
+
+        expect(root.querySelector('[aria-busy="true"]')).toBeNull();
+      },
+    );
 
     it("says a failed accept with its reason and Try again, and leaves the change undecided", async () => {
       const decisions = fakeDecisions({

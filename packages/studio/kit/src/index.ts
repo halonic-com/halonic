@@ -267,7 +267,7 @@ export {
   type MenuProps,
   type MenuTriggerProps,
 } from "./menu/menu.tsx";
-export { MiddleCut, middleCutAt } from "./middle-cut/middle-cut.tsx";
+export { breakableAtSeparators, MiddleCut, middleCutAt } from "./middle-cut/middle-cut.tsx";
 export { NoteLines, type NoteLinesProps } from "./note-lines/note-lines.tsx";
 export { settleOnClose, settlePendingSaves } from "./pending-saves/pending-saves.ts";
 export {
