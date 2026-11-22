@@ -10,8 +10,9 @@ to such a file was dropped without a word, and Finish recorded this side's file,
 person's change back for everyone.
 
 Starting now refuses, changing nothing, when the shared copy changed such a file, and names the
-files: "updates change files Halonic leaves to git: .env.example. Get these updates with git
-instead." The person gets those updates with git. This side's own changes to such files still
+files: "updates change .env.example, which Halonic leaves to git. Get these updates with git
+instead." (several files read ".env.example and logs/NOTES~1.md"; wording agreed by Sofia on
+HAL-16358). The person gets those updates with git. This side's own changes to such files still
 don't stop the merge: keeping them is right. Halonic's own folders (`.halonic/review`, per device)
 are still left out as before.
 

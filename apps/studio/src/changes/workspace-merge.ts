@@ -311,7 +311,7 @@ export class UpdatesMerge {
     if (left.length === 0) return;
     throw new KindedError(
       "unavailable",
-      `updates change files Halonic leaves to git: ${left.join(", ")}. Get these updates with git instead.`,
+      `updates change ${new Intl.ListFormat("en", { type: "conjunction" }).format(left)}, which Halonic leaves to git. Get these updates with git instead.`,
     );
   }
 

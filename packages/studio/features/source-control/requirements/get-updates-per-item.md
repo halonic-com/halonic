@@ -22,7 +22,7 @@ When both this workspace and the shared copy have versions the other lacks, the 
 - Given the person cancels, then the files are as before the merge started and the merge is gone.
 - Given the window closed after one choice, then reading the merge gives that choice again.
 - Given `a.md` has changes not in a version and the shared copy changed it too, then starting is refused and nothing changes.
-- Given the shared copy changed `.env.example`, when the merge starts, then it is refused with "updates change files Halonic leaves to git: .env.example. Get these updates with git instead." and nothing changes.
+- Given the shared copy changed `.env.example`, when the merge starts, then it is refused with "updates change .env.example, which Halonic leaves to git. Get these updates with git instead." and nothing changes.
 - Given both sides changed 2 items, when the person presses Get updates, then the choices open with Keep mine and Use Sam's for each and nothing chosen.
 - Given only the shared copy changed `README.md` and only this side changed `shipping.md`, when the person presses Get updates, then the page says "You and Sam changed different items, so there's nothing to choose. Finish getting updates to bring theirs in." and Finish getting updates is available.
 - Given 2 items and one chosen, then Finish getting updates is unavailable and says "Choose for 1 more item.".
