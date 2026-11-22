@@ -14,16 +14,10 @@ import { sandboxMessages } from "./sandbox.ts";
 const fixDiffersOnPurpose: readonly string[] = [
   "windows",
   "distro-missing",
+  "runtime-missing",
   "setup-conflict",
   "setup-needed",
 ];
-
-/**
- * The codes whose fix only Studio can carry out, so the CLI says Studio's fix
- * after "in Halonic Studio, ": only Studio's repair puts back the runtime of
- * its own WSL setup (C684 #3, HAL-16186).
- */
-const fixInStudio: readonly string[] = ["runtime-missing"];
 
 /**
  * The codes whose reason Studio words differently on purpose: in the CLI,
@@ -50,11 +44,9 @@ verifies("cli.messages", () => {
   it("words every fix the same, except the ones listed as different on purpose", () => {
     for (const code of sandboxUnavailableReasons) {
       const cliFix = plainText(sandboxMessages.doctorFix(code).phrase);
-      const studioFix = sandboxStartWords(code).fix;
-      const inStudio = fixInStudio.includes(code) ? "in Halonic Studio, " : "";
-      const expected = `Fix: ${inStudio}${studioFix} Then run halonic doctor again.`;
-      if (fixDiffersOnPurpose.includes(code)) expect(cliFix, code).not.toContain(expected);
-      else expect(cliFix, code).toContain(expected);
+      const studioFix = `Fix: ${sandboxStartWords(code).fix} Then run halonic doctor again.`;
+      if (fixDiffersOnPurpose.includes(code)) expect(cliFix, code).not.toContain(studioFix);
+      else expect(cliFix, code).toContain(studioFix);
     }
   });
 });

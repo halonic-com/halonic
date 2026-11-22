@@ -1,9 +1,8 @@
 import { sandboxUnavailableReasons } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { paintFor } from "../output/paint.ts";
 import type { Message } from "./define.ts";
-import { plainText, renderPhrase } from "./phrase.ts";
+import { plainText } from "./phrase.ts";
 import {
   distroArgument,
   missingLinuxTools,
@@ -40,7 +39,7 @@ describe("the sandbox sentences", () => {
       "WSL isn't installed, and the sandbox needs it. Install it with wsl --install --no-distribution in a terminal run as administrator, restart Windows, then run it again.",
       "Windows needs to restart to finish setting up WSL. Restart Windows, then run it again.",
       "WSL works, but Halonic's own Linux system for the sandbox isn't installed. Use Halonic inside WSL 2 on this computer, then run it again.",
-      "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish. In Halonic Studio, open Settings › Agent sandbox and press Repair the sandbox, then run it again.",
+      "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish. Use Halonic inside WSL 2 on this computer, then run it again.",
       "Another program set up the sandbox on this computer, in a way Halonic can't use. Use Halonic inside WSL 2 on this computer, then run it again.",
       "The sandbox's one-time setup isn't done for this version of Halonic. Use Halonic inside WSL 2 on this computer, then run it again.",
       "Ubuntu 24.04 blocks the user namespaces the sandbox needs. Allow them for bubblewrap with an AppArmor rule; the guide has the exact commands.",
@@ -103,7 +102,7 @@ describe("the sandbox sentences", () => {
       ],
       [
         "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish.",
-        "Fix: in Halonic Studio, open Settings › Agent sandbox and press Repair the sandbox. Then run halonic doctor again.",
+        "Fix: use Halonic inside WSL 2 on this computer. Then run halonic doctor again.",
       ],
       [
         "Another program set up the sandbox on this computer, in a way Halonic can't use.",
@@ -249,20 +248,6 @@ describe("the sandbox sentences", () => {
     expect(readsAsOther("other")).toBe(true);
     expect(readsAsOther("seccomp-missing")).toBe(true);
     expect(readsAsOther("not-supported")).toBe(false);
-  });
-
-  it("marks the steps of runtime-missing's place in Studio, so a stream that isn't UTF-8 shows >", () => {
-    const oldConsole = paintFor({ colour: false, live: false, unicode: false });
-    const place = "Settings > Agent sandbox";
-    expect(
-      renderPhrase(sandboxMessages.refusedFix("runtime-missing").phrase, oldConsole),
-    ).toContain(place);
-    expect(renderPhrase(sandboxMessages.doctorFix("runtime-missing").phrase, oldConsole)).toContain(
-      place,
-    );
-    expect(
-      renderPhrase(sandboxMessages.reasonAndFix("runtime-missing").phrase, oldConsole),
-    ).toContain(`In Halonic Studio, open ${place} and press Repair the sandbox.`);
   });
 
   it("has runs send's ending and the pointer to doctor", () => {

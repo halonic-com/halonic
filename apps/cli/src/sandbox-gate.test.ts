@@ -267,20 +267,6 @@ verifies("cli.sandbox-gate", () => {
       ]);
     });
 
-    it("sends someone whose Linux system for the sandbox has no runtime to the repair in Studio's Settings", async () => {
-      const workspace = await workspaceOf();
-      const { machine } = machineWith({ ok: false, reason: "runtime-missing", missing: [] });
-
-      const error = await refusal(checkRunSandbox(workspace, supportReply, machine));
-
-      expect(exitCodeOfError(error)).toBe(9);
-      expect(printed(error)).toEqual([
-        "✕ Couldn't run support-reply: the sandbox can't start on this computer. Nothing ran.",
-        "  Halonic's own Linux system for the sandbox is installed, but its setup didn't finish. In Halonic Studio, open Settings › Agent sandbox and press Repair the sandbox, then run it again.",
-        "  More: https://docs.halonic.dev/security/sandbox/ (runtime-missing)",
-      ]);
-    });
-
     it("ends line 1 with Nothing was sent. for runs send", async () => {
       const workspace = await workspaceOf();
       const { machine } = machineWith(bubblewrapMissing);

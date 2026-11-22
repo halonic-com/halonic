@@ -60,15 +60,6 @@ const generalDocsName = "What the sandbox needs";
 /** Where Studio sends the fixes the CLI words as "use Halonic inside WSL 2" (0.1 has no Studio on Windows, HAL-7540). */
 const inSettings = "open Settings and set up the sandbox there.";
 
-/**
- * `runtime-missing`'s fix: Settings › Agent sandbox shows it as Needs repair, and its Repair button
- * puts the runtime back. The CLI says the same after "in Halonic Studio, " (C684 #3, HAL-16186).
- */
-const repairInSettings = "open Settings › Agent sandbox and press Repair the sandbox.";
-
-/** The fixes that are Settings' own buttons, so Settings shows no fix for them. */
-const settingsButtonFixes: readonly string[] = [inSettings, repairInSettings];
-
 const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   windows: {
     // Only MXC gives this code, on a machine that isn't Windows 11 or lacks its container tier.
@@ -119,7 +110,7 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   },
   "runtime-missing": {
     reason: "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish.",
-    fix: repairInSettings,
+    fix: inSettings,
   },
   "setup-conflict": {
     reason: "Another program set up the sandbox on this computer, in a way Halonic can't use.",
@@ -228,7 +219,7 @@ export function sandboxStartWords(code: string): SandboxStartWords {
     cantRunFix: ownFix,
     phoneFix: `${onTheComputer}${fix}`,
     cantRunPhoneFix: `${onTheComputer}${lowerFirst(ownFix)}`,
-    settingsFix: settingsButtonFixes.includes(fix) ? null : capitalised(fix),
+    settingsFix: fix === inSettings ? null : capitalised(fix),
     ...(command === undefined ? {} : { command }),
     docsKey: docsSection === undefined ? "security/sandbox/" : `security/sandbox/#${docsSection}`,
     docsName: docsName ?? generalDocsName,
