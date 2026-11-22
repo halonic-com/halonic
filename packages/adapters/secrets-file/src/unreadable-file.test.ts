@@ -23,29 +23,32 @@ afterAll(async () => {
 const deniable = process.platform !== "win32" && process.getuid?.() !== 0;
 
 verifies("secrets-file.unreadable", () => {
-  describe.skipIf(!deniable)("[platform:win32] needs POSIX modes: a secrets file the person can't read", () => {
-    it("refuses every call with the cause and chmod 600, and doesn't change the file", async () => {
-      const file = await freshFile();
-      const store = new FileSecretStore(file);
-      await store.set("openai-key", "sk-kept");
-      await chmod(file, 0o000);
-      for (const call of [
-        () => store.get("openai-key"),
-        () => store.names(),
-        () => store.set("openai-key", "sk-new"),
-        () => store.remove("openai-key"),
-      ]) {
-        await expect(call()).rejects.toMatchObject({
-          kind: "denied",
-          message: `The secrets file ${file} can't be read by you.`,
-          fix: `Run chmod 600 ${file}, then run again.`,
-          cause: { code: "EACCES" },
-        });
-      }
-      await chmod(file, 0o600);
-      expect(await store.get("openai-key")).toBe("sk-kept");
-    });
-  });
+  describe.skipIf(!deniable)(
+    "[platform:win32] needs POSIX modes: a secrets file the person can't read",
+    () => {
+      it("refuses every call with the cause and chmod 600, and doesn't change the file", async () => {
+        const file = await freshFile();
+        const store = new FileSecretStore(file);
+        await store.set("openai-key", "sk-kept");
+        await chmod(file, 0o000);
+        for (const call of [
+          () => store.get("openai-key"),
+          () => store.names(),
+          () => store.set("openai-key", "sk-new"),
+          () => store.remove("openai-key"),
+        ]) {
+          await expect(call()).rejects.toMatchObject({
+            kind: "denied",
+            message: `The secrets file ${file} can't be read by you.`,
+            fix: `Run chmod 600 ${file}, then run again.`,
+            cause: { code: "EACCES" },
+          });
+        }
+        await chmod(file, 0o600);
+        expect(await store.get("openai-key")).toBe("sk-kept");
+      });
+    },
+  );
 
   describe("the fix", () => {
     const file = "/srv/acme/secrets/secrets.json";
