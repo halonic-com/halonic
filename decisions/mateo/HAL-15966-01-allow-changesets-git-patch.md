@@ -3,6 +3,7 @@
 - Task: HAL-15966
 - Approval: the board asked for the fix on HAL-15966 and fast-tracked #4975 and #4976; Liam reviews them on HAL-15965 and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xa+sssIaN9RFY9RI9t5KwbgLgOxQJPWH7+jmaaTnfMEnRW5O0h6SrDBPrjOjypNJiQ9ToSvDWi5HTSmwj9qmAA==
 
 ## What changes
 
