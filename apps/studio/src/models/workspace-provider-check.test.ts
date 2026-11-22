@@ -97,6 +97,23 @@ verifies("models.providers.check", () => {
     expect(open.waitsForTrust(on("http://192.168.1.20:11434/v1"))).toBe(false);
   });
 
+  it("doesn't wait for trust when the workspace can't be trusted at all", () => {
+    const refused = new WorkspaceProviderCheck(
+      client(async () => new Response("")),
+      {
+        ...notTrusted,
+        check: { status: "refused" },
+      },
+    );
+
+    expect(
+      refused.waitsForTrust({ type: "openai-compatible", baseUrl: "http://192.168.1.20:11434/v1" }),
+    ).toBe(false);
+    expect(
+      refused.addressOf({ type: "openai-compatible", baseUrl: "http://192.168.1.20:11434/v1" }),
+    ).toBeUndefined();
+  });
+
   it("tells the page when the workspace's trust changes", () => {
     const listeners: (() => void)[] = [];
     let isTrusted = false;

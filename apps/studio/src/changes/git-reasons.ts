@@ -83,6 +83,14 @@ export function updatesReason(answer: GitAnswer): string {
   return knownGitProblem(answer) ?? "Git didn't get the updates.";
 }
 
+/**
+ * Whether git refused to get updates in a way trying again can't clear: they would overwrite
+ * changes not in a version, which stays so until the person creates a version (HAL-16534).
+ */
+export function updatesRefused(answer: GitAnswer): boolean {
+  return /would be overwritten/i.test(`${answer.stderr}\n${answer.stdout}`);
+}
+
 /** Why sharing failed, as one plain sentence: git's own output is never shown. */
 export function shareReason(answer: GitAnswer): string {
   const said = `${answer.stderr}\n${answer.stdout}`;

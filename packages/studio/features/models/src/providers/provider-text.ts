@@ -62,8 +62,12 @@ export const CHECK_AGAIN = "Check again";
 export const CHECKING = "Checking…";
 export const CHECK_HINT =
   "Small local models can miss tool calls. Try a short run to see whether yours keeps up.";
-/** In Check's place while the workspace isn't trusted and the address isn't on this computer (C711). */
-export const CHECK_WAITS_FOR_TRUST = "You can check this address once you trust this workspace.";
+/**
+ * In Check's place while the workspace isn't trusted and the address isn't on this computer (C711),
+ * saying where to trust it: the header badge "Not trusted yet · Review" (HAL-16534).
+ */
+export const CHECK_WAITS_FOR_TRUST =
+  "Trust this workspace to check this address: press Review in the header.";
 
 /** The programs the provider types run in, as "Start *program*" names them (microcopy 15.3). */
 const LOCAL_PROGRAMS: Readonly<Record<string, string>> = {

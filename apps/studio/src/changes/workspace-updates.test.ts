@@ -120,6 +120,8 @@ verifies("source-control.get-updates", () => {
         publish("b.md", "two\n");
         writeFileSync(join(mine, "b.md"), "mine\n");
         await expect(real(mine).getUpdates()).rejects.toThrow("Create a version first");
+        // Refused the same way until the person creates a version, so no Try again (HAL-16534).
+        await expect(real(mine).getUpdates()).rejects.toMatchObject({ kind: "conflict" });
       } finally {
         rmSync(root, { recursive: true, force: true });
       }

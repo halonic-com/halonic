@@ -63,8 +63,11 @@ export type UpdatesOutcome =
   /** Both sides had new versions: the merge is started and the person chooses item by item. */
   | { readonly kind: "choosing" }
   | { readonly kind: "failed"; readonly reason: string }
-  /** Refused until the person does something outside Halonic (gets the updates with git): no Try again. */
-  | { readonly kind: "refused"; readonly reason: string };
+  /**
+   * Refused until the person does something else first: no Try again. `leftToGit` when that is
+   * getting a file Halonic leaves to git with git (Show how), else creating a version.
+   */
+  | { readonly kind: "refused"; readonly reason: string; readonly leftToGit: boolean };
 
 /** What a choice, Undo, Finish or Cancel of a started merge did: the reason it didn't work, or `undefined`. */
 export type MergeOutcome = string | undefined;

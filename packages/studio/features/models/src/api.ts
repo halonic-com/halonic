@@ -177,7 +177,8 @@ export interface ProviderCheck {
   }): Promise<boolean>;
   /**
    * Whether Check waits for the person to trust the workspace: the provider has an address that
-   * isn't on this computer, and the workspace isn't trusted yet. Missing means it never waits.
+   * isn't on this computer, and the workspace isn't trusted yet but can be. Missing means it never
+   * waits.
    */
   waitsForTrust?(provider: {
     readonly type: string;

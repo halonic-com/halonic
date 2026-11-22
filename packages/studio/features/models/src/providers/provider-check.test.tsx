@@ -214,7 +214,9 @@ verifies("models.providers.check", () => {
     const lan = { ...ollama, type: "openai-compatible", options: {} };
     const view = await show(check, lan);
 
-    expect(view.textContent).toBe("You can check this address once you trust this workspace.");
+    expect(view.textContent).toBe(
+      "Trust this workspace to check this address: press Review in the header.",
+    );
     expect(view.querySelector("p")?.className).toContain("text-fg-muted");
     expect(view.querySelector("button")).toBeNull();
 

@@ -18,6 +18,11 @@ import type {
 } from "./workspace-trust-control.ts";
 
 const NOT_NOW = "Not now";
+/**
+ * How long **Trust** stays unavailable after it was refused for a change: longer than a double
+ * click, so a second click can't trust the new check unread (HAL-16534).
+ */
+export const REFUSED_PAUSE_MS = 1000;
 
 /** The props of {@link TrustCheckDialog}. */
 export interface TrustCheckDialogProps {
@@ -38,7 +43,8 @@ export interface TrustCheckDialogProps {
   /**
    * Counts the times **Trust** saved nothing because the workspace changed under the open check:
    * from the first one on, the notice that it changed stays, and each one moves focus to
-   * **Not now**, so a double press can't trust the new check unread (C711).
+   * **Not now** and keeps **Trust** unavailable for {@link REFUSED_PAUSE_MS}, so a double press or
+   * a double click can't trust the new check unread (C711, HAL-16534).
    */
   readonly changedRefused?: number | undefined;
 }
@@ -97,16 +103,16 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
   const understoodId = useId();
   const yesId = useId();
   const refusedId = useId();
+  const changedId = useId();
   const needsConfirm = review.unpinned.length > 0;
   const changed = useChangedNotice(review, props.shown, props.changedRefused ?? 0);
-  let unavailable: { readonly reason: string } | undefined;
-  if (review.refused !== undefined) {
-    unavailable = { reason: refusedId };
-  } else if (needsConfirm && !understood) {
-    unavailable = { reason: understoodId };
-  } else if (review.unfencedYes !== undefined && !yesTicked) {
-    unavailable = { reason: yesId };
-  }
+  const unavailableBy = unavailableReason([
+    [review.refused !== undefined, refusedId],
+    [needsConfirm && !understood, understoodId],
+    [review.unfencedYes !== undefined && !yesTicked, yesId],
+    [changed.pausing, changedId],
+  ]);
+  const unavailable = unavailableBy === undefined ? undefined : { reason: unavailableBy };
   return (
     <Dialog
       title={markedText(review.title)}
@@ -134,7 +140,9 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
         </p>
         {changed.say ? (
           <Callout tone="info">
-            This workspace changed while you were reviewing it. Check the new version.
+            <span id={changedId}>
+              This workspace changed while you were reviewing it. Check the new version.
+            </span>
           </Callout>
         ) : null}
         {review.unreadable === undefined ? null : (
@@ -185,18 +193,28 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
   );
 }
 
+/** The id of the first reason that holds, in order, for **Trust** being unavailable. */
+function unavailableReason(reasons: readonly (readonly [boolean, string])[]): string | undefined {
+  return reasons.find(([holds]) => holds)?.[1];
+}
+
 /**
  * Whether to say the workspace changed under the open check: while the check shown isn't the one
  * opened, and from the first **Trust** refused for it on, which also moves focus to **Not now**
- * each time (C711). `body` goes on the dialog's body, to find **Not now** from.
+ * each time (C711) and sets `pausing` for {@link REFUSED_PAUSE_MS} (HAL-16534). `body` goes on
+ * the dialog's body, to find **Not now** from.
  */
 function useChangedNotice(review: TrustReview, shown: string, refused: number) {
   const body = useRef<HTMLDivElement>(null);
+  const [pausing, setPausing] = useState(false);
   useEffect(() => {
     if (refused === 0) return;
     notNowOf(body.current)?.focus();
+    setPausing(true);
+    const timer = setTimeout(() => setPausing(false), REFUSED_PAUSE_MS);
+    return () => clearTimeout(timer);
   }, [refused]);
-  return { body, say: review.fingerprint !== shown || refused > 0 };
+  return { body, pausing, say: review.fingerprint !== shown || refused > 0 };
 }
 
 /**

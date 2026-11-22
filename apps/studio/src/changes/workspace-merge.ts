@@ -126,8 +126,9 @@ export class UpdatesMerge {
     const [mine, sams] = [await this.#changed(base, "HEAD"), await this.#changed(base, theirs)];
     const dirty = await this.#o.changedPaths();
     if ([...sams].some((path) => dirty.has(path))) {
+      // A `conflict`: refused the same way until the person creates a version (HAL-16534).
       throw new KindedError(
-        "unavailable",
+        "conflict",
         "updates would overwrite changes you haven't put in a version. Create a version first.",
       );
     }
