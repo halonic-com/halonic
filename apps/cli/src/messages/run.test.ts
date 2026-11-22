@@ -129,6 +129,16 @@ describe("run's sentences", () => {
     ).toBe("Answer with: halonic runs send 01jd8q toString (or constructor)");
   });
 
+  it("writes each event as one shell word, so the command runs as written whatever the workflow names it", () => {
+    const events = ["go on; echo $(date)", "\u001b[8mhide"];
+    // shellWord quotes the Windows way there, without backslashes before `$` or `\`.
+    const expected =
+      process.platform === "win32"
+        ? 'Answer with: halonic runs send 01jd8q "go on; echo $(date)" (or "\\u001b[8mhide")'
+        : 'Answer with: halonic runs send 01jd8q "go on; echo \\$(date)" (or "\\\\u001b[8mhide")';
+    expect(words(runMessages.answerHere("01jd8q", events))).toBe(expected);
+  });
+
   it("escapes a label's control characters, since the label comes from the workflow file", () => {
     const labels = { approve: "\u001b[31mSend\u202e", reject: "Drop\nit" };
     expect(words(runMessages.answerHere("01jd8q", ["approve", "reject"], undefined, labels))).toBe(

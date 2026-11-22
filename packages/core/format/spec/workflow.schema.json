@@ -243,7 +243,9 @@
                 },
                 "event": {
                   "default": "done",
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[a-z0-9][a-z0-9-_]*$"
                 },
                 "when": {
                   "$ref": "#/$defs/__schema0"

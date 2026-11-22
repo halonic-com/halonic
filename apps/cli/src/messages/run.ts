@@ -1,6 +1,7 @@
 import { moneyAmount } from "@halonicjs/app";
 import type { RunSends } from "@halonicjs/events";
 import { printable } from "../output/printable.ts";
+import { shellWord } from "../output/shell-word.ts";
 import { counted, listInWords, timesInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { oldestSupported } from "./doctor.ts";
@@ -393,7 +394,8 @@ export const runMessages = defineMessages("run", {
  * Three or more events read "(or reject, hold or skip)" (revision 37). The event stays, since it is
  * what the user types; a label follows it, as in "approve (Send reply)" (HAL-4072). A label that
  * only repeats its event, as "Approve" for approve, is left out (HAL-4190). A label is the author's
- * free text, so it is escaped (cli-output section 5).
+ * free text, so it is escaped (cli-output section 5). An event is written as one shell word, so the
+ * command can be copied and run as it is, whatever the workflow names it (HAL-16336).
  */
 function answerLine(
   runId: string,
@@ -408,10 +410,10 @@ function answerLine(
   };
   const labelled = (event: string) => {
     const label = labelOf(event);
-    return label === undefined ? event : `${event} (${label})`;
+    return label === undefined ? shellWord(event) : `${shellWord(event)} (${label})`;
   };
   const [first = "", ...others] = events;
-  const command = `${suggestedCommand("runs send", dir, runId)} ${first}`;
+  const command = `${suggestedCommand("runs send", dir, runId)} ${shellWord(first)}`;
   const firstLabel = labelOf(first);
   const line =
     firstLabel === undefined

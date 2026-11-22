@@ -115,10 +115,13 @@ verifies("workflow.answer-labels", () => {
       name: "W",
       initial: "review",
       states: {
-        review: { type: "wait", on: [{ to: "end", event: "__proto__", label: "Odd" }] },
+        review: { type: "wait", on: [{ to: "end", event: "approve", label: "Odd" }] },
         end: { type: "final" },
       },
     });
+    // A workflow file can't name an event `__proto__`, but one built in code can.
+    const transition = getState(workflow, "review").on[0];
+    if (transition) Object.assign(transition, { event: "__proto__" });
     const labels = answerLabels(workflow, "review");
     expect(Object.hasOwn(labels, "__proto__")).toBe(true);
     expect(Object.getPrototypeOf(labels)).toBe(Object.prototype);

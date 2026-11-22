@@ -7,8 +7,11 @@ import { relativePathProblem } from "../../shared/relative-path.ts";
 export const Transition = s
   .object({
     to: id,
-    /** The event that triggers it. "done" (the default) fires when the state's work finishes. */
-    event: s.string().default("done"),
+    /**
+     * The event that triggers it. "done" (the default) fires when the state's work finishes. An
+     * id, since a person types it after `halonic runs send` (HAL-16336).
+     */
+    event: id.default("done"),
     when: Guard.optional(),
     /** Wait states only: fire this long after the state was entered ("30m", "4h", "2d"). */
     after: s

@@ -4,6 +4,7 @@
 
 import { type Padding, type Part, type Phrase, pushText } from "@halonicjs/words";
 import { markText, type Paint } from "../output/paint.ts";
+import { printable } from "../output/printable.ts";
 
 export {
   bold,
@@ -21,12 +22,17 @@ export {
   plainText,
 } from "@halonicjs/words";
 
-/** The phrase as a stream with `paint` shows it. */
+/**
+ * The phrase as a stream with `paint` shows it. Its text is made printable here, the one place
+ * every line passes on its way to the terminal, so a name or a message from a workspace, an engine
+ * or a server can't colour the screen, move the cursor or start a new line, wherever a sentence
+ * quotes it (cli-output section 5, HAL-16336). Only the paint adds escapes, after that.
+ */
 export function renderPhrase(value: Phrase, paint: Paint): string {
   return value
     .map((part) => {
       if (typeof part === "string") {
-        return part;
+        return printable(part);
       }
       if ("mark" in part) {
         return paint.mark(part.mark);
@@ -34,7 +40,8 @@ export function renderPhrase(value: Phrase, paint: Paint): string {
       if ("padding" in part) {
         return paddingText(part.padding, paint.unicode);
       }
-      return part.emphasis === "bold" ? paint.bold(part.text) : paint.dim(part.text);
+      const text = printable(part.text);
+      return part.emphasis === "bold" ? paint.bold(text) : paint.dim(text);
     })
     .join("");
 }

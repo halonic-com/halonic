@@ -128,6 +128,22 @@ verifies("format.workflow-file", () => {
   });
 });
 
+verifies("format.workflow-event-id", () => {
+  it("refuses an event that isn't an id, at the event", () => {
+    const text = workflow("  start:", "    on: [{ to: done, event: approve now }]");
+    const problems = problemsOf("workflow", text);
+    expect(summary(problems)).toEqual(["states.start.on.0.event invalid_format 6"]);
+    expect(problems[0]?.message).toBe(
+      "use lowercase letters, digits, '-' or '_', starting with a letter or digit",
+    );
+  });
+
+  it("keeps an event that is an id", () => {
+    const text = workflow("  start:", "    on: [{ to: done, event: needs_changes }]");
+    expect(parsedValue("workflow", text).states["start"]?.on[0]?.event).toBe("needs_changes");
+  });
+});
+
 verifies("format.workflow-artifact-name", () => {
   it("refuses an artifact name that isn't one file name, at the name (HAL-14301)", () => {
     const named = (name: string) =>
