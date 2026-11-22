@@ -3,6 +3,7 @@
 - Task: HAL-15336
 - Approval: Sofia's Routines UX check, RT17 (https://paperclip.halonic.com/HAL/issues/HAL-15304#document-ux-check), assigned on HAL-15336. A team decision on an approved screen, with no board card (HAL-2282 rule). Liam approves it in the review of this pull request.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ODX2bN5p2qcCTv6C6yTF60DJMlu1DdgmflhaKjY2s45QdiRc7p55VxuxyKs4yUFWinIMyJv8M/L3igKkD+GdDw==
 
 ## What changes
 
