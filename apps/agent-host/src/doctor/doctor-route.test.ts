@@ -110,6 +110,7 @@ function doctorParts(changes: Partial<HostDoctorParts["machine"]> = {}): HostDoc
     appVersion,
     commandSearch: noCommands,
     onWsl: false,
+    sandboxKind: "bubblewrap",
   };
 }
 
@@ -329,5 +330,36 @@ verifies("agent-host.doctor-route", () => {
     expect((await ask({ workspace, agentsWithProviderKey: ["writer"] })).status).toBe(400);
     expect((await ask({ workspace: "acme" })).status).toBe(400);
     expect((await ask({}, false)).status).toBe(401);
+  });
+});
+
+verifies("agent-host.doctor-sandbox-kind", () => {
+  it("names the kind of sandbox it runs on a ready Sandbox line, and on no other line", async () => {
+    await serve();
+
+    const { checks } = await answerOf(await ask({}));
+
+    expect(checks.find((line) => line.check === "sandbox")).toMatchObject({
+      status: "ok",
+      sandboxKind: "bubblewrap",
+    });
+    expect(checks.filter((line) => "sandboxKind" in line)).toHaveLength(1);
+  });
+
+  it("names no kind when the sandbox can't start", async () => {
+    const cantStart = async (): Promise<SandboxCheck> => ({
+      ok: false,
+      reason: "runtime-missing",
+      missing: [],
+    });
+    await serve(
+      doctorParts({
+        sandbox: { check: cantStart, capabilities: () => ({ files: "shared", strength: "os" }) },
+      }),
+    );
+
+    const { checks } = await answerOf(await ask({}));
+
+    expect(checks.find((line) => line.check === "sandbox")).not.toHaveProperty("sandboxKind");
   });
 });

@@ -383,7 +383,9 @@ runs Claude Code or Codex on a settings folder in the profile. It reaches a mode
 server at an address the workspace names only once the workspace is trusted here,
 as the CLI does, never a cloud provider, and runs no model test. The key lines
 aren't answered: the host holds no keychain. One check runs at a time; neither
-the answer nor the log quotes an error's text.
+the answer nor the log quotes an error's text. A ready Sandbox line also names
+the kind of sandbox the host runs, as an id from the host's own system
+(`bubblewrap`, `seatbelt` or `windows`, HAL-16290): nothing a caller sends picks it.
 
 The host also opens the **Google setup** of the profile it serves (HAL-9911):
 `POST /v1/google/disconnect` asks Google to end an account's sign-in and removes

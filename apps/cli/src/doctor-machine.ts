@@ -13,6 +13,8 @@ import {
   type DoctorMachine as NodeDoctorMachine,
   networkProblemOf,
   nodeCommandSearch,
+  type SandboxKind,
+  sandboxKindOf,
 } from "@halonicjs/adapter-doctor-node";
 import { FileAgentPlacementStore, FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
@@ -58,11 +60,29 @@ const systemNames: Readonly<Record<string, string>> = {
   win32: "Windows",
 };
 
-/** The sandbox each system has: bubblewrap on Linux, Seatbelt on macOS (see `SrtSandbox`). */
-const sandboxKinds: Readonly<Record<string, string>> = {
-  linux: "bubblewrap",
-  darwin: "Seatbelt",
+/**
+ * The kinds of sandbox as the ready Sandbox line names them. srt's Windows
+ * mode has the name Settings › Agent sandbox gives it, so a person meets
+ * one name (HAL-16290).
+ */
+const sandboxKindNames: Readonly<Record<SandboxKind, string>> = {
+  bubblewrap: "bubblewrap",
+  seatbelt: "Seatbelt",
+  windows: "Sandbox for Windows",
 };
+
+/**
+ * The kind of sandbox the ready Sandbox line names on `system`.
+ *
+ * @param system - the system as Node names it, such as `process.platform`
+ * @returns the kind's name, such as "Seatbelt", or `system` itself on a system srt doesn't run on
+ * @example
+ * sandboxKindName("win32"); // "Sandbox for Windows"
+ */
+export function sandboxKindName(system: string): string {
+  const kind = sandboxKindOf(system);
+  return kind === undefined ? system : sandboxKindNames[kind];
+}
 
 /**
  * This computer: the profile from `HALONIC_HOME` or the system's data
@@ -79,7 +99,7 @@ export function nodeDoctorMachine(): DoctorMachine {
     profile,
     trustStore: new FileTrustStore(trustFolder(profile)),
     sandbox: new SrtSandbox(undefined, undefined, privateJournalFolder(profile)),
-    sandboxKind: sandboxKinds[system] ?? system,
+    sandboxKind: sandboxKindName(system),
     probe: new NodeResourceProbe(),
     harnesses: nodeHarnessPrograms(),
     http: engineHttp(),

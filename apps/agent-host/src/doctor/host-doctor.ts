@@ -12,6 +12,7 @@ import {
   doctorService,
   type ReadWorkspace,
   readDoctorWorkspace,
+  type SandboxKind,
   studioWatchedFileLimit,
   windowsDriveOf,
 } from "@halonicjs/adapter-doctor-node";
@@ -30,8 +31,17 @@ import { readOnlyTrustStore } from "./read-only-trust-store.ts";
 /** The lines the host answers, in the order `halonic doctor` prints them. */
 const answeredLines = ["workspace", "models", "sandbox", "harnesses", "network", "disk"] as const;
 
-/** One line of the answer: the line's facts, as the doctor service found them, and the actions it offers. */
-export type HostDoctorLine = AnyDoctorLine & { readonly actions: DoctorAction[] };
+/**
+ * One line of the answer: the line's facts, as the doctor service found
+ * them, and the actions it offers. A ready Sandbox line also names the kind
+ * of sandbox the host runs (requirement `agent-host.doctor-sandbox-kind`):
+ * on Windows the host runs either on Windows itself or inside Halonic's WSL
+ * distro, and only the host knows which.
+ */
+export type HostDoctorLine = AnyDoctorLine & {
+  readonly actions: DoctorAction[];
+  readonly sandboxKind?: SandboxKind;
+};
 
 /** The host's answer: its lines and their counts. */
 export interface HostDoctorAnswer {
@@ -49,6 +59,8 @@ export interface HostDoctorParts {
   readonly commandSearch: CommandSearch;
   /** Whether the host runs inside WSL, where a workspace on a Windows drive gets a warning. */
   readonly onWsl: boolean;
+  /** The kind of sandbox the host runs, for a ready Sandbox line; `undefined` on a system srt doesn't run on. */
+  readonly sandboxKind: SandboxKind | undefined;
 }
 
 /** Why the host gave no answer. */
@@ -112,7 +124,7 @@ export class HostDoctor {
     const doctor = await doctorService(machine, noKeychain, workspace, {
       appVersion: this.#parts.appVersion,
     });
-    return answerOf(await doctor.check(workspace?.workspace ?? null));
+    return answerOf(await doctor.check(workspace?.workspace ?? null), this.#parts.sandboxKind);
   }
 
   /** The workspace in `root`, or `undefined` when it has no `workspace.yaml`. */
@@ -152,10 +164,17 @@ export class HostDoctor {
 }
 
 /** The answered lines of `report`, each with its actions, and their counts. */
-function answerOf(report: DoctorReport): HostDoctorAnswer {
+function answerOf(report: DoctorReport, sandboxKind: SandboxKind | undefined): HostDoctorAnswer {
   const checks = answeredLines.flatMap((check): HostDoctorLine[] => {
     const line = report[check];
-    return line === undefined ? [] : [{ ...line, actions: doctorLineActions(line) }];
+    return line === undefined ? [] : [answeredLine(line, sandboxKind)];
   });
   return { checks, summary: doctorSummary(checks) };
+}
+
+/** `line` with its actions, and the sandbox's kind when it is a ready Sandbox line and the kind is known. */
+function answeredLine(line: AnyDoctorLine, sandboxKind: SandboxKind | undefined): HostDoctorLine {
+  const answered = { ...line, actions: doctorLineActions(line) };
+  const ready = line.check === "sandbox" && line.status === "ok";
+  return ready && sandboxKind !== undefined ? { ...answered, sandboxKind } : answered;
 }

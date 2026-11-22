@@ -1,4 +1,5 @@
-import { networkProblemOf, nodeCommandSearch } from "@halonicjs/adapter-doctor-node";
+import { platform } from "node:os";
+import { networkProblemOf, nodeCommandSearch, sandboxKindOf } from "@halonicjs/adapter-doctor-node";
 import { connectorHostClass } from "@halonicjs/adapter-http-kit";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { NodeResourceProbe } from "@halonicjs/adapter-system-node";
@@ -55,6 +56,7 @@ export function hostDoctorRoutes(places: HostDoctorPlaces): HostRoute[] {
     appVersion: places.version,
     commandSearch: nodeCommandSearch(),
     onWsl: places.onWsl,
+    sandboxKind: sandboxKindOf(platform()),
   });
   return [doctorRoute(doctor, places.workspaceRoots, places.log)];
 }
