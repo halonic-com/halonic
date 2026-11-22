@@ -127,7 +127,7 @@ verifies("cli.commands.models.allow-address", () => {
         "a key that isn't stored",
         ["missing-key", gateway],
         exitCode.notFound,
-        'There\'s no key named "missing-key". Save it with halonic secret set missing-key or on the Models page first.',
+        'There\'s no key named "missing-key". Save it with halonic secret set missing-key first.',
       ],
       [
         "an address that isn't one",

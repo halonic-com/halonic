@@ -171,6 +171,11 @@ verifies("workspace.routine-input", () => {
     expect(issues.map((issue) => issue.message)).toEqual([
       'Routine "nightly": workflow "report" doesn\'t read input.region. Its steps read input.day and input.team: rename the key to one of those, or remove it.',
     ]);
+    expect(
+      (await unread("gets: [input.day]", "region: north")).map((issue) => issue.message),
+    ).toEqual([
+      'Routine "nightly": workflow "report" doesn\'t read input.region. Its steps read input.day: rename the key to that, or remove it.',
+    ]);
   });
 
   it("counts a field read in a prompt as read", async () => {

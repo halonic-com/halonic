@@ -28,7 +28,7 @@ export const modelsMessages = defineMessages("models", {
 
   /** `keyWord` is the key as one shell word, so the command can be copied and run. */
   noKey: (key: string, keyWord: string) =>
-    phrase`There's no key named "${key}". Save it with halonic secret set ${keyWord} or on the Models page first.`,
+    phrase`There's no key named "${key}". Save it with halonic secret set ${keyWord} first.`,
   notAnAddress: (typed: string) =>
     phrase`"${typed}" isn't an address. Use one that starts with https:// or http://, for example https://gateway.example.com.`,
   addressHasUserInfo: () => phrase`Remove the user name and password from the address.`,

@@ -25,12 +25,13 @@ export const workflowMessages = defineMessages("workflow", {
    * escaped.
    * With none, it gives the next step: a recipe to start from (HAL-14776).
    * "Workflows in acme: support-reply, weekly-report.", or "acme has no
-   * workflows yet. Add one from a recipe: https://docs.halonic.dev/examples/"
+   * workflows yet. Add one from a recipe: https://docs.halonic.dev/examples/approval-step",
+   * the recipe `init`'s last line names, so an empty workspace has one first step (HAL-15262).
    */
   seeWorkflows: (workspace: string, ids: readonly string[]) => {
     const shown = [...new Set(ids)].map(printable);
     return shown.length === 0
-      ? phrase`${workspace} has no workflows yet. Add one from a recipe: ${docsBase}/examples/`
+      ? phrase`${workspace} has no workflows yet. Add one from a recipe: ${docsBase}/examples/approval-step`
       : phrase`Workflows in ${workspace}: ${shown.join(", ")}.`;
   },
   /**

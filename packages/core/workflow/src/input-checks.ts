@@ -123,7 +123,7 @@ export function inputIssues(workflow: Workflow, options: ValidateOptions): Workf
   }
   for (const read of reads.filter(({ field }) => !known.includes(field))) {
     const templated = read.written.startsWith("{{");
-    const message = `"${read.state}" ${templated ? "uses" : "gets"} ${read.written}, but the workflow's input has no field ${read.field}. ${fieldHint(read.field, known)}`;
+    const message = `"${read.state}" ${templated ? "uses" : "gets"} ${read.written}, but the workflow's input has no field ${read.field}. ${fieldHint(read.field, known, workflow.id)}`;
     const code = templated ? "unknown-template-name" : "unknown-gets";
     issues.push(issue("error", code, message, read.path, read.state));
   }
@@ -140,17 +140,17 @@ function unreadStartField(start: string, readFields: readonly string[]): Workflo
 }
 
 /**
- * "Did you mean input.mail?" for a close name, or else the fields there are.
- * The fields may come from tests, routines or `start.field`, so the hint
- * names none of them.
+ * "Did you mean input.mail?" for a close name, or else the fields there are
+ * and the test file to add the field to: the workspace counts its tests'
+ * input, and an input file given to a run isn't checked (HAL-15262).
  */
-function fieldHint(field: string, known: readonly string[]): string {
+function fieldHint(field: string, known: readonly string[], workflow: string): string {
   const near = nearMatch(field, known);
   if (near !== undefined) {
     return `Did you mean input.${near}?`;
   }
   const has = known.length === 1 ? `Its only field is ${known[0]}` : `It has only ${listed(known)}`;
-  return `${has}: read ${oneOf(known, "that", "one of those")}, or add ${field} to the input you start the workflow with.`;
+  return `${has}: read ${oneOf(known, "that", "one of those")}, or add ${field} to a test case's input in ${workflow}.test.yaml.`;
 }
 
 /** `one` for a single value, `many` for more. */
