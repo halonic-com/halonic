@@ -10,6 +10,12 @@
 //! for the host that runs. When the profile then can't be written, the
 //! distro's copy is put back to the choice before. A save that moves Studio to the other host stops
 //! the one running; the next call starts the one the choice asks for.
+//!
+//! Before it saves `none`, the shell asks the person itself, in a native
+//! dialog (HAL-16342): the page asks too, but a page could send the choice
+//! without asking, and `none` is the only choice that drops the fence. When
+//! the person doesn't say yes, nothing is saved and the page gets the
+//! host's choice as it was.
 
 use std::path::Path;
 
@@ -23,6 +29,7 @@ use tauri::{AppHandle, Manager, Runtime};
 use super::choice::{HostKind, host_for, sandbox_folder};
 use super::start::{chosen_host, copy_into_distro, distro_host_command_for_real_wsl};
 use super::{AgentHostState, HostAnswer, HostRefusal, named_route, poisoned, read_answer, send};
+use crate::native_dialogs::ask_to_continue_without_sandbox;
 use crate::profile::cli_profile;
 
 /// The host's route that chooses again after the choice changed.
@@ -37,23 +44,59 @@ pub async fn agent_host_sandbox_choice_save<R: Runtime>(
 ) -> Result<HostAnswer, HostRefusal> {
     let route = named_route(SETTINGS_CHANGED, Answer::Json)?;
     let saving = app.clone();
-    tauri::async_runtime::spawn_blocking(move || save_choice(&saving, backend.as_deref()))
-        .await
-        .map_err(|error| HostRefusal::new("io", error))??;
+    tauri::async_runtime::spawn_blocking(move || {
+        let version = saving.package_info().version.to_string();
+        let asked = asked_choice(backend.as_deref(), &now_iso(), &version, || {
+            ask_to_continue_without_sandbox(&saving)
+        })?;
+        match asked {
+            Asked::Save(setting) => save_choice(&saving, setting),
+            Asked::Declined => Ok(()),
+        }
+    })
+    .await
+    .map_err(|error| HostRefusal::new("io", error))??;
     let response = send(&app, route, None).await?;
     read_answer(response).await
 }
 
-/// Saves the choice, holding the host so no host starts on half of it.
-fn save_choice<R: Runtime>(app: &AppHandle<R>, backend: Option<&str>) -> Result<(), HostRefusal> {
-    // An unknown backend is refused before anything is read or written.
+/// What a save does once the person was asked, where they had to be.
+#[derive(Debug)]
+enum Asked {
+    /// Save this choice, or remove the choice when `None`.
+    Save(Option<SandboxSetting>),
+    /// The person didn't say yes to `none`: nothing is saved.
+    Declined,
+}
+
+/// The choice the page sent, after `ask` when it is `none`. An unknown
+/// backend is refused before anyone is asked or anything is read or
+/// written. The question waits outside the host's lock, so the host keeps
+/// answering while the dialog is open.
+fn asked_choice(
+    backend: Option<&str>,
+    chosen_at: &str,
+    version: &str,
+    ask: impl FnOnce() -> bool,
+) -> Result<Asked, HostRefusal> {
     let setting = backend
-        .map(|backend| {
-            let version = app.package_info().version.to_string();
-            SandboxSetting::new(backend, &now_iso(), &version)
-        })
+        .map(|backend| SandboxSetting::new(backend, chosen_at, version))
         .transpose()
         .map_err(settings_refusal)?;
+    let drops_the_fence = setting
+        .as_ref()
+        .is_some_and(|setting| setting.backend() == "none");
+    if drops_the_fence && !ask() {
+        return Ok(Asked::Declined);
+    }
+    Ok(Asked::Save(setting))
+}
+
+/// Saves the choice, holding the host so no host starts on half of it.
+fn save_choice<R: Runtime>(
+    app: &AppHandle<R>,
+    setting: Option<SandboxSetting>,
+) -> Result<(), HostRefusal> {
     let state = app.state::<AgentHostState>();
     let mut host = state.host.lock().map_err(|_| poisoned())?;
     let profile = cli_profile(app).map_err(HostRefusal::from)?;
@@ -131,10 +174,63 @@ fn settings_refusal(error: HostSettingsError) -> HostRefusal {
 /// Requirement `sandbox-choice-save`: which saves stop the running host.
 /// The refusal of an unknown backend is in `served_page_tests.rs`.
 /// Requirement `sandbox-choice-save-put-back`: the distro's copy is put back
-/// when the profile can't be saved.
+/// when the profile can't be saved. Requirement `sandbox-choice-save-asks`:
+/// `none` is saved only after the person's yes in the shell's own dialog.
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const CHOSEN_AT: &str = "2026-11-22T18:00:00.000Z";
+
+    /// `asked_choice` for `backend`, answering the question `yes`, and
+    /// whether it was asked.
+    fn asked(backend: Option<&str>, yes: bool) -> (Result<Asked, HostRefusal>, bool) {
+        let mut was_asked = false;
+        let answer = asked_choice(backend, CHOSEN_AT, "0.1.2", || {
+            was_asked = true;
+            yes
+        });
+        (answer, was_asked)
+    }
+
+    #[test]
+    fn no_sandbox_is_not_saved_without_the_persons_yes() {
+        let (answer, was_asked) = asked(Some("none"), false);
+        assert!(was_asked);
+        assert!(matches!(answer, Ok(Asked::Declined)));
+    }
+
+    #[test]
+    fn no_sandbox_is_saved_after_the_persons_yes() {
+        let (answer, was_asked) = asked(Some("none"), true);
+        assert!(was_asked);
+        let Ok(Asked::Save(Some(setting))) = answer else {
+            panic!("the choice is saved: {answer:?}");
+        };
+        assert_eq!(setting.backend(), "none");
+    }
+
+    #[test]
+    fn a_sandbox_or_no_choice_is_saved_without_asking() {
+        for backend in ["srt", "srt-wsl", "mxc", "docker-sbx", "cloud"] {
+            let (answer, was_asked) = asked(Some(backend), false);
+            assert!(!was_asked, "{backend} isn't asked");
+            let Ok(Asked::Save(Some(setting))) = answer else {
+                panic!("{backend} is saved: {answer:?}");
+            };
+            assert_eq!(setting.backend(), backend);
+        }
+        let (answer, was_asked) = asked(None, false);
+        assert!(!was_asked);
+        assert!(matches!(answer, Ok(Asked::Save(None))));
+    }
+
+    #[test]
+    fn an_unknown_backend_is_refused_before_anyone_is_asked() {
+        let (answer, was_asked) = asked(Some("docker"), true);
+        assert!(!was_asked);
+        assert_eq!(answer.expect_err("refused").kind, "invalid_choice");
+    }
 
     #[test]
     fn the_host_stops_only_when_the_choice_moves_it() {
