@@ -14,13 +14,6 @@ import { suggestedCommand } from "./suggested-command.ts";
 import { trustMessages } from "./trust.ts";
 
 /**
- * The sentences of `halonic routines` and `halonic routines watch` (HAL-4844). cli-output has no section
- * for it yet, so these are team wording built on the `halonic runs` list, as
- * HAL-2282 allows: the same columns, times and status words. The trigger's
- * own words come from `describeTrigger` in `@halonicjs/routines`, as the
- * Studio writes them.
- */
-/**
  * The fix for a routine whose agent is in a harness: `watch` has no
  * `--harness` to move it, as `run` does, so the agent or the routine changes
  * (HAL-11908), in `validate`'s words for the built-in loop (HAL-15396).
@@ -29,6 +22,13 @@ function harnessFix() {
   return phrase`Set the agent to Halonic's own loop, or turn the routine off.`;
 }
 
+/**
+ * The sentences of `halonic routines` and `halonic routines watch` (HAL-4844). cli-output has no section
+ * for it yet, so these are team wording built on the `halonic runs` list, as
+ * HAL-2282 allows: the same columns, times and status words. The trigger's
+ * own words come from `describeTrigger` in `@halonicjs/routines`, as the
+ * Studio writes them.
+ */
 export const routinesMessages = defineMessages("routines", {
   summary: () => phrase`List the workspace's routines, or start them on time`,
   /** `list`'s line in `halonic routines --help`: the same list as `halonic routines` (HAL-15082). */
