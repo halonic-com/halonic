@@ -5,7 +5,7 @@ use halonic_agent_host::WslError;
 use serde_json::json;
 
 use super::super::progress::{FailureCause, StartFailure};
-use super::{distro_host_command_for, runtime_missing, sweep_roots, wsl_failure};
+use super::{runtime_missing, sweep_roots, wsl_failure};
 
 #[test]
 fn start_status_keeps_the_exit_code_of_a_wsl_exe_that_failed() {
@@ -82,6 +82,8 @@ fn agent_host_commands_sweep_opened_folders_without_the_long_path_prefix() {
 )]
 fn start_status_says_wsl_failed_when_wsl_exe_does_not_list_in_time() {
     use std::time::{Duration, Instant};
+
+    use super::distro_host_command_for;
 
     let wsl = std::env::temp_dir().join(format!("halonic-hung-wsl-{}", std::process::id()));
     // A child shell writes the stand-in, so this process never holds it
