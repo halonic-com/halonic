@@ -7,10 +7,12 @@ import {
   clockAt,
   countingBytes,
   makeTestKey,
+  receiver,
   signedAs,
   signingTime,
   usageRequest,
 } from "./signed-request.test-helper.ts";
+import { verifyRequest } from "./verify.ts";
 
 const encoder = new TextEncoder();
 
@@ -116,5 +118,15 @@ verifies("signed-request.signed-message", () => {
       randomBytes: () => new Uint8Array(15),
     };
     await expect(signRequest(usageRequest(), context)).rejects.toThrow("16 random bytes");
+  });
+
+  it("carries an organisation's customer scope through signing and verifying", async () => {
+    const key = await makeTestKey("k1");
+    const request = await signedAs(usageRequest({ endUser: "o/org_1" }), key);
+    const result = await verifyRequest(
+      request,
+      receiver({ k1: { publicKey: key.publicKey, product: "prd_a" } }),
+    );
+    expect(result.ok && result.value.endUser).toBe("o/org_1");
   });
 });

@@ -104,6 +104,7 @@ export const headerPatterns = {
   timestamp: /^[0-9]{1,12}$/,
   nonce: /^[A-Za-z0-9_-]{22}$/,
   signature: /^[A-Za-z0-9_-]{86}$/,
-  endUser: /^[A-Za-z0-9_.:-]{1,128}$/,
+  // A customer may be a scope such as `o/<orgId>`, hence the `/`.
+  endUser: /^[A-Za-z0-9_.:/-]{1,128}$/,
   commandId: /^[A-Za-z0-9_.:-]{1,128}$/,
 } as const;

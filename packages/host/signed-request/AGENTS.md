@@ -23,4 +23,5 @@ Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
 ## Local rules
 
 - A change to the signed message (`signedMessage`) changes the format: both sides must ship it together, so it needs a new format label, never an edit to `halonic-signed-request-v1`.
+- Who may import it: hosts, apps and targets (for example the Cloudflare target's runtime). Adapters and core may not import a host package, so an adapter gets the verified result passed in by its target instead.
 - Halonic Cloud (`halonic-com/cloud`) runs this package from a pinned commit; keep it free of halonic dependencies other than `@halonicjs/std`.
