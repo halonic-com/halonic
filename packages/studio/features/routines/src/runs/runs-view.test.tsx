@@ -10,7 +10,11 @@ import { RoutineScreen } from "../page/routine-page.tsx";
 import { buttonNamed, memoryHost, show, unmount } from "../test-support.tsx";
 import { RunsView } from "./runs-view.tsx";
 
-beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
+// Midday, so a run that started an hour ago is still today, whatever time the tests run.
+beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  vi.setSystemTime(new Date(2026, 10, 3, 12, 0));
+});
 afterEach(() => {
   unmount();
   vi.useRealTimers();
@@ -155,7 +159,6 @@ verifies("routines.runs.view", () => {
 
   it("shows a skipped range as a quiet row that is not a button", async () => {
     const at = new Date(2026, 10, 3, 8, 0).toISOString();
-    vi.setSystemTime(new Date(2026, 10, 3, 12, 0));
     const skips = [{ reason: "busy" as const, from: at, to: at, count: 1 }];
     const page = await openRuns(hostWith(async () => ({ runs: [], skips })));
 
@@ -165,7 +168,6 @@ verifies("routines.runs.view", () => {
   });
 
   it("shows a refused start as a quiet row that a screen reader hears as Couldn't start", async () => {
-    vi.setSystemTime(new Date(2026, 10, 3, 12, 0));
     const at = (minute: number) => new Date(2026, 10, 3, 8, minute).toISOString();
     const noField = "The input has no field mail, which the step Read the email reads.";
     const skips = [
@@ -189,7 +191,6 @@ verifies("routines.runs.view", () => {
   });
 
   it("breaks a long word in a refused start's row rather than widen the panel", async () => {
-    vi.setSystemTime(new Date(2026, 10, 3, 12, 0));
     const at = new Date(2026, 10, 3, 8, 1).toISOString();
     const longName = "attachments_from_the_customer_support_mailbox_forwarding_rule";
     const sentence = `The input has no field ${longName}.`;
@@ -204,7 +205,6 @@ verifies("routines.runs.view", () => {
   });
 
   it("says a range of skipped times within one day with the day once", async () => {
-    vi.setSystemTime(new Date(2026, 10, 3, 12, 0));
     const skips = [
       {
         reason: "target-never-live" as const,
@@ -218,7 +218,6 @@ verifies("routines.runs.view", () => {
   });
 
   it("shows queued times as one quiet row under Now that a screen reader hears as Queued", async () => {
-    vi.setSystemTime(new Date(2026, 10, 3, 12, 0));
     const queued = {
       from: new Date(2026, 10, 2, 14, 0).toISOString(),
       to: new Date(2026, 10, 3, 8, 0).toISOString(),
