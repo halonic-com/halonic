@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-15336 (RT2 and RT3 of the Routines UX check, HAL-15304); UX check S5 of HAL-12390
 
-For one routine, the desktop app shall tell the Routines feature whether its input lacks a field its workflow's first step reads (`missing-routine-input`, as `halonic validate` reports it), since the engine refuses such a start. When Run now's start fails, it shall pass on the engine's refusal of the input with the engine's own sentence, keep the sentence of any other refusal, `unavailable` ones included, and say the engine isn't answering (`EngineNotAnswering`) only when the engine can't be reached.
+The desktop app shall tell the Routines feature, for each routine, whether the routine's input lacks a field its workflow's first step reads (`missing-routine-input`, as `halonic validate` reports it), since the engine refuses such a start. When Run now's start fails, it shall pass on the engine's refusal of the input with the engine's own sentence, keep the sentence of any other refusal, `unavailable` ones included, and say the engine isn't answering (`EngineNotAnswering`) only when the engine can't be reached.
 
 ## Examples
 
