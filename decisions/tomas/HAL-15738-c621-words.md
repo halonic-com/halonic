@@ -33,7 +33,9 @@ workspace.yaml". The plugin line keeps HAL-15806's meaning (#4893): "add the plu
 the `privacy.localOnly: false` way out, now in C621's shape (Liam, on HAL-15867). The line for a
 sheet that lists outside hosts is unchanged. The active requirement
 `workspace.local-only-sheet-hosts` gets the new words in its text and two examples; its tests check
-them.
+them. HAL-15890's line for a plugin checked without any sheets is unchanged. The active requirement
+`cli.commands.validate.integration-sheet` (HAL-15751) quotes the integration line, so it and its
+test take the new words too.
 
 **A failed share after Review and make live.** When Create version makes a routine or agent live
 and "Share with your team right away" fails, the "Couldn't share" toast now ends "Your version is
@@ -89,3 +91,4 @@ YAML list, so "a list of fields" told that reader their list was right.
 - runs.run-view.failed-child-run
 - cli.commands.runs.show
 - cli.commands.routines.list-live-version
+- cli.commands.validate.integration-sheet
