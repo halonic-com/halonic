@@ -1,4 +1,4 @@
-import { LetterTile } from "@halonicjs/studio-kit";
+import { HandIcon, LetterTile } from "@halonicjs/studio-kit";
 import type { CloseStack } from "@halonicjs/studio-shell";
 import { type ReactNode, useContext, useId, useLayoutEffect, useRef, useState } from "react";
 import {
@@ -281,8 +281,10 @@ function toolCards({ settings, tools, openTool }: AgentMapProps): readonly React
           <Kind>{words.kinds[list]}</Kind>
           <span>{name}</span>
           {asksFirst && (
-            <span className="text-caption font-medium text-warning">
-              <span aria-hidden="true">✋ </span>
+            <span className="inline-flex items-center gap-1 text-caption font-medium text-warning">
+              <span aria-hidden="true" className="inline-grid size-icon-sm shrink-0 *:size-full">
+                <HandIcon />
+              </span>
               {asksFirst}
             </span>
           )}
