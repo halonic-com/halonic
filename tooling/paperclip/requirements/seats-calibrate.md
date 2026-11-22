@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16026; the seat usage forecast on HAL-15997 (document `seat-forecast`, sections 4.2 and 5), part of the `seats` plugin (HAL-16008)
 
-When the `seats.calibrate` job runs, the seats forecast shall fit the points per million input, cached and output tokens for each plan, model and window (5-hour session and week) from the 10-minute steps of the last 7 days, skipping any step that holds a reset, an agent moving on or off the seat, a gap of more than 20 minutes or tokens from two models; it shall store each fit with its time, number of steps, middle error and token mix, give no fit for fewer than 24 usable steps, and flag a fit whose cost on its own token mix moved more than 25% against the oldest fit of the week before.
+When the `seats.calibrate` job runs, the seats forecast shall fit the points per million input, cached and output tokens for each plan, model and window (5-hour session and week) from the 10-minute steps of the last 7 days, skipping any step that holds a reset, an agent moving on or off the seat, a gap of more than twice the plugin's read interval or tokens from two models; it shall store each fit with its time, number of steps, middle error and token mix, give no fit for fewer than 24 usable steps, and flag a fit whose cost on its own token mix moved more than 25% against the oldest fit of the week before.
 
 ## Examples
 
@@ -14,6 +14,12 @@ When the `seats.calibrate` job runs, the seats forecast shall fit the points per
 - Given steps with a drop in the percentage, an agent placed on the seat, a 40-minute gap or two models,
   when the steps are built,
   then those steps are left out.
+- Given a seat read every 15 minutes, with readings 30 minutes apart,
+  when the steps are built,
+  then those steps are kept.
+- Given a seat with no plan,
+  when the steps are built,
+  then its steps are under the plan `unknown`.
 - Given 2 days of whole-percent readings of a seat that really uses 0.4 points a step,
   when it is calibrated,
   then the fitted cost of one step's tokens is between 0.3 and 0.5 points.

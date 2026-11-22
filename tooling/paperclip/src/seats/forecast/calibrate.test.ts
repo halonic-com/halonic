@@ -8,16 +8,16 @@ import {
   calibrationSteps,
   pointsFor,
 } from "./calibrate.ts";
-import { type AgentUsage, type SeatReading, stepMs } from "./types.ts";
+import { type AgentUsage, bucketMs, type WindowReading } from "./types.ts";
 
 const now = "2026-11-22T00:00:00.000Z";
 const start = Date.parse(now) - 2 * 86_400_000;
-const at = (step: number) => new Date(start + step * stepMs).toISOString();
+const at = (step: number) => new Date(start + step * bucketMs).toISOString();
 const weekReset = "2026-11-25T09:00:00.000Z";
 
 /** Made-up seat `seat-a` with `agent-1` on it: each step uses 2 M input, 20 M cached and 0.5 M output tokens. */
 function history(steps: number, pointsPerStep: (step: number) => number): CalibrationInput {
-  const readings: SeatReading[] = [];
+  const readings: WindowReading[] = [];
   const usage: AgentUsage[] = [];
   let used = 0;
   for (let step = 0; step <= steps; step += 1) {
@@ -36,15 +36,28 @@ function history(steps: number, pointsPerStep: (step: number) => number): Calibr
         model: "opus",
         bucketStart: at(step),
         tokens,
+        runs: 1,
       });
       used += pointsPerStep(step);
     }
   }
   return {
     now,
-    seats: [{ id: "seat-a", plan: "max-20x" }],
+    seats: [
+      {
+        id: "seat-a",
+        role: "pool",
+        plan: "max-20x",
+        resetGroup: undefined,
+        manualResetUsed: false,
+        status: "active",
+      },
+    ],
     readings,
-    placements: [{ agentId: "agent-1", seatId: "seat-a", from: at(-10), to: undefined }],
+    readIntervalMs: bucketMs,
+    placements: [
+      { agentId: "agent-1", seatId: "seat-a", from: at(-10), to: undefined, source: "observed" },
+    ],
     usage,
   };
 }
@@ -68,16 +81,39 @@ verifies("paperclip.seats-calibrate", () => {
       if (step === 2) {
         return { ...r, usedPercent: 0 };
       }
-      return step === 6 ? { ...r, at: new Date(Date.parse(r.at) + 3 * stepMs).toISOString() } : r;
+      return step === 6 ? { ...r, at: new Date(Date.parse(r.at) + 3 * bucketMs).toISOString() } : r;
     });
     const usage = [...base.usage, { ...base.usage[4], model: "sonnet" } as AgentUsage];
     const placements = [
       ...base.placements,
-      { agentId: "agent-2", seatId: "seat-a", from: at(0.5), to: undefined },
+      {
+        agentId: "agent-2",
+        seatId: "seat-a",
+        from: at(0.5),
+        to: undefined,
+        source: "board" as const,
+      },
     ];
     const steps = calibrationSteps({ ...base, readings, usage, placements });
     // Step 0 holds the move, 1 the drop to 0, 4 two models, 5 a 40-minute gap; 2 and 3 are left.
     expect(steps).toHaveLength(2);
+  });
+
+  test("a gap counts against the read interval, not the bucket", () => {
+    const base = history(3, () => 1);
+    // Reads every 15 minutes: a 30-minute step is one late read, not a failed one.
+    const readings = base.readings.map((r, step) => ({ ...r, at: at(step * 3) }));
+    const usage = base.usage.flatMap((u, step) =>
+      [0, 1, 2].map((offset) => ({ ...u, bucketStart: at(step * 3 + offset) })),
+    );
+    const steps = calibrationSteps({ ...base, readings, usage, readIntervalMs: 15 * 60_000 });
+    expect(steps).toHaveLength(3);
+  });
+
+  test("a seat with no plan is calibrated under `unknown`", () => {
+    const base = history(1, () => 1);
+    const seats = base.seats.map((seat) => ({ ...seat, plan: undefined }));
+    expect(calibrationSteps({ ...base, seats })[0]?.plan).toBe("unknown");
   });
 
   test("readings older than 7 days are left out", () => {

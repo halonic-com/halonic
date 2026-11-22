@@ -10,22 +10,23 @@ import { robustFit } from "./robust-fit.ts";
 import {
   type AgentUsage,
   addTokens,
+  bucketMs,
   dayMs,
-  type LimitWindow,
   noTokens,
   type Placement,
+  planOf,
   type Seat,
-  type SeatReading,
-  stepMs,
   type TokenCounts,
   totalTokens,
+  type WindowKey,
+  type WindowReading,
 } from "./types.ts";
 
 /** What a fit is for: one plan, one model, one window. */
 export interface CalibrationKey {
   readonly plan: string;
   readonly model: string;
-  readonly window: LimitWindow;
+  readonly window: WindowKey;
 }
 
 export interface Calibration extends CalibrationKey {
@@ -51,7 +52,9 @@ export interface CalibrationStep extends CalibrationKey {
 export interface CalibrationInput {
   readonly now: string;
   readonly seats: readonly Seat[];
-  readonly readings: readonly SeatReading[];
+  readonly readings: readonly WindowReading[];
+  /** How often the plugin reads a seat; a step may be up to twice this long. */
+  readonly readIntervalMs: number;
   readonly placements: readonly Placement[];
   readonly usage: readonly AgentUsage[];
 }
@@ -61,8 +64,6 @@ export const calibrationDays = 7;
 export const fewestSteps = 24;
 /** A fit that moved this much within a week is flagged: a plan or price may have changed. */
 export const shiftLimit = 0.25;
-/** Two readings further apart than this aren't one step (a read failed in between). */
-const longestStepMs = 2 * stepMs;
 /** Resets this close together are the same window: `/usage` prints them to the minute. */
 const sameResetMs = 3_600_000;
 const million = 1_000_000;
@@ -86,7 +87,8 @@ export function ratePerMillion(calibration: Calibration, mix: TokenCounts): numb
   return mix.input * rate.input + mix.cached * rate.cached + mix.output * rate.output;
 }
 
-function resetBetween(earlier: SeatReading, later: SeatReading): boolean {
+// The same rule as the plugin's projection (#5002); import it from there once it is exported.
+function resetBetween(earlier: WindowReading, later: WindowReading): boolean {
   if (later.usedPercent < earlier.usedPercent) {
     return true;
   }
@@ -115,7 +117,7 @@ function usageBetween(
   toMs: number,
 ): AgentUsage[] {
   return usage.filter((u) => {
-    const middle = Date.parse(u.bucketStart) + stepMs / 2;
+    const middle = Date.parse(u.bucketStart) + bucketMs / 2;
     return u.seatId === seatId && middle > fromMs && middle <= toMs;
   });
 }
@@ -128,12 +130,13 @@ function usageBetween(
 function stepBetween(
   input: CalibrationInput,
   seat: Seat,
-  earlier: SeatReading,
-  later: SeatReading,
+  earlier: WindowReading,
+  later: WindowReading,
 ): CalibrationStep | undefined {
   const fromMs = Date.parse(earlier.at);
   const toMs = Date.parse(later.at);
-  if (toMs - fromMs > longestStepMs || resetBetween(earlier, later)) {
+  // Longer than two read intervals means a read failed in between.
+  if (toMs - fromMs > 2 * input.readIntervalMs || resetBetween(earlier, later)) {
     return undefined;
   }
   if (movedBetween(input.placements, seat.id, fromMs, toMs)) {
@@ -146,7 +149,7 @@ function stepBetween(
     return undefined;
   }
   return {
-    plan: seat.plan,
+    plan: planOf(seat),
     model,
     window: earlier.window,
     tokens: used.reduce((sum, u) => addTokens(sum, u.tokens), noTokens),
