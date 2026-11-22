@@ -17,26 +17,34 @@ interface CheckedProvider {
  * Any answer with a success status means it is answering; a refusal, an error status or no answer
  * in five seconds means it is not.
  *
+ * Until the person trusts the workspace, the address comes from a file nobody has reviewed, so Check
+ * asks only an address on this computer (`localhost` or a loopback address), and leaves out the base
+ * URL's query; for any other address there is nothing to check.
+ *
  * @example
- * services.provide(ProviderCheckService, new WorkspaceProviderCheck(new ShellHttpClient(ipc)));
+ * services.provide(
+ *   ProviderCheckService,
+ *   new WorkspaceProviderCheck(new ShellHttpClient(ipc), () => trust.isTrusted()),
+ * );
  */
 export class WorkspaceProviderCheck implements ProviderCheck {
   readonly #http: HttpClient;
+  readonly #trusted: () => boolean;
 
-  constructor(http: HttpClient) {
+  constructor(http: HttpClient, trusted: () => boolean) {
     this.#http = http;
+    this.#trusted = trusted;
   }
 
   addressOf(provider: CheckedProvider): string | undefined {
-    const base = baseOf(provider);
-    return base === undefined ? undefined : new URL(base).host;
+    return this.#checked(provider)?.host;
   }
 
   async isAnswering(provider: CheckedProvider): Promise<boolean> {
-    const base = baseOf(provider);
+    const base = this.#checked(provider);
     if (base === undefined) return false;
     try {
-      const response = await this.#http.fetch(`${base.replace(/\/+$/, "")}/models`, {
+      const response = await this.#http.fetch(`${base.href.replace(/\/+$/, "")}/models`, {
         signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
       });
       return response.ok;
@@ -44,10 +52,32 @@ export class WorkspaceProviderCheck implements ProviderCheck {
       return false;
     }
   }
+
+  /** The address Check asks, or `undefined` when there is none it may ask. */
+  #checked(provider: CheckedProvider): URL | undefined {
+    const base = baseOf(provider);
+    if (base === undefined || this.#trusted()) return base;
+    if (!isOnThisComputer(base)) return undefined;
+    base.search = "";
+    base.hash = "";
+    return base;
+  }
 }
 
 /** The address the provider calls, when it is a URL we can read. */
-function baseOf({ type, baseUrl }: CheckedProvider): string | undefined {
+function baseOf({ type, baseUrl }: CheckedProvider): URL | undefined {
   const base = baseUrl ?? defaultBaseUrl(type);
-  return base !== undefined && URL.canParse(base) ? base : undefined;
+  if (base === undefined) return undefined;
+  try {
+    return new URL(base);
+  } catch {
+    return undefined;
+  }
+}
+
+/** Whether a web address is on this computer: `localhost`, `127.x.x.x` or `[::1]`. */
+function isOnThisComputer(url: URL): boolean {
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  const host = url.hostname.toLowerCase();
+  return host === "localhost" || host === "[::1]" || /^127(\.\d{1,3}){3}$/.test(host);
 }

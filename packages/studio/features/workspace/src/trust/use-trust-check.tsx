@@ -97,7 +97,16 @@ export function useTrustCheck(
           error={error}
           yesNotSaved={yesNotSaved}
           onNotNow={() => close("declined")}
-          onTrust={(allowUnfenced) => void trustIt(review.fingerprint, allowUnfenced)}
+          onTrust={(allowUnfenced) => {
+            // Trust saves only the check the person was shown. One that changed since is shown
+            // as the check now, and the next Trust saves it.
+            if (review.fingerprint !== opened) {
+              setOpened(review.fingerprint);
+              setError("Couldn't save trust: this workspace changed. Nothing was started.");
+              return;
+            }
+            void trustIt(review.fingerprint, allowUnfenced);
+          }}
           returnFocus={returnFocus}
         />
       ),
