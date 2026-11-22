@@ -103,7 +103,10 @@ verifies("cli.commands.plugin.add-update", () => {
     const { code, io } = await add([source, "--update"], terminalTyping("y"));
 
     expect(code).toBe(exitCode.ok);
-    expect(io.stdout).toEqual(["✓ Updated Weather 1.2.0. It's on."]);
+    expect(io.stdout).toEqual([
+      "! Files changed since the copy it replaces: changed backend/index.js.",
+      "✓ Updated Weather 1.2.0. It's on.",
+    ]);
     expect(await weather()).toEqual({ status: "trusted", settings: { units: "metric" } });
   });
 
@@ -115,7 +118,7 @@ verifies("cli.commands.plugin.add-update", () => {
 
     expect(code).toBe(exitCode.notTrusted);
     expect(io.stdout.join("\n")).toContain(
-      "Weather is updated but off. Nothing from it runs until you trust it: halonic trust --plugin weather",
+      "Weather is updated but off: it's changed since you trusted it. Nothing from it runs until you trust it: halonic trust --plugin weather",
     );
     expect(await weather()).toEqual({ status: "changed", settings: { units: "metric" } });
   });
@@ -128,7 +131,7 @@ verifies("cli.commands.plugin.add-update", () => {
 
     expect(code).toBe(exitCode.notTrusted);
     expect(io.stderr.join("\n")).toContain(
-      "Weather is updated but off, because there's no terminal to ask you to trust it.",
+      "Weather is updated but off: it's changed since you trusted it, and there's no terminal to ask you to trust it.",
     );
   });
 
@@ -179,7 +182,10 @@ verifies("cli.commands.plugin.add-update-source", () => {
       /^! Updating from a different source: ~.+sources.+weather → ~.+elsewhere.+weather\./u,
     );
     expect(first).toContain("Its settings, secrets and sign-ins carry over to this copy.");
-    expect(rest).toEqual(["✓ Updated Weather 1.2.0. It's on."]);
+    expect(rest).toEqual([
+      "! Files changed since the copy it replaces: changed backend/index.js.",
+      "✓ Updated Weather 1.2.0. It's on.",
+    ]);
     expect(await weather()).toEqual({ status: "trusted", settings: { units: "metric" } });
   });
 
@@ -190,5 +196,42 @@ verifies("cli.commands.plugin.add-update-source", () => {
     const { io } = await add([source, "--update"], terminalTyping("y"));
 
     expect(io.stdout.join("\n")).not.toContain("different source");
+  });
+});
+
+verifies("cli.commands.plugin.add-update-files", () => {
+  it("names the changed, new and removed files ahead of the check", async () => {
+    await addTrustedWithSetting();
+    await writeSource("export default { edited: true };\n");
+    await writeFile(join(source, "backend", "extra.js"), "export const extra = 1;\n");
+
+    const { code, io } = await add([source, "--update"], terminalTyping("y"));
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout[0]).toBe(
+      "! Files changed since the copy it replaces: changed backend/index.js; new backend/extra.js.",
+    );
+  });
+
+  it("names at most 10 files, then how many more", async () => {
+    await addTrustedWithSetting();
+    for (let index = 0; index < 12; index += 1) {
+      await writeFile(join(source, "backend", `part-${String(index).padStart(2, "0")}.js`), "1;\n");
+    }
+
+    const { io } = await add([source, "--update"], terminalTyping("y"));
+
+    expect(io.stdout[0]).toMatch(
+      /^! Files changed since the copy it replaces: new backend\/part-00\.js, /u,
+    );
+    expect(io.stdout[0]).toContain("backend/part-09.js; and 2 more.");
+  });
+
+  it("shows no files line when the files are the same", async () => {
+    await addTrustedWithSetting();
+
+    const { io } = await add([source, "--update"]);
+
+    expect(io.stdout.join("\n")).not.toContain("Files changed");
   });
 });

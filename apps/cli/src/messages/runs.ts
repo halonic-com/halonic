@@ -17,11 +17,12 @@ export type CancelledAt =
 
 /**
  * Why a run can't take an event, by its status (cli-output 3.4, revision 31):
- * how long ago it ended, written as "2 minutes ago", or the step it's running.
+ * how long ago it ended, written as "2 minutes ago", or the step it's running,
+ * or whose model call waits for Studio's "Allow this address?" (HAL-16319).
  */
 export type NotWaiting =
   | { readonly status: "finished" | "failed" | "stopped"; readonly ago: string }
-  | { readonly status: "running"; readonly step: string };
+  | { readonly status: "running" | "address"; readonly step: string };
 
 /**
  * How `runs show`'s heading ends, after "started 16:40": what happened and
@@ -96,8 +97,15 @@ export const runsMessages = defineMessages("runs", {
     steps.length === 0
       ? phrase`It needs changes you haven't accepted yet.`
       : phrase`It didn't run ${listInWords(steps)}: they need changes you haven't accepted yet.`,
-  /** The run isn't waiting (`conflict`): when it ended, or the step it's running. */
-  notWaiting: (why: NotWaiting) => phrase`it isn't waiting for you. ${notWaitingInWords(why)}`,
+  /**
+   * The run isn't waiting (`conflict`): when it ended, or the step it's running. A model call
+   * waiting for "Allow this address?" waits for an answer only Studio takes, so it says that
+   * instead of "it isn't waiting for you", as `runs` and `runs show` say it waits (C696 #2).
+   */
+  notWaiting: (why: NotWaiting) =>
+    why.status === "address"
+      ? phrase`it's waiting for your answer to "Allow this address?" in the step ${why.step}, and only Studio asks that.`
+      : phrase`it isn't waiting for you. ${notWaitingInWords(why)}`,
   notWaitingFix: (runId: string, dir?: string) =>
     phrase`See it with ${suggestedCommand("runs show", dir, runId)}.`,
   /** The approval was answered somewhere else after the lookup (`conflict`); {@link notWaitingFix} follows. */
@@ -280,6 +288,7 @@ function notWaitingInWords(why: NotWaiting): string {
     case "stopped":
       return `It stopped ${why.ago}.`;
     case "running":
+    case "address":
       return `It's running, in the step ${why.step}.`;
   }
 }

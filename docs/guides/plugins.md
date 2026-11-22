@@ -82,10 +82,13 @@ is the reference.
   folder of Halonic's data folder (`HALONIC_HOME`, see the
   [CLI README](../../apps/cli/README.md#environment)), and Halonic runs that
   copy. Editing the folder you added it from changes nothing until you add it
-  again: `halonic plugin list` says so, as "copied from ~/my-plugin on 20 Nov".
+  again: `halonic plugin list` says so, as "copied from ~/my-plugin on 20 Nov",
+  and once you edit the folder, a line under the plugin says "The folder
+  changed since this copy" with the command to run.
   To pick up your edits, run `halonic plugin add ./my-plugin --update`. It
   puts the new copy in place and keeps the plugin's settings and the API key
-  you entered. A changed file changes the fingerprint, so it shows the check
+  you entered. It names the files that changed since the copy it replaces. A
+  changed file changes the fingerprint, so it shows the check
   and asks you to trust it again; No leaves it off, and `halonic plugin list`
   shows it as "! not trusted yet · halonic trust --plugin <id>" until you run
   that command. (It shows "! changed since you trusted it" instead when the
