@@ -87,7 +87,7 @@ export const REMOVE_TOOK_TOO_LONG = `The sandbox wasn't removed within ${SETUP_L
 export const REMOVED = "Sandbox removed.";
 /** A removal with administrator rights that kept some access, in the uninstaller's words (HAL-15761). */
 export const REMOVED_KEPT_ACCESS =
-  "Its access to your project folders is removed the next time you start Halonic.";
+  "Its access to your project folders ends the next time you start Halonic.";
 export const removedLine = (keptAccess: boolean) =>
   keptAccess ? `${REMOVED} ${REMOVED_KEPT_ACCESS}` : REMOVED;
 /** A note, not a failure, as for the setup and the repair (HAL-15091). */

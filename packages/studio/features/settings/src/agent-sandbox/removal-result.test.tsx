@@ -100,7 +100,7 @@ verifies("settings.agent-sandbox-removal-result", () => {
 
   it("says a removal that kept some access until Halonic next starts, on screen and out loud", async () => {
     const kept =
-      "Sandbox removed. Its access to your project folders is removed the next time you start Halonic.";
+      "Sandbox removed. Its access to your project folders ends the next time you start Halonic.";
     const { view, announce, end } = await readyHost();
     await removeFrom(view);
     await end({ kind: "remove", how: "removed", keptAccess: true }, { state: "needs-setup" });
@@ -128,7 +128,7 @@ verifies("settings.agent-sandbox-removal-result", () => {
     await act(async () => {});
     expect(announce).toHaveBeenCalledWith(
       expect.stringMatching(
-        /^Sandbox removed\. Its access to your project folders is removed the next time you start Halonic\. The sandbox needs/,
+        /^Sandbox removed\. Its access to your project folders ends the next time you start Halonic\. The sandbox needs/,
       ),
     );
   });
