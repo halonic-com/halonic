@@ -176,6 +176,11 @@ export function useTooltip({
     if (showIf !== undefined && !showIf()) {
       return;
     }
+    // A page with no Popover API, such as jsdom in a test without the fake, shows no tooltip
+    // rather than throwing from a focus or pointer handler (HAL-15559).
+    if (typeof element.showPopover !== "function") {
+      return;
+    }
     element.showPopover();
     shown.current = true;
     placePopover(element, anchor.current, { gap: CONTROL_GAP, align: "center" });
