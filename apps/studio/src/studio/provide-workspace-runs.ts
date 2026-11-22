@@ -12,6 +12,7 @@ import type { ServiceRegistry } from "@halonicjs/app";
 import {
   InboxNoticesService,
   InboxRunsService,
+  ProposalDecisionsService,
   SandboxRefusalsService,
 } from "@halonicjs/studio-feature-inbox/api";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
@@ -20,7 +21,7 @@ import { engineServiceKey } from "../engine/engine-service.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
 import { WorkspaceNotices } from "../inbox/workspace-notices.ts";
 import { WorkspaceSandboxRefusals } from "../inbox/workspace-sandbox-refusals.ts";
-import { hostProposalsOf } from "../runs/host-proposals.ts";
+import { hostProposalDecisionsOf, hostProposalsOf } from "../runs/host-proposals.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { focusOf, storageOf } from "./page-window.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -48,6 +49,7 @@ export function provideWorkspaceRuns(
   },
   location: string,
 ): void {
+  const trusted = () => trust.mayStartNow();
   const runs = new WorkspaceRuns({
     runs: new TauriRunStore(ipc, location),
     definitions: new TauriDefinitionStore(files, location),
@@ -67,8 +69,14 @@ export function provideWorkspaceRuns(
     // and an untrusted folder asks the host nothing.
     ...(transport === undefined
       ? {}
-      : { proposals: hostProposalsOf(transport, location, () => trust.mayStartNow()) }),
+      : { proposals: hostProposalsOf(transport, location, trusted) }),
   });
+  if (transport !== undefined) {
+    services.provide(
+      ProposalDecisionsService,
+      hostProposalDecisionsOf(transport, location, trusted),
+    );
+  }
   services.provide(RunsSourceService, runs);
   services.provide(InboxRunsService, runs);
   services.provide(SandboxRefusalsService, new WorkspaceSandboxRefusals(runs));

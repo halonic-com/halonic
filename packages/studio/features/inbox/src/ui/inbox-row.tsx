@@ -18,10 +18,13 @@ export function itemTitle(item: InboxItem): string {
 
 /**
  * An item's row with its run's facts, as the Inbox page and Home's Needs you both show it, so
- * the two read the same and two runs of one workflow read apart in both (a11y check H2).
+ * the two read the same and two runs of one workflow read apart in both (a11y check H2). The title
+ * wraps rather than being cut: in the 360 px list its end, such as the item a proposal changes, is
+ * what tells two rows apart (HAL-15092, Noah's decision on HAL-15073).
  */
 export function inboxRow(item: InboxItem, now: Date, runFacts: RunFactsOf | undefined): ListRow {
-  return rowFor(item, now, item.kind === "setup" ? undefined : runFacts?.(item.runId));
+  const facts = item.kind === "setup" ? undefined : runFacts?.(item.runId);
+  return { ...rowFor(item, now, facts), wrapTitle: true };
 }
 
 /**

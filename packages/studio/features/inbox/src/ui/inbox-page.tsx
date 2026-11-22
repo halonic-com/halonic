@@ -7,28 +7,26 @@ import {
   type ItemRef,
   type PlaceViewProps,
 } from "@halonicjs/studio-shell";
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
-import { InboxNoticesService, InboxRequestsService, InboxService } from "../api.ts";
+import {
+  InboxNoticesService,
+  InboxRequestsService,
+  InboxService,
+  ProposalDecisionsService,
+} from "../api.ts";
 import type { Inbox, SetupFocus } from "../inbox.ts";
 import { waitingCount } from "../inbox-count.ts";
 import type { InboxItem } from "../inbox-items.ts";
 import type { InboxNotices } from "../notices/inbox-notices.ts";
 import { mergeNotices } from "../notices/merge-notices.ts";
-import { proposalMeta } from "../plain/proposal-text.ts";
 import { secretTarget } from "../plain/secret-target.ts";
+import type { ProposalDecisions } from "../proposal-decisions.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
 import { ApprovalCard } from "./approval-card.tsx";
 import type { NextItem } from "./card-parts.tsx";
-import { countDetail, inboxRow, itemTitle, lateCount } from "./inbox-row.tsx";
+import { ListHeader, listPaneClass, nextItem } from "./inbox-page-parts.tsx";
+import { countDetail, inboxRow, lateCount } from "./inbox-row.tsx";
 import { failureReason, isSignedOut, loadFailed, StaleLine } from "./load-lines.tsx";
 import { NothingOpen, nothingWaiting } from "./nothing-open.tsx";
 import { NoticesSection } from "./notices-section.tsx";
@@ -70,6 +68,7 @@ export function InboxPage({ context }: PlaceViewProps) {
       words={engineWordsOf(context)}
       announce={(line) => context.announcer.announce(line)}
       requests={context.services.find(InboxRequestsService)}
+      proposals={context.services.find(ProposalDecisionsService)}
       notices={notices}
       {...(context.runCommand === undefined
         ? {}
@@ -100,6 +99,8 @@ export interface InboxViewProps {
   readonly requests?: InboxRequests | undefined;
   /** The notices under Needs you; without it there is no Notices section. */
   readonly notices?: InboxNotices | undefined;
+  /** Accept and Reject on run proposals; without it a proposal shows its changes, no buttons. */
+  readonly proposals?: ProposalDecisions | undefined;
   /** Opens New connector, for a secret pasted when no account is there to take it. */
   readonly openNewConnector?: () => void;
   /** Opens Workspace settings at Budget, for **Change budget** on the monthly budget notice and the refused request. */
@@ -151,6 +152,7 @@ export function InboxView({
   words = engineWords["desktop-app"],
   requests,
   notices,
+  proposals,
   openNewConnector,
   openBudget,
   openRun,
@@ -282,6 +284,7 @@ export function InboxView({
               items={state.items}
               focus={focus}
               openNewConnector={openNewConnector}
+              proposals={proposals}
               openRun={openRun}
               trust={trust}
               openPage={openPage}
@@ -300,47 +303,6 @@ export function InboxView({
   );
 }
 
-/** The list's title with **New request**: beside it on a desktop, a full-width row under it on a phone. */
-function ListHeader({ phone, newRequest }: { phone: boolean; newRequest: ReactNode }) {
-  return (
-    <>
-      <header className={phone ? "sr-only" : "flex items-center justify-between px-4 py-3"}>
-        <h1 className="text-title">Inbox</h1>
-        {phone ? null : newRequest}
-      </header>
-      {phone ? newRequest : null}
-    </>
-  );
-}
-
-/** The list's column: 360 px beside the card, the whole page on a phone, and gone while an item is open. */
-function listPaneClass(phone: boolean, itemOpen: boolean): string {
-  if (!phone) return "flex w-90 shrink-0 flex-col border-e border-border";
-  return `${itemOpen ? "hidden" : "flex"} w-full flex-col`;
-}
-
-/**
- * The next item for the decided card's **Next**: the one after the open one, else the first. Once
- * the open item has left the list, the one after it is the item now at `openAt`, where it was.
- */
-function nextItem(
-  items: readonly InboxItem[],
-  open: InboxItem,
-  openAt: number,
-  setOpen: (item: InboxItem) => void,
-): NextItem | null {
-  const others = items.filter((item) => item.key !== open.key);
-  const index = items.findIndex((item) => item.key === open.key);
-  const after = index === -1 ? items[openAt] : items[index + 1];
-  const next = after ?? others[0];
-  if (next === undefined) return null;
-  return {
-    title: itemTitle(next),
-    left: others.length,
-    open: () => setOpen(next),
-  };
-}
-
 function OpenCard({
   item,
   inbox,
@@ -353,6 +315,7 @@ function OpenCard({
   items,
   focus,
   openNewConnector,
+  proposals,
   openRun,
   trust,
   openPage,
@@ -365,6 +328,7 @@ function OpenCard({
   readonly items: readonly InboxItem[];
   readonly focus: SetupFocus | undefined;
   readonly openNewConnector: (() => void) | undefined;
+  readonly proposals: ProposalDecisions | undefined;
   readonly openRun: ((hubId: string, runId: string) => void) | undefined;
   readonly trust: TrustReview | undefined;
   readonly openPage: ((item: ItemRef) => void) | undefined;
@@ -421,8 +385,10 @@ function OpenCard({
     return (
       <ProposalCard
         item={item}
-        ended={proposalMeta(item, now())}
-        startedBy={facts?.startedBy}
+        now={now()}
+        facts={facts}
+        decisions={proposals}
+        onDecided={() => void inbox.refresh()}
         onOpenRun={openThisRun}
       />
     );

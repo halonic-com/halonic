@@ -4,8 +4,8 @@
 
 import { shortRunId } from "@halonicjs/app";
 import { markHiddenName } from "@halonicjs/std";
-import type { ProposalEnding, ProposalItem } from "../proposal-items.ts";
-import { endedAgo } from "./waiting-time.ts";
+import type { ProposalEnding, ProposalFile, ProposalItem } from "../proposal-items.ts";
+import { clockTime, endedAgo } from "./waiting-time.ts";
 
 const endingVerbs: Readonly<Record<ProposalEnding, string>> = {
   finished: "Finished",
@@ -21,8 +21,12 @@ const endingVerbs: Readonly<Record<ProposalEnding, string>> = {
  * proposalTitle(item); // "Run 01JD8Q proposes 1 change to Support triage"
  */
 export function proposalTitle(item: ProposalItem): string {
-  const changes = `${item.changes} ${item.changes === 1 ? "change" : "changes"}`;
-  return `Run ${shortRunId(item.runId)} proposes ${changes}${toItems(item.itemNames)}`;
+  return `Run ${shortRunId(item.runId)} proposes ${changesCount(item.changes)}${toItems(item.itemNames)}`;
+}
+
+/** "1 change", "3 changes". */
+function changesCount(count: number): string {
+  return `${count} ${count === 1 ? "change" : "changes"}`;
 }
 
 function toItems(names: readonly string[]): string {
@@ -39,4 +43,79 @@ function toItems(names: readonly string[]): string {
 export function proposalMeta(item: ProposalItem, now: Date): string {
   const verb = item.ending === null ? "Ended" : endingVerbs[item.ending];
   return endedAgo(verb, new Date(item.since), now);
+}
+
+/**
+ * The line under the open proposal's title (Q3): "Support triage · Finished at 06:12 · Started by
+ * a schedule", each part left out when it isn't known.
+ */
+export function proposalFacts(
+  item: ProposalItem,
+  now: Date,
+  facts: { readonly workflow: string; readonly startedBy: string } | undefined,
+): string {
+  const verb = item.ending === null ? "Ended" : endingVerbs[item.ending];
+  const ended = `${verb} at ${clockTime(new Date(item.since), now)}`;
+  if (facts === undefined) return ended;
+  return [markHiddenName(facts.workflow), ended, `Started by ${facts.startedBy}`].join(" · ");
+}
+
+/**
+ * The lines before any Accept (Q4): what accepting does and doesn't do, with first, for a run
+ * that didn't finish, that its changes may be incomplete. Inside a sentence the run is "run
+ * 01JD8Q" (flow-inbox revision 10).
+ */
+export function beforeAcceptLines(item: ProposalItem): readonly string[] {
+  const run = shortRunId(item.runId);
+  const outside = `Accepting changes the files. It doesn't take back or redo what run ${run} did outside them, such as messages it sent.`;
+  if (item.ending === "finished") return [outside];
+  return [`Run ${run} didn't finish, so these changes may be incomplete.`, outside];
+}
+
+/** The link after those lines: "See run 01JD8Q". */
+export function seeRunText(runId: string): string {
+  return `See run ${shortRunId(runId)}`;
+}
+
+const changeWords: Readonly<Record<ProposalFile["change"], string>> = {
+  added: "added",
+  modified: "changed",
+  deleted: "deleted",
+};
+
+/** One change's line (Q5): "hubs/support/agents/triage.yaml changed". Paths come from the workspace. */
+export function changeLine(file: ProposalFile): string {
+  return `${markHiddenName(file.path)} ${changeWords[file.change]}`;
+}
+
+/** Under a change an Accept left alone, because the person changed the file after the run started. */
+export function changedSinceRunLine(runId: string): string {
+  return `You changed this file after run ${shortRunId(runId)} started, so it wasn't accepted.`;
+}
+
+/** The line when an Accept or a Reject didn't go through (Q11): "Couldn't accept this change." */
+export function decisionFailedLine(verb: "accept" | "reject", all: boolean): string {
+  return `Couldn't ${verb} ${all ? "these changes" : "this change"}.`;
+}
+
+/** The toast after an Accept or a Reject (Q7): "Accepted 3 changes from run 01JD8Q". */
+export function decidedToast(verb: "Accepted" | "Rejected", count: number, runId: string): string {
+  return `${verb} ${changesCount(count)} from run ${shortRunId(runId)}`;
+}
+
+/**
+ * What the proposal came to once nothing is left to decide (Q8, Q10): "Accepted 2 of 3 changes ·
+ * 1 can't be written", "Accepted 3 changes", or "Rejected".
+ */
+export function decidedSummary(files: readonly ProposalFile[]): string {
+  const count = (decision: ProposalFile["decision"]) =>
+    files.filter((file) => file.decision === decision).length;
+  const accepted = count("accepted");
+  const parts: string[] = [];
+  if (accepted === files.length) parts.push(`Accepted ${changesCount(accepted)}`);
+  else if (accepted > 0) parts.push(`Accepted ${accepted} of ${files.length} changes`);
+  else if (count("rejected") > 0) parts.push("Rejected");
+  const cantWrite = count("not-applicable");
+  if (cantWrite > 0) parts.push(`${cantWrite} can't be written`);
+  return parts.join(" · ");
 }
