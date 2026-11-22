@@ -13,6 +13,7 @@ import type {
   ProviderTrustContent,
   TrustChanges,
 } from "@halonicjs/workspace";
+import { secretNames, secretPicks } from "./connector-secrets.ts";
 import { harnessName } from "./harness-name.ts";
 import {
   type IntegrationRuns,
@@ -287,14 +288,14 @@ function addressRow(
 /**
  * A local integration's connector: the folder it runs, then the workspace
  * secret each secret of the integration's sheet gets, by name only, as
- * "my-notes-key as notes-key and sync-key" when the names differ (HAL-14734,
+ * "sync-key and my-notes-key as notes-key" when the names differ (HAL-14734,
  * words from HAL-14737). Joined with "and", as the CLI does: a comma would
- * read as two names for the secret before it (C552).
+ * read as two names for the secret before it (C552). The picks that keep
+ * their name come first, as in the CLI, so "as" never reads as a second name
+ * either (C569).
  */
 function integrationConnectorRow(connector: ConnectorTrustContent): TrustRowView {
-  const picks = secretPicks(connector).map(({ secret, as }) =>
-    secret === as ? secret : `${secret} as ${as}`,
-  );
+  const picks = secretPicks(connector);
   return {
     id: connector.id,
     detail: `integrations/${text(connector.settings["folder"])}`,
@@ -443,38 +444,6 @@ function addresses(connectors: readonly ConnectorTrustContent[]): ConnectorTrust
   return connectors.filter(isAddress);
 }
 
-/** The secrets a connector gets, by name: its own, its program's and its integration's picks. */
-function secretNames(connector: ConnectorTrustContent): string[] {
-  const references = [
-    connector.secret,
-    ...Object.values(record(connector.settings["secretEnv"])),
-    ...(connector.transport === "integration"
-      ? Object.values(record(connector.settings["secrets"]))
-      : []),
-  ];
-  return [...new Set(namesOf(references))].sort();
-}
-
-/**
- * The workspace secret each secret of a local integration's sheet gets,
- * sorted by the sheet's name. A connector's own `secret` keeps its name.
- */
-function secretPicks(connector: ConnectorTrustContent): { secret: string; as: string }[] {
-  const own = namesOf([connector.secret]).map((name) => ({ secret: name, as: name }));
-  const picks = Object.entries(record(connector.settings["secrets"]))
-    .sort(([first], [second]) => first.localeCompare(second, "en"))
-    .flatMap(([as, reference]) => namesOf([reference]).map((secret) => ({ secret, as })));
-  return [...own, ...picks];
-}
-
-/** The names in `‹secret NAME›` references, in their order. */
-function namesOf(references: readonly unknown[]): string[] {
-  return references
-    .filter((value) => typeof value === "string")
-    .map((reference) => /^‹secret (.+)›$/u.exec(reference)?.[1])
-    .filter((name) => name !== undefined);
-}
-
 /** PyPI for `uvx`, `uv tool run` and `pipx run`; npm for every other package runner. */
 function registryOf(command: string, words: readonly string[]): "npm" | "PyPI" {
   const python = new Set(["uvx", "uv", "pipx"]);
@@ -489,8 +458,4 @@ function text(value: unknown): string {
 
 function strings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
-}
-
-function record(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
 }

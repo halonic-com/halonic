@@ -131,7 +131,7 @@ verifies("cli.trust-check", () => {
       "Will pass 3 secrets and list 2 addresses.",
       "",
       "Addresses",
-      "  notes         integrations/notes · gets the secrets backup as api-key, my-notes-key as notes-key and sync-key",
+      "  notes         integrations/notes · gets the secrets sync-key, backup as api-key and my-notes-key as notes-key",
       "  tasks         integrations/tasks",
       "",
       "Fingerprint",
