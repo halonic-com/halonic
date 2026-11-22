@@ -35,18 +35,25 @@ verifies("workflows.page.step-arrows", () => {
   });
 
   // jsdom lays nothing out, so this checks the classes that keep a wrapped row's number and ⋮
-  // beside its first line (C547 A5) instead of centred on the whole row.
+  // beside its first line (C547 A5) instead of centred on the whole row. The number sits on the
+  // words' baseline, not in a box as high as a button, which grows on a phone (HAL-15199).
   it("keeps a row's number and ⋮ on its first line when its words wrap", async () => {
     const { page } = await showPage(vi.fn);
     await pick(page, "sort");
 
     const row = arrowsSection(page).section?.querySelector("li > div");
     const number = row?.firstElementChild;
+    const actions = row?.lastElementChild;
+    const words = row?.querySelector("button[aria-expanded] > span")?.lastElementChild;
     const classes = (element: Element | null | undefined) => element?.className.split(" ") ?? [];
-    expect(classes(row)).toContain("items-start");
+    expect(classes(row)).toContain("items-baseline");
     expect(classes(row)).not.toContain("items-center");
     expect(number?.textContent).toBe("1");
-    expect(classes(number)).toEqual(expect.arrayContaining(["h-control-sm", "items-center"]));
+    expect(classes(number)).not.toEqual(expect.arrayContaining(["flex"]));
+    expect(number?.className).not.toMatch(/h-control/);
+    expect(classes(words)).toContain("self-baseline");
+    expect(actions?.querySelector('button[aria-label="More actions for arrow 1"]')).not.toBeNull();
+    expect(classes(actions)).toContain("self-start");
   });
 
   // The kit button lays out each child as its own centred flex item, so two spans would wrap as
@@ -56,9 +63,25 @@ verifies("workflows.page.step-arrows", () => {
     await pick(page, "sort");
 
     const row = arrowsSection(page).section?.querySelector("li button[aria-expanded]");
-    const words = row?.lastElementChild;
+    expect(row?.childElementCount).toBe(1);
+    const words = row?.firstElementChild?.lastElementChild;
     expect(words?.textContent).toBe("→ approve on done if category = refund");
     expect(words?.className.split(" ")).toEqual(expect.arrayContaining(["min-w-0", "text-start"]));
+  });
+
+  // The kit button centres its icon on the whole label, so on a wrapped row the chevron would sit
+  // between the lines (HAL-15199). It sits in the label instead, in a cell one line high.
+  it("keeps a row's chevron on its first line when its words wrap", async () => {
+    const { page } = await showPage(vi.fn);
+    await pick(page, "sort");
+
+    const label = arrowsSection(page).section?.querySelector("li button[aria-expanded] > span");
+    const chevron = label?.firstElementChild;
+    const classes = (element: Element | null | undefined) => element?.className.split(" ") ?? [];
+    expect(classes(label)).toEqual(expect.arrayContaining(["grid", "items-start"]));
+    expect(chevron?.getAttribute("aria-hidden")).toBe("true");
+    expect(chevron?.querySelector("svg")).not.toBeNull();
+    expect(classes(chevron)).toEqual(expect.arrayContaining(["h-5", "items-center"]));
   });
 
   it("has no arrows section on an end step", async () => {
