@@ -74,20 +74,17 @@ function waitIn(
 }
 
 /**
- * The error's message: the item's workflow and its wait step, with the fix
- * that moves the step; for a wait further down, each workflow on the way,
- * and the fix names the one that has the wait step.
+ * The error's message: the item's workflow and, for a wait further down,
+ * each workflow on the way to the wait step; the fix moves the wait step
+ * into this workflow or takes it out of the workflow that has it.
  */
 function waitsMessage(stepId: string, { through, waitStep }: ItemWait): string {
   const [runs, ...further] = through;
-  if (further.length === 0) {
-    return `For-each step "${stepId}" runs "${runs}" once for each item, and a run for one item can't wait, but "${runs}" has the wait step "${waitStep}". Move "${waitStep}" into this workflow after "${stepId}", or take it out of "${runs}".`;
-  }
-  const hasWaitStep = `has the wait step "${waitStep}"`;
   // "review-one" runs "sign-off", which runs "ask", which has the wait step "approve"
-  const waits = `"${runs}" runs ${further.map((id) => `"${id}"`).join(", which runs ")}, which ${hasWaitStep}`;
+  const waysDown = further.map((id) => `runs "${id}", which `).join("");
+  const hasWaitStep = `"${runs}" ${waysDown}has the wait step "${waitStep}"`;
   const last = further.at(-1) ?? runs;
-  return `For-each step "${stepId}" runs "${runs}" for each item, but ${waits}, and an item's run can't wait, so the run fails there. Move the wait step after "${stepId}", or take it out of "${last}".`;
+  return `For-each step "${stepId}" runs "${runs}" once for each item, and a run for one item can't wait, but ${hasWaitStep}. Move "${waitStep}" into this workflow after "${stepId}", or take it out of "${last}".`;
 }
 
 /** The id of a workflow's first wait step, in the order of its states; `undefined` when it has none. */
