@@ -1,3 +1,4 @@
+import type { TrustStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -62,6 +63,60 @@ verifies("agent-host.unfenced-gate", () => {
       expect(await setup.gate.check(request())).toMatchObject({
         status: 403,
         kind: "workspace_not_trusted",
+      });
+    });
+
+    it("refuses when the trust record can't be read", async () => {
+      await chosen();
+      const unreadable: TrustStore = {
+        get: () => Promise.reject(new Error("The trust file is not valid JSON.")),
+        grant: (record) => setup.trust.grant(record),
+        revoke: (location) => setup.trust.revoke(location),
+        list: () => setup.trust.list(),
+      };
+      expect(await setup.gateWith(unreadable).check(request())).toMatchObject({
+        status: 403,
+        kind: "workspace_not_trusted",
+      });
+    });
+
+    it("refuses when the host has no profile folder, so no trust record", async () => {
+      await chosen();
+      expect(await setup.gateWith(undefined).check(request())).toMatchObject({
+        status: 403,
+        kind: "workspace_not_trusted",
+      });
+    });
+
+    it("refuses an agent in Halonic's own loop, even one a record names", async () => {
+      await setup.trust.grant({
+        location: setup.root,
+        fingerprint: "hfp1:test",
+        content: {
+          connectors: [],
+          agents: [{ id: "planner", harness: "halonic", allowedSites: [] }],
+        },
+        grantedAt: "2026-11-22T08:00:00.000Z",
+        appVersion: "0.1.0",
+        pins: {},
+        origin: "prompt",
+      });
+      await setup.chooseThisComputer("planner");
+      expect(await setup.gate.check(request({ agentId: "planner" }))).toMatchObject({
+        status: 403,
+        kind: "workspace_not_trusted",
+      });
+    });
+
+    it("refuses a profile that carries anything the host didn't build, such as a connector's program", async () => {
+      await chosen();
+      const carrying = {
+        ...request().profile,
+        connectors: [{ command: "npx", args: ["some-mcp-server"] }],
+      };
+      expect(await setup.gate.check(request({ profile: carrying }))).toMatchObject({
+        status: 403,
+        kind: "profile_not_built",
       });
     });
 

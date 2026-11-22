@@ -4,15 +4,17 @@ import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { MemoryAgentPlacementStore, MemoryTrustStore } from "@halonicjs/adapter-memory";
 import { AgentPlacement } from "@halonicjs/app";
-import type { Clock, SandboxProfile } from "@halonicjs/ports";
+import type { Clock, SandboxProfile, TrustStore } from "@halonicjs/ports";
 import { agentsTrustContent, filesOf, loadWorkspace } from "@halonicjs/workspace";
 import type { BuiltProfile } from "../harness/host-profiles.ts";
 import { webCryptoDigest } from "../harness/host-profiles.ts";
-import { UnfencedGate } from "./unfenced-gate.ts";
+import { UnfencedGate, type UnfencedGateOptions } from "./unfenced-gate.ts";
 
 export const coderPath = "hubs/lab/agents/coder.agent.yaml";
 export const coderText =
   "id: coder\nname: Coder\nharness: claude-code\ninstructions: Write the change.\n";
+/** An agent in Halonic's own loop: it names no harness, so it starts no program. */
+export const plannerPath = "hubs/lab/agents/planner.agent.yaml";
 
 const clock: Clock = { now: () => new Date("2026-11-22T09:00:00.000Z") };
 
@@ -26,10 +28,12 @@ export interface ThisComputerSetup {
   /** A profile the host built for the coder, kept in `unopened`. */
   readonly built: BuiltProfile;
   readonly gate: UnfencedGate;
+  /** A gate over the same workspace and profiles, but with another trust store. */
+  gateWith(trustStore: TrustStore | undefined): UnfencedGate;
   /** Saves a trust record that lists the coder as its file is now. */
   trustCoder(): Promise<void>;
-  /** Saves the person's "On this computer" choice for the coder's file as it is now. */
-  chooseThisComputer(): Promise<void>;
+  /** Saves the person's "On this computer" choice for an agent's file as it is now; the coder's by default. */
+  chooseThisComputer(agent?: "coder" | "planner"): Promise<void>;
   /** Writes the coder's file. */
   writeCoder(text: string): Promise<void>;
   close(): Promise<void>;
@@ -42,6 +46,7 @@ export async function thisComputerSetup(): Promise<ThisComputerSetup> {
     "workspace.yaml": "id: acme\nname: Acme\ndescription: An invented shop.\n",
     "hubs/lab/hub.yaml": "id: lab\nname: Lab\ndescription: Where the coder changes a file.\n",
     [coderPath]: coderText,
+    [plannerPath]: "id: planner\nname: Planner\ninstructions: Plan the change.\n",
   };
   for (const [path, text] of Object.entries(files)) {
     await mkdir(dirname(join(root, path)), { recursive: true });
@@ -51,14 +56,15 @@ export async function thisComputerSetup(): Promise<ThisComputerSetup> {
   const placements = new MemoryAgentPlacementStore();
   const built = builtFor(root);
   const unopened = new Map([[built.profile.tempFolder, built]]);
-  const gate = new UnfencedGate({
+  const options: UnfencedGateOptions = {
     workspaceRoots: [root],
     trustStore: trust,
     placements,
     profiles: { unopened: (tempFolder) => unopened.get(tempFolder) },
     digest: webCryptoDigest,
     clock,
-  });
+  };
+  const gate = new UnfencedGate(options);
   const placement = new AgentPlacement({ store: placements, digest: webCryptoDigest, clock });
   return {
     root,
@@ -67,6 +73,7 @@ export async function thisComputerSetup(): Promise<ThisComputerSetup> {
     unopened,
     built,
     gate,
+    gateWith: (trustStore) => new UnfencedGate({ ...options, trustStore }),
     trustCoder: async () => {
       const workspace = await loadWorkspace(new FolderDefinitionStore(root, root));
       const agents = filesOf(workspace, "agent").map((each) => each.value);
@@ -80,9 +87,10 @@ export async function thisComputerSetup(): Promise<ThisComputerSetup> {
         origin: "prompt",
       });
     },
-    chooseThisComputer: async () => {
-      const file = new Uint8Array(await readFile(join(root, coderPath)));
-      const subject = { location: root, hub: "lab", agent: "coder", file };
+    chooseThisComputer: async (agent = "coder") => {
+      const path = agent === "coder" ? coderPath : plannerPath;
+      const file = new Uint8Array(await readFile(join(root, path)));
+      const subject = { location: root, hub: "lab", agent, file };
       const shown = await placement.where(subject);
       await placement.chooseThisComputer(subject, shown.agentFingerprint);
     },

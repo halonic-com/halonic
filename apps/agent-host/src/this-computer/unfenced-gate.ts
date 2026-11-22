@@ -46,8 +46,8 @@ export interface UnfencedRefusal {
 export interface UnfencedGateOptions {
   /** The folders the launcher named as workspaces. */
   readonly workspaceRoots: readonly string[];
-  /** The trust records of the user's profile. */
-  readonly trustStore: TrustStore;
+  /** The trust records of the user's profile; `undefined` without a profile folder, so nothing passes. */
+  readonly trustStore: TrustStore | undefined;
   /** The "this computer" choices in the user's profile. */
   readonly placements: AgentPlacementStore;
   /** The profiles this host built and no session has opened with yet. */
