@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Our own repo checks: layers, dependencies, names, feature list, file size, lockfile and the personal-terms guard.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./migrations-additive": "./src/lib/destructive-statements.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p .",
