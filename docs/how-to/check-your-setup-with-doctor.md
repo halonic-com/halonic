@@ -207,6 +207,7 @@ Common reasons and their fixes:
 | ripgrep isn't installed (macOS) | Install it, for example with `brew install ripgrep`. |
 | Ubuntu 24.04 blocks user namespaces | Allow them for bubblewrap with an AppArmor rule. The sandbox page has the commands. |
 | The distro runs on WSL 1 | Switch it to WSL 2. The fix line gives the PowerShell command with your distro's name. |
+| WSL works, but Halonic's own Linux system for the sandbox isn't installed (Windows) | Use Halonic inside WSL 2. |
 | Halonic's own Linux system for the sandbox is installed, but its setup didn't finish (Windows) | Use Halonic inside WSL 2. |
 | Windows, outside WSL | Use Halonic inside WSL 2. |
 | The sandbox's one-time setup isn't done (Windows) | Run `halonic sandbox setup`. Windows asks for administrator rights once. |
