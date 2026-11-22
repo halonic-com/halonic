@@ -60,7 +60,7 @@ export class TauriTrustStore implements TrustStore {
    * Whether the folder of each of `locations` is still on this computer. A location without a
    * record is not in the map.
    *
-   * @throws KindedError `unavailable` when the shell gives no usable answer
+   * @throws KindedError `internal` when the shell gives no usable answer
    */
   async foldersFound(locations: readonly string[]): Promise<ReadonlyMap<string, boolean>> {
     if (locations.length === 0) {
@@ -130,8 +130,9 @@ const writingCommands: readonly string[] = [trustCommands.grant, trustCommands.r
  * The error a rejected `trust_*` command becomes. An unreadable record is a
  * plain `Error` naming its location, as `FileTrustStore` throws it, so
  * `TrustService` treats both the same. Anything that isn't the shell's
- * refusal shape (a missing capability, a broken IPC call) is `unavailable`,
- * with its text only in the details: the adapter can't vouch for it. An `io`
+ * refusal shape (a missing capability, a broken IPC call) is a bug the person
+ * can't fix, so it is `internal`, in microcopy 22 F13's words, with its text
+ * only in the details: the adapter can't vouch for it (C613 12). An `io`
  * refusal's message is the shell's log text, such as an OS error with a path
  * (C548 5), so it too is in Halonic's words, with the message in the details.
  * Any other refusal keeps the shell's message, which names no secret.
@@ -164,12 +165,15 @@ function trustFailure(reason: unknown, command: string, asked: unknown): Error {
   );
 }
 
-/** A call the shell gave no usable answer to; `reason` is its rejection, when there was one. */
+/**
+ * A call the shell gave no usable answer to; `reason` is its rejection, when there was one. It
+ * never says the desktop app didn't answer: the person is looking at it (C613 12).
+ */
 function noAnswer(reason?: unknown): TrustStoreError {
   const details = "The desktop shell gave no answer to the trust call.";
   return new TrustStoreError(
-    "unavailable",
-    "Halonic's desktop app didn't answer.",
+    "internal",
+    "Halonic ran into a problem it can't explain yet.",
     reason === undefined ? details : `${details}\n${rejectionText(reason)}`,
   );
 }

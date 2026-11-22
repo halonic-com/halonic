@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-When removing trust fails because Halonic can't write to its data folder or the desktop app didn't answer, Studio now says so in plain words with Copy details for the raw error, and `halonic trust --remove` says when there was no trust to remove.
+When removing trust fails, Studio now says why in plain words, such as "Halonic can't write to its data folder.", with Copy details for the full error, and `halonic trust --remove` says when there was no trust to remove.
