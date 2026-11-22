@@ -2,7 +2,7 @@ import { ChevronRightIcon, SidePanel, usePresentation } from "@halonicjs/studio-
 import type { CloseStack } from "@halonicjs/studio-shell";
 import { type ReactNode, useContext, useEffect, useId, useLayoutEffect, useRef } from "react";
 import { MapStacked } from "./map-frame.tsx";
-import { stackedRowClasses } from "./map-rows.tsx";
+import { stackedRowBaseClasses } from "./map-rows.tsx";
 
 const sheetRowsClasses = "-mx-4 -my-3 flex flex-col divide-y divide-border border-b border-border";
 
@@ -16,7 +16,8 @@ export const MAX_SIDE_CARDS = 3;
  * A side's summary card (`agents.map.side-summary-card`): its counts ("2 workflows · 1 agent") over
  * the side's name in lower case. It stands where the cards would, so it gets their line, and it
  * opens the side's drawer. In the stacked map it's the summary row, after the side's rows
- * (component specs 15.8).
+ * (component specs 15.8). It stands for several kinds, so it has no icon, but its text starts where
+ * the names above it do: 16 px, the icon's 20 and the 12 px gap.
  */
 export function SummaryCard({
   counts,
@@ -45,7 +46,11 @@ export function SummaryCard({
       data-map-card=""
       aria-haspopup="dialog"
       aria-expanded={open}
-      className={stacked ? `${stackedRowClasses} hover:bg-surface-subtle focus-ring` : cardClasses}
+      className={
+        stacked
+          ? `${stackedRowBaseClasses} ps-12 pe-4 hover:bg-surface-subtle focus-ring-inset`
+          : cardClasses
+      }
       onClick={(event) => onOpen(event.currentTarget)}
     >
       {stacked ? (

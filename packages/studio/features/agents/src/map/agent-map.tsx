@@ -1,4 +1,4 @@
-import { HandIcon, LetterTile, ListHeading } from "@halonicjs/studio-kit";
+import { HandIcon, LetterTile, ListHeading, type PlaceIconName } from "@halonicjs/studio-kit";
 import type { CloseStack } from "@halonicjs/studio-shell";
 import { type ReactNode, useContext, useId, useLayoutEffect, useRef, useState } from "react";
 import {
@@ -171,6 +171,7 @@ function mapSides(props: AgentMapProps): Record<MapSide, SideContent> {
         ...routines.map((routine) => (
           <Card
             key={`${routine.hubId ?? ""}/${routine.id}`}
+            icon="routines"
             kind={words.routine}
             name={routine.name}
             // A routine at the workspace's root has no page of its own yet, so its card is text.
@@ -180,6 +181,7 @@ function mapSides(props: AgentMapProps): Record<MapSide, SideContent> {
         ...users.map((user) => (
           <Card
             key={`${user.hubId}/${user.id}`}
+            icon="workflows"
             kind={words.workflow}
             name={user.name}
             detail={words.steps(user.stepNames ?? user.stepIds)}
@@ -286,6 +288,7 @@ function toolCards({ settings, tools, openTool }: AgentMapProps): readonly React
       return (
         <Card
           key={`${list}/${id}`}
+          icon="library"
           kind={words.kinds[list]}
           name={name}
           detail={
@@ -360,15 +363,19 @@ function Side({
 
 /**
  * A card of the map: a button that opens its item, or text where the app can't open it. In the
- * stacked map it's a row, its name over its kind and detail (component specs 15.8).
+ * stacked map it's a row, its kind's icon before its name over its kind and detail (component
+ * specs 15.8).
  */
 function Card({
+  icon,
   kind,
   name,
   detail,
   label,
   onOpen,
 }: {
+  /** Its kind's place icon, shown in the stacked map's row. */
+  readonly icon: PlaceIconName;
   /** What kind of item it is, in small caps; read before its name. */
   readonly kind: string;
   readonly name: string;
@@ -383,6 +390,7 @@ function Card({
     const more = detail ? <> · {detail}</> : null;
     return (
       <StackedRow
+        icon={icon}
         name={name}
         detail={
           <>
@@ -430,7 +438,14 @@ function AgentCard({
   readonly agent: AgentListing;
   readonly onOpen?: ((agent: AgentListing) => void) | undefined;
 }) {
-  return <Card kind={words.agent} name={agent.name} onOpen={onOpen && (() => onOpen(agent))} />;
+  return (
+    <Card
+      icon="agents"
+      kind={words.agent}
+      name={agent.name}
+      onOpen={onOpen && (() => onOpen(agent))}
+    />
+  );
 }
 
 /** The add button a side ends in, also when the side is empty; the last row in a stacked map. */
