@@ -2,6 +2,7 @@
 
 - Approval: HAL-15574 and HAL-15587, from the words check C595 (HAL-15567, rows 20 to 24) and the flow check C596; wording on an approved command, decided by the team (HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:PgPZoNvC+MAnHEbqStvMEKHOqSh4+svU5jzbivr/W0To3xR3KPYfT+yECxoDImv7XUEPtPlS/EQbJ6b7GP2LDg==
 
 Two wording fixes in `halonic google`, following HAL-15363:
 
