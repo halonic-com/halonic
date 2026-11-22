@@ -30,6 +30,17 @@ const arrowNumber = [
   "phone:h-control-lg touch:h-control-lg",
 ].join(" ");
 
+/**
+ * A row's button holds one child, so the kit button's flex row doesn't split it into centred
+ * columns when the words wrap (C564 A): the chevron and the words, side by side. The chevron's
+ * cell is one 20px line high, so on a wrapped row it stays beside the first line, like the number
+ * (HAL-15199); the words wrap under each other, from the left. A one-line row is one line high,
+ * as before.
+ */
+const arrowLabel = "grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-1.5";
+const arrowChevron = "flex h-5 items-center";
+const arrowChevronIcon = "inline-grid size-icon-sm place-items-center *:size-full";
+
 /** A row's words wrap like a sentence, from the left, instead of centred like a button label. */
 const arrowWords = "min-w-0 text-start";
 
@@ -205,14 +216,18 @@ export function StepArrows({
                     {...(beatenBy[index] === undefined
                       ? {}
                       : { "aria-describedby": `${neverTakenId}-${index}` })}
-                    icon={<ChevronDownIcon />}
                     onClick={() => setExpanded(expanded === index ? undefined : index)}
                   >
-                    {/* One child, so the kit button's flex row doesn't split the words into
-                        two centred columns when they wrap: they read as one sentence (C564 A). */}
-                    <span className={arrowWords}>
-                      <span className="font-medium">{words.to(nameOf(names, arrow.to))}</span>{" "}
-                      <span className="text-fg-muted">{whenItFires(arrow)}</span>
+                    <span className={arrowLabel}>
+                      <span className={arrowChevron} aria-hidden="true">
+                        <span className={arrowChevronIcon}>
+                          <ChevronDownIcon />
+                        </span>
+                      </span>
+                      <span className={arrowWords}>
+                        <span className="font-medium">{words.to(nameOf(names, arrow.to))}</span>{" "}
+                        <span className="text-fg-muted">{whenItFires(arrow)}</span>
+                      </span>
                     </span>
                   </Button>
                   <NeverTakenLine id={`${neverTakenId}-${index}`} beatenBy={beatenBy[index]} />
