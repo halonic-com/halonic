@@ -2,6 +2,7 @@ import { SecretScrubber } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
+  afterLostLineRemoved,
   cleanErrorOutput,
   type ErrorOutputLine,
   ErrorOutputTail,
@@ -20,7 +21,7 @@ function scrubberFor(...secrets: string[]): SecretScrubber {
 
 /** Lines as the tail keeps them, none of them cut. */
 function whole(...texts: string[]): ErrorOutputLine[] {
-  return texts.map((text) => ({ text, cut: false }));
+  return texts.map((text) => ({ text, cut: false, afterLostText: false }));
 }
 
 /** A standard error stream that writes `text` and ends. */
@@ -70,12 +71,65 @@ verifies("mcp.stdio-restart", () => {
       );
       const lines = await tail.linesOnceRead(1000);
       expect(lines).toEqual([
-        { text: "started", cut: false },
-        { text: `${"x".repeat(290)}${token.slice(0, 10)}`, cut: true },
+        { text: "started", cut: false, afterLostText: false },
+        { text: `${"x".repeat(290)}${token.slice(0, 10)}`, cut: true, afterLostText: false },
       ]);
       expect(cleanErrorOutput(lines, scrubberFor(token), personal)).toEqual([
         "started",
         longLineRemoved,
+      ]);
+    });
+
+    it("drops the line after a cut one, so the end of a secret with a line break isn't shown", async () => {
+      const key = "acme-key-start\nacme-key-end";
+      const tail = new ErrorOutputTail(
+        // The blank line between them doesn't make the line after it safe to show.
+        streamOf(`${"x".repeat(290)}PEM: ${key} unreadable\n\ndone\n`),
+      );
+      const lines = await tail.linesOnceRead(1000);
+      expect(lines.map((line) => line.afterLostText)).toEqual([false, true, false]);
+      expect(cleanErrorOutput(lines, scrubberFor(key), personal)).toEqual([
+        longLineRemoved,
+        afterLostLineRemoved,
+        "done",
+      ]);
+    });
+
+    it("drops the first line it kept once older lines were dropped, as it can end a secret", async () => {
+      const key = "acme-key-start\nacme-key-end";
+      const older = Array.from({ length: 8 }, (_, index) => `line ${index + 1}`);
+      const tail = new ErrorOutputTail(
+        streamOf(`PEM: ${key} unreadable\n${older.join("\n")}\nstill waiting`),
+        { maxLines: 10, maxLineLength: 300 },
+      );
+      const lines = await tail.linesOnceRead(1000);
+      // With the last line, not yet ended, that is 11 lines: the first, "PEM: acme-key-start", goes.
+      expect(lines[0]).toEqual({
+        text: "acme-key-end unreadable",
+        cut: false,
+        afterLostText: true,
+      });
+      const cleaned = cleanErrorOutput(lines, scrubberFor(key), personal);
+      expect(cleaned).toEqual([afterLostLineRemoved, ...older, "still waiting"]);
+      expect(cleaned.join("\n")).not.toContain("acme-key-end");
+    });
+
+    it("keeps every line when it dropped none", async () => {
+      const tail = new ErrorOutputTail(streamOf("one\ntwo\n"), { maxLines: 2, maxLineLength: 300 });
+      expect(cleanErrorOutput(await tail.linesOnceRead(1000), scrubberFor(), personal)).toEqual([
+        "one",
+        "two",
+      ]);
+    });
+
+    it("drops the first line it kept once it dropped a line it had stored", async () => {
+      const tail = new ErrorOutputTail(streamOf("one\ntwo\nthree\n"), {
+        maxLines: 2,
+        maxLineLength: 300,
+      });
+      expect(cleanErrorOutput(await tail.linesOnceRead(1000), scrubberFor(), personal)).toEqual([
+        afterLostLineRemoved,
+        "three",
       ]);
     });
   });

@@ -9,7 +9,7 @@ import { unusedRunners } from "../pinned/fake-runners.spec.ts";
 import { runnerRefusedError } from "../pinned/find-runner.ts";
 import { McpStoppedError } from "../protocol/errors.ts";
 import { McpSession } from "../protocol/session.ts";
-import { keyLineRemoved, longLineRemoved } from "./error-output.ts";
+import { afterLostLineRemoved, keyLineRemoved, longLineRemoved } from "./error-output.ts";
 import { contractServer, FakeProgram, FakeStarter, unusedFolders } from "./fake-program.spec.ts";
 import { nodeProgramStarter } from "./node-program-starter.ts";
 import {
@@ -159,6 +159,22 @@ verifies("mcp.connector-start-errors", () => {
       ],
     });
     expect(String(refused)).not.toContain(token);
+    await client.close();
+  });
+
+  it("leaves no end of a secret with a line break whose start the tail dropped", async () => {
+    const key = "acme-key-start\nacme-key-end";
+    const later = Array.from({ length: 9 }, (_, index) => `retry ${index + 1} failed`);
+    const client = notesConnector(
+      new FakeStarter((_message, program) => {
+        program.writeError(`key ${key} unreadable\n${later.join("\n")}\n`);
+        program.exit(3);
+      }),
+      { secretEnv: { NOTES_KEY: "notes-key" }, secrets: { "notes-key": key } },
+    );
+    const refused = await client.listTools().catch((error: unknown) => error);
+    expect(refused).toBeInstanceOf(ProgramStoppedAtStartError);
+    expect(refused).toMatchObject({ errorOutput: [afterLostLineRemoved, ...later] });
     await client.close();
   });
 
