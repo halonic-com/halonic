@@ -56,6 +56,7 @@ function approval(callId: string, at: string): PendingApproval {
 const firstApproval = approval("call-1", "2026-11-09T10:41:00.000Z");
 const secondApproval = approval("call-2", "2026-11-09T10:42:00.000Z");
 const twoPm = "2026-11-09T14:00:00.000Z";
+const question = { provider: "gateway", key: "gateway-key", origin: "https://gateway.example.com" };
 
 verifies("app.run-standing", () => {
   describe("runStanding", () => {
@@ -71,6 +72,13 @@ verifies("app.run-standing", () => {
 
       expect(runStanding(summary)).toBe("running");
       expect(runWait(summary)).toEqual({ kind: "none" });
+    });
+
+    it('says a running run with an open question "Allow this address?" needs you', () => {
+      const summary = summaryWith({ status: "running", keyOriginAsked: [question] });
+
+      expect(runStanding(summary)).toBe("needs-you");
+      expect(runWait(summary)).toEqual({ kind: "address", oldest: question });
     });
 
     it("says a run waiting at a step that takes events needs you", () => {
@@ -110,6 +118,12 @@ verifies("app.run-standing", () => {
       });
 
       expect(runWait(summary)).toEqual({ kind: "approvals", oldest: firstApproval, count: 2 });
+    });
+
+    it("puts open approvals before an open question", () => {
+      const summary = summaryWith({ approvals: [firstApproval], keyOriginAsked: [question] });
+
+      expect(runWait(summary)).toMatchObject({ kind: "approvals" });
     });
 
     it("puts a child run before the events it passes on", () => {

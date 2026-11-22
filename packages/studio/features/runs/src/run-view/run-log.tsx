@@ -1,6 +1,7 @@
 import { ListHeading } from "@halonicjs/studio-kit";
 import { useId } from "react";
-import { everyStepWords, runLogWords } from "../run-words.ts";
+import { runLogWords } from "../run-log-words.ts";
+import { everyStepWords } from "../run-words.ts";
 import { BlockedSitesLogLines } from "./blocked-sites.tsx";
 import type { RunLogLine } from "./run-log-model.ts";
 

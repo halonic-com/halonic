@@ -59,7 +59,7 @@ export function everyStep(
   const slow =
     summary.status === "running" ? slowStepLine(events, now, phone, providerName) : undefined;
   // A question to the person is a wait for them at once, not after 2 quiet seconds.
-  const asking = summary.status === "running" && waitsForKeyOriginAnswer(events);
+  const asking = waitsForKeyOriginAnswer(summary);
   return steps.map((step, index) => {
     const name = stepName(step.stateId, workflow?.stepDescription(step.stateId));
     const time = clockTime(new Date(step.startedAt));

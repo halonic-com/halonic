@@ -1,4 +1,5 @@
 import { addUsage } from "./add-usage.ts";
+import { followKeyOriginQuestions } from "./key-origin-questions.ts";
 import type { Usage } from "./run-basics.ts";
 import type { RunEvent } from "./run-event.ts";
 import type { PendingApproval, RunSummary } from "./run-summary.ts";
@@ -55,6 +56,7 @@ export function summarize(events: readonly RunEvent[]): RunSummary | null {
   };
   for (const event of events) {
     applyEvent(summary, event);
+    followKeyOriginQuestions(summary, event);
     summary.lastSeq = event.seq;
     summary.updatedAt = event.at;
   }

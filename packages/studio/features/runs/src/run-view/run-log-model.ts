@@ -4,10 +4,9 @@
 
 import { blockedSites, type RunEvent, type StepBlockedSites } from "@halonicjs/events";
 import { escapeHidden } from "@halonicjs/std";
-import { keyOriginAnswerWords } from "../run-words.ts";
+import { keyOriginAnswerWords, keyOriginAskedWords } from "../run-log-words.ts";
 import { clockTimeWithSeconds } from "../time-words.ts";
 import { logSiteLimit } from "./blocked-sites.tsx";
-import { keyOriginAskedWords } from "./key-origin-wait.ts";
 
 /** One line of the run log view. */
 export type RunLogLine =

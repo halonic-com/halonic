@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1301 (T8); ux-checklists-t8-t9 (HAL-1360) revision 10, 1.2; microcopy revision 94, 9.7 Row line and 15.2 (HAL-751)
+- Source: HAL-1301 (T8); ux-checklists-t8-t9 (HAL-1360) revision 10, 1.2; microcopy revision 94, 9.7 Row line and 15.2 (HAL-751); HAL-15831 (flow check C638 #5): a run that asks "Allow this address?" needs you
 
-The Runs list shall show in each row the run's status chip, its short id, what ran, and one line under it, which is never empty and, for a finished run, leaves out the sent part that the What column of `halonic runs` keeps (Studio design 4.5). The chip shall read Running, Needs you, Waiting, Done, Failed, Stopped · budget, Stopped or Couldn't try, and only Running and Needs you shall have a dot. The line shall name the step a running run is in; what a waiting run waits for: an approval, several approvals, a wait step by its description, a child run by its short id, or a time; for a finished run, its estimated cost, else the step it finished in, and never a "Sent nothing" part; the failed banner's first sentence for a failed run; and where and after how long a run stopped at its budget or was cancelled, with its cost. The cost shall name the calls without a price, and a run with no priced call shall show no amount.
+The Runs list shall show in each row the run's status chip, its short id, what ran, and one line under it, which is never empty and, for a finished run, leaves out the sent part that the What column of `halonic runs` keeps (Studio design 4.5). The chip shall read Running, Needs you, Waiting, Done, Failed, Stopped · budget, Stopped or Couldn't try, and only Running and Needs you shall have a dot. The line shall name the step a running run is in; what a run waits for when it needs you or waits: an approval, several approvals, an open question "Allow this address?" by the step that asks, a wait step by its description, a child run by its short id, or a time; for a finished run, its estimated cost, else the step it finished in, and never a "Sent nothing" part; the failed banner's first sentence for a failed run; and where and after how long a run stopped at its budget or was cancelled, with its cost. The cost shall name the calls without a price, and a run with no priced call shall show no amount.
 
 ## Examples
 
@@ -14,6 +14,9 @@ The Runs list shall show in each row the run's status chip, its short id, what r
 - Given a run with two open approvals,
   when its row is shown,
   then the chip reads Needs you with a dot, and the line "Waiting for 2 approvals".
+- Given a running run in the step Draft that asks "Allow this address?",
+  when its row is shown,
+  then the chip reads Needs you with a dot, and the line "Waiting for your answer in the step Draft".
 - Given a run at the wait step "Approve this reply?",
   when its row is shown,
   then the line reads "Waiting for you: Approve this reply?".

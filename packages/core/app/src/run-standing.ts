@@ -4,7 +4,7 @@
 // same ones (mc 15.2, cli-output 3.4, run-object-mapping sections 2 and 4).
 // Only facts are decided here: each surface keeps its own words.
 
-import type { PendingApproval, RunSummary } from "@halonicjs/events";
+import type { OpenKeyOriginQuestion, PendingApproval, RunSummary } from "@halonicjs/events";
 
 /**
  * Where a run stands, one value per status chip: `needs-you` when it waits
@@ -24,8 +24,9 @@ export type RunStanding =
 
 /**
  * What a run waits for, in the order the first that applies wins: open
- * approvals, a child run, a step that takes events, a timer. `none` is a
- * run that isn't waiting, or waits with nothing to wait for.
+ * approvals, an open question "Allow this address?", a child run, a step
+ * that takes events, a timer. `none` is a run that isn't waiting, or waits
+ * with nothing to wait for.
  */
 export type RunWait =
   | {
@@ -33,6 +34,11 @@ export type RunWait =
       /** The oldest open approval: Review in Inbox opens its card. */
       oldest: PendingApproval;
       count: number;
+    }
+  | {
+      kind: "address";
+      /** The oldest open question: the dialog that asks it is open. */
+      oldest: OpenKeyOriginQuestion;
     }
   | { kind: "child-run"; runId: string }
   | {
@@ -51,7 +57,8 @@ export type RunWait =
 /**
  * Where a run stands. Open approvals mean the run needs the user even while
  * its status is `running`: one parallel branch can wait for an OK while
- * another works (run-object-mapping section 2).
+ * another works (run-object-mapping section 2). So does an open question
+ * "Allow this address?": the model call waits for the user's answer.
  *
  * @example
  * runStanding(summary); // "needs-you" for a run with an open approval
@@ -59,7 +66,7 @@ export type RunWait =
 export function runStanding(summary: RunSummary): RunStanding {
   switch (summary.status) {
     case "running":
-      return summary.approvals.length > 0 ? "needs-you" : "running";
+      return waitsForTheUser(runWait(summary)) ? "needs-you" : "running";
     case "waiting":
       return waitsForTheUser(runWait(summary)) ? "needs-you" : "waiting";
     case "completed":
@@ -72,8 +79,8 @@ export function runStanding(summary: RunSummary): RunStanding {
 }
 
 /**
- * What a run waits for. A running run waits only for its open approvals;
- * an ended run waits for nothing.
+ * What a run waits for. A running run waits only for its open approvals and
+ * its open questions "Allow this address?"; an ended run waits for nothing.
  *
  * @example
  * runWait(summary); // { kind: "timer", at: "2026-11-09T14:00:00.000Z" }
@@ -82,6 +89,10 @@ export function runWait(summary: RunSummary): RunWait {
   const oldest = summary.approvals[0];
   if (oldest !== undefined) {
     return { kind: "approvals", oldest, count: summary.approvals.length };
+  }
+  const asked = summary.keyOriginAsked?.[0];
+  if (asked !== undefined && summary.status === "running") {
+    return { kind: "address", oldest: asked };
   }
   if (summary.status !== "waiting") {
     return { kind: "none" };
@@ -104,9 +115,9 @@ export function runWait(summary: RunSummary): RunWait {
   return { kind: "none" };
 }
 
-/** Whether what the run waits for is the user's to answer: an approval or a wait step. */
+/** Whether what the run waits for is the user's to answer: an approval, a question or a wait step. */
 function waitsForTheUser(wait: RunWait): boolean {
-  return wait.kind === "approvals" || wait.kind === "step";
+  return wait.kind === "approvals" || wait.kind === "address" || wait.kind === "step";
 }
 
 /** A failed run is Stopped when it kept to its budget or was cancelled, else Failed. */

@@ -162,7 +162,8 @@ function doneWhat(run: RunToList): Phrase {
 
 /**
  * A run that needs the user: for a tool approval, the step whose agent
- * asked; at a wait step, the waiting line's own words, or the step when it
+ * asked; for Studio's "Allow this address?", the step whose model call
+ * waits for the answer; at a wait step, the waiting line's own words, or the step when it
  * has no description.
  */
 function needsYouWhat(
@@ -172,6 +173,9 @@ function needsYouWhat(
 ): Phrase {
   if (summary.approvals.length > 0) {
     return runsListMessages.waitingForApproval(step).phrase;
+  }
+  if (runWait(summary).kind === "address") {
+    return runsListMessages.waitingForAnswer(step).phrase;
   }
   const description = waitDescription(summary, workflow);
   return description === undefined

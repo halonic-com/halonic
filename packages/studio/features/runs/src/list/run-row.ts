@@ -228,12 +228,15 @@ function rowLine(run: SourcedRun, standing: RunStanding, context: RowContext): s
   }
 }
 
-/** A tool approval, several approvals, or a wait step by its description. */
+/** A tool approval, several approvals, a question "Allow this address?", or a wait step by its description. */
 export function needsYouLine(wait: RunWait, step: string): string {
   if (wait.kind === "approvals") {
     return wait.count === 1
       ? rowLineWords.waitingForApproval(step)
       : rowLineWords.waitingForApprovals(wait.count);
+  }
+  if (wait.kind === "address") {
+    return rowLineWords.waitingForAnswer(step);
   }
   if (wait.kind === "step" && wait.title !== null) {
     return rowLineWords.waitingForYou(escapeHidden(wait.title));

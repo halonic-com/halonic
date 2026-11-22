@@ -64,6 +64,9 @@ function waitingForYou(wait: RunWait, step: string, context: RunPageContext): st
   if (wait.kind === "approvals") {
     return runChangeWords.approval(approvalAsk(wait.oldest, context));
   }
+  if (wait.kind === "address") {
+    return runChangeWords.answer(step);
+  }
   if (wait.kind === "step" && wait.title !== null) {
     return runPageWords.waitStep(escapeHidden(wait.title));
   }
