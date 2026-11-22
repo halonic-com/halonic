@@ -40,7 +40,8 @@ export interface TryItChat {
   /**
    * Whether a message may start now (H16). In a workspace this computer doesn't trust, it opens
    * the trust gate where there is one; on Not now, or with no gate, it shows "Not started: *Acme*
-   * isn't trusted yet" and answers no, so the message stays in the box.
+   * isn't trusted yet", with **Review** to open the gate again where there is one, and answers no,
+   * so the message stays in the box.
    */
   mayStart(): Promise<boolean>;
   /**
@@ -141,7 +142,16 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
 
   const askTrust = useCallback(async () => {
     if (host.askTrust !== undefined && (await host.askTrust()) === "trusted") return true;
-    toasts?.show({ tone: "warning", title: tryItWords.notTrusted(host.workspaceName?.()) });
+    // Review opens the same trust check again; once trusted, the message in the box is the
+    // person's to send. With no check to open, the toast only says why.
+    const review = host.askTrust;
+    toasts?.show({
+      tone: "warning",
+      title: tryItWords.notTrusted(host.workspaceName?.()),
+      ...(review !== undefined && {
+        action: { label: tryItWords.review, onClick: () => void review() },
+      }),
+    });
     return false;
   }, [host, toasts]);
 
@@ -219,7 +229,13 @@ function replyEndOf(end: ChatAnswerEnd): ReplyEnd {
     case "turn-limit":
       return { kind: "turn-limit", turns: end.turns };
     case "failed":
-      return { kind: "failed", reason: end.error.message, toolsRan: end.toolsRan };
+      return {
+        kind: "failed",
+        reason: end.error.message,
+        toolsRan: end.toolsRan,
+        // No key stored and a key turned away are one reason, as on a failed run (microcopy 15.3).
+        ...(end.cause?.reason === "key-refused" && { needsKey: true }),
+      };
   }
 }
 

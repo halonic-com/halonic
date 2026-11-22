@@ -67,10 +67,10 @@ const libraryTabCommands: Readonly<Record<AgentToolList, string>> = {
 };
 
 /**
- * The Workspace feature's command that opens Workspace settings, where the Models feature keeps
- * the providers and their keys; run by id, as the Agents feature can't import it.
+ * The Workspace feature's command that opens Workspace settings at Models, where the providers and
+ * their keys are kept; run by id, as the Agents feature can't import it.
  */
-const openWorkspaceCommand = "workspace.open";
+const openModelsCommand = "workspace.open-models";
 
 /** The step that opens an agent's page at its model, as `openItem(agent, { step: "model" })`. */
 export const MODEL_STEP = "model";
@@ -105,7 +105,7 @@ export function AgentPage({ item, context, step, asked, Sections, sections }: It
         {...(openItem && { openFile: (path: string) => openItem(fileItemOf(path)) })}
         {...(runCommand && {
           openLibrary: (list: AgentToolList) => runCommand(libraryTabCommands[list]),
-          openKeyField: () => runCommand(openWorkspaceCommand),
+          openKeyField: () => runCommand(openModelsCommand),
         })}
         closeStack={closeStack}
         announce={announce}
@@ -140,7 +140,7 @@ export interface AgentScreenProps extends AgentRef {
   readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
   /** Opens the Runs page, for **Open the Runs page ›**; absent where the app can't open a place. */
   readonly openRuns?: (() => void) | undefined;
-  /** Opens where keys are kept, for the Try it chat's **Go to the key field ›**. */
+  /** Opens where keys are kept, for the Try it chat's **Go to the key field ›** and **Open Models**. */
   readonly openKeyField?: (() => void) | undefined;
   /** The window's close stack, so Esc closes the top card; a page of its own without one. */
   readonly closeStack?: CloseStack | undefined;
