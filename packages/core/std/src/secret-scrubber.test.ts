@@ -104,6 +104,37 @@ verifies("std.secret-scrubber", () => {
       expect(scrubber.scrubValue(date)).toBe(date);
       expect(scrubber.scrubValue(undefined)).toBeUndefined();
     });
+
+    it("keeps a __proto__ key as a key of the copy", () => {
+      const value = JSON.parse(`{"__proto__": {"polluted": "${token}"}, "plain": 1}`);
+      const scrubbed = scrubberFor(token).scrubValue(value) as Record<string, unknown>;
+      expect(Object.getPrototypeOf(scrubbed)).toBe(Object.prototype);
+      expect(Object.keys(scrubbed)).toEqual(["__proto__", "plain"]);
+      expect(Object.getOwnPropertyDescriptor(scrubbed, "__proto__")?.value).toEqual({
+        polluted: secretRemoved,
+      });
+      expect(scrubbed["polluted"]).toBeUndefined();
+    });
+
+    it("copies data nested 100,000 levels deep", () => {
+      let value: unknown = token;
+      for (let depth = 0; depth < 100_000; depth += 1) value = depth % 2 ? [value] : { a: value };
+      let copy = scrubberFor(token).scrubValue(value);
+      for (let depth = 100_000 - 1; depth >= 0; depth -= 1) {
+        copy = depth % 2 ? (copy as unknown[])[0] : (copy as { a: unknown }).a;
+      }
+      expect(copy).toBe(secretRemoved);
+    });
+
+    it("keeps the order of keys, and the later value of two keys that scrub alike", () => {
+      expect(Object.keys(scrubberFor(token).scrubValue({ b: 1, a: 2, c: 3 }) as object)).toEqual([
+        "b",
+        "a",
+        "c",
+      ]);
+      const two = { [`x${token}`]: 1, [`x${secretRemoved}`]: 2 };
+      expect(scrubberFor(token).scrubValue(two)).toEqual({ [`x${secretRemoved}`]: 2 });
+    });
   });
 });
 

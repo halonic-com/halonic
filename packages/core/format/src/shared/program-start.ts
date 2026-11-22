@@ -54,8 +54,10 @@ export function pathsNamedBy({ program, args, env = {} }: ProgramStart): NamedPa
  * between `;` and spaces (a Windows `PATH` keeps its drive letters), each
  * piece between `=`, `:`, `;`, `@` and spaces (as in
  * `--config=tools/mail.json`, `--define=KEY=tools/x`, `PATH=tools/bin:/usr/bin`,
- * `file:tools/x` or `@tools/args.txt`), the whole text after each `=`, `:`
- * and `@` (so `--file=my link` still names `my link`), the whole text inside
+ * `file:tools/x` or `@tools/args.txt`), each piece between those, `,` and
+ * brackets (as in `--paths=tools/a,tools/b` or `["tools/x"]`), the whole
+ * text after each `=`, `:` and `@` (so `--file=my link` still names
+ * `my link`), the whole text inside
  * each pair of quotes (as in `--require "my tools/x.js"`), each piece without
  * its quotes (HAL-4903), and each piece without its short flag, as in
  * `-ctools/mail.json`.
@@ -65,6 +67,7 @@ export function pathsIn(text: string): string[] {
     text,
     ...text.split(/[;\s]+/),
     ...text.split(/[=:;@\s]+/),
+    ...text.split(/[=:;@,\s[\](){}]+/),
     ...textsAfter(/[=:@]/g, text),
     ...textsInQuotes(text),
   ];

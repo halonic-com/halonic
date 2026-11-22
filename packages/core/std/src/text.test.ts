@@ -14,6 +14,8 @@ verifies("std.slugify", () => {
     ["_a_", "a"],
     ["-draft-", "draft"],
     ["--rf", "rf"],
+    ["𝐖𝐞𝐞𝐤𝐥𝐲 Ｒｅｐｏｒｔ", "weekly-report"],
+    ["Ⅻ Plan", "xii-plan"],
   ])("turns %j into %j", (name, slug) => {
     expect(slugify(name)).toBe(slug);
   });

@@ -92,6 +92,8 @@ verifies("format.agent-sandbox-fields", () => {
       ["workflows/routines", "a kind's folder"],
       ["hubs/billing/files", "a hub"],
       ["library/skills/x", "the library"],
+      ["integrations/notes", "a local integration's code"],
+      ["Integrations", "the integrations folder in capitals"],
       [".GIT/hooks", "git's folder in capitals"],
       ["Agents", "the agents folder in capitals"],
       ["HUBS/x", "a hub in capitals"],
