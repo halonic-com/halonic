@@ -2,6 +2,7 @@
 
 - Approval: HAL-16335 (scope set on the task; Liam reviews and signs)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GNN7hZCllwxaY7sxQhjNYrTBICzhHzBxKRgeSzPHjGe327o9ViR2OnErxlBOxadDd5DSRelbH0UjgNGecWPbCw==
 
 ## What changes
 
