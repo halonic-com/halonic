@@ -2,8 +2,14 @@ import { decodePairingQr, type PairingQrPayload } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { FakePhoneTunnel } from "../test-support/phone-tunnel.ts";
-import { NOT_HALONIC_MS, PhonePairingFlow, type PhoneScanner } from "./pairing-flow.ts";
-import type { ComputerId, PairingId, PairingStep, PhoneTunnel } from "./phone-tunnel.ts";
+import { NOT_HALONIC_MS, PhonePairingFlow, type PhoneScanner, RESCAN_MS } from "./pairing-flow.ts";
+import type {
+  ComputerId,
+  PairingId,
+  PairingOutcome,
+  PairingStep,
+  PhoneTunnel,
+} from "./phone-tunnel.ts";
 
 const payload: PairingQrPayload = {
   hostKey: new Uint8Array(32).fill(7),
@@ -17,12 +23,14 @@ type ScanAnswer = Awaited<ReturnType<PhoneScanner["scan"]>>;
 /** A scanner that answers each scan from a script, then waits until closed. */
 class ScriptedScanner implements PhoneScanner {
   closes = 0;
+  scans = 0;
   private release: ((answer: ScanAnswer) => void) | undefined;
   private readonly answers: ScanAnswer[];
   constructor(answers: ScanAnswer[]) {
     this.answers = answers;
   }
   scan(): Promise<ScanAnswer> {
+    this.scans += 1;
     const answer = this.answers.shift();
     if (answer !== undefined) return Promise.resolve(answer);
     return new Promise((resolve) => {
@@ -40,9 +48,12 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 function manualTimers() {
   const pending = new Set<() => void>();
+  const waits: number[] = [];
   return {
     pending,
-    setTimer: (run: () => void, _ms: number) => {
+    waits,
+    setTimer: (run: () => void, ms: number) => {
+      waits.push(ms);
       pending.add(run);
       return () => pending.delete(run);
     },
@@ -106,6 +117,23 @@ verifies("remote.phone-pairing", () => {
     expect(flow.view).toEqual({ step: "scanning", notHalonic: false });
   });
 
+  it("pauses before it looks again after a code that isn't Halonic's, so the camera doesn't cycle", async () => {
+    const timers = manualTimers();
+    const scanner = new ScriptedScanner([{ kind: "notAPairingCode" }]);
+    const flow = new PhonePairingFlow(new FakePhoneTunnel(), scanner, timers);
+    flow.scan();
+    await settle();
+    expect(scanner.scans).toBe(1);
+    expect(timers.waits).toContain(RESCAN_MS);
+    timers.fire();
+    await settle();
+    expect(scanner.scans).toBe(2);
+    flow.closeScanner();
+    timers.fire();
+    await settle();
+    expect(scanner.scans).toBe(2);
+  });
+
   it("closes the camera on close and drops what the scanner says after", async () => {
     const scanner = new ScriptedScanner([]);
     const flow = new PhonePairingFlow(new FakePhoneTunnel(), scanner);
@@ -129,12 +157,28 @@ verifies("remote.phone-pairing", () => {
     expect(flow.view).toEqual({ step: "start", scanner: false });
   });
 
+  it("keeps offering only the typed route after Cancel on a build without a scanner", async () => {
+    const tunnel = new FakePhoneTunnel();
+    tunnel.nextStep = { kind: "cant-reach", reason: "unreachable" };
+    const flow = new PhonePairingFlow(tunnel, new ScriptedScanner([{ kind: "noScanner" }]));
+    flow.scan();
+    await settle();
+    flow.typeInstead();
+    flow.pairTyped("7KQ2M4XD9TH6", laptop);
+    await settle();
+    expect(flow.view.step).toBe("problem");
+    flow.cancel();
+    expect(flow.view).toEqual({ step: "start", scanner: false });
+  });
+
   it("ends the pairing on Cancel, and a late Allow doesn't show Paired", async () => {
     const tunnel = new FakePhoneTunnel();
+    const paired = await tunnel.waitForAllow("pairing-0" as PairingId);
+    expect(paired.kind).toBe("paired");
     let allow: (() => void) | undefined;
     tunnel.waitForAllow = (pairing) =>
       new Promise((resolve) => {
-        allow = () => resolve({ kind: "timeout" });
+        allow = () => resolve(paired);
         void pairing;
       });
     const flow = new PhonePairingFlow(tunnel, new ScriptedScanner([]));
@@ -159,6 +203,16 @@ verifies("remote.phone-pairing", () => {
     await settle();
     expect(tunnel.calls).toEqual(["cancel late"]);
     expect(flow.view.step).toBe("start");
+  });
+
+  it("ends the shell's pairing when waiting for Allow fails, before Try again starts anew", async () => {
+    const tunnel = new FakePhoneTunnel();
+    tunnel.waitForAllow = (): Promise<PairingOutcome> => Promise.reject(new Error("shell gone"));
+    const flow = new PhonePairingFlow(tunnel, new ScriptedScanner([]));
+    flow.pairTyped("7KQ2M4XD9TH6", laptop);
+    await settle();
+    expect(tunnel.calls).toEqual(["cancel pairing-1"]);
+    expect(flow.view.step).toBe("problem");
   });
 
   it("sends the same code to the same computer on Try again", async () => {
