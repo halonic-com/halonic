@@ -33,6 +33,7 @@ const portCodes: Readonly<Record<DeployErrorCode, readonly [DeployFailureCode, R
   "destroy-changed": ["destroy-changed", "conflict"],
   "bucket-not-empty": ["host-request-failed", "conflict"],
   "admin-key-left": ["transfer-failed", "internal"],
+  "newest-version-not-deployed": ["transfer-failed", "conflict"],
   "transfer-failed": ["transfer-failed", "unavailable"],
   "export-refused": ["transfer-failed", "denied"],
   "import-refused": ["transfer-failed", "conflict"],

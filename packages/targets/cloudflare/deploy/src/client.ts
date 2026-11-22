@@ -11,7 +11,12 @@ import type {
 import { lockCalls } from "./client-lock-calls.ts";
 import { manageCalls } from "./client-manage-calls.ts";
 import { objectCalls } from "./client-object-calls.ts";
-import { DeployError, redact } from "./errors.ts";
+import {
+  DeployError,
+  newestVersionNotDeployed,
+  newestVersionNotDeployedCode,
+  redact,
+} from "./errors.ts";
 import { deploymentBody, oneMigration, uploadForm } from "./upload-form.ts";
 
 /** What the client needs to talk to Cloudflare. */
@@ -196,6 +201,9 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
     if (allowMissing && response.status === 404) return undefined;
     const body = await readEnvelope(response);
     if (!response.ok || body.success !== true) {
+      if (body.errors?.some((error) => error.code === newestVersionNotDeployedCode)) {
+        throw newestVersionNotDeployed(`${method} ${path}`);
+      }
       throw failed(`${method} ${path} was refused (HTTP ${response.status})${describe(body)}`);
     }
     return body;

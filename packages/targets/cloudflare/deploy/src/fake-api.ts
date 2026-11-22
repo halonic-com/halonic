@@ -11,7 +11,7 @@ import type {
   VersionInfo,
   WorkerBinding,
 } from "./api.ts";
-import { DeployError } from "./errors.ts";
+import { DeployError, newestVersionNotDeployed } from "./errors.ts";
 
 /** What a fake Cloudflare knows. */
 export interface FakeCloudflareState {
@@ -102,11 +102,23 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
   ];
   const deploy = (next: readonly DeployedVersion[]) => history.unshift(next);
   let versions = 0;
+  // The version Cloudflare would build a secret change from: the newest one uploaded.
+  let newest = state.deployment?.[0]?.id;
+  const uploaded = () => {
+    versions += 1;
+    newest = `v${versions}`;
+    return newest;
+  };
+  // Cloudflare refuses a secret change unless the newest version serves all traffic.
+  const refuseUnlessNewestLive = (where: string) => {
+    const live = history[0];
+    const isNewestLive = live?.length === 1 && live[0]?.id === newest;
+    if (newest !== undefined && !isNewestLive) throw newestVersionNotDeployed(where);
+  };
   let deleteFailures = state.secretDeleteFails === true ? Infinity : state.secretDeleteFails || 0;
   // What Cloudflare does when a secret changes: a new version with the same code, deployed at once.
   const deploySecretChange = () => {
-    versions += 1;
-    deploy([{ id: `v${versions}`, percentage: 100, secretChange: true }]);
+    deploy([{ id: uploaded(), percentage: 100, secretChange: true }]);
   };
   const secrets = new Set<string>();
   let workersDevOn = state.workersDevOn ?? true;
@@ -164,19 +176,18 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
     },
     async uploadVersion(_accountId, worker, upload) {
       lockWrite(`uploadVersion ${worker}`);
-      versions += 1;
+      const id = uploaded();
       messages.push(upload.message);
       bindings.push(upload.bindings);
       calls.push(`secrets ${Object.keys(upload.secrets).sort().join(",")}`);
-      return `v${versions}`;
+      return id;
     },
     async uploadWorkerLive(_accountId, worker, upload, migrations) {
       lockWrite(`uploadWorkerLive ${worker} ${migrations.map((m) => m.tag).join(",")}`);
       calls.push(`secrets ${Object.keys(upload.secrets).sort().join(",")}`);
       messages.push(upload.message);
       bindings.push(upload.bindings);
-      versions += 1;
-      deploy([{ id: `v${versions}`, percentage: 100 }]);
+      deploy([{ id: uploaded(), percentage: 100 }]);
     },
     async deployVersions(_accountId, _worker, next) {
       lockWrite(`deployVersions ${next.map((v) => `${v.id}:${v.percentage}`).join(",")}`);
@@ -184,12 +195,14 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
     },
     async setWorkerSecret(_accountId, worker, name) {
       lockWrite(`setWorkerSecret ${worker} ${name}`);
+      refuseUnlessNewestLive(`PUT secrets of ${worker}`);
       if (state.secretSetFails) throw new Error("Cloudflare is down");
       secrets.add(name);
       deploySecretChange();
     },
     async deleteWorkerSecret(_accountId, worker, name) {
       lockWrite(`deleteWorkerSecret ${worker} ${name}`);
+      refuseUnlessNewestLive(`DELETE secret of ${worker}`);
       if (deleteFailures > 0) {
         deleteFailures -= 1;
         throw new Error("Cloudflare is down");

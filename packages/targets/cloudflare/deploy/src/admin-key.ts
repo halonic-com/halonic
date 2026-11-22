@@ -14,6 +14,9 @@ export const adminKeySecretName = "HALONIC_SECRET_ADMIN_KEY_HASH";
 const removeAttempts = 3;
 const removeRetryMs = 500;
 
+/** How the set and the job ended: the job's value, or the first error. */
+type Outcome<T> = { readonly value: T } | { readonly error: unknown };
+
 export interface AdminKeyJobOptions {
   readonly accountId: string;
   readonly worker: string;
@@ -40,6 +43,9 @@ export interface AdminKeyJobOptions {
  *
  * @throws DeployError `deploy-locked` when another deploy holds the lock; nothing was set
  * @throws DeployError `deploy-aborted` when `signal` aborted before or during the job
+ * @throws DeployError `newest-version-not-deployed` when Cloudflare refused to set the secret because
+ *   the Worker's newest version isn't the one deployed (after a failed self-test or a rollback);
+ *   nothing was set, the job didn't run and no removal is tried
  * @throws DeployError `admin-key-left` when the secret couldn't be removed afterwards (after a few
  *   tries): the routes stay open to anyone holding the key, so the message says to remove it.
  *   The job's own error, if it had one, is its `cause`.
@@ -67,13 +73,7 @@ export async function withAdminKey<T>(
       },
       async (lock) => {
         if (signal?.aborted) throw aborted();
-        let outcome: { readonly value: T } | { readonly error: unknown };
-        try {
-          await api.setWorkerSecret(accountId, worker, adminKeySecretName, hash);
-          outcome = { value: await untilAborted(job(key, lock), signal) };
-        } catch (error) {
-          outcome = { error };
-        }
+        const outcome = await setAndRun(lock);
         const failure = await remove();
         if (failure) {
           const reason = failure instanceof Error ? failure.message : "unknown error";
@@ -91,6 +91,24 @@ export async function withAdminKey<T>(
     throw redactError(error, secrets);
   }
 
+  /**
+   * Sets the secret, then runs the job. A set Cloudflare refused because the newest version isn't
+   * deployed throws: it set nothing, and Cloudflare would refuse the removal the same way.
+   */
+  async function setAndRun(lock: DeployLock): Promise<Outcome<T>> {
+    try {
+      await api.setWorkerSecret(accountId, worker, adminKeySecretName, hash);
+    } catch (error) {
+      if (isNewestVersionRefusal(error)) throw error;
+      return { error };
+    }
+    try {
+      return { value: await untilAborted(job(key, lock), signal) };
+    } catch (error) {
+      return { error };
+    }
+  }
+
   async function remove(): Promise<unknown> {
     let failure: unknown;
     for (let attempt = 1; attempt <= removeAttempts; attempt++) {
@@ -104,6 +122,10 @@ export async function withAdminKey<T>(
     }
     return failure;
   }
+}
+
+function isNewestVersionRefusal(error: unknown): boolean {
+  return error instanceof DeployError && error.code === "newest-version-not-deployed";
 }
 
 function aborted(): DeployError {
