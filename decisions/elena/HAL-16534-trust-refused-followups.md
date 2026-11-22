@@ -26,6 +26,9 @@ words changed with it, and a new test covers the workspace that can't be trusted
 a version. Create a version first." kept Try again, which is refused the same way until the person
 creates a version. Like the refusal over a file Halonic leaves to git (#5275), it is now a
 `conflict`, and its toast has no Try again; the words are unchanged and already say what to do.
+Since #5301 (HAL-16504) the left-to-git refusal's toast has Show how, which opens the how-to for
+files left to git; that how-to doesn't fit this refusal, so its toast has no action at all. The
+`refused` outcome carries `leftToGit` to tell the two apart.
 Both ways to get updates (bringing in newer versions, and choosing item by item) do this. The
 requirements `source-control.get-updates` and `source-control.get-updates-per-item` say so; new
 tests check the kind on both ways and the toast with no Try again.
