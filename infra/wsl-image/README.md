@@ -129,10 +129,12 @@ Locally (Debian or Ubuntu, as root): `apt-get install mmdebstrap libcap2-bin` th
 `image-version` holds one whole number, the image's own version (HAL-15161).
 `customize.sh` writes it to `/usr/share/doc/halonic-image/IMAGE` and `status`
 reports it as `image`. Raise it by one whenever something only a new image brings
-changes: `build.sh` (the package list), `customize.sh`, `snapshot.conf` or
-`files/wsl.conf`; the WSL image workflow fails a pull request that changes one of
-them without it. A change to the updater alone needs no raise, as it travels with
-the runtime. Studio names the lowest image it works with (`WSL_IMAGE_MIN` in
+changes: `Dockerfile` (the build container), `build.sh` (the package list),
+`customize.sh`, `snapshot.conf`, `files/wsl.conf`, `files/opt-halonic-README` or
+`files/NOTICE`; the WSL image workflow fails a pull request that changes one of
+them without it, and one that lowers the number (HAL-15778). A Dependabot pull
+request for the `Dockerfile` needs a commit that raises it too. A change to the
+updater alone needs no raise, as it travels with the runtime. Studio names the lowest image it works with (`WSL_IMAGE_MIN` in
 `packages/adapters/sandbox-srt/src/wsl-setup/runtime.ts`); the setup reports an
 older distro as `image-outdated` and never re-imports it on its own, since that
 deletes what is kept in it.

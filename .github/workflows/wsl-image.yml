@@ -22,18 +22,34 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # What only a new image brings needs a new image version (HAL-15161).
-      # The updater isn't in the list: it travels with the runtime.
+      # What only a new image brings needs a new image version (HAL-15161), and
+      # the version never goes down (HAL-15778). The Dockerfile is in the list:
+      # its mmdebstrap and archive keyring build the image. The updater isn't:
+      # it travels with the runtime.
       - name: The image version goes up with the image
         if: github.event_name == 'pull_request'
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           git fetch --no-tags --depth=1 origin "$BASE"
-          image_files=(infra/wsl-image/build.sh infra/wsl-image/customize.sh
-                       infra/wsl-image/snapshot.conf infra/wsl-image/files/wsl.conf)
+          image_files=(infra/wsl-image/Dockerfile infra/wsl-image/build.sh
+                       infra/wsl-image/customize.sh infra/wsl-image/snapshot.conf
+                       infra/wsl-image/files/wsl.conf infra/wsl-image/files/opt-halonic-README
+                       infra/wsl-image/files/NOTICE)
+          before="$(git show "$BASE:infra/wsl-image/image-version" 2>/dev/null || echo 0)"
+          after="$(cat infra/wsl-image/image-version)"
+          for v in "$before" "$after"; do
+            case "$v" in ''|*[!0-9]*)
+              echo "::error::infra/wsl-image/image-version must hold one whole number (was '$before', now '$after')"
+              exit 1 ;;
+            esac
+          done
+          if [ "$((10#$after))" -lt "$((10#$before))" ]; then
+            echo "::error::infra/wsl-image/image-version went down from $before to $after: an image version is never reused"
+            exit 1
+          fi
           changed="$(git diff --name-only "$BASE" HEAD -- "${image_files[@]}")"
-          if [ -n "$changed" ] && git diff --quiet "$BASE" HEAD -- infra/wsl-image/image-version; then
+          if [ -n "$changed" ] && [ "$((10#$after))" -eq "$((10#$before))" ]; then
             echo "::error::These change what the image holds, so raise infra/wsl-image/image-version: $changed"
             exit 1
           fi
