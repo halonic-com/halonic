@@ -2,6 +2,7 @@
 
 - Approval: Tomas decides the words as the team on HAL-16099 (https://paperclip.halonic.com/HAL/issues/HAL-16099), from flow check C672 (#4) on HAL-16091 (HAL-2282 rule: a small wording on an approved screen, bringing it to words `halonic tools review` already says).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:CtOn6DDBWTdF3n6b6Ek/M8LaoLrjhq+mlPeydq5x4RR15jfk21u90LvYoghfDwjb4iE1gV7/THVFHlm8EvrFDA==
 
 ## What changes
 
