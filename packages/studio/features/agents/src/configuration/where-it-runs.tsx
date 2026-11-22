@@ -1,4 +1,11 @@
-import { Callout, Dialog, Field, RadioGroup, type RadioOption } from "@halonicjs/studio-kit";
+import {
+  Callout,
+  Dialog,
+  Field,
+  inlineLinkClasses,
+  RadioGroup,
+  type RadioOption,
+} from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useId, useState } from "react";
 import type { AgentPlacementState, AgentSettings, AgentsHost } from "../api.ts";
@@ -60,7 +67,7 @@ function optionsFor(placement: AgentPlacementState): RadioOption<RunsOn>[] {
  */
 export function WhereItRuns({ host, settings }: WhereItRunsProps) {
   const ref = { hubId: settings.hubId, id: settings.id };
-  const { load, reload } = usePlacement(host, settings.hubId, settings.id);
+  const { load, reload, openChanges } = usePlacement(host, settings.hubId, settings.id);
   const [warning, setWarning] = useState<Warning | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -156,6 +163,18 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
           onConfirm={() => void confirm(warning)}
           onCancel={() => setWarning(null)}
         >
+          {placement.runsOn === "on-hold" && (
+            <FileChangedLine
+              agent={settings.name}
+              openChanges={
+                openChanges &&
+                (() => {
+                  setWarning(null);
+                  openChanges();
+                })
+              }
+            />
+          )}
           <p>{words.warningAccess(settings.name)}</p>
           <p>{words.warningTrust(settings.name)}</p>
           {placement.unsaved && (
@@ -166,5 +185,36 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
         </Dialog>
       )}
     </>
+  );
+}
+
+/**
+ * The warning's first line while the choice is on hold: the agent's file changed, then
+ * **See what changed ›**, which closes the warning and opens Changes. The link never wraps on
+ * its own (checklist 3.8).
+ */
+function FileChangedLine({
+  agent,
+  openChanges,
+}: {
+  readonly agent: string;
+  readonly openChanges: (() => void) | undefined;
+}) {
+  return (
+    <p>
+      {words.fileChanged(agent)}
+      {openChanges && (
+        <>
+          {" "}
+          <button
+            type="button"
+            className={`${inlineLinkClasses} whitespace-nowrap`}
+            onClick={openChanges}
+          >
+            {words.seeWhatChanged}
+          </button>
+        </>
+      )}
+    </p>
   );
 }

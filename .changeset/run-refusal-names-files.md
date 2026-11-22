@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-An error in another workflow's file no longer stops `halonic run` or `halonic runs send`: the CLI and Studio's Run now refuse a workflow only for errors in its own file, in the agents and workflows it uses, or in files every run depends on, and the refusal names those files, such as "Acme has 1 problem in providers/mock.yaml."
+`halonic run`, `halonic runs send` and Studio's Run now refuse a workflow for the same errors, those in its own file, the agents and workflows it uses and the workspace files every run needs, such as providers and `workspace.yaml`, and the refusal names the files, such as "Acme has 1 problem in providers/mock.yaml."

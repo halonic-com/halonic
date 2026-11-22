@@ -71,9 +71,10 @@ export function AgentPage({ item, context, step, asked, Sections, sections }: It
   const { openPlace, openItem, runCommand, closeStack, announcer } = context;
   const announce = useCallback((text: string) => announcer.announce(text), [announcer]);
   const host = context.services.get(AgentsHostService);
+  const openChanges = openPlace && (() => openPlace("changes"));
   // One read of where the agent runs, so the header's chip follows a choice in Where it runs.
   return (
-    <PlacementProvider host={host} hubId={item.hub} id={item.id}>
+    <PlacementProvider host={host} hubId={item.hub} id={item.id} openChanges={openChanges}>
       <AgentScreen
         host={host}
         saving={context.saving}

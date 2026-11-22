@@ -35,6 +35,11 @@ function chipIn(page: HTMLElement) {
   );
 }
 
+/** What a screen reader hears of the chip: exact, so the on-hold line can't pass for the other. */
+function spokenOf(chip: Element | undefined) {
+  return chip?.querySelector(".sr-only")?.textContent;
+}
+
 function radioNamed(page: HTMLElement, name: string) {
   return [...page.querySelectorAll<HTMLInputElement>("input[type=radio]")].find(
     (input) =>
@@ -65,7 +70,7 @@ verifies("agents.page.full-access-chip", () => {
     const host = agentsHost();
     await chooseThisComputer(host);
     const chip = chipIn(await open(host));
-    expect(chip?.textContent).toContain(words.fullAccessSpoken);
+    expect(spokenOf(chip)).toBe(words.fullAccessSpoken);
     // Running without the sandbox is "have a look" (amber), not "Needs you" (violet).
     expect(chip?.className).toContain("bg-attention-soft");
   });
@@ -75,7 +80,7 @@ verifies("agents.page.full-access-chip", () => {
     await chooseThisComputer(host);
     const page = await open(host);
     await act(async () => host.update(ref, { instructions: "Reply to everyone." }));
-    expect(chipIn(page)?.textContent).toContain(words.fullAccessOnHoldSpoken);
+    expect(spokenOf(chipIn(page))).toBe(words.fullAccessOnHoldSpoken);
   });
 
   it("follows a choice made in Where it runs at once, though no file changed", async () => {
@@ -91,7 +96,7 @@ verifies("agents.page.full-access-chip", () => {
     expect(chipIn(page)).toBeUndefined();
     await press(radioNamed(page, words.onThisComputer));
     await press(buttonNamed(document.body, words.confirm));
-    expect(chipIn(page)?.textContent).toContain(words.fullAccessSpoken);
+    expect(spokenOf(chipIn(page))).toBe(words.fullAccessSpoken);
     await press(radioNamed(page, words.inSandbox));
     expect(chipIn(page)).toBeUndefined();
   });

@@ -8,6 +8,7 @@ import type { AgentsHost } from "../api.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { buttonNamed, openDialogsInJsdom, show, unmount } from "../test-support.tsx";
 import { configurationWords } from "./configuration-words.ts";
+import { PlacementProvider } from "./use-placement.ts";
 import { WhereItRuns } from "./where-it-runs.tsx";
 
 const words = configurationWords.whereItRuns;
@@ -117,6 +118,40 @@ verifies("agents.configuration.where-it-runs", () => {
       await press(buttonNamed(document.body, words.confirm));
       expect(page.textContent).not.toContain(words.onHold("Writer"));
       expect((await host.placement(ref))?.runsOn).toBe("this-computer");
+    });
+
+    it("starts the warning on hold with the file changed, and See what changed opens Changes", async () => {
+      const host = agentsHost();
+      let opened = 0;
+      const page = await show(
+        <PlacementProvider host={host} hubId="acme" id="writer" openChanges={() => (opened += 1)}>
+          <WhereItRuns host={host} settings={await host.settings(ref)} />
+        </PlacementProvider>,
+      );
+      await chooseThisComputer(page);
+      await act(async () => host.update(ref, { instructions: "Reply to everyone." }));
+      await press(buttonNamed(page, words.reviewAndConfirm));
+      expect(document.activeElement?.textContent).toBe(words.cancel);
+      const first = warning()?.querySelector("p");
+      expect(first?.textContent).toBe(`${words.fileChanged("Writer")} ${words.seeWhatChanged}`);
+      const link = buttonNamed(document.body, words.seeWhatChanged);
+      expect(link?.className).toContain("whitespace-nowrap");
+      await press(link);
+      expect(opened).toBe(1);
+      expect(warning()).toBeUndefined();
+      expect((await host.placement(ref))?.runsOn).toBe("on-hold");
+    });
+
+    it("says the file changed without a link where the app can't open Changes, and not on a first choice", async () => {
+      const host = agentsHost();
+      const page = await open(host);
+      await press(radioNamed(page, words.onThisComputer));
+      expect(warning()?.textContent).not.toContain(words.fileChanged("Writer"));
+      await press(buttonNamed(document.body, words.confirm));
+      await act(async () => host.update(ref, { instructions: "Reply to everyone." }));
+      await press(buttonNamed(page, words.reviewAndConfirm));
+      expect(warning()?.querySelector("p")?.textContent).toBe(words.fileChanged("Writer"));
+      expect(buttonNamed(document.body, words.seeWhatChanged)).toBeUndefined();
     });
 
     it("saves nothing when the file changes while the warning is open, and warns again", async () => {
