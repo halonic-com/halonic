@@ -1,29 +1,61 @@
 import { definePlugin, type PluginContext, runWorker } from "@paperclipai/plugin-sdk";
+import { runCommand } from "../read/command.ts";
+import { readSeat } from "../read/read-seat.ts";
+import { runSeatsRead } from "./read-job.ts";
 import { handleSeatsRequest } from "./routes.ts";
+import { SeatsReader } from "./seats-reader.ts";
 import { readSeatsSettings } from "./settings.ts";
 import { databaseStore } from "./store.ts";
 
 // The SDK hands route calls no context, so the worker keeps the one `setup` got.
-let context: PluginContext | undefined;
+let context: { readonly ctx: PluginContext; readonly reader: SeatsReader } | undefined;
+
+/**
+ * The only variables `claude` gets besides the seat's folder: it needs to
+ * find itself and a home. Any API key in the worker's environment stays out.
+ */
+export function commandEnv(env: NodeJS.ProcessEnv): Record<string, string> {
+  const kept: Record<string, string> = {};
+  for (const name of ["PATH", "HOME"]) {
+    const value = env[name];
+    if (value !== undefined && value !== "") {
+      kept[name] = value;
+    }
+  }
+  return kept;
+}
 
 /**
  * The `seats` plugin's worker. The host starts it as `worker.js` in the
  * folder `pnpm run build:seats-plugin` writes (`dist/seats/`), after it has
- * run the plugin's migrations, and hands it the board-only route calls.
+ * run the plugin's migrations. It runs `seats.read` every minute and answers
+ * the board-only route calls.
  */
 export const plugin = definePlugin({
   async setup(ctx) {
-    context = ctx;
+    const store = databaseStore(ctx.db);
+    const now = () => new Date();
+    const env = commandEnv(process.env);
+    const reader = new SeatsReader({
+      read: (seat) => readSeat(seat, { run: runCommand, now: () => now().toISOString(), env }),
+      store,
+      now,
+    });
+    context = { ctx, reader };
+    ctx.jobs.register("seats.read", async () => {
+      await runSeatsRead(ctx, reader);
+    });
   },
   async onApiRequest(input) {
-    const ctx = context;
-    if (ctx === undefined) {
+    if (context === undefined) {
       return { status: 503, body: { error: "The AI seats plugin is still starting." } };
     }
+    const { ctx, reader } = context;
     return await handleSeatsRequest(input, {
       readSettings: async (companyId) => readSeatsSettings(await ctx.config.get(companyId)),
       store: databaseStore(ctx.db),
       now: () => new Date(),
+      reads: (seats) => ({ readerStartedAt: reader.startedAt, seats: reader.status(seats) }),
     });
   },
 });

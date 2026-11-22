@@ -67,6 +67,22 @@ verifies("paperclip.seats-read", () => {
     }
   });
 
+  test("a seat signed in to another account is never asked for usage", async () => {
+    const claude = fakeClaude(
+      exited(
+        JSON.stringify({ loggedIn: true, authMethod: "claude.ai", email: "seat-b@acme.test" }),
+      ),
+      [exited(usageText)],
+    );
+
+    const { reading, signIn } = await readSeat(seat, { run: claude.run, now, env });
+
+    expect(signIn?.account).toBe("differs");
+    expect(reading.error).toBe("signed-out");
+    expect(reading.session).toBeUndefined();
+    expect(claude.usageCalls()).toBe(0);
+  });
+
   test("a usage read that times out is tried once more, then kept as a time-out", async () => {
     const claude = fakeClaude(signedIn, [{ kind: "timed-out" }, { kind: "timed-out" }]);
 

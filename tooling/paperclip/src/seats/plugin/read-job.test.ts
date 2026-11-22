@@ -1,0 +1,89 @@
+import { verifies } from "@halonicjs/testing-spec";
+import { PLUGIN_RPC_ERROR_CODES } from "@paperclipai/plugin-sdk";
+import { expect, test } from "vitest";
+import { type ReadJobApi, runSeatsRead } from "./read-job.ts";
+import { SeatsReader } from "./seats-reader.ts";
+import type { SeatsStore } from "./store.ts";
+
+// Made-up companies and seats only.
+const configs: Record<string, Record<string, unknown>> = {
+  acme: { seats: [{ id: "seat-a", role: "pool", configDir: "/srv/seats/a" }] },
+  globex: { seats: [{ id: "seat-z", role: "pool", configDir: "/srv/seats/z" }] },
+  initech: {},
+};
+
+function api(companyIds: readonly string[]) {
+  const logs: string[] = [];
+  const ctx: ReadJobApi = {
+    companies: { list: async () => companyIds.map((id) => ({ id }) as never) },
+    config: {
+      get: async (companyId) => {
+        const config = companyId === undefined ? undefined : configs[companyId];
+        if (config === undefined) {
+          throw Object.assign(new Error("denied"), {
+            code: PLUGIN_RPC_ERROR_CODES.INVOCATION_SCOPE_DENIED,
+          });
+        }
+        return config;
+      },
+    },
+    logger: {
+      info: (message) => void logs.push(message),
+      error: (message) => void logs.push(`error: ${message}`),
+    },
+  };
+  return { ctx, logs };
+}
+
+function readerReading(read: string[]) {
+  const store: SeatsStore = {
+    recordEvent: async () => undefined,
+    recordReading: async () => undefined,
+    removeOld: async () => undefined,
+  };
+  let now = new Date("2026-11-22T10:00:00.000Z");
+  const reader = new SeatsReader({
+    read: async (seat) => {
+      read.push(seat.id);
+      return {
+        reading: {
+          seatId: seat.id,
+          at: now.toISOString(),
+          error: "rate-limited",
+          session: undefined,
+          week: undefined,
+          weekByModel: {},
+        },
+        signIn: undefined,
+      };
+    },
+    store,
+    now: () => now,
+  });
+  return { reader, later: () => (now = new Date("2026-11-22T10:05:00.000Z")) };
+}
+
+verifies("paperclip.seats-read-store", () => {
+  test("reads only the first company that lists seats, and logs that there are two", async () => {
+    const { ctx, logs } = api(["no-settings", "initech", "acme", "globex"]);
+    const read: string[] = [];
+    const { reader, later } = readerReading(read);
+
+    await runSeatsRead(ctx, reader);
+    later();
+    await runSeatsRead(ctx, reader);
+
+    expect(read).toEqual(["seat-a"]);
+    expect(logs.filter((line) => line.startsWith("error:"))).toHaveLength(2);
+    expect(logs).toContain("seats.read: 1 seats read, 1 without a reading (rate-limited).");
+    expect(logs.join("\n")).not.toContain("/srv/");
+  });
+
+  test("does nothing when no company lists seats", async () => {
+    const { ctx, logs } = api(["initech"]);
+    const read: string[] = [];
+    await runSeatsRead(ctx, readerReading(read).reader);
+    expect(read).toEqual([]);
+    expect(logs).toEqual([]);
+  });
+});

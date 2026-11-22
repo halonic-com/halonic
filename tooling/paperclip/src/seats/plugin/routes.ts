@@ -1,11 +1,21 @@
 import type { PluginApiRequestInput, PluginApiResponse } from "@paperclipai/plugin-sdk";
-import { publicSeat, type SeatsSettings } from "./settings.ts";
+import type { SeatReadStatus } from "./seats-reader.ts";
+import { publicSeat, type SeatSetting, type SeatsSettings } from "./settings.ts";
 import type { SeatsStore } from "./store.ts";
 
 export interface SeatsRouteDeps {
   readonly readSettings: (companyId: string) => Promise<SeatsSettings>;
   readonly store: SeatsStore;
   readonly now: () => Date;
+  /** The reads as `seats.read` has them in memory now. */
+  readonly reads: (seats: readonly SeatSetting[]) => SeatsReadView;
+}
+
+/** What the seat list shows about the reads: since the worker started, each seat's state. */
+export interface SeatsReadView {
+  /** When the worker started; every seat's back-off and alerts count from then. */
+  readonly readerStartedAt: string;
+  readonly seats: readonly SeatReadStatus[];
 }
 
 /**
@@ -27,7 +37,11 @@ export async function handleSeatsRequest(
     case "seats.list":
       return {
         status: 200,
-        body: { seats: settings.seats.map(publicSeat), movesEnabled: settings.movesEnabled },
+        body: {
+          seats: settings.seats.map(publicSeat),
+          movesEnabled: settings.movesEnabled,
+          reads: deps.reads(settings.seats),
+        },
       };
     case "seats.manual-reset":
       return await recordManualReset(input.params["seatId"], boardUserId, settings, deps);

@@ -34,7 +34,10 @@ export interface WindowState {
   readonly resetsAt: string | undefined;
 }
 
-/** Why a read of one seat gave no windows. */
+/**
+ * Why a read of one seat gave no windows. `signed-out` means the seat has no
+ * sign-in it can use: none, one that isn't a subscription, or another account's.
+ */
 export type ReadError = "timeout" | "rate-limited" | "signed-out" | "unreadable";
 
 /** One `seats.read` of one seat. A failed read keeps its error and no windows. */
@@ -110,6 +113,7 @@ export interface AgentActivity {
  */
 export const retentionDays = {
   agentUsage: 14,
+  agentActivity: 7,
   readings: 7,
   placements: 7,
   events: 7,

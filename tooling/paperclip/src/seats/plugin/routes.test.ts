@@ -28,8 +28,13 @@ function setup() {
       settingsRead.push(companyId);
       return readSeatsSettings(config);
     },
-    store: { recordEvent: async (event) => void events.push(event) },
+    store: {
+      recordEvent: async (event) => void events.push(event),
+      recordReading: async () => undefined,
+      removeOld: async () => undefined,
+    },
     now: () => new Date("2026-11-22T11:00:00.000Z"),
+    reads: () => ({ readerStartedAt: "2026-11-22T10:00:00.000Z", seats: [] }),
   };
   return { deps, events, settingsRead };
 }
@@ -87,6 +92,7 @@ verifies("paperclip.seats-routes", () => {
           { id: "seat-b", role: "paid-api", resetGroup: undefined },
         ],
         movesEnabled: false,
+        reads: { readerStartedAt: "2026-11-22T10:00:00.000Z", seats: [] },
       },
     });
     expect(JSON.stringify(response.body)).not.toMatch(/srv|acme\.test/);

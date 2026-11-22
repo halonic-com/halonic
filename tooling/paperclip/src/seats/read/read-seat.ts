@@ -57,6 +57,10 @@ export async function readSeat(seat: SeatToRead, deps: ReadSeatDeps): Promise<Se
     const error: ReadError = signIn.state === "unreadable" ? "unreadable" : "signed-out";
     return { reading: failed(seat.id, deps.now(), error), signIn };
   }
+  // Another account's usage isn't this seat's: it must never reach the history or the forecast.
+  if (signIn.account === "differs") {
+    return { reading: failed(seat.id, deps.now(), "signed-out"), signIn };
+  }
 
   let reading = failed(seat.id, deps.now(), "unreadable");
   for (let attempt = 1; attempt <= usageAttempts; attempt += 1) {
