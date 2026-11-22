@@ -137,9 +137,7 @@ function startsHere(trust: WorkspaceTrustState): boolean {
  * can't start reads "Can't start" (HAL-15607).
  */
 function isPaused(routine: ListedRoutine, row: RowOptions): boolean {
-  return (
-    row.paused && !cantStart(routine) && routine.enabled && routine.liveState !== "never-live"
-  );
+  return row.paused && !cantStart(routine) && routine.enabled && routine.liveState !== "never-live";
 }
 
 /** The line above the list for a workspace that isn't trusted: changed since, or not trusted yet. */
