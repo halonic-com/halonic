@@ -3,7 +3,12 @@
 
 import type { WorkflowRef } from "@halonicjs/adapter-workspace-models";
 import { filesOf, type LoadedWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
-import { agentRefusalOf, type PageRuns, workflowRefusalOf } from "./page-refusal.ts";
+import {
+  agentRefusalOf,
+  type PageRuns,
+  routineRefusalOf,
+  workflowRefusalOf,
+} from "./page-refusal.ts";
 
 /**
  * Refuses a workflow of `workspace` the page can't run: one with an agent that lists a connector
@@ -20,6 +25,25 @@ export function refuseWorkflowOn(
   runDefinitionsOf(workspace, run.hubId, run.workflowId);
   const refusal = workflowRefusalOf(workspace, run, runs);
   if (refusal !== undefined) throw refusal;
+}
+
+/**
+ * Refuses a routine's workflow as {@link refuseWorkflowOn} does, with the step a routine's start
+ * gives for a connector the page can't start (`routineRefusalOf`).
+ *
+ * @throws KindedError `unavailable` with the `routines watch` step, or what
+ *   {@link refuseWorkflowOn} throws otherwise
+ */
+export function refuseRoutineWorkflowOn(
+  workspace: LoadedWorkspace,
+  run: WorkflowRef,
+  runs: PageRuns,
+): void {
+  try {
+    refuseWorkflowOn(workspace, run, runs);
+  } catch (error) {
+    throw routineRefusalOf(error);
+  }
 }
 
 /**

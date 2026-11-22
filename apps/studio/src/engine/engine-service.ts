@@ -68,14 +68,14 @@ import { pageRoutines, routineSkipsOf, SkipListeners } from "./engine-routines.t
 import { engineRunsOptions, openRunsOf } from "./engine-runs-options.ts";
 import { SavedWorkspace } from "./engine-saved-files.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
-import { refuseAgentOn, refuseWorkflowOn } from "./engine-start-checks.ts";
+import { refuseAgentOn, refuseRoutineWorkflowOn, refuseWorkflowOn } from "./engine-start-checks.ts";
 import {
   closeAndEndStoppedRuns,
   refuseUntrusted,
   untrustedWhenFolderClosed,
 } from "./engine-trust.ts";
 import { withKeyOriginPrompt } from "./key-origin-prompt.ts";
-import { type PageRuns, routineRefusalOf } from "./page-refusal.ts";
+import type { PageRuns } from "./page-refusal.ts";
 import { PageRunVersions } from "./page-run-versions.ts";
 
 export type { PageEngineLock } from "./engine-lock.ts";
@@ -271,9 +271,8 @@ export class EngineService {
    * `halonic runs send` does, with the executor's `payload` and `options` (the call or wait step it
    * answers): opens the engine, with the checks of a start, and returns once the event is recorded.
    * Another engine holding the workspace, or Local only changed while a run is going, fails as
-   * `unavailable` with its next step in the sentence, a failure to try again, and an
-   * Approve of a connector's tool call the window can't make is refused before anything is
-   * recorded (`engine-refusals`).
+   * `unavailable` with its next step in the sentence, a failure to try again, and an Approve of a
+   * connector's tool call the window can't make is refused before it's recorded (`engine-refusals`).
    * @returns the run as it is after the event
    * @throws KindedError `unavailable` for those, `denied` for a workspace that may start nothing,
    *   what {@link EngineService.open} throws otherwise, or the executor's refusal
@@ -420,11 +419,7 @@ export class EngineService {
         // On the version the routine's run records. A routine's step keeps it starting on time,
         // where Run's `halonic run` starts it once.
         const atVersion = await this.#runVersions.workspaceAt(request.version);
-        try {
-          refuseWorkflowOn(atVersion, request, this.pageRuns);
-        } catch (error) {
-          throw routineRefusalOf(error);
-        }
+        refuseRoutineWorkflowOn(atVersion, request, this.pageRuns);
         await takeForRoutine(this.#opener, saved, executor, runStore);
         await refuseUntrusted(this.#options.mayStart, atVersion);
       });
