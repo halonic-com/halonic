@@ -5,10 +5,11 @@ import { scryptAsync } from "@noble/hashes/scrypt.js";
 import { expect, it, vi } from "vitest";
 import { createScryptHasher } from "./scrypt-hasher.ts";
 
-// Wraps the real scrypt, so a test can count the calls.
+// Wraps the real scrypt, so a test can count the calls. It runs in a thread
+// without coverage (see `scryptInWorker`).
 vi.mock("@noble/hashes/scrypt.js", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@noble/hashes/scrypt.js")>();
-  return { ...original, scryptAsync: vi.fn(original.scryptAsync) };
+  const { scryptInWorker } = await import("./test/scrypt-in-worker.spec.ts");
+  return { ...(await importOriginal<object>()), scryptAsync: vi.fn(scryptInWorker) };
 });
 
 verifies("password-scrypt.no-work-before-refusal", () => {
