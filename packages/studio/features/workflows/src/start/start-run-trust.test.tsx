@@ -93,6 +93,40 @@ verifies("workflows.start.start-run", () => {
     expect(document.activeElement).toBe(buttonNamed(page, "Start run"));
   });
 
+  it("brings Start run back, with focus left alone, once the workspace is trusted from the status bar", async () => {
+    const trustListeners = new Set<() => void>();
+    const { host } = memoryHost([], [], [reply], [], {
+      startRun: async () => {
+        throw new WorkspaceUntrusted("This workspace isn't trusted yet, so nothing was started.");
+      },
+      askTrust: async () => "declined",
+      onTrusted: (listener) => {
+        trustListeners.add(listener);
+        return () => trustListeners.delete(listener);
+      },
+    });
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
+    const statusBar = document.body.appendChild(document.createElement("button"));
+
+    await click(runButton(page));
+    await click(buttonNamed(page, "Start run"));
+    expect(buttonNamed(page, "Start run")).toBeUndefined();
+    statusBar.focus();
+    await act(async () => {
+      for (const listener of trustListeners) listener();
+    });
+
+    expect(page.textContent).not.toContain("Couldn't start the run");
+    expect(buttonNamed(page, "Review")).toBeUndefined();
+    expect(buttonNamed(page, "Start run")).toBeDefined();
+    expect(document.activeElement).toBe(statusBar);
+    // Only an untrusted refusal listens: none is left once it has gone.
+    expect(trustListeners.size).toBe(0);
+    statusBar.remove();
+  });
+
   it("keeps Try again for a refusal when the host can't ask for trust", async () => {
     const page = await open(async () => {
       throw new WorkspaceUntrusted("This workspace isn't trusted yet, so nothing was started.");

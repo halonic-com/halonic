@@ -6,7 +6,7 @@ import {
   Field,
   TextArea,
 } from "@halonicjs/studio-kit";
-import { StartFailedCallout } from "@halonicjs/studio-shell";
+import { isUntrustedRefusal, StartFailedCallout } from "@halonicjs/studio-shell";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { dockedCard } from "../runs/docked-card.ts";
 import { startWords as words } from "./start-words.ts";
@@ -24,6 +24,12 @@ export interface StartRunCardProps {
    * workspace isn't trusted then offers **Review** in place of **Try again**.
    */
   readonly askTrust?: () => Promise<"trusted" | "declined">;
+  /**
+   * Calls `listener` whenever the workspace may run now, wherever the person trusted it, and
+   * returns how to stop; absent where there is no folder to trust. A refusal because the workspace
+   * isn't trusted then goes when it's trusted from the status bar too.
+   */
+  readonly onTrusted?: (listener: () => void) => () => void;
   /** The reason of an engine that can't be reached, in the words for where Studio runs. */
   readonly notAnswering: string;
   /** The errors that stop the workflow from running, and the way to Configuration › Problems. */
@@ -65,6 +71,8 @@ function parseInput(text: string): Record<string, unknown> | undefined {
  * **Copy details** for a failure Halonic can't explain or one that replaces the shell's own words.
  * A refusal because the workspace isn't trusted yet has **Review** instead, which opens the trust
  * check; once the person trusts it, the failure goes and **Start run** takes focus (C144 RT1).
+ * Trusted from the status bar instead, the failure goes too and **Start run** comes back, but focus
+ * stays where the person trusted it, as on the run page (C596 #3).
  * While the workflow has errors, a danger Callout says how many, with **Open Problems**, in place
  * of **Start run** (X2).
  */
@@ -73,6 +81,7 @@ export function StartRunCard({
   firstTestInput,
   start,
   askTrust,
+  onTrusted,
   notAnswering,
   problems,
   unavailable,
@@ -115,6 +124,13 @@ export function StartRunCard({
   useEffect(() => {
     if (trusted > 0) startButton.current?.focus();
   }, [trusted]);
+  // Trusted from the status bar, not from the refusal's Review: the refusal is stale. Focus stays
+  // where the person trusted it, so this doesn't count as a trust from Review.
+  const untrusted = failure !== undefined && isUntrustedRefusal(failure.error);
+  useEffect(() => {
+    if (onTrusted === undefined || !untrusted) return;
+    return onTrusted(() => setFailure(undefined));
+  }, [onTrusted, untrusted]);
 
   const review = async () => {
     if ((await askTrust?.()) !== "trusted") return;

@@ -276,6 +276,11 @@ export function provideFolderServices(
         services.get(VersionDialogService).open(paths, { makesLive: options?.name }),
     }),
   );
+  // The status bar's Review trusts the workspace too; a refusal on the page then goes (C552, C596).
+  const onTrusted = (listener: () => void) =>
+    trust.subscribe(() => {
+      if (trust.mayStartNow()) listener();
+    });
   const workflows = services.provide(
     WorkflowsHostService,
     new WorkspaceWorkflows({
@@ -286,6 +291,7 @@ export function provideFolderServices(
       ...(settle === undefined ? {} : { settle }),
       engine,
       askTrust,
+      onTrusted,
     }),
   );
   services.provide(
@@ -315,11 +321,7 @@ export function provideFolderServices(
       startRun: ({ hubId, workflowId }, input) =>
         startRun.call(workflows, { hubId, id: workflowId }, input),
       askTrust,
-      // The status bar's Review trusts the workspace too; the page's refusal then goes (C552).
-      onTrusted: (listener) =>
-        trust.subscribe(() => {
-          if (trust.mayStartNow()) listener();
-        }),
+      onTrusted,
     });
   }
   services.provide(
