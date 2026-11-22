@@ -316,10 +316,17 @@ export class WslSetup {
     return { state: { ...state, step: "installing-runtime" as const } };
   }
 
-  /** The runtime Studio ships is current in the distro (HAL-14644); then the setup is done, with what leaks in (W6). */
+  /**
+   * The runtime Studio ships is current in the distro (HAL-14644); then the setup is done, with
+   * what leaks in (W6). A failure that leaves the distro with no runtime is `runtime-missing`;
+   * with an older one kept, the sandbox still starts on it, so it is `other` (HAL-15132).
+   */
   async #installRuntime(state: WslSetupState) {
     const failure = await ensureWslRuntime(this.#host, this.#distro, this.#options.runtime);
-    if (failure !== null) return failed(failure.code, "other", failure.detail);
+    if (failure !== null) {
+      const reason = failure.kept === null ? "runtime-missing" : "other";
+      return failed(failure.code, reason, failure.detail);
+    }
     const registered = (await this.#host.distros()).find((entry) => entry.name === this.#distro);
     const residuals: WslResidual[] = [];
     if (registered?.isDefault === true) residuals.push("default-distro");

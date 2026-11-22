@@ -53,6 +53,8 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
     "Windows needs to restart to finish setting up WSL. Restart Windows, then run it again.",
   "distro-missing":
     "WSL works, but Halonic's own Linux system for the sandbox isn't installed. Use Halonic inside WSL 2 on this computer, then run it again.",
+  "runtime-missing":
+    "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish. Use Halonic inside WSL 2 on this computer, then run it again.",
   "setup-conflict":
     "Another program set up the sandbox on this computer, in a way Halonic can't use. Use Halonic inside WSL 2 on this computer, then run it again.",
   "setup-needed":
@@ -84,6 +86,8 @@ const reasons: Readonly<Record<WordedReason, string>> = {
   "wsl-missing": "WSL isn't installed, and the sandbox needs it.",
   "restart-needed": "Windows needs to restart to finish setting up WSL.",
   "distro-missing": "WSL works, but Halonic's own Linux system for the sandbox isn't installed.",
+  "runtime-missing":
+    "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish.",
   "setup-conflict":
     "Another program set up the sandbox on this computer, in a way Halonic can't use.",
   "setup-needed": "The sandbox's one-time setup isn't done for this version of Halonic.",
@@ -114,6 +118,7 @@ const fixes: Readonly<Record<WordedReason, string>> = {
     "install it with wsl --install --no-distribution in a terminal run as administrator, then restart Windows.",
   "restart-needed": "restart Windows.",
   "distro-missing": "use Halonic inside WSL 2 on this computer.",
+  "runtime-missing": "use Halonic inside WSL 2 on this computer.",
   "setup-conflict": "use Halonic inside WSL 2 on this computer.",
   "setup-needed": "use Halonic inside WSL 2 on this computer.",
   "user-namespaces-restricted":

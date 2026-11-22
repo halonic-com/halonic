@@ -33,6 +33,11 @@ sandboxCheckContract("fake on plain Windows", {
   makeUnavailable: async () => checkOnlySandbox("windows"),
 });
 
+sandboxCheckContract("fake WSL distro without its runtime", {
+  make: async () => checkOnlySandbox("runtime-missing"),
+  makeUnavailable: async () => checkOnlySandbox("runtime-missing"),
+});
+
 const profile: SandboxProfile = {
   workingFolder: "/contract/work",
   tempFolder: "/contract/temp",

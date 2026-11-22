@@ -65,6 +65,7 @@ const reasonSentences: Record<SandboxUnavailableReason, string> = {
   "wsl-missing": "WSL isn't installed yet.",
   "restart-needed": "Windows needs to restart to finish setup.",
   "distro-missing": "The Linux part of this sandbox isn't installed yet.",
+  "runtime-missing": "Setting up the Linux part of this sandbox didn't finish.",
   "setup-conflict": "Another program has already set this up on this computer.",
   "setup-needed": "It needs a one-time setup.",
   "user-namespaces-restricted": "This system blocks sandboxes by default.",

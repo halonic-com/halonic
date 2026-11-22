@@ -108,6 +108,10 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
     reason: "WSL works, but Halonic's own Linux system for the sandbox isn't installed.",
     fix: inSettings,
   },
+  "runtime-missing": {
+    reason: "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish.",
+    fix: inSettings,
+  },
   "setup-conflict": {
     reason: "Another program set up the sandbox on this computer, in a way Halonic can't use.",
     fix: inSettings,

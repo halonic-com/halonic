@@ -23,6 +23,7 @@ export const runnerUnfencedReasons = [
   "wsl-missing",
   "restart-needed",
   "distro-missing",
+  "runtime-missing",
   "setup-conflict",
   "setup-needed",
   "user-namespaces-restricted",
