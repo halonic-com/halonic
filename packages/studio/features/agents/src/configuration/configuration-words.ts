@@ -146,15 +146,12 @@ export const configurationWords = {
     fileChanged: (agent: string) => `${agent}'s file changed.`,
     seeWhatChanged: "See what changed ›",
     /**
-     * The chip in the agent page's header while On this computer is chosen (checklist 3.8); a
-     * screen reader hears the spoken line instead, as with the run page's chip (microcopy 23.1).
-     * On hold, it says so, since the agent runs in the sandbox until then (team decision on
-     * HAL-15640, C605).
+     * The chip in the agent page's header while the agent runs on this computer, not while that
+     * choice is on hold (checklist 3.8, HAL-15552); a screen reader hears the spoken line instead,
+     * as with the run page's chip (microcopy 23.1).
      */
     fullAccess: "Full access",
     fullAccessSpoken: "Runs without the sandbox",
-    fullAccessOnHold: "Full access on hold",
-    fullAccessOnHoldSpoken: "Runs in the sandbox until you confirm again",
     /** The file changed while the warning was open, so nothing was saved; the warning stays for the new file. */
     changedWhileOpen: (agent: string) =>
       `${agent}'s file changed while this was open, so nothing was saved. Read this again, then confirm.`,
