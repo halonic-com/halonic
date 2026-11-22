@@ -3,7 +3,6 @@
 - Task: HAL-15687
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15673#document-c613 (row 6 lists the new words; a detail of an approved page, so a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:t0a87tCRmP7mVd1wFrP9CG6w4kB4efhmBUoAwySf79OTxQ037jgD5CTeQetXsHb7HeC0G3VAVp5apC4aDMpOBA==
 
 ## What changes
 
