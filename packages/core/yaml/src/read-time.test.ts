@@ -10,12 +10,26 @@ const duplicate = (line: number, col: number) => ({
 });
 
 verifies("yaml.read-time", () => {
-  it("reads a map with 60,000 keys", () => {
-    const count = 60_000;
-    const text = Array.from({ length: count }, (_, index) => `key${index}: ${index}`).join("\n");
-    const data = unwrap(readYaml(text)).data as Record<string, number>;
-    expect(Object.keys(data)).toHaveLength(count);
-    expect(data[`key${count - 1}`]).toBe(count - 1);
+  // Compares how the time grows instead of a fixed budget, so a slow runner
+  // (coverage makes CI 20-40 times slower) cannot fail it. Eight times the keys
+  // take about 7 times as long when reading is linear, about 30 times when it
+  // is quadratic.
+  it("reads eight times the keys in well under 16 times the time", { timeout: 120_000 }, () => {
+    const mapOf = (count: number) =>
+      Array.from({ length: count }, (_, index) => `key${index}: ${index}`).join("\n");
+    const fastest = (count: number) => {
+      const text = mapOf(count);
+      let best = Number.POSITIVE_INFINITY;
+      for (let round = 0; round < 2; round += 1) {
+        const start = performance.now();
+        const data = unwrap(readYaml(text)).data as Record<string, number>;
+        best = Math.min(best, performance.now() - start);
+        expect(data[`key${count - 1}`]).toBe(count - 1);
+      }
+      return best;
+    };
+    fastest(1_000);
+    expect(fastest(16_000) / fastest(2_000)).toBeLessThan(16);
   });
 
   it("finds a key twice in a nested block map and in a flow map, at the second one", () => {

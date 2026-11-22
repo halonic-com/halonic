@@ -8,7 +8,7 @@ The `readYaml` reader shall find a key that is in its map twice, in a block or f
 
 ## Examples
 
-- Given a map with 60,000 different keys, just under the length limit, when `readYaml` runs, then it reads all of them.
+- Given a map with 16,000 different keys, when `readYaml` runs, then it takes well under 16 times as long as for 2,000 keys.
 - Given `a: { b: 1, c: 2, b: 3 }` on line 1, when `readYaml` runs, then the problem is at line 1, column 18.
 - Given `~: 1` and then `null: 2`, when `readYaml` runs, then the problem is at line 2, column 1.
 - Given a line of 200,000 blanks and `x`, when `editYaml` looks for a comment on it to keep, then it finds none, at once.
