@@ -6,7 +6,7 @@
 
 ## What changes
 
-Three lines of `halonic routines` that #4613 (HAL-15204) added get new words:
+Four lines of `halonic routines` that #4613 (HAL-15204) and HAL-15664 added get new words:
 
 - The line under the list for a routine whose changes aren't committed: "! Weekly report has
   changes that aren't live yet. Until you commit them, it starts as it was last committed."
@@ -16,6 +16,9 @@ Three lines of `halonic routines` that #4613 (HAL-15204) added get new words:
 - The list's last line: "Routines start on time only while this workspace is open in Halonic
   Studio or `halonic routines watch` is running." (was "… while `halonic routines watch` is
   running or the Studio is open.").
+- The line for saved changes with errors, which HAL-15664 added after this note was first
+  written: "… and they have errors (halonic validate). It starts as it was last committed." (was
+  "It runs as last committed."), for the same reason as the first line.
 
 The requirement `cli.commands.routines.list` and its examples say the new words, its two golden
 files take the new last line, and the tests expect the new lines. `cli.commands.routines.list-live-version`
