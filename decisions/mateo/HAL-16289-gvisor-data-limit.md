@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16289 (CI fix for the fast pool, a team decision); the reviewer signs this note with the pull request
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:skgTEIx/g2s+eWu1kqNQ4ea44OoXKHaXXUXTcQnmFj6lLHfJfiej1pXjVxrfbUCmIVvZNLuc+xaTCeaX+SAdAA==
 
 ## What changes
 
