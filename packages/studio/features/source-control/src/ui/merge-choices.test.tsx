@@ -242,8 +242,7 @@ verifies("source-control.get-updates-per-item", () => {
       const { fake, toasts, opened } = await openPage({
         started: merge([item("a.md", "m\n", "s\n")]),
       });
-      const reason =
-        "updates change .env.example, which Halonic leaves to git.";
+      const reason = "updates change .env.example, which Halonic leaves to git.";
       fake.failMerge(new KindedError("conflict", reason));
       await press("Get updates");
       const [refused] = toasts.list();
