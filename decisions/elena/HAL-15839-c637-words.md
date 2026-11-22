@@ -3,6 +3,7 @@
 - Task: HAL-15839, from words check C637 rows 57 and 58 (HAL-15824); HAL-15892, from flow check C646 (HAL-15887)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15839 and https://paperclip.halonic.com/HAL/issues/HAL-15892 (wording fixes in command output, so a team decision under the HAL-2282 rule; Liam's code review signs this note)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Tv5ZAwSn7Izu2aOtk7vIoAQO+5a0md3SxyVpd9d3ip/uSZvfO3E0g5lxSWyIXdwaGf99I6ZuIMtPaiuu93E2Dg==
 
 ## What changes
 
