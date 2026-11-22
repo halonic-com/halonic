@@ -60,7 +60,7 @@ verifies("cli.plugins-folder-unreadable", () => {
     expect(code).toBe(exitCode.denied);
     expect(io.stdout).toEqual([]);
     expect(io.stderr.join("\n")).toContain(
-      `✕ Couldn't list the plugins: the plugins folder ${plugins} can't be read by you.\n  ${fix}`,
+      `✕ Couldn't list the plugins: the plugins folder ${plugins} can't be read by your user account.\n  ${fix}`,
     );
     expect(io.stderr.join("\n")).not.toContain("report it");
   });

@@ -49,7 +49,7 @@ verifies("cli.plugins-folder-unreadable", () => {
       code: "plugins-folder-unreadable",
       folder,
       access: yours ? "yours" : "windows",
-      message: `The plugins folder ${folder} can't be read by you.`,
+      message: `The plugins folder ${folder} can't be read by your user account.`,
       cause: denied,
     });
     if (yours) {

@@ -205,7 +205,8 @@ export const pluginMessages = defineMessages("plugin", {
   broken: () => phrase`can't be read or checked`,
   noPlugins: () => phrase`No plugins yet. Add one with halonic plugin add <folder or git address>.`,
   /** The refusal when the plugins folder itself can't be listed by the person (HAL-15785). */
-  folderUnreadable: (folder: string) => phrase`The plugins folder ${folder} can't be read by you.`,
+  folderUnreadable: (folder: string) =>
+    phrase`The plugins folder ${folder} can't be read by your user account.`,
   /** Under {@link folderUnreadable}, as the secrets file's (HAL-15511). `folderWord` is the folder as one shell word. */
   folderUnreadableFix: (access: PluginsFolderAccess, folderWord: string) => {
     if (access === "windows") {
