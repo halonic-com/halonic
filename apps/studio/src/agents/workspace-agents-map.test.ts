@@ -48,5 +48,10 @@ verifies("studio.workspace-agents-map", () => {
     const { connectors } = await host.toolOptions(writer);
     const byId = Object.fromEntries(connectors.map((each) => [each.id, each.toolsWithoutAsking]));
     expect(byId).toEqual({ plain: 0, every: 0, some: 1, hidden: 1 });
+    expect(connectors.find((each) => each.id === "plain")).toEqual({
+      id: "plain",
+      name: "plain",
+      toolsWithoutAsking: 0,
+    });
   });
 });

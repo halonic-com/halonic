@@ -182,7 +182,7 @@ verifies("studio.workspace-agents", () => {
           { id: "tone", name: "Tone" },
         ],
         knowledge: [],
-        connectors: [{ id: "search", name: "Web search" }],
+        connectors: [{ id: "search", name: "Web search", toolsWithoutAsking: 0 }],
       });
 
       store["hubs/acme/hub.yaml"] = "id: acme\nname: Acme\nuses:\n  skills: [tone]\n";
