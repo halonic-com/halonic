@@ -1,7 +1,7 @@
 import type { ChatAnswerEnd } from "@halonicjs/app";
 import { errorKindOf } from "@halonicjs/std";
 import { useToastStore } from "@halonicjs/studio-kit";
-import { isUntrustedRefusal } from "@halonicjs/studio-shell";
+import { isFolderNotOpen, isUntrustedRefusal, unexplainedReason } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentRef, AgentsHost } from "../api.ts";
 import {
@@ -53,7 +53,8 @@ export interface TryItChat {
    * Sends `message` as the person's next message. When the engine refuses it because the
    * workspace isn't trusted ({@link isUntrustedRefusal}, H16), nothing was sent: the turn is taken
    * back and `refused` gets the message, so it can go back in the box. It isn't shown as a
-   * failure. Any other `denied`, such as a folder that isn't open, is a failure with its own words.
+   * failure. Any other `denied` is a failure with its own words, but a folder that isn't open is one
+   * Halonic can't explain.
    */
   send(message: string, refused?: (message: string) => void): void;
   /** Stops the reply being written; it ends with "Stopped by you.". */
@@ -240,12 +241,14 @@ function replyEndOf(end: ChatAnswerEnd): ReplyEnd {
 }
 
 /**
- * An answer the host couldn't give: the engine not answering is D4's stop, anything else a
- * failure with its own words.
+ * An answer the host couldn't give: the engine not answering is D4's stop, the shell's refusal of
+ * a folder that isn't open a failure Halonic can't explain (its words hold a path, UX check S4),
+ * anything else a failure with its own words.
  */
 function failureOf(error: unknown, toolsRan: boolean): ReplyEnd {
   const kind = (error as { kind?: unknown } | null)?.kind;
   if (kind === "unavailable") return { kind: "engine-stopped", toolsRan };
+  if (isFolderNotOpen(error)) return { kind: "failed", reason: unexplainedReason, toolsRan };
   const reason = error instanceof Error ? error.message : String(error);
   return { kind: "failed", reason, toolsRan };
 }

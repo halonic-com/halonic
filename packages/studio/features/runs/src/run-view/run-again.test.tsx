@@ -420,18 +420,40 @@ verifies("runs.run-view.run-again-review", () => {
     expect(button(other, "Try again")).toBeDefined();
 
     unmountAll();
+    const otherDenied = await open(failed, {
+      startRun: vi.fn(async () => {
+        throw new KindedError("denied", "The computer refused to start the run.");
+      }),
+      askTrust: vi.fn(),
+    });
+    await act(async () => button(otherDenied, "Run again")?.click());
+    expect(otherDenied.textContent).toContain(
+      "Couldn't start the run: the computer refused to start the run.",
+    );
+    expect(button(otherDenied, "Review")).toBeUndefined();
+    expect(button(otherDenied, "Try again")).toBeDefined();
+
+    unmountAll();
+    // The shell's refusal of a folder that isn't open: S4's unexplained failure (C613 row 33).
     const folderNotOpen = await open(failed, {
       startRun: vi.fn(async () => {
-        throw new KindedError("denied", "Acme isn't an opened folder.");
+        throw new KindedError(
+          "denied",
+          "The run store refused the call: /workspaces/acme is not an opened folder",
+          {
+            cause: { kind: "folder_not_open", message: "/workspaces/acme is not an opened folder" },
+          },
+        );
       }),
       askTrust: vi.fn(),
     });
     await act(async () => button(folderNotOpen, "Run again")?.click());
     expect(folderNotOpen.textContent).toContain(
-      "Couldn't start the run: Acme isn't an opened folder.",
+      "Couldn't start the run: Halonic ran into a problem it can't explain yet.",
     );
+    expect(button(folderNotOpen, "Copy details")).toBeDefined();
     expect(button(folderNotOpen, "Review")).toBeUndefined();
-    expect(button(folderNotOpen, "Try again")).toBeDefined();
+    expect(button(folderNotOpen, "Try again")).toBeUndefined();
 
     unmountAll();
     const cantAsk = await open(failed, { startRun: vi.fn(async () => untrusted()) });
