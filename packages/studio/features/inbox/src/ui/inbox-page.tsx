@@ -31,6 +31,7 @@ import { failureReason, isSignedOut, loadFailed, StaleLine } from "./load-lines.
 import { NothingOpen, nothingWaiting } from "./nothing-open.tsx";
 import { NoticesSection } from "./notices-section.tsx";
 import { ProposalCard } from "./proposal-card.tsx";
+import { ProposalsElsewhere } from "./proposals-elsewhere.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
 import { SetupPane } from "./setup-pane.tsx";
 import { useOpenItem } from "./use-open-item.ts";
@@ -99,7 +100,10 @@ export interface InboxViewProps {
   readonly requests?: InboxRequests | undefined;
   /** The notices under Needs you; without it there is no Notices section. */
   readonly notices?: InboxNotices | undefined;
-  /** Accept and Reject on run proposals; without it a proposal shows its changes, no buttons. */
+  /**
+   * Accept and Reject on run proposals, which the app provides only where it lists them; without
+   * it Needs you says where proposals show, and a proposal names the command that decides it.
+   */
   readonly proposals?: ProposalDecisions | undefined;
   /** Opens New connector, for a secret pasted when no account is there to take it. */
   readonly openNewConnector?: () => void;
@@ -245,6 +249,7 @@ export function InboxView({
               onRetry={retry}
             />
           )}
+          {state.loaded && !failedFirst && proposals === undefined ? <ProposalsElsewhere /> : null}
           {failedFirst ? null : (
             <NoticesSection
               source={notices}
