@@ -5,8 +5,9 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
  * history the seat forecast needs and proposes moves. Its own plugin, apart
  * from Agent tools, so the board installs, stops and trusts it on its own.
  *
- * This is the skeleton: settings, its own database schema and the board-only
- * routes. The `seats.read` job and the page come in later pull requests.
+ * So far: settings, its own database schema, the board-only routes and the
+ * `seats.read` job. The history from Paperclip's tables and the page come
+ * in later pull requests.
  */
 export const manifest: PaperclipPluginManifestV1 = {
   id: "halonic.seats",
@@ -21,6 +22,7 @@ export const manifest: PaperclipPluginManifestV1 = {
     "database.namespace.migrate",
     "database.namespace.read",
     "database.namespace.write",
+    "jobs.schedule",
     // Board-only routes: every route below says `auth: "board"`, and src/seats/plugin/routes.ts checks it again.
     "api.routes.register",
   ],
@@ -85,6 +87,15 @@ export const manifest: PaperclipPluginManifestV1 = {
       },
     },
   },
+  jobs: [
+    {
+      jobKey: "seats.read",
+      displayName: "Read seats",
+      description:
+        "Every minute: reads each seat that is due, at its own minute in every 10 minutes, and stores its usage limits. Backs off after a rate limit.",
+      schedule: "* * * * *",
+    },
+  ],
   apiRoutes: [
     {
       routeKey: "seats.list",

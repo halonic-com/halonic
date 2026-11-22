@@ -171,8 +171,9 @@ turned dry run off.
 `src/seats/` is the `seats` plugin (HAL-16008): it reads each AI seat's
 usage limits, keeps the history the seat forecast needs and proposes moves.
 It is its own plugin, `halonic.seats`, so the board installs, stops and
-trusts it apart from Agent tools. So far it has its settings, its tables and
-two board-only routes; reading the seats and the page come next.
+trusts it apart from Agent tools. So far it has its settings, its tables,
+two board-only routes and the `seats.read` job; the history from
+Paperclip's own tables and the page come next.
 
 - **Settings** (board-only, empty by default): the seats in reading order,
   each with an id, a role (`pool`, `reserve` or `paid-api`), its Claude
@@ -189,6 +190,17 @@ two board-only routes; reading the seats and the page come next.
   `/api/plugins/<plugin id>/api/`: `GET /seats` lists the seats with their
   id, role and reset group only, and `POST /seats/:seatId/manual-reset`
   records a manual reset by the board user.
+- **`seats.read`**, every minute: reads each seat that is due, at its own
+  minute in every 10 minutes, with `claude auth status --json` and, only for
+  a subscription on the seat's own account, `claude -p /usage`. No shell, a
+  time limit per call, and only `PATH`, `HOME` and the seat's folder reach
+  the program. A rate limit backs the seat off to 20, 40 and at most 60
+  minutes. Each reading is stored; rows past the forecast's retention
+  (`retentionDays`) go at most once an hour. One company's settings hold
+  the seats: if several list some, only the first is read and the job logs
+  it. The back-off and alerts live in the worker's memory, so they start
+  fresh when it restarts; `GET /seats` says when that was and shows each
+  seat's next read, reading age, last error and alerts.
 
 Build it with `pnpm --filter @halonicjs/tooling-paperclip run
 build:seats-plugin`. That writes `dist/seats/`: the bundles, the migrations
