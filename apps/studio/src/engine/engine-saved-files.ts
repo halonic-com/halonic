@@ -46,15 +46,17 @@ function isLocalOnly(workspace: LoadedWorkspace): boolean {
  * Refuses, while a run is going in the engine, to close it for a new local only: closing would
  * stop that run. A run waiting for a person or a timer goes on in the next engine.
  *
+ * @param saved the open engine's workspace, whose local only the save turned the other way
  * @throws KindedError `unavailable`, so the page offers to try again, when a run is going
  */
 export async function refuseWhileRunsGo(
   executor: LocalExecutor,
   runs: TauriRunStore,
   name: string,
+  saved: SavedWorkspace,
 ): Promise<void> {
   if (!(await hasRunGoing(executor, runs))) return;
-  throw localOnlyChangedRefusal(name, "Try again once the run that's going ends.");
+  throw localOnlyChangedRefusal(name, saved, "Try again once the run that's going ends.");
 }
 
 /**
@@ -74,14 +76,21 @@ export async function hasRunGoing(
 }
 
 /**
- * The refusal of a start the open engine can't make because local only was turned on or off.
+ * The refusal of a start the open engine can't make because local only was turned on or off. It
+ * says which way, so the person knows what the saved files now ask for (check C700, HAL-16373).
  *
+ * @param saved the open engine's workspace; the save turned its local only the other way
  * @param fix the next step: trying again for a person's start, the next time for a routine's
  */
-export function localOnlyChangedRefusal(name: string, fix: string): KindedError {
+export function localOnlyChangedRefusal(
+  name: string,
+  saved: SavedWorkspace,
+  fix: string,
+): KindedError {
+  const turned = saved.localOnly ? "off" : "on";
   return new KindedError(
     "unavailable",
-    `Local only was turned on or off in ${name}, so this run didn't start.`,
+    `Local only was turned ${turned} in ${name}, so this run didn't start.`,
     { fix },
   );
 }

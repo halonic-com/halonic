@@ -53,7 +53,7 @@ export async function openOnSavedFiles(opener: EngineOpener): Promise<OpenEngine
   const opening = opener.open();
   const open = await opening;
   if (open.saved.take(await opener.load())) return open;
-  await refuseWhileRunsGo(open.engine.executor, open.runs, opener.name);
+  await refuseWhileRunsGo(open.engine.executor, open.runs, opener.name, open.saved);
   return reopen(opener, opening);
 }
 
@@ -80,7 +80,7 @@ export async function takeForRoutine(
       if (!going && opening !== undefined) await reopen(opener, opening);
     })
     .catch(opener.reportError);
-  throw localOnlyChangedRefusal(opener.name, routineLocalOnlyStep);
+  throw localOnlyChangedRefusal(opener.name, saved, routineLocalOnlyStep);
 }
 
 /** Closes the engine `opening` opened, unless another call did already, and opens a new one. */

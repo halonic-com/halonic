@@ -169,12 +169,38 @@ verifies("studio.engine-service", () => {
 
       await expect(service.startRun(reply, {})).rejects.toMatchObject({
         kind: "unavailable",
-        message: "Local only was turned on or off in Acme, so this run didn't start.",
+        message: "Local only was turned on in Acme, so this run didn't start.",
         fix: "Try again once the run that's going ends.",
       });
       const engine = await service.open();
       expect(await engine.runs.get(going.id)).toMatchObject({ status: "running" });
       expect(lockCalls(shell)).toEqual(["engine_lock_hold"]);
+      await service.close();
+    });
+
+    it("says Local only was turned off when a save turned it off while a run is going", async () => {
+      const shell = fakeShell();
+      const files = acmeWithTwoProviders();
+      await files.write("workspace.yaml", "id: acme\nname: Acme\nprivacy:\n  localOnly: true\n");
+      await files.write(
+        "hubs/support/agents/writer.agent.yaml",
+        "id: writer\nname: Writer\nmodel: home\n",
+      );
+      const service = serviceOn(shell, files, {
+        http: hungServer,
+        ids: countingIds(),
+        setTimer: pageTimers,
+      });
+      await service.startRun(reply, {});
+      await vi.advanceTimersByTimeAsync(0);
+
+      await files.write("workspace.yaml", "id: acme\nname: Acme\n");
+
+      await expect(service.startRun(reply, {})).rejects.toMatchObject({
+        kind: "unavailable",
+        message: "Local only was turned off in Acme, so this run didn't start.",
+        fix: "Try again once the run that's going ends.",
+      });
       await service.close();
     });
 
@@ -242,7 +268,7 @@ verifies("studio.engine-service", () => {
 
       expect(errors).toContainEqual(
         expect.objectContaining({
-          message: expect.stringContaining("Local only was turned on or off in Acme"),
+          message: expect.stringContaining("Local only was turned on in Acme"),
         }),
       );
       expect(lockCalls(shell)).toEqual([
