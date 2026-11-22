@@ -5,6 +5,7 @@ import type { PickModelState } from "../pick-model/pick-model-state.ts";
 import {
   buttonLabel,
   isAmber,
+  isKeyProblem,
   messageText,
   trustLine,
   pickModelWords as words,
@@ -76,6 +77,8 @@ function Options(props: {
 }) {
   const { pick, state, keyField } = props;
   const name = useId();
+  const messageId = useId();
+  const keyProblem = state.message !== undefined && isKeyProblem(state.message);
   return (
     // min-w-0 lets it shrink with the screen instead of growing to its content.
     <fieldset
@@ -92,8 +95,13 @@ function Options(props: {
           note={words.keyNote}
           onTick={() => pick.pick("key")}
         >
-          <KeyBody pick={pick} state={state} keyField={keyField} />
-          <Message state={state} />
+          <KeyBody
+            pick={pick}
+            state={state}
+            keyField={keyField}
+            problemId={keyProblem ? messageId : undefined}
+          />
+          <Message id={messageId} state={state} />
         </OptionCard>
       )}
       {state.local.kind === "desktop-only" ? (
@@ -128,20 +136,26 @@ function Options(props: {
   );
 }
 
-/** What the test or Continue found, inside the ticked option: amber when the choice is fine, else red. */
-function Message({ state }: { readonly state: PickModelState }) {
+/**
+ * What the test or Continue found, inside the ticked option: amber when the choice is fine, else
+ * red. `id` names it for the key field, which a message about the key describes.
+ */
+function Message({ id, state }: { readonly id?: string; readonly state: PickModelState }) {
   if (state.message === undefined) return null;
   const tone = isAmber(state.message) ? "attention" : "danger";
   return (
-    <Callout tone={tone} announce="polite">
-      {messageText(state.message, state.provider)}
-    </Callout>
+    <div id={id}>
+      <Callout tone={tone} announce="polite">
+        {messageText(state.message, state.provider)}
+      </Callout>
+    </div>
   );
 }
 
 /**
  * Back and the one button, and the trust line under the button: right-aligned on a computer,
- * left on a phone (8e.3). Sample answers needs no trust, so it has no line.
+ * left on a phone (8e.3). The line describes the button, so a screen reader hears what it allows
+ * before pressing it (C575). Sample answers needs no trust, so it has no line.
  */
 function Footer(props: {
   readonly state: PickModelState;
@@ -152,6 +166,7 @@ function Footer(props: {
   const line =
     state.picked === "sample" || state.line === undefined ? undefined : trustLine(state.line);
   const busy = state.busy !== undefined;
+  const lineId = useId();
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
@@ -162,13 +177,14 @@ function Footer(props: {
           variant="primary"
           busy={busy}
           busyLabel={buttonLabel(state.button, state.busy)}
+          {...(line === undefined ? {} : { "aria-describedby": lineId })}
           onClick={busy ? undefined : props.onPress}
         >
           {buttonLabel(state.button, undefined)}
         </Button>
       </div>
       {line !== undefined && (
-        <p className="text-right text-small text-fg-muted phone:text-left">
+        <p id={lineId} className="text-right text-small text-fg-muted phone:text-left">
           <LockedLine>{line}</LockedLine>
         </p>
       )}

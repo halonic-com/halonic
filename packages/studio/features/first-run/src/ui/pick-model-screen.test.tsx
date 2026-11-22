@@ -169,3 +169,61 @@ verifies("first-run.pick-model", () => {
     expect(root.querySelector(".text-warning")).toBeNull();
   });
 });
+
+/** The text of the elements an element's `aria-describedby` names, or `undefined` without one. */
+function description(root: HTMLElement, element: Element | null | undefined): string | undefined {
+  const ids = element?.getAttribute("aria-describedby");
+  if (ids === null || ids === undefined) return undefined;
+  return ids
+    .split(" ")
+    .map((id) => root.querySelector(`[id="${id}"]`)?.textContent ?? "")
+    .join(" ");
+}
+
+verifies("first-run.pick-model-described", () => {
+  it("describes the button by the trust line, and gives it none for Sample answers", async () => {
+    const root = await open(fakeService(["anthropic"], { kind: "not-found", cause: "off" }));
+    expect(description(root, buttonNamed(root, "Continue"))).toBe(
+      "Will pass 1 secret to Anthropic. Turns off Local only.",
+    );
+    await act(async () => optionRadios(root)[2]?.click());
+    expect(buttonNamed(root, "Continue")?.hasAttribute("aria-describedby")).toBe(false);
+  });
+
+  it("describes the key field by the refused key's message and marks it invalid", async () => {
+    const service = fakeService(
+      [],
+      { kind: "not-found", cause: "off" },
+      { kind: "tested", outcome: "key-refused" },
+    );
+    const root = await open(service);
+    const field = root.querySelector<HTMLInputElement>('input[type="password"]');
+    expect(description(root, field)).not.toContain("didn't accept");
+    expect(field?.hasAttribute("aria-invalid")).toBe(false);
+    if (field) field.value = "sk-ant-pasted";
+    await act(async () => buttonNamed(root, "Test and continue")?.click());
+    expect(description(root, field)).toContain(
+      "Anthropic didn't accept this key. Check that you copied all of it.",
+    );
+    expect(field?.getAttribute("aria-invalid")).toBe("true");
+  });
+
+  it("links to Ollama's download page when no Ollama was found", async () => {
+    const root = await open(fakeService(["openai"], { kind: "not-found", cause: "off" }));
+    expect(root.textContent).not.toContain("Don't have Ollama?");
+    await act(async () => optionRadios(root)[1]?.click());
+    expect(root.textContent).toContain("Start Ollama, then check again.");
+    const link = root.querySelector<HTMLAnchorElement>('a[href="https://ollama.com/download"]');
+    expect(link?.parentElement?.textContent).toBe(
+      "Don't have Ollama? Get it from ollama.com ↗ (opens in your browser)",
+    );
+  });
+
+  it("says the account is needed as its own sentence after the key link", async () => {
+    const root = await open(fakeService([], { kind: "not-found", cause: "off" }));
+    const link = root.querySelector('a[href="https://console.anthropic.com/settings/keys"]');
+    expect(link?.parentElement?.textContent).toBe(
+      "Don't have a key? Get one from Anthropic ↗ (opens in your browser). You need an account there.",
+    );
+  });
+});
