@@ -151,3 +151,25 @@ verifies("cli.commands.routines.list-live-version", () => {
     gitTimeout,
   );
 });
+
+verifies("cli.commands.routines.list", () => {
+  // HAL-15525 with HAL-15664: trusting Acme wouldn't start a routine no commit has.
+  it(
+    "says Not live yet, not Paused until trusted, for a routine never live in an untrusted workspace",
+    async () => {
+      await writeFiles(acmeRuns.acme, {
+        "providers/ollama.yaml": "id: ollama\ntype: ollama\nlocal: true\n",
+      });
+      await makeLive();
+      await writeFiles(acmeRuns.acme, { [weeklyPath]: weeklyReport("0 9 * * 0") });
+
+      const { io } = await routinesIn(history);
+
+      expect(io.stdout.slice(0, 2)).toEqual([
+        "Weekly report   Sundays at 09:00   Not live yet   Never ran",
+        "! Weekly report isn't live yet, so it doesn't run. Commit it to start it.",
+      ]);
+    },
+    gitTimeout,
+  );
+});
