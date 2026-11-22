@@ -73,6 +73,8 @@ const byId: StepNames = (stepId) => stepId;
 /** One line of Configuration › Problems. */
 export interface ProblemRow {
   readonly severity: WorkflowProblem["severity"];
+  /** The check that found it, such as `unknown-agent`: the step's card marks the field it is about. */
+  readonly code: string;
   readonly glyph: string;
   /** What the row says: Studio's sentence for the check, or the core's full message when none is written. */
   readonly text: string;
@@ -117,12 +119,28 @@ export function problemRows(
   return errorsFirst(problems).map((problem) => {
     return {
       severity: problem.severity,
+      code: problem.code,
       glyph: problemGlyph[problem.severity],
       text: rowSentences[problem.code] ?? namedMessage(problem, nameOf),
       stepId: problem.stepId,
       stepName: problem.stepId === undefined ? undefined : nameOf(problem.stepId),
     };
   });
+}
+
+/**
+ * The rows of Configuration › Problems that are about one step, in the same words, for the top of
+ * its docked card: errors first, its arrows' problems included, since the card edits them too.
+ */
+export function stepProblemRows(
+  problems: readonly WorkflowProblem[],
+  stepId: string,
+  nameOf: StepNames = byId,
+): readonly ProblemRow[] {
+  return problemRows(
+    problems.filter((problem) => problem.stepId === stepId),
+    nameOf,
+  );
 }
 
 /** What a step's card shows of its problems (flow-workflows 4.4). */

@@ -450,6 +450,8 @@ export function WorkflowScreen({
           runShown={shown !== undefined}
           phone={phone}
           saving={saving}
+          problems={fileProblems}
+          stepName={stepName}
           onOpenStep={setPickedStep}
           announce={announce}
           onClose={closeStepCard}

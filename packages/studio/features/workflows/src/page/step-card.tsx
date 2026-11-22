@@ -42,7 +42,8 @@ export interface StepCardProps {
  * click selects it; the docked card that edits it lands with Configuration.
  *
  * A screen reader hears its title first, then its kind, the Start chip, its agent and how it stood
- * in the shown run, and then where it leads (`waysOn`). The card looks the same: only the order it
+ * in the shown run and its problem line; then, as its description, its problems' full messages and
+ * where it leads (`waysOn`). The card looks the same: only the order it
  * is read in changes (a11y check E1, E3).
  */
 export function StepCard({
@@ -61,25 +62,13 @@ export function StepCard({
   connectTarget,
 }: StepCardProps) {
   const button = useRef<HTMLButtonElement>(null);
-  // Ids for the parts the card's name is read from, unique to this card on the page.
-  const id = useId();
-  const part = {
-    title: `${id}-title`,
-    kind: `${id}-kind`,
-    start: `${id}-start`,
-    agent: `${id}-agent`,
-    mark: `${id}-mark`,
-    problems: `${id}-problems`,
-    waysOn: `${id}-ways-on`,
-  };
-  const nameParts = [
-    part.title,
-    part.kind,
-    first && part.start,
-    step.type === "task" && part.agent,
-    mark !== undefined && part.mark,
-    problems !== undefined && part.problems,
-  ].filter((partId) => partId !== false);
+  const { part, nameParts, descriptionParts } = cardParts(useId(), {
+    step,
+    first,
+    mark,
+    problems,
+    waysOn,
+  });
   useEffect(() => {
     if (focusOnMount) button.current?.focus();
   }, [focusOnMount]);
@@ -94,7 +83,7 @@ export function StepCard({
         data-step={step.id}
         data-connect-target={connectTarget}
         aria-labelledby={nameParts.join(" ")}
-        aria-describedby={waysOn === undefined ? undefined : part.waysOn}
+        aria-describedby={descriptionParts.length === 0 ? undefined : descriptionParts.join(" ")}
         onClick={onSelect}
         onFocus={onFocus}
         // Dragging the background pans; a press on a card must not start that.
@@ -155,7 +144,12 @@ export function StepCard({
         )}
         {problems !== undefined && <ProblemLine id={part.problems} problems={problems} />}
       </button>
-      {/* Hidden, outside the button so it isn't part of the card's text; a description still reads it. */}
+      {/* Hidden, outside the button so they aren't part of the card's text; a description still reads them. */}
+      {problems !== undefined && (
+        <span id={part.detail} hidden>
+          {problems.detail}
+        </span>
+      )}
       {waysOn !== undefined && (
         <span id={part.waysOn} hidden>
           {waysOn}
@@ -172,6 +166,47 @@ export function stepCardIn(
 ): HTMLButtonElement | undefined {
   const cards = within?.querySelectorAll<HTMLButtonElement>("button[data-step]") ?? [];
   return [...cards].find((card) => card.getAttribute("data-step") === stepId);
+}
+
+/**
+ * The ids of the card's parts, unique to this card on the page, and which of them it is named and
+ * described by: its name is read from the title, kind, Start chip, agent, run mark and problem
+ * line; its description from its problems' full messages, then where it leads.
+ */
+function cardParts(
+  id: string,
+  {
+    step,
+    first,
+    mark,
+    problems,
+    waysOn,
+  }: Pick<StepCardProps, "step" | "first" | "mark" | "problems" | "waysOn">,
+) {
+  const part = {
+    title: `${id}-title`,
+    kind: `${id}-kind`,
+    start: `${id}-start`,
+    agent: `${id}-agent`,
+    mark: `${id}-mark`,
+    problems: `${id}-problems`,
+    detail: `${id}-detail`,
+    waysOn: `${id}-ways-on`,
+  };
+  const present = (partId: string | false): partId is string => partId !== false;
+  const nameParts = [
+    part.title,
+    part.kind,
+    first && part.start,
+    step.type === "task" && part.agent,
+    mark !== undefined && part.mark,
+    problems !== undefined && part.problems,
+  ].filter(present);
+  const descriptionParts = [
+    problems !== undefined && part.detail,
+    waysOn !== undefined && part.waysOn,
+  ].filter(present);
+  return { part, nameParts, descriptionParts };
 }
 
 /** How far the Start chip rises above its card's top edge, in px: its 16 px height, as it stands on it. */
@@ -233,7 +268,8 @@ function outlineOf(connectTarget: ConnectTarget | undefined): string {
 
 /**
  * The problem line (flow-workflows 4.4): "✕ Uses a missing agent" in the colour of the worst
- * problem, with each problem's full message as its tooltip. The card has no room for a fourth line,
+ * problem, with each problem's full message as its tooltip for the mouse; keyboard and screen
+ * reader users get the same messages as the card's description, and on its docked card. The card has no room for a fourth line,
  * so the line hangs from its bottom edge at the left, as the Failed chip stands on its top edge at
  * the right. It is at most 80px wide, so it ends before the middle of the edge where the arrows
  * leave; its words are cut short there, never its glyph (Noah, HAL-15171). A screen reader hears
