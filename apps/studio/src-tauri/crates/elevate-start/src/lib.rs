@@ -21,15 +21,20 @@
 //!
 //! The rules are written against [`Launch`], so they are tested anywhere;
 //! the Windows calls are in the `windows` module.
+//!
+//! The crate also tells whether Studio itself was started raised
+//! ([`raised`], HAL-16541), so the shell can refuse to start.
 
 use std::path::Path;
 use std::sync::Mutex;
 use std::time::Duration;
 
+mod raised;
 #[cfg(windows)]
 mod windows;
+pub use raised::{Elevation, raised};
 #[cfg(windows)]
-pub use windows::Windows;
+pub use windows::{Windows, raised_start};
 
 pub use halonic_publisher::SIGNER;
 

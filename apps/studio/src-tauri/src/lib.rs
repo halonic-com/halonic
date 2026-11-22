@@ -70,6 +70,8 @@ mod plugin_git;
 mod plugin_source;
 mod profile;
 mod profile_place;
+#[cfg(windows)]
+mod raised_start;
 mod records;
 mod resource_report;
 mod runs;
@@ -89,9 +91,14 @@ use tauri::{Builder, Manager, RunEvent, Runtime, WindowEvent};
 
 /// Starts the shell. Android calls this through the generated entry point;
 /// on desktop, `main` calls it. When Halonic quits with an update ready,
-/// the update installs (flow 4.5).
+/// the update installs (flow 4.5). On Windows it doesn't start with
+/// administrator rights (HAL-16541).
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(windows)]
+    if raised_start::refused() {
+        return;
+    }
     shell(Builder::default())
         .build(tauri::generate_context!())
         .expect("the Studio shell could not start")

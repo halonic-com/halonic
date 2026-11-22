@@ -83,6 +83,11 @@ held by another process, an approval, a timer.
   update to administrator rights from an account whose other programs run
   without them, as those programs can change the kept installer (HAL-16523):
   the new version stays, and the log says why.
+- **Studio doesn't run raised.** On Windows, a Studio opened with "Run as
+  administrator" from an account whose other programs run without those
+  rights shows one message telling the person to open it normally, and
+  quits before it starts the agent host, which is in a folder those programs
+  can change (HAL-16541).
 
 ## 3. Resource use is visible
 
