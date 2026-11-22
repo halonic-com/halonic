@@ -3,6 +3,7 @@
 - Task: HAL-13177
 - Approval: decided by the team on HAL-13177 (flow-agents 3.1 layout, approved by the board; the item page's header rules are `shell.item-page-header`). Liam signs on review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:1FKntPcGgypvEpE2/Q8xdjW/YufClECFv35ZT9lnv36+gTwh2jDE7m9EGK/7T00PudDTGzM79j+FMpx7hkB8CA==
 
 ## What changes
 
