@@ -13,7 +13,7 @@ import {
   sha256Hex,
   snapshotKeys,
 } from "./definition-snapshot.ts";
-import { snapshotIndexPaths } from "./definition-snapshot-writer.ts";
+import { snapshotIndexPaths } from "./snapshot-index-paths.ts";
 
 /** The one R2 call the source makes. A Worker's `R2Bucket` binding fits it, and so does a wrapper around one, which a test uses to count the reads. */
 export interface SnapshotBucket {

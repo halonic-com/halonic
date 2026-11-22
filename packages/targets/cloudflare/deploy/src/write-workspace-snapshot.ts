@@ -4,10 +4,14 @@ import {
   writeDefinitionSnapshot,
 } from "@halonicjs/adapter-cloudflare-storage";
 import { placedRoutines } from "@halonicjs/app";
-import type { DefinitionSource } from "@halonicjs/ports";
+import { type DefinitionSource, isPrivateWorkspacePath } from "@halonicjs/ports";
 import { definitionsOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 
-/** A read-only `DefinitionSource` over files held in memory. */
+/**
+ * A read-only `DefinitionSource` over files held in memory. Like the other
+ * sources, it doesn't serve private files, so the indexes built from it hold
+ * only what the snapshot holds.
+ */
 export class FilesSource implements DefinitionSource {
   readonly location = "memory:snapshot";
 
@@ -18,10 +22,15 @@ export class FilesSource implements DefinitionSource {
   }
 
   async list(): Promise<string[]> {
-    return Object.keys(this.#files).sort();
+    return Object.keys(this.#files)
+      .filter((path) => !isPrivateWorkspacePath(path))
+      .sort();
   }
 
   async read(path: string): Promise<string | null> {
+    if (isPrivateWorkspacePath(path)) {
+      return null;
+    }
     return this.#files[path] ?? null;
   }
 
