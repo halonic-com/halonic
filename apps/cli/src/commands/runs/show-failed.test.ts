@@ -300,7 +300,7 @@ verifies("cli.commands.runs.show", () => {
 
       expect(await endOf("0d0d01")).toEqual([
         "✕ Mail triage was cancelled because the run that started it ended. Nothing after the step Read the email ran.",
-        "  See the run that started it: halonic runs show 4f2a1b",
+        "  See the run that started it with halonic runs show 4f2a1b.",
         "  Sent nothing",
       ]);
       expect((await endOf("0d0d02"))[0]).toBe(
@@ -310,11 +310,11 @@ verifies("cli.commands.runs.show", () => {
         "✕ Mail triage was cancelled because the run that started it ended.",
       );
       expect((await endOf("0d0d01", "--dir", "."))[1]).toBe(
-        "  See the run that started it: halonic runs show --dir . 4f2a1b",
+        "  See the run that started it with halonic runs show --dir . 4f2a1b.",
       );
       expect(await endOf("0d0d04")).toEqual([
         "✕ Mail triage was cancelled in the step Read the email. Nothing after it ran.",
-        "  See the run that started it: halonic runs show 4f2a1b",
+        "  See the run that started it with halonic runs show 4f2a1b.",
         "  Sent nothing",
       ]);
     });

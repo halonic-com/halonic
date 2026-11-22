@@ -86,7 +86,7 @@ verifies("runs.run-view.failed-child-run", () => {
   it("says why the item's run failed, from that run's own log", async () => {
     const root = await openParent("logged");
     expect(root.textContent).toContain(
-      "Support reply failed in the step Each: the run it started for item 2 failed in the step Draft: its items ({{input.topics}}) are a text, not a list.",
+      "Support reply failed in the step Each because the run it started for item 2 failed in the step Draft: its items ({{input.topics}}) are a text, not a list.",
     );
     expect(root.textContent).not.toContain("Halonic can't tell the cause yet.");
   });

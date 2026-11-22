@@ -73,7 +73,7 @@ describe("runs's sentences", () => {
       "Support reply was cancelled because the run that started it ended.",
     ]);
     expect(words(runsMessages.showParentRun("4f2a1b", "./acme"))).toBe(
-      "See the run that started it: halonic runs show --dir ./acme 4f2a1b",
+      "See the run that started it with halonic runs show --dir ./acme 4f2a1b.",
     );
   });
 

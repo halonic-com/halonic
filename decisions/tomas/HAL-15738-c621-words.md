@@ -1,7 +1,7 @@
-# Decision: C621 words for the child-run line, a routine's run, three local-only connector lines and a failed share after make live
+# Decision: C621 and C641 words for the child-run line, a routine's run, three local-only connector lines, a failed share after make live and two routines lines
 
-- Task: HAL-15738
-- Approval: Sofia's words check C621, rows 4, 34 to 36, 53, 54, 55 and 57 (https://paperclip.halonic.com/HAL/issues/HAL-15726#document-c621), assigned on HAL-15738. A team decision on command output and an approved Studio toast, with no board card (HAL-2282 rule). Liam approves it in the review of this pull request.
+- Task: HAL-15738, HAL-15867
+- Approval: Sofia's words check C621, rows 4, 34 to 36, 53, 54, 55 and 57 (https://paperclip.halonic.com/HAL/issues/HAL-15726#document-c621), assigned on HAL-15738, and Sofia's words check C641, rows 5 to 7, 13, 28, 29 and 33 (https://paperclip.halonic.com/HAL/issues/HAL-15856#document-c641), assigned on HAL-15867. A team decision on command output and an approved Studio toast, with no board card (HAL-2282 rule). Liam approves it in the review of this pull request.
 - Kind: user-visible
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aYuUFQQLqzw3bkFgqjbL0B0tepIkJwgHDysN9obdsOscqgg5gYcNuV1yI1GjBpot3L3Ao2UDfFFZnP4c9+gjCg==
 
@@ -41,6 +41,26 @@ saved here, and Weekly report is live." instead of "Your version is saved here."
 is unchanged. The active requirement `source-control.create-version-elsewhere` says so, with a new
 example and a new test.
 
+**C641: the same line in Studio, and the parent line.** The run page's banner for a failed child
+run now says "Topics failed in the step Each because the run it started for item 1 failed in the
+step Draft: …", as the CLI does, where it said "…in the step Each: the run it started…"; the line
+before a child line that doesn't name its workflow and the cause-unknown line follow. The draft
+requirement `runs.run-view.failed-child-run` and its tests say so. Under a cancelled child,
+`halonic runs show` now says "See the run that started it with halonic runs show 4f2a1b.", where it
+said "See the run that started it: halonic runs show 4f2a1b"; the active requirement
+`cli.commands.runs.show` and its tests say so.
+
+**C641: two `halonic routines` lines.** Under the list, a routine never live now says "! Hourly
+ping isn't live yet, so it doesn't run. It runs once you commit it." (was "…Commit it to start
+it."), and saved changes with errors say "! Minute ping has changes that aren't live yet, with
+errors. It runs as last committed. See the errors with halonic validate." (was "…, and they have
+errors (halonic validate). It runs as last committed."). The active requirement
+`cli.commands.routines.list-live-version` and its tests say so.
+
+**C641: a workflow routine's input.** `halonic validate` now says "A workflow routine's input needs
+named fields, such as input: { mail: "{{trigger.body}}" }." (was "…is a list of fields, …"). The
+active requirement `format.routine-file` and its test say so.
+
 No test was removed, weakened or skipped.
 
 ## Why
@@ -52,6 +72,12 @@ stray commas. Rows 54, 55 and 57: the first two lines never named the connector,
 could mean the plugin, and the third had the file's colon next to the sentence's. Row 4: the routine
 is live even when the share fails, and nothing said so.
 
+C641 rows 5 to 7 and 13: L69 decided "because", which leaves one colon before the reason (E5), and
+Studio had copied the CLI's old line; the parent line takes L59's "See it with …" shape, as the
+child line beside it does. Row 28: "Commit it to start it" read as if committing runs it now. Row
+29: the next step goes last, in L59's shape. Row 33: the message also shows for `input: [mail]`, a
+YAML list, so "a list of fields" told that reader their list was right.
+
 ## Covers
 
 - cli.run-failed-child
@@ -59,3 +85,6 @@ is live even when the share fails, and nothing said so.
 - format.routine-file
 - workspace.local-only-sheet-hosts
 - source-control.create-version-elsewhere
+- runs.run-view.failed-child-run
+- cli.commands.runs.show
+- cli.commands.routines.list-live-version

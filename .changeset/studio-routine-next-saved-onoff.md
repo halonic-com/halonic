@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-A routine turned off in a change that isn't live yet shows no next time in Studio, and one turned on shows its next time, as `halonic routines watch` runs it.
+In Studio, a routine you turned off shows no next time, and one you turned on shows its next time, even before the change is live, as `halonic routines watch` runs it.

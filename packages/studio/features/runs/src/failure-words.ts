@@ -361,13 +361,13 @@ export const failureWords = {
   chooseLocalModel: (agent: string) => `Choose a local model for ${agent}`,
   /**
    * What leads a child run's failure on the banner of the run that started it, in place of the
-   * child's own workflow: "Topics failed in the step Each: the run it started for item 2", with the
-   * item counted from 1, as `halonic runs show` says it (HAL-15729).
+   * child's own workflow: "Topics failed in the step Each because the run it started for item 2", with
+   * the item counted from 1, as `halonic runs show` says it (HAL-15729, C641).
    */
   startedRun: (workflow: string, step: string, item: number | undefined) =>
     item === undefined
-      ? `${workflow} failed in the step ${step}: the run it started`
-      : `${workflow} failed in the step ${step}: the run it started for item ${item + 1}`,
+      ? `${workflow} failed in the step ${step} because the run it started`
+      : `${workflow} failed in the step ${step} because the run it started for item ${item + 1}`,
   /** The line before a child's banner line that doesn't name its workflow: "… for item 2 failed in the step Draft." */
   startedRunFailedIn: (startedRun: string, step: string) =>
     `${startedRun} failed in the step ${step}.`,

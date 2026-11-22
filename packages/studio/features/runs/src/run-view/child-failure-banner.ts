@@ -29,7 +29,7 @@ export interface FailedChildView {
 
 /**
  * The parent's banner from its failed child's: the child's banner by cause, or its general banner,
- * with "Topics failed in the step Each: the run it started for item 2" in place of the child's
+ * with "Topics failed in the step Each because the run it started for item 2" in place of the child's
  * workflow, then **Open run** to the child (`runs.run-view.failed-child-run`). A child banner whose
  * line doesn't name its workflow, such as "Halonic couldn't reach Ollama …", gets a line before it
  * that names the parent's step and the child's. `undefined` for a child that was cancelled, so the
