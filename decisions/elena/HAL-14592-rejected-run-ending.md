@@ -3,6 +3,7 @@
 - Task: HAL-14592
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14586#document-notes (run page notes for a run that ended on a rejection; small details of an approved screen, team decision under the HAL-2282 rule, no board card; built on HAL-14592)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SOKF0CnNHN9VshPfd4sSaHMJlKmwQ8dZPYT/k8fW0hXBB7+cbPJhxjqd0sAp/Ew8MqmPjtUxeFV1SPRNwZuUBQ==
 
 ## What changes
 
