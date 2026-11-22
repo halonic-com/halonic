@@ -3,8 +3,8 @@
 // to trust it (cli-output 3.6). A thin command over `PluginService.add` and
 // `trust`: the service reads, checks and places the plugin, this file shows
 // and asks. With `--update`, a plugin that is already added is replaced in
-// place, keeping its settings (C45, HAL-14325). A git address is first exported to a temporary folder outside
-// every workspace (`git-source.ts`).
+// place, keeping its settings (C45, HAL-14325). A git address is first
+// exported to a temporary folder outside every workspace (`git-source.ts`).
 
 import { readdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -32,6 +32,7 @@ import { pluginMessages } from "../../messages/plugin.ts";
 import { runMessages } from "../../messages/run.ts";
 import { trustMessages } from "../../messages/trust.ts";
 import { offHereLines } from "../../output/plugin-off-here.ts";
+import { shownPluginSource } from "../../output/plugin-source.ts";
 import { printable } from "../../output/printable.ts";
 import {
   offHereFor,
@@ -40,6 +41,7 @@ import {
   programsRunFor,
 } from "../../plugin-host.ts";
 import { askToTrustPlugin, type PluginTrustAnswer } from "../../plugin-trust-question.ts";
+import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import {
   checkGitSource,
   exportToTemporaryFolder,
@@ -86,33 +88,13 @@ export async function addPlugin(
 
   const opened = await openSource(source, context, setup);
   const service = openPluginService(setup, context.cwd);
-  let added: Awaited<ReturnType<PluginService["add"]>>;
-  let nested: NestedManifest | undefined;
-  let updated = false;
-  try {
-    added = await service.add(new FileSystemFolderReader(opened.folder), {
-      from: opened.from,
-      replace: false,
-    });
-    // Tried without `replace` first, so a plugin that isn't added yet is added
-    // as without `--update`, with the sign-outs of its leftovers.
-    if (update && !added.ok && added.error.kind === "taken") {
-      added = await service.add(new FileSystemFolderReader(opened.folder), {
-        from: opened.from,
-        replace: true,
-      });
-      updated = added.ok;
-    }
-    if (!added.ok && opened.from.kind === "folder" && hasNoManifest(added.error)) {
-      nested = await nestedManifest(opened.folder);
-    }
-  } finally {
-    await opened.close();
-  }
+  const { added, nested, replaced } = await addFrom(service, opened, update);
   if (!added.ok) throw refused(added.error, nested, update);
+  const updated = replaced !== undefined;
   const entry = added.value;
   // Only a replace keeps a copy that can't be read back.
   if (entry.status === "broken") throw problemRefusal(entry.problems);
+  const moved = movedLine(replaced, opened.from, context, setup);
   const leftOut = leftOutLine(entry.leftOut, context);
   const programsRun = await programsRunFor(setup, [entry.content]);
   const offHere = await offHereFor(setup, [entry.plugin]);
@@ -120,9 +102,77 @@ export async function addPlugin(
   const result = await trustAdded(service, entry, answer, updated);
   return {
     ...result,
-    lines: [...opened.printedAhead, ...leftOut, ...result.lines],
+    lines: [...opened.printedAhead, ...moved, ...leftOut, ...result.lines],
     ...(updated && result.json !== undefined ? { json: { ...result.json, updated } } : {}),
   };
+}
+
+/** What adding from an opened source gave. */
+interface AddOutcome {
+  readonly added: Awaited<ReturnType<PluginService["add"]>>;
+  /** A manifest one folder down, looked for only when the folder has none. */
+  readonly nested: NestedManifest | undefined;
+  /** The source the replaced plugin was added from, when `--update` replaced one; `null` with no install record. */
+  readonly replaced: PluginInstall["source"] | null | undefined;
+}
+
+/**
+ * Adds the plugin in `opened`, and with `update` puts it in place of an
+ * added one with its id. Closes `opened` in every case.
+ */
+async function addFrom(
+  service: PluginService,
+  opened: OpenedSource,
+  update: boolean,
+): Promise<AddOutcome> {
+  const addWith = (replace: boolean) =>
+    service.add(new FileSystemFolderReader(opened.folder), { from: opened.from, replace });
+  try {
+    // Tried without `replace` first, so a plugin that isn't added yet is added
+    // as without `--update`, with the sign-outs of its leftovers.
+    const added = await addWith(false);
+    if (update && !added.ok && added.error.kind === "taken") {
+      // Read before the replace, which records the new source in its place.
+      const before = await service.install(added.error.id);
+      const again = await addWith(true);
+      const replaced = again.ok ? (before?.source ?? null) : undefined;
+      return { added: again, nested: undefined, replaced };
+    }
+    const noManifest = !added.ok && opened.from.kind === "folder" && hasNoManifest(added.error);
+    const nested = noManifest ? await nestedManifest(opened.folder) : undefined;
+    return { added, nested, replaced: undefined };
+  } finally {
+    await opened.close();
+  }
+}
+
+/**
+ * "! Updating from a different source: ~/acme/weather → ~/new/weather. …",
+ * printed ahead of the check, when `--update` replaced a plugin added from
+ * another folder or git address, since its secrets and sign-ins carry over
+ * to the new copy (HAL-16292); nothing otherwise, or for a new commit of the
+ * same address.
+ */
+function movedLine(
+  replaced: PluginInstall["source"] | null | undefined,
+  from: PluginInstall["source"],
+  context: CommandContext,
+  setup: PluginSetup,
+): Phrase[] {
+  if (replaced === undefined || replaced === null || sameSource(replaced, from)) return [];
+  const profile = setup.profile ?? nodeProfileEnvironment();
+  const before = printable(shownPluginSource(replaced, profile));
+  const after = printable(shownPluginSource(from, profile));
+  const line = phrase`${markPart("needsYou")} ${pluginMessages.updateMoved(before, after).phrase}`;
+  context.printAhead(line);
+  return [line];
+}
+
+/** The same folder, or the same git address at any commit. */
+function sameSource(a: PluginInstall["source"], b: PluginInstall["source"]): boolean {
+  if (a.kind === "folder" && b.kind === "folder") return a.path === b.path;
+  if (a.kind === "git" && b.kind === "git") return a.address === b.address;
+  return false;
 }
 
 /**

@@ -320,6 +320,12 @@ export const pluginMessages = defineMessages("plugin", {
     phrase`${name} is updated but off. Nothing from it runs until you trust it: halonic trust --plugin ${id}`,
   updateNoTerminal: (name: string) =>
     phrase`${name} is updated but off, because there's no terminal to ask you to trust it.`,
+  /**
+   * With a !, ahead of the check, when the plugin was added from another folder or git
+   * address: what it keeps moves to the new copy (HAL-16292).
+   */
+  updateMoved: (before: string, after: string) =>
+    phrase`Updating from a different source: ${before} → ${after}. Its settings, secrets and sign-ins carry over to the new copy.`,
   updatedButOffHere: (name: string, version: string) =>
     phrase`Updated ${name} ${version}. It's trusted, but off on this computer until you allow plugins and integrations to run without the sandbox.`,
   /**

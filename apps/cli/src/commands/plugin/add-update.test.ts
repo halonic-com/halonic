@@ -164,3 +164,31 @@ verifies("cli.commands.plugin.add-update", () => {
     expect(await weather()).toEqual({ status: "trusted", settings: { units: "metric" } });
   });
 });
+
+verifies("cli.commands.plugin.add-update-source", () => {
+  it("says the source differs ahead of the check when updating from another folder", async () => {
+    await addTrustedWithSetting();
+    source = join(folder, "elsewhere", "weather");
+    await writeSource("export default { moved: true };\n");
+
+    const { code, io } = await add([source, "--update"], terminalTyping("y"));
+
+    expect(code).toBe(exitCode.ok);
+    const [first, ...rest] = io.stdout;
+    expect(first).toMatch(
+      /^! Updating from a different source: ~.+sources.+weather → ~.+elsewhere.+weather\./u,
+    );
+    expect(first).toContain("Its settings, secrets and sign-ins carry over to the new copy.");
+    expect(rest).toEqual(["✓ Updated Weather 1.2.0. It's on."]);
+    expect(await weather()).toEqual({ status: "trusted", settings: { units: "metric" } });
+  });
+
+  it("says nothing more when updating from the folder it was added from", async () => {
+    await addTrustedWithSetting();
+    await writeSource("export default { edited: true };\n");
+
+    const { io } = await add([source, "--update"], terminalTyping("y"));
+
+    expect(io.stdout.join("\n")).not.toContain("different source");
+  });
+});
