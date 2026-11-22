@@ -1,6 +1,6 @@
 [package]
 name = "halonic-elevate-start"
-description = "Starts Halonic's sandbox helper with Windows' administrator prompt from the Studio shell's own window, one at a time, with a time limit."
+description = "Starts Halonic's sandbox helper with Windows' administrator prompt from the Studio shell's own window, one at a time, with a time limit, and tells whether Studio itself was started raised."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -28,6 +28,8 @@ halonic-publisher = { path = "../publisher" }
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "=0.61.2", features = [
   "Win32_Foundation",
+  # The token's elevation type, for the raised start (HAL-16541).
+  "Win32_Security",
   # Where the opened helper really is (GetFinalPathNameByHandleW).
   "Win32_Storage_FileSystem",
   "Win32_System_Com",

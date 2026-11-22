@@ -1,8 +1,9 @@
 //! The start on Windows, through `windows-sys`: `ShellExecuteExW` with the
 //! `runas` verb, as the installer does (HAL-14812), of a helper opened
 //! without sharing write or delete and checked through that handle
-//! (HAL-14958).
+//! (HAL-14958). Also the token read behind [`raised_start`] (HAL-16541).
 
+use crate::raised::{Elevation, raised};
 use crate::{Launch, StartError, Verb, Wait};
 use std::ffi::{OsStr, OsString, c_void};
 use std::fs::{File, OpenOptions};
@@ -16,16 +17,22 @@ use std::time::Duration;
 use windows_sys::Win32::Foundation::{
     CloseHandle, ERROR_CANCELLED, GetLastError, HANDLE, WAIT_OBJECT_0, WAIT_TIMEOUT,
 };
+use windows_sys::Win32::Security::{
+    GetTokenInformation, TOKEN_ELEVATION_TYPE, TOKEN_QUERY, TokenElevationType,
+    TokenElevationTypeDefault, TokenElevationTypeFull, TokenElevationTypeLimited,
+};
 use windows_sys::Win32::Storage::FileSystem::{
     FILE_NAME_NORMALIZED, FILE_SHARE_READ, GetFinalPathNameByHandleW, VOLUME_NAME_DOS,
 };
 use windows_sys::Win32::System::Com::{
     COINIT_APARTMENTTHREADED, COINIT_DISABLE_OLE1DDE, CoInitializeEx, CoUninitialize,
 };
-use windows_sys::Win32::System::Threading::{GetExitCodeProcess, INFINITE, WaitForSingleObject};
+use windows_sys::Win32::System::Threading::{
+    GetCurrentProcess, GetExitCodeProcess, INFINITE, OpenProcessToken, WaitForSingleObject,
+};
 use windows_sys::Win32::UI::Shell::{
-    SEE_MASK_FLAG_NO_UI, SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW,
-    ShellExecuteExW,
+    IsUserAnAdmin, SEE_MASK_FLAG_NO_UI, SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS,
+    SHELLEXECUTEINFOW, ShellExecuteExW,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::SW_HIDE;
 
@@ -211,6 +218,48 @@ fn plain_path(path: &[u16]) -> std::borrow::Cow<'_, [u16]> {
     }
 }
 
+/// Whether this process runs raised from an account whose other programs
+/// run without administrator rights, by [`raised`]'s rule.
+pub fn raised_start() -> bool {
+    // SAFETY: takes no arguments and touches no memory of ours.
+    raised(elevation(), || unsafe { IsUserAnAdmin() } != 0)
+}
+
+/// This process token's elevation type, or `None` when it can't be read.
+fn elevation() -> Option<Elevation> {
+    let mut token: HANDLE = ptr::null_mut();
+    // SAFETY: the pseudo-handle from `GetCurrentProcess` needs no closing,
+    // and `token` outlives the call.
+    if unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) } == 0 {
+        return None;
+    }
+    let mut kind: TOKEN_ELEVATION_TYPE = 0;
+    let mut size = 0u32;
+    // SAFETY: `token` is open; `kind` is the value `TokenElevationType`
+    // asks for, with its size, and both outlive the call.
+    let read = unsafe {
+        GetTokenInformation(
+            token,
+            TokenElevationType,
+            (&raw mut kind).cast::<c_void>(),
+            size_of::<TOKEN_ELEVATION_TYPE>() as u32,
+            &mut size,
+        )
+    };
+    // SAFETY: `token` is open, and this closes it exactly once.
+    unsafe { CloseHandle(token) };
+    if read == 0 {
+        return None;
+    }
+    [
+        (TokenElevationTypeDefault, Elevation::Default),
+        (TokenElevationTypeFull, Elevation::Full),
+        (TokenElevationTypeLimited, Elevation::Limited),
+    ]
+    .into_iter()
+    .find_map(|(value, elevation)| (value == kind).then_some(elevation))
+}
+
 /// `text` as a null-terminated UTF-16 string.
 fn wide(text: &OsStr) -> Vec<u16> {
     text.encode_wide().chain(std::iter::once(0)).collect()
@@ -223,7 +272,7 @@ mod tests {
     //! job runs them, where the runner's user is an administrator with UAC
     //! off, so Windows starts the program elevated with no prompt.
 
-    use super::{Windows, plain_path, start, wait};
+    use super::{Windows, elevation, plain_path, start, wait};
     use crate::{Launch, Wait};
     use std::ffi::OsStr;
     use std::fs::{self, OpenOptions};
@@ -285,6 +334,12 @@ mod tests {
     fn system32(program: &str) -> PathBuf {
         let root = std::env::var_os("SystemRoot").expect("Windows' folder");
         PathBuf::from(root).join("System32").join(program)
+    }
+
+    #[test]
+    fn raised_start_reads_this_process_token() {
+        // The CI runner's user is an administrator with UAC off: "default".
+        assert!(elevation().is_some());
     }
 
     #[test]
