@@ -58,6 +58,20 @@ export type PairingView =
 /** How long "This isn't a Halonic pairing code." stays after the last such read (G7). */
 export const NOT_HALONIC_MS = 3000;
 
+/**
+ * The pause before the scanner looks again after a code that isn't ours. The plugin closes the
+ * camera after every read, so without it a code that stays in view would reopen the camera
+ * again and again.
+ */
+export const RESCAN_MS = 1000;
+
+/**
+ * For a call that only tidies up after the person has moved on: closing the camera or ending a
+ * pairing on the shell's side. Its failure has no screen to show, and the shell has its own
+ * safety net for both (it closes the camera on page load; a pairing ends after 2 minutes).
+ */
+const tidyUpFailed = (): void => undefined;
+
 export interface PairingFlowOptions {
   /** Pairing again with a computer already on the list keeps its entry. */
   readonly again?: ComputerId;
@@ -70,6 +84,8 @@ export interface PairingFlowOptions {
  */
 export class PhonePairingFlow {
   private current: PairingView = { step: "start", scanner: true };
+  /** False once the shell said this build has no scanner; every way back to the start keeps it. */
+  private hasScanner = true;
   private readonly listeners = new Set<() => void>();
   private attempt = 0;
   private pairing: PairingId | undefined;
@@ -113,8 +129,8 @@ export class PhonePairingFlow {
    * whatever the scanner is doing (Priya, HAL-12577).
    */
   closeScanner(): void {
-    void this.scanner.close();
-    if (this.current.step === "scanning") this.next({ step: "start", scanner: true });
+    this.scanner.close().catch(tidyUpFailed);
+    if (this.current.step === "scanning") this.next(this.start());
   }
 
   /** Type a code instead, or Type a code again. */
@@ -148,8 +164,8 @@ export class PhonePairingFlow {
   cancel(): void {
     const pairing = this.pairing;
     this.pairing = undefined;
-    this.next({ step: "start", scanner: true });
-    if (pairing !== undefined) void this.tunnel.cancelPairing(pairing);
+    this.next(this.start());
+    if (pairing !== undefined) this.tunnel.cancelPairing(pairing).catch(tidyUpFailed);
   }
 
   private async readScanner(attempt: number): Promise<void> {
@@ -175,16 +191,19 @@ export class PhonePairingFlow {
         if (this.current.step === "scanning" && !this.current.notHalonic) {
           this.show({ step: "scanning", notHalonic: true });
         }
-        void this.readScanner(attempt);
+        this.setTimer(() => {
+          if (attempt === this.attempt) void this.readScanner(attempt);
+        }, RESCAN_MS);
         return;
       case "noCamera":
         this.next({ step: "noCamera" });
         return;
       case "noScanner":
-        this.next({ step: "start", scanner: false });
+        this.hasScanner = false;
+        this.next(this.start());
         return;
       case "closed":
-        this.next({ step: "start", scanner: true });
+        this.next(this.start());
         return;
     }
   }
@@ -206,7 +225,7 @@ export class PhonePairingFlow {
     const step = await this.tunnel.startPairing(start).catch(() => unreachable);
     if (attempt !== this.attempt) {
       // Cancelled while connecting: the shell's pairing still ends.
-      if (step.kind === "check") void this.tunnel.cancelPairing(step.pairing);
+      if (step.kind === "check") this.tunnel.cancelPairing(step.pairing).catch(tidyUpFailed);
       return;
     }
     if (step.kind !== "check") return stop(step);
@@ -215,9 +234,18 @@ export class PhonePairingFlow {
     const checking = this.attempt;
     const outcome = await this.tunnel.waitForAllow(step.pairing).catch(() => unreachable);
     if (checking !== this.attempt) return;
-    if (outcome.kind !== "paired") return stop(outcome);
+    if (outcome.kind !== "paired") {
+      // A wait that failed may leave the pairing open on the shell's side; Try again starts anew.
+      this.tunnel.cancelPairing(step.pairing).catch(tidyUpFailed);
+      return stop(outcome);
+    }
     this.pairing = undefined;
     this.next({ step: "paired", computer: outcome.computer });
+  }
+
+  /** Pair with a computer, with Scan code only when this build has a scanner. */
+  private start(): PairingView {
+    return { step: "start", scanner: this.hasScanner };
   }
 
   /** A new step: answers to the step before it are dropped. */
