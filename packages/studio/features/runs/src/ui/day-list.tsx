@@ -5,7 +5,7 @@ import {
   StatusChip,
   useTooltip,
 } from "@halonicjs/studio-kit";
-import { sampleAnswersWord } from "../list/run-model-path.ts";
+import { type SampleCandidate, sampleAnswersWord } from "../list/run-model-path.ts";
 import type { RunRow } from "../list/run-row.ts";
 import { dayGroups } from "../list/runs-filter.ts";
 import { pageWords } from "../run-words.ts";
@@ -23,9 +23,11 @@ export const runColumns: readonly ListColumn[] = [
  * The rows that may carry the "Sample answers" chip (`runs.sample-chip`): runs that wait or are
  * done, not a test case's, whose test model is the test's own and no stand-in for a real one.
  */
-export function sampleCandidates(rows: readonly RunRow[]): string[] {
+export function sampleCandidates(rows: readonly RunRow[]): SampleCandidate[] {
   const shown = new Set(["needs-you", "waiting", "done"]);
-  return rows.filter((row) => !row.test && shown.has(row.standing)).map((row) => row.id);
+  return rows
+    .filter((row) => !row.test && shown.has(row.standing))
+    .map((row) => ({ id: row.id, standing: row.standing }));
 }
 
 /**

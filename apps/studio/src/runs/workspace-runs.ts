@@ -107,6 +107,8 @@ interface WorkspaceFacts {
   readonly routines: ReadonlyMap<string, RoutineClock>;
   /** By id, where each provider the workspace has runs. */
   readonly providers: ReadonlyMap<string, ProviderKind>;
+  /** The ids of the providers whose file says `type: mock`, the test model. */
+  readonly testModels: ReadonlySet<string>;
   /** By id, the `name` of each provider whose file gives one. */
   readonly providerNames: ReadonlyMap<string, string>;
   /** By id, each agent's name as its file says. */
@@ -232,10 +234,9 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
   }
 
   isTestModel(providerId: string): boolean | undefined {
-    const workspace = this.#facts?.workspace;
-    if (workspace === undefined) return undefined;
-    const file = filesOf(workspace, "provider").find(({ value }) => value.id === providerId);
-    return file === undefined ? undefined : file.value.type === "mock";
+    const facts = this.#facts;
+    if (facts === undefined || !facts.providers.has(providerId)) return undefined;
+    return facts.testModels.has(providerId);
   }
 
   providerName(providerId: string): string | undefined {
@@ -335,6 +336,11 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
           value.id,
           providerIsLocal(value) ? "local" : "cloud",
         ]),
+      ),
+      testModels: new Set(
+        filesOf(workspace, "provider").flatMap(({ value }) =>
+          value.type === "mock" ? [value.id] : [],
+        ),
       ),
       providerNames: new Map(
         filesOf(workspace, "provider").flatMap(({ value }) =>

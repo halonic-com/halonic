@@ -12,6 +12,7 @@ import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 export {
   type RunModelPath,
   runModelPath,
+  type SampleCandidate,
   sampleAnswersWord,
   useRunModelPath,
   useSampleRuns,
