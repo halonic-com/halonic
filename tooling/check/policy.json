@@ -37,6 +37,9 @@
     "@halonicjs/adapter-coordination-node": [
       "./node"
     ],
+    "@halonicjs/adapter-doctor-node": [
+      "./workspace"
+    ],
     "@halonicjs/adapter-git": [
       "./testing"
     ],
