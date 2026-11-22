@@ -3,6 +3,7 @@
 - Task: HAL-15848
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15848 (a team decision with no board card, HAL-2282 rule: wording on the approved Harness page, New agents run setting and sandbox-not-ready banner; Sofia's line on HAL-15847, and rows 32, 39, 43 and 44 of words check C655 on HAL-15956)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DS8wztmKPpOBcyjhreYDUwbu9GrQNHHohTnDf3/23qYKDk+1CToESKNjkUAKmAM8cy+RwU/iJ8B4rh5EkzrGAQ==
 
 ## What changes
 
