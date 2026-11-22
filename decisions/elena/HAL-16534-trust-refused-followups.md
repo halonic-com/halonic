@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16534 (from visual check C720 on HAL-16532, rows 1 to 3; Liam reviews the trust changes)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:we6JRmzB/c5Z69shXrdQAeXuofb1PW9HSt4+69X9WbrLQ5QQAt5kodi76oZiC6zdiJ9njoa9Mq4gk17JwL10CA==
 
 **A double click on Trust.** Since #5279, **Trust** refused because the workspace changed under the
 open dialog moves focus to **Not now**, which stops a double Enter. A double click still trusted the
