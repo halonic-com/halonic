@@ -27,6 +27,12 @@
          OwnerCheckPlugin). A normal permission: Android grants it at
          install and asks nothing. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- "Open Tailscale" on the phone's status sheet (HAL-16438,
+         PhoneScreensPlugin): from Android 11 the app sees whether Tailscale
+         is installed only when it names it here. No other app is named. -->
+    <queries>
+        <package android:name="com.tailscale.ipn" />
+    </queries>
 
     <!-- No backup or device transfer: the saved computer address stays on
          this phone, so uninstalling the app deletes it (HAL-6866). -->

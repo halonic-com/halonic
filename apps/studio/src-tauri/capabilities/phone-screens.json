@@ -1,0 +1,15 @@
+{
+  "identifier": "phone-screens",
+  "description": "On Android, the app's own page may open Android's settings page for Halonic through phone_open_settings, and the Tailscale app or its Play Store page through phone_open_tailscale (HAL-16438). Neither takes anything from the page, so it can't pick another screen, app or address, and the shell opens nothing while the window is on another page. It is local only, so the Studio the computer serves gets neither.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "android"
+  ],
+  "permissions": [
+    "allow-phone-open-settings",
+    "allow-phone-open-tailscale"
+  ]
+}
