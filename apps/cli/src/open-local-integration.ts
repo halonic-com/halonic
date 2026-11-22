@@ -189,12 +189,13 @@ class LocalIntegrationOpening {
 
   /**
    * Why a start whose fence proof failed started nothing (HAL-15666). The
-   * computer passed the sandbox check, so it never says the check failed; the
-   * words are the plugin's (`cli.plugin-backend-stopped`), naming the folder.
+   * computer passed the sandbox check, so it never says the check failed. The
+   * connector's start error wraps it, so it starts lower case and has no colon;
+   * the words are the plugin's in `cli.run-connector-warning`, naming the folder.
    */
   #stopped(): string {
     const name = this.#request.folder;
-    return `Halonic stopped the integration ${name}: the sandbox didn't work when the integration started, so none of it ran. Halonic tries ${name} in the sandbox again the next time a run uses it.`;
+    return `the sandbox didn't work when the integration ${name} started, so none of it ran. Halonic tries ${name} in the sandbox again the next time a run uses it.`;
   }
 
   /**

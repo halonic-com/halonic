@@ -193,7 +193,7 @@ verifies("plugins.plugin-cards", () => {
     const { view, details } = showCard(caller);
     await answer(Object.assign(new Error("host's own text"), { kind: "plugin_stopped" }));
     expect(view.querySelector('[aria-live="polite"] p')?.textContent).toBe(
-      "Halonic stopped Weather: the sandbox didn't work when it started, so none of it ran. Try again starts it in the sandbox again. Open Weather for details.",
+      "Halonic stopped Weather: the sandbox didn't work when it started, so none of it ran. Try again starts it in the sandbox. Open Weather for details.",
     );
     // The name is untrusted text, so both sentences isolate it from the words around it.
     const names = view.querySelectorAll('[aria-live="polite"] p bdi');
