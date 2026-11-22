@@ -52,11 +52,30 @@ const sendingOn: RunConnectorCalls = {
   reportSettingsError: () => {},
 };
 
-/** A run of `greet` whose items each run the reply workflow, with both children started. */
-async function greetingChildren(answers: (ReturnType<typeof textAnswer> | Error)[]) {
+/** The reply workflow, but a person approves the reply before it is sent. */
+const heldReplyWorkflow: Workflow = {
+  ...replyWorkflow,
+  states: {
+    draft: {
+      type: "task",
+      agent: "writer",
+      input: "Reply to {{input.from}}",
+      output: "reply",
+      on: [{ to: "hold", event: "done" }],
+    },
+    hold: { type: "wait", on: [{ to: "sent", event: "approve" }] },
+    sent: { type: "final", on: [] },
+  },
+};
+
+/** A run of `greet` whose items each run the `reply` workflow, with both children started. */
+async function greetingChildren(
+  answers: (ReturnType<typeof textAnswer> | Error)[],
+  reply: Workflow = replyWorkflow,
+) {
   const engine = runsOn(answers, new KernelRuns(), {
     workflow: foreachOf({ workflow: "reply" }),
-    workflows: { reply: replyWorkflow },
+    workflows: { reply },
   });
   await engine.executor.start(greetStart);
   const children = [...engine.runs.logs.keys()].filter((runId) => runId !== "run_1");
@@ -154,5 +173,28 @@ verifies("engine.child-runs-end-with-run", () => {
       error: parentEndedError,
       cause: parentEndedCause,
     });
+  });
+
+  it("ends the items' child runs with the parent-ended cause when one waits and fails the run", async () => {
+    const { runs, scheduler, children } = await greetingChildren(
+      [textAnswer("Hi Acme"), textAnswer("Hi Globex")],
+      heldReplyWorkflow,
+    );
+
+    await scheduler.runDue();
+
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "failed",
+      error: expect.stringContaining("an item's child run must finish without waiting"),
+    });
+    // Nobody cancelled the children, so neither says "The run was cancelled.".
+    for (const child of children) {
+      expect(await runs.get(child)).toMatchObject({
+        status: "failed",
+        reason: "cancelled",
+        error: parentEndedError,
+        cause: parentEndedCause,
+      });
+    }
   });
 });
