@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16069 (the team's decision on C665, row 39 of HAL-16044: Studio's Reject and the CLI agree)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7faHR5wzylZJeJcmk/Y3pj+nPPpyLZ/G43pRWOTX5wFp1CqIJCQc5YRIH6VJ3fVGNAeT+PoK7FfMKxaEmn4gDQ==
 
 ## What changes
 
