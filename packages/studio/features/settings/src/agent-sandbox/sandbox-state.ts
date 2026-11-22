@@ -79,13 +79,17 @@ export type SandboxOutcome =
   | { readonly kind: "remove"; readonly how: "in-use"; readonly runs: number };
 
 /**
- * A removal that worked. `keptAccess`: some access Halonic gave its sandbox stays until Halonic
- * next starts (`sandbox-srt.removal-kept-access`, HAL-15761).
+ * Some access Halonic gave its sandbox that a removal with administrator rights kept: until Halonic
+ * next starts (HAL-15761), or until the sandbox is removed again without them, `manual`
+ * (HAL-15836) (`sandbox-srt.removal-kept-access`).
  */
+export type KeptAccess = "until_next_start" | "manual";
+
+/** A removal that worked, and the access it kept, if any. */
 export interface SandboxRemoved {
   readonly kind: "remove";
   readonly how: "removed";
-  readonly keptAccess?: true;
+  readonly keptAccess?: KeptAccess;
 }
 
 /**
@@ -325,7 +329,7 @@ function calloutFor(outcome: SandboxResult): NonNullable<SandboxView["callout"]>
   if (outcome.kind === "remove") {
     switch (outcome.how) {
       case "removed":
-        return { line: text.removedLine(outcome.keptAccess === true), action: null, note: true };
+        return { line: text.removedLine(outcome.keptAccess), action: null, note: true };
       case "cancelled":
         return { line: text.REMOVE_DENIED, action: null };
       case "timed-out":

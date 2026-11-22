@@ -79,9 +79,9 @@ export async function removalBeforeHelper(
 export async function removalAfterHelper(
   exitCode: number,
   platform: NodeJS.Platform = process.platform,
-  steps: RemovalSteps & Pick<KeptGrants, "orphaned"> = {
+  steps: RemovalSteps & Pick<KeptGrants, "keptState"> = {
     ...systemRemovalSteps,
-    orphaned: () => new KeptGrants().orphaned(),
+    keptState: () => new KeptGrants().keptState(),
   },
   warn: (message: string) => void = (message) => void process.stderr.write(`${message}\n`),
 ): Promise<SandboxRemoval> {

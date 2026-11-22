@@ -222,6 +222,32 @@ verifies("cli.commands.sandbox.remove", () => {
     expect(calls.remove).toBe(0);
   });
 
+  it("says the access a removal with administrator rights kept, on screen and in --json", async () => {
+    const untilStart = windows(undefined, { ok: true, keptAccess: "until_next_start" }).sandbox;
+    const next = await sandboxCli(untilStart, ["remove", "--yes"]);
+    expect(next.code).toBe(exitCode.ok);
+    expect(next.io.stdout).toEqual([
+      "✓ Removed the agent sandbox",
+      "  Its access to your project folders ends the next time you start Halonic.",
+    ]);
+    const json = await sandboxCli(untilStart, ["remove", "--yes", "--json"]);
+    expect(JSON.parse(json.io.stdout.join("\n"))).toMatchObject({
+      outcome: "removed",
+      keptAccess: "until_next_start",
+    });
+    const manual = windows(undefined, { ok: true, keptAccess: "manual" }).sandbox;
+    const kept = await sandboxCli(manual, ["remove", "--yes"]);
+    expect(kept.io.stdout).toEqual([
+      "✓ Removed the agent sandbox",
+      "  It may still have access to some of your project folders. To end that, run halonic sandbox remove again in a terminal that isn't run as administrator.",
+    ]);
+    const manualJson = await sandboxCli(manual, ["remove", "--yes", "--json"]);
+    expect(JSON.parse(manualJson.io.stdout.join("\n"))).toMatchObject({
+      outcome: "removed",
+      keptAccess: "manual",
+    });
+  });
+
   it("words a turned-down prompt and any other failure", async () => {
     const cancelled = { ok: false, outcome: "cancelled", reason: "cancelled" } as const;
     const refused = await sandboxCli(windows(undefined, cancelled).sandbox, ["remove", "--yes"]);

@@ -33,10 +33,12 @@ export type WslRemoveOutcome =
  * prompt was turned down), `failed`, or `check_failed` (set up, but the check
  * doesn't pass), with a reason sentence and the helper's code when it gave one.
  * A removal with administrator rights can be done with `keptAccess`: some old
- * access stays until the sandbox next starts (`sandbox-srt.removal-kept-access`).
+ * access stays until the sandbox next starts (`until_next_start`), or until the
+ * sandbox is removed again without administrator rights (`manual`)
+ * (`sandbox-srt.removal-kept-access`).
  */
 export type SandboxSetupResult =
-  | { readonly ok: true; readonly keptAccess?: "until_next_start" | undefined }
+  | { readonly ok: true; readonly keptAccess?: "until_next_start" | "manual" | undefined }
   | {
       readonly ok: false;
       readonly outcome: "cancelled" | "failed" | "check_failed";
@@ -72,7 +74,9 @@ export interface SandboxSetupStatus {
 const verbSchema = s.enum(["setup", "remove", "remove-wsl"]);
 
 const resultSchema = s.discriminatedUnion("ok", [
-  s.object({ ok: s.literal(true), keptAccess: s.literal("until_next_start").optional() }).strict(),
+  s
+    .object({ ok: s.literal(true), keptAccess: s.enum(["until_next_start", "manual"]).optional() })
+    .strict(),
   s
     .object({
       ok: s.literal(false),

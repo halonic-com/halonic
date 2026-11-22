@@ -226,7 +226,7 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
 
 /**
  * What a finished setup or removal leaves for the section: nothing when it worked, except a
- * removal that kept some access until Halonic next starts (`sandbox-srt.removal-kept-access`).
+ * removal that kept some access (`sandbox-srt.removal-kept-access`).
  */
 function outcomeOf(kind: "setup", result: SandboxSetupResult | undefined): SandboxOutcome | null;
 function outcomeOf(
@@ -241,8 +241,8 @@ function outcomeOf(
     return { kind, how: "failed", reason: "the host stopped before it said how it ended." };
   }
   if (result.ok) {
-    return kind === "remove" && result.keptAccess === "until_next_start"
-      ? { kind, how: "removed", keptAccess: true }
+    return kind === "remove" && result.keptAccess !== undefined
+      ? { kind, how: "removed", keptAccess: result.keptAccess }
       : null;
   }
   const reason = result.reason.replace(/\.+$/, "");

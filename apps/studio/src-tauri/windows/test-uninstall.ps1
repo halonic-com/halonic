@@ -158,9 +158,9 @@ Save-Picture $h '12-uninstalled'
 $done = Must-Find $h '✓ The agent sandbox is removed.' 'Static'
 # The runner's uninstaller runs with administrator rights, so the removal left
 # the grant kept above, which the agent host takes back at its next start
-# (HAL-5404 S2): the page says when it goes, lined up under the first line's
-# text, past its ✓.
-$kept = Must-Find $h 'Its access to your project folders ends the next time you start Halonic.' 'Static'
+# (HAL-5404 S2), so only once Halonic is installed again (HAL-15836): the page
+# says so, lined up under the first line's text, past its ✓.
+$kept = Must-Find $h 'Its access to your project folders stays until you install Halonic again and start it.' 'Static'
 $first = New-Object U+RECT
 $second = New-Object U+RECT
 [U]::GetWindowRect($done, [ref]$first) | Out-Null

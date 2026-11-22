@@ -209,7 +209,7 @@ verifies("sandbox-srt.remove", () => {
       );
     });
 
-    it("comes through SrtSandbox.remove as done, with a log line for the skip", async () => {
+    it("comes through SrtSandbox.remove as done, keeping access it can't rule out, with a log line for the skip", async () => {
       const windows = {
         platform: "win32",
         uninstallWindowsSandbox: async () => "grants_kept" as const,
@@ -218,7 +218,7 @@ verifies("sandbox-srt.remove", () => {
       const sandbox = new SrtSandbox(windows, undefined, undefined, {
         warn: (message) => warned.push(message),
       });
-      expect(await sandbox.remove()).toEqual({ ok: true });
+      expect(await sandbox.remove()).toEqual({ ok: true, keptAccess: "manual" });
       expect(warned).toEqual([
         "Removed the Windows sandbox, but skipped forgetting its kept access grants: this removal ran with administrator rights. Remove it again without them to forget the grants.",
       ]);

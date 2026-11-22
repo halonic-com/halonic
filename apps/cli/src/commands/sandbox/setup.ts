@@ -46,7 +46,9 @@ export async function setUpSandbox(
 /**
  * Removes the agent sandbox after asking, or straight away with `--yes`.
  * The `--json` fields are `outcome` (`removed`, `cancelled` or `failed`),
- * and `reason` and `code` when there are any.
+ * `reason` and `code` when there are any, and `keptAccess`
+ * (`until_next_start` or `manual`) when a removal with administrator rights
+ * kept some access to the user's folders (`sandbox-srt.removal-kept-access`).
  *
  * @throws UsageError when there's no terminal to ask and no `--yes`
  */
@@ -69,10 +71,14 @@ export async function removeSandbox(
   const removal = await sandbox.remove();
   progress.end();
   if (removal.ok) {
+    const kept = removal.keptAccess;
     return {
       exitCode: exitCode.ok,
-      lines: [done(messages.removed())],
-      json: { outcome: "removed" },
+      lines:
+        kept === undefined
+          ? [done(messages.removed())]
+          : [done(messages.removed()), keptLine(kept)],
+      json: { outcome: "removed", ...(kept === undefined ? {} : { keptAccess: kept }) },
     };
   }
   const line =
@@ -128,6 +134,12 @@ function setupLines(setup: Extract<SandboxSetup, { ok: false }>): Phrase[] {
     return [done(messages.setUp()), needsYou(messages.checkFailed(setup.reason), setup.code)];
   }
   return [needsYou(messages.failed(setup.reason), setup.code)];
+}
+
+/** What a removal with administrator rights kept, under its ✓ line (HAL-15836). */
+function keptLine(kept: "until_next_start" | "manual"): Phrase {
+  const line = kept === "manual" ? messages.keptAccessManual() : messages.keptAccess();
+  return phrase`  ${line.phrase}`;
 }
 
 function failedJson(result: Extract<SandboxSetup | SandboxRemoval, { ok: false }>) {
