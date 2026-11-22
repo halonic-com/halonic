@@ -2,6 +2,7 @@
 
 - Approval: Liam decided this on HAL-16339 as owner of the shared core; Julian signs because Liam wrote the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:TXUwe/cnk/Ay7E/dpgYti7avwaH+ljqMUokpVKe5hrpJBzq0kO/4wiD6dNYJmGzirVj9jItzkosEj6DCx+c9Aw==
 
 ## What changes
 
