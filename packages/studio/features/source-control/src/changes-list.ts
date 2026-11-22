@@ -27,7 +27,7 @@ import { describeChanges } from "./describe-changes.ts";
 import { discardWithCopy } from "./discard-with-copy.ts";
 import { isIdentityComplete } from "./identity.ts";
 import { type IdentityOutcome, saveIdentity } from "./identity-save.ts";
-import { loadFailureReason } from "./load-failure.ts";
+import { loadFailureReason, updatesFailure } from "./load-failure.ts";
 
 export type {
   ChangedFile,
@@ -437,7 +437,7 @@ export class ChangesList {
       return outcome;
     } catch (error) {
       if (!this.#disposed) this.#set({ ...this.#state, gettingUpdates: false });
-      return { kind: "failed", reason: loadFailureReason(error) };
+      return updatesFailure(error);
     }
   }
 

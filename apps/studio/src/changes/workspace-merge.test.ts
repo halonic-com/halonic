@@ -258,6 +258,19 @@ verifies("source-control.get-updates-per-item", () => {
       }
     });
 
+    it("refuses a file Halonic leaves to git as a conflict, which trying again can't clear", async () => {
+      const s = shared();
+      try {
+        s.publish({ ".env.example": "SAM=1\n" });
+        s.commit({ "a.md": "mine\n" });
+        const changes = s.open();
+        await expect(changes.startMerge()).rejects.toMatchObject({ kind: "conflict" });
+        await expect(changes.startMerge()).rejects.toMatchObject({ kind: "conflict" });
+      } finally {
+        rmSync(s.root, { recursive: true, force: true });
+      }
+    });
+
     it("leaves Halonic's own folders and this side's private files out of the merge", async () => {
       const s = shared();
       try {
