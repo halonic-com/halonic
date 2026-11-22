@@ -8,6 +8,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import type { CliCommand } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
+import { computerIntegrationMachine } from "../../local-integration-machine.ts";
 import { runMessages } from "../../messages/run.ts";
 import { runCli } from "../../run-cli.ts";
 import {
@@ -18,6 +19,7 @@ import {
 import { captureIo } from "../../test/capture-io.ts";
 import { fullFingerprint, trustedAt, trustKit } from "../../test/trust-kit.spec.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
+import { profilePlatformOf } from "../../workspace-runs.ts";
 import { trustedGrant } from "../../workspace-trust.ts";
 import { createTrustCommand } from "./command.ts";
 
@@ -181,4 +183,55 @@ verifies("cli.commands.trust.run-version", () => {
     );
     expect(await store().list()).toHaveLength(0);
   });
+});
+
+verifies("cli.local-integration-runner-folder", () => {
+  it(
+    "starts an integration from the run's copy on the trust `halonic trust` gave, with a saved change not committed",
+    async () => {
+      writeAcme({
+        "integrations/notes/integration.yaml": notesSheet,
+        "integrations/notes/backend/index.js": "export default 1;\n",
+      });
+      await commitAcme();
+      writeFileSync(join(acme(), "integrations/notes/backend/index.js"), "export default 2;\n");
+      const fingerprint = (await checkOfAcme()).io.stdout.at(-1) ?? "";
+      const trust = ["trust", "--dir", "acme", "--yes", "--fingerprint", fingerprint];
+      expect(await runCli(trust, captureIo(folder()), commands())).toBe(exitCode.ok);
+
+      const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme() });
+      const run = await loadRunWorkspace(dir, history);
+      if (run.found !== "loaded" || run.version.reads !== "live-version") {
+        throw new Error("Acme's live version didn't load.");
+      }
+      // The copy a run starts its runner from, made as the engine makes it.
+      const vcs = new GitVcs(acme(), {
+        runner,
+        author: { name: "Test", email: "test@example.com" },
+        worktrees: join(folder(), "copies"),
+      });
+      const copy = await vcs.addWorktree(run.version.commit);
+      const machine = computerIntegrationMachine({
+        dir,
+        workspace: run.workspace,
+        trust: { trustStore: store(), clock: fixedClock(trustedAt), commandSearch: noCommands },
+        environment: {
+          platform: profilePlatformOf(process.platform),
+          homeFolder: join(folder(), "home"),
+          variables: { HALONIC_HOME: join(folder(), "profile") },
+        },
+      });
+      try {
+        const fromCopy = await machine.trustCheck({ workspaceRoot: copy.path } as never);
+        const fromSaved = await machine.trustCheck({ workspaceRoot: acme() } as never);
+
+        expect(fromCopy.status).toBe("trusted");
+        expect(fromSaved.status).toBe("changed");
+      } finally {
+        await machine.dispose();
+        await vcs.removeWorktree(copy.id);
+      }
+    },
+    gitTimeout,
+  );
 });

@@ -267,7 +267,8 @@ async function listenOnComputer(
     secrets: context.secrets,
     passwordHasher: setup.hasher ?? createScryptHasher(),
     coordination: parts.coordination,
-    trust: workspaceTrustGate(dir, setup.trust()),
+    // The version served runs start from, as `halonic trust` reviews it.
+    trust: workspaceTrustGate(dir, setup.trust(), () => versions.liveVersion()),
     modelSettings: workspaceModelSettings(() => versions.trustedLive()),
     // Read only: a served window shows the Google setups, and its sign-in is finished on this computer (HAL-10697).
     googleRead: workspaceGoogleRead({

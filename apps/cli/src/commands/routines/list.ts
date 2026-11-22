@@ -30,9 +30,9 @@ import { dim, dimmed, type Phrase, phrase } from "../../messages/phrase.ts";
 import { routinesMessages } from "../../messages/routines.ts";
 import { printable } from "../../output/printable.ts";
 import { dueAt, type RunClock, startedAt } from "../../run-times.ts";
-import type { OpenWorkspaceHistory } from "../../run-workspace.ts";
-import { savedVersionOf } from "../../workspace-at-version.ts";
-import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
+import { type OpenWorkspaceHistory, openGitHistory } from "../../run-workspace.ts";
+import { savedVersionOf, type WorkspaceAtVersion } from "../../workspace-at-version.ts";
+import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import {
   type WorkspaceTrustAnswer,
@@ -44,6 +44,7 @@ import {
 import type { RunListSetup } from "../runs/list.ts";
 import { listedStatus } from "../runs/listed-run.ts";
 import { webhookStartBlocks } from "../serve/webhook-routines.ts";
+import { reviewedVersion } from "../trust/reviewed-version.ts";
 import { listAsLive, type NotLiveRoutines } from "./not-live.ts";
 
 /**
@@ -86,7 +87,7 @@ export async function listRoutines(
   }
   const dir = givenDir(input, workspace);
   const trust = await workspaceTrustState(workspace, setup.trust(), () =>
-    savedVersionOf(workspace, loaded),
+    trustedVersionOf(workspace, loaded, notLive, setup.history),
   );
   const row: RowOptions = { withHub: spansHubs(routines), paused: !startsHere(trust.state) };
   const blocked = await webhookRoutinesThatWontStart(loaded, context.secrets);
@@ -116,6 +117,22 @@ export async function listRoutines(
     ],
     json: { ...json, trusted: startsHere(trust.state) },
   };
+}
+
+/**
+ * The version whose trust says whether the routines start: the one
+ * `routines watch` starts, as `halonic trust` reviews it, so trusting
+ * clears the paused line. When git can't start, the list reads the saved
+ * files (`cli.commands.routines.list`), and so does this.
+ */
+async function trustedVersionOf(
+  dir: OpenWorkspaceDir,
+  loaded: LoadedWorkspace,
+  notLive: NotLiveRoutines,
+  history: OpenWorkspaceHistory = openGitHistory,
+): Promise<WorkspaceAtVersion> {
+  if (!notLive.checked) return await savedVersionOf(dir, loaded);
+  return (await reviewedVersion(dir, history)).version;
 }
 
 /**

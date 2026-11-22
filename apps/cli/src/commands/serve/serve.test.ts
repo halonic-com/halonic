@@ -1,9 +1,11 @@
 import { rm, utimes } from "node:fs/promises";
 import { createServer } from "node:net";
 import { join } from "node:path";
+import { testGit } from "@halonicjs/adapter-git/testing";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { runCli } from "../../run-cli.ts";
+import { openGitHistory } from "../../run-workspace.ts";
 import {
   type AcmeRuns,
   acmeRunsSetup,
@@ -12,6 +14,7 @@ import {
   writeFiles,
 } from "../../test/acme-runs.ts";
 import { captureIo } from "../../test/capture-io.ts";
+import { committedVersions } from "../../test/committed-versions.ts";
 import { fakeSignals } from "../../test/fake-signals.ts";
 import { savedVersionOf } from "../../workspace-at-version.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
@@ -300,4 +303,25 @@ verifies("cli.commands.serve.studio-page-age", () => {
     expect(io.stdout[2]).toContain("pnpm --filter @halonicjs/app-studio build");
     expect((await fetch(`${address}/`)).status).toBe(200);
   });
+});
+
+verifies("cli.trust-state-run-version", () => {
+  it("answers trusted for the committed version it serves, with a saved change not committed", async () => {
+    const committed = await committedVersions(acmeRuns.acme);
+    await committed.versions.close();
+    await trustAcme();
+    await writeConnector("other.js");
+    const git = await testGit();
+    const { io } = startServeWith(
+      { ...acmeRunsSetup(acmeRuns), history: (root) => openGitHistory(root, { git }) },
+      "--port",
+      "0",
+    );
+    await waitUntil("the server to print its address", () => io.stdout.length >= 1, slowStart);
+    const address = addressOf(io.stdout[0]);
+
+    expect(await (await fetch(`${address}/api/trust`)).json()).toMatchObject({
+      state: "trusted",
+    });
+  }, 30_000);
 });

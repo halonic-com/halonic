@@ -5,6 +5,11 @@
 // nothing runs. The integration's code never loads here: it runs in the
 // runner, and a start the gate doesn't allow starts nothing, with no
 // in-process fallback.
+//
+// What is read and hashed is the folder the runner starts from (HAL-16335):
+// the copy of the run's commit, or the workspace folder with history off.
+// Never the saved files beside a copy, so the code a person trusted is the
+// code that runs.
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -62,8 +67,12 @@ export type RunnerRuntime = Omit<RunnerFiles, "integrationFolder">;
 
 /** What opening a local integration uses on this computer, so tests can fix it. */
 export interface LocalIntegrationMachine {
-  /** The workspace folder, read without following links. */
-  readonly workspace: FolderReader;
+  /**
+   * The folder a runner starts from, `context.workspaceRoot`, read without
+   * following links: the copy of the run's commit, or the workspace folder
+   * with history off.
+   */
+  folderAt(root: string): FolderReader;
   /** The hash the trust check uses. */
   readonly digest: Digest;
   /** Picks the sandbox the runner starts in, at every start. */
@@ -79,8 +88,10 @@ export interface LocalIntegrationMachine {
   /** What the runner's requests go out through; the integration's own sheet limits the hosts. */
   readonly transport: AddressCheckingHttpClient;
   /**
-   * The workspace's trust check as it is now. It is called at every start and
-   * its answer is never kept, so a change after the run began is seen.
+   * The workspace's trust check as it is now, on the integrations in the
+   * folder the runner starts from (`context.workspaceRoot`). It is called at
+   * every start and its answer is never kept, so a change after the run
+   * began is seen.
    */
   trustCheck(context: ConnectorFactoryContext): Promise<TrustCheck>;
   /** What one runner start needs from this computer; a fresh temp folder each time. */
@@ -122,12 +133,14 @@ class LocalIntegrationOpening {
       throw new Error("there is no workspace folder to run it from");
     }
     const folder = join(workspaceRoot, this.#folder);
+    // The runner runs `folder`, so the read here and the hash at every start are of it too.
+    const startsFrom = this.#machine.folderAt(workspaceRoot);
     const starts = new TrustedRunnerStart({
-      workspace: this.#machine.workspace,
+      workspace: startsFrom,
       digest: this.#machine.digest,
       gate: this.#machine.gate,
     });
-    const { sheet, code } = await this.#read();
+    const { sheet, code } = await this.#read(startsFrom);
     const loaded = await loadLocalIntegration({
       sheet,
       approvedSheet: sheet,
@@ -150,12 +163,8 @@ class LocalIntegrationOpening {
    * The folder as it is now. Reading starts nothing; the start checks the
    * trust again, so the sheet the loader checks is the one that was trusted.
    */
-  async #read(): Promise<IntegrationFolder> {
-    const read = await readIntegrationFolder(
-      this.#machine.workspace,
-      this.#machine.digest,
-      this.#folder,
-    );
+  async #read(startsFrom: FolderReader): Promise<IntegrationFolder> {
+    const read = await readIntegrationFolder(startsFrom, this.#machine.digest, this.#folder);
     if (!read.ok) throw new Error(read.error.map((problem) => problem.message).join(" "));
     return read.value;
   }

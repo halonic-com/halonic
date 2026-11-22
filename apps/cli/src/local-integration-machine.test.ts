@@ -114,8 +114,8 @@ verifies("cli.open-local-integration", () => {
 
     it("asks the trust check again at every start: a workspace never trusted is not trusted", async () => {
       const computer = await machine();
-      const first = await computer.trustCheck({} as never);
-      const second = await computer.trustCheck({} as never);
+      const first = await computer.trustCheck({ workspaceRoot: dir.root } as never);
+      const second = await computer.trustCheck({ workspaceRoot: dir.root } as never);
       expect(first.status).toBe("new");
       expect(second.status).toBe("new");
     });
