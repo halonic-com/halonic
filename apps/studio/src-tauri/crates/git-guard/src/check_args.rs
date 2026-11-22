@@ -392,3 +392,7 @@ fn is_short_ssh_url(value: &str) -> bool {
 #[cfg(test)]
 #[path = "check_args_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "check_args_ls_tree_tests.rs"]
+mod ls_tree_tests;

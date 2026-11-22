@@ -378,6 +378,17 @@ pub(crate) const ALLOWED_SUBCOMMANDS: &[AllowedSubcommand] = &[
         uses_network: false,
         shows_diffs: true,
     },
+    // `ls-tree -r -z <commit>` lists a version's files with their modes, so
+    // the page's reader of the live version keeps regular files only, as
+    // the CLI does. No `--format`, `--name-only`, `-l` or `--abbrev`: the
+    // reader parses git's default lines and needs nothing else.
+    AllowedSubcommand {
+        name: "ls-tree",
+        options: &[Flag("-r"), Flag("-z"), Flag("--full-tree")],
+        arguments: Arguments::RevisionsAndPaths,
+        uses_network: false,
+        shows_diffs: false,
+    },
     // Only the shape `check_merge` allows: the other side's history joins
     // this one, and no file changes until the person has chosen.
     AllowedSubcommand {
