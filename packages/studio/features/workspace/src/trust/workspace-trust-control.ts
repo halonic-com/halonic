@@ -1,13 +1,21 @@
 import type { TrustAsks } from "./trust-asks.ts";
 
 /**
- * A line under a trust check row: its label, its value and its tone: `attention` is amber,
- * `warning` amber with the triangle, `code` mono, for a path, a site or an env entry.
+ * What changed in a line of a Changed row: `added` for a value that wasn't there, or the value it
+ * had, shown as old → new (mockup-trust section 2).
+ */
+export type TrustLineChange = "added" | { readonly was: string };
+
+/**
+ * A line under a trust check row: its label, its value, its tone and, in a Changed row, what
+ * changed in it. `attention` is amber, `warning` amber with the triangle, `code` mono, for a
+ * path, a site or an env entry.
  */
 export type TrustLine = readonly [
   label: string,
   value: string,
-  tone?: "attention" | "warning" | "code",
+  tone?: "attention" | "warning" | "code" | undefined,
+  change?: TrustLineChange,
 ];
 
 /** One row of the trust check: a program, an agent, an address, or a change to one. */
@@ -16,6 +24,8 @@ export interface TrustRowView {
   readonly id: string;
   /** What it is, in one line: the command, the program an agent runs in, the address. */
   readonly detail: string;
+  /** In a Changed row, the detail it had, such as the command before its version changed. */
+  readonly detailWas?: string | undefined;
   /**
    * Label and value lines under the row, such as **Gets secrets** and its names. An empty label
    * continues the line above it; `attention` shows the value in amber, and `warning` in amber with
