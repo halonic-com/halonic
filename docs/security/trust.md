@@ -30,13 +30,11 @@ lists, in this order (requirement `cli.trust-check`):
 - **Programs:** every stdio connector's command, with the path it resolves to
   on this computer, its arguments, the folder it starts in when it isn't the
   workspace's own (`cli.trust-check-working-folder`) and its environment.
-  Studio's trust check shows the same fields from the same builder
-  (`app.program-trust-fields`, `studio.trust-review-program-fields`), with
-  control and bidi characters shown as their codes, as the CLI shows them
-  (`workspace.trust-check-escaped`). A program started by
-  `npx`, `uvx` or `pipx run` without a pinned version gets a `!` line, because
-  it fetches code from npm or PyPI each time it starts. For those, the prompt
-  asks a second question. Where the sandbox works on your computer, a program
+  Studio's trust check shows the same fields
+  (`studio.trust-review-program-fields`). A program started by `npx`, `uvx`
+  or `pipx run` without a pinned version gets a `!` line, because it fetches
+  code from npm or PyPI each time it starts. For those, the prompt asks a
+  second question. Where the sandbox works on your computer, a program
   whose connector names `sites` then lists each site it may reach in it, one
   per line, as an agent's allowed sites are, and the summary counts each site
   once with the agents' sites. Where it doesn't, the check shows no site of a
@@ -71,6 +69,10 @@ lists, in this order (requirement `cli.trust-check`):
   isn't allowed for the key, so a run that uses this provider fails, and
   gives the `halonic models allow-address` command that allows it.
 - **Fingerprint:** the full fingerprint, never shortened.
+
+Like the CLI, Studio's trust check shows hidden characters, such as control
+and text-direction characters, as their codes, so the text reads in the order
+it runs (`workspace.trust-check-escaped`).
 
 When the workspace changed since you trusted it, the check shows only what is
 new or changed. When it is unchanged, you get one line with the date.
