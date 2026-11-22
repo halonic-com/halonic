@@ -2,6 +2,7 @@
 
 - Approval: Liam approved the three cuts with conditions on HAL-15905 (board decision, 22 Nov: make `@halonicjs/adapter-git`'s tests take under 30 s)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Mb8mM2//LPQ6/oeNViDK5YH40/qWDMa6SPTbDuB6fQ815N1HMalOaO80FyakGPQZ1X4lG3x+wm1qDjqPy0PsDw==
 
 After two splits (`decisions/priya/HAL-15905-adapter-git-test-speed.md`,
 `decisions/priya/HAL-15905-02-split-commits.md`) the package took 43.8 s in a merge group where the
