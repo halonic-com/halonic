@@ -1,11 +1,14 @@
 import { inlineLinkClasses } from "@halonicjs/studio-kit";
+import { stoppedAtStart } from "../page/page-text.ts";
 
 // A call the host refused with `plugin_stopped` (HAL-15537): the computer passed the sandbox
 // check, but the runner's fence didn't hold, so the host stopped it before the plugin ran. The
-// host's answer names no plugin, so a card or a command dialog names the plugin it called, and
-// links its page, where R15's **Check again** is. Trying again may help, so Try again stays.
+// host's answer names no plugin, so a card or a command dialog names the plugin it called, in the
+// page's words (R15). Try again starts the plugin in the sandbox again, so the line points there;
+// the page's **Check again** only forgets the stop, so the name links the page for details only
+// (flow check C630 #4, HAL-15788).
 
-/** Whether the host stopped the plugin because its sandbox didn't hold (the host's `plugin_stopped`). */
+/** Whether the host stopped the plugin because the sandbox didn't work (the host's `plugin_stopped`). */
 export function isPluginStopped(error: unknown): boolean {
   return typeof error === "object" && error !== null && "kind" in error
     ? error.kind === "plugin_stopped"
@@ -13,14 +16,15 @@ export function isPluginStopped(error: unknown): boolean {
 }
 
 /**
- * The first sentence as text: "Halonic stopped Tides: its sandbox didn't hold, so it didn't run."
- * For the dialog's alert, which takes only text; a card uses {@link StoppedLine}.
+ * The first sentence as text, the page's: "Halonic stopped Tides: the sandbox didn't work when it
+ * started, so none of it ran." For the dialog's alert, which takes only text; a card uses
+ * {@link StoppedLine}.
  */
 export function stoppedLine(name: string): string {
-  return `Halonic stopped ${name}: its sandbox didn't hold, so it didn't run.`;
+  return stoppedAtStart(name);
 }
 
-/** The first sentence with the plugin's name in `<bdi>`, as {@link CheckAgainLine} has it. */
+/** The first sentence with the plugin's name in `<bdi>`, as {@link TryAgainLine} has it. */
 export function StoppedLine({
   name,
 }: {
@@ -29,16 +33,17 @@ export function StoppedLine({
 }) {
   return (
     <>
-      Halonic stopped <bdi>{name}</bdi>: its sandbox didn't hold, so it didn't run.
+      Halonic stopped <bdi>{name}</bdi>: the sandbox didn't work when it started, so none of it ran.
     </>
   );
 }
 
 /**
- * The second sentence, "Open *Tides* to check again.", with the plugin's name as a link to its
- * page. Without `onOpen`, where the window can't open pages, the name is plain italics.
+ * The second line, "Try again starts it in the sandbox again. Open *Tides* for details.", with the
+ * plugin's name as a link to its page. Without `onOpen`, where the window can't open pages, the
+ * name is plain italics.
  */
-export function CheckAgainLine({
+export function TryAgainLine({
   name,
   onOpen,
 }: {
@@ -53,7 +58,7 @@ export function CheckAgainLine({
   );
   return (
     <>
-      Open{" "}
+      Try again starts it in the sandbox again. Open{" "}
       {onOpen === undefined ? (
         named
       ) : (
@@ -61,7 +66,7 @@ export function CheckAgainLine({
           {named}
         </button>
       )}{" "}
-      to check again.
+      for details.
     </>
   );
 }

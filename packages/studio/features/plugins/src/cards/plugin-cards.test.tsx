@@ -188,12 +188,12 @@ verifies("plugins.plugin-cards", () => {
     expect(() => button(view, "Try again")).toThrow();
   });
 
-  it("names the plugin the host stopped and links its page, with Try again and ↻", async () => {
+  it("names the plugin the host stopped in the page's words, points to Try again and links its page, with ↻", async () => {
     const { caller, calls, answer } = callerWithAnswers();
     const { view, details } = showCard(caller);
     await answer(Object.assign(new Error("host's own text"), { kind: "plugin_stopped" }));
     expect(view.querySelector('[aria-live="polite"] p')?.textContent).toBe(
-      "Halonic stopped Weather: its sandbox didn't hold, so it didn't run. Open Weather to check again.",
+      "Halonic stopped Weather: the sandbox didn't work when it started, so none of it ran. Try again starts it in the sandbox again. Open Weather for details.",
     );
     // The name is untrusted text, so both sentences isolate it from the words around it.
     const names = view.querySelectorAll('[aria-live="polite"] p bdi');

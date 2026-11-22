@@ -194,7 +194,7 @@ class LocalIntegrationOpening {
    */
   #stopped(): string {
     const name = this.#request.folder;
-    return `Halonic stopped the integration ${name}: the sandbox didn't work as the integration started, so nothing ran. Halonic tries ${name} in the sandbox again the next time a run uses it.`;
+    return `Halonic stopped the integration ${name}: the sandbox didn't work when the integration started, so none of it ran. Halonic tries ${name} in the sandbox again the next time a run uses it.`;
   }
 
   /**
