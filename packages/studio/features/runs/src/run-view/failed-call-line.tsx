@@ -133,6 +133,7 @@ function connectorStartKey(cause: ConnectorStartCause): StartLineKey {
       return "pluginNotTrusted";
     case "plugin-changed":
       return "pluginChanged";
+    case "sandbox-not-ready":
     case "other":
       return "notStarted";
   }

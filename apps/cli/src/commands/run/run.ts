@@ -27,7 +27,7 @@ import {
   type StoppedResult,
   UsageError,
 } from "../../command.ts";
-import { connectorFileOf, isIntegrationConnector } from "../../connector-file.ts";
+import { type AddedPlugins, addedPluginsOf } from "../../connector-plugin.ts";
 import { followUntilStopped } from "../../follow-run.ts";
 import { type HarnessProgram, nodeHarnessPrograms } from "../../harness-programs.ts";
 import type { LocalEngine } from "../../local-engine-host.ts";
@@ -39,6 +39,7 @@ import { runMessages } from "../../messages/run.ts";
 import { workflowMessages } from "../../messages/workflow.ts";
 import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
+import { openPluginService } from "../../plugin-host.ts";
 import type { RunClock } from "../../run-times.ts";
 import { loadRunWorkspace, type OpenWorkspaceHistory } from "../../run-workspace.ts";
 import {
@@ -67,6 +68,7 @@ import { liveLines } from "./live-lines.ts";
 import { runResult } from "./result.ts";
 import { type RunPlace, sendEvent } from "./send-event.ts";
 import { checkRunTrust, type RunTrustMachine } from "./trust.ts";
+import { warnedConnectorsOf } from "./warned-connectors.ts";
 
 /** What `run` uses on this computer, so tests can fix the clock, the ids and the profile. */
 export interface RunSetup extends WorkspaceEngineSetup {
@@ -81,6 +83,8 @@ export interface RunSetup extends WorkspaceEngineSetup {
    * loop; this computer's, found on the `PATH`, by default.
    */
   harnesses?(): readonly HarnessProgram[];
+  /** The plugins added in `profile`, for a plugin connector's warning; the profile's own by default. */
+  readonly plugins?: AddedPlugins;
 }
 
 /**
@@ -174,10 +178,16 @@ export async function followWorkflow(
   const streaming = input.options["follow"] === true;
   let followed: FollowedRun | StoppedResult;
   const printEvent = streaming ? eventLines(context) : live.onEvent;
-  const warnConnectors = connectorWarnings(context, typedDir, {
-    fileOf: (id) => connectorFileOf(workspace, id),
-    isIntegration: (id) => isIntegrationConnector(workspace, id),
-  });
+  const plugins =
+    setup.plugins ??
+    addedPluginsOf(
+      openPluginService(setup.profile === undefined ? {} : { profile: setup.profile }),
+    );
+  const warnConnectors = connectorWarnings(
+    context,
+    typedDir,
+    await warnedConnectorsOf(workspace, plugins),
+  );
   try {
     const events = eventsOf(input);
     const place = { workspace, name: workspaceName, dir: typedDir };

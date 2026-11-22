@@ -3,10 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
-import type { RunEvent } from "@halonicjs/events";
+import type { ConnectorStartReason, RunEvent } from "@halonicjs/events";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
+import type { ConnectorPlugin } from "../../connector-plugin.ts";
 import { exitCode } from "../../exit-code.ts";
 import { plainText } from "../../messages/phrase.ts";
 import { runCli } from "../../run-cli.ts";
@@ -40,10 +41,27 @@ afterEach(async () => {
 
 /** Gives Acme's Writer the `handbook` connector, whose program isn't on this computer, and trusts Acme. */
 async function writerWithMissingProgram(): Promise<void> {
+  await writerWith(`stdio:\n    command: ${missingProgram}`);
+}
+
+/**
+ * Gives Acme's Writer the `handbook` connector, which uses the plugin
+ * `plugin`, and trusts Acme. Acme stops being local only, since a plugin
+ * that isn't added has no manifest to say its hosts are local (HAL-14300).
+ */
+async function writerWithPlugin(plugin: string): Promise<void> {
+  const workspace = join(acme, "workspace.yaml");
+  const yaml = await readFile(workspace, "utf8");
+  await writeFile(workspace, yaml.replace("localOnly: true", "localOnly: false"));
+  await writerWith(`plugin:\n    id: ${plugin}`);
+}
+
+/** Gives Acme's Writer the `handbook` connector with `transport` and the `more` lines, and trusts Acme. */
+async function writerWith(transport: string, more = ""): Promise<void> {
   await mkdir(join(acme, "library/connectors"), { recursive: true });
   await writeFile(
     join(acme, "library/connectors/handbook.connector.yaml"),
-    `name: Handbook\ntransport:\n  stdio:\n    command: ${missingProgram}\n`,
+    `name: Handbook\ntransport:\n  ${transport}\n${more}`,
   );
   const writer = join(acme, "hubs/support/agents/writer.agent.yaml");
   await writeFile(writer, `${await readFile(writer, "utf8")}connectors: [handbook]\n`);
@@ -58,14 +76,20 @@ async function writerWithMissingProgram(): Promise<void> {
 /** Connectors with no file in the workspace, as from the hub. */
 const noFiles: WarnedConnectors = { fileOf: () => undefined, isIntegration: () => false };
 
+/** The warning lines for `event`, with `connectors` as the workspace has them. */
+function warningFor(event: RunEvent, connectors: WarnedConnectors): string[] {
+  const lines: string[] = [];
+  connectorWarnings({ warn: (line) => lines.push(plainText(line)) }, undefined, connectors)(event);
+  return lines;
+}
+
+/** `handbook` uses the plugin `acme-orders`, which stands as `state`. */
+function usesPlugin(state: ConnectorPlugin): WarnedConnectors {
+  return { ...noFiles, pluginOf: () => ({ id: "acme-orders", state }) };
+}
+
 /** A `connector.listing-failed` event of the Writer, at `seq`. */
-function listingFailed(
-  seq: number,
-  cause: {
-    why: Extract<RunEvent, { type: "connector.listing-failed" }>["cause"]["why"];
-    name?: string;
-  },
-): RunEvent {
+function listingFailed(seq: number, cause: { why: ConnectorStartReason; name?: string }): RunEvent {
   return {
     seq,
     at: "2026-11-10T14:01:00.000Z",
@@ -198,5 +222,76 @@ verifies("cli.run-connector-warning", () => {
     warn(listingFailed(4, { why: "other" }));
 
     expect(lines).toEqual([]);
+  });
+});
+
+verifies("cli.run-plugin-connector-warning", () => {
+  it("names a plugin connector's plugin that isn't added, and the run goes on", {
+    timeout: heavyTestTimeout,
+  }, async () => {
+    await writerWithPlugin("acme-orders");
+    const home = await mkdtemp(join(folder, "profile-"));
+    const profile = { ...nodeProfileEnvironment(), variables: { HALONIC_HOME: home } };
+    const io = captureIo(acme);
+
+    const code = await runCli(
+      ["run", "support-reply", "--input", "examples/refund-question.json"],
+      io,
+      [runCommandWith(testRunSetup(folder, profile))],
+    );
+
+    expect(code).toBe(exitCode.ok);
+    const warning = [
+      "! handbook didn't start, so its tools are off in this run.",
+      "  The plugin acme-orders isn't added, so it has no tools yet. Add it with halonic plugin add <folder or git address>.",
+    ];
+    const at = io.stderr.indexOf(warning[0] ?? "");
+    expect(io.stderr.slice(at, at + 2)).toEqual(warning);
+    expect(io.stderr.filter((line) => line === warning[0])).toHaveLength(1);
+  });
+
+  it("names the added plugin a typo is close to", () => {
+    const facts = usesPlugin({ state: "not_added", near: "acme-order" });
+    expect(warningFor(listingFailed(4, { why: "other" }), facts)).toEqual([
+      "! handbook didn't start, so its tools are off in this run.",
+      "  The plugin acme-orders isn't added, so it has no tools yet. Add it with halonic plugin add <folder or git address>.",
+      "  Did you mean acme-order?",
+    ]);
+  });
+
+  it("leaves a plugin that is off to the log's own cause, with one wording", () => {
+    const changed = usesPlugin({ state: "off", why: "changed" });
+    expect(
+      warningFor(listingFailed(4, { why: "plugin-changed", name: "acme-orders" }), changed),
+    ).toEqual(
+      warningFor(listingFailed(4, { why: "plugin-changed", name: "acme-orders" }), {
+        file: undefined,
+      }),
+    );
+    expect(warningFor(listingFailed(4, { why: "other" }), changed)[0]).toBe(
+      "! handbook couldn't list its tools, so they are off in this run.",
+    );
+  });
+
+  it("says a plugin that can't be read is off", () => {
+    expect(warningFor(listingFailed(4, { why: "other" }), usesPlugin({ state: "broken" }))).toEqual(
+      [
+        "! handbook didn't start, so its tools are off in this run.",
+        "  acme-orders can't be read or checked, so it's off. See halonic plugin list.",
+      ],
+    );
+  });
+
+  it("says the sandbox can't start, and keeps the plain line for a plugin that is on", () => {
+    const on = usesPlugin({ state: "on" });
+    expect(warningFor(listingFailed(4, { why: "sandbox-not-ready" }), on)).toEqual([
+      "! handbook didn't start, so its tools are off in this run.",
+      "  The sandbox its plugin runs in can't start on this computer.",
+      "  See why with halonic doctor.",
+    ]);
+    expect(warningFor(listingFailed(4, { why: "other" }), on)).toEqual([
+      "! handbook couldn't list its tools, so they are off in this run.",
+      "  To see why, run halonic tools review handbook",
+    ]);
   });
 });

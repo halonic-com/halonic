@@ -55,6 +55,11 @@ verifies("ports.connector-start-failure", () => {
     });
   });
 
+  it("reads a plugin's backend with no sandbox, and nothing of its reason", () => {
+    const error = adapterError("PluginBackendNotFencedError", { reason: "bwrap-missing" });
+    expect(connectorStartFailureOf(error)).toEqual({ reason: "sandbox-not-ready" });
+  });
+
   it("turns away anything else", () => {
     expect(connectorStartFailureOf(new Error("The MCP server stopped."))).toBeUndefined();
     expect(connectorStartFailureOf(adapterError("ProgramNotFoundError", {}))).toBeUndefined();

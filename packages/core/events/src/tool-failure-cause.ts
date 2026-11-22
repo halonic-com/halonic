@@ -19,6 +19,7 @@ const startReasons: readonly unknown[] = [
   "secret-not-set",
   "plugin-not-trusted",
   "plugin-changed",
+  "sandbox-not-ready",
   "other",
 ] satisfies ConnectorStartReason[];
 

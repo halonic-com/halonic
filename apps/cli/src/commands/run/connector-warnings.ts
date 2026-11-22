@@ -1,17 +1,26 @@
 // The warning `halonic run` gives for a connector whose tools a step
 // couldn't list (HAL-13670): the engine logs `connector.listing-failed`
 // and goes on, so without it a run would end ✓ with no word on why the
-// agent had none of the connector's tools.
+// agent had none of the connector's tools. A plugin connector's warning
+// names the plugin's state on this computer (HAL-14296, C13+ on HAL-14271).
 
 import type { RunEvent } from "@halonicjs/events";
 import type { CommandContext } from "../../command.ts";
+import type { ConnectorPlugin } from "../../connector-plugin.ts";
 import { connectorStartMessages } from "../../messages/connector-start.ts";
 import type { Message } from "../../messages/define.ts";
 import { phrase } from "../../messages/phrase.ts";
 import { pluginMessages } from "../../messages/plugin.ts";
+import { toolsMessages } from "../../messages/tools.ts";
 import { printable } from "../../output/printable.ts";
 
 type ListingFailed = Extract<RunEvent, { type: "connector.listing-failed" }>;
+
+/** A plugin connector's plugin: its id and where it stands on this computer. */
+export interface WarnedPlugin {
+  readonly id: string;
+  readonly state: ConnectorPlugin;
+}
 
 /** What the warning reads about a run's connectors in the workspace. */
 export interface WarnedConnectors {
@@ -22,12 +31,20 @@ export interface WarnedConnectors {
   fileOf(connector: string): string | undefined;
   /** Whether the connector is a local integration's, which starts in the integration runner. */
   isIntegration(connector: string): boolean;
+  /**
+   * For a plugin connector, its plugin as the profile has it now, or
+   * `undefined` when it isn't a plugin's or that can't be read. Left out
+   * where only the log counts, as in `runs show`.
+   */
+  pluginOf?(connector: string): WarnedPlugin | undefined;
 }
 
 /**
  * Warns once for each connector a run's log says couldn't list its tools:
  * what happened, then the cause and its fix, indented under it: a missing
- * program or secret, or a plugin that isn't trusted yet or changed since. Every step
+ * program or secret, a plugin that isn't trusted yet or changed since, a
+ * plugin's sandbox that can't start, or, read from the profile, a plugin
+ * that isn't added or can't be read. Every step
  * lists the tools again, and every follow reads the log from its first
  * event, so a connector is warned about only the first time. A connector
  * whose parts the log already named as off (`connector.part-off`, written
@@ -73,7 +90,7 @@ function warningLines(
   connectors: WarnedConnectors,
 ): Message[] {
   const connector = printable(event.connector);
-  const causeAndFix = causeLines(event.cause, connector, connectors.fileOf(event.connector));
+  const causeAndFix = causeLines(event, connector, connectors);
   if (causeAndFix === undefined) {
     return [
       connectorStartMessages.notListed(connector),
@@ -94,19 +111,31 @@ function unknownCauseFix(
     : connectorStartMessages.notListedFix(event.connector, dir);
 }
 
-/** The cause and its fix, or `undefined` when the log doesn't say why. */
+/**
+ * The cause and its fix, or `undefined` when neither the log nor where the
+ * connector's plugin stands says why.
+ */
 function causeLines(
-  cause: ListingFailed["cause"],
+  event: ListingFailed,
   connector: string,
-  file: string | undefined,
+  connectors: WarnedConnectors,
 ): Message[] | undefined {
+  const { cause } = event;
+  if (cause.why === "sandbox-not-ready") {
+    return [connectorStartMessages.sandboxNotReady(), connectorStartMessages.sandboxNotReadyFix()];
+  }
+  if (cause.why === "other") return pluginStateLines(connectors.pluginOf?.(event.connector));
   if (cause.name === undefined) return undefined;
   const name = printable(cause.name);
   switch (cause.why) {
     case "program-missing":
       return [
         connectorStartMessages.programMissing(name),
-        connectorStartMessages.programMissingFix(name, connector, file),
+        connectorStartMessages.programMissingFix(
+          name,
+          connector,
+          connectors.fileOf(event.connector),
+        ),
       ];
     case "secret-not-set":
       return [
@@ -120,9 +149,25 @@ function causeLines(
       ];
     case "plugin-changed":
       return [connectorStartMessages.pluginChanged(name), pluginMessages.startChangedFix(name)];
-    case "other":
-      return undefined;
   }
+}
+
+/**
+ * For a plugin connector the log has no cause for: that its plugin isn't
+ * added (with the added plugin whose id is close) or can't be read, in
+ * `tools review`'s words, read from the profile. `undefined` otherwise, so
+ * the plain line stays: a plugin that isn't trusted or changed since has its
+ * own cause in the log.
+ */
+function pluginStateLines(plugin: WarnedPlugin | undefined): Message[] | undefined {
+  if (plugin === undefined) return undefined;
+  const id = printable(plugin.id);
+  const { state } = plugin;
+  if (state.state === "broken") return [pluginMessages.pluginBroken(id)];
+  if (state.state !== "not_added") return undefined;
+  const notAdded = toolsMessages.pluginNotAdded(id);
+  if (state.near === undefined) return [notAdded];
+  return [notAdded, toolsMessages.didYouMean(printable(state.near))];
 }
 
 /** `message` two spaces in, as a fix line stands under its line 1. */
