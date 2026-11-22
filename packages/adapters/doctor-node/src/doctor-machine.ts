@@ -14,6 +14,7 @@ import {
   type NetworkProblem,
   type NodeProblem,
   type PlacementReader,
+  type PluginRecordProblem,
   type ProfileProblem,
   ResourceReport,
   type SaveTimers,
@@ -106,6 +107,11 @@ export interface DoctorOptions {
    * (HAL-15201); left out, or `null`, there is no Profile line.
    */
   readonly profile?: ProfileProblem | null;
+  /**
+   * What is wrong with the profile's plugin records, for the Plugins line
+   * (HAL-15916); left out, or `null`, nothing is.
+   */
+  readonly pluginRecords?: PluginRecordProblem | null;
 }
 
 /**
@@ -154,6 +160,7 @@ export async function doctorService(
     ...(machine.node === undefined ? {} : { node: machine.node }),
     ...(machine.network === undefined ? {} : { network: machine.network }),
     profile: options.profile ?? null,
+    pluginRecords: options.pluginRecords ?? null,
     timers: checkTimers,
   });
 }

@@ -10,6 +10,7 @@ import {
   type ConnectorPlugin,
   connectorPlugin,
 } from "./connector-plugin.ts";
+import { recordProblemOf } from "./doctor-plugin-records.ts";
 import { UnreadablePluginsFolderError } from "./plugins-folder-reader.ts";
 
 /**
@@ -19,7 +20,9 @@ import { UnreadablePluginsFolderError } from "./plugins-folder-reader.ts";
  * folder itself can't be listed, each plugin the connectors use can't be
  * read, so the line says so and the other lines still show. When that is
  * because the person may not list it, the line names the folder and its fix
- * instead, since no plugin is at fault (HAL-15785).
+ * instead, since no plugin is at fault (HAL-15785). When a plugin record
+ * file is to blame, the line already names it with its fix (HAL-15916), so
+ * the plugins aren't listed again with a fix that fails on the same file.
  */
 export async function withPluginProblems(
   workspace: DoctorWorkspace,
@@ -29,6 +32,7 @@ export async function withPluginProblems(
   const usePlugins = connectors.some((connector) => "plugin" in connector.transport);
   if (plugins === undefined || !usePlugins) return workspace;
   const added = await addedOrUnreadable(plugins);
+  if (added === "records") return workspace;
   const pluginProblems =
     added instanceof UnreadablePluginsFolderError
       ? [folderProblem(connectors, added)]
@@ -38,15 +42,17 @@ export async function withPluginProblems(
 
 /**
  * The added plugins; the refusal when the person may not list the plugins
- * folder; or `undefined` when it can't be listed for another reason.
+ * folder; `"records"` when a plugin record file can't be read; or
+ * `undefined` when they can't be listed for another reason.
  */
 async function addedOrUnreadable(
   plugins: AddedPlugins,
-): Promise<readonly AddedPlugin[] | UnreadablePluginsFolderError | undefined> {
+): Promise<readonly AddedPlugin[] | UnreadablePluginsFolderError | "records" | undefined> {
   try {
     return await plugins();
   } catch (error) {
-    return error instanceof UnreadablePluginsFolderError ? error : undefined;
+    if (error instanceof UnreadablePluginsFolderError) return error;
+    return recordProblemOf(error) === undefined ? undefined : "records";
   }
 }
 

@@ -8,7 +8,6 @@
 
 import {
   type DiskLine,
-  type DoctorPluginProblem,
   doctorCheckLimitMs,
   type HarnessesLine,
   type HarnessProblem,
@@ -28,6 +27,7 @@ import { type SignInShell, signInCommandText } from "@halonicjs/ports";
 import type { Message } from "./define.ts";
 import { wsl2FolderDocs } from "./docs.ts";
 import { type DataUse, doctorMessages } from "./doctor.ts";
+import { pluginsItems } from "./doctor-plugins-items.ts";
 import type { Phrase } from "./phrase.ts";
 import { printable } from "./printable.ts";
 import { shownSize } from "./size.ts";
@@ -250,62 +250,6 @@ function secretsItems(line: SecretsLine, face: DoctorFace): DoctorLineItem[] {
         doctorMessages.secretUnreadable(printable(secret), users(usedBy)).phrase,
     ),
   ].map((sentence) => ({ sentence }));
-}
-
-/**
- * Each plugin problem: one that isn't added with the near id and the fix
- * under it, then one sentence for each plugin that is off, and one with its
- * fix for each that can't be read, or the plugins folder that can't be read
- * with its fix.
- */
-function pluginsItems(line: PluginsLine, face: DoctorFace): DoctorLineItem[] {
-  return line.problems.flatMap((problem) => pluginProblem(problem, face));
-}
-
-function pluginProblem(problem: DoctorPluginProblem, face: DoctorFace): DoctorLineItem[] {
-  if (problem.problem === "folder-unreadable") return pluginsFolderItems(problem, face);
-  // Connector and plugin ids come from the workspace's files and the plugins folder.
-  const plugin = printable(problem.plugin);
-  switch (problem.problem) {
-    case "not-added": {
-      const sentence = doctorMessages.pluginNotAdded(printable(problem.connector), plugin).phrase;
-      if (problem.near === undefined) {
-        return [{ sentence }, { fix: doctorMessages.addPlugin().phrase }];
-      }
-      const near = printable(problem.near);
-      return [
-        { sentence },
-        { sentence: doctorMessages.pluginNear(near).phrase },
-        { fix: doctorMessages.fixPluginId(printable(problem.connector), plugin, near).phrase },
-      ];
-    }
-    case "off":
-      return [
-        {
-          sentence: doctorMessages.pluginOff(plugin, problem.why, face.shellWord(problem.plugin))
-            .phrase,
-        },
-      ];
-    case "broken":
-      return [
-        { sentence: doctorMessages.pluginBroken(plugin).phrase },
-        { fix: doctorMessages.removeBrokenPlugin(face.shellWord(problem.plugin)).phrase },
-      ];
-  }
-}
-
-/** The plugins folder the person may not list, with the plugins that are off for it and its fix. */
-function pluginsFolderItems(
-  problem: Extract<DoctorPluginProblem, { problem: "folder-unreadable" }>,
-  face: DoctorFace,
-): DoctorLineItem[] {
-  // Plugin ids come from the workspace's files.
-  const plugins = problem.plugins.map((plugin) => printable(plugin));
-  const folder = printable(problem.folder);
-  return [
-    { sentence: doctorMessages.pluginsFolderUnreadable(folder, plugins).phrase },
-    { fix: doctorMessages.fixPluginsFolder(problem.access, face.shellWord(problem.folder)).phrase },
-  ];
 }
 
 /** The harnesses that are ready as one sentence, then each problem with its fix. */

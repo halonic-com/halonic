@@ -23,15 +23,17 @@ import {
   AgentPlacement,
   type DoctorService,
   type DoctorWorkspace,
+  type PluginRecordProblem,
   type ProfileProblem,
 } from "@halonicjs/app";
 import type { Secrets } from "@halonicjs/ports";
 import { placementFolder, profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { type AddedPlugins, addedPluginsOf } from "./connector-plugin.ts";
+import { pluginRecordProblem } from "./doctor-plugin-records.ts";
 import { engineHttp } from "./engine-http.ts";
 import { nodeHarnessPrograms } from "./harness-programs.ts";
-import { openPluginService } from "./plugin-host.ts";
+import { openPluginService, pluginRecordStore } from "./plugin-host.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import { profileKeyOrigins } from "./secret-host.ts";
@@ -51,6 +53,11 @@ export {
 export interface DoctorMachine extends NodeDoctorMachine {
   /** The plugins added in the profile, for the Plugins line (HAL-14296); left out, no line. */
   readonly plugins?: AddedPlugins;
+  /**
+   * What is wrong with the profile's plugin records, for the Plugins line
+   * with or without a workspace (HAL-15916); left out, they aren't checked.
+   */
+  readonly pluginRecords?: () => Promise<PluginRecordProblem | null>;
 }
 
 /** The names Node gives the systems, as a person reads them. */
@@ -123,6 +130,7 @@ export function nodeDoctorMachine(): DoctorMachine {
     keyOrigins: profileKeyOrigins(),
     // Opened only when a connector uses a plugin, as `tools review` opens it.
     plugins: () => addedPluginsOf(openPluginService({}))(),
+    pluginRecords: () => pluginRecordProblem(pluginRecordStore(profile)),
   };
 }
 
@@ -140,6 +148,7 @@ export async function doctorService(
   return await machineDoctorService(machine, secrets, workspace, {
     appVersion: halonicVersion,
     profile,
+    pluginRecords: (await machine.pluginRecords?.()) ?? null,
   });
 }
 

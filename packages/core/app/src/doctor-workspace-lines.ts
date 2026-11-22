@@ -1,9 +1,8 @@
 // The lines of `halonic doctor` that only a workspace has, from what the
-// doctor service's checks found: Workspace, Models, Secrets and Plugins.
+// doctor service's checks found: Workspace, Models and Secrets.
 // Apart from the service, so it stays one file a person can read.
 
 import { type WorkspaceLine, workspaceLine } from "./doctor-lines.ts";
-import { pluginsLine } from "./doctor-plugins-line.ts";
 import { type SecretsFound, secretsLine } from "./doctor-secrets-line.ts";
 import type { DoctorReport, DoctorWorkspace } from "./doctor-service.ts";
 import { lineOf, type timedOut } from "./doctor-time-limit.ts";
@@ -20,26 +19,24 @@ export interface WorkspaceFound {
 }
 
 /**
- * The lines only a workspace has: Workspace, then Models, Secrets and
- * Plugins (`app.doctor-plugins`) when they apply.
+ * The lines only a workspace has: Workspace, then Models and Secrets when
+ * they apply.
  *
  * @example
  * workspaceLines(workspace, { trust: "trusted", resources, keys, secrets });
- * // { workspace: { check: "workspace", status: "ok", … }, plugins: { check: "plugins", … } }
+ * // { workspace: { check: "workspace", status: "ok", … }, secrets: { check: "secrets", … } }
  */
 export function workspaceLines(
   workspace: DoctorWorkspace,
   found: WorkspaceFound,
-): Pick<DoctorReport, "workspace" | "models" | "secrets" | "plugins"> {
-  const lines: Pick<DoctorReport, "workspace" | "models" | "secrets" | "plugins"> = {
+): Pick<DoctorReport, "workspace" | "models" | "secrets"> {
+  const lines: Pick<DoctorReport, "workspace" | "models" | "secrets"> = {
     workspace: lineOf(found.trust, "workspace", (trust) => trustLine(workspace, trust)),
   };
   const models = workspaceModels(workspace, found.resources, found.keys);
   if (models !== undefined) lines.models = models;
   const secrets = lineOf(found.secrets, "secrets", secretsLine);
   if (secrets !== undefined) lines.secrets = secrets;
-  const plugins = pluginsLine(workspace.pluginProblems ?? []);
-  if (plugins !== undefined) lines.plugins = plugins;
   return lines;
 }
 

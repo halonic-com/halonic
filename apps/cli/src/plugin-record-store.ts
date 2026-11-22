@@ -5,7 +5,12 @@
 // folder (HAL-15785) and the secrets file (HAL-15511) give.
 
 import { access, constants } from "node:fs/promises";
-import { pluginInstallsCollection, pluginSettingsCollection } from "@halonicjs/app";
+import {
+  type PluginRecordProblem,
+  type PluginsFolderAccess,
+  pluginInstallsCollection,
+  pluginSettingsCollection,
+} from "@halonicjs/app";
 import { BrokenRecordLogError, type RecordChange, type RecordStore } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { plainText } from "./messages/phrase.ts";
@@ -21,21 +26,22 @@ import { accessTo, isPermissionDenied } from "./plugins-folder-reader.ts";
 export class UnreadablePluginRecordError extends KindedError {
   /** The detailed code on line 3 and in `--json`. */
   readonly code = "plugin-record-unreadable";
+  /** Whether the file system refused one record file or the folder that holds them. */
+  readonly place: "file" | "folder";
   /** The file or folder the file system refused. */
   readonly path: string;
+  /** Who can give the person access again, for the fix. */
+  readonly access: PluginsFolderAccess;
 
   /** @param cause - the file system's error, kept for `--debug` */
-  constructor(
-    place: "file" | "folder",
-    path: string,
-    access: Awaited<ReturnType<typeof accessTo>>,
-    cause: unknown,
-  ) {
+  constructor(place: "file" | "folder", path: string, access: PluginsFolderAccess, cause: unknown) {
     super("denied", plainText(pluginMessages.recordUnreadable(place, path).phrase), {
       fix: plainText(pluginMessages.recordUnreadableFix(place, access, shellWord(path)).phrase),
       cause,
     });
+    this.place = place;
     this.path = path;
+    this.access = access;
   }
 }
 
@@ -50,6 +56,12 @@ export class DamagedPluginRecordError extends KindedError {
   readonly code = "plugin-record-damaged";
   /** The damaged file. */
   readonly path: string;
+  /** The damaged line, counted from 1, or `undefined` when the whole file is damaged. */
+  readonly line: number | undefined;
+  /** Why it is damaged, in the store's words, such as "it is not JSON." */
+  readonly why: string;
+  /** What deleting the file forgets, for the fix. */
+  readonly holds: PluginRecordHolds;
 
   /**
    * @param broken - the store's error, kept for `--debug`
@@ -57,16 +69,23 @@ export class DamagedPluginRecordError extends KindedError {
    */
   constructor(broken: BrokenRecordLogError, collection: string | undefined) {
     const { file, why, line } = broken;
+    const holds = holdsOf(collection);
     super("unavailable", plainText(pluginMessages.recordDamaged(file, why, line).phrase), {
-      fix: plainText(pluginMessages.recordDamagedFix(holdsOf(collection), line).phrase),
+      fix: plainText(pluginMessages.recordDamagedFix(holds, line).phrase),
       cause: broken,
     });
     this.path = file;
+    this.line = line;
+    this.why = why;
+    this.holds = holds;
   }
 }
 
+/** What a plugin record file holds: where each plugin was added from, their settings, or other records. */
+type PluginRecordHolds = Extract<PluginRecordProblem, { problem: "records-damaged" }>["holds"];
+
 /** What a plugin collection holds, for the fix's "Deleting the file forgets …". */
-function holdsOf(collection: string | undefined): "sources" | "settings" | "other" {
+function holdsOf(collection: string | undefined): PluginRecordHolds {
   if (collection === pluginInstallsCollection) return "sources";
   if (collection === pluginSettingsCollection) return "settings";
   return "other";
