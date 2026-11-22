@@ -130,13 +130,14 @@ export const listedToolsWords = {
       { text: ", which isn't on this computer. Install it, then try again." },
     ],
     /**
-     * The CLI's cause and fix for the same program (HAL-15606, C600 #1c): what the program wrote
-     * isn't shown, so the person runs it to see why. The file is named as the CLI names it.
-     * `withCommand` points to the box with the line to run that follows it, in microcopy 11.4's
-     * "in a terminal" (C634 #5, C650 row 6); without it the line keeps the CLI's own sentence,
-     * which sends the person to the file. The line in the box leaves out the connector's env and
-     * secrets, and a Windows folder gets none, so the line says which, as a program that needs a
-     * secret stops differently by hand (C651 #4).
+     * The CLI's cause and fix for the same program, in its words (HAL-15606, C600 #1c; C672 #4):
+     * what the program wrote isn't shown, so the person runs its command and args to see why, as
+     * `npx` alone only prints its help. The file is named as the CLI names it. `withCommand` says
+     * the box with the line to run follows, so "yourself" becomes microcopy 11.4's "in a terminal"
+     * (C634 #5, C650 row 6) and the line ends on a colon before the box. The line in the box
+     * leaves out the connector's env and secrets, and a Windows folder gets none, so the line says
+     * which, as a program that needs a secret stops differently by hand (C651 #4). With no box the
+     * line ends on a full stop.
      */
     programStopped: (
       source: string,
@@ -144,15 +145,11 @@ export const listedToolsWords = {
       file: string | undefined,
       withCommand: boolean,
     ): readonly RefusalLinePart[] => [
-      { text: `Couldn't list the tools: ${source}'s program ` },
+      { text: `Couldn't list the tools from ${source}: its program ` },
       { text: program, code: true },
-      {
-        text: withCommand
-          ? " stopped right after it started. To see why, run its command from "
-          : " stopped right after it started. To see why, run the command and args from ",
-      },
+      { text: " stopped right after it started. To see why, run the command and args from " },
       ...(file === undefined
-        ? [{ text: "its connector file" }]
+        ? [{ text: `the ${source} connector file` }]
         : [{ text: file, code: true as const }]),
       {
         text: withCommand

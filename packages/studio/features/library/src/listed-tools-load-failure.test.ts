@@ -36,12 +36,12 @@ verifies("library.listed-tools-waiting", () => {
       );
 
       expect(line.parts).toEqual([
-        { text: "Couldn't list the tools: notes-mcp's program " },
+        { text: "Couldn't list the tools from notes-mcp: its program " },
         { text: "sh", code: true },
         {
           text: " stopped right after it started. To see why, run the command and args from ",
         },
-        { text: "its connector file" },
+        { text: "the notes-mcp connector file" },
         { text: " yourself. Studio can't give you a line to copy for a Windows folder yet." },
       ]);
       expect(line).toMatchObject({ button: "try-again", copyDetails: false });
@@ -61,7 +61,7 @@ verifies("library.listed-tools-waiting", () => {
       );
 
       expect(refusalLineText(line.parts)).toBe(
-        "Couldn't list the tools: notes-mcp's program sh stopped right after it started. To see why, run its command from library/connectors/notes-mcp.connector.yaml in a terminal. The line below doesn't set its env or secrets, so set any it needs first:",
+        "Couldn't list the tools from notes-mcp: its program sh stopped right after it started. To see why, run the command and args from library/connectors/notes-mcp.connector.yaml in a terminal. The line below doesn't set its env or secrets, so set any it needs first:",
       );
       expect(line.parts).toContainEqual({
         text: "library/connectors/notes-mcp.connector.yaml",
@@ -89,6 +89,20 @@ verifies("library.listed-tools-waiting", () => {
         / run the command and args from library\/connectors\/notes-mcp\.connector\.yaml yourself\. Studio can't give you a line to copy for a Windows folder yet\.$/u,
       );
       expect(line.command).toBeUndefined();
+    });
+
+    it("ends a stopped program's line on a colon only when a line to run follows (C672 #4)", () => {
+      const stopped = (command: string | undefined) =>
+        refusalLineText(
+          loadFailureLine(
+            new ConnectorCouldntList({ reason: "program-stopped", program: "sh", command }),
+            "notes-mcp",
+            desktop,
+          ).parts,
+        );
+
+      expect(stopped('cd /acme && sh -c "exit 1"')).toMatch(/:$/u);
+      expect(stopped(undefined)).toMatch(/\.$/u);
     });
 
     it("names a secret that isn't set, with no command, which couldn't set it for Studio", () => {
