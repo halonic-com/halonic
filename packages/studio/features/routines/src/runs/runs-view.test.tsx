@@ -10,7 +10,12 @@ import { RoutineScreen } from "../page/routine-page.tsx";
 import { buttonNamed, memoryHost, show, unmount } from "../test-support.tsx";
 import { RunsView } from "./runs-view.tsx";
 
-beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
+// A fixed midday, so a run started an hour ago is today wherever and whenever the test runs:
+// on the real clock it read "yesterday" between 00:00 and 01:00 (HAL-15561).
+beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  vi.setSystemTime(new Date(2026, 10, 3, 12, 0));
+});
 afterEach(() => {
   unmount();
   vi.useRealTimers();
@@ -113,8 +118,8 @@ verifies("routines.runs.view", () => {
       row.getAttribute("aria-label"),
     );
     expect(names).toEqual([
-      expect.stringMatching(/^Run 891b5a, needs you\. Started: On schedule, \d\d:\d\d\.$/),
-      expect.stringMatching(/^Run 81d0ae, done\. Started: Run now, \d\d:\d\d\.$/),
+      "Run 891b5a, needs you. Started: On schedule, 11:00.",
+      "Run 81d0ae, done. Started: Run now, 11:00.",
     ]);
   });
 
