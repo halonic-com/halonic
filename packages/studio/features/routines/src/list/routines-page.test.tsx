@@ -38,7 +38,7 @@ verifies("routines.list.rows-and-states", () => {
 
     expect(page.querySelector("h1")?.textContent).toBe("Routines");
     expect(text).toContain(
-      "A routine starts a workflow or an agent on its own: on a schedule or every so often. " +
+      "A routine starts a workflow on its own: on a schedule or every so often. " +
         "Routines run while Halonic is open.",
     );
     expect(text.indexOf("Daily")).toBeLessThan(text.indexOf("Weekly report"));
@@ -208,7 +208,7 @@ verifies("routines.list.rows-and-states", () => {
 
     expect(page.textContent).toContain("No routines yet");
     expect(page.textContent).toContain(
-      "A routine starts a workflow or an agent on its own, for example every weekday at 8.",
+      "A routine starts a workflow on its own, for example every weekday at 8.",
     );
     expect(page.querySelector('input[type="search"]')).toBeNull();
   });

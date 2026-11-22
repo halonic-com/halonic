@@ -227,7 +227,10 @@ function targetProblem(context: CheckContext, routine: Routine): RoutineProblem 
  * routine page uses (`cantStartWords.targetMissing`), after the routine's
  * name as `halonic routines` lists it, and with the key to change (C626,
  * HAL-15758): "Weekly report: weekly-reprot isn't in this workspace. Pick
- * another workflow for run.workflow. Did you mean weekly-report?"
+ * another workflow for run.workflow." A near id comes straight after the
+ * problem, as every near-name line in the CLI puts it (C671): "Weekly report:
+ * weekly-reprot isn't in this workspace. Did you mean weekly-report? If not,
+ * pick another workflow for run.workflow."
  */
 function targetMissing(
   name: string,
@@ -236,8 +239,11 @@ function targetMissing(
   ids: readonly string[],
 ): RoutineProblem {
   const likely = likelyName(target, ids);
-  const hint = likely === undefined ? "" : ` Did you mean ${likely}?`;
-  const message = `${name}: ${target} isn't in this workspace. Pick another ${kind} for run.${kind}.${hint}`;
+  const problem = `${name}: ${target} isn't in this workspace.`;
+  const message =
+    likely === undefined
+      ? `${problem} Pick another ${kind} for run.${kind}.`
+      : `${problem} Did you mean ${likely}? If not, pick another ${kind} for run.${kind}.`;
   return { path: ["run", kind], code: `unknown-${kind}`, message, namesRoutine: true };
 }
 
