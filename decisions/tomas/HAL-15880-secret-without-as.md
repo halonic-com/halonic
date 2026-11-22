@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-15880 asks for this change, a follow-up to HAL-15751 from Nina's flow check C619 (HAL-15734, item 2). The team decides it under the HAL-2282 rule, since it rewords a message that is already there, for one case. Liam signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hsnbUnhz79jbSgv/Jgxtdx9XCyS8lhZeq8hsM7BREUp1MkjldfvPFLNCxu+/AhQepiTMxkCxNJLhhycDovuwDg==
 
 ## What changes
 
