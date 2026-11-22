@@ -14,6 +14,7 @@ import {
   type Spawn,
   throughHelper,
 } from "./elevate-helper.ts";
+import type { KeptGrants } from "./kept-grants.ts";
 import type { Machine } from "./machine.ts";
 import { SrtSandbox } from "./srt-sandbox.ts";
 
@@ -215,7 +216,12 @@ verifies("sandbox-srt.remove", () => {
         uninstallWindowsSandbox: async () => "grants_kept" as const,
       } as Partial<Machine> as Machine;
       const warned: string[] = [];
+      // srt still lists its account, so the grants may stay: the runner's real srt-win isn't asked.
+      const grants = {
+        keptState: async () => "kept" as const,
+      } as Partial<KeptGrants> as KeptGrants;
       const sandbox = new SrtSandbox(windows, undefined, undefined, {
+        grants,
         warn: (message) => warned.push(message),
       });
       expect(await sandbox.remove()).toEqual({ ok: true, keptAccess: "manual" });
