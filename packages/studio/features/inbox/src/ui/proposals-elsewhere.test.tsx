@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 const elsewhere =
-  "Changes your runs propose show only in the desktop app, or with halonic proposals in a terminal.";
+  "Changes your runs propose show only in the desktop app, or with halonic proposals in a terminal on your computer.";
 
 const decisions: ProposalDecisions = {
   accept: async () => ({ undo: "u1", changedSinceRun: [], cantBeWritten: [] }),
