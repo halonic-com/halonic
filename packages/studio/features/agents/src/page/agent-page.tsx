@@ -53,6 +53,7 @@ import { RunsView } from "./runs-view.tsx";
 import { useAgentCards } from "./use-agent-cards.ts";
 import { type AgentView, agentTabs, useAgentView } from "./use-agent-view.ts";
 import { useLoad } from "./use-load.ts";
+import { useTakenNames } from "./use-taken-names.ts";
 import { focusAfterAdd, focusedIn, mapAdds, pickedPageTab } from "./view-opening.ts";
 
 /**
@@ -457,27 +458,6 @@ export function AgentScreen({
       {drawView}
     </ItemPage>
   );
-}
-
-/** The names of the hub's other agents, for the rename check; read again when a file changes. */
-function useTakenNames(host: AgentsHost, { hubId, id }: AgentRef): readonly string[] {
-  const [takenNames, setTakenNames] = useState<readonly string[]>([]);
-  useEffect(() => {
-    const read = () =>
-      host
-        .list()
-        .then((agents) =>
-          setTakenNames(
-            agents
-              .filter((agent) => agent.hubId === hubId && agent.id !== id)
-              .map((agent) => agent.name),
-          ),
-        )
-        .catch(() => setTakenNames([]));
-    void read();
-    return host.subscribe(() => void read());
-  }, [host, hubId, id]);
-  return takenNames;
 }
 
 /** The hub's name for the breadcrumb, else its id while the hubs aren't read. */
