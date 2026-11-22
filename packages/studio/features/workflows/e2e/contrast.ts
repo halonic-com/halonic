@@ -18,16 +18,20 @@ export interface Measured {
 export interface DrawnColours {
   /** Each element's own text. */
   readonly texts: readonly Drawn[];
-  /** Each visible border, and the focused element's focus ring. */
-  readonly edges: readonly Drawn[];
+  /** Each visible border. */
+  readonly borders: readonly Drawn[];
+  /** The focused element's focus ring, when `root` holds the focus and it has one. */
+  readonly ring: Drawn | undefined;
 }
 
 /** What {@link contrasts} measured. */
 export interface Contrasts {
   /** Each element's own text against the background it sits on. */
   readonly texts: readonly Measured[];
-  /** Each visible border, and the focus ring, against what's around them. */
-  readonly edges: readonly Measured[];
+  /** Each visible border against what's around it. */
+  readonly borders: readonly Measured[];
+  /** The focus ring against what's around it. */
+  readonly ring: Measured | undefined;
 }
 
 /*
@@ -40,7 +44,11 @@ export interface Contrasts {
 
 /** The WCAG 2 contrast ratios of what {@link readColours} read. */
 export function contrasts(drawn: DrawnColours): Contrasts {
-  return { texts: drawn.texts.map(measured), edges: drawn.edges.map(measured) };
+  return {
+    texts: drawn.texts.map(measured),
+    borders: drawn.borders.map(measured),
+    ring: drawn.ring === undefined ? undefined : measured(drawn.ring),
+  };
 }
 
 function measured({ what, colour, behind }: Drawn): Measured {
@@ -96,8 +104,9 @@ export function readColours(root: Element): DrawnColours {
     }
     return layers;
   };
-  const shown = [root, ...root.querySelectorAll("*")].filter(
-    (element) => element.getClientRects().length > 0,
+  // A button's busy copy is `invisible`: it holds the width but isn't drawn, so it isn't read.
+  const shown = [root, ...root.querySelectorAll("*")].filter((element) =>
+    element.checkVisibility({ visibilityProperty: true }),
   );
 
   const texts = shown.flatMap((element) => {
@@ -112,7 +121,7 @@ export function readColours(root: Element): DrawnColours {
   });
 
   // The dialog's border separates its own surface; a button's sits on its parent's.
-  const edges = [root, ...root.querySelectorAll("button")].flatMap((element) => {
+  const borders = [root, ...root.querySelectorAll("button")].flatMap((element) => {
     const style = getComputedStyle(element);
     const colour = channels(style.borderTopColor);
     if (Number.parseFloat(style.borderTopWidth) === 0 || colour[3] === 0) return [];
@@ -120,23 +129,24 @@ export function readColours(root: Element): DrawnColours {
     return [{ what: `the border of ${describe(element)}`, colour, behind: surface }];
   });
 
+  return { texts, borders, ring: focusRing() };
+
+  // These two are declared here so they go to the page with the rest.
   // The ring is the box shadow's outer colour: an inner one in the surface's colour makes a gap.
-  const focused = document.activeElement;
-  if (focused !== null && root.contains(focused)) {
+  function focusRing(): Drawn | undefined {
+    const focused = document.activeElement;
+    if (focused === null || !root.contains(focused)) return undefined;
     const shadow = getComputedStyle(focused).boxShadow;
     const colours = shadow.match(/(?:rgba?|color|oklch|oklab|lab|lch|hsla?)\([^)]*\)/g) ?? [];
     const ring = colours.at(-1);
-    if (ring !== undefined) {
-      edges.push({
-        what: `the focus ring of ${describe(focused)}`,
-        colour: channels(ring),
-        behind: behind(focused.parentElement),
-      });
-    }
+    if (ring === undefined) return undefined;
+    return {
+      what: `the focus ring of ${describe(focused)}`,
+      colour: channels(ring),
+      behind: behind(focused.parentElement),
+    };
   }
-  return { texts, edges };
 
-  // Declared here so it goes to the page with the rest.
   function describe(element: Element): string {
     if (element === root) return "the dialog";
     const name = element.textContent?.trim();
