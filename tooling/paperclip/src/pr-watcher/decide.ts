@@ -23,6 +23,8 @@ export interface PullFacts {
   readonly conflicting: boolean;
   /** Open only, read only when conflicting: it sits in the merge queue. */
   readonly inQueue: boolean;
+  /** Open only: its base changed after the required note check last ran, so GitHub keeps it blocked. */
+  readonly retargeted: boolean;
   /** Open only: the newest review or inline comment made on the current head. */
   readonly latestReview: { readonly id: string; readonly at: string } | undefined;
   /** Merged only: `ci-ok` passed on the merge commit, or a later base-branch commit is green. */
@@ -45,7 +47,7 @@ export interface WatchedTask {
 /** One state the author should hear about. `key` says when it is the same state again. */
 export interface Reason {
   readonly pull: PullFacts;
-  readonly kind: "ci-red" | "conflict" | "review" | "merged";
+  readonly kind: "ci-red" | "conflict" | "retargeted" | "review" | "merged";
   readonly key: string;
 }
 
@@ -97,6 +99,9 @@ export function candidates(pulls: readonly PullFacts[]): Reason[] {
     }
     if (pull.conflicting && !pull.inQueue && !pull.draft) {
       found.push({ pull, kind: "conflict", key: `${at} conflict` });
+    }
+    if (pull.retargeted && !pull.inQueue && !pull.draft) {
+      found.push({ pull, kind: "retargeted", key: `${at} retargeted` });
     }
     if (pull.latestReview !== undefined) {
       found.push({ pull, kind: "review", key: `${at} review ${pull.latestReview.id}` });

@@ -74,6 +74,8 @@ interface OpenNode extends PullNode {
       readonly actor?: { readonly login: string } | null;
     }[];
   };
+  /** The newest base change, by hand or by GitHub when the base branch was deleted. Absent in recordings made before the field. */
+  readonly baseChanges?: { readonly nodes: readonly { readonly createdAt?: string }[] };
   readonly commits: {
     readonly nodes: readonly { readonly commit: { readonly statusCheckRollup: Rollup | null } }[];
   };
@@ -148,9 +150,41 @@ function labelsOf(node: OpenNode): SnapshotLabel[] {
   });
 }
 
+/** The `guard-notes.yml` job that the ruleset on the default branch requires. */
+export const noteCheckName = "Decision note and the guard's own paths";
+
+/**
+ * Its base became the default branch, or changed on it, after the required
+ * note check last started on its head. GitHub runs a ruleset's required
+ * workflow only on opened, synchronize and reopened, never on a base change,
+ * so such a pull request stays blocked with its checks green until it is
+ * reopened or pushed to (HAL-16394). False when the rollup was cut off
+ * before the check.
+ */
+function baseChangedSinceNoteCheck(
+  node: OpenNode,
+  rollup: Rollup | null,
+  defaultBranch: string,
+): boolean {
+  const changedAt = node.baseChanges?.nodes.at(-1)?.createdAt;
+  if (changedAt === undefined || node.baseRefName !== defaultBranch) {
+    return false;
+  }
+  const starts = (rollup?.contexts.nodes ?? [])
+    .filter((each) => each.name === noteCheckName)
+    .flatMap((each) => (each.startedAt == null ? [] : [each.startedAt]))
+    .sort();
+  const newest = starts.at(-1);
+  if (newest === undefined) {
+    return rollup?.contexts.pageInfo.hasNextPage !== true;
+  }
+  return Date.parse(newest) < Date.parse(changedAt);
+}
+
 async function openFacts(
   node: OpenNode,
   repo: string,
+  defaultBranch: string,
   fallback: CheckFallback,
 ): Promise<OpenFacts> {
   const rollup = node.commits.nodes[0]?.commit.statusCheckRollup ?? null;
@@ -179,6 +213,7 @@ async function openFacts(
         node.headRefOid,
       ) ?? null,
     approvals: signedApprovals(conversation),
+    baseChangedSinceNoteCheck: baseChangedSinceNoteCheck(node, rollup, defaultBranch),
   };
 }
 
@@ -255,7 +290,7 @@ async function readRepo(
       queue = await queueOf(page, repo, fallback);
     }
     for (const node of page.repository.pullRequests.nodes) {
-      pulls.push(pullOf(node, await openFacts(node, repo, fallback)));
+      pulls.push(pullOf(node, await openFacts(node, repo, defaultBranch, fallback)));
     }
     const { hasNextPage, endCursor } = page.repository.pullRequests.pageInfo;
     after = hasNextPage ? endCursor : null;

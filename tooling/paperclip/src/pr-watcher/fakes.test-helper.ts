@@ -154,6 +154,7 @@ async function pullFacts(
     draft: pull.draft === true,
     conflicting: false,
     inQueue: false,
+    retargeted: false,
     latestReview: undefined,
     landed: false,
     mergedAt: undefined,

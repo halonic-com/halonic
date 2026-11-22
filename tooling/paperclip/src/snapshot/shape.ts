@@ -95,6 +95,12 @@ export interface OpenFacts {
   readonly finding: { readonly id: string; readonly at: string } | null;
   /** Signed approvals by our reviewers on any head, oldest first. Whether one counts depends on the head and the paths. */
   readonly approvals: readonly { readonly by: string; readonly head: string }[];
+  /**
+   * Its base changed to the default branch after the required note check
+   * last ran on its head, so GitHub keeps it blocked until it is reopened or
+   * pushed to. Added after version 1 shipped: a snapshot saved before it has none.
+   */
+  readonly baseChangedSinceNoteCheck?: boolean;
 }
 
 /** A label on an open pull request. */

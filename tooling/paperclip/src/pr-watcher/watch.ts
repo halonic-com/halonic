@@ -114,6 +114,8 @@ export function readMemory(comments: readonly CommentRow[], ownerId: string): Me
 const reasonText: Record<Reason["kind"], (head: string) => string> = {
   "ci-red": (head) => `\`ci-ok\` failed on its head \`${head}\`.`,
   conflict: () => "it conflicts with its base branch and isn't in the merge queue.",
+  retargeted: (head) =>
+    `its base changed after the required note check last ran, so GitHub keeps it blocked even with green checks. Close and reopen it (or push a commit) to run the check against the new base. Reopening keeps head \`${head}\`, so approvals on it still count.`,
   review: (head) => `there's a new review comment on its head \`${head}\`.`,
   merged: () =>
     "it merged and `ci-ok` is green, but the task has comments since. Mark it done if nothing else is left.",
