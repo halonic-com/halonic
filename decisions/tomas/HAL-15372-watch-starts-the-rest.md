@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-15372 asks for this change, from flow check C565 row 1 (HAL-15351), with option 1 as the preferred fix; the team decides it under the HAL-2282 rule, the wording builds on the list's approved "Can't start", and Liam signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:masb2eGM1BbR2iXnthT/vlkx6uTFEm/PxIysiWUkaJ0KGEwQABdDrYhgeMs7mXD72s7tSV3omNU3CTfsMPfOBQ==
 
 ## What changes
 
