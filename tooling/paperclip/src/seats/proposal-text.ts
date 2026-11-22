@@ -54,7 +54,12 @@ function moveLine(move: ProposedMove, input: ProposalTextInput): string {
   return `- ${agent}: ${move.from} → ${move.to} (${why}).`;
 }
 
-function reasonText(reason: MoveReason, seat: SeatNow | undefined, rules: PlacementRules): string {
+/** Why an agent moves off a seat, in numbers; the page uses it too. */
+export function reasonText(
+  reason: MoveReason,
+  seat: Pick<SeatNow, "session" | "week"> | undefined,
+  rules: PlacementRules,
+): string {
   const session = seat?.session?.usedPercent;
   const week = seat?.week?.usedPercent;
   switch (reason) {

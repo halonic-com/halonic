@@ -6,9 +6,8 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
  * from Agent tools, so the board installs, stops and trusts it on its own.
  *
  * So far: settings, its own database schema, the board-only routes, the
- * `seats.read`, `seats.history` and `seats.check` jobs and the read-only
- * `seat_usage` tool. The page's data comes from the board-only `seats.page`
- * route; the page itself comes in a later pull request.
+ * `seats.read`, `seats.history` and `seats.check` jobs, the read-only
+ * `seat_usage` tool and the board's "AI seats" page.
  */
 export const manifest: PaperclipPluginManifestV1 = {
   id: "halonic.seats",
@@ -33,8 +32,10 @@ export const manifest: PaperclipPluginManifestV1 = {
     "issue.comments.create",
     "plugin.state.read",
     "plugin.state.write",
+    // The "AI seats" page; its data and the manual reset reach the worker through Paperclip's bridge.
+    "ui.page.register",
   ],
-  entrypoints: { worker: "worker.js" },
+  entrypoints: { worker: "worker.js", ui: "ui" },
   database: {
     namespaceSlug: "seats",
     migrationsDir: "migrations",
@@ -164,6 +165,17 @@ export const manifest: PaperclipPluginManifestV1 = {
       companyResolution: { from: "query", key: "companyId" },
     },
   ],
+  ui: {
+    slots: [
+      {
+        type: "page",
+        id: "seats",
+        displayName: "AI seats",
+        exportName: "SeatsPage",
+        routePath: "seats",
+      },
+    ],
+  },
   tools: [
     {
       name: "seat_usage",

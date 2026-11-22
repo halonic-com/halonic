@@ -50,7 +50,7 @@ export async function handleSeatsRequest(
         },
       };
     case "seats.page":
-      return { status: 200, body: await page(input.companyId, settings, deps) };
+      return { status: 200, body: await seatsPageData(input.companyId, settings, deps) };
     case "seats.manual-reset":
       return await recordManualReset(input.params["seatId"], boardUserId, settings, deps);
     default:
@@ -59,7 +59,7 @@ export async function handleSeatsRequest(
 }
 
 /** The page's data; the proposal is what `seats.check` would post now, and nothing moves. */
-async function page(
+export async function seatsPageData(
   companyId: string,
   settings: SeatsSettings,
   deps: SeatsRouteDeps,
@@ -83,7 +83,8 @@ async function page(
   });
 }
 
-async function recordManualReset(
+/** Records a manual reset by a board user; refuses a seat not in the settings or a group's second. */
+export async function recordManualReset(
   seatId: string | undefined,
   boardUserId: string,
   settings: SeatsSettings,

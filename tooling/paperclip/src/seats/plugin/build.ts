@@ -8,7 +8,9 @@ import { manifest } from "./manifest.ts";
  * board installs apart from Agent tools (Settings → Plugins, from a `main`
  * checkout on Halonic Server). Paperclip reads a plugin from a package folder,
  * so this writes the folder's `package.json` next to the bundles and copies
- * the migrations Paperclip runs before it starts the worker.
+ * the migrations Paperclip runs before it starts the worker. The page goes
+ * to `ui/index.js`; React and the SDK's components stay out of it, because
+ * Paperclip's page hands the plugin its own copies.
  *
  * Run it with `pnpm run build:seats-plugin` from this package.
  */
@@ -23,6 +25,16 @@ await build({
   format: "esm",
   target: "node24",
   outdir: outDir,
+});
+await build({
+  entryPoints: { index: here("../ui/index.tsx") },
+  bundle: true,
+  platform: "browser",
+  format: "esm",
+  target: "es2022",
+  jsx: "automatic",
+  external: ["react", "react/jsx-runtime", "react-dom", "@paperclipai/plugin-sdk/ui"],
+  outdir: `${outDir}${manifest.entrypoints.ui ?? "ui"}/`,
 });
 await cp(here("migrations/"), `${outDir}${manifest.database?.migrationsDir ?? "migrations"}/`, {
   recursive: true,
