@@ -74,7 +74,7 @@ fn git_export_refuses_a_user_name_in_an_https_address_without_repeating_it() {
         let error = check_address(address).expect_err("a user name is refused");
         assert_eq!(
             error.to_string(),
-            "can't use that git address: it has a user name in it, which halonic plugin list would show. Leave it out"
+            "can't use that git address: a user name in an https:// address can hold a token, and Halonic would save it with the plugin. Leave it out, or use an ssh:// address"
         );
         assert!(!error.to_string().contains("s3cr3ttoken"), "{error}");
     }

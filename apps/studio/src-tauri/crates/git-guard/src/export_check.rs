@@ -53,6 +53,11 @@ fn refused_address(reason: &'static str) -> GitError {
 /// credential helper, so it couldn't sign in with it anyway. An `ssh://`
 /// address keeps its user, such as `git`, which names the account on the
 /// server, and signs in with the person's key.
+///
+/// The reason is read in the desktop app's Add plugin dialog, after
+/// "Couldn't add <name>:", by someone who may never have used the CLI, so
+/// it names what Halonic does with the address, not a command. (Studio's
+/// own plugin page leaves the user out of the address it shows.)
 pub(crate) fn check_address(address: &str) -> Result<(), GitError> {
     if address.starts_with('-') {
         return Err(refused_address(
@@ -94,7 +99,7 @@ pub(crate) fn check_address(address: &str) -> Result<(), GitError> {
         }
         if scheme.eq_ignore_ascii_case("https") && !user.is_empty() {
             return Err(refused_address(
-                "it has a user name in it, which halonic plugin list would show. Leave it out",
+                "a user name in an https:// address can hold a token, and Halonic would save it with the plugin. Leave it out, or use an ssh:// address",
             ));
         }
         if user.starts_with('-') {
