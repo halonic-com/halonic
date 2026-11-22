@@ -6,9 +6,11 @@ import { databaseHistoryStore } from "./history-store.ts";
 import { databaseTables } from "./paperclip-tables.ts";
 import { runSeatsRead } from "./read-job.ts";
 import { handleSeatsRequest } from "./routes.ts";
+import { registerSeatUsageTool } from "./seat-usage-tool.ts";
 import { SeatsReader } from "./seats-reader.ts";
 import { readSeatsSettings } from "./settings.ts";
 import { databaseStore } from "./store.ts";
+import { databaseStoredReadings } from "./stored-readings.ts";
 
 // The SDK hands route calls no context, so the worker keeps the one `setup` got.
 let context: { readonly ctx: PluginContext; readonly reader: SeatsReader } | undefined;
@@ -32,7 +34,8 @@ export function commandEnv(env: NodeJS.ProcessEnv): Record<string, string> {
  * The `seats` plugin's worker. The host starts it as `worker.js` in the
  * folder `pnpm run build:seats-plugin` writes (`dist/seats/`), after it has
  * run the plugin's migrations. It runs `seats.read` every minute,
- * `seats.history` every 10 minutes, and answers the board-only route calls.
+ * `seats.history` every 10 minutes, and answers the board-only route calls
+ * and the `seat_usage` tool.
  */
 export const plugin = definePlugin({
   async setup(ctx) {
@@ -54,6 +57,11 @@ export const plugin = definePlugin({
         store: databaseHistoryStore(ctx.db),
         now,
       });
+    });
+    registerSeatUsageTool(ctx, {
+      stored: databaseStoredReadings(ctx.db),
+      statuses: (seats) => reader.status(seats),
+      now,
     });
   },
   async onApiRequest(input) {
