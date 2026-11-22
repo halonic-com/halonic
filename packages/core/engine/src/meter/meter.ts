@@ -5,8 +5,9 @@
 //
 // The meter only takes usage this package makes: a model call's from its
 // logged `llm.response`, a step's times from the engine's clock. A step or a
-// container can't tell the meter what it used, because the usage types carry
-// a mark no other package can write.
+// container can't tell the meter what it used, because only the engine calls
+// `record` and `settle`. The usage types also carry a mark a plain object
+// lacks, so passing one by mistake doesn't typecheck (a cast still could).
 
 import type { RunStatus, Usage } from "@halonicjs/events";
 import type { BudgetStop } from "../budget/budget.ts";
