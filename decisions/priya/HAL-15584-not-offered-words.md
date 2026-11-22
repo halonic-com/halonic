@@ -7,8 +7,8 @@
 ## What changes
 
 `settings.new-agents-run`: while the hint under **New agents run** has its second line ("Studio
-can't start agents outside the sandbox; halonic serve on this computer can."), the dialog "Run new
-agents on this computer?" shows that line under its body too. The requirement now quotes the body,
+can't start agents outside the sandbox yet; halonic run and halonic serve on this computer can."),
+the dialog "Run new agents on this computer?" shows that line under its body too. The requirement now quotes the body,
 and gains one example for the line in the dialog.
 
 `runs.run-view.sandbox-not-ready`: the line after the fix for `not-offered` reads "Run again after
