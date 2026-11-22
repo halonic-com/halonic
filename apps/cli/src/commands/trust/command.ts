@@ -1,13 +1,11 @@
-import { realpath } from "node:fs/promises";
+import { realpath, stat } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
-import { FileTrustStore, FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { resolveRealPath } from "@halonicjs/adapter-harness-kit";
-import { pluginTrustFingerprintPrefix } from "@halonicjs/app";
-import { parseFile } from "@halonicjs/format";
-import type { Clock, KeyOrigins, TrustRecord, TrustStore } from "@halonicjs/ports";
+import type { Clock, KeyOrigins, TrustStore } from "@halonicjs/ports";
 import { profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
-import { reachesOnlyTheTestModel, settingsPath } from "@halonicjs/workspace";
+import { reachesOnlyTheTestModel } from "@halonicjs/workspace";
 import {
   type CliCommand,
   type CommandContext,
@@ -18,7 +16,6 @@ import {
 import { type CommandSearch, nodeCommandSearch } from "../../command-paths.ts";
 import { exitCode } from "../../exit-code.ts";
 import { keyAddressLists } from "../../key-address-lists.ts";
-import { columns } from "../../messages/columns.ts";
 import type { Message } from "../../messages/define.ts";
 import { usageMessages } from "../../messages/general.ts";
 import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
@@ -31,16 +28,16 @@ import {
   type TrustChangesDocument,
   trustChangesDocument,
 } from "../../output/trust-changes-json.ts";
-import { type FingerprintedCheck, shownDate, trustCheckLines } from "../../output/trust-check.ts";
+import { type FingerprintedCheck, trustCheckLines } from "../../output/trust-check.ts";
 import { type PluginSetup, setupPluginsFolder } from "../../plugin-host.ts";
 import { nodeSandboxWorks } from "../../sandbox-works.ts";
 import { profileKeyOrigins } from "../../secret-host.ts";
 import { installedPluginHosts, type PluginHosts } from "../../sheet-hosts.ts";
-import { shownPath } from "../../shown-path.ts";
 import { dirOption, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { trustInstructionsCommand } from "./instructions.ts";
+import { isPluginRecord, listTrusted, nameAt } from "./list.ts";
 import { trustPlugin } from "./plugin.ts";
 
 /** What `trust` uses on this computer, so tests can hand it a memory store and a fixed clock. */
@@ -119,7 +116,8 @@ export function createTrustCommand(
         return await trustPlugin(plugin, input, context, plugins);
       }
       if (input.options["list"] === true) {
-        return await listTrusted(machine(), context.cwd);
+        const { store, clock } = machine();
+        return await listTrusted(store, clock, context.cwd);
       }
       if (input.options["remove"] === true) {
         return await removeTrust(machine(), input, context, plugins);
@@ -293,49 +291,12 @@ function fingerprintNotCurrent(facts: TrustRefusalFacts): NotTrustedError {
 }
 
 /**
- * `--list`: one line per trusted workspace, its name, folder and the day it
- * was trusted. `--list --json` adds the fingerprint; the lines don't.
- */
-async function listTrusted(machine: TrustMachine, cwd: string): Promise<CommandResult> {
-  const records = await cliTrustService(machine.store, machine.clock).list();
-  if (records.length === 0) {
-    return {
-      exitCode: exitCode.ok,
-      lines: [trustMessages.noneTrusted().phrase],
-      json: { workspaces: [] },
-    };
-  }
-  // A record holds the folder's real path, so each one is shown from the real
-  // path of the current folder too: through a link, or a Windows short name
-  // such as `RUNNER~1`, the two would share no folders and `./acme` would
-  // come out as `../../…/acme`.
-  const here = await realpath(cwd).catch(() => cwd);
-  const workspaces = await Promise.all(records.map((record) => listed(record, here)));
-  const rows = workspaces.map((workspace) => [
-    phrase`${printable(workspace.name)}`,
-    phrase`${workspace.folder}`,
-    trustMessages.trustedOn(shownDate(workspace.trustedAt)).phrase,
-  ]);
-  return { exitCode: exitCode.ok, lines: columns(rows), json: { workspaces } };
-}
-
-/** A trusted workspace as `--list` shows it. */
-async function listed(record: TrustRecord, cwd: string) {
-  const folder = shownPath(cwd, record.location);
-  return {
-    name: await nameAt(record.location, folder),
-    folder,
-    fingerprint: record.fingerprint,
-    trustedAt: record.grantedAt,
-  };
-}
-
-/**
  * `--remove`: forgets the trust in the workspace, even when its record can't
  * be read or its folder is gone, so the user can always start over. When
- * there was no record, it says so instead of "Removed trust" (C548 5). In a
- * plugin's folder the record is the plugin's, so it goes the `--plugin` way
- * and signs the plugin out first (`app.plugin-sign-out`).
+ * there was no record, it says so instead of "Removed trust" (C548 5). A
+ * plugin in this profile's plugins folder goes the `--plugin` way, so it is
+ * signed out first (`app.plugin-sign-out`) and named as a plugin, also once
+ * its trust is gone.
  */
 async function removeTrust(
   machine: TrustMachine,
@@ -347,7 +308,7 @@ async function removeTrust(
   // A gone folder keeps its parent's real path, as the record has it, so a
   // Windows short name such as `RUNNER~1` still finds the record.
   const location = (await resolveRealPath(resolve(dir.root)))?.real ?? resolve(dir.root);
-  if (await isPluginFolderRecord(machine.store, location, plugins)) {
+  if (await isInstalledPlugin(machine.store, location, plugins)) {
     // The folder's name in the plugins folder is the plugin's id. `--dir`
     // named the folder, and `--plugin` refuses it, so only `--remove` goes on.
     const removeOnly: CommandInput = { positionals: [], options: { remove: true } };
@@ -375,42 +336,34 @@ async function removeTrust(
 }
 
 /**
- * Whether the record at `location` is a plugin's, in this profile's plugins
- * folder, so `--plugin` reaches the same plugin. A plugin's record anywhere
- * else (a moved profile folder, or `--dir` naming a copy) is removed by
- * location, as a workspace's is: going by its folder's name would sign out
- * and untrust another plugin with that id and leave the record named.
+ * Whether `location` is a plugin in this profile's plugins folder whose trust
+ * goes the `--plugin` way: one with a plugin's record, or with no record at
+ * all, as once its trust was removed, so it is named as a plugin. A plugin's
+ * record anywhere else (a moved profile folder, or `--dir` naming a copy) is
+ * removed by location, as a workspace's is: going by its folder's name would
+ * sign out and untrust another plugin with that id and leave the record
+ * named. So is a record that can't be read, so the user can always start over.
  */
-async function isPluginFolderRecord(
+async function isInstalledPlugin(
   store: TrustStore,
   location: string,
   plugins: PluginSetup,
 ): Promise<boolean> {
-  const record = await store.get(location);
-  if (record === null || !isPluginRecord(record)) return false;
   const folder = setupPluginsFolder(plugins);
   const realFolder = await realpath(folder).catch(() => resolve(folder));
-  return dirname(location) === realFolder;
+  if (dirname(location) !== realFolder) return false;
+  const record = await store.get(location).catch(() => "unreadable" as const);
+  if (record === "unreadable") return false;
+  if (record === null) return await isFolder(location);
+  return isPluginRecord(record);
 }
 
-/** Whether the record trusts a plugin: a plugin's fingerprint has its own kind. */
-function isPluginRecord(record: TrustRecord): boolean {
-  return record.fingerprint.startsWith(pluginTrustFingerprintPrefix);
-}
-
-/**
- * The name in the workspace's `workspace.yaml`, or `fallback` when there's
- * none to read. Only that file is read, so a broken file or folder elsewhere
- * in one workspace can't stop `--list` from showing the others.
- */
-async function nameAt(location: string, fallback: string): Promise<string> {
-  const store = new FolderDefinitionStore(location, fallback);
-  const text = await store.read(settingsPath).catch(() => null);
-  if (text === null) {
-    return fallback;
-  }
-  const parsed = parseFile("workspace", text);
-  return parsed.ok ? parsed.value.value.name : fallback;
+/** Whether `path` is a folder there now, so a plugin folder that is gone is removed by location. */
+async function isFolder(path: string): Promise<boolean> {
+  return await stat(path).then(
+    (found) => found.isDirectory(),
+    () => false,
+  );
 }
 
 /** Words people type for an option of `trust`, for "Did you mean" (HAL-14124). */

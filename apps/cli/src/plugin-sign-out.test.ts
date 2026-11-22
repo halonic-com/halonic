@@ -163,6 +163,23 @@ describe("app.plugin-sign-out in the CLI", () => {
     expect(await machine().store.list()).toEqual([]);
   });
 
+  it("says it signed out a plugin that had sign-ins but no trust", async () => {
+    await addSignedInWeather();
+    await machine().store.revoke(await realpath(join(folder, "profile", "plugins", "weather")));
+    const io = captureIo(folder);
+
+    const code = await runCli(["trust", "--plugin", "weather", "--remove"], io, [
+      createTrustCommand(machine, setup),
+    ]);
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout).toEqual([
+      "✓ Weather isn't trusted on this computer, so there was no trust to remove.",
+      "✓ Signed you out of weather-account.",
+    ]);
+    expect(await savedNames()).toEqual(["s4_rain_rain_account"]);
+  });
+
   it("removes a plugin's record outside the plugins folder by location, leaving the installed plugin alone", async () => {
     await addSignedInWeather();
     const store = machine().store;

@@ -208,6 +208,49 @@ verifies("cli.commands.trust.plugin", () => {
     expect(await plugins()).toEqual(["new"]);
   });
 
+  it("says there was no trust to remove when it is already off", async () => {
+    const fingerprint = await addWeatherOff();
+    const never = await trust(["--plugin", "weather", "--remove"]);
+    await trust(["--plugin", "weather", "--yes", "--fingerprint", fingerprint]);
+    await trust(["--plugin", "weather", "--remove"]);
+
+    const again = await trust(["--plugin", "weather", "--remove", "--json"]);
+
+    expect(never.io.stdout).toEqual([
+      "✓ Weather isn't trusted on this computer, so there was no trust to remove.",
+    ]);
+    expect(again.code).toBe(exitCode.ok);
+    expect(JSON.parse(again.io.stdout.join("\n"))).toMatchObject({
+      name: "Weather",
+      status: "not-trusted",
+    });
+  });
+
+  it("goes the plugin way for --remove in its folder also once its trust is gone", async () => {
+    await addWeatherOff();
+
+    const { code, io } = await trust(["--dir", weatherFolder(), "--remove"]);
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout).toEqual([
+      "✓ Weather isn't trusted on this computer, so there was no trust to remove.",
+    ]);
+  });
+
+  it("lists a trusted plugin by its name, as a plugin", async () => {
+    const fingerprint = await addWeatherOff();
+    await trust(["--plugin", "weather", "--yes", "--fingerprint", fingerprint]);
+
+    const { io } = await trust(["--list"]);
+    const json = await trust(["--list", "--json"]);
+
+    expect(io.stdout).toHaveLength(1);
+    expect(io.stdout[0]).toMatch(/^Weather \(plugin\) {3}\S*weather {3}trusted on 11 Nov$/u);
+    expect(JSON.parse(json.io.stdout.join("\n")).workspaces).toMatchObject([
+      { kind: "plugin", name: "Weather" },
+    ]);
+  });
+
   it("leaves it off and exits 3 on Enter, the empty answer", async () => {
     await addWeatherOff();
     const { terminal } = terminalTyping("");

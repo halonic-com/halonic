@@ -164,25 +164,49 @@ async function findPlugin(service: PluginService, id: string): Promise<PluginEnt
 /**
  * `--remove`: signs out the plugin's sign-ins and forgets the trust, also
  * when the plugin can't be read or checked any more, and says which sign-ins
- * it signed out. Its settings and secrets stay; `plugin remove` deletes them.
+ * it signed out. When the plugin wasn't trusted, it says there was no trust
+ * to remove instead of "Removed trust" (HAL-15398). Its settings and secrets
+ * stay; `plugin remove` deletes them.
  */
 async function removeTrust(service: PluginService, entry: PluginEntry): Promise<CommandResult> {
   const signedOut = await service.revoke(entry.folder);
   const name = entry.status === "broken" ? entry.folder : entry.plugin.name;
+  const shown = printable(name);
+  const json = {
+    id: entry.folder,
+    name,
+    signedOut: signInsSignedOut(signedOut),
+    signOutNotConfirmed: signInsNotConfirmed(signedOut),
+  };
+  const signOutLines = pluginSignedOutLines(shown, signedOut);
+  if (!hadTrust(entry)) {
+    return {
+      exitCode: exitCode.ok,
+      lines: [
+        phrase`${markPart("done")} ${trustMessages.nothingToRemove(shown).phrase}`,
+        ...signOutLines,
+      ],
+      json: { ...json, status: "not-trusted" },
+    };
+  }
   return {
     exitCode: exitCode.ok,
     lines: [
-      phrase`${markPart("done")} ${pluginMessages.trustRemoved(printable(name)).phrase}`,
-      ...pluginSignedOutLines(printable(name), signedOut),
+      phrase`${markPart("done")} ${pluginMessages.trustRemoved(shown).phrase}`,
+      ...signOutLines,
     ],
-    json: {
-      id: entry.folder,
-      name,
-      status: "removed",
-      signedOut: signInsSignedOut(signedOut),
-      signOutNotConfirmed: signInsNotConfirmed(signedOut),
-    },
+    json: { ...json, status: "removed" },
   };
+}
+
+/**
+ * Whether the plugin had a trust record before `--remove`: every status but
+ * `new` comes from one, also a changed or unreadable record. A broken plugin
+ * is never checked against its record, so it counts as trusted and keeps
+ * saying "Removed trust", as it did before.
+ */
+function hadTrust(entry: PluginEntry): boolean {
+  return entry.status !== "new";
 }
 
 function plainOf(message: Message): string {
