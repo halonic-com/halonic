@@ -120,15 +120,19 @@ type StartLineKey =
   | "secretNotSet"
   | "pluginNotTrusted"
   | "pluginChanged"
-  | "pluginStopped";
+  | "pluginStopped"
+  | "sandboxNotReady";
 
 /**
  * The line for a connector that didn't start: the program or the secret it missed, or the plugin
  * that isn't trusted yet, changed since or whose sandbox didn't work when it started, when the
- * cause names it, else only that it didn't start. The plugin line has no button: the plugin's own
- * page has the trust step, and the plugin's name is the way there (HAL-15278, HAL-15453).
+ * cause names it, or the sandbox its plugin runs in that can't start on this computer, which needs
+ * no name; else only that it didn't start. The plugin lines have no button: the plugin's own page
+ * has the trust step, and the plugin's name is the way there (HAL-15278, HAL-15453); the sandbox
+ * line has none either, as R11 has none (C655 row 49).
  */
 function connectorStartKey(cause: ConnectorStartCause): StartLineKey {
+  if (cause.why === "sandbox-not-ready") return "sandboxNotReady";
   if (cause.name === undefined) return "notStarted";
   switch (cause.why) {
     case "program-missing":
@@ -141,7 +145,6 @@ function connectorStartKey(cause: ConnectorStartCause): StartLineKey {
       return "pluginChanged";
     case "plugin-stopped":
       return "pluginStopped";
-    case "sandbox-not-ready":
     // No words of their own in the run view yet: they read as one that didn't start (HAL-15606,
     // HAL-15689; Studio's words for a refused unfenced start come with HAL-15144's yes).
     case "program-stopped":
@@ -159,6 +162,7 @@ const listingKeys: Readonly<Record<StartLineKey, FailedCallKey>> = {
   pluginNotTrusted: "listingPluginNotTrusted",
   pluginChanged: "listingPluginChanged",
   pluginStopped: "listingPluginStopped",
+  sandboxNotReady: "listingSandboxNotReady",
 };
 
 /**

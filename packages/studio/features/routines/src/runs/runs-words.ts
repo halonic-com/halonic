@@ -18,6 +18,8 @@ export const runsWords = {
   emptyAfter: (when: string) => `It runs next on ${when}, or press Run now.`,
   /** A routine that is off runs only by hand, as Run now's toast says too (C587 #4). */
   emptyOff: "It's off, so it runs only when you press Run now.",
+  /** A routine that is on and was never live, as its row, When card and page say (C655-16). */
+  emptyNotLive: "It isn't live yet, so it doesn't run.",
   /** The list's "Paused until trusted" as a sentence (C587 #1). */
   emptyPaused: "It's paused until you trust this workspace.",
   /** The paused sentence's button: it opens the trust check, as the title bar's badge does (C656 #4). */

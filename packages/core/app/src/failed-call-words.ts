@@ -41,6 +41,9 @@ export const failedCallWords = {
    */
   pluginStopped:
     "Didn't work: the connector {connector} didn't start. The sandbox didn't work when its plugin {name} started.",
+  /** C655 row 49 (HAL-15936): the plugin's sandbox can't start here, as `halonic run` says it. */
+  sandboxNotReady:
+    "Didn't work: the connector {connector} didn't start: the sandbox its plugin runs in can't start on this computer.",
   notStarted: "Didn't work: the connector {connector} didn't start.",
   /**
    * The line above a step's tool calls for a connector that couldn't list its tools when a turn
@@ -57,6 +60,8 @@ export const failedCallWords = {
     "Couldn't list the tools from {connector}: its plugin {name} changed since you trusted it.",
   listingPluginStopped:
     "Couldn't list the tools from {connector}: the sandbox didn't work when its plugin {name} started.",
+  listingSandboxNotReady:
+    "Couldn't list the tools from {connector}: the sandbox its plugin runs in can't start on this computer.",
   listingFailed: "Couldn't list the tools from {connector}.",
   /** `{connector}` when the log doesn't name the connector: "the connector of the tool `create_note` didn't start". */
   connectorOfTool: "of the tool {tool}",

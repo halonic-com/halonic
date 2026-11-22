@@ -128,10 +128,10 @@ function Section({ title, children }: { readonly title: string; readonly childre
 }
 
 /**
- * "No runs yet." with what the Routines list's row says: why it can't start, that it is off or
- * paused until trusted (with **Review**, which opens the trust check), in the row's order; else when
- * it runs next, or how to start one by hand. A next time shows only for a routine that will start
- * on its own then (C587 #1).
+ * "No runs yet." with what the Routines list's row says: why it can't start, that it is off, not
+ * live yet or paused until trusted (with **Review**, which opens the trust check), in the row's
+ * order; else when it runs next, or how to start one by hand. A next time shows only for a routine
+ * that will start on its own then (C587 #1).
  */
 function NoRuns({ host, routine }: { readonly host: RoutinesHost; readonly routine: RoutineView }) {
   const held = heldWords(routine);
@@ -152,11 +152,15 @@ function NoRuns({ host, routine }: { readonly host: RoutinesHost; readonly routi
   );
 }
 
-/** Why the routine won't start on its own, as its row's chip and line say; `undefined` when it will. */
+/**
+ * Why the routine won't start on its own, as its row's chip and line say; `undefined` when it will.
+ * In the CLI's order: can't start, off, not live yet, paused.
+ */
 function heldWords(routine: RoutineView): string | undefined {
   const cantStart = viewCantStartReason(routine);
   if (cantStart !== undefined) return cantStart;
   if (!routine.enabled) return runsWords.emptyOff;
+  if (!routine.everLive) return runsWords.emptyNotLive;
   if (routine.pausedUntilTrusted === true) return runsWords.emptyPaused;
   return undefined;
 }
