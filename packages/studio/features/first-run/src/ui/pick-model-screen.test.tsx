@@ -64,22 +64,36 @@ const optionRadios = (root: HTMLElement) =>
   root.querySelectorAll<HTMLInputElement>('input[type="radio"]:not([name="pick-model-provider"])');
 
 verifies("first-run.pick-model", () => {
-  it.each(["the browser demo", "a browser on halonic serve, before it has the service"])(
-    "in %s, draws keys and local models off, with Sample answers ticked",
-    async () => {
-      const root = await open(undefined);
-      const text = root.textContent ?? "";
-      expect(text).toContain("Keys need the desktop app.");
-      expect(text).toContain("Local models need the desktop app.");
-      expect(text).not.toContain("Provider");
-      expect(text).not.toContain("Get one from");
-      const radios = [...root.querySelectorAll<HTMLInputElement>('input[type="radio"]')];
-      expect(radios).toHaveLength(1);
-      expect(radios[0]?.checked).toBe(true);
-      expect(buttonNamed(root, "Continue")).toBeDefined();
-      expect(text).not.toContain("Will pass");
-    },
-  );
+  // The browser demo and a browser on halonic serve, before it has the service, both open it with none.
+  it("with no model choice service, draws keys and local models off, with Sample answers ticked", async () => {
+    const root = await open(undefined);
+    const text = root.textContent ?? "";
+    expect(text).toContain("Keys need the desktop app.");
+    expect(text).toContain("Local models need the desktop app.");
+    expect(text).not.toContain("Provider");
+    expect(text).not.toContain("Get one from");
+    const radios = [...root.querySelectorAll<HTMLInputElement>('input[type="radio"]')];
+    expect(radios).toHaveLength(1);
+    expect(radios[0]?.checked).toBe(true);
+    expect(buttonNamed(root, "Continue")).toBeDefined();
+    expect(text).not.toContain("Will pass");
+  });
+
+  it("groups the options in a fieldset named by the heading, around the provider switch's radiogroup", async () => {
+    const root = await open(fakeService([], { kind: "not-found", cause: "off" }));
+    const group = root.querySelector("fieldset");
+    const heading = root.querySelector("h1");
+    expect(group?.getAttribute("aria-labelledby")).toBe(heading?.id);
+    // The provider switch is the one radiogroup, inside the group with the key field.
+    const radiogroups = root.querySelectorAll('[role="radiogroup"]');
+    expect(radiogroups).toHaveLength(1);
+    expect(group?.contains(radiogroups[0] ?? null)).toBe(true);
+    expect(group?.querySelector('input[type="password"]')).not.toBeNull();
+    // The three options' radios share one name, so the arrow keys move between them.
+    const names = new Set([...optionRadios(root)].map((radio) => radio.name));
+    expect(optionRadios(root)).toHaveLength(3);
+    expect(names.size).toBe(1);
+  });
 
   it("says a key is saved, with Replace, and shows the trust line under the button", async () => {
     const root = await open(fakeService(["anthropic"], { kind: "not-found", cause: "off" }));
