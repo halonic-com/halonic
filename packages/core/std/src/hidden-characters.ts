@@ -55,21 +55,66 @@ export function escapeHidden(json: string): string {
   return escaped;
 }
 
+/** A piece of a text: text as written, or a marker for one character. */
+export type HiddenSegment =
+  | { readonly kind: "text"; readonly text: string }
+  /** `code` is the character's name, such as `U+202E`; it shows as `⟦U+202E⟧` (`hiddenMarker`). */
+  | { readonly kind: "marker"; readonly code: string };
+
+export interface MarkHiddenOptions {
+  /**
+   * Also mark tab and newline, for a one-line place that would show them as a space. A `\r\n`
+   * is then two markers, so nothing in it stays hidden.
+   */
+  readonly markWhitespace?: boolean;
+}
+
+/**
+ * Splits a text into text and markers, so a hidden character shows as `⟦U+202E⟧` instead of
+ * acting on the text around it. A Windows line end (`\r\n`) counts as a newline; a `\r` on its
+ * own is marked.
+ *
+ * @example
+ * segmentHidden(`Refund${String.fromCodePoint(0x202e)}for Sam`);
+ * // [{ kind: "text", text: "Refund" }, { kind: "marker", code: "U+202E" }, { kind: "text", text: "for Sam" }]
+ */
+export function segmentHidden(value: string, options: MarkHiddenOptions = {}): HiddenSegment[] {
+  const markWhitespace = options.markWhitespace === true;
+  const segments: HiddenSegment[] = [];
+  let text = "";
+  for (const character of markWhitespace ? value : value.replace(/\r\n/g, "\n")) {
+    const point = character.codePointAt(0) ?? 0;
+    const marked =
+      isHiddenCharacter(point) || (markWhitespace && (point === 0x09 || point === 0x0a));
+    if (!marked) {
+      text += character;
+      continue;
+    }
+    if (text !== "") segments.push({ kind: "text", text });
+    text = "";
+    segments.push({
+      kind: "marker",
+      code: `U+${point.toString(16).toUpperCase().padStart(4, "0")}`,
+    });
+  }
+  if (text !== "") segments.push({ kind: "text", text });
+  return segments;
+}
+
+/** A marker's text, such as `⟦U+202E⟧` for the code `U+202E`. */
+export function hiddenMarker(code: string): string {
+  return `⟦${code}⟧`;
+}
+
 /**
  * A short text, such as a name or a path, as one string with every hidden character written out
- * as a marker like `⟦U+202E⟧`, so it can't act on the text around it. A Windows line end
- * (`\r\n`) counts as a newline; a `\r` on its own is marked.
+ * as a marker like `⟦U+202E⟧`, so it can't act on the text around it (`segmentHidden`).
  *
  * @example
  * markHiddenName(`create${String.fromCodePoint(0x200b)}note`); // "create⟦U+200B⟧note"
  */
-export function markHiddenName(value: string): string {
-  let marked = "";
-  for (const character of value.replace(/\r\n/g, "\n")) {
-    const point = character.codePointAt(0) ?? 0;
-    marked += isHiddenCharacter(point)
-      ? `⟦U+${point.toString(16).toUpperCase().padStart(4, "0")}⟧`
-      : character;
-  }
-  return marked;
+export function markHiddenName(value: string, options: MarkHiddenOptions = {}): string {
+  return segmentHidden(value, options)
+    .map((segment) => (segment.kind === "text" ? segment.text : hiddenMarker(segment.code)))
+    .join("");
 }

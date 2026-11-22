@@ -1,7 +1,8 @@
+import { hiddenMarker } from "@halonicjs/std";
 import { Button } from "@halonicjs/studio-kit";
 import { useState } from "react";
 import { foldLabel, foldText, isFolded } from "../plain/fold.ts";
-import { hiddenCharactersLine, markerText, markHidden } from "../plain/hidden-characters.ts";
+import { hiddenCharactersLine, markHidden } from "../plain/hidden-characters.ts";
 
 export interface PlainValueProps {
   /** Model output, such as an argument or a wait step's body. Never read as Markdown or HTML. */
@@ -33,7 +34,7 @@ export function PlainValue({ text }: PlainValueProps) {
               key={index}
               className="rounded-xs bg-surface-muted px-0.5 font-mono text-code text-fg-muted"
             >
-              {markerText(segment.code)}
+              {hiddenMarker(segment.code)}
             </span>
           ),
         )}
