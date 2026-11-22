@@ -112,6 +112,24 @@ verifies("runs.run-view.sandbox-panel", () => {
     expect(root.querySelector("aside")?.textContent).toContain("Full access");
   });
 
+  it("draws the without-the-sandbox shield amber, like the Full access chip, not in the needs-you tone", async () => {
+    const root = await openRun(
+      [
+        [0, entered("draft")],
+        [
+          0,
+          { type: "sandbox.off", state: "draft", agent: "coder", chosenAt: "2026-11-10T08:00:00Z" },
+        ],
+      ],
+      true,
+    );
+    const shield = rowStarting(root, "Ran on this computer, without the sandbox")?.querySelector(
+      "svg",
+    )?.parentElement;
+    expect(shield?.className).toContain("text-attention");
+    expect(shield?.className).not.toContain("text-warning");
+  });
+
   it("says your computer, not this computer, for a step that ran without the sandbox on a phone", async () => {
     const root = await openRun(
       [
