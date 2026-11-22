@@ -17,10 +17,11 @@ export const modelsMessages = defineMessages("models", {
     phrase`${markPart("done")} Allowed ${address} for key "${key}".`,
   /**
    * After the ✓ line, for a key that had no addresses before: from now on even its
-   * type's own address is refused unless it is allowed too (HAL-15346).
+   * type's own address is refused unless it is allowed too (HAL-15346, C588).
+   * `keyWord` is the key as one shell word, so the command can be copied.
    */
-  onlyAddressNow: (address: string, key: string) =>
-    phrase`Key "${key}" had no addresses before, so it now goes only to ${address}. Allow every other address it needs the same way.`,
+  onlyAddressNow: (address: string, key: string, keyWord: string) =>
+    phrase`Key "${key}" had no addresses before, so from now on it's sent only to ${address}, not to its provider's usual address. To allow another one, run: halonic models allow-address ${keyWord} <address>`,
   alreadyAllowed: (address: string, key: string) =>
     phrase`${address} is already allowed for key "${key}". Nothing changed.`,
   /** A path, query or fragment after the address is dropped, not refused. */

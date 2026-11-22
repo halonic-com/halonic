@@ -329,15 +329,15 @@ verifies("cli.trust-check", () => {
     const withLists = (check: FingerprintedCheck, keyAddresses: ReadonlyMap<string, string[]>) =>
       trustCheckLines(check, { ...facts, keyAddresses }).map(plainText);
 
-    it("says, with the command, that the list leaves out where the key goes", () => {
+    it("says, with the command, that the list leaves out where the key goes, and not that it sends the key there", () => {
       const shown = withLists(
         newCheck(gateway),
         new Map([["gw-key", ["https://llm.example.com"]]]),
       );
 
-      expect(shown).toContain("                Sends its key to https://other.example.com.");
+      expect(shown).not.toContain("                Sends its key to https://other.example.com.");
       expect(shown).toContain(
-        '                ! Key "gw-key" isn\'t allowed to go to https://other.example.com, so a run with it fails. To allow it, run: halonic models allow-address gw-key https://other.example.com',
+        '                ! https://other.example.com isn\'t allowed for key "gw-key", so a run that uses this provider fails. To allow it, run: halonic models allow-address gw-key https://other.example.com',
       );
     });
 
@@ -355,7 +355,7 @@ verifies("cli.trust-check", () => {
 
       expect(shown).not.toContain("Sends its key to");
       expect(shown.join("\n")).toContain(
-        'Key "ANTHROPIC_KEY" isn\'t allowed to go to https://api.anthropic.com',
+        'https://api.anthropic.com isn\'t allowed for key "ANTHROPIC_KEY"',
       );
     });
 
@@ -390,7 +390,9 @@ verifies("cli.trust-check", () => {
       };
       const shown = withLists(check, new Map([["gw-key", ["https://llm.example.com"]]]));
 
-      expect(shown.join("\n")).toContain('! Key "gw-key" isn\'t allowed');
+      expect(shown.join("\n")).toContain(
+        '! https://other.example.com isn\'t allowed for key "gw-key"',
+      );
     });
   });
 

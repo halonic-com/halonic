@@ -66,7 +66,7 @@ verifies("cli.commands.models.allow-address", () => {
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual([
       `✓ Allowed ${gateway} for key "openai-key".`,
-      `Key "openai-key" had no addresses before, so it now goes only to ${gateway}. Allow every other address it needs the same way.`,
+      `Key "openai-key" had no addresses before, so from now on it's sent only to ${gateway}, not to its provider's usual address. To allow another one, run: halonic models allow-address openai-key <address>`,
     ]);
     expect(await fixture.store().allowedOrigins("openai-key")).toEqual([gateway]);
   });
