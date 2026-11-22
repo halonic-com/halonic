@@ -43,6 +43,13 @@ verifies("format.connector-is-local", () => {
     ["http://127.tools.example.com/mcp", false],
     ["http://127.0.0.1.example.com/mcp", false],
     ["http://127.1/mcp", false],
+    ["http://tracker.example.com\\@127.0.0.1/mcp", false],
+    ["http://tracker.example.com\\@localhost", false],
+    ["https://0x7f000001/mcp", false],
+    ["http://127.0.0.1\t.example.com/mcp", false],
+    ["ws://localhost/mcp", false],
+    ["HTTP://localhost/mcp", true],
+    ["http://localhost?@tracker.example.com", true],
   ])("reads %s as local: %s", (url, expected) => {
     expect(connectorIsLocal(httpConnector(url))).toBe(expected);
   });

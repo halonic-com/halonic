@@ -44,12 +44,12 @@ export function parseUrlHost(url: string): FoundHost | undefined {
 }
 
 /**
- * `URL` reads a name whose last part is a number as an IPv4 address, so such
- * a name must be four parts of 0 to 255 without leading zeros, as `URL`
- * writes it.
+ * `URL` reads a name whose last part is a number, decimal or hex (`0x…`), as
+ * an IPv4 address, so such a name must be four decimal parts of 0 to 255
+ * without leading zeros, as `URL` writes it.
  */
 function canonicalIpv4(hostname: string): boolean {
-  if (!/(?:^|\.)\d+$/.test(hostname)) {
+  if (!/(?:^|\.)(?:\d+|0x[0-9a-f]*)$/.test(hostname)) {
     return true;
   }
   const parts = hostname.split(".");
