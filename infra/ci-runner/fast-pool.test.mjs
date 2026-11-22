@@ -175,7 +175,9 @@ test("fast pool: fast slots run under gVisor, on their own network, with their o
   );
   // gVisor can't reach Docker's embedded DNS (127.0.0.11), so the container gets the two
   // resolvers the VM's firewall allows, and nothing else.
-  assert.ok(slot.includes(`printf 'nameserver 1.1.1.1\\nnameserver 1.0.0.1\\n' > "$RUN/resolv.conf"`));
+  assert.ok(
+    slot.includes(`printf 'nameserver 1.1.1.1\\nnameserver 1.0.0.1\\n' > "$RUN/resolv.conf"`),
+  );
   assert.ok(slot.includes('--security-opt no-new-privileges "${SANDBOX[@]}" \\'));
   assert.ok(
     slot.includes('[ "$(findmnt -n -o FSTYPE --mountpoint "$OVL_MNT/$c")" = overlay ] || fail'),
