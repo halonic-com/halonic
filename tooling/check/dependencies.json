@@ -250,12 +250,14 @@
       "allowedIn": [
         "@halonicjs/studio-kit",
         "@halonicjs/studio-shell",
-        "@halonicjs/studio-feature-*"
+        "@halonicjs/studio-feature-*",
+        "@halonicjs/tooling-paperclip"
       ],
       "layers": [
-        "studio"
+        "studio",
+        "tooling"
       ],
-      "reason": "Type definitions for React (docs/adr/2026-11-08-one-interface-codebase.md)."
+      "reason": "Type definitions for React (docs/adr/2026-11-08-one-interface-codebase.md). Also typechecks the seats plugin's page in tooling-paperclip, which doesn't depend on React itself: Paperclip's page provides React at run time and the page's bundle leaves it out (Liam's OK on HAL-16008)."
     },
     "@types/react-dom": {
       "category": "dev-tooling",
