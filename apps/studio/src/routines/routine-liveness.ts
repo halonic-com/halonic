@@ -1,4 +1,4 @@
-import type { RoutineVersions } from "@halonicjs/app/routines";
+import { type RoutineVersions, runningRoutine } from "@halonicjs/app/routines";
 import type { Routine } from "@halonicjs/format";
 import { describeTrigger } from "@halonicjs/routines";
 import type { RoutineLiveValues, RoutineView } from "@halonicjs/studio-feature-routines/api";
@@ -13,13 +13,13 @@ export type RoutineLiveness = Pick<
 >;
 
 /**
- * The routine the scheduler runs: the live version's while the saved file isn't live yet, the
- * saved one otherwise (live, never live, or no history). The summary, the rows and Next follow it,
- * while the page's fields show what was saved (flow-routines 3.11).
+ * The routine the scheduler runs: the live version's, with On or Off as saved, while the saved file
+ * isn't live yet, the saved one otherwise (live, never live, or no history). The summary, the rows
+ * and Next follow it, while the page's fields show what was saved (flow-routines 3.11). The CLI's
+ * routine list takes it from the same core helper, so the two never disagree.
  */
 export function runningOf(file: PlacedFile, versions: RoutineVersions | undefined): Routine {
-  if (versions?.liveState.state === "not-live" && versions.live !== null) return versions.live;
-  return file.value;
+  return runningRoutine(file.value, versions);
 }
 
 /** The page's live fields for the routine's file: live and unchanged when the app can't tell. */

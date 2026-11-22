@@ -51,6 +51,25 @@ export async function routineVersions(
   };
 }
 
+/**
+ * The routine `saved` as the routine scheduler runs it, given its `versions`.
+ * While its saved file isn't live, that is the live version's routine, with
+ * the saved name, and On or Off as saved, since Off acts at once
+ * (`LiveRoutines`). Otherwise, without `versions`, or for a routine never
+ * live, it is the saved routine. The CLI's routine list and the desktop app
+ * both take it from here, so they never say different things.
+ *
+ * @example
+ * const versions = await routineVersions(input, file.path);
+ * showNextRun(runningRoutine(file.value, versions));
+ */
+export function runningRoutine(saved: Routine, versions: RoutineVersions | undefined): Routine {
+  if (versions?.liveState.state !== "not-live" || versions.live === null) {
+    return saved;
+  }
+  return { ...versions.live, name: saved.name, enabled: saved.enabled };
+}
+
 /** The routine at `path` in the live version; with history off, the saved one, since that is what runs. */
 async function liveRoutine(
   input: LiveStateInput,

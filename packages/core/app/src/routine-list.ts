@@ -25,7 +25,7 @@ import {
   type WorkspaceIssue,
 } from "@halonicjs/workspace";
 import type { LiveStateInput } from "./live-state.ts";
-import { routineVersions } from "./routine-versions.ts";
+import { routineVersions, runningRoutine } from "./routine-versions.ts";
 
 /** One routine of the list. */
 export interface ListedRoutine {
@@ -85,7 +85,7 @@ export class RoutineList {
    * @param timeZone - the zone of a schedule that names none: the computer's
    *   own, as the routine scheduler's tick policy has it
    * @param live - the live version, so each routine is listed as it runs
-   *   (see {@link runningRoutine}); left out, as its saved file has it
+   *   (see {@link runningOf}); left out, as its saved file has it
    *
    * @example
    * await new RoutineList(runStore).listRoutines(workspace, new Date(), "Europe/Amsterdam");
@@ -103,11 +103,7 @@ export class RoutineList {
       filesOf(workspace, "routine").map(async (file) => ({
         path: file.path,
         listed: {
-          ...loadedRoutine(
-            { hub: file.hub, routine: await runningRoutine(file, live) },
-            now,
-            timeZone,
-          ),
+          ...loadedRoutine({ hub: file.hub, routine: await runningOf(file, live) }, now, timeZone),
           problems: problems.get(file.path) ?? 0,
         },
       })),
@@ -125,23 +121,16 @@ export class RoutineList {
 
 /**
  * The routine at `file` as the routine scheduler runs it (requirement
- * `app.routine-list-live-schedule`). While its saved file isn't live, that is
- * the live version's routine, with the saved name, and On or Off as saved,
- * since Off acts at once (`LiveRoutines`). Otherwise, without `live`, or for
- * a routine never live, it is the saved routine.
+ * `app.routine-list-live-schedule`); as saved without `live`.
  */
-async function runningRoutine(
+async function runningOf(
   file: LoadedFileOf<"routine">,
   live: LiveStateInput | undefined,
 ): Promise<Routine> {
-  if (live === undefined) {
-    return file.value;
-  }
-  const versions = await routineVersions(live, file.path);
-  if (versions.liveState.state !== "not-live" || versions.live === null) {
-    return file.value;
-  }
-  return { ...versions.live, name: file.value.name, enabled: file.value.enabled };
+  return runningRoutine(
+    file.value,
+    live === undefined ? undefined : await routineVersions(live, file.path),
+  );
 }
 
 /** A routine as the list gives it, before its problems and last run are looked up. */

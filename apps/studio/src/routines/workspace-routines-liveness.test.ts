@@ -119,10 +119,14 @@ verifies("studio.workspace-routines-live-schedule", () => {
     ]);
   });
 
-  it("gives no next time while the live version is off", async () => {
-    const { host } = savedButNotLive(weeklyFile, { ...liveWeekly, enabled: false });
-    expect((await host.list())[0]?.nextRun).toBeUndefined();
-    expect(await host.nextTimes(weekly, 3)).toEqual({ times: [], atNextCheck: false });
+  it("takes On and Off from the saved file, as the scheduler does", async () => {
+    const savedOff = `${mondaysAndWednesdays}enabled: false\n`;
+    const off = savedButNotLive(savedOff, liveWeekly).host;
+    expect((await off.list())[0]?.nextRun).toBeUndefined();
+    expect(await off.nextTimes(weekly, 3)).toEqual({ times: [], atNextCheck: false });
+
+    const on = savedButNotLive(weeklyFile, { ...liveWeekly, enabled: false }).host;
+    expect((await on.list())[0]?.nextRun).toBe("2026-11-23T08:00:00.000Z");
   });
 
   it("follows the saved file for a routine that has never been live", async () => {
