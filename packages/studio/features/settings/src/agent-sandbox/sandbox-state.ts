@@ -75,6 +75,12 @@ export type SandboxOutcome =
   | { readonly kind: "remove"; readonly how: "in-use"; readonly runs: number };
 
 /**
+ * What the section shows after a press: how it failed, or a removal that worked, which the host
+ * reports as no outcome and the section says in a note (C575, HAL-15432).
+ */
+export type SandboxResult = SandboxOutcome | { readonly kind: "remove"; readonly how: "removed" };
+
+/**
  * What runs now: the elevated step, then the check that follows it. `running` is a command the
  * section joined: it may be past the administrator prompt, so no step claims to wait for it.
  */
@@ -90,7 +96,7 @@ export interface SandboxFacts {
   readonly place: "app" | "served";
   readonly check: SandboxCheckFacts;
   readonly running: SandboxRunning | null;
-  readonly outcome: SandboxOutcome | null;
+  readonly outcome: SandboxResult | null;
   /** A **Check again** is out: the last result stays and the button is busy. */
   readonly rechecking?: boolean;
   /** The host says the sandbox's security updates are overdue: one warning line, not blocking. */
@@ -118,7 +124,7 @@ export interface SandboxView {
   readonly callout: {
     readonly line: string;
     readonly action: "try-again" | "copy-details" | null;
-    /** A note rather than a failure (an earlier setup still running), in the info tone. */
+    /** A note rather than a failure (an earlier setup still running, a removal that worked), in the info tone. */
     readonly note?: true;
   } | null;
   readonly steps: readonly SandboxStep[];
@@ -299,9 +305,11 @@ export function outcomeLine(outcome: SandboxOutcome): string {
   return calloutFor(outcome).line;
 }
 
-function calloutFor(outcome: SandboxOutcome): NonNullable<SandboxView["callout"]> {
+function calloutFor(outcome: SandboxResult): NonNullable<SandboxView["callout"]> {
   if (outcome.kind === "remove") {
     switch (outcome.how) {
+      case "removed":
+        return { line: text.REMOVED, action: null, note: true };
       case "cancelled":
         return { line: text.REMOVE_DENIED, action: null };
       case "timed-out":

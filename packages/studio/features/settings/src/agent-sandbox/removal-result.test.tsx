@@ -7,7 +7,12 @@ import { click } from "../test-support/controls.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { AgentSandboxHostView } from "./agent-sandbox-section.tsx";
-import { type SandboxCheckFacts, type SandboxOutcome, sandboxView } from "./sandbox-state.ts";
+import {
+  type SandboxCheckFacts,
+  type SandboxOutcome,
+  type SandboxResult,
+  sandboxView,
+} from "./sandbox-state.ts";
 
 beforeEach(fakeModal);
 afterEach(() => {
@@ -55,7 +60,13 @@ async function removeFrom(view: HTMLElement) {
   await click(button(document.querySelector("dialog[open]") as HTMLElement, "Remove sandbox"));
 }
 
-function calloutOf(outcome: SandboxOutcome) {
+/** What a screen reader says for the focused element: the text its `aria-labelledby` points at. */
+function nameOfFocus(): string | undefined {
+  const id = document.activeElement?.getAttribute("aria-labelledby");
+  return id ? (document.getElementById(id)?.textContent ?? undefined) : undefined;
+}
+
+function calloutOf(outcome: SandboxResult) {
   return sandboxView({ available: true, place: "app", check: ready, running: null, outcome })
     .callout;
 }
@@ -66,26 +77,51 @@ verifies("settings.agent-sandbox-removal-result", () => {
     await removeFrom(view);
     expect(document.activeElement?.tagName).toBe("OL");
     expect(document.activeElement?.textContent).toContain("Removing the agent sandbox…");
+    // Only code focuses the step, so it wears the kit's ring, not the browser's outline (C574).
+    expect(document.activeElement?.classList).toContain("focus-ring");
   });
 
-  it("says a removal that worked once, in the first line of the state it left", async () => {
+  it("says a removal that worked once: Sandbox removed, then the first line of the state it left", async () => {
     const { view, announce, end } = await readyHost();
     await removeFrom(view);
     await end(null, { state: "needs-setup" });
+    // The focused note says "Sandbox removed."; the live region adds only the state's first line.
+    expect(nameOfFocus()).toBe("Sandbox removed.");
     expect(announce).toHaveBeenCalledTimes(1);
     expect(announce).toHaveBeenCalledWith(
       "The sandbox needs a one-time setup with administrator rights. Until then, agents set to run in a sandbox don't start.",
     );
   });
 
-  it("says the time limit in the setup's words, on screen and once out loud", async () => {
+  it("says the time limit and what to do next, on screen and once out loud", async () => {
     const { view, announce, end } = await readyHost();
     await removeFrom(view);
     await end({ kind: "remove", how: "timed-out" });
-    const line = "The sandbox wasn't removed: the removal didn't finish within 5 minutes.";
+    const line = "The sandbox wasn't removed within 5 minutes. Wait a minute, then try again.";
     expect(view.textContent).toContain(line);
+    // The focused Callout says the line, so the live region doesn't say it again (C574).
+    expect(nameOfFocus()).toBe(line);
+    expect(announce).not.toHaveBeenCalled();
+  });
+
+  it("says the result of a removal it only followed through the live region", async () => {
+    let ends: (outcome: SandboxOutcome | null) => void = () => {};
+    const host = {
+      available: true,
+      check: async () => ready,
+      running: async () => "remove" as const,
+      setUp: async () => null,
+      remove: async () => null,
+      follow: () => new Promise<SandboxOutcome | null>((resolve) => (ends = resolve)),
+    } satisfies AgentSandboxHost;
+    const announce = vi.fn();
+    render(<AgentSandboxHostView host={host} place="app" announce={announce} />);
+    await act(async () => {});
+    await act(async () => ends({ kind: "remove", how: "timed-out" }));
     expect(announce).toHaveBeenCalledTimes(1);
-    expect(announce).toHaveBeenCalledWith(line);
+    expect(announce).toHaveBeenCalledWith(
+      "The sandbox wasn't removed within 5 minutes. Wait a minute, then try again.",
+    );
   });
 
   it("shows an earlier removal still running as a note, not a failure", async () => {
@@ -94,7 +130,8 @@ verifies("settings.agent-sandbox-removal-result", () => {
     await end({ kind: "remove", how: "still-running" });
     const line = "The earlier removal is still running. Wait a minute, then try again.";
     expect(view.textContent).toContain(line);
-    expect(announce).toHaveBeenCalledWith(line);
+    expect(nameOfFocus()).toBe(line);
+    expect(announce).not.toHaveBeenCalled();
     expect(calloutOf({ kind: "remove", how: "still-running" })).toEqual({
       line,
       action: null,
@@ -102,4 +139,36 @@ verifies("settings.agent-sandbox-removal-result", () => {
     });
     expect(calloutOf({ kind: "remove", how: "timed-out" })?.note).toBeUndefined();
   });
+
+  it("shows a removal that worked as a Sandbox removed note", async () => {
+    const { view, end } = await readyHost();
+    await removeFrom(view);
+    await end(null, { state: "needs-setup" });
+    expect(view.textContent).toContain("Sandbox removed.");
+    expect(view.textContent).toContain("Needs setting up");
+    expect(calloutOf({ kind: "remove", how: "removed" })).toEqual({
+      line: "Sandbox removed.",
+      action: null,
+      note: true,
+    });
+  });
+
+  it.each([
+    ["worked", null, "Sandbox removed."],
+    ["timed out", { kind: "remove", how: "timed-out" }, "within 5 minutes"],
+    ["found an earlier one running", { kind: "remove", how: "still-running" }, "still running"],
+    ["was cancelled", { kind: "remove", how: "cancelled" }, "administrator rights"],
+    ["found runs using it", { kind: "remove", how: "in-use", runs: 2 }, "2 runs are using it"],
+    ["failed", { kind: "remove", how: "failed", reason: "disk full." }, "disk full."],
+  ] as const)(
+    "moves focus to the result when a removal that %s ends",
+    async (_, outcome, words) => {
+      const { view, end } = await readyHost();
+      await removeFrom(view);
+      await end(outcome, { state: "needs-setup" });
+      expect(document.activeElement).not.toBe(document.body);
+      expect(view.contains(document.activeElement)).toBe(true);
+      expect(document.activeElement?.textContent).toContain(words);
+    },
+  );
 });

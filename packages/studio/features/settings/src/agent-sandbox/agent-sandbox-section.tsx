@@ -3,6 +3,8 @@ import { useSandboxStart } from "@halonicjs/studio-feature-runs/api";
 import {
   Button,
   Callout,
+  type CalloutAction,
+  type CalloutHandle,
   Dialog,
   ExternalLink,
   RefreshIcon,
@@ -15,7 +17,7 @@ import {
   type SettingsSectionProps,
   useCopyDetailsInPlace,
 } from "@halonicjs/studio-shell";
-import { type ReactNode, type RefObject, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import {
   type AgentSandboxHost,
   AgentSandboxService,
@@ -88,6 +90,15 @@ export function AgentSandboxHostView({
   const [removing, setRemoving] = useState(false);
   // Remove the sandbox… leaves while the removal runs, so focus goes to its step (HAL-15091).
   const status = useRef<HTMLOListElement>(null);
+  // When the removal ends its step goes away, so focus goes on to the Callout with its result (C575).
+  const result = useRef<CalloutHandle>(null);
+  const removal = useRef(false);
+  const { running, outcome } = sandbox.facts;
+  useEffect(() => {
+    if (!removal.current || running !== null || outcome === null) return;
+    removal.current = false;
+    result.current?.focus();
+  }, [running, outcome]);
   const [removingWsl, setRemovingWsl] = useState(false);
   const [reloading, setReloading] = useState(false);
   const tryLoadAgain = () => {
@@ -136,6 +147,7 @@ export function AgentSandboxHostView({
         onRemove={() => setRemoving(true)}
         onCheckAgain={sandbox.checkAgain}
         statusRef={status}
+        resultRef={result}
         notAvailable={<NotAvailableLines start={start} announce={announce} />}
         newAgents={
           <>
@@ -164,6 +176,7 @@ export function AgentSandboxHostView({
           cancelLabel={text.REMOVE_CANCEL}
           onConfirm={() => {
             setRemoving(false);
+            removal.current = true;
             sandbox.remove();
           }}
           onCancel={() => setRemoving(false)}
@@ -189,6 +202,8 @@ export interface AgentSandboxViewProps {
   readonly notAvailable?: ReactNode;
   /** The steps while one runs, which take focus when the Remove dialog closes. */
   readonly statusRef?: RefObject<HTMLOListElement | null>;
+  /** The Callout with a result, which takes focus when a removal's step goes away. */
+  readonly resultRef?: RefObject<CalloutHandle | null>;
 }
 
 const chipTones: Record<NonNullable<SandboxView["chip"]>["tone"], StatusChipTone> = {
@@ -200,7 +215,7 @@ const chipTones: Record<NonNullable<SandboxView["chip"]>["tone"], StatusChipTone
 
 const marks: Record<SandboxStep["mark"], string> = { done: "✓", doing: "◌", waiting: "○" };
 
-/** A note (an earlier setup still running) reads in the info tone; a failure as a warning. */
+/** A note (an earlier setup still running, a removal that worked) reads in the info tone; a failure as a warning. */
 function calloutTone(callout: NonNullable<SandboxView["callout"]>): "info" | "warning" {
   return callout.note ? "info" : "warning";
 }
@@ -217,6 +232,7 @@ export function AgentSandboxView({
   newAgents = null,
   notAvailable,
   statusRef,
+  resultRef,
 }: AgentSandboxViewProps) {
   // In place, as the Callout's own: toasts wait while the Settings dialog is open (C529-5).
   const copyDetails = useCopyDetailsInPlace();
@@ -263,18 +279,18 @@ export function AgentSandboxView({
         <Callout tone="warning">{text.DOCKER_DESKTOP_VISIBLE}</Callout>
       ) : null}
       {view.callout ? (
-        <Callout
-          tone={calloutTone(view.callout)}
-          {...(view.callout.action ? { action: calloutAction[view.callout.action] } : {})}
-        >
-          {view.callout.line}
-        </Callout>
+        <ResultCallout
+          callout={view.callout}
+          action={view.callout.action ? calloutAction[view.callout.action] : undefined}
+          resultRef={resultRef}
+        />
       ) : null}
       {view.steps.length === 0 ? null : (
         <ol
           ref={statusRef}
           tabIndex={-1}
-          className="flex flex-col gap-1 text-small"
+          // Only code focuses it, so it wears the kit's ring, not the browser's outline (C574).
+          className="focus-ring flex flex-col gap-1 rounded-sm text-small"
           aria-live="polite"
         >
           {view.steps.map((step) => (
@@ -313,6 +329,28 @@ export function AgentSandboxView({
       {view.hint ? <p className="text-small text-fg-muted">{view.hint}</p> : null}
       {newAgents}
     </div>
+  );
+}
+
+/** The Callout with a press's result, which takes focus when a removal's step goes away (C575). */
+function ResultCallout({
+  callout,
+  action,
+  resultRef,
+}: {
+  readonly callout: NonNullable<SandboxView["callout"]>;
+  readonly action: CalloutAction | undefined;
+  readonly resultRef: RefObject<CalloutHandle | null> | undefined;
+}) {
+  return (
+    <Callout
+      tone={calloutTone(callout)}
+      announce="focus"
+      {...(resultRef ? { ref: resultRef } : {})}
+      {...(action ? { action } : {})}
+    >
+      {callout.line}
+    </Callout>
   );
 }
 
