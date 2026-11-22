@@ -1,12 +1,13 @@
 import { definePlugin, type PluginContext, runWorker } from "@paperclipai/plugin-sdk";
 import { runCommand } from "../read/command.ts";
 import { readSeat } from "../read/read-seat.ts";
+import { registerSeatsBridge } from "./bridge.ts";
 import { runSeatsCheck } from "./check-job.ts";
 import { runSeatsHistory } from "./history-job.ts";
 import { databaseHistoryStore } from "./history-store.ts";
 import { databaseTables } from "./paperclip-tables.ts";
 import { runSeatsRead } from "./read-job.ts";
-import { handleSeatsRequest } from "./routes.ts";
+import { handleSeatsRequest, type SeatsRouteDeps } from "./routes.ts";
 import { registerSeatUsageTool } from "./seat-usage-tool.ts";
 import { seatsNow } from "./seats-now.ts";
 import { SeatsReader } from "./seats-reader.ts";
@@ -37,7 +38,7 @@ export function commandEnv(env: NodeJS.ProcessEnv): Record<string, string> {
  * folder `pnpm run build:seats-plugin` writes (`dist/seats/`), after it has
  * run the plugin's migrations. It runs `seats.read` every minute,
  * `seats.history` and `seats.check` every 10 minutes, and answers the
- * board-only route calls and the `seat_usage` tool.
+ * board-only route calls, the "AI seats" page and the `seat_usage` tool.
  */
 export const plugin = definePlugin({
   async setup(ctx) {
@@ -68,6 +69,7 @@ export const plugin = definePlugin({
         now,
       });
     });
+    registerSeatsBridge(ctx, routeDeps(ctx, reader));
     registerSeatUsageTool(ctx, {
       stored: databaseStoredReadings(ctx.db),
       statuses: (seats) => reader.status(seats),
@@ -78,26 +80,30 @@ export const plugin = definePlugin({
     if (context === undefined) {
       return { status: 503, body: { error: "The AI seats plugin is still starting." } };
     }
-    const { ctx, reader } = context;
-    return await handleSeatsRequest(input, {
-      readSettings: async (companyId) => readSeatsSettings(await ctx.config.get(companyId)),
-      store: databaseStore(ctx.db),
-      now: () => new Date(),
-      reads: (seats) => ({ readerStartedAt: reader.startedAt, seats: reader.status(seats) }),
-      seatsNow: (companyId, settings, now) =>
-        seatsNow(
-          companyId,
-          settings,
-          {
-            tables: databaseTables(ctx.db),
-            readings: databaseRecentReadings(ctx.db),
-            store: databaseStore(ctx.db),
-          },
-          now,
-        ),
-    });
+    return await handleSeatsRequest(input, routeDeps(context.ctx, context.reader));
   },
 });
+
+/** What the board-only routes and the page's bridge read, from the database and `seats.read`'s memory. */
+function routeDeps(ctx: PluginContext, reader: SeatsReader): SeatsRouteDeps {
+  return {
+    readSettings: async (companyId) => readSeatsSettings(await ctx.config.get(companyId)),
+    store: databaseStore(ctx.db),
+    now: () => new Date(),
+    reads: (seats) => ({ readerStartedAt: reader.startedAt, seats: reader.status(seats) }),
+    seatsNow: (companyId, settings, now) =>
+      seatsNow(
+        companyId,
+        settings,
+        {
+          tables: databaseTables(ctx.db),
+          readings: databaseRecentReadings(ctx.db),
+          store: databaseStore(ctx.db),
+        },
+        now,
+      ),
+  };
+}
 
 // biome-ignore lint/style/noDefaultExport: the plugin host reads the plugin from the default export.
 export default plugin;

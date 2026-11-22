@@ -389,7 +389,7 @@ usage limits, keeps the history the seat forecast needs and proposes moves.
 It is its own plugin, `halonic.seats`, so the board installs, stops and
 trusts it apart from Agent tools. So far it has its settings, its tables,
 three board-only routes, the `seats.read`, `seats.history` and `seats.check`
-jobs and the `seat_usage` tool; the page's view comes next.
+jobs, the `seat_usage` tool and the board's "AI seats" page.
 
 - **Settings** (board-only, empty by default): the seats in reading order,
   each with an id, a role (`pool`, `reserve` or `paid-api`), its Claude
@@ -455,10 +455,21 @@ jobs and the `seat_usage` tool; the page's view comes next.
   name), and the moves `seats.check` would propose now. It moves no one. The
   run-out time, the sustainable rate and the forecast at reset come with the
   seat forecast (HAL-16026).
+- **The "AI seats" page** (`src/seats/ui/`), a Paperclip page built only
+  from the SDK's own components: the top cards, the seat table, the weekly
+  points coming back in each hour of the next 7 days, the proposed moves
+  with their reason, and a button to record a manual reset. It gets the
+  page's data through Paperclip's data bridge, which answers only board
+  users; its Refresh button asks again. Paperclip lets agents call plugin
+  actions too, so the reset action refuses anyone who isn't a signed-in
+  user and takes the company only from Paperclip's own check. The page
+  imports only the SDK and its bundle (`ui/index.js`) leaves React out:
+  Paperclip's page provides it, so the package depends on `@types/react`
+  only.
 
 Build it with `pnpm --filter @halonicjs/tooling-paperclip run
-build:seats-plugin`. That writes `dist/seats/`: the bundles, the migrations
-and the folder's own `package.json`, which the board installs from
+build:seats-plugin`. That writes `dist/seats/`: the bundles, the page's
+bundle in `ui/`, the migrations and the folder's own `package.json`, which the board installs from
 (Settings → Plugins). It isn't installed, and no seat's sign-in moves into
 it, until HAL-16015 is done.
 

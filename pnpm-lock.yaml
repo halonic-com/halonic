@@ -4488,6 +4488,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.3.0
       esbuild:
         specifier: 'catalog:'
         version: 0.28.2

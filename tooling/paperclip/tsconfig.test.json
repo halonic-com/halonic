@@ -3,5 +3,8 @@
   "include": [
     "src",
     "vitest.config.ts"
-  ]
+  ],
+  "compilerOptions": {
+    "jsx": "react-jsx"
+  }
 }
