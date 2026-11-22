@@ -446,7 +446,7 @@ verifies("routines.page.run-now", () => {
         { reason: "target-not-found" },
         "Not started: briefing isn't in this workspace. Pick another workflow.",
       ],
-      [{ reason: "not-trusted" }, "Not started: Daily isn't trusted yet."],
+      [{ reason: "not-trusted" }, "Not started: Daily isn't trusted yet"],
       [
         { reason: "signed-out", account: "fin@acme.example" },
         "Not started: fin@acme.example is signed out.",

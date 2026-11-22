@@ -45,7 +45,7 @@ export const runNowWords = {
   staysOff: "It stays off, so it runs only when you press Run now.",
   openRun: "Open run",
   signedOut: (account: string) => `Not started: ${account} is signed out.`,
-  notTrusted: (name: string) => `Not started: ${name} isn't trusted yet.`,
+  notTrusted: (name: string) => `Not started: ${name} isn't trusted yet`,
   targetNeverLive: (target: string) => `Not started: ${target} isn't live yet.`,
   targetInTrash: (target: string) => `Not started: ${target} was deleted.`,
   couldntStart: (name: string) => `Couldn't start ${name}.`,

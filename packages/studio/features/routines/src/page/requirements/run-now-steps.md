@@ -12,5 +12,5 @@ Where the host can offer them, a Run now refused because the account is signed o
 - Given the sign-in can't start, then a toast says "Couldn't start the sign-in for fin@acme.example." with the reason.
 - Given the host can't sign in, then the toast has no step.
 - Given the host refuses because the workspace isn't trusted, then the trust gate opens and no toast shows; when the person trusts it, the run starts.
-- Given the person chooses Not now, then a toast that stays says "Not started: Daily isn't trusted yet."
+- Given the person chooses Not now, then a toast that stays says "Not started: Daily isn't trusted yet"
 - Given the workspace is still refused after it was trusted, then the gate doesn't open again and the toast says it isn't trusted yet.

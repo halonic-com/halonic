@@ -16,10 +16,11 @@ import { type RefusedFile, trustMessages } from "./trust.ts";
 /**
  * The fix for a routine whose agent is in a harness: `watch` has no
  * `--harness` to move it, as `run` does, so the agent or the routine changes
- * (HAL-11908), in `validate`'s words for the built-in loop (HAL-15396).
+ * (HAL-11908). It names the control, the agent's Harness page, as the CLI's
+ * other harness fixes do (C665 row 110).
  */
-function harnessFix() {
-  return phrase`Set the agent to Halonic's own loop, or turn the routine off.`;
+function harnessFix(agent: string) {
+  return phrase`Set ${agent} to Halonic on its Harness page, or turn the routine off.`;
 }
 
 /**
@@ -263,13 +264,13 @@ export const routinesMessages = defineMessages("routines", {
    * (Claude Code or Codex): the watch leaves it out and starts the others
    * (HAL-15396), as it does a routine whose file has errors. `harness` is the
    * id an agent file writes; the line shows its name, as doctor does.
-   * "✕ Daily notes can't start: routines can't run agents in Claude Code yet,
-   * and Coder is in Claude Code. Set the agent to Halonic's own loop, or turn
-   * the routine off."
+   * "✕ Daily notes can't start: Coder runs in Claude Code, which routines
+   * can't start yet. Set Coder to Halonic on its Harness page, or turn the
+   * routine off.", in the Studio's shape for the same refusal (C665 row 110).
    */
   harnessRoutineCantStart: (routine: string, agent: string, harness: string) => {
     const name = trustMessages.harnessName(harness).phrase;
-    return phrase`${markPart("failed")} ${routine} can't start: routines can't run agents in ${name} yet, and ${agent} is in ${name}. ${harnessFix()}`;
+    return phrase`${markPart("failed")} ${routine} can't start: ${agent} runs in ${name}, which routines can't start yet. ${harnessFix(agent)}`;
   },
   /**
    * The line under {@link watching} for each webhook routine that is on: the
@@ -318,13 +319,13 @@ export const routinesMessages = defineMessages("routines", {
    */
   harnessNotAvailable: (agent: string, harness: string) => {
     const name = trustMessages.harnessName(harness).phrase;
-    return phrase`Routines can't run agents in ${name} yet, and ${agent} is in ${name}. ${runMessages.nothingRan().phrase}`;
+    return phrase`${agent} runs in ${name}, which routines can't start yet. ${runMessages.nothingRan().phrase}`;
   },
   /**
    * The fix when a routine's agent is in a harness: `watch` has no `--harness`
    * to move it, as `run` does, so the agent or the routine changes (HAL-11908).
    */
-  harnessNotAvailableFix: () => harnessFix(),
+  harnessNotAvailableFix: (agent: string) => harnessFix(agent),
   /** A skill an agent selected that the version a run reads doesn't have: the harness run doesn't start. */
   noSkillInVersion: (hubId: string, skillId: string) =>
     phrase`The version this run reads has no skill ${skillId} for hub ${hubId}.`,

@@ -54,8 +54,8 @@ verifies("workspace.references", () => {
           "name: Writer\nmodel: mok/echo\nmethods:\n  draft:\n    instructions: Draft it.\n    model: anthropic/claude\n",
       });
       expect(errors).toEqual([
-        'agents/writer.agent.yaml model: Agent "writer" uses model "mok/echo", whose provider "mok" the workspace doesn\'t have: Did you mean mock/echo?',
-        'agents/writer.agent.yaml methods.draft.model: Method "writer.draft" uses model "anthropic/claude", whose provider "anthropic" the workspace doesn\'t have: add providers/anthropic.yaml, or use a provider the workspace has',
+        "agents/writer.agent.yaml model: The model mok/echo, used by the agent writer, names the provider mok, which the workspace doesn't have. Did you mean mock/echo?",
+        "agents/writer.agent.yaml methods.draft.model: The model anthropic/claude, used by the method writer.draft, names the provider anthropic, which the workspace doesn't have. Add providers/anthropic.yaml, or use a provider the workspace has.",
       ]);
     });
 
@@ -64,7 +64,7 @@ verifies("workspace.references", () => {
         "workspace.yaml": "id: acme\nname: Acme\ndefaults:\n  model: mok/echo\n",
       });
       expect(errors).toEqual([
-        'workspace.yaml defaults.model: The default model uses model "mok/echo", whose provider "mok" the workspace doesn\'t have: Did you mean mock/echo?',
+        "workspace.yaml defaults.model: The model mok/echo, the workspace's default, names the provider mok, which the workspace doesn't have. Did you mean mock/echo?",
       ]);
     });
 
@@ -75,7 +75,7 @@ verifies("workspace.references", () => {
         "agents/writer.agent.yaml": "name: Writer\nharness: halonic\nmodel: openai/gpt-5\n",
       });
       expect(errors).toEqual([
-        'agents/writer.agent.yaml model: Agent "writer" uses model "openai/gpt-5", whose provider "openai" the workspace doesn\'t have: add providers/openai.yaml, or use a provider the workspace has',
+        "agents/writer.agent.yaml model: The model openai/gpt-5, used by the agent writer, names the provider openai, which the workspace doesn't have. Add providers/openai.yaml, or use a provider the workspace has.",
       ]);
     });
 

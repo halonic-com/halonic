@@ -355,7 +355,7 @@ verifies("cli.commands.routines.watch", () => {
     const line = await nextLineAt(time, watch, "2026-11-10T15:00:10.000Z");
 
     expect(line).toBe(
-      "✕ Hourly follow-up can't start: routines can't run agents in Claude Code yet, and Writer is in Claude Code. Set the agent to Halonic's own loop, or turn the routine off.",
+      "✕ Hourly follow-up can't start: Writer runs in Claude Code, which routines can't start yet. Set Writer to Halonic on its Harness page, or turn the routine off.",
     );
     // `routines watch` has no --harness, so it doesn't suggest one (HAL-12597).
     expect(io.stderr.join("\n")).not.toContain("--harness");
