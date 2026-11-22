@@ -2,6 +2,7 @@
 
 - Approval: Liam's comment of 22 Nov on HAL-15213 (Paperclip task): the `key-origin.asked` PR for "Waiting for your answer", reviewed by him because it adds a run-log event
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:dK/waJkU5ZeVa0Oz27F73WfFB9TkgFXn7ZlvO2ZXK0U8d7+gCG9rPeIe9jZL5EycnzsBwNR3M+g32dWk9BZQAg==
 
 ## What changes
 
