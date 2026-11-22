@@ -64,13 +64,28 @@ merged. A fork's pull request that touches a cloud path still fails at once and 
 so a fork's cloud change runs with the token only after a maintainer pushes the branch here, as
 today. `live-cloud.yml` needs Julian's review (its header says so).
 
+A fork's pull request that touches no cloud path is queued like any other, and a group holds every
+entry ahead of it. Julian's review (HAL-15992) found that its code would then run with the token,
+in any group behind it that adds a cloud change, or in its own group by changing code that the
+group's own `cloud-affected` imports. That breaks HAL-6835's model, "a fork never gets the token".
+So `live-cloud.yml`'s plan job, in a merge group, reads the merge queue's entries (GraphQL
+`mergeQueue`), follows the chain from the group's commit back to `main` and lists every pull
+request from another repository. When the group changes a cloud path, the plan fails unless that
+list is `none`; a group the queue doesn't list counts as holding a fork. No job names the
+`cloudflare-live` environment then, so the token isn't handed out, and CI's gate fails the group.
+The cloud change merges once the fork's pull request has merged or left the queue; forks are rare
+here, so this costs little. The plan also runs `main`'s (the group base's) copy of
+`cloud-affected`, as CI's gate does, so the group's code can't change the answer.
+
 ## Tests
 
 No test was weakened or skipped. `tooling/check/src/test/ci-live-cloud-queue.test.ts` runs CI's
 "Wait for the live suites" step with a stand-in `gh`: a shared-path pull request passes without
 calling GitHub, a direct one needs a pass on its head, a fork fails, and a merge group needs a
 pass on its own commit. It also checks `live-cloud.yml`'s `merge_group` trigger and plan, and that
-a dropped group cancels its live run. `cloud-paths.test.ts` covers `isPullRequestLivePath`. New
+a dropped group cancels its live run. It runs the plan's fork step against a stand-in queue: a
+fork's own group and a group behind it list the fork, a group ahead of it lists `none`, and a group
+the queue doesn't list answers `unknown`. `cloud-paths.test.ts` covers `isPullRequestLivePath`. New
 requirement: `check.live-cloud-queue`; `check.cloud-affected` is unchanged.
 
 ## Covers

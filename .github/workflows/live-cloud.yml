@@ -49,6 +49,7 @@ jobs:
     permissions:
       contents: read
       actions: read # to check that the cloudflare-live environment exists
+      pull-requests: read # to see whose pull requests are in a merge group
     outputs:
       live: ${{ steps.plan.outputs.live }}
       sweep: ${{ steps.plan.outputs.sweep }}
@@ -63,6 +64,48 @@ jobs:
         with:
           node-version: "26"
           package-manager-cache: false
+      # A merge group holds every pull request ahead of it in the queue, and
+      # the suites run all of its code with the token. A fork's pull request
+      # that touches no cloud path is queued like any other, so a group that
+      # contains one never gets the token (HAL-6835, HAL-15992). The queue
+      # chains its entries: each one is built on the one ahead of it.
+      - id: group
+        name: Fork pull requests in the group
+        if: github.event_name == 'merge_group' && vars.LIVE_CLOUD_ENABLED == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          GROUP_SHA: ${{ github.event.merge_group.head_sha }}
+        run: |
+          # shellcheck disable=SC2016 # GraphQL variables, not shell ones
+          gh api graphql -F owner="${REPO%/*}" -F name="${REPO#*/}" -f query='
+            query($owner: String!, $name: String!) {
+              repository(owner: $owner, name: $name) {
+                mergeQueue(branch: "main") {
+                  entries(first: 100) {
+                    nodes {
+                      headCommit { oid }
+                      baseCommit { oid }
+                      pullRequest { number isCrossRepository }
+                    }
+                  }
+                }
+              }
+            }' > "$RUNNER_TEMP/queue.json"
+          # "none" only when every entry is from this repository; a group
+          # that can't be found answers "unknown", which counts as a fork.
+          forks=$(jq -r --arg sha "$GROUP_SHA" '
+            def chain($entries; $sha):
+              ($entries | map(select(.headCommit.oid == $sha)) | .[0]) as $entry
+              | if $entry == null then empty
+                else $entry, chain($entries; $entry.baseCommit.oid) end;
+            [chain([.data.repository.mergeQueue.entries.nodes[]]; $sha)]
+            | if length == 0 then "unknown"
+              else map(select(.pullRequest.isCrossRepository != false)
+                | "#\(.pullRequest.number // "?")") | join(" ")
+                | if . == "" then "none" else . end end
+          ' "$RUNNER_TEMP/queue.json")
+          echo "forks=$forks" >> "$GITHUB_OUTPUT"
       - id: plan
         name: Decide
         env:
@@ -74,6 +117,7 @@ jobs:
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           REPO: ${{ github.repository }}
           GROUP_BASE: ${{ github.event.merge_group.base_sha }}
+          GROUP_FORKS: ${{ steps.group.outputs.forks }}
         run: |
           skip() {
             echo "::notice title=Live cloud suites skipped::$1"
@@ -101,9 +145,24 @@ jobs:
             printf 'live=false\nsweep=true\nnightly=false\n' >> "$GITHUB_OUTPUT"
           elif [ "$EVENT" = "merge_group" ]; then
             # The group against the commit it is built on (main, or the entry
-            # ahead of it): exactly what this entry adds.
-            node tooling/check/src/cli/cloud-affected.ts --base "$GROUP_BASE" | tee "$RUNNER_TEMP/affected.txt"
+            # ahead of it): exactly what this entry adds. The base's copy
+            # decides, as in ci.yml's gate, so the group's code can't change
+            # the answer; a base from before the script existed has none.
+            git worktree add --detach "$RUNNER_TEMP/base" "$GROUP_BASE"
+            script=tooling/check/src/cli/cloud-affected.ts
+            if [ -f "$RUNNER_TEMP/base/$script" ]; then
+              node "$RUNNER_TEMP/base/$script" --base "$GROUP_BASE" | tee "$RUNNER_TEMP/affected.txt"
+            else
+              node "$script" --base "$GROUP_BASE" | tee "$RUNNER_TEMP/affected.txt"
+            fi
             if grep -qx 'affected=true' "$RUNNER_TEMP/affected.txt"; then
+              if [ "$GROUP_FORKS" = unknown ]; then
+                echo "::error::This merge group changes a cloud path, but it isn't in the merge queue's list, so there's no telling whether it holds a fork's code. The live suites don't run, and the group fails."
+                exit 1
+              elif [ "$GROUP_FORKS" != none ]; then
+                echo "::error::This merge group changes a cloud path, but it also holds code from a fork ($GROUP_FORKS), and a fork's code never runs with the test account's token. The cloud change can merge once that pull request has merged or left the queue."
+                exit 1
+              fi
               printf 'live=true\nsweep=false\nnightly=false\n' >> "$GITHUB_OUTPUT"
             else
               skip "This group changes no cloud path, so the live suites aren't needed."

@@ -75,6 +75,48 @@ function gate(env: Record<string, string>, conclusion: string): GateRun {
   };
 }
 
+interface QueueEntry {
+  readonly head: string;
+  readonly base: string;
+  readonly pr: number;
+  readonly fork?: boolean;
+}
+
+/**
+ * Runs live-cloud.yml's "Fork pull requests in the group" step for the group
+ * `sha`, with a stand-in `gh` that answers the merge queue's `entries`, and
+ * returns the `forks` it wrote.
+ */
+function groupForks(sha: string, entries: readonly QueueEntry[]): string {
+  const folder = mkdtempSync(join(tmpdir(), "live-cloud-group-"));
+  folders.push(folder);
+  const nodes = entries.map((entry) => ({
+    headCommit: { oid: entry.head },
+    baseCommit: { oid: entry.base },
+    pullRequest: { number: entry.pr, isCrossRepository: entry.fork ?? false },
+  }));
+  writeFileSync(
+    join(folder, "entries.json"),
+    JSON.stringify({ data: { repository: { mergeQueue: { entries: { nodes } } } } }),
+  );
+  writeFileSync(join(folder, "gh"), `#!/usr/bin/env bash\ncat "${join(folder, "entries.json")}"\n`);
+  chmodSync(join(folder, "gh"), 0o755);
+  const output = join(folder, "output.txt");
+  writeFileSync(output, "");
+  const result = spawnSync("bash", ["-e", "-c", stepScript(live, "Fork pull requests in the group")], {
+    encoding: "utf8",
+    env: {
+      PATH: `${folder}:${process.env["PATH"] ?? ""}`,
+      REPO: "acme/halonic",
+      GROUP_SHA: sha,
+      RUNNER_TEMP: folder,
+      GITHUB_OUTPUT: output,
+    },
+  });
+  expect(result.status, result.stderr).toBe(0);
+  return readFileSync(output, "utf8").trim();
+}
+
 verifies("check.live-cloud-queue", () => {
   describe("the live cloud suites run in the merge queue", () => {
     test("a pull request that changes only a shared cloud path doesn't wait for them", () => {
@@ -112,8 +154,25 @@ verifies("check.live-cloud-queue", () => {
     test("live-cloud.yml runs them for a merge group that changes a cloud path", () => {
       expect(live).toMatch(/^ {2}merge_group:$/m);
       const plan = stepScript(live, "Decide");
-      expect(plan).toContain('cloud-affected.ts --base "$GROUP_BASE"');
       expect(plan).toContain("grep -qx 'on-pull-request=true'");
+    });
+
+    test("a merge group never gets the token while it holds a fork's code", () => {
+      const queue: QueueEntry[] = [
+        { head: "g1", base: "main0", pr: 11 },
+        { head: "g2", base: "g1", pr: 12, fork: true },
+        { head: "g3", base: "g2", pr: 13 },
+      ];
+      // The fork's own group, and a cloud change queued behind it.
+      expect(groupForks("g2", queue)).toBe("forks=#12");
+      expect(groupForks("g3", queue)).toBe("forks=#12");
+      // Ahead of the fork, the group holds only this repository's code.
+      expect(groupForks("g1", queue)).toBe("forks=none");
+      // A group the queue doesn't list counts as holding a fork.
+      expect(groupForks("gone", queue)).toBe("forks=unknown");
+      const plan = stepScript(live, "Decide");
+      expect(plan).toContain('[ "$GROUP_FORKS" != none ]');
+      expect(plan).toContain('node "$RUNNER_TEMP/base/$script" --base "$GROUP_BASE"');
     });
 
     test("a dropped merge group stops its live run too", () => {
