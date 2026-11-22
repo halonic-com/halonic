@@ -4,6 +4,12 @@
  * (`phone-boundary.test.ts`).
  */
 
+export type {
+  ComputerTunnel,
+  ComputerTunnelEvent,
+  ComputerTunnelRefusal,
+  ComputerTunnelSendResult,
+} from "./computer-tunnel.ts";
 export { pairWords } from "./pair-words.ts";
 export {
   NOT_HALONIC_MS,
