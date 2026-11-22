@@ -132,13 +132,13 @@ export const pluginMessages = defineMessages("plugin", {
   alreadyAdded: (id: string) => phrase`${id} is already added.`,
   /** Under {@link alreadyAdded}: `--update` replaces it and keeps its settings, which `remove` drops (C45, HAL-14325). */
   alreadyAddedFix: () =>
-    phrase`To put this version in its place and keep its settings, run the same command with --update.`,
+    phrase`To replace it with this copy and keep its settings, run the same command with --update.`,
   /** Under {@link alreadyAdded} when even `--update` couldn't place it, such as for a folder that is a link. */
   alreadyAddedRemoveFix: (id: string) =>
-    phrase`To add this version, remove it first: halonic plugin remove ${id}`,
+    phrase`To add this copy, remove it first: halonic plugin remove ${id}`,
   /** `--update`'s help line. */
   updateOption: () =>
-    phrase`Put it in place of the added plugin with the same id and keep its settings; changed files are off until you trust them`,
+    phrase`Replace the added plugin with this copy and keep its settings. If its files changed, it's off until you trust it again.`,
   /** `plugin add` without a folder or git address; line 1 says what's missing (cli-output 1.3). */
   addNeedsSource: () => phrase`halonic plugin add needs a folder or a git address.`,
   addUsage: () => phrase`halonic plugin add <folder or git address>[@commit]`,

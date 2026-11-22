@@ -264,7 +264,7 @@ verifies("cli.commands.plugin.add", () => {
     expect(code).toBe(exitCode.conflict);
     expect(io.stderr.join("\n")).toContain("weather is already added.");
     expect(io.stderr.join("\n")).toContain(
-      "To put this version in its place and keep its settings, run the same command with --update.",
+      "To replace it with this copy and keep its settings, run the same command with --update.",
     );
     expect(await readdir(pluginsFolder())).toEqual(["weather"]);
   });
