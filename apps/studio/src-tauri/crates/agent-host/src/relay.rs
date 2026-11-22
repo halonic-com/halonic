@@ -30,6 +30,7 @@ use std::time::{Duration, Instant};
 
 use connections::{Connection, Connections, Mode};
 use deadlines::{Deadline, Due};
+pub(crate) use from_host::{HostFrame, read_host_frame};
 use halonic_secrets::SecretBackend;
 use limits::{Limits, QUEUED_FRAMES, QUEUED_FRAMES_PER_CONNECTION, Quota};
 use token::TokenCheck;
@@ -50,7 +51,7 @@ pub(crate) const FRAME_LIMIT: usize = 64 * 1024;
 const HEADER_LENGTH: usize = 9;
 
 const OPEN: u8 = 1;
-const DATA: u8 = 2;
+pub(crate) const DATA: u8 = 2;
 const END: u8 = 3;
 const RESET: u8 = 4;
 
@@ -443,7 +444,7 @@ impl Shared {
     }
 }
 
-fn frame(id: u32, kind: u8, bytes: &[u8]) -> Vec<u8> {
+pub(crate) fn frame(id: u32, kind: u8, bytes: &[u8]) -> Vec<u8> {
     let length = u32::try_from(bytes.len()).expect("a frame carries at most 64 KiB");
     let mut frame = Vec::with_capacity(HEADER_LENGTH + bytes.len());
     frame.extend_from_slice(&id.to_be_bytes());

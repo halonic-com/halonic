@@ -1,14 +1,14 @@
 //! Id 0 belongs to the host: the relay answers its secret requests there
 //! and never gives it to a client, in either direction.
 
-use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::Arc;
 
-use halonic_secrets::{MemoryBackend, SecretBackend, SecretError, SecretName};
+use halonic_secrets::{MemoryBackend, SecretBackend, SecretName};
 use serde_json::{Value, json};
 
 use super::super::tests::{StandIn, closed, connect, read_all, relay, serve_stand_in, wait_until};
 use super::super::{DATA, END, OPEN, RESET, Relay};
+use crate::held_backend::Held;
 
 const VALUE: &str = "a-test-value-not-a-key";
 
@@ -113,43 +113,4 @@ fn host_secrets_channel_takes_one_request_at_a_time() {
     wait_until(|| relay.is_stopped());
     release.send(()).expect("release the first request");
     assert!(host.input_closed());
-}
-
-/// A keychain that holds each read until the test releases it, as one
-/// waiting for the person to allow access does.
-struct Held {
-    released: Mutex<Receiver<()>>,
-}
-
-impl Held {
-    fn with_release() -> (Arc<dyn SecretBackend>, Sender<()>) {
-        let (release, released) = mpsc::channel();
-        let backend = Arc::new(Self {
-            released: Mutex::new(released),
-        });
-        (backend, release)
-    }
-}
-
-impl SecretBackend for Held {
-    fn get(&self, _: &SecretName) -> Result<Option<String>, SecretError> {
-        let released = self.released.lock().unwrap_or_else(PoisonError::into_inner);
-        let _ = released.recv();
-        Ok(None)
-    }
-    fn set(&self, _: &SecretName, _: &str) -> Result<(), SecretError> {
-        Ok(())
-    }
-    fn delete(&self, _: &SecretName) -> Result<(), SecretError> {
-        Ok(())
-    }
-    fn get_origins(&self, _: &SecretName) -> Result<Option<String>, SecretError> {
-        Ok(None)
-    }
-    fn set_origins(&self, _: &SecretName, _: &str) -> Result<(), SecretError> {
-        Ok(())
-    }
-    fn delete_origins(&self, _: &SecretName) -> Result<(), SecretError> {
-        Ok(())
-    }
 }

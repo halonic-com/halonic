@@ -38,6 +38,15 @@ impl Default for SecretsState {
     }
 }
 
+impl SecretsState {
+    /// The keychain the agent host's own secrets are answered from, on the
+    /// host's pipe (requirement `host-secrets-channel`), which reaches only
+    /// `HOST_NAMES`. No command hands it to the page.
+    pub(crate) fn host_keychain(&self) -> Arc<dyn SecretBackend> {
+        Arc::clone(&self.backend)
+    }
+}
+
 /// Why a call failed: a stable `kind` for the page to pick its words by
 /// (see `SecretError::kind`), and a message for the log. Neither holds the
 /// value.

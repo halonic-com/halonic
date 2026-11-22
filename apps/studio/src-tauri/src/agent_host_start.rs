@@ -1,8 +1,11 @@
 //! Starting the host: which one the sandbox choice asks for, and the command
-//! that runs it. Each start's outcome is kept for `start_status`.
+//! that runs it. Each start's outcome is kept for `start_status`. The real
+//! hosts keep their own secrets in the OS keychain: the shell answers for
+//! them on the host's pipe (requirement `host-secrets-channel`).
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::Arc;
 
 use halonic_agent_host::{
     AgentHost, AgentHostError, Handshake, SettingCopy, WslError, copy_sandbox_setting,
@@ -10,6 +13,7 @@ use halonic_agent_host::{
 };
 use halonic_git_guard::plain_path;
 use halonic_host_settings::SandboxSetting;
+use halonic_secrets::SecretBackend;
 use tauri::{AppHandle, Manager, Runtime};
 
 use super::choice::{HostKind, host_for, saved_setting};
@@ -23,6 +27,7 @@ use super::{
 };
 use crate::git::GitState;
 use crate::profile::cli_profile;
+use crate::secrets::SecretsState;
 
 /// The running host's handshake, starting the host first when there is
 /// none or it has exited. It starts on a worker thread: it unpacks files
@@ -65,14 +70,17 @@ fn start_host<R: Runtime>(
 ) -> Result<(AgentHost, Option<DistroStartChecks>), HostRefusal> {
     match &state.launch {
         #[cfg(test)]
-        Launch::Local(command) => Ok((start_local(command())?, None)),
+        Launch::Local(command) => Ok((start_local(command(), None)?, None)),
         #[cfg(test)]
         Launch::Distro(command) => {
             state.progress.wsl_ready();
-            Ok((start_in_distro(command)?, None))
+            Ok((start_in_distro(command, None)?, None))
         }
         Launch::Real => match chosen_host(app)? {
-            (HostKind::Local, _) => Ok((start_local(real_host_command(app)?)?, None)),
+            (HostKind::Local, _) => {
+                let started = start_local(real_host_command(app)?, Some(host_keychain(app)))?;
+                Ok((started, None))
+            }
             (HostKind::Distro, setting) => {
                 let (wsl, command) = distro_host_command_for_real_wsl()?;
                 state.progress.wsl_ready();
@@ -80,20 +88,34 @@ fn start_host<R: Runtime>(
                 install_runtime_beside_shell(&wsl)?;
                 copy_into_distro(&wsl, setting.as_ref())?;
                 run_security_update(&wsl);
-                let started = start_in_distro(&command)?;
+                let started = start_in_distro(&command, Some(host_keychain(app)))?;
                 Ok((started, Some(read_in_distro(&wsl))))
             }
         },
     }
 }
 
-fn start_local(command: Command) -> Result<AgentHost, HostRefusal> {
-    AgentHost::start(command, START_WAIT).map_err(host_failed)
+/// Starts the host beside the shell; with `secrets`, the shell answers for
+/// the host's own secrets from it.
+fn start_local(
+    command: Command,
+    secrets: Option<Arc<dyn SecretBackend>>,
+) -> Result<AgentHost, HostRefusal> {
+    AgentHost::start_answering_secrets(command, START_WAIT, secrets).map_err(host_failed)
 }
 
-/// Starts the host in the distro with a relay in front of it.
-fn start_in_distro(command: &DistroCommand) -> Result<AgentHost, HostRefusal> {
-    AgentHost::start_relayed(command, START_WAIT).map_err(host_failed)
+/// Starts the host in the distro with a relay in front of it; with
+/// `secrets`, the relay answers for the host's own secrets from it.
+fn start_in_distro(
+    command: &DistroCommand,
+    secrets: Option<Arc<dyn SecretBackend>>,
+) -> Result<AgentHost, HostRefusal> {
+    AgentHost::start_relayed_answering_secrets(command, START_WAIT, secrets).map_err(host_failed)
+}
+
+/// The shell's keychain, for the real host's own secrets.
+fn host_keychain<R: Runtime>(app: &AppHandle<R>) -> Arc<dyn SecretBackend> {
+    app.state::<SecretsState>().host_keychain()
 }
 
 /// The refusal for a host that didn't start, with the cause and exit code
@@ -188,12 +210,13 @@ fn wsl_failure(error: &WslError) -> StartFailure {
 
 /// Starts the host beside the shell and drops it again: the proof that this
 /// install's host file runs and answers its handshake, for a PC where the
-/// distro host can't start (no WSL, no distro yet).
+/// distro host can't start (no WSL, no distro yet). It starts as the real
+/// one does, keychain included, so it never keeps a secret in its file.
 pub(super) async fn local_host_starts<R: Runtime>(app: &AppHandle<R>) -> bool {
     let app = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
         real_host_command(&app)
-            .and_then(start_local)
+            .and_then(|command| start_local(command, Some(host_keychain(&app))))
             .map(drop)
             .is_ok()
     })
