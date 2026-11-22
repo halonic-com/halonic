@@ -26,7 +26,8 @@ const stepLines: Readonly<Record<string, string>> = {
   "unknown-agent": "Uses a missing agent",
   "final-has-transitions": "Is an end, but has arrows",
   "task-without-agent": "Has no agent",
-  "wait-without-events": "Has no answers to pick",
+  // The Inbox's wait card offers such a wait only Done, so the line says so (C676 27).
+  "wait-without-events": "Only Done to pick",
   // A bare arrow on a wait takes `done`, which the Inbox's wait card offers as Done (C665 85).
   "wait-arrow-without-event": "Taken on Done",
   "unguarded-shadow": "Never taken",
@@ -64,10 +65,10 @@ const rowSentences: Readonly<Record<string, string>> = {
   "dead-end": "Has no way out. Add an arrow from it on its card, or make it an end step.",
   unreachable: "Can't be reached: no arrow leads to it.",
   "wait-without-events":
-    "Gives a person no answers to pick, such as approve. Add them in the workflow's file.",
+    "Offers a person only Done, no answers such as approve. Add them in the workflow's file.",
   "unguarded-shadow": neverTakenSentence("Has an arrow that's", "the same event", "its card"),
   // The core says "transition" and "event"; Studio says arrow and answer (microcopy 1.2).
-  // Such an arrow takes `done`, so only an answer Done takes it (C665 86).
+  // Such an arrow takes `done`, so it's taken only if someone answers Done (C665 86).
   "wait-arrow-without-event":
     "Has an arrow with no answer, so it's taken only if someone answers Done. Give the arrow an answer, or a timer, in the workflow's file.",
 };
