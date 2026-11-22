@@ -81,7 +81,7 @@ export class PluginBackendStoppedError extends Error {
 
   constructor(plugin: string) {
     super(
-      `Halonic stopped the plugin ${plugin}: its sandbox didn't hold, so it didn't run. The next run that uses it tries the sandbox again.`,
+      `Halonic stopped the plugin ${plugin}: the sandbox didn't work as the plugin started, so nothing ran. Halonic tries ${plugin} in the sandbox again the next time a run uses it.`,
     );
     this.plugin = plugin;
   }
