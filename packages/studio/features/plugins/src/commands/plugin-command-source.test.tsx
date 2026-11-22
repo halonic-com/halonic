@@ -121,7 +121,7 @@ verifies("plugins.palette-commands", () => {
     const today = weather().ui.commands[0];
     if (today === undefined) throw new Error("No command");
     await act(async () => opener.open({ id: "weather", name: "Weather" }, { ...today, form: {} }));
-    await act(async () => new Promise((resolve) => requestAnimationFrame(resolve)));
+    await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
     press("Weather");
     expect(opener.current()).toBeUndefined();
     expect(pages).toEqual(["weather"]);
