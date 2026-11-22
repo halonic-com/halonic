@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16186, from flow check C684 finding 3 on HAL-16182; Liam signs this note in review on HAL-16186
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fLf6su3y0YCiItbN6gsC4wAWvyowsh2j0vOd5u4B3PnYOweUpEM+R8PoO/pGQGU84pxHlTYwljQEMxVHMmb+DA==
 
 `runtime-missing` means Halonic Studio's own WSL distro is there but the
 runtime that runs the sandbox in it isn't. Only Studio's WSL setup creates
