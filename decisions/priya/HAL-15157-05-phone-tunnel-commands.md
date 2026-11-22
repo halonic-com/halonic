@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15157 (tunnel D6, decided on HAL-15151; H1 from Julian's D7 review on HAL-15181); Julian, then Liam, review this PR as a security PR
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gg4NyDxroum6iLnzvblpmKBmYcHWOBiWkqzsCtgoL70spFWQODkAJ5zZd0wvrMjzvihFgsk6hcZqQg8DWSW3Bw==
 
 The phone's own page gets eight new commands, on Android only, from a local capability for the
 `main` window (`capabilities/phone-tunnel.json`): `phone_pair_start`, `phone_pair_wait`,
