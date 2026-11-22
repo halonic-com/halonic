@@ -139,6 +139,15 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
       const message = state.versionMessages?.[versionId];
       return message === undefined ? undefined : { id: versionId, message, createdAt: 1_000 };
     },
+    async databaseId(_accountId, name) {
+      calls.push(`databaseId ${name}`);
+      const exists = !state.noDatabase || resources[`database ${name}`] !== undefined;
+      return exists ? `id-${name}` : undefined;
+    },
+    async workersDevAddress(_accountId, worker) {
+      calls.push(`workersDevAddress ${worker}`);
+      return state.workersDev ?? `https://${worker}.test.workers.dev`;
+    },
     async workersDevUrl(_accountId, worker) {
       calls.push(`workersDevUrl ${worker}`);
       return state.workersDevOff

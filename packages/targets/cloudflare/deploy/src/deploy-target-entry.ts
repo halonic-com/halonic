@@ -1,12 +1,10 @@
 import { migrations } from "@halonicjs/adapter-cloudflare-storage";
 import type {
   DeployAccount,
-  DeployedVersion,
   DeployLockHolder,
   DeploymentRef,
   DeployPlan,
   DeployRequest,
-  DeployResource,
   DeployTarget,
   DeployTargetContext,
   DeployTargetEntry,
@@ -16,16 +14,25 @@ import type {
 } from "@halonicjs/ports";
 import { deployTargetVersion } from "@halonicjs/ports";
 import { withAdminKey } from "./admin-key.ts";
-import type { CloudflareApi, DeployedVersion as CloudflareVersion, ResourceKind } from "./api.ts";
+import type { CloudflareApi, ResourceKind } from "./api.ts";
 import { createCloudflareClient } from "./client.ts";
 import { resolveCredentials } from "./credentials.ts";
+import { deployThroughPort, resourceKinds, type WorkerScript } from "./deploy-target-deploy.ts";
+import {
+  describe,
+  liveVersion,
+  mainOf,
+  version,
+  versionNumbers,
+} from "./deploy-target-versions.ts";
 import { destroy } from "./destroy.ts";
 import { migrate } from "./migrate.ts";
 import { lockHolderOf, portFailure, toDeployFailure } from "./port-failure.ts";
 import { databaseNameFor, provision } from "./provision.ts";
 import { rollback } from "./rollback.ts";
 import { status } from "./status.ts";
-import { parseVersionNote, startsLike } from "./version-note.ts";
+import type { UploadAndSwitchOptions } from "./upload.ts";
+import { startsLike } from "./version-note.ts";
 import { exportFromWorker, importToWorker } from "./worker-transfer.ts";
 
 /** The name `login` saves the Cloudflare API token under in the user's keychain. */
@@ -35,19 +42,20 @@ export const tokenName = "cloudflare-api-token";
 export interface CloudflareDeployTargetOptions {
   /** Builds the API for a token; defaults to the real client over the context's HTTP client. */
   readonly api?: (token: string) => CloudflareApi;
+  /**
+   * The Worker `deploy` uploads. Tests and the live suite give it; until the
+   * package ships its built Worker (HAL-16060), `deploy` rejects without it.
+   */
+  readonly worker?: () => Promise<WorkerScript>;
+  /** Tests make the self-test quick with these. */
+  readonly upload?: Pick<UploadAndSwitchOptions, "sleep" | "attempts">;
 }
-
-const resourceKinds: Readonly<Record<ResourceKind, DeployResource["kind"]>> = {
-  worker: "service",
-  database: "database",
-  bucket: "bucket",
-};
 
 /**
  * The Cloudflare target as the {@link DeployTarget} port (requirement
  * `deploy.target-entry`): each method wraps this package's own function and
- * rejects with the port's failure. `deploy` and `revokeSessions` come in the
- * next part and reject with `unexpected` until then.
+ * rejects with the port's failure. `revokeSessions` comes in the next part
+ * and rejects with `unexpected` until then.
  */
 export function createCloudflareDeployTarget(
   context: DeployTargetContext,
@@ -95,7 +103,24 @@ export function createCloudflareDeployTarget(
       }),
 
     plan: (request) => guard(async () => planDeploy(await api(), request)),
-    deploy: notYet("deploy"),
+    deploy: (request, onEvent) =>
+      guard(async () => {
+        const cloudflare = await api();
+        const { worker } = options;
+        if (worker === undefined) {
+          throw portFailure(
+            "unexpected",
+            "internal",
+            "This Halonic has no Cloudflare Worker to upload yet.",
+          );
+        }
+        return deployThroughPort(cloudflare, request, onEvent, {
+          label,
+          fetch: fetchOver,
+          worker,
+          ...(options.upload ? { upload: options.upload } : {}),
+        });
+      }),
     revokeSessions: notYet("sign out browsers"),
 
     status: (deployment) =>
@@ -217,7 +242,7 @@ export function createCloudflareDeployTarget(
   ): Promise<DeployPlan> {
     const { deployment, snapshot } = request;
     const { accountId, service: worker } = deployment;
-    const [account, steps, databaseChanges, current, url, lockedBy, files] = await Promise.all([
+    const [account, steps, databaseChanges, live, url, lockedBy, files] = await Promise.all([
       accountOf(cloudflare, accountId),
       provision(cloudflare, {
         accountId,
@@ -226,21 +251,11 @@ export function createCloudflareDeployTarget(
         ...(request.adopt ? { adopt: true } : {}),
       }),
       migrate(cloudflare, { accountId, worker, migrations, plan: true }),
-      cloudflare.currentDeployment(accountId, worker),
+      liveVersion(cloudflare, deployment),
       cloudflare.workersDevUrl(accountId, worker),
       lockedByOf(cloudflare, deployment),
       snapshot.files.list(),
     ]);
-    const serving = (current ?? []).filter((v) => v.percentage > 0);
-    const live =
-      serving.length === 0
-        ? undefined
-        : await describe(
-            cloudflare,
-            deployment,
-            (await versionNumbers(cloudflare, accountId, worker)).ids,
-            mainOf(serving),
-          );
     return {
       account,
       url,
@@ -346,24 +361,6 @@ async function accountOf(api: CloudflareApi, id: string): Promise<DeployAccount>
   return { id: account.id, name: account.name };
 }
 
-/**
- * Every version that ever served, oldest first, so a version's number is its
- * place here counting from 1. A deployment Cloudflare made for a secret
- * change runs the version before it, so it adds no number.
- */
-async function versionNumbers(
-  api: CloudflareApi,
-  accountId: string,
-  worker: string,
-): Promise<{ readonly ids: readonly string[] }> {
-  const ids: string[] = [];
-  for (const deployment of [...(await api.deploymentHistory(accountId, worker))].reverse()) {
-    if (deployment.some((v) => v.secretChange === true)) continue;
-    for (const v of deployment) if (v.percentage > 0 && !ids.includes(v.id)) ids.push(v.id);
-  }
-  return { ids };
-}
-
 /** Who holds the deployment's lock, read without taking it (requirement `deploy.lock-read`). */
 async function lockedByOf(
   api: CloudflareApi,
@@ -371,34 +368,6 @@ async function lockedByOf(
 ): Promise<DeployLockHolder | undefined> {
   const held = await api.readDeployLock(deployment.accountId, databaseNameFor(deployment.service));
   return held === undefined ? undefined : lockHolderOf(held);
-}
-
-function version(ids: readonly string[], id: string, commit: string | undefined): DeployedVersion {
-  // The Halonic version and the time it went live come with the snapshot's own record (next part).
-  return {
-    number: ids.indexOf(id) + 1,
-    id,
-    commit,
-    halonicVersion: undefined,
-    liveSince: undefined,
-  };
-}
-
-async function describe(
-  api: CloudflareApi,
-  deployment: DeploymentRef,
-  ids: readonly string[],
-  id: string,
-): Promise<DeployedVersion> {
-  const info = await api.versionInfo(deployment.accountId, deployment.service, id);
-  return version(ids, id, parseVersionNote(info?.message)?.commit);
-}
-
-function mainOf(versions: readonly CloudflareVersion[]): string {
-  const [first, ...rest] = versions;
-  if (first === undefined)
-    throw portFailure("not-deployed", "not_found", "Nothing serves on Cloudflare.");
-  return rest.reduce((a, b) => (b.percentage > a.percentage ? b : a), first).id;
 }
 
 function itemsOf(

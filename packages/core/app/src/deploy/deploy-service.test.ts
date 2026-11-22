@@ -162,6 +162,34 @@ verifies("app.deploy-service", () => {
     expect(deployed).toEqual([]);
   });
 
+  it("names the holder when another deploy takes the lock after the plan (3.7)", async () => {
+    const holder = {
+      who: "kim@example.com",
+      startedAt: "2026-11-19T14:33:00.000Z",
+      expiresAt: "2026-11-19T14:43:00.000Z",
+    };
+    const race = (lockedBy: typeof holder | undefined) => {
+      const taken = Object.assign(new Error("taken"), { code: "deploy-locked" });
+      const target = {
+        plan: async () => livePlan,
+        deploy: async () => Promise.reject(taken),
+        status: async () => ({ lockedBy }),
+      } as Partial<DeployTarget> as DeployTarget;
+      const deploys = createDeployService({
+        loadTarget: async () => target,
+        clock: { now: () => new Date("2026-11-19T14:34:00.000Z") },
+        timeZone: "UTC",
+      });
+      return deploys.deploy({ ...input, yes: true }, () => {});
+    };
+    await expect(race(holder)).rejects.toMatchObject({
+      kind: "conflict",
+      message:
+        "Couldn't deploy web: a deploy of web by kim@example.com is still running, started 1 min ago. Nothing changed on Cloudflare.",
+    });
+    await expect(race(undefined)).rejects.toThrow("taken");
+  });
+
   it("lists every missing answer in one error without a terminal (4)", async () => {
     const { deploys, deployed } = service(firstPlan);
     const failure = deploys.deploy({ ...input, secrets: new Map() }, () => {});

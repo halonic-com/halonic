@@ -81,12 +81,12 @@ export function createDeployService(deps: DeployServiceDeps) {
       if (questions === undefined) {
         if (ask || missing.length > 0)
           throw missingAnswersError(input.deployment.name, ask, missing);
-        return target.deploy(request, onEvent);
+        return deployNamingHolder(target, request, onEvent, deps);
       }
       const secrets = new Map(input.secrets);
       for (const name of missing) secrets.set(name, await questions.secret(name));
       if (ask && !(await questions.confirm(plan, news))) return { outcome: "declined" };
-      return target.deploy({ ...request, secrets }, onEvent);
+      return deployNamingHolder(target, { ...request, secrets }, onEvent, deps);
     },
   };
 }
@@ -102,6 +102,29 @@ function requestOf(input: DeployInput): DeployRequest {
     secrets: input.secrets,
     ...(input.signal === undefined ? {} : { signal: input.signal }),
   };
+}
+
+/**
+ * The target's deploy. When another deploy took the lock after the plan, its
+ * holder is read again, so the message names them as before any question (3.7).
+ */
+async function deployNamingHolder(
+  target: DeployTarget,
+  request: DeployRequest,
+  onEvent: (event: DeployEvent) => void,
+  deps: DeployServiceDeps,
+): Promise<DeployResult> {
+  try {
+    return await target.deploy(request, onEvent);
+  } catch (error) {
+    if ((error as { code?: unknown } | null)?.code !== "deploy-locked") throw error;
+    const holder = await target.status(request.deployment).then(
+      (status) => status.lockedBy,
+      () => undefined,
+    );
+    if (holder === undefined) throw error;
+    throw lockedError(request.deployment.name, holder, deps);
+  }
 }
 
 function lockedError(name: string, holder: DeployLockHolder, deps: DeployServiceDeps): KindedError {

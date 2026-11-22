@@ -234,7 +234,7 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
     return `/accounts/${encodeURIComponent(accountId)}/workers/scripts/${encodeURIComponent(worker)}`;
   }
 
-  const { workersDevAddress, ...manage } = manageCalls({
+  const manage = manageCalls({
     get,
     request,
     failed,
@@ -246,6 +246,7 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
     ...manage,
     ...objectCalls({ send, failed }),
     ...lockCalls({ query, batch, failed, databaseId }),
+    databaseId,
     async listAccounts() {
       const accounts: CloudflareAccount[] = [];
       for (let page = 1; page <= maxAccountPages; page += 1) {
@@ -379,7 +380,7 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
         enabled: true,
         previews_enabled: false,
       });
-      return workersDevAddress(accountId, worker);
+      return manage.workersDevAddress(accountId, worker);
     },
     async applyMigration(accountId, databaseName, migration: Migration) {
       const id = await requireDatabase(accountId, databaseName);
