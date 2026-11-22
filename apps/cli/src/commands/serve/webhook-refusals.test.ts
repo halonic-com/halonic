@@ -144,7 +144,7 @@ verifies("cli.commands.serve.webhook-refusals", () => {
       const { lines } = await printedFor(skipped, "/api/webhooks/reports/weekly-report");
 
       expect(lines).toEqual([
-        "Weekly report skipped a web request: a run of it is still going, and its overlap is skip.",
+        "Weekly report skipped a web request: its previous run is still going (overlap: skip).",
       ]);
     });
   });
