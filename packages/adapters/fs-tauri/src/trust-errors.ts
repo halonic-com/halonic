@@ -28,6 +28,16 @@ export function dataFolderRefusal(writes: boolean, message: string): TrustStoreE
 }
 
 /**
+ * The shell's `profile_setting` refusal of a trust command: `HALONIC_HOME` is a relative path, so
+ * the profile can't be found until the person changes it (HAL-15963). Its message is the CLI's
+ * sentence and fix, which names only that setting, so it is the main text, and stays in the
+ * details as an `io` refusal's message does (decided on HAL-15964).
+ */
+export function profileSettingRefusal(message: string): TrustStoreError {
+  return new TrustStoreError("unavailable", message, message);
+}
+
+/**
  * A call the shell gave no usable answer to; `reason` is its rejection, when there was one. It is
  * a bug the person can't fix, so it is `internal`, in microcopy 22 F13's words, and it never says
  * the desktop app didn't answer: the person is looking at it (C613 12).

@@ -1,7 +1,7 @@
 import type { TrustRecord, TrustStore } from "@halonicjs/ports";
 import { type ErrorKind, KindedError } from "@halonicjs/std";
 import { isTrustRefusal, type TauriShell, type TrustRefusal, trustCommands } from "./shell.ts";
-import { dataFolderRefusal, noAnswer } from "./trust-errors.ts";
+import { dataFolderRefusal, noAnswer, profileSettingRefusal } from "./trust-errors.ts";
 
 /**
  * Trust records for the Studio desktop app: every call goes to one of the
@@ -127,13 +127,18 @@ const writingCommands: readonly string[] = [trustCommands.grant, trustCommands.r
  * only in the details: the adapter can't vouch for it (C613 12). An `io`
  * refusal's message is the shell's log text, such as an OS error with a path
  * (C548 5), so it too is in Halonic's words, with the message in the details.
+ * A `profile_setting` refusal's message is the CLI's sentence and fix for a
+ * relative `HALONIC_HOME`, so it is the main text (HAL-15963).
  * Any other refusal keeps the shell's message, which names no secret.
  */
 function trustFailure(reason: unknown, command: string, asked: unknown): Error {
   if (!isTrustRefusal(reason)) {
     return noAnswer("trust call", reason);
   }
-  if (reason.kind === "io" || reason.kind === "profile_setting") {
+  if (reason.kind === "profile_setting") {
+    return profileSettingRefusal(reason.message);
+  }
+  if (reason.kind === "io") {
     return dataFolderRefusal(writingCommands.includes(command), reason.message);
   }
   if (reason.kind !== "unreadable") {

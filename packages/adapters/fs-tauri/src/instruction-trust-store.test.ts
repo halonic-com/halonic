@@ -126,6 +126,19 @@ verifies("fs-tauri.instruction-trust-commands", () => {
       });
     });
 
+    it("makes a relative HALONIC_HOME's sentence and fix the main text, and keeps it in the details (HAL-15963)", async () => {
+      const message =
+        'HALONIC_HOME must be a full path, not "~/.halonic". Use $HOME instead: HALONIC_HOME="$HOME/.halonic".';
+      const store = new TauriInstructionTrustStore({
+        invoke: async () => Promise.reject({ kind: "profile_setting", message }),
+      });
+      for (const call of [() => store.remove(coder), () => store.get(coder)]) {
+        const error = await rejection(call());
+        expect(errorKindOf(error)).toBe("unavailable");
+        expect(error).toMatchObject({ message, details: message });
+      }
+    });
+
     it("keeps the text of a call the shell didn't answer only in the details", async () => {
       const store = new TauriInstructionTrustStore(
         new FakeInstructionTrustShell({ granted: false }),
