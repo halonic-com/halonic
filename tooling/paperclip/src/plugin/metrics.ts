@@ -1,5 +1,5 @@
 import type { PluginMetricsClient } from "@paperclipai/plugin-sdk";
-import type { GitHubGet } from "../pr-watcher/github.ts";
+import type { Fetch, GitHubGet } from "../pr-watcher/github.ts";
 
 /**
  * The numbers for the before/after comparison in the tools plan (HAL-15920):
@@ -11,6 +11,18 @@ import type { GitHubGet } from "../pr-watcher/github.ts";
 /** The part of the plugin context that writes metrics, so tests can fake it. */
 export interface MetricsApi {
   readonly metrics: Pick<PluginMetricsClient, "write">;
+}
+
+/** A `fetch` that counts its requests, failed ones included: REST and GraphQL alike. */
+export function countingFetch(fetch: Fetch): { fetch: Fetch; requests: () => number } {
+  let requests = 0;
+  return {
+    fetch: (url, init) => {
+      requests += 1;
+      return fetch(url, init);
+    },
+    requests: () => requests,
+  };
 }
 
 /** A GitHub reader that counts its requests, failed ones included. */

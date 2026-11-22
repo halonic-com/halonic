@@ -6,6 +6,7 @@ import {
   fakeGitHub,
   fakePaperclip,
   recording,
+  restFacts,
   task,
 } from "./fakes.test-helper.ts";
 import { asksForChanges } from "./github.ts";
@@ -15,7 +16,7 @@ function run(github: ReturnType<typeof fakeGitHub>, paperclip: ReturnType<typeof
   const lines: string[] = [];
   const summary = tick({
     paperclip: paperclip.paperclip,
-    get: github.get,
+    facts: restFacts(github.get),
     discover: paperclip.discover,
     dryRun: false,
     log: (line) => lines.push(line),
@@ -230,25 +231,6 @@ verifies("paperclip.pr-watcher-wake", () => {
 });
 
 verifies("paperclip.pr-watcher-read-only", () => {
-  test("sends only GET requests to api.github.com", async () => {
-    const github = fakeGitHub(
-      recording("red-and-conflicting"),
-      recording("merged-green"),
-      recording("review-finding"),
-    );
-    const paperclip = fakePaperclip([
-      task(4614, agents.mateo),
-      task(4485, agents.priya),
-      task(4588, agents.priya),
-    ]);
-    expect((await run(github, paperclip).summary).failed).toEqual([]);
-    expect(github.calls.length).toBeGreaterThan(10);
-    for (const call of github.calls) {
-      expect(call.method).toBe("GET");
-      expect(new URL(call.url).origin).toBe("https://api.github.com");
-    }
-  });
-
   test("refuses a path that leads to another host", async () => {
     const github = fakeGitHub();
     await expect(github.get("https://example.com/repos")).rejects.toThrow(

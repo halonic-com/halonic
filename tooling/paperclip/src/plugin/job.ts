@@ -6,16 +6,20 @@ import {
   type PluginLogger,
   type PluginSecretsClient,
 } from "@paperclipai/plugin-sdk";
-import { discoverPulls, type FoundPulls } from "../pr-watcher/discover.ts";
-import { gitHubReader } from "../pr-watcher/github.ts";
+import { discoverPulls } from "../pr-watcher/discover.ts";
+import { baseGreenSince, snapshotFacts } from "../pr-watcher/facts.ts";
+import { ciOk, gitHubReader } from "../pr-watcher/github.ts";
 import { countMonitors, type MonitorCounts } from "../pr-watcher/monitors.ts";
 import type { TaskRow } from "../pr-watcher/paperclip.ts";
 import { type TickSummary, tick } from "../pr-watcher/watch.ts";
+import { gitHubQueryReader } from "../snapshot/graphql.ts";
+import { takeSnapshot } from "../snapshot/read.ts";
+import { type StateApi, saveSnapshot } from "../snapshot/store.ts";
 import { type HostApi, paperclipHost } from "./host.ts";
-import { countingGet, type MetricsApi, writeMetrics } from "./metrics.ts";
+import { countingFetch, type MetricsApi, writeMetrics } from "./metrics.ts";
 
 /** The part of the plugin context the job uses, so tests can fake it. */
-export interface JobApi extends HostApi, MetricsApi {
+export interface JobApi extends HostApi, MetricsApi, StateApi {
   readonly companies: Pick<PluginCompaniesClient, "list">;
   readonly config: PluginConfigClient;
   readonly secrets: Pick<PluginSecretsClient, "resolve">;
@@ -136,18 +140,24 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
   }
   // Read at run time and never logged or kept (the SDK's secrets rule).
   const token = await ctx.secrets.resolve(settings.token, { companyId });
-  const { get, requests } = countingGet(
-    gitHubReader({
-      fetch: (url, init) =>
-        ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) }),
-      token,
-    }),
+  const { fetch, requests } = countingFetch((url, init) =>
+    ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) }),
   );
+  const get = gitHubReader({ fetch, token });
+  const query = gitHubQueryReader({ fetch, token });
+  const fallback = (repo: string, sha: string, name: string) => ciOk(get, repo, sha, name);
+  const started = Date.now();
+  const snapshot = await takeSnapshot({ query, repos: settings.repos, now, fallback });
+  // The watcher works from the snapshot in memory; only its later readers miss a failed save.
+  await saveSnapshot(ctx, companyId, snapshot).catch((error: unknown) => {
+    ctx.logger.error(`PR watcher: couldn't save the GitHub snapshot: ${(error as Error).message}`, {
+      companyId,
+    });
+  });
+  const found = discoverPulls(snapshot);
   const paperclip = paperclipHost(ctx, companyId);
   // Kept from the pass, so the monitors are counted without reading the tasks twice.
   let tasks: TaskRow[] = [];
-  let found: FoundPulls = new Map();
-  const started = Date.now();
   const summary = await tick({
     paperclip: {
       ...paperclip,
@@ -156,11 +166,9 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
         return tasks;
       },
     },
-    get,
-    discover: async () => {
-      found = await discoverPulls(get, settings.repos, now);
-      return found;
-    },
+    discover: async () => found,
+    // One read of each base branch's newest green run per pass, shared by every task.
+    facts: snapshotFacts({ snapshot, query, fallback, greenSince: baseGreenSince(get) }),
     dryRun: settings.dryRun,
     log: (line) => ctx.logger.info(line, { companyId }),
   });

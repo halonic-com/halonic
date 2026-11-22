@@ -30,7 +30,13 @@ export {
   type PullRef,
   taskOfBranch,
 } from "./pr-watcher/discover.ts";
-export { type BaseGreenSince, baseGreenSince, pullFacts } from "./pr-watcher/facts.ts";
+export {
+  type BaseGreenSince,
+  baseGreenSince,
+  type PullFactsReader,
+  pullKey,
+  snapshotFacts,
+} from "./pr-watcher/facts.ts";
 export {
   ciOk,
   everyPage,
@@ -89,3 +95,4 @@ export type {
   SnapshotRepo,
 } from "./snapshot/shape.ts";
 export { snapshotVersion } from "./snapshot/shape.ts";
+export { loadSnapshot, type StateApi, saveSnapshot } from "./snapshot/store.ts";

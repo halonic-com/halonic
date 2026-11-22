@@ -94,6 +94,82 @@ export function fakeMetrics(fail = false) {
   return { metrics, written };
 }
 
+/** Plugin state in memory, keyed by the whole scope key. */
+export function fakeState() {
+  const saved = new Map<string, unknown>();
+  const state = {
+    get: async (key: unknown) => saved.get(JSON.stringify(key)) ?? null,
+    set: async (key: unknown, value: unknown) => {
+      saved.set(JSON.stringify(key), value);
+    },
+  };
+  return { state, saved };
+}
+
+/** A GraphQL answer from `answers["graphql <operation>"]`, wrapped as GitHub wraps it. */
+function graphqlAnswer(answers: Record<string, unknown>, body: unknown): unknown {
+  const { query } = JSON.parse(String(body)) as { query: string };
+  const data = answers[`graphql ${/query (\w+)/.exec(query)?.[1] ?? ""}`];
+  return data === undefined ? undefined : { data };
+}
+
+const noPulls = { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] };
+
+/**
+ * GitHub's answers for one merged pull request: #4485 on Priya's branch for
+ * HAL-4485, merged yesterday, with `ci-ok` green on its merge commit (the
+ * recording `merged-green`, as GraphQL answers it).
+ */
+export const mergedGreenOnGitHub: Record<string, unknown> = {
+  "graphql OpenPulls": {
+    repository: {
+      defaultBranchRef: { name: "main" },
+      mergeQueue: { entries: { nodes: [] } },
+      pullRequests: noPulls,
+    },
+  },
+  "graphql ClosedPulls": {
+    repository: {
+      pullRequests: {
+        ...noPulls,
+        nodes: [
+          {
+            number: 4485,
+            url: "https://github.com/halonic-com/halonic/pull/4485",
+            state: "MERGED",
+            updatedAt: "2026-11-21T20:48:17Z",
+            mergedAt: "2026-11-21T20:48:17Z",
+            headRefName: "priya/HAL-4485-month-spend",
+            headRefOid: "c0f13fae92570e7a349ca2c9b2d74b057a8808e5",
+            baseRefName: "main",
+            headRepository: { nameWithOwner: "halonic-com/halonic" },
+            mergeCommit: { oid: "ebcd1fab9b028303a9c73e882b58b2811f9c4beb" },
+          },
+        ],
+      },
+    },
+  },
+  "graphql CommitChecks": {
+    repository: {
+      c0: {
+        statusCheckRollup: {
+          contexts: {
+            pageInfo: { hasNextPage: false },
+            nodes: [
+              {
+                name: "ci-ok",
+                status: "COMPLETED",
+                conclusion: "SUCCESS",
+                startedAt: "2026-11-21T20:47:54Z",
+              },
+            ],
+          },
+        },
+      },
+    },
+  },
+};
+
 /** One GitHub request the job sent. */
 export interface SentRequest {
   readonly url: string;
@@ -120,6 +196,7 @@ export function fakeJobContext(options: {
   const resolved: unknown[] = [];
   const signals: unknown[] = [];
   const { metrics, written } = fakeMetrics(options.metricsFail === true);
+  const { state, saved } = fakeState();
   const ctx = {
     ...options.host,
     companies: {
@@ -156,7 +233,10 @@ export function fakeJobContext(options: {
         });
         signals.push(init?.signal);
         const { pathname, search } = new URL(url);
-        const body = options.answers[pathname + search];
+        const body =
+          pathname === "/graphql"
+            ? graphqlAnswer(options.answers, init?.body)
+            : options.answers[pathname + search];
         return body === undefined
           ? new Response(null, { status: 404 })
           : new Response(JSON.stringify(body), { status: 200 });
@@ -167,6 +247,7 @@ export function fakeJobContext(options: {
       error: (message: string, meta?: unknown) => logs.push({ level: "error", message, meta }),
     },
     metrics,
+    state,
   };
-  return { ctx: ctx as unknown as JobApi, sent, logs, resolved, signals, metrics: written };
+  return { ctx: ctx as unknown as JobApi, sent, logs, resolved, signals, metrics: written, saved };
 }
