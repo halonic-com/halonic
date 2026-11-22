@@ -1,4 +1,4 @@
-import type { FirstRunKeyProvider, LocalModels, ModelChoice } from "@halonicjs/app";
+import type { ChoiceKey, FirstRunKeyProvider, LocalModels, ModelChoice } from "@halonicjs/app";
 import { SecretText } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,7 +37,7 @@ function fakeService(
 ) {
   const tests: {
     choice: ModelChoice;
-    key: SecretText | undefined;
+    key: ChoiceKey | undefined;
     answer: ReturnType<typeof later<ModelChoiceTest>>;
   }[] = [];
   const service: ModelChoiceService = {
