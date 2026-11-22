@@ -584,6 +584,13 @@ Function .onInit
       ${Else}
         StrCpy $SandboxState ${BST_CHECKED}
       ${EndIf}
+    ${ElseIf} $R0 == "again"
+    ${AndIf} $UpdateMode = 1
+      ; Halonic change (HAL-5404): an update whose srt needs a higher setup
+      ; version sets the sandbox up again, where it is set up.
+      !ifdef SANDBOX_STEP
+        Call SetUpAgain
+      !endif
     ${EndIf}
   ${EndIf}
 
@@ -1229,6 +1236,27 @@ Function RefuseOlderSetupVersion
     ${EndIf}
     SetErrorLevel 2
     Quit
+  ${EndIf}
+FunctionEnd
+
+; Halonic change (HAL-5404): `/SANDBOX=again`, which the updater passes when
+; the update's latest.json says its srt needs a higher setup version. That
+; number isn't signed, so the installer decides by itself: the sandbox step
+; runs, with its one administrator prompt, only where srt's marker says the
+; sandbox is set up for an older setup version than this installer's srt
+; needs. A computer that never set it up, or one already set up for this
+; version, gets no prompt. A silent update without administrator rights
+; can't ask, as with `/SANDBOX=1`.
+Function SetUpAgain
+  System::Call 'shell32::IsUserAnAdmin() i .R1'
+  ${If} ${Silent}
+  ${AndIf} $R1 = 0
+    Return
+  ${EndIf}
+  StrCpy $R0 "-SetUpAgain -SetupVersion ${SRTSETUPVERSION}"
+  Call CheckSetupVersion
+  ${If} $R1 = 0
+    StrCpy $SandboxState ${BST_CHECKED}
   ${EndIf}
 FunctionEnd
 

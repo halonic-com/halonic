@@ -30,6 +30,8 @@ $profileFolder = Join-Path $env:LOCALAPPDATA 'halonic'
 $record = Join-Path $profileFolder 'updates\updater.json'
 $driver = Join-Path $PSScriptRoot 'update-driver.mjs'
 $studio = Resolve-Path (Join-Path $PSScriptRoot '../..')
+# The setup version this build's srt needs, from its one record (HAL-5404).
+$srtSetupVersion = (Get-Content (Join-Path $studio '../../packages/adapters/sandbox-srt/windows-setup-version.json') -Raw | ConvertFrom-Json).setupVersion
 
 # The test key has no password. Signs with --app-version, as the release
 # does: the app requires the signature to name the version.
@@ -51,7 +53,8 @@ function Set-Manifest([string]$Version, [string]$FileName, [string]$Signature) {
     pub_date  = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     platforms = @{ 'windows-x86_64' = @{ url = "$address/$FileName"; signature = $Signature } }
     # As the release's manifest has it (HAL-5404): the updater must still accept it.
-    halonic   = @{ srtWindowsSetupVersion = 3 }
+    # The same number as this build's, so no update here sets the sandbox up again.
+    halonic   = @{ srtWindowsSetupVersion = $srtSetupVersion }
   }
   $manifest | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $Serve 'latest.json') -Encoding utf8NoBOM
 }

@@ -20,12 +20,17 @@
 # -SetupVersion. A missing record is from a version before the record, and
 # those all pinned an srt with setup version 3 (0.0.81 and 0.0.82).
 #
+# -SetUpAgain asks another question, for an update that raises the setup
+# version (HAL-5404): is a sandbox set up for an older one? See
+# Invoke-SetUpAgainCheck.
+#
 # The installer runs it from its own plugins folder (installer.nsi,
 # CheckSetupVersion). Dot-sourced, it only defines its functions, so
 # test-setup-guard.ps1 can point them at a key of its own.
 param(
   [string]$SetupVersion,
-  [string]$RecordFile
+  [string]$RecordFile,
+  [switch]$SetUpAgain
 )
 
 # The setup version of the versions kept before the record existed.
@@ -36,7 +41,9 @@ function Read-SetupRecord([string]$RecordFile) {
   return ([string](Get-Content -LiteralPath $RecordFile -Raw)).Trim()
 }
 
-function Invoke-SetupGuard([string]$SetupVersion, [Microsoft.Win32.RegistryHive]$Hive, [string]$KeyPath) {
+# Reads the setup version and srt's marker: @(code, reason) when that
+# already answers (2: can't tell, 0: no sandbox), else @($null, wanted, marker).
+function Read-Marker([string]$SetupVersion, [Microsoft.Win32.RegistryHive]$Hive, [string]$KeyPath) {
   $wanted = 0
   if (-not [int]::TryParse($SetupVersion, [ref]$wanted) -or $wanted -lt 1) {
     return @(2, "the setup version '$SetupVersion' isn't a whole number")
@@ -54,13 +61,36 @@ function Invoke-SetupGuard([string]$SetupVersion, [Microsoft.Win32.RegistryHive]
   if ($marker -isnot [int] -and $marker -isnot [long]) {
     return @(2, "the sandbox's setup version isn't a whole number")
   }
+  return @($null, $wanted, $marker)
+}
+
+function Invoke-SetupGuard([string]$SetupVersion, [Microsoft.Win32.RegistryHive]$Hive, [string]$KeyPath) {
+  $code, $wanted, $marker = Read-Marker $SetupVersion $Hive $KeyPath
+  if ($null -ne $code) { return @($code, $wanted) }
   if ($marker -le $wanted) { return @(0, "the sandbox was set up for setup version $marker") }
   return @(1, "the sandbox was set up for setup version $marker, newer than setup version $wanted")
+}
+
+# -SetUpAgain (HAL-5404): whether an update to a Halonic whose srt needs
+# -SetupVersion sets the sandbox up again. 0 only when a sandbox is set up
+# for an older setup version; 1 when none is set up or it is already set up
+# for this one or a newer one; 2 when it can't tell. The update's own number
+# in latest.json isn't signed, so this decides, not the number Studio got.
+function Invoke-SetUpAgainCheck([string]$SetupVersion, [Microsoft.Win32.RegistryHive]$Hive, [string]$KeyPath) {
+  $code, $wanted, $marker = Read-Marker $SetupVersion $Hive $KeyPath
+  if ($code -eq 2) { return @(2, $wanted) }
+  if ($null -ne $code) { return @(1, $wanted) }
+  if ($marker -lt $wanted) { return @(0, "the sandbox was set up for setup version $marker, older than setup version $wanted") }
+  return @(1, "the sandbox is already set up for setup version $marker")
 }
 
 if ($MyInvocation.InvocationName -eq '.') { return }
 
 if ($RecordFile) { $SetupVersion = Read-SetupRecord $RecordFile }
-$code, $reason = Invoke-SetupGuard -SetupVersion $SetupVersion -Hive LocalMachine -KeyPath 'SOFTWARE\sandbox-runtime'
+if ($SetUpAgain) {
+  $code, $reason = Invoke-SetUpAgainCheck -SetupVersion $SetupVersion -Hive LocalMachine -KeyPath 'SOFTWARE\sandbox-runtime'
+} else {
+  $code, $reason = Invoke-SetupGuard -SetupVersion $SetupVersion -Hive LocalMachine -KeyPath 'SOFTWARE\sandbox-runtime'
+}
 Write-Output $reason
 exit $code

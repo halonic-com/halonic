@@ -159,7 +159,10 @@ raise (`studio.installer-rollback-guard`): it reads the machine's setup version 
 key and runs no program for it. `windows-setup-version.json` records the pinned
 sandbox-runtime version and the setup version its `srt-win` needs (HAL-5404). The release writes
 that number into the updater's `latest.json` as `halonic.srtWindowsSetupVersion`, so the updater
-can tell when an update changes it. When you bump sandbox-runtime, update both fields: the unit
+can tell when an update changes it. When an update raises it, About Halonic says the update asks
+for administrator rights once, where the sandbox is set up, and the updater passes `/SANDBOX=again`
+to the installer, which runs its sandbox step only where srt's marker is older than its own srt
+needs (`studio.update-setup-again`). When you bump sandbox-runtime, update both fields: the unit
 test fails while the version differs from the pin, and the `sandbox-windows` CI job checks the
 setup version against what the real `srt-win` reports after its install, and the registry value
 the installer reads against the one `srt-win` reports. Don't record a setup version above 3 until a

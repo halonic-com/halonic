@@ -24,6 +24,10 @@ pub struct UpdateStatus {
     /// downloads and installs nothing, and shows `command` instead of
     /// "Restart to update" (HAL-1452).
     pub managed: Option<Managed>,
+    /// The update found or ready raises srt's Windows setup version, so
+    /// installing it asks for administrator rights once more where the agent
+    /// sandbox is set up (HAL-5404). Always false off Windows.
+    pub sandbox_setup_again: bool,
     pub state: UpdateState,
 }
 
