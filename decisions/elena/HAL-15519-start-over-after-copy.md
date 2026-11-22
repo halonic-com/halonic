@@ -3,6 +3,7 @@
 - Task: HAL-15519
 - Approval: the plan on HAL-15519, approved by Liam on HAL-15521 (a fix to an approved flow that keeps the board's words, so a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:l+DlnO+B6qRAFNYts9qj846tDcdpWK5fTerClmbuTbQpLw8/KeWrvoeiOBPeuv1RjKwKBjOI/nLLeG7nPWujDQ==
 
 ## What changes
 
