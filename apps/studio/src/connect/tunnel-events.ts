@@ -87,10 +87,10 @@ export class TunnelEvents {
 }
 
 /**
- * Whether the connection's session is gone with this status. The shell sends `connecting` just
- * before a new session opens, and `connected` once the host said `welcome` on it; `paused` only
- * says the app went to the background.
+ * Whether the connection's session is gone with this status: the same rule as the shell's
+ * `on_status`, which keeps a session only while `connecting` or `connected`. On `paused` the
+ * tunnel has already dropped the connection, so a session kept past it would be a dead one.
  */
 function endsSession(status: PhoneStatus): boolean {
-  return status.state !== "connected" && status.state !== "paused";
+  return status.state !== "connecting" && status.state !== "connected";
 }

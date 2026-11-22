@@ -118,6 +118,16 @@ verifies("studio.connect.phone-tunnel-messages", () => {
       expect(record(tunnel)).toEqual([{ kind: "status", state: "reconnecting" }]);
     });
 
+    it("doesn't hand a later subscriber a session the app's pause ended", () => {
+      const { shell, tunnel } = tunnelWith({ phone_tunnel_watch: true });
+      record(tunnel);
+      shell.sendStatus(0, "c1", { state: "connecting" });
+      shell.sendEvent(1, { kind: "session-opened", computer: "c1", generation: 3 });
+      shell.sendStatus(2, "c1", { state: "connected" });
+      shell.sendStatus(3, "c1", { state: "paused" });
+      expect(record(tunnel)).toEqual([]);
+    });
+
     it("shares the screens' one watch channel", () => {
       const { shell, phone, tunnel } = tunnelWith({ phone_tunnel_watch: true });
       phone.onStatus(() => undefined);
