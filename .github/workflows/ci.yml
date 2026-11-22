@@ -6,21 +6,22 @@
 # macOS and Windows jobs don't run in merge groups (board decision on
 # HAL-5327, 19 Nov): the queue tests the full Linux suite only, so it doesn't
 # wait on the few macOS and Windows runners. Pull requests still run them as
-# before, and every push to main runs all of them. The daily "Failures on
-# main, by area" job in scheduled.yml reads that run and opens a
-# nightly:<area> issue for each failing job, which the area's owner gets as a
-# task. A skipped job counts as passed for ci-ok.
+# before. A skipped job counts as passed for ci-ok.
+#
+# On main they run hourly instead of on every push (board decision,
+# HAL-15889, 22 Nov): with a merge every two minutes, each push's macOS and
+# Windows jobs were replaced by the next push's before they finished, and
+# almost no push run tested them to the end. The scheduled run (and a manual
+# one, workflow_dispatch) on the newest main runs only that set, the jobs
+# that skip in merge groups; its Linux jobs skip, since the merge queue
+# tested that code. Its concurrency group never cancels a run in progress:
+# the next one waits, and a newer one replaces only the one waiting. The
+# daily "Failures on main, by area" job in scheduled.yml reads the newest
+# hourly run with the newest push run and opens a nightly:<area> issue for
+# each failing job, which the area's owner gets as a task.
 #
 # Pushes to main don't wait for each other (board decision, HAL-14831; HAL-15187):
 # each push's run is keyed on its commit, so its Linux jobs start at once.
-# The macOS and Windows jobs keep one group per job for all pushes to main,
-# shared across runs, so at most one runs and one waits, and a newer push's
-# job replaces the one waiting. Running them on every merge would take more
-# macOS runners than GitHub gives us. ci-ok counts such a replaced job as
-# skipped if it never started: the newer push tests the same code and more.
-# One that started and timed out still fails ci-ok. On pull requests,
-# merge groups and release branches the job groups are the run's own, so
-# nothing changes there.
 #
 # Our own CI server (board decision, HAL-14831, 21 Nov; plan and Julian's
 # security review on that task): the jobs with the long `runs-on` below run
@@ -45,7 +46,7 @@
 # jobs on our own CI server that passed there (fast, build, trace, and
 # scaffold, e2e and docs when the group ran them) skip on the push. A job the
 # group skipped by area still runs here, so a gap in the area rules still
-# shows on main. The GitHub-hosted, macOS and Windows jobs always run, as
+# shows on main. The GitHub-hosted jobs always run, as
 # does everything when there's no such run (a bypass merge, a direct push, a
 # failed or lost group), when the lookup fails, on a re-run, or when the repo
 # variable CI_MAIN_SKIP_MERGED is "off".
@@ -61,6 +62,10 @@ on:
   merge_group:
   push:
     branches: [main, "release/**"]
+  # The macOS and Windows set on the newest main (see the top of this file).
+  schedule:
+    - cron: "5 * * * *"
+  workflow_dispatch:
 
 permissions: {}
 
@@ -68,8 +73,11 @@ permissions: {}
 # queue rebuilds a group on the same main commit, the branch name repeats, and
 # the new run sat "pending" behind the old one (20 Nov, HAL-14115). A push to
 # main is keyed on its commit too, so it doesn't wait behind the previous
-# push's Windows jobs (see the top of this file). Release branches keep one
-# run at a time.
+# push's Linux jobs. Release branches keep one run at a time, and so do the
+# hourly and manual runs (keyed on their branch, `refs/heads/main` for the
+# hourly one): only pull requests cancel a run in progress, so a new hourly
+# run waits for the one running, and a newer one replaces only the one
+# waiting (HAL-15889).
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || (github.event_name == 'push' && github.ref == 'refs/heads/main' && github.sha) || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -190,8 +198,9 @@ jobs:
             # of the entry ahead of it in the queue. That diff is exactly
             # what this group adds, so it is filtered by area the same way
             # as a pull request. Each entry ahead checks its own areas before
-            # it can merge, and every push to main runs every job, so a gap
-            # in the area rules still shows on main. An empty diff or a diff
+            # it can merge, and every push to main (or, for macOS and
+            # Windows, the hourly run) runs every job, so a gap in the area
+            # rules still shows on main. An empty diff or a diff
             # that can't be read runs every job. macOS and Windows jobs skip
             # in merge groups whatever the areas say (see the top of this file).
             if changed=$(git diff --name-only --no-renames "$BASE...HEAD") && [ -n "$changed" ]; then
@@ -287,7 +296,7 @@ jobs:
     name: Fast gates
     # Skips on a push to main when its merge group passed it (`merged`).
     needs: merged
-    if: ${{ !cancelled() && !contains(needs.merged.outputs.passed, ' fast ') }}
+    if: ${{ !cancelled() && !contains(needs.merged.outputs.passed, ' fast ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
     # A large slot on our own CI server: on a 2-CPU slot it took 50 s, as
     # long as on GitHub (HAL-14831).
     runs-on: ${{ vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
@@ -396,6 +405,7 @@ jobs:
     # third-party code: only the repo's own script on Node, so the secret is
     # never near a dependency. Prints locations, never a term or a secret.
     name: Leak guard
+    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-24.04
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
@@ -509,6 +519,7 @@ jobs:
 
   gitleaks:
     name: Secret scan (gitleaks)
+    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -534,7 +545,7 @@ jobs:
     # the group changes `.github/`.
     name: Workflow lint (zizmor)
     needs: changes
-    if: github.event_name != 'merge_group' || needs.changes.outputs.workflows == 'true'
+    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && (github.event_name != 'merge_group' || needs.changes.outputs.workflows == 'true')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -555,7 +566,7 @@ jobs:
     name: Typecheck, lint, test, build (${{ matrix.shard }})
     # Skips on a push to main when its merge group passed it (`merged`).
     needs: merged
-    if: ${{ !cancelled() && !contains(needs.merged.outputs.passed, ' build ') }}
+    if: ${{ !cancelled() && !contains(needs.merged.outputs.passed, ' build ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
     runs-on: ${{ vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     # The longest shard since the split took 7.3 minutes (20 Nov, 244 runs).
     timeout-minutes: 15
@@ -866,7 +877,7 @@ jobs:
   trace:
     name: Requirements and their tests (trace)
     needs: [merged, build]
-    if: ${{ !cancelled() && github.event_name != 'pull_request' && !contains(needs.merged.outputs.passed, ' trace ') }}
+    if: ${{ !cancelled() && github.event_name != 'pull_request' && !contains(needs.merged.outputs.passed, ' trace ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
     runs-on: ${{ vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 10
     permissions:
@@ -1333,7 +1344,7 @@ jobs:
     # hands an agent a package that fails.
     name: Empty package and feature pass every check
     needs: [changes, merged]
-    if: ${{ !cancelled() && needs.changes.outputs.scaffold == 'true' && needs.changes.outputs.full == 'true' && !contains(needs.merged.outputs.passed, ' scaffold ') }}
+    if: ${{ !cancelled() && needs.changes.outputs.scaffold == 'true' && needs.changes.outputs.full == 'true' && !contains(needs.merged.outputs.passed, ' scaffold ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
     runs-on: ${{ vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     timeout-minutes: 35
     permissions:
@@ -1385,7 +1396,7 @@ jobs:
     # tauri-windows.
     name: Tauri shell (Rust checks)
     needs: changes
-    if: needs.changes.outputs.tauri == 'true'
+    if: needs.changes.outputs.tauri == 'true' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -1579,13 +1590,9 @@ jobs:
     # so they run only in the Linux job.
     name: Tauri shell on Windows (build and tests)
     needs: changes
-    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
+    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: windows-2025
     timeout-minutes: 40
-    # One waiting run on pushes to main (see the top of this file).
-    concurrency:
-      group: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'ci-main-tauri-windows' || format('ci-{0}-tauri-windows', github.run_id) }}
-      cancel-in-progress: false
     permissions:
       contents: read
     defaults:
@@ -1918,13 +1925,9 @@ jobs:
     # and its dependencies, so no cache is restored.
     name: Keychain contract on macOS
     needs: changes
-    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
+    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: macos-15
     timeout-minutes: 15
-    # One waiting run on pushes to main (see the top of this file).
-    concurrency:
-      group: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'ci-main-tauri-keychain-macos' || format('ci-{0}-tauri-keychain-macos', github.run_id) }}
-      cancel-in-progress: false
     permissions:
       contents: read
     defaults:
@@ -1969,7 +1972,7 @@ jobs:
     # these tests fail on purpose (never skip). No cache is restored.
     name: Sandbox fence (bubblewrap)
     needs: changes
-    if: needs.changes.outputs.sandbox-fence == 'true'
+    if: needs.changes.outputs.sandbox-fence == 'true' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -2038,13 +2041,9 @@ jobs:
     # in the fence, not a flaky test. No cache is restored.
     name: Sandbox fence (Seatbelt)
     needs: changes
-    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
+    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: macos-15
     timeout-minutes: 15
-    # One waiting run on pushes to main (see the top of this file).
-    concurrency:
-      group: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'ci-main-sandbox-fence-macos' || format('ci-{0}-sandbox-fence-macos', github.run_id) }}
-      cancel-in-progress: false
     permissions:
       contents: read
     steps:
@@ -2104,13 +2103,9 @@ jobs:
     # script from passing silently. No cache: see the setup action.
     name: Sandbox fence (MXC on Windows 11)
     needs: changes
-    if: needs.changes.outputs.sandbox-mxc == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
+    if: needs.changes.outputs.sandbox-mxc == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: windows-11-arm
     timeout-minutes: 30
-    # One waiting run on pushes to main (see the top of this file).
-    concurrency:
-      group: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'ci-main-sandbox-mxc-fence' || format('ci-{0}-sandbox-mxc-fence', github.run_id) }}
-      cancel-in-progress: false
     permissions:
       contents: read
     steps:
@@ -2142,20 +2137,16 @@ jobs:
     # The Windows leg also runs the tests of the other packages that touch
     # paths, files and processes (HAL-4348, step 1 of HAL-4343; agent-host added in HAL-4672). Pull requests
     # run the listed packages that changed or depend on a changed one (merge
-    # groups skip this job, see the top of this file); a push to main runs the whole list plus the parity and
+    # groups skip this job, see the top of this file); the hourly run on main runs the whole list plus the parity and
     # integration kits. A test that fails there today skips itself with
     # `it.skipIf(process.platform === 'win32')` and a reason naming its task.
     # The job name is a required check (#1352): don't rename it without a
     # ruleset change.
     name: Sandbox packages on ${{ matrix.name }}
     needs: changes
-    if: (needs.changes.outputs.sandbox == 'true' || needs.changes.outputs.windows == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
+    if: (needs.changes.outputs.sandbox == 'true' || needs.changes.outputs.windows == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
-    # One waiting run on pushes to main (see the top of this file).
-    concurrency:
-      group: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && format('ci-main-sandbox-os-{0}', matrix.os) || format('ci-{0}-sandbox-os-{1}', github.run_id, matrix.os) }}
-      cancel-in-progress: false
     permissions:
       contents: read
     strategy:
@@ -2196,8 +2187,9 @@ jobs:
         run: >
           pnpm exec turbo run typecheck test --env-mode=loose --output-logs=new-only
           --filter=@halonicjs/adapter-git
-      # Which of the listed packages to test. On a push to main, all of them
-      # and the integration and parity test kits. On a pull request or in a merge group, the
+      # Which of the listed packages to test. In the hourly run on main or on
+      # a push to a release branch, all of them and the integration and
+      # parity test kits. On a pull request, the
       # listed packages among those Turbo says changed or depend on a changed
       # package since the base commit. A change to the workflow or the setup
       # action runs the whole list (no package changed, the job itself did),
@@ -2211,10 +2203,10 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: |
           list="@halonicjs/adapter-fs-node @halonicjs/adapter-harness-kit @halonicjs/adapter-harness-claude-code @halonicjs/adapter-harness-codex @halonicjs/adapter-mcp @halonicjs/workspace @halonicjs/app @halonicjs/app-agent-host halonic"
-          if [ "$EVENT" = "push" ]; then
+          if [ "$EVENT" != "pull_request" ]; then
             list="$list @halonicjs/testing-integration @halonicjs/testing-parity"
             picked="$list"
-            echo "Push to main: the whole list and the integration and parity test kits."
+            echo "Hourly run on main or a push: the whole list and the integration and parity test kits."
           else
             picked="$list"
             if [ -n "$BASE" ] && ! git diff --name-only --no-renames "$BASE...HEAD" | grep -qE '^(\.github/workflows/ci\.yml$|\.github/actions/)'; then
@@ -2294,13 +2286,9 @@ jobs:
     # the job summary.
     name: Sandbox fence on Windows (canary probes)
     needs: changes
-    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
+    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: windows-2025
     timeout-minutes: 30
-    # One waiting run on pushes to main (see the top of this file).
-    concurrency:
-      group: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'ci-main-sandbox-windows' || format('ci-{0}-sandbox-windows', github.run_id) }}
-      cancel-in-progress: false
     permissions:
       contents: read
     steps:
@@ -2375,17 +2363,14 @@ jobs:
     if: needs.changes.outputs.agent_host == 'true' && needs.changes.outputs.full == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
-    # One waiting run on pushes to main (see the top of this file).
-    concurrency:
-      group: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.os != 'ubuntu-24.04' && format('ci-main-agent-host-{0}', matrix.os) || format('ci-{0}-agent-host-{1}', github.run_id, matrix.os) }}
-      cancel-in-progress: false
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
-        # Linux only in a merge group: macOS and Windows don't run there (see the top of this file).
-        include: ${{ fromJSON(github.event_name == 'merge_group' && '[{"name":"Linux","os":"ubuntu-24.04"}]' || '[{"name":"Linux","os":"ubuntu-24.04"},{"name":"macOS","os":"macos-15"},{"name":"Windows","os":"windows-2025"}]') }}
+        # Linux only in a merge group and on a push to main, macOS and Windows
+        # only in the hourly run (see the top of this file).
+        include: ${{ fromJSON((github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && '[{"name":"Linux","os":"ubuntu-24.04"}]' || (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '[{"name":"macOS","os":"macos-15"},{"name":"Windows","os":"windows-2025"}]' || '[{"name":"Linux","os":"ubuntu-24.04"},{"name":"macOS","os":"macos-15"},{"name":"Windows","os":"windows-2025"}]') }}
     defaults:
       run:
         shell: bash
@@ -2420,7 +2405,7 @@ jobs:
     # published.
     name: WSL runtime (Linux agent host, packed)
     needs: changes
-    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
+    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -2461,13 +2446,9 @@ jobs:
     # and that the uninstaller removes the agent sandbox. Signing is later.
     name: Windows installer (build, install, uninstall)
     needs: [changes, wsl-runtime]
-    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
+    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: windows-2025
     timeout-minutes: 45
-    # One waiting run on pushes to main (see the top of this file).
-    concurrency:
-      group: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'ci-main-installer-windows' || format('ci-{0}-installer-windows', github.run_id) }}
-      cancel-in-progress: false
     permissions:
       contents: read
     defaults:
@@ -2706,13 +2687,9 @@ jobs:
     # only and are never uploaded.
     name: Windows update (0.1.0 to 0.1.1)
     needs: changes
-    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
+    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: windows-2025
     timeout-minutes: 75
-    # One waiting run on pushes to main (see the top of this file).
-    concurrency:
-      group: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'ci-main-update-windows' || format('ci-{0}-update-windows', github.run_id) }}
-      cancel-in-progress: false
     permissions:
       contents: read
     defaults:
@@ -2778,7 +2755,7 @@ jobs:
     # Java 17. The signed release build is HAL-1203.
     name: Android shell (debug APK)
     needs: changes
-    if: needs.changes.outputs.android == 'true' && needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.android == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     permissions:
@@ -2919,7 +2896,7 @@ jobs:
     # details.
     name: Android device keys (emulator)
     needs: [changes, android]
-    if: needs.changes.outputs.android == 'true' && needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.android == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     # GitHub's Ubuntu runners have /dev/kvm, which the emulator needs.
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -2958,7 +2935,7 @@ jobs:
     # builds the pages and serves them, and stops with the tests.
     name: Studio end-to-end (Playwright)
     needs: [changes, merged]
-    if: ${{ !cancelled() && needs.changes.outputs.studio == 'true' && needs.changes.outputs.full == 'true' && !contains(needs.merged.outputs.passed, ' e2e ') }}
+    if: ${{ !cancelled() && needs.changes.outputs.studio == 'true' && needs.changes.outputs.full == 'true' && !contains(needs.merged.outputs.passed, ' e2e ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
     runs-on: ${{ vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
@@ -3049,7 +3026,7 @@ jobs:
   docs:
     name: Docs build and link check
     needs: [changes, merged]
-    if: ${{ !cancelled() && needs.changes.outputs.docs == 'true' && !contains(needs.merged.outputs.passed, ' docs ') }}
+    if: ${{ !cancelled() && needs.changes.outputs.docs == 'true' && !contains(needs.merged.outputs.passed, ' docs ') && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
     runs-on: ${{ vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 2
     permissions: {}
@@ -3068,7 +3045,7 @@ jobs:
     # this repository counts, never a fork's. Off, with a notice, until
     # LIVE_CLOUD_ENABLED is "true".
     name: Live cloud suites passed
-    if: github.event_name != 'push'
+    if: github.event_name != 'push' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     permissions:
@@ -3237,7 +3214,7 @@ jobs:
     # pull request that adds `--lists-from` runs the old script, which reads
     # the pull request's lists.
     name: Policy rules (base commit's copy)
-    if: ${{ github.event_name != 'push' }}
+    if: ${{ github.event_name != 'push' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
     runs-on: ${{ vars.CI_RUNNER_SMALL != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_SMALL) || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
@@ -3313,11 +3290,7 @@ jobs:
     # job still fails it. In a merge-queue run nothing replaces the run, but
     # fail-fast (above) cancels it when a job fails. There ci-ok runs
     # anyway and reports that failure at once. ci-ok doesn't need fail-fast:
-    # a watcher that timed out or errored must not fail a green run. On a
-    # push to main, a macOS or Windows job that a newer push replaced before
-    # it started ends as cancelled without cancelling the run; it counts as
-    # skipped here (see the top of this file). One that started and then
-    # timed out still fails it.
+    # a watcher that timed out or errored must not fail a green run.
     if: ${{ github.event_name == 'merge_group' || !cancelled() }}
     needs:
       [
@@ -3353,56 +3326,14 @@ jobs:
       ]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
-    permissions:
-      actions: read # to tell a replaced job from a timed-out one on a push to main
+    permissions: {}
     steps:
       - name: Every job passed or was skipped
         env:
           NEEDS: ${{ toJSON(needs) }}
-          MAIN_PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          RUN_ID: ${{ github.run_id }}
-          RUN_ATTEMPT: ${{ github.run_attempt }}
-          # The jobs whose group all pushes to main share, with the start of
-          # their display name; keep in step with their `concurrency` blocks
-          # and `name:` lines.
-          SHARED: >-
-            {"tauri-windows": "Tauri shell on Windows (build and tests)",
-            "tauri-keychain-macos": "Keychain contract on macOS",
-            "sandbox-fence-macos": "Sandbox fence (Seatbelt)",
-            "sandbox-mxc-fence": "Sandbox fence (MXC on Windows 11)",
-            "sandbox-os": "Sandbox packages on ",
-            "sandbox-windows": "Sandbox fence on Windows (canary probes)",
-            "agent-host": "Agent host executable (",
-            "installer-windows": "Windows installer (build, install, uninstall)",
-            "update-windows": "Windows update (0.1.0 to 0.1.1)"}
         run: |
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
-          # A shared job replaced by a newer push to main was cancelled while
-          # it waited: it has no runner and no steps. A job that hit its
-          # timeout-minutes also ends as cancelled, but it started, so it
-          # still fails ci-ok. Each such job counts as replaced only if every
-          # cancelled leg of it never started.
-          replaced=""
-          if [ "$MAIN_PUSH" = "true" ]; then
-            cancelled=$(echo "$NEEDS" | jq -r --argjson shared "$SHARED" \
-              '[to_entries[] | select(.value.result == "cancelled") | .key as $k | select($shared | has($k)) | $k] | join(" ")')
-            if [ -n "$cancelled" ]; then
-              jobs=$(gh api --paginate "repos/$REPO/actions/runs/$RUN_ID/attempts/$RUN_ATTEMPT/jobs?per_page=100" --jq '.jobs[]' | jq -s .) \
-                || { echo "::error::Couldn't list this run's jobs to tell a replaced job from a timed-out one."; exit 1; }
-              replaced=$(echo "$jobs" | jq -r --argjson shared "$SHARED" --arg keys "$cancelled" \
-                '. as $jobs | [$keys | split(" ")[] | . as $k
-                  | [$jobs[] | select(.conclusion == "cancelled" and (.name | startswith($shared[$k])))] as $legs
-                  | select(($legs | length) > 0 and all($legs[]; (.steps | length) == 0 and (.runner_name // "") == ""))
-                  | $k] | join(" ")')
-            fi
-          fi
-          if [ -n "$replaced" ]; then
-            echo "::notice::Replaced by a newer push to main before it started, counted as skipped: $replaced."
-          fi
-          failed=$(echo "$NEEDS" | jq -r --arg replaced "$replaced" \
-            '($replaced | split(" ")) as $r | [to_entries[] | select(.value.result != "success" and .value.result != "skipped") | select(.key | IN($r[]) | not)] | length')
+          failed=$(echo "$NEEDS" | jq -r '[to_entries[] | select(.value.result != "success" and .value.result != "skipped")] | length')
           if [ "$failed" != "0" ]; then
             echo "::error::$failed required job(s) failed or were cancelled."
             exit 1

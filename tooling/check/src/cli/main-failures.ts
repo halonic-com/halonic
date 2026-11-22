@@ -5,6 +5,7 @@ import { parseArgs } from "node:util";
 import {
   type AreaReport,
   areaReports,
+  combinedRun,
   issueBody,
   type Job,
   parseAreaTable,
@@ -16,8 +17,9 @@ import { findRepoRoot } from "../lib/workspace.ts";
 /**
  * node tooling/check/src/cli/main-failures.ts [--repo owner/name] [--apply]
  *
- * Reads the newest finished push run of `ci.yml` on main and the newest
- * finished `android-screens.yml` run, maps each failed job to an area with
+ * Reads the newest finished push run of `ci.yml` on main, its newest
+ * finished hourly or manual run (the macOS and Windows jobs, HAL-15889) and
+ * the newest finished `android-screens.yml` run, maps each failed job to an area with
  * `docs/guides/area-owners.md` and prints one report per area. With
  * `--apply` it opens or updates one issue per failing area (label
  * `nightly:<area>`) and closes the issue of an area that is green again.
@@ -46,15 +48,17 @@ function jsonLines<T>(text: string): T[] {
 }
 
 /** Finished runs on main of the last 3 days, newest first, cancelled ones left out. */
-function finishedRuns(repo: string, workflow: string, event: string): RunSummary[] {
+function finishedRuns(repo: string, workflow: string, ...events: string[]): RunSummary[] {
   const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const runs = jsonLines<RunSummary>(
-    gh(
-      "api",
-      "--paginate",
-      `repos/${repo}/actions/workflows/${workflow}/runs?branch=main&event=${event}&status=completed&created=>=${since}&per_page=100`,
-      "--jq",
-      ".workflow_runs[] | {id, created_at, conclusion, html_url}",
+  const runs = events.flatMap((event) =>
+    jsonLines<RunSummary>(
+      gh(
+        "api",
+        "--paginate",
+        `repos/${repo}/actions/workflows/${workflow}/runs?branch=main&event=${event}&status=completed&created=>=${since}&per_page=100`,
+        "--jq",
+        ".workflow_runs[] | {id, created_at, conclusion, html_url}",
+      ),
     ),
   );
   return runs
@@ -87,6 +91,11 @@ function ciRun(repo: string, summary: RunSummary): Run {
     ),
   );
   return { url: summary.html_url, jobs };
+}
+
+/** A CI run's jobs, with another workflow's run as one more job. */
+function withWorkflow(run: Run, workflow: string, summary: RunSummary | undefined): Run {
+  return { url: run.url, jobs: [...run.jobs, ...workflowAsJob(workflow, summary)] };
 }
 
 /** Another workflow's run, as one job named by its file. */
@@ -167,26 +176,34 @@ if (import.meta.main) {
     readFileSync(join(findRepoRoot(), "docs/guides/area-owners.md"), "utf8"),
   );
   const [latestCi, earlierCi] = latestAndEarlier(finishedRuns(repo, "ci.yml", "push"));
+  const [latestHourly, earlierHourly] = latestAndEarlier(
+    finishedRuns(repo, "ci.yml", "schedule", "workflow_dispatch"),
+  );
   if (latestCi === undefined) {
     console.error("main-failures: no finished push run of ci.yml on main in 3 days.");
     process.exitCode = 1;
   } else {
+    if (latestHourly === undefined) {
+      console.warn(
+        "main-failures: no finished hourly run of ci.yml on main in 3 days; macOS and Windows go unread.",
+      );
+    }
     const [latestAndroid, earlierAndroid] = latestAndEarlier(
       finishedRuns(repo, "android-screens.yml", "workflow_dispatch"),
     );
-    const latestRun = ciRun(repo, latestCi);
-    const latest = {
-      url: latestRun.url,
-      jobs: [...latestRun.jobs, ...workflowAsJob("android-screens.yml", latestAndroid)],
-    };
-    const earlierRun = earlierCi === undefined ? undefined : ciRun(repo, earlierCi);
+    const ciRunOf = (summary: RunSummary | undefined) =>
+      summary === undefined ? undefined : ciRun(repo, summary);
+    const latestCiRun = ciRun(repo, latestCi);
+    const latest = withWorkflow(
+      combinedRun([latestCiRun, ciRunOf(latestHourly)]) ?? latestCiRun,
+      "android-screens.yml",
+      latestAndroid,
+    );
+    const earlierRun = combinedRun([ciRunOf(earlierCi), ciRunOf(earlierHourly)]);
     const earlier =
       earlierRun === undefined
         ? undefined
-        : {
-            url: earlierRun.url,
-            jobs: [...earlierRun.jobs, ...workflowAsJob("android-screens.yml", earlierAndroid)],
-          };
+        : withWorkflow(earlierRun, "android-screens.yml", earlierAndroid);
     const logs = logsOf(repo, earlier === undefined ? [latest] : [latest, earlier]);
     const reports = areaReports({ table, latest, earlier, logs });
     console.log(JSON.stringify({ run: latest.url, reports }, null, 2));
