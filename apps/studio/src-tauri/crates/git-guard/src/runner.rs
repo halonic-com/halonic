@@ -9,10 +9,11 @@ use crate::hardening::{HARDENING_CONFIG, HARDENING_ENVIRONMENT};
 use crate::limited_run::{GitOutput, Limits, new_command, run_limited};
 use crate::opened_folders::{OpenedFolders, canonical, plain_path};
 use crate::repo_config::{
-    ConfigEntry, add_filters, blank_filters, blank_merge_options, check_listing,
-    check_refused_keys, has_command_entry, neutralise_programs, parse_listing,
+    ConfigEntry, blank_filters, blank_merge_options, check_listing, check_refused_keys,
+    has_command_entry, neutralise_programs, parse_listing,
 };
 use crate::repository::{LOCATE_ARGS, Repository, check_located};
+use crate::trusted_filters::{Filters, in_trusted_folders};
 
 /// The config key whose entry in the listing shows that git took the
 /// runner's config at all.
@@ -63,15 +64,32 @@ impl GitRunner {
         Self { limits, ..self }
     }
 
+    /// Checks a call, then runs it in `root`, as in a folder the person
+    /// didn't trust: every filter driver is blanked, the user's own too.
+    pub fn run(
+        &self,
+        folders: &OpenedFolders,
+        root: &Path,
+        args: &[String],
+    ) -> Result<GitOutput, GitError> {
+        self.run_trusted(folders, &|_| false, root, args)
+    }
+
     /// Checks a call, then runs it in `root`.
     ///
     /// In order: the arguments against the allow-list, `root` against the
     /// opened folders, the repository's folders against the opened folders,
     /// and the repository's own config, which is then neutralised. Only
     /// then does the call run, hardened. One time limit covers all of it.
-    pub fn run(
+    ///
+    /// `trusted` answers whether a canonical folder is inside a folder the
+    /// person trusted. When every folder of the repository and of the ones
+    /// nested in it is, the user's own filter drivers run (requirement
+    /// `trusted-filters`); those the repository's config defines never do.
+    pub fn run_trusted(
         &self,
         folders: &OpenedFolders,
+        trusted: &dyn Fn(&Path) -> bool,
         root: &Path,
         args: &[String],
     ) -> Result<GitOutput, GitError> {
@@ -84,7 +102,7 @@ impl GitRunner {
         let deadline = Instant::now() + timeout;
         let root = folders.check(root)?;
         self.check_hooks_folder_is_empty()?;
-        let checked = match self.check_folder(folders, &root, &call, deadline)? {
+        let checked = match self.check_folder(folders, trusted, &root, &call, deadline)? {
             Ok(checked) => checked,
             Err(answer) => return Ok(answer),
         };
@@ -105,6 +123,7 @@ impl GitRunner {
     fn check_folder(
         &self,
         folders: &OpenedFolders,
+        trusted: &dyn Fn(&Path) -> bool,
         root: &Path,
         call: &CheckedCall,
         deadline: Instant,
@@ -125,11 +144,12 @@ impl GitRunner {
         let repository = check_located(folders, &located.stdout, deadline)?;
         let entries = self.read_config(root, Some(&repository), deadline)?;
         check_refused_keys(&entries)?;
-        let mut filters = Vec::new();
-        add_filters(&entries, &mut filters);
-        let mut visited = vec![repository.top.clone()];
+        let mut filters = Filters::default();
+        filters.add(&entries);
+        let mut visited = vec![repository.clone()];
         self.add_nested_filters(folders, &repository, &mut visited, &mut filters, deadline)?;
         self.check_untracked_nested(folders, &repository, call, deadline)?;
+        let filters = filters.blanked(in_trusted_folders(&visited, trusted));
         self.check_filter_writes(&repository, &entries, &filters, call, deadline)?;
         let mut overrides = blank_filters(&filters);
         overrides.extend(neutralise_programs(&entries));

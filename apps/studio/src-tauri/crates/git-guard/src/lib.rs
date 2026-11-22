@@ -11,7 +11,8 @@
 //! repository's config names, a clean environment and only https and ssh
 //! (`git-hardening`, `repo-config`), and only in folders the user opened,
 //! with every folder of the repository inside them ([`OpenedFolders`],
-//! `opened-folders`).
+//! `opened-folders`). The user's own filter drivers run only in folders the
+//! person trusted ([`GitRunner::run_trusted`], `trusted-filters`).
 //!
 //! This crate holds no Tauri types: the shell's `git` command is a thin
 //! wrapper around [`GitRunner::run`].
@@ -32,6 +33,7 @@ mod opened_folders;
 mod repo_config;
 mod repository;
 mod runner;
+mod trusted_filters;
 
 pub use check_args::{CheckedCall, check_args};
 pub use error::GitError;

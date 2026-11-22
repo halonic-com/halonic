@@ -8,8 +8,9 @@
 //! its scopes and, for every entry from the repository itself, overrides
 //! what it names: merge drivers report a conflict, and the ssh and signing
 //! programs go back to the user's own or git's default. Every filter driver
-//! is blanked, from whatever file it comes: a filter from the user's own
-//! config, such as git-lfs, reads the repository's config too.
+//! the repository's config defines is blanked, and outside folders the
+//! person trusted so is the user's own: a filter from the user's own config,
+//! such as git-lfs, reads the repository's config too (`trusted_filters.rs`).
 //! The rest is neutralised on every call (see `runner.rs`): hooks, pagers,
 //! editors, diff drivers, signing and transports.
 //! Only a key no override reaches makes the runner refuse the repository.
@@ -67,7 +68,7 @@ pub(crate) struct ConfigEntry {
 }
 
 impl ConfigEntry {
-    fn is_from_repository(&self) -> bool {
+    pub(crate) fn is_from_repository(&self) -> bool {
         REPOSITORY_SCOPES.contains(&self.scope.as_str())
     }
 }

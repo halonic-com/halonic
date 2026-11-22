@@ -17,6 +17,7 @@ mod picked;
 mod place;
 mod question;
 mod refusal;
+mod trusted;
 mod workspace_name;
 
 pub use grants::{FolderProbe, TrustState};
@@ -28,4 +29,5 @@ pub use picked::{MAX_PICKED_FOLDERS, PickedFolders};
 pub use place::FolderPlace;
 pub use question::{CANCEL_BUTTON, QUESTION_TITLE, TRUST_BUTTON, question_text, shown_path};
 pub use refusal::TrustRefusal;
+pub use trusted::is_trusted_folder;
 pub use workspace_name::check_workspace_name;

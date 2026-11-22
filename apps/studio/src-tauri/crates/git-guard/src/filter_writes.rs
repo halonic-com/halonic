@@ -1,12 +1,14 @@
 //! Refuses a call that would store or write files without the filter their
 //! attributes name (requirement `filter-writes`).
 //!
-//! The runner blanks every filter driver (see `repo_config.rs`), so no
-//! filter runs. A call that only reads, such as `status` or `diff`, still
-//! answers truly. A call that stores a file, such as `add`, would store it
-//! as it is, and one that writes the working tree, such as `checkout` or
-//! `pull`, would write it as stored: a large file instead of a git-lfs
-//! pointer, or the plain text a git-crypt filter would encrypt. So before
+//! The runner blanks every filter driver the repository's config defines,
+//! and outside trusted folders the user's own too (see `trusted_filters.rs`),
+//! so such a filter doesn't run. A call that only reads, such as `status`
+//! or `diff`, still answers truly. A call that stores a file, such as `add`,
+//! would store it as it is, and one that writes the working tree, such as
+//! `checkout` or `pull`, would write it as stored: a large file instead of
+//! a git-lfs pointer, or the plain text a git-crypt filter would encrypt.
+//! So before
 //! such a call the runner reads the attribute files and refuses it when one
 //! of them names a blanked filter, before git starts, so nothing is half
 //! written.
@@ -300,11 +302,11 @@ pub(crate) fn read_attribute_file(file: &Path, limit: usize) -> Result<String, G
         Ok(_) => return Err(GitError::RepositoryUnreadable),
         Err(_) => return Ok(String::new()),
     }
-    let Ok(opened) = std::fs::File::open(file) else {
+    let Ok(opened) = open_without_waiting(file) else {
         return Ok(String::new());
     };
-    // The file opened may not be the one looked at if it was swapped in
-    // between; then it is checked again here, and the read is capped anyway.
+    // A FIFO swapped in since the look doesn't hold the open up, and is
+    // refused here; the read is capped anyway.
     if !opened.metadata().is_ok_and(|metadata| metadata.is_file()) {
         return Err(GitError::RepositoryUnreadable);
     }
@@ -317,6 +319,24 @@ pub(crate) fn read_attribute_file(file: &Path, limit: usize) -> Result<String, G
         return Err(GitError::RepositoryUnreadable);
     }
     Ok(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+/// Opens a file to read, following links as git does. On Unix the open
+/// doesn't wait for a FIFO's writer (`O_NONBLOCK`); a regular file reads
+/// as usual with it.
+#[cfg(unix)]
+fn open_without_waiting(file: &Path) -> std::io::Result<std::fs::File> {
+    use std::os::unix::fs::OpenOptionsExt;
+    std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NONBLOCK)
+        .open(file)
+}
+
+/// Opens a file to read. Windows has no FIFO in the file system to wait on.
+#[cfg(not(unix))]
+fn open_without_waiting(file: &Path) -> std::io::Result<std::fs::File> {
+    std::fs::File::open(file)
 }
 
 #[cfg(test)]

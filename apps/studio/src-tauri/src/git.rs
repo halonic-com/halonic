@@ -2,11 +2,14 @@
 //! HAL-6 finding 7). The allow-list, the hardening, the opened folders and
 //! the limits live in the `halonic-git-guard` crate; this file only finds
 //! git and the empty hooks folder, and runs the call off the main thread.
+//! Which folders the person trusted, so the user's own filter drivers run
+//! there (requirement `trusted-filters`), comes from the trust records.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use halonic_git_guard::{GitError, GitOutput, GitRunner, OpenedFolders, find_git};
+use halonic_trust_grant::is_trusted_folder;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, Runtime};
 
@@ -107,6 +110,9 @@ impl From<GitError> for GitRefusal {
 /// so the call runs on a worker thread, never the UI's or the async
 /// runtime's. So does the first call's search for git and its check, which
 /// start git too.
+///
+/// A folder counts as trusted when the profile's trust records hold one
+/// for it or a folder above it. Without a profile, no folder does.
 #[tauri::command]
 pub async fn git<R: Runtime>(
     app: AppHandle<R>,
@@ -115,7 +121,14 @@ pub async fn git<R: Runtime>(
 ) -> Result<GitAnswer, GitRefusal> {
     let output = tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<GitState>();
-        state.runner(&app)?.run(&state.folders, &root, &args)
+        let runner = state.runner(&app)?;
+        let store = crate::trust::trust_store(&app).ok();
+        let trusted = |folder: &Path| {
+            store
+                .as_ref()
+                .is_some_and(|store| is_trusted_folder(store, folder))
+        };
+        runner.run_trusted(&state.folders, &trusted, &root, &args)
     })
     .await
     .map_err(|error| GitError::Io {
