@@ -4,6 +4,7 @@
 - Task: HAL-16083, from Sofia's words check C665 row 31 on HAL-16066
 - Approval: Liam approved the behaviour and the per-file record on HAL-16083; he approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cQoSfZbauS6o2UvYeXgxk6vUeYHm5PAqxwEjjmxa3CWnHook/kTYuJr6km4KZjUSqSoBQO3YuVAYdsVBHhYHDQ==
 
 ## What changes
 
