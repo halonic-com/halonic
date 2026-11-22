@@ -6,6 +6,14 @@
 
 export { pairWords } from "./pair-words.ts";
 export {
+  NOT_HALONIC_MS,
+  type PairingFlowOptions,
+  type PairingView,
+  PhonePairingFlow,
+  type PhoneScanner,
+  type PickedComputer,
+} from "./pairing-flow.ts";
+export {
   agentsAsOfText,
   asOfText,
   dayOf,
