@@ -461,7 +461,7 @@ function errorText(error: unknown): string {
 }
 
 /** A folder as Windows compares it: resolved, letter case doesn't count. */
-function windowsKey(folder: string): string {
+export function windowsKey(folder: string): string {
   return win32.resolve(folder).toLowerCase();
 }
 
