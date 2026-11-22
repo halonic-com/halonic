@@ -3,6 +3,7 @@
 - Task: HAL-15791
 - Approval: HAL-15791 (flow check C627 B1 on HAL-15779; the wording follows `google reset`'s refusal of a folder it can't read from #4848, decided by the team under the HAL-2282 rule). The reviewer signs this note at code review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:VnXua/lwiSOemw++RJDO+VNwxX5uel9OP0txdyEMX9hKt7xUsZr8GjzUYpwp3nipDVHQPddXEovoOu5mApOqBQ==
 
 ## What changes
 
