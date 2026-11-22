@@ -5,9 +5,9 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
  * history the seat forecast needs and proposes moves. Its own plugin, apart
  * from Agent tools, so the board installs, stops and trusts it on its own.
  *
- * So far: settings, its own database schema, the board-only routes and the
- * `seats.read` job. The history from Paperclip's tables and the page come
- * in later pull requests.
+ * So far: settings, its own database schema, the board-only routes, the
+ * `seats.read` job and the `seats.history` job. The page comes in a later
+ * pull request.
  */
 export const manifest: PaperclipPluginManifestV1 = {
   id: "halonic.seats",
@@ -69,6 +69,12 @@ export const manifest: PaperclipPluginManifestV1 = {
               description:
                 "The e-mail address the seat should be signed in with. It is only compared, never stored or shown.",
             },
+            connectionId: {
+              type: "string",
+              title: "Paperclip connection",
+              description:
+                "The id of the seat's Claude connection in Paperclip. Agents that use it count as placed on this seat. It is only compared, never stored or shown.",
+            },
             resetGroup: {
               type: "string",
               title: "Manual reset group",
@@ -94,6 +100,13 @@ export const manifest: PaperclipPluginManifestV1 = {
       description:
         "Every minute: reads each seat that is due, at its own minute in every 10 minutes, and stores its usage limits. Backs off after a rate limit.",
       schedule: "* * * * *",
+    },
+    {
+      jobKey: "seats.history",
+      displayName: "Record seat history",
+      description:
+        "Every 10 minutes: records which seat each agent is on, its tokens per 10 minutes and what it has on, from Paperclip's own tables.",
+      schedule: "*/10 * * * *",
     },
   ],
   apiRoutes: [

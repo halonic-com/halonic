@@ -214,13 +214,14 @@ turned dry run off.
 usage limits, keeps the history the seat forecast needs and proposes moves.
 It is its own plugin, `halonic.seats`, so the board installs, stops and
 trusts it apart from Agent tools. So far it has its settings, its tables,
-two board-only routes and the `seats.read` job; the history from
-Paperclip's own tables and the page come next.
+two board-only routes and the `seats.read` and `seats.history` jobs; the
+page comes next.
 
 - **Settings** (board-only, empty by default): the seats in reading order,
   each with an id, a role (`pool`, `reserve` or `paid-api`), its Claude
-  folder on the server, the account it should be signed in with and its
-  manual reset group. The folder and account are sign-in details: nothing
+  folder on the server, the account it should be signed in with, the id of
+  its Claude connection in Paperclip and its manual reset group. The folder,
+  account and connection id are sign-in details: nothing
   the plugin logs, stores or shows carries them. **Move agents** is off:
   the plugin then only proposes moves.
 - **Tables** in the schema Paperclip gives the plugin
@@ -243,6 +244,15 @@ Paperclip's own tables and the page come next.
   it. The back-off and alerts live in the worker's memory, so they start
   fresh when it restarts; `GET /seats` says when that was and shows each
   seat's next read, reading age, last error and alerts.
+- **`seats.history`**, every 10 minutes, for the same company: reads
+  Paperclip's `agents`, `cost_events`, `heartbeat_runs` and `issues`. An
+  agent is on the seat whose folder its environment names
+  (`CLAUDE_CONFIG_DIR`), or else whose connection its settings name; each
+  change starts or ends a placement. The last hour of cost rows is summed
+  again into 10-minute buckets on the seat the agent was on, so a run that
+  ends late still counts. For each agent on a seat it notes its running and
+  queued runs, open tasks, run cap and model. The queries pick single
+  fields out of the agents' settings, never the whole settings.
 
 Build it with `pnpm --filter @halonicjs/tooling-paperclip run
 build:seats-plugin`. That writes `dist/seats/`: the bundles, the migrations

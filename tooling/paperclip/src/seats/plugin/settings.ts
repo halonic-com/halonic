@@ -1,8 +1,8 @@
 import type { SeatId, SeatRole } from "../records.ts";
 
 /**
- * One seat as the board set it in the plugin's settings. The folder and the
- * expected account are sign-in details: they stay in the worker, and nothing
+ * One seat as the board set it in the plugin's settings. The folder, the
+ * expected account and the connection id are sign-in details: they stay in the worker, and nothing
  * the plugin logs, stores or answers carries them (see `PublicSeat`).
  */
 export interface SeatSetting {
@@ -10,6 +10,8 @@ export interface SeatSetting {
   readonly role: SeatRole;
   readonly configDir: string;
   readonly account: string | undefined;
+  /** Paperclip's id for the seat's Claude connection, which agents name in their settings. */
+  readonly connectionId: string | undefined;
   readonly resetGroup: string | undefined;
 }
 
@@ -71,6 +73,7 @@ function readSeat(entry: unknown): SeatSetting | undefined {
     role: role as SeatRole,
     configDir,
     account: optionalText(record["account"]),
+    connectionId: optionalText(record["connectionId"]),
     resetGroup: optionalText(record["resetGroup"]),
   };
 }
