@@ -13,7 +13,7 @@ const rejected = {
  * A Worker in memory that answers as `host/server` does, with its own HMAC check written
  * independently of `signDelivery`. `starts` is what a correctly signed delivery gets.
  */
-function fakeWorker(starts: "501" | "202" | "202-never-replays" = "501"): WebhookTarget {
+function fakeWorker(starts: "501" | "202" | "202-never-replays" = "202"): WebhookTarget {
   const accepted = new Set<string>();
   const send: typeof fetch = async (input, init) => {
     const url = new URL(String(input));
@@ -70,7 +70,7 @@ verifies("cloudflare-live.webhooks", () => {
     });
   });
 
-  describe("the checks against a Worker that starts no runs yet", () => {
+  describe("the checks against a Worker that starts runs", () => {
     it.each(Object.keys(webhookChecks) as (keyof typeof webhookChecks)[])(
       "pass %s",
       async (name) => {
@@ -114,11 +114,17 @@ verifies("cloudflare-live.webhooks", () => {
       await expect(webhookChecks.staleTimestamp(noWindow)).rejects.toThrow("expected 401");
     });
 
-    it.each(["runStartPending", "replayPending"] as const)(
-      "fails %s the day a signed delivery starts a run",
+    it.each(["runStart", "replay"] as const)(
+      "fails %s for a Worker that starts no runs",
       async (name) => {
-        await expect(webhookChecks[name](fakeWorker("202"))).rejects.toThrow("expected 501");
+        await expect(webhookChecks[name](fakeWorker("501"))).rejects.toThrow("expected 202");
       },
     );
+
+    it("fails the replay check for a Worker that starts a run for the same delivery twice", async () => {
+      await expect(webhookChecks.replay(fakeWorker("202-never-replays"))).rejects.toThrow(
+        "expected 409",
+      );
+    });
   });
 });

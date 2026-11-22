@@ -93,7 +93,7 @@ function codeOf(text: string): string | undefined {
   }
 }
 
-/** The signature, old-timestamp and unknown-address checks are live; the run-start and replay checks are pending. A check that fails throws an `Error` that names what differed. */
+/** The webhook checks of a deployed Worker. A check that fails throws an `Error` that names what differed. */
 export const webhookChecks = {
   /** A wrong signature is refused with the one webhook answer. */
   async badSignature(target: WebhookTarget): Promise<void> {
@@ -119,28 +119,16 @@ export const webhookChecks = {
     }
   },
 
-  /**
-   * Pending: a signed delivery must start a run and answer 202. The Worker starts no runs yet, so it
-   * answers 501. This check passes while that is true and fails the day it changes, so the suite asks
-   * to be updated rather than going quiet.
-   */
-  async runStartPending(target: WebhookTarget): Promise<void> {
-    expectAnswer("a signed delivery (run start pending)", await deliver(target), 501);
+  /** A signed delivery for the routine starts its run and is answered 202. */
+  async runStart(target: WebhookTarget): Promise<void> {
+    expectAnswer("a signed delivery", await deliver(target), 202);
   },
 
-  /**
-   * Pending: a delivery id that was accepted must be refused the second time with 409. While the Worker
-   * answers 501 it keeps the id free for a retry (that is by design), so the same id answers 501 twice.
-   * It fails the day the first answer is 202.
-   */
-  async replayPending(target: WebhookTarget): Promise<void> {
+  /** A delivery id that was accepted is refused the second time with 409, and starts nothing more. */
+  async replay(target: WebhookTarget): Promise<void> {
     const delivery = `live-${crypto.randomUUID()}`;
-    expectAnswer("a first delivery (replay pending)", await deliver(target, { delivery }), 501);
-    expectAnswer(
-      "the same delivery again (replay pending)",
-      await deliver(target, { delivery }),
-      501,
-    );
+    expectAnswer("a first delivery", await deliver(target, { delivery }), 202);
+    expectAnswer("the same delivery again", await deliver(target, { delivery }), 409);
   },
 };
 

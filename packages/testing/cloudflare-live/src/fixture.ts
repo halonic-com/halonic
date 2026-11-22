@@ -12,7 +12,7 @@ import type { targetVariables } from "./live-target.ts";
 import { teardownFor } from "./teardown.ts";
 import { workersDevUrlFor } from "./workers-dev.ts";
 
-/** The routine the fixture deploys: `acme/orders`, signed with the secret `live-hook`. */
+/** The routine the fixture deploys: `acme/orders`, signed with the secret `live-hook`; it starts `handle-order`. */
 export const fixtureAddress = "acme/orders";
 
 const routineFile = [
@@ -20,6 +20,14 @@ const routineFile = [
   "name: Orders",
   "trigger: { webhook: { secret: live-hook } }",
   "run: { workflow: handle-order, input: { order: '{{trigger.body.id}}' } }",
+].join("\n");
+
+/** The workflow the routine starts. It ends at its first state, so its run needs no model. */
+const workflowFile = [
+  "id: handle-order",
+  "name: Handle an order",
+  "initial: done",
+  "states: { done: { type: final } }",
 ].join("\n");
 
 /** The Durable Object classes of the Worker, as `wrangler.toml` lists them (migration `v1`). */
@@ -108,7 +116,10 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
           );
         },
       },
-      { "hubs/acme/workflows/routines/orders.routine.yaml": routineFile },
+      {
+        "hubs/acme/workflows/routines/orders.routine.yaml": routineFile,
+        "hubs/acme/workflows/handle-order.workflow.yaml": workflowFile,
+      },
     );
 
     const webhookSecret = random();
