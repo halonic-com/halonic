@@ -24,6 +24,11 @@ export const barWords = {
   cancelFailed: "cancel the run",
   /** Said after **Cancel run**, where the button was, so the change isn't silent (C672 #3). */
   cancelled: "Run cancelled.",
+  /**
+   * The line when the engine refused the cancel because the workspace isn't trusted, as after
+   * Remove trust (C676-3). **Review** beside it is the bar's one way out, so still no "Try again".
+   */
+  cancelUntrusted: "Couldn't cancel the run: this workspace isn't trusted yet.",
 } as const;
 
 /**

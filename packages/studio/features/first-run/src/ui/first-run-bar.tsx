@@ -1,6 +1,12 @@
 import { Button, CloseIcon, TickIcon, usePresentation } from "@halonicjs/studio-kit";
-import { failureLine, pageHeading, type StripProps } from "@halonicjs/studio-shell";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import {
+  failureLine,
+  isUntrustedRefusal,
+  pageHeading,
+  type StripProps,
+  startFailedWords,
+} from "@halonicjs/studio-shell";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { FirstRunService } from "../api.ts";
 import { type FirstRun, SUPPORT_HUB, SUPPORT_WORKFLOW } from "../first-run.ts";
 import { type BarMark, type BarStep, barSteps, barWayOut } from "../first-run-bar.ts";
@@ -69,7 +75,8 @@ export function FirstRunBar({ context }: StripProps) {
  * **Cancel run** (first-run-flow 3.4, `first-run.run`): ends the run as cancelled and goes back to
  * Support reply's page, where the guide card reads **Run again**, and the bar says "Run
  * cancelled." in its place. Busy until the engine answers; when it can't cancel, the bar says
- * why and the button stays.
+ * why and the button stays. A refusal because the workspace isn't trusted (after Remove trust)
+ * adds **Review**, which opens the trust check (C676-3).
  */
 function CancelRun({
   start,
@@ -78,8 +85,15 @@ function CancelRun({
   readonly start: FirstRunStart;
   readonly onCancelled: () => void;
 }) {
-  const [failed, setFailed] = useState<string>();
+  const [failed, setFailed] = useState<{ readonly line: string; readonly untrusted: boolean }>();
   const [busy, setBusy] = useState(false);
+  const cancelButton = useRef<HTMLButtonElement>(null);
+  const untrusted = failed?.untrusted === true;
+  // Trusted from the status bar, not from Review: the refusal is stale, so it goes.
+  useEffect(() => {
+    if (!untrusted) return;
+    return start.onTrusted(() => setFailed(undefined));
+  }, [start, untrusted]);
   const cancel = async () => {
     setFailed(undefined);
     setBusy(true);
@@ -89,19 +103,34 @@ function CancelRun({
     } catch (error) {
       console.error("Cancel run", error);
       // The bar has room for one way out, so no Copy details: the error stays in the log (C671-45).
-      setFailed(failureLine(barWords.cancelFailed, error));
+      setFailed(
+        isUntrustedRefusal(error) && start.canReview
+          ? { line: barWords.cancelUntrusted, untrusted: true }
+          : { line: failureLine(barWords.cancelFailed, error), untrusted: false },
+      );
     } finally {
       setBusy(false);
     }
+  };
+  // Review goes once the workspace is trusted, so focus moves to Cancel run.
+  const review = async () => {
+    if ((await start.review()) !== "trusted") return;
+    setFailed(undefined);
+    cancelButton.current?.focus();
   };
   return (
     <div className="ms-auto flex shrink-0 items-center gap-3">
       {failed === undefined ? null : (
         <p role="alert" className="text-danger">
-          {failed}
+          {failed.line}
         </p>
       )}
-      <Button variant="ghost" size="sm" busy={busy} onClick={cancel}>
+      {untrusted ? (
+        <Button variant="ghost" size="sm" onClick={review}>
+          {startFailedWords.review}
+        </Button>
+      ) : null}
+      <Button ref={cancelButton} variant="ghost" size="sm" busy={busy} onClick={cancel}>
         {barWords.cancel}
       </Button>
     </div>

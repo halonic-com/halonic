@@ -68,6 +68,27 @@ export class FirstRunStart {
     return runningId === undefined || this.#cancelled.has(runningId);
   }
 
+  /** Whether **Review** can open the trust check here, for a cancel refused as untrusted. */
+  get canReview(): boolean {
+    return this.#runStart?.askTrust !== undefined;
+  }
+
+  /**
+   * **Review** after Cancel run was refused because the workspace isn't trusted: opens the trust
+   * check, as the start callout's **Review** does, and says how the person answered.
+   */
+  async review(): Promise<"trusted" | "declined"> {
+    return (await this.#runStart?.askTrust?.()) ?? "declined";
+  }
+
+  /**
+   * Calls `listener` when the workspace is trusted from elsewhere, such as the status bar's
+   * **Review**, so a refusal for an untrusted workspace goes. Returns a function that stops it.
+   */
+  onTrusted(listener: () => void): () => void {
+    return this.#runStart?.onTrusted?.(listener) ?? (() => {});
+  }
+
   /** The change line of the last model Continue saved, for the guide card after Cancel run. */
   get changedLine(): string | undefined {
     return this.#changed;
