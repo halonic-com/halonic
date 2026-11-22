@@ -17,6 +17,7 @@ const report = {
       status: "ok",
       capabilities: { files: "shared", strength: "os" },
       actions: [],
+      sandboxKind: "seatbelt",
     },
   ],
   summary: { problems: 0, warnings: 1, needsFixing: false },
@@ -24,7 +25,7 @@ const report = {
 
 verifies("agent-host-client.doctor", () => {
   describe("AgentHostDoctor", () => {
-    it("sends the workspace folder and returns the lines with their actions", async () => {
+    it("sends the workspace folder and returns the lines with their actions and kind", async () => {
       const host = new FakeHost().answer("POST /v1/doctor", ok(report));
 
       expect(await new AgentHostDoctor(host).doctor("/work/acme")).toEqual(report);
@@ -53,6 +54,18 @@ verifies("agent-host-client.doctor", () => {
 
     it("refuses a line with an action the engine doesn't know", async () => {
       const odd = { ...report, checks: [{ check: "disk", status: "ok", actions: ["fix-it"] }] };
+      const host = new FakeHost().answer("POST /v1/doctor", ok(odd));
+
+      await expect(new AgentHostDoctor(host).doctor()).rejects.toMatchObject({
+        kind: "answer_invalid",
+      });
+    });
+
+    it("refuses a Sandbox line with a kind the host doesn't name", async () => {
+      const odd = {
+        ...report,
+        checks: [{ check: "sandbox", status: "ok", actions: [], sandboxKind: "chroot" }],
+      };
       const host = new FakeHost().answer("POST /v1/doctor", ok(odd));
 
       await expect(new AgentHostDoctor(host).doctor()).rejects.toMatchObject({

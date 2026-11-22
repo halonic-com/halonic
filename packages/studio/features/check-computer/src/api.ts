@@ -19,6 +19,8 @@ export type {
   ModelTest,
   NotCheckedFact,
   NotCheckedPart,
+  SandboxFact,
+  SandboxKind,
 } from "./check-facts.ts";
 
 /**

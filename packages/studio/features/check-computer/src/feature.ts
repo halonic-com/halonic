@@ -1,7 +1,16 @@
-import { defineFeature } from "@halonicjs/studio-shell";
+import { defineFeature, type ServiceLookup } from "@halonicjs/studio-shell";
 import { CheckComputerSourceService, checkComputerCommand } from "./api.ts";
 import { CheckComputerOpener, CheckComputerOpenerService } from "./check-computer-opener.ts";
 import { dialogWords } from "./ui/dialog-words.ts";
+
+/**
+ * Opens the dialog only when the app gives the open folder its facts. Without them it would show
+ * nothing, and an opening kept for later would pop the dialog up as soon as a source appeared.
+ */
+function openCheck(services: ServiceLookup): void {
+  if (services.find(CheckComputerSourceService) === undefined) return;
+  services.get(CheckComputerOpenerService).open();
+}
 
 /**
  * The Check this computer feature (first-run-progress section 4, HAL-13411): the dialog with
@@ -26,7 +35,7 @@ export const checkComputerFeature = defineFeature({
     studio.commands.add({
       id: checkComputerCommand,
       title: dialogWords.title,
-      run: (context) => context.services.get(CheckComputerOpenerService).open(),
+      run: (context) => openCheck(context.services),
     });
     // The Help menu's first group, without a title (`shell.help-menu`).
     studio.help.add({
@@ -39,7 +48,7 @@ export const checkComputerFeature = defineFeature({
               {
                 id: "check-this-computer",
                 label: dialogWords.title,
-                run: () => context.services.get(CheckComputerOpenerService).open(),
+                run: () => openCheck(context.services),
               },
             ],
     });

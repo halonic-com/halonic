@@ -6,8 +6,10 @@ Owner: owen · Layer: adapters · Read the root `AGENTS.md` first; this file add
 
 The Node half of `halonic doctor`: the doctor service on a computer's parts (`DoctorMachine`), a workspace read as the doctor checks it, and the model servers on this computer it asks. The CLI builds the machine from this computer (`nodeDoctorMachine`); the agent host builds one from the parts it already runs. Words stay with each caller: this package returns `@halonicjs/app`'s facts and ids.
 
-This package may change only through tasks that name it. Its public API is `src/index.ts`;
-everything else is internal.
+This package may change only through tasks that name it. Its public API is `src/index.ts`,
+plus `src/doctor-workspace.ts` as `./workspace`: how the doctor reads a workspace, without Node, so
+Studio's Check this computer reads the providers as `halonic doctor` does (HAL-13411); everything
+else is internal.
 
 ## Commands
 

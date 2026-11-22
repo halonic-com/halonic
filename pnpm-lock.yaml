@@ -616,6 +616,9 @@ importers:
       '@halonicjs/adapter-coordination-node':
         specifier: workspace:*
         version: link:../../packages/adapters/coordination-node
+      '@halonicjs/adapter-doctor-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/doctor-node
       '@halonicjs/adapter-executor-remote':
         specifier: workspace:*
         version: link:../../packages/adapters/executor-remote

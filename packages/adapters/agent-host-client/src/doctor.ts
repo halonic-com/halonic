@@ -28,12 +28,19 @@ const actions = [
   "open-run",
 ] as const satisfies readonly DoctorAction[];
 
-/** A line: its id, its mark and its actions checked; its facts are the engine's types and pass as they are. */
+/** The kinds of sandbox the host names on a ready Sandbox line (`agent-host.doctor-sandbox-kind`). */
+const sandboxKinds = ["bubblewrap", "seatbelt", "windows"] as const;
+
+/**
+ * A line: its id, its mark, its actions and a ready sandbox's kind checked; its facts are the
+ * engine's types and pass as they are.
+ */
 const lineSchema = s
   .object({
     check: s.enum(answeredLines),
     status: s.enum(statuses),
     actions: s.array(s.enum(actions)),
+    sandboxKind: s.enum(sandboxKinds).optional(),
   })
   .passthrough();
 
@@ -50,8 +57,14 @@ const answerSchema = s
   })
   .strict();
 
-/** One line the host answered: the doctor's facts and the actions the page may offer on it. */
-export type HostDoctorLine = AnyDoctorLine & { readonly actions: DoctorAction[] };
+/**
+ * One line the host answered: the doctor's facts and the actions the page may offer on it. A ready
+ * Sandbox line also names the kind of sandbox the host runs, which only the host knows on Windows.
+ */
+export type HostDoctorLine = AnyDoctorLine & {
+  readonly actions: DoctorAction[];
+  readonly sandboxKind?: (typeof sandboxKinds)[number];
+};
 
 /** The host's checks of this computer: the lines it can answer for, and their counts. */
 export interface HostDoctorReport {

@@ -7,6 +7,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CheckComputerSourceService, checkComputerCommand } from "../api.ts";
+import { CheckComputerOpenerService } from "../check-computer-opener.ts";
 import type { CheckFact } from "../check-facts.ts";
 import { checkComputerFeature } from "../feature.ts";
 import { FakeCheckSource, WorkspaceServices } from "../test-support/fake-source.test-helper.ts";
@@ -191,6 +192,14 @@ verifies("check-computer.dialog", () => {
 
     const { dialog } = await openDialog(undefined);
     expect(dialog()).toBeNull();
+  });
+
+  it("keeps no opening without the app's check source, so the dialog can't pop up later", async () => {
+    const { shell, context } = featureWith(undefined);
+
+    await act(async () => shell.contributions.commands.get(checkComputerCommand)?.run(context));
+
+    expect(context.services.get(CheckComputerOpenerService).current()).toBeUndefined();
   });
 
   it("is the Help menu's first group, without a title", () => {

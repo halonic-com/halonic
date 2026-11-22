@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-13407; `apps/agent-host/requirements/doctor-route.md`
+- Source: HAL-13407; `apps/agent-host/requirements/doctor-route.md`; HAL-16290 (`apps/agent-host/requirements/doctor-sandbox-kind.md`)
 
-When the page asks the agent host to check this computer, the doctor stand-in shall send `POST /v1/doctor` with the workspace folder when one is given, and an empty body otherwise, and shall return the host's lines and counts. It shall check each line's `check`, `status` and `actions` against the engine's lists, and throw an error with the host's status and kind for a refusal, such as 429 `busy`, or `answer_invalid` for an answer of another shape.
+When the page asks the agent host to check this computer, the doctor stand-in shall send `POST /v1/doctor` with the workspace folder when one is given, and an empty body otherwise, and shall return the host's lines and counts. It shall check each line's `check`, `status` and `actions` against the engine's lists, and a ready Sandbox line's `sandboxKind` against the kinds the host names (`bubblewrap`, `seatbelt`, `windows`), and throw an error with the host's status and kind for a refusal, such as 429 `busy`, or `answer_invalid` for an answer of another shape.
 
 ## Examples
 
@@ -16,4 +16,8 @@ When the page asks the agent host to check this computer, the doctor stand-in sh
 - Given the host answers 429 `busy`,
   then the error has status 429 and kind `busy`.
 - Given a line whose action the engine doesn't know,
+  then the error's kind is `answer_invalid`.
+- Given a ready Sandbox line with `sandboxKind: seatbelt`,
+  then the page gets the line with its kind.
+- Given a Sandbox line with a kind the host doesn't name,
   then the error's kind is `answer_invalid`.

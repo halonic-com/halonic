@@ -53,7 +53,8 @@ verifies("check-computer.lines", () => {
       ).toEqual([
         "Anthropic: no key yet.",
         "Fix: add its key on the Models page.",
-        "OpenAI: Halonic couldn't read its key from this computer's key store.",
+        "OpenAI: Halonic couldn't read its key from your system keychain.",
+        "Fix: check that your system keychain is unlocked, then check again.",
         "OpenRouter: key set · not tested yet",
       ]);
     });
@@ -77,7 +78,8 @@ verifies("check-computer.lines", () => {
       ).toEqual([
         "Anthropic: no key yet.",
         "Fix: add its key on the Models page.",
-        "OpenAI: Halonic couldn't read its key from this computer's key store.",
+        "OpenAI: Halonic couldn't read its key from your system keychain.",
+        "Fix: check that your system keychain is unlocked, then check again.",
         "The model alias default isn't in the workspace's files.",
         "OpenAI: key set",
       ]);
@@ -237,13 +239,17 @@ verifies("check-computer.lines", () => {
         scheme: "socks5",
       })[0],
     ).toContain("HTTPS_PROXY");
-    expect(
-      sentences({
-        check: "sandbox",
-        status: "ok",
-        capabilities: { files: "shared", strength: "os" },
-      }),
-    ).toEqual(["Ready · Fenced by the system"]);
+    const ready = {
+      check: "sandbox",
+      status: "ok",
+      capabilities: { files: "shared", strength: "os" },
+    } as const;
+    expect(sentences(ready)).toEqual(["Ready"]);
+    expect(sentences({ ...ready, sandboxKind: "seatbelt" })).toEqual(["Ready · Seatbelt"]);
+    expect(sentences({ ...ready, sandboxKind: "bubblewrap" })).toEqual(["Ready · bubblewrap"]);
+    expect(sentences({ ...ready, sandboxKind: "windows" })).toEqual([
+      "Ready · Sandbox for Windows",
+    ]);
     const cantStart = sentences({
       check: "sandbox",
       status: "failed",

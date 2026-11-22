@@ -23,6 +23,7 @@ const hostReport: HostDoctorReport = {
       status: "ok",
       capabilities: { files: "shared", strength: "os" },
       actions: [],
+      sandboxKind: "seatbelt",
     },
     { check: "harnesses", status: "ok", installed: [], problems: [], actions: [] },
     {
@@ -92,7 +93,7 @@ verifies("studio.check-computer.source", () => {
     });
   });
 
-  it("shows the host's lines and no Default model outside the demo", async () => {
+  it("shows the host's lines with the sandbox's kind, and no Default model outside the demo", async () => {
     const facts = await linesOf(demoParts({ isDemo: () => false }));
 
     expect(facts.map((fact) => fact.check)).toEqual([
@@ -104,6 +105,9 @@ verifies("studio.check-computer.source", () => {
       "models",
     ]);
     expect(facts.find((fact) => fact.check === "workspace")).not.toHaveProperty("actions");
+    expect(facts.find((fact) => fact.check === "sandbox")).toMatchObject({
+      sandboxKind: "seatbelt",
+    });
   });
 
   it("calls a key the key store can't be asked about unreadable", async () => {
