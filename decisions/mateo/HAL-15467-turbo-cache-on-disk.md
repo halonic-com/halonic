@@ -2,7 +2,6 @@
 
 - Approval: HAL-15467 (the board's decision, 21 Nov); Liam approves this note in review on HAL-15467 and signs it
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:E17Plb3wsNReid3MPBViQfiF35IDmOmchNX+lJJXhpXNnCZv+oTfVGLkZ34z5bK1aX4qm+/w8LXcPB6J22Y3CA==
 
 ## What changes
 
