@@ -44,14 +44,16 @@ export interface SandboxStartWords {
 /**
  * A reason's source words: the sentence, the fix fragment, the can't-run Callout's fix when the
  * fix alone says "it" (else the fix with a capital letter), Settings' fix when the person does it
- * differently from there (else the fix with a capital letter), the command the fix names, the docs
- * section and the link's name, when it has its own.
+ * differently from there (else the fix with a capital letter), the fix a phone shows after "On the
+ * computer Halonic runs on: " when it isn't the desktop's (else the desktop's), the command the fix
+ * names, the docs section and the link's name, when it has its own.
  */
 type Words = Readonly<{
   reason: string;
   fix: string;
   cantRunFix?: string;
   settingsFix?: string;
+  phoneFix?: string;
   command?: string;
   docsSection?: string;
   docsName?: string;
@@ -117,17 +119,24 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   "distro-missing": {
     reason: "WSL works, but Halonic's own Linux system for the sandbox isn't installed.",
     fix: insideWsl,
+    // After "On the computer Halonic runs on: ", "on this computer" says it twice, and on a phone
+    // "this computer" points at the phone (C701-3).
+    phoneFix: "use Halonic inside WSL 2.",
   },
   "runtime-missing": {
     // Studio installs the runtime each time it starts the agent host, and anything that needs the
-    // host starts it again, Settings' Check again included (HAL-16277). Reinstalling brings back
-    // the runtime Studio ships, for an install that fails every time.
+    // host starts it again, every screen's Check again included (HAL-16277, C701-2). Reinstalling
+    // brings back the runtime Studio ships, for an install that fails every time.
     reason: "Halonic's own Linux system for the sandbox is installed, but its setup didn't finish.",
-    fix: "try again, and Halonic finishes the setup as the sandbox starts. If it still doesn't finish, reinstall Halonic Studio.",
+    fix: "choose Check again, and Halonic finishes the setup as the sandbox starts. If it still doesn't finish, reinstall Halonic Studio.",
     cantRunFix:
-      "Try again, and Halonic finishes setting up its own Linux system for the sandbox. If that setup still doesn't finish, reinstall Halonic Studio.",
+      "Choose Check again, and Halonic finishes setting up its own Linux system for the sandbox. If that setup still doesn't finish, reinstall Halonic Studio.",
     settingsFix:
       "Choose Check again, and Halonic finishes the setup. If it still doesn't finish, reinstall Halonic Studio.",
+    // Served Studio, which a phone opens, comes from `halonic serve` and has no host check, so its
+    // Check again never reaches the Studio shell that installs the runtime (C701-2).
+    phoneFix:
+      "open Halonic Studio, and it finishes the setup. If it still doesn't finish, reinstall Halonic Studio.",
   },
   "setup-conflict": {
     // srt's install won't replace another program's setup unless forced, and Halonic never forces
@@ -234,6 +243,7 @@ export function sandboxStartWords(code: string): SandboxStartWords {
     fix,
     cantRunFix,
     settingsFix,
+    phoneFix,
     command,
     docsSection,
     docsName,
@@ -245,8 +255,8 @@ export function sandboxStartWords(code: string): SandboxStartWords {
     fix,
     calloutFix: capitalised(fix),
     cantRunFix: ownFix,
-    phoneFix: `${onTheComputer}${fix}`,
-    cantRunPhoneFix: `${onTheComputer}${lowerFirst(ownFix)}`,
+    phoneFix: `${onTheComputer}${phoneFix ?? fix}`,
+    cantRunPhoneFix: `${onTheComputer}${phoneFix ?? lowerFirst(ownFix)}`,
     settingsFix: fix === inSettings ? null : (settingsFix ?? capitalised(fix)),
     ...(command === undefined ? {} : { command }),
     docsKey: docsSection === undefined ? "security/sandbox/" : `security/sandbox/#${docsSection}`,

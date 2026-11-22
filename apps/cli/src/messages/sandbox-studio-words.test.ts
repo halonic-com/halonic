@@ -10,10 +10,10 @@ import { sandboxMessages } from "./sandbox.ts";
  * CLI names `halonic sandbox setup` for `setup-needed` (HAL-15808) and says
  * "use Halonic inside WSL 2" for `setup-conflict` (HAL-7540), where Studio
  * points to Settings, after removing the other program's setup for
- * `setup-conflict` (HAL-16233). For `runtime-missing` Studio says to try
- * again, because it finishes the runtime's setup as it starts the sandbox,
- * which the CLI can't (HAL-16277). A new difference is a decision: add the
- * code here with its reason.
+ * `setup-conflict` (HAL-16233). For `runtime-missing` Studio says to choose
+ * Check again, because it finishes the runtime's setup as it starts the
+ * sandbox, which the CLI can't (HAL-16277, HAL-16379). A new difference is a
+ * decision: add the code here with its reason.
  */
 const fixDiffersOnPurpose: readonly string[] = [
   "windows",

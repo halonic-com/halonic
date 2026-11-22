@@ -86,61 +86,65 @@ verifies("settings.agent-sandbox-state", () => {
     );
   });
 
-  it("says why the sandbox can't run and what fixes it, with Check again, the guide and the way round", () => {
+  it("says why the sandbox can't run and what fixes it, as words the section draws with Check again and the guide", () => {
     const v = view({ check: { state: "unavailable", code: "bubblewrap-missing" } });
     expect(v.chip).toEqual({ label: "Not available", tone: "attention" });
-    expect(v.lead).toBe(
-      "bubblewrap isn't installed, and the sandbox needs it. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap.",
-    );
-    expect(v.secondary).toEqual(["check-again"]);
-    expect(v.primary).toBeNull();
-    expect(v.docs).toEqual({
-      name: "How to install bubblewrap",
-      href: "https://docs.halonic.dev/security/sandbox/#bubblewrap",
+    expect(v.notAvailable).toEqual({
+      reason: "bubblewrap isn't installed, and the sandbox needs it.",
+      fix: "Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap.",
+      docs: {
+        name: "How to install bubblewrap",
+        href: "https://docs.halonic.dev/security/sandbox/#bubblewrap",
+      },
     });
-    expect(v.hint).toBe("You can run an agent on this computer after a warning.");
+    // The words bring their own Check again, guide and way round (C701-1).
+    expect(v.lead).toBe("");
+    expect(v.secondary).toEqual([]);
+    expect(v.primary).toBeNull();
+    expect(v.hint).toBeNull();
   });
 
   it("words `other` and an unknown code from the catalogue, never the check's sentence", () => {
     for (const code of ["other", "from-the-future"]) {
       const v = view({ check: { state: "unavailable", code } });
-      expect(v.lead).toBe(
-        "Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer.",
-      );
-      expect(v.docs?.name).toBe("What the sandbox needs");
+      expect(v.notAvailable?.reason).toBe("Halonic can't tell what the sandbox is missing.");
+      expect(v.notAvailable?.fix).toBe("See what the sandbox needs on this computer.");
+      expect(v.notAvailable?.docs.name).toBe("What the sandbox needs");
     }
   });
 
   it("leaves the fix out where it is the section's own set-up button", () => {
     const v = view({ check: { state: "unavailable", code: "setup-needed" } });
-    expect(v.lead).toBe("The sandbox's one-time setup isn't done for this version of Halonic.");
+    expect(v.notAvailable?.reason).toBe(
+      "The sandbox's one-time setup isn't done for this version of Halonic.",
+    );
+    expect(v.notAvailable?.fix).toBeNull();
   });
 
   it("gives the WSL 2 fix for Halonic's Linux system, which the set-up button can't install", () => {
     const v = view({ check: { state: "unavailable", code: "distro-missing" } });
-    expect(v.lead).toBe(
-      "WSL works, but Halonic's own Linux system for the sandbox isn't installed. Use Halonic inside WSL 2 on this computer.",
+    expect(v.notAvailable?.reason).toBe(
+      "WSL works, but Halonic's own Linux system for the sandbox isn't installed.",
     );
+    expect(v.notAvailable?.fix).toBe("Use Halonic inside WSL 2 on this computer.");
   });
 
   it("says to remove another program's setup, then check again, for a setup conflict", () => {
     const v = view({ check: { state: "unavailable", code: "setup-conflict" } });
-    expect(v.lead).toBe(
-      "Another program set up the sandbox on this computer, in a way Halonic can't use. Remove the other program's sandbox setup, then choose Check again.",
+    expect(v.notAvailable?.fix).toBe(
+      "Remove the other program's sandbox setup, then choose Check again.",
     );
   });
 
   it("keeps the fix for a reason the set-up button doesn't fix", () => {
     const v = view({ check: { state: "unavailable", code: "windows" } });
-    expect(v.lead).toBe(
-      "The sandbox can't start on this version of Windows. Pick another sandbox in Settings.",
-    );
+    expect(v.notAvailable?.fix).toBe("Pick another sandbox in Settings.");
   });
 
   it("gives served Studio the fix that says to do it on the computer", () => {
     const v = view({ check: { state: "unavailable", code: "ripgrep-missing" }, place: "served" });
-    expect(v.lead).toBe(
-      "ripgrep isn't installed, and the sandbox needs it. On the computer Halonic runs on: install it, for example on macOS with brew install ripgrep.",
+    expect(v.notAvailable?.fix).toBe(
+      "On the computer Halonic runs on: install it, for example on macOS with brew install ripgrep.",
     );
   });
 

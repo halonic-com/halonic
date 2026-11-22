@@ -6,7 +6,6 @@ import {
   type CalloutAction,
   type CalloutHandle,
   Dialog,
-  ExternalLink,
   RefreshIcon,
   StatusChip,
   type StatusChipTone,
@@ -26,7 +25,7 @@ import {
   UnfencedYesService,
 } from "../api.ts";
 import { NewAgentsRunControl } from "./new-agents-run.tsx";
-import { NotAvailableLines } from "./not-available-lines.tsx";
+import { NotAvailableFix, NotAvailableLines } from "./not-available-lines.tsx";
 import {
   type SandboxFacts,
   type SandboxStep,
@@ -282,7 +281,10 @@ export function AgentSandboxView({
           <StatusChip tone={chipTones[view.chip.tone]}>{view.chip.label}</StatusChip>
         </span>
       ) : null}
-      <Lead lead={view.lead} notAvailable={facts.available ? undefined : notAvailable} />
+      <Lead
+        lead={view.lead}
+        notAvailable={facts.available ? checkedNotAvailable(view, onCheckAgain) : notAvailable}
+      />
       {facts.securityUpdatesOverdue && facts.available ? (
         <Callout tone="warning">{text.SECURITY_UPDATES_OVERDUE}</Callout>
       ) : null}
@@ -336,11 +338,6 @@ export function AgentSandboxView({
           </Button>
         ))}
       </div>
-      {view.docs ? (
-        <p className="text-small">
-          <ExternalLink href={view.docs.href}>{view.docs.name}</ExternalLink>
-        </p>
-      ) : null}
       {view.hint ? <p className="text-small text-fg-muted">{view.hint}</p> : null}
       {newAgents}
     </div>
@@ -366,6 +363,18 @@ function ResultCallout({
     >
       {callout.line}
     </Callout>
+  );
+}
+
+/** Why the host's check found the sandbox Not available, or nothing when it didn't. */
+function checkedNotAvailable(view: SandboxView, onCheckAgain: () => void): ReactNode {
+  if (view.notAvailable === null) return undefined;
+  return (
+    <NotAvailableFix
+      words={view.notAvailable}
+      checking={view.checkBusy}
+      onCheckAgain={onCheckAgain}
+    />
   );
 }
 
