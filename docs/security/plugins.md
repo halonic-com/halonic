@@ -106,9 +106,9 @@ cloned workspace can't trust itself.
   its JavaScript heap, and on Linux, where `prlimit` is installed, on the
   whole process. Windows is a preview: there MXC could fence a backend
   worker, on Windows 11, with only its heap limited, but no app uses MXC yet.
-  Without MXC it starts only with your yes to run it without
-  the sandbox, given in Studio's trust check, and then in the launcher's
-  sandbox, which doesn't fence it. Without that yes it doesn't start. And
+  Without MXC it starts only after you allow plugins and integrations to run
+  without the sandbox in Studio's trust check, and the launcher it then runs
+  in doesn't fence it. Without that yes it doesn't start. And
   a program that is allowed a host can send anything there.
 - **Tool results are untrusted content.** A plugin's answer can try to steer a
   model, as any outside text can. See
@@ -161,8 +161,8 @@ Linux, Seatbelt on macOS).
   also on the restart after an idle stop. A sandbox check that fails means the
   backend stays stopped; it never falls back to running without the sandbox.
   The `halonic` command never offers the yes to run without the sandbox: its
-  store holds nothing (`app.no-unfenced-run-consent`). The desktop app asks
-  for it in a plugin's Review, and its agent host keeps it
+  store holds nothing (`app.no-unfenced-run-consent`). Studio asks for it
+  in the plugin's trust check, and its agent host keeps it
   (`agent-host.unfenced-runs-routes`). Taking the yes back stops runs in every
   process within a second, waits for starts in progress, and keeps checking
   past a stop that never returns (`app.unfenced-runs`,
