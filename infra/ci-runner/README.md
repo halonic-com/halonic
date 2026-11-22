@@ -63,7 +63,7 @@ public range for the nftables rules).
 `/cache/trusted/pnpm-store`, `/cache/trusted/turbo` and `/cache/trusted/ms-playwright` read-write, so a job can change
 what later jobs read from them. That's acceptable only because the hook admits nothing but reviewed
 code (pushes to `main`, later merge groups). pnpm checks each package against the lockfile's
-integrity hash; the Turbo cache and the Playwright browsers aren't checked. A pool for pull requests would get a
+integrity hash; the Turbo cache (the build job's `TURBO_CACHE_DIR`, HAL-15467; only the remote cache's entries are signed) and the Playwright browsers aren't checked. A pool for pull requests would get a
 read-only snapshot instead (C2, C8), never these folders.
 
 ## One job, one container
@@ -116,7 +116,8 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   Julian has checked T1 against it.
 - **Runner update:** new version and checksum in `vm/Dockerfile`, build the image in the VM,
   set `IMAGE=` in `pool.env`, restart the slots.
-- **Weekly** (`vm/halonic-ci-maint.timer`, Sunday 04:00): prunes images and stale work dirs. When
+- **Weekly** (`vm/halonic-ci-maint.timer`, Sunday 04:00): prunes images, stale work dirs and Turbo
+  entries unused for 7 days. When
   `/cache` is over 75 %, it pauses the slots, lets running jobs finish (up to 2 hours), empties the
   shared caches and starts the slots again.
 - **Hourly** (`vm/halonic-ci-cache-check.timer`): the same pause-and-empty as soon as the shared

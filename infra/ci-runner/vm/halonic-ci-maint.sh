@@ -6,6 +6,9 @@ set -u
 if [ "${1:-}" != "--caches" ]; then
   docker image prune -f >/dev/null; docker builder prune -af >/dev/null
   for d in /cache/work/*; do [ -d "$d" ] || continue; s=${d##*/}; systemctl is-active -q "halonic-runner@$s" || rm -rf "$d"; done
+  # Turbo entries nobody read for 7 days (relatime updates atime at most daily). A job that reads
+  # one while it goes just misses and rebuilds (HAL-15467).
+  [ -d /cache/trusted/turbo ] && find /cache/trusted/turbo -type f -atime +6 -delete
 fi
 use=$(df --output=pcent /cache | tail -1 | tr -dc 0-9)
 # report -n: "#300 <used KiB> <soft> <hard KiB> ..."; no project 300 yet reads as 0 %.

@@ -578,9 +578,6 @@ jobs:
       contents: read
       id-token: write # to ask the cache for a write token (below)
     env:
-      # Turbo's own default folder (gitignored). actions/cache refuses a path
-      # with "..", so the earlier ../turbo-cache was never saved.
-      TURBO_CACHE_DIR: ${{ github.workspace }}/.turbo/cache
       SHARD: ${{ matrix.shard }}
     steps:
       # The release tags too: trace checks that a requirement's `Since`
@@ -626,11 +623,36 @@ jobs:
             exit 1
           fi
           echo "all: $(wc -l <<< "$all") packages"
-      # Every task runs; unchanged packages are cache hits. The
-      # cache is GitHub's own, scoped per branch, so a pull request can read
-      # main's cache but never write to it. The save is the job's last step.
-      # One cache per shard: each holds only its own packages' tasks.
+      # On our own CI server Turbo's cache lives on the server's cache disk,
+      # shared by every slot and kept between jobs, like the pnpm store:
+      # fetching and saving it through GitHub's cache took about 15 s of every
+      # shard (HAL-15467). Only pushes to main and merge groups run there (the
+      # runner hook refuses everything else), so it holds only reviewed code's
+      # results. Without the mount the job uses GitHub's cache, as below.
+      # Elsewhere it is Turbo's own default folder (gitignored); actions/cache
+      # refuses a path with "..", so the earlier ../turbo-cache was never saved.
+      - id: turbo-dir
+        name: Choose the Turbo cache folder
+        env:
+          SELF_HOSTED: ${{ runner.environment == 'self-hosted' }}
+        run: |
+          dir=$GITHUB_WORKSPACE/.turbo/cache
+          if [ "$SELF_HOSTED" = true ]; then
+            if [ -d /cache/turbo ] && [ -w /cache/turbo ]; then
+              dir=/cache/turbo
+              echo "disk=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "::warning title=Turbo cache::/cache/turbo isn't mounted or writable, so this job uses GitHub's cache."
+            fi
+          fi
+          echo "TURBO_CACHE_DIR=$dir" >> "$GITHUB_ENV"
+      # Every task runs; unchanged packages are cache hits. On GitHub's
+      # runners the cache is GitHub's own, scoped per branch, so a pull
+      # request can read main's cache but never write to it. The save is the
+      # job's last step. One cache per shard: each holds only its own
+      # packages' tasks.
       - id: turbo-cache
+        if: steps.turbo-dir.outputs.disk != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.TURBO_CACHE_DIR }}
@@ -812,9 +834,10 @@ jobs:
       # request's or queue entry's copy is scoped to its own ref, so only a
       # re-run of the same pull request could read it, and the 155 copies
       # (2.5 GB) pushed main's Rust caches towards eviction. The remote cache
-      # above still serves pull requests main's task results.
+      # above still serves pull requests main's task results. The server's
+      # disk cache needs no save: Turbo wrote to it during the run.
       - name: Save the Turbo cache
-        if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.turbo-dir.outputs.disk != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.TURBO_CACHE_DIR }}
