@@ -104,6 +104,29 @@ verifies("workflows.canvas.drag-to-connect", () => {
     expect(portOf(page, "done")).toBeNull();
   });
 
+  it("draws a port muted until it's under the pointer or dragged from", async () => {
+    const { page } = await showPage(editsThatWork());
+    const ring = (stepId: string) => portOf(page, stepId)?.classList;
+    const dot = (stepId: string) => portOf(page, stepId)?.firstElementChild?.classList;
+    for (const stepId of ["start", "write"]) {
+      expect(ring(stepId)).toContain("border-fg-muted");
+      expect(ring(stepId)).toContain("hover:border-accent");
+      expect(ring(stepId)).not.toContain("border-accent");
+      expect(dot(stepId)).toContain("bg-fg-muted");
+      expect(dot(stepId)).toContain("group-hover:bg-accent");
+    }
+
+    const port = await dragTo(page, "start", middleOf(page, "done"));
+    expect(ring("start")).toContain("border-accent");
+    expect(dot("start")).toContain("bg-accent");
+    expect(ring("write")).toContain("border-fg-muted");
+    expect(ring("write")).not.toContain("border-accent");
+
+    await drop(port, { clientX: -500, clientY: -500 });
+    expect(ring("start")).toContain("border-fg-muted");
+    expect(ring("start")).not.toContain("border-accent");
+  });
+
   it("adds an arrow on a drop on another step and says so", async () => {
     const edits = editsThatWork();
     const { page, announce } = await showPage(edits);

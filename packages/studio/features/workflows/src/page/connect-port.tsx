@@ -85,20 +85,37 @@ export function portCentre(box: Box): Point {
 }
 
 /**
+ * How a port is drawn: muted at rest, so a canvas of steps isn't full of accent marks, and in the
+ * accent colour under the pointer and while an arrow is being dragged from it, to match the line.
+ */
+const PORT_TONE = {
+  rest: {
+    ring: "group border-fg-muted hover:border-accent",
+    dot: "bg-fg-muted group-hover:bg-accent",
+  },
+  dragging: { ring: "border-accent", dot: "bg-accent" },
+} as const;
+
+/**
  * A step's output port (flow-workflows 4.3): a ring with a dot at the middle of the card's bottom
- * edge, to drag an arrow from. For a pointer only: the step card's **Go to…** and **Add** do the
- * same from the keyboard, so a screen reader doesn't meet it.
+ * edge, to drag an arrow from. It shows all the time, so touch and a pen find it too. For a pointer
+ * only: the step card's **Go to…** and **Add** do the same from the keyboard, so a screen reader
+ * doesn't meet it.
  */
 export function ConnectPort({
   stepId,
   box,
   handlers,
+  dragging,
 }: {
   readonly stepId: string;
   readonly box: Box;
   readonly handlers: PortHandlers;
+  /** An arrow is being dragged from this port. */
+  readonly dragging: boolean;
 }) {
   const centre = portCentre(box);
+  const tone = PORT_TONE[dragging ? "dragging" : "rest"];
   return (
     <span
       {...handlers}
@@ -106,9 +123,9 @@ export function ConnectPort({
       data-connect-port={stepId}
       title={pageWords.connectHint}
       style={{ left: centre.x - PORT / 2, top: centre.y - PORT / 2, width: PORT, height: PORT }}
-      className="absolute grid cursor-crosshair place-items-center rounded-full border-2 border-accent bg-surface"
+      className={`absolute grid cursor-crosshair place-items-center rounded-full border-2 bg-surface ${tone.ring}`}
     >
-      <span className="size-1 rounded-full bg-accent" />
+      <span className={`size-1 rounded-full ${tone.dot}`} />
     </span>
   );
 }
