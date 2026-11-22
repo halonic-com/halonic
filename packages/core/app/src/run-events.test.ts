@@ -177,3 +177,81 @@ verifies("app.run-send", () => {
     });
   });
 });
+
+verifies("app.run-send-seen-approval", () => {
+  /** An approval of `send_mail` that the writer's call `callId` waits for. */
+  function asked(callId: string): RunEventBody {
+    return {
+      type: "approval.requested",
+      state: "review",
+      agent: "writer",
+      tool: "send_mail",
+      connector: "mail",
+      args: { to: "support" },
+      callId,
+      resume: { messages: [], calls: [], step: 0 },
+    };
+  }
+  function answered(callId: string): RunEventBody {
+    return {
+      type: "approval.resolved",
+      state: "review",
+      agent: "writer",
+      tool: "send_mail",
+      callId,
+      approved: true,
+    };
+  }
+  const waitingOnFirst = [started, enteredReview, asked("call-1"), waiting];
+
+  /** The run's summary as a surface showed it, while it waited on `call-1`. */
+  async function shown(): Promise<RunSummary> {
+    const store = new MemoryRuns();
+    store.add("run_a1", startedAt, waitingOnFirst);
+    const summary = summarize(await store.events("run_a1"));
+    if (summary === null) throw new Error("no summary");
+    return summary;
+  }
+
+  it("names the approval the person saw when the send says what they saw", async () => {
+    const { executor, events } = given(waitingOnFirst);
+
+    await events.sendEvent("run_a1", "approve", await shown());
+
+    expect(executor.sends).toEqual([
+      { runId: "run_a1", event: "approve", payload: undefined, options: { callId: "call-1" } },
+    ]);
+  });
+
+  it("refuses a send for an approval answered first as conflict, though another waits now", async () => {
+    const { executor, events } = given([
+      ...waitingOnFirst,
+      answered("call-1"),
+      asked("call-2"),
+      waiting,
+    ]);
+
+    const refused = await refusalOf(events.sendEvent("run_a1", "approve", await shown()));
+
+    expect(errorKindOf(refused)).toBe("conflict");
+    expect(refused.refusal).toMatchObject({ reason: "answered", run: { status: "waiting" } });
+    expect(executor.sends).toEqual([]);
+  });
+
+  it("refuses it the same way when the approval is answered between the check and the send", async () => {
+    const { store, executor, events } = given(waitingOnFirst);
+    executor.onSend = () => {
+      store.add("run_a1", startedAt, [
+        ...waitingOnFirst,
+        answered("call-1"),
+        asked("call-2"),
+        waiting,
+      ]);
+      throw engineRefused("engine.decision-callid-must-match");
+    };
+
+    const refused = await refusalOf(events.sendEvent("run_a1", "approve", await shown()));
+
+    expect(refused.refusal).toMatchObject({ reason: "answered" });
+  });
+});

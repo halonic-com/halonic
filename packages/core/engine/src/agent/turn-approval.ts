@@ -3,6 +3,7 @@
 // (`AgentResume`) the run log keeps, so a run goes on after a restart. It
 // holds the conversation and the calls still to handle, never a key.
 
+import { fenceUntrusted } from "@halonicjs/app";
 import type { AgentResume, LoggedToolCall, ToolOutcome } from "@halonicjs/events";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
 import { connectorStartCause } from "./connector-start-cause.ts";
@@ -18,7 +19,7 @@ import {
   stopKindOf,
   type ToolCallContext,
 } from "./run-tool-call.ts";
-import type { SubagentStopped, TurnTools } from "./turn-tools.ts";
+import type { SubagentStopped, TurnTool, TurnTools } from "./turn-tools.ts";
 
 /**
  * The turn stopped before a tool call: one that needs a person's OK, or a
@@ -184,11 +185,13 @@ export function stopAtDelegate(
 }
 
 /**
- * The answer to the call the turn stopped before. A call a person approved
- * is made, or handed over to the engine when it changes things. When its
- * connector didn't start this time, so the turn has no tool of that name,
- * the call isn't made, and its result says why ({@link answerNotStarted});
- * a call to a tool nobody offers any more is refused.
+ * The answer to the call the turn stopped before. The model gets the result
+ * of a call the engine made, fenced, whatever the connector lists now. A call a
+ * person approved is made, or handed over to the engine when it changes
+ * things, only to a tool of the connector its approval named
+ * ({@link approvedTool}). When that connector didn't start this time, the
+ * call isn't made, and its result says why ({@link answerNotStarted}); a
+ * call to a tool it doesn't offer any more is refused.
  */
 async function answerWaitingCall(
   context: ToolCallContext,
@@ -196,7 +199,17 @@ async function answerWaitingCall(
   call: ToolCall,
   answer: TurnAnswer,
 ): Promise<CallStep> {
-  const tool = tools.byName.get(call.name);
+  if ("result" in answer) {
+    const listed = tools.byName.get(call.name);
+    // The engine makes only calls to a connector's tool, so a result whose
+    // tool isn't listed any more is a server's result too.
+    const content =
+      listed === undefined
+        ? fenceUntrusted(answer.result)
+        : passResultToModel(listed, answer.result);
+    return answered({ role: "tool", toolCallId: call.id, name: call.name, content });
+  }
+  const tool = approvedTool(tools, call, answer);
   if (tool === undefined) {
     const connector = notStartedConnectorOf(tools, answer);
     return answered(
@@ -204,10 +217,6 @@ async function answerWaitingCall(
         ? await refuseUnoffered(context, call)
         : await answerNotStarted(context, call, connector, tools.listingErrors.get(connector)),
     );
-  }
-  if ("result" in answer) {
-    const content = passResultToModel(tool, answer.result);
-    return answered({ role: "tool", toolCallId: call.id, name: call.name, content });
   }
   if (!answer.approved) {
     return answered(refuseCall(context, tool.source, call, rejection(answer.comment)));
@@ -241,11 +250,29 @@ async function answerNotStarted(
 }
 
 /**
+ * The turn's tool the waiting call goes to, or `undefined` when it has none
+ * of that name from the connector the approval named. Another connector
+ * may list a tool of the same name, which the turn offers once the named
+ * connector's listing fails or leaves it out: a person's OK for one
+ * connector never lets a call go to another. An approval from an older log
+ * names no connector, so only the name counts there.
+ */
+function approvedTool(
+  tools: TurnTools,
+  call: ToolCall,
+  answer: ApprovalAnswer,
+): TurnTool | undefined {
+  const tool = tools.byName.get(call.name);
+  if (tool === undefined || answer.connector === undefined) return tool;
+  return tool.kind === "server" && tool.source === answer.connector ? tool : undefined;
+}
+
+/**
  * The connector of a call a person approved, when its listing failed in
  * this turn, so it didn't start; `undefined` otherwise.
  */
-function notStartedConnectorOf(tools: TurnTools, answer: TurnAnswer): string | undefined {
-  if (!("approved" in answer) || !answer.approved || answer.connector === undefined) {
+function notStartedConnectorOf(tools: TurnTools, answer: ApprovalAnswer): string | undefined {
+  if (!answer.approved || answer.connector === undefined) {
     return undefined;
   }
   return tools.listingErrors.has(answer.connector) ? answer.connector : undefined;

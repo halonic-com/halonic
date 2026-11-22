@@ -75,6 +75,8 @@ export const runsMessages = defineMessages("runs", {
   notWaiting: (why: NotWaiting) => phrase`it isn't waiting for you. ${notWaitingInWords(why)}`,
   notWaitingFix: (runId: string, dir?: string) =>
     phrase`See it with ${suggestedCommand("runs show", dir, runId)}.`,
+  /** The approval was answered somewhere else after the lookup (`conflict`); {@link notWaitingFix} follows. */
+  answeredFirst: () => phrase`someone answered that approval first.`,
   /** No such run, as the reason after "Couldn't send approve:" (`not_found`). */
   noRun: (runId: string, workspace: string) => phrase`there's no run ${runId} in ${workspace}.`,
   /** The list is where a waiting run's id is (revision 31, M12). */

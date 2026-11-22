@@ -123,7 +123,7 @@ export async function sendToRun(
   try {
     let run: RunSummary;
     try {
-      run = await new RunEvents(engine, runs).sendEvent(summary.id, event);
+      run = await new RunEvents(engine, runs).sendEvent(summary.id, event, summary);
     } catch (error) {
       if (!(error instanceof RunEventRefused)) throw error;
       const refused = { ...named, workflow, clock: facts.clock };
@@ -274,6 +274,12 @@ function refusedError(refusal: RunEventRefusal, send: RefusedSend): Error {
       return new RefusedSendError(
         "conflict",
         runsMessages.notWaiting(notWaiting(refusal.run, send.workflow, send.clock)),
+        runsMessages.notWaitingFix(send.typed, send.dir),
+      );
+    case "answered":
+      return new RefusedSendError(
+        "conflict",
+        runsMessages.answeredFirst(),
         runsMessages.notWaitingFix(send.typed, send.dir),
       );
     case "event-not-taken": {
