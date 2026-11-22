@@ -4,21 +4,43 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { unmountAll } from "../test-support/render.tsx";
-import { button, comeBack, FakeSignIns, press, show } from "../test-support/sign-ins.tsx";
+import {
+  authorizeUrl,
+  button,
+  comeBack,
+  FakeSignIns,
+  press,
+  show,
+} from "../test-support/sign-ins.tsx";
 
 afterEach(unmountAll);
 
 const waitingLine = "Waiting for acme… Finish in your browser.";
 
 verifies("plugins.plugin-sign-in-waiting", () => {
-  it("waits for the browser with Cancel in place of Sign in", async () => {
+  it("waits for the browser with Open again and Cancel in place of Sign in", async () => {
     const view = await show(new FakeSignIns());
 
     await press("Sign in");
 
     expect(view.textContent).toContain(waitingLine);
+    expect(button("Open again")?.textContent).toBe("Open again ↗ (opens in your browser)");
     expect(button("Cancel")).toBeDefined();
     expect(button("Sign in")).toBeUndefined();
+  });
+
+  it("opens the same page again without starting another sign-in", async () => {
+    const signIns = new FakeSignIns();
+    const view = await show(signIns);
+    await press("Sign in");
+
+    await press("Open again");
+
+    expect(signIns.opened).toEqual([authorizeUrl, authorizeUrl]);
+    expect(signIns.calls.filter((call) => call.startsWith("start"))).toEqual([
+      "start acme account",
+    ]);
+    expect(view.textContent).toContain(waitingLine);
   });
 
   it("keeps waiting when the person comes back before the browser finished", async () => {
@@ -87,6 +109,19 @@ verifies("plugins.plugin-sign-in-waiting", () => {
     expect(document.activeElement).toBe(button("Sign in"));
   });
 
+  it("shows the sign-in the browser finished just before Cancel, without waiting for focus", async () => {
+    const signIns = new FakeSignIns();
+    const view = await show(signIns);
+    await press("Sign in");
+    signIns.statuses = [{ signIn: "account", state: "signedIn" }];
+
+    await press("Cancel");
+
+    expect(view.textContent).not.toContain(waitingLine);
+    expect(view.textContent).toContain("Signed in");
+    expect(button("Sign out")).toBeDefined();
+  });
+
   it("keeps waiting and says why when Cancel fails", async () => {
     const signIns = new FakeSignIns();
     signIns.cancelError = new Error("The agent host isn't running.");
@@ -108,7 +143,7 @@ verifies("plugins.plugin-sign-in-waiting", () => {
       await act(async () => vi.advanceTimersByTime(10 * 60 * 1000));
 
       expect(view.textContent).not.toContain(waitingLine);
-      expect(view.textContent).toContain("The sign-in didn't finish. Try again.");
+      expect(view.textContent).toContain("The sign-in didn't finish. Nothing was saved.");
       expect(button("Sign in")).toBeDefined();
     } finally {
       vi.useRealTimers();
