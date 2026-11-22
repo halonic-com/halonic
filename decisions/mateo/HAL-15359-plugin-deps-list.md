@@ -2,6 +2,7 @@
 
 - Approval: Liam approved the dependency on HAL-15359 (22 Nov); he reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kA7ru/YEfzGy8iegrbXR/x/5tz+V7PpN+qEnzmvyexqyaxbpGFnje97YkHbkGDuZBGnPiF5TlCD2boGrdDKCCw==
 
 CI's "Policy rules (base commit's copy)" job checks a pull request against
 the base commit's `tooling/check/dependencies.json`, so a new dependency
