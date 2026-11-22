@@ -2,6 +2,7 @@
 
 - Approval: HAL-15476 (follow-up from Liam's review of #4670 on HAL-15398)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fHI7O68NYVl5AOdw6PqR43SY7n+0ir45RTzgU9jIYcYaf9ai1iTxHuiB3ui2ywJW3hbmVP8i9PTw3Aleq4wWCQ==
 - Task: HAL-15476
 
 After #4670, `trust --remove` in a plugin's folder whose trust record can't be read took the
