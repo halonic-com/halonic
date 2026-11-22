@@ -1,4 +1,4 @@
-use std::fs::{self, DirEntry, Metadata, OpenOptions};
+use std::fs::{self, DirEntry, File, Metadata, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
@@ -7,6 +7,7 @@ use sha2::{Digest, Sha256};
 use crate::error::FileError;
 use crate::fence::Fence;
 use crate::leave_out::LeaveOut;
+use crate::limits::{check_depth, read_at_most};
 use crate::links::{entry_at, is_missing, native_path};
 use crate::temporary_write::{is_temporary_write, temporary_write_name};
 use crate::workspace_path::{check_public_workspace_path, is_private_workspace_path};
@@ -212,12 +213,12 @@ impl<'a> WorkspaceFolder<'a> {
         if !entry_at(&self.root, path)?.is_some_and(|entry| entry.is_file()) {
             return Ok(None);
         }
-        let bytes = match fs::read(native_path(&self.root, path)) {
-            Ok(bytes) => bytes,
+        let mut file = match File::open(native_path(&self.root, path)) {
+            Ok(file) => file,
             Err(error) if is_missing(&error) => return Ok(None),
             Err(error) => return Err(FileError::io(path, &error)),
         };
-        String::from_utf8(bytes)
+        String::from_utf8(read_at_most(&mut file, path)?)
             .map(Some)
             .map_err(|_| FileError::NotText {
                 path: path.to_owned(),
@@ -352,13 +353,15 @@ impl Skip<'_> {
 /// `folder`, whose workspace path is `prefix`, as `#collect` in `fs-node`
 /// walks it, leaving out what `skip` holds without stepping into it. A
 /// folder that is gone gives nothing; one the account may not read is
-/// `FolderUnreadable`, naming it (`""` for the root).
+/// `FolderUnreadable`, naming it (`""` for the root). A folder deeper than
+/// [`crate::MAX_FOLDER_DEPTH`] fails the walk.
 pub(crate) fn walk(
     folder: &Path,
     prefix: &str,
     skip: &Skip<'_>,
     visit: &mut dyn FnMut(String, &DirEntry) -> Result<(), FileError>,
 ) -> Result<(), FileError> {
+    check_depth(prefix)?;
     let entries = match fs::read_dir(folder) {
         Ok(entries) => entries,
         Err(error) if is_missing(&error) => return Ok(()),
