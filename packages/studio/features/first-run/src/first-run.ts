@@ -267,7 +267,6 @@ export class FirstRun {
     for (const listener of [...this.#listeners]) listener();
   }
 
-  /** Moves the steps by the newest run of Support reply since the first run began here. */
   /**
    * Tells when another run is going: a run started from the page's Run form or the CLI moves no
    * step while the first run is at Run, but the bar's **Cancel run** is its way out.
@@ -279,6 +278,7 @@ export class FirstRun {
     this.#tell();
   }
 
+  /** Moves the steps by the newest run of Support reply since the first run began here. */
   async #follow(): Promise<void> {
     // Only tells: this is following the runs already.
     if (this.#reload()) this.#tell();

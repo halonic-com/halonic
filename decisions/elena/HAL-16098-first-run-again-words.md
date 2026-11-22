@@ -3,6 +3,7 @@
 - Task: HAL-16098
 - Approval: a team decision under HAL-2282: small wording on the first-run flow the board approved on HAL-7993 (3.4), from flow check C672 #3 (HAL-16091). No new screen or flow. Liam signs at review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Kk1C+IztjS4KHQltAYyMWqgXV68TLVicwTXJ2i1DUTR64uc4mwI3qym2SOxvJXTxk1wWfg8AuGtOq2iXqU6/DA==
 
 ## What changes
 
