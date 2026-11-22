@@ -8,12 +8,12 @@ The shell's host settings store shall keep the settings kept where Halonic runs 
 
 ## Examples
 
-- Given a saved turn limit of 20,
+- Given a saved model call limit of 20,
   when the folder is read,
   then it holds only `host.json`, with mode `600`, holding `{"version":1,"values":{"assistant.turn-limit":20}}`, indented by two spaces.
 - Given a `host.json` that holds `{"values":[]}`,
-  when the turn limit 24 is saved,
-  then `host.json.broken` holds that text and `host.json` holds only the turn limit.
+  when the model call limit 24 is saved,
+  then `host.json.broken` holds that text and `host.json` holds only the model call limit.
 - Given a `host.json` that is a link to a file in a workspace,
   when it is read,
   then it fails as `unreadable`, and a save replaces the link without changing the file it pointed to.

@@ -11,14 +11,14 @@ The Tauri host settings store shall implement `HostSettingsStore` by calling the
 ## Examples
 
 - Given a watch,
-  when the CLI saves the turn limit 20,
+  when the CLI saves the model call limit 20,
   then the listener is called within 2 seconds, once; when the same settings are written again with the keys in another order, it isn't.
 - Given a watch,
-  when the page saves the turn limit 20 through the store,
+  when the page saves the model call limit 20 through the store,
   then the listener is called without waiting for the next read.
 - Given the served Studio, which has no `desktop-host-settings` capability,
   when any method is called,
   then it rejects with an `unavailable` error that doesn't hold the shell's text.
-- Given `NaN` for the turn limit,
+- Given `NaN` for the model call limit,
   when it is saved,
   then it rejects with a `RangeError` and the shell gets no call.

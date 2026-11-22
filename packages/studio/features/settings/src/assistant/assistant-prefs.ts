@@ -1,7 +1,7 @@
 import { hostSetting } from "@halonicjs/app";
 import { type AssistantProvider, assistantProviders } from "./assistant-providers.ts";
 
-/** Fewest and most model calls before the Assistant stops and asks to continue. */
+/** Fewest and most model calls in one answer before the Assistant stops and asks to continue. */
 export const turnLimitRange = { min: 1, max: 64, fallback: 16 } as const;
 
 /** Whether `value` is a model call limit: a whole number from 1 to 64. */

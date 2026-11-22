@@ -9,10 +9,10 @@ The memory store of the settings kept where Halonic runs shall keep them as the 
 ## Examples
 
 - Given two stores, the second made with the first,
-  when the second saves a turn limit of 20,
+  when the second saves a model call limit of 20,
   then the first reads it and its watcher is called once, and a new store of its own reads nothing.
-- Given a saved turn limit of 20,
+- Given a saved model call limit of 20,
   then `savedText()` holds `{ "version": 1, "values": { "assistant.turn-limit": 20 } }`.
 - Given saved text replaced with `{`,
-  when the turn limit is removed,
+  when the model call limit is removed,
   then `read` gave an empty object, the watcher was called once and `brokenText()` gives `{`.
