@@ -15,6 +15,7 @@ import {
   type LoadedWorkspace,
   loadWorkspace,
 } from "@halonicjs/workspace";
+import { deleteWithUndo } from "../files/undoable-delete.ts";
 
 /** What {@link WorkspaceLibraryItems} needs of the workspace's files. */
 export interface WorkspaceLibraryItemsParts {
@@ -139,9 +140,9 @@ export class WorkspaceLibraryItems implements LibraryItemsHost {
   }
 
   /**
-   * Deletes the item's file (a skill's whole folder) as one change. Undo is the workspace's undo,
-   * so it puts the item back only while the delete is still the newest step: after any other
-   * change, or after the delete was undone some other way, it rejects and undoes nothing.
+   * Deletes the item's file (a skill's whole folder) as one change, with the way back of
+   * {@link deleteWithUndo}: it puts the item back after later changes too, unless a file has taken
+   * its place.
    */
   async remove(kind: LibraryItemKind, place: LibraryItemPlace): Promise<RemovedLibraryItem> {
     const files = this.#parts.files;
@@ -149,21 +150,7 @@ export class WorkspaceLibraryItems implements LibraryItemsHost {
     const paths = await itemPaths(files, kind, place);
     if (paths.length === 0)
       throw new KindedError("not_found", `${name} isn't in this workspace any more.`);
-    files.change(
-      `Deleted ${kind} ${place.id}`,
-      Object.fromEntries(paths.map((path) => [path, null])),
-    );
-    const afterDelete = files.step;
-    return {
-      undo: async () => {
-        if (files.step !== afterDelete || !files.undo()) {
-          throw new KindedError(
-            "conflict",
-            `${name} can't be put back, because the workspace changed after it was deleted.`,
-          );
-        }
-      },
-    };
+    return deleteWithUndo(files, { paths, what: `${kind} ${place.id}`, name });
   }
 
   /** The item's file as the workspace holds it now, unsaved changes included. */

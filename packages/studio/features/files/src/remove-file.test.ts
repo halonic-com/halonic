@@ -51,7 +51,7 @@ verifies("files.ui.delete-file", () => {
     const undo = async () => {
       throw kinded(
         "conflict",
-        "a.md can't be put back, because the workspace changed after it was deleted.",
+        "a.md can't be put back, because there is a new a.md. Rename or move it, then undo again.",
       );
     };
 
@@ -62,7 +62,7 @@ verifies("files.ui.delete-file", () => {
     expect(show.mock.calls[1]?.[0]).toMatchObject({
       tone: "danger",
       title: "Couldn't put a.md back",
-      text: "a.md can't be put back, because the workspace changed after it was deleted.",
+      text: "a.md can't be put back, because there is a new a.md. Rename or move it, then undo again.",
     });
   });
 

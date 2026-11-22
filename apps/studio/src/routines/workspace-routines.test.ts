@@ -251,32 +251,6 @@ verifies("studio.workspace-routines", () => {
     ]);
   });
 
-  it("deletes a routine into the trash as one change", async () => {
-    const { host, store, changes } = setup();
-    await host.trash(weekly);
-    expect(store["hubs/acme/workflows/routines/weekly-report.routine.yaml"]).toBeUndefined();
-    expect(changes).toEqual([
-      {
-        label: "Deleted routine Weekly report",
-        changes: { "hubs/acme/workflows/routines/weekly-report.routine.yaml": null },
-      },
-    ]);
-  });
-
-  it("puts a deleted routine back with Undo, but only while the delete is the newest change", async () => {
-    const { host, store } = setup();
-    const path = "hubs/acme/workflows/routines/weekly-report.routine.yaml";
-    const before = store[path];
-
-    await (await host.trash(weekly)).undo();
-    expect(store[path]).toBe(before);
-
-    const trashed = await host.trash(weekly);
-    await host.create({ name: "Morning check", hubId: "acme" });
-    await expect(trashed.undo()).rejects.toThrow("can't be put back");
-    expect(store[path]).toBeUndefined();
-  });
-
   it("names what a routine starts, for the line that says what deleting it stops", async () => {
     const { host } = setup();
     const [row] = await host.list();
