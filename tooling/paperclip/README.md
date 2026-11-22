@@ -59,6 +59,11 @@ once, not every 10 minutes. The host stores no plugin id on a comment, so
 the watcher's own comments are the ones with neither an agent nor a user as
 author that start with `PR watcher:`. It keeps no state of its own.
 
+A pass takes about a minute, so right before it comments or marks a task
+done, the watcher reads the task again. If its author closed it in the
+meantime, the watcher leaves it alone and logs that; it doesn't count as
+a failure.
+
 It only sends GET requests to GitHub, and only to `api.github.com`. About
 four requests per open pull request whose author holds the task, two per
 merged one, and one or two list pages per repository each pass.

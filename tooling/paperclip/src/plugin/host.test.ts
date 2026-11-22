@@ -8,6 +8,14 @@ import { doneOnly, paperclipHost } from "./host.ts";
 
 const srcDir = fileURLToPath(new URL("..", import.meta.url));
 
+/** One open task, as the watcher saw it when the pass began. */
+const openTask = {
+  id: "task-1",
+  identifier: "HAL-1",
+  status: "in_progress",
+  assigneeAgentId: null,
+};
+
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
@@ -40,8 +48,10 @@ verifies("paperclip.pr-watcher-plugin", () => {
   });
 
   test("marks a task done with exactly the done status, then comments", async () => {
-    const { host, writes } = fakeHost([]);
-    await paperclipHost(host, "acme").markDone("task-1", "PR watcher: done.");
+    const { host, writes } = fakeHost([openTask]);
+    expect(await paperclipHost(host, "acme").markDone("task-1", "PR watcher: done.")).toBe(
+      "written",
+    );
     expect(writes).toEqual([
       { kind: "update", issueId: "task-1", patch: { status: "done" } },
       { kind: "comment", issueId: "task-1", body: "PR watcher: done." },
@@ -51,8 +61,10 @@ verifies("paperclip.pr-watcher-plugin", () => {
 
 describe("the host adapter", () => {
   test("comments, then wakes the assignee with a key per state", async () => {
-    const { host, writes } = fakeHost([]);
-    await paperclipHost(host, "acme").wake("task-1", "PR watcher: this needs you.", "k1 | k2");
+    const { host, writes } = fakeHost([openTask]);
+    expect(
+      await paperclipHost(host, "acme").wake("task-1", "PR watcher: this needs you.", "k1 | k2"),
+    ).toBe("written");
     expect(writes).toEqual([
       { kind: "comment", issueId: "task-1", body: "PR watcher: this needs you." },
       {
@@ -61,6 +73,26 @@ describe("the host adapter", () => {
         options: { reason: "pr_watcher", idempotencyKey: "pr-watcher task-1 k1 | k2" },
       },
     ]);
+  });
+
+  test("writes nothing to a task that was closed since the pass began", async () => {
+    const { host, writes } = fakeHost([{ ...openTask, status: "done" }]);
+    const paperclip = paperclipHost(host, "acme");
+    expect(await paperclip.wake("task-1", "PR watcher: this needs you.", "k1")).toBe("closed");
+    expect(await paperclip.markDone("task-1", "PR watcher: done.")).toBe("closed");
+    expect(writes).toEqual([]);
+  });
+
+  test("takes the host's refusal to wake a closed task as closed, and throws on others", async () => {
+    // HAL-16139, 22 Nov: closed between the re-read and the wake-up.
+    const closed = fakeHost([openTask], {}, "Issue is not wakeable in status: done");
+    expect(await paperclipHost(closed.host, "acme").wake("task-1", "PR watcher: x", "k1")).toBe(
+      "closed",
+    );
+    const broken = fakeHost([openTask], {}, "Paperclip is down");
+    await expect(
+      paperclipHost(broken.host, "acme").wake("task-1", "PR watcher: x", "k1"),
+    ).rejects.toThrow("Paperclip is down");
   });
 
   test("watches open tasks and sees an unfinished child of any open status", async () => {

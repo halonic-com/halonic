@@ -1,5 +1,11 @@
 import type { PluginAgentsClient, PluginIssuesClient } from "@paperclipai/plugin-sdk";
-import type { AgentRow, CommentRow, Paperclip, TaskRow } from "../pr-watcher/paperclip.ts";
+import type {
+  AgentRow,
+  CommentRow,
+  Paperclip,
+  TaskRow,
+  WriteOutcome,
+} from "../pr-watcher/paperclip.ts";
 
 /**
  * The PR watcher's Paperclip, on top of the plugin host's API. This is the
@@ -11,7 +17,7 @@ import type { AgentRow, CommentRow, Paperclip, TaskRow } from "../pr-watcher/pap
 export interface HostApi {
   readonly issues: Pick<
     PluginIssuesClient,
-    "list" | "listComments" | "createComment" | "update" | "requestWakeup"
+    "list" | "get" | "listComments" | "createComment" | "update" | "requestWakeup"
   >;
   readonly agents: Pick<PluginAgentsClient, "list">;
 }
@@ -87,16 +93,54 @@ export function paperclipHost(host: HostApi, companyId: string): Paperclip {
       return agents.map((agent): AgentRow => ({ id: agent.id, urlKey: agent.urlKey }));
     },
     async wake(taskId, body, key) {
+      if (!(await stillWatched(host, taskId, companyId))) {
+        return "closed";
+      }
       await host.issues.createComment(taskId, body, companyId);
       // A plugin's comment wakes nobody, so the wake-up is its own call.
-      await host.issues.requestWakeup(taskId, companyId, {
-        reason: "pr_watcher",
-        idempotencyKey: `pr-watcher ${taskId} ${key}`,
-      });
+      return wakeAssignee(host, taskId, companyId, key);
     },
     async markDone(taskId, body) {
+      if (!(await stillWatched(host, taskId, companyId))) {
+        return "closed";
+      }
       await host.issues.update(taskId, doneOnly({ status: "done" }), companyId);
       await host.issues.createComment(taskId, body, companyId);
+      return "written";
     },
   };
+}
+
+/** The host's refusal to wake a task that is done or cancelled. */
+const notWakeablePattern = /not wakeable in status/i;
+
+async function wakeAssignee(
+  host: HostApi,
+  taskId: string,
+  companyId: string,
+  key: string,
+): Promise<WriteOutcome> {
+  try {
+    await host.issues.requestWakeup(taskId, companyId, {
+      reason: "pr_watcher",
+      idempotencyKey: `pr-watcher ${taskId} ${key}`,
+    });
+    return "written";
+  } catch (error) {
+    // Closed between the re-read and the wake-up: nobody is left to wake.
+    if (notWakeablePattern.test((error as Error).message)) {
+      return "closed";
+    }
+    throw error;
+  }
+}
+
+/**
+ * Re-reads a task right before a write. A pass over every task takes about a
+ * minute, and an author who closes their task in that time shouldn't get a
+ * comment on a done task or fail the pass (HAL-16139, 22 Nov).
+ */
+async function stillWatched(host: HostApi, taskId: string, companyId: string): Promise<boolean> {
+  const issue = await host.issues.get(taskId, companyId);
+  return issue !== null && watchedStatuses.has(issue.status);
 }

@@ -176,23 +176,31 @@ async function decideTask(
   return decide(task, ownerId, pulls, memory);
 }
 
-async function act(options: TickOptions, task: TaskRow, decision: Decision): Promise<void> {
+/** Carries out a decision; false when it did nothing (a skip, or the task closed meanwhile). */
+async function act(options: TickOptions, task: TaskRow, decision: Decision): Promise<boolean> {
   if (decision.kind === "skip") {
     options.log(`${task.identifier}: nothing to do (${decision.why})`);
-    return;
+    return false;
   }
   const body =
     decision.kind === "done" ? doneMessage(decision.pulls) : wakeMessage(decision.reasons);
   options.log(`${task.identifier}: ${decision.kind}${options.dryRun ? " (dry run)" : ""}\n${body}`);
   if (options.dryRun) {
-    return;
+    return true;
   }
-  if (decision.kind === "done") {
-    await options.paperclip.markDone(task.id, body);
-  } else {
-    const key = decision.reasons.map((reason) => reason.key).join(" | ");
-    await options.paperclip.wake(task.id, body, key);
+  const outcome =
+    decision.kind === "done"
+      ? await options.paperclip.markDone(task.id, body)
+      : await options.paperclip.wake(
+          task.id,
+          body,
+          decision.reasons.map((reason) => reason.key).join(" | "),
+        );
+  if (outcome === "closed") {
+    options.log(`${task.identifier}: closed during this pass, so left alone`);
+    return false;
   }
+  return true;
 }
 
 /**
@@ -216,7 +224,9 @@ export async function tick(options: TickOptions): Promise<TickSummary> {
         continue;
       }
       counts.checked += 1;
-      await act(options, task, decision);
+      if (!(await act(options, task, decision))) {
+        continue;
+      }
       counts.done += decision.kind === "done" ? 1 : 0;
       counts.woken += decision.kind === "wake" ? 1 : 0;
     } catch (error) {
