@@ -90,8 +90,9 @@ more is needed for them. A real 0.1.x is lower
 than 1.0.0, so npm won't move `latest` to it by itself, and `npm install halonic` would keep installing the
 placeholder (HAL-12286). Every CLI publish before 1.0.0 therefore takes one more step:
 
-1. Publish the release workflow's `cli-package` tarball with `npm publish <tarball> --tag latest`, or, if it was
-   published without the tag, run `npm dist-tag add halonic@<version> latest` right after.
+1. On a real run, the release workflow's `npm-cli` job stages the `cli-package` tarball with
+   `npm stage publish <tarball> --tag latest` (HAL-16209), and a person approves it on npmjs.com. If it
+   went live without the tag, run `npm dist-tag add halonic@<version> latest` right after.
 2. Once the version is live, check that `npm view halonic dist-tags` shows `latest: <version>`.
 3. Check the npm page with `npm view halonic license readme`: it must show `Apache-2.0` and the README from
    `cli/README.md`. npm shows the `latest` version's licence and README, so until `latest` moves it still
@@ -117,6 +118,12 @@ A 409 "already staged" for the version being released stops the run: before appr
 that the staged version's provenance names the release's commit and ref.
 Releases need the board's yes: ask through a task for
 Chief, and merge or run only once the user has approved.
+
+The CLI goes the same way from [`release.yml`](../../.github/workflows/release.yml), not from
+`publish-kit.yml`: a real run on a `v*` tag stages `halonic` in its `npm-cli` job, after the draft release
+exists. That job runs in the `npm-publish-cli` environment, which allows `v*` tags only, and npm's
+trusted publisher for `halonic` names `release.yml` and that environment, with staged publishing only.
+Both are set up once by the board before the first release that ships the CLI (HAL-16209).
 
 ## Release branch
 
