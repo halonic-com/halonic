@@ -152,6 +152,12 @@ export interface ListedToolsHost {
   removeApproval(connectorId: string, toolName: string): Promise<void>;
   /** Calls `listener` whenever a connector's tools may have changed. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
+  /**
+   * Opens the workspace's trust check over the page, for a listing refused with
+   * {@link WorkspaceNotTrusted}, and answers `"trusted"` once the person trusted it, `"declined"`
+   * on Not now. Absent where there is no trust check to open, so the page offers no **Review**.
+   */
+  askTrust?(): Promise<"trusted" | "declined">;
 }
 
 /** The open workspace's listed tools. The app provides it for each open workspace. */

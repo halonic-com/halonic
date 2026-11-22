@@ -94,12 +94,11 @@ function page(
   options: {
     readonly id?: string;
     readonly host?: "phone";
-    readonly runCommand?: (id: string) => boolean;
     /** The workspace folder the status host gives, which the commands to copy name. */
     readonly folder?: string;
   } = {},
 ): ItemViewProps {
-  const { id = "notes", host, runCommand, folder } = options;
+  const { id = "notes", host, folder } = options;
   const status = folder === undefined ? statusHost : { ...statusHost, folder };
   const provided = new Map<unknown, unknown>([[ConnectorStatusHostService, status]]);
   if (tools !== undefined) provided.set(ListedToolsHostService, tools);
@@ -112,7 +111,6 @@ function page(
       }),
       announcer: { announceState: vi.fn() },
       host,
-      ...(runCommand === undefined ? {} : { runCommand }),
     },
     Sections: () => null,
   } as unknown as ItemViewProps;
@@ -195,15 +193,15 @@ describe("the connector page's listed tools", () => {
     });
 
     it("offers Review, which opens the trust check, when the workspace isn't trusted", async () => {
-      const runCommand = vi.fn(() => true);
+      const askTrust = vi.fn(async () => "declined" as const);
       const root = render(
         <ConnectorPage
-          {...page(
-            toolsHost(async () => {
+          {...page({
+            ...toolsHost(async () => {
               throw new WorkspaceNotTrusted();
             }),
-            { runCommand },
-          )}
+            askTrust,
+          })}
         />,
       );
       await settled();
@@ -215,7 +213,7 @@ describe("the connector page's listed tools", () => {
 
       const review = [...root.querySelectorAll("button")].find((b) => b.textContent === "Review");
       act(() => review?.click());
-      expect(runCommand).toHaveBeenCalledWith("workspace.open-trust");
+      expect(askTrust).toHaveBeenCalledOnce();
     });
 
     it("says which secret isn't set, with Try again and no command", async () => {

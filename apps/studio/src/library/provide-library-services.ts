@@ -29,6 +29,8 @@ export interface LibraryServiceParts {
   readonly files: TauriFileShell;
   readonly transport: AgentHostTransport | undefined;
   readonly trust: WorkspaceTrust;
+  /** Opens the window's trust check, for a connector page's **Review**, and says how the person answered. */
+  readonly askTrust: () => Promise<"trusted" | "declined">;
   readonly location: string;
   /** What the folder's engine refused and left waiting, which its chats and runs record. */
   readonly refusals: RefusalsFeed;
@@ -77,6 +79,7 @@ export function provideLibraryServices(
       http: noHttpInStudio,
       listTools: agentHostToolLister(parts.transport),
       onApproved: parts.refusals.dropWaiting,
+      askTrust: parts.askTrust,
     }),
   );
 }

@@ -64,6 +64,8 @@ export interface WorkspaceListedToolsOptions {
   readonly listTools: ToolLister;
   /** Hears the tools an approval saved, so what a run left waiting comes off the Library's list. */
   readonly onApproved?: (connectorId: string, names: readonly string[]) => void;
+  /** Opens the window's trust check over the page; see {@link ListedToolsHost.askTrust}. */
+  readonly askTrust?: () => Promise<"trusted" | "declined">;
 }
 
 /** One connector of the workspace, from the single read that trust is checked on and that starts it. */
@@ -88,8 +90,14 @@ export class WorkspaceListedTools implements ListedToolsHost {
   readonly #options: WorkspaceListedToolsOptions;
   readonly #listeners = new Set<() => void>();
 
+  /** Present only when the app can show the trust check; see {@link ListedToolsHost.askTrust}. */
+  askTrust?: NonNullable<ListedToolsHost["askTrust"]>;
+
   constructor(options: WorkspaceListedToolsOptions) {
     this.#options = options;
+    if (options.askTrust !== undefined) {
+      this.askTrust = options.askTrust;
+    }
   }
 
   async review(connectorId: string): Promise<ListedToolsSnapshot> {
