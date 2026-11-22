@@ -66,5 +66,5 @@ export async function trashWorkflowFiles(
   files: WorkspaceWorkflowsParts["files"],
   { name, paths }: WorkflowFiles,
 ): Promise<TrashedWorkflow> {
-  return deleteWithUndo(files, { paths, what: `workflow ${name}`, name });
+  return deleteWithUndo(files, { paths, what: `workflow ${name}` });
 }

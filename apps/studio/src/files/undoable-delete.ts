@@ -11,14 +11,12 @@ export interface UndoableDeleteFiles {
   readonly step: number;
 }
 
-/** What is deleted: the files, and how the change and a refusal name them. */
+/** What is deleted: the files, and how the change names them. */
 export interface DeletedItem {
   /** The files that go, as one change. A path that isn't there is left out. */
   readonly paths: readonly string[];
   /** What the change names, after "Deleted" and "Put back": "workflow Reply", "notes.md". */
   readonly what: string;
-  /** What a refusal names: "Reply", "notes.md". */
-  readonly name: string;
 }
 
 /** The way back from {@link deleteWithUndo}. */
@@ -37,7 +35,7 @@ export interface UndoableDelete {
  */
 export async function deleteWithUndo(
   files: UndoableDeleteFiles,
-  { paths, what, name }: DeletedItem,
+  { paths, what }: DeletedItem,
 ): Promise<UndoableDelete> {
   const kept = await readAll(files, paths);
   files.change(
@@ -66,7 +64,7 @@ export async function deleteWithUndo(
       if (taken !== undefined) {
         throw new KindedError(
           "conflict",
-          `${name} can't be put back, because there is a new ${taken}. Rename or move it, then undo again.`,
+          `There's a new ${taken} in its place. Rename or move the new one, then undo again.`,
         );
       }
       const missing = Object.entries(kept).filter(([path]) => now[path] === undefined);

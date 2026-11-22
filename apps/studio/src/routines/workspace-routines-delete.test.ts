@@ -44,7 +44,7 @@ verifies("studio.workspace-routines", () => {
 
     await expect(trashed.undo()).rejects.toMatchObject({
       kind: "conflict",
-      message: `Weekly report can't be put back, because there is a new ${path}. Rename or move it, then undo again.`,
+      message: `There's a new ${path} in its place. Rename or move the new one, then undo again.`,
     });
     expect(store[path]).toBe(made);
   });

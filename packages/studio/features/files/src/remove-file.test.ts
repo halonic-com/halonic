@@ -54,7 +54,7 @@ verifies("files.ui.delete-file", () => {
       .mockRejectedValueOnce(
         kinded(
           "conflict",
-          "a.md can't be put back, because there is a new a.md. Rename or move it, then undo again.",
+          "There's a new a.md in its place. Rename or move the new one, then undo again.",
         ),
       )
       .mockResolvedValue(undefined);
@@ -67,7 +67,7 @@ verifies("files.ui.delete-file", () => {
     expect(failed).toMatchObject({
       tone: "danger",
       title: "Couldn't put a.md back",
-      text: "a.md can't be put back, because there is a new a.md. Rename or move it, then undo again.",
+      text: "There's a new a.md in its place. Rename or move the new one, then undo again.",
       sticky: true,
       action: { label: "Undo" },
     });

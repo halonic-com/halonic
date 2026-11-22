@@ -37,7 +37,7 @@ function memoryFiles(start: Record<string, string>) {
   return { store, labels, files };
 }
 
-const notes = { paths: ["notes.md"], what: "notes.md", name: "notes.md" } as const;
+const notes = { paths: ["notes.md"], what: "notes.md" } as const;
 
 verifies("studio.undoable-delete", () => {
   it("takes the delete back with the workspace's undo while it is the newest change", async () => {
@@ -75,7 +75,7 @@ verifies("studio.undoable-delete", () => {
 
   it("writes back only the missing files when some are back with their old text", async () => {
     const { store, labels, files } = memoryFiles({ "a/agent.md": "# A\n", "a/tools.md": "- x\n" });
-    const agent = { paths: ["a/agent.md", "a/tools.md"], what: "agent A", name: "A" } as const;
+    const agent = { paths: ["a/agent.md", "a/tools.md"], what: "agent A" } as const;
 
     const deleted = await deleteWithUndo(files, agent);
     files.change("Created a/agent.md", { "a/agent.md": "# A\n" });
@@ -95,8 +95,7 @@ verifies("studio.undoable-delete", () => {
 
     await expect(deleted.undo()).rejects.toMatchObject({
       kind: "conflict",
-      message:
-        "notes.md can't be put back, because there is a new notes.md. Rename or move it, then undo again.",
+      message: "There's a new notes.md in its place. Rename or move the new one, then undo again.",
     });
     expect(store["notes.md"]).toBe("# New\n");
     expect(labels).toEqual(["Deleted notes.md", "Created notes.md"]);

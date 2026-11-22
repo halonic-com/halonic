@@ -327,7 +327,7 @@ export class WorkspaceFilesHost implements FilesHost {
         ? []
         : ((await this.#placesNaming(path, old.kind as LibraryItemKind, old.hub, old.placeId)) ??
           []);
-    const { undo } = await deleteWithUndo(files, { paths: [path], what: path, name: path });
+    const { undo } = await deleteWithUndo(files, { paths: [path], what: path });
     return { places: places.length, undo };
   }
 
