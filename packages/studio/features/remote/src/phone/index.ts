@@ -4,6 +4,8 @@
  * (`phone-boundary.test.ts`).
  */
 
+export { agentLine, agentRowLine, agentStateWords } from "./agent-line.ts";
+export { AgentsList } from "./agents-list.tsx";
 export type {
   ComputerTunnel,
   ComputerTunnelEvent,
