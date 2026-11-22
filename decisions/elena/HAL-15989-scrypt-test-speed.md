@@ -3,6 +3,7 @@
 - Task: HAL-15989, from the board's CI check (merge-base tests of #4957)
 - Approval: the task asks for this change (HAL-15989, https://paperclip.halonic.com/HAL/issues/HAL-15989); Liam approves and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:X79dAV0oFaTKl85SZ5vfGbglTxNirL/EdG8hGHS1XUshsmmGpMz6/gsNWhDy2OX7PEewY6IabKLJW/ZJf8k0Cg==
 
 ## What changes
 
