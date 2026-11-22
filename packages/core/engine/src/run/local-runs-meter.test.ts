@@ -80,16 +80,14 @@ function meteredRuns(meter?: RunMeter, budget?: Budget, workflow: Workflow = rep
   const startedAt = "2026-01-02T08:00:00.000Z";
   putSpentRun(runs, "run_0", { startedAt, cost: 0.6 });
   // Ended, so the sweep of lost runs leaves it and the meter hears only of the runs a test starts.
-  runs.logs
-    .get("run_0")
-    ?.push({
-      runId: "run_0",
-      seq: 3,
-      at: startedAt,
-      type: "run.completed",
-      state: "done",
-      context: {},
-    });
+  runs.logs.get("run_0")?.push({
+    runId: "run_0",
+    seq: 3,
+    at: startedAt,
+    type: "run.completed",
+    state: "done",
+    context: {},
+  });
   return runsOn([textAnswer("Dear support")], runs, {
     workflow,
     workflows: { reply: replyWorkflow },
