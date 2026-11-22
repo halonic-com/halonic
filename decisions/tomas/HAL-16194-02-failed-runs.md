@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews the board check's failed-runs part and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aMSq310ZzsmP9WmzuhWeXTFWbsd2f0FThZURhsYc/9ZVhlrJjASg6NB3lx9UZ3KEzMsff0XVlmP2CUIIMjRDBg==
 
 The board check's read tools `board_asks` and `failed_runs` (phase 1b,
 HAL-16194) are declared in the Agent tools plugin's manifest next to
