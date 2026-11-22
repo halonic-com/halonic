@@ -6,6 +6,8 @@ import type { CostRow } from "../usage-buckets.ts";
 /** One agent now: the fields that choose its seat, and what it has on. */
 export interface AgentNow extends AgentSignInFields {
   readonly agentId: AgentId;
+  /** The agent's name in Paperclip, for the proposals; `undefined` when it has none. */
+  readonly name: string | undefined;
   /** The model in the agent's settings; empty when they name none. */
   readonly model: string;
   readonly cap: number | undefined;
@@ -24,7 +26,7 @@ export interface PaperclipTables {
 // Each query names the settings fields it needs and never the whole
 // `adapter_config` or `runtime_config`, which also hold keys and other settings.
 // The folder and connection id stay in the worker's memory, to be compared.
-const agentsSql = `SELECT a.id AS agent_id,
+const agentsSql = `SELECT a.id AS agent_id, a.name AS name,
   coalesce(a.adapter_config->'env'->'CLAUDE_CONFIG_DIR'->>'value', a.adapter_config->'env'->>'CLAUDE_CONFIG_DIR') AS config_dir,
   a.runtime_config->'aiConnection'->>'connectionId' AS connection_id,
   a.adapter_config->>'model' AS model,
@@ -47,6 +49,7 @@ export function databaseTables(db: PluginDatabaseClient): PaperclipTables {
       const rows = await db.query<Record<string, unknown>>(agentsSql, [companyId]);
       return rows.map((row) => ({
         agentId: String(row["agent_id"]),
+        name: optionalText(row["name"]),
         configDir: optionalText(row["config_dir"]),
         connectionId: optionalText(row["connection_id"]),
         model: optionalText(row["model"]) ?? "",

@@ -6,7 +6,8 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
  * from Agent tools, so the board installs, stops and trusts it on its own.
  *
  * So far: settings, its own database schema, the board-only routes, the
- * `seats.read` and `seats.history` jobs and the read-only `seat_usage` tool.
+ * `seats.read`, `seats.history` and `seats.check` jobs and the read-only
+ * `seat_usage` tool.
  * The page comes in a later pull request.
  */
 export const manifest: PaperclipPluginManifestV1 = {
@@ -27,6 +28,11 @@ export const manifest: PaperclipPluginManifestV1 = {
     "api.routes.register",
     // seat_usage: read-only, answers only the agents the board lists in seatUsageAgents.
     "agent.tools.register",
+    // seats.check: posts its proposals on the one task the board sets in proposalTaskId,
+    // and keeps the last one it posted so it posts only when the proposal changes.
+    "issue.comments.create",
+    "plugin.state.read",
+    "plugin.state.write",
   ],
   entrypoints: { worker: "worker.js" },
   database: {
@@ -93,6 +99,12 @@ export const manifest: PaperclipPluginManifestV1 = {
           "Off: the plugin only proposes moves on a task and the board applies them. On: it may move agents itself, within the plan's limits (HAL-16010).",
         default: false,
       },
+      proposalTaskId: {
+        type: "string",
+        title: "Task for proposed moves",
+        description:
+          "The id of the task seats.check posts its proposed moves on, only when they change. Empty: it proposes nothing.",
+      },
       seatUsageAgents: {
         type: "array",
         title: "Agents that may call seat_usage",
@@ -117,6 +129,13 @@ export const manifest: PaperclipPluginManifestV1 = {
       description:
         "Every 10 minutes: records which seat each agent is on, its tokens per 10 minutes and what it has on, from Paperclip's own tables.",
       schedule: "*/10 * * * *",
+    },
+    {
+      jobKey: "seats.check",
+      displayName: "Propose seat moves",
+      description:
+        "Every 10 minutes: works out which agents should move to another seat and which full seat is worth its manual reset, and posts that on the board's task when it changes. It moves no one.",
+      schedule: "5-59/10 * * * *",
     },
   ],
   apiRoutes: [

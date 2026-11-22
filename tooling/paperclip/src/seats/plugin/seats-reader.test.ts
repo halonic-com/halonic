@@ -22,6 +22,7 @@ function setup(start: string) {
   const store: SeatsStore = {
     recordEvent: async () => undefined,
     recordReading: async (reading) => void stored.push(reading),
+    manualResets: async () => [],
     removeOld: async (at) => void removed.push(at.toISOString()),
   };
   const read = async (seat: SeatToRead): Promise<SeatReadOutcome> => {

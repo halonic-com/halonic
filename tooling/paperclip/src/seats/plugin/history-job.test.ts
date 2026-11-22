@@ -29,6 +29,7 @@ function api() {
 function agent(agentId: string, connectionId: string | undefined): AgentNow {
   return {
     agentId,
+    name: undefined,
     configDir: undefined,
     connectionId,
     model: "claude-made-up",

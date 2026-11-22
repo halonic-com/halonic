@@ -100,6 +100,38 @@ verifies("paperclip.seats-read-store", () => {
   });
 });
 
+verifies("paperclip.seats-check-job", () => {
+  test("old rows go, but manual resets stay however old", async () => {
+    const { db, writes } = recordingDb();
+    await databaseStore(db).removeOld(new Date("2026-11-22T10:00:00.000Z"));
+    const events = writes.filter((write) =>
+      write.sql.startsWith("DELETE FROM plugin_seats_test.event"),
+    );
+    expect(events).toHaveLength(1);
+    expect(events[0]?.sql).toContain("kind <> 'manual-reset'");
+  });
+
+  test("manual resets are read from the plugin's own event table", async () => {
+    const queries: string[] = [];
+    const db: PluginDatabaseClient = {
+      namespace: "plugin_seats_test",
+      query: async (sql) => {
+        queries.push(sql);
+        return [
+          { seat_id: "seat-a", at: new Date("2026-10-01T09:00:00.000Z"), by_kind: "board" },
+        ] as never[];
+      },
+      execute: async () => ({ rowCount: 0 }),
+    };
+    expect(await databaseStore(db).manualResets()).toEqual([
+      { seatId: "seat-a", kind: "manual-reset", at: "2026-10-01T09:00:00.000Z", by: "board" },
+    ]);
+    expect(queries[0]).toMatch(
+      /^SELECT .* FROM plugin_seats_test\.event WHERE kind = 'manual-reset'/,
+    );
+  });
+});
+
 verifies("paperclip.seats-read", () => {
   test("claude gets only PATH and HOME from the worker's environment", () => {
     const env = { PATH: "/usr/bin", HOME: "/var/lib/seats", ANTHROPIC_API_KEY: "made-up" };

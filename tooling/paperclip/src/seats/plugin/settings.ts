@@ -20,6 +20,8 @@ export interface SeatsSettings {
   readonly seats: readonly SeatSetting[];
   /** Off unless the board turns it on: then `seats.check` only proposes moves. */
   readonly movesEnabled: boolean;
+  /** The task `seats.check` posts its proposals on; `undefined` until the board sets one. */
+  readonly proposalTaskId: string | undefined;
 }
 
 /** What a route may show about a seat. */
@@ -47,7 +49,11 @@ export function readSeatsSettings(config: Readonly<Record<string, unknown>>): Se
       seats.push(seat);
     }
   }
-  return { seats, movesEnabled: config["movesEnabled"] === true };
+  return {
+    seats,
+    movesEnabled: config["movesEnabled"] === true,
+    proposalTaskId: optionalText(config["proposalTaskId"]),
+  };
 }
 
 export function publicSeat(seat: SeatSetting): PublicSeat {

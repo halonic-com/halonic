@@ -1,5 +1,6 @@
 import type { PluginDatabaseClient } from "@paperclipai/plugin-sdk";
 import { retentionDays, type SeatEvent, type SeatReading, type WindowState } from "../records.ts";
+import { isoTime } from "./paperclip-tables.ts";
 
 /** A seat event and, for one the board recorded, which board user did. */
 export interface StoredSeatEvent extends SeatEvent {
@@ -10,7 +11,12 @@ export interface StoredSeatEvent extends SeatEvent {
 export interface SeatsStore {
   recordEvent(event: StoredSeatEvent): Promise<void>;
   recordReading(reading: SeatReading): Promise<void>;
-  /** Removes the rows older than `retentionDays` allows, counted back from `now`. */
+  /** Every manual reset the board recorded; they are few, and kept when old rows go. */
+  manualResets(): Promise<SeatEvent[]>;
+  /**
+   * Removes the rows older than `retentionDays` allows, counted back from
+   * `now`, except manual resets: a reset group has one, so it must stay known.
+   */
   removeOld(now: Date): Promise<void>;
 }
 
@@ -43,12 +49,25 @@ export function databaseStore(db: PluginDatabaseClient): SeatsStore {
         ],
       );
     },
+    async manualResets() {
+      const rows = await db.query<Record<string, unknown>>(
+        `SELECT seat_id, at, by_kind FROM ${schema}.event WHERE kind = 'manual-reset' ORDER BY at`,
+      );
+      return rows.map((row) => ({
+        seatId: String(row["seat_id"]),
+        kind: "manual-reset",
+        at: isoTime(row["at"]),
+        by: row["by_kind"] === "observed" ? "observed" : "board",
+      }));
+    },
     async removeOld(now) {
       const before = (days: number) => new Date(now.getTime() - days * dayMs).toISOString();
       await db.execute(`DELETE FROM ${schema}.reading WHERE at < $1`, [
         before(retentionDays.readings),
       ]);
-      await db.execute(`DELETE FROM ${schema}.event WHERE at < $1`, [before(retentionDays.events)]);
+      await db.execute(`DELETE FROM ${schema}.event WHERE at < $1 AND kind <> 'manual-reset'`, [
+        before(retentionDays.events),
+      ]);
       // A placement counts from its end, so an open one is never removed.
       await db.execute(`DELETE FROM ${schema}.placement WHERE to_at IS NOT NULL AND to_at < $1`, [
         before(retentionDays.placements),

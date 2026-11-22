@@ -291,8 +291,8 @@ turned dry run off.
 usage limits, keeps the history the seat forecast needs and proposes moves.
 It is its own plugin, `halonic.seats`, so the board installs, stops and
 trusts it apart from Agent tools. So far it has its settings, its tables,
-two board-only routes, the `seats.read` and `seats.history` jobs and the
-`seat_usage` tool; the page comes next.
+two board-only routes, the `seats.read`, `seats.history` and `seats.check`
+jobs and the `seat_usage` tool; the page comes next.
 
 - **Settings** (board-only, empty by default): the seats in reading order,
   each with an id, a role (`pool`, `reserve` or `paid-api`), its Claude
@@ -300,7 +300,8 @@ two board-only routes, the `seats.read` and `seats.history` jobs and the
   its Claude connection in Paperclip and its manual reset group. The folder,
   account and connection id are sign-in details: nothing
   the plugin logs, stores or shows carries them. **Move agents** is off:
-  the plugin then only proposes moves.
+  the plugin then only proposes moves. **Task for proposed moves** names
+  the task `seats.check` posts on; until it is set, nothing is proposed.
 - **Tables** in the schema Paperclip gives the plugin
   (`plugin_seats_2a33967373`): `seat`, `reading`, `placement`, `event`,
   `agent_usage` and `agent_activity`, as `src/seats/records.ts` describes
@@ -309,7 +310,9 @@ two board-only routes, the `seats.read` and `seats.history` jobs and the
 - **Routes**, board users only (the worker checks again), under
   `/api/plugins/<plugin id>/api/`: `GET /seats` lists the seats with their
   id, role and reset group only, and `POST /seats/:seatId/manual-reset`
-  records a manual reset by the board user.
+  records a manual reset by the board user. Seats in one reset group share
+  one manual reset, so a second one in the group is refused (409); a seat
+  without a group is a group of its own. Manual resets stay when old rows go.
 - **`seats.read`**, every minute: reads each seat that is due, at its own
   minute in every 10 minutes, with `claude auth status --json` and, only for
   a subscription on the seat's own account, `claude -p /usage`. No shell, a
@@ -330,6 +333,13 @@ two board-only routes, the `seats.read` and `seats.history` jobs and the
   ends late still counts. For each agent on a seat it notes its running and
   queued runs, open tasks, run cap and model. The queries pick single
   fields out of the agents' settings, never the whole settings.
+- **`seats.check`**, every 10 minutes at :05, :15 and so on, after the
+  reads: puts each seat's state together from the last 6 hours of readings
+  and the manual resets, finds which seat each agent is on now, and runs the
+  placement rules (`src/seats/placement-rules.ts`). It posts the proposal
+  on the board's task only when its moves or reset advice change, and keeps
+  the last one in the plugin's state. It moves no one, whatever **Move
+  agents** says: the board applies the moves.
 - **`seat_usage`**, an agent tool, read-only: each seat's id, role and
   reset group, how its newest read went (`ok`, `rate-limited`,
   `signed-out`, `no-reading` and so on), its newest stored windows with
