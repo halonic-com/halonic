@@ -18,7 +18,8 @@ Three lines of `halonic routines` that #4613 (HAL-15204) added get new words:
   running or the Studio is open.").
 
 The requirement `cli.commands.routines.list` and its examples say the new words, its two golden
-files take the new last line, and the tests expect the new lines. The changeset of #4613 says
+files take the new last line, and the tests expect the new lines. `cli.commands.routines.list-live-version`
+(#4708, HAL-15479), which quotes the line under the list, says it in the new words too. The changeset of #4613 says
 "while the workspace is open in Halonic Studio". No test was weakened or skipped.
 
 ## Why
@@ -32,5 +33,6 @@ workspace's routines (`studio.engine-routines`).
 ## Covers
 
 - cli.commands.routines.list
+- cli.commands.routines.list-live-version
 - apps/cli/src/commands/routines/golden/acme-routines.txt
 - apps/cli/src/commands/routines/golden/acme-routines-two-hubs.txt
