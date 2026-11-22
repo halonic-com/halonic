@@ -1,7 +1,13 @@
 /** Public entry point of tooling/paperclip, for tests and other tooling. The plugin worker is src/plugin/worker.ts. */
 
 export { doneOnly, type HostApi, paperclipHost } from "./plugin/host.ts";
-export { type JobApi, readSettings, runWatcher, type WatcherSettings } from "./plugin/job.ts";
+export {
+  type JobApi,
+  readSettings,
+  requestTimeoutMs,
+  runWatcher,
+  type WatcherSettings,
+} from "./plugin/job.ts";
 export { manifest } from "./plugin/manifest.ts";
 export {
   branchesOwner,

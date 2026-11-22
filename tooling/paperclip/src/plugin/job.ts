@@ -30,6 +30,9 @@ export interface WatcherSettings {
 
 const defaultRepos = ["halonic-com/halonic"];
 
+/** How long one GitHub request may take. The worker has no resource limits of its own. */
+export const requestTimeoutMs = 15_000;
+
 /** `owner/name` only, so a setting can't steer a request to another API path. */
 function isRepo(value: unknown): value is string {
   return (
@@ -62,7 +65,11 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
   }
   // Read at run time and never logged or kept (the SDK's secrets rule).
   const token = await ctx.secrets.resolve(settings.token, { companyId });
-  const get = gitHubReader({ fetch: (url, init) => ctx.http.fetch(url, init), token });
+  const get = gitHubReader({
+    fetch: (url, init) =>
+      ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) }),
+    token,
+  });
   const summary = await tick({
     paperclip: paperclipHost(ctx, companyId),
     get,

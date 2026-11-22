@@ -66,7 +66,7 @@ verifies("paperclip.pr-watcher-plugin", () => {
 
 verifies("paperclip.pr-watcher-read-only", () => {
   test("sends the token only with GET requests to api.github.com, and never logs it", async () => {
-    const { ctx, sent, logs } = setUp({ githubToken: token, dryRun: false });
+    const { ctx, sent, logs, signals } = setUp({ githubToken: token, dryRun: false });
     await runWatcher(ctx, now);
     expect(sent.length).toBeGreaterThan(2);
     for (const request of sent) {
@@ -75,6 +75,8 @@ verifies("paperclip.pr-watcher-read-only", () => {
       expect(request.authorization).toBe("Bearer test-token");
     }
     expect(JSON.stringify(logs)).not.toContain("test-token");
+    // Every request carries a time limit, so a stuck GitHub can't hold the worker.
+    expect(signals.every((signal) => signal instanceof AbortSignal)).toBe(true);
   });
 });
 

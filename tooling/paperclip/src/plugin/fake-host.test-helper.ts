@@ -80,6 +80,7 @@ export function fakeJobContext(options: {
   const sent: SentRequest[] = [];
   const logs: { level: string; message: string; meta: unknown }[] = [];
   const resolved: unknown[] = [];
+  const signals: unknown[] = [];
   const ctx = {
     ...options.host,
     companies: {
@@ -96,6 +97,7 @@ export function fakeJobContext(options: {
       fetch: async (url: string, init?: RequestInit) => {
         const headers = (init?.headers ?? {}) as Record<string, string>;
         sent.push({ url, method: init?.method ?? "GET", authorization: headers["authorization"] });
+        signals.push(init?.signal);
         const { pathname, search } = new URL(url);
         const body = options.answers[pathname + search];
         return body === undefined
@@ -108,5 +110,5 @@ export function fakeJobContext(options: {
       error: (message: string, meta?: unknown) => logs.push({ level: "error", message, meta }),
     },
   };
-  return { ctx: ctx as unknown as JobApi, sent, logs, resolved };
+  return { ctx: ctx as unknown as JobApi, sent, logs, resolved, signals };
 }
