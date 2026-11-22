@@ -3,6 +3,7 @@
 - Task: HAL-15896
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15896 (words check C645 rows 25 and 27, found on HAL-15886; wording on approved screens and in command output is a team call under HAL-2282, recorded on HAL-15896)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/4T7DKsF+F/mXX7+F7Jvn3VffPtkY0rlCILlQrNW18xwfPzu/N+6vy42cRTyHPbqtTyCfNfNJdE9nzTRWNnyBQ==
 
 ## What changes
 
