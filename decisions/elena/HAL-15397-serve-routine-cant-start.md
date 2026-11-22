@@ -19,7 +19,7 @@ Flow check C570 found four things about webhook routines in the CLI:
    with file errors stays counted once, under `halonic validate`.
 4. A signed delivery that started a run printed nothing in serve's terminal, nor did a 501. Serve now
    prints "✓ Weekly report started on a web request · run 17c592", "Weekly report skipped a web request:
-   a run of it is still going, and its overlap is skip." for a skipped one, and the 501's reason as it
+   its previous run is still going (overlap: skip)." for a skipped one, and the 501's reason as it
    does a 400's. A 401 stays silent: anyone who can reach the address can send one.
 
 No test is weakened: the serve line tests now check the address line in full where they checked only the ✕

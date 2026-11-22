@@ -82,7 +82,7 @@ export const serveMessages = defineMessages("serve", {
    * is still going and its `overlap` is `skip` (C570).
    */
   webhookSkipped: (name: string) =>
-    phrase`${name} skipped a web request: a run of it is still going, and its overlap is skip.`,
+    phrase`${name} skipped a web request: its previous run is still going (overlap: skip).`,
   /**
    * The line under {@link webhookRoutine} when the routine starts an agent,
    * which the server answers with 501 until agent runs are built (HAL-15277),
