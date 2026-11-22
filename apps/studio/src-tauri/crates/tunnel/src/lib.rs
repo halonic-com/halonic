@@ -45,6 +45,7 @@ pub use pairing_run::{
 };
 pub use phone::{
     HANDSHAKE_TIMEOUT, PairedComputer, PhoneConnection, PhoneEvent, PhoneOptions, PhoneStatus,
+    SessionNumber,
 };
 pub use session::{MAX_MESSAGE_BYTES, Opened, REKEY_AFTER, REKEY_AFTER_MESSAGES, Session};
 pub use transport::{ConnectionId, SendError, Timeouts, Transport, TransportEvent, TransportState};

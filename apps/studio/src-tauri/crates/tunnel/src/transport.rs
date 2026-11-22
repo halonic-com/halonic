@@ -89,9 +89,19 @@ pub enum SendError {
 /// Where the worker answers whether a frame went out.
 type SendReply = oneshot::Sender<Result<(), SendError>>;
 
+/// How a connection the session layer drops counts for the backoff.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Dropped {
+    /// As any drop: a connection that stayed open long enough starts the
+    /// backoff again.
+    Dropped,
+    /// Refused: however long it stayed open, the backoff goes on.
+    Refused,
+}
+
 enum Command {
     Send(ConnectionId, Vec<u8>, SendReply),
-    Drop(ConnectionId),
+    Drop(ConnectionId, Dropped),
     TryNow,
     Pause,
     Resume,
@@ -155,7 +165,20 @@ impl Transport {
     /// doesn't start the backoff again, so a peer that always fails the
     /// handshake can't make the phone retry in a tight loop.
     pub fn drop_connection(&self, connection: ConnectionId) {
-        let _ = self.commands.send(Command::Drop(connection));
+        let _ = self
+            .commands
+            .send(Command::Drop(connection, Dropped::Dropped));
+    }
+
+    /// Closes `connection` like [`Self::drop_connection`], but however long
+    /// it stayed open, the backoff goes on from where it was. For the app,
+    /// when it refuses what the peer sent inside a session: a peer that
+    /// stays connected a while before it misbehaves can't make the phone
+    /// reconnect fast.
+    pub fn refuse_connection(&self, connection: ConnectionId) {
+        let _ = self
+            .commands
+            .send(Command::Drop(connection, Dropped::Refused));
     }
 
     /// Ends the wait before the next try to reconnect, so it starts at
@@ -227,6 +250,7 @@ impl Worker {
     async fn serve(&mut self, mut socket: Box<Socket>) -> Next {
         let connection = self.opened();
         let opened_at = Instant::now();
+        let mut dropped = Dropped::Dropped;
         loop {
             tokio::select! {
                 message = socket.next() => match message {
@@ -252,11 +276,12 @@ impl Worker {
                             break;
                         }
                     }
-                    Some(Command::Drop(to)) if to == connection => {
+                    Some(Command::Drop(to, how)) if to == connection => {
+                        dropped = how;
                         self.close_socket(&mut socket).await;
                         break;
                     }
-                    Some(Command::Resume | Command::TryNow | Command::Drop(_)) => {}
+                    Some(Command::Resume | Command::TryNow | Command::Drop(..)) => {}
                     Some(Command::Pause) => {
                         self.close_socket(&mut socket).await;
                         return Next::Pause;
@@ -268,7 +293,7 @@ impl Worker {
                 },
             }
         }
-        if opened_at.elapsed() >= self.backoff.reset_after {
+        if dropped == Dropped::Dropped && opened_at.elapsed() >= self.backoff.reset_after {
             self.failed_tries = 0;
         }
         self.next_try()
@@ -380,7 +405,7 @@ impl Worker {
                 let _ = reply.send(Err(SendError::NotOpen));
                 None
             }
-            Some(Command::Resume | Command::TryNow | Command::Drop(_)) => None,
+            Some(Command::Resume | Command::TryNow | Command::Drop(..)) => None,
             Some(Command::Pause) => Some(Next::Pause),
             Some(Command::Close) | None => Some(Next::Close),
         }

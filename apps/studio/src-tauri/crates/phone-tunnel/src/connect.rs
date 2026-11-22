@@ -160,7 +160,7 @@ impl<S: DeviceKeyStore + 'static> Passing<S> {
                 PhoneEvent::NextTry(wait) => self.on_next_try(wait),
                 // Carried to the page by HAL-15177 (D7); until then the
                 // shell reads nothing in the session and keeps nothing.
-                PhoneEvent::SessionOpened | PhoneEvent::Message(_) => {}
+                PhoneEvent::SessionOpened(_) | PhoneEvent::Message(_) => {}
             }
         }
         self.connections.finished(&self.computer, self.serial);
