@@ -284,7 +284,8 @@ verifies("cli.commands.runs.show", () => {
           [today("10:20:05"), endedWithParent("classify")],
         ]),
         child("run_mfx3k2a1_0d0d03", [[today("10:20:05"), endedWithParent(null)]]),
-        // A log written before the cause keeps the plain line.
+        // A log written before the cause, or a for-each item whose parent the person
+        // cancelled (HAL-15755), keeps the plain line, with the way to the parent.
         child("run_mfx3k2a1_0d0d04", [
           ...enteredRead,
           [
@@ -311,8 +312,9 @@ verifies("cli.commands.runs.show", () => {
       expect((await endOf("0d0d01", "--dir", "."))[1]).toBe(
         "  See the run that started it: halonic runs show --dir . 4f2a1b",
       );
-      expect((await endOf("0d0d04")).slice(-2)).toEqual([
+      expect(await endOf("0d0d04")).toEqual([
         "✕ Mail triage was cancelled in the step Read the email. Nothing after it ran.",
+        "  See the run that started it: halonic runs show 4f2a1b",
         "  Sent nothing",
       ]);
     });

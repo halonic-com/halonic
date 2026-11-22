@@ -237,10 +237,28 @@ verifies("runs.run-page", () => {
         text: "Support reply was cancelled because the run that started it ended.",
         parent,
       });
-      // An older log has no cause: the plain note, as before.
+      // An older log has no cause: the plain note, still with the way to the parent.
       expect(page({ ...olderLog, state: "draft" }).banner).toEqual({
         kind: "note",
         text: "Support reply was cancelled in the step Draft. Nothing after it ran.",
+        parent,
+      });
+    });
+
+    it("links a for-each item whose parent the person cancelled to the parent (HAL-15755)", () => {
+      // The engine gives these items no cause: the person cancelled the parent, not the item.
+      const item = {
+        status: "failed" as const,
+        reason: "cancelled" as const,
+        parentRunId: "run_c_4f2a1b",
+      };
+      expect(page({ ...item, state: "draft" }).banner).toEqual({
+        kind: "note",
+        text: "Support reply was cancelled in the step Draft. Nothing after it ran.",
+        parent: { kind: "open-run", runId: "run_c_4f2a1b", label: "Open run 4f2a1b" },
+      });
+      expect(page({ ...item, state: null, statesVisited: [] }).banner).toMatchObject({
+        parent: { runId: "run_c_4f2a1b" },
       });
     });
   });
