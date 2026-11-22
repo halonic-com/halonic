@@ -127,12 +127,21 @@ verifies("workspace.local-only-sheet-hosts", () => {
     expect(await issuesIn(true, { ...local, ...runners }, inside)).toEqual([]);
   });
 
-  it("doesn't count local: true for a sheet it wasn't given", async () => {
+  it("doesn't count local: true for a sheet it wasn't given, and says the sheet is why", async () => {
     const none: SheetHosts = { plugins: new Map(), integrations: new Map() };
-    const message = `isn't local, and the workspace is local only: set privacy.localOnly: false in workspace.yaml to use it`;
+    const why = `so nothing says which hosts it reaches, and it isn't local: set privacy.localOnly: false in workspace.yaml to use it`;
     expect(await issuesIn(true, { ...local, ...runners }, none)).toEqual([
-      `error library/connectors/notes.connector.yaml local: Connector "notes" ${message}`,
-      `error library/connectors/orders.connector.yaml local: Connector "orders" ${message}`,
+      `error library/connectors/notes.connector.yaml local: The sheet of the integration in integrations/notes can't be read, ${why}`,
+      `error library/connectors/orders.connector.yaml local: The plugin acme-orders isn't installed here or can't be read, ${why}`,
+    ]);
+  });
+
+  it("names the missing local: true when the sheet keeps the code on this computer", async () => {
+    const notes = "name: Notes\ntransport:\n  integration: { folder: notes }\n";
+    expect(
+      await issuesIn(true, { ...local, "library/connectors/notes.connector.yaml": notes }, inside),
+    ).toEqual([
+      `error library/connectors/notes.connector.yaml transport: The integration in integrations/notes reaches nothing outside this computer and its network, but connector "notes" doesn't say local: true: set local: true in its file, or set privacy.localOnly: false in workspace.yaml`,
     ]);
   });
 

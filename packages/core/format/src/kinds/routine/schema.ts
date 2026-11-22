@@ -110,26 +110,43 @@ export const RoutineTrigger = s.union(
   },
 );
 
-/** What a routine runs: a workflow with input, or one agent with a prompt. */
-export const RoutineTarget = s.union([
-  s
-    .object({
-      /** The workflow's hub. Required for workspace-level routines. */
-      hub: id.optional(),
-      workflow: id,
-      /** Workflow input; text may use {{trigger.at}}, {{trigger.lastRun}}, {{trigger.message}} and, for a webhook, {{trigger.body}} and {{trigger.headers.<name>}}. */
-      input: s.record(s.string(), s.unknown()).default({}),
-    })
-    .strict(),
-  s
-    .object({
-      hub: id.optional(),
-      agent: id,
-      /** The prompt; it may use the same {{trigger.*}} templates. */
-      prompt: s.string().min(1),
-    })
-    .strict(),
-]);
+/**
+ * What a routine runs: a workflow with input, or one agent with a prompt. A
+ * target that is neither gets a message that says which key goes with which
+ * (HAL-15396), instead of Zod's "Invalid input": `input` on an agent is an
+ * easy slip, since workflows take `input`.
+ */
+export const RoutineTarget = s.union(
+  [
+    s
+      .object({
+        /** The workflow's hub. Required for workspace-level routines. */
+        hub: id.optional(),
+        workflow: id,
+        /** Workflow input; text may use {{trigger.at}}, {{trigger.lastRun}}, {{trigger.message}} and, for a webhook, {{trigger.body}} and {{trigger.headers.<name>}}. */
+        input: s.record(s.string(), s.unknown()).default({}),
+      })
+      .strict(),
+    s
+      .object({
+        hub: id.optional(),
+        agent: id,
+        /** The prompt; it may use the same {{trigger.*}} templates. */
+        prompt: s.string().min(1),
+      })
+      .strict(),
+  ],
+  { error: (issue) => (issue.code === "invalid_union" ? targetMessage(issue.input) : undefined) },
+);
+
+/** Which key a target that is neither kind needs, by the keys it has. */
+function targetMessage(target: unknown): string {
+  const has = (key: string) => typeof target === "object" && target !== null && key in target;
+  if (has("agent") && has("input") && !has("prompt")) {
+    return "An agent routine takes prompt, not input.";
+  }
+  return "run needs a workflow, with its input, or an agent, with its prompt.";
+}
 
 /** `workflows/routines/<id>.routine.yaml`: when something runs on its own. */
 export const Routine = s

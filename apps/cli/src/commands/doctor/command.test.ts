@@ -153,7 +153,7 @@ verifies("cli.commands.doctor.check-this-computer", () => {
     expect(code).toBe(exitCode.failed);
     expect(io.stdout[2]).toBe("✕ Sandbox     can't start on this computer");
     expect(io.stdout.at(-1)).toBe(
-      "1 problem. Agents set to run in a sandbox won't start until it's fixed.",
+      "1 problem. Agents set to run in a sandbox won't start until the sandbox is fixed.",
     );
   });
 

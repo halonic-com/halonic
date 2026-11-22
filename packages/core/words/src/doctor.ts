@@ -260,7 +260,8 @@ export const doctorMessages = defineMessages("doctor", {
   noModelAliasStops: (alias: string) =>
     phrase`Agents without a model of their own won't run until ${alias} is added.`,
   /** After the count, when the sandbox can't start: what that stops. */
-  sandboxStops: () => phrase`Agents set to run in a sandbox won't start until it's fixed.`,
+  sandboxStops: () =>
+    phrase`Agents set to run in a sandbox won't start until the sandbox is fixed.`,
 });
 
 /** "an https://", "a socks5://": "an" before a vowel, or an "h" read as "aitch". */
