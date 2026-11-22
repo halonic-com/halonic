@@ -1,5 +1,6 @@
 # Release workflow: builds the release files and creates a DRAFT GitHub
-# Release. It never publishes: a person publishes the draft by hand.
+# Release. It never makes anything public: a person publishes the draft by
+# hand, and the CLI is only staged on npm until a person approves it there.
 #
 # The CLI is the real package, built by `stage-cli` in tooling/publish and
 # checked in a clean folder (HAL-9558). The installer is the real Studio build
@@ -42,6 +43,17 @@
 # the job; real runs use the updater key, a secret of the `release`
 # environment. It is the same job as the Authenticode signing, so a release
 # needs one approval, not two.
+#
+# The CLI goes to npm as `halonic` (HAL-16209). On a real run, once the
+# draft release exists, the npm-cli job stages the exact `cli-package`
+# tarball the build job checked, with `--tag latest`, because the 1.0.0
+# placeholder holds `latest` (tooling/publish/README.md). It runs in the
+# `npm-publish-cli` environment, which allows `v*` tags only, and npm trusts
+# this workflow's identity (OIDC) for `halonic`: no npm token exists. The
+# trusted publisher allows `npm stage publish` only, so the version is not
+# public until a person approves it on npmjs.com (2FA). Dry runs skip the job.
+# KEEP THIS FILE NAME and that environment name: npm's trusted-publisher
+# setting for `halonic` names both.
 #
 # Run it without a tag from the Actions tab (dry_run on), or push a tag
 # that starts with `v`. A tag that contains `-test` is always a dry run.
@@ -679,3 +691,67 @@ jobs:
           fi
           gh release create "$TAG" dist/* --draft \
             --target "$TARGET" --title "$title" --notes "$notes" "${flags[@]}"
+
+  # Real runs only, after the draft release exists, so a run that fails to
+  # build any release file stages nothing. Like publish-kit.yml's `publish`
+  # job, it checks out nothing and runs no repo code: only the tarball the
+  # build job packed and installed. Only this job has `id-token: write`.
+  npm-cli:
+    name: Stage the CLI on npm
+    needs: [build, draft-release]
+    if: ${{ !cancelled() && needs.build.outputs.dry_run != 'true' && needs.draft-release.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: npm-publish-cli
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      # Staged publishing needs npm 11.15.0 or newer, which comes with Node.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+          package-manager-cache: false
+          registry-url: https://registry.npmjs.org
+      - name: Check the npm version
+        run: |
+          version=$(npm --version)
+          echo "npm $version"
+          if [ "$(printf '%s\n' 11.15.0 "$version" | sort -V | head -n1)" != "11.15.0" ]; then
+            echo "::error::npm $version is too old for staged publishing (needs 11.15.0 or newer)."
+            exit 1
+          fi
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cli-package
+          path: cli-package
+      - name: Stage halonic on npm
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          test "$(ls cli-package | wc -l)" = 1 || { echo "::error::Expected exactly one CLI tarball"; exit 1; }
+          tarball=$(ls ./cli-package/*.tgz)
+          name=$(tar -xzOf "$tarball" package/package.json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).name')
+          version=$(tar -xzOf "$tarball" package/package.json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).version')
+          if [ "$name" != halonic ] || [ "$version" != "$VERSION" ]; then
+            echo "::error::The tarball is $name@$version, expected halonic@$VERSION from tag $TAG."
+            exit 1
+          fi
+          if npm view "halonic@$VERSION" version > /dev/null 2>&1; then
+            echo "halonic@$VERSION is already on npm, skipping."
+            exit 0
+          fi
+          # `--tag latest`: 0.x is lower than the 1.0.0 placeholder, so npm
+          # would not move `latest` by itself. A staged version is not on npm
+          # yet, so `npm view` misses it and npm answers 409; the run cannot
+          # tell who staged it, so it stops and a person checks.
+          if ! npm stage publish "$tarball" --access public --provenance --tag latest 2> stage-error.txt; then
+            cat stage-error.txt >&2
+            if grep -qE 'E409|Cannot stage previously published version' stage-error.txt; then
+              echo "::error::halonic@$VERSION is already staged. Check on npmjs.com that its provenance names commit $GITHUB_SHA and ref $GITHUB_REF, then approve or discard it and re-run this job."
+            fi
+            exit 1
+          fi
+          cat stage-error.txt >&2
+          echo "::notice::halonic@$VERSION is staged. A person approves it on npmjs.com, then follows tooling/publish/README.md (Publishing the CLI)."
