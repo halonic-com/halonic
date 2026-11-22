@@ -291,7 +291,7 @@ verifies("cli.workspace-file-problems", () => {
     expect(code).toBe(exitCode.usage);
     expect(io.stderr.slice(0, 2)).toEqual([
       "✕ Couldn't watch the routines in acme: Acme has 1 problem in hubs/support/workflows/spare.workflow.yaml. Nothing ran.",
-      "  See them with: halonic validate",
+      "  See it with: halonic validate",
     ]);
     expect(await storedRuns()).toEqual([]);
   });

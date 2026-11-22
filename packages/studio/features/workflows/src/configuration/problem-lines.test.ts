@@ -76,6 +76,21 @@ verifies("workflows.configuration.problem-lines", () => {
     ]);
   });
 
+  // C591 row 13: the row used the core's "transition" and gave no next step.
+  it("reads a never-taken arrow's row in Studio's words, with what to change", () => {
+    const shadowed: WorkflowProblem = {
+      severity: "warning",
+      code: "unguarded-shadow",
+      message: `In "review", the transition to "send" can never fire: an earlier one on "done" has no condition`,
+      stepId: "review",
+    };
+    const [row] = problemRows([shadowed]);
+    expect(row?.text).toBe(
+      "Has an arrow that's never taken: an earlier arrow on the same event always matches first. Change the order or the conditions in Arrows on its card.",
+    );
+    expect(row?.stepId).toBe("review");
+  });
+
   it("says answers for a wait step's missing events on its card and its row alike", () => {
     const missing = problem("wait-without-events", "warning", "wait-1");
     expect(cardSummary([missing])).toBe("△ Has no answers to pick");
