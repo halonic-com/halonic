@@ -2,6 +2,7 @@
 
 - Approval: HAL-15503, from words check C588 (HAL-15499), rows 10 and 11, on halonic#4618; small fixes on approved command output, decided by the team under HAL-2282; the reviewer signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:OXKbSYv2Ik7ZgRL9e8UR+9I8jeH/EuIfxiB/2gdt6DQUBRD/OBb12ybuAPp4q+t1HGs47gpB2P7q1Rp123SMCA==
 - Task: HAL-15503, and HAL-15523 for the dropped "Sends its key to" line
 
 ## What changes
