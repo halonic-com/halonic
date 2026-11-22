@@ -6,7 +6,7 @@
 
 ## What changes
 
-Four lines of `halonic routines` that #4613 (HAL-15204) and HAL-15664 added get new words:
+These lines of `halonic routines`, which #4613 (HAL-15204), HAL-15664 and HAL-15525 added, get new words:
 
 - The line under the list for a routine whose changes aren't committed: "! Weekly report has
   changes that aren't live yet. Until you commit them, it starts as it was last committed."
