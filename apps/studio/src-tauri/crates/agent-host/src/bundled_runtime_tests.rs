@@ -61,6 +61,10 @@ fn shipped(folder: &TempFolder) -> BundledRuntime {
 /// A stand-in for `wsl.exe` that writes its arguments to `arguments`, its
 /// input to `input`, then runs `then`.
 #[cfg(unix)]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
 fn stand_in_wsl(folder: &TempFolder, then: &str) -> PathBuf {
     let script = format!(
         "#!/bin/sh\nprintf '%s\\n' \"$@\" > '{arguments}'\ncat > '{input}'\n{then}",
