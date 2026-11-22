@@ -3,6 +3,7 @@
 - Task: HAL-15525
 - Approval: HAL-15525; Liam reviews this pull request and signs this note as the CTO
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Y9SNtvbCFfXQMrXOE6Fvz7bKO5LCC5yHPZ5DcC5fDrzBWK6IKZy2qJfsM2ZbwFhDDMmYuSyFDtlPOqDw2hNAAw==
 
 ## What changes
 
