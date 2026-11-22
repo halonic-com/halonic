@@ -79,8 +79,9 @@ export interface WorkflowGuideRun {
   readonly caption?: string | undefined;
   /**
    * **Pick another model**, for a model that is slow or failed. With it the run card says what the
-   * run waits for, escalates that line on a model, and offers the button on a failure; without it
-   * the card is as it always is.
+   * run waits for, escalates that line on a model, offers the button on a failure, and once the
+   * run waits for the person says "Waiting for you. It's in your Inbox." with **Open Inbox**;
+   * without it the card is as it always is.
    */
   readonly pickAnotherModel?: (() => void) | undefined;
   /**

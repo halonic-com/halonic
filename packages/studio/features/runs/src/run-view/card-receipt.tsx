@@ -1,4 +1,4 @@
-import { shortRunId } from "@halonicjs/app";
+import { runStanding, shortRunId } from "@halonicjs/app";
 import { summarize } from "@halonicjs/events";
 import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWordsOf } from "@halonicjs/studio-shell";
@@ -8,6 +8,7 @@ import { FailureReason } from "../load-failure.tsx";
 import { runPageWords } from "../run-words.ts";
 import { EveryStep, type RunLogRead } from "./every-step.tsx";
 import { everyStep } from "./every-step-model.ts";
+import { GuidedWait } from "./guided-wait.tsx";
 import { PageBanner } from "./page-banner.tsx";
 import { Receipt } from "./receipt.tsx";
 import {
@@ -36,7 +37,10 @@ export interface RunCardReceiptProps {
   readonly runs?: readonly SourcedRun[];
   /** The time the lines are worded against; now when absent. */
   readonly now?: Date;
-  /** Opens the Inbox, for Review in Inbox; without it the button isn't there. */
+  /**
+   * Opens the Inbox, for Review in Inbox; without it the button isn't there. A guided card gives
+   * it as **Open Inbox** under "Waiting for you. It's in your Inbox." in place of the banner.
+   */
   readonly reviewInInbox?: (() => void) | undefined;
   /** Opens another run's page, for a child run; without it the button isn't there. */
   readonly openRun?: ((runId: string) => void) | undefined;
@@ -157,8 +161,12 @@ export function RunCardReceipt({
     false,
     context.providerName,
   );
+  // A guided run that waits for the person says it's in the Inbox, in place of the usual banner.
+  const guidedWait = pickAnotherModel === undefined ? undefined : reviewInInbox;
+  const needsYou = guidedWait !== undefined && runStanding(summary) === "needs-you";
   return (
     <>
+      {guidedWait === undefined ? null : <GuidedWait needsYou={needsYou} openInbox={guidedWait} />}
       {pickAnotherModel === undefined ? null : (
         <RunWaitingLine
           log={log}
@@ -172,19 +180,21 @@ export function RunCardReceipt({
       )}
       <div ref={banners} className="contents">
         <RunAgainFailed runAgain={runAgain} engine={engine} onTrusted={focusRunAgain} />
-        <PageBanner
-          run={run}
-          context={context}
-          log={log}
-          entries={entries}
-          reviewInInbox={reviewInInbox}
-          openRun={openRun}
-          runAgain={runAgain}
-          openModels={openModels}
-          openBudget={openBudget}
-          onSeeStep={() => onOpenStep?.()}
-          pickAnotherModel={pickAnotherModel}
-        />
+        {needsYou ? null : (
+          <PageBanner
+            run={run}
+            context={context}
+            log={log}
+            entries={entries}
+            reviewInInbox={reviewInInbox}
+            openRun={openRun}
+            runAgain={runAgain}
+            openModels={openModels}
+            openBudget={openBudget}
+            onSeeStep={() => onOpenStep?.()}
+            pickAnotherModel={pickAnotherModel}
+          />
+        )}
       </div>
       <DamagedLogBanner line={read.damagedLine} />
       <Receipt

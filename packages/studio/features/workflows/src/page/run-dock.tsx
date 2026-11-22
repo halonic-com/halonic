@@ -144,6 +144,11 @@ interface RunDockProps {
    * a phone its caption, since the card covers the drawing there.
    */
   readonly guideRun?: WorkflowGuideRun | undefined;
+  /**
+   * Opens the Inbox at what a run waits on: a guided run's card offers it as **Open Inbox** once
+   * the run waits for the person (first-run-flow 3.5). Other cards say it as they always have.
+   */
+  readonly reviewInInbox?: ((runId: string) => void) | undefined;
   /** Whether the page is drawn for a phone, which the run card's waiting line words for. */
   readonly phone?: boolean | undefined;
 }
@@ -198,6 +203,16 @@ function trustAsker(host: WorkflowsHost) {
   };
 }
 
+/** Opens the Inbox at the run `runId` waits on, for a guided run's **Open Inbox**; nothing for any other run. */
+function guidedInbox(
+  guideRun: WorkflowGuideRun | undefined,
+  reviewInInbox: ((runId: string) => void) | undefined,
+  runId: string,
+): (() => void) | undefined {
+  if (guideRun?.pickAnotherModel === undefined || reviewInInbox === undefined) return undefined;
+  return () => reviewInInbox(runId);
+}
+
 /** The card docked at the right: the start form, then the simple card of the run it started. */
 export function RunDock({
   dock,
@@ -220,6 +235,7 @@ export function RunDock({
   pickedStep,
   onClosePickedStep,
   guideRun,
+  reviewInInbox,
   phone,
 }: RunDockProps) {
   const { startRun } = host;
@@ -290,6 +306,7 @@ export function RunDock({
         openBudget={openBudget}
         notes={guideNotes(guideRun, phone)}
         pickAnotherModel={guideRun?.pickAnotherModel}
+        reviewInInbox={guidedInbox(guideRun, reviewInInbox, shown.row.id)}
         phone={phone}
       />
     );
