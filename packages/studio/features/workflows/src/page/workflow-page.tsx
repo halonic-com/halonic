@@ -27,7 +27,7 @@ import { StepEditDock } from "./docked-step-card.tsx";
 import { FlowView } from "./flow-view.tsx";
 import { insteadOfPage } from "./gone-state.tsx";
 import { GuideSlot } from "./guide-card.tsx";
-import { pageOrGuideScreen, useGuideScreen } from "./guide-screen.tsx";
+import { pageOrGuideScreen, useGuideRun, useGuideScreen } from "./guide-screen.tsx";
 import { firstTestsPick, firstView, hasDockedCard, panelClass, stepNamesOf } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
 import { ProgramStepsLine } from "./program-steps-line.tsx";
@@ -200,6 +200,10 @@ export function WorkflowScreen({
   const guideSlot = { guide, workflow: { hubId, id }, view, docked, phone, button: guideButton };
   const guidePage = { openRunForm: () => openStart("guide") };
   const guideScreen = useGuideScreen(guide, { hubId, id });
+  const guideRun = useGuideRun(guide, { hubId, id }, shownId, () => {
+    setShownId(undefined);
+    setDock(undefined);
+  });
   // A run the guide's screen started shows here as one started from the Run form does.
   const showRun = (runId: string) => {
     setShownId(runId);
@@ -378,6 +382,7 @@ export function WorkflowScreen({
               focus={canvasFocus}
               kept={kept}
               onView={keep}
+              caption={guideRun?.caption}
             />
           )}
         </TabPanel>
@@ -405,6 +410,8 @@ export function WorkflowScreen({
           saveAsTest={saveAsTest}
           pickedStep={dockStep}
           onClosePickedStep={() => setPickedStep(undefined)}
+          guideRun={guideRun}
+          phone={phone}
         />
         <StepEditDock
           host={host}

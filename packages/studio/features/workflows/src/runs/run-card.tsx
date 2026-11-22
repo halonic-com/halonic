@@ -49,6 +49,12 @@ export interface RunCardProps {
   readonly openModels?: ((alias?: string) => void) | undefined;
   /** Opens the workspace page at its Budget block, for the banner's **Change budget**; absent where it can't. */
   readonly openBudget?: (() => void) | undefined;
+  /** A guide's quiet lines under the status, such as the first run's "Changed 1 line in models.yaml…". */
+  readonly notes?: readonly string[] | undefined;
+  /** A guided run's **Pick another model**, which gives the card its waiting line (`runs.run-view.guided-run`). */
+  readonly pickAnotherModel?: (() => void) | undefined;
+  /** Whether the card is drawn for a phone, where its waiting line names Ollama on "your computer". */
+  readonly phone?: boolean | undefined;
 }
 
 /**
@@ -70,6 +76,9 @@ export function RunCard({
   runAgain,
   openModels,
   openBudget,
+  notes = [],
+  pickAnotherModel,
+  phone,
 }: RunCardProps) {
   const read = useRunLog(source, run.summary.id, run.summary.lastSeq, run);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -109,6 +118,11 @@ export function RunCard({
           <dd>{row.startedBy}</dd>
         </div>
       </dl>
+      {notes.map((note) => (
+        <p key={note} className="text-small text-fg-muted">
+          {note}
+        </p>
+      ))}
       <RunCardReceipt
         source={source}
         run={run}
@@ -122,6 +136,8 @@ export function RunCard({
         announce={runAgain?.announce}
         openModels={openModels}
         openBudget={openBudget}
+        pickAnotherModel={pickAnotherModel}
+        phone={phone}
       />
       {(onOpenLog || saveAsTest) && (
         <div className="flex flex-wrap gap-2">
