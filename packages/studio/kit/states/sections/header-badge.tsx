@@ -47,7 +47,7 @@ function Connection() {
         Your phone is offline
       </HeaderBadge>
       <HeaderBadge as="status" tone="danger" action="Details" onClick={ignore}>
-        Removed from this computer
+        Removed from your computer
       </HeaderBadge>
       <HeaderBadge as="status" tone="danger" action="Details" onClick={ignore}>
         Can't confirm your computer

@@ -49,9 +49,9 @@ verifies("remote.phone-forms", () => {
 
   it("leaves a zero part out of the agents line", () => {
     expect(agentsAsOfText(1, 1)).toBe(
-      "1 running, 1 waiting for you. If the computer is on, they keep running. Anything that needs you waits.",
+      "1 running, 1 waiting for you. If your computer is on, they keep running. Anything that needs you waits.",
     );
-    expect(agentsAsOfText(2, 0)).toBe("2 running. If the computer is on, they keep running.");
+    expect(agentsAsOfText(2, 0)).toBe("2 running. If your computer is on, they keep running.");
     expect(agentsAsOfText(0, 3)).toBe("3 waiting for you. Anything that needs you waits.");
     expect(agentsAsOfText(0, 0)).toBe("Nothing was running or waiting for you.");
   });

@@ -49,7 +49,7 @@ export function phoneStatusLabel(state: PhoneState, computer: string): PhoneStat
     case "phoneOffline":
       return label("Your phone is offline", "attention");
     case "removed":
-      return label("Removed from this computer", "danger");
+      return label("Removed from your computer", "danger");
     case "cantConfirm":
       return label("Can't confirm your computer", "danger");
   }
