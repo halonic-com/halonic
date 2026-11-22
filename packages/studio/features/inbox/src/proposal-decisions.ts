@@ -24,8 +24,17 @@ export interface ProposalUndone {
 }
 
 /**
- * Accept, Reject, Undo and settle on the open workspace's run proposals. Every call fails with
- * the reason when the proposal can't be decided now, and the page shows it.
+ * What a decision or an Undo fails with when the proposal's texts are gone, for example because
+ * its branch was deleted: it can't be opened any more, only removed (HAL-11945 Q11).
+ */
+export class ProposalGoneError extends Error {
+  override readonly name = "ProposalGoneError";
+}
+
+/**
+ * Accept, Reject, Undo, settle and Remove on the open workspace's run proposals. Every call fails with
+ * the reason when the proposal can't be decided now, and the page shows it; with
+ * {@link ProposalGoneError} when its texts are gone.
  *
  * @example
  * const { undo } = await decisions.accept("01JD8Q", { file: "hubs/support/agents/triage.yaml" });
@@ -45,4 +54,9 @@ export interface ProposalDecisions {
    * is called only once the last **Undo** has gone. A proposal still open stays as it is.
    */
   settle(runId: string): Promise<void>;
+  /**
+   * Removes a proposal whose texts are gone: it leaves Needs you and is done as not reviewed. One
+   * that can still be opened is refused.
+   */
+  remove(runId: string): Promise<void>;
 }

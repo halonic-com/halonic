@@ -58,6 +58,8 @@ const restoreAnswer = s
 
 const settleAnswer = s.object({ result: s.enum(["settled", "open"]) }).strict();
 
+const removeAnswer = s.object({}).strict();
+
 /** What an accept did, as the host answers it: `undo` is the id of its step, `null` when nothing was written. */
 export interface ProposalAccepted {
   readonly undo: string | null;
@@ -152,6 +154,19 @@ export class AgentHostRunProposals {
     const route = "POST /v1/proposals/settle";
     const answer = await this.#transport.request(route, { workspace: this.#workspace, runId });
     return readAnswer(route, answer, settleAnswer).result;
+  }
+
+  /**
+   * Removes run `runId`'s proposal once its texts are gone, so it can't be opened any more: it
+   * goes to Done as not reviewed, and the host drops its undo steps. A proposal that can still be
+   * opened is refused.
+   *
+   * @throws {@link AgentHostError} with the host's kind, such as `proposal_refused`
+   */
+  async remove(runId: string): Promise<void> {
+    const route = "POST /v1/proposals/remove";
+    const answer = await this.#transport.request(route, { workspace: this.#workspace, runId });
+    readAnswer(route, answer, removeAnswer);
   }
 
   #decision(runId: string, target: ProposalTarget) {
