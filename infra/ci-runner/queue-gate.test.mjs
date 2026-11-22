@@ -70,7 +70,10 @@ test("C7: refuses when the pull request or its commit isn't in the queue", () =>
 
 test("C7: fails closed when the gate or GitHub's API fails", () => {
   const down = group({ status: 502, body: '{"error":"GitHub API call failed"}' });
-  refused(down, /queue gate did not answer after 3 tries \(last: HTTP 502: GitHub API call failed\)/);
+  refused(
+    down,
+    /queue gate did not answer after 3 tries \(last: HTTP 502: GitHub API call failed\)/,
+  );
   assert.equal(down.asked.length, 3);
   assert.match(down.out, /queue gate try 1 of 3 failed \(HTTP 502: GitHub API call failed\)/);
   refused(
@@ -108,7 +111,10 @@ test("C7: an answer from the gate is never retried, so its refusal stands at onc
     [JSON.stringify({ errors: [{ message: "rate limited" }] }), /GitHub API errors/],
     ["not json", /queue gate answer unreadable/],
   ]) {
-    const res = group([{ status: 200, body }, { status: 200, body: QUEUE_OK }]);
+    const res = group([
+      { status: 200, body },
+      { status: 200, body: QUEUE_OK },
+    ]);
     refused(res, reason);
     assert.equal(res.asked.length, 1);
   }
