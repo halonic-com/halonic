@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews this change to the PR watcher and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8k98Gic/ewqweUABw/RnuLxpq4FhrWWhVO8r6mUYzJXo0t8mukM0IPIAAe3Hp20LjVGUsjdOu62QJUFM8EReDw==
 
 The board asked Mateo and Liam to check the PR watcher's first dry run on
 HAL-15929 (22 Nov, 11:04 UTC) before it goes live. 3 of its 19 "done"
