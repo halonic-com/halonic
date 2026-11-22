@@ -228,13 +228,15 @@ fn write_probe(folder: &Path) -> io::Result<()> {
 fn disk_space(free: Option<io::Result<u64>>) -> CheckResult {
     match free {
         Some(Ok(bytes)) => CheckResult {
-            id: CheckId::DiskSpace,
-            fact: if bytes < LOW_DISK_BYTES {
-                Fact::Low
-            } else {
-                Fact::Enough
-            },
             free_bytes: Some(bytes),
+            ..CheckResult::new(
+                CheckId::DiskSpace,
+                if bytes < LOW_DISK_BYTES {
+                    Fact::Low
+                } else {
+                    Fact::Enough
+                },
+            )
         },
         Some(Err(_)) | None => CheckResult::new(CheckId::DiskSpace, Fact::Unknown),
     }
