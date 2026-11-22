@@ -137,10 +137,10 @@ runs with administrator rights, such as a silent uninstall from an elevated
 prompt, can't do that part safely, so it leaves it for later and writes nothing
 in your profile: Halonic takes the access back the next time it starts as you,
 without administrator rights (Studio, or a `halonic` command that runs an
-agent), or before you set the sandbox up again. The uninstaller's last page
-says so after such an uninstall. If you never start Halonic again after such
-an uninstall, the access stays on your folders. Installing and starting
-Halonic again takes it back.
+agent in the agent sandbox), or before you set the sandbox up again. The
+uninstaller's last page says so after such an uninstall. If you never start
+Halonic again after such an uninstall, the access stays on your folders.
+Installing and starting Halonic again takes it back.
 
 ## "This computer" has none of it
 

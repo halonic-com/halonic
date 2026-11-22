@@ -104,7 +104,8 @@ echo 'export HALONIC_HOME="$HOME/.halonic"' >> ~/.zshrc
 ```
 
 `HALONIC_HOME` must be a full path. Write `$HOME`, not `~`: inside quotes the shell leaves `~` as
-it is, and every command then stops with `HALONIC_HOME must be an absolute folder, not "~/.halonic".`
+it is, and every command that uses Halonic's data folder then stops with
+`HALONIC_HOME must be an absolute folder, not "~/.halonic".`
 
 ## Exit codes
 
