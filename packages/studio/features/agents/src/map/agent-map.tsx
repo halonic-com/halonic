@@ -1,6 +1,6 @@
 import { LetterTile } from "@halonicjs/studio-kit";
 import type { CloseStack } from "@halonicjs/studio-shell";
-import { type ReactNode, useId, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useContext, useId, useLayoutEffect, useRef, useState } from "react";
 import {
   type AgentListing,
   type AgentRoutine,
@@ -12,7 +12,7 @@ import {
   type AgentUser,
   agentToolLists,
 } from "../api.ts";
-import { MapFrame } from "./map-frame.tsx";
+import { MapFrame, MapStacked } from "./map-frame.tsx";
 import type { MapSide } from "./map-geometry.ts";
 import { MAX_SIDE_CARDS, SummaryCard, SummaryDrawer } from "./map-summary.tsx";
 import { mapWords as words } from "./map-words.ts";
@@ -127,9 +127,12 @@ export function AgentMap(props: AgentMapProps) {
         )
       }
     >
-      <div ref={box("in")} className="col-start-1 row-start-1">
-        {(sides.in.items.length > 0 || sides.in.add) && side("in")}
-      </div>
+      {/* Only with something on it, so an empty left side leaves no gap in the stacked map. */}
+      {(sides.in.items.length > 0 || sides.in.add) && (
+        <div ref={box("in")} className="col-start-1 row-start-1">
+          {side("in")}
+        </div>
+      )}
       <CentreCard settings={settings} openAgentStep={openAgentStep} />
       <div ref={box("use")} className="col-span-3 row-start-2">
         {side("use")}
@@ -161,7 +164,7 @@ function mapSides(props: AgentMapProps): Record<MapSide, SideContent> {
   return {
     in: {
       heading: words.workIn,
-      counts: words.summary.in(users.length, routines.length, handsWork.length),
+      counts: words.summary.in(routines.length, users.length, handsWork.length),
       items: [
         ...routines.map((routine) => (
           <Card
@@ -294,13 +297,15 @@ function Side({
 }: {
   /** Which side it is, for the lines to its cards. */
   readonly side: MapSide;
-  /** Three a row, for what it can use; one under the other otherwise. */
+  /** Three a row, two in a stacked map, for what it can use; one under the other otherwise. */
   readonly columns?: boolean;
   /** The summary card that stands for its cards, when it has too many. */
   readonly summary: ReactNode;
   readonly content: SideContent;
 }) {
   const headingId = useId();
+  const stacked = useContext(MapStacked);
+  const grid = stacked ? "grid grid-cols-2 gap-2" : "grid grid-cols-3 gap-2";
   return (
     // biome-ignore lint/a11y/useSemanticElements: a side of cards, not form fields, so not a fieldset.
     <div
@@ -312,7 +317,7 @@ function Side({
       <h2 id={headingId} className="text-caption text-fg-muted uppercase">
         {content.heading}
       </h2>
-      <div className={columns ? "grid grid-cols-3 gap-2" : "flex flex-col gap-2"}>
+      <div className={columns ? grid : "flex flex-col gap-2"}>
         {summary || content.items}
         {content.add}
       </div>

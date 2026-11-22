@@ -26,10 +26,10 @@ export const mapWords = {
       : `${tools} ${tools === 1 ? "tool asks" : "tools ask"} first`,
   /** A summary card's counts, the kinds with none left out: "2 workflows · 1 agent". */
   summary: {
-    in: (workflows: number, routines: number, agents: number) =>
+    in: (routines: number, workflows: number, agents: number) =>
       counts(
-        [workflows, "workflow", "workflows"],
         [routines, "routine", "routines"],
+        [workflows, "workflow", "workflows"],
         [agents, "agent", "agents"],
       ),
     use: (skills: number, knowledge: number, connectors: number) =>
