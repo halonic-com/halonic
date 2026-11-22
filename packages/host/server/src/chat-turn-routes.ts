@@ -4,11 +4,13 @@ import {
   type ChatParams,
   type ChatTurnRequest,
   isHalonicSecretName,
+  isModelCallError,
   isPluginSecretName,
   isSecretName,
+  type ModelCallErrorReason,
   type ToolDefinition,
 } from "@halonicjs/ports";
-import type { ModelSettingsGate, ServerPorts } from "./api.ts";
+import type { ModelSettingsGate, ServerErrorBody, ServerPorts } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { isJsonRequest } from "./run-routes.ts";
 import { refuseUnlessTrusted } from "./trust-routes.ts";
@@ -163,6 +165,28 @@ async function mayUseAddress(
   return turn.agent?.secret === undefined || (await modelSettings.allows(turn.hubId, turn.agent));
 }
 
+/**
+ * The body of a failed turn: `model_call_failed` with its fixed message and,
+ * for a `ModelCallError`, its `reason`, so the caller can say what to fix,
+ * such as a missing key.
+ */
+interface ModelCallFailedBody extends ServerErrorBody {
+  readonly reason?: ModelCallErrorReason;
+}
+
+/**
+ * Answers 502 `model_call_failed` for a turn that failed. Only the reason
+ * travels: the error's message and host stay in the log, because they may
+ * name a host or quote the provider.
+ */
+function modelCallFailed(error: unknown): Response {
+  const { status, code, message } = serverErrors.modelCallFailed;
+  const body: ModelCallFailedBody = isModelCallError(error)
+    ? { code, message, reason: error.reason }
+    : { code, message };
+  return Response.json(body, { status });
+}
+
 /** The request the body asks for, built from the listed fields only, or `null` when the body isn't one. */
 function parseChatTurn(body: Uint8Array): ChatTurnRequest | null {
   let parsed: unknown;
@@ -235,9 +259,8 @@ export function createChatTurnRoutes({
         if (request.signal.aborted) {
           return errorResponse(serverErrors.requestAborted);
         }
-        // The cause may name a host or quote the provider, so it goes to the log, not to the caller.
         errorLog.record(error);
-        return errorResponse(serverErrors.modelCallFailed);
+        return modelCallFailed(error);
       }
     },
   };

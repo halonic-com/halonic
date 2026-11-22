@@ -1,7 +1,7 @@
 import { createRemoteExecutor } from "@halonicjs/adapter-executor-remote";
 import type { RunEvent } from "@halonicjs/events";
 import { createServer, MemoryRequestCountStore } from "@halonicjs/host-server";
-import type { RunEventListener } from "@halonicjs/ports";
+import { isModelCallError, ModelCallError, type RunEventListener } from "@halonicjs/ports";
 import { runExecutorContract } from "@halonicjs/testing-contracts";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
@@ -94,6 +94,19 @@ verifies("executor-remote.runs", () => {
       const answer = await executor.chatTurn({ hubId: "acme", messages: [], tools: [] });
 
       expect(answer.content).toBe("hello");
+    });
+
+    it("fails a chat turn with the model call's reason, and keeps its message on the host", async () => {
+      const { engine, executor, logged } = await serve();
+      engine.turnError = new ModelCallError("no-key", "openai needs the secret openai-key.");
+
+      const error = await executor
+        .chatTurn({ hubId: "acme", messages: [], tools: [] })
+        .catch((caught: unknown) => caught);
+
+      expect(isModelCallError(error) && error.reason).toBe("no-key");
+      expect((error as Error).message).not.toContain("openai-key");
+      expect(logged).toEqual([engine.turnError]);
     });
 
     it("stops the model call on the host when the caller aborts a chat turn", async () => {

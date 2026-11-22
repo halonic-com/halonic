@@ -1,4 +1,9 @@
-import type { ChatTurnRequest, Coordination, RunExecutor } from "@halonicjs/ports";
+import {
+  type ChatTurnRequest,
+  type Coordination,
+  ModelCallError,
+  type RunExecutor,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { ModelSettingsGate, Server, TrustDecision, TrustGate } from "./api.ts";
@@ -283,6 +288,26 @@ describe("chat turn route", () => {
       expect(text).toContain("model_call_failed");
       expect(text).not.toContain("sk-abc");
       expect(text).not.toContain("llm.internal");
+      expect(calls.logged).toEqual([cause]);
+      expect(text).not.toContain("reason");
+    });
+
+    it("names a ModelCallError's reason, never its message or host", async () => {
+      const cause = new ModelCallError("offline", "llm.internal didn't answer.", {
+        host: "llm.internal:443",
+      });
+      const { server, calls } = setup({
+        chatTurn: async () => {
+          throw cause;
+        },
+      });
+      const response = await turn(server, valid);
+      expect(response.status).toBe(502);
+      expect(await response.json()).toEqual({
+        code: "model_call_failed",
+        message: "The model didn't answer. See the host's error log for the cause.",
+        reason: "offline",
+      });
       expect(calls.logged).toEqual([cause]);
     });
   });
