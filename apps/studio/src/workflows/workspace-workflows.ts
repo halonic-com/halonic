@@ -1,5 +1,4 @@
-import { stateAgentsOf, workspaceProblemsOf } from "@halonicjs/adapter-workspace-models";
-import type { RunSummary } from "@halonicjs/events";
+import { stateAgentsOf } from "@halonicjs/adapter-workspace-models";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import {
   type NewWorkflow,
@@ -33,16 +32,16 @@ import {
   checkArrowChange,
   writtenArrows,
 } from "./workflow-arrow-edits.ts";
-import { cantChange, firstStep, stepGone, workflowGone } from "./workflow-errors.ts";
+import { cantChange, cantPutBack, firstStep, stepGone, workflowGone } from "./workflow-errors.ts";
 import {
   endedIn,
   newWorkflowText,
-  problemsOf,
   testFile,
   withTestCase,
   workflowFolder,
   workflowSuffix,
 } from "./workflow-files.ts";
+import { workflowListingsOf } from "./workflow-listing.ts";
 import { workflowProblemsOf } from "./workflow-problems.ts";
 import { arrowRemovalEdits, stepRemovalEdits } from "./workflow-removal-edits.ts";
 import { stepEdits } from "./workflow-step-edits.ts";
@@ -126,42 +125,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
 
   async list(): Promise<readonly WorkflowListing[]> {
     const [workspace, runs] = await Promise.all([this.#load(), this.#parts.runs.list()]);
-    const workspaceIssues = workspaceProblemsOf(workspace);
-    const listings = filesOf(workspace, "workflow").flatMap((file) => {
-      if (file.hub === null) return [];
-      const issues = problemsOf(workspace, workspaceIssues, file);
-      const own = runs.filter(
-        ({ summary }) =>
-          summary.kind === "run" &&
-          summary.hubId === file.hub &&
-          summary.workflowId === file.value.id,
-      );
-      const newest = own.reduce<RunSummary | undefined>(
-        (best, { summary }) =>
-          best === undefined || summary.startedAt > best.startedAt ? summary : best,
-        undefined,
-      );
-      return [
-        {
-          hubId: file.hub,
-          id: file.value.id,
-          name: file.value.name,
-          description: file.value.description,
-          problems: {
-            errors: issues.filter((issue) => issue.severity === "error").length,
-            warnings: issues.filter((issue) => issue.severity === "warning").length,
-          },
-          runs: {
-            waiting: own.filter(({ summary }) => summary.status === "waiting").length,
-            running: own.filter(({ summary }) => summary.status === "running").length,
-          },
-          lastRun:
-            newest === undefined
-              ? undefined
-              : { startedAt: newest.startedAt, outcome: newest.status },
-        },
-      ];
-    });
+    const listings = workflowListingsOf(workspace, runs);
     this.#learnNames(listings);
     return listings;
   }
@@ -494,9 +458,4 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     }));
     return workspace;
   }
-}
-
-/** Why a removal's undo puts nothing back: the workspace changed after it. */
-function cantPutBack(what: string): string {
-  return `${what} can't be put back, because the workspace changed after it was removed.`;
 }
