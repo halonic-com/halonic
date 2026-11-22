@@ -84,6 +84,28 @@ describe("AgentHostSandboxSetup", () => {
     });
   });
 
+  it("reads a removal that is done but keeps some access until the next start", async () => {
+    const kept = { ok: true, keptAccess: "until_next_start" };
+    const elevated = new FakeHost().answer("POST /v1/sandbox/remove/elevated", ok(kept));
+    expect(await new AgentHostSandboxSetup(elevated).afterRemoveHelper(0)).toEqual(kept);
+    const last = { verb: "remove", result: kept, finishedAt: "2026-11-21T09:12:00.000Z" };
+    const host = new FakeHost().answer("GET /v1/sandbox/setup", ok({ running: null, last }));
+    expect(await new AgentHostSandboxSetup(host).status()).toEqual({ running: null, last });
+  });
+
+  it("refuses a done removal with a key it doesn't know", async () => {
+    const odd = { ok: true, keptAccess: "until_next_start", extra: 1 };
+    const elevated = new FakeHost().answer("POST /v1/sandbox/remove/elevated", ok(odd));
+    await expect(new AgentHostSandboxSetup(elevated).afterRemoveHelper(0)).rejects.toMatchObject({
+      kind: "answer_invalid",
+    });
+    const last = { verb: "remove", result: odd, finishedAt: "2026-11-21T09:12:00.000Z" };
+    const host = new FakeHost().answer("GET /v1/sandbox/setup", ok({ running: null, last }));
+    await expect(new AgentHostSandboxSetup(host).status()).rejects.toMatchObject({
+      kind: "answer_invalid",
+    });
+  });
+
   it("answers how many runs use the sandbox when the host refuses to remove it", async () => {
     const host = new FakeHost().answer("POST /v1/sandbox/remove", {
       status: 409,
