@@ -3,6 +3,7 @@
 - Task: HAL-15657
 - Approval: HAL-15657; team wording on approved command output (HAL-2282), from the words check C609 (rows 9, 12, 14, 15 and 16) of #4638 and #4708; the reviewer signs this note as the CTO
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ScDoNVplPsKeJmONslnlZdpQQf3NlBfO9s0LbI48LkifE9BUEvsvLhWBBFWapK5FoauSFElMYRxxiYVBhaqiCQ==
 
 ## What changes
 
