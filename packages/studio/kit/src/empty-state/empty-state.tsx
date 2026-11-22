@@ -3,6 +3,7 @@ import { Button, type ButtonSize } from "../button/button.tsx";
 import { standaloneLinkClasses } from "../external-link/external-link.tsx";
 import { assignRef } from "../field/control.ts";
 import { AlertIcon } from "../icons/alert-icon.tsx";
+import { usePresentation } from "../presentation/presentation.tsx";
 
 /**
  * `default` says there's nothing here yet. `error` says something couldn't load, so a screen never
@@ -100,13 +101,21 @@ export type EmptyStateProps = Nothing | CentredError | SectionError;
  */
 const titleFocus = "focus-ring";
 
+/** A centred Empty state's buttons side by side, wrapping when they don't fit. */
+const wrappingRow = "mt-1.5 flex flex-wrap items-center justify-center gap-2";
+
+/** On a phone: full-width buttons stacked 8px apart, the link centred under them. */
+const stackedRow = "mt-1.5 flex w-full flex-col items-center gap-2";
+
 /** The alert mark next to an error's title when there's no tile for it. */
 const inlineAlert = "inline-grid size-icon-md shrink-0 place-items-center *:size-full text-danger";
 
 /**
  * A list, page or panel with nothing in it yet, or a search with no results; with
  * `tone="error"`, the same place when it couldn't load. Centred in the space it replaces. Its
- * buttons are `md`, which the Button itself draws at 40px on a phone and a touch screen.
+ * buttons are `md`. On a phone a centred one is the screen's one main action, so its buttons are
+ * `touch` (48px), full width and stacked, primary on top (component specs 11). `plain` and
+ * `align="start"` keep their size: the Button draws `md` at 40px with a 48px hit area there.
  *
  * @example
  * <EmptyState icon={<AgentIcon />} title="No agents yet" description="…" action={newAgent} />
@@ -114,6 +123,7 @@ const inlineAlert = "inline-grid size-icon-md shrink-0 place-items-center *:size
  * <EmptyState tone="error" align="start" title="Couldn't load recent runs" action={retry} />
  */
 export function EmptyState(props: EmptyStateProps) {
+  const phone = usePresentation() === "phone";
   if (props.align === "start") {
     return <SectionErrorState {...props} />;
   }
@@ -122,13 +132,15 @@ export function EmptyState(props: EmptyStateProps) {
   const plain = props.plain === true;
   const Title = plain ? "p" : (`h${props.headingLevel ?? 2}` as const);
   const tile = plain ? null : iconTile(error ? <AlertIcon /> : props.icon, error);
-  const primary = error ? "secondary" : "primary";
+  const stacked = phone && !plain;
 
   return (
     <div
       className={`grid min-h-full w-full place-items-center px-4 py-8 ${plain ? "" : "bg-halo-wash"}`}
     >
-      <div className="flex max-w-empty flex-col items-center gap-1.5 text-center">
+      <div
+        className={`flex max-w-empty flex-col items-center gap-1.5 text-center ${stacked ? "w-full" : ""}`}
+      >
         {tile}
         <Title
           ref={(element) => assignRef(props.titleRef, element)}
@@ -145,15 +157,7 @@ export function EmptyState(props: EmptyStateProps) {
         {isShown(props.description) ? (
           <p className="text-body text-fg-muted">{props.description}</p>
         ) : null}
-        {props.action !== undefined ||
-        props.secondaryAction !== undefined ||
-        props.link !== undefined ? (
-          <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2">
-            {actionButton(props.action, primary, "md")}
-            {actionButton(props.secondaryAction, "secondary", "md")}
-            {actionLink(props.link)}
-          </div>
-        ) : null}
+        {actionRow(props, stacked)}
       </div>
     </div>
   );
@@ -184,10 +188,32 @@ function SectionErrorState({
       {isShown(description) ? <p className="text-small text-fg-muted">{description}</p> : null}
       {action === undefined && link === undefined ? null : (
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          {actionButton(action, "secondary", "lg")}
+          {actionButton(action, "secondary", false, "lg")}
           {actionLink(link)}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * A centred Empty state's buttons and link, or nothing when it has none. An error's one button is
+ * secondary. `stacked` is for a phone: full width, one under the other.
+ */
+function actionRow(props: Nothing | CentredError, stacked: boolean): ReactNode {
+  if (
+    props.action === undefined &&
+    props.secondaryAction === undefined &&
+    props.link === undefined
+  ) {
+    return null;
+  }
+  const primary = props.tone === "error" ? "secondary" : "primary";
+  return (
+    <div className={stacked ? stackedRow : wrappingRow}>
+      {actionButton(props.action, primary, stacked)}
+      {actionButton(props.secondaryAction, "secondary", stacked)}
+      {actionLink(props.link)}
     </div>
   );
 }
@@ -210,10 +236,12 @@ function iconTile(icon: ReactNode, error: boolean): ReactNode {
   );
 }
 
+/** `stacked` draws it at `touch` and full width, for a centred Empty state on a phone. */
 function actionButton(
   action: EmptyStateAction | undefined,
   variant: "primary" | "secondary",
-  size: ButtonSize,
+  stacked: boolean,
+  size: ButtonSize = "md",
 ): ReactNode {
   if (action === undefined) {
     return null;
@@ -221,7 +249,8 @@ function actionButton(
   return (
     <Button
       variant={variant}
-      size={size}
+      size={stacked ? "touch" : size}
+      block={stacked}
       busy={action.busy === true}
       busyLabel={action.busyLabel}
       onClick={action.onClick}
