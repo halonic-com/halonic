@@ -8,6 +8,7 @@ import type { DoctorMachine } from "../../doctor-machine.ts";
 import { exitCode } from "../../exit-code.ts";
 import { UnreadablePluginsFolderError } from "../../plugins-folder-reader.ts";
 import { runCli } from "../../run-cli.ts";
+import { shellWord } from "../../output/shell-word.ts";
 import { captureIo } from "../../test/capture-io.ts";
 import { removeTestFolder } from "../../test/remove-folder.ts";
 import { profilePlatformOf } from "../../workspace-runs.ts";
@@ -185,7 +186,7 @@ verifies("cli.plugins-folder-unreadable", () => {
     expect(code).toBe(exitCode.ok);
     expect(check(lines, "Plugins")).toEqual([
       `! Plugins     The plugins folder ${plugins} can't be read, so weather is off.`,
-      `              Fix: run chmod 700 ${plugins}, then run halonic doctor again.`,
+      `              Fix: run chmod 700 ${shellWord(plugins)}, then run halonic doctor again.`,
     ]);
     expect(JSON.parse(json.lines.join("\n")).checks).toContainEqual({
       check: "plugins",
