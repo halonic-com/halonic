@@ -20,15 +20,14 @@ hold:
 Two more things always win:
 
 - A tool its server lists as `send` always asks, even when `tools.read`
-  names it.
-- Except in `halonic run`: there a tool its server lists as `send` doesn't
-  ask. It is refused without asking until sending is allowed for the
-  connector (the Library's Allow sending switch in Studio; for a Google
-  connector, `halonic google allow-sending <connector> on`). A run reads the saved
-  choice each time. A connector that isn't a Google one has no way to switch
-  sending on in the CLI yet, so `halonic run` still refuses its `send` calls.
-  `halonic runs show` says "The call to <tool> was refused: sending is off for
-  <connector>, so nothing was sent."
+  names it, but only once sending is on for its connector. While sending is
+  off, a run refuses the call without asking. For a Google connector, switch
+  it on with `halonic google allow-sending <connector> on`: the runs of
+  `halonic run`, `halonic runs send`, `halonic serve` and
+  `halonic routines watch` read that choice. Studio's runs don't read it yet,
+  so they refuse every `send` call, and so does a CLI run for a connector
+  that isn't a Google one. `halonic runs show` says "The call to <tool> was
+  refused: sending is off for <connector>, so nothing was sent."
 - A tool its server lists as `read` still asks, until `tools.read` names it.
   A server, a plugin's manifest or an integration's permission sheet can make
   a tool ask, never stop it from asking.
@@ -77,10 +76,8 @@ off until you review it, and says under it whether calls to it ask:
 A run and `halonic tools review` use the same rule (`asksBeforeEachUse` in
 `@halonicjs/format`), so what the review says is what a run does, with one
 exception: for a tool its server lists as `send`, the review says "Asks you
-before each use.", but `halonic run` refuses a call to it without
-asking until sending is on for the connector. `halonic google allow-sending
-<connector> on` does that for a Google connector; any other connector stays
-refused in the CLI for now.
+before each use.", but while sending is off for its connector, a run
+refuses every call to it without asking (see [The rule](#the-rule)).
 
 Turning a tool on in `halonic tools review` is a separate step. It lets agents
 use a tool whose name, description and arguments you have read, and the tool is
