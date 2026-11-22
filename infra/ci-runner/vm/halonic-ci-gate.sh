@@ -11,7 +11,8 @@
 # credential, and goes to curl through a config on a pipe, never on a command line.
 set -euo pipefail
 reply() { printf 'HTTP/1.0 %s\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n' "$1"; }
-fail() { echo "halonic-ci-gate: $1" >&2; reply "502 Bad Gateway"; exit 0; }
+# The reason also goes in the answer (a fixed text, never the token), so the job's log shows it.
+fail() { echo "halonic-ci-gate: $1" >&2; reply "502 Bad Gateway"; jq -nc --arg e "$1" '{error: $e}'; exit 0; }
 
 # Read the request line, then drop the rest: at most 31 header lines, 5 s for the whole request,
 # so a slow client can't hold a connection longer than that.

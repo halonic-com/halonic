@@ -69,7 +69,10 @@ test("C7: refuses when the pull request or its commit isn't in the queue", () =>
 });
 
 test("C7: fails closed when the gate or GitHub's API fails", () => {
-  refused(group({ status: 502, body: "" }), /queue gate did not answer/);
+  const down = group({ status: 502, body: '{"error":"GitHub API call failed"}' });
+  refused(down, /queue gate did not answer after 3 tries \(last: HTTP 502: GitHub API call failed\)/);
+  assert.equal(down.asked.length, 3);
+  assert.match(down.out, /queue gate try 1 of 3 failed \(HTTP 502: GitHub API call failed\)/);
   refused(
     group({ status: 200, body: JSON.stringify({ errors: [{ message: "rate limited" }] }) }),
     /GitHub API errors/,
@@ -83,6 +86,32 @@ test("C7: fails closed when the gate or GitHub's API fails", () => {
     run({ pool: POOL_QUEUE, event: events.mergeGroup, env: QUEUE_ENV, script: hookNoGate }),
     /queue gate not available/,
   );
+});
+
+test("C7: a gate that fails once or twice is asked again, and its answer then decides", () => {
+  const fail = { status: 502, body: '{"error":"GitHub API call failed"}' };
+  const res = group([fail, fail, { status: 200, body: QUEUE_OK }]);
+  assert.equal(res.ok, true, res.out);
+  assert.equal(res.asked.length, 3);
+  assert.match(res.out, /queue gate try 2 of 3 failed/);
+  assert.match(res.out, /halonic-ci: accepted merge_group/);
+  // After a retry, a fork in the group is still refused.
+  const forked = group([fail, { status: 200, body: queue(own(5), fork(7, SHA)) }]);
+  refused(forked, /outside halonic-com: #7\./);
+  assert.equal(forked.asked.length, 2);
+});
+
+test("C7: an answer from the gate is never retried, so its refusal stands at once", () => {
+  for (const [body, reason] of [
+    [queue(own(3), fork(5), own(7, SHA)), /outside halonic-com: #5\./],
+    [queue(own(5)), /#7 at a{40} not in the merge queue/],
+    [JSON.stringify({ errors: [{ message: "rate limited" }] }), /GitHub API errors/],
+    ["not json", /queue gate answer unreadable/],
+  ]) {
+    const res = group([{ status: 200, body }, { status: 200, body: QUEUE_OK }]);
+    refused(res, reason);
+    assert.equal(res.asked.length, 1);
+  }
 });
 
 test("C7: refuses a malformed group ref or commit, or a workflow from another ref", () => {
@@ -153,6 +182,10 @@ test("C7: the gate fails closed without a token or an answer from GitHub", () =>
   ]) {
     const res = gateRun(opts);
     assert.match(res.out, /^HTTP\/1\.0 502 Bad Gateway\r\n/);
+    // The reason is in the answer too, for the job's log; never the token.
+    const body = JSON.parse(res.out.split("\r\n\r\n")[1]);
+    assert.match(body.error, reason);
+    assert.doesNotMatch(res.out, /github_pat_TEST123|x y/);
     assert.doesNotMatch(res.out, /200 OK/);
     assert.match(res.err, reason);
   }
