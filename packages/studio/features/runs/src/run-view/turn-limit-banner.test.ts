@@ -15,7 +15,7 @@ const named: RunPageContext = {
 function usedUp(agent: string, turns: string) {
   return failed("error", {
     error: `${agent} used all its model calls without finishing.`,
-    cause: { code: "engine.turn-limit", detail: { agent, turns } },
+    cause: { kind: "limit_reached", code: "engine.turn-limit", detail: { agent, turns } },
   });
 }
 
@@ -77,7 +77,11 @@ verifies("runs.run-view.turn-limit", () => {
 
   it("leaves a cause without the agent or a whole limit to the general banner", () => {
     const noLimit = failed("error", {
-      cause: { code: "engine.turn-limit", detail: { agent: "sorter", turns: "many" } },
+      cause: {
+        kind: "limit_reached",
+        code: "engine.turn-limit",
+        detail: { agent: "sorter", turns: "many" },
+      },
     });
 
     expect(causeBanner(noLimit, [], named, false)).toBeUndefined();
