@@ -2,6 +2,7 @@
 
 - Approval: HAL-15682 (flow check C614, item 4, a follow-up of HAL-15419); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7rlmtBdxzAXufh8nTmC8o2NmdeEuNpbCcXAiFZDyXBFG4aVhK5dQ+THSGR9GUYzDY4nVaWwumIqDIMuY1pPeCw==
 
 ## What changes
 
