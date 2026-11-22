@@ -1,12 +1,11 @@
 // Each start reads the workspace's files as they are saved then, not as they were when the engine
 // opened (HAL-16324): a later save of an agent or of Local only counts for the next run.
 
-import type { SetTimer } from "@halonicjs/adapter-scheduler-node";
-import type { HttpClient } from "@halonicjs/ports";
 import { TryAgainLater } from "@halonicjs/studio-shell";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { hungServer, pageTimers } from "./engine-local-only.testing.ts";
 import {
   acmeFiles,
   acmeWithTwoProviders,
@@ -27,20 +26,6 @@ const hourly = [
   "run: { workflow: reply }",
   "",
 ].join("\n");
-
-/** A model server that takes each call and answers none until it is called off, so a run stays going. */
-const hungServer: HttpClient = {
-  fetch: (_input, init) =>
-    new Promise<Response>((_resolve, reject) => {
-      init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
-    }),
-};
-
-/** The page's timers, as the window sets them: a run's next step is one, due at once. */
-const pageTimers: SetTimer = (callback, delayMs) => {
-  const timer = setTimeout(callback, delayMs);
-  return () => clearTimeout(timer);
-};
 
 verifies("studio.engine-service", () => {
   describe("a start after a save", () => {
