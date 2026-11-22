@@ -76,7 +76,7 @@ verifies("workspace.trust-url-hidden-characters", () => {
     ["a space at the end", "https://mcp.acme.test/ "],
   ])("refuses a URL with %s, which a URL parser drops", (_, url) => {
     expect(trustUrl(url)).toEqual({
-      refused: "the URL has a control character, or a space at its start or end",
+      refused: "the URL has a hidden character, such as a line break, or a space at its start or end",
     });
   });
 });

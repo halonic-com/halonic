@@ -77,12 +77,12 @@ export const runsMessages = defineMessages("runs", {
 
   /**
    * A `reject` reads as `runs show` says it ({@link youAnswered}, C692), so
-   * the line doesn't sound as if the run carries on as asked: "You rejected
+   * the line doesn't sound as if the run carries on as asked: "You rejected in
    * run 01jd8q. Support reply goes on." Any other event is sent as written.
    */
   sent: (event: string, runId: string, title: string) => {
     if (event === "reject") {
-      return phrase`You rejected run ${runId}. ${title} goes on.`;
+      return phrase`You rejected in run ${runId}. ${title} goes on.`;
     }
     return phrase`Sent ${event} to run ${runId}. ${title} goes on.`;
   },
