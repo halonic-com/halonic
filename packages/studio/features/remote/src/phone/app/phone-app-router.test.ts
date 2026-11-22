@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { FakePhoneTunnel } from "../../test-support/phone-tunnel.ts";
 import type { PhoneScanner } from "../pairing-flow.ts";
 import type { ComputerId, PairedComputer } from "../phone-tunnel.ts";
@@ -105,12 +105,57 @@ verifies("remote.phone-app", () => {
     const shown = tunnel.computers.get(laptop);
     if (shown === undefined) throw new Error("The laptop isn't listed.");
     await router.forget(shown);
-    router.leaveForgotten();
     expect(router.view.screen).toEqual({ screen: "computer", computer: desktop, sheet: false });
     const next = tunnel.computers.get(desktop);
     if (next === undefined) throw new Error("The desktop isn't listed.");
     await router.forget(next);
-    router.leaveForgotten();
     expect(router.view.screen.screen).toBe("pair");
+    expect(router.view.canGoBack).toBe(false);
+  });
+
+  it("after Forget in Paired computers, Back skips the forgotten computer", async () => {
+    const { tunnel, router } = setUp(
+      paired(laptop, "Tim's laptop", "2026-11-21T09:00:00Z"),
+      paired(desktop, "Office desktop", "2026-11-20T09:00:00Z"),
+    );
+    await router.start();
+    router.openComputers();
+    const shown = tunnel.computers.get(laptop);
+    if (shown === undefined) throw new Error("The laptop isn't listed.");
+    await router.forget(shown);
+    expect(router.view.screen.screen).toBe("computers");
+    expect(router.back()).toBe(true);
+    expect(router.view.screen).toEqual({ screen: "computer", computer: desktop, sheet: false });
+    expect(router.back()).toBe(false);
+  });
+
+  it("after Forget of the last computer in Paired computers, Back shows Pair", async () => {
+    const { tunnel, router } = setUp(paired(laptop, "Tim's laptop"));
+    await router.start();
+    router.openComputers();
+    const shown = tunnel.computers.get(laptop);
+    if (shown === undefined) throw new Error("The laptop isn't listed.");
+    await router.forget(shown);
+    expect(router.back()).toBe(true);
+    expect(router.view.screen.screen).toBe("pair");
+    expect(router.back()).toBe(false);
+  });
+
+  it("Back from Check the code ends the pairing on both sides", async () => {
+    const { tunnel, router } = setUp(paired(laptop, "Tim's laptop"));
+    tunnel.waitForAllow = () => new Promise(() => undefined);
+    await router.start();
+    router.pair();
+    const { screen } = router.view;
+    if (screen.screen !== "pair") throw new Error("Pair with a computer isn't showing.");
+    screen.flow.pairTyped("4F7 2KQ", {
+      name: "Tim's laptop",
+      endpoint: "ws://10.0.0.2",
+      wifi: true,
+    });
+    await vi.waitFor(() => expect(screen.flow.view.step).toBe("check"));
+    expect(router.back()).toBe(true);
+    expect(tunnel.calls).toContain("cancel pairing-1");
+    expect(router.view.screen).toEqual({ screen: "computer", computer: laptop, sheet: false });
   });
 });

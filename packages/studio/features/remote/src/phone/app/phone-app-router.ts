@@ -84,8 +84,8 @@ export class PhoneAppRouter {
       if (status.state === "removed") this.#drop(computer);
       this.#changed();
     });
-    const first = latest(await this.#list());
-    this.#stack = [first === undefined ? this.#pairScreen() : this.#open(first)];
+    await this.#list();
+    this.#stack = [this.#fallback()];
     this.#changed();
   }
 
@@ -139,23 +139,26 @@ export class PhoneAppRouter {
     this.#changed();
   }
 
-  /** Forgets a computer: the shell deletes its entry, and the page drops what it held. */
+  /**
+   * Forgets a computer: the shell deletes its entry, the page drops what it held, and its
+   * screens leave the stack, so Back never returns to it. With no computer's screen left, the
+   * next computer goes underneath, else Pair with a computer.
+   */
   async forget(computer: ListedComputer): Promise<ForgetOutcome> {
     const outcome = await this.#options.tunnel.forget(computer.id);
     if (outcome.kind === "forgotten") {
       this.#drop(computer.id);
       this.#statuses.delete(computer.id);
       await this.#list();
+      const kept = this.#stack.filter(
+        (screen) => screen.screen !== "computer" || screen.computer !== computer.id,
+      );
+      this.#stack = kept.some((screen) => screen.screen === "computer")
+        ? kept
+        : [this.#fallback(), ...kept];
       this.#changed();
     }
     return outcome;
-  }
-
-  /** The shown computer was forgotten on its own screen: the next one, else Pair with a computer. */
-  leaveForgotten(): void {
-    const next = latest(this.#computers);
-    this.#stack = [next === undefined ? this.#pairScreen() : this.#open(next)];
-    this.#changed();
   }
 
   /** Android back: closes the sheet, else goes back a screen. False when there's nowhere to go. */
@@ -166,6 +169,8 @@ export class PhoneAppRouter {
       return true;
     }
     if (this.#stack.length < 2) return false;
+    // Leaving Check the code or a problem screen ends the pairing on both sides.
+    if (top.screen === "pair") top.flow.cancel();
     this.#stack = this.#stack.slice(0, -1);
     this.#changed();
     return true;
@@ -184,6 +189,12 @@ export class PhoneAppRouter {
     }
     if (computer.standing === "paired") this.tryAgain(computer.id);
     return { screen: "computer", computer: computer.id, sheet: false };
+  }
+
+  /** The readable computer connected last, else Pair with a computer. */
+  #fallback(): PhoneAppScreen {
+    const next = latest(this.#computers);
+    return next === undefined ? this.#pairScreen() : this.#open(next);
   }
 
   #pairScreen(again?: ComputerId): PhoneAppScreen {

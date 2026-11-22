@@ -93,7 +93,8 @@ function ComputerBody({
         computer={computer}
         onPairAgain={() => router.pair(computer.id)}
         onForget={(listed) => router.forget(listed)}
-        onForgotten={() => router.leaveForgotten()}
+        // `forget` has already left this computer's screen.
+        onForgotten={() => undefined}
       />
     );
   }
