@@ -100,6 +100,23 @@ verifies("kit.text-area", () => {
     expect((textarea.parentElement as HTMLElement).className).toContain("focus-field-danger");
   });
 
+  it("is also described by a line outside its Field, read after the Field's own", () => {
+    const { container } = render(
+      <>
+        <p id="reason">Reconnect to send a prompt.</p>
+        <Field label="Message" hint="Plain text.">
+          <TextArea describedBy="reason" />
+        </Field>
+        <TextArea aria-label="Alone" describedBy="reason" />
+      </>,
+    );
+    const [inField, alone] = [...container.querySelectorAll("textarea")];
+    const ids = inField?.getAttribute("aria-describedby")?.split(" ");
+    expect(ids).toHaveLength(2);
+    expect(ids?.[1]).toBe("reason");
+    expect(alone?.getAttribute("aria-describedby")).toBe("reason");
+  });
+
   it("grows up to five lines by default, then scrolls", () => {
     const { container } = render(<TextArea aria-label="Notes" />);
     const textarea = container.querySelector("textarea") as HTMLTextAreaElement;

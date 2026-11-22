@@ -6,7 +6,7 @@ export const letterTileSection: PartSection = {
   number: "26.4",
   name: "LetterTile",
   order:
-    "kit 26.4 · left to right: an agent, a plugin, a routine, an empty name; lg: a Cloud product",
+    "kit 26.4 · left to right: an agent, a plugin, a routine, an empty name; md: a phone row; lg: a Cloud product",
   notApplicable: "hover, focus, disabled (decoration, not interactive)",
   rows: [
     {
@@ -17,6 +17,15 @@ export const letterTileSection: PartSection = {
           <LetterTile name="gmail" />
           <LetterTile name="Weekly sort" />
           <LetterTile name="" />
+        </>
+      ),
+    },
+    {
+      name: "md (phone)",
+      copies: () => (
+        <>
+          <LetterTile name="Reporter" size="md" />
+          <LetterTile name="" size="md" />
         </>
       ),
     },

@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-12248 (tunnel design on HAL-12206, decision 6 and section 3, `s-m2` and `s-m3`; D7 design on HAL-15159, sections 2 and 3; microcopy 28 on HAL-751; flow check C672 on HAL-16097)
+- Source: HAL-12248 (tunnel design on HAL-12206, decision 6 and section 3, `s-m2` and `s-m3`; D7 design on HAL-15159, sections 2 and 3; microcopy 28 on HAL-751; flow check C672 on HAL-16097; 40px tile, C673 on HAL-16111)
 
-The phone shall list the agents of the paired computer in the order the computer listed them, each with its name, a line and its state in words (Running, Needs you, Done, Failed). The line shall say when an agent that ended finished or failed, else what its oldest open approval asks, else the agent's newest message. While the phone can't answer because it isn't connected, each line of an agent that hasn't ended shall end with "as of" and the time of the last update the phone received (an agent that finished or failed keeps only its end time), and an agent that needs you shall show Approve and Deny turned off with "You can answer once your phone reconnects." under them. A risky approval shall show Approve and Deny turned off with "Answer this on your computer.". The phone shall send an answer only while the approval can be answered, and shall never send one twice.
+The phone shall list the agents of the paired computer in the order the computer listed them, each with a 40px letter tile, its name, a line and its state in words (Running, Needs you, Done, Failed). The line shall say when an agent that ended finished or failed, else what its oldest open approval asks, else the agent's newest message. While the phone can't answer because it isn't connected, each line of an agent that hasn't ended shall end with "as of" and the time of the last update the phone received (an agent that finished or failed keeps only its end time), and an agent that needs you shall show Approve and Deny turned off with "You can answer once your phone reconnects." under them. A risky approval shall show Approve and Deny turned off with "Answer this on your computer.". The phone shall send an answer only while the approval can be answered, and shall never send one twice.
 
 ## Examples
 

@@ -85,7 +85,7 @@ function AgentRow({
   const name = [session.title, line, state].filter(Boolean).join(", ");
   return (
     <li className="flex items-start gap-3 px-4 py-3">
-      <LetterTile name={session.title} />
+      <LetterTile name={session.title} size="md" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         {/* One line for a screen reader: the visible parts below are read as this. */}
         <span className="sr-only">{spoken(name)}</span>

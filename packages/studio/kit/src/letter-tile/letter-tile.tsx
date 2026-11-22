@@ -3,16 +3,21 @@ export interface LetterTileProps {
   /** The name the tile stands for: "Reporter". It shows its first letter, upper case. */
   readonly name: string;
   /**
-   * `sm` (the default) is 28px, for a row; `lg` is 48px, for a product on Cloud's dashboard and on
+   * `sm` (the default) is 28px, for a row; `md` is 40px, for a phone row beside the other 40px
+   * tiles (Paired computers, HAL-16111); `lg` is 48px, for a product on Cloud's dashboard and on
    * its customer pages (HAL-16050).
    */
-  readonly size?: "sm" | "lg" | undefined;
+  readonly size?: LetterTileSize | undefined;
 }
+
+/** How big the tile is: `sm` 28px, `md` 40px, `lg` 48px. */
+export type LetterTileSize = "sm" | "md" | "lg";
 
 const SIZES = {
   sm: "size-7 rounded-lg text-small font-semibold",
+  md: "size-10 rounded-md text-body font-semibold",
   lg: "size-12 rounded-md text-heading",
-} as const;
+} as const satisfies Record<LetterTileSize, string>;
 
 /**
  * The first letter of a name on an accent tile: what stands in for a logo or a picture on an

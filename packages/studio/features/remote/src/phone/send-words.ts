@@ -13,7 +13,7 @@ export const promptWords = {
   label: "Prompt",
   placeholder: (agent: string) => `Message ${agent}…`,
   send: "Send",
-  /** In the box, and the reason Send is off, while the view is stale (`phone.stale.promptReason`). */
+  /** Under the box, the reason it is off, while the view is stale (`phone.stale.promptReason`). */
   staleReason: "You can send a prompt once your phone reconnects.",
   /** `gatewayMaxPromptLength`, written out; `send-words.test.ts` keeps the two in step. */
   tooLong: "A prompt can be at most 10,000 characters.",
