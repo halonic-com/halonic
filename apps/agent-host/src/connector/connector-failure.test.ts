@@ -8,6 +8,7 @@ import {
   ProgramStoppedAtStartError,
   SecretNotSetError,
 } from "@halonicjs/adapter-mcp";
+import { ConnectorToolTimeoutError } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it } from "vitest";
 import { connectorFailureReasonOf } from "./connector-failure.ts";
@@ -76,6 +77,13 @@ verifies("agent-host.connector-failure-reasons", () => {
     expect(connectorFailureReasonOf(new SandboxSessionEndedError("notes"))).toEqual({
       reason: "stopped",
     });
+    // A call that ran out of time is read by the connector's own error, its cause.
+    const timedOut = (cause: Error) =>
+      new ConnectorToolTimeoutError("It didn't answer.", 5000, { cause });
+    expect(connectorFailureReasonOf(timedOut(new McpStoppedError("stopped")))).toEqual({
+      reason: "stopped",
+    });
+    expect(connectorFailureReasonOf(timedOut(new McpError("unavailable", "x")))).toBeUndefined();
     // Text that reads like a cause isn't one: only the type counts.
     expect(
       connectorFailureReasonOf(new Error("The program npx was not found in any absolute folder.")),

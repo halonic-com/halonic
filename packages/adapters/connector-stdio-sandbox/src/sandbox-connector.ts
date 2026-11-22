@@ -16,14 +16,15 @@ import {
   StdioTransport,
   toConnectorTool,
 } from "@halonicjs/adapter-mcp";
-import type {
-  ConnectorClient,
-  ConnectorConfig,
-  ConnectorFactory,
-  ConnectorFactoryContext,
-  ConnectorTool,
-  SandboxBlock,
-  SandboxSession,
+import {
+  type ConnectorClient,
+  type ConnectorConfig,
+  type ConnectorFactory,
+  type ConnectorFactoryContext,
+  type ConnectorTool,
+  ConnectorToolTimeoutError,
+  type SandboxBlock,
+  type SandboxSession,
 } from "@halonicjs/ports";
 import { type Clock, systemClock } from "@halonicjs/std";
 import { type DeclaredTool, offeredTools } from "./declared-tools.ts";
@@ -401,7 +402,10 @@ class SandboxStdioConnector implements ConnectorClient {
           `Connector "${this.id}"'s tool "${name}" didn't answer within ${seconds} seconds, so Halonic stopped its program. The next call starts it again.`,
       );
     } catch (error) {
-      if (error instanceof DeadlinePassedError) throw error;
+      // The engine reads the timeout's type to say why the call failed (`connector-stdio-sandbox.call-timeout-cause`).
+      if (error instanceof DeadlinePassedError) {
+        throw new ConnectorToolTimeoutError(error.message, timeoutMs, { cause: error });
+      }
       throw this.#lostDuringCall(connection, name, error);
     }
   }

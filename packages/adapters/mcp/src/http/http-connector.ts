@@ -9,7 +9,7 @@ import {
 import { McpError } from "../protocol/errors.ts";
 import { type ClientInfo, McpSession } from "../protocol/session.ts";
 import { SecretNotSetError } from "../stdio/start-errors.ts";
-import { resultText, toConnectorTool } from "../stdio/tool-mapping.ts";
+import { resultText, toConnectorTool, toolTimeoutOf } from "../stdio/tool-mapping.ts";
 import { defaultHttpLimits, type HttpLimits, McpHttpTransport } from "./http-transport.ts";
 
 /** What an HTTP connector factory needs besides each connector's config. */
@@ -87,7 +87,7 @@ class McpHttpConnector implements ConnectorClient {
     const session = await this.#connect();
     const result = await session
       .callTool(name, args)
-      .catch((error: unknown) => this.#forget(error));
+      .catch((error: unknown) => this.#forget(toolTimeoutOf(this.id, name, error, false) ?? error));
     if (result.isError) throw new ConnectorToolError(this.id, name, resultText(result));
     return resultText(result);
   }

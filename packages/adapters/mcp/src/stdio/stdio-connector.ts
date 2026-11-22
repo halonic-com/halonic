@@ -21,7 +21,7 @@ import { defaultRestartLimits, RestartLimit, type RestartLimits } from "./restar
 import { ProgramStoppedAtStartError, SecretNotSetError } from "./start-errors.ts";
 import { defaultStdioLimits, type StdioLimits, StdioTransport } from "./stdio-transport.ts";
 import { ConnectorStoppedError } from "./stopped-error.ts";
-import { resultText, toConnectorTool } from "./tool-mapping.ts";
+import { resultText, toConnectorTool, toolTimeoutOf } from "./tool-mapping.ts";
 
 /** What a stdio connector factory needs besides each connector's config. */
 export interface McpStdioOptions {
@@ -149,7 +149,12 @@ class McpStdioConnector implements ConnectorClient {
     const connection = await this.#connect();
     const result = await connection.session
       .callTool(name, args)
-      .catch((error: unknown) => Promise.reject(this.#lostDuringCall(connection, name, error)));
+      .catch((error: unknown) =>
+        Promise.reject(
+          toolTimeoutOf(this.id, name, error, true) ??
+            this.#lostDuringCall(connection, name, error),
+        ),
+      );
     if (result.isError) throw new ConnectorToolError(this.id, name, resultText(result));
     return resultText(result);
   }

@@ -26,10 +26,17 @@ export class McpError extends Error {
   override readonly name: string = "McpError";
   /** What went wrong, for code that reacts to it. */
   readonly code: McpErrorCode;
+  /**
+   * Set when the server didn't answer within this many milliseconds, so the
+   * request was given up; a connector turns that into the engine's
+   * `ConnectorToolTimeoutError` for a tool call.
+   */
+  readonly timeoutMs?: number;
 
-  constructor(code: McpErrorCode, message: string) {
+  constructor(code: McpErrorCode, message: string, options?: { readonly timeoutMs?: number }) {
     super(message);
     this.code = code;
+    if (options?.timeoutMs !== undefined) this.timeoutMs = options.timeoutMs;
   }
 }
 
@@ -39,8 +46,8 @@ export class McpError extends Error {
  * own type lets a caller say "it stopped" without reading the message.
  */
 export class McpStoppedError extends McpError {
-  constructor(message: string) {
-    super("unavailable", message);
+  constructor(message: string, options?: { readonly timeoutMs?: number }) {
+    super("unavailable", message, options);
   }
 }
 
