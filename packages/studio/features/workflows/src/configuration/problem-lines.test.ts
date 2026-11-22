@@ -92,8 +92,8 @@ verifies("workflows.configuration.problem-lines", () => {
       problem("wait-without-events", "warning", "wait-1"),
     ]);
     expect(rows.map((row) => row.text)).toEqual([
-      "Has no agent, so every run fails here. Pick one on its card, or make it a Wait.",
-      "Has no way out. Add an arrow from it on its card, or make it an End.",
+      "Has no agent, so every run fails here. Pick one on its card, or make it a wait step.",
+      "Has no way out. Add an arrow from it on its card, or make it an end step.",
       "Can't be reached: no arrow leads to it.",
       "Gives a person no answers to pick, such as approve. Add them in the workflow's file.",
     ]);
@@ -118,6 +118,31 @@ verifies("workflows.configuration.problem-lines", () => {
     const missing = problem("wait-without-events", "warning", "wait-1");
     expect(cardSummary([missing])).toBe("△ Has no answers to pick");
     expect(problemRows([missing])[0]?.text).toContain("no answers to pick");
+  });
+
+  it("gives a wait step's signal a short card line and a row without the step's id (C622 #3)", () => {
+    const signal: WorkflowProblem = {
+      severity: "error",
+      code: "wait-with-signal",
+      message: `Wait step "wait-1" can't send a signal. Put signal: on the step after it.`,
+      stepId: "wait-1",
+    };
+    expect(cardProblems([signal], "wait-1")?.line).toBe("Can't send a signal");
+    expect(problemRows([signal])[0]?.text).toBe(
+      "Can't send a signal: a wait step has no moment to send one. Move the signal to the step after it, in the workflow's file.",
+    );
+  });
+
+  it("names a step's kind as a wait step or an end step, as validate does, not the Type picker's Wait", () => {
+    const lines = [
+      problemLine(problem("timer-outside-wait", "error", "write")),
+      ...problemRows([
+        problem("task-without-agent", "error", "step-1"),
+        problem("dead-end", "error", "step-1"),
+      ]).map((row) => row.text),
+    ];
+    expect(lines.join(" ")).not.toMatch(/\b(Wait|End)\b/);
+    expect(lines[0]).toBe("Only a wait step has timers");
   });
 
   it("counts errors and warnings", () => {
