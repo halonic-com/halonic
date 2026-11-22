@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-7993 (the board approved the first-run flow on 19 Nov, sections 3.3 and 3.4 included); build plan and team decisions on https://paperclip.halonic.com/HAL/issues/HAL-13434
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:lDNf7VqaRbgm3Z6DYeppkMkw6YBb8dN03Gbx0sR+dVNtSVsZvFBON2bXWDJJdVTsiLUMNSiiRpCHn6PvmURmBQ==
 
 Build 6 of the approved first-run flow (first-run-flow, HAL-7985, revision 9) puts the run into the
 first run: the guide card opens Pick a model, Continue starts Support reply at once, and **Cancel
