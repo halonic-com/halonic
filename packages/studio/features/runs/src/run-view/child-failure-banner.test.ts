@@ -114,6 +114,23 @@ verifies("runs.run-view.failed-child-run", () => {
     expect(banner?.fixes).toEqual([{ kind: "open-models" }]);
   });
 
+  it("follows one level of child run: a child that failed in its own child says it can't tell why", () => {
+    const failedInItsChild = child(
+      {
+        reason: "error",
+        state: "each",
+        statesVisited: ["each"],
+        error: 'Workflow "polish" failed in item 0 of for-each state "each": boom',
+      },
+      0,
+    );
+    const banner = callout(childFailureBanner(parent, topics, failedInItsChild, false));
+    expect(banner?.lines).toEqual([
+      "Topics failed in the step Each: the run it started for item 1 failed in the step Each. Halonic can't tell the cause yet.",
+    ]);
+    expect(banner?.action).toEqual({ kind: "open-run", runId: childId, label: "Open run c3.4.1" });
+  });
+
   it("leaves the parent's own banner for a child that was cancelled", () => {
     const cancelled = child({ reason: "cancelled" }, 0);
     expect(childFailureBanner(parent, topics, cancelled, false)).toBeUndefined();
