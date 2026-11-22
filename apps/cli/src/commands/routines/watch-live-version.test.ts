@@ -264,6 +264,26 @@ verifies("cli.commands.routines.watch", () => {
     expect(await watching).toBe(130);
   });
 
+  // C642 #2 (HAL-15863): the line pointed to validate, which reads the fixed saved file.
+  it("says a routine whose fix is saved but not committed can't start until it is committed", {
+    timeout: gitWatchTimeout,
+  }, async () => {
+    const digestPath = "hubs/support/workflows/routines/friday-digest.routine.yaml";
+    const digest = hourly
+      .replace("hourly-follow-up", "friday-digest")
+      .replace("Hourly follow-up", "Friday digest");
+    await writeFiles(acmeRuns.acme, { [digestPath]: digest.replace("follow-up", "gone") });
+    await makeLive("Friday digest with a typo");
+    await writeFiles(acmeRuns.acme, { [digestPath]: digest });
+    const watch = startWatch(fakeTime(engineStart));
+    await watchUntil(watch, () => watch.io.stdout.length === 2);
+
+    expect(watch.io.stdout).toEqual([
+      "✕ Friday digest can't start until its fix is committed or made live in Halonic Studio",
+      "Watching 1 routine in Acme. Stop with Ctrl C.",
+    ]);
+  });
+
   it("starts the next due run from a version made while it watches", {
     timeout: gitWatchTimeout,
   }, async () => {

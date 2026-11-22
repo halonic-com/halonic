@@ -21,7 +21,12 @@ import type { RoutineScheduler } from "@halonicjs/app/routines";
 import type { RunStore } from "@halonicjs/ports";
 import { DEFAULT_TICK_POLICY, type PlacedRoutine } from "@halonicjs/routines";
 import { KindedError } from "@halonicjs/std";
-import { filesOf, type LoadedFileOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import {
+  filesOf,
+  type LoadedFileOf,
+  type LoadedWorkspace,
+  loadWorkspace,
+} from "@halonicjs/workspace";
 import type { CommandContext, CommandInput, StoppedResult } from "../../command.ts";
 import type { RoutineEngine } from "../../local-engine-host.ts";
 import { plainText } from "../../messages/phrase.ts";
@@ -101,7 +106,7 @@ async function watchVersions(
     await versions.routines.listLoaded(),
   );
   const trust = await checkRoutinesTrust(dir, workspace, setup.trust(), typedDir);
-  const cantStart = new RoutinesThatCantStart(context, typedDir);
+  const cantStart = new RoutinesThatCantStart(context, typedDir, () => loadWorkspace(dir.store));
   const listed = () => routines;
   const report = watchReport(context, () => setup.clock(), listed);
   const warnings = placedWarnings(context);
@@ -121,7 +126,7 @@ async function watchVersions(
     routines: (parts) => {
       runStore = parts.runs;
       scheduler = routineScheduler(parts, workspace, versions, dir.name, setup, async (read) => {
-        routines = cantStart.leaveOut(await versions.live(), read);
+        routines = await cantStart.leaveOut(await versions.live(), read);
         return routines;
       });
       const built = scheduler;

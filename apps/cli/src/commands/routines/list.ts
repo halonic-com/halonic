@@ -79,16 +79,20 @@ export async function listRoutines(
   const trust = await workspaceTrustState(workspace, setup.trust(), loaded);
   const row: RowOptions = { withHub: spansHubs(routines), paused: !startsHere(trust) };
   const blocked = await webhookRoutinesThatWontStart(loaded, context.secrets);
-  const withProblems = routines.filter((each) => each.problems > 0).length;
+  const withProblems = routines.filter((each) => each.problems > 0);
+  // A fix that is saved but not committed: validate reads the saved file and finds nothing (C642 #2).
+  const fixNotLive = withProblems.filter(isFixNotLive).length;
+  const toValidate = withProblems.length - fixNotLive;
   // A routine with file errors is counted once, under validate, which shows them.
   const webOnly = routines.filter((each) => each.problems === 0 && blocked.has(each.key)).length;
   const pausedLine = routines.some((each) => isPaused(each, row))
     ? [pausedMessage(trust)(printable(workspaceNameOf(loaded, workspace)), dir).phrase]
     : [];
   return {
-    exitCode: withProblems + webOnly === 0 ? exitCode.ok : exitCode.failed,
+    exitCode: withProblems.length + webOnly === 0 ? exitCode.ok : exitCode.failed,
     lines: [
-      ...(withProblems === 0 ? [] : [routinesMessages.routinesCantStart(withProblems, dir).phrase]),
+      ...(toValidate === 0 ? [] : [routinesMessages.routinesCantStart(toValidate, dir).phrase]),
+      ...(fixNotLive === 0 ? [] : [routinesMessages.routinesFixNotLive(fixNotLive).phrase]),
       ...(webOnly === 0 ? [] : [routinesMessages.webhookRoutinesCantStart(webOnly, dir).phrase]),
       ...pausedLine,
       ...columns(routines.map((each) => routineRow(each, clock, row, blocked.has(each.key)))),
@@ -163,6 +167,9 @@ function notLiveLines(
 function notLiveLine(routine: ListedRoutine, dir: string | undefined): Phrase | null {
   // The name comes from the routine's file, so it is made printable (cli-output section 5).
   const name = printable(routine.name);
+  if (isFixNotLive(routine)) {
+    return routinesMessages.fixNotLive(name).phrase;
+  }
   if (routine.liveState === "not-live") {
     return routine.savedProblems > 0
       ? routinesMessages.changesNotLiveWithErrors(name, dir).phrase
@@ -172,6 +179,14 @@ function notLiveLine(routine: ListedRoutine, dir: string | undefined): Phrase | 
     return routinesMessages.neverLive(name).phrase;
   }
   return null;
+}
+
+/**
+ * Whether the live version, the one that starts, has errors that the saved
+ * file no longer has: the fix is saved but not committed (C642 #2).
+ */
+function isFixNotLive(routine: ListedRoutine): boolean {
+  return routine.liveState === "not-live" && routine.problems > 0 && routine.savedProblems === 0;
 }
 
 /**
