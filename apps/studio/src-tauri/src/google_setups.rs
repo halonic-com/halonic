@@ -35,7 +35,7 @@ pub struct SetupLines {
 #[tauri::command]
 pub async fn google_setup_read<R: Runtime>(app: AppHandle<R>) -> Result<SetupLines, DataRefusal> {
     tauri::async_runtime::spawn_blocking(move || {
-        let profile = cli_profile(&app).map_err(DataRefusal::io)?;
+        let profile = cli_profile(&app).map_err(DataRefusal::from)?;
         read_setup_lines(&app.state::<RecordState>().folders, &profile)
     })
     .await

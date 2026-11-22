@@ -56,7 +56,7 @@ fn save_choice<R: Runtime>(app: &AppHandle<R>, backend: Option<&str>) -> Result<
         .map_err(settings_refusal)?;
     let state = app.state::<AgentHostState>();
     let mut host = state.host.lock().map_err(|_| poisoned())?;
-    let profile = cli_profile(app).map_err(|error| HostRefusal::new("io", error))?;
+    let profile = cli_profile(app).map_err(HostRefusal::from)?;
     // A choice that can't be read counts as another host, so it is restarted.
     let before = chosen_host(app).ok();
     let after = host_for(

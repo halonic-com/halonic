@@ -73,6 +73,8 @@ const errorKinds: Readonly<Record<Exclude<BlobRefusalKind, "linked_blob">, Error
   invalid_hash: "internal",
   invalid_data: "internal",
   io: "unavailable",
+  // A relative HALONIC_HOME: the profile can't be reached until it is set (HAL-15963).
+  profile_setting: "unavailable",
 };
 
 /**

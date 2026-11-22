@@ -132,7 +132,7 @@ where
     F: FnOnce(&Path) -> Result<T, FileError> + Send + 'static,
 {
     tauri::async_runtime::spawn_blocking(move || {
-        let profile = cli_profile(&app).map_err(|message| FileError::Io { message })?;
+        let profile = cli_profile(&app).map_err(FileRefusal::from)?;
         Ok(call(&plugins_root(&profile))?)
     })
     .await

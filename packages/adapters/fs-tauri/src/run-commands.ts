@@ -53,6 +53,8 @@ export const runRefusalKinds = [
    * id differs only in case (HAL-4749). The append stored nothing.
    */
   "other_runs_log",
+  /** `HALONIC_HOME` isn't a full path: a setting the person changes. The message says what to set (HAL-15963). */
+  "profile_setting",
   /** Reading or writing the run folder, or taking the run's lock, failed. */
   "io",
 ] as const;

@@ -19,7 +19,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::git::GitState;
-use crate::profile::cli_profile;
+use crate::profile::{ProfileProblem, cli_profile};
 
 /// The shell's run folders, so its commands take turns on a run.
 #[derive(Debug, Default)]
@@ -49,6 +49,16 @@ impl ThisComputer for OperatingSystem {
 pub struct RunRefusal {
     kind: &'static str,
     message: String,
+}
+
+/// A relative `HALONIC_HOME` is `profile_setting`, the rest `io`.
+impl From<ProfileProblem> for RunRefusal {
+    fn from(problem: ProfileProblem) -> Self {
+        Self {
+            kind: problem.kind(),
+            message: problem.to_string(),
+        }
+    }
 }
 
 impl RunRefusal {
@@ -176,7 +186,7 @@ where
     F: FnOnce(RunFolder<'_, OperatingSystem>) -> Result<T, RunRefusal> + Send + 'static,
 {
     tauri::async_runtime::spawn_blocking(move || {
-        let profile = cli_profile(&app).map_err(RunRefusal::io)?;
+        let profile = cli_profile(&app).map_err(RunRefusal::from)?;
         let opened = app.state::<GitState>().folders();
         let root = runs_folder(&opened, &profile, &workspace, deployment.as_deref())?;
         let state = app.state::<RunState>();

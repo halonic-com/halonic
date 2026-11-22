@@ -17,7 +17,7 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 use tauri::{AppHandle, Manager, Runtime};
 
-use crate::profile::cli_profile;
+use crate::profile::{ProfileProblem, cli_profile};
 
 /// The shell's one lock for saves, so saves from every window take turns:
 /// two windows that save two keys at once keep both.
@@ -35,8 +35,18 @@ pub struct HostSettingsRefusal {
     message: String,
 }
 
+/// A relative `HALONIC_HOME` is `profile_setting`, the rest `io`.
+impl From<ProfileProblem> for HostSettingsRefusal {
+    fn from(problem: ProfileProblem) -> Self {
+        Self {
+            kind: problem.kind(),
+            message: problem.to_string(),
+        }
+    }
+}
+
 impl HostSettingsRefusal {
-    /// An `io` refusal: finding the profile, or the shell itself, failed.
+    /// An `io` refusal: the shell itself failed.
     fn io(error: impl std::fmt::Display) -> Self {
         Self {
             kind: "io",
@@ -56,7 +66,7 @@ impl From<HostSettingsError> for HostSettingsRefusal {
 
 /// The settings in the profile the CLI uses.
 fn store<R: Runtime>(app: &AppHandle<R>) -> Result<FileHostSettingsStore, HostSettingsRefusal> {
-    let profile = cli_profile(app).map_err(HostSettingsRefusal::io)?;
+    let profile = cli_profile(app).map_err(HostSettingsRefusal::from)?;
     Ok(FileHostSettingsStore::new(PathBuf::from(
         profile.settings_folder(),
     )))

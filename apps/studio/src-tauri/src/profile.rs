@@ -12,16 +12,70 @@
 
 use std::collections::BTreeMap;
 use std::ffi::OsString;
+use std::fmt;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 use std::time::Duration;
 
-use halonic_profile::{Platform, ProfileEnvironment, ProfileFolder, join_path, profile_folder};
+use halonic_profile::{
+    Platform, ProfileEnvironment, ProfileError, ProfileFolder, join_path, profile_folder,
+};
+use halonic_trust_grant::TrustRefusal;
 use tauri::{AppHandle, Manager, Runtime};
 
-/// The CLI's profile folder, or why it can't be found, for the log.
-pub fn cli_profile<R: Runtime>(app: &AppHandle<R>) -> Result<ProfileFolder, String> {
-    profile_folder(&cli_environment(app)?).map_err(|error| error.to_string())
+/// Why the CLI's profile folder can't be found: the refusal kind a command
+/// sends for it, and the message. A relative `HALONIC_HOME` is
+/// `profile_setting`, a setting the person changes, so the page doesn't
+/// take it for a file error (HAL-15963); anything else is `io`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProfileProblem {
+    kind: &'static str,
+    message: String,
+}
+
+impl ProfileProblem {
+    /// The refusal kind: `profile_setting` or `io`.
+    pub fn kind(&self) -> &'static str {
+        self.kind
+    }
+}
+
+impl fmt::Display for ProfileProblem {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(&self.message)
+    }
+}
+
+impl From<ProfileError> for ProfileProblem {
+    fn from(error: ProfileError) -> Self {
+        Self {
+            kind: error.kind(),
+            message: error.to_string(),
+        }
+    }
+}
+
+/// What [`cli_environment`] can't read is an `io` problem.
+impl From<String> for ProfileProblem {
+    fn from(message: String) -> Self {
+        Self {
+            kind: "io",
+            message,
+        }
+    }
+}
+
+/// The trust commands' refusal (`trust.rs`, `instruction_trust.rs`); its
+/// type lives in a crate that doesn't know the shell's profile.
+impl From<ProfileProblem> for TrustRefusal {
+    fn from(problem: ProfileProblem) -> Self {
+        TrustRefusal::new(problem.kind(), problem.to_string())
+    }
+}
+
+/// The CLI's profile folder, or why it can't be found.
+pub fn cli_profile<R: Runtime>(app: &AppHandle<R>) -> Result<ProfileFolder, ProfileProblem> {
+    Ok(profile_folder(&cli_environment(app)?)?)
 }
 
 /// What [`cli_profile`] finds the profile from: the home folder and the
@@ -118,3 +172,7 @@ fn default_shell() -> &'static str {
         "/bin/sh"
     }
 }
+
+#[cfg(test)]
+#[path = "profile_tests.rs"]
+mod tests;

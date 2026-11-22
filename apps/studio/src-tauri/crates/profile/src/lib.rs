@@ -124,6 +124,17 @@ impl fmt::Display for ProfileError {
     }
 }
 
+impl ProfileError {
+    /// The refusal kind a shell command sends for it: `profile_setting` for
+    /// a setting the person changes (HAL-15963), `io` for the rest.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            ProfileError::HalonicHomeNotAbsolute { .. } => "profile_setting",
+            ProfileError::HomeNotAbsolute { .. } => "io",
+        }
+    }
+}
+
 impl std::error::Error for ProfileError {}
 
 /// Finds the profile folder: `HALONIC_HOME` when it is set, or else the

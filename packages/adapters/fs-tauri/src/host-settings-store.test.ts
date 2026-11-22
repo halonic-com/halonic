@@ -84,6 +84,13 @@ verifies("fs-tauri.host-settings-store", () => {
             expect(String(reason)).toContain("refused by the test (io)");
           },
         ],
+        [
+          "profile_setting",
+          (reason) => {
+            expect(errorKindOf(reason)).toBe("unavailable");
+            expect(String(reason)).toContain("refused by the test (profile_setting)");
+          },
+        ],
       ];
       for (const [kind, check] of cases) {
         const shell = new FakeHostSettingsShell();

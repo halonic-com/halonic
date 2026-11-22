@@ -79,6 +79,8 @@ export const fileRefusalKinds = [
   "folder_unreadable",
   /** The file isn't UTF-8 text. */
   "not_text",
+  /** `HALONIC_HOME` isn't a full path: a setting the person changes. The message says what to set (HAL-15963). */
+  "profile_setting",
   /** Reading or writing the folder failed. */
   "io",
 ] as const;

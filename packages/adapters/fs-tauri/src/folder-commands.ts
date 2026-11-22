@@ -36,6 +36,8 @@ export const folderRefusalKinds = [
   "special_path",
   /** A folder under the workspace can't be read; `path` names it. */
   "folder_unreadable",
+  /** `HALONIC_HOME` isn't a full path: a setting the person changes. The message says what to set (HAL-15963). */
+  "profile_setting",
   /** Reading the folder failed, or a name in it isn't a valid path. */
   "io",
 ] as const;

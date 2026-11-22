@@ -77,6 +77,8 @@ export const trustRefusalKinds = [
   "folder_unreadable",
   /** The record the page sent isn't a trust record. */
   "invalid_record",
+  /** `HALONIC_HOME` isn't a full path: a setting the person changes. The message says what to set (HAL-15963). */
+  "profile_setting",
   /** Reading or writing the profile failed. */
   "io",
   /** `reopen_folder`: the location isn't a folder the person picked, or they forgot it since. */

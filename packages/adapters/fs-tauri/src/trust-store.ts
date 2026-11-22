@@ -99,6 +99,8 @@ const errorKinds: Readonly<Record<Exclude<TrustRefusal["kind"], "unreadable">, E
   // The page built the record, so a record the shell refuses is our bug.
   invalid_record: "internal",
   io: "unavailable",
+  // A relative HALONIC_HOME: the profile can't be reached until it is set (HAL-15963).
+  profile_setting: "unavailable",
   // Only `reopen_folder` refuses with these (`TauriPickedFolders`), never a `trust_*` command.
   not_picked: "denied",
   folder_missing: "not_found",
@@ -131,7 +133,7 @@ function trustFailure(reason: unknown, command: string, asked: unknown): Error {
   if (!isTrustRefusal(reason)) {
     return noAnswer("trust call", reason);
   }
-  if (reason.kind === "io") {
+  if (reason.kind === "io" || reason.kind === "profile_setting") {
     return dataFolderRefusal(writingCommands.includes(command), reason.message);
   }
   if (reason.kind !== "unreadable") {

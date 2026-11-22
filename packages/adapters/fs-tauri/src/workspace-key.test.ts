@@ -56,6 +56,16 @@ verifies("fs-tauri.workspace-key", () => {
       expect((failure as Error).message).toContain("profile unreadable");
     });
 
+    it("rejects as unavailable when the profile setting is wrong", async () => {
+      const shell = shellAnswering(undefined, {
+        kind: "profile_setting",
+        message: "HALONIC_HOME is not a full path",
+      });
+      const failure = await rejection(readWorkspaceKey(shell, "/work/acme"));
+      expect(errorKindOf(failure)).toBe("unavailable");
+      expect((failure as Error).message).toContain("HALONIC_HOME is not a full path");
+    });
+
     it("words its errors for the key call, not the record store", async () => {
       const refused = await rejection(
         readWorkspaceKey(

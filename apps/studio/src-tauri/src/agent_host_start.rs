@@ -132,7 +132,7 @@ fn host_failed(error: AgentHostError) -> HostRefusal {
 pub(super) fn chosen_host<R: Runtime>(
     app: &AppHandle<R>,
 ) -> Result<(HostKind, Option<SandboxSetting>), HostRefusal> {
-    let profile = cli_profile(app).map_err(|error| HostRefusal::new("io", error))?;
+    let profile = cli_profile(app).map_err(HostRefusal::from)?;
     let setting = saved_setting(&profile).map_err(unavailable)?;
     let backend = setting.as_ref().map(|setting| setting.backend());
     Ok((host_for(backend, profile.platform), setting))
@@ -227,7 +227,7 @@ pub(super) async fn local_host_starts<R: Runtime>(app: &AppHandle<R>) -> bool {
 /// The host next to the shell's executable, for the CLI's profile, with
 /// the folders it may sweep kept grants in.
 fn real_host_command<R: Runtime>(app: &AppHandle<R>) -> Result<Command, HostRefusal> {
-    let profile = cli_profile(app).map_err(|error| HostRefusal::new("io", error))?;
+    let profile = cli_profile(app).map_err(HostRefusal::from)?;
     let shell = std::env::current_exe().map_err(|error| HostRefusal::new("io", error))?;
     let executable = executable_beside(&shell).map_err(unavailable)?;
     let profile = Path::new(&profile.root);

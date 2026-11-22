@@ -28,6 +28,8 @@ export const engineLockRefusalKinds = [
   "conflict",
   /** The workspace isn't a folder the person opened in the shell. */
   "folder_not_open",
+  /** `HALONIC_HOME` isn't a full path: a setting the person changes. The message says what to set (HAL-15963). */
+  "profile_setting",
   /** Reading or writing the lock file or its folder failed. */
   "io",
 ] as const;

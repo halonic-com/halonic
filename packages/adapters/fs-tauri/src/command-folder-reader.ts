@@ -122,6 +122,8 @@ const errorKinds: Readonly<
   folder_not_open: "denied",
   folder_unreadable: "unavailable",
   io: "unavailable",
+  // A relative HALONIC_HOME: the profile can't be reached until it is set (HAL-15963).
+  profile_setting: "unavailable",
 };
 
 /**

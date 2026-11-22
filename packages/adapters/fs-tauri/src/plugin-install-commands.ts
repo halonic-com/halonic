@@ -53,6 +53,8 @@ export const pluginInstallRefusalKinds = [
   "too_big",
   /** The plugin has more files than a plugin may have. */
   "too_many_files",
+  /** `HALONIC_HOME` isn't a full path: a setting the person changes. The message says what to set (HAL-15963). */
+  "profile_setting",
   /** Reading or writing failed. */
   "io",
   /** The git address is not an `https://` or `ssh://` one, or has a password or an odd character. */

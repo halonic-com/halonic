@@ -93,13 +93,15 @@ its file access, but it no longer spares a question: the next grant asks again.
 | `busy` | a `KindedError` `conflict` |
 | `folder_unreadable` | a `KindedError` `not_found` |
 | `invalid_record` | a `KindedError` `internal` |
-| `io` | a `KindedError` `unavailable`, with the shell's message |
+| `io`, `profile_setting` | a `KindedError` `unavailable`, with the shell's message |
 | anything else | a `KindedError` `unavailable`, without its text |
 
 The shell's refusals have the shape `{ kind, message, location?, file? }`. The package exports
 `TauriShell` (the `invoke` the adapter needs), `trustCommands` (the four command names),
 `trustRefusalKinds`, the types `TrustRefusal` and `TrustRefusalKind`, and `isTrustRefusal`, which
-tells a refusal from an IPC or permission failure. A page without the `desktop-trust` capability, such as the served
+tells a refusal from an IPC or permission failure. Every command that finds the profile refuses with
+`profile_setting` when `HALONIC_HOME` isn't a full path; its message is the CLI's sentence and fix
+(HAL-15963). A page without the `desktop-trust` capability, such as the served
 Studio, gets the last row: `unavailable`, and the text of its failure is dropped.
 
 ## Runs
@@ -132,7 +134,7 @@ or is ahead of the log, reads as `null`, so the engine replays the log.
 | `invalid_run_id` | a `KindedError` `internal` (the page checks run ids first) |
 | `invalid_lines` | a `KindedError` `internal` (the page writes the lines) |
 | `other_runs_log` | a `KindedError` `invalid_input` (a run id in another case, HAL-4749) |
-| `io` | a `KindedError` `unavailable`, with the shell's message |
+| `io`, `profile_setting` | a `KindedError` `unavailable`, with the shell's message |
 | anything else | a `KindedError` `unavailable`, without its text |
 
 An answer that isn't the command's also rejects with `unavailable`, without text.
@@ -159,7 +161,7 @@ holds the bytes its name says. The media type isn't kept, as the port allows.
 | `linked_blob` | an `Error` with the shell's message, as `FolderBlobStore` throws for a linked blob |
 | `folder_not_open` | a `KindedError` `denied` |
 | `invalid_hash`, `invalid_data` | a `KindedError` `internal` (the page checks hashes and encodes the bytes) |
-| `io` | a `KindedError` `unavailable`, with the shell's message |
+| `io`, `profile_setting` | a `KindedError` `unavailable`, with the shell's message |
 | anything else | a `KindedError` `unavailable`, without its text |
 
 An answer that isn't the command's also rejects with `unavailable`, without text.
@@ -189,7 +191,7 @@ it rejects with `conflict`.
 | `broken_log`, `linked_log` | an `Error` with the shell's message, as `FileRecordStore` throws |
 | `folder_not_open` | a `KindedError` `denied` |
 | `invalid_lines` | a `KindedError` `internal` (the page writes the lines) |
-| `io` | a `KindedError` `unavailable`, with the shell's message |
+| `io`, `profile_setting` | a `KindedError` `unavailable`, with the shell's message |
 | anything else | a `KindedError` `unavailable`, without its text |
 
 An answer that isn't the command's also rejects with `unavailable`, without text.
@@ -231,7 +233,7 @@ change from outside right after it is still reported.
 | `folder_unreadable` | an `UnreadableWorkspaceFolderError` naming the folder |
 | `folder_not_open` | a `KindedError` `denied` |
 | `not_text` | a `KindedError` `invalid_input` |
-| `io` | a `KindedError` `unavailable`, with the shell's message |
+| `io`, `profile_setting` | a `KindedError` `unavailable`, with the shell's message |
 | anything else | a `KindedError` `unavailable`, without its text |
 
 The package exports `TauriDefinitionStore`, `TauriFileShell`, `TauriChannelHandle`,
@@ -257,7 +259,7 @@ that writes or removes. The page checks paths with `checkWorkspacePath` before i
 | --- | --- |
 | `unsafe_path`, `private_path`, `special_path` | a `RangeError`, as the port asks |
 | `folder_not_open` | a `KindedError` `denied` |
-| `folder_unreadable`, `io` | a `KindedError` `unavailable`, with the shell's message |
+| `folder_unreadable`, `io`, `profile_setting` | a `KindedError` `unavailable`, with the shell's message |
 | anything else | a `KindedError` `unavailable`, without its text |
 
 An answer that isn't the command's also rejects with `unavailable`. The package exports
@@ -286,7 +288,7 @@ told once, as a change, so the caller reads again and hears the error.
 | --- | --- |
 | `invalid_key`, `too_large` | a `RangeError`, as the port asks |
 | `unreadable` | an `Error` with the shell's message, as `FileHostSettingsStore` throws (a link, or a file the system won't read) |
-| `io` | a `KindedError` `unavailable`, with the shell's message |
+| `io`, `profile_setting` | a `KindedError` `unavailable`, with the shell's message |
 | anything else | a `KindedError` `unavailable`, without its text |
 
 An answer that isn't the settings also rejects with `unavailable`. The package exports

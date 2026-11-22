@@ -223,6 +223,8 @@ const errorKinds: Readonly<
   // A file someone else put there that the Studio can't edit as text.
   not_text: "invalid_input",
   io: "unavailable",
+  // A relative HALONIC_HOME: the profile can't be reached until it is set (HAL-15963).
+  profile_setting: "unavailable",
 };
 
 /**
