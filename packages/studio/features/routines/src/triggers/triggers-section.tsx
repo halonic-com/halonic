@@ -76,7 +76,10 @@ export function TriggersView({ host, owner, openRoutine, startAdding = false }: 
   const promptField = useRef<HTMLTextAreaElement>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const noteId = useId();
-  const isAgent = owner.kind === "agent";
+  // Halonic can't run an agent on its own yet (`routines.triggers.agent-cant-run-note`). The note,
+  // its tie to Add trigger and what the page's add step does all follow this one flag, so the add
+  // step opens an agent's Prompt straight away again once the note goes.
+  const cantRunOnItsOwn = owner.kind === "agent";
 
   useEffect(() => {
     if (asking !== undefined) promptField.current?.focus();
@@ -121,7 +124,7 @@ export function TriggersView({ host, owner, openRoutine, startAdding = false }: 
   // describes, so nobody writes a task for a routine that can't start before reading why (C622).
   const startedAdding = useRef(false);
   const addOnStart = useEffectEvent(() => {
-    if (isAgent) addButton.current?.focus();
+    if (cantRunOnItsOwn) addButton.current?.focus();
     else void add();
   });
   useEffect(() => {
@@ -144,7 +147,7 @@ export function TriggersView({ host, owner, openRoutine, startAdding = false }: 
   return (
     <div className="flex flex-col gap-2">
       <Rows load={load} owner={owner} retry={retry} openRoutine={openRoutine} />
-      {isAgent && (
+      {cantRunOnItsOwn && (
         <p id={noteId} className="text-small text-fg-muted">
           {triggersWords.agentCantRun}
         </p>
@@ -171,7 +174,7 @@ export function TriggersView({ host, owner, openRoutine, startAdding = false }: 
         <Button
           ref={addButton}
           variant={asking === undefined ? "secondary" : "primary"}
-          {...(isAgent && { "aria-describedby": noteId })}
+          {...(cantRunOnItsOwn && { "aria-describedby": noteId })}
           busy={adding}
           onClick={add}
         >
