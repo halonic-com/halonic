@@ -34,6 +34,10 @@ export interface FailedChildView {
  * line doesn't name its workflow, such as "Halonic couldn't reach Ollama …", gets a line before it
  * that names the parent's step and the child's. `undefined` for a child that was cancelled, so the
  * parent keeps its own banner.
+ *
+ * It follows one level of child run only, as `halonic runs show` does: a child that failed because
+ * its own child failed gets the child's general banner ("Halonic can't tell the cause yet"), and
+ * **Open run** leads to the child's page, whose banner names that run in turn.
  */
 export function childFailureBanner(
   parent: RunSummary,
@@ -79,7 +83,7 @@ export function childFailureBanner(
     },
     ...(own.details === undefined
       ? {}
-      : { details: `${own.details}\nStarted by run ${parent.id}` }),
+      : { details: `${own.details}\n${failureWords.startedByRun(parent.id)}` }),
   };
 }
 
