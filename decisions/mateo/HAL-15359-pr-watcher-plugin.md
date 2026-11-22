@@ -2,7 +2,7 @@
 
 - Approval: the board decided on HAL-15359 (22 Nov) and Liam approved the plan there; he reviews it and signs this note as the CTO
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:CpbkjlsPp2ZdU36DIchHGI2z5PO3hkmuH8F3EQXpzWlLOebbAifWvVu2NaTbr56FieJWGcWjwXipGbfYMbNODg==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:M4HQkBq8CEn1upIqj44ewwo6YPtGcerz+2vuQrWCZGnpxu3gG1cTvM4Wb7zv7UFBEG7szkS8fEV55S6bRNTPCA==
 
 The board decided on 22 Nov that the PR watcher runs as the first job of
 the Agent tools plugin (HAL-15920, trigger A1), not as a `process` agent,
