@@ -5,7 +5,10 @@
 // their next run, and the Studio's scheduler starts the others too, so the
 // watch does the same: it says which can't start, once each, and starts the
 // rest. Errors in any other file still stop the whole watch, since they can
-// change what every run reaches (`cli.workspace-file-problems`).
+// change what every run reaches (`cli.workspace-file-problems`). A routine
+// whose saved file is fixed but not committed still can't start, since the
+// watch runs the live version, and its line says so instead of pointing to
+// `validate`, which reads the saved file and finds nothing (C642 #2).
 
 import { startsAProgram } from "@halonicjs/adapter-workspace-models";
 import { type PlacedRoutine, routineKey } from "@halonicjs/routines";
@@ -20,7 +23,10 @@ import { routinesWithProblemsOf } from "../../workspace-problems.ts";
 /** A routine the watch leaves out, by its key, with the line that says why. */
 interface CantStart {
   readonly key: string;
-  readonly line: () => Message;
+  /** Whether its own file has errors in the version read, which a saved fix may mend. */
+  readonly fileHasErrors: boolean;
+  /** Its line; `fixSaved` says its saved file has no errors (C642 #2). */
+  readonly line: (fixSaved: boolean) => Message;
 }
 
 /**
@@ -38,28 +44,41 @@ export function withoutCantStart(
 /**
  * Leaves out the routines that can't start, on every tick, and prints the
  * line of each the first time it is left out: "✕ Friday digest can't start
- * until its file is fixed · halonic validate" for a file with errors, the
- * harness reason for an agent in a harness. A routine that is fixed starts
+ * until its file is fixed · halonic validate" for a file with errors, "✕
+ * Friday digest can't start until its fix is committed or made live in
+ * Halonic Studio" when its saved file has none, the harness reason for an agent in a harness. A routine that is fixed starts
  * again from that tick on, says "✓ Friday digest can start now" (HAL-15664),
  * and gets its line again if it can't start again.
  */
 export class RoutinesThatCantStart {
   readonly #context: CommandContext;
   readonly #typedDir: string | undefined;
+  readonly #saved: () => Promise<LoadedWorkspace>;
   /** The keys of the routines whose line is printed, until they are fixed. */
   readonly #said = new Set<string>();
 
-  /** @param typedDir - the user's own `--dir`, for the suggested `halonic validate` */
-  constructor(context: CommandContext, typedDir: string | undefined) {
+  /**
+   * @param typedDir - the user's own `--dir`, for the suggested `halonic validate`
+   * @param saved - loads the saved files, read only when a file's line is due
+   */
+  constructor(
+    context: CommandContext,
+    typedDir: string | undefined,
+    saved: () => Promise<LoadedWorkspace>,
+  ) {
     this.#context = context;
     this.#typedDir = typedDir;
+    this.#saved = saved;
   }
 
   /**
    * `routines` without those that can't start in `workspace`, the version
    * they were read from, after printing the line of each one not said yet.
    */
-  leaveOut(workspace: LoadedWorkspace, routines: readonly PlacedRoutine[]): PlacedRoutine[] {
+  async leaveOut(
+    workspace: LoadedWorkspace,
+    routines: readonly PlacedRoutine[],
+  ): Promise<PlacedRoutine[]> {
     const cantStart = cantStartOf(workspace, routines, this.#typedDir);
     const keys = new Set(cantStart.map((each) => each.key));
     for (const key of this.#said) {
@@ -73,10 +92,13 @@ export class RoutinesThatCantStart {
         );
       }
     }
-    for (const { key, line } of cantStart) {
-      if (this.#said.has(key)) continue;
+    const unsaid = cantStart.filter(({ key }) => !this.#said.has(key));
+    const savedWithErrors = unsaid.some((each) => each.fileHasErrors)
+      ? new Set(routinesWithProblemsOf(await this.#saved()).map((each) => each.key))
+      : new Set<string>();
+    for (const { key, fileHasErrors, line } of unsaid) {
       this.#said.add(key);
-      this.#context.printAhead(line().phrase);
+      this.#context.printAhead(line(fileHasErrors && !savedWithErrors.has(key)).phrase);
     }
     return routines.filter((each) => !keys.has(routineKey(each)));
   }
@@ -95,7 +117,11 @@ function cantStartOf(
 ): CantStart[] {
   const withProblems: CantStart[] = routinesWithProblemsOf(workspace).map(({ key, name }) => ({
     key,
-    line: () => routinesMessages.routineCantStart(printable(name), typedDir),
+    fileHasErrors: true,
+    line: (fixSaved) =>
+      fixSaved
+        ? routinesMessages.routineFixNotLive(printable(name))
+        : routinesMessages.routineCantStart(printable(name), typedDir),
   }));
   const inHarness: CantStart[] = [];
   for (const placed of routines) {
@@ -104,6 +130,7 @@ function cantStartOf(
     if (agent === undefined || withProblems.some((each) => each.key === key)) continue;
     inHarness.push({
       key,
+      fileHasErrors: false,
       line: () =>
         routinesMessages.harnessRoutineCantStart(
           printable(placed.routine.name),

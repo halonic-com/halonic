@@ -23,6 +23,12 @@ function harnessFix() {
 }
 
 /**
+ * Joined to "commit" with "or" in a line that asks for one: the Studio's
+ * Make live does the same, so either way works (C642 #7, Sofia on HAL-15877).
+ */
+const inStudio = "in Halonic Studio";
+
+/**
  * The sentences of `halonic routines` and `halonic routines watch` (HAL-4844). cli-output has no section
  * for it yet, so these are team wording built on the `halonic runs` list, as
  * HAL-2282 allows: the same columns, times and status words. The trigger's
@@ -56,6 +62,13 @@ export const routinesMessages = defineMessages("routines", {
    */
   routinesCantStart: (count: number, dir?: string) =>
     phrase`${markPart("needsYou")} ${counted(count, "routine", "routines")} can't start ${markPart("separator")} ${suggestedCommand("validate", dir)}`,
+  /**
+   * The line above the list when routines' live versions have errors that
+   * their saved files no longer have (C642 #2): `validate` reads the saved
+   * files and finds nothing, so this line names the commit instead.
+   */
+  routinesFixNotLive: (count: number) =>
+    phrase`${markPart("needsYou")} ${counted(count, "routine", "routines")} can't start until ${count === 1 ? "its fix is" : "their fixes are"} committed`,
   /**
    * The line above the list when webhook routines that are on won't start,
    * which exits 1 (C570): "! 1 routine can't start on a web request ·
@@ -105,7 +118,14 @@ export const routinesMessages = defineMessages("routines", {
    * {@link runMessages.changesNotLive}, since a commit makes it live.
    */
   changesNotLive: (name: string) =>
-    phrase`${markPart("needsYou")} ${name} has changes that aren't live yet. It runs as last committed until you commit them.`,
+    phrase`${markPart("needsYou")} ${name} has changes that aren't live yet. It runs as last committed until you commit them or make them live ${inStudio}.`,
+  /**
+   * The line under the list instead, when the live version has errors and
+   * the saved file has none (C642 #2): the fix is saved but not committed,
+   * so the routine doesn't run as last committed either.
+   */
+  fixNotLive: (name: string) =>
+    phrase`${markPart("needsYou")} ${name}'s fix isn't live yet, so it can't start. To start it, commit the fix or make it live ${inStudio}.`,
   /**
    * The line under the list instead, when those saved changes have errors
    * while the last commit's routine can start (HAL-15664): the row shows the
@@ -119,7 +139,7 @@ export const routinesMessages = defineMessages("routines", {
    * the Studio don't run it until it is committed.
    */
   neverLive: (name: string) =>
-    phrase`${markPart("needsYou")} ${name} isn't live yet, so it doesn't run. Commit it to start it.`,
+    phrase`${markPart("needsYou")} ${name} isn't live yet, so it doesn't run. To start it, commit it or make it live ${inStudio}.`,
   /**
    * Ends the reason when git can't start, so the list can't tell which
    * routines' changes are live (HAL-15204), after `run`'s reason.
@@ -162,6 +182,13 @@ export const routinesMessages = defineMessages("routines", {
    */
   routineCantStart: (name: string, dir?: string) =>
     phrase`${markPart("failed")} ${name} can't start until its file is fixed ${markPart("separator")} ${suggestedCommand("validate", dir)}`,
+  /**
+   * That line instead when the saved file has no errors (C642 #2): the fix
+   * is saved, so `validate` finds nothing, and the watch starts the routine
+   * once it is committed.
+   */
+  routineFixNotLive: (name: string) =>
+    phrase`${markPart("failed")} ${name} can't start until its fix is committed or made live ${inStudio}`,
   /**
    * A line of `watch` for a routine that is on and runs an agent in a harness
    * (Claude Code or Codex): the watch leaves it out and starts the others

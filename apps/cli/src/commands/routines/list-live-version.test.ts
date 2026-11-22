@@ -90,7 +90,7 @@ verifies("cli.commands.routines.list-live-version", () => {
       expect(code).toBe(exitCode.ok);
       expect(io.stdout.slice(0, 2)).toEqual([
         "Weekly report   Mondays at 09:00   Next 16 Nov 09:00   Never ran",
-        "! Weekly report has changes that aren't live yet. It runs as last committed until you commit them.",
+        "! Weekly report has changes that aren't live yet. It runs as last committed until you commit them or make them live in Halonic Studio.",
       ]);
       expect(JSON.parse(json.io.stdout.join("\n")).routines[0]).toMatchObject({
         trigger: "Mondays at 09:00",
@@ -113,7 +113,7 @@ verifies("cli.commands.routines.list-live-version", () => {
       expect(code).toBe(exitCode.ok);
       expect(io.stdout.slice(0, 2)).toEqual([
         "Weekly report   Sundays at 09:00   Not live yet   Never ran",
-        "! Weekly report isn't live yet, so it doesn't run. Commit it to start it.",
+        "! Weekly report isn't live yet, so it doesn't run. To start it, commit it or make it live in Halonic Studio.",
       ]);
       expect(JSON.parse(json.io.stdout.join("\n")).routines[0]).toMatchObject({
         nextRun: null,
@@ -150,6 +150,29 @@ verifies("cli.commands.routines.list-live-version", () => {
     },
     gitTimeout,
   );
+
+  // C642 #2 (HAL-15863): the top line pointed to validate, which reads the fixed saved file.
+  it(
+    "says a routine whose fix is saved but not committed can't start until it is committed",
+    async () => {
+      const fixed = weeklyReport("0 9 * * 1");
+      await writeFiles(acmeRuns.acme, {
+        [weeklyPath]: fixed.replace("support-reply", "support-reply-typo"),
+      });
+      await makeLive();
+      await writeFiles(acmeRuns.acme, { [weeklyPath]: fixed });
+
+      const { code, io } = await routinesIn(history);
+
+      expect(code).toBe(exitCode.failed);
+      expect(io.stdout.slice(0, 3)).toEqual([
+        "! 1 routine can't start until its fix is committed",
+        "Weekly report   Mondays at 09:00   ✕ Can't start   Never ran",
+        "! Weekly report's fix isn't live yet, so it can't start. To start it, commit the fix or make it live in Halonic Studio.",
+      ]);
+    },
+    gitTimeout,
+  );
 });
 
 verifies("cli.commands.routines.list", () => {
@@ -167,7 +190,7 @@ verifies("cli.commands.routines.list", () => {
 
       expect(io.stdout.slice(0, 2)).toEqual([
         "Weekly report   Sundays at 09:00   Not live yet   Never ran",
-        "! Weekly report isn't live yet, so it doesn't run. Commit it to start it.",
+        "! Weekly report isn't live yet, so it doesn't run. To start it, commit it or make it live in Halonic Studio.",
       ]);
     },
     gitTimeout,
