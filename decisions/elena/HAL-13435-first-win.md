@@ -2,6 +2,7 @@
 
 - Approval: decided by the team in the first-run build plan (first-run-flow 10.2 R5, after the board's yes on HAL-7993); the maintainer (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:T+82HYDJPQp1bfUG6P9NiGC6YFHmOtxq8EhxrKp6k9XsseeEd8k9lRIowb0+2JpYvTSK9MiJ+R0pMSDgXExUAg==
 - Task: HAL-13435
 
 ## What changes
