@@ -15,7 +15,10 @@ use crate::host_secrets::{HOST_SECRETS_ID, answer};
 /// Where the thread that reads the host's frames passes its secret requests.
 pub(super) struct SecretRequests {
     requests: Sender<Vec<u8>>,
-    /// True from a request until its answer is queued for the host.
+    /// Set when a request arrives, and cleared just before its answer is
+    /// queued for the host, so the host may send its next request as soon as
+    /// it has read the answer. A refused request leaves it set: the relay
+    /// stops instead.
     in_flight: Arc<AtomicBool>,
 }
 
