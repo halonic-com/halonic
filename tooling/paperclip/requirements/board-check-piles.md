@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16194; the Board Checker addendum on HAL-15997, section 1 part (a) ("Run piles of 5+ queued for one agent, read through `issue.subtree.read`: one line"), with Mateo's answer on HAL-16193 (22 Nov)
 
-On the first job pass of each hour, the Agent tools plugin's board check shall read, through `issue.subtree.read`, the queued and running runs of each open task the pass's listing shows with an active run, at most 60 tasks a pass, count each agent's queued runs once per run, and, through the write gate, put one line on the Board Checker's task naming every agent with 5 or more queued runs and their counts when an agent has a pile not yet reported, reporting an agent again only after its queue dropped under 5; it shall keep the count, as agent ids, counts and a time, for `failed_runs`, which adds the piles as one line.
+When the board check runs its first pass of each hour, the Agent tools plugin's board check shall read, through `issue.subtree.read`, the queued and running runs of each open task the pass's listing shows with an active run, at most 60 tasks a pass, count each agent's queued runs once per run, and, through the write gate, put one line on the Board Checker's task naming every agent with 5 or more queued runs and their counts when an agent has a pile not yet reported, reporting an agent again only after its queue dropped under 5; it shall keep the count, as agent ids, counts and a time, for `failed_runs`, which adds the piles as one line.
 
 ## Examples
 
