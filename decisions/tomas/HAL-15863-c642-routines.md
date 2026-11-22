@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-15863 (from flow check C642 #2 and #7 on HAL-15857; #5 landed with HAL-15751), decided by the team under HAL-2282; Liam approves this note in his review of this pull request on HAL-15863
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nxTGS0szitNJDeyMhJwig9fhirBpks8+RGAm026ROzuj4OlR0jLww2pr3GvL/qVADBrgc3aDNFZyUuJmD0MIDw==
 - Task: HAL-15863
 
 ## What changes
