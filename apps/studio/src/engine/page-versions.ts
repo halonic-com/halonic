@@ -220,6 +220,13 @@ function refusalKindOf(error: unknown): string | null {
   return typeof error.kind === "string" ? error.kind : null;
 }
 
-function noGit(): KindedError {
-  return new KindedError("unavailable", "git isn't on this computer.");
+/** The workspace has history, and git can't be found on this computer to read it. */
+export class GitMissingError extends KindedError {
+  constructor() {
+    super("unavailable", "git isn't on this computer.");
+  }
+}
+
+function noGit(): GitMissingError {
+  return new GitMissingError();
 }

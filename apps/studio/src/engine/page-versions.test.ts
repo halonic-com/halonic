@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import { liveVersionOf } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { PageVersions } from "./page-versions.ts";
+import { GitMissingError, PageVersions } from "./page-versions.ts";
 
 const identity = ["-c", "user.name=Sam", "-c", "user.email=sam@acme.example"];
 
@@ -169,6 +169,7 @@ verifies("studio.page-versions", () => {
         throw { kind: "git_not_found", message: "git was not found" };
       };
       const withHistory = new PageVersions({ git: noGit, hasGitFolder: async () => true });
+      await expect(liveVersionOf(withHistory)).rejects.toBeInstanceOf(GitMissingError);
       await expect(liveVersionOf(withHistory)).rejects.toMatchObject({
         kind: "unavailable",
         message: "git isn't on this computer.",
