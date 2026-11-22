@@ -54,11 +54,7 @@ export function pluginPartReporter(
     lines.warn(
       phrase`${markPart("needsYou")} ${runMessages.pluginPartOff(shownPlugin, shown).phrase}`,
     );
-    const why =
-      part === "backend" && reason.kind === "sandbox-unavailable"
-        ? backendOffHereWhy(reason.reason)
-        : pluginPartWhy(reason, error, wslDistro);
-    for (const line of why) {
+    for (const line of pluginPartWhy(part, reason, error, wslDistro)) {
       lines.warn(phrase`  ${line}`);
     }
     if (reason.kind === "sandbox-not-fenced") {
@@ -115,12 +111,16 @@ function backendOffHereWhy(reason: string): Phrase[] {
  * last, and `other`'s words for a code this version doesn't know.
  */
 function pluginPartWhy(
+  part: PluginPartUnavailable["part"],
   reason: PluginPartUnavailableReason,
   error: unknown,
   wslDistro: string | undefined,
 ): Phrase[] {
   switch (reason.kind) {
     case "sandbox-unavailable":
+      // The part says which reason list the code is from: a backend's is
+      // the runner's (`no-sandbox` too), a local tool's the sandbox's own.
+      if (part === "backend") return backendOffHereWhy(reason.reason);
       return [
         sandboxMessages.refusedFix(reason.reason, { distro: wslDistro }).phrase,
         errorMessages.more(sandboxDocsLink(reason.reason), printable(reason.reason)).phrase,

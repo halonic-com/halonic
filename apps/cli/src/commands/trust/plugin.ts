@@ -102,6 +102,7 @@ export async function trustPlugin(
     throw fingerprintNotCurrent(entry, {
       check: [...check, ...wontTurnOn],
       fingerprint: entry.fingerprint,
+      offHere,
     });
   }
   // The manifest's name is outside text (cli-output 5).
