@@ -18,7 +18,9 @@
 # the next one waits, and a newer one replaces only the one waiting. The
 # daily "Failures on main, by area" job in scheduled.yml reads the newest
 # hourly run with the newest push run and opens a nightly:<area> issue for
-# each failing job, which the area's owner gets as a task.
+# each failing job, which the area's owner gets as a task. GitHub's scheduler
+# drops hourly slots on this repo, so desktop-hourly.yml starts the set by
+# hand from a push to main when none started in the last hour.
 #
 # Pushes to main don't wait for each other (board decision, HAL-14831; HAL-15187):
 # each push's run is keyed on its commit, so its Linux jobs start at once.

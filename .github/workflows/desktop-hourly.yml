@@ -1,0 +1,57 @@
+# Starts ci.yml's macOS and Windows set on main when it hasn't run for an
+# hour (HAL-15889). ci.yml's own hourly cron is the plan, but GitHub's
+# scheduler dropped every slot on this repo on 22 Nov (09:05 to 11:05 never
+# started; Live cloud's 6-hour cron runs hours late too). A push lands on main
+# every few minutes, so each push asks once: did a scheduled or manual ci.yml
+# run on main start in the last 60 minutes, or is one still waiting or
+# running? If not, it starts one with workflow_dispatch, which GitHub allows
+# from the workflow's own token. ci.yml's concurrency group keeps that run
+# from cancelling, or being cancelled by, another one.
+#
+# Fail-safe: if the lookup or the start fails, it warns and passes. Nothing
+# else waits on this workflow, and pull requests and merge groups never run
+# it.
+
+name: Hourly macOS and Windows run
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+# One push asks at a time, so two pushes a second apart don't both start a
+# run. A newer push replaces only the one waiting.
+concurrency:
+  group: desktop-hourly-start
+  cancel-in-progress: false
+
+jobs:
+  start:
+    name: Start the hourly run if it's due
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      actions: write
+    steps:
+      - name: Start ci.yml on main unless a run started in the last hour
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          since=$(date -u -d '-60 minutes' +%Y-%m-%dT%H:%M:%SZ)
+          for event in schedule workflow_dispatch; do
+            if ! newest=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?branch=main&event=$event&per_page=1" \
+              --jq '.workflow_runs[0] // empty | "\(.created_at) \(.status) \(.html_url)"'); then
+              echo "::warning::Couldn't read the newest $event run of ci.yml; not starting one."
+              exit 0
+            fi
+            read -r created status url <<<"$newest" || true
+            if [ -n "$status" ] && { [ "$status" != completed ] || [[ "$created" > "$since" ]]; }; then
+              echo "Not due: the newest $event run started $created ($status): $url"
+              exit 0
+            fi
+          done
+          echo "No scheduled or manual ci.yml run on main since $since; starting one."
+          gh workflow run ci.yml --repo "$GH_REPO" --ref main ||
+            echo "::warning::Couldn't start ci.yml on main."

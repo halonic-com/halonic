@@ -6,6 +6,10 @@ const workflow = readFileSync(
   new URL("../../../../.github/workflows/ci.yml", import.meta.url),
   "utf8",
 );
+const starter = readFileSync(
+  new URL("../../../../.github/workflows/desktop-hourly.yml", import.meta.url),
+  "utf8",
+);
 
 /** Every job's lines in ci.yml, by job key. */
 function jobBlocks(text: string): Map<string, string> {
@@ -97,6 +101,16 @@ verifies("check.ci-desktop-hourly", () => {
         if (ownEvent.test(condition)) continue;
         expect(condition, job).toContain(notHourly);
       }
+    });
+
+    test("a push to main starts the set by hand when none started in the last hour", () => {
+      expect(starter).toContain("on:\n  push:\n    branches: [main]\n\npermissions: {}\n");
+      expect(starter).toContain("  group: desktop-hourly-start\n  cancel-in-progress: false\n");
+      expect(starter).toContain("    permissions:\n      actions: write\n    steps:\n");
+      expect(starter).toContain("since=$(date -u -d '-60 minutes' +%Y-%m-%dT%H:%M:%SZ)");
+      expect(starter).toContain("for event in schedule workflow_dispatch; do");
+      expect(starter).toContain('[ "$status" != completed ] || [[ "$created" > "$since" ]]');
+      expect(starter).toContain('gh workflow run ci.yml --repo "$GH_REPO" --ref main ||');
     });
   });
 });
