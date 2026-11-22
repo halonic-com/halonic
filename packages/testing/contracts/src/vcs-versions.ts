@@ -51,15 +51,18 @@ export function vcsPatchSafetyContract(name: string, make: MakeVcs): void {
   });
 }
 
-/** Create version and proposal refs, with their hardened cases, for port version 2. */
-export function vcsCommitContracts(name: string, make: MakeVcs): void {
+/** Create version and its safety, for port version 2. */
+export function vcsCommitVersionContract(name: string, make: MakeVcs): void {
   verifies("contracts.vcs-commit-version", () => {
     describe(`Vcs Create version contract: ${name}`, () => {
       vcsCommitVersionCases(make);
       vcsCommitVersionSafetyCases(make);
     });
   });
+}
 
+/** Proposal refs, and the hardened cases of Create version and proposals, for port version 2. */
+export function vcsProposalContracts(name: string, make: MakeVcs): void {
   verifies("contracts.vcs-proposal-refs", () => {
     describe(`Vcs proposal refs contract: ${name}`, () => {
       vcsProposalRefCases(make);
