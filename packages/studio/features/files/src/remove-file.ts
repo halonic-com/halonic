@@ -30,24 +30,33 @@ export interface RemoveFocus {
   readonly restored?: () => void;
 }
 
-/** Brings a deleted file back, or says why it couldn't. Success says nothing: the file's row is back. */
+/**
+ * Brings a deleted file back, or says why it couldn't. Success says nothing: the file's row is back,
+ * and `onBack` is called. A failure toast stays with Undo, and an open tab keeps its Undo, so the
+ * person can clear the way (such as rename a new file of the same name) and undo again.
+ */
 async function putBack(
   removed: RemovedFile,
   path: string,
   toasts: ToastStore | null,
+  onBack?: () => void,
 ): Promise<boolean> {
   try {
     await removed.undo();
     clearTrashed(path);
+    onBack?.();
     return true;
   } catch (error) {
-    // The delete can no longer be undone, so an open tab stops offering Undo.
-    clearTrashed(path);
     const reason = reasonOf(error);
     toasts?.show({
       tone: "danger",
       title: filesWords.couldntPutBack(path),
       ...(reason === undefined ? {} : { text: reason }),
+      sticky: true,
+      action: {
+        label: filesWords.undo,
+        onClick: () => void putBack(removed, path, toasts, onBack),
+      },
     });
     return false;
   }
@@ -74,10 +83,7 @@ export async function removeFile(
       ...(withLine ? { text: filesWords.deletedPlaces(removed.places) } : {}),
       action: {
         label: filesWords.undo,
-        onClick: () =>
-          void putBack(removed, path, toasts).then((back) => {
-            if (back) focus.restored?.();
-          }),
+        onClick: () => void putBack(removed, path, toasts, focus.restored),
       },
     });
   } catch (error) {

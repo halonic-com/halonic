@@ -134,13 +134,15 @@ verifies("routines.list.delete-with-undo", () => {
     });
   });
 
-  it("says why Undo failed", async () => {
+  it("says why Undo failed, in a toast that stays with Undo to try again", async () => {
     const { host } = memoryHost(hubs, routines);
-    host.trash = async () => ({
-      undo: async () => {
-        throw kinded("conflict", "Daily can't be put back, because the workspace changed.");
-      },
-    });
+    const undo = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(
+        kinded("conflict", "Daily can't be put back, because there is a new routines/daily.yaml."),
+      )
+      .mockResolvedValue(undefined);
+    host.trash = async () => ({ undo });
     const { page, toasts } = await showList(host);
     await pick(page, "More actions for Daily", "Delete");
 
@@ -149,7 +151,11 @@ verifies("routines.list.delete-with-undo", () => {
     expect(toasts.list().at(-1)).toMatchObject({
       tone: "danger",
       title: "Couldn't put Daily back",
-      text: "Daily can't be put back, because the workspace changed.",
+      text: "Daily can't be put back, because there is a new routines/daily.yaml.",
+      sticky: true,
+      action: { label: "Undo" },
     });
+    await act(async () => toasts.list().at(-1)?.action?.onClick());
+    expect(undo).toHaveBeenCalledTimes(2);
   });
 });

@@ -46,24 +46,39 @@ verifies("files.ui.delete-file", () => {
     });
   });
 
-  it("says why Undo can't bring the file back", async () => {
+  it("says why Undo can't bring the file back, and keeps Undo for once the way is clear", async () => {
     const { show, store } = toastsOf();
-    const undo = async () => {
-      throw kinded(
-        "conflict",
-        "a.md can't be put back, because there is a new a.md. Rename or move it, then undo again.",
-      );
-    };
+    const restored = vi.fn();
+    const undo = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(
+        kinded(
+          "conflict",
+          "a.md can't be put back, because there is a new a.md. Rename or move it, then undo again.",
+        ),
+      )
+      .mockResolvedValue(undefined);
 
-    await removeFile({ remove: async () => ({ places: 0, undo }) }, store, "a.md");
+    await removeFile({ remove: async () => ({ places: 0, undo }) }, store, "a.md", { restored });
     show.mock.calls[0]?.[0].action.onClick();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(show.mock.calls[1]?.[0]).toMatchObject({
+    const failed = show.mock.calls[1]?.[0];
+    expect(failed).toMatchObject({
       tone: "danger",
       title: "Couldn't put a.md back",
       text: "a.md can't be put back, because there is a new a.md. Rename or move it, then undo again.",
+      sticky: true,
+      action: { label: "Undo" },
     });
+    expect(trashedFile("a.md")).toBeDefined();
+    expect(restored).not.toHaveBeenCalled();
+
+    failed.action.onClick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(undo).toHaveBeenCalledTimes(2);
+    expect(trashedFile("a.md")).toBeUndefined();
+    expect(restored).toHaveBeenCalledOnce();
   });
 
   it("keeps a toast with the reason and Try again when the host refuses", async () => {

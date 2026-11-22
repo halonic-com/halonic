@@ -13,6 +13,33 @@ export interface LeftDeleted {
 }
 
 /**
+ * Puts a deleted workflow back, and calls `onBack` once it is. When it can't, a toast that stays
+ * says why, with Undo, so the person can clear the way and undo again.
+ */
+export async function putBackWorkflow(
+  trashed: TrashedWorkflow,
+  name: string,
+  toasts: ToastStore | null,
+  onBack?: () => void,
+): Promise<void> {
+  try {
+    await trashed.undo();
+    onBack?.();
+  } catch (error) {
+    toasts?.show({
+      tone: "danger",
+      title: deleteWords.couldntPutBack(name),
+      text: errorReasonFor(error),
+      sticky: true,
+      action: {
+        label: deleteWords.undo,
+        onClick: () => void putBackWorkflow(trashed, name, toasts, onBack),
+      },
+    });
+  }
+}
+
+/**
  * Hands the strip's Undo to a toast that stays, once the person has left the page of a workflow
  * they deleted there: Back skips a deleted page, so the strip can't be reached again (C565 6). The
  * toast closes by itself once the workflow is back some other way, such as the workspace's undo.
@@ -30,14 +57,7 @@ export function showLeftDeletedToast(
     sticky: true,
     action: {
       label: deleteWords.undo,
-      onClick: () =>
-        void trashed.undo().catch((error: unknown) =>
-          toasts.show({
-            tone: "danger",
-            title: deleteWords.couldntPutBack(name),
-            text: errorReasonFor(error),
-          }),
-        ),
+      onClick: () => void putBackWorkflow(trashed, name, toasts),
     },
   });
   const stopAll = () => {

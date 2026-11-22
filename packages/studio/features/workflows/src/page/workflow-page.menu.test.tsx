@@ -268,7 +268,11 @@ verifies("workflows.page.menu", () => {
     await settled();
 
     expect(toastTitles(toasts)).toEqual(["Couldn't put Support reply back"]);
-    expect(toasts.list()[0]?.text).toBe("The workspace changed after it was deleted.");
+    expect(toasts.list()[0]).toMatchObject({
+      text: "The workspace changed after it was deleted.",
+      sticky: true,
+      action: { label: "Undo" },
+    });
     expect(page.textContent).toContain("Support reply was deleted");
   });
 

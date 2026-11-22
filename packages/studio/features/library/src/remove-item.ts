@@ -18,20 +18,32 @@ function reasonOf(error: unknown, title: string): string | undefined {
 
 /**
  * Brings an item back, or says why it couldn't. Success says nothing: the restored row or page is
- * the feedback. Resolves to whether it came back.
+ * the feedback, and `onBack` is called. A failure toast stays with Undo, so the person can clear
+ * the way and undo again. Resolves to whether it came back.
  */
 export async function putBack(
   removed: RemovedLibraryItem,
   name: string,
   toasts: ToastStore | null,
+  onBack?: () => void,
 ): Promise<boolean> {
   try {
     await removed.undo();
+    onBack?.();
     return true;
   } catch (error) {
     const title = deleteWords.couldntUndo(name);
     const reason = reasonOf(error, title);
-    toasts?.show({ tone: "danger", title, ...(reason === undefined ? {} : { text: reason }) });
+    toasts?.show({
+      tone: "danger",
+      title,
+      ...(reason === undefined ? {} : { text: reason }),
+      sticky: true,
+      action: {
+        label: deleteWords.undo,
+        onClick: () => void putBack(removed, name, toasts, onBack),
+      },
+    });
     return false;
   }
 }
@@ -79,10 +91,7 @@ export async function removeItem(
         ...(line === undefined ? {} : { text: line }),
         action: {
           label: deleteWords.undo,
-          onClick: () =>
-            void putBack(removed, name, toasts).then((restored) => {
-              if (restored) options.onRestored?.();
-            }),
+          onClick: () => void putBack(removed, name, toasts, options.onRestored),
         },
       });
     }
