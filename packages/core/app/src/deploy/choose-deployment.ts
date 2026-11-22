@@ -11,9 +11,11 @@ export type ChosenDeployment =
  * `app.deploy-service`). A named one must exist and run on Cloudflare: a
  * `local` one is refused with the `halonic serve` pointer. With no name, the
  * workspace's one Cloudflare deployment is chosen, `none` when it has none,
- * and several are wrong usage.
+ * and several are wrong usage. A deployment with `users.meter: cloud` is
+ * refused until Halonic Cloud can take its usage (requirement
+ * `app.deploy-cloud-meter`).
  *
- * @throws KindedError `invalid_input` for a `local` deployment or several to choose from
+ * @throws KindedError `invalid_input` for a `local` deployment, several to choose from, or `meter: cloud`
  * @throws KindedError `not_found` for a name `deployments.yaml` doesn't have
  *
  * @example
@@ -41,7 +43,7 @@ export function chooseDeployment(
         },
       );
     }
-    return { kind: "chosen", id: name, deployment };
+    return chosen(name, deployment);
   }
   const onCloudflare = Object.entries(deployments).filter(([, d]) => d.host === "cloudflare");
   const [only, ...others] = onCloudflare;
@@ -54,5 +56,24 @@ export function chooseDeployment(
       { fix: "Usage: halonic deploy <deployment>" },
     );
   }
-  return { kind: "chosen", id: only[0], deployment: only[1] };
+  return chosen(only[0], only[1]);
+}
+
+/**
+ * The chosen deployment, unless it counts usage with `meter: cloud`: the
+ * format accepts that meter so files can be written ahead, but nothing can
+ * report usage to Halonic Cloud yet, and a deployment that ran without its
+ * limits would let every user run unmetered. `meter: config` limits aren't
+ * enforced yet either; that is safe only while nothing acts on `mode: many`,
+ * so the slice that lets other users in must enforce or refuse them too.
+ */
+function chosen(id: string, deployment: Deployment): ChosenDeployment {
+  if (deployment.users?.meter === "cloud") {
+    throw new KindedError(
+      "invalid_input",
+      `${id} counts usage with meter: cloud, which this version of Halonic can't do yet.`,
+      { fix: "Use meter: config or meter: none in deployments.yaml." },
+    );
+  }
+  return { kind: "chosen", id, deployment };
 }

@@ -182,6 +182,36 @@ keys in either block fail. A `cloudflare` block on a deployment whose `host` isn
 only warns (`cloudflare-settings-unused`). No account id, token or key goes in the file
 (requirement `deployments-cloudflare`).
 
+A deployment may also have a `users` block: who may use it and how their usage is counted
+(requirement `deployments-users`). Without the block nothing changes.
+
+```yaml
+deployments:
+  web:
+    name: Web
+    host: cloudflare
+    users:
+      mode: many           # owner (the default) or many
+      meter: config        # none (the default), config or cloud
+      config:
+        limits:
+          - { unit: cost, amount: 20, period: month }
+          - { unit: harnessMinutes, amount: 600, period: month, action: notify }
+```
+
+- `mode`: `owner` is for the deployment's owner alone; `many` is for many people, each signed in
+  to their own space.
+- `meter`: `none` counts nothing; `config` counts against the `config` limits; `cloud` counts
+  with Halonic Cloud, for the product in `cloud.product` (its id, not a secret), which it then
+  needs (`users-cloud-product-missing`). The deploy service refuses a deployment with
+  `meter: cloud` (requirement `app.deploy-cloud-meter`).
+- This package reads and checks the block. Nothing acts on `mode` or on `meter: config` yet.
+- A limit has a `unit` (`runs`, `steps`, `tokens`, `cost` or `harnessMinutes`), an `amount` above
+  zero, a `period` (`day`, `month`, `run` or `step`) and an `action` at the limit (`stop`, the
+  default, or `notify`). Two limits on the same unit and period fail (`users-limit-repeated`).
+- A `config` or `cloud` block for a meter the deployment doesn't use only warns
+  (`users-meter-settings-unused`), so switching meters changes only `meter:`.
+
 ## Model call limit
 
 An agent's `maxSteps` is its model call limit: the most model calls it makes

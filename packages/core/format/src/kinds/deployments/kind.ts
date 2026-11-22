@@ -1,5 +1,6 @@
 import type { FileKind, KindCheckProblem } from "../../kind.ts";
 import { Deployments } from "./schema.ts";
+import { checkUsers } from "./users-check.ts";
 
 /** `deployments.yaml` at the workspace root. */
 export const deploymentsKind: FileKind<Deployments> = {
@@ -14,10 +15,11 @@ export const deploymentsKind: FileKind<Deployments> = {
 
 /**
  * The default deployment, when one is named, must be one of the listed ones,
- * and Cloudflare settings on another host are flagged as unused.
+ * Cloudflare settings on another host are flagged as unused, and each
+ * `users` block passes its own checks.
  */
 function checkDeployments(file: Deployments): KindCheckProblem[] {
-  return [...checkDefault(file), ...checkUnusedCloudflare(file)];
+  return [...checkDefault(file), ...checkUnusedCloudflare(file), ...checkUsers(file)];
 }
 
 /** The default deployment, when one is named, must be one of the listed ones. */
