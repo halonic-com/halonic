@@ -262,7 +262,8 @@ the current list.
 that document: agents with nothing to start (no `todo`, no `in_progress`
 task without open blockers) and agents with more than 10 tasks in progress.
 Pip is left out, as are paused agents and ones waiting for approval. When
-either list changes, Chief's task (setting `chiefTask`) gets one comment.
+either list differs from the last one sent, Chief's task (setting
+`chiefTask`) gets one comment, so it also catches up once writes are on.
 
 **Approvals (part d).** Each pass reads the pending approvals directly and
 lists the ones that weren't pending at the last pass in one comment on the

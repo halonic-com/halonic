@@ -47,6 +47,19 @@ verifies("paperclip.board-check-load", () => {
       "- Nothing to start (no todo, no unblocked in progress): Merger.",
     );
   });
+
+  test("comments the team load on the first hour after the board turns writes on, with the same team", async () => {
+    let config: Record<string, unknown> = { ...settings, boardCheckWritesForVersion: undefined };
+    const tasks = [checkerTask, task(2, "agent-mateo", "todo")];
+    const fake = fakeBoardContext({ tasks, comments: {}, config: () => config });
+    const board = boardCheck(fake.ctx);
+    await board.run(at("14:00"));
+    expect(comments(fake.sent, "task-chief")).toEqual([]);
+    config = settings;
+    await board.run(at("15:00"));
+    await board.run(at("16:00"));
+    expect(comments(fake.sent, "task-chief")).toHaveLength(1);
+  });
 });
 
 verifies("paperclip.board-check-approvals", () => {
