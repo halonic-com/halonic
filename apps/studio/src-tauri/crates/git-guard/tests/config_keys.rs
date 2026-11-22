@@ -281,3 +281,29 @@ fn repo_config_refuses_a_repository_that_names_an_lfs_program() {
     }
     assert!(sandbox.marks().is_empty());
 }
+
+#[test]
+fn no_lazy_fetch_refuses_a_repository_that_is_a_partial_clone() {
+    for (text, key) in [
+        (
+            "[extensions]\n\tpartialClone = planted\n",
+            "extensions.partialclone",
+        ),
+        (
+            "[remote \"planted\"]\n\turl = https://planted.invalid/a.git\n\tpromisor = true\n",
+            "remote.planted.promisor",
+        ),
+    ] {
+        let sandbox = Sandbox::new();
+        sandbox.init_repository();
+        sandbox.git_ok("status");
+        sandbox.append_config(text);
+        assert_eq!(
+            sandbox.git("status"),
+            Err(GitError::ConfigNotAllowed {
+                key: key.to_owned()
+            }),
+            "{key}"
+        );
+    }
+}

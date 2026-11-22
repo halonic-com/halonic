@@ -4,7 +4,7 @@ Anyone who can write an opened folder can write `.git/config`. This list has eve
 
 How a key is handled:
 
-- **Hardening config**: the runner sets the key on every call, in `GIT_CONFIG_COUNT`, which beats every config file (`HARDENING_CONFIG` in `src/runner.rs`).
+- **Hardening config**: the runner sets the key on every call, in `GIT_CONFIG_COUNT`, which beats every config file (`HARDENING_CONFIG` in `src/hardening.rs`).
 - **Environment**: a variable the runner sets beats the key (`HARDENING_ENVIRONMENT`).
 - **Flag**: an argument the runner adds beats the key (`hardened_command`).
 - **Allow-list**: no allowed call reaches the key (`src/allow_list.rs`, `src/check_args.rs`).
@@ -78,7 +78,7 @@ How a key is handled:
 | Key | Handling | Why it holds |
 | --- | --- | --- |
 | `protocol.allow`, `protocol.<name>.allow` | Environment `GIT_ALLOW_PROTOCOL=https:ssh` | The variable beats both keys. |
-| `remote.<name>.promisor`, `extensions.partialClone` | Accepted | In a partial clone, `diff`, `log` and `checkout` may fetch missing objects from the promisor remote. That is network use the call didn't ask for, but only over https or ssh, with the neutralised ssh command, credential helpers and `uploadpack`. |
+| `remote.<name>.promisor`, `extensions.partialClone` | Refused; environment `GIT_NO_LAZY_FETCH=1` | In a partial clone, `diff`, `log` and `checkout` would fetch missing objects from the promisor remote, a connection to a host the repository names that no call asked for. The variable turns that off from git 2.44; older git ignores it, so a repository whose own config sets either key is refused (HAL-16348). A partial clone (`git clone --filter=…`) can't be used from the runner. The user's own values still apply. |
 | `safe.directory` | Not reachable | git reads it only from protected config (system, global, command line), so a repository can't set it. |
 
 ## On a git upgrade or a new allowed call

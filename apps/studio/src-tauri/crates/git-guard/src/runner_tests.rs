@@ -231,3 +231,19 @@ fn git_hardening_removes_inherited_git_variables() {
     assert_eq!(environment(&command, "HOME"), None);
     assert_eq!(environment(&command, "PATH"), None);
 }
+
+#[test]
+fn no_lazy_fetch_runs_every_call_with_lazy_fetching_off() {
+    for call in [
+        "status",
+        "diff --cached",
+        "log -n 3",
+        "pull --ff-only origin main",
+    ] {
+        assert_eq!(
+            environment(&command(call), "GIT_NO_LAZY_FETCH"),
+            Some(Some("1".to_owned())),
+            "{call}"
+        );
+    }
+}
