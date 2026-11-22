@@ -73,9 +73,12 @@ case "$SLOT" in
           fi ;;
 esac
 # A fast slot's jobs are unreviewed code, so they never get the shared caches read-write (C2/C8).
-# Each cache is an overlay: the shared folder is its read-only lower layer, and every write goes
-# to an upper layer of this job's own, under the job's quota and deleted after it.
+# Each cache is an overlay: a snapshot of the shared folder is its read-only lower layer, and every
+# write goes to an upper layer of this job's own, under the job's quota and deleted after it. Not the
+# shared folder itself: merge-group jobs write to it, and a lower layer must not change while it's
+# mounted (HAL-16032). vm/halonic-ci-fast-lower.sh makes the snapshots.
 OVL=/cache/overlay/$SLOT; OVL_MNT=/run/halonic-ci-ovl/$SLOT; CACHES="pnpm-store turbo ms-playwright"
+FAST_LOWER=/usr/local/sbin/halonic-ci-fast-lower.sh; FAST_LOWER_LOCK=/cache/fast-lower/.lock
 unmount_caches() {
   for c in $CACHES; do umount "$OVL_MNT/$c" 2>/dev/null || true; done
   rm -rf "$OVL" "$OVL_MNT"
@@ -127,11 +130,17 @@ if [ "$LABEL" = halonic-ci-fast ]; then
     install -d -m 0755 -o "$RUID" -g "$RUID" "$OVL/$c/upper"; install -d -m 0700 "$OVL/$c/work" "$OVL_MNT/$c"
   done
   xfs_quota -x -c "project -s -p $OVL $PROJ" /cache >/dev/null
-  for c in $CACHES; do
-    mount -t overlay overlay -o "lowerdir=$TRUSTED/$c,upperdir=$OVL/$c/upper,workdir=$OVL/$c/work" "$OVL_MNT/$c"
-    # Under gVisor the job sees every mount as its file proxy's, so only here can it be checked.
-    [ "$(findmnt -n -o FSTYPE --mountpoint "$OVL_MNT/$c")" = overlay ] || fail "$OVL_MNT/$c is not an overlay"
-  done
+  "$FAST_LOWER" current >/dev/null   # makes the first snapshot, if there is none yet
+  # Held shared until mounted, so the hourly refresh can't delete the snapshot in between.
+  (
+    flock -s 9
+    LOWER_GEN=$("$FAST_LOWER" current)
+    for c in $CACHES; do
+      mount -t overlay overlay -o "lowerdir=$LOWER_GEN/$c,upperdir=$OVL/$c/upper,workdir=$OVL/$c/work" "$OVL_MNT/$c"
+      # Under gVisor the job sees every mount as its file proxy's, so only here can it be checked.
+      [ "$(findmnt -n -o FSTYPE --mountpoint "$OVL_MNT/$c")" = overlay ] || fail "$OVL_MNT/$c is not an overlay"
+    done
+  ) 9>"$FAST_LOWER_LOCK"
   CACHE_SRC=$OVL_MNT
 fi
 # What only a fast slot's container gets: gVisor, its own network and its own gate socket, which
@@ -187,11 +196,8 @@ ANON_PEAK=0
 # Dynamic memory (22 Nov 2026): a job starts at MEM_START and gets STEP more whenever its anon + shmem
 # comes within HEAD of the limit, up to MEM, as long as the VM keeps RESERVE free. memory.high sits
 # 512 MB under the limit, so the kernel reclaims cache and slows the job before the hard limit kills
-# it, which gives this 2-second loop time to grow it. Every slot at MEM still fits the VM, so growth
-# can't overcommit it; the reserve check matters once the VM is made smaller than that.
-# Large slots start at MEM again (HAL-15994): a job that starts hundreds of processes at once
-# (changeset version's git calls) outgrew a 3-second step and was killed at 6 GB. Eleven large
-# slots at 10 GB and three small at 3 GB are 119 GB of the VM's 126; only small slots still grow.
+# it, which gives this 2-second loop time to grow it. All slots at MEM would overcommit the VM, so
+# the reserve check is the only thing that stops growth from doing that.
 LIMIT_B=$(numfmt --from=iec "${MEM_START^^}"); MAX_B=$(numfmt --from=iec "${MEM^^}")
 STEP_B=4294967296; HEAD_B=2147483648; RESERVE_B=4294967296; GROWS=0; HIGH_SET=""
 write_state() {
