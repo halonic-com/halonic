@@ -48,7 +48,8 @@ export interface TriggersViewProps {
   readonly openRoutine?: (hubId: string, id: string, step?: string) => void;
   /**
    * Set when the page asks the section to start adding, such as the agent map's **Add trigger**:
-   * the section then does what its own Add trigger does, once, so an agent's Prompt shows at once.
+   * on a workflow the section then does what its own Add trigger does, once; on an agent it focuses
+   * its Add trigger, so the person reads that Halonic can't run the agent on its own yet first.
    */
   readonly startAdding?: boolean;
 }
@@ -61,8 +62,8 @@ export interface TriggersViewProps {
  * agent's prompt, since that is the agent's real task, and makes the routine only once one is typed.
  * Above it, an agent's section says that a routine can't run an agent yet
  * (`routines.triggers.agent-cant-run-note`), so nobody writes that task before learning it.
- * Opened with `startAdding`, it presses its own Add trigger once it is drawn
- * (`routines.triggers.add-trigger-from-page`).
+ * Opened with `startAdding`, it presses its own Add trigger once it is drawn on a workflow, and
+ * focuses it on an agent (`routines.triggers.add-trigger-from-page`).
  */
 export function TriggersView({ host, owner, openRoutine, startAdding = false }: TriggersViewProps) {
   const { load, retry } = useTriggerRows(host, owner);
@@ -116,8 +117,13 @@ export function TriggersView({ host, owner, openRoutine, startAdding = false }: 
   };
 
   // Once per drawn section, so a second run of the effect can't make a workflow's routine twice.
+  // An agent's Prompt waits for the person's own press: focus lands on Add trigger, which the note
+  // describes, so nobody writes a task for a routine that can't start before reading why (C622).
   const startedAdding = useRef(false);
-  const addOnStart = useEffectEvent(() => void add());
+  const addOnStart = useEffectEvent(() => {
+    if (isAgent) addButton.current?.focus();
+    else void add();
+  });
   useEffect(() => {
     if (!startAdding || startedAdding.current) return;
     startedAdding.current = true;
