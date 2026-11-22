@@ -1,4 +1,4 @@
-// `halonic google sign-in <account> [--connection <id>]`: signs a Google account
+// `halonic google sign-in <ref> [--connection <id>]`: signs a Google account
 // in on this computer. The connector the setup record is linked to (a Google
 // connector of the workspace in `--dir`) gives the address that must sign in; the integrations of the workspace that
 // ask for Google scopes give the services. The command prints the sign-in
