@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import type { TrustStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -151,6 +152,30 @@ verifies("agent-host.unfenced-gate", () => {
         agent: { ...setup.built.agent, agentId: "helper" },
       });
       expect(await setup.gate.check(request())).toMatchObject({ kind: "profile_not_built" });
+    });
+
+    it("refuses a profile built with an instructions folder the host didn't make, such as a plugin with hooks", async () => {
+      await chosen();
+      // A folder holding `hooks/hooks.json` would become Claude Code's `--plugin-dir`.
+      setup.unopened.set(setup.built.profile.tempFolder, {
+        ...setup.built,
+        instructionsFolder: join(setup.root, "downloads", "plugin"),
+      });
+      expect(await setup.gate.check(request())).toMatchObject({
+        status: 403,
+        kind: "profile_not_built",
+        message: expect.stringMatching(/instructions folder isn't one the agent host made/),
+      });
+      setup.unopened.set(setup.built.profile.tempFolder, setup.built);
+      setup.madeInstructions.clear();
+      expect(await setup.gate.check(request())).toMatchObject({ kind: "profile_not_built" });
+    });
+
+    it("passes a profile built with no instructions folder, and keeps that it has none", async () => {
+      await chosen();
+      const without = { ...setup.built, instructionsFolder: null };
+      setup.unopened.set(setup.built.profile.tempFolder, without);
+      expect(await setup.gate.check(request())).toBe(without);
     });
 
     it("refuses a profile a session already opened with", async () => {

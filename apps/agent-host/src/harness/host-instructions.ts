@@ -72,6 +72,11 @@ export class HostRunInstructions {
     return snapshot;
   }
 
+  /** Whether `folder` is one this host made and hasn't removed yet. */
+  isMade(folder: string): boolean {
+    return this.#made.has(folder);
+  }
+
   /** Removes a folder this host made; any other path is left alone. It doesn't throw. */
   async release(folder: string): Promise<void> {
     if (!this.#made.delete(folder)) return;

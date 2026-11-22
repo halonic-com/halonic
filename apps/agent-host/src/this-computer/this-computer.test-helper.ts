@@ -27,6 +27,8 @@ export interface ThisComputerSetup {
   readonly unopened: Map<string, BuiltProfile>;
   /** A profile the host built for the coder, kept in `unopened`. */
   readonly built: BuiltProfile;
+  /** The instruction folders the host "made"; the built profile's is one. */
+  readonly madeInstructions: Set<string>;
   readonly gate: UnfencedGate;
   /** A gate over the same workspace and profiles, but with another trust store. */
   gateWith(trustStore: TrustStore | undefined): UnfencedGate;
@@ -56,11 +58,13 @@ export async function thisComputerSetup(): Promise<ThisComputerSetup> {
   const placements = new MemoryAgentPlacementStore();
   const built = builtFor(root);
   const unopened = new Map([[built.profile.tempFolder, built]]);
+  const madeInstructions = new Set([built.instructionsFolder ?? ""]);
   const options: UnfencedGateOptions = {
     workspaceRoots: [root],
     trustStore: trust,
     placements,
     profiles: { unopened: (tempFolder) => unopened.get(tempFolder) },
+    instructions: { isMade: (folder) => madeInstructions.has(folder) },
     digest: webCryptoDigest,
     clock,
   };
@@ -72,6 +76,7 @@ export async function thisComputerSetup(): Promise<ThisComputerSetup> {
     placements,
     unopened,
     built,
+    madeInstructions,
     gate,
     gateWith: (trustStore) => new UnfencedGate({ ...options, trustStore }),
     trustCoder: async () => {
@@ -122,6 +127,7 @@ function builtFor(root: string): BuiltProfile {
       allowedSites: [],
       filesFolder: null,
     },
+    instructionsFolder: join(root, ".halonic-test", "instructions-1"),
     profile,
   };
 }

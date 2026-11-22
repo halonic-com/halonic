@@ -4,9 +4,6 @@
 // agent's file, the person's trust record and the person's choice from disk
 // itself, and opens only with a profile it built for that agent.
 
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
-import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { AgentPlacement } from "@halonicjs/app";
 import type { Agent } from "@halonicjs/format";
 import type {
@@ -17,9 +14,10 @@ import type {
   TrustStore,
 } from "@halonicjs/ports";
 import { canonicalJson } from "@halonicjs/std";
-import { filesOf, loadWorkspace } from "@halonicjs/workspace";
+import type { HostRunInstructions } from "../harness/host-instructions.ts";
 import type { BuiltProfile, HostHarnessProfiles } from "../harness/host-profiles.ts";
 import { namedWorkspace } from "../server/named-workspace.ts";
+import { agentFileOf } from "./agent-file.ts";
 import { isAgentTrusted } from "./agent-trust.ts";
 
 /** What Studio asks to open: the agent, by its workspace, hub and id, and the profile to open with. */
@@ -52,6 +50,12 @@ export interface UnfencedGateOptions {
   readonly placements: AgentPlacementStore;
   /** The profiles this host built and no session has opened with yet. */
   readonly profiles: Pick<HostHarnessProfiles, "unopened">;
+  /**
+   * The instruction folders this host made. A profile built with any other
+   * folder doesn't pass: the folder becomes Claude Code's `--plugin-dir`, and
+   * a plugin's hooks run without asking anyone.
+   */
+  readonly instructions: Pick<HostRunInstructions, "isMade">;
   readonly digest: Digest;
   readonly clock: Clock;
 }
@@ -67,7 +71,12 @@ export interface UnfencedGateOptions {
  *    (`AgentPlacement`, the same reader as the CLI's);
  * 4. the profile is one this host built for that agent and no session has
  *    opened with yet, field for field; only its environment may differ, by
- *    the variables the harness adds, which the run's start checks.
+ *    the variables the harness adds, which the run's start checks. It was
+ *    built with no instructions folder or with one this host made.
+ *
+ * What it passes, the built profile with its agent and instructions folder,
+ * is what the session keeps, so a run's start can be held to it
+ * (`agent-host.unfenced-start`).
  */
 export class UnfencedGate {
   readonly #options: UnfencedGateOptions;
@@ -124,6 +133,16 @@ export class UnfencedGate {
         "The agent host didn't build this profile for this agent, or a session already opened with it.",
       );
     }
+    if (
+      built.instructionsFolder !== null &&
+      !this.#options.instructions.isMade(built.instructionsFolder)
+    ) {
+      return refusal(
+        403,
+        "profile_not_built",
+        "The profile's instructions folder isn't one the agent host made, so the agent doesn't leave the sandbox with it.",
+      );
+    }
     return built;
   }
 
@@ -148,20 +167,6 @@ function refusal(
   message: string,
 ): UnfencedRefusal {
   return { status, kind, message };
-}
-
-/** The agent's file in the workspace as it is on disk now: its parsed form and its raw bytes. */
-async function agentFileOf(
-  root: string,
-  hubId: string,
-  agentId: string,
-): Promise<{ agent: Agent; bytes: Uint8Array } | undefined> {
-  const workspace = await loadWorkspace(new FolderDefinitionStore(root, root));
-  const file = filesOf(workspace, "agent").find(
-    (each) => each.hub === hubId && each.value.id === agentId,
-  );
-  if (file === undefined) return undefined;
-  return { agent: file.value, bytes: new Uint8Array(await readFile(join(root, file.path))) };
 }
 
 /** Whether the host built `built` for this agent in this workspace, and the request's profile is it, environment aside. */

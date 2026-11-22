@@ -289,6 +289,7 @@ verifies("agent-host.unfenced-gate", () => {
     expect(profiles.unopened(profile.tempFolder)).toEqual({
       workspace: expect.any(String),
       agent: parsedWriter(),
+      instructionsFolder: null,
       profile,
     });
     expect(profiles.unopened(join(root, "stranger"))).toBeUndefined();

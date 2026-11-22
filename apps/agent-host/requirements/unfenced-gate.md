@@ -9,9 +9,11 @@ When the agent host is asked to open a session without the sandbox for an agent,
 1. a folder the launcher didn't name, compared by real path (`404 unknown_workspace`), or an agent that workspace hasn't (`404 unknown_agent`). The host loads the workspace and reads the agent's file from disk itself;
 2. an agent that the person's trust record for the workspace doesn't list exactly as its file is now, by its harness, sites, working folder and `asks` (`403 workspace_not_trusted`). It shall fail closed: a trust record it can't read, a host with no profile folder (so no trust record at all), and an agent in Halonic's own loop, which starts no program, each get this refusal, even when a record names that agent;
 3. an agent whose file, as it is now byte for byte, has no "On this computer" choice in the person's profile, read with the same `AgentPlacement` as the CLI (`403 not_on_this_computer`);
-4. a profile the host didn't build for that agent in that workspace, one a session already opened with, or one that differs from the built one in any field but its environment (`403 profile_not_built`). The run's start checks the environment (`agent-host.unfenced-start`).
+4. a profile the host didn't build for that agent in that workspace, one a session already opened with, one that differs from the built one in any field but its environment, or one built with an instructions folder the host's instruction route didn't make (`403 profile_not_built`). The instructions folder becomes Claude Code's `--plugin-dir` (and Codex's skills folder), and a plugin's hooks run without asking anyone, so only a folder the host wrote itself, holding only `AGENTS.md` and skills, passes. The gate shall pass the built profile with the agent and the instructions folder it was built for, which the session keeps, so the run's start refuses another agent or folder and checks the environment (`agent-host.unfenced-start`).
 
-The session passes no workspace connector or integration program to the run. The request names none, and a profile that carries anything the host didn't build, a connector's program included, gets `profile_not_built`. The only program a run in the session starts is the harness the host's own adapter starts, with the bridge's MCP servers alone and the agent's own settings alone, so the working folder's MCP servers (`.mcp.json`, `.codex/config.toml`) and hooks don't load (`harness-claude-code.command`, `harness-codex.config`). A workspace `stdio` connector starts only through the host's connector routes, in its own sandbox session and after its own check against the same trust record (`agent-host.connector-routes`), and the run reaches it only as a tool on its bridge, each call checked there.
+The gate shall read the agent's file once: the bytes the person's choice is checked on are the bytes its parsed form, which the trust check reads, came from. A file that changes between the two reads is refused as an unknown agent. The profile's working folder and sites come from the page when it is built, but the builder reads the working folder from the agent's file, and the trust check reads the sites from the file on disk, so neither is the page's choice.
+
+The session passes no workspace connector or integration program to the run. The request names none, and a profile that carries anything the host didn't build, a connector's program included, gets `profile_not_built`. The only program a run in the session starts is the harness the host's own adapter starts, with the bridge's MCP servers alone, the agent's own settings alone and no plugin folder but the host's own instructions folder, so the working folder's MCP servers (`.mcp.json`, `.codex/config.toml`) and hooks, and a plugin folder the page names, don't load (`harness-claude-code.command`, `harness-codex.config`, `agent-host.unfenced-start`). A workspace `stdio` connector starts only through the host's connector routes, in its own sandbox session and after its own check against the same trust record (`agent-host.connector-routes`), and the run reaches it only as a tool on its bridge, each call checked there.
 
 The host's profile builder shall keep each profile it builds, with the workspace and the agent it is for, only until a session opens with it. A caller shall be able to ask, right before it opens, whether the profile still waits, so that of two requests with one profile only the first opens.
 
@@ -38,6 +40,12 @@ The host's profile builder shall keep each profile it builds, with the workspace
 - Given a profile the host built for the coder, with a connector's program added to it,
   when the gate checks a request with it,
   then it refuses with `profile_not_built`, and no connector reaches the run.
+- Given a profile the host built for the coder with an instructions folder its instruction route didn't make, such as a folder holding `hooks/hooks.json`,
+  when the gate checks a request with it,
+  then it refuses with `profile_not_built`.
+- Given a run that names an instructions folder the host didn't build the session with,
+  when it starts in the session the gate let out,
+  then the host refuses it (`agent-host.unfenced-start`).
 - Given a folder the launcher didn't name, or an agent the workspace hasn't,
   when the gate checks a request for it,
   then it refuses with `unknown_workspace` or `unknown_agent`.

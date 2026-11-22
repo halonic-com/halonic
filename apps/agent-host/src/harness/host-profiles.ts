@@ -39,6 +39,8 @@ export interface ProfileAgent {
 export interface BuiltProfile {
   readonly workspace: string;
   readonly agent: ProfileAgent;
+  /** The instructions folder the profile was built with, as asked; `null` for none. */
+  readonly instructionsFolder: string | null;
   readonly profile: SandboxProfile;
 }
 
@@ -106,7 +108,7 @@ export class HostHarnessProfiles {
     if (real === undefined) return undefined;
     const { profiles } = await this.#profilesOf(real);
     const built = await profiles.profileOf(harnessAgentOf(agent), bridge, instructionsFolder);
-    this.#removeIfUnopened({ workspace: real, agent, profile: built.profile });
+    this.#removeIfUnopened({ workspace: real, agent, instructionsFolder, profile: built.profile });
     return built;
   }
 
