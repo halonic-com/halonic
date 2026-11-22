@@ -46,7 +46,7 @@ export const sandboxSetupMessages = defineMessages("sandboxSetup", {
   removed: () => phrase`Removed the agent sandbox`,
   /** Under "Removed", when a removal with administrator rights kept some access until the next start, in Settings' words (HAL-15836). */
   keptAccess: () =>
-    phrase`Its access to your project folders ends the next time you start Halonic.`,
+    phrase`Its access to your project folders ends the next time you start Halonic without administrator rights.`,
   /** The same, when the next start doesn't end it: only a removal without administrator rights does. */
   keptAccessManual: () =>
     phrase`It may still have access to some of your project folders. To end that, run halonic sandbox remove again from a terminal that isn't running as administrator.`,

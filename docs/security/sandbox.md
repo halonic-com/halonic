@@ -138,23 +138,24 @@ draft).
 
 Removing the sandbox (Settings › Agent sandbox, or the uninstaller) also takes
 back the write access srt kept on your folders between sessions. A removal that
-runs with administrator rights, such as a silent uninstall from an elevated
-prompt, can't do that part safely, so it leaves it for later and writes nothing
-in your profile: Halonic takes the access back the next time it starts as you,
-without administrator rights (Studio, or a `halonic` command that runs an
-agent in the agent sandbox), or before you set the sandbox up again. The
-uninstaller's last page says so after such an uninstall. If you never start
-Halonic again after such an uninstall, the access stays on your folders.
-Installing and starting Halonic again takes it back.
+runs with administrator rights, such as an uninstall started as administrator
+or a silent uninstall from an elevated prompt, can't do that part safely, so it
+leaves it for later and writes nothing in your profile.
 
-One case the next start doesn't end: a removal with administrator rights where
-srt's sandbox account is still listed or can't be read. The access then stays
-until you remove the sandbox again without administrator rights: run
-`halonic sandbox remove` from a terminal that isn't an administrator's, or
-install Halonic again, start it normally (not as administrator), set the sandbox
-up in Settings › Agent sandbox and remove it there. `halonic sandbox remove`
-says so under "Removed" (`keptAccess` is `manual` in `--json`), and so does the
-uninstaller's last page.
+Halonic takes that access back later only when it runs on Windows itself, as
+you and without administrator rights: Studio with the Windows sandbox chosen,
+or a `halonic` command installed on Windows, at its next start or before you
+set the sandbox up again. It doesn't when Studio's agents run in WSL (the
+default when nothing is chosen) or when the command line runs inside WSL,
+because neither can reach srt's Windows account. It also doesn't while srt
+still lists its sandbox account, for example after the installer has set the
+sandbox up again, or when Halonic can't read srt's status.
+
+The step that works whatever you chose is the one the uninstaller's last page
+gives: install Halonic again with "Set up the agent sandbox" on, then uninstall
+it normally, not as administrator. A normal uninstall runs without
+administrator rights, so its removal takes the access back. To keep using
+Halonic, install it again afterwards.
 
 ## "This computer" has none of it
 

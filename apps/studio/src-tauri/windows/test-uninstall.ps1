@@ -157,10 +157,9 @@ Wait-Button $h '&Close' 300
 Save-Picture $h '12-uninstalled'
 $done = Must-Find $h '✓ The agent sandbox is removed.' 'Static'
 # The runner's uninstaller runs with administrator rights, so the removal left
-# the grant kept above, which the agent host takes back at its next start
-# (HAL-5404 S2), so only once Halonic is installed again (HAL-15836): the page
-# says so, lined up under the first line's text, past its ✓.
-$kept = Must-Find $h 'Its access to your project folders stays until you install Halonic again and start it.' 'Static'
+# the grant kept above (HAL-5404 S2): the page gives the step that ends it
+# (HAL-16082), lined up under the first line's text, past its ✓.
+$kept = Must-Find $h 'It still has access to your project folders. To end that, install Halonic again with "Set up the agent sandbox" on, then uninstall it normally, not as administrator.' 'Static'
 $first = New-Object U+RECT
 $second = New-Object U+RECT
 [U]::GetWindowRect($done, [ref]$first) | Out-Null
@@ -176,4 +175,4 @@ if (Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic
 if (Test-Path (Join-Path $profileFolder 'trust')) { throw 'The trust records are still there' }
 if (Test-Path (Join-Path $profileFolder 'workspaces\k1\harness-settings')) { throw 'The harness settings are still there' }
 if (-not (Test-Path (Join-Path $profileFolder 'workspaces\k1\runs\r1.log'))) { throw 'The settings box removed the runs' }
-Write-Output 'uninstall: Enter cancelled; Uninstall removed Halonic, the sandbox and the settings, kept the runs, and said when the kept access goes'
+Write-Output 'uninstall: Enter cancelled; Uninstall removed Halonic, the sandbox and the settings, kept the runs, and said how to end the kept access'
