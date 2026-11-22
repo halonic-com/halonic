@@ -2,13 +2,13 @@
 // HAL-15127). The loader leaves a file with an error out, so a run that
 // loads it isn't what the user wrote (HAL-6613). A run of workflow W loads
 // its own file, the agents and workflows its steps name, those agents'
-// subagents, and every file that isn't a workflow, agent or test, so an error
-// in any of those stops it. A
-// broken draft workflow or an agent W doesn't use stops only its own runs.
+// subagents, and every file that isn't a workflow, agent, routine or test, so
+// an error in any of those stops it. A broken draft workflow or an agent W
+// doesn't use stops only its own runs; a broken routine stops none (HAL-15637).
 // The CLI's refusal and Studio's Run both ask this one function, so they
 // can't drift apart again.
 
-import type { Workflow } from "@halonicjs/format";
+import type { KindName, Workflow } from "@halonicjs/format";
 import {
   filesOf,
   type LoadedFileOf,
@@ -139,7 +139,7 @@ function subagentsOf(
  *
  * - the workflow's own file, or the file of an agent, a subagent or a
  *   workflow it uses ({@link workflowUses});
- * - any other file that isn't a workflow, agent or test file, such as
+ * - any other file that isn't a workflow, agent, routine or test file, such as
  *   `workspace.yaml`, a hub file, a provider or `models.yaml`, or no file at
  *   all: every run can depend on those;
  * - for the default model problem, the hub's agents, when an agent or a
@@ -166,6 +166,13 @@ export function errorsStoppingRun(
   return errors.filter((issue) => stopsRun(workspace, issue, run, uses));
 }
 
+/**
+ * The kinds whose files no run loads, so their errors stop none. A test runs
+ * on its own; a routine only starts runs, and one with an error is the routine
+ * that can't start, as the Routines list says (HAL-15637).
+ */
+const notLoadedByRuns: ReadonlySet<KindName> = new Set<KindName>(["workflowTest", "routine"]);
+
 /** Whether one error stops the run; see {@link errorsStoppingRun}. */
 function stopsRun(
   workspace: LoadedWorkspace,
@@ -175,7 +182,7 @@ function stopsRun(
 ): boolean {
   const place = issue.file === "" ? undefined : placeOf(issue.file);
   if (place === undefined) return true;
-  if (place.kind === "workflowTest") return false;
+  if (notLoadedByRuns.has(place.kind)) return false;
   if (place.kind !== "workflow" && place.kind !== "agent") return true;
   if (place.hub !== hubId) return false;
   if (issue.code === unknownDefaultModelCode) return callsDefaultModel(workspace, hubId, uses);

@@ -70,6 +70,16 @@ verifies("studio.workspace-workflows", () => {
       expect(Object.values(errors).every((count) => count > 0)).toBe(true);
     });
 
+    // C605 #1 (HAL-15637): every workflow said "can't run" for a paused routine's problem.
+    it("stops no workflow while a routine has an error", async () => {
+      const { host } = acme({
+        "hubs/acme/workflows/routines/nightly-check.routine.yaml":
+          "name: Nightly check\nenabled: false\ntrigger:\n  schedule: nightly\nrun:\n  workflow: reply\n",
+      });
+
+      expect(await errorsById(host)).toEqual({ reply: 0, triage: 0, "weekly-report": 0 });
+    });
+
     it("stops a workflow while one it calls has an error, and gives it on Configuration with its file", async () => {
       const { host } = acme({
         "hubs/acme/workflows/triage.workflow.yaml": `version: 2\n${workflowFile("triage", "    agent: sorter\n")}`,

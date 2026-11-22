@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { cp, mkdtemp, readFile, rename, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rename, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -162,6 +162,25 @@ verifies("cli.workspace-file-problems", () => {
     expect(io.stderr[0]).toBe(
       "✕ Couldn't run weekly-report: Acme has 1 problem in hubs/reports/workflows/weekly-report.workflow.yaml. Nothing ran.",
     );
+  });
+
+  // C605 #1 (HAL-15637): a broken routine is the routine that can't start, not every workflow.
+  it("runs the workflows while a paused routine starts support-reply without mail", async () => {
+    const routines = join(acme, "hubs/support/workflows/routines");
+    await mkdir(routines);
+    await writeFile(
+      join(routines, "nightly-check.routine.yaml"),
+      'name: Nightly check\nenabled: false\ntrigger:\n  schedule: "0 2 * * *"\nrun:\n  workflow: support-reply\n',
+    );
+    const profile = freshProfile();
+
+    const reply = await runCli(["run", "support-reply", ...samsEmail], captureIo(acme), [
+      runCommand(profile),
+    ]);
+    const report = await runCli(["run", "weekly-report"], captureIo(acme), [runCommand(profile)]);
+
+    expect(reply).toBe(exitCode.ok);
+    expect(report).toBe(exitCode.ok);
   });
 
   // Without its settings, the workspace is named by its folder.
