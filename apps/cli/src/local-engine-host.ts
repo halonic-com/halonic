@@ -32,8 +32,6 @@ import {
   FolderBlobStore,
   FolderRunStore,
   type HeldLock,
-  holdLock,
-  LockHeldError,
   makePrivateFolder,
 } from "@halonicjs/adapter-fs-node";
 import type { GitRunnerOptions } from "@halonicjs/adapter-git";
@@ -77,10 +75,11 @@ import {
   type WorkspaceFolders,
   workspaceFolders,
 } from "@halonicjs/profile";
-import { KindedError, randomIds, systemClock } from "@halonicjs/std";
+import { randomIds, systemClock } from "@halonicjs/std";
 import { type LoadedWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
 import { approvedIntegrations } from "./approved-integrations.ts";
 import { cliListedToolApproval } from "./cli-listed-tool-approval.ts";
+import { type EngineHolder, engineHolders, holdEngineLock } from "./engine-lock.ts";
 import {
   type LocalHarnessHost,
   type LocalHarnessInput,
@@ -88,9 +87,8 @@ import {
   openLocalHarnessHost,
 } from "./local-harness-host.ts";
 import { type LocalRunConnectorsInput, localRunConnectors } from "./local-run-connectors.ts";
-import { plainText } from "./messages/phrase.ts";
-import { workspaceMessages } from "./messages/workspace.ts";
 import { openProgramFolders, type ProgramFolders } from "./program-folders.ts";
+import type { RunFiles } from "./version-files.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import { workspaceStore } from "./workspace-store.ts";
 import type { WorkspaceVersions } from "./workspace-versions.ts";
@@ -112,25 +110,7 @@ export type EngineErrorSource =
   | "harness-bridge"
   | "host-lock";
 
-export type { RoutineEngine, RoutineTicks };
-
-/**
- * Each CLI command that opens an engine: the words its lock names it by,
- * and whether it runs until someone stops it with Ctrl C, as a watch does,
- * or ends by itself, as a run does.
- */
-const engineHolders = {
-  run: { command: "run", runsUntilStopped: false },
-  runsSend: { command: "runs send", runsUntilStopped: false },
-  routinesWatch: { command: "routines watch", runsUntilStopped: true },
-  serve: { command: "serve", runsUntilStopped: true },
-} as const;
-
-/** A CLI command that opens an engine, such as `routinesWatch` for `halonic routines watch`. */
-export type EngineHolder = keyof typeof engineHolders;
-
-/** One entry of {@link engineHolders}. */
-type EngineHolderEntry = (typeof engineHolders)[EngineHolder];
+export type { EngineHolder, RoutineEngine, RoutineTicks };
 
 /** What {@link openLocalEngine} builds the engine from. */
 export interface LocalEngineInput {
@@ -144,6 +124,12 @@ export interface LocalEngineInput {
    * as for `halonic run`.
    */
   readonly versions?: WorkspaceVersions;
+  /**
+   * For `halonic run` and `halonic runs send`: the agents' files of the
+   * version each run read, which the harness checks "On this computer"
+   * against. Left out, they come from `versions`, else from disk.
+   */
+  readonly runFiles?: RunFiles;
   /** The workspace folder, as `openWorkspaceDir` found it. */
   readonly workspaceRoot: string;
   /** The CLI's remembered secrets, never a raw adapter (`apps/cli/AGENTS.md`). */
@@ -308,6 +294,7 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
       environment,
       workspace: () => input.versions?.latest() ?? input.workspace,
       ...(input.versions === undefined ? {} : { versions: input.versions }),
+      ...(input.runFiles === undefined ? {} : { agentFiles: input.runFiles }),
       store: workspaceStore(location, location, profile),
       digest: webCryptoDigest,
       clock: input.clock ?? systemClock,
@@ -457,43 +444,4 @@ function engineOn(
 async function openRunsOf(runs: RunStore): Promise<ReadonlySet<string>> {
   const open = await runs.list({ status: ["running", "waiting"] });
   return new Set(open.map((run) => run.id));
-}
-
-/**
- * Takes the engine's lock, or refuses with a `conflict` the CLI can show:
- * the lock's own error names a path in the profile, so it is only the cause.
- * A lock a CLI command holds is named by that command, and one that runs
- * until it is stopped says how to stop it, since waiting would never end
- * (HAL-14299).
- */
-async function holdEngineLock(
-  file: string,
-  options: Parameters<typeof holdLock>[1],
-): Promise<HeldLock> {
-  try {
-    return await holdLock(file, options);
-  } catch (error) {
-    if (!(error instanceof LockHeldError)) {
-      throw error;
-    }
-    const record = error.holder;
-    const holder = engineHolderOf(record?.holder);
-    const message =
-      record === null || holder === undefined
-        ? workspaceMessages.engineOpen(record?.pid)
-        : workspaceMessages.engineOpenBy(holder.command, record.pid);
-    const fix =
-      holder?.runsUntilStopped === true
-        ? workspaceMessages.engineOpenStopFix()
-        : workspaceMessages.engineOpenFix();
-    throw new KindedError("conflict", plainText(message.phrase), {
-      fix: plainText(fix.phrase),
-      cause: error,
-    });
-  }
-}
-
-/** The command a lock names, when it is one of the CLI's; any other text names none. */
-function engineHolderOf(text: string | undefined): EngineHolderEntry | undefined {
-  return Object.values(engineHolders).find((each) => each.command === text);
 }

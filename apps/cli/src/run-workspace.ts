@@ -24,6 +24,7 @@ import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { sandboxMessages } from "./messages/sandbox.ts";
 import { versionSheetHosts } from "./sheet-hosts.ts";
+import { type LoadedVersion, loadVersion, versionWithTexts } from "./version-files.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 
 /** What a run's workspace needs of version control: which version is live, and its files. */
@@ -46,7 +47,9 @@ export interface OpenedHistory {
  *   file differs from the live version and the run won't use it
  *   (HAL-6007): changed, added, removed or renamed since the last commit,
  *   staged or not. Other files, such as a connector's script, aren't
- *   counted: a live run's programs read them as saved;
+ *   counted: a live run's programs read them as saved. `fileTexts` are
+ *   its agents' and skills' files as the load read them, which the
+ *   "On this computer" choice is checked against;
  * - `nothing-live`: the workspace has history but no version yet, so there
  *   is nothing to run.
  */
@@ -56,8 +59,14 @@ export type RunWorkspace =
       readonly workspace: LoadedWorkspace;
       readonly version: RunVersion;
       readonly changesNotLive: boolean;
+      readonly fileTexts: ReadonlyMap<string, string>;
     }
   | { readonly found: "nothing-live" };
+
+/** The workspace `halonic runs send` checks on, the version it is, and its agents' and skills' files. */
+export interface SendWorkspace extends LoadedVersion {
+  readonly version: RunVersion;
+}
 
 /**
  * A run refused because the workspace's history can't be opened, such as
@@ -123,9 +132,10 @@ export async function loadRunWorkspace(
     // what `validate` does and what the run's connectors would leave out.
     const sheetHosts = await versionSheetHosts(picked.source, profile);
     const workspace = await loadWorkspace(picked.source, { sheetHosts });
+    const { fileTexts } = await versionWithTexts(workspace, picked.source);
     const changesNotLive =
       vcs !== null && picked.reads === "live-version" && (await definitionsChanged(vcs));
-    return { found: "loaded", workspace, version: runVersionOf(picked), changesNotLive };
+    return { found: "loaded", workspace, version: runVersionOf(picked), changesNotLive, fileTexts };
   } finally {
     await history?.close();
   }
@@ -155,9 +165,13 @@ export function savedWorkspaceOf(
 export async function loadSendWorkspace(
   dir: OpenWorkspaceDir,
   openHistory: OpenWorkspaceHistory = openGitHistory,
-): Promise<LoadedWorkspace> {
+): Promise<SendWorkspace> {
   const run = await loadRunWorkspace(dir, openHistory, sandboxMessages.nothingSent());
-  return run.found === "loaded" ? run.workspace : await loadWorkspace(dir.store);
+  if (run.found === "loaded") {
+    const { workspace, version, fileTexts } = run;
+    return { workspace, version, fileTexts };
+  }
+  return { ...(await loadVersion(dir.store)), version: { reads: "saved-files" } };
 }
 
 /** Whether a definition file has changes that aren't committed, so aren't in the live version. */

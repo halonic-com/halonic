@@ -274,7 +274,7 @@ verifies("cli.run-live-version", () => {
 
   describe("runs send", () => {
     const nameOf = async () =>
-      filesOf(await loadSendWorkspace(dirOf(), history), "workflow").find(
+      filesOf((await loadSendWorkspace(dirOf(), history)).workspace, "workflow").find(
         (file) => file.value.id === "support-reply",
       )?.value.name;
 

@@ -43,6 +43,8 @@ import type { RunClock } from "../../run-times.ts";
 import {
   loadRunWorkspace,
   type OpenWorkspaceHistory,
+  openGitHistory,
+  type RunWorkspace,
   savedWorkspaceOf,
 } from "../../run-workspace.ts";
 import {
@@ -52,6 +54,7 @@ import {
   type SandboxGateRun,
   SandboxRefusedError,
 } from "../../sandbox-gate.ts";
+import { CommandRunFiles } from "../../version-files.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import {
   checkEngineRuns,
@@ -123,7 +126,7 @@ export async function followWorkflow(
   const typed = oneWorkflow(input);
   const dir = await openWorkspaceDir(input, context);
   const typedDir = givenDir(input, dir);
-  const { workspace, version, changesNotLive } = await liveWorkspace(dir, setup);
+  const { workspace, version, changesNotLive, fileTexts } = await liveWorkspace(dir, setup);
   const workspaceName = printable(workspaceNameOf(workspace, dir));
   // Before the lookup: a file with an error is left out, so its workflow
   // would look missing (HAL-12978); a workflow not found counts every error.
@@ -141,6 +144,11 @@ export async function followWorkflow(
     holder: "run" as const,
     dir,
     workspace,
+    runFiles: new CommandRunFiles(
+      dir,
+      { version, loaded: { workspace, fileTexts } },
+      setup.history ?? openGitHistory,
+    ),
     runs: [workflow],
     ending: runMessages.nothingRan(),
   };
@@ -441,11 +449,7 @@ function noWorkflowFix(workspace: LoadedWorkspace, typed: string, shown: ShownWo
 async function liveWorkspace(
   dir: OpenWorkspaceDir,
   setup: Pick<RunSetup, "history" | "profile">,
-): Promise<{
-  readonly workspace: LoadedWorkspace;
-  readonly version: RunVersion;
-  readonly changesNotLive: boolean;
-}> {
+): Promise<Extract<RunWorkspace, { found: "loaded" }>> {
   const run = await loadRunWorkspace(dir, setup.history, runMessages.nothingRan(), setup.profile);
   if (run.found === "nothing-live") {
     throw new OwnLineError("conflict", runMessages.nothingLive(), runMessages.nothingLiveFix());

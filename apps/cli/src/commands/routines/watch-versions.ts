@@ -9,15 +9,12 @@
 import { LiveRoutines, type LiveVersion, liveVersionOf, runSourceFor } from "@halonicjs/app";
 import type { RunDefinitions } from "@halonicjs/engine";
 import type { RunVersion } from "@halonicjs/events";
-import type { DefinitionSource, TrustGrant } from "@halonicjs/ports";
-import { encodeUtf8 } from "@halonicjs/std";
+import type { TrustGrant } from "@halonicjs/ports";
 import {
   filesOf,
   type LoadedFileOf,
   type LoadedWorkspace,
-  loadWorkspace,
   runDefinitionsOf,
-  skillFileOf,
   VersionSource,
 } from "@halonicjs/workspace";
 import { approvedIntegrations } from "../../approved-integrations.ts";
@@ -32,6 +29,7 @@ import {
   type OpenWorkspaceHistory,
   openGitHistory,
 } from "../../run-workspace.ts";
+import { agentFileIn, type LoadedVersion, loadVersion, skillTextIn } from "../../version-files.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
 import type { WorkspaceVersions } from "../../workspace-versions.ts";
 
@@ -277,16 +275,9 @@ export class WatchedVersions implements WorkspaceVersions {
     hubId: string,
     agentId: string,
   ): Promise<Uint8Array> {
-    const { workspace, fileTexts } = await this.#loadedForFiles(run);
-    const file = filesOf(workspace, "agent").find(
-      (each) => each.hub === hubId && each.value.id === agentId,
+    return agentFileIn(await this.#loadedForFiles(run), hubId, agentId, (file) =>
+      this.#checks.harnessAgent?.(file),
     );
-    if (file !== undefined) this.#checks.harnessAgent?.(file);
-    const text = file === undefined ? undefined : fileTexts.get(file.path);
-    if (text === undefined) {
-      throw new Error(plainText(routinesMessages.noAgentFileInVersion(hubId, agentId).phrase));
-    }
-    return encodeUtf8(text);
   }
 
   /**
@@ -300,13 +291,7 @@ export class WatchedVersions implements WorkspaceVersions {
     hubId: string,
     skillId: string,
   ): Promise<string> {
-    const { workspace, fileTexts } = await this.#loadedForFiles(run);
-    const file = skillFileOf(workspace, hubId, skillId);
-    const text = file === undefined ? undefined : fileTexts.get(file.path);
-    if (text === undefined) {
-      throw new Error(plainText(routinesMessages.noSkillInVersion(hubId, skillId).phrase));
-    }
-    return text;
+    return skillTextIn(await this.#loadedForFiles(run), hubId, skillId);
   }
 
   /** The load a run's files are read from: the one kept for it, else its recorded version, loaded now. */
@@ -358,27 +343,6 @@ export class WatchedVersions implements WorkspaceVersions {
     }
     return this.#atCommit;
   }
-}
-
-/**
- * A version's workspace, with its agents' and skills' files as the load read
- * them. The saved files can change under a run, so the texts are taken with
- * the load and not read again from the source later.
- */
-interface LoadedVersion {
-  readonly workspace: LoadedWorkspace;
-  /** The text of each agent and skill file, by its workspace-relative path. */
-  readonly fileTexts: ReadonlyMap<string, string>;
-}
-
-async function loadVersion(source: DefinitionSource): Promise<LoadedVersion> {
-  const workspace = await loadWorkspace(source);
-  const fileTexts = new Map<string, string>();
-  for (const file of [...filesOf(workspace, "agent"), ...filesOf(workspace, "skill")]) {
-    const text = await source.read(file.path);
-    if (text !== null) fileTexts.set(file.path, text);
-  }
-  return { workspace, fileTexts };
 }
 
 /**
