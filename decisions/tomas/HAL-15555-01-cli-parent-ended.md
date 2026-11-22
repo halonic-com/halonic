@@ -3,6 +3,7 @@
 - Task: HAL-15555
 - Approval: HAL-15555; Liam reviews this pull request and signs this note as the CTO (a team decision under HAL-2282: the CLI takes the run page's approved words from HAL-12411, UX check R9 on HAL-12390)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Si3kREVLSgeSTnK7OIxbrdpOKhMj7A/tXl3lhrS8UeOViVsKAkxwzDGaVku7rZeiiigklINRYlAb/OGwptsLAA==
 
 ## What changes
 
