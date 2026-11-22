@@ -142,15 +142,45 @@ verifies("workflows.start.start-run", () => {
   it("keeps Try again, with no Review, for a denied that isn't about trust", async () => {
     const askTrust = vi.fn(async () => "trusted" as const);
     const page = await open(async () => {
-      throw new KindedError("denied", "Acme isn't an opened folder.");
+      throw new KindedError("denied", "The computer refused to start the run.");
     }, askTrust);
 
     await click(runButton(page));
     await click(buttonNamed(page, "Start run"));
 
-    expect(page.textContent).toContain("Couldn't start the run: Acme isn't an opened folder.");
+    expect(page.textContent).toContain(
+      "Couldn't start the run: the computer refused to start the run.",
+    );
     expect(buttonNamed(page, "Try again")).toBeDefined();
     expect(buttonNamed(page, "Review")).toBeUndefined();
     expect(askTrust).not.toHaveBeenCalled();
   });
+
+  it("says a folder that isn't open as a failure it can't explain, with Copy details only (C613 row 33)", async () => {
+    const askTrust = vi.fn(async () => "trusted" as const);
+    const page = await open(async () => {
+      throw folderNotOpen();
+    }, askTrust);
+
+    await click(runButton(page));
+    await click(buttonNamed(page, "Start run"));
+
+    expect(page.textContent).toContain(
+      "Couldn't start the run: Halonic ran into a problem it can't explain yet.",
+    );
+    expect(page.textContent).not.toContain("/workspaces/acme");
+    expect(buttonNamed(page, "Copy details")).toBeDefined();
+    expect(buttonNamed(page, "Try again")).toBeUndefined();
+    expect(buttonNamed(page, "Review")).toBeUndefined();
+    expect(askTrust).not.toHaveBeenCalled();
+  });
 });
+
+/** The desktop shell's refusal of a folder that isn't open, as the Tauri run store passes it on. */
+function folderNotOpen(): KindedError {
+  return new KindedError(
+    "denied",
+    "The run store refused the call: /workspaces/acme is not an opened folder",
+    { cause: { kind: "folder_not_open", message: "/workspaces/acme is not an opened folder" } },
+  );
+}

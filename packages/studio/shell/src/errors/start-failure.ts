@@ -1,7 +1,8 @@
 import { errorKindOf } from "@halonicjs/std";
 import { EngineNotAnswering } from "../engine/engine-not-answering.ts";
+import { isFolderNotOpen } from "../engine/folder-not-open.ts";
 import { rawDetailsOf } from "./copy-details-words.ts";
-import { errorReasonFor } from "./error-message.ts";
+import { errorReasonFor, unexplainedReason } from "./error-message.ts";
 import { lowerAfterColon } from "./failure-line.ts";
 
 /**
@@ -27,7 +28,9 @@ export interface StartFailure {
  *
  * - An engine that can't be reached says so in the words for where Studio runs, with **Try again**.
  * - A failure Halonic can't explain (`internal`, or no reason) says "Halonic ran into a problem it
- *   can't explain yet." with **Copy details** only: starting again the same way won't help.
+ *   can't explain yet." with **Copy details** only: starting again the same way won't help. So does
+ *   the shell's refusal of a folder that isn't open ({@link isFolderNotOpen}), whose own words
+ *   hold a path and go only to **Copy details**.
  * - A refusal with a next step shows the step, and its command when it has one, without **Try
  *   again** (D7). A `conflict` keeps **Try again** next to its step: the other Halonic may have
  *   finished by the time the person reads it (UX check S1, design check C471-6).
@@ -44,9 +47,9 @@ export function startFailureOf(error: unknown, notAnswering: string): StartFailu
   if (error instanceof EngineNotAnswering) {
     return { ...noStep, reason: lowerAfterColon(notAnswering), tryAgain: true, copyDetails: false };
   }
-  const reason = errorReasonFor(error, "");
+  const reason = isFolderNotOpen(error) ? "" : errorReasonFor(error, "");
   if (reason === "") {
-    return { ...noStep, reason: errorReasonFor(error), tryAgain: false, copyDetails: true };
+    return { ...noStep, reason: unexplainedReason, tryAgain: false, copyDetails: true };
   }
   const fix = fixOf(error);
   return {

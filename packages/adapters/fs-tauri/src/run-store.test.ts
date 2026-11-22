@@ -200,6 +200,7 @@ verifies("fs-tauri.run-store", () => {
           new TauriRunStore(shell, acme).append("r1", 0, [started("r1")]),
         );
         expect(errorKindOf(error), refusal).toBe(kind);
+        expect((error as Error).cause, refusal).toMatchObject({ kind: refusal });
       }
     });
 

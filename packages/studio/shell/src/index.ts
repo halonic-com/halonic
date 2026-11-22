@@ -89,6 +89,7 @@ export {
   engineWordsOf,
   type StudioHost,
 } from "./engine/engine-words.ts";
+export { isFolderNotOpen } from "./engine/folder-not-open.ts";
 export {
   isUntrustedRefusal,
   WorkspaceUntrusted,
@@ -110,6 +111,7 @@ export {
   isUnexplained,
   itemGoneWords,
   type RulePlace,
+  unexplainedReason,
 } from "./errors/error-message.ts";
 export { failureLine, lowerAfterColon, reasonAfterColon } from "./errors/failure-line.ts";
 export {
