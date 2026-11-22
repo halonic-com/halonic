@@ -2712,6 +2712,12 @@ jobs:
       # starts without a sandbox; it leaves none behind.
       - name: A reinstall as a standard user takes back what a removal as administrator kept
         run: pwsh apps/studio/src-tauri/windows/test-take-back.ps1 -Setup (Resolve-Path "dist/Halonic-*-windows-x64-setup.exe")
+      # A signed release's installer starts only a helper signed by its
+      # publisher (HAL-16342), which CI's unsigned build never compiles. This
+      # packs the build again with a publisher and the helper unsigned
+      # (HAL-16540). Last: it leaves the sandbox set up.
+      - name: An installer with a publisher starts no unsigned helper
+        run: pwsh apps/studio/src-tauri/windows/test-unsigned-helper.ps1 -InstallFolder (Join-Path $env:RUNNER_TEMP 'Halonic-unsigned-helper') -OutFolder installer-uninstall
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
