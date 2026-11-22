@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import type { RunEventBody, ToolFailureCause, ToolOutcome } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
 import { afterEach, expect, it } from "vitest";
 import { render, unmountAll } from "../test-support/render.tsx";
 import type { StepEntry } from "./every-step-model.ts";
@@ -43,8 +44,14 @@ const connectorStarted: RunEventBody = {
   timeoutMs: 60_000,
 };
 
-/** The text under each tool call of Draft's panel, by the tool's name. */
-function lines(events: readonly (readonly [number, RunEventBody])[]): Record<string, string> {
+/**
+ * The text under each tool call of Draft's panel, by the tool's name. With `openPlugin`, the panel
+ * can open a plugin's page, as in a window that opens tabs.
+ */
+function lines(
+  events: readonly (readonly [number, RunEventBody])[],
+  openPlugin?: (pluginId: string) => void,
+): Record<string, string> {
   const log = logOf("run_a_7k2m9p", [[0, entered("draft")], ...events]);
   const root = render(
     <StepPanel
@@ -52,6 +59,7 @@ function lines(events: readonly (readonly [number, RunEventBody])[]): Record<str
       log={log}
       workflowName={(id) => id}
       openRun={undefined}
+      openPlugin={openPlugin}
       onClose={() => {}}
     />,
   );
@@ -171,7 +179,7 @@ verifies("runs.run-view.step-failed-call", () => {
     );
   });
 
-  it("shows the plugin in italics, as the connector, and offers no button", () => {
+  it("shows the plugin in italics, as the connector, and offers no button where tabs can't open", () => {
     lines([
       [0, connectorStarted],
       [0, called("create_note")],
@@ -191,6 +199,52 @@ verifies("runs.run-view.step-failed-call", () => {
       "files",
     ]);
     expect(line?.querySelector("code, button")).toBeNull();
+  });
+
+  it("makes the plugin's name a link to its page, with the same words and no other button", () => {
+    const opened: string[] = [];
+    const untrusted = (why: "plugin-not-trusted" | "plugin-changed", tool: string) => [
+      [0, called(tool)] as const,
+      [0, result(tool, "error", { code: "connector-not-started", why, name: "files" })] as const,
+    ];
+    const shown = lines(
+      [
+        [0, connectorStarted],
+        ...untrusted("plugin-not-trusted", "create_note"),
+        ...untrusted("plugin-changed", "read_note"),
+      ],
+      (pluginId) => opened.push(pluginId),
+    );
+
+    expect(shown["create_note"]).toBe(
+      "✕ Didn't work: the connector notes-mcp didn't start: its plugin files isn't trusted yet.",
+    );
+    const links = [...document.querySelectorAll("aside li p button")];
+    expect(links.map((link) => link.textContent)).toEqual(["files", "files"]);
+    expect(links[0]?.querySelector("em")?.textContent).toBe("files");
+    act(() => {
+      for (const link of links) (link as HTMLElement).click();
+    });
+    expect(opened).toEqual(["files", "files"]);
+  });
+
+  it("links neither a program nor a secret, which have no page", () => {
+    lines(
+      [
+        [0, called("create_note")],
+        [
+          0,
+          result("create_note", "error", {
+            code: "connector-not-started",
+            why: "program-missing",
+            name: "acme-notes-mcp",
+          }),
+        ],
+      ],
+      () => {},
+    );
+
+    expect(document.querySelector("aside li p button")).toBeNull();
   });
 
   it("says only that the connector didn't start for a plugin cause without a name", () => {

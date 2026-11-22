@@ -20,6 +20,7 @@ import { EveryStep, useRunLog } from "./every-step.tsx";
 import { entryIdOfStep, everyStep, type StepEntry } from "./every-step-model.ts";
 import { useHasVersions } from "./has-versions.ts";
 import { openModelsOf } from "./open-models.ts";
+import { openPluginOf } from "./open-plugin.ts";
 import { bannerOffersRunAgain, PageBanner } from "./page-banner.tsx";
 import { pageContext } from "./page-context.ts";
 import { AgentSays, Receipt } from "./receipt.tsx";
@@ -53,6 +54,7 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
   const list = context.services.get(RunsListService);
   const versionHistory = context.services.find(VersionHistoryHostService);
   const openModels = openModelsOf(context);
+  const openPlugin = openPluginOf(context);
   return (
     <RunView
       list={list}
@@ -65,6 +67,7 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
       announce={(line) => context.announcer.announce(line)}
       announceState={(key, text) => context.announcer.announceState(key, text)}
       {...(openModels === undefined ? {} : { openModels })}
+      {...(openPlugin === undefined ? {} : { openPlugin })}
       {...(context.runCommand === undefined
         ? {}
         : { openBudget: () => void context.runCommand?.(openBudgetCommand) })}
@@ -124,6 +127,8 @@ export interface RunViewProps {
   readonly reviewInInbox?: () => void;
   /** Opens another run's page, for a child run; without it the button isn't there. */
   readonly openRun?: (runId: string) => void;
+  /** Opens a plugin's own page, for the plugin a step's connector didn't start for; without it the plugin's name isn't a link. */
+  readonly openPlugin?: (pluginId: string) => void;
   /**
    * Opens Check this computer, for **Something wrong?** in the waiting line after 10 seconds;
    * without it the line leaves it out. Nothing passes it until the dialog lands (HAL-13411).
@@ -172,6 +177,7 @@ export function RunView({
   goToRuns,
   reviewInInbox,
   openRun,
+  openPlugin,
   checkThisComputer,
   now = () => new Date(),
   engine = engineWordsOf({}),
@@ -290,6 +296,7 @@ export function RunView({
             log={log}
             workflowName={(workflowId) => workflowName(list, run, workflowId)}
             openRun={openRun}
+            openPlugin={openPlugin}
             phone={phone}
             live={run.summary.endedAt === null}
             onClose={() => setOpenEntry(undefined)}
