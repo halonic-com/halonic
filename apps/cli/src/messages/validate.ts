@@ -1,5 +1,6 @@
 import { counted } from "./counts.ts";
 import { defineMessages } from "./define.ts";
+import { providerFileDocs } from "./docs.ts";
 import { bold, dim, type Phrase, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
@@ -45,6 +46,11 @@ export const validateMessages = defineMessages("validate", {
   /** Above the summary when more than 20 problems were found; `dir` is the user's own `--dir`. */
   hidden: (shown: number, total: number, dir?: string) =>
     phrase`Showing the first ${shown} of ${total} problems. Run ${suggestedCommand("validate", dir, "--all")} to see them all.`,
+  /**
+   * Above the summary when a shown problem says to add a provider file: what goes in one, since
+   * no command writes it and the workspace may hold only the test model's (C638, HAL-15830).
+   */
+  providerFile: () => phrase`What goes in a provider file, with an example: ${providerFileDocs}`,
   /** Where a problem is in its file, "12:10", dimmed in front of its mark. */
   where: (line: number, column: number) => [dim(`${line}:${column}`)],
   /** A problem's code, last on its line and dimmed: "(unknown-alias)". */

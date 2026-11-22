@@ -6,7 +6,7 @@ export {
   timesInWords,
 } from "./counts.ts";
 export { defineMessages, type Entry, type Message, type Messages } from "./define.ts";
-export { docsBase, sandboxDocs, wsl2FolderDocs } from "./docs.ts";
+export { docsBase, providerFileDocs, sandboxDocs, wsl2FolderDocs } from "./docs.ts";
 export {
   type DataUse,
   doctorMessages,

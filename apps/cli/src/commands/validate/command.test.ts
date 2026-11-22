@@ -64,6 +64,27 @@ verifies("cli.commands.validate.check-workspace", () => {
       expect(strict.io.stdout.at(-1)).toBe("✕ 1 warning in 1 file. Checked 4 files.");
     });
 
+    // Flow check C638 #4 (HAL-15830): no guide or command showed what a provider file holds.
+    it("points at the provider file's example when a problem asks for a provider file", async () => {
+      writeFiles(acme, {
+        "models.yaml": "aliases:\n  smart:\n    provider: cloud\n    model: large\n",
+      });
+
+      const { code, io } = await validateIn(acme);
+      expect(code).toBe(exitCode.failed);
+      expect(io.stdout.slice(-2)).toEqual([
+        "What goes in a provider file, with an example: https://docs.halonic.dev/reference/provider/#example",
+        "✕ 1 error in 1 file. Checked 3 files.",
+      ]);
+
+      writeFiles(acme, {
+        "models.yaml": "aliases:\n  smart:\n    provider: mok\n    model: large\n",
+      });
+      const near = await validateIn(acme);
+      expect(near.io.stdout.join("\n")).toContain("Did you mean mock?");
+      expect(near.io.stdout.join("\n")).not.toContain("provider file");
+    });
+
     it("warns when an agent without a model would call a default alias no file has", async () => {
       writeFiles(acme, {
         "hubs/notes/hub.yaml": "id: notes\nname: Notes\n",
