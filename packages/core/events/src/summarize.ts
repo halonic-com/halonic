@@ -1,6 +1,6 @@
 import { addUsage } from "./add-usage.ts";
 import { followKeyOriginQuestions } from "./key-origin-questions.ts";
-import type { Usage } from "./run-basics.ts";
+import { type ChargedCall, modelCallCharge } from "./model-call-charge.ts";
 import type { RunEvent } from "./run-event.ts";
 import type { PendingApproval, RunSummary } from "./run-summary.ts";
 import { upgradeEvent } from "./upgrade.ts";
@@ -177,15 +177,13 @@ function removeApproval(approvals: PendingApproval[], callId: string): void {
  * person's subscription paid for is counted on its own, never priced. An
  * answer from the cache made no model call, so it adds nothing at all.
  */
-function addModelCall(
-  summary: RunSummary,
-  call: { usage: Usage; cost?: number; paidBy?: "subscription"; cached?: boolean },
-): void {
-  if (call.cached === true) return;
-  summary.usage = addUsage(summary.usage, call.usage);
-  if (call.paidBy === "subscription") summary.subscriptionCalls++;
-  else if (call.cost === undefined) summary.unpricedCalls++;
-  else summary.cost += call.cost;
+function addModelCall(summary: RunSummary, call: ChargedCall): void {
+  const charge = modelCallCharge(call);
+  if (charge.counted === "cached") return;
+  summary.usage = addUsage(summary.usage, charge.usage);
+  if (charge.counted === "subscription") summary.subscriptionCalls++;
+  else if (charge.counted === "unpriced") summary.unpricedCalls++;
+  else summary.cost += charge.cost;
 }
 
 /**

@@ -119,6 +119,27 @@ export {
 } from "./knowledge/knowledge-first.ts";
 export { defaultMaxRounds, LocalExecutor } from "./local-executor.ts";
 export type { LocalExecutorOptions, ModelScope } from "./local-executor-options.ts";
+export type {
+  Meter,
+  MeterAnswer,
+  MeterCheckKind,
+  MeterMaximum,
+  MeterPrincipal,
+  MeterUsage,
+  ModelCallUsage,
+  PlanStop,
+  Reservation,
+  ReserveAnswer,
+  RunEndUsage,
+  StepTimes,
+} from "./meter/meter.ts";
+export {
+  type LoggedModelResponse,
+  modelCallUsageOf,
+  runEndUsageOf,
+  stepTimesOf,
+} from "./meter/metered-usage.ts";
+export { NoMeter } from "./meter/no-meter.ts";
 export type { AbortOnStop } from "./run/abort-on-stop.ts";
 export {
   type EndedLostRuns,
