@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`
 
 ## PR watcher
 
@@ -76,7 +76,9 @@ plugin API. It asks for the fewest capabilities the watcher and the tools
 need: jobs, reading companies, agents, tasks and comments, creating
 comments, wake-ups, `issues.update`, outbound HTTP, reading a secret,
 registering agent tools, writing metrics and keeping plugin state (the
-GitHub snapshot). No webhooks, UI, files or processes.
+GitHub snapshot). The board check adds events, the two documents, reading
+approvals, a task's subtree, its blockers and its pending cards (see Board
+check below). No webhooks, UI, files or processes.
 
 - **Status changes:** the manifest can't narrow `issues.update`, so
   `host.ts` is the only file that changes a task's status, and its
@@ -143,6 +145,51 @@ token as the watcher, and give up after 25 s.
   allowed. It reads the last snapshot from plugin state and sends no
   request; a snapshot older than 30 minutes is marked stale. Moves to the
   `merge-queue` plugin in phase 2.
+
+## Board check
+
+The Board Checker's checks as the `board-check` job, without a model
+(phase 1b, HAL-16194; the Board Checker addendum on HAL-15997). This first
+part spots board asks; failed runs, the tasks waiting on the board, team
+load, approvals and merge speed follow.
+
+**Board asks.** An agent's comment from the last 12 minutes that matches
+the Board Checker's pattern (`sv.cjs`: "for the board", "board's yes",
+"needs the board", "card is up", …) is an ask. Not an ask: the board's own
+comments, the plugin's (no agent author), the Board Checker's answers,
+Paperclip's fast-response receipts, anything signed "Board check (plugin)"
+and the Merger's requests on HAL-14388. Each new comment is looked at at
+once (`issue.comment.created`); the job looks again every 10 minutes at the
+open tasks active in the last 12 minutes, since events can be lost or come
+twice. New asks update the `board-asks` document on the Board Checker's
+task (task, comment id, author, time, link; never the comment's text) and
+wake the Board Checker once per batch. Asks are remembered by comment id
+for 7 days in plugin state, so a repeated event wakes nobody.
+
+**What it may write** (Liam's conditions, HAL-16192). Every write goes
+through `src/board-check/writes.ts`, which only knows three calls:
+
+- a comment on a task the settings name, ending with "Board check (plugin)",
+  which is never a board decision;
+- the `board-waiting` and `board-asks` documents on the Board Checker's task;
+- a wake-up through Paperclip's wake call (`issues.wakeup`), never a
+  reassignment or a status change.
+
+A pass that plans anything else, or more than 5 wake-ups, 5 comments or 2
+document updates, writes nothing and saves the metric
+`board_check.gate_refused` (tag `reason`), which the HAL-16006 alert
+watches. Writes, log lines, metrics and saved state carry ids, counts,
+times and error codes only, never a comment's or an error's text.
+
+**Settings** (board-only, like all plugin settings): `boardCheckerTask`,
+the Board Checker's task id (empty: the board check doesn't run), and
+`boardCheckWritesForVersion`, the no-writes switch. The board check writes
+only while it equals the running plugin version, read again before each
+write; otherwise it logs each write by kind, target and size. A new install
+or an upgrade therefore starts with writes off.
+
+**Metrics** (tags `companyId`, `trigger`: `event` or `job`):
+`board_check.asks_new`, `.writes`, `.writes_logged`.
 
 ## Metrics
 

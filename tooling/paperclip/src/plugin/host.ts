@@ -43,7 +43,11 @@ function isoOrNull(value: Date | string | null | undefined): string | null {
 
 type ListedIssue = Awaited<ReturnType<HostApi["issues"]["list"]>>[number];
 
-async function everyIssue(host: HostApi, companyId: string): Promise<ListedIssue[]> {
+/** Every task whose work isn't finished, page by page. */
+export async function everyIssue(
+  host: { readonly issues: Pick<HostApi["issues"], "list"> },
+  companyId: string,
+): Promise<ListedIssue[]> {
   const issues: ListedIssue[] = [];
   for (const status of openStatuses) {
     for (let offset = 0; ; offset += pageSize) {

@@ -65,23 +65,31 @@ export function readSettings(config: Readonly<Record<string, unknown>>): Watcher
 }
 
 /**
- * Reads a company's settings, or undefined when the board saved none for it.
+ * Reads a company's saved settings, or undefined when the board saved none for it.
  * A scheduled job runs outside any company, and the host then lets the
  * plugin read only the companies it has saved settings for; any other
  * company is refused with `INVOCATION_SCOPE_DENIED`.
  */
-async function companySettings(
-  ctx: JobApi,
+export async function companyConfig(
+  config: PluginConfigClient,
   companyId: string,
-): Promise<WatcherSettings | undefined> {
+): Promise<Record<string, unknown> | undefined> {
   try {
-    return readSettings(await ctx.config.get(companyId));
+    return await config.get(companyId);
   } catch (error) {
     if ((error as { code?: unknown }).code === PLUGIN_RPC_ERROR_CODES.INVOCATION_SCOPE_DENIED) {
       return undefined;
     }
     throw error;
   }
+}
+
+async function companySettings(
+  ctx: JobApi,
+  companyId: string,
+): Promise<WatcherSettings | undefined> {
+  const config = await companyConfig(ctx.config, companyId);
+  return config === undefined ? undefined : readSettings(config);
 }
 
 /** What one pass for one company counted. */
