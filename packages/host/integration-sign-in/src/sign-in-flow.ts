@@ -452,9 +452,15 @@ function scopeDifference(
 }
 
 function outcomeText(outcome: SignInOutcome): string {
-  return outcome.kind === "signedIn"
-    ? "You're signed in. You can close this tab and go back to Halonic."
-    : "The sign-in didn't finish. Go back to Halonic to see why and to try again.";
+  switch (outcome.kind) {
+    case "signedIn":
+      return "You're signed in. You can close this tab and go back to Halonic.";
+    // The person pressed Cancel or Deny on the provider's page: they know why.
+    case "cancelled":
+      return "You cancelled the sign-in. You can close this tab and go back to Halonic.";
+    default:
+      return "The sign-in didn't finish. Go back to Halonic to see why and to try again.";
+  }
 }
 
 /** A fixed page: it never repeats the request, so a link can't put text on it. */
