@@ -150,10 +150,10 @@ export function decideCommand(runId: string): string {
 /**
  * Under Needs you in a window that lists no proposals, a served Studio or a phone (HAL-15986):
  * the line around the command, which the page shows in code style. A phone has no desktop app and
- * maybe no terminal, so the line says what to do on the computer (HAL-16100).
+ * maybe no terminal, so the line says the terminal is on your computer (C671 23, HAL-16104).
  */
 export const proposalsElsewhere = {
-  before: "To see changes your runs propose, open Halonic on your computer or run",
+  before: "Changes your runs propose show only in the desktop app, or with",
   command: "halonic proposals",
-  after: "in a terminal there.",
+  after: "in a terminal on your computer.",
 };
