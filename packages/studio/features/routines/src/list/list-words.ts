@@ -29,6 +29,11 @@ export const listWords = {
    * live summary doesn't read as a lost change (HAL-15485).
    */
   changesNotLive: pageWords.changesNotLive,
+  /**
+   * After the row's summary in place of the next time, while a routine that is on was never live,
+   * since the scheduler doesn't start it; the CLI's Next column says the same (HAL-15667).
+   */
+  notLiveYet: "Not live yet",
 } as const;
 
 /** The words of a routine's ⋮ menu and of deleting it: no dialog, and Undo; there is no trash, saving deletes the file (flow-routines 2.4, microcopy 12.3). */

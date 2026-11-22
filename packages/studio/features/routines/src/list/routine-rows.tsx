@@ -41,17 +41,28 @@ function hasChip(listing: RoutineListing): boolean {
   return cantStart || !enabled || pausedUntilTrusted || needsSignIn || needsYou > 0;
 }
 
-/** Whether the row shows when the routine next starts: not when it is off or can't start. */
-function showsNextRun(listing: RoutineListing): listing is RoutineListing & { nextRun: string } {
-  const canStart = cantStartReason(listing) === undefined;
-  return listing.enabled && canStart && listing.nextRun !== undefined;
+/** Whether the routine is on but was never live, so the scheduler doesn't start it (HAL-15667). */
+function notLiveYet(listing: RoutineListing): boolean {
+  return listing.enabled && listing.neverLive === true;
 }
 
 /**
- * The routine's line under its name: the summary, which follows the live version, then "Changes not
- * live yet" while the saved changes aren't live, as the routine's page says it under its summary.
+ * Whether the row shows when the routine next starts: not when it is off, can't start or was never
+ * live.
+ */
+function showsNextRun(listing: RoutineListing): listing is RoutineListing & { nextRun: string } {
+  const canStart = cantStartReason(listing) === undefined;
+  return listing.enabled && canStart && !notLiveYet(listing) && listing.nextRun !== undefined;
+}
+
+/**
+ * The routine's line under its name: the summary, which follows the live version, then one live
+ * status, as the routine's page says it: "Not live yet" for a routine that is on and was never live,
+ * else "Changes not live yet" while the saved changes aren't live. A routine never live has no live
+ * version for its changes to differ from.
  */
 function summaryLine(listing: RoutineListing): string {
+  if (notLiveYet(listing)) return `${listing.summary} · ${listWords.notLiveYet}`;
   return listing.changesNotLive === true
     ? `${listing.summary} · ${listWords.changesNotLive}`
     : listing.summary;
@@ -59,10 +70,12 @@ function summaryLine(listing: RoutineListing): string {
 
 /**
  * The row's time: when its newest due time was refused, that time in place of the next one, which
- * would hide that the last start failed (C552-5); else when it next starts.
+ * would hide that the last start failed (C552-5); else when it next starts. None, not even a label,
+ * for a routine never live: its line says why.
  */
 function timeOf(listing: RoutineListing, now: Date): string | undefined {
   if (!listing.enabled || cantStartReason(listing) !== undefined) return undefined;
+  if (notLiveYet(listing)) return undefined;
   if (listing.refusedAt !== undefined) return refusedWhen(listing.refusedAt, now);
   return showsNextRun(listing) ? nextWhen(listing.nextRun, now) : undefined;
 }
