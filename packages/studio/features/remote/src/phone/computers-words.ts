@@ -26,14 +26,21 @@ export const computersWords = {
     body: "This phone stops trying to reach it and clears what it saved from it.",
     stillPaired:
       "The computer still lists this phone as paired. To cut it off there, use Revoke in Settings › Remote.",
+    /**
+     * C665-5: on Can't confirm. After a reinstall the computer no longer lists this phone; after a
+     * restore from a backup it may.
+     */
+    maybePaired: (computer: string) =>
+      `${computer} may still list this phone as paired. To cut it off there, use Revoke in Settings › Remote.`,
     confirm: "Forget",
     cancel: "Cancel",
     /** Decided by the team on HAL-12248: the kit's busy button needs a label. */
     busy: "Forgetting…",
     /** Decided by the team on HAL-12248: the shell couldn't delete the entry. */
     failed: (computer: string) => `Couldn't forget ${computer}. Try again.`,
-    /** Microcopy 28: the shell's `keys-unavailable` shows that problem's line instead. */
-    keysUnavailable: pairWords.phoneKeys.keysUnavailable.body,
+    /** C665-16: the shell's `keys-unavailable`, said as what Forget couldn't do. */
+    keysUnavailable: (computer: string) =>
+      `Couldn't forget ${computer}: this phone's key storage isn't working. Restart the phone, then try again.`,
   },
   /** Said politely once a row leaves the list (microcopy 28). */
   forgotten: (computer: string) => `${computer} forgotten.`,
@@ -59,6 +66,8 @@ export const computersWords = {
       stillPaired:
         "A computer may still list this phone as paired. To cut it off there, use Revoke in Settings › Remote.",
       failed: "Couldn't forget this computer. Try again.",
+      keysUnavailable:
+        "Couldn't forget this computer: this phone's key storage isn't working. Restart the phone, then try again.",
     },
     forgotten: "Computer forgotten.",
   },

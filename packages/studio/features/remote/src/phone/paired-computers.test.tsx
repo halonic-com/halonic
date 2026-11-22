@@ -279,7 +279,7 @@ verifies("remote.phone-paired-computers", () => {
     expect([first.trim(), live().trim()]).toEqual(["Computer forgotten.", "Computer forgotten."]);
   });
 
-  it("says Couldn't forget this computer for an unreadable row, and the key storage line", async () => {
+  it("says Couldn't forget this computer for an unreadable row, and why when key storage fails", async () => {
     show(
       [unreadable("c-9")],
       new Map(),
@@ -296,11 +296,18 @@ verifies("remote.phone-paired-computers", () => {
     show([laptop], new Map(), async () => ({ kind: "keys-unavailable" }));
     await press("Forget Tim's laptop");
     await confirmForget();
+    expect(document.querySelector("dialog")?.textContent).toContain(
+      "Couldn't forget Tim's laptop: this phone's key storage isn't working. Restart the phone, then try again.",
+    );
+    unmountAll();
+    show([unreadable("c-9")], new Map(), async () => ({ kind: "keys-unavailable" }));
+    await press("Forget the computer this phone can't read");
+    await confirmForget();
     const sheet = document.querySelector("dialog");
     expect(sheet?.textContent).toContain(
-      "Halonic keeps its keys there, so it can't reach your computers right now. Restart the phone, then try again.",
+      "Couldn't forget this computer: this phone's key storage isn't working. Restart the phone, then try again.",
     );
-    expect(sheet?.textContent).not.toContain("Couldn't forget");
+    expect(sheet?.textContent).not.toContain("Halonic keeps its keys there");
   });
 
   it("says the phone's key storage isn't working when the list can't be read, with Try again", async () => {

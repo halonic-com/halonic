@@ -110,11 +110,11 @@ verifies("remote.phone-standing", () => {
     },
   );
 
-  it("says the computer still lists this phone only on Can't confirm, not on Removed", async () => {
+  it("says the computer may still list this phone on Can't confirm, and nothing on Removed", async () => {
     show("cantConfirm");
     await press("Forget this computer");
     expect(document.querySelector("dialog")?.textContent).toContain(
-      "The computer still lists this phone as paired.",
+      "Tim's laptop may still list this phone as paired. To cut it off there, use Revoke in Settings › Remote.",
     );
     unmountAll();
 
