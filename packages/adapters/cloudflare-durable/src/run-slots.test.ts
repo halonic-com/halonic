@@ -28,13 +28,72 @@ verifies("cloudflare-durable.usage-running", () => {
   });
 
   it("finds no slot while it knows no limits", () => {
-    expect(slotRefusal(new MemoryUsageStorage(), "u_acme")).toEqual({ code: "plan.none" });
+    expect(slotRefusal(new MemoryUsageStorage(), "u_acme", 0)).toEqual({ code: "plan.none" });
   });
 
   it("refuses a start while the scope can't take a step", () => {
     const { account } = openAccount(acmeLimits({ status: "stopped" }));
     expect(account.startRun("run_1", "u_acme")).toMatchObject({
       refusal: { code: "plan.inactive" },
+    });
+  });
+
+  describe("with a lease", () => {
+    const leaseMs = 60_000;
+
+    it("frees a lost run's slot once its lease ends, even before the sweep", () => {
+      const { account, clock } = openAccount(acmeLimits(), { runLeaseMs: leaseMs });
+      account.startRun("run_1", "u_acme");
+      account.startRun("run_2", "u_acme");
+      clock.nowMs += leaseMs - 1;
+      expect(account.startRun("run_3", "u_acme").allowed).toBe(false);
+      clock.nowMs += 1;
+      expect(account.startRun("run_3", "u_acme")).toEqual({ allowed: true });
+    });
+
+    it("keeps a renewed run's slot past its first lease", () => {
+      const { account, clock } = openAccount(acmeLimits(), { runLeaseMs: leaseMs });
+      account.startRun("run_1", "u_acme");
+      account.startRun("run_2", "u_acme");
+      clock.nowMs += leaseMs / 2;
+      expect(account.renewRun("run_1", "u_acme")).toEqual({ allowed: true });
+      expect(account.renewRun("run_2", "u_acme")).toEqual({ allowed: true });
+      clock.nowMs += leaseMs / 2;
+      expect(account.freeLostRuns()).toBe(clock.nowMs + leaseMs / 2);
+      expect(account.startRun("run_3", "u_acme")).toMatchObject({
+        refusal: { code: "plan.concurrency", running: 2, limit: 2 },
+      });
+    });
+
+    it("sweeps ended leases and answers when the next one ends", () => {
+      const { account, storage, clock } = openAccount(acmeLimits(), { runLeaseMs: leaseMs });
+      expect(account.freeLostRuns()).toBeNull();
+      account.startRun("run_1", "u_acme");
+      clock.nowMs += 10_000;
+      account.startRun("run_2", "u_acme");
+      clock.nowMs += leaseMs - 10_000;
+      expect(account.freeLostRuns()).toBe(clock.nowMs + 10_000);
+      expect(storage.list("running:").map(([key]) => key)).toEqual(["running:run_2"]);
+    });
+
+    it("lets a run that renews after the sweep take a new slot only within the cap", () => {
+      const { account, clock } = openAccount(acmeLimits(), { runLeaseMs: leaseMs });
+      account.startRun("run_1", "u_acme");
+      clock.nowMs += leaseMs;
+      account.freeLostRuns();
+      expect(account.renewRun("run_1", "u_acme")).toEqual({ allowed: true });
+      clock.nowMs += leaseMs;
+      account.freeLostRuns();
+      account.startRun("run_2", "u_acme");
+      account.startRun("run_3", "u_acme");
+      expect(account.renewRun("run_1", "u_acme")).toEqual({
+        allowed: false,
+        refusal: { code: "plan.concurrency", running: 2, limit: 2 },
+      });
+    });
+
+    it("refuses a lease that isn't a positive whole number of ms", () => {
+      expect(() => openAccount(acmeLimits(), { runLeaseMs: 0 })).toThrow(RangeError);
     });
   });
 

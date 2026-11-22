@@ -1,6 +1,12 @@
 import type { Clock } from "@halonicjs/ports";
 import { checkAmount } from "./input-rules.ts";
-import { runKeyPrefix, slotRefusal } from "./run-slots.ts";
+import {
+  defaultRunLeaseMs,
+  freeExpiredSlots,
+  type RunSlot,
+  runKeyPrefix,
+  slotRefusal,
+} from "./run-slots.ts";
 import { type Charged, ChargedIds, type FoundCharge, type Owner } from "./usage-charged.ts";
 import {
   addAmounts,
@@ -54,6 +60,8 @@ export interface UsageAccountOptions {
   readonly scope: string;
   readonly clock: Clock;
   readonly outboxCap?: number;
+  /** How long a running run holds its slot without renewing it; {@link defaultRunLeaseMs} if unset. */
+  readonly runLeaseMs?: number;
 }
 
 /** A step's reservation: its id, whose it is, its maximum use and its time limit. */
@@ -77,11 +85,14 @@ export class UsageAccount {
   readonly #clock: Clock;
   readonly #outbox: UsageOutbox;
   readonly #charged: ChargedIds;
+  readonly #runLeaseMs: number;
 
   constructor(storage: UsageStorage, options: UsageAccountOptions) {
     this.#storage = storage;
     this.#scope = checkId("scope", options.scope);
     this.#clock = options.clock;
+    this.#runLeaseMs = options.runLeaseMs ?? defaultRunLeaseMs;
+    checkAmount("runLeaseMs", this.#runLeaseMs);
     this.#outbox = new UsageOutbox(storage, options.outboxCap ?? defaultOutboxCap);
     this.#charged = new ChargedIds(storage);
   }
@@ -200,18 +211,42 @@ export class UsageAccount {
 
   /**
    * Lets a run start or wake, or refuses at the scope's or the member's cap. Only running runs
-   * count: a run that waits calls {@link stopRunning} and holds no capacity.
+   * count: a run that waits calls {@link stopRunning} and holds no capacity. The slot is held for
+   * the run's lease; a run that still holds one only renews it.
    */
   startRun(runId: string, actor: string): UsageAnswer {
     checkId("runId", runId);
     checkId("actor", actor);
     return this.#storage.transactionSync(() => {
-      if (this.#storage.get(runKeyPrefix + runId) !== undefined) return answer(null);
-      const refusal = this.#refusal(actor, {}) ?? slotRefusal(this.#storage, actor);
-      if (refusal !== null) return answer(refusal);
-      this.#storage.put(runKeyPrefix + runId, { actor });
+      const now = this.#now();
+      const slot = this.#storage.get<RunSlot>(runKeyPrefix + runId);
+      const held = slot !== undefined && slot.expiresAt > now;
+      if (!held) {
+        const refusal = this.#refusal(actor, {}) ?? slotRefusal(this.#storage, actor, now);
+        if (refusal !== null) return answer(refusal);
+      }
+      // A renewal keeps the slot's actor: the member it counts against doesn't change mid-run.
+      const owner = held ? slot.actor : actor;
+      const expiresAt = now + this.#runLeaseMs;
+      this.#storage.put<RunSlot>(runKeyPrefix + runId, { actor: owner, expiresAt });
       return answer(null);
     });
+  }
+
+  /**
+   * The running run's heartbeat: holds its slot for another lease. A run whose lease already ended
+   * lost its slot, so it takes a new one only while the cap has room, and is refused otherwise.
+   */
+  renewRun(runId: string, actor: string): UsageAnswer {
+    return this.startRun(runId, actor);
+  }
+
+  /**
+   * Frees the slot of every run whose lease ended: a lost run's. Answers when the next lease ends,
+   * for the object's alarm next to {@link settleExpired}, or `null` when no run holds a slot.
+   */
+  freeLostRuns(): number | null {
+    return this.#storage.transactionSync(() => freeExpiredSlots(this.#storage, this.#now()));
   }
 
   /** Frees the run's slot, when it starts waiting or ends. */
