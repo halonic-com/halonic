@@ -309,7 +309,13 @@ function bannerAction(
   }
   if (action?.kind === "open-run" && openRun !== undefined) {
     const { runId } = action;
-    return { label: action.label, onClick: () => openRun(runId) };
+    // Braces, so whatever `openRun` returns isn't taken for a promise the button waits on.
+    return {
+      label: action.label,
+      onClick: () => {
+        openRun(runId);
+      },
+    };
   }
   return undefined;
 }
