@@ -173,7 +173,8 @@ verifies("app.deploy-service", () => {
       const target = {
         plan: async () => livePlan,
         deploy: async () => Promise.reject(taken),
-        status: async () => ({ lockedBy }),
+        // The service reads only `lockedBy` from the status.
+        status: async () => ({ lockedBy }) as Awaited<ReturnType<DeployTarget["status"]>>,
       } as Partial<DeployTarget> as DeployTarget;
       const deploys = createDeployService({
         loadTarget: async () => target,
