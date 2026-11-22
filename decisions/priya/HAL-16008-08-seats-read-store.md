@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-16008 (Liam's review of #5080, "must do in 4c")
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:i6osyd0kp6SEQhfvyHSX7ZO9yWyU7BP2oJnu0+TEpD8lw7bXDYYyM+qRkx3VdFRp2E50E/hsPSMhsXVsBo/eCg==
 - Task: HAL-16008
 
 ## What changes
