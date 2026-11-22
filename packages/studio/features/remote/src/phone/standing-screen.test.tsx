@@ -98,7 +98,6 @@ verifies("remote.phone-standing", () => {
       await press("Forget this computer");
       const sheet = document.querySelector("dialog");
       expect(sheet?.textContent).toContain("Forget Tim's laptop?");
-      expect(sheet?.textContent).toContain("The computer still lists this phone as paired.");
       await press("Cancel", sheet ?? undefined);
       expect(document.querySelector("dialog")).toBeNull();
       expect(onForget).not.toHaveBeenCalled();
@@ -110,6 +109,23 @@ verifies("remote.phone-standing", () => {
       expect(document.querySelector("dialog")).toBeNull();
     },
   );
+
+  it("says the computer still lists this phone only on Can't confirm, not on Removed", async () => {
+    show("cantConfirm");
+    await press("Forget this computer");
+    expect(document.querySelector("dialog")?.textContent).toContain(
+      "The computer still lists this phone as paired.",
+    );
+    unmountAll();
+
+    show("removed");
+    await press("Forget this computer");
+    const sheet = document.querySelector("dialog");
+    expect(sheet?.textContent).toContain(
+      "This phone stops trying to reach it and clears what it saved from it.",
+    );
+    expect(sheet?.textContent).not.toContain("still lists");
+  });
 
   it("keeps the question open with the reason when Forget fails", async () => {
     const { onForgotten } = show("removed", async () => {

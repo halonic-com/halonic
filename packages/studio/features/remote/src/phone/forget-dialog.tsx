@@ -6,13 +6,16 @@ import type { ForgetOutcome, ListedComputer, UnreadableComputer } from "./phone-
 export const isUnreadable = (computer: ListedComputer): computer is UnreadableComputer =>
   computer.standing === "unreadable";
 
-/** What Forget asks and says when it fails, for a computer with or without a name. */
+/**
+ * What Forget asks and says when it fails, for a computer with or without a name. A computer
+ * that removed this phone no longer lists it, so its question doesn't say it does (C666).
+ */
 function forgetWords(computer: ListedComputer) {
   if (isUnreadable(computer)) return computersWords.unreadable.forget;
   return {
     title: computersWords.forget.title(computer.name),
     body: computersWords.forget.body,
-    stillPaired: computersWords.forget.stillPaired,
+    stillPaired: computer.standing === "removed" ? undefined : computersWords.forget.stillPaired,
     failed: computersWords.forget.failed(computer.name),
   };
 }
@@ -24,8 +27,8 @@ export const forgottenWords = (computer: ListedComputer) =>
     : computersWords.forgotten(computer.name);
 
 /**
- * `d-m2`: Forget asks once, says the computer still lists this phone, and changes nothing on
- * Cancel. A Forget that fails keeps the question open with the reason. Used by the Paired
+ * `d-m2`: Forget asks once, says the computer still lists this phone unless it removed it, and
+ * changes nothing on Cancel. A Forget that fails keeps the question open with the reason. Used by the Paired
  * computers list and by Removed and Can't confirm (`s-m7`, `s-m9`).
  */
 export function ForgetDialog({
@@ -82,7 +85,9 @@ export function ForgetDialog({
       onCancel={onCancel}
     >
       <p className="text-fg">{asking.body}</p>
-      <p className="mt-2 text-fg-muted">{asking.stillPaired}</p>
+      {asking.stillPaired === undefined ? null : (
+        <p className="mt-2 text-fg-muted">{asking.stillPaired}</p>
+      )}
     </Dialog>
   );
 }
