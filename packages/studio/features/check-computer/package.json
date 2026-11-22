@@ -14,13 +14,19 @@
   },
   "dependencies": {
     "@halonicjs/app": "workspace:*",
+    "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",
-    "@halonicjs/words": "workspace:*"
+    "@halonicjs/words": "workspace:*",
+    "react": "catalog:"
   },
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "react-dom": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

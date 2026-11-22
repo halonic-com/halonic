@@ -78,6 +78,12 @@ export interface NotCheckedFact {
   readonly parts: readonly NotCheckedPart[];
 }
 
+/** The Last run line, with the hub its run is in, so **Open the run** can open it. */
+export type LastRunFact = LastRunLine & {
+  /** Left out when the run can't be opened from here; the line then offers no **Open the run**. */
+  readonly hub?: string;
+};
+
 /** The lines the agent host answers, as the doctor's facts. */
 export type HostFact =
   | WorkspaceLine
@@ -96,7 +102,7 @@ export type CheckFact =
   | HostFact
   | ModelsFact
   | DefaultModelLine
-  | LastRunLine
+  | LastRunFact
   | GoogleFact
   | NotCheckedFact;
 

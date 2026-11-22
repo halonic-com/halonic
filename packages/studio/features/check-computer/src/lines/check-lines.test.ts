@@ -75,6 +75,7 @@ verifies("check-computer.lines", () => {
         failure: { reason: "out-of-credit", provider: "Anthropic" },
         cause: "last-run.out-of-credit",
         causeShownOn: "models",
+        hub: "acme",
       });
 
       expect(defaultModel).toEqual({
