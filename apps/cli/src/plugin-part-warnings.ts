@@ -31,7 +31,7 @@ export interface RunConnectorLines {
  * @param wslDistro - the WSL distro the CLI runs in, for the WSL 1 fix's command
  * @example
  * const onUnavailable = pluginPartReporter(lines, process.env["WSL_DISTRO_NAME"]);
- * // ! The program lister of the plugin files didn't start, so its tools are off in this run.
+ * // ! The program lister of the plugin Files didn't start, so its tools are off in this run.
  * //   bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.
  * //   More: https://docs.halonic.dev/security/sandbox/#bubblewrap (bubblewrap-missing)
  */
@@ -40,7 +40,7 @@ export function pluginPartReporter(
   wslDistro?: string,
 ): (connector: string, unavailable: PluginPartUnavailable) => void {
   const told = new Set<string>();
-  return (connector, { plugin, part, reason, error }) => {
+  return (connector, { plugin, name, part, reason, error }) => {
     const key = JSON.stringify([connector, part, reason]);
     if (told.has(key)) return;
     told.add(key);
@@ -48,8 +48,10 @@ export function pluginPartReporter(
       part === "backend"
         ? { kind: "backend" }
         : { kind: "program", name: printable(part.slice("local:".length)) };
+    // By its name, as `plugin list` shows it (C642 #6); the manifest's name is outside text.
+    const shownPlugin = printable(name ?? plugin);
     lines.warn(
-      phrase`${markPart("needsYou")} ${runMessages.pluginPartOff(printable(plugin), shown).phrase}`,
+      phrase`${markPart("needsYou")} ${runMessages.pluginPartOff(shownPlugin, shown).phrase}`,
     );
     for (const line of pluginPartWhy(reason, error, wslDistro)) {
       lines.warn(phrase`  ${line}`);

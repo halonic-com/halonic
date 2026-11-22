@@ -100,7 +100,7 @@ is the reference.
 | "off on this computer" | the plugin has a backend, and plugin code can't run in the sandbox here (the line under it says why); the CLI never runs it without | fix what the line names, or allow it in the Halonic desktop app to use it there: **Settings › Plugins**, open the plugin, then **Review** |
 | a local tool "needs the desktop app" | no sandbox on Android or in the browser | use the desktop app, the CLI or `serve` |
 | a tool refused | the server offers a tool the manifest doesn't declare | declare it, or remove it from the server |
-| "Halonic stopped the plugin <name>: the sandbox didn't work when the plugin started, so none of it ran. Halonic tries <name> in the sandbox again the next time a run uses it." | the computer passed the sandbox check, but the sandbox didn't work when the plugin started, so Halonic stopped it | nothing to do; the next run that uses it tries the sandbox again |
+| "<connector> didn't start, so its tools are off in this run.", with "The sandbox didn't work when the plugin <name> started, so none of it ran." and "Halonic tries <name> in the sandbox again the next time a run uses it." under it | the computer passed the sandbox check, but the sandbox didn't work when the plugin started, so Halonic stopped it | nothing to do; the next run that uses it tries the sandbox again |
 
 The backend in the sample is plain JavaScript with no imports and no build
 step. If you write TypeScript, build it to one JavaScript file first and point

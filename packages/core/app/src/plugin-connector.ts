@@ -49,6 +49,8 @@ export type PluginPartUnavailableReason =
 export interface PluginPartUnavailable {
   /** The plugin's id. */
   readonly plugin: string;
+  /** The plugin's name, as its manifest says it, for a person; absent when the connector wasn't given it. */
+  readonly name?: string;
   readonly part: PluginPart;
   readonly reason: PluginPartUnavailableReason;
   /** The error the part failed with, for a log. */
@@ -61,6 +63,8 @@ export interface PluginConnectorOptions {
   readonly id: string;
   /** The plugin's id. */
   readonly plugin: string;
+  /** The plugin's name, as its manifest says it, passed on to {@link onUnavailable}. */
+  readonly name?: string;
   /** The plugin's parts that declare tools: the backend first, then the local tools in manifest order. */
   readonly parts: readonly PluginConnectorPart[];
   /** Told once for each part that can't start, when its listing or a call finds out. */
@@ -160,10 +164,16 @@ export class PluginConnector implements ConnectorClient {
   #report(part: PluginConnectorPart, error: unknown): void {
     if (this.#reported.has(part.part)) return;
     this.#reported.add(part.part);
-    const { plugin, onUnavailable } = this.#options;
+    const { plugin, name, onUnavailable } = this.#options;
     const reason = pluginPartUnavailableReason(error);
     this.#partsOff.push({ part: part.part, reason: reason.kind });
-    onUnavailable?.({ plugin, part: part.part, reason, error });
+    onUnavailable?.({
+      plugin,
+      ...(name === undefined ? {} : { name }),
+      part: part.part,
+      reason,
+      error,
+    });
   }
 }
 
