@@ -6,7 +6,6 @@ import type { InboxNotice, InboxNotices } from "../notices/inbox-notices.ts";
 import { type NoticesState, useNotices } from "../notices/use-notices.ts";
 
 const loadFailed = "Couldn't load notices";
-const dismissed = "Notice dismissed.";
 
 /**
  * The notices under Needs you (flow-inbox 3.2): flat rows acted on in place, each with its one
@@ -18,8 +17,9 @@ const dismissed = "Notice dismissed.";
  * @param openBudget Opens the budget in Settings; without it the monthly budget notice has no **Change budget**.
  * @param onEmptied Called as the last notice is dismissed, to move focus somewhere that stays on the
  *   page: the section's heading goes with it.
- * @param announce Says "Notice dismissed." politely on each dismiss, as other deletes say what
- *   happened; the last one's focus lands on Needs you, which doesn't (ND1, HAL-14377).
+ * @param announce Says "Dismissed: *title*" politely on each dismiss, as other deletes say what
+ *   happened; the last one's focus lands on Needs you, which doesn't (ND1, HAL-14377). The title
+ *   tells several dismisses in a row apart (microcopy 19.4, HAL-15457).
  */
 export function NoticesSection({
   source,
@@ -40,7 +40,7 @@ export function NoticesSection({
   const rows = useRef<HTMLUListElement>(null);
   // The dismissed row goes away, so focus moves first: to the next notice's ×, else the previous
   // one's. The month's budget row has no ×, so there focus goes to its **Change budget**.
-  const dismiss = (source: InboxNotices, index: number, key: string) => {
+  const dismiss = (source: InboxNotices, index: number, notice: InboxNotice) => {
     const items = rows.current?.querySelectorAll<HTMLElement>(":scope > li");
     const row = items?.[index + 1] ?? items?.[index - 1];
     const next =
@@ -48,8 +48,8 @@ export function NoticesSection({
       row?.querySelector<HTMLElement>("button");
     if (next === null || next === undefined) onEmptied();
     else next.focus();
-    source.dismiss(key);
-    announce?.(dismissed);
+    source.dismiss(notice.key);
+    announce?.(`Dismissed: ${markHiddenName(notice.title)}`);
   };
   if (source === undefined) return null;
   if (notices.length === 0 && error === undefined) return null;
@@ -70,7 +70,7 @@ export function NoticesSection({
             notice={notice}
             openRun={openRun}
             openBudget={openBudget}
-            dismiss={() => dismiss(source, index, notice.key)}
+            dismiss={() => dismiss(source, index, notice)}
           />
         ))}
       </ul>
