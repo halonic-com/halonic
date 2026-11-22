@@ -4,6 +4,7 @@
 - Task: HAL-16545
 - Approval: HAL-16545, from the CTO's review of #5298 on HAL-16241
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:I94pzpP1s09af6u16ec2DKPQxYRUwwaCugFUveHhuLtCFrVL1KWWibviSqbgcyJ92N3RU6aq7nDAI/FjurWdAQ==
 
 ## What changes
 
