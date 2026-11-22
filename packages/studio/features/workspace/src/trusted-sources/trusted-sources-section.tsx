@@ -7,6 +7,7 @@ import {
   engineWordsOf,
   focusSectionHeading,
   isUnexplained,
+  rawDetailsOf,
   type SettingsSectionProps,
   type SettingsSurface,
   sectionHeading,
@@ -306,7 +307,9 @@ function removalFailure(
   const line = signOutPending
     ? text.signOutFailed(source.name, reason)
     : text.removeFailed(source.name, reason);
-  return isUnexplained(why)
+  // Also for a reason in Halonic's words for raw text, such as the shell's OS error (C548 5).
+  const copyable = isUnexplained(why) || rawDetailsOf(why) !== undefined;
+  return copyable
     ? { line, details: detailsOf(line, why), signOutPending }
     : { line, signOutPending };
 }

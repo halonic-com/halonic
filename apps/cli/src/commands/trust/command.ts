@@ -1,6 +1,7 @@
 import { realpath } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { FileTrustStore, FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import { resolveRealPath } from "@halonicjs/adapter-harness-kit";
 import { pluginTrustFingerprintPrefix } from "@halonicjs/app";
 import { parseFile } from "@halonicjs/format";
 import type { Clock, KeyOrigins, TrustRecord, TrustStore } from "@halonicjs/ports";
@@ -331,7 +332,8 @@ async function listed(record: TrustRecord, cwd: string) {
 
 /**
  * `--remove`: forgets the trust in the workspace, even when its record can't
- * be read or its folder is gone, so the user can always start over. In a
+ * be read or its folder is gone, so the user can always start over. When
+ * there was no record, it says so instead of "Removed trust" (C548 5). In a
  * plugin's folder the record is the plugin's, so it goes the `--plugin` way
  * and signs the plugin out first (`app.plugin-sign-out`).
  */
@@ -342,7 +344,9 @@ async function removeTrust(
   plugins: PluginSetup,
 ): Promise<CommandResult> {
   const dir = workspaceDir(input, context.cwd);
-  const location = await realpath(dir.root).catch(() => resolve(dir.root));
+  // A gone folder keeps its parent's real path, as the record has it, so a
+  // Windows short name such as `RUNNER~1` still finds the record.
+  const location = (await resolveRealPath(resolve(dir.root)))?.real ?? resolve(dir.root);
   if (await isPluginFolderRecord(machine.store, location, plugins)) {
     // The folder's name in the plugins folder is the plugin's id. `--dir`
     // named the folder, and `--plugin` refuses it, so only `--remove` goes on.
@@ -350,7 +354,19 @@ async function removeTrust(
     return await trustPlugin(basename(location), removeOnly, context, plugins);
   }
   const name = await nameAt(location, dir.shown);
+  // A record that can't be read is still there, and revoking deletes it.
+  const hadTrust = await machine.store.get(location).then(
+    (record) => record !== null,
+    () => true,
+  );
   await cliTrustService(machine.store, machine.clock).revoke(location);
+  if (!hadTrust) {
+    return {
+      exitCode: exitCode.ok,
+      lines: [marked(trustMessages.nothingToRemove(printable(name)))],
+      json: { name, folder: dir.shown, status: "not-trusted" },
+    };
+  }
   return {
     exitCode: exitCode.ok,
     lines: [marked(trustMessages.removed(printable(name)))],

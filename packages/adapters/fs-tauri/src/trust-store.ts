@@ -85,7 +85,7 @@ export class TauriTrustStore implements TrustStore {
     try {
       return await this.#shell.invoke(command, args);
     } catch (reason) {
-      throw trustFailure(reason, args["location"]);
+      throw trustFailure(reason, command, args["location"]);
     }
   }
 }
@@ -110,16 +110,41 @@ const errorKinds: Readonly<Record<Exclude<TrustRefusal["kind"], "unreadable">, E
 };
 
 /**
+ * A kinded error whose message is Halonic's own words for raw text it replaces, such as an OS
+ * error with a path. The raw text goes only into `details`, which the Studio's **Copy details**
+ * puts on the clipboard (`rawDetailsOf`, microcopy 22 F1); it never shows on screen.
+ */
+class TrustStoreError extends KindedError {
+  /** The raw text the message replaces, for the clipboard only. */
+  readonly details: string;
+  constructor(kind: ErrorKind, message: string, details: string) {
+    super(kind, message);
+    this.details = details;
+  }
+}
+
+/** The commands that change the trust folder; the others only read it. */
+const writingCommands: readonly string[] = [trustCommands.grant, trustCommands.revoke];
+
+/**
  * The error a rejected `trust_*` command becomes. An unreadable record is a
  * plain `Error` naming its location, as `FileTrustStore` throws it, so
  * `TrustService` treats both the same. Anything that isn't the shell's
  * refusal shape (a missing capability, a broken IPC call) is `unavailable`,
- * and its text is dropped: the adapter can't vouch for it. A refusal keeps
- * the shell's message, which names no secret.
+ * with its text only in the details: the adapter can't vouch for it. An `io`
+ * refusal's message is the shell's log text, such as an OS error with a path
+ * (C548 5), so it too is in Halonic's words, with the message in the details.
+ * Any other refusal keeps the shell's message, which names no secret.
  */
-function trustFailure(reason: unknown, asked: unknown): Error {
+function trustFailure(reason: unknown, command: string, asked: unknown): Error {
   if (!isTrustRefusal(reason)) {
-    return noAnswer();
+    return noAnswer(reason);
+  }
+  if (reason.kind === "io") {
+    const words = writingCommands.includes(command)
+      ? "Halonic can't write to its data folder."
+      : "Halonic can't read its data folder.";
+    return new TrustStoreError("unavailable", words, reason.message);
   }
   if (reason.kind !== "unreadable") {
     return new KindedError(
@@ -139,8 +164,25 @@ function trustFailure(reason: unknown, asked: unknown): Error {
   );
 }
 
-function noAnswer(): KindedError {
-  return new KindedError("unavailable", "The desktop shell gave no answer to the trust call.");
+/** A call the shell gave no usable answer to; `reason` is its rejection, when there was one. */
+function noAnswer(reason?: unknown): TrustStoreError {
+  const details = "The desktop shell gave no answer to the trust call.";
+  return new TrustStoreError(
+    "unavailable",
+    "Halonic's desktop app didn't answer.",
+    reason === undefined ? details : `${details}\n${rejectionText(reason)}`,
+  );
+}
+
+/** A rejection as text: Tauri rejects with a string, a broken call with an `Error`. */
+function rejectionText(reason: unknown): string {
+  if (reason instanceof Error) return `${reason.name}: ${reason.message}`;
+  if (typeof reason === "string") return reason;
+  try {
+    return JSON.stringify(reason) ?? String(reason);
+  } catch {
+    return String(reason);
+  }
 }
 
 /**

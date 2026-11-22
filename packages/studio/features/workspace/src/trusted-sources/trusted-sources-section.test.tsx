@@ -2,6 +2,7 @@
 
 import { KindedError } from "@halonicjs/std";
 import { ClipboardProvider } from "@halonicjs/studio-kit";
+import { ErrorWithDetails } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -343,5 +344,33 @@ verifies("workspace.trusted-sources", () => {
     );
     // C446-1: it confirms in place, since a toast would wait until the dialog closes.
     expect(button("Copied", dialog ?? document)).toBeDefined();
+  });
+
+  it("says a refusal in Halonic's words and offers its raw text in Copy details (C548 5)", async () => {
+    vi.useFakeTimers();
+    const writeClipboard = vi.fn(async (_text: string) => true);
+    const refusal = new ErrorWithDetails(
+      "unavailable",
+      "Halonic can't write to its data folder.",
+      "Permission denied (os error 13)",
+    );
+    const remove = vi.fn().mockRejectedValue(refusal);
+    await show({ list: vi.fn().mockResolvedValue([pdf]), remove }, false, "window", writeClipboard);
+    act(() => button("Remove")?.click());
+    await act(async () => confirm()?.click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50);
+    });
+    const dialog = document.querySelector("dialog");
+    expect(dialog?.textContent).toContain(
+      "Couldn't remove trust from pdf-tools: Halonic can't write to its data folder.",
+    );
+    expect(dialog?.textContent).not.toContain("os error");
+    await act(async () => button("Copy details", dialog ?? document)?.click());
+    expect(writeClipboard).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^Couldn't remove trust from pdf-tools: .*\nPermission denied \(os error 13\)$/su,
+      ),
+    );
   });
 });

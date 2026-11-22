@@ -5,6 +5,7 @@ import {
   engineReasonFor,
   engineWordsOf,
   isUnexplained,
+  rawDetailsOf,
   useCopyDetailsInPlace,
 } from "@halonicjs/studio-shell";
 import { useId, useRef, useState, useSyncExternalStore } from "react";
@@ -62,7 +63,8 @@ export function WorkspaceTrustSection({ trust, name, toasts }: WorkspaceTrustSec
   const check = useTrustCheck(trust, name, toasts, () => action.current);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | undefined>();
-  // For an internal error only: what **Copy details** puts on the clipboard (microcopy 22 F13).
+  // What **Copy details** puts on the clipboard, for an internal error (microcopy 22 F13) or a
+  // reason in Halonic's words for raw text, such as the shell's OS error (F1, C548 5).
   const [details, setDetails] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
   const copyDetails = useCopyDetailsInPlace();
@@ -82,7 +84,7 @@ export function WorkspaceTrustSection({ trust, name, toasts }: WorkspaceTrustSec
     }
     const line = removeFailed(name, reasonOf(result));
     setRemoveError(line);
-    if (result.error !== undefined && isUnexplained(result.error)) {
+    if (result.error !== undefined && hasDetails(result.error)) {
       setDetails(detailsOf(line, result.error));
     }
   };
@@ -167,6 +169,11 @@ export function WorkspaceTrustSection({ trust, name, toasts }: WorkspaceTrustSec
 function reasonOf(result: Extract<TrustGrantResult, { ok: false }>): string {
   if (result.error === undefined) return result.reason;
   return engineReasonFor(result.error, engineWordsOf({}).notAnswering).replace(/\.+$/u, "");
+}
+
+/** Whether a failure has text to copy: it has no reason of its own, or its reason replaces raw text. */
+function hasDetails(error: unknown): boolean {
+  return isUnexplained(error) || rawDetailsOf(error) !== undefined;
 }
 
 export function StatusMark({ status }: { readonly status: WorkspaceTrustControl["status"] }) {
