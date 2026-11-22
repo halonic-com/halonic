@@ -56,7 +56,7 @@ file as it is now to the run's text. A short id or the full one works.
 | `halonic proposals accept <run-id> <file>` | writes only that file |
 | `halonic proposals reject <run-id>` | rejects the run's changes; your files stay as they are |
 | `halonic proposals reject <run-id> <file>` | rejects only that file's changes |
-| `halonic proposals reject <run-id>`, for a run whose changes were deleted outside Halonic | removes the run from the list, as **Remove from Inbox** does in Studio; your files stay as they are |
+| `halonic proposals reject <run-id>`, for a run whose changes were deleted outside Halonic | removes the run from the list, as **Remove from Inbox** does in Studio; your files stay as they are. If the changes are back by then, it rejects them, so check with `show` first |
 
 Reject says, for example, "Rejected the changes to 2 files. Your files stay
 as they are."
@@ -75,10 +75,17 @@ before you accept.
 If a proposal's changes were deleted outside Halonic, `show` and `accept`
 say so and exit 5: "Run 01jd8q's changes were deleted outside Halonic, so
 they can't be shown or accepted. Remove run 01jd8q from the list with
-halonic proposals reject 01jd8q." Run that command: it says "Removed run
-01jd8q from the list: its changes were deleted outside Halonic." and
-changes nothing in your files. In Studio, the same run's page has
-**Remove from Inbox**.
+halonic proposals reject 01jd8q. If its changes are back by then, that
+rejects them, so check first with halonic proposals show 01jd8q." Run that
+command: it says "Removed run 01jd8q from the list: its changes were deleted
+outside Halonic." and changes nothing in your files. In Studio, the same
+run's page has **Remove from Inbox**.
+
+If the run's changes came back in the meantime, for example because you
+restored the deleted folder, `reject` doesn't remove the run: it rejects
+those changes, as for any proposal. So run `show` first, then accept or
+reject what it shows. In Studio, **Remove from Inbox** shows the changes
+again in that case, with **Accept** and **Reject**.
 
 All four take `--dir <folder>` for a workspace other than the current
 folder. `halonic proposals` and `halonic proposals show` also take `--json`
