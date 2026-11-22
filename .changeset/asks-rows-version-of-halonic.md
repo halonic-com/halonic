@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-The CLI's trust check and Studio's trust review no longer say an agent with `asks: in-sandbox` still asks first, since a run in the sandbox now answers its calls in both.
+The trust check, in the CLI and in Studio, no longer says an agent with `asks: in-sandbox` still asks first, since a run in the sandbox now answers its calls in both.
