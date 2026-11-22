@@ -20,6 +20,14 @@ export interface ErrorOutputLine {
    * removes such a line whole.
    */
   readonly cut: boolean;
+  /**
+   * Whether text right before this line wasn't kept: older lines were
+   * dropped, or the line before was cut. A secret with a line break, such
+   * as a PEM key, can start in that lost text and end in this line, and the
+   * end of a secret isn't found either, so {@link cleanErrorOutput} removes
+   * this line whole too.
+   */
+  readonly afterLostText: boolean;
 }
 
 /**
@@ -38,6 +46,10 @@ export class ErrorOutputTail {
   /** The line being written, without its line feed yet. */
   #partial = "";
   #partialCut = false;
+  /** Whether the tail has dropped any of its older lines. */
+  #droppedOlder = false;
+  /** Whether the last line kept was cut, so the next one follows lost text. */
+  #lastKeptCut = false;
 
   constructor(stream: AsyncIterable<Uint8Array>, limits: ErrorOutputLimits = defaultLimits) {
     this.#limits = limits;
@@ -46,9 +58,17 @@ export class ErrorOutputTail {
 
   /** The last lines, oldest first, with a last line that has no line feed yet. */
   lines(): ErrorOutputLine[] {
-    const partial = { text: this.#partial, cut: this.#partialCut };
+    const partial = {
+      text: this.#partial,
+      cut: this.#partialCut,
+      afterLostText: this.#lastKeptCut,
+    };
     const lines = this.#partial === "" ? [...this.#lines] : [...this.#lines, partial];
-    return lines.slice(-this.#limits.maxLines);
+    const kept = lines.slice(-this.#limits.maxLines);
+    const [first, ...rest] = kept;
+    const droppedOlder = this.#droppedOlder || kept.length < lines.length;
+    if (first === undefined || !droppedOlder) return kept;
+    return [{ ...first, afterLostText: true }, ...rest];
   }
 
   /**
@@ -99,9 +119,14 @@ export class ErrorOutputTail {
     const cut = this.#partialCut;
     this.#partial = "";
     this.#partialCut = false;
+    // A blank line holds nothing of a secret, so a line after a cut one still follows lost text.
     if (text === "") return;
-    this.#lines.push({ text, cut });
-    if (this.#lines.length > this.#limits.maxLines) this.#lines.shift();
+    this.#lines.push({ text, cut, afterLostText: this.#lastKeptCut });
+    this.#lastKeptCut = cut;
+    if (this.#lines.length > this.#limits.maxLines) {
+      this.#lines.shift();
+      this.#droppedOlder = true;
+    }
   }
 }
 
@@ -119,6 +144,12 @@ export const keyLineRemoved = "[line removed: it held something shaped like a ke
 /** What replaces a whole line that was too long to keep, so it can't be checked for a secret. */
 export const longLineRemoved = "[line removed: too long to check]";
 
+/**
+ * What replaces a whole line that follows text the tail didn't keep, since it
+ * can hold the end of a secret whose start was lost.
+ */
+export const afterLostLineRemoved = "[line removed: it follows text that wasn't kept]";
+
 /** An e-mail address. Its domain ends in letters, so a package version such as `mail-mcp@2.3.1` is kept. */
 const emailAddress = /[A-Za-z0-9._%+-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}\b/g;
 
@@ -128,6 +159,9 @@ const emailAddress = /[A-Za-z0-9._%+-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}\b/g;
  *
  * - each line the tail cut, as a whole line: only the start of a secret
  *   may be left in it, and the scrubber finds whole secrets only;
+ * - each line that follows text the tail didn't keep (older lines it
+ *   dropped, or a line it cut), as a whole line: only the end of a secret
+ *   with a line break may be left in it;
  * - every secret the scrubber knows, in each of its forms, before the
  *   lines are split, so a secret with a line break is still found;
  * - each line holding text shaped like a known kind of key
@@ -140,7 +174,9 @@ const emailAddress = /[A-Za-z0-9._%+-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}\b/g;
  *
  * @example
  * const personal = { homeFolder: "/acme/home/acme-user", userName: "acme-user" };
- * const lines = [{ text: "open /acme/home/acme-user/notes.db: denied", cut: false }];
+ * const lines = [
+ *   { text: "open /acme/home/acme-user/notes.db: denied", cut: false, afterLostText: false },
+ * ];
  * cleanErrorOutput(lines, scrubber, personal);
  * // ["open ~/notes.db: denied"]
  */
@@ -149,13 +185,20 @@ export function cleanErrorOutput(
   scrubber: SecretScrubber,
   personal: PersonalDetails,
 ): string[] {
-  const whole = lines.map((line) => (line.cut ? longLineRemoved : line.text));
+  const whole = lines.map(wholeLineOrRemoved);
   return scrubber
     .scrub(whole.join("\n"))
     .split("\n")
     .map((line) => (findSecretShape(line) === undefined ? line : keyLineRemoved))
     .map((line) => line.replace(emailAddress, "[e-mail removed]"))
     .map((line) => withoutHome(line, personal));
+}
+
+/** The line's text, or what replaces it when only a part of a secret could be left in it. */
+function wholeLineOrRemoved(line: ErrorOutputLine): string {
+  if (line.cut) return longLineRemoved;
+  if (line.afterLostText) return afterLostLineRemoved;
+  return line.text;
 }
 
 function withoutHome(line: string, { homeFolder, userName }: PersonalDetails): string {

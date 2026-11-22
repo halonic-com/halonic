@@ -93,7 +93,9 @@ verifies("mcp.stdio-transport", () => {
       program.sendRaw('{"jsonrpc":"2.0",');
       program.sendRaw('"id":1,"result":{"t":"é"}}\r\n');
       expect(await answer).toEqual([{ jsonrpc: "2.0", id: 1, result: { t: "é" } }]);
-      expect(transport.errorOutput()).toEqual([{ text: "x".repeat(300), cut: true }]);
+      expect(transport.errorOutput()).toEqual([
+        { text: "x".repeat(300), cut: true, afterLostText: false },
+      ]);
       await transport.close();
     });
 
@@ -105,8 +107,9 @@ verifies("mcp.stdio-transport", () => {
       program.exit(1);
       await waitUntil("transport.ended to be true", () => transport.ended === true);
       expect(transport.ended).toBe(true);
+      // The first line kept follows the lines dropped, so it's marked.
       expect(transport.errorOutput()).toEqual(
-        lines.slice(-10).map((text) => ({ text, cut: false })),
+        lines.slice(-10).map((text, index) => ({ text, cut: false, afterLostText: index === 0 })),
       );
       await transport.close();
     });
