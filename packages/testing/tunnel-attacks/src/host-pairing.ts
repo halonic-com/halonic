@@ -69,7 +69,8 @@ function ticketAttempt(ticket: PairingTicket): PairingAttempt {
       const { publicKey, name, platform, checkCode } = phone;
       const use = ticket.useCode({ publicKey, name, platform }, checkCode);
       if (!use.used) return { kind: "refused", refusal: use.refusal };
-      signal.addEventListener("abort", () => ticket.close(), { once: true });
+      if (signal.aborted) ticket.close();
+      else signal.addEventListener("abort", () => ticket.close(), { once: true });
       const verdict = await use.verdict;
       return verdict.allowed ? { kind: "allowed" } : { kind: verdict.reason };
     },

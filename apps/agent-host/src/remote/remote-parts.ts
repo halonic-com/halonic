@@ -2,7 +2,7 @@
 // together: the pairing desk, the paired phones, the settings, the host key, the mDNS advert and the
 // RemoteControl Studio drives. Nothing outside the tests imports this.
 export { type HostKey, sharedHostKey } from "./host-key.ts";
-export { HostRemoteControl, type RemoteLanEndpoint } from "./host-remote-control.ts";
+export { HostRemoteControl } from "./host-remote-control.ts";
 export { type MulticastSocket, PairAdvert } from "./pair-advert.ts";
 export { PairedPhones } from "./paired-phones.ts";
 export { PairingDesk, type PairingTicket } from "./pairing-desk.ts";

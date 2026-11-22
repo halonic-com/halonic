@@ -112,7 +112,7 @@ verifies("tunnel-attacks.pairing-attacks", () => {
   });
 
   describe("the check code and Allow", () => {
-    it("leaves no paired record when the check codes differ and the person presses Don't allow", async () => {
+    it("leaves no paired record when the person presses Don't allow on the check code", async () => {
       await onHost(async (rig) => {
         const pairing = await rig.startPairing();
         const { phone, client } = await reachCheck(rig, pairing);

@@ -136,8 +136,8 @@ async function openHost(folder: string, time: ManualTime, source: RecordingSourc
   const hostKey = await loadKey();
   const desk = new PairingDesk({ time, randomBytes: (length) => randomBytes(length) });
   const access = hostPhoneAccess({ desk, phones, hostKey, hostName: rigHostName, log });
-  const onError = (error: unknown) => log(`A remote gateway connection failed: ${String(error)}\n`);
-  const gateway = await withFreePort((port) => startRigGateway(port, source, access, { onError }));
+  // No onError: the rig's gateway rethrows, so a hostile frame that makes the host fail fails the test.
+  const gateway = await withFreePort((port) => startRigGateway(port, source, access, {}));
   const control = await HostRemoteControl.open({
     available: true,
     hostName: rigHostName,
