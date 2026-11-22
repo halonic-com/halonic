@@ -156,6 +156,8 @@ export function UnfencedYesBlock({ host, surface, announce }: UnfencedYesBlockPr
         });
         inFlight.current = false;
         setTakingBack(false);
+        // With the yes gone, so is **Take back**: keep the focus in the section, not the body.
+        if (after.state !== "allowed") heading.current?.focus();
       },
     );
   };

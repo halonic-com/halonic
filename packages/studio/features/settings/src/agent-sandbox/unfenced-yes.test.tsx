@@ -340,6 +340,7 @@ verifies("settings.unfenced-yes-take-back", () => {
     const line = view.querySelector("h4")?.nextElementSibling;
     expect(line?.textContent).toBe(said);
     expect(line?.className).toContain("text-danger");
+    expect(document.activeElement?.textContent).toBe("Plugins and integrations");
   });
 });
 
