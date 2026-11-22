@@ -69,15 +69,20 @@ export class WorkspaceWorkflows implements WorkflowsHost {
   startRun?: NonNullable<WorkflowsHost["startRun"]>;
   /** Present only when the app can show the trust check; see {@link WorkflowsHost.askTrust}. */
   askTrust?: NonNullable<WorkflowsHost["askTrust"]>;
+  /** Present only when the app can tell; see {@link WorkflowsHost.onTrusted}. */
+  onTrusted?: NonNullable<WorkflowsHost["onTrusted"]>;
   /** Present with `startRun`; see {@link WorkflowsHost.startRefusal}. */
   startRefusal?: (ref: WorkflowRef) => Promise<StartRefusal | undefined>;
 
   constructor(parts: WorkspaceWorkflowsParts) {
     this.#parts = parts;
     this.folder = parts.folder;
-    const { engine, askTrust } = parts;
+    const { engine, askTrust, onTrusted } = parts;
     if (askTrust !== undefined) {
       this.askTrust = askTrust;
+    }
+    if (onTrusted !== undefined) {
+      this.onTrusted = onTrusted;
     }
     if (engine !== undefined) {
       this.startRun = async ({ hubId, id }, input) => {

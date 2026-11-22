@@ -364,6 +364,12 @@ export interface WorkflowsHost {
    */
   askTrust?(): Promise<"trusted" | "declined">;
   /**
+   * Calls `listener` whenever the workspace may run now, wherever the person trusted it (the
+   * status bar's **Review**, too, not only the Run panel's), and returns how to stop. Absent where
+   * there is no folder to trust.
+   */
+  onTrusted?(listener: () => void): () => void;
+  /**
    * Why {@link WorkflowsHost.startRun} would refuse the workflow, as far as its files say before
    * **Run** is pressed, with the unsaved changes applied: what {@link StartRefused} carries, or
    * `undefined` when nothing in the files stops it. The page then shows **Run** unavailable with
