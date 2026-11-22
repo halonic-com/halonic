@@ -3,6 +3,7 @@
 - Task: HAL-15361
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15352#document-c566 (rows 8, 22, 48 and 54 list the new words; details of approved screens and output, so a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:AihiOp+ObeOElF1PqetWGlnZ6y28C2oUNENGG+hkT8OxGHD/o/uCSODc8AP7JDwMO57cMPtKHz2JlcPEfkO7Cg==
 
 ## What changes
 
