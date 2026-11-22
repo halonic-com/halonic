@@ -83,7 +83,7 @@ verifies("inbox.proposal-page", () => {
       expect(buttons(root, "Accept")).toEqual([]);
       expect(buttons(root, "Reject")).toEqual([]);
       expect(root.textContent).toContain(
-        "Studio can't accept or reject these changes here. To see them and decide, use the desktop app, or run this on your computer:",
+        "Studio can't accept or reject these changes here. To see them and decide, use the desktop app, or run this in a terminal on your computer:",
       );
       expect(root.querySelector("code")?.textContent).toBe("halonic proposals show 01JD8Q");
       expect(root.querySelector('button[aria-label="Copy command"]')).not.toBeNull();

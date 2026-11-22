@@ -74,9 +74,14 @@ export const proposalsMessages = defineMessages("proposals", {
     phrase`Wrote ${counted(paths.length, "file", "files")}: ${listInWords(paths)}.`,
   /** `accept` that wrote nothing. */
   wroteNothing: () => phrase`No file was written.`,
-  /** Files the person changed since the run: they stay undecided. */
+  /**
+   * Files the person changed since the run: they stay undecided. Reject keeps them, as Studio's
+   * line for such a file says (C682 2).
+   */
   changedOnDisk: (paths: readonly string[]) =>
-    phrase`${listInWords(paths)} changed since the run, so ${paths.length === 1 ? "it wasn't" : "they weren't"} written. Edit by hand, or reject.`,
+    paths.length === 1
+      ? phrase`${listInWords(paths)} changed since the run, so it wasn't written. To keep it as it is now, reject it.`
+      : phrase`${listInWords(paths)} changed since the run, so they weren't written. To keep them as they are now, reject them.`,
   /** The `--json` error when a file changed since the run (`conflict`). */
   changedOnDiskFailure: () => phrase`Some files changed since the run, so they weren't written.`,
   /** Files Accept may never write. */
