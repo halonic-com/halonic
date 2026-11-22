@@ -277,6 +277,34 @@ verifies("app.run-proposal-trust", () => {
   });
 });
 
+verifies("app.run-proposal-compare-refused", () => {
+  it("gives Compare why, instead of the saved file the store won't serve (HAL-15764)", async () => {
+    const setup = setUpProposals(digest);
+    await proposeRun(setup, "01JD8Q", (files) => {
+      files.set("notes/link/today.md", "x\n");
+      files.set(".git/hooks/post-checkout", "y\n");
+    });
+    const read = setup.store.read.bind(setup.store);
+    setup.store.read = async (path) => {
+      if (path.startsWith("notes/link/")) {
+        throw new RangeError(`Private workspace path ${JSON.stringify(path)}`);
+      }
+      return await read(path);
+    };
+    expect(await setup.proposals.compare("01JD8Q", "notes/link/today.md")).toEqual({
+      base: null,
+      saved: null,
+      run: "x\n",
+      refused: "outside-workspace",
+    });
+    expect(await setup.proposals.compare("01JD8Q", ".git/hooks/post-checkout")).toMatchObject({
+      saved: null,
+      run: "y\n",
+      refused: "under-git",
+    });
+  });
+});
+
 verifies("app.run-proposal-reject", () => {
   describe("rejecting", () => {
     it("leaves the saved file alone, and Undo makes it undecided again", async () => {
