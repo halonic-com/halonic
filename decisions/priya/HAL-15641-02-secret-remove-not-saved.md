@@ -3,7 +3,6 @@
 - Task: HAL-15641
 - Approval: flow check C605, point 6c (https://paperclip.halonic.com/HAL/issues/HAL-15625), routed to the platform adapters' owner in https://paperclip.halonic.com/HAL/issues/HAL-15641. A team decision on a command's wording, with no board card (HAL-2282 rule).
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4kASCiFxO43rilVowNAMtG5xg8bW67jZ4CTj1f1tBfGDY1GmxXdSnkX+HH3R17LYRPOxX91x71K0ukQwR4WBAw==
 
 ## What changes
 
