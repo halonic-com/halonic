@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { RemoteProtocolError } from "./errors.ts";
 import { readSseMessages, type SseMessage } from "./sse.ts";
 
 function bodyOf(chunks: readonly (string | Uint8Array)[]): ReadableStream<Uint8Array> {
@@ -84,6 +85,31 @@ verifies("executor-remote.sse", () => {
       });
       for await (const _message of readSseMessages(body)) break;
       expect(cancelled).toBe(true);
+    });
+  });
+});
+
+verifies("executor-remote.sse-message-limit", () => {
+  describe("readSseMessages with a bound", () => {
+    async function read(chunks: readonly string[]): Promise<SseMessage[]> {
+      const messages: SseMessage[] = [];
+      for await (const message of readSseMessages(bodyOf(chunks), 16)) messages.push(message);
+      return messages;
+    }
+
+    it("ends the stream with a protocol error when a message grows past the bound", async () => {
+      const reading = read(["data: 0123456789", "abcdef"]);
+      await expect(reading).rejects.toBeInstanceOf(RemoteProtocolError);
+      await expect(reading).rejects.toThrow(
+        "The host sent a stream message longer than 16 characters.",
+      );
+    });
+
+    it("gives every message that fits the bound", async () => {
+      expect(await read(["data: 012345678\n\n", "data: abcdefghi\n\n"])).toEqual([
+        { event: "message", id: null, data: "012345678" },
+        { event: "message", id: null, data: "abcdefghi" },
+      ]);
     });
   });
 });

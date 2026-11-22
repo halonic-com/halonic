@@ -14,6 +14,7 @@
 //     executable.
 import { createHash, randomUUID } from "node:crypto";
 import {
+  type Dirent,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -23,7 +24,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { createRequire, registerHooks } from "node:module";
-import { basename, dirname, isAbsolute, join, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import { getRawAsset, isSea } from "node:sea";
 import { pathToFileURL } from "node:url";
 import type { PayloadManifest } from "./payload-manifest.ts";
@@ -52,7 +53,8 @@ function payloadFolderName(version: string, manifest: PayloadManifest): string {
 
 /**
  * Makes sure `folder` holds the payload. A folder an earlier launch unpacked
- * is checked file by file, and unpacked again when anything differs. The
+ * is checked file by file, and unpacked again when anything differs or it
+ * holds a file the payload doesn't have. The
  * payload is unpacked into a temporary folder next to it and then renamed,
  * so a launch that stops halfway leaves nothing half-written, and of two
  * launches at once, the second uses the first one's folder.
@@ -192,9 +194,42 @@ export function removeOldPayloads(
   return removed;
 }
 
-/** True when every payload file is in `folder` with its digest. */
+/**
+ * True when `folder` holds the payload and nothing else: every payload file
+ * with its digest, and no file or link the manifest doesn't name. Node
+ * resolves modules by what a folder holds, so a file the build didn't make
+ * could be loaded in place of one it did; a folder that holds one is
+ * unpacked again.
+ */
 function holdsPayload(folder: string, manifest: PayloadManifest): boolean {
-  return manifest.files.every((file) => holdsFile(folder, file.path, file.sha256));
+  return (
+    holdsOnlyPayloadEntries(folder, manifest) &&
+    manifest.files.every((file) => holdsFile(folder, file.path, file.sha256))
+  );
+}
+
+/** True when every entry in `folder` is a payload file, or a folder on the way to one. */
+function holdsOnlyPayloadEntries(folder: string, manifest: PayloadManifest): boolean {
+  const files = new Set(manifest.files.map((file) => file.path));
+  const folders = new Set(manifest.files.flatMap((file) => foldersAbove(file.path)));
+  let entries: Dirent[];
+  try {
+    entries = readdirSync(folder, { recursive: true, withFileTypes: true });
+  } catch {
+    return false;
+  }
+  return entries.every((entry) => {
+    const path = relative(folder, join(entry.parentPath, entry.name)).split(sep).join("/");
+    // A link is never a payload entry: the payload unpacks plain files and folders only.
+    if (entry.isFile()) return files.has(path);
+    return entry.isDirectory() && folders.has(path);
+  });
+}
+
+/** The folders a payload path sits in, outermost first: `a`, `a/b` for `a/b/c.js`. */
+function foldersAbove(path: string): string[] {
+  const parts = path.split("/").slice(0, -1);
+  return parts.map((_part, index) => parts.slice(0, index + 1).join("/"));
 }
 
 function holdsFile(folder: string, path: string, digest: string): boolean {

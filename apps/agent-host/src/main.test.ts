@@ -111,6 +111,25 @@ describe("unpackPayload", () => {
     expect(readFileSync(cli, "utf8")).toBe("cli");
   });
 
+  it("unpacks again over a folder that holds a file the payload doesn't have", () => {
+    unpackPayload(folder(), manifest, readAsset);
+    const added = join(folder(), "node_modules", "srt", "dist", "cli.mjs");
+    writeFileSync(added, "added");
+    unpackPayload(folder(), manifest, readAsset);
+    expect(existsSync(added)).toBe(false);
+    expect(readFileSync(join(folder(), "node_modules", "srt", "dist", "cli.js"), "utf8")).toBe(
+      "cli",
+    );
+  });
+
+  it("unpacks again over a folder that holds a folder the payload doesn't have", () => {
+    unpackPayload(folder(), manifest, readAsset);
+    const added = join(folder(), "node_modules", "other");
+    mkdirSync(added);
+    unpackPayload(folder(), manifest, readAsset);
+    expect(existsSync(added)).toBe(false);
+  });
+
   it("refuses an asset that doesn't match its digest, and leaves nothing behind", () => {
     // The second file is damaged, so the first is already written when it is found.
     const damaged = (path: string) =>
@@ -316,6 +335,12 @@ describe("payloadProgram", () => {
     const other = manifest.files.find((file) => !manifest.programs.includes(file.path));
     expect(other).toBeDefined();
     writeFileSync(join(folder(), ...(other?.path ?? "").split("/")), "changed");
+    expect(payloadProgram(cli(), "1.2.3", manifest)).toBeUndefined();
+  });
+
+  it("is nothing when the folder holds a file the payload doesn't have", () => {
+    unpackPayload(folder(), manifest, readAsset);
+    writeFileSync(join(folder(), "node_modules", "srt", "dist", "cli.mjs"), "added");
     expect(payloadProgram(cli(), "1.2.3", manifest)).toBeUndefined();
   });
 
