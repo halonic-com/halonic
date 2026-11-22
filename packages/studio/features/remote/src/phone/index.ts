@@ -19,6 +19,7 @@ export {
   type PhoneScanner,
   type PickedComputer,
 } from "./pairing-flow.ts";
+export { PairingScreens, type TypedStep } from "./pairing-screens.tsx";
 export {
   agentsAsOfText,
   asOfText,
