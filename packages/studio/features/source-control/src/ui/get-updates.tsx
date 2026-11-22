@@ -23,6 +23,20 @@ export function GetUpdates({
   const toasts = useToastStore();
   const openExternal = useOpenExternal();
   const reasonId = useId();
+  // A refusal has no Try again: over a file left to git it has Show how, otherwise no action.
+  const failureAction = (refusal: { readonly leftToGit: boolean } | undefined) => {
+    if (refusal === undefined) {
+      return { action: { label: updatesWords.tryAgain, onClick: () => void getUpdates() } };
+    }
+    if (!refusal.leftToGit) return {};
+    return {
+      action: {
+        label: updatesWords.showHow,
+        onClick: () => void openExternal(updatesWords.leftToGitHowTo),
+        keepOpen: true,
+      },
+    };
+  };
   const getUpdates = async (): Promise<void> => {
     const outcome = await list.getUpdates();
     if (outcome.kind === "got") {
@@ -37,17 +51,7 @@ export function GetUpdates({
         tone: "danger",
         title: updatesWords.failed,
         text: `${reason} ${updatesWords.nothingChanged}`,
-        ...(outcome.kind !== "refused"
-          ? { action: { label: updatesWords.tryAgain, onClick: () => void getUpdates() } }
-          : outcome.leftToGit
-            ? {
-                action: {
-                  label: updatesWords.showHow,
-                  onClick: () => void openExternal(updatesWords.leftToGitHowTo),
-                  keepOpen: true,
-                },
-              }
-            : {}),
+        ...failureAction(outcome.kind === "refused" ? outcome : undefined),
       });
     }
   };
