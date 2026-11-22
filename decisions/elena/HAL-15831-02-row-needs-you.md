@@ -3,6 +3,7 @@
 - Task: HAL-15831
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15831 (flow check C638 #5 on HAL-15825; Liam approved the plan on HAL-15831, including that the CLI matches Studio; small wording on the approved "Allow this address?" flow, decided by the team under HAL-2282, no board card); the reviewer signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:glpHB8W6QCIAm3hU5zQEm7zSozDbJMh+yAGN3Ieysf6/i7130L+ys8Kz2WGQSnE+2bhX8xxHHk0RTj4wePtjAQ==
 
 ## What changes
 
