@@ -1,13 +1,13 @@
 # @halonicjs/tooling-paperclip
 
 Tools that run beside Paperclip, the control plane our agents work in,
-without a model: the Agent tools plugin with its PR watcher, and the
+without a model: the Agent tools plugin with its PR watcher and PR tools, and the
 reviewer path list that the watcher and the reviewer-routing check share.
 
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; `reviewerFor`, `isLiamPath` and the path lists)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.reviewer-paths`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.reviewer-paths`
 
 ## PR watcher
 
@@ -64,11 +64,12 @@ merged one, and one or two list pages per repository each pass.
 
 ## The Agent tools plugin
 
-`src/plugin/` holds the plugin: `manifest.ts`, `worker.ts` (the job) and
-`host.ts`, the adapter to Paperclip's plugin API. It asks for the fewest
-capabilities the watcher needs: jobs, reading companies, agents, tasks and
-comments, creating comments, wake-ups, `issues.update`, outbound HTTP and
-reading a secret. No webhooks, agent tools, UI, files or processes.
+`src/plugin/` holds the plugin: `manifest.ts`, `worker.ts` (the job),
+`tools.ts` (the agent tools) and `host.ts`, the adapter to Paperclip's
+plugin API. It asks for the fewest capabilities the watcher and the tools
+need: jobs, reading companies, agents, tasks and comments, creating
+comments, wake-ups, `issues.update`, outbound HTTP, reading a secret and
+registering agent tools. No webhooks, UI, files or processes.
 
 - **Status changes:** the manifest can't narrow `issues.update`, so
   `host.ts` is the only file that changes a task's status, and its
@@ -95,6 +96,28 @@ writes `dist/worker.js` (the SDK bundled in) and `dist/manifest.js`, which
 that folder of a `main` checkout on Halonic Server (Settings → Plugins);
 publishing it to npm would be a release. Run it in dry run first, read the
 job log, then turn `dryRun` off.
+
+## PR tools
+
+Two agent tools (HAL-15920, B1) that replace a handful of `gh` calls with
+one. Both read GitHub with GET requests only, through the same reader and
+token as the watcher, and give up after 25 s.
+
+- **`pr_status(pr, repo?)`**: one pull request by number or URL, on one of
+  the plugin's `repos` (the first by default). It answers with the state,
+  `ci-ok` on the head (the light run's `ci-ok (draft, light run)` while
+  it's a draft), mergeable, commits behind its base, the merge queue, the
+  reviewer by the path rules, the newest review finding on the head, and
+  each signed approval ("Julian: approved on head `abc1234`") with whether
+  it counts by the HAL-14809 rules, then what the author does next. The
+  author says whether a pull request is a security or release one; the
+  tool can't tell, so a counting approval from Julian carries that note.
+  About 10 requests.
+- **`my_prs()`**: the calling agent's open pull requests, the branches
+  starting with its name, each with `ci-ok`, mergeable and whether a
+  reviewer signed an approval on its head. The ones that conflict or have a
+  red `ci-ok` come first, marked `NEEDS YOU`: the "check your open PRs
+  first" rule (HAL-14785) in one call. About 3 requests per pull request.
 
 ## Reviewer path list
 

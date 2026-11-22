@@ -46,10 +46,18 @@ interface CheckRun {
   readonly started_at?: string | null;
 }
 
+/** A draft's `ci-ok`: the light run's name. */
+export const draftCiOkName = "ci-ok (draft, light run)";
+
 /** The newest `ci-ok` run's result on a commit. A cancelled run isn't red. */
-export async function ciOk(get: GitHubGet, repo: string, sha: string): Promise<CheckState> {
+export async function ciOk(
+  get: GitHubGet,
+  repo: string,
+  sha: string,
+  checkName = "ci-ok",
+): Promise<CheckState> {
   const body = (await get(
-    `/repos/${repo}/commits/${sha}/check-runs?check_name=ci-ok&per_page=100`,
+    `/repos/${repo}/commits/${sha}/check-runs?check_name=${encodeURIComponent(checkName)}&per_page=100`,
   )) as {
     check_runs?: CheckRun[];
   };
@@ -89,7 +97,7 @@ interface Review {
  */
 const reviewerAssociations: ReadonlySet<string> = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 
-function byReviewer(item: Review): boolean {
+export function byReviewer(item: { readonly author_association?: string }): boolean {
   return reviewerAssociations.has(item.author_association ?? "");
 }
 
