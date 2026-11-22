@@ -2,7 +2,7 @@
 
 - Approval: Paperclip task HAL-14296 (from Nina's C340 check on HAL-14271, rows 20–23, code row C13+; a team decision by Liam on the approved C336/C337 wording); Liam approves this note in review
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:i6jIQpJ8MTNgV782GC9doTAhkf4GThlitWzG8Zki3uOkYnpY5vQK2QLdMqcezG7Uvs2kKFSxaPmJq4+ogZ5UCQ==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GIKN+4T+3RI8jXf0PKF7a7G2iTYz+FeeHPb2YwGPE5hY6W1qiW1YpNx7EQs5sIEC8UAOJMFa2crWATs69Rs7Aw==
 
 A plugin connector whose plugin wasn't added, was off, had changed or couldn't start its sandbox
 gave `halonic run` the same plain warning since HAL-13670: "couldn't list its tools", with no
