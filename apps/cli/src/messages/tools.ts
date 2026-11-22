@@ -12,9 +12,10 @@ import { bold, dim, phrase } from "./phrase.ts";
  */
 export const toolsMessages = defineMessages("tools", {
   summary: () => phrase`Review and approve the tools your connectors list`,
-  reviewSummary: () => phrase`Review a connector's listed tools and approve them one by one`,
-  approveSummary: () => phrase`Approve listed tools by name, or every waiting one with --all`,
-  revokeSummary: () => phrase`Remove your approval of listed tools`,
+  reviewSummary: () => phrase`Review a connector's listed tools and turn on the ones you expect`,
+  approveSummary: () =>
+    phrase`Turn on listed tools for agents by name, or every waiting one with --all`,
+  revokeSummary: () => phrase`Turn listed tools off again`,
   /** What the three were doing, for "✕ Couldn't list the tools from notes-mcp: …". */
   action: (source?: string) =>
     source === undefined ? phrase`list the tools` : phrase`list the tools from ${source}`,
@@ -135,7 +136,7 @@ export const toolsMessages = defineMessages("tools", {
     phrase`Couldn't approve ${tool}: ${source} doesn't list a tool called ${tool}.`,
   didYouMean: (name: string) => phrase`Did you mean ${name}?`,
   seeItsTools: (command: string) => phrase`See its tools: ${command}`,
-  nothingWaiting: (source: string) => phrase`Nothing from ${source} is waiting for your approval.`,
+  nothingWaiting: (source: string) => phrase`Nothing from ${source} to review.`,
   onlyBuiltIn: (source: string) =>
     phrase`${source} has no listed tools to approve. Its tools come with the integration.`,
   /** HAL-12638: a plugin's connector. Its tools are on once the plugin is trusted, so this isn't an error. */

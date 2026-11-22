@@ -90,9 +90,7 @@ verifies("cli.commands.tools.review", () => {
     const { code, stdout } = await kit.tools(["review", "notes-mcp"]);
 
     expect(code).toBe(exitCode.ok);
-    expect(stdout).toEqual([
-      "✓ Nothing from notes-mcp is waiting for your approval. 1 tool is on.",
-    ]);
+    expect(stdout).toEqual(["✓ Nothing from notes-mcp to review. 1 tool is on."]);
   });
 
   it("keeps what was approved before Ctrl C, and says so", async () => {

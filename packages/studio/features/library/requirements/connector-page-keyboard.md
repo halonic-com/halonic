@@ -10,7 +10,7 @@ When the person presses **Review** on the "Couldn't list the tools: this workspa
 
 - Given a workspace that isn't trusted yet and a connector with one tool to review,
   when you press **Review** on the connector's page and trust the workspace in the trust check,
-  then the tools are listed again and focus is on "1 tool is waiting for your approval".
+  then the tools are listed again and focus is on "1 tool is off until you review it".
 - Given the same page,
   when you press **Review** and then **Not now**,
   then the line still says the workspace isn't trusted yet.

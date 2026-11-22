@@ -49,7 +49,7 @@ verifies("library.listed-tools-review", () => {
   });
 
   it("words the badge for one tool and for several", () => {
-    expect(listedToolsWords.waitingBadge(1)).toBe("1 tool is waiting for your approval");
-    expect(listedToolsWords.waitingBadge(2)).toBe("2 tools are waiting for your approval");
+    expect(listedToolsWords.waitingBadge(1)).toBe("1 tool is off until you review it");
+    expect(listedToolsWords.waitingBadge(2)).toBe("2 tools are off until you review them");
   });
 });

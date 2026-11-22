@@ -53,7 +53,7 @@ export const listedToolsWords = {
     `Removed your approval for ${tool}. It's off until you approve it again.`,
   changedAgain: (tool: string) =>
     `${tool} changed again while you were reviewing. Here is the current version.`,
-  nothingWaiting: "Nothing is waiting for your approval.",
+  nothingWaiting: "Nothing to review.",
   searchLabel: (source: string) => `Search tools from ${source}`,
   searchCount: (shown: number) => `${toolCount(shown)} shown`,
   noMatch: (text: string) => `No tools match "${text}".`,
@@ -89,8 +89,8 @@ export const listedToolsWords = {
   /** The line on the connector's page, above **Review tools**. */
   waitingBadge: (count: number) =>
     count === 1
-      ? "1 tool is waiting for your approval"
-      : `${count} tools are waiting for your approval`,
+      ? "1 tool is off until you review it"
+      : `${count} tools are off until you review them`,
   /** The line on the connector's page when the review can't open its rows: **Review tools** or **Try again** follows it. */
   waitingNotice: {
     listingRefused: "Couldn't use this server's tool list, so none of its listed tools are on.",
