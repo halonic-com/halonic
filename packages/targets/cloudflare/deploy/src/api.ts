@@ -151,6 +151,11 @@ export interface CloudflareApi {
   ): Promise<DeployLease | undefined>;
   /** Frees the lock, only while `leaseId` still holds it. */
   releaseDeployLock(accountId: string, databaseName: string, leaseId: string): Promise<void>;
+  /**
+   * The lease in force, by the database's clock, without taking or changing it; `undefined` when
+   * the lock is free or the database doesn't exist. For `plan` and `status`, which never write.
+   */
+  readDeployLock(accountId: string, databaseName: string): Promise<DeployLease | undefined>;
   /** The versions that serve traffic now; `undefined` when the Worker has no deployment yet. */
   currentDeployment(
     accountId: string,

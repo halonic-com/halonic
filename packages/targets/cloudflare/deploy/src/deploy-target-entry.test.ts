@@ -2,7 +2,12 @@ import type { DeployFailure, DeploymentRef, DeployTargetContext } from "@halonic
 import { deployTargetVersion } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { createCloudflareDeployTarget, deployTarget, tokenName } from "./deploy-target-entry.ts";
+import {
+  createCloudflareDeployTarget,
+  deployTarget,
+  fetchThrough,
+  tokenName,
+} from "./deploy-target-entry.ts";
 import { type FakeCloudflareState, fakeCloudflareApi } from "./fake-api.ts";
 
 const web: DeploymentRef = {
@@ -83,6 +88,38 @@ verifies("deploy.target-entry", () => {
     const { make, usedTokens } = setup({ deployment: [{ id: "B", percentage: 100 }] });
     await make({ environmentToken: "ci-token" }).status(web);
     expect(usedTokens).toEqual(["ci-token"]);
+  });
+
+  it("takes an empty token in the environment as none, so the saved one is used", async () => {
+    const { make, usedTokens } = setup({ deployment: [{ id: "B", percentage: 100 }] });
+    await make({ environmentToken: "" }).status(web);
+    expect(usedTokens).toEqual(["saved-token"]);
+  });
+
+  it("sends a Request over the context's client whole, not only its URL", async () => {
+    const sent: { url: string; init: RequestInit | undefined }[] = [];
+    const through = fetchThrough({
+      fetch: async (url, init) => {
+        sent.push({ url, init });
+        return new Response(null, { status: 204 });
+      },
+    });
+    const body = JSON.stringify({ a: 1 });
+    await through(
+      new Request("https://acme.test/admin", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body,
+      }),
+    );
+    const [first] = sent;
+    expect(first?.url).toBe("https://acme.test/admin");
+    expect(first?.init?.method).toBe("POST");
+    expect(new Headers(first?.init?.headers).get("content-type")).toBe("application/json");
+    expect(await new Response(first?.init?.body).text()).toBe(body);
+
+    await through("https://acme.test/health", { method: "HEAD" });
+    expect(sent[1]).toEqual({ url: "https://acme.test/health", init: { method: "HEAD" } });
   });
 
   it("saves a token on login only after Cloudflare accepts it", async () => {
@@ -187,5 +224,30 @@ verifies("deploy.target-entry", () => {
     const { target } = setup();
     const failure = await failureOf(target.revokeSessions(web));
     expect(failure).toMatchObject({ code: "unexpected", kind: "internal" });
+  });
+});
+
+verifies("deploy.lock-read", () => {
+  const until = Date.UTC(2100, 0, 1);
+
+  it("names who holds the lock in status, and takes no lock to find out", async () => {
+    const { target, api } = setup({
+      deployment: [{ id: "B", percentage: 100 }],
+      lock: { id: "theirs", label: "kim@example.com", startedAt: 1_000, expiresAt: until },
+    });
+    expect((await target.status(web)).lockedBy).toEqual({
+      who: "kim@example.com",
+      startedAt: new Date(1_000).toISOString(),
+      expiresAt: new Date(until).toISOString(),
+    });
+    expect(api.calls.filter((call) => /DeployLock /.test(call))).toEqual([]);
+  });
+
+  it("names no one when the lease ran out", async () => {
+    const { target } = setup({
+      deployment: [{ id: "B", percentage: 100 }],
+      lock: { id: "theirs", label: "kim@example.com", startedAt: 1_000, expiresAt: 2_000 },
+    });
+    expect((await target.status(web)).lockedBy).toBeUndefined();
   });
 });
