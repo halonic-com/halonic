@@ -9,6 +9,7 @@ import {
 import { useEffect, useId, useRef, useState } from "react";
 import type { WorkflowArrow, WorkflowArrowChange, WorkflowArrowFieldChange } from "../api.ts";
 import { problemGlyph } from "../configuration/problem-lines.ts";
+import { arrowAddedLine, withNeverTaken } from "./arrow-announcements.ts";
 import { ArrowFields } from "./arrow-fields.tsx";
 import { conditionWords } from "./condition-words.ts";
 import { neverTaken } from "./never-taken.ts";
@@ -62,23 +63,6 @@ function swapped(arrows: readonly WorkflowArrow[], index: number, by: -1 | 1): W
   const [arrow] = next.splice(index, 1);
   if (arrow !== undefined) next.splice(index + by, 0, arrow);
   return next;
-}
-
-/**
- * `line` as announced after a change of the arrows, followed by "Arrow 2 is never taken: arrow 1
- * always matches first." when the change left one of the arrows at `places` (from 0) never taken.
- */
-function withNeverTaken(
-  line: string,
-  arrows: readonly WorkflowArrow[],
-  places: readonly number[],
-): string {
-  const beatenBy = neverTaken(arrows);
-  for (const place of places) {
-    const earlier = beatenBy[place];
-    if (earlier !== undefined) return `${line} ${words.neverTaken(place + 1, earlier)}`;
-  }
-  return line;
 }
 
 /**
@@ -174,11 +158,7 @@ export function StepArrows({
     // fields open, so its condition is one step away.
     const added = [...arrows, { from: stepId, to: target }];
     if (neverTaken(added)[arrows.length] !== undefined) setExpanded(arrows.length);
-    announce?.(
-      withNeverTaken(words.added(nameOf(names, stepId), nameOf(names, target)), added, [
-        arrows.length,
-      ]),
-    );
+    announce?.(arrowAddedLine(steps, arrows, stepId, target));
   };
   // An arrow back to the step itself, on done, would run it again for ever, so Go to… leaves the
   // step out; an arrow's own To still offers it, for a wait or a retry that needs one.
