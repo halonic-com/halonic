@@ -12,6 +12,7 @@ import {
   defaultAnswerTimeLimitMs,
   escapeForCard,
   longCommandLength,
+  toAskToolCall,
 } from "./ask-approvals.ts";
 
 const root = "/work/project";
@@ -170,5 +171,33 @@ verifies("app.ask-approvals", () => {
         ...timing,
       }),
     ).toThrow(CannotAskError);
+  });
+});
+
+verifies("app.ask-approvals-glob-pattern", () => {
+  it("lets a Glob inside the project through, judged by its path", async () => {
+    const { approvals, asked } = setup();
+    const glob = call("Glob", { path: `${root}/src`, pattern: "**/*.{ts,tsx}" });
+
+    expect(await approvals.request(glob, { signal })).toEqual({ approved: true });
+    expect(asked).toEqual([]);
+  });
+
+  it.each([
+    ["an absolute pattern", "/etc/*"],
+    ["a pattern from the home folder", "~/.ssh/*"],
+    ["a pattern that goes up", "../../**/*.env"],
+    ["a brace alternative that starts at the root", "{/etc,src}/*"],
+    ["a drive in the pattern", "C:/Users/*"],
+  ])("asks for a Glob with %s, though its path is inside the project", async (_, pattern) => {
+    const { approvals, asked } = setup();
+
+    await approvals.request(call("Glob", { path: `${root}/src`, pattern }), { signal });
+
+    expect(toAskToolCall("Glob", { path: `${root}/src`, pattern })).toEqual({
+      kind: "other",
+      name: "Glob",
+    });
+    expect(asked).toHaveLength(1);
   });
 });

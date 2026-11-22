@@ -1,6 +1,6 @@
 import { CommandBus, type CommandMap, type CommandSpec } from "./command-bus.ts";
 import { EventBus, type EventMap, type ListenerErrorHandler } from "./event-bus.ts";
-import type { RoutineTickResult } from "./routine-scheduler.ts";
+import type { RoutineTickResult } from "./routine-tick-result.ts";
 import { ServiceRegistry } from "./service-registry.ts";
 import type { PendingChanges } from "./workspace-files.ts";
 

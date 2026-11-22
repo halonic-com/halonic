@@ -5,8 +5,8 @@
 import { isRunTargetNotFound } from "@halonicjs/ports";
 import { errorKindOf } from "@halonicjs/std";
 import type { LastRuns } from "./routine-last-runs.ts";
-import type { RoutineTickResult } from "./routine-scheduler.ts";
 import type { SkippedTimes, SkipReason, SkipRecords } from "./routine-skips.ts";
+import type { RoutineTickResult } from "./routine-tick-result.ts";
 
 /** A range of a routine's due times the tick function dropped, with the routine key. */
 export type DroppedRange = SkippedTimes & { key: string };

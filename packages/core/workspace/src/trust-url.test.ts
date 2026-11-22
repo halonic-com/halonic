@@ -65,3 +65,18 @@ verifies("workspace.trust-content", () => {
     });
   });
 });
+
+verifies("workspace.trust-url-hidden-characters", () => {
+  it.each([
+    ["a control character before the scheme", "\u0001https://ops@mcp.acme.test/"],
+    ["a tab inside the scheme", "ht\ttps://ops@mcp.acme.test/"],
+    ["a line break in the host", "https://mcp.acme.test\n.evil.test/"],
+    ["DEL in the path", "https://mcp.acme.test/v1\u007f"],
+    ["a space at the start", " https://ops@mcp.acme.test/"],
+    ["a space at the end", "https://mcp.acme.test/ "],
+  ])("refuses a URL with %s, which a URL parser drops", (_, url) => {
+    expect(trustUrl(url)).toEqual({
+      refused: "the URL has a control character, or a space at its start or end",
+    });
+  });
+});
