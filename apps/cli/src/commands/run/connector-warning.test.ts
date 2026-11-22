@@ -263,6 +263,17 @@ verifies("cli.run-connector-warning", () => {
     ]);
   });
 
+  it("leaves out Studio's line where a yes given in Studio doesn't reach the command", () => {
+    const lines: string[] = [];
+    connectorWarnings({ warn: (line) => lines.push(plainText(line)) }, "acme", {
+      fileOf: () => "library/connectors/handbook.connector.yaml",
+      isIntegration: () => true,
+      studioYesReaches: false,
+    })(listingFailed(4, { why: "unfenced-not-allowed", name: "windows" }));
+
+    expect(lines.at(-1)).toBe("  Running it without the sandbox isn't allowed yet.");
+  });
+
   it("doesn't warn about the listing of a connector whose parts already said why", () => {
     const lines: string[] = [];
     const warn = connectorWarnings(

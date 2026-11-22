@@ -1,10 +1,13 @@
 // What `halonic run`'s connector warning reads beyond the run's log
 // (HAL-13670, HAL-15250, HAL-14296): the connector's file, whether it is an
-// integration's, and for a plugin connector where its plugin stands on this
-// computer. The plugins are read once, before the run, as the warning is
-// printed while the run goes.
+// integration's, for a plugin connector where its plugin stands on this
+// computer, and whether a yes given in Studio reaches this command (C612).
+// They are read once, before the run, as the warning is printed while the
+// run goes.
 
-import type { ProfileEnvironment } from "@halonicjs/profile";
+import { join } from "node:path";
+import { FileSandboxSettingStore } from "@halonicjs/adapter-fs-node";
+import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { connectorFileOf, isIntegrationConnector } from "../../connector-file.ts";
 import {
@@ -14,35 +17,53 @@ import {
   connectorPlugin,
 } from "../../connector-plugin.ts";
 import { openPluginService } from "../../plugin-host.ts";
+import { studioYesReaches } from "../../saved-unfenced-yes.ts";
+import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import type { WarnedConnectors } from "./connector-warnings.ts";
 
 /**
  * What the warning reads about each connector in `workspace`. The plugins
- * are listed only when a connector uses one. A plugins folder that can't be
- * listed leaves the plugin out, so the warning falls back to its plain line.
+ * are listed only when a connector uses one, and `studioYes` is asked only
+ * when one is a local integration's. A plugins folder that can't be listed
+ * leaves the plugin out, so the warning falls back to its plain line.
  *
  * @example
- * const connectors = await warnedConnectorsOf(workspace, plugins);
+ * const connectors = await warnedConnectorsOf(workspace, plugins, profileStudioYes(undefined));
  * connectors.pluginOf?.("orders"); // { id: "acme-order", state: { state: "not_added", near: "acme-orders" } }
  */
 export async function warnedConnectorsOf(
   workspace: LoadedWorkspace,
   plugins: AddedPlugins,
+  studioYes: () => Promise<boolean>,
 ): Promise<WarnedConnectors> {
   const pluginIds = new Map<string, string>();
+  let integrations = false;
   for (const { value } of filesOf(workspace, "connector")) {
     if ("plugin" in value.transport) pluginIds.set(value.id, value.transport.plugin.id);
+    if (isIntegrationConnector(workspace, value.id)) integrations = true;
   }
   const added = pluginIds.size === 0 ? undefined : await addedOrUndefined(plugins);
   return {
     fileOf: (connector) => connectorFileOf(workspace, connector),
     isIntegration: (connector) => isIntegrationConnector(workspace, connector),
+    studioYesReaches: integrations ? await studioYes() : true,
     pluginOf: (connector) => {
       const id = pluginIds.get(connector);
       if (id === undefined || added === undefined) return undefined;
       return { id, state: connectorPlugin(id, added) };
     },
   };
+}
+
+/**
+ * Whether a yes given in Studio reaches this command, read from the sandbox
+ * choice Studio's shell saves in `profile`, as the integration's refusal reads
+ * it (`cli.local-integration-unfenced-yes`).
+ */
+export function profileStudioYes(profile: ProfileEnvironment | undefined): () => Promise<boolean> {
+  const root = profileFolder(profile ?? nodeProfileEnvironment()).root;
+  return () =>
+    studioYesReaches(process.platform, new FileSandboxSettingStore(join(root, "sandbox")));
 }
 
 /** The plugins added in `profile`, this process's profile by default, read only when asked. */

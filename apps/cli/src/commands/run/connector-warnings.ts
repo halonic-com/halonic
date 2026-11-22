@@ -38,6 +38,12 @@ export interface WarnedConnectors {
    * where only the log counts, as in `runs show`.
    */
   pluginOf?(connector: string): WarnedPlugin | undefined;
+  /**
+   * Whether a yes given in Studio reaches this command, so the fix for a
+   * local integration the gate refused can send the person there (C612).
+   * Left out where only the log counts, as in `runs show`: then it does.
+   */
+  readonly studioYesReaches?: boolean;
 }
 
 /**
@@ -170,7 +176,7 @@ function causeLines(
         connectorStartMessages.unfencedNotAllowed(
           runnerUnfencedWords(cause.name, "integration").reason,
         ),
-        connectorStartMessages.unfencedNotAllowedFix(),
+        connectorStartMessages.unfencedNotAllowedFix(connectors.studioYesReaches ?? true),
       ];
   }
 }

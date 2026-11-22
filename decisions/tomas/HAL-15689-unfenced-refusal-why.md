@@ -21,6 +21,10 @@ longer true, and `doctor` doesn't know the yes, so the gate's reason and fix nev
 - `halonic run` and `halonic runs show` say "! notes didn't start, so its tools are off in this run.",
   then why the sandbox isn't available in `app.runner-unfenced-words`' words, then "Running it without
   the sandbox isn't allowed yet. To allow it, trust this workspace in Studio on this computer."
+- Where a yes given in Studio doesn't reach the command (Windows with the WSL sandbox, from the
+  profile's saved sandbox choice), `halonic run` leaves out the second sentence, as the refusal
+  itself does since C612 (Liam's condition (b), HAL-15675), which landed on `main` while this was in
+  review. `runs show` reads only the log and keeps it.
 - Studio's run view has no words of its own for it yet and reads it as a connector that didn't start,
   as before; its words come with Studio's yes for integrations (HAL-15144 part 2).
 - The `doctor` line for any other cause of an integration stays as it is.
@@ -28,7 +32,8 @@ longer true, and `doctor` doesn't know the yes, so the gate's reason and fix nev
 ## Tests
 
 No test is removed or weakened. New tests: the reader, the events reader, the engine's cause, the
-opener's error as the engine reads it, and the run's warning lines. A real `halonic run` in a
+opener's error as the engine reads it, and the run's warning lines, with and without the Studio
+sentence. A real `halonic run` in a
 container with a trusted workspace, a local integration and no yes printed the three lines above, and
 `runs show` printed the same.
 

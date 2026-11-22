@@ -118,9 +118,14 @@ export const connectorStartMessages = defineMessages("connectorStart", {
    * available here, as `app.runner-unfenced-words` words it.
    */
   unfencedNotAllowed: (sandboxReason: string) => phrase`${sandboxReason}`,
-  /** Its fix: R18's, as the refusal says it (`cli.local-integration-unfenced-yes`). */
-  unfencedNotAllowedFix: () =>
-    phrase`Running it without the sandbox isn't allowed yet. To allow it, trust this workspace in Studio on this computer.`,
+  /**
+   * Its fix: R18's, as the refusal says it (`cli.local-integration-unfenced-yes`),
+   * without the Studio line where Studio's yes doesn't reach the command (C612).
+   */
+  unfencedNotAllowedFix: (studioYesReaches: boolean) =>
+    studioYesReaches
+      ? phrase`Running it without the sandbox isn't allowed yet. To allow it, trust this workspace in Studio on this computer.`
+      : phrase`Running it without the sandbox isn't allowed yet.`,
   /** HAL-13714: an `http` connector where nothing answers at its address. Mateo, decided by the team. */
   nothingAnswered: (address: string) => phrase`Nothing answered at ${address}.`,
   nothingAnsweredFix: (connector: string, file: string | undefined) =>
