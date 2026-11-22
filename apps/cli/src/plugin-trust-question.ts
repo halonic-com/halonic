@@ -92,7 +92,11 @@ export async function askToTrustPlugin(
       ? pluginMessages.noTerminalFix(id, fingerprint)
       : pluginMessages.noTerminalFixOffHere(id, fingerprint);
   if (answer.fingerprint !== undefined && answer.fingerprint !== fingerprint) {
-    throw fingerprintNotCurrent(entry, { check: [...check, ...wontTurnOn], fingerprint });
+    throw fingerprintNotCurrent(entry, {
+      check: [...check, ...wontTurnOn],
+      fingerprint,
+      offHere: answer.offHere,
+    });
   }
 
   const trusted = await answer.context.ask({
@@ -180,28 +184,42 @@ export function pluginCheckAsAsked(
  * When the check above shows the plugin as it is now, the fix is the command
  * that trusts it, with that fingerprint filled in (HAL-15319). When the files
  * changed during the question, nobody has seen them as they are now, so the
- * fix asks for a review first.
+ * fix asks for a review first. For a plugin that stays off on this computer
+ * once trusted, that command is "To trust it anyway", as the refusal without
+ * a terminal says it, because the check above says what turns it on
+ * (HAL-16016).
  *
  * @param now - the check as it is now and its fingerprint, or what changed
  *   during the question: no check to show again and the fingerprint the files
- *   have now
+ *   have now; `offHere` when the check above says it stays off here
  */
 export function fingerprintNotCurrent(
   entry: CheckedPlugin,
-  now: { readonly check: readonly Phrase[]; readonly fingerprint: string },
+  now: {
+    readonly check: readonly Phrase[];
+    readonly fingerprint: string;
+    readonly offHere?: RunnerUnfencedReason | undefined;
+  },
 ): NotTrustedError {
-  const fix =
-    now.check.length === 0
-      ? pluginMessages.addNoTerminalFix(entry.folder)
-      : pluginMessages.noTerminalFix(entry.folder, now.fingerprint);
   return new NotTrustedError({
     // The manifest's name is outside text (cli-output 5).
     problem: trustMessages.fingerprintNotCurrent(printable(entry.plugin.name)),
-    fix,
+    fix: fingerprintNotCurrentFix(entry.folder, now),
     fingerprint: now.fingerprint,
     check: now.check,
     action: null,
   });
+}
+
+/** The fix line of {@link fingerprintNotCurrent}. */
+function fingerprintNotCurrentFix(
+  id: string,
+  now: Parameters<typeof fingerprintNotCurrent>[1],
+): Message {
+  if (now.check.length === 0) return pluginMessages.addNoTerminalFix(id);
+  return now.offHere === undefined
+    ? pluginMessages.noTerminalFix(id, now.fingerprint)
+    : pluginMessages.noTerminalFixOffHere(id, now.fingerprint);
 }
 
 /**

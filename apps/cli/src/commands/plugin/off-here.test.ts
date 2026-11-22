@@ -248,6 +248,22 @@ verifies("cli.commands.plugin.off-here", () => {
         "✕ That fingerprint doesn't match Weather as it is now.",
       ].join("\n"),
     );
+    // Trusting it still doesn't turn it on here, as without a terminal (HAL-16016).
+    expect(refused.io.stderr.at(-1)).toBe(
+      `  Read the list above. To trust it anyway, run: halonic trust --plugin weather --yes --fingerprint ${refused.io.stdout.at(-1)}`,
+    );
+  });
+
+  it("offers a stale plugin add --fingerprint the command to trust it anyway", async () => {
+    const weather = await source("weather", true);
+
+    const refused = await plugin("add", weather, "--yes", "--fingerprint", "sha256:stale");
+
+    expect(refused.code).toBe(exitCode.notTrusted);
+    expect(refused.io.stderr.join("\n")).not.toContain("Read the list above, then run");
+    expect(refused.io.stderr.at(-1)).toBe(
+      `  Read the list above. To trust it anyway, run: halonic trust --plugin weather --yes --fingerprint ${refused.io.stdout.at(-1)}`,
+    );
   });
 
   it("asks without the warning in the sandbox", async () => {
