@@ -22,6 +22,9 @@ export interface BridgeFailedEvent {
  * stayed in its working folder inside Halonic's fence (HAL-14992). `tool`:
  * the program's tool, such as `Edit` or `Bash`. `detail`: the path it read
  * or edited, the command it ran (at most 2,000 characters), or `""`.
+ * `waitedMs`: how long, in whole milliseconds, Halonic took from the bridge
+ * getting the ask to its answer (requirement `events.harness-allowed-waited`);
+ * absent in older logs.
  */
 export interface HarnessAllowedEvent {
   type: "harness.allowed";
@@ -29,4 +32,5 @@ export interface HarnessAllowedEvent {
   tool: string;
   detail: string;
   rule: "asks-in-sandbox";
+  waitedMs?: number;
 }

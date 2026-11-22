@@ -91,6 +91,7 @@ verifies("harness-host.sandboxed-asks", () => {
         tool: "Edit",
         detail: edit.file_path,
         rule: "asks-in-sandbox",
+        waitedMs: expect.any(Number),
       },
     ]);
   });

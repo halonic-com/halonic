@@ -25,6 +25,8 @@ const harnessAllowed = s
     tool: s.string(),
     detail: s.string(),
     rule: s.literal("asks-in-sandbox"),
+    // How long the host took to answer the ask (`agent-host-client.bridge-allowed-waited`).
+    waitedMs: s.number().int().min(0).optional(),
   })
   .strict();
 
@@ -32,7 +34,8 @@ const wrongShape = "The bridge called recorder.record with arguments of the wron
 
 /**
  * The engine's recorder for one bridge's calls from the host: a
- * `bridge.failed` or a `harness.allowed` must have exactly its fields, and
+ * `bridge.failed` or a `harness.allowed` must have exactly its fields (a
+ * `harness.allowed` may add its `waitedMs`), and
  * loses the bridge's token from its message or detail as `[run token]`, and
  * every key value `scrub` removes. Every other event passes as it came.
  *
@@ -50,7 +53,12 @@ export function hostBridgeRecorder(
       if (event.type === "harness.allowed") {
         const parsed = parse(harnessAllowed, event);
         if (!parsed.ok) throw new Error(wrongShape);
-        return recorder.record({ ...parsed.value, detail: clean(parsed.value.detail) });
+        const { waitedMs, ...fields } = parsed.value;
+        return recorder.record({
+          ...fields,
+          detail: clean(fields.detail),
+          ...(waitedMs === undefined ? {} : { waitedMs }),
+        });
       }
       if (event.type !== "bridge.failed") return recorder.record(event);
       const parsed = parse(bridgeFailed, event);
