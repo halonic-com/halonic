@@ -3,6 +3,7 @@
 - Task: HAL-15716, from words check C617 rows 20 and 22 (HAL-15700)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15716 (wording fixes on approved screens and command output, so a team decision under the HAL-2282 rule; Liam's code review signs this note)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4MR98NoT5BsdTm7dbc/mokhcNtL8wXCLKUw0v3b+5w9mTon1HtVu9Tl8KPm/sVtXOc70tHU6FOnpZExs1bZZCQ==
 
 ## What changes
 
