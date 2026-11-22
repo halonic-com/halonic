@@ -4,6 +4,7 @@
 - Approval: Liam's decision on HAL-15286 (21 Nov): don't raise the 20-minute limit of the merge base's tests, map `infra/ci-runner/` to "no package tests" instead. `tooling/check/src/lib/affected-tests.ts` is a guard trust root, so this note needs both guardians: Liam (CTO) and Julian (security reviewer)
 - Kind: user-visible
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5yo9OVYy+yEJLO848+U4YQsZp40KPouHkP/HEKLlle6XFjeVrmKEMBb/4E586Ad+c+dJnk2z/ZreuW3hXV52BA==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:IXesgjkJn0WJPeO6/xj9hwvrH6XKnk0f+wX4/co+/ME/2Hf8oZvoisXWJXjfKhJi9df2uMSim6G+2PMHeZGZAQ==
 
 ## What changes
 
