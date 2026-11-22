@@ -132,7 +132,7 @@ exit `$LASTEXITCODE
     # Why the installer's step took nothing back: the same command run as the
     # user directly, and the user's integrity level. Windows PowerShell turns
     # a native command's stderr under 2>&1 into errors, so 'Stop' is lifted.
-    $direct = Invoke-AsUser "`$ErrorActionPreference = 'Continue'; `$o = & '$hostExe' --sandbox-take-back 2>&1 | Out-String; `"exit `${LASTEXITCODE}: `$o`"; exit 0"
+    $direct = Invoke-AsUser "`$ErrorActionPreference = 'Continue'; `$o = & '$hostExe' --profile-folder '$local\take-back-profile' --sandbox-take-back 2>&1 | Out-String; `"exit `${LASTEXITCODE}: `$o`"; exit 0"
     Write-Output "--sandbox-take-back run as $userName afterwards: $direct"
     Write-Output (Invoke-AsUser '& whoami.exe /groups /fo csv /nh | Select-String Mandatory | Out-String')
     throw "The reinstall left srt's grants for $userName`: $($after.persistent_grants | ConvertTo-Json -Compress)"

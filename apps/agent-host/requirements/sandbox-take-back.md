@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16084; HAL-16082 (findings: the installer's sandbox step recreates srt's account before any take-back)
 
-When the agent host is started with `--sandbox-take-back`, the agent host shall take back the grants a removal with administrator rights left (`sandbox-srt.take-back`), print one JSON line with `ok` and the `outcome` (`taken_back`, `none`, `elevated` or `failed`), and exit with 0 when `ok` is true and 1 when it isn't, without serving and whether or not it was given a profile folder.
+When the agent host is started with `--sandbox-take-back`, the agent host shall take back the grants a removal with administrator rights left (`sandbox-srt.take-back`), print one JSON line with `ok` and the `outcome` (`taken_back`, `none`, `elevated` or `failed`), and exit with 0 when `ok` is true and 1 when it isn't, without serving. Like every host command, the executable needs `--profile-folder`, which the installer passes.
 
 ## Examples
 

@@ -1034,8 +1034,11 @@ Section SandboxStep
     ; (HAL-16084). It must come before the helper: once srt's sandbox account
     ; is there again, srt no longer reports that access as left behind. With
     ; administrator rights it takes nothing back. No outcome stops the install
-    ; or shows on the page: the host logs what it did.
-    nsExec::ExecToStack /TIMEOUT=60000 '"$INSTDIR\halonic-agent-host.exe" --sandbox-take-back'
+    ; or shows on the page: the host logs what it did. The executable needs the
+    ; profile folder to unpack into, as for every host command.
+    Call ProfileFolder
+    Pop $1
+    nsExec::ExecToStack /TIMEOUT=60000 '"$INSTDIR\halonic-agent-host.exe" --profile-folder "$1" --sandbox-take-back'
     Pop $2
     Pop $2
     ${If} $SandboxState == ${BST_CHECKED}

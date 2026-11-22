@@ -19,7 +19,9 @@ function nsisSection(name: string): string {
 // (windows/test-take-back.ps1); these hold its place in the installer.
 verifies("studio.installer-take-back", () => {
   const step = nsisSection("SandboxStep");
-  const takeBack = step.indexOf(`"$INSTDIR\\halonic-agent-host.exe" --sandbox-take-back'`);
+  const takeBack = step.indexOf(
+    `"$INSTDIR\\halonic-agent-host.exe" --profile-folder "$1" --sandbox-take-back'`,
+  );
 
   it("runs the installed host's --sandbox-take-back in the sandbox step", () => {
     expect(takeBack).toBeGreaterThan(-1);
