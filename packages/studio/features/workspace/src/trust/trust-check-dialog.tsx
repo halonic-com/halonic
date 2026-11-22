@@ -1,4 +1,4 @@
-import { Callout, Checkbox, Dialog, Disclosure } from "@halonicjs/studio-kit";
+import { Callout, Checkbox, Dialog, Disclosure, WarningIcon } from "@halonicjs/studio-kit";
 import { useId, useState } from "react";
 import type {
   TrustLine,
@@ -15,17 +15,30 @@ export interface TrustCheckDialogProps {
   readonly busy: boolean;
   readonly error: string | undefined;
   readonly onNotNow: () => void;
-  readonly onTrust: () => void;
+  /** `allowUnfenced` is whether the person ticked the box for the review's `unfencedYes`. */
+  readonly onTrust: (allowUnfenced: boolean) => void;
   readonly returnFocus: () => HTMLElement | null;
 }
 
-/** The kit Dialog at `md` with Not now focused, nothing red (mockup-trust 1 and 2). */
+/**
+ * The kit Dialog at `md` with Not now focused, nothing red (mockup-trust 1 and 2). Each checkbox
+ * sits above the buttons, and **Trust** stays unavailable, though focusable, until every one is
+ * ticked (the "Runs" line design section 4).
+ */
 export function TrustCheckDialog(props: TrustCheckDialogProps) {
   const { review } = props;
   // The tick belongs to the check it was given for: a new fingerprint clears it.
   const [understoodFor, setUnderstoodFor] = useState<string | undefined>();
   const understood = understoodFor === review.fingerprint;
+  // The yes's tick belongs to its reason too: a new one clears it.
+  const yesKey =
+    review.unfencedYes === undefined
+      ? undefined
+      : `${review.fingerprint}:${review.unfencedYes.reason}`;
+  const [yesFor, setYesFor] = useState<string | undefined>();
+  const yesTicked = yesKey !== undefined && yesFor === yesKey;
   const understoodId = useId();
+  const yesId = useId();
   const refusedId = useId();
   const needsConfirm = review.unpinned.length > 0;
   let unavailable: { readonly reason: string } | undefined;
@@ -33,6 +46,8 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
     unavailable = { reason: refusedId };
   } else if (needsConfirm && !understood) {
     unavailable = { reason: understoodId };
+  } else if (yesKey !== undefined && !yesTicked) {
+    unavailable = { reason: yesId };
   }
   return (
     <Dialog
@@ -48,7 +63,7 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
       busy={props.busy}
       {...(props.error === undefined ? {} : { error: props.error })}
       footnote={review.footnote}
-      onConfirm={props.onTrust}
+      onConfirm={() => props.onTrust(yesTicked)}
       onCancel={props.onNotNow}
       returnFocus={props.returnFocus}
     >
@@ -93,6 +108,14 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
             <span id={understoodId}>I understand this can download new code when it starts</span>
           </Checkbox>
         ) : null}
+        {review.unfencedYes === undefined ? null : (
+          <Checkbox
+            checked={yesTicked}
+            onChange={(checked) => setYesFor(checked ? yesKey : undefined)}
+          >
+            <span id={yesId}>{review.unfencedYes.checkbox}</span>
+          </Checkbox>
+        )}
       </div>
     </Dialog>
   );
@@ -100,7 +123,11 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
 
 function TrustSection({ section }: { readonly section: TrustSectionView }) {
   return (
-    <Disclosure summary={section.heading} defaultOpen={section.open}>
+    <Disclosure
+      summary={section.heading}
+      defaultOpen={section.open}
+      {...(section.mark === undefined ? {} : { mark: section.mark })}
+    >
       <div className="flex flex-col gap-3 px-4 pb-3">
         {section.intro === undefined ? null : (
           <p className="m-0 text-small text-fg-muted">{section.intro}</p>
@@ -122,6 +149,12 @@ function TrustRow({ row }: { readonly row: TrustRowView }) {
         )}
         <code>{row.id}</code>
         <span className="break-all font-mono text-small">{row.detail}</span>
+        {row.flag === undefined ? null : (
+          <span className="flex items-baseline gap-1 text-small text-attention">
+            <Triangle />
+            <span>· {row.flag}</span>
+          </span>
+        )}
       </p>
       {row.warning === undefined ? null : (
         <p className="m-0 text-small text-attention">{row.warning}</p>
@@ -148,9 +181,31 @@ function TrustLineView({ line }: { readonly line: TrustLine }) {
           <span className="text-fg-muted">{label}:</span>{" "}
         </>
       )}
-      <span className={tone === "attention" ? "col-start-2 text-attention" : "col-start-2"}>
-        {value}
-      </span>
+      {tone === "warning" ? (
+        <span className="col-start-2 inline-flex gap-1 text-attention">
+          <Triangle />
+          <span>{value}</span>
+        </span>
+      ) : (
+        <span className={tone === "attention" ? "col-start-2 text-attention" : "col-start-2"}>
+          {value}
+        </span>
+      )}
     </p>
+  );
+}
+
+/**
+ * The triangle before a warning's words, hidden from screen readers: the words carry the warning,
+ * never the colour or the mark alone.
+ */
+function Triangle() {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-grid size-icon-sm shrink-0 align-text-bottom *:size-full"
+    >
+      <WarningIcon />
+    </span>
   );
 }

@@ -4,7 +4,6 @@ import {
   AgentHostPluginSecrets,
   AgentHostPluginToolCaller,
   type AgentHostTransport,
-  AgentHostUnfencedRuns,
 } from "@halonicjs/adapter-agent-host-client";
 import type { ServiceRegistry, SignOutPlugin } from "@halonicjs/app";
 import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
@@ -13,7 +12,7 @@ import { shellKeychain, type TauriIpc } from "@halonicjs/studio-services";
 import type { KeyboardPlatform } from "@halonicjs/studio-shell";
 import { type DesktopPluginsHost, desktopPluginsHost } from "./desktop-plugins-host.ts";
 import { desktopProgramsRun } from "./programs-run.ts";
-import { type DesktopUnfencedRuns, desktopUnfencedRuns } from "./unfenced-runs.ts";
+import { type DesktopUnfencedRuns, windowUnfencedRuns } from "./unfenced-runs.ts";
 
 /**
  * The plugins are the profile's, not a folder's, so a window has one host that every open
@@ -58,7 +57,7 @@ export function providePlugins(
   const { transport } = parts;
   if (transport === undefined) return;
   const signIns = new AgentHostIntegrationSignIns(transport);
-  const unfencedRuns = desktopUnfencedRuns(new AgentHostUnfencedRuns(transport));
+  const unfencedRuns = windowUnfencedRuns(parts.window, transport);
   const plugins = desktopPluginsHost({
     ipc: parts.ipc,
     secrets: shellKeychain(parts.ipc),

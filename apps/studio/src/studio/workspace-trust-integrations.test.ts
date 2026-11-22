@@ -4,9 +4,9 @@ import { join } from "node:path";
 import { FileSystemFolderReader, FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { webCryptoDigest } from "@halonicjs/adapter-fs-tauri";
 import { MemoryTrustStore } from "@halonicjs/adapter-memory";
-import { type TrustCheck, TrustService } from "@halonicjs/app";
+import { type RunnerUnfencedReason, type TrustCheck, TrustService } from "@halonicjs/app";
 import { fixedClock } from "@halonicjs/std";
-import type { UnfencedRunStatus } from "@halonicjs/studio-feature-plugins/api";
+import type { PluginUnfencedRuns, UnfencedRunStatus } from "@halonicjs/studio-feature-plugins/api";
 import { verifies } from "@halonicjs/testing-spec";
 import type { IntegrationTrustContent } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -14,7 +14,7 @@ import {
   type IntegrationRuns,
   integrationRunsChecking,
   integrationRunsFenced,
-  integrationRunsOff,
+  integrationRunsUnfenced,
   integrationsIntro,
 } from "./integration-trust-rows.ts";
 import { trustReviewOf } from "./trust-review.ts";
@@ -82,24 +82,24 @@ verifies("studio.workspace-trust-integrations", () => {
     ]);
   });
 
-  it("says an integration doesn't start where the sandbox can't, with the reason and fix, and no yes", () => {
+  it("says an integration isn't in the sandbox, in amber, with the reason and fix, and opens the section", () => {
     const { review, section, row } = reviewOf({ state: "not-fenced", reason: "container" });
 
     expect(section?.open).toBe(true);
-    // The summary doesn't say it will run what Runs says doesn't start.
-    expect(review?.summary).toEqual(["Will list 2 addresses."]);
-    expect(row?.lines[1]).toEqual(["Runs", integrationRunsOff, "attention"]);
+    expect(section?.mark).toBe("warning");
+    expect(row?.flag).toBe("not in the sandbox");
+    // With the person's yes it runs, so the summary counts it.
+    expect(review?.summary).toEqual(["Will run 1 integration and list 2 addresses."]);
+    expect(row?.lines[1]).toEqual(["Runs", integrationRunsUnfenced, "warning"]);
     expect(row?.lines[2]?.[1]).toMatch(/container/);
     expect(row?.lines[3]?.[0]).toBe("");
-    // Nothing to confirm: no checkbox, so Trust doesn't wait on one.
-    expect(review?.unpinned).toEqual([]);
   });
 
   it("names Windows for the reason windows, in the integration's words", () => {
     const { row } = reviewOf({ state: "not-fenced", reason: "windows" });
 
     expect(row?.lines.slice(1, 4)).toEqual([
-      ["Runs", integrationRunsOff, "attention"],
+      ["Runs", integrationRunsUnfenced, "warning"],
       ["", "On Windows, integration code can't run in the sandbox in this version of Halonic."],
       ["", "Use Halonic inside WSL 2 on this computer."],
     ]);
@@ -139,14 +139,23 @@ verifies("studio.workspace-trust-integrations", () => {
     expect(JSON.stringify(section)).not.toMatch(/built-in/i);
   });
 
-  it("reads a saved yes as not starting, since nothing starts a local integration without the sandbox", () => {
+  it("reads a saved yes as not in the sandbox with its day, as the plugin check reads it", () => {
+    const now = new Date("2026-11-21T10:00:00Z");
     expect(
-      integrationRunsOf({ run: "allowed", reason: "windows", allowedAt: "2026-11-09T10:00:00Z" }),
-    ).toEqual({ state: "not-fenced", reason: "windows" });
+      integrationRunsOf(
+        { run: "allowed", reason: "windows", allowedAt: "2026-11-09T10:00:00Z" },
+        now,
+      ),
+    ).toEqual({ state: "not-fenced", reason: "windows", allowedOn: "9 Nov" });
     expect(integrationRunsOf({ run: "needs-yes", reason: "container" })).toEqual({
       state: "not-fenced",
       reason: "container",
+      allowedOn: undefined,
     });
+    // A yes with no readable day leaves the row out, as in the plugin check.
+    expect(
+      integrationRunsOf({ run: "allowed", reason: "windows", allowedAt: "not a date" }, now),
+    ).toBeUndefined();
     expect(integrationRunsOf({ run: "fenced" })).toEqual({ state: "fenced" });
     expect(integrationRunsOf({ run: "stopped" })).toBeUndefined();
     expect(integrationRunsOf({ run: "needs-yes", reason: "from-a-newer-host" })).toBeUndefined();
@@ -176,7 +185,11 @@ afterEach(async () => {
   await rm(folder, { recursive: true, force: true });
 });
 
-async function viewWith(status: (() => Promise<UnfencedRunStatus>) | undefined) {
+function viewWith(status: (() => Promise<UnfencedRunStatus>) | undefined) {
+  return viewWithRuns(status === undefined ? undefined : { status, allow: async () => null });
+}
+
+async function viewWithRuns(runs: PluginUnfencedRuns | undefined) {
   const trust = new WorkspaceTrust({
     definitions: new FolderDefinitionStore(folder, folder),
     folder: new FileSystemFolderReader(folder, folder),
@@ -190,7 +203,12 @@ async function viewWith(status: (() => Promise<UnfencedRunStatus>) | undefined) 
     }),
   });
   await trust.refresh();
-  return new WorkspaceTrustView(trust, "/work/acme", status);
+  return new WorkspaceTrustView(trust, "/work/acme", runs);
+}
+
+/** Lets the host's answers arrive. */
+function settled(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 function runsOf(view: WorkspaceTrustView): string | undefined {
@@ -239,14 +257,131 @@ verifies("studio.workspace-trust-integrations", () => {
 });
 
 verifies("studio.workspace-trust-integrations-amber", () => {
-  it("puts Runs in the attention tone when it doesn't start, and only Runs", () => {
+  it("puts Runs in amber with the triangle where it isn't in the sandbox, and only Runs", () => {
     const { row } = reviewOf({ state: "not-fenced", reason: "container" });
 
-    expect(row?.lines.filter((line) => line[2] === "attention")).toEqual([
-      ["Runs", integrationRunsOff, "attention"],
+    expect(row?.lines.filter((line) => line[2] !== undefined)).toEqual([
+      ["Runs", integrationRunsUnfenced, "warning"],
     ]);
     expect(reviewOf({ state: "fenced" }).row?.lines.some((line) => line[2] !== undefined)).toBe(
       false,
     );
+  });
+});
+
+/** A host that says the sandbox can't start here, and records each yes it's asked to save. */
+function hostWith(answer: { reason: string; allowedAt: string } | null | Error) {
+  const allowed: string[] = [];
+  let status: UnfencedRunStatus = { run: "needs-yes", reason: "container" };
+  return {
+    allowed,
+    runs: {
+      status: async () => status,
+      allow: async (reason: RunnerUnfencedReason) => {
+        allowed.push(reason);
+        if (answer instanceof Error) throw answer;
+        if (answer !== null) status = { run: "allowed", ...answer };
+        return answer;
+      },
+    },
+  };
+}
+
+verifies("studio.workspace-trust-integrations", () => {
+  it("asks for the yes where integration code can't run in the sandbox, and saves it before trust", async () => {
+    const host = hostWith({ reason: "container", allowedAt: "2026-11-21T09:00:00Z" });
+    const view = await viewWithRuns(host.runs);
+    view.checkRuns();
+    await settled();
+
+    const review = view.review();
+    expect(review?.unfencedYes).toEqual({
+      reason: "container",
+      checkbox: "I understand plugins and integrations run without the sandbox on this computer",
+    });
+
+    const result = await view.grant(review?.fingerprint ?? "", true);
+
+    expect(result).toEqual({ ok: true });
+    expect(host.allowed).toEqual(["container"]);
+    expect(view.status).toBe("trusted");
+  });
+
+  it("shows R6 in place of the checkbox once the yes for this reason is saved", async () => {
+    const host = hostWith(null);
+    host.runs.status = async () => ({
+      run: "allowed",
+      reason: "container",
+      allowedAt: new Date().toISOString(),
+    });
+    const view = await viewWithRuns(host.runs);
+    view.checkRuns();
+    await settled();
+
+    const review = view.review();
+    const row = review?.sections.find((each) => each.heading.startsWith("Integrations"))?.rows[0];
+    expect(review?.unfencedYes).toBeUndefined();
+    // Under the reason and fix, where the checkbox would be.
+    expect(row?.lines[4]?.[1]).toMatch(
+      /^You allowed plugins and integrations to run without the sandbox on this computer on \d+ \w+, for this reason\.$/,
+    );
+  });
+
+  it("trusts nothing and reads the status again when the reason changed under the yes", async () => {
+    const host = hostWith(null);
+    let reads = 0;
+    const view = await viewWithRuns({
+      ...host.runs,
+      status: async () => {
+        reads += 1;
+        return reads === 1
+          ? { run: "needs-yes", reason: "container" }
+          : { run: "needs-yes", reason: "windows" };
+      },
+    });
+    view.checkRuns();
+    await settled();
+
+    const result = await view.grant(view.review()?.fingerprint ?? "", true);
+    await settled();
+
+    expect(result).toMatchObject({ ok: false, checkAgain: true });
+    expect(view.status).toBe("not-trusted");
+    // The check shows the reason that holds now, with the box to tick again.
+    expect(view.review()?.unfencedYes?.reason).toBe("windows");
+  });
+
+  it("trusts nothing when the host couldn't save the yes", async () => {
+    const host = hostWith(Object.assign(new Error("disk full"), { kind: "allow_failed" }));
+    const view = await viewWithRuns(host.runs);
+    view.checkRuns();
+    await settled();
+
+    const result = await view.grant(view.review()?.fingerprint ?? "", true);
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "Halonic couldn't save your yes to run plugins without the sandbox",
+    });
+    expect(view.status).toBe("not-trusted");
+  });
+
+  it("saves no yes without the tick, nor in the sandbox", async () => {
+    const host = hostWith({ reason: "container", allowedAt: "2026-11-21T09:00:00Z" });
+    const view = await viewWithRuns(host.runs);
+    view.checkRuns();
+    await settled();
+
+    expect(await view.grant(view.review()?.fingerprint ?? "", false)).toEqual({ ok: true });
+    expect(host.allowed).toEqual([]);
+
+    const fenced = hostWith({ reason: "container", allowedAt: "2026-11-21T09:00:00Z" });
+    fenced.runs.status = async () => ({ run: "fenced" });
+    const inSandbox = await viewWithRuns(fenced.runs);
+    inSandbox.checkRuns();
+    await settled();
+    expect(inSandbox.review()?.unfencedYes).toBeUndefined();
+    await inSandbox.grant(inSandbox.review()?.fingerprint ?? "", true);
+    expect(fenced.allowed).toEqual([]);
   });
 });

@@ -1,20 +1,17 @@
 import { keyDestination } from "@halonicjs/adapter-workspace-models";
 import { programName, type TrustCheck } from "@halonicjs/app";
-import { defaultWorkingFolder } from "@halonicjs/format";
 import type {
   TrustReview,
   TrustRowView,
   TrustSectionView,
 } from "@halonicjs/studio-feature-workspace";
 import type {
-  AgentTrustContent,
-  ChangedAgent,
   ConnectorTrustContent,
   ProviderTrustContent,
   TrustChanges,
 } from "@halonicjs/workspace";
+import { agentChangeRows, agentRow, withoutAsking } from "./agent-trust-rows.ts";
 import { secretNames, secretPicks } from "./connector-secrets.ts";
-import { harnessName } from "./harness-name.ts";
 import {
   type IntegrationRuns,
   integrationRow,
@@ -101,7 +98,7 @@ export function trustReviewOf(check: TrustCheck, facts: TrustReviewFacts): Trust
     ...common,
     title: `Trust ${facts.name}?`,
     changed: false,
-    summary: startSummary(check.content, facts.runs),
+    summary: startSummary(check.content),
     sections: sectionsOf(
       [...programs(connectors).map((row) => programRow(row, unpinned))],
       integrations.map((row) => integrationRow(row, facts.runs)),
@@ -228,8 +225,9 @@ function sectionsOf(
       heading: heading("Integrations", integrationRows),
       intro: integrationsIntro,
       rows: integrationRows,
-      // Where they don't start, the section opens by itself, so the person sees it.
+      // Not in the sandbox, the section opens by itself, with the triangle, so the person sees it.
       open: runs?.state === "not-fenced" || changed,
+      mark: runs?.state === "not-fenced" ? "warning" : undefined,
     },
     {
       heading: heading("Agents", agentRows),
@@ -288,11 +286,11 @@ function addressRow(
 /**
  * A local integration's connector: the folder it runs, then the workspace
  * secret each secret of the integration's sheet gets, by name only, as
- * "sync-key and my-notes-key (as notes-key)" when the names differ
- * (HAL-14734, words from HAL-14737). Joined with "and", as the CLI does: a
- * comma would read as two names for the secret before it (C552). The picks
- * that keep their name come first, as in the CLI (C569), and each workspace
- * secret's sheet names are in brackets after it (C571).
+ * "sync-key and my-notes-key as notes-key" when the names differ (HAL-14734,
+ * words from HAL-14737). Joined with "and", as the CLI does: a comma would
+ * read as two names for the secret before it (C552). The picks that keep
+ * their name come first, as in the CLI, so "as" never reads as a second name
+ * either (C569).
  */
 function integrationConnectorRow(connector: ConnectorTrustContent): TrustRowView {
   const picks = secretPicks(connector);
@@ -320,73 +318,13 @@ function providerRow(provider: ProviderTrustContent): TrustRowView {
   };
 }
 
-function agentRow(agent: AgentTrustContent): TrustRowView {
-  return {
-    id: agent.id,
-    detail: harnessName(agent.harness),
-    lines: [
-      ...agent.allowedSites.map(
-        (site, index) => [index === 0 ? "Allowed sites" : "", shownSite(site)] as const,
-      ),
-      ...(agent.workingFolder === undefined
-        ? []
-        : [["Working folder", agent.workingFolder] as const]),
-      ...(agent.asks === "in-sandbox" ? [[withoutAsking, inSandboxCalls] as const] : []),
-    ],
-  };
-}
-
-/** The label over what an agent with `asks: in-sandbox` does without a person's OK. */
-const withoutAsking = "Without asking";
-
-/**
- * What it does (team wording, HAL-14992), in the CLI row's words: a fenced
- * run's agent host answers those calls (HAL-15287), so the row no longer says
- * this version of Halonic still asks first (HAL-15702).
- */
-const inSandboxCalls = "will edit and run commands in its working folder, inside the sandbox";
-
-/** One Changed row per agent, saying what is different. */
-function agentChangeRows(agent: ChangedAgent): TrustRowView[] {
-  const { before, after } = agent;
-  const lines: (readonly [string, string])[] = [];
-  if (before.harness !== after.harness) {
-    lines.push(["Program", `${harnessName(before.harness)} → ${harnessName(after.harness)}`]);
-  }
-  const added = after.allowedSites.filter((site) => !before.allowedSites.includes(site));
-  const removed = before.allowedSites.filter((site) => !after.allowedSites.includes(site));
-  if (added.length > 0) lines.push(["Now also allows", added.join(", ")]);
-  if (removed.length > 0) lines.push(["No longer allows", removed.join(", ")]);
-  const folder = (content: AgentTrustContent) =>
-    content.workingFolder ?? defaultWorkingFolder(content.id);
-  if (folder(before) !== folder(after)) {
-    lines.push(["Working folder", `${folder(before)} → ${folder(after)}`]);
-  }
-  if (before.asks !== after.asks) {
-    lines.push(
-      after.asks === "in-sandbox"
-        ? [withoutAsking, inSandboxCalls]
-        : ["Asks again", "before it edits or runs a command"],
-    );
-  }
-  return [{ id: agent.id, detail: harnessName(after.harness), lines }];
-}
-
-/** A site in its stored form, with its note: a wildcard names its domain, Punycode is flagged. */
-function shownSite(site: string): string {
-  const notes = [
-    ...(site.startsWith("*.") ? [`every site under ${site.slice(2)}`] : []),
-    ...(site.split(".").some((label) => label.startsWith("xn--")) ? ["(non-Latin letters)"] : []),
-  ];
-  return [site, ...notes].join(" · ");
-}
-
 /**
  * "Will start 2 programs and 1 agent, pass 3 secrets, list 2 addresses and allow 2 sites." It
- * counts what the check shows: each line under an integration's Reaches is an address, and an
- * integration that doesn't start on this computer isn't one it will run (Sofia, HAL-15146).
+ * counts what the check shows: each line under an integration's Reaches is an address (Sofia,
+ * HAL-15146). An integration counts as run also where it isn't in the sandbox, since **Trust**
+ * there waits for the person's yes to run it without (R12).
  */
-function startSummary(content: TrustCheck["content"], runs: IntegrationRuns): string[] {
+function startSummary(content: TrustCheck["content"]): string[] {
   const agents = content.agents ?? [];
   const providers = content.providers ?? [];
   const started = [
@@ -409,9 +347,7 @@ function startSummary(content: TrustCheck["content"], runs: IntegrationRuns): st
   const sites = new Set(agents.flatMap((agent) => agent.allowedSites)).size;
   const clauses = [
     started.length > 0 ? `start ${started.join(" and ")}` : undefined,
-    integrations.length > 0 && runs?.state !== "not-fenced"
-      ? `run ${counted(integrations.length, "integration")}`
-      : undefined,
+    integrations.length > 0 ? `run ${counted(integrations.length, "integration")}` : undefined,
     secrets > 0 ? `pass ${counted(secrets, "secret")}` : undefined,
     addressCount > 0 ? `list ${counted(addressCount, "address")}` : undefined,
     sites > 0 ? `allow ${counted(sites, "site")}` : undefined,

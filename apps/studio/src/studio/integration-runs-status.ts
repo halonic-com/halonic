@@ -1,14 +1,13 @@
-import { AgentHostUnfencedRuns } from "@halonicjs/adapter-agent-host-client";
-import type { UnfencedRunStatus } from "@halonicjs/studio-feature-plugins/api";
 import { tauriAgentHostTransport } from "@halonicjs/studio-services";
+import { type DesktopUnfencedRuns, windowUnfencedRuns } from "../plugins/unfenced-runs.ts";
 
 /**
- * The agent host's word on whether integration code runs in the sandbox, for the workspace trust
- * check's Runs rows: the same status the plugin check reads. `undefined` without an agent host.
+ * The agent host's word on whether integration code runs in the sandbox, and the way to save the
+ * person's yes to run it without, for the workspace trust check's Integrations section: the same
+ * object the plugin check and Settings › Agent sandbox use (`studio.desktop-unfenced-runs`).
+ * `undefined` without an agent host.
  */
-export function runsStatusOf(window: object): (() => Promise<UnfencedRunStatus>) | undefined {
+export function unfencedRunsOf(window: object): DesktopUnfencedRuns | undefined {
   const transport = tauriAgentHostTransport(window);
-  if (transport === undefined) return undefined;
-  const routes = new AgentHostUnfencedRuns(transport);
-  return () => routes.status();
+  return transport === undefined ? undefined : windowUnfencedRuns(window, transport);
 }

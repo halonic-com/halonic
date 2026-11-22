@@ -8,7 +8,13 @@ import type { PluginsHost, StudioPlugins } from "./plugins-service.ts";
 
 export type { PluginRunState, PluginRunStates } from "./page/stopped-status.tsx";
 export type { PluginsHost, StudioPlugins } from "./plugins-service.ts";
-export type { PluginUnfencedRuns, UnfencedRunStatus } from "./trust/unfenced-status.ts";
+export { UNFENCED_CHECKBOX, unfencedAllowedLine } from "./trust/runs-line.ts";
+export {
+  type PluginUnfencedRuns,
+  trustStatusOf,
+  type UnfencedRunStatus,
+  YES_NOT_SAVED,
+} from "./trust/unfenced-status.ts";
 export { PluginResult, type PluginResultProps, type ResultShow } from "./ui/plugin-result.tsx";
 
 /** The installed plugins and their tool calls. The app provides it for each open workspace. */

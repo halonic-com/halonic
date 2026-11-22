@@ -78,7 +78,7 @@ import { watchStart } from "./start-watch.ts";
 export { servedServices } from "./served-studio.ts";
 
 import { firstRunDeviceOf } from "./first-run-device.ts";
-import { runsStatusOf } from "./integration-runs-status.ts";
+import { unfencedRunsOf } from "./integration-runs-status.ts";
 import { keyboardPlatform, studioHost } from "./studio-host.ts";
 import { followSystemRegion } from "./system-region.ts";
 import { demoModelWatch } from "./test-model-watch.ts";
@@ -278,7 +278,7 @@ export async function openFolder(
   const trustView =
     trust === undefined
       ? undefined
-      : new WorkspaceTrustView(trust, location, runsStatusOf(window), plugins);
+      : new WorkspaceTrustView(trust, location, unfencedRunsOf(window), plugins);
   services.provide(DisplaySettingsService, display);
   services.provide(WorkspacePageService, { name, trust: trustView });
   const sample = sampleWorkspaceOf(

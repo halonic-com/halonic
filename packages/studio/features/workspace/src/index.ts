@@ -56,6 +56,7 @@ export type {
   TrustReview,
   TrustRowView,
   TrustSectionView,
+  UnfencedYesAsk,
   WorkspaceTrustControl,
 } from "./trust/workspace-trust-control.ts";
 export {

@@ -1,19 +1,25 @@
 // The workspace trust check's Integrations section (the "Runs" line design section 4, HAL-1873;
-// microcopy 24.1 R4, R9, R11 and R12): one row per local integration, in the CLI's content.
+// microcopy 24.1 R4, R6, R9 and R12): one row per local integration, in the CLI's content.
 
 import { type RunnerUnfencedReason, runnerUnfencedWords } from "@halonicjs/app";
+import { unfencedAllowedLine } from "@halonicjs/studio-feature-plugins/api";
 import type { TrustRowView } from "@halonicjs/studio-feature-workspace";
 import type { IntegrationTrustContent } from "@halonicjs/workspace";
 
 /**
  * Whether integration code runs in the sandbox on this computer, as the host says when the check
  * opens (the "Runs" line design section 4, HAL-1873): `checking` while it answers, `undefined`
- * where it can't say, which leaves the Runs row out.
+ * where it can't say, which leaves the Runs row out. Not in the sandbox, `allowedOn` is the day of
+ * the yes saved for this reason, such as "9 Nov", else absent.
  */
 export type IntegrationRuns =
   | { readonly state: "checking" }
   | { readonly state: "fenced" }
-  | { readonly state: "not-fenced"; readonly reason: RunnerUnfencedReason }
+  | {
+      readonly state: "not-fenced";
+      readonly reason: RunnerUnfencedReason;
+      readonly allowedOn?: string | undefined;
+    }
   | undefined;
 
 /** The Integrations section's line under its heading (microcopy 24.1 R12). */
@@ -25,12 +31,14 @@ export const integrationRunsFenced =
   "On its own, with no access to your files or other programs. It can only reach the addresses and use the secrets listed here.";
 
 /**
- * An integration's Runs row where it can't run in the sandbox: R11's first words, because nothing
- * starts a local integration without the sandbox yet (Liam, HAL-3384 part 6, option A). The reason
- * and fix under it say why, so it doesn't claim the sandbox can't start: on Windows it may be
- * ready, and with `no-sandbox` the person chose it (Sofia, HAL-15146).
+ * An integration's Runs row where it can't run in the sandbox, in amber with the triangle (R12):
+ * with the person's yes it starts without it, in Studio's agent host and in the command line.
  */
-export const integrationRunsOff = "Doesn't start on this computer.";
+export const integrationRunsUnfenced =
+  "Not in the sandbox on this computer, so it may be able to use your files, programs and sign-ins, and reach other addresses.";
+
+/** After an integration's name where it can't run in the sandbox (R12, design section 4). */
+export const integrationNotFencedFlag = "not in the sandbox";
 
 /** The Runs row while the host answers (R4). */
 export const integrationRunsChecking = "Checking the sandbox on this computer…";
@@ -58,6 +66,7 @@ export function integrationRow(
   return {
     id: integration.id,
     detail: "",
+    flag: runs?.state === "not-fenced" ? integrationNotFencedFlag : undefined,
     lines: [
       ["Folder", `${integration.folder}/`],
       ...runsLines(runs),
@@ -68,8 +77,9 @@ export function integrationRow(
 }
 
 /**
- * The Runs row and the lines under it; none while the host can't say. Where it doesn't start,
- * Runs is in design section 4's amber form; the reason and fix under it stay plain (C592).
+ * The Runs row and the lines under it; none while the host can't say. Where it isn't in the
+ * sandbox, Runs is in design section 4's amber form with the triangle; the reason and fix under it
+ * stay plain (C592).
  */
 function runsLines(runs: IntegrationRuns): TrustRowView["lines"] {
   switch (runs?.state) {
@@ -80,9 +90,13 @@ function runsLines(runs: IntegrationRuns): TrustRowView["lines"] {
     case "not-fenced": {
       const words = runnerUnfencedWords(runs.reason, "integration");
       return [
-        ["Runs", integrationRunsOff, "attention"],
+        ["Runs", integrationRunsUnfenced, "warning"],
         ["", words.reason],
         ["", words.fix],
+        // R6 in place of the checkbox, once the yes for this reason is saved.
+        ...(runs.allowedOn === undefined
+          ? []
+          : [["", unfencedAllowedLine(runs.allowedOn)] as const]),
       ];
     }
     case undefined:
