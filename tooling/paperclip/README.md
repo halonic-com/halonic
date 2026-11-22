@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-waiting`, `paperclip.board-tools`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-waiting`, `paperclip.board-tools`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`
 
 ## PR watcher
 
@@ -79,7 +79,8 @@ comments, wake-ups, `issues.update`, outbound HTTP, reading a secret,
 registering agent tools, writing metrics and keeping plugin state (the
 GitHub snapshot). The board check adds events, the two documents, reading
 approvals, a task's subtree, its blockers and its pending cards (see Board
-check below). No webhooks, UI, files or processes.
+check below). The gh guard adds one route that agents' runs call (see gh guard
+below). No webhooks, UI, files or processes.
 
 - **Status changes:** the manifest can't narrow `issues.update`, so
   `host.ts` is the only file that changes a task's status, and its
@@ -146,6 +147,67 @@ token as the watcher, and give up after 25 s.
   allowed. It reads the last snapshot from plugin state and sends no
   request; a snapshot older than 30 minutes is marked stale. Moves to the
   `merge-queue` plugin in phase 2.
+
+## gh guard
+
+Agents read a pull request's status with `gh` about 3,700 times a day, where
+`pr_status` and `my_prs` answer in one call (HAL-16401, lever L1b on
+HAL-15920). The guard answers those reads with the tool call instead.
+
+**Where it runs.** A plugin can't add hooks, files or `PATH` entries to an
+agent's run, and an agent's folder is a plain folder holding the clone, so a
+hook in this repo would never load. Paperclip's GitHub launcher runs the
+first `gh` on `PATH` after its own folder, so the guard is a `gh` wrapper
+installed ahead of the real one, at `/usr/local/bin/gh`. It sees `gh`'s own
+arguments, not a shell line, and works for every adapter and folder.
+
+**What it answers.** In an agent's run (`PAPERCLIP_AGENT_ID` set), on
+`halonic-com/halonic` (by `-R`, a pull request URL, `GH_REPO` or the
+folder's remote, as `gh` picks it):
+
+| Call | Answered with |
+| --- | --- |
+| `gh pr view`, `gh pr checks` | `pr_status({"pr": <n>})` |
+| `gh pr list` (open), `gh pr status` | `my_prs()` |
+| `gh run view`, `gh run list` | `pr_status`, for `ci-ok` on the head |
+
+`gh` still runs for what no tool answers: `pr view --comments`, `--json`
+with a field `pr_status` doesn't give (body, files, comments, reviews,
+labels), `run view --log` or `--log-failed`, `run list --workflow`, a list
+that is filtered (`--search`, `--head`, `--label`, `--base`, `--assignee`,
+`--app`) or not of open pull requests, `--web`, `--help`, every other
+command and every other repository. The message names the call, how to load
+it in Claude Code (ToolSearch), and the `gh` reads that stay.
+
+**Who decides.** For each read it would answer, the wrapper asks the
+plugin's route `POST /api/plugins/halonic.agent-tools/api/gh-guard` with the
+run's own Paperclip key. The plugin counts it and answers whether to
+redirect: only while the board's setting **Redirect gh status calls** is on
+and the agent isn't in **Agents the gh guard lets through** (for one that
+needs `gh`'s own answer, such as for the merge queue). It is off by default,
+so a new install only counts. If the plugin doesn't answer within 1.5 s,
+refuses, or is an older version without the route, `gh` runs.
+
+**Metric** (tags `companyId`, `subcommand`, `agent`, `mode`):
+`tools.gh_redirected`, one per read the wrapper asked about. `mode` is
+`redirected`, `dry-run` (the setting is off) or `exempt`; set the
+`redirected` ones against `tools.calls`.
+
+**Installing it** (the board, on Halonic Server): build it from a `main`
+checkout with `pnpm --filter @halonicjs/tooling-paperclip run build:gh-guard`,
+which writes `dist/gh-guard/gh` (one file, Node only, executable). Copy it
+next to the compose file and mount it over the runner's `PATH`:
+
+```yaml
+    volumes:
+      - ./agent-host/gh-guard/gh:/usr/local/bin/gh:ro
+```
+
+Recreate the container. Check it in an agent run: `which -a gh` lists the
+launcher, `/usr/local/bin/gh`, then `/usr/bin/gh`, and `gh pr checks <n>` on
+`halonic` still runs while the setting is off; the plugin page's metrics
+show `tools.gh_redirected` with `mode: dry-run`. Then turn the setting on.
+To roll back, remove the volume line and recreate the container.
 
 ## Board check
 
@@ -240,6 +302,8 @@ front of each name. A metric that doesn't save is logged and changes nothing.
   fired isn't open any more, so `fired` is a lower bound.
 - **Each tool call** (tags `companyId`, `tool`, `outcome`): `tools.calls` and
   `tools.github_requests`.
+- **Each `gh` status read the guard sees** (tags `companyId`, `subcommand`,
+  `agent`, `mode`): `tools.gh_redirected` (see gh guard above).
 
 ## GitHub snapshot
 

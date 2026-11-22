@@ -54,6 +54,8 @@ export const manifest: PaperclipPluginManifestV1 = {
     "issue.relations.read",
     // Part (b): whether a task in review waits on a pending board card.
     "issue.interactions.read",
+    // The gh guard's route (HAL-16401): agents' runs only; it counts and answers, nothing else.
+    "api.routes.register",
   ],
   entrypoints: { worker: "dist/worker.js" },
   instanceConfigSchema: {
@@ -93,6 +95,21 @@ export const manifest: PaperclipPluginManifestV1 = {
         description:
           "The id of the Seat Supervisor's setup task. The board check adds one line there for new spend-limit failures. Empty: it doesn't.",
       },
+      redirectGhStatusCalls: {
+        type: "boolean",
+        title: "Redirect gh status calls",
+        description:
+          "On: an agent's gh pr view, checks, list or status and gh run view or list on the watched repository is answered with the pr_status or my_prs call instead. Off: gh runs as it is and the plugin only counts the calls.",
+        default: false,
+      },
+      ghGuardExemptAgents: {
+        type: "array",
+        title: "Agents the gh guard lets through",
+        description:
+          "Url keys of agents whose gh status calls always run, such as one that needs gh's own answer for the merge queue.",
+        items: { type: "string" },
+        default: [],
+      },
       boardCheckWritesForVersion: {
         type: "string",
         title: "Board check writes for version",
@@ -115,6 +132,17 @@ export const manifest: PaperclipPluginManifestV1 = {
       description:
         "Every 10 minutes: finds agents' comments that ask the board and wakes the Board Checker once for them. Writes only comments, its two documents and wake-ups, and nothing while its switch is off.",
       schedule: "*/10 * * * *",
+    },
+  ],
+  apiRoutes: [
+    {
+      // The gh wrapper on the runner asks here with the run's own key (src/gh-guard/).
+      routeKey: "gh-guard",
+      method: "POST",
+      path: "/gh-guard",
+      auth: "board-or-agent",
+      capability: "api.routes.register",
+      companyResolution: { from: "query", key: "companyId" },
     },
   ],
   tools: [

@@ -11,7 +11,8 @@
     "lint": "biome check .",
     "test": "vitest run",
     "build:plugin": "esbuild src/plugin/worker.ts src/plugin/manifest.ts --bundle --platform=node --format=esm --target=node24 --outdir=dist",
-    "build:seats-plugin": "node src/seats/plugin/build.ts"
+    "build:seats-plugin": "node src/seats/plugin/build.ts",
+    "build:gh-guard": "node src/gh-guard/build.ts"
   },
   "paperclipPlugin": {
     "manifest": "./dist/manifest.js",
