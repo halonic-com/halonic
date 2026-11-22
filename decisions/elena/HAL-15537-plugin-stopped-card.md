@@ -3,6 +3,7 @@
 - Task: HAL-15537
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15488 (Liam's plan approval, comment b51bbc04: one PR, the host sends only the code `plugin_stopped`, Studio names the plugin it called and links its page; wording is a team call under HAL-2282, recorded on HAL-15537)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:G5gnzV0wZiDiaKWEmXFJr2Dgc7co1H0F73dFnRnspVeVNBh9N3lyO7kHDlcFyPA2boZSgM5F6PnfBGkhHUvrCA==
 
 ## What changes
 
