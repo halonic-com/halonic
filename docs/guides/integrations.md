@@ -48,7 +48,9 @@ The interface is decided in
    less than the code. The engine checks every tool call: every risk above
    `read` needs a person's OK before the tool runs; only `read` runs at
    once. A run stops and waits for that OK; a chat turn, which can't wait,
-   refuses the call. Set `untrusted: true` on a tool whose result carries
+   refuses the call. Through a connector, a `read` tool still asks until the
+   connector file's `tools.read` names it
+   ([which connector tools ask first](../how-to/choose-which-connector-tools-ask-first.md)). Set `untrusted: true` on a tool whose result carries
    outside content, such as mail or web pages. Every `send` tool needs a `noun`
    in the sheet, such as `{ one: email, many: emails }`, so a run can say
    "Sent 1 email". Use lower-case words, never a value from the call; only
