@@ -2,6 +2,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { act, createRef } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import { PresentationProvider } from "../presentation/presentation.tsx";
 import { click, render, unmountAll } from "../test/render.tsx";
 import { EmptyState } from "./empty-state.tsx";
 
@@ -259,5 +260,79 @@ verifies("kit.empty-state", () => {
     expect(container.querySelector("button")).toBeNull();
     const column = (container.firstElementChild as HTMLElement).firstElementChild as HTMLElement;
     expect(column.children).toHaveLength(1);
+  });
+
+  it("on a phone, stacks a centred state's buttons at 48px and full width, link under them", () => {
+    const { container } = render(
+      <PresentationProvider presentation="phone">
+        <EmptyState
+          title="No agents yet"
+          action={{ label: "New agent", onClick: () => {} }}
+          secondaryAction={{ label: "Start from a template", onClick: () => {} }}
+        />
+      </PresentationProvider>,
+    );
+    const [primary, secondary] = buttons(container) as [HTMLButtonElement, HTMLButtonElement];
+    for (const button of [primary, secondary]) {
+      expect(button.className).toContain("min-h-touch");
+      expect(button.classList.contains("w-full")).toBe(true);
+    }
+    expect(primary.textContent).toBe("New agent");
+    expect(primary.className).toContain("bg-primary");
+    expect(primary.parentElement?.className).toContain("flex w-full flex-col items-center gap-2");
+    expect(primary.parentElement?.className).not.toContain("flex-wrap");
+    const column = primary.parentElement?.parentElement as HTMLElement;
+    expect(column.className).toContain("max-w-empty");
+    expect(column.classList.contains("w-full")).toBe(true);
+  });
+
+  it("on a phone, draws a centred error's Try again the same way and keeps its link inline", () => {
+    const { container } = render(
+      <PresentationProvider presentation="phone">
+        <EmptyState
+          tone="error"
+          title="This page stopped working"
+          action={{ label: "Reload page", onClick: () => {} }}
+          link={{ label: "Copy details", onClick: () => {} }}
+        />
+      </PresentationProvider>,
+    );
+    const [reload, copy] = buttons(container) as [HTMLButtonElement, HTMLButtonElement];
+    expect(reload.className).toContain("min-h-touch");
+    expect(reload.classList.contains("w-full")).toBe(true);
+    expect(copy.className).toContain("text-accent-text underline");
+    expect(copy.classList.contains("w-full")).toBe(false);
+  });
+
+  it("on a phone, leaves a plain state's and a section error's buttons as they are", () => {
+    const retry = { label: "Try again", onClick: () => {} };
+    const { container } = render(
+      <PresentationProvider presentation="phone">
+        <EmptyState tone="error" plain title="Couldn't load files" action={retry} />
+        <EmptyState tone="error" align="start" title="Couldn't load recent runs" action={retry} />
+      </PresentationProvider>,
+    );
+    const [plain, section] = buttons(container) as [HTMLButtonElement, HTMLButtonElement];
+    expect(plain.className).toContain("min-h-control-md");
+    expect(plain.className).toContain("phone:hit-touch");
+    expect(plain.parentElement?.className).toContain("flex-wrap");
+    expect(section.className).toContain("min-h-control-lg");
+    for (const button of [plain, section]) {
+      expect(button.className).not.toContain("min-h-touch");
+      expect(button.classList.contains("w-full")).toBe(false);
+    }
+  });
+
+  it("on a desktop, keeps a centred state's buttons md, side by side", () => {
+    const { container } = render(
+      <PresentationProvider presentation="desktop">
+        <EmptyState title="No agents yet" action={{ label: "New agent", onClick: () => {} }} />
+      </PresentationProvider>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.className).toContain("min-h-control-md");
+    expect(button.className).not.toContain("min-h-touch");
+    expect(button.classList.contains("w-full")).toBe(false);
+    expect(button.parentElement?.className).toContain("flex-wrap");
   });
 });

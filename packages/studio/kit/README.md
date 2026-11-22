@@ -505,6 +505,10 @@ The title has `tabindex="-1"`: it's where focus goes when what had it goes away.
 that takes focus from code, it wears the focus ring on keyboard focus. The tile and the alert mark
 are hidden from screen readers; the title says it all.
 
+Its buttons are `md`. On a phone (the `phone` presentation) a centred Empty state is the screen's one
+main action, so its buttons are `touch` (48px) and full width, stacked 8px apart with the primary on
+top and the `link` under them. `plain` and `align="start"` keep their size on a phone.
+
 `align="start"` is for an error in one section of a page (Home's Recent runs), so the whole page
 doesn't look broken: left-aligned in the 16px inset, the alert mark inline with a
 `text-body-strong` title, the reason in `text-small`, and Try again as a secondary `lg` button.
