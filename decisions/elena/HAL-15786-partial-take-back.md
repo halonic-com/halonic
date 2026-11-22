@@ -12,7 +12,8 @@ start without the sandbox until you allow it again. Halonic asks again the next 
 running without the sandbox, and nothing said what to do about it.
 
 The line under the warning is now "They may still be running without the sandbox. Halonic keeps trying to stop
-them; quit Halonic to stop them now." Both halves hold on `main`:
+them. To stop them now, quit Halonic." Sofia OK'd it on HAL-15796, with one sentence per idea and the action last.
+Both halves hold on `main`:
 
 - The host keeps a runner that didn't stop registered and tries again every second while the yes it started under
   is gone (`UnfencedRuns.#checkSavedYes` in `packages/core/app/src/unfenced-runs.ts`). A stop that ran past the

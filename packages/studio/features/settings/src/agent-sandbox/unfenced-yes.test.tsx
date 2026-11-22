@@ -320,7 +320,7 @@ verifies("settings.unfenced-yes-take-back", () => {
     expect(shown).toHaveBeenCalledWith({
       tone: "warning",
       title: "Taken back, but some plugins and integrations didn't stop.",
-      text: "They may still be running without the sandbox. Halonic keeps trying to stop them; quit Halonic to stop them now.",
+      text: "They may still be running without the sandbox. Halonic keeps trying to stop them. To stop them now, quit Halonic.",
     });
     expect(view.textContent).not.toContain("Allowed without the sandbox");
     expect(document.activeElement?.textContent).toBe("Plugins and integrations");

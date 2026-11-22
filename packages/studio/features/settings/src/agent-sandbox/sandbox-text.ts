@@ -230,7 +230,7 @@ export const TAKEN_BACK_PARTLY_TITLE = "Taken back, but some plugins and integra
  * quitting stops the host with every runner it started; it can't name them (C630 #2, HAL-15786).
  */
 export const TAKEN_BACK_PARTLY_TEXT =
-  "They may still be running without the sandbox. Halonic keeps trying to stop them; quit Halonic to stop them now.";
+  "They may still be running without the sandbox. Halonic keeps trying to stop them. To stop them now, quit Halonic.";
 /** A Take back the host refused; the toast's text is the shell's reason for the error (C553, HAL-15227). */
 export const TAKE_BACK_FAILED_TITLE = "Couldn't take it back";
 /** The agent host's refusals of a Take back, in plain words; any other kind gets the shell's reason (C587, HAL-15527). */
