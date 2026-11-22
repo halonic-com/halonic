@@ -4,7 +4,10 @@ import type { Entry } from "./git-index.ts";
  * Refuses an `EOIE` extension that doesn't point where the entries end. Git
  * finds it by its place, last before the file's hash, rather than by reading
  * through the entries, and when it reads entries in parallel it reads the
- * extensions from the offset it names, so the two must agree.
+ * extensions from the offset it names, so the two must agree. Git doesn't
+ * look at where the entries end, so neither does this check: an `EOIE` whose
+ * bytes fall inside the entries as read here is refused all the same, unless
+ * it names their end.
  */
 export function checkEndOfEntries(
   index: Uint8Array,
@@ -14,7 +17,8 @@ export function checkEndOfEntries(
 ): void {
   // Its 8-byte header, then a 4-byte offset and a hash.
   const at = index.byteLength - hashLength - (8 + 4 + hashLength);
-  if (at < entriesEnd) return;
+  // Git looks for it only in a file that has room for it after the 12-byte header.
+  if (at < 12) return;
   if (new TextDecoder().decode(index.subarray(at, at + 4)) !== "EOIE") return;
   if (view.getUint32(at + 4) !== 4 + hashLength) return;
   if (view.getUint32(at + 8) !== entriesEnd) {
