@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-13534 (selling layer design, sections 3.1 and 12.1; threat model, section 6)
 
-A published key set shall list each public key with its id and its one job (`session` or `command`); reading it shall refuse the whole set when any key is malformed or an id appears twice, and a key shall be found only for its own job, so a session key never verifies a command and a command key never verifies a session.
+The published key set shall list each public key with its id and its one job (`session` or `command`); reading it shall refuse the whole set when any key is malformed or an id appears twice, and a key shall be found only for its own job, so a session key never verifies a command and a command key never verifies a session.
 
 ## Examples
 
