@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-15586 (flow check C596, finding 4, which offered this fix; decided by the team under HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:tPwOiASCnDnQlVwUkCGx3jPsERRgTQLbHjOXy4kwAvlq7jRFXnSoUpM8MjMX5+VUPVxXsCJO2ORIBSfNy1/vCw==
 
 ## What changes
 
