@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16449 (a team decision with no board card, HAL-2282 rule: wording on the approved proposals commands, Inbox and runs list; findings 2 and 3 of Iris's flow check C710 on HAL-16446, and finding 1 of C705 on HAL-16418)
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:tlFzi5waebPjtoU7+yhaiR27h0EOZmMP+hI4Xd7cluO3lKvdbeYBnThlLtjbZEI2yzthhhP1KDFcpjl0P2SHCw==
 
 ## What changes
 
