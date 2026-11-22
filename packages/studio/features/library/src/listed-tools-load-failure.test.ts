@@ -39,10 +39,56 @@ verifies("library.listed-tools-waiting", () => {
         { text: "Couldn't list the tools: the program " },
         { text: "sh", code: true },
         {
-          text: " of notes-mcp stopped right after it started. To see why, run the command and args from its connector file yourself.",
+          text: " of notes-mcp stopped right after it started. To see why, run the command and args from ",
         },
+        { text: "its connector file" },
+        { text: " yourself." },
       ]);
       expect(line).toMatchObject({ button: "try-again", copyDetails: false });
+      expect(line.command).toBeUndefined();
+    });
+
+    it("names a stopped program's file, and ends in a colon for the line to run under it", () => {
+      const line = loadFailureLine(
+        new ConnectorCouldntList({
+          reason: "program-stopped",
+          program: "sh",
+          file: "library/connectors/notes-mcp.connector.yaml",
+          command: 'cd /acme && sh -c "exit 1"',
+        }),
+        "notes-mcp",
+        desktop,
+      );
+
+      expect(refusalLineText(line.parts)).toBe(
+        "Couldn't list the tools: the program sh of notes-mcp stopped right after it started. To see why, run the command and args from library/connectors/notes-mcp.connector.yaml yourself:",
+      );
+      expect(line.parts).toContainEqual({
+        text: "library/connectors/notes-mcp.connector.yaml",
+        code: true,
+      });
+      expect(line).toMatchObject({
+        button: "try-again",
+        copyDetails: false,
+        command: 'cd /acme && sh -c "exit 1"',
+      });
+    });
+
+    it("names a stopped program's file with a full stop where there is no line to run", () => {
+      const line = loadFailureLine(
+        new ConnectorCouldntList({
+          reason: "program-stopped",
+          program: "sh",
+          file: "library/connectors/notes-mcp.connector.yaml",
+        }),
+        "notes-mcp",
+        desktop,
+      );
+
+      expect(refusalLineText(line.parts)).toMatch(
+        / from library\/connectors\/notes-mcp\.connector\.yaml yourself\.$/u,
+      );
+      expect(line.command).toBeUndefined();
     });
 
     it("names a secret that isn't set, with no command, which couldn't set it for Studio", () => {

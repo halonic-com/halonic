@@ -100,7 +100,10 @@ fn trust_folder_names_why_an_environment_is_refused() {
     environment.halonic_home = Some("profile".to_owned());
     let chosen = profile_folder(&environment).unwrap_err();
     let message = chosen.to_string();
-    assert!(message.starts_with("HALONIC_HOME must be an"), "{message}");
+    assert_eq!(
+        message,
+        "HALONIC_HOME must be a full path, not \"profile\"."
+    );
 }
 
 #[test]

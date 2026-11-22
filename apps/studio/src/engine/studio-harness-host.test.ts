@@ -150,7 +150,9 @@ verifies("studio.engine-service", () => {
       const built = await openStudioHarnessHost(inputOn(fakeHost()));
       const unfenced = built.harnesses.sandboxes["this-computer"];
       expect(await unfenced.check()).toMatchObject({ ok: false, reason: "not-offered" });
-      await expect(unfenced.open({} as SandboxProfile)).rejects.toThrow(/outside the sandbox yet/);
+      await expect(unfenced.open({} as SandboxProfile)).rejects.toThrow(
+        /Studio can't start Claude Code or Codex agents outside the sandbox/,
+      );
     });
 
     it("asks the run's own approvals for a bridge's approval", async () => {

@@ -43,6 +43,7 @@ import {
   errorsOf,
   findRoutine,
   idOf,
+  inputMissingOf,
   mailboxesOf,
   nameKey,
   type PlacedFile,
@@ -252,9 +253,7 @@ export class WorkspaceRoutines implements RoutinesHost {
       ...livenessOf(workspace, file, versions),
       // The row's errors, so the page says why it can't start as the row does (HAL-15300).
       problems: errorsOf(workspace, file),
-      inputMissing: workspace.issues.some(
-        (issue) => issue.file === file.path && issue.code === "missing-routine-input",
-      ),
+      inputMissing: inputMissingOf(workspace, file),
       startErrors: errorsOf(workspace, file),
       pausedUntilTrusted: !trusted,
     };

@@ -1,4 +1,4 @@
-import { Button, useToastStore } from "@halonicjs/studio-kit";
+import { Button, CommandBox, useToastStore } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import {
   type ReactNode,
@@ -101,6 +101,7 @@ function LoadFailed({
           </Button>
         ))}
       </WaitingLine>
+      {line.command === undefined ? null : <CommandBox command={line.command} />}
     </div>
   );
 }

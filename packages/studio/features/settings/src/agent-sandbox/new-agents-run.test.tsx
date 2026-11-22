@@ -50,6 +50,9 @@ function readyHost(studioStartsUnfenced: boolean): AgentSandboxHost {
 const studioCantStart =
   "Studio can't start agents outside the sandbox yet; halonic run and halonic serve on this computer can.";
 
+/** The open dialog's text: the hint under the Select says the same line. */
+const dialogText = () => document.querySelector("dialog[open]")?.textContent ?? "";
+
 const button = (label: string) =>
   [...document.querySelectorAll("button")].find((each) => each.textContent?.startsWith(label));
 
@@ -79,6 +82,19 @@ verifies("settings.new-agents-run", () => {
     expect(document.body.textContent).not.toContain("Run new agents on this computer?");
     expect(select.value).toBe("sandbox");
     expect(store.stored.has("sandbox.new-agents")).toBe(false);
+  });
+
+  it("says in the dialog that Studio can't start these agents, while its host says so", async () => {
+    const cant = await show("app", undefined, readyHost(false));
+    await change(cant.select, "this-computer");
+    expect(dialogText()).toContain("New agents will have your access to files and the network");
+    expect(dialogText()).toContain(studioCantStart);
+    await click(button("Cancel") as HTMLElement);
+    unmountAll();
+    const can = await show("app", undefined, readyHost(true));
+    await change(can.select, "this-computer");
+    expect(dialogText()).toContain("New agents will have your access to files and the network");
+    expect(dialogText()).not.toContain(studioCantStart);
   });
 
   it("saves On this computer once confirmed", async () => {

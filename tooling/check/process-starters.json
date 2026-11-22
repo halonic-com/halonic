@@ -18,7 +18,7 @@
       "scriptsTest": "apps/agent-host/src/terminal/open-terminal.test.ts"
     },
     "apps/cli/src/deploy-target-loader.ts": {
-      "reason": "Loads the deploy target for a deployments.yaml host (ADR 5.6, HAL-7114: the CLI never lists or imports a target package). Its one import() takes the bare package name @halonicjs/target-<host>-deploy, where the host must be one lowercase word, so it never names a file or path; the package resolves from the CLI's own installed packages. Loading a module starts no process, and it never loads a skill.",
+      "reason": "Loads the deploy target for a deployments.yaml host (ADR 5.6, HAL-7114: the CLI never lists or imports a target package). Its one import() takes the bare package name @halonicjs/target-<host>-deploy, where the host must be lowercase letters and digits with single hyphens between parts (^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$), so it never names a file or path; the package resolves from the CLI's own installed packages. Loading a module starts no process, and it never loads a skill.",
       "scriptsTest": "apps/cli/src/deploy-target-loader.starts.test.ts"
     },
     "packages/adapters/git/src/node/run-process.ts": {

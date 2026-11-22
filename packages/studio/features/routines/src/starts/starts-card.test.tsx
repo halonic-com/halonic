@@ -39,6 +39,10 @@ const supportChoices: readonly RoutineTargetChoice[] = [
   },
 ];
 
+/** The `missing-routine-input` error as the host words it. */
+const missingMail =
+  "Morning replies starts support-reply without mail, which its first step reads. Add mail under run.input.";
+
 function supportReplyWith(input: string): RoutineView {
   return { ...routineStarting({ ...supportReply, input }), targetName: "Support reply" };
 }
@@ -185,7 +189,11 @@ verifies("routines.starts.starts-card", () => {
   });
 
   it("marks the empty field as an error while the engine refuses the start without it", async () => {
-    const refused = { ...supportReplyWith("{}"), inputMissing: true };
+    const refused = {
+      ...supportReplyWith("{}"),
+      inputMissing: missingMail,
+      problems: [missingMail],
+    };
     const { page } = await card(refused, supportChoices);
 
     // The engine refuses the start (`missing-routine-input`, RT2 of HAL-15304).
@@ -196,6 +204,20 @@ verifies("routines.starts.starts-card", () => {
       "Support reply needs this. Left empty, the routine won't start.",
     );
     expect(page.textContent).not.toContain("it starts with nothing to work on");
+    // The field's error says it; the row's sentence doesn't repeat it above (HAL-15721).
+    expect(page.textContent).not.toContain(missingMail);
+  });
+
+  it("keeps the missing input's sentence where no start field shows it, and other errors", async () => {
+    const jsonOnly = { ...routineStarting(briefing), inputMissing: missingMail };
+    const { page } = await card({ ...jsonOnly, problems: [missingMail] });
+    expect(page.textContent).toContain(missingMail);
+    unmount();
+    // Another error comes first: the line gives it, as the row does.
+    const cron = "The schedule isn't a valid cron. Use five fields, such as 0 7 * * 1-5.";
+    const refused = { ...supportReplyWith("{}"), inputMissing: missingMail };
+    const other = await card({ ...refused, problems: [cron, missingMail] }, supportChoices);
+    expect(other.page.textContent).toContain(cron);
   });
 
   it("keeps what else the input holds, and opens Advanced to show it", async () => {

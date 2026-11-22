@@ -107,9 +107,22 @@ export class WorkspaceNotTrusted extends Error {
  * Why a connector's program couldn't list its tools, as the agent host says it: the cause and the
  * names the page needs to word it (UX check C2). The server doesn't say which secret it refused,
  * so a refused secret carries every secret the connector declares, in the order it declares them.
+ * A program that stopped right after it started carries what the person needs to run it
+ * themselves and see why, as the CLI says it (C634 #5).
  */
 export type ListingFailure =
-  | { readonly reason: "program-missing" | "program-stopped"; readonly program: string }
+  | { readonly reason: "program-missing"; readonly program: string }
+  | {
+      readonly reason: "program-stopped";
+      readonly program: string;
+      /** The connector file's path in the workspace; absent for a connector no file holds. */
+      readonly file?: string | undefined;
+      /**
+       * Its command and args as one line to paste into a terminal, from the folder it starts in;
+       * absent where a terminal can't run it so (a Windows folder).
+       */
+      readonly command?: string | undefined;
+    }
   | { readonly reason: "secret-missing"; readonly secret: string }
   | { readonly reason: "secret-refused"; readonly secrets: readonly string[] }
   | { readonly reason: "stopped" };

@@ -1,5 +1,70 @@
+import { execFileSync } from "node:child_process";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { feature, rulesHit, std, studioApp } from "./fixture-repo.ts";
+import { loadContext } from "../lib/context.ts";
+import { branchPoint } from "../lib/size-base.ts";
+import { checkFileSize } from "../rules/file-size.ts";
+import {
+  feature,
+  removeFixtureRepo,
+  rulesHit,
+  std,
+  studioApp,
+  writeFixtureRepo,
+} from "./fixture-repo.ts";
+
+const linesOf = (count: number): string => "export const x = 1;\n".repeat(count);
+
+/** The file-size errors for a file committed at `before` lines and changed to `after`. */
+function headroomErrors(before: number, after: number, base: string | undefined): string[] {
+  const root = writeFixtureRepo([{ ...std, files: { "src/index.ts": linesOf(before) } }], {
+    coreOrder: ["@halonicjs/std"],
+  });
+  try {
+    const git = (...args: string[]) => execFileSync("git", args, { cwd: root, stdio: "ignore" });
+    git("add", "-A");
+    git("-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-qm", "base");
+    writeFileSync(join(root, "packages/core/std/src/index.ts"), linesOf(after));
+    return checkFileSize(loadContext(root), base)
+      .problems.filter((problem) => problem.severity === "error")
+      .map((problem) => problem.message);
+  } finally {
+    removeFixtureRepo(root);
+  }
+}
+
+/**
+ * A branch at 490 lines that is behind `upstream`, which shrank the file to
+ * 400 since: the file-size errors measured from `upstream`'s tip and from the
+ * branch point.
+ */
+function behindMainErrors(): { fromTip: string[]; fromBranchPoint: string[] } {
+  const root = writeFixtureRepo([{ ...std, files: { "src/index.ts": linesOf(490) } }], {
+    coreOrder: ["@halonicjs/std"],
+  });
+  try {
+    const git = (...args: string[]) =>
+      execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.com", ...args], {
+        cwd: root,
+        stdio: "ignore",
+      });
+    const file = "packages/core/std/src/index.ts";
+    git("add", "-A");
+    git("commit", "-qm", "base");
+    git("checkout", "-qb", "upstream");
+    writeFileSync(join(root, file), linesOf(400));
+    git("commit", "-qam", "main shrinks the file");
+    git("checkout", "-q", "-");
+    const errors = (base: string | undefined) =>
+      checkFileSize(loadContext(root), base)
+        .problems.filter((problem) => problem.severity === "error")
+        .map((problem) => problem.file);
+    return { fromTip: errors("upstream"), fromBranchPoint: errors(branchPoint(root, "upstream")) };
+  } finally {
+    removeFixtureRepo(root);
+  }
+}
 
 describe("tooling/check: features and size", () => {
   it("fails when the Studio's feature list doesn't match the folders", () => {
@@ -43,5 +108,28 @@ describe("tooling/check: features and size", () => {
       };
       expect(rulesHit([mixed], { coreOrder: ["@halonicjs/std"] })).toEqual(["file-size"]);
     }
+  });
+
+  it("fails a pull request that grows a file to within 20 lines of the limit", () => {
+    expect(headroomErrors(479, 499, "HEAD")).toEqual([
+      "499 lines; a pull request may grow a file to at most 480, 20 under the limit of 500, so two pull requests together can't push it over in the merge queue. Split it by concept in this pull request.",
+    ]);
+  });
+
+  it("passes a file the pull request grows only up to 480 lines, or doesn't grow", () => {
+    expect(headroomErrors(470, 480, "HEAD")).toEqual([]);
+    expect(headroomErrors(495, 495, "HEAD")).toEqual([]);
+    expect(headroomErrors(495, 490, "HEAD")).toEqual([]);
+  });
+
+  it("doesn't blame a branch behind main for a file main shrank since", () => {
+    const { fromTip, fromBranchPoint } = behindMainErrors();
+    expect(fromTip).toEqual(["packages/core/std/src/index.ts"]);
+    expect(fromBranchPoint).toEqual([]);
+  });
+
+  it("keeps the plain limit without a base commit, as in the merge queue", () => {
+    expect(headroomErrors(479, 499, undefined)).toEqual([]);
+    expect(headroomErrors(479, 501, undefined)).toHaveLength(1);
   });
 });

@@ -13,7 +13,11 @@ import { FakeTunnelProvider, remoteControlContract } from "@halonicjs/testing-co
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { sharedHostKey } from "./host-key.ts";
-import { HostRemoteControl, type RemoteLanEndpoint } from "./host-remote-control.ts";
+import {
+  type GatewaySwitch,
+  HostRemoteControl,
+  type RemoteLanEndpoint,
+} from "./host-remote-control.ts";
 import { MemoryFile } from "./memory-file.test-helper.ts";
 import { type MulticastSocket, PairAdvert } from "./pair-advert.ts";
 import { PairedPhones } from "./paired-phones.ts";
@@ -47,10 +51,34 @@ function recordedAdvert(time: ManualTime) {
   return { advert, sockets };
 }
 
+/** The gateway's listener as a switch that records its starts and stops; it listens on 4100, or can't start. */
+class RecordedGateway implements GatewaySwitch {
+  readonly calls: ("start" | "stop")[] = [];
+  listening = false;
+  readonly #fails: boolean;
+
+  constructor(fails = false) {
+    this.#fails = fails;
+  }
+
+  async start(): Promise<number | undefined> {
+    this.calls.push("start");
+    if (this.#fails) return undefined;
+    this.listening = true;
+    return 4100;
+  }
+
+  async stop(): Promise<void> {
+    this.calls.push("stop");
+    this.listening = false;
+  }
+}
+
 interface HostSetup {
   available?: boolean;
   settingsText?: string;
   tunnel?: FakeTunnelProvider;
+  gateway?: RecordedGateway;
   withLan?: boolean;
 }
 
@@ -64,6 +92,7 @@ async function host(setup: HostSetup = {}) {
   const settingsFile = new MemoryFile(setup.settingsText);
   const settings = await RemoteSettings.open({ file: settingsFile, log });
   const tunnel = setup.tunnel ?? new FakeTunnelProvider();
+  const gateway = setup.gateway ?? new RecordedGateway();
   const hostKey = sharedHostKey(new MemorySecretStore());
   const advert = recordedAdvert(time);
   const lanEndpoint: RemoteLanEndpoint = { lan, port: 4200, advert: advert.advert };
@@ -75,7 +104,7 @@ async function host(setup: HostSetup = {}) {
     settings,
     hostKey,
     tunnel,
-    gatewayPort: 4100,
+    gateway,
     ...(setup.withLan === true ? { lanEndpoint } : {}),
     time,
     log,
@@ -99,6 +128,7 @@ async function host(setup: HostSetup = {}) {
     control,
     time,
     tunnel,
+    gateway,
     settingsFile,
     logged,
     hostKey,
@@ -229,6 +259,56 @@ verifies("agent-host.remote-control", () => {
         allowRiskyRemotely: true,
         tunnel: { state: "ready" },
       });
+    });
+
+    it("runs the gateway only while remote is on, and points the tunnel at its port", async () => {
+      const { control, gateway, tunnel } = await host();
+      expect(gateway.listening).toBe(false);
+      await control.setRemote(true);
+      await settled();
+      expect(gateway.listening).toBe(true);
+      // The fake gives the running tunnel's endpoint for its own config, and refuses any other.
+      const endpoint = await tunnel.start({ gateway: { host: "127.0.0.1", port: 4100 } });
+      expect(endpoint.url).toBe("https://gateway-4100.fake-tunnel.invalid");
+      await control.setRemote(false);
+      expect(gateway.listening).toBe(false);
+      expect(gateway.calls).toEqual(["start", "stop"]);
+    });
+
+    it("shows the tunnel down with a problem, and starts no tunnel, when the gateway can't start", async () => {
+      const { control, tunnel } = await host({ gateway: new RecordedGateway(true) });
+      await control.setRemote(true);
+      await settled();
+      expect(await stateOf(control)).toMatchObject({
+        on: true,
+        tunnel: { state: "down", reason: "provider-error" },
+      });
+      // No tunnel is up, so the fake takes a config for any port.
+      const other = await tunnel.start({ gateway: { host: "127.0.0.1", port: 4999 } });
+      expect(other.url).toBe("https://gateway-4999.fake-tunnel.invalid");
+    });
+
+    it("ends a pairing with the tunnel down when the gateway can't start", async () => {
+      const { control } = await host({ gateway: new RecordedGateway(true) });
+      const { first } = await openPairing(control);
+      expect(first).toEqual({
+        type: "ended",
+        reason: "tunnel-down",
+        tunnelReason: "provider-error",
+      });
+      expect(await stateOf(control)).toMatchObject({ on: false, pairing: false });
+    });
+
+    it("stops the gateway and the tunnel when the host stops, and keeps remote on for the next launch", async () => {
+      const { control, gateway, tunnel, settingsFile } = await host();
+      await control.setRemote(true);
+      await settled();
+      await control.close();
+      expect(gateway.listening).toBe(false);
+      expect(JSON.parse(settingsFile.text ?? "")).toMatchObject({ on: true });
+      // The tunnel is down, so the fake takes a config for another port.
+      const other = await tunnel.start({ gateway: { host: "127.0.0.1", port: 4999 } });
+      expect(other.url).toBe("https://gateway-4999.fake-tunnel.invalid");
     });
 
     it("advertises on the Wi-Fi only while a pairing is open", async () => {

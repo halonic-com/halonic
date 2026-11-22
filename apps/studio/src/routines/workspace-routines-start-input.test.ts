@@ -55,18 +55,19 @@ verifies("studio.workspace-routines-start-input", () => {
   describe("a routine whose input lacks what its first step reads", () => {
     it("says so on its view, and lists the problem halonic validate reports", async () => {
       const { host } = morningReplies("{}");
+      const problem =
+        "Morning replies starts support-reply without mail, which its first step reads. Add mail under run.input.";
 
-      expect((await host.read(morning)).inputMissing).toBe(true);
+      // The same sentence as the row's, so the Starts card can show it once (HAL-15721).
+      expect((await host.read(morning)).inputMissing).toBe(problem);
       const listing = (await host.list()).find((one) => one.id === morning.id);
-      expect(listing?.problems).toEqual([
-        "Morning replies starts support-reply without mail, which its first step reads. Add mail under run.input.",
-      ]);
+      expect(listing?.problems).toEqual([problem]);
     });
 
     it("doesn't say so once the input has the field, even empty", async () => {
       const { host } = morningReplies("{ mail: '' }");
 
-      expect((await host.read(morning)).inputMissing).toBe(false);
+      expect((await host.read(morning)).inputMissing).toBeUndefined();
     });
   });
 

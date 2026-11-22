@@ -136,7 +136,8 @@ export const NEW_AGENTS_HINT =
  * The hint's second line while this Studio can't start an agent outside its sandbox. Team
  * decision by Sofia on HAL-13232, the same fact as the Harness page's `studioCantStart`. It
  * names the sandbox rather than "this way", because here the line sits under a Select that
- * shows the sandbox by default (Sofia, C595 on HAL-15572).
+ * shows the sandbox by default (Sofia, C595 on HAL-15572). The dialog for On this computer says
+ * it too, under its body (C596 on HAL-15584).
  */
 export const NEW_AGENTS_STUDIO_CANT_START =
   "Studio can't start agents outside the sandbox yet; halonic run and halonic serve on this computer can.";
@@ -233,6 +234,12 @@ export const TAKEN_BACK_TEXT =
   "Plugins and integrations won't start without the sandbox until you allow it again. Halonic asks again the next time one starts.";
 /** The host's `take_back_incomplete`: the yes is gone, but some runners didn't stop (HAL-15527). */
 export const TAKEN_BACK_PARTLY_TITLE = "Taken back, but some plugins and integrations didn't stop.";
+/**
+ * Under it instead of "won't start": what still runs and what stops it. The host keeps stopping them, and
+ * quitting stops the host with every runner it started; it can't name them (C630 #2, HAL-15786).
+ */
+export const TAKEN_BACK_PARTLY_TEXT =
+  "They may still be running without the sandbox. Halonic keeps trying to stop them. To stop them now, quit Halonic.";
 /** A Take back the host refused; the toast's text is the shell's reason for the error (C553, HAL-15227). */
 export const TAKE_BACK_FAILED_TITLE = "Couldn't take it back";
 /** The agent host's refusals of a Take back, in plain words; any other kind gets the shell's reason (C587, HAL-15527). */

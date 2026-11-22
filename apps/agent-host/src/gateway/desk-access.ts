@@ -43,8 +43,8 @@ export interface DeskAccessOptions {
  * The gateway's access through the host's own pairing desk and paired phones.
  *
  * @example
- * const access = deskAccess({ desk, phones, hostKey: await hostKey(), hostName, log });
- * new RemoteGateway(gatewaySettings, ledger, runs, settings, access);
+ * const access = async () => deskAccess({ desk, phones, hostKey: await hostKey(), hostName, log });
+ * new RemoteGateway({ ledger, runs, access, risky: settings, ownPorts, log });
  */
 export function deskAccess(options: DeskAccessOptions): GatewayAccess {
   return { pairing: new DeskPairing(options.desk), phones: new StorePhones(options) };

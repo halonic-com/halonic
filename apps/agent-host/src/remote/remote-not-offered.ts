@@ -6,10 +6,12 @@ import type { RemoteTime } from "./remote-time.ts";
 const notOfferedMessage = "This host doesn't offer remote.";
 
 /**
- * The `RemoteControl` every launch serves until the gateway takes pairings
- * (B3) and passes its attack suite (B8, build plan decision 19): remote is not
- * available, so Studio shows no Remote section, and nothing can turn it on,
- * pair a phone or change a switch. It keeps no file and opens no socket.
+ * The `RemoteControl` a host serves when it offers no remote: without a
+ * tunnel provider, which every launch of the executable lacks until phase C,
+ * or when it can't keep phones (requirement `agent-host.remote-not-offered`).
+ * Remote is not available, so Studio shows no Remote section, and nothing
+ * can turn it on, pair a phone or change a switch. It keeps no file and
+ * opens no socket.
  */
 export class RemoteNotOffered implements RemoteControl {
   readonly #state: RemoteState;

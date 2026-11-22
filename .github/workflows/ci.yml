@@ -350,6 +350,10 @@ jobs:
       # Plain check leaves out trace; the build job runs it after the tests.
       # The DCO rule checks the pull request's own commits. A merge queue
       # or a push to main only holds commits that passed it here.
+      # SIZE_BASE is the main commit the merge ref is built on (HEAD^1): a
+      # file the pull request grows must stay 20 lines under the size limit,
+      # so two pull requests can't together push it over in the queue
+      # (HAL-15461). Merge groups and main keep the plain limit.
       - name: Repo checks (layers, dependencies, names, feature list, file size, lockfile, paths, DCO)
         env:
           EVENT: ${{ github.event_name }}
@@ -360,6 +364,8 @@ jobs:
           if [ "$EVENT" = "pull_request" ]; then
             export DCO_RANGE="$BASE..$HEAD"
             export DCO_PR_AUTHOR="$PR_AUTHOR"
+            SIZE_BASE=$(git rev-parse --verify HEAD^1)
+            export SIZE_BASE
           fi
           pnpm check
       - name: Licences
