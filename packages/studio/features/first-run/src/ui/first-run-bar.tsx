@@ -69,14 +69,18 @@ function CancelRun({
   readonly onCancelled: () => void;
 }) {
   const [failed, setFailed] = useState(false);
+  const [busy, setBusy] = useState(false);
   const cancel = async () => {
     setFailed(false);
+    setBusy(true);
     try {
       await start.cancel();
       onCancelled();
     } catch (error) {
       console.error("Cancel run", error);
       setFailed(true);
+    } finally {
+      setBusy(false);
     }
   };
   return (
@@ -86,7 +90,7 @@ function CancelRun({
           {barWords.cancelFailed}
         </p>
       ) : null}
-      <Button variant="ghost" size="sm" onClick={cancel}>
+      <Button variant="ghost" size="sm" busy={busy} onClick={cancel}>
         {barWords.cancel}
       </Button>
     </div>

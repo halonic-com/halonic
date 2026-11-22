@@ -55,6 +55,11 @@ export class FirstRun {
    * in the runs list never closes the screen under the person.
    */
   #picking = false;
+  /**
+   * The newest run when Continue started one, until the runs list shows the new run: that older
+   * run would put the steps back where it ended.
+   */
+  #before: string | undefined;
 
   constructor(
     runs: FirstRunRuns,
@@ -122,6 +127,7 @@ export class FirstRun {
     if (state.kind !== "on" || state.step !== "run" || state.failed || state.ended)
       return undefined;
     const run = this.#newestRun();
+    if (run?.id === this.#before) return undefined;
     return run?.status === "running" ? run.id : undefined;
   }
 
@@ -134,13 +140,20 @@ export class FirstRun {
   }
 
   /**
-   * Closes the Pick a model screen: after **Back** the steps follow the runs again (`model-closed`),
-   * and after Continue the run it started moves them.
+   * Closes the Pick a model screen: after **Back** the steps follow the runs again (`model-closed`).
+   * After Continue the first run is at Run at once, so the bar offers **Cancel run** before the
+   * runs list has the new run, and that run moves the steps from then on.
    */
   closePicker(after: "back" | "started"): void {
     if (!this.#picking) return;
     this.#picking = false;
-    if (after === "back") this.send({ kind: "model-closed" });
+    if (after === "back") {
+      this.#before = undefined;
+      this.send({ kind: "model-closed" });
+    } else {
+      this.#before = this.#newestRun()?.id;
+      this.send({ kind: "run-started" });
+    }
     this.#tell();
     void this.#follow();
   }
@@ -256,6 +269,8 @@ export class FirstRun {
     if (this.#picking) return;
     const newest = this.#newestRun();
     if (newest === undefined) return;
+    if (newest.id === this.#before) return;
+    this.#before = undefined;
     let event: FirstRunEvent;
     try {
       event = await this.#eventOf(newest);

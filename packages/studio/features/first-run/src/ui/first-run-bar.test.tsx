@@ -183,6 +183,22 @@ verifies("first-run.bar", () => {
     });
   });
 
+  it("is busy until the engine answers, so a second press doesn't cancel again", async () => {
+    const firstRun = firstRunOf(on("run"));
+    const start = new FirstRunStart(firstRun, { startRun: vi.fn(), cancelRun: vi.fn() });
+    let answer = () => {};
+    const cancel = vi
+      .spyOn(start, "cancel")
+      .mockReturnValue(new Promise<void>((resolve) => (answer = resolve)));
+    const bar = renderBar(firstRun, "desktop", start);
+    await act(async () => bar.querySelector("button")?.click());
+    expect(bar.querySelector("button")?.getAttribute("aria-busy")).toBe("true");
+    await act(async () => bar.querySelector("button")?.click());
+    expect(cancel).toHaveBeenCalledOnce();
+    await act(async () => answer());
+    expect(bar.querySelector("button")?.getAttribute("aria-busy")).not.toBe("true");
+  });
+
   it("says when the run couldn't be cancelled, and keeps Cancel run", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const firstRun = firstRunOf(on("run"));

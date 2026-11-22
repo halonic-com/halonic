@@ -91,12 +91,21 @@ export class FirstRunStart {
    * @throws the engine's reason when it couldn't cancel
    */
   async cancel(): Promise<void> {
-    const runId = this.#firstRun.runningId;
+    // Right after Continue the runs list may not have the run yet: the bar is at Run already.
+    const runId = this.#firstRun.runningId ?? this.#justStarted();
     const cancelRun = this.#runStart?.cancelRun;
     if (runId === undefined || cancelRun === undefined) return;
     await cancelRun(runId);
     this.#cancelled.add(runId);
     this.#tell();
+  }
+
+  /** The run Continue started, while the first run is at Run and it hasn't failed or ended. */
+  #justStarted(): string | undefined {
+    const state = this.#firstRun.state;
+    if (state.kind !== "on" || state.step !== "run" || state.failed || state.ended)
+      return undefined;
+    return this.#started?.runId;
   }
 
   /** What the first run adds to the page of `runId`, while it is on here. */

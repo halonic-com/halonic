@@ -203,6 +203,25 @@ verifies("first-run.run", () => {
       );
     });
 
+    it("is at Run as Continue starts the run, and cancels it before the runs list has it", async () => {
+      const { firstRun, setRuns } = firstRunOf(undefined, [run("failed", { id: "run_old" })]);
+      await settled();
+      firstRun.pickModel();
+      const runStart = host();
+      const start = new FirstRunStart(firstRun, runStart);
+      await start.continueWith({ kind: "sample" }, vi.fn());
+      expect(firstRun.state).toMatchObject({ step: "run" });
+      expect(firstRun.state).not.toHaveProperty("failed");
+
+      // The runs list hears of something before it has the new run: the old failed run stays out.
+      setRuns([run("failed", { id: "run_old" })]);
+      await settled();
+      expect(firstRun.state).not.toHaveProperty("failed");
+      expect(firstRun.runningId).toBeUndefined();
+      await start.cancel();
+      expect(runStart.cancelRun).toHaveBeenCalledWith(runId);
+    });
+
     it("passes on the engine's reason, and keeps the run on the page", async () => {
       const { firstRun, setRuns } = firstRunOf(undefined);
       const refused = new Error("There's no run.");
