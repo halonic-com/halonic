@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-16474, design check C711 rows 1 and 2 on HAL-16447 (Noah); small fixes on an approved screen, decided by the team (HAL-2282), the words chosen by the designer on the task; Liam signs this note in review on HAL-16474
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:NRrojN5HmCn6bsiwMY0z/bqDaB+/WVX5fkphbz7vgrS4zejroSs22e29Q/ijZfRrPzTWQ9/sJGymPDaJYhTxBw==
 
 Design check C711 found two slips in Settings › Agent sandbox after #5235:
 
