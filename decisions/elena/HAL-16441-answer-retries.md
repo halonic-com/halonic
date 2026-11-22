@@ -2,6 +2,7 @@
 
 - Approval: HAL-16441, Liam's task for HAL-16440 (model-mix trials, Timothy's decision of 22 Nov)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kGRPjkrCw6ub6uACA0ismYNHDLKIzdaB4M7byVgIzDhuCrN0ldLc9mWOqeSewuTs5mRd4h6RSgOtG5Blg2NMBQ==
 
 With DeepSeek as the code model, most Halonic Code runs failed at one step
 with `answer.not-json`: one malformed answer ended the whole run, though the
