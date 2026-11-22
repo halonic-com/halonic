@@ -2,6 +2,7 @@
 
 - Approval: Liam's review of the pull request on HAL-15693 (Paperclip task)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zARrXU8ebmpUP72AO/Z4MQ/aB6mFvJ62g5kxfLXoN98GCIjb5CWEhmhW99Sm+00JPHpFO0LwcSEIaQZD0nfSAA==
 
 ## What changes
 
