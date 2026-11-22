@@ -96,3 +96,4 @@ requirement: `check.live-cloud-queue`; `check.cloud-affected` is unchanged.
 ## Covers
 
 - .github/
+- tooling/check/
