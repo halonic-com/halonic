@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-waiting`, `paperclip.board-tools`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-waiting`, `paperclip.board-tools`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`
 
 ## PR watcher
 
@@ -147,6 +147,20 @@ token as the watcher, and give up after 25 s.
   allowed. It reads the last snapshot from plugin state and sends no
   request; a snapshot older than 30 minutes is marked stale. Moves to the
   `merge-queue` plugin in phase 2.
+- **`ready_for_review(branch, sha?)`** or **`ready_for_review(checkId)`**
+  (L5b, HAL-16437): asks the precheck service (L5a, `precheck/` in
+  halonic-com/server) to check a pushed branch merged into current `main`
+  before the agent opens or updates its pull request. A check takes 1 to 5
+  minutes and a tool call at most 30 s, so the tool starts it with
+  `wait: false`, reads it every 4 s for about 20 s, and otherwise answers
+  `RUNNING` with the check's id for the next call. `PASS` lets the agent go
+  on, `FAIL` names the failed steps with the service's short log summary. A
+  queue that's full (`429`), a service that's down or answers oddly gives
+  `CHECK UNAVAILABLE`, which never blocks: the agent goes on and CI decides.
+  Input the service refuses (`400`) and an unknown id are errors. It calls
+  the service with Node's own `fetch`, because the host's guard may refuse a
+  private address; setting `precheckUrl` (empty:
+  `http://halonic-precheck:8787`) is the only address it calls.
 
 ## gh guard
 
@@ -301,7 +315,10 @@ front of each name. A metric that doesn't save is logged and changes nothing.
   monitor is one model run that only checks. A task closed since its monitor
   fired isn't open any more, so `fired` is a lower bound.
 - **Each tool call** (tags `companyId`, `tool`, `outcome`): `tools.calls` and
-  `tools.github_requests`.
+  `tools.github_requests`. `ready_for_review` saves `tools.calls`,
+  `tools.duration_ms`, one of `precheck.pass`, `.fail`, `.running`,
+  `.unavailable` or `.error`, and, once a check is done, `precheck.duration_s`,
+  all with the extra tag `result`.
 - **Each `gh` status read the guard sees** (tags `companyId`, `subcommand`,
   `agent`, `mode`): `tools.gh_redirected` (see gh guard above).
 

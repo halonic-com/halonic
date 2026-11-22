@@ -61,6 +61,7 @@ verifies("paperclip.pr-tools", () => {
         "pr_status",
         "my_prs",
         "queue_state",
+        "ready_for_review",
         "board_asks",
         "board_waiting",
         "failed_runs",
