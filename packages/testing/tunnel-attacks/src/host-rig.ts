@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { MemorySecretStore } from "@halonicjs/adapter-memory";
 import type { GatewayListener } from "@halonicjs/adapter-remote-gateway";
 import {
+  deskAccess,
   type HostKey,
   HostRemoteControl,
   type MulticastSocket,
@@ -17,7 +18,6 @@ import {
 } from "@halonicjs/app-agent-host/remote-parts";
 import { decodePairingQr, type PairingEvent, type PairingSession } from "@halonicjs/ports";
 import { FakeTunnelProvider } from "@halonicjs/testing-contracts";
-import { hostPhoneAccess } from "./host-pairing.ts";
 import { ManualTime } from "./manual-time.ts";
 import type { ScannedQr } from "./pairing-phone.ts";
 import { RecordingSource } from "./recording-source.ts";
@@ -135,7 +135,7 @@ async function openHost(folder: string, time: ManualTime, source: RecordingSourc
   const loadKey = sharedHostKey(new MemorySecretStore());
   const hostKey = await loadKey();
   const desk = new PairingDesk({ time, randomBytes: (length) => randomBytes(length) });
-  const access = hostPhoneAccess({ desk, phones, hostKey, hostName: rigHostName, log });
+  const access = deskAccess({ desk, phones, hostKey, hostName: rigHostName, log });
   // No onError: the rig's gateway rethrows, so a hostile frame that makes the host fail fails the test.
   const gateway = await withFreePort((port) => startRigGateway(port, source, access, {}));
   const control = await HostRemoteControl.open({
