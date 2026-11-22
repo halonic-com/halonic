@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-An integration secret with `hosts` but no `as` now names its fields in quotes and says Halonic reads it as a sign-in's client secret.
+When an integration secret has `hosts` but no `as`, the problem Halonic reports now puts those field names in quotes and says Halonic reads the secret as a sign-in's client secret.
