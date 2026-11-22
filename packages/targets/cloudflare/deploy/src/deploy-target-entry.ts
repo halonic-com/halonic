@@ -1,8 +1,11 @@
+import { migrations } from "@halonicjs/adapter-cloudflare-storage";
 import type {
   DeployAccount,
   DeployedVersion,
   DeployLockHolder,
   DeploymentRef,
+  DeployPlan,
+  DeployRequest,
   DeployResource,
   DeployTarget,
   DeployTargetContext,
@@ -17,11 +20,12 @@ import type { CloudflareApi, DeployedVersion as CloudflareVersion, ResourceKind 
 import { createCloudflareClient } from "./client.ts";
 import { resolveCredentials } from "./credentials.ts";
 import { destroy } from "./destroy.ts";
+import { migrate } from "./migrate.ts";
 import { lockHolderOf, portFailure, toDeployFailure } from "./port-failure.ts";
-import { databaseNameFor } from "./provision.ts";
+import { databaseNameFor, provision } from "./provision.ts";
 import { rollback } from "./rollback.ts";
 import { status } from "./status.ts";
-import { parseVersionNote } from "./version-note.ts";
+import { parseVersionNote, startsLike } from "./version-note.ts";
 import { exportFromWorker, importToWorker } from "./worker-transfer.ts";
 
 /** The name `login` saves the Cloudflare API token under in the user's keychain. */
@@ -42,8 +46,8 @@ const resourceKinds: Readonly<Record<ResourceKind, DeployResource["kind"]>> = {
 /**
  * The Cloudflare target as the {@link DeployTarget} port (requirement
  * `deploy.target-entry`): each method wraps this package's own function and
- * rejects with the port's failure. `plan`, `deploy` and `revokeSessions`
- * come in the next part and reject with `unexpected` until then.
+ * rejects with the port's failure. `deploy` and `revokeSessions` come in the
+ * next part and reject with `unexpected` until then.
  */
 export function createCloudflareDeployTarget(
   context: DeployTargetContext,
@@ -90,7 +94,7 @@ export function createCloudflareDeployTarget(
         return { accounts: accounts.map(({ id, name }) => ({ id, name })) };
       }),
 
-    plan: notYet("plan a deploy"),
+    plan: (request) => guard(async () => planDeploy(await api(), request)),
     deploy: notYet("deploy"),
     revokeSessions: notYet("sign out browsers"),
 
@@ -201,6 +205,64 @@ export function createCloudflareDeployTarget(
         return { mode: result.mode, items: itemsOf(result.steps), left: [] };
       }),
   };
+
+  /**
+   * Measures a deploy against what's live (requirement `deploy.plan`): reads
+   * only, takes no lock and asks nothing. A lock that can't be read fails the
+   * plan, as it fails `status`: the deploy would hit the same database next.
+   */
+  async function planDeploy(
+    cloudflare: CloudflareApi,
+    request: DeployRequest,
+  ): Promise<DeployPlan> {
+    const { deployment, snapshot } = request;
+    const { accountId, service: worker } = deployment;
+    const [account, steps, databaseChanges, current, url, lockedBy, files] = await Promise.all([
+      accountOf(cloudflare, accountId),
+      provision(cloudflare, {
+        accountId,
+        worker,
+        plan: true,
+        ...(request.adopt ? { adopt: true } : {}),
+      }),
+      migrate(cloudflare, { accountId, worker, migrations, plan: true }),
+      cloudflare.currentDeployment(accountId, worker),
+      cloudflare.workersDevUrl(accountId, worker),
+      lockedByOf(cloudflare, deployment),
+      snapshot.files.list(),
+    ]);
+    const serving = (current ?? []).filter((v) => v.percentage > 0);
+    const live =
+      serving.length === 0
+        ? undefined
+        : await describe(
+            cloudflare,
+            deployment,
+            (await versionNumbers(cloudflare, accountId, worker)).ids,
+            mainOf(serving),
+          );
+    return {
+      account,
+      url,
+      creates: steps
+        .filter((step) => step.action === "create")
+        .map((step) => ({ kind: resourceKinds[step.kind], name: step.name })),
+      databaseChanges,
+      // Halonic's own database changes only add tables and columns (deploy flow 3.7).
+      deletesData: false,
+      live,
+      // The live version's reaches and Halonic version come with its `deploy.json` (next part).
+      // Until then a plan says everything is new and never "unchanged": the safe side.
+      liveReaches: undefined,
+      lockedBy,
+      unchanged:
+        live?.commit !== undefined &&
+        // The version note keeps a short commit.
+        startsLike(snapshot.commit, live.commit) &&
+        live.halonicVersion === snapshot.halonicVersion,
+      files,
+    };
+  }
 
   async function withTransfer<T>(
     cloudflare: CloudflareApi,
