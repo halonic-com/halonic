@@ -234,6 +234,27 @@ verifies("runs.run-view.step-failed-call", () => {
     expect(opened).toEqual(["files", "files"]);
   });
 
+  it("doesn't link a stopped plugin, whose cause holds its name and not its id", () => {
+    lines(
+      [
+        [0, called("create_note")],
+        [
+          0,
+          result("create_note", "error", {
+            code: "connector-not-started",
+            why: "plugin-stopped",
+            name: "Weather",
+          }),
+        ],
+      ],
+      () => {},
+    );
+
+    expect(document.querySelector("aside li p button")).toBeNull();
+    const names = [...document.querySelectorAll("aside li p em")].map((em) => em.textContent);
+    expect(names).toContain("Weather");
+  });
+
   it("links neither a program nor a secret, which have no page", () => {
     lines(
       [

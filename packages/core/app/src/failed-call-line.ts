@@ -124,9 +124,9 @@ type StartLineKey =
 
 /**
  * The line for a connector that didn't start: the program or the secret it missed, or the plugin
- * that isn't trusted yet, changed since or whose sandbox didn't work when it started, when the cause
- * names it, else only that it didn't start. The plugin line has no button: the plugin's own page
- * has the trust step, and the plugin's name is the way there (HAL-15278, HAL-15453).
+ * that isn't trusted yet, changed since or whose sandbox didn't work when it started, when the
+ * cause names it, else only that it didn't start. The plugin line has no button: the plugin's own
+ * page has the trust step, and the plugin's name is the way there (HAL-15278, HAL-15453).
  */
 function connectorStartKey(cause: ConnectorStartCause): StartLineKey {
   if (cause.name === undefined) return "notStarted";
