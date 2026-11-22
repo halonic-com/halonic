@@ -126,12 +126,14 @@ export async function followWorkflow(
   const typed = oneWorkflow(input);
   const dir = await openWorkspaceDir(input, context);
   const typedDir = givenDir(input, dir);
-  const { workspace, version, changesNotLive, fileTexts } = await liveWorkspace(dir, setup);
+  const loaded = await liveWorkspace(dir, setup);
+  const { workspace, integrations, version, changesNotLive, fileTexts } = loaded;
+  const nothingRan = runMessages.nothingRan();
   const workspaceName = printable(workspaceNameOf(workspace, dir));
   // Before the lookup: a file with an error is left out, so its workflow
   // would look missing (HAL-12978); a workflow not found counts every error.
   // The trust check below refuses it too.
-  await refuseFileProblems(dir, workspace, runMessages.nothingRan(), typedDir, {
+  await refuseFileProblems(dir, workspace, nothingRan, typedDir, {
     run: foundWorkflow(workspace, typed),
     saved: savedWorkspaceOf(dir, setup.profile),
   });
@@ -144,24 +146,18 @@ export async function followWorkflow(
     holder: "run" as const,
     dir,
     workspace,
+    integrations,
     runFiles: new CommandRunFiles(
       dir,
       { version, loaded: { workspace, fileTexts } },
       setup.history ?? openGitHistory,
     ),
     runs: [workflow],
-    ending: runMessages.nothingRan(),
+    ending: nothingRan,
   };
   // Before trust: a run the sandbox can't start has nothing to trust (HAL-6580).
   const sandboxChecked = await checkHarnessAgents(setup, target, workflow);
-  const trust = await checkRunTrust(
-    dir,
-    workspace,
-    setup.trust(),
-    typedDir,
-    runMessages.nothingRan(),
-    workflow,
-  );
+  const trust = await checkRunTrust(dir, loaded, setup.trust(), typedDir, nothingRan, workflow);
   const givenInput = optionText(input, "input");
   const runInput = await runInputOf(givenInput, context.cwd);
   const definition = workflowIn(hubWorkflows(workspace), workflow.hubId, workflow.workflowId);

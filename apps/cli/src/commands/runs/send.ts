@@ -23,7 +23,7 @@ import {
 import type { RunSummary } from "@halonicjs/events";
 import type { RunExecutor, SendOptions } from "@halonicjs/ports";
 import { assertDefined, KindedError } from "@halonicjs/std";
-import type { LoadedWorkspace } from "@halonicjs/workspace";
+import type { LoadedWorkspace, LocalIntegrationInput } from "@halonicjs/workspace";
 import {
   type CommandContext,
   type CommandInput,
@@ -125,6 +125,7 @@ export async function sendToRun(
   const engine = new EngineOnSend(context, setup, {
     dir: workspace,
     workspace: loaded,
+    integrations: send.integrations,
     runFiles: new CommandRunFiles(
       workspace,
       { version: send.version, loaded: send },
@@ -174,6 +175,8 @@ export async function sendToRun(
 interface SendTarget {
   readonly dir: OpenWorkspaceDir;
   readonly workspace: LoadedWorkspace;
+  /** The local integrations of `workspace`'s version, which its trust check reads. */
+  readonly integrations: readonly LocalIntegrationInput[];
   /** The files of the version the run reads, which "On this computer" is checked against. */
   readonly runFiles: CommandRunFiles;
   /** The run's hub, workflow and harness, which the sandbox is checked for. */
@@ -208,11 +211,11 @@ class EngineOnSend implements Pick<RunExecutor, "send"> {
     payload?: unknown,
     options?: SendOptions,
   ): Promise<RunSummary> {
-    const { dir, workspace, runFiles, run, typedDir } = this.target;
+    const { dir, workspace, integrations, runFiles, run, typedDir } = this.target;
     const nothingSent = sandboxMessages.nothingSent();
     const trust = await checkRunTrust(
       dir,
-      workspace,
+      { workspace, integrations },
       this.setup.trust(),
       typedDir,
       nothingSent,
@@ -222,6 +225,7 @@ class EngineOnSend implements Pick<RunExecutor, "send"> {
       holder: "runsSend",
       dir,
       workspace,
+      integrations,
       runFiles,
       trust,
       runs: [run],

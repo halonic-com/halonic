@@ -10,12 +10,11 @@
 // asks in its own way (Liam, HAL-3895).
 
 import type { TrustGrant } from "@halonicjs/ports";
-import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { Message } from "../../messages/define.ts";
 import { runMessages } from "../../messages/run.ts";
 import { savedWorkspaceOf } from "../../run-workspace.ts";
 import type { SandboxGateRun } from "../../sandbox-gate.ts";
-import { savedVersionOf, type WorkspaceAtVersion } from "../../workspace-at-version.ts";
+import type { WorkspaceAtVersion } from "../../workspace-at-version.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
 import { refuseFileProblems, refuseFileProblemsOutsideRoutines } from "../../workspace-problems.ts";
 import { needsNoTrust, trustedGrant, type WorkspaceTrustMachine } from "../../workspace-trust.ts";
@@ -34,6 +33,7 @@ export type RunTrustMachine = WorkspaceTrustMachine;
  * counts as no trust: the run fails closed. `runs send` checks it too before
  * a run goes on.
  *
+ * @param version - the version the run starts: its definitions and local integrations
  * @param nothingDone - the end of line 1 saying nothing happened:
  *   `runMessages.nothingRan()`, the default, or `sandboxMessages.nothingSent()`
  * @param run - the run's workflow, and the harness it names for all its
@@ -47,17 +47,16 @@ export type RunTrustMachine = WorkspaceTrustMachine;
  */
 export async function checkRunTrust(
   dir: OpenWorkspaceDir,
-  workspace: LoadedWorkspace,
+  version: WorkspaceAtVersion,
   machine: RunTrustMachine,
   typedDir: string | undefined,
   nothingDone: Message = runMessages.nothingRan(),
   run?: SandboxGateRun,
 ): Promise<TrustGrant | null> {
-  await refuseFileProblems(dir, workspace, nothingDone, typedDir, {
+  await refuseFileProblems(dir, version.workspace, nothingDone, typedDir, {
     run,
     saved: savedWorkspaceOf(dir),
   });
-  const version = await savedVersionOf(dir, workspace);
   return await trustGrantOf(dir, version, machine, typedDir, nothingDone, run?.harness);
 }
 
@@ -74,19 +73,18 @@ export async function checkRunTrust(
  */
 export async function checkRoutinesTrust(
   dir: OpenWorkspaceDir,
-  workspace: LoadedWorkspace,
+  version: WorkspaceAtVersion,
   machine: RunTrustMachine,
   typedDir: string | undefined,
 ): Promise<TrustGrant | null> {
   const nothingRan = runMessages.nothingRan();
   await refuseFileProblemsOutsideRoutines(
     dir,
-    workspace,
+    version.workspace,
     nothingRan,
     typedDir,
     savedWorkspaceOf(dir),
   );
-  const version = await savedVersionOf(dir, workspace);
   return await trustGrantOf(dir, version, machine, typedDir, nothingRan);
 }
 

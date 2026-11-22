@@ -11,7 +11,7 @@ import { nodeProgramStarter } from "@halonicjs/adapter-mcp";
 import type { HttpClient, Secrets, TrustGrant } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
-import type { LoadedWorkspace } from "@halonicjs/workspace";
+import type { LoadedWorkspace, LocalIntegrationInput } from "@halonicjs/workspace";
 import { closeAfterStop, stoppedCloseLimitMs } from "./close-after-stop.ts";
 import type { CommandContext } from "./command.ts";
 import { openConnectionSettings } from "./connection-settings-host.ts";
@@ -99,6 +99,8 @@ export interface WorkspaceEngineTarget {
   readonly dir: OpenWorkspaceDir;
   /** The loaded workspace, checked and trusted by the command. */
   readonly workspace: LoadedWorkspace;
+  /** The local integrations of `workspace`'s version, as the command's trust check read them; see `LocalEngineInput.integrations`. */
+  readonly integrations?: readonly LocalIntegrationInput[];
   /** For `routines watch`, whose runs read the live version at each start; see `LocalEngineInput.versions`. */
   readonly versions?: WorkspaceVersions;
   /**
@@ -215,6 +217,7 @@ export async function openWorkspaceEngine(
   );
   const engine = await openLocalEngine({
     workspace: target.workspace,
+    ...(target.integrations === undefined ? {} : { integrations: target.integrations }),
     holder: target.holder,
     ...(target.versions === undefined ? {} : { versions: target.versions }),
     ...(target.runFiles === undefined ? {} : { runFiles: target.runFiles }),

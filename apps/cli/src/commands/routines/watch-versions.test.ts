@@ -64,7 +64,7 @@ verifies("cli.local-engine", () => {
     const watched = await watchAcme();
     const checked: string[][] = [];
     watched.checkWith({
-      trust: async (workspace) => {
+      trust: async ({ workspace }) => {
         checked.push(providersOf(workspace));
         return contractGrant;
       },
@@ -158,7 +158,7 @@ verifies("cli.local-engine", () => {
     const watched = await watchAcme();
     const checked: string[][] = [];
     watched.checkWith({
-      trust: async (workspace) => {
+      trust: async ({ workspace }) => {
         checked.push(providersOf(workspace));
         return contractGrant;
       },

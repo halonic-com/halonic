@@ -13,18 +13,35 @@ import {
   type GitRunnerOptions,
   GitVcs,
 } from "@halonicjs/adapter-git";
-import { type LiveVersionReader, liveVersionOf, runSourceFor, runVersionOf } from "@halonicjs/app";
+import {
+  integrationsFolder,
+  type LiveVersionReader,
+  liveVersionOf,
+  type RunSource,
+  runSourceFor,
+  runVersionOf,
+} from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
-import type { Vcs } from "@halonicjs/ports";
+import type { Vcs, VcsStatus } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import { KindedError } from "@halonicjs/std";
-import { type LoadedWorkspace, loadWorkspace, placeOf } from "@halonicjs/workspace";
+import {
+  type LoadedWorkspace,
+  type LocalIntegrationInput,
+  loadWorkspace,
+  placeOf,
+} from "@halonicjs/workspace";
 import type { Message } from "./messages/define.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { sandboxMessages } from "./messages/sandbox.ts";
 import { versionSheetHosts } from "./sheet-hosts.ts";
 import { type LoadedVersion, loadVersion, versionWithTexts } from "./version-files.ts";
+import {
+  integrationsAtCommit,
+  savedIntegrations,
+  type WorkspaceAtVersion,
+} from "./workspace-at-version.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 
 /** What a run's workspace needs of version control: which version is live, and its files. */
@@ -41,9 +58,12 @@ export interface OpenedHistory {
 
 /**
  * The workspace a run reads:
- * - `loaded`: the live version, or the saved files with history off, with
- *   the version the run records on its `run.started`
- *   (`app.run-records-its-version`). `changesNotLive` says a definition
+ * - `loaded`: the live version, or the saved files with history off, its
+ *   definitions and local integrations, with the version the run records
+ *   on its `run.started` (`app.run-records-its-version`).
+ *   `notCommitted` names each definition file and file under
+ *   `integrations/` that differs from the live version, so trust doesn't
+ *   cover it (HAL-16335); empty with history off. `changesNotLive` says a definition
  *   file differs from the live version and the run won't use it
  *   (HAL-6007): changed, added, removed or renamed since the last commit,
  *   staged or not. Other files, such as a connector's script, aren't
@@ -54,17 +74,20 @@ export interface OpenedHistory {
  *   is nothing to run.
  */
 export type RunWorkspace =
-  | {
+  | (WorkspaceAtVersion & {
       readonly found: "loaded";
-      readonly workspace: LoadedWorkspace;
       readonly version: RunVersion;
       readonly changesNotLive: boolean;
+      readonly notCommitted: readonly string[];
       readonly fileTexts: ReadonlyMap<string, string>;
-    }
+    })
   | { readonly found: "nothing-live" };
 
-/** The workspace `halonic runs send` checks on, the version it is, and its agents' and skills' files. */
-export interface SendWorkspace extends LoadedVersion {
+/**
+ * The workspace `halonic runs send` checks on, with its local integrations,
+ * the version it is, and its agents' and skills' files.
+ */
+export interface SendWorkspace extends LoadedVersion, WorkspaceAtVersion {
   readonly version: RunVersion;
 }
 
@@ -133,9 +156,17 @@ export async function loadRunWorkspace(
     const sheetHosts = await versionSheetHosts(picked.source, profile);
     const workspace = await loadWorkspace(picked.source, { sheetHosts });
     const { fileTexts } = await versionWithTexts(workspace, picked.source);
-    const changesNotLive =
-      vcs !== null && picked.reads === "live-version" && (await definitionsChanged(vcs));
-    return { found: "loaded", workspace, version: runVersionOf(picked), changesNotLive, fileTexts };
+    const integrations = await integrationsOf(picked, vcs, dir);
+    const status = vcs !== null && picked.reads === "live-version" ? await vcs.status() : null;
+    return {
+      found: "loaded",
+      workspace,
+      integrations,
+      version: runVersionOf(picked),
+      changesNotLive: status !== null && definitionsChanged(status),
+      notCommitted: status === null ? [] : trustFilesChanged(status),
+      fileTexts,
+    };
   } finally {
     await history?.close();
   }
@@ -155,6 +186,19 @@ export function savedWorkspaceOf(
 }
 
 /**
+ * The local integrations of the version `picked` reads: at its commit,
+ * through the history, or as saved with history off.
+ */
+async function integrationsOf(
+  picked: Exclude<RunSource, { reads: "nothing-live" }>,
+  vcs: WorkspaceHistory | null,
+  dir: OpenWorkspaceDir,
+): Promise<LocalIntegrationInput[]> {
+  if (picked.reads === "saved-files" || vcs === null) return await savedIntegrations(dir);
+  return await integrationsAtCommit(vcs, picked.commit, dir.store.location);
+}
+
+/**
  * The workspace `halonic runs send` checks the run's trust and sandbox on:
  * the version `halonic run` would start now. A waiting run can be answered
  * while nothing is live yet, so then it is the saved files, as for a run
@@ -168,19 +212,35 @@ export async function loadSendWorkspace(
 ): Promise<SendWorkspace> {
   const run = await loadRunWorkspace(dir, openHistory, sandboxMessages.nothingSent());
   if (run.found === "loaded") {
-    const { workspace, version, fileTexts } = run;
-    return { workspace, version, fileTexts };
+    const { workspace, integrations, version, fileTexts } = run;
+    return { workspace, integrations, version, fileTexts };
   }
-  return { ...(await loadVersion(dir.store)), version: { reads: "saved-files" } };
+  const saved = await loadVersion(dir.store);
+  return {
+    ...saved,
+    integrations: await savedIntegrations(dir),
+    version: { reads: "saved-files" },
+  };
 }
 
 /** Whether a definition file has changes that aren't committed, so aren't in the live version. */
-async function definitionsChanged(vcs: WorkspaceHistory): Promise<boolean> {
-  const { changes } = await vcs.status();
+function definitionsChanged({ changes }: VcsStatus): boolean {
   return changes.some(
     ({ path, from }) =>
       placeOf(path) !== undefined || (from !== undefined && placeOf(from) !== undefined),
   );
+}
+
+/**
+ * Each file a trust check covers that has changes that aren't committed: a
+ * definition file or a file under `integrations/`, by its path now, and by
+ * its path before for a rename. Sorted, each once.
+ */
+function trustFilesChanged({ changes }: VcsStatus): string[] {
+  const covered = (path: string) =>
+    placeOf(path) !== undefined || path.startsWith(`${integrationsFolder}/`);
+  const paths = changes.flatMap(({ path, from }) => (from === undefined ? [path] : [from, path]));
+  return [...new Set(paths.filter(covered))].sort();
 }
 
 /** Opens the history with `openHistory`, or refuses the run when it can't. */

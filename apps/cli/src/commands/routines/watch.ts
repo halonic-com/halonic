@@ -108,7 +108,8 @@ async function watchVersions(
     workspace,
     await versions.routines.listLoaded(),
   );
-  const trust = await checkRoutinesTrust(dir, workspace, setup.trust(), typedDir);
+  const first = versions.latestVersion();
+  const trust = await checkRoutinesTrust(dir, first, setup.trust(), typedDir);
   const cantStart = new RoutinesThatCantStart(context, typedDir, () => loadWorkspace(dir.store));
   const listed = () => routines;
   const report = watchReport(context, () => setup.clock(), listed);
@@ -121,6 +122,7 @@ async function watchVersions(
     holder: "routinesWatch",
     dir,
     workspace,
+    integrations: first.integrations,
     versions,
     trust,
     runs: workflowsOf(routines),
@@ -240,7 +242,7 @@ function laterVersionChecks(
 ): VersionChecks {
   const ending = runMessages.nothingRan();
   return {
-    trust: async (workspace) => await checkRoutinesTrust(dir, workspace, setup.trust(), typedDir),
+    trust: async (version) => await checkRoutinesTrust(dir, version, setup.trust(), typedDir),
     harnessAgent: (agent) => refuseHarnessAgent(agent),
     sandbox: async (workspace, run) => {
       // The sandbox first, as `run` checks it, then the harness it can't start (HAL-5219).

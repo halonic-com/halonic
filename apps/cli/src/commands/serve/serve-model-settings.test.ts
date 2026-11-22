@@ -93,7 +93,7 @@ describe("the model settings of a served chat turn", () => {
         try {
           versions.checkWith({
             // Stands in for `halonic trust`: the committed address below was never trusted here.
-            trust: async (workspace) => {
+            trust: async ({ workspace }) => {
               const proxy = definitionsOf(workspace, "support").providers["proxy"];
               if (proxy?.baseUrl?.includes("evil.example") === true) {
                 throw new Error("not trusted here");

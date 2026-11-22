@@ -151,7 +151,7 @@ interface RunOutcome {
 async function runReport(): Promise<RunOutcome> {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
   const version = await savedVersionOf(dir);
-  const { workspace } = version;
+  const { workspace, integrations } = version;
   const grant = await trustedGrant(
     dir,
     trustMachine(),
@@ -179,6 +179,7 @@ async function runReport(): Promise<RunOutcome> {
       holder: "run",
       dir,
       workspace,
+      integrations,
       trust: grant,
       runs: [{ hubId: "reports", workflowId: "weekly-report" }],
       ending: runMessages.nothingRan(),
