@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import type {
   HarnessBridge,
   HarnessEvent,
@@ -10,6 +11,7 @@ import type {
 import { FakeSandboxSession } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { codexConfigText } from "./config.ts";
 import {
   answer,
   CodexLog,
@@ -21,7 +23,8 @@ import { codexHarness } from "./harness.ts";
 
 // Codex's own sandbox, by where the run is: on wherever Halonic's fence isn't
 // proven, where it works; off inside the proven fence (requirement
-// `harness-codex.config`).
+// `harness-codex.config`). And whether Codex asks, by the agent's `asks` and
+// the fence proof.
 
 const task: HarnessTask = {
   runId: "run-1",
@@ -94,28 +97,64 @@ async function readAll(run: HarnessRun): Promise<{ events: HarnessEvent[]; error
   }
 }
 
+/** Each `asks` an agent's file can give the task: none, `always` (which gives none) and `in-sandbox`. */
+const asksCases = [
+  ["no asks", task],
+  ["asks: always", task],
+  ["asks: in-sandbox", { ...task, asks: "in-sandbox" }],
+] as const satisfies readonly (readonly [string, HarnessTask])[];
+
+const fences: readonly SandboxFence[] = [
+  { state: "fenced" },
+  { state: "not-fenced", reason: "A probe reached the hidden file." },
+  { state: "off" },
+  { state: "stopped" },
+];
+
+/**
+ * A session that reports `fence` yet starts Codex, as an adapter that broke
+ * the port's rule would, so the policy is checked for every fence state.
+ */
+function sessionReporting(fence: SandboxFence, program: typeof codexFinishing): SandboxSession {
+  const inner = new FakeSandboxSession({ profile: engineProfile, program });
+  return {
+    profile: inner.profile,
+    fence,
+    start: (command) => inner.start(command),
+    onBlocked: (listener) => inner.onBlocked(listener),
+    close: () => inner.close(),
+  };
+}
+
 verifies("harness-codex.start", () => {
   describe("codexHarness: ask mode", () => {
-    it("asks before every command in a session with no fence, and sets no policy inside the fence", async () => {
+    const combinations = asksCases.flatMap(([name, asksTask]) =>
+      fences.map((fence) => [name, fence.state, asksTask, fence] as const),
+    );
+
+    it.each(combinations)("with %s in a %s session", async (_name, _state, asksTask, fence) => {
       const log = new CodexLog();
       const program = fakeCodex((codex) => answer(codex, "Teal."), log);
-      const policyOf = () => {
-        const params = log.requests.find(({ method }) => method === "thread/start")?.params;
-        return (params as Record<string, unknown> | undefined)?.["approvalPolicy"];
-      };
+      await readAll(newHarness().start(asksTask, sessionReporting(fence, program), bridge));
 
-      const noFence = new FakeSandboxSession({
-        profile: engineProfile,
-        program,
-        fence: { state: "off" },
-      });
-      await readAll(newHarness().start(task, noFence, bridge));
-      expect(policyOf()).toBe("untrusted");
-
-      log.requests.length = 0;
-      await readAll(newHarness().start(task, openSession(program), bridge));
-      expect(policyOf()).toBeUndefined();
+      const params = log.requests.find(({ method }) => method === "thread/start")?.params;
+      const runsWithoutAsking = asksTask.asks === "in-sandbox" && fence.state === "fenced";
+      expect((params as Record<string, unknown> | undefined)?.["approvalPolicy"]).toBe(
+        runsWithoutAsking ? undefined : "untrusted",
+      );
     });
+  });
+});
+
+verifies("harness-codex.config", () => {
+  it.each(asksCases)("writes the same config.toml with %s", async (_name, asksTask) => {
+    const settings = new MemorySettingsFolder();
+    const harness = codexHarness({ probe: unusedProbe, settings, ownSandbox: async () => true });
+    await readAll(harness.start(asksTask, openSession(codexFinishing), bridge));
+
+    expect(settings.files.get(join("/agents/writer/settings", "config.toml"))).toBe(
+      codexConfigText(),
+    );
   });
 });
 
