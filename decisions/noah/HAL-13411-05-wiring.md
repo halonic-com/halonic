@@ -2,7 +2,6 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16283
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Ztz8+BOWhh9acteIctqZkV0NMO57gU3bnPm8a44jCcH2SUwXFjKfLzTGN4t7hKE5Tj/FRdPlqXhigr0hoVHECw==
 
 ## What changes
 
@@ -15,6 +14,8 @@ The requirement gains two examples; none is removed. The test for the ready sand
 
 `agent-host-client.doctor` also checks a ready Sandbox line's `sandboxKind` against the kinds the host names, as it checks the ids and actions, so the page never words a kind it doesn't know. The requirement gains that sentence and two examples; none is removed, and its tests only gain a kind and a case.
 
+`studio.check-computer.source` (merged with #5294) gains one sentence: a ready Sandbox line keeps the kind of sandbox the agent host names on it, which only the host knows on Windows. That is what lets the line above say "Ready · Seatbelt". The requirement gains one example for it; none is removed, and its tests only gain a kind on the ready Sandbox line.
+
 `tooling/check/policy.json` gains one `extraExports` entry, `./workspace` for `@halonicjs/adapter-doctor-node`, so Studio reads a workspace's providers and aliases with the same code as `halonic doctor` instead of a second copy that could drift (Liam's choice on HAL-13411, 22 Nov). That entry loads only `doctor-workspace.ts` and `workspace-problems.ts`, and nothing it loads imports `node:`, so it is safe in the webview. Nothing else in `policy.json` changes.
 
 ## Why
@@ -25,4 +26,5 @@ Team wording on an approved screen (first-run-progress 4.2 on HAL-7986, approved
 
 - agent-host-client.doctor
 - check-computer.lines
+- studio.check-computer.source
 - tooling/check/policy.json
