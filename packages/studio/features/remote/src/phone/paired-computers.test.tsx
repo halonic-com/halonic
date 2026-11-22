@@ -6,7 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { computerMeta, routeOf } from "./computers-words.ts";
 import { computerRowState, PairedComputers } from "./paired-computers.tsx";
-import type { ComputerId, PairedComputer, PhoneStatus } from "./phone-tunnel.ts";
+import type {
+  ComputerId,
+  ForgetOutcome,
+  KeysUnavailable,
+  ListedComputer,
+  PairedComputer,
+  PhoneStatus,
+} from "./phone-tunnel.ts";
 
 beforeEach(() => {
   Element.prototype.scrollIntoView ??= () => undefined;
@@ -41,23 +48,42 @@ const studio = computer("Studio PC", "c-2", {
   endpoints: ["tcp://100.101.2.3:4100"],
 });
 
+const unreadable = (id: string): ListedComputer => ({
+  id: id as ComputerId,
+  standing: "unreadable",
+});
+
+const forgotten = async (): Promise<ForgetOutcome> => ({ kind: "forgotten" });
+
 function show(
-  computers: readonly PairedComputer[],
+  computers: readonly ListedComputer[] | KeysUnavailable,
   statuses: ReadonlyMap<ComputerId, PhoneStatus> = new Map(),
-  onForget: (computer: PairedComputer) => Promise<void> = async () => undefined,
+  onForget: (computer: ListedComputer) => Promise<ForgetOutcome> = forgotten,
 ) {
   const onPair = vi.fn();
+  const onRetry = vi.fn();
   const screen = render(
     <PairedComputers
       computers={computers}
       statuses={statuses}
       onForget={onForget}
       onPair={onPair}
+      onRetry={onRetry}
       now={() => now}
     />,
   );
-  return { screen, onPair };
+  return { screen, onPair, onRetry };
 }
+
+/** The open sheet's Forget, pressed. */
+const confirmForget = async () => {
+  const confirm = [...(document.querySelector("dialog")?.querySelectorAll("button") ?? [])].find(
+    (each) => each.textContent?.startsWith("Forget"),
+  );
+  await act(async () => confirm?.click());
+  // The dialog's alert slot fills a frame after the request ends.
+  await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+};
 
 const buttons = () => [...document.querySelectorAll("button")];
 const named = (name: string) =>
@@ -78,6 +104,15 @@ describe("routeOf", () => {
     expect(routeOf("tcp://100.128.0.1:4100")).toBe("This Wi-Fi");
     expect(routeOf("tcp://192.168.1.20:4100")).toBe("This Wi-Fi");
     expect(routeOf("studio.local:4100")).toBe("This Wi-Fi");
+  });
+
+  it("reads Tailscale from an address in fd7a:115c:a1e0::/48, bracketed or not", () => {
+    expect(routeOf("tcp://[fd7a:115c:a1e0:ab12::1]:4100")).toBe("Tailscale");
+    expect(routeOf("[fd7a:115c:a1e0::5]:4100")).toBe("Tailscale");
+    expect(routeOf("FD7A:115C:A1E0::5")).toBe("Tailscale");
+    expect(routeOf("tcp://[fd7a:115c:a1e1::5]:4100")).toBe("This Wi-Fi");
+    expect(routeOf("tcp://[fd7a:115c::5]:4100")).toBe("This Wi-Fi");
+    expect(routeOf("tcp://[fe80::1]:4100")).toBe("This Wi-Fi");
   });
 });
 
@@ -124,7 +159,7 @@ verifies("remote.phone-paired-computers", () => {
   });
 
   it("asks once before Forget, says the computer still lists the phone, then forgets", async () => {
-    const onForget = vi.fn(async () => undefined);
+    const onForget = vi.fn(forgotten);
     show([laptop, studio], new Map(), onForget);
     await press("Forget Tim's laptop");
     const sheet = document.querySelector("dialog");
@@ -142,6 +177,9 @@ verifies("remote.phone-paired-computers", () => {
     await act(async () => confirm?.click());
     expect(onForget).toHaveBeenCalledWith(laptop);
     expect(document.querySelector("dialog")).toBeNull();
+    expect(document.querySelector("[aria-live=polite]")?.textContent).toBe(
+      "Tim's laptop forgotten.",
+    );
   });
 
   it("changes nothing on Cancel, and keeps the sheet open with the reason when Forget fails", async () => {
@@ -173,6 +211,66 @@ verifies("remote.phone-paired-computers", () => {
     );
     await press("Pair with a computer");
     expect(onPair).toHaveBeenCalled();
+  });
+
+  it("lists a computer it can't read after the others, with no name, and forgets it", async () => {
+    const onForget = vi.fn(forgotten);
+    const { screen } = show([unreadable("c-9"), laptop], new Map(), onForget);
+    const rows = [...screen.querySelectorAll("li")];
+    expect(rows[0]?.textContent).toContain("Tim's laptop");
+    expect(rows[1]?.textContent).toContain("A computer this phone can't read");
+    expect(rows[1]?.textContent).toContain(
+      "Its name and address can't be read. Forget it, then pair that computer again.",
+    );
+    expect(rows[1]?.textContent).not.toContain("Paired");
+    await press("Forget the computer this phone can't read");
+    const sheet = document.querySelector("dialog");
+    expect(sheet?.textContent).toContain("Forget this computer?");
+    expect(sheet?.textContent).toContain("This phone clears what it saved for it.");
+    expect(sheet?.textContent).toContain(
+      "A computer may still list this phone as paired. To cut it off there, use Revoke in Settings › Remote.",
+    );
+    await confirmForget();
+    expect(onForget).toHaveBeenCalledWith(unreadable("c-9"));
+    expect(document.querySelector("[aria-live=polite]")?.textContent).toBe("Computer forgotten.");
+  });
+
+  it("lists only unreadable computers as rows, not as nothing paired", () => {
+    const { screen } = show([unreadable("c-9")]);
+    expect(screen.textContent).not.toContain("No computers paired");
+    expect(named("Forget the computer this phone can't read")).toBeDefined();
+  });
+
+  it("says Couldn't forget this computer for an unreadable row, and the key storage line", async () => {
+    show(
+      [unreadable("c-9")],
+      new Map(),
+      vi.fn(async () => {
+        throw new Error("shell");
+      }),
+    );
+    await press("Forget the computer this phone can't read");
+    await confirmForget();
+    expect(document.querySelector("dialog")?.textContent).toContain(
+      "Couldn't forget this computer. Try again.",
+    );
+    unmountAll();
+    show([laptop], new Map(), async () => ({ kind: "keys-unavailable" }));
+    await press("Forget Tim's laptop");
+    await confirmForget();
+    const sheet = document.querySelector("dialog");
+    expect(sheet?.textContent).toContain(
+      "Halonic keeps its keys there, so it can't reach your computers right now. Restart the phone, then try again.",
+    );
+    expect(sheet?.textContent).not.toContain("Couldn't forget");
+  });
+
+  it("says the phone's key storage isn't working when the list can't be read, with Try again", async () => {
+    const { screen, onRetry } = show({ kind: "keys-unavailable" });
+    expect(screen.querySelector("h2")?.textContent).toBe("This phone's key storage isn't working");
+    expect(screen.textContent).not.toContain("No computers paired");
+    await press("Try again");
+    expect(onRetry).toHaveBeenCalled();
   });
 
   it("writes the day only when no endpoint is known, and the year when it isn't this one", () => {

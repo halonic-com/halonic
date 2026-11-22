@@ -5,10 +5,33 @@ import { spoken } from "./phone-forms.ts";
 import type { PhoneState } from "./phone-status.ts";
 import {
   type ComputerId,
+  type ForgetOutcome,
+  type KeysUnavailable,
+  type ListedComputer,
   type PairedComputer,
   type PhoneStatus,
   phoneStatusLabelState,
+  type UnreadableComputer,
 } from "./phone-tunnel.ts";
+
+const unreadable = (computer: ListedComputer): computer is UnreadableComputer =>
+  computer.standing === "unreadable";
+
+/** What Forget asks, says when it fails and announces once done, for a row with or without a name. */
+function forgetWords(computer: ListedComputer) {
+  if (unreadable(computer)) return computersWords.unreadable.forget;
+  return {
+    title: computersWords.forget.title(computer.name),
+    body: computersWords.forget.body,
+    stillPaired: computersWords.forget.stillPaired,
+    failed: computersWords.forget.failed(computer.name),
+  };
+}
+
+const forgottenWords = (computer: ListedComputer) =>
+  unreadable(computer)
+    ? computersWords.unreadable.forgotten
+    : computersWords.forgotten(computer.name);
 
 /**
  * A row's state: the computer's standing first, because Removed and Can't confirm hold until the
@@ -38,54 +61,92 @@ const dotTone: Record<PhoneState, string> = {
 
 /**
  * `d-m1` to `d-m3`: the paired computers, each with its route, the day it paired, its state and
- * Forget, which asks once (`d-m2`) and says the computer still lists this phone. With none, the
- * empty state. The page round it draws the header and Android back.
+ * Forget, which asks once (`d-m2`) and says the computer still lists this phone. A computer this
+ * phone can't read comes after them, listed only so it can be forgotten (microcopy 28). With none,
+ * the empty state; when the phone's key storage doesn't work, that problem with Try again. The
+ * page round it draws the header and Android back.
  */
 export function PairedComputers({
   computers,
   statuses,
   onForget,
   onPair,
+  onRetry,
   now = () => new Date(),
 }: {
-  readonly computers: readonly PairedComputer[];
+  /** `PhoneTunnel.pairedComputers()`'s answer. */
+  readonly computers: readonly ListedComputer[] | KeysUnavailable;
   /** Each computer's newest status from `PhoneTunnel.onStatus`. */
   readonly statuses: ReadonlyMap<ComputerId, PhoneStatus>;
   /** Deletes the entry (`PhoneTunnel.forget`); the page then lists the computers again. */
-  readonly onForget: (computer: PairedComputer) => Promise<void>;
+  readonly onForget: (computer: ListedComputer) => Promise<ForgetOutcome>;
   readonly onPair: () => void;
+  /** Lists the computers again after `keys-unavailable`. */
+  readonly onRetry: () => void;
   /** Where "Paired 14 Nov" counts the year from. Default the clock. */
   readonly now?: () => Date;
 }) {
-  const [forgetting, setForgetting] = useState<PairedComputer>();
+  const [forgetting, setForgetting] = useState<ListedComputer>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [said, setSaid] = useState("");
   const forgetButtons = useRef(new Map<ComputerId, HTMLButtonElement>());
   const pairButton = useRef<HTMLButtonElement>(null);
   const emptyTitle = useRef<HTMLElement>(null);
   // Where focus goes when the sheet closes after a Forget: the next row's button, else the previous.
   const focusAfter = useRef<ComputerId | undefined>(undefined);
 
-  const confirm = async (computer: PairedComputer) => {
+  if (!Array.isArray(computers)) {
+    return (
+      <div className="flex min-h-full flex-col justify-center px-6 py-6">
+        <EmptyState
+          tone="error"
+          title={computersWords.keysUnavailable.title}
+          description={computersWords.keysUnavailable.body}
+          action={{ label: computersWords.keysUnavailable.tryAgain, onClick: onRetry }}
+        />
+      </div>
+    );
+  }
+  // Readable computers first; the ones this phone can't read after them (microcopy 28).
+  const listed = [
+    ...computers.filter((each) => !unreadable(each)),
+    ...computers.filter(unreadable),
+  ];
+
+  const confirm = async (computer: ListedComputer) => {
     setBusy(true);
     setError(undefined);
+    let outcome: ForgetOutcome | undefined;
     try {
-      await onForget(computer);
+      outcome = await onForget(computer);
     } catch {
+      // The line below says so.
+    }
+    if (outcome?.kind !== "forgotten") {
       setBusy(false);
-      setError(computersWords.forget.failed(computer.name));
+      setError(
+        outcome === undefined
+          ? forgetWords(computer).failed
+          : computersWords.forget.keysUnavailable,
+      );
       return;
     }
-    const index = computers.findIndex((each) => each.id === computer.id);
-    focusAfter.current = (computers[index + 1] ?? computers[index - 1])?.id;
+    const index = listed.findIndex((each) => each.id === computer.id);
+    focusAfter.current = (listed[index + 1] ?? listed[index - 1])?.id;
     setBusy(false);
     setForgetting(undefined);
+    setSaid(forgottenWords(computer));
   };
 
   const today = now();
+  const asking = forgetting === undefined ? undefined : forgetWords(forgetting);
   return (
     <div className="flex min-h-full flex-col gap-6 px-6 py-6">
-      {computers.length === 0 ? (
+      <p className="sr-only" aria-live="polite">
+        {said}
+      </p>
+      {listed.length === 0 ? (
         <div className="flex flex-1 flex-col justify-center">
           <EmptyState
             title={computersWords.empty.title}
@@ -98,19 +159,29 @@ export function PairedComputers({
         <>
           <div className="flex flex-1 flex-col gap-4">
             <ul className="m-0 flex list-none flex-col divide-y divide-border rounded-lg border border-border p-0">
-              {computers.map((computer) => (
-                <ComputerRow
-                  key={computer.id}
-                  computer={computer}
-                  state={computerRowState(computer, statuses.get(computer.id))}
-                  meta={computerMeta(computer, today)}
-                  buttons={forgetButtons.current}
-                  onForget={() => {
-                    setError(undefined);
-                    setForgetting(computer);
-                  }}
-                />
-              ))}
+              {listed.map((computer) => {
+                const onRowForget = () => {
+                  setError(undefined);
+                  setForgetting(computer);
+                };
+                return unreadable(computer) ? (
+                  <UnreadableRow
+                    key={computer.id}
+                    computer={computer}
+                    buttons={forgetButtons.current}
+                    onForget={onRowForget}
+                  />
+                ) : (
+                  <ComputerRow
+                    key={computer.id}
+                    computer={computer}
+                    state={computerRowState(computer, statuses.get(computer.id))}
+                    meta={computerMeta(computer, today)}
+                    buttons={forgetButtons.current}
+                    onForget={onRowForget}
+                  />
+                );
+              })}
             </ul>
             <p className="text-small text-fg-muted">{computersWords.note}</p>
           </div>
@@ -126,10 +197,10 @@ export function PairedComputers({
           </Button>
         </>
       )}
-      {forgetting === undefined ? null : (
+      {forgetting === undefined || asking === undefined ? null : (
         <Dialog
           size="sm"
-          title={computersWords.forget.title(forgetting.name)}
+          title={asking.title}
           confirm={{
             label: computersWords.forget.confirm,
             variant: "danger",
@@ -148,8 +219,8 @@ export function PairedComputers({
           onConfirm={() => void confirm(forgetting)}
           onCancel={() => setForgetting(undefined)}
         >
-          <p>{computersWords.forget.body}</p>
-          <p className="text-fg-muted">{computersWords.forget.stillPaired}</p>
+          <p>{asking.body}</p>
+          <p className="text-fg-muted">{asking.stillPaired}</p>
         </Dialog>
       )}
     </div>
@@ -199,6 +270,41 @@ function ComputerRow({
         size="touch"
         // Names the computer for a screen reader, so each row's Forget differs.
         name={`${computersWords.row.forget} ${computer.name}`}
+        ref={(node) => {
+          if (node) buttons.set(computer.id, node);
+          else buttons.delete(computer.id);
+        }}
+        onClick={onForget}
+      >
+        {computersWords.row.forget}
+      </Button>
+    </li>
+  );
+}
+
+/**
+ * A computer this phone can't read (microcopy 28): no name, route, day or dot, because it can't
+ * be tried at all, and faded. Its Forget says which row it is.
+ */
+function UnreadableRow({
+  computer,
+  buttons,
+  onForget,
+}: {
+  readonly computer: UnreadableComputer;
+  readonly buttons: Map<ComputerId, HTMLButtonElement>;
+  readonly onForget: () => void;
+}) {
+  return (
+    <li className="flex items-center gap-4 px-4 py-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5 opacity-60">
+        <p className="text-fg">{computersWords.unreadable.name}</p>
+        <p className="text-small text-fg-muted">{computersWords.unreadable.body}</p>
+      </div>
+      <Button
+        variant="ghost"
+        size="touch"
+        name={computersWords.unreadable.forgetName}
         ref={(node) => {
           if (node) buttons.set(computer.id, node);
           else buttons.delete(computer.id);
