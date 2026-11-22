@@ -134,7 +134,7 @@ only after srt's one-time install, run once as an administrator, and it has no
 and stops a program with `taskkill`. A program, argument or variable with a
 double quote, a percent sign, an exclamation mark, a line break or a NUL is refused. The CI job `sandbox-windows` proves the fence on a real Windows machine. Without the install the check reports `setup-needed`, and the CLI says to
 run `halonic sandbox setup`, which runs that install with one administrator
-prompt (its requirement is still a draft). Studio's Settings › Agent sandbox
+prompt. Studio's Settings › Agent sandbox
 runs the same install.
 
 Removing the sandbox (Settings › Agent sandbox, or the uninstaller) also takes
