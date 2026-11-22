@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for this follow-up on HAL-15620 (https://paperclip.halonic.com/HAL/issues/HAL-15620), comment 9f14bbb4, and named the fix on HAL-15662 (https://paperclip.halonic.com/HAL/issues/HAL-15662). The same `[line removed: …]` style as #4794, so no new words from Sofia.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HukkO1GGX8MLAh6SyD7DDGXdC7TGP8IVCmZN6HJyQLzlpd2Lo2sDREsANnKuyueQPaaFsQGQsqBVjUlsuy7HDQ==
 
 ## What changes
 
