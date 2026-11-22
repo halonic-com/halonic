@@ -41,7 +41,7 @@ export const setupWords = {
   dismiss: "Dismiss",
   /** The toast after **Dismiss**: Help is the only way back to the guide (C600, HAL-2282). */
   dismissed: "First run dismissed",
-  bringBack: "To bring it back, pick Help › First run › Show the guide.",
+  bringBack: "To bring it back, pick Help › First run › Show the guide again.",
 } as const;
 
 /**
