@@ -1,11 +1,21 @@
 import { isHostTooOld } from "@halonicjs/ports";
 import { markHiddenName } from "@halonicjs/std";
 import { Button, type ButtonUnavailable, type CalloutHandle, Tooltip } from "@halonicjs/studio-kit";
-import { engineWords } from "@halonicjs/studio-shell";
-import { type RefCallback, type RefObject, useEffect, useId, useRef, useState } from "react";
+import { engineWords, type ItemRef, type ViewRef } from "@halonicjs/studio-shell";
+import {
+  type ReactNode,
+  type RefCallback,
+  type RefObject,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { type AfterAnswer, afterAnswer, type InboxDecisions } from "../decide.ts";
+import type { Inbox } from "../inbox.ts";
 import type { WaitItem } from "../inbox-items.ts";
 import { decidedAt, movesOnLine, waitingSince } from "../plain/waiting-time.ts";
+import { AnsweredView } from "./answered-view.tsx";
 import {
   type BackLink,
   CardHeader,
@@ -58,6 +68,19 @@ export interface WaitCardProps extends EngineState {
    * no **Review**.
    */
   readonly trust?: TrustReview | undefined;
+  /**
+   * The views that may take the card's place once answered (`Inbox.addAnsweredView`), and what
+   * they get to close or open with. Without it, or when none claims the answer, the card keeps its
+   * decided bar.
+   */
+  readonly answeredViews?: AnsweredViews | undefined;
+}
+
+/** Where {@link WaitCardProps.answeredViews} comes from, and what a view that claims an answer gets. */
+export interface AnsweredViews {
+  readonly inbox: Pick<Inbox, "answeredView">;
+  readonly close: () => void;
+  readonly openItem?: ((item: ItemRef) => void) | undefined;
 }
 
 type CardState =
@@ -80,6 +103,8 @@ type CardState =
       readonly event: string;
       readonly at: Date;
       readonly after: AfterAnswer;
+      /** The view that claimed the answer, in the card's place; none keeps the decided bar. */
+      readonly view: ViewRef | undefined;
     };
 
 /**
@@ -188,7 +213,9 @@ export function WaitCard(props: WaitCardProps) {
     setState({ kind: "answering", event });
     try {
       const run = await decisions.answer(item, event);
-      setState({ kind: "answered", event, at: now(), after: afterAnswer(run) });
+      const after = afterAnswer(run);
+      const view = props.answeredViews?.inbox.answeredView(item, event, after);
+      setState({ kind: "answered", event, at: now(), after, view });
     } catch (error) {
       setState({
         kind: "open",
@@ -202,7 +229,7 @@ export function WaitCard(props: WaitCardProps) {
     }
   }
 
-  return (
+  const card = (
     <section ref={section} aria-labelledby={titleId} className={cardClasses}>
       <div className={cardBodyClasses}>
         <CardHeader
@@ -255,6 +282,24 @@ export function WaitCard(props: WaitCardProps) {
         />
       ) : null}
     </section>
+  );
+  return withClaimedView(card, state, item, props.answeredViews);
+}
+
+/** The card, or the view that claimed its answer in its place (`inbox.answered-view`). */
+function withClaimedView(
+  card: ReactNode,
+  state: CardState,
+  item: WaitItem,
+  views: AnsweredViews | undefined,
+): ReactNode {
+  if (state.kind !== "answered" || state.view === undefined || views === undefined) return card;
+  return (
+    <AnsweredView
+      view={state.view}
+      props={{ item, close: views.close, openItem: views.openItem }}
+      fallback={card}
+    />
   );
 }
 

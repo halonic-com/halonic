@@ -15,7 +15,7 @@ import {
   InboxService,
   ProposalDecisionsService,
 } from "../api.ts";
-import type { Inbox, SetupFocus } from "../inbox.ts";
+import type { Inbox } from "../inbox.ts";
 import { waitingCount } from "../inbox-count.ts";
 import type { InboxItem } from "../inbox-items.ts";
 import type { InboxNotices } from "../notices/inbox-notices.ts";
@@ -23,6 +23,7 @@ import { mergeNotices } from "../notices/merge-notices.ts";
 import { secretTarget } from "../plain/secret-target.ts";
 import type { ProposalDecisions } from "../proposal-decisions.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
+import type { SetupFocus } from "../setup-source.ts";
 import { ApprovalCard } from "./approval-card.tsx";
 import type { NextItem } from "./card-parts.tsx";
 import { ListHeader, listPaneClass, nextItem } from "./inbox-page-parts.tsx";
@@ -434,6 +435,7 @@ function OpenCard({
       words={words}
       waiting={items.some((waiting) => waiting.key === item.key)}
       trust={trust}
+      answeredViews={{ inbox, close, openItem: openPage }}
     />
   );
 }

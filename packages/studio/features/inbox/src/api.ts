@@ -11,17 +11,9 @@ import type { InboxRequests } from "./request/inbox-requests.ts";
 import type { SandboxPasses, SandboxRefusals } from "./sandbox/sandbox-setup-source.ts";
 
 export { AnswerElsewhere } from "./answer-elsewhere.ts";
-export { type InboxDecisions, inboxDecisions } from "./decide.ts";
-export type {
-  Inbox,
-  InboxRuns,
-  InboxSetupSource,
-  InboxState,
-  RunProposalEntry,
-  SetupEntry,
-  SetupFocus,
-  SetupViewProps,
-} from "./inbox.ts";
+export type { AnsweredViewProps, InboxAnsweredView } from "./answered-view.ts";
+export { type AfterAnswer, type InboxDecisions, inboxDecisions } from "./decide.ts";
+export type { Inbox, InboxRuns, InboxState, RunProposalEntry } from "./inbox.ts";
 export { inboxSignal } from "./inbox-count.ts";
 export {
   type ApprovalItem,
@@ -57,6 +49,12 @@ export {
   type StartedRun,
 } from "./request/inbox-requests.ts";
 export type { SandboxPasses, SandboxRefusals } from "./sandbox/sandbox-setup-source.ts";
+export type {
+  InboxSetupSource,
+  SetupEntry,
+  SetupFocus,
+  SetupViewProps,
+} from "./setup-source.ts";
 export { WaitCard, type WaitCardProps } from "./ui/wait-card.tsx";
 
 /** The runs the Inbox reads and answers. The app provides it for each open workspace. */

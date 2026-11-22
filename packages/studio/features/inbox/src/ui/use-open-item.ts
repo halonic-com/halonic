@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import type { Inbox, SetupFocus } from "../inbox.ts";
+import type { Inbox } from "../inbox.ts";
 import type { InboxItem, SetupItem } from "../inbox-items.ts";
+import type { SetupFocus } from "../setup-source.ts";
 
 /** The item open in the Inbox's pane, and how to change it. */
 export interface OpenItem {

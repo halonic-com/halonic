@@ -1,4 +1,4 @@
-import type { InboxSetupSource, SetupEntry } from "./inbox.ts";
+import type { InboxSetupSource, SetupEntry } from "./setup-source.ts";
 
 /** A setup source whose accounts and failures a test sets, telling the Inbox as a provider does. */
 export function fakeSetups(
