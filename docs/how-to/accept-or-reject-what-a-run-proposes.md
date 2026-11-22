@@ -41,7 +41,8 @@ shows each file the run added, modified or deleted, with a diff from your
 file as it is now to the run's text. A short id or the full one works.
 
 - "This file changed since the run, so accept won't write it." means the
-  file changed after the run started. The diff is from your file now.
+  file changed after the run started. The diff is from your file now. To keep
+  it as it is now, reject it with `halonic proposals reject <run> <file>`.
 - "Your file already has these changes." means there's nothing to write.
 - A file under `.git` or `.halonic`, or in Halonic's own data folder, is
   marked "can't be written". Halonic never writes there.
@@ -61,8 +62,8 @@ as they are."
 
 Accept writes a file only while it is still as the run found it. A file that
 changed since is left alone, and the command says "notes/today.md changed
-since the run, so it wasn't written. To keep it as it is now, reject it." and
-exits 5. Copy what you want from `halonic proposals show` by hand, then reject
+since the run, so it wasn't written. To keep it as it is now, reject it with
+halonic proposals reject <run> notes/today.md." and exits 5. Copy what you want from `halonic proposals show` by hand, then reject
 that file.
 
 After you decide part of a proposal, the command says how many files are
@@ -71,7 +72,9 @@ and the proposal leaves the list. The command has no Undo, so check the diff
 before you accept.
 
 If a proposal's changes were deleted outside Halonic, `show` and `accept`
-say so, and `halonic proposals reject <run-id>` removes the proposal.
+say so ("Run 01jd8q's changes were deleted outside Halonic, so they can't be
+shown or accepted.") and "Remove them from the list with halonic proposals
+reject 01jd8q." Run that command to remove the proposal.
 
 All four take `--dir <folder>` for a workspace other than the current
 folder. `halonic proposals` and `halonic proposals show` also take `--json`
@@ -91,3 +94,11 @@ keep it as it is now, reject it." and has only **Reject**: use
 `halonic proposals show` to see the run's text, copy what you want by hand,
 then reject the file. The served Studio and the
 phone list no proposals; see them with `halonic proposals` on the computer.
+
+### A run waiting for "Allow this address?"
+
+A run whose model call waits for the answer to "Allow this address?" shows as
+"! Needs you" in `halonic runs`, and `halonic runs show` ends with "! Waiting
+for your answer in Studio: may provider "gateway" send key "gateway-key" to
+https://gw.example?" Answer it in Studio. `halonic runs send` can't answer it.
+Without an answer within 10 minutes, the model call fails.
