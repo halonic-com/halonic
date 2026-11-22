@@ -239,6 +239,12 @@ interface Pbkdf2Params extends Algorithm {
   iterations: number;
   salt: BufferSource;
 }
+/** AES-GCM for `encrypt` and `decrypt`: the nonce, and the data the tag also covers. */
+interface AesGcmParams extends Algorithm {
+  iv: BufferSource;
+  additionalData?: BufferSource;
+  tagLength?: number;
+}
 /** HMAC for `importKey`: the hash it signs with. */
 interface HmacImportParams extends Algorithm {
   hash: AlgorithmIdentifier;
@@ -269,14 +275,22 @@ interface CryptoKeyPair {
 
 /** The raw-key subset; JSON Web Keys come when a port needs them. */
 interface SubtleCrypto {
-  decrypt(algorithm: AlgorithmIdentifier, key: CryptoKey, data: BufferSource): Promise<ArrayBuffer>;
+  decrypt(
+    algorithm: AlgorithmIdentifier | AesGcmParams,
+    key: CryptoKey,
+    data: BufferSource,
+  ): Promise<ArrayBuffer>;
   deriveBits(
     algorithm: AlgorithmIdentifier | Pbkdf2Params,
     baseKey: CryptoKey,
     length: number,
   ): Promise<ArrayBuffer>;
   digest(algorithm: AlgorithmIdentifier, data: BufferSource): Promise<ArrayBuffer>;
-  encrypt(algorithm: AlgorithmIdentifier, key: CryptoKey, data: BufferSource): Promise<ArrayBuffer>;
+  encrypt(
+    algorithm: AlgorithmIdentifier | AesGcmParams,
+    key: CryptoKey,
+    data: BufferSource,
+  ): Promise<ArrayBuffer>;
   exportKey(format: Exclude<KeyFormat, "jwk">, key: CryptoKey): Promise<ArrayBuffer>;
   generateKey(
     algorithm: AlgorithmIdentifier,
