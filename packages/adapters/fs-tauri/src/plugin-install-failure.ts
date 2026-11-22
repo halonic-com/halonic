@@ -44,6 +44,7 @@ export function pluginInstallFailure(reason: unknown): Error {
     case "export_busy":
       return new KindedError("limit_reached", said);
     case "folder_unreadable":
+    case "profile_setting":
     case "io":
     case "export_failed":
     case "timed_out":

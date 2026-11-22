@@ -151,6 +151,7 @@ function hostSettingsFailure(reason: unknown): Error {
       return new RangeError(`The settings refused the save: ${reason.message}`);
     case "unreadable":
       return new Error(`The settings can't be read: ${reason.message}`, { cause: reason });
+    case "profile_setting":
     case "io":
       return new KindedError("unavailable", `The settings refused the call: ${reason.message}`);
   }

@@ -91,6 +91,7 @@ fn trust_folder_names_why_an_environment_is_refused() {
             value: "acme".to_owned(),
         }
     );
+    assert_eq!(home.kind(), "io");
     let message = home.to_string();
     assert!(
         message.contains("home folder must be absolute"),
@@ -99,6 +100,8 @@ fn trust_folder_names_why_an_environment_is_refused() {
 
     environment.halonic_home = Some("profile".to_owned());
     let chosen = profile_folder(&environment).unwrap_err();
+    // A setting the person changes, not a file error (HAL-15963).
+    assert_eq!(chosen.kind(), "profile_setting");
     assert_eq!(
         chosen.to_string(),
         "HALONIC_HOME must be a full path, not \"profile\". \

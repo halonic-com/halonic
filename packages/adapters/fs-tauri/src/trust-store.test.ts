@@ -111,6 +111,7 @@ verifies("fs-tauri.trust-commands", () => {
         folder_unreadable: "not_found",
         invalid_record: "internal",
         io: "unavailable",
+        profile_setting: "unavailable",
         not_picked: "denied",
         folder_missing: "not_found",
         folder_changed: "denied",

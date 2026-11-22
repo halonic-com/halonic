@@ -176,6 +176,8 @@ const errorKinds: Readonly<Record<Exclude<RunRefusalKind, "broken_log">, ErrorKi
   // A run id this folder can't keep apart from another run's: trying again can't help.
   other_runs_log: "invalid_input",
   io: "unavailable",
+  // A relative HALONIC_HOME: the profile can't be reached until it is set (HAL-15963).
+  profile_setting: "unavailable",
 };
 
 /**

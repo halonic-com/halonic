@@ -35,7 +35,7 @@ use tauri::{AppHandle, Manager, Runtime};
 use crate::files::{EntryAnswer, profile_fence};
 use crate::native_dialogs::pick_folder as show_folder_picker;
 use crate::plugin_folder::plugins_root;
-use crate::profile::cli_profile;
+use crate::profile::{ProfileProblem, cli_profile};
 
 /// Most entries a plugin may have: `MAX_PLUGIN_ENTRIES` in `@halonicjs/app`.
 pub(crate) const MAX_ENTRIES: usize = 2_000;
@@ -54,6 +54,13 @@ const MAX_PICKED: usize = 8;
 pub struct InstallRefusal {
     kind: &'static str,
     message: String,
+}
+
+/// A relative `HALONIC_HOME` is `profile_setting`, the rest `io`.
+impl From<ProfileProblem> for InstallRefusal {
+    fn from(problem: ProfileProblem) -> Self {
+        InstallRefusal::new(problem.kind(), problem.to_string())
+    }
 }
 
 impl InstallRefusal {
@@ -241,7 +248,7 @@ where
     F: FnOnce(&AppHandle<R>, ProfileFolder) -> Result<T, InstallRefusal> + Send + 'static,
 {
     tauri::async_runtime::spawn_blocking(move || {
-        let profile = cli_profile(&app).map_err(InstallRefusal::io)?;
+        let profile = cli_profile(&app).map_err(InstallRefusal::from)?;
         call(&app, profile)
     })
     .await

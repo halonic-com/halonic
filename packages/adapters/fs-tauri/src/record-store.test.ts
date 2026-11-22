@@ -174,6 +174,7 @@ verifies("fs-tauri.collections-persist", () => {
         folder_not_open: "denied",
         invalid_lines: "internal",
         io: "unavailable",
+        profile_setting: "unavailable",
       };
       for (const [refusal, kind] of Object.entries(expected)) {
         const shell = new FakeRecordShell({ opened: [acme] });

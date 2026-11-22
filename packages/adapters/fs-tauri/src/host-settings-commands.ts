@@ -21,6 +21,8 @@ export const hostSettingsRefusalKinds = [
   "too_large",
   /** `host.json` is a link, a hard link or not a plain file, or the system refused to read it. */
   "unreadable",
+  /** `HALONIC_HOME` isn't a full path: a setting the person changes. The message says what to set (HAL-15963). */
+  "profile_setting",
   /** Finding the profile or writing the file failed. */
   "io",
 ] as const;

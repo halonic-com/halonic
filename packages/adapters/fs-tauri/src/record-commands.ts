@@ -48,6 +48,8 @@ export const recordRefusalKinds = [
    * reads or writes through one; the message names the log.
    */
   "linked_log",
+  /** `HALONIC_HOME` isn't a full path: a setting the person changes. The message says what to set (HAL-15963). */
+  "profile_setting",
   /** Reading or writing the record folder, or taking the write lock, failed. */
   "io",
 ] as const;

@@ -52,37 +52,6 @@ pub struct FileState {
     watches: Watches,
 }
 
-/// Why a file command was refused: a stable `kind`, one of
-/// `fileRefusalKinds` in `packages/adapters/fs-tauri`, a message for the
-/// log and, for `folder_unreadable`, the folder's workspace path.
-#[derive(Debug, PartialEq, Eq, Serialize)]
-pub struct FileRefusal {
-    kind: &'static str,
-    message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    path: Option<String>,
-}
-
-impl FileRefusal {
-    fn io(error: impl std::fmt::Display) -> Self {
-        Self {
-            kind: "io",
-            message: error.to_string(),
-            path: None,
-        }
-    }
-}
-
-impl From<FileError> for FileRefusal {
-    fn from(error: FileError) -> Self {
-        Self {
-            kind: error.kind(),
-            path: error.folder().map(str::to_owned),
-            message: error.to_string(),
-        }
-    }
-}
-
 /// Which folder of a workspace a file command works in.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -167,7 +136,7 @@ where
 {
     tauri::async_runtime::spawn_blocking(move || {
         let opened = app.state::<GitState>().folders();
-        let profile = cli_profile(&app).map_err(FileRefusal::io)?;
+        let profile = cli_profile(&app).map_err(FileRefusal::from)?;
         let state = app.state::<FileState>();
         let (root, fence) = match folder.unwrap_or_default() {
             FileFolder::Workspace => {
@@ -346,7 +315,7 @@ where
 {
     tauri::async_runtime::spawn_blocking(move || {
         let opened = app.state::<GitState>().folders();
-        let profile = cli_profile(&app).map_err(FileRefusal::io)?;
+        let profile = cli_profile(&app).map_err(FileRefusal::from)?;
         let root = workspace_root(&opened, &workspace)?;
         let fence = profile_fence(&profile, &root);
         Ok(call(FolderReader::new(root).fenced(fence))?)
@@ -418,7 +387,7 @@ pub async fn fs_watch<R: Runtime>(
     tauri::async_runtime::spawn_blocking(move || {
         let opened = app.state::<GitState>().folders();
         let root = workspace_root(&opened, &workspace)?;
-        let profile = cli_profile(&app).map_err(FileRefusal::io)?;
+        let profile = cli_profile(&app).map_err(FileRefusal::from)?;
         let fence = profile_fence(&profile, &root);
         // The page's watches of one folder share one look at it.
         let folder = root.clone();
@@ -465,6 +434,10 @@ fn look_while_open(
     }
     FolderSnapshot::of(root, fence)
 }
+
+#[path = "file_refusal.rs"]
+mod refusal;
+pub use refusal::FileRefusal;
 
 #[path = "kept_copies.rs"]
 mod kept_copies;

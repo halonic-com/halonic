@@ -14,7 +14,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::git::GitState;
-use crate::profile::cli_profile;
+use crate::profile::{ProfileProblem, cli_profile};
 
 /// Why a blob or record command was refused: a stable `kind`, one of
 /// `blobRefusalKinds` or `recordRefusalKinds` in
@@ -23,6 +23,13 @@ use crate::profile::cli_profile;
 pub struct DataRefusal {
     pub(crate) kind: &'static str,
     pub(crate) message: String,
+}
+
+/// A relative `HALONIC_HOME` is `profile_setting`, the rest `io`.
+impl From<ProfileProblem> for DataRefusal {
+    fn from(problem: ProfileProblem) -> Self {
+        DataRefusal::new(problem.kind(), problem.to_string())
+    }
 }
 
 impl DataRefusal {
@@ -74,7 +81,7 @@ where
     F: FnOnce(&AppHandle<R>, WorkspaceFolders) -> Result<T, DataRefusal> + Send + 'static,
 {
     tauri::async_runtime::spawn_blocking(move || {
-        let profile = cli_profile(&app).map_err(DataRefusal::io)?;
+        let profile = cli_profile(&app).map_err(DataRefusal::from)?;
         let opened = app.state::<GitState>().folders();
         let folders = opened_workspace_folders(&opened, &profile, &workspace)?;
         call(&app, folders)

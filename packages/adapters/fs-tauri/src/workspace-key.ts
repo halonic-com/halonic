@@ -31,7 +31,7 @@ function keyFailure(reason: unknown): KindedError {
       cause: reason,
     });
   }
-  if (isRecordRefusal(reason) && reason.kind === "io") {
+  if (isRecordRefusal(reason) && (reason.kind === "io" || reason.kind === "profile_setting")) {
     return new KindedError("unavailable", `The workspace key call failed: ${reason.message}`, {
       cause: reason,
     });

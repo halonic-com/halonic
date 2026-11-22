@@ -21,6 +21,7 @@ const expected: Record<PluginInstallRefusalKind, "range" | ErrorKind> = {
   too_big: "invalid_input",
   too_many_files: "invalid_input",
   io: "unavailable",
+  profile_setting: "unavailable",
   address_not_allowed: "invalid_input",
   reference_not_allowed: "invalid_input",
   export_too_large: "invalid_input",

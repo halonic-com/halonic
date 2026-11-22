@@ -28,7 +28,7 @@ use crate::profile_place::folder_place;
 
 /// The trust records in the profile the CLI uses.
 fn trust_store<R: Runtime>(app: &AppHandle<R>) -> Result<FileTrustStore, TrustRefusal> {
-    let profile = cli_profile(app).map_err(TrustRefusal::io)?;
+    let profile = cli_profile(app).map_err(TrustRefusal::from)?;
     Ok(FileTrustStore::new(PathBuf::from(profile.trust_folder())))
 }
 
@@ -36,7 +36,7 @@ fn trust_store<R: Runtime>(app: &AppHandle<R>) -> Result<FileTrustStore, TrustRe
 /// so it can open them again after a restart (HAL-6637). Only the shell
 /// reads and writes this file; the CLI has no use for it.
 fn picked_folders<R: Runtime>(app: &AppHandle<R>) -> Result<PickedFolders, TrustRefusal> {
-    let profile = cli_profile(app).map_err(TrustRefusal::io)?;
+    let profile = cli_profile(app).map_err(TrustRefusal::from)?;
     let file = join_path(
         profile.platform,
         &profile.root,
@@ -136,7 +136,7 @@ pub async fn create_workspace_folder<R: Runtime>(
     name: String,
 ) -> Result<String, TrustRefusal> {
     on_worker(app, move |app| {
-        cli_profile(app).map_err(TrustRefusal::io)?;
+        cli_profile(app).map_err(TrustRefusal::from)?;
         let list = picked_folders(app)?;
         let folders = app.state::<GitState>().folders();
         let documents = app.path().document_dir().ok();
@@ -163,7 +163,7 @@ pub async fn probe_workspace_folder<R: Runtime>(
     name: String,
 ) -> Result<FolderProbe, TrustRefusal> {
     on_worker(app, move |app| {
-        cli_profile(app).map_err(TrustRefusal::io)?;
+        cli_profile(app).map_err(TrustRefusal::from)?;
         let documents = app.path().document_dir().ok();
         app.state::<TrustState>().probe_workspace(
             documents.as_deref(),
@@ -188,7 +188,7 @@ pub async fn open_workspace_folder<R: Runtime>(
     name: String,
 ) -> Result<Option<String>, TrustRefusal> {
     on_worker(app, move |app| {
-        cli_profile(app).map_err(TrustRefusal::io)?;
+        cli_profile(app).map_err(TrustRefusal::from)?;
         let list = picked_folders(app)?;
         let folders = app.state::<GitState>().folders();
         let documents = app.path().document_dir().ok();

@@ -84,6 +84,7 @@ verifies("fs-tauri.runs-and-blobs-on-disk", () => {
         invalid_hash: "internal",
         invalid_data: "internal",
         io: "unavailable",
+        profile_setting: "unavailable",
       };
       for (const [refusal, kind] of Object.entries(expected)) {
         const shell = new FakeBlobShell({ opened: [acme] });

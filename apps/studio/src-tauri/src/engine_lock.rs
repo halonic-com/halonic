@@ -31,7 +31,7 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime, Window};
 
 use crate::git::GitState;
-use crate::profile::cli_profile;
+use crate::profile::{ProfileProblem, cli_profile};
 use crate::runs::OperatingSystem;
 
 /// The file in the workspace's folder in the profile that the one engine holds.
@@ -46,6 +46,17 @@ pub struct EngineLockRefusal {
     message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pid: Option<i64>,
+}
+
+/// A relative `HALONIC_HOME` is `profile_setting`, the rest `io`.
+impl From<ProfileProblem> for EngineLockRefusal {
+    fn from(problem: ProfileProblem) -> Self {
+        Self {
+            kind: problem.kind(),
+            message: problem.to_string(),
+            pid: None,
+        }
+    }
 }
 
 impl EngineLockRefusal {
@@ -288,7 +299,7 @@ where
     F: FnOnce(&EngineLockState, PathBuf) -> Result<(), EngineLockRefusal> + Send + 'static,
 {
     tauri::async_runtime::spawn_blocking(move || {
-        let profile = cli_profile(&app).map_err(EngineLockRefusal::io)?;
+        let profile = cli_profile(&app).map_err(EngineLockRefusal::from)?;
         let opened = app.state::<GitState>().folders();
         let file = engine_lock_file(&opened, &profile, &workspace)?;
         call(&app.state::<EngineLockState>(), file)

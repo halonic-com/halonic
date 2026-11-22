@@ -144,6 +144,8 @@ const errorKinds: Readonly<
   // The page wrote the lines, so a refusal is our bug.
   invalid_lines: "internal",
   io: "unavailable",
+  // A relative HALONIC_HOME: the profile can't be reached until it is set (HAL-15963).
+  profile_setting: "unavailable",
 };
 
 /**

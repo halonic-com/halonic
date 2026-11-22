@@ -81,6 +81,8 @@ const errorKinds: Readonly<Record<EngineLockRefusalKind, ErrorKind>> = {
   conflict: "conflict",
   folder_not_open: "denied",
   io: "unavailable",
+  // A relative HALONIC_HOME: the profile can't be reached until it is set (HAL-15963).
+  profile_setting: "unavailable",
 };
 
 function refusalError(reason: unknown): KindedError {

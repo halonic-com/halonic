@@ -37,6 +37,8 @@ export const blobRefusalKinds = [
    * or writes through one; the message names the file or folder.
    */
   "linked_blob",
+  /** `HALONIC_HOME` isn't a full path: a setting the person changes. The message says what to set (HAL-15963). */
+  "profile_setting",
   /** Reading or writing the blob folder failed. */
   "io",
 ] as const;

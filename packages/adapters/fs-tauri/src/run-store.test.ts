@@ -192,6 +192,7 @@ verifies("fs-tauri.run-store", () => {
         invalid_lines: "internal",
         other_runs_log: "invalid_input",
         io: "unavailable",
+        profile_setting: "unavailable",
       };
       for (const [refusal, kind] of Object.entries(expected)) {
         const shell = new FakeRunShell({ opened: [acme] });

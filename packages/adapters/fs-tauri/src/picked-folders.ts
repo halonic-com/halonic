@@ -70,6 +70,8 @@ const errorKinds: Readonly<Record<TrustRefusalKind, ErrorKind>> = {
   // Something else is at the path, or it can't be read.
   folder_unreadable: "denied",
   io: "unavailable",
+  // A relative HALONIC_HOME: the profile can't be reached until it is set (HAL-15963).
+  profile_setting: "unavailable",
   // The trust records' refusals; these commands don't send them.
   unreadable: "internal",
   declined: "denied",

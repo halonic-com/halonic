@@ -22,7 +22,7 @@ use halonic_resource_probe::{folder_size_bytes, free_disk_bytes, process_memory_
 use serde::Serialize;
 use tauri::{AppHandle, Runtime};
 
-use crate::profile::cli_profile;
+use crate::profile::{ProfileProblem, cli_profile};
 
 /// One process the engine started. None yet, so this is never built; the
 /// list is in the report because the page requires it.
@@ -53,6 +53,16 @@ pub struct ResourceReportRefusal {
     message: String,
 }
 
+/// A relative `HALONIC_HOME` is `profile_setting`, the rest `io`.
+impl From<ProfileProblem> for ResourceReportRefusal {
+    fn from(problem: ProfileProblem) -> Self {
+        Self {
+            kind: problem.kind(),
+            message: problem.to_string(),
+        }
+    }
+}
+
 impl ResourceReportRefusal {
     fn io(error: impl std::fmt::Display) -> Self {
         Self {
@@ -80,7 +90,7 @@ fn report_for(data_folder: &Path) -> io::Result<ResourceReport> {
 pub async fn resource_report<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<ResourceReport, ResourceReportRefusal> {
-    let profile = cli_profile(&app).map_err(ResourceReportRefusal::io)?;
+    let profile = cli_profile(&app).map_err(ResourceReportRefusal::from)?;
     let data_folder = PathBuf::from(profile.root);
     tauri::async_runtime::spawn_blocking(move || report_for(&data_folder))
         .await

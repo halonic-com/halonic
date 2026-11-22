@@ -23,7 +23,7 @@ use crate::trust::on_worker;
 fn instruction_trust_store<R: Runtime>(
     app: &AppHandle<R>,
 ) -> Result<FileInstructionTrustStore, TrustRefusal> {
-    let profile = cli_profile(app).map_err(TrustRefusal::io)?;
+    let profile = cli_profile(app).map_err(TrustRefusal::from)?;
     Ok(FileInstructionTrustStore::new(PathBuf::from(
         profile.instruction_trust_folder(),
     )))

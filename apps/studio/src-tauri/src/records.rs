@@ -185,7 +185,7 @@ where
     F: FnOnce(RecordFolder<'_, OperatingSystem>) -> Result<T, DataRefusal> + Send + 'static,
 {
     tauri::async_runtime::spawn_blocking(move || {
-        let profile = cli_profile(&app).map_err(DataRefusal::io)?;
+        let profile = cli_profile(&app).map_err(DataRefusal::from)?;
         let root = PathBuf::from(scope_folder(&profile, scope));
         let state = app.state::<RecordState>();
         call(state.folders.folder(&root)?)
