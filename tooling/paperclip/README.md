@@ -1,13 +1,14 @@
 # @halonicjs/tooling-paperclip
 
 Tools that run beside Paperclip, the control plane our agents work in,
-without a model: the Agent tools plugin with its PR watcher and PR tools, and the
-reviewer path list that the watcher and the reviewer-routing check share.
+without a model: the Agent tools plugin with its PR watcher and PR tools, the
+reviewer path list that the watcher and the reviewer-routing check share, and
+the merge queue's fill order (`queue.prio`).
 
 - **Layer:** tooling
 - **Owner:** mateo
-- **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; `reviewerFor`, `isLiamPath` and the path lists)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.reviewer-paths`
+- **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.reviewer-paths`, `paperclip.queue-prio`
 
 ## PR watcher
 
@@ -124,3 +125,31 @@ token as the watcher, and give up after 25 s.
 `reviewerFor({ files, changedLines, sensitive })` answers `julian` or `liam`
 by the rules of HAL-14809. Scripts that route pull requests import it from
 here, so there is only one list.
+
+## Merge queue fill order (`queue.prio`)
+
+`queuePrio({ ranked, open, tasks, now })` scores each ready pull request and
+returns them highest first. The Merger calls it on every pass, so there is no
+hourly `prio.json`. It lives in `src/rules/`, the code the supervision
+plugins share; a change there counts as a merge-queue change, so Liam
+reviews it.
+
+| Part | Points |
+| --- | --- |
+| Each open pull request stacked on it (its base is this branch) | 100 |
+| Each open task whose "blocked by" field names its task (HAL-14892) | 10 |
+| Its own task's priority: critical, high, medium, low | 4, 3, 2, 1 |
+| Aging: each full 2 hours since it became ready (HAL-14388) | 1, at most 24 |
+
+Equal scores go oldest ready first, then lowest number. The task comes from
+the branch name (`<agent>/<task id>-<name>`). Every result carries its parts,
+so a dry-run log can say why one pull request went first.
+
+To compare it with the Writer session's `prio.json`, feed it one snapshot:
+
+```sh
+pnpm exec node tooling/paperclip/src/cli/queue-prio.ts < snapshot.json
+```
+
+The snapshot is `{ "now", "ranked", "open", "tasks" }` (`now` and `open` are
+optional). It reads only standard input and needs no token.
