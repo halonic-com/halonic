@@ -46,10 +46,18 @@ afterEach(async () => {
 const history: OpenWorkspaceHistory = async (root) =>
   openGitHistory(root, { git: await testGit() });
 
-/** Commits the routine's file as a new version. */
+/**
+ * Commits the routine's file as a new version, with the workflow it starts,
+ * so the live version's routine can start (HAL-15664).
+ */
 async function makeLive(): Promise<void> {
   if (!(await vcs.status()).isRepo) await vcs.init();
-  await vcs.stage([routinePath]);
+  await vcs.stage([
+    "workspace.yaml",
+    "hubs/support/hub.yaml",
+    "hubs/support/workflows/support-reply.workflow.yaml",
+    routinePath,
+  ]);
   await vcs.commit("Morning check");
 }
 

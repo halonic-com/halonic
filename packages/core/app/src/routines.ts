@@ -1,6 +1,6 @@
 export { type RoutineClock, routineClocks } from "./routine-clocks.ts";
 export { lastRunKey, lastTickKey, queueKey, routineRunId } from "./routine-ids.ts";
-export { type ListedRoutine, RoutineList } from "./routine-list.ts";
+export { type ListedRoutine, type LiveListInput, RoutineList } from "./routine-list.ts";
 export type { RoutineOverlap } from "./routine-overlap.ts";
 export type { QueuedTimes } from "./routine-queue.ts";
 export {

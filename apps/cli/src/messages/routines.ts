@@ -58,6 +58,8 @@ export const routinesMessages = defineMessages("routines", {
   off: () => phrase`Off`,
   /** The Next column of a routine no clock starts: manual, a signal, mail, or a schedule that doesn't parse. */
   noSetTime: () => phrase`No set time`,
+  /** The Next column of a routine that is on but no commit has, so the watch doesn't run it (HAL-15664). */
+  notLiveYet: () => phrase`Not live yet`,
 
   /** The Last column: "Last yesterday 09:00 · ✓ Done", with the `runs` list's status words. */
   lastRun: (started: StartedAt, status: ListedStatus) =>
@@ -79,6 +81,20 @@ export const routinesMessages = defineMessages("routines", {
    */
   changesNotLive: (name: string) =>
     phrase`${markPart("needsYou")} ${name} has changes that aren't live yet. It runs as last committed until you commit them.`,
+  /**
+   * The line under the list instead, when those saved changes have errors
+   * while the last commit's routine can start (HAL-15664): the row shows the
+   * live version, so the errors are named here. `dir` is the user's own `--dir`.
+   */
+  changesNotLiveWithErrors: (name: string, dir?: string) =>
+    phrase`${markPart("needsYou")} ${name} has changes that aren't live yet, and they have errors (${suggestedCommand("validate", dir)}). It runs as last committed.`,
+  /**
+   * The line under the list for a routine that is on but no commit has
+   * (HAL-15664), in the words of the Studio's routine page: the watch and
+   * the Studio don't run it until it is committed.
+   */
+  neverLive: (name: string) =>
+    phrase`${markPart("needsYou")} ${name} isn't live yet, so it doesn't run. Commit it to start it.`,
   /**
    * Ends the reason when git can't start, so the list can't tell which
    * routines' changes are live (HAL-15204), after `run`'s reason.
@@ -130,6 +146,11 @@ export const routinesMessages = defineMessages("routines", {
   /** A routine run that started: "✓ Started Weekly report · run 01jd8q · due 09:00". */
   started: (name: string, runId: string, due: StartedAt) =>
     phrase`${markPart("done")} Started ${name} ${markPart("separator")} run ${runId} ${markPart("separator")} due ${startedInWords(due)}`,
+  /**
+   * The watch's line when a routine that couldn't start has its file fixed
+   * (HAL-15664), so a server's log shows the fix was picked up.
+   */
+  canStartNow: (name: string) => phrase`${markPart("done")} ${name} can start now`,
   /** A routine run that didn't start; its error shows with `--debug`, as a step's retries do. */
   notStarted: (name: string, due: StartedAt) =>
     phrase`${markPart("failed")} ${name} didn't start ${markPart("separator")} due ${startedInWords(due)} ${markPart("separator")} ${dim("see why with --debug")}`,
