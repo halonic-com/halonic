@@ -64,3 +64,5 @@ run and four more job names to the table check.
 
 - .github/
 - tooling/check/
+- check.ci-main-skips-merged
+- check.main-failures
