@@ -17,11 +17,9 @@ import { type CommandSearch, nodeCommandSearch } from "../../command-paths.ts";
 import { exitCode } from "../../exit-code.ts";
 import { keyAddressLists } from "../../key-address-lists.ts";
 import type { Message } from "../../messages/define.ts";
-import { usageMessages } from "../../messages/general.ts";
 import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { pluginMessages } from "../../messages/plugin.ts";
 import { trustMessages } from "../../messages/trust.ts";
-import { nearMatch } from "../../near-match.ts";
 import { NotTrustedError } from "../../not-trusted.ts";
 import { printable } from "../../output/printable.ts";
 import {
@@ -39,6 +37,7 @@ import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../work
 import { trustInstructionsCommand } from "./instructions.ts";
 import { isPluginRecord, listTrusted, nameAt } from "./list.ts";
 import { trustPlugin } from "./plugin.ts";
+import { optionForWord, refuseWords } from "./words.ts";
 
 /** What `trust` uses on this computer, so tests can hand it a memory store and a fixed clock. */
 export interface TrustMachine {
@@ -92,7 +91,7 @@ export function createTrustCommand(
     argumentsBesideSubcommands: true,
     strayArgumentFix: optionForWord,
     summary: trustMessages.summary(),
-    action: (input) => trustMessages.action(givenPlugin(input) ?? givenDir(input)),
+    action: trustAction,
     options: {
       dir: dirOption,
       plugin: {
@@ -366,44 +365,19 @@ async function isFolder(path: string): Promise<boolean> {
   );
 }
 
-/** Words people type for an option of `trust`, for "Did you mean" (HAL-14124). */
-const optionWords: Readonly<Record<string, string>> = {
-  revoke: "--remove",
-  remove: "--remove",
-  delete: "--remove",
-  forget: "--remove",
-  untrust: "--remove",
-  list: "--list",
-  ls: "--list",
-};
-
 /**
- * The fix line when `trust`, which takes only options, gets a word: `revoke`
- * gets the option it likely means, "Did you mean --remove?" (HAL-14124), and
- * any other word `--dir` with it, as for other commands (HAL-12639).
+ * What `trust` was doing, for its "✕ Couldn't …: …", in the order `run` takes
+ * the options, so `--list` and `--remove` don't say they were trusting (HAL-15427).
  */
-function optionForWord(word: string): Message {
-  const typed = word.toLowerCase();
-  const near = Object.hasOwn(optionWords, typed)
-    ? optionWords[typed]
-    : nearMatch(`--${typed}`, ["--list", "--remove"]);
-  return near === undefined
-    ? usageMessages.useDirOption("trust", word)
-    : trustMessages.optionNear(near);
-}
-
-/**
- * `trust` takes no word besides its subcommand, as before it had one: one
- * word gets the option it likely means (HAL-14124), several the usage line.
- *
- * @throws UsageError for any word
- */
-function refuseWords(given: readonly string[]): void {
-  const shown = given.map(printable);
-  const [word] = shown;
-  if (word === undefined) return;
-  const problem = usageMessages.takesNoArguments("trust", shown);
-  throw shown.length === 1 ? new UsageError(problem, optionForWord(word)) : new UsageError(problem);
+function trustAction(input: CommandInput): Message {
+  const removing = input.options["remove"] === true;
+  const plugin = givenPlugin(input);
+  if (plugin !== undefined) {
+    return removing ? trustMessages.removeAction(plugin) : trustMessages.action(plugin);
+  }
+  if (input.options["list"] === true) return trustMessages.listAction();
+  const dir = givenDir(input);
+  return removing ? trustMessages.removeAction(dir) : trustMessages.action(dir);
 }
 
 /** The `--plugin` id, made safe to print, for "✕ Couldn't trust weather: …". */
