@@ -45,7 +45,7 @@ const refusals: Record<PluginRefusalCode, { status: number; message: string }> =
   plugin_stopped: {
     status: 403,
     message:
-      "Halonic stopped this plugin: its sandbox didn't hold, so it didn't run. The next call tries the sandbox again.",
+      "Halonic stopped this plugin: the sandbox didn't work when it started, so none of it ran. The next call tries the sandbox again.",
   },
   not_in_this_build: {
     status: 403,
