@@ -23,7 +23,7 @@ afterAll(async () => {
 const deniable = process.platform !== "win32" && process.getuid?.() !== 0;
 
 verifies("secrets-file.unreadable", () => {
-  describe.skipIf(!deniable)("a secrets file the person can't read", () => {
+  describe.skipIf(!deniable)("[platform:win32] needs POSIX modes: a secrets file the person can't read", () => {
     it("refuses every call with the cause and chmod 600, and doesn't change the file", async () => {
       const file = await freshFile();
       const store = new FileSecretStore(file);
