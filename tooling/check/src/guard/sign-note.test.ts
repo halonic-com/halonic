@@ -35,8 +35,13 @@ const baseFiles: Files = {
   }),
 };
 
-function sign(text: string, privatePem = cto.privatePem, onBase: Files = baseFiles) {
-  const git = fakeGit({ [base]: onBase, [head]: { ...baseFiles, [noteFile]: text } });
+function sign(
+  text: string,
+  privatePem = cto.privatePem,
+  onBase: Files = baseFiles,
+  onHead: Files = baseFiles,
+) {
+  const git = fakeGit({ [base]: onBase, [head]: { ...onHead, [noteFile]: text } });
   return { git, signed: signNote(pull, branch, git, privatePem) };
 }
 
@@ -115,5 +120,29 @@ verifies("check.decision-sign", () => {
     const verdict =
       parsed.ok && (await signedApprovals(pull, git).check({ note: parsed.note, guardians: true }));
     expect(verdict).toEqual({ approved: true });
+  });
+});
+
+verifies("check.decision-sign-stale", () => {
+  test("replaces its own line after a rebase changed a covered file, not a line that still matches", async () => {
+    const first = sign(note).signed;
+    const signedLine = first.ok ? first.line : "";
+    const once = note.replace("- Kind: internal\n", `- Kind: internal\n${signedLine}\n`);
+    const rebased: Files = {
+      ...baseFiles,
+      "packages/core/workflow/src/timer.test.ts": "test('fires once')\n",
+    };
+    const again = sign(once, cto.privatePem, baseFiles, rebased).signed;
+    const replaced = again.ok ? again.replaces : undefined;
+    expect(signedLine).toContain(`ed25519:${replaced?.keyId ?? "none"}:`);
+    const newLine = again.ok ? again.line : "";
+    expect(newLine).not.toBe(signedLine);
+    const resigned = once.replace(signedLine, newLine);
+    const parsed = parseDecisionNote(noteFile, resigned);
+    const git = fakeGit({ [base]: baseFiles, [head]: { ...rebased, [noteFile]: resigned } });
+    const verdict = parsed.ok && (await signedApprovals(pull, git).check({ note: parsed.note }));
+    expect(verdict).toEqual({ approved: true });
+    const unchanged = sign(once).signed;
+    expect(unchanged.ok ? "signed" : unchanged.reason).toMatch(/still matches/);
   });
 });

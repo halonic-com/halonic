@@ -10,7 +10,7 @@ const usage = "Usage: pnpm decision sign <pull request number>";
  *
  * Signs a pull request's decision note with the key in
  * PAPERCLIP_AGENT_PRIVATE_KEY (HAL-1337) and prints the `- Signature:` line
- * to add under the note's `- Kind:` line. A change to the guard's trust roots needs two guardians: the second adds their line under the first. It runs only in a clean checkout
+ * to add under the note's `- Kind:` line. A change to the guard's trust roots needs two guardians: the second adds their line under the first. When the signer's own line no longer matches, it says the new line replaces it. It runs only in a clean checkout
  * of origin/main and reads the pull request from git's objects, so none of
  * the pull request's code, hooks or config runs while the key is loaded. It
  * never writes the key anywhere.
@@ -60,7 +60,13 @@ function main(argv: readonly string[]): number {
     return 1;
   }
   console.log(`Signing exactly this text:\n\n${signed.text}`);
-  console.log(`Add this line under the note's "- Kind:" line:\n\n${signed.line}`);
+  if (signed.replaces === undefined) {
+    console.log(`Add this line under the note's "- Kind:" line:\n\n${signed.line}`);
+    return 0;
+  }
+  console.log(
+    `Your old signature no longer matches this pull request. Replace your line that starts "- Signature: ed25519:${signed.replaces.keyId}:" with this line:\n\n${signed.line}`,
+  );
   return 0;
 }
 

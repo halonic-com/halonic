@@ -1,4 +1,4 @@
-import { createPrivateKey, createPublicKey } from "node:crypto";
+import { createPrivateKey, createPublicKey, verify } from "node:crypto";
 import { noteSignedText, type PullRequest } from "./approvals.ts";
 import { decisionNoteFile, parseDecisionNote } from "./decision-notes.ts";
 import {
@@ -6,22 +6,34 @@ import {
   type GitObjects,
   keyIdOf,
   maxSignatures,
+  type NoteSignature,
   parseApprovers,
   signatureLine,
   splitSignature,
 } from "./signatures.ts";
 
-/** What signing a note gives: the exact text signed and the line to add, or why not. */
+/**
+ * What signing a note gives: the exact text signed and the line to add, or
+ * why not. `replaces` is set when the line replaces this key's own line,
+ * which no longer matches the pull request (HAL-16390).
+ */
 export type SignedNote =
-  | { readonly ok: true; readonly text: string; readonly line: string }
+  | {
+      readonly ok: true;
+      readonly text: string;
+      readonly line: string;
+      readonly replaces?: NoteSignature;
+    }
   | { readonly ok: false; readonly reason: string };
 
 /**
  * Signs a pull request's decision note (HAL-1337), reading it and every
  * covered file from git's objects at the pull request's head, as the guard
  * will. A note a first guardian signed can take a second line: the text
- * signed leaves every signature line out. Refuses a note with a carriage
- * return, a second line from the same key or a third line, a note that
+ * signed leaves every signature line out. A line from the same key that no
+ * longer matches, say after a rebase changed a covered file, is replaced.
+ * Refuses a note with a carriage return, a still-valid line from the same
+ * key, a third line from another key, a note that
  * doesn't parse, a key the base pins neither for its kind nor as a
  * guardian and a base whose approvers file can't be read.
  */
@@ -51,7 +63,10 @@ export function signNote(
   }
   const unsigned = split?.ok ? split.unsigned : text;
   const present = split?.ok ? split.signatures : [];
-  if (present.length >= maxSignatures) {
+  const publicKey = createPublicKey(createPrivateKey(privateKeyPem));
+  const keyId = keyIdOf(publicKey);
+  const own = present.find((each) => each.keyId === keyId);
+  if (present.filter((each) => each !== own).length >= maxSignatures) {
     return { ok: false, reason: `${file} already has ${maxSignatures} signature lines` };
   }
   const parsed = parseDecisionNote(file, text);
@@ -59,15 +74,11 @@ export function signNote(
     const problems = parsed.problems.map((problem) => `line ${problem.line}: ${problem.message}`);
     return { ok: false, reason: `${file} is malformed: ${problems.join(" ")}` };
   }
-  const keyId = keyIdOf(createPublicKey(createPrivateKey(privateKeyPem)));
   let pinned: ReturnType<typeof parseApprovers>;
   try {
     pinned = parseApprovers(git.readFile(pull.base, approversFile) ?? "{}");
   } catch (error) {
     return { ok: false, reason: `the base's ${approversFile} can't be read: ${String(error)}` };
-  }
-  if (present.some((each) => each.keyId === keyId)) {
-    return { ok: false, reason: `your key ${keyId} has already signed ${file}` };
   }
   const allowed = [...pinned[parsed.note.kind], ...pinned.guardians];
   if (!allowed.some((approver) => approver.id === keyId)) {
@@ -77,5 +88,17 @@ export function signNote(
     };
   }
   const signed = noteSignedText(parsed.note, unsigned, pull, git);
-  return { ok: true, text: signed, line: signatureLine(signed, privateKeyPem) };
+  const line = signatureLine(signed, privateKeyPem);
+  if (own === undefined) {
+    return { ok: true, text: signed, line };
+  }
+  const stillValid = verify(
+    null,
+    Buffer.from(signed, "utf8"),
+    publicKey,
+    Buffer.from(own.signature, "base64"),
+  );
+  return stillValid
+    ? { ok: false, reason: `your key ${keyId} has already signed ${file}, and it still matches` }
+    : { ok: true, text: signed, line, replaces: own };
 }
