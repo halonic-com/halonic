@@ -248,8 +248,8 @@ coding program makes hundreds of model calls in one.
 An optional `asks` field says when a Claude Code agent's own tools ask for a
 person's OK (requirement `agent-asks`): `always`, the default, or
 `in-sandbox`, where Halonic answers the calls that stay in the agent's
-working folder while the run is inside Halonic's sandbox. A CLI run does so
-today; Studio still asks for every call until its agent host answers them too.
+working folder while the run is inside Halonic's sandbox, in the CLI and in
+Studio alike, and logs each one as `harness.allowed`.
 Only `harness: claude-code` takes it for now: on `codex`, `halonic` or no
 harness the file fails with `asks-needs-claude-code`, even for `always`,
 because Codex in the sandbox doesn't ask whatever the file says.
