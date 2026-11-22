@@ -2,6 +2,7 @@
 
 - Approval: HAL-15702, from claims check C616 (HAL-15699); Liam's decision on the task, team wording on an approved screen (HAL-2282), for Liam's review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:UymX5og2oqq5D1zbMZy+mXeYGhvUBCgVgevy/UX0kiiE5r+O7w1Mxgq4Ldh1ak3ewi/+3brbCcrbycVRQx2mCw==
 
 Studio's trust review says an agent with `asks: in-sandbox` "will edit and
 run commands in its working folder, inside the sandbox; this version of
