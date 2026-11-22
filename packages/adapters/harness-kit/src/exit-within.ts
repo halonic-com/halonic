@@ -7,6 +7,25 @@ import type { SandboxExit, SandboxProcess } from "@halonicjs/ports";
  */
 export const exitGraceMs = 10_000;
 
+/** The race between a program's exit and the end of its time, and the way to stop the clock. */
+interface ExitRace {
+  first: Promise<SandboxExit | "timed-out">;
+  clear(): void;
+}
+
+/**
+ * Starts the race between the program's exit and `graceMs`. Not async, so
+ * each wait below awaits the race itself: an extra await would let a cancel's
+ * own error reach a harness's stream first (Codex's stop tests).
+ */
+function raceExit(process: SandboxProcess, graceMs: number): ExitRace {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<"timed-out">((resolve) => {
+    timer = setTimeout(() => resolve("timed-out"), graceMs);
+  });
+  return { first: Promise.race([process.exited, timedOut]), clear: () => clearTimeout(timer) };
+}
+
 /**
  * The program's exit, waiting at most `graceMs` for it (failure-path rule 1:
  * every wait ends). A program still running by then is killed, with
@@ -23,15 +42,12 @@ export async function stopUnlessExited(
   process: SandboxProcess,
   graceMs = exitGraceMs,
 ): Promise<SandboxExit | "stopped"> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timedOut = new Promise<"timed-out">((resolve) => {
-    timer = setTimeout(() => resolve("timed-out"), graceMs);
-  });
+  const race = raceExit(process, graceMs);
   try {
-    const first = await Promise.race([process.exited, timedOut]);
+    const first = await race.first;
     if (first !== "timed-out") return first;
   } finally {
-    clearTimeout(timer);
+    race.clear();
   }
   await process.kill();
   return "stopped";
@@ -53,7 +69,13 @@ export async function exitWithin(
   name: string,
   graceMs = exitGraceMs,
 ): Promise<SandboxExit> {
-  const exit = await stopUnlessExited(process, graceMs);
-  if (exit !== "stopped") return exit;
+  const race = raceExit(process, graceMs);
+  try {
+    const first = await race.first;
+    if (first !== "timed-out") return first;
+  } finally {
+    race.clear();
+  }
+  await process.kill();
   throw new Error(`${name} didn't exit within ${graceMs / 1000} seconds, so Halonic stopped it.`);
 }
