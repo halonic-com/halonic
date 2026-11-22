@@ -8,7 +8,8 @@ use crate::profile::ProfileProblem;
 /// Why a call didn't reach the host: `unknown_route`, `host_unavailable`,
 /// `stream_in_use`, `stream_ended`, `profile_setting` or `io`, and a
 /// message for the log. A `host_unavailable` for the WSL distro may carry a
-/// `reason`, one of the sandbox reasons (`wsl-missing`, `distro-missing`),
+/// `reason`, one of the sandbox reasons (`wsl-missing`, `distro-missing`,
+/// `runtime-missing`),
 /// so Studio can show the setup state without a running host to ask. The
 /// host's own refusals are answers. No message contains the launch token.
 #[derive(Debug, Serialize)]

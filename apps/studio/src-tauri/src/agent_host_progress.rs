@@ -68,6 +68,8 @@ pub enum FailureCause {
     WslMissing,
     /// Windows: Halonic's WSL distro isn't installed.
     DistroMissing,
+    /// Windows: Halonic's WSL distro has no runtime to start the host on.
+    RuntimeMissing,
     /// Windows: `wsl.exe` couldn't list the distros.
     WslFailed,
     /// Anything else, such as a profile that can't be read.

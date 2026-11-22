@@ -10,9 +10,8 @@ export type StartState = "starting" | "still_starting" | "ready" | "failed";
 export type StartPhase = "page_loaded" | "engine_ready" | "wsl_ready" | "host_started";
 
 /**
- * Why a start failed. A cause the window doesn't send yet, or one from a newer window, reads as
- * `other`. `runtime_missing` is Owen's next cause (HAL-14633): until the window sends it, a WSL
- * distro without its runtime arrives as `other`.
+ * Why a start failed. A cause from a newer window reads as `other`. `runtime_missing` is a WSL
+ * distro without its runtime (HAL-15158).
  */
 export type StartCause =
   | "timed_out"

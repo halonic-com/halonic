@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-14644; HAL-15147; `infra/wsl-image/files/halonic-runtime`; `infra/wsl-image/runtime-archive.sh`
+- Source: HAL-14644; HAL-15147; HAL-15158; `infra/wsl-image/files/halonic-runtime`; `infra/wsl-image/runtime-archive.sh`
 
-When the shell starts the host in Halonic's WSL distro, it shall, before anything runs the distro's host, read the runtime updater's `status` within 10 seconds and install the runtime that ships beside the app (`halonic-runtime.tar.gz`, pinned by `halonic-runtime.json`'s `version` and `sha256`) unless `status` names that version as `current`. It shall check the archive's SHA-256 on Windows and send nothing when it differs, run only the updater's fixed `install <version> <sha256>` step as root, with the archive on standard input, and stop the step after 300 seconds. It shall refuse a manifest whose version or SHA-256 the updater would refuse. A build with no `halonic-runtime.json` beside the app shall keep the distro's runtime. A runtime that couldn't be installed shall refuse the start as `host_unavailable` only when `status` answered that the distro has no current runtime, and still does when read again after the failed install (a second read that fails keeps the first answer); when `status` names one or couldn't be read, the host shall start on the distro's runtime. Each outcome shall be logged.
+When the shell starts the host in Halonic's WSL distro, it shall, before anything runs the distro's host, read the runtime updater's `status` within 10 seconds and install the runtime that ships beside the app (`halonic-runtime.tar.gz`, pinned by `halonic-runtime.json`'s `version` and `sha256`) unless `status` names that version as `current`. It shall check the archive's SHA-256 on Windows and send nothing when it differs, run only the updater's fixed `install <version> <sha256>` step as root, with the archive on standard input, and stop the step after 300 seconds. It shall refuse a manifest whose version or SHA-256 the updater would refuse. A build with no `halonic-runtime.json` beside the app shall keep the distro's runtime. A runtime that couldn't be installed shall refuse the start as `host_unavailable`, with the reason `runtime-missing`, only when `status` answered that the distro has no current runtime, and still does when read again after the failed install (a second read that fails keeps the first answer); when `status` names one or couldn't be read, the host shall start on the distro's runtime. Each outcome shall be logged.
 
 ## Examples
 
@@ -16,7 +16,7 @@ When the shell starts the host in Halonic's WSL distro, it shall, before anythin
   then the shell runs no install.
 - Given a distro with no runtime and an archive whose SHA-256 isn't the pinned one,
   when the host starts there,
-  then nothing is sent into the distro and the call is refused as `host_unavailable`.
+  then nothing is sent into the distro and the call is refused as `host_unavailable` with the reason `runtime-missing`.
 - Given a distro whose `current` is `0.1.0` and an install that takes longer than 300 seconds,
   when the host starts there,
   then the install is stopped, the host starts on `0.1.0`, and the log says why.

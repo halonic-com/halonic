@@ -140,14 +140,23 @@ pub(super) fn chosen_host<R: Runtime>(
 
 /// Installs the runtime beside the shell into the distro (HAL-14644) before
 /// anything runs the distro's host, refusing the start only when the install
-/// failed and `status` answered that the distro has no runtime. The refusal has no `reason` yet: the
-/// port's `runtime-missing` comes later.
+/// failed and `status` answered that the distro has no runtime.
 fn install_runtime_beside_shell(wsl: &Path) -> Result<(), HostRefusal> {
     let shell = std::env::current_exe().map_err(|error| HostRefusal::new("io", error))?;
     let folder = shell
         .parent()
         .ok_or_else(|| HostRefusal::new("io", "the app has no folder"))?;
-    install_bundled_runtime(wsl, folder).map_err(unavailable)
+    install_bundled_runtime(wsl, folder).map_err(runtime_missing)
+}
+
+/// The refusal for a distro left without a runtime to start: the sandbox
+/// reason `runtime-missing` (HAL-15132), so Studio sends the person to the
+/// repair without a running host to ask, and the start cause that Welcome
+/// counts as a sandbox not set up yet.
+fn runtime_missing(error: String) -> HostRefusal {
+    unavailable(error)
+        .with_reason("runtime-missing")
+        .with_failure(StartFailure::of(FailureCause::RuntimeMissing))
 }
 
 /// Makes the distro's copy of the choice match the one saved on Windows
