@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-16328 (words check C695, rows 3–5, on HAL-16315). Team wording on approved flows under the HAL-2282 rule, so no board card.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:t0i+S6dQutwY4r4p3dUAEnrdsY7onmc1ON+8N6cdKYAJoa6mC5d6VBzl0nqun0a5NPaR/mIkoa+aW1bZ9OKxBQ==
 - Task: HAL-16328
 
 ## What changes
