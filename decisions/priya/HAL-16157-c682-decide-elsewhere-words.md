@@ -3,6 +3,7 @@
 - Task: HAL-16157
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16157 (a team decision with no board card, HAL-2282 rule: wording on the approved Inbox, proposal page and CLI; findings 1 to 3 of flow check C682 on HAL-16154)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:riGBMr8D3KqeCDcp0UXtjMqVTlIszQyeN0xess/lHWwtOmkHbeXS/0ve7wy0a+pfjOmPkGJ5wSuGeM/6TlauDQ==
 
 ## What changes
 
