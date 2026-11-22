@@ -103,8 +103,9 @@ cloud Worker) checks trust on every request that starts a run, which are
 `POST /api/runs` and `POST /api/agent-runs` (requirement `server.trust-gate`). It
 answers 403 with the code `workspace_not_trusted` for a workspace that isn't
 trusted or changed since, and 500 when the check itself fails; in both cases
-nothing starts. Unlike the CLI, it makes no exception for a run that can only
-reach the test model. `GET /api/trust` only shows the decision. No route of the
+nothing starts. The gate `halonic serve` gives it, like `halonic run`, answers
+`trusted` for a workspace whose runs can only reach the test model, which needs
+no trust; any other workspace goes through the check. `GET /api/trust` only shows the decision. No route of the
 server grants trust: you do that on the computer, with `halonic trust`.
 
 ## A key goes only to its own address
