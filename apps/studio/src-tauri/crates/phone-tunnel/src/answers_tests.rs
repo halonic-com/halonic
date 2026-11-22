@@ -106,6 +106,8 @@ fn phone_tunnel_answers_give_problems_as_typed_kinds() {
             Problem::NoLocalNetwork { ask_again: true },
             json!({ "kind": "no-local-network", "askAgain": true }),
         ),
+        (Problem::Unreadable, json!({ "kind": "unreadable" })),
+        (Problem::BadStart, json!({ "kind": "bad-start" })),
         (Problem::NotPaired, json!({ "kind": "not-paired" })),
         (Problem::KeyUnreadable, json!({ "kind": "key-unreadable" })),
         (

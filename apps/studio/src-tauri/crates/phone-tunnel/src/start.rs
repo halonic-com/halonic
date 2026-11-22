@@ -54,7 +54,7 @@ pub struct CheckedStart {
 impl PairingStart {
     /// Reads the code, the QR code's key and the endpoints. An endpoint
     /// that doesn't read is left out, and none left is "can't reach"; a
-    /// code or key that doesn't read is unreadable. The page's copy of the
+    /// code or key that doesn't read is a bad start. The page's copy of the
     /// code is overwritten here, best effort: the IPC's own buffers can't
     /// be.
     pub fn check(self) -> Result<CheckedStart, Problem> {
@@ -73,10 +73,10 @@ impl PairingStart {
         };
         let parsed = PairingCode::parse(&code);
         wipe(code);
-        let code = parsed.ok_or(Problem::Unreadable)?;
+        let code = parsed.ok_or(Problem::BadStart)?;
         let route = match host_key {
             Some(text) => PairingRoute::Qr {
-                host_key: read_key(&text).ok_or(Problem::Unreadable)?,
+                host_key: read_key(&text).ok_or(Problem::BadStart)?,
             },
             None => PairingRoute::Typed,
         };

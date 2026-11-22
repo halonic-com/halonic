@@ -70,7 +70,7 @@ fn phone_tunnel_pairing_refuses_a_code_or_key_that_does_not_read() {
         "XX7A9Q36KFB0",
     ] {
         let refused = check(json!({ "route": "typed", "code": code, "endpoints": ["tcp://h:1"] }));
-        assert_eq!(refused.err(), Some(Problem::Unreadable), "{code}");
+        assert_eq!(refused.err(), Some(Problem::BadStart), "{code}");
     }
     for host_key in [base64url::encode(&[9u8; 31]), "not base64url!".to_owned()] {
         let refused = check(json!({
@@ -79,7 +79,7 @@ fn phone_tunnel_pairing_refuses_a_code_or_key_that_does_not_read() {
             "code": CODE,
             "endpoints": ["tcp://h:1"],
         }));
-        assert_eq!(refused.err(), Some(Problem::Unreadable));
+        assert_eq!(refused.err(), Some(Problem::BadStart));
     }
 }
 

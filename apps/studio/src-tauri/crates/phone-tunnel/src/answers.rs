@@ -43,9 +43,11 @@ pub enum Problem {
     NoLocalNetwork {
         ask_again: bool,
     },
-    /// The computer sent something the phone can't read, or the page sent
-    /// a code or a key that isn't one.
+    /// The computer sent something the phone can't read.
     Unreadable,
+    /// The page sent a code or a QR code's key that isn't one: a bug in
+    /// the page, which it logs, not something the person can fix.
+    BadStart,
     /// The computer isn't listed, or it has removed this phone.
     NotPaired,
     /// The phone's key for the computer no longer opens: pair again.
