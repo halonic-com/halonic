@@ -6,19 +6,30 @@
 
 export { agentLine, agentRowLine, agentStateWords } from "./agent-line.ts";
 export { AgentsList } from "./agents-list.tsx";
-export type {
-  ComputerTunnel,
-  ComputerTunnelEvent,
-  ComputerTunnelRefusal,
-  ComputerTunnelSendResult,
-} from "./computer-tunnel.ts";
+// The gateway client and its view, also on their own as `./phone-client`.
+export {
+  ANSWER_RISKY_ON_COMPUTER,
+  type ComputerTunnel,
+  type ComputerTunnelEvent,
+  type ComputerTunnelRefusal,
+  type ComputerTunnelSendResult,
+  GatewayClient,
+  type PhoneRemote,
+  RECONNECT_TO_ANSWER,
+  type RemoteApproval,
+  type RemoteEvent,
+  type RemoteNotSentReason,
+  type RemoteRefusal,
+  type RemoteSendOutcome,
+  type RemoteSession,
+  type RemoteView,
+} from "./client.ts";
 export {
   type ComputerRoute,
   computerMeta,
   computersWords,
   routeOf,
 } from "./computers-words.ts";
-export { GatewayClient } from "./gateway-client.ts";
 export { pairWords } from "./pair-words.ts";
 export { computerRowState, PairedComputers } from "./paired-computers.tsx";
 export {
@@ -86,17 +97,6 @@ export {
   problemWords,
 } from "./problem-screen.tsx";
 export { PromptBox, type PromptTarget } from "./prompt-box.tsx";
-export {
-  type PhoneRemote,
-  RECONNECT_TO_ANSWER,
-  type RemoteApproval,
-  type RemoteEvent,
-  type RemoteNotSentReason,
-  type RemoteRefusal,
-  type RemoteSendOutcome,
-  type RemoteSession,
-  type RemoteView,
-} from "./remote-view.ts";
 export { promptWords, sendOutcomeLine } from "./send-words.ts";
 export { StaleBanner, type StaleBannerOf, type StaleBannerProps } from "./stale-banner.tsx";
 export { type Standing, StandingScreen } from "./standing-screen.tsx";
@@ -113,4 +113,3 @@ export {
   statusSheetTitle,
 } from "./status-sheet.tsx";
 export { sheetRouteWords, sheetWords, staleWords, standingWords } from "./status-words.ts";
-export { ANSWER_RISKY_ON_COMPUTER } from "./view-of.ts";

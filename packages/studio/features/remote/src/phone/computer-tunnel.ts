@@ -38,7 +38,12 @@ export type ComputerTunnelSendResult =
 
 /** The shell's side of the tunnel to one computer. */
 export interface ComputerTunnel {
-  /** Seals one message into the session of `generation` and sends it. */
+  /**
+   * Seals one message into the session of `generation` and sends it. Never
+   * rejects: a failure resolves with a refusal (a session that broke while
+   * sending is `not-open`), because the client settles every answer and
+   * prompt from this result, and a rejection would leave one waiting forever.
+   */
   send(generation: number, text: string): Promise<ComputerTunnelSendResult>;
   /**
    * Ends the session of `generation`, as the page does on any host message

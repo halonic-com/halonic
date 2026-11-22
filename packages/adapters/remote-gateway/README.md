@@ -5,7 +5,7 @@ The remote gateway of the desktop host: the one listener a tunnel may reach. It 
 - **Layer:** adapters
 - **Owner:** owen
 - **Runtime:** node
-- **Public API:** `@halonicjs/adapter-remote-gateway`
+- **Public API:** `@halonicjs/adapter-remote-gateway`; `@halonicjs/adapter-remote-gateway/testing` is for other packages' tests only (a test phone, the fakes and a listener on them)
 
 ## Example
 

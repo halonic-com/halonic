@@ -52,6 +52,9 @@
     "@halonicjs/adapter-mcp": [
       "./protocol"
     ],
+    "@halonicjs/adapter-remote-gateway": [
+      "./testing"
+    ],
     "@halonicjs/adapter-scheduler-node": [
       "./node"
     ],
@@ -76,7 +79,8 @@
       "./error-kind"
     ],
     "@halonicjs/studio-feature-remote": [
-      "./phone"
+      "./phone",
+      "./phone-client"
     ],
     "@halonicjs/testing-contracts": [
       "./node"
