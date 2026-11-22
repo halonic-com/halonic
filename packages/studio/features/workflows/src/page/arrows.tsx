@@ -84,7 +84,7 @@ function placeArrows(
     arrowsSoFar.set(arrow.from, arrowIndex + 1);
     const from = boxes.get(arrow.from);
     if (from === undefined) return [];
-    const mark = arrowProblems(problems, arrow.from, arrowIndex, stepName);
+    const mark = arrowProblems(problems, arrow, arrowIndex, stepName);
     // The same two steps can have several arrows, so the position is part of the key.
     const key = `${arrow.from}>${arrow.to}#${index}`;
     const to = boxes.get(arrow.to);
