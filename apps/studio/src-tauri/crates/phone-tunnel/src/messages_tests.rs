@@ -66,8 +66,8 @@ fn phone_tunnel_messages_refuse_anything_but_one_phone_message() {
         r#"{"type":"hello","type":"prompt"}"#,
         // A second `type` written with escapes is still a second `type`
         // (Liam on HAL-16120).
-        r#"{"type":"hello","type":"run-command"}"#,
-        r#"{"type":"run-command","type":"hello"}"#,
+        r#"{"type":"hello","\u0074ype":"run-command"}"#,
+        r#"{"type":"run-command","\u0074ype":"hello"}"#,
     ];
     for message in refused {
         assert_eq!(

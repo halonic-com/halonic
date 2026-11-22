@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15177 (tunnel D7a; the D7 note on HAL-15159, signed by Julian and Liam, section 1 and B7 items 8 and 9; H1, L1 and L3 from Julian's review on HAL-15181); Julian, then Liam, review this PR as a security PR
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:IJxnZiCIpUgb6XGw5kSEmNwTu5/mnvtf3aA03/GEyQPRs1vY/vxYp8IlGOGhLYp6Mp3oPcpdTQoqlX2LWldXCg==
 
 The phone's own page gets two new commands, on Android only, from the same local capability for
 the `main` window as D6's (`capabilities/phone-tunnel.json`):

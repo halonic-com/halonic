@@ -149,17 +149,22 @@ pub async fn tunnel_send<R: Runtime>(
 
 /// Ends the computer's session of `generation`, which the page refused a
 /// host message on. The computer stays connected, and the phone reconnects
-/// after its backoff. Does nothing for any other generation.
+/// after its backoff. Does nothing for any other generation, or while the
+/// window isn't on the app's own page.
 #[tauri::command]
-pub fn tunnel_end_session<R: Runtime>(app: AppHandle<R>, computer: String, generation: u64) {
+pub fn tunnel_end_session<R: Runtime>(webview: Webview<R>, computer: String, generation: u64) {
+    // The same page check as `tunnel_send` (H1 on HAL-15181).
+    if !phone_tunnel_events::on_app_page(&webview) {
+        return;
+    }
     #[cfg(target_os = "android")]
     {
-        if let Some(tunnel) = android::tunnel(&app) {
+        if let Some(tunnel) = android::tunnel(webview.app_handle()) {
             tunnel.end_session(&computer, generation);
         }
     }
     #[cfg(not(target_os = "android"))]
-    let _ = (app, computer, generation);
+    let _ = (computer, generation);
 }
 
 /// Sends each computer's current status and open session, then every
