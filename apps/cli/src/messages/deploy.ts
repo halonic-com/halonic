@@ -61,7 +61,7 @@ export const deployMessages = defineMessages("deploy", {
   unchanged: (deployment: string, commit: string | undefined, halonic: string | undefined) => {
     if (commit === undefined) {
       return halonic === undefined
-        ? phrase`${markPart("done")} ${deployment} already runs this version. Nothing changed on Cloudflare.`
+        ? phrase`${markPart("done")} ${deployment} is already up to date. Nothing changed on Cloudflare.`
         : phrase`${markPart("done")} ${deployment} already runs Halonic ${halonic}. Nothing changed on Cloudflare.`;
     }
     return halonic === undefined
