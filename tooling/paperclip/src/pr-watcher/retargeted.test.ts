@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import type { GitHubQuery } from "../snapshot/graphql.ts";
-import { noteCheckName, takeSnapshot } from "../snapshot/read.ts";
+import { takeSnapshot } from "../snapshot/read.ts";
 import { decide, type Memory, type WatchedTask } from "./decide.ts";
 import { snapshotFacts } from "./facts.ts";
 import { wakeMessage } from "./watch.ts";
@@ -9,7 +9,8 @@ import { wakeMessage } from "./watch.ts";
 /**
  * A stacked pull request that GitHub moved to `main` when the one below it
  * merged: its note check ran against the old base, and GitHub doesn't run
- * the required copy again on a base change (HAL-16394).
+ * the required copy again on a base change, only on a reopen or push
+ * (HAL-16394).
  */
 
 const repo = "halonic-com/halonic";
@@ -18,11 +19,15 @@ const head = "9807761bbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 interface Shape {
   readonly base?: string;
   readonly baseChangedAt?: string;
+  readonly committedAt?: string;
+  readonly reopenedAt?: string;
   readonly noteCheckAt?: string;
   readonly draft?: boolean;
   readonly inQueue?: boolean;
-  readonly cutOff?: boolean;
 }
+
+/** The required job's name, which the repository's own copy shares. */
+const noteCheckName = "Decision note and the guard's own paths";
 
 function check(name: string, startedAt: string) {
   return { name, status: "COMPLETED", conclusion: "SUCCESS", startedAt };
@@ -49,12 +54,16 @@ function openNode(shape: Shape) {
     baseChanges: {
       nodes: shape.baseChangedAt === undefined ? [] : [{ createdAt: shape.baseChangedAt }],
     },
+    reopens: {
+      nodes: shape.reopenedAt === undefined ? [] : [{ createdAt: shape.reopenedAt }],
+    },
     commits: {
       nodes: [
         {
           commit: {
+            committedDate: shape.committedAt ?? "2026-11-22T10:05:00Z",
             statusCheckRollup: {
-              contexts: { pageInfo: { hasNextPage: shape.cutOff === true }, nodes: contexts },
+              contexts: { pageInfo: { hasNextPage: false }, nodes: contexts },
             },
           },
         },
@@ -129,9 +138,9 @@ const retargeted = {
 } satisfies Shape;
 
 verifies("paperclip.pr-watcher-retargeted", () => {
-  test("wakes the author once to reopen a pull request retargeted after its note check", async () => {
+  test("wakes the author once to reopen a pull request retargeted after its last push", async () => {
     const { snapshot } = await factsOf(retargeted);
-    expect(snapshot.repos[0]?.pulls[0]?.open?.baseChangedSinceNoteCheck).toBe(true);
+    expect(snapshot.repos[0]?.pulls[0]?.open?.baseChangedSincePush).toBe(true);
     const first = await decision(retargeted);
     expect(first.kind).toBe("wake");
     if (first.kind !== "wake") {
@@ -148,14 +157,19 @@ verifies("paperclip.pr-watcher-retargeted", () => {
     expect(again).toEqual({ kind: "skip", why: "nothing new" });
   });
 
-  test("wakes the author when no note check ever ran on the head", async () => {
-    const { noteCheckAt: _, ...noCheck } = retargeted;
-    expect((await decision(noCheck)).kind).toBe("wake");
+  test("wakes the author when the repository's note check ran on the base change itself", async () => {
+    const onEdited = { ...retargeted, noteCheckAt: "2026-11-22T10:18:04Z" };
+    expect((await decision(onEdited)).kind).toBe("wake");
   });
 
-  test("does nothing once a reopen started the note check again", async () => {
-    const reopened = { ...retargeted, noteCheckAt: "2026-11-22T17:49:12Z" };
-    expect(await decision(reopened)).toEqual({ kind: "skip", why: "nothing new" });
+  test("does nothing once the pull request was reopened, force-pushed or given a new commit", async () => {
+    const shapes: Shape[] = [
+      { ...retargeted, reopenedAt: "2026-11-22T17:49:12Z" },
+      { ...retargeted, committedAt: "2026-11-22T17:49:12Z" },
+    ];
+    for (const shape of shapes) {
+      expect(await decision(shape)).toEqual({ kind: "skip", why: "nothing new" });
+    }
   });
 
   test("does nothing for a base other than the default branch, a draft or a queued pull request", async () => {
@@ -168,13 +182,5 @@ verifies("paperclip.pr-watcher-retargeted", () => {
     for (const shape of shapes) {
       expect(await decision(shape)).toEqual({ kind: "skip", why: "nothing new" });
     }
-  });
-
-  test("does nothing when GitHub cut the checks off before the note check", async () => {
-    const { noteCheckAt: _, ...noCheck } = retargeted;
-    expect(await decision({ ...noCheck, cutOff: true })).toEqual({
-      kind: "skip",
-      why: "nothing new",
-    });
   });
 });

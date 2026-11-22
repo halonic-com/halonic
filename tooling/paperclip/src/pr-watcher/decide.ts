@@ -23,7 +23,7 @@ export interface PullFacts {
   readonly conflicting: boolean;
   /** Open only, read only when conflicting: it sits in the merge queue. */
   readonly inQueue: boolean;
-  /** Open only: its base changed after the required note check last ran, so GitHub keeps it blocked. */
+  /** Open only: its base changed after its last reopen or push, so GitHub keeps it blocked. */
   readonly retargeted: boolean;
   /** Open only: the newest review or inline comment made on the current head. */
   readonly latestReview: { readonly id: string; readonly at: string } | undefined;

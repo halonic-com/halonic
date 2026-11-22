@@ -60,7 +60,7 @@ function openPullFacts(ref: PullRef, pull: SnapshotPull, open: OpenFacts): PullF
     draft: open.draft,
     conflicting: open.mergeable === "no",
     inQueue: open.inQueue,
-    retargeted: open.baseChangedSinceNoteCheck === true,
+    retargeted: open.baseChangedSincePush === true,
     latestReview: open.finding ?? undefined,
     landed: false,
     mergedAt: undefined,

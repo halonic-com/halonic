@@ -76,8 +76,15 @@ interface OpenNode extends PullNode {
   };
   /** The newest base change, by hand or by GitHub when the base branch was deleted. Absent in recordings made before the field. */
   readonly baseChanges?: { readonly nodes: readonly { readonly createdAt?: string }[] };
+  /** The newest reopen or force push. Absent in recordings made before the field. */
+  readonly reopens?: { readonly nodes: readonly { readonly createdAt?: string }[] };
   readonly commits: {
-    readonly nodes: readonly { readonly commit: { readonly statusCheckRollup: Rollup | null } }[];
+    readonly nodes: readonly {
+      readonly commit: {
+        readonly committedDate?: string;
+        readonly statusCheckRollup: Rollup | null;
+      };
+    }[];
   };
   readonly reviews: {
     readonly nodes: readonly (Comment & {
@@ -150,35 +157,27 @@ function labelsOf(node: OpenNode): SnapshotLabel[] {
   });
 }
 
-/** The `guard-notes.yml` job that the ruleset on the default branch requires. */
-export const noteCheckName = "Decision note and the guard's own paths";
-
 /**
- * Its base became the default branch, or changed on it, after the required
- * note check last started on its head. GitHub runs a ruleset's required
- * workflow only on opened, synchronize and reopened, never on a base change,
- * so such a pull request stays blocked with its checks green until it is
- * reopened or pushed to (HAL-16394). False when the rollup was cut off
- * before the check.
+ * Its base became the default branch, or changed on it, after it was last
+ * reopened or pushed to. GitHub runs a ruleset's required workflow only on
+ * opened, synchronize and reopened, never on a base change, so such a pull
+ * request stays blocked with its checks green until it is reopened or pushed
+ * to (HAL-16394). It compares with the reopen or push, not with the note
+ * check: the repository's own copy of that workflow also runs on `edited`,
+ * under the same name, and that run doesn't clear the block. A push is read
+ * from the head commit's date, so pushing an older commit wakes the author
+ * once too often, never once too few.
  */
-function baseChangedSinceNoteCheck(
-  node: OpenNode,
-  rollup: Rollup | null,
-  defaultBranch: string,
-): boolean {
+function baseChangedSincePush(node: OpenNode, defaultBranch: string): boolean {
   const changedAt = node.baseChanges?.nodes.at(-1)?.createdAt;
   if (changedAt === undefined || node.baseRefName !== defaultBranch) {
     return false;
   }
-  const starts = (rollup?.contexts.nodes ?? [])
-    .filter((each) => each.name === noteCheckName)
-    .flatMap((each) => (each.startedAt == null ? [] : [each.startedAt]))
-    .sort();
-  const newest = starts.at(-1);
-  if (newest === undefined) {
-    return rollup?.contexts.pageInfo.hasNextPage !== true;
-  }
-  return Date.parse(newest) < Date.parse(changedAt);
+  const touches = [
+    node.reopens?.nodes.at(-1)?.createdAt,
+    node.commits.nodes[0]?.commit.committedDate,
+  ].flatMap((at) => (at === undefined ? [] : [Date.parse(at)]));
+  return touches.every((at) => at < Date.parse(changedAt));
 }
 
 async function openFacts(
@@ -213,7 +212,7 @@ async function openFacts(
         node.headRefOid,
       ) ?? null,
     approvals: signedApprovals(conversation),
-    baseChangedSinceNoteCheck: baseChangedSinceNoteCheck(node, rollup, defaultBranch),
+    baseChangedSincePush: baseChangedSincePush(node, defaultBranch),
   };
 }
 
