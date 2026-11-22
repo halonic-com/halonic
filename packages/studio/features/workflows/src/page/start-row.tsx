@@ -73,8 +73,8 @@ export function missingAliasOf(problems: readonly WorkflowProblem[]): MissingAli
  * When one of them is an agent's missing model alias, the next line names the agent and the alias,
  * with **Open *Writer*** (UX check S7, HAL-12412); for an agent step's, the agent step too, with
  * **Open Models** (C605). When one is in another file, a line names that file, "*Writer* has 1
- * problem that stops it.", with **Open writer.agent.yaml**, which opens the file at its first error
- * (C544-3, HAL-15343). Only the first line describes **Run**. Nothing while it has none.
+ * problem that stops this workflow.", with **Open writer.agent.yaml**, which opens the file at its
+ * first error (C544-3, HAL-15343). Only the first line describes **Run**. Nothing while it has none.
  */
 export function ProblemsBand({
   name,
@@ -118,7 +118,10 @@ export function ProblemsBand({
   );
 }
 
-/** "*Writer* has 1 problem that stops it." · **Open writer.agent.yaml**, at its first error. */
+/**
+ * "*Writer* has 1 problem that stops this workflow." · **Open writer.agent.yaml**, at its first
+ * error.
+ */
 function BlockingFileLine({
   file,
   openFileAt,

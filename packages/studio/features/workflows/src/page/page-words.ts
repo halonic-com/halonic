@@ -199,13 +199,14 @@ export const pageWords = {
     openModels: "Open Models",
     /**
      * The problems band's line for another file whose errors stop the workflow (C544-3,
-     * HAL-15343, decided by the team): "*Writer* has 1 problem that stops it.", named as the
-     * shared list of files with errors names it, with **Open writer.agent.yaml**.
+     * HAL-15343, decided by the team): "*Writer* has 1 problem that stops this workflow.", named
+     * as the shared list of files with errors names it, with **Open writer.agent.yaml**. It says
+     * "this workflow", not "it": the nearest "it" would be the file (C625-29).
      */
     blockingFile: (file: string, errors: number) =>
       errors === 1
-        ? `${file} has 1 problem that stops it.`
-        : `${file} has ${errors} problems that stop it.`,
+        ? `${file} has 1 problem that stops this workflow.`
+        : `${file} has ${errors} problems that stop this workflow.`,
     openFile: (fileName: string) => `Open ${fileName}`,
     /**
      * The first line of the band for a run the files say Studio can't start (C471-1). The reason

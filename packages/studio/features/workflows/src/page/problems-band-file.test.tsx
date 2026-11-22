@@ -131,7 +131,9 @@ verifies("workflows.start.start-run", () => {
     const { source } = memoryList([entry(writerPath, "Writer")]);
     const { page, openFileAt } = await open([inWriter, deadEnd], source);
 
-    expect(fileLine(page)).toBe("Writer has 1 problem that stops it. Open writer.agent.yaml");
+    expect(fileLine(page)).toBe(
+      "Writer has 1 problem that stops this workflow. Open writer.agent.yaml",
+    );
     await act(async () => buttonNamed(page, "Open writer.agent.yaml")?.click());
     expect(openFileAt).toHaveBeenCalledWith(writerPath, 4);
   });
@@ -139,7 +141,7 @@ verifies("workflows.start.start-run", () => {
   it("says the file's count of errors, and follows the list when it changes", async () => {
     const { source, change } = memoryList([entry(writerPath, "Writer", { errors: 3 })]);
     const { page } = await open([inWriter], source);
-    expect(fileLine(page)).toContain("Writer has 3 problems that stop it.");
+    expect(fileLine(page)).toContain("Writer has 3 problems that stop this workflow.");
 
     await change([]);
     expect(fileLine(page)).toBeUndefined();
@@ -155,7 +157,7 @@ verifies("workflows.start.start-run", () => {
   it("names the file with no link where the page can't open files", async () => {
     const { source } = memoryList([entry(writerPath, "Writer")]);
     const { page } = await open([inWriter], source, false);
-    expect(fileLine(page)).toBe("Writer has 1 problem that stops it.");
+    expect(fileLine(page)).toBe("Writer has 1 problem that stops this workflow.");
   });
 
   it("doesn't name an agent again that the missing model alias line names", async () => {

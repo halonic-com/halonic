@@ -39,7 +39,7 @@ verifies("secrets-file.unreadable", () => {
         ]) {
           await expect(call()).rejects.toMatchObject({
             kind: "denied",
-            message: `The secrets file ${file} can't be read by you.`,
+            message: `The secrets file ${file} can't be read by your user account.`,
             fix: `Run chmod 600 ${file}, then run again.`,
             cause: { code: "EACCES" },
           });
