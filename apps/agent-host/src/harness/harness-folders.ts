@@ -8,10 +8,10 @@ import type { Harness } from "@halonicjs/ports";
 import type { ProfileFolder } from "@halonicjs/profile";
 import type { BridgeTable } from "../bridge/bridge-routes.ts";
 import type { HostRoute } from "../server/host-server.ts";
-import { hostRunInstructions } from "./host-instructions.ts";
+import { type HostRunInstructions, hostRunInstructions } from "./host-instructions.ts";
 import { hostPlacements } from "./host-placements.ts";
 import { type HostHarnessProfiles, hostHarnessProfiles } from "./host-profiles.ts";
-import { hostProposalFolders } from "./host-proposals.ts";
+import { type HostProposalFolders, hostProposalFolders } from "./host-proposals.ts";
 import { instructionRoutes } from "./instruction-routes.ts";
 import { placementRoutes } from "./placement-routes.ts";
 import { profileRoute } from "./profile-route.ts";
@@ -24,6 +24,10 @@ import { settingsFolderRoute } from "./settings-folder-route.ts";
 export interface HarnessFolders {
   /** `undefined` without a profile folder. */
   readonly profiles: HostHarnessProfiles | undefined;
+  /** The instruction folders the host made, which a session on this computer may open with; `undefined` without a profile folder. */
+  readonly instructions: HostRunInstructions | undefined;
+  /** The runs' proposal folders, which a session on this computer may open with; `undefined` without a profile folder. */
+  readonly proposals: HostProposalFolders | undefined;
   readonly routes: readonly HostRoute[];
   /** Removes what the runs left; call it once no program runs any more. */
   stop(): Promise<void>;
@@ -46,6 +50,8 @@ export function harnessFolders(
   const instructions = hostRunInstructions(profile, workspaceRoots);
   return {
     profiles,
+    instructions,
+    proposals,
     routes: [
       ...(profiles === undefined
         ? []

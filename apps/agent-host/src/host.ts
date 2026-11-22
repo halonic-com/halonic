@@ -61,6 +61,8 @@ import { type HostServices, relayPortOf, serveHost } from "./serving-modes.ts";
 import { hostIntegrationSignIns } from "./sign-in/host-sign-ins.ts";
 import { takeStandardOutput } from "./stdio/standard-output.ts";
 import { openTerminal } from "./terminal/open-terminal.ts";
+import { hostThisComputer } from "./this-computer/host-this-computer.ts";
+import { thisComputerRoutes } from "./this-computer/this-computer-routes.ts";
 import { UnfencedSessions } from "./this-computer/unfenced-sessions.ts";
 
 /** What a serving host's sandbox gets from the profile: the kept-grant record, and whether it takes back what a removal with administrator rights left (HAL-5404 S2). */
@@ -367,6 +369,20 @@ async function hostServices(
           }),
       // An agent with `asks: in-sandbox` runs its calls in its working folder without asking, fenced (HAL-15287).
       { resolve: resolveRealPath, windows: process.platform === "win32" },
+    ),
+    // An agent a person set to "On this computer" runs without the sandbox, past the host's own gate.
+    ...thisComputerRoutes(
+      hostThisComputer({
+        profile,
+        profiles: folders.profiles,
+        instructions: folders.instructions,
+        proposals: folders.proposals,
+        workspaceRoots: connectors.workspaceRoots,
+        trustStore: connectors.trustStore,
+        platform: process.platform,
+      }),
+      sessions,
+      unfenced,
     ),
     ...harnessRoutes({ harnesses, sessions, bridges, runs, unfenced }),
     ...folders.routes,

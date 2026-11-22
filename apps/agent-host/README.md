@@ -83,6 +83,8 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `GET /v1/sandbox/check` | the `SandboxCheck`, as the port answers it |
 | `GET /v1/sandbox/capabilities` | the `SandboxCapabilities` |
 | `POST /v1/sandbox/sessions/open` with `{"profile"}` | `{"session","fence"}`: the new session's id and its fence proof. The profile must be one `POST /v1/harnesses/profile` built and no session opened with yet, with at most the harness's variables added (below); anything else is `403 profile_not_built` |
+| `GET /v1/sandbox/this-computer` | `{"offered"}`: whether the host opens a session without the sandbox for an agent a person set to "On this computer"; `true` only with a profile folder and not on Windows (`agent-host.this-computer-sessions`) |
+| `POST /v1/sandbox/this-computer/open` with `{"workspace","hubId","agentId","profile"}` | `{"session","fence"}` with the fence `off`, opened with the CLI's launcher once the host's own gate passes (below). `403 not_offered` where it offers none, the gate's refusals (`404 unknown_workspace` / `unknown_agent`, `403 workspace_not_trusted` / `not_on_this_computer` / `profile_not_built` / `instructions_not_trusted`), `503 host_stopping`, `429 too_many_sessions`, `422 sandbox_open_failed` |
 | `POST /v1/sandbox/sessions/blocked` with `{"session"}` | a stream, one `SandboxBlock` per line (NDJSON), until the session closes |
 | `POST /v1/sandbox/sessions/close` with `{"session"}` | `{"closed":true}` |
 | `GET /v1/sandbox/setup` | `{"running","last"}`: the setup or removal running now, if any, and the last one that ended |
@@ -165,6 +167,10 @@ The host keeps secrets of its own: today `remote-host-key`, the static key paire
 Studio gives the engine a stand-in `Sandbox` that calls these routes, and the host runs the real one (`SrtSandbox`). The profile arrives as data, so the host checks it before the sandbox sees it: every field present, nothing extra, every path absolute (`400 body_invalid` names each problem with its path). A session that can't open gets `422 sandbox_open_failed` with the sandbox's reason.
 
 A session is named by an id the host makes; any other id gets `404 unknown_session`. When a session's time limit runs out, the host closes it: its id is forgotten and its blocked stream ends. The host keeps at most 64 sessions open, counting those still opening; past that, opening one answers `429 too_many_sessions`. A `timeLimitMs` above 2,147,483,647 (about 24.8 days, the longest a timer can hold) is refused. When the host stops, it closes every open session before it stops serving, so no sandboxed program outlives it.
+
+## Sessions on this computer
+
+An agent a person set to "On this computer" runs without the sandbox, with all the person's rights, so `POST /v1/sandbox/this-computer/open` opens its session only once the host's gate passes (`agent-host.unfenced-gate`). Everything in the request is a claim: the host reads the agent's file, the person's trust record, their "On this computer" choice and their instruction trust from disk itself, and the profile must be one the host built for that agent, with its own instructions and proposal folders. The open then takes the profile, so it opens one session, with the launcher the CLI uses (`createHostSandbox()`). A run in the session starts only for that agent and with the host's own environment (`agent-host.unfenced-start`).
 
 ## The bridge over loopback
 
