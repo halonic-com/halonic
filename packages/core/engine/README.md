@@ -83,6 +83,7 @@ loop of one model turn, which the local chat turn runs.
 | child runs at end | when a run ends, every child run it started and hasn't heard end is ended with `run.failed` and reason `cancelled`; at start, a waiting child whose parent has ended is ended the same way | `engine.child-runs-end-with-run`, `engine.end-orphaned-child-runs` |
 | budget stops | a model call or harness run is refused at or over the run or month budget, and a `parallel` or `foreach` state checks before it starts its branches or items (see Budgets) | `engine.budget-stops`, `engine.budget-composite-stops`, `engine.budget-stop-message` |
 | meter | the `Meter` port a deployment that sells runs counts usage through, and `NoMeter` as the default (see Meter) | `engine.meter-port` |
+| plan stops | the `plan.*` causes a meter refuses with, next to `budget.run` and `budget.month`, which stay final (see Budgets) | `engine.plan-stops` |
 
 A run's turn writes through a `LargeResultsTurnLog` wrapped round its `RunStoreTurnLog`. A tool
 result over 256 KB of UTF-8 goes to the blob store as `text/plain`, and its `tool.result` keeps the
@@ -390,6 +391,14 @@ time it starts more items; a stopped run drops the calls it asked for but hadn't
 other items' child runs stop at their own next paid call, since they spend from the same run
 budget. The run's own
 model calls count as harness calls do, from the `llm.response` each one writes to the run's log.
+
+A deployment that sells runs also keeps each customer to their plan, through a meter that refuses
+with a `limit_reached` stop whose code starts with `plan.`: `plan.<unit>` (such as `plan.cost`) and
+`plan.member.<unit>` with the plan, the limit, the use and when it resets in `detail`,
+`plan.concurrency` with the cap that was hit, `plan.none` when no limits are known (no limits never
+means no limit), `plan.suspended` and `plan.member-removed`. A member's stop never offers an
+upgrade. `isPlanStop` keeps `budget.run`, `budget.month` and a harness step's `harness.max-*` limits
+apart, since those stay final whatever a plan allows (requirement `engine.plan-stops`).
 
 A harness run can last long and make many model calls in one step, so it also keeps to the budget
 call by call. Before each model call the bridge passes on, the call's `RunCallBudget` works out the
