@@ -20,6 +20,9 @@ halonic-connect = { path = "../connect" }
 halonic-device-keys = { path = "../device-keys" }
 halonic-tunnel = { path = "../tunnel" }
 serde = { version = "1", features = ["derive"] }
+# Reads only the `type` of a message the page sends, as the tunnel crate
+# reads the host's; already in the app through both.
+serde_json = { version = "1", default-features = false, features = ["std"] }
 # Already in the app through Tauri and the tunnel crate.
 tokio = { version = "1", default-features = false, features = ["rt", "sync", "time"] }
 
@@ -27,7 +30,6 @@ tokio = { version = "1", default-features = false, features = ["rt", "sync", "ti
 # The tunnel crate's fake host (tests/support), which the tests here run
 # the service against, built on the same crates as there.
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
-serde_json = { version = "1", default-features = false, features = ["std"] }
 snow = { version = "=0.10.0", default-features = false, features = [
   "use-curve25519",
   "use-chacha20poly1305",

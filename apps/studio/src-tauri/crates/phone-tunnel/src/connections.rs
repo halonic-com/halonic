@@ -1,25 +1,34 @@
-//! The connections to paired computers, one per computer, and each one's
-//! latest status.
+//! The connections to paired computers, one per computer, each one's open
+//! session, and each one's latest status.
 
 use std::collections::HashMap;
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use halonic_device_keys::ComputerId;
-use halonic_tunnel::PhoneConnection;
+use halonic_tunnel::{PhoneConnection, SessionNumber};
 use tokio::task::AbortHandle;
 
 use crate::status::PageStatus;
 
+/// A session open on a computer's connection: the number its connection
+/// gave it, and the generation the page knows it by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct OpenSession {
+    pub(crate) number: SessionNumber,
+    pub(crate) generation: u64,
+}
+
 /// A computer's connection: still opening, or open with the task that
-/// passes its events on.
+/// passes its events on and the session open on it, if any.
 enum Running {
     Opening {
         serial: u64,
     },
     Open {
         serial: u64,
-        connection: PhoneConnection,
+        connection: Arc<PhoneConnection>,
         events: AbortHandle,
+        session: Option<OpenSession>,
     },
 }
 
@@ -91,8 +100,9 @@ impl Connections {
         });
         let open = Running::Open {
             serial,
-            connection,
+            connection: Arc::new(connection),
             events,
+            session: None,
         };
         if !opening {
             open.end();
@@ -111,6 +121,81 @@ impl Connections {
             .is_some_and(|noted| noted.serial() == serial)
         {
             running.remove(computer);
+        }
+    }
+
+    /// Notes the session that opened on connection `serial`, unless another
+    /// connection has taken its place. Answers whether it was noted.
+    pub(crate) fn session_opened(
+        &self,
+        computer: &ComputerId,
+        serial: u64,
+        opened: OpenSession,
+    ) -> bool {
+        let mut running = self.running.lock().unwrap_or_else(PoisonError::into_inner);
+        match running.get_mut(computer) {
+            Some(Running::Open {
+                serial: current,
+                session,
+                ..
+            }) if *current == serial => {
+                *session = Some(opened);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Forgets the session on connection `serial`: it has ended.
+    pub(crate) fn session_ended(&self, computer: &ComputerId, serial: u64) {
+        let mut running = self.running.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(Running::Open {
+            serial: current,
+            session,
+            ..
+        }) = running.get_mut(computer)
+            && *current == serial
+        {
+            *session = None;
+        }
+    }
+
+    /// The connection to send on and the session's number, when
+    /// `generation` is the session open on the computer's connection.
+    pub(crate) fn session(
+        &self,
+        computer: &ComputerId,
+        generation: u64,
+    ) -> Option<(Arc<PhoneConnection>, SessionNumber)> {
+        let running = self.running.lock().unwrap_or_else(PoisonError::into_inner);
+        match running.get(computer) {
+            Some(Running::Open {
+                connection,
+                session: Some(open),
+                ..
+            }) if open.generation == generation => Some((Arc::clone(connection), open.number)),
+            _ => None,
+        }
+    }
+
+    /// Like [`Self::session`], and forgets the session, so nothing more is
+    /// sent into it while it ends.
+    pub(crate) fn take_session(
+        &self,
+        computer: &ComputerId,
+        generation: u64,
+    ) -> Option<(Arc<PhoneConnection>, SessionNumber)> {
+        let mut running = self.running.lock().unwrap_or_else(PoisonError::into_inner);
+        match running.get_mut(computer) {
+            Some(Running::Open {
+                connection,
+                session,
+                ..
+            }) if session.is_some_and(|open| open.generation == generation) => {
+                let open = session.take()?;
+                Some((Arc::clone(connection), open.number))
+            }
+            _ => None,
         }
     }
 

@@ -1,22 +1,25 @@
-//! Connecting to a paired computer, and passing its connection's states on
-//! (requirement `phone-tunnel-connections`). The paired-computer list
+//! Connecting to a paired computer, and passing its connection's states,
+//! sessions and host messages on (requirements `phone-tunnel-connections`
+//! and `phone-tunnel-messages`). The paired-computer list
 //! follows what the connection learns: connected, can't confirm, and
 //! Removed, which wipes the key before the page hears of it. Only while the
 //! computer is still kept under the key that connection used: a connection
 //! from before a Pair again changes nothing (Julian on HAL-15463).
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use halonic_device_keys::{ComputerId, DeviceKeyError, DeviceKeyStore, KEY_BYTES, PairedComputers};
 use halonic_tunnel::{
     ConnectError, Endpoint, PairedComputer as Pinned, PhoneConnection, PhoneEvent, PhoneKeys,
-    PhoneStatus,
+    PhoneStatus, SessionNumber,
 };
 use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::sync::oneshot;
 
 use crate::answers::{ConnectOutcome, Problem};
-use crate::connections::{Begin, Connections};
+use crate::connections::{Begin, Connections, OpenSession};
 use crate::host::TunnelHost;
 use crate::service::PhoneTunnel;
 use crate::status::PageStatus;
@@ -53,9 +56,12 @@ impl<S: DeviceKeyStore + 'static> PhoneTunnel<S> {
             store: self.store.clone(),
             host: Arc::clone(&self.host),
             connections: Arc::clone(&self.connections),
+            generations: Arc::clone(&self.generations),
             clock: self.options.clock,
+            session: None,
         };
-        let task = tokio::spawn(passing.run(events));
+        let (kept, keeping) = oneshot::channel();
+        let task = tokio::spawn(passing.run(events, keeping));
         // The page disconnected or forgot the computer while it opened:
         // the connection is ended, and the page already has its status.
         if !self
@@ -64,6 +70,7 @@ impl<S: DeviceKeyStore + 'static> PhoneTunnel<S> {
         {
             return ConnectOutcome::Stopped(Problem::NotPaired);
         }
+        let _ = kept.send(());
         ConnectOutcome::Connecting
     }
 
@@ -149,21 +156,78 @@ struct Passing<S: DeviceKeyStore + 'static> {
     store: Store<S>,
     host: Arc<dyn TunnelHost>,
     connections: Arc<Connections>,
+    /// The service's count of sessions on every computer.
+    generations: Arc<AtomicU64>,
     clock: fn() -> u64,
+    /// The session open on this connection, as last reported.
+    session: Option<OpenSession>,
 }
 
 impl<S: DeviceKeyStore + 'static> Passing<S> {
-    async fn run(self, mut events: UnboundedReceiver<PhoneEvent>) {
+    /// Passes the events on once the connection is kept: until then a
+    /// session couldn't be noted on it, and the page couldn't send into it.
+    async fn run(mut self, mut events: UnboundedReceiver<PhoneEvent>, kept: oneshot::Receiver<()>) {
+        if kept.await.is_err() {
+            return;
+        }
         while let Some(event) = events.recv().await {
             match event {
                 PhoneEvent::Status(status) => self.on_status(status).await,
                 PhoneEvent::NextTry(wait) => self.on_next_try(wait),
-                // Carried to the page by HAL-15177 (D7); until then the
-                // shell reads nothing in the session and keeps nothing.
-                PhoneEvent::SessionOpened(_) | PhoneEvent::Message(_) => {}
+                PhoneEvent::SessionOpened(number) => self.on_session_opened(number),
+                PhoneEvent::Message(message) => self.on_message(message),
             }
         }
         self.connections.finished(&self.computer, self.serial);
+    }
+
+    /// A new session: numbered with the next generation in the process,
+    /// so a message the page built for any earlier session, on this
+    /// computer or another, is refused.
+    fn on_session_opened(&mut self, number: SessionNumber) {
+        let generation = self.generations.fetch_add(1, Ordering::Relaxed) + 1;
+        let opened = OpenSession { number, generation };
+        if !self
+            .connections
+            .session_opened(&self.computer, self.serial, opened)
+        {
+            return;
+        }
+        self.session = Some(opened);
+        self.host.session_opened(&self.computer, generation);
+    }
+
+    /// A host message of the open session, passed on as text. One that
+    /// isn't UTF-8 can't be, so its session ends as if the page had
+    /// refused it.
+    fn on_message(&mut self, message: Vec<u8>) {
+        let Some(open) = self.session else {
+            return;
+        };
+        if !self.connections.is_current(&self.computer, self.serial) {
+            return;
+        }
+        match String::from_utf8(message) {
+            Ok(text) => self.host.message(&self.computer, open.generation, &text),
+            Err(_) => {
+                self.host
+                    .log("a host message isn't UTF-8 text; ending its session");
+                self.end_session();
+            }
+        }
+    }
+
+    /// Ends the open session; the connection reconnects after its backoff.
+    fn end_session(&mut self) {
+        let Some(open) = self.session.take() else {
+            return;
+        };
+        if let Some((connection, number)) = self
+            .connections
+            .take_session(&self.computer, open.generation)
+        {
+            connection.end_session(number);
+        }
     }
 
     /// Notes what the status says in the list, then tells the page: on
@@ -173,7 +237,12 @@ impl<S: DeviceKeyStore + 'static> Passing<S> {
     /// proved who it is and refused the phone, so the page mustn't show it
     /// as reachable. The key stays, the failure is logged, and the next
     /// connect hears `not-paired` again and wipes it then.
-    async fn on_status(&self, status: PhoneStatus) {
+    async fn on_status(&mut self, status: PhoneStatus) {
+        if !matches!(status, PhoneStatus::Connecting | PhoneStatus::Connected) {
+            // The session's connection is gone: nothing more goes into it.
+            self.session = None;
+            self.connections.session_ended(&self.computer, self.serial);
+        }
         let computer = self.computer.clone();
         let key = self.key;
         let at_ms = (self.clock)();

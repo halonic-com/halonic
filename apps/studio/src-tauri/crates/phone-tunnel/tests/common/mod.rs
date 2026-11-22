@@ -65,11 +65,26 @@ pub const FAST: Options = Options {
     clock: now,
 };
 
+/// What the service told the page about a computer's sessions.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Told {
+    Opened {
+        computer: String,
+        generation: u64,
+    },
+    Message {
+        computer: String,
+        generation: u64,
+        text: String,
+    },
+}
+
 /// The app around the service, recording what it is told.
 pub struct Recorder {
     local_network: LocalNetwork,
     pub asked: AtomicUsize,
     statuses: UnboundedSender<(String, PageStatus)>,
+    told: UnboundedSender<Told>,
     pub logs: Mutex<Vec<String>>,
 }
 
@@ -93,6 +108,21 @@ impl TunnelHost for Recorder {
         let _ = self.statuses.send((computer.as_str().to_owned(), *status));
     }
 
+    fn session_opened(&self, computer: &ComputerId, generation: u64) {
+        let _ = self.told.send(Told::Opened {
+            computer: computer.as_str().to_owned(),
+            generation,
+        });
+    }
+
+    fn message(&self, computer: &ComputerId, generation: u64, text: &str) {
+        let _ = self.told.send(Told::Message {
+            computer: computer.as_str().to_owned(),
+            generation,
+            text: text.to_owned(),
+        });
+    }
+
     fn log(&self, line: &str) {
         self.logs.lock().unwrap().push(line.to_owned());
     }
@@ -103,6 +133,7 @@ pub struct Phone {
     pub tunnel: PhoneTunnel<Store>,
     pub host: Arc<Recorder>,
     statuses: UnboundedReceiver<(String, PageStatus)>,
+    told: UnboundedReceiver<Told>,
     folder: PathBuf,
 }
 
@@ -112,10 +143,12 @@ impl Phone {
             std::env::temp_dir().join(format!("phone-tunnel-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&folder);
         let (sender, statuses) = unbounded_channel();
+        let (telling, told) = unbounded_channel();
         let host = Arc::new(Recorder {
             local_network,
             asked: AtomicUsize::new(0),
             statuses: sender,
+            told: telling,
             logs: Mutex::new(Vec::new()),
         });
         let tunnel = PhoneTunnel::new(
@@ -128,6 +161,7 @@ impl Phone {
             tunnel,
             host,
             statuses,
+            told,
             folder,
         }
     }
@@ -153,6 +187,36 @@ impl Phone {
                 return;
             }
         }
+    }
+
+    /// The next thing the page is told about a session.
+    pub async fn next_told(&mut self) -> Told {
+        timeout(WAIT, self.told.recv())
+            .await
+            .expect("a session event in time")
+            .expect("a session event")
+    }
+
+    /// Waits for a session to `computer` to open, and gives its generation.
+    pub async fn session_opened(&mut self, computer: &str) -> u64 {
+        loop {
+            if let Told::Opened {
+                computer: told,
+                generation,
+            } = self.next_told().await
+                && told == computer
+            {
+                return generation;
+            }
+        }
+    }
+
+    /// Whether the page is told nothing about a session within a short
+    /// while.
+    pub async fn no_told(&mut self) -> bool {
+        timeout(Duration::from_millis(200), self.told.recv())
+            .await
+            .is_err()
     }
 
     /// Whether no status comes within a short while.
