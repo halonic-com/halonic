@@ -1,5 +1,6 @@
 import type { SandboxOpenedView, SandboxSignIn } from "@halonicjs/events";
 import { escapeHidden } from "@halonicjs/std";
+import { ShieldIcon, StatusChip } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { SiteNameText } from "./blocked-sites-text.tsx";
@@ -268,14 +269,20 @@ export interface SandboxOffPanelProps {
   readonly place: "desktop" | "phone";
 }
 
-/** What a step that ran without the sandbox says: the Full access chip and why it had no limits. */
+/**
+ * What a step that ran without the sandbox says: the Full access chip, the same amber chip with the
+ * shield as the agent page's header, and why it had no limits.
+ */
 export function SandboxOffPanel({ agent, place }: SandboxOffPanelProps) {
   return (
     <section className="flex flex-col gap-2 rounded-sm bg-surface-subtle p-3">
       <h3 className="inline-flex items-center gap-1.5 text-body-strong">
-        <span className="rounded-full bg-warning-soft px-2 text-small text-warning">
+        <StatusChip tone="attention">
+          <span className="size-3.5 shrink-0" aria-hidden="true">
+            <ShieldIcon />
+          </span>
           {sayText("sandbox.off.chip")}
-        </span>
+        </StatusChip>
         <span className="sr-only">{sayText(`sandbox.line.off.${place}`)}</span>
       </h3>
       <p className="text-small text-fg-muted">{sayText(`sandbox.off.body.${place}`, { agent })}</p>
