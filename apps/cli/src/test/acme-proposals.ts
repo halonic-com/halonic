@@ -1,7 +1,9 @@
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { profileFolder, workspaceFolders } from "@halonicjs/profile";
 import type { ProposalsSetup } from "../commands/proposals/open-proposals.ts";
 import { openLocalProposals } from "../local-proposals.ts";
+import { webCryptoDigest } from "../workspace-runs.ts";
 import { type AcmeRuns, now, writeFiles } from "./acme-runs.ts";
 
 /** A run that finished five minutes before the tests' noon. */
@@ -53,4 +55,11 @@ export async function savedFile(runs: AcmeRuns, path: string): Promise<string | 
 /** Changes a saved file of Acme's, as the person would in an editor. */
 export async function editSaved(runs: AcmeRuns, path: string, text: string): Promise<void> {
   await writeFile(join(runs.acme, path), text);
+}
+
+/** Deletes the runs' changed texts from the profile, as someone tidying it by hand might. */
+export async function deleteProposalTexts(runs: AcmeRuns): Promise<void> {
+  const location = await realpath(runs.acme);
+  const folders = await workspaceFolders(profileFolder(runs.profile), location, webCryptoDigest);
+  await rm(folders.runCopiesFolder(), { recursive: true, force: true });
 }

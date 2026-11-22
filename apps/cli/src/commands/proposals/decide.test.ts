@@ -65,10 +65,22 @@ verifies("cli.commands.proposals.decide", () => {
       expect(code).toBe(exitCode.conflict);
       expect(io.stdout).toEqual([
         "Wrote 1 file: notes/new.md.",
-        "notes/today.md changed since the run, so it wasn't written. To keep it as it is now, reject it.",
+        "notes/today.md changed since the run, so it wasn't written. To keep it as it is now, reject it with halonic proposals reject 01jd8q notes/today.md.",
         "1 file is still to decide: halonic proposals show 01jd8q.",
       ]);
       expect(await savedFile(acmeRuns, "notes/today.md")).toBe("Four tickets.\n");
+    });
+
+    it("names the command for each file changed since the run, with the user's --dir", async () => {
+      await editSaved(acmeRuns, "notes/today.md", "Four tickets.\n");
+      await editSaved(acmeRuns, "notes/new.md", "Mine.\n");
+
+      const { code, io } = await proposalsIn("accept", "01jd8q", "--dir", ".");
+
+      expect(code).toBe(exitCode.conflict);
+      expect(io.stdout[1]).toBe(
+        "notes/new.md and notes/today.md changed since the run, so they weren't written. To keep them as they are now, reject each with halonic proposals reject --dir . 01jd8q <file>.",
+      );
     });
 
     it("refuses a file the proposal doesn't change", async () => {

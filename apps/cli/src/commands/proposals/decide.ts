@@ -64,7 +64,8 @@ export function acceptProposal(
       shownId,
       place,
     );
-    return { lines: acceptLines(result), conflict: result.changedOnDisk.length > 0, json: result };
+    const lines = acceptLines(result, shownId, place.dir);
+    return { lines, conflict: result.changedOnDisk.length > 0, json: result };
   });
 }
 
@@ -131,7 +132,7 @@ function decide(
 }
 
 /** What Accept wrote, and the files it left: changed since the run, or never writable. */
-function acceptLines(result: AcceptResult): Phrase[] {
+function acceptLines(result: AcceptResult, shownId: string, dir?: string): Phrase[] {
   const shown = (paths: readonly string[]) => paths.map(printable);
   const lines = [
     result.written.length === 0
@@ -139,7 +140,7 @@ function acceptLines(result: AcceptResult): Phrase[] {
       : proposalsMessages.wrote(shown(result.written)).phrase,
   ];
   if (result.changedOnDisk.length > 0) {
-    lines.push(proposalsMessages.changedOnDisk(shown(result.changedOnDisk)).phrase);
+    lines.push(proposalsMessages.changedOnDisk(shown(result.changedOnDisk), shownId, dir).phrase);
   }
   if (result.refused.length > 0) {
     const refused = result.refused.map((each) => each.path);
