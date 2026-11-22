@@ -46,7 +46,7 @@ is the reference.
    `recordings/`. By hand: make the call yourself, save the answer in the
    `halonic.recording/1` shape (see below), and remove your key, tokens, names,
    addresses and any other personal content from it.
-5. Run the conformance suite (see below) until it passes.
+5. Run the [conformance suite](plugin-conformance.md) until it passes.
 6. Add it to your own profile: `halonic plugin add ./my-plugin`. It asks
    "Trust *name* and turn it on?". Answer yes to turn it on. No, or no
    terminal, leaves it added but off; a script passes
@@ -435,50 +435,9 @@ Trust is a list, not a sandbox. Read what the check says before you answer. See
 
 ## Run the conformance suite
 
-`@halonicjs/testing/integration` runs the same suite on a plugin folder. In your plugin's own tests:
-
-```ts
-import { fileURLToPath } from "node:url";
-import { describePluginConformance } from "@halonicjs/testing/integration";
-import { acmeOrders } from "../backend/index.js";
-import findOrder from "../recordings/find-order.json" with { type: "json" };
-
-describePluginConformance({
-  folder: fileURLToPath(new URL("..", import.meta.url)), // the folder with plugin.yaml
-  backend: acmeOrders, // what the backend's entry exports
-  recordings: [findOrder],
-  cases: [{ tool: "find-order", scenario: "find-order", args: { order: "A-1001" } }],
-});
-```
-
-It reads `plugin.yaml` the way Halonic does, and checks for these. It fails when:
-
-- the folder has no manifest, or both `plugin.yaml` and `integration.yaml`;
-- the manifest fails its schema or its own checks, or its `sdk` is newer than
-  this Halonic's;
-- a file the manifest names (the backend's `entry`, a local tool's `script`) is
-  missing;
-- the backend's code differs from the manifest (name, version, a tool's text,
-  arguments, `risk` or `untrusted`).
-
-Then every backend check runs against your recordings, with fake key values and
-the network replaced by tripwires. It checks for a backend that:
-
-- reaches a host it didn't declare, or sends a secret to a host the secret may
-  not go to;
-- reads a file, or uses global `fetch`, `process`, `eval`, `import()`, timers
-  or other globals the integration rules forbid;
-- lets a key, or the provider's error body, reach a result, an error, a log or
-  a URL;
-- sends a request while connecting, or keeps going after its call is aborted.
-
-A recording is a `halonic.recording/1` file: one scenario, its exchanges in call
-order, with keys and personal content scrubbed. On replay, a request that
-doesn't match the next recorded exchange fails closed.
-
-The suite doesn't start local tools in a sandbox, so it doesn't check that a
-local tool stays inside its declared tools and hosts. Check that yourself: your
-local tool should offer only the tools you declared.
+Run the conformance suite on your plugin folder in your plugin's own tests,
+until it passes. What it checks, and how to call it:
+[Run the plugin conformance suite](plugin-conformance.md).
 
 ## Share your plugin
 
@@ -493,6 +452,6 @@ for everyone who has it. There is no registry yet.
 `plugin.yaml` shows a working plugin; the schema lists every field. To report a vulnerability in the plugin
 system, see [SECURITY.md](../../SECURITY.md). Report a bad plugin the same way.
 
-<!-- Keeping this page true: a pull request that changes the manifest, the SDK,
-the trust check or the conformance suite updates this guide in the same pull
-request. -->
+<!-- Keeping this page true: a pull request that changes the manifest, the SDK
+or the trust check updates this guide in the same pull request. The conformance
+suite has its own page, plugin-conformance.md. -->
