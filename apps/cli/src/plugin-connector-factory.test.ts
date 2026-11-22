@@ -120,8 +120,15 @@ verifies("cli.plugin-local-tools", () => {
     const { client, unavailable, sessions } = await setUp();
     const connector = client();
     await expect(connector.listTools()).rejects.toThrow(/can't run on this computer/u);
-    expect(unavailable.map(({ connector: id, part }) => [id, part.part, part.reason])).toEqual([
-      ["my-files", "local:lister", { kind: "sandbox-unavailable", reason: "bubblewrap-missing" }],
+    expect(
+      unavailable.map(({ connector: id, part }) => [id, part.name, part.part, part.reason]),
+    ).toEqual([
+      [
+        "my-files",
+        "Files",
+        "local:lister",
+        { kind: "sandbox-unavailable", reason: "bubblewrap-missing" },
+      ],
     ]);
     expect(await readdir(sessions)).toEqual([]);
     await connector.close();
@@ -131,6 +138,7 @@ verifies("cli.plugin-local-tools", () => {
     const { lines, report } = reporter();
     const part: PluginPartUnavailable = {
       plugin: "files",
+      name: "Files",
       part: "local:lister",
       reason: { kind: "sandbox-unavailable", reason: "bubblewrap-missing" },
       error: new Error("bwrap: command not found"),
@@ -139,10 +147,11 @@ verifies("cli.plugin-local-tools", () => {
     report("my-files", part);
     report("my-files", { ...part, part: "backend", reason: { kind: "failed" } });
     expect(lines).toEqual([
-      "warn ! The program lister of the plugin files didn't start, so its tools are off in this run.",
+      // By its name, as `plugin list` shows it (C642 #6, HAL-15865).
+      "warn ! The program lister of the plugin Files didn't start, so its tools are off in this run.",
       "warn   bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.",
       "warn   More: https://docs.halonic.dev/security/sandbox/#bubblewrap (bubblewrap-missing)",
-      "warn ! The backend of the plugin files didn't start, so its tools are off in this run.",
+      "warn ! The backend of the plugin Files didn't start, so its tools are off in this run.",
       "warn   bwrap: command not found",
     ]);
   });
