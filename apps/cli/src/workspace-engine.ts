@@ -20,10 +20,10 @@ import {
   connectorSessionLimitMs,
   nodeConnectorMachine,
 } from "./connector-machine.ts";
+import { engineErrorReporter } from "./engine-error-reporter.ts";
 import { recordingSrtSandbox } from "./fenced-sandbox.ts";
 import { checkHarnessOverride } from "./harness-override.ts";
 import {
-  type EngineErrorSource,
   type EngineHolder,
   type LocalEngine,
   type LocalEngineInput,
@@ -401,45 +401,6 @@ export function accessReporter(
     } else if (choice.reason === "no-keyed-provider") {
       context.warn(runMessages.harnessSignedOut(name, choice.provider).phrase);
     }
-  };
-}
-
-/**
- * The engine's `reportError`: a failed step, wake-up, tick or lock renewal
- * goes to `stuck`, which counts it. A run's connectors that failed to close,
- * a leftover program copy that couldn't be swept, or what a harness run left that couldn't be cleaned up, goes to `debug`
- * instead: it is clean-up, nothing tries it again, and it must never stop the command,
- * however often it happens in a `routines watch` (Liam, HAL-7171). So does a
- * harness bridge failure the run log couldn't record: the program already got
- * its answer, and the run goes on. So does why the harness sandbox doesn't
- * sweep kept grants under the profile's host lock, in its own words: it
- * isn't a clean-up that failed (HAL-15428).
- *
- * @example
- * const reportError = engineErrorReporter(stuck, (line) => context.debug(line));
- */
-export function engineErrorReporter(
-  // The engine's lock reports to the watch as the scheduler does, so a lock lost three times
-  // in a row stops the command.
-  stuck: { report(error: unknown, source: EngineErrorSource): void },
-  debug: (line: Phrase) => void,
-): (error: unknown, source: EngineErrorSource) => void {
-  return (error, source) => {
-    if (source === "run-connectors" || source === "program-copies" || source === "harness-host") {
-      debug(runMessages.cleanUpFailed(source, reasonOf(error)).phrase);
-      return;
-    }
-    if (source === "host-lock") {
-      debug(runMessages.hostLockNote(reasonOf(error)).phrase);
-      return;
-    }
-    if (source === "harness-bridge") {
-      const cause =
-        error instanceof Error && error.cause !== undefined ? reasonOf(error.cause) : undefined;
-      debug(runMessages.bridgeFailureUnrecorded(reasonOf(error), cause).phrase);
-      return;
-    }
-    stuck.report(error, source);
   };
 }
 

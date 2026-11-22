@@ -342,7 +342,13 @@ describe("the engine lock under attack", () => {
     await engine.close();
 
     expect(reported).toEqual([
-      [new Error(`The lock ${lock} was taken over by another process.`), "engine-lock"],
+      [
+        expect.objectContaining({
+          name: "LockLostError",
+          message: `The lock ${lock} was taken over by another process.`,
+        }),
+        "engine-lock",
+      ],
     ]);
     expect(await readFile(lock, "utf8")).toBe(taker);
   });

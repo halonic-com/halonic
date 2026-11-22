@@ -217,7 +217,19 @@ verifies("git.apply-patch", () => {
       ]);
     });
 
+    it("reads a hunk line that removes a -- line or adds a ++ line as a line, not a header", () => {
+      expect(plainTextPatchPaths(linePatch("-- 1", "++ 2"))).toEqual([
+        "a.yaml",
+        "a.yaml",
+        "a.yaml",
+      ]);
+    });
+
     it.each([
+      [
+        "a header after the hunk's counted lines",
+        `${linePatch("1", "2")}index 1111111..2222222 120000\n`,
+      ],
       ["a gitlink edit", "diff --git a/s b/s\nindex 1111111..2222222 160000\n"],
       ["a link edit", "diff --git a/l b/l\nindex 1111111..2222222 120000\n"],
       ["a new file that can run", "diff --git a/x b/x\nnew file mode 100755\n"],
@@ -231,6 +243,12 @@ verifies("git.apply-patch", () => {
   });
 
   describe("applyPatch", () => {
+    it("applies a hunk that removes a -- line and adds a ++ line", async () => {
+      const { vcs, files } = await repoWith({ "a.yaml": "-- 1\n" });
+      await vcs.applyPatch(linePatch("-- 1", "++ 2"));
+      expect(await files.read("a.yaml")).toBe("++ 2\n");
+    });
+
     it("applies the lines as written, whatever apply.whitespace the repository sets", async () => {
       const { vcs, folder, files } = await repoWith({ "a.yaml": "1\n" });
       await plainGit(folder, ["config", "--local", "apply.whitespace", "fix"]);

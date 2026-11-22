@@ -86,19 +86,21 @@ const plainFileModes = new Set(["100644", "100755"]);
  * The paths a patch's headers name, after refusing a patch with any header
  * line that does more than change a text file's lines: a mode change, a
  * rename or a copy, a binary change, and a symbolic link (`120000`), a
- * gitlink (`160000`) or a new file that can run. Lines inside a hunk start
- * with a space, `+`, `-` or `\`, so no hunk line is taken for a header; a
- * line outside a patch that looks like one is refused too, which only
- * refuses more. A NUL, where git would end the path, and a quoted path are
- * refused as well.
+ * gitlink (`160000`) or a new file that can run. The lines of a hunk are
+ * counted as git counts them, from its `@@` line, so a hunk that removes a
+ * `-- ` line or adds a `++ ` line isn't taken for a header; a line outside
+ * a patch that looks like one is refused too, which only refuses more. A
+ * NUL, where git would end the path, and a quoted path are refused as well.
  *
  * @throws RangeError naming the line
  */
 export function plainTextPatchPaths(patch: string): string[] {
   const paths: string[] = [];
+  const hunk = new HunkLines();
   for (const line of patch.split("\n")) {
+    if (line.includes("\0")) throw notPlainText(line);
+    if (hunk.takes(line)) continue;
     const refused =
-      line.includes("\0") ||
       refusedHeaders.some((header) => line.startsWith(header)) ||
       (line.startsWith("new file mode ") && line !== "new file mode 100644") ||
       (line.startsWith("deleted file mode ") && !plainFileModes.has(line.slice(18))) ||
@@ -110,6 +112,51 @@ export function plainTextPatchPaths(patch: string): string[] {
     paths.push(path);
   }
   return paths;
+}
+
+/**
+ * The lines left in the hunk being read, counted from its
+ * `@@ -<old>[,<count>] +<new>[,<count>] @@` line as `git apply` counts
+ * them: a context line (a space, or an empty line) counts on both sides, a
+ * `-` line on the old side, a `+` line on the new side, and a `\` line
+ * (no newline at the end) on neither.
+ */
+class HunkLines {
+  #old = 0;
+  #new = 0;
+
+  /**
+   * Whether `line` is the `@@` line or a line of a hunk, counting it. A
+   * line that doesn't fit the hunk ends it, and is read as a header: git
+   * refuses such a patch, so it only refuses more.
+   */
+  takes(line: string): boolean {
+    const counts = /^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@/u.exec(line);
+    if (counts !== null) {
+      this.#old = Number(counts[1] ?? "1");
+      this.#new = Number(counts[2] ?? "1");
+      return true;
+    }
+    if (this.#old === 0 && this.#new === 0) return false;
+    if (line.startsWith("\\")) return true;
+    const kind = line === "" ? " " : line[0];
+    if (kind === " " && this.#old > 0 && this.#new > 0) {
+      this.#old -= 1;
+      this.#new -= 1;
+      return true;
+    }
+    if (kind === "-" && this.#old > 0) {
+      this.#old -= 1;
+      return true;
+    }
+    if (kind === "+" && this.#new > 0) {
+      this.#new -= 1;
+      return true;
+    }
+    this.#old = 0;
+    this.#new = 0;
+    return false;
+  }
 }
 
 /**

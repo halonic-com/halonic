@@ -18,6 +18,7 @@ export {
   heldLockRenewEveryMs,
   holdLock,
   LockHeldError,
+  LockLostError,
   type RenewTimer,
 } from "./held-lock.ts";
 export {

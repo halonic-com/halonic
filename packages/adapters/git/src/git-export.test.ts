@@ -130,3 +130,22 @@ verifies("git.export", () => {
     });
   });
 });
+
+verifies("git.export-user-name", () => {
+  describe("checkGitExport", () => {
+    it("refuses an https address with a user name, without echoing it", () => {
+      const url = new URL("https://example.com/a.git");
+      url.username = "placeholder-name";
+      expect(() => checkGitExport(url.href)).toThrow(
+        "Can't use that git address: it has a user name in it",
+      );
+      expect(() => checkGitExport(url.href)).toThrow(
+        expect.objectContaining({ message: expect.not.stringContaining("placeholder-name") }),
+      );
+    });
+
+    it("accepts an ssh address with its user", () => {
+      expect(() => checkGitExport("ssh://git@example.com/acme/a.git")).not.toThrow();
+    });
+  });
+});

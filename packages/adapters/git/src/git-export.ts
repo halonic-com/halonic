@@ -55,14 +55,25 @@ export function checkGitAddress(address: string): void {
 
 /**
  * Refuses what {@link exportCommit} would refuse before it starts git: an
- * address {@link checkGitAddress} refuses, or a `ref` that isn't a plain
- * branch, tag or commit id, such as an option or a range. A caller can run
- * it before it even looks for git.
+ * address {@link checkGitAddress} refuses, an `https://` address with a
+ * user name, or a `ref` that isn't a plain branch, tag or commit id, such
+ * as an option or a range. A caller can run it before it even looks for
+ * git.
  *
- * @throws Error saying what was refused
+ * The address is kept and shown as written, and a forge takes a token as
+ * the user name of an `https://` address, so none may carry one. git
+ * signs in with no user name there anyway: it asks no one for a password.
+ * An `ssh://` address keeps its user, such as `git`, which names the
+ * account on the server.
+ *
+ * @throws Error saying what was refused, never echoing the user name
  */
 export function checkGitExport(address: string, ref = "HEAD"): void {
   checkGitAddress(address);
+  const url = parseAddress(address);
+  if (url?.protocol === "https:" && url.username !== "") {
+    throw refused("it has a user name in it; leave it out, since the address is kept as written");
+  }
   if (ref !== "HEAD" && !isPlainRef(ref)) {
     throw new Error(`Can't use "${ref}" as a commit: use a branch, a tag or a full commit id.`);
   }
