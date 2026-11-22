@@ -15,7 +15,10 @@ export const engineAutoOpenKey: ServiceKey<EngineAutoOpen> =
 
 /** What {@link EngineAutoOpen} reads and opens. */
 export interface EngineAutoOpenParts {
-  /** The engine service's `open`, which takes the lock and starts the routines. */
+  /**
+   * The engine service's `open`, which takes the lock and starts the routines, after a new engine
+   * for a save that turned Local only on or off (`reopenOnLocalOnlySave`).
+   */
   open(): Promise<unknown>;
   /** The saved files, which the routines are read from. */
   readonly definitions: DefinitionSource;

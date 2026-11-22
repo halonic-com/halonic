@@ -57,6 +57,7 @@ import {
   type EngineOpener,
   type OpenEngine,
   openOnSavedFiles,
+  reopenOnLocalOnlySave,
   takeForRoutine,
 } from "./engine-reopen.ts";
 import { savedFiles, startRoutineOn } from "./engine-routine-start.ts";
@@ -146,6 +147,15 @@ export class EngineService {
       throw error;
     });
     return this.#opening;
+  }
+
+  /**
+   * After a save that turned Local only on or off, opens a new engine once no run is going, so a
+   * run waiting for a timer resumes with the new setting (`reopenOnLocalOnlySave`). Opens nothing
+   * when no engine is open.
+   */
+  reopenOnLocalOnlySave(): Promise<void> {
+    return reopenOnLocalOnlySave(this.#opener);
   }
 
   /**
