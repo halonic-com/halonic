@@ -39,9 +39,12 @@ afterEach(async () => {
   await removeTestFolder(folder);
 });
 
-/** Gives Acme's Writer the `handbook` connector, whose program isn't on this computer, and trusts Acme. */
-async function writerWithMissingProgram(): Promise<void> {
-  await writerWith(`stdio:\n    command: ${missingProgram}`);
+/**
+ * Gives Acme's Writer the `handbook` connector, which starts `command` with `args`, and trusts
+ * Acme. By default its program isn't on this computer.
+ */
+async function writerWithProgram(command = missingProgram, args: string[] = []): Promise<void> {
+  await writerWith(`stdio:\n    command: ${command}\n    args: ${JSON.stringify(args)}`);
 }
 
 /**
@@ -105,7 +108,7 @@ verifies("cli.run-connector-warning", () => {
   it("warns once that the connector's program is missing, and the run goes on", {
     timeout: heavyTestTimeout,
   }, async () => {
-    await writerWithMissingProgram();
+    await writerWithProgram();
     const home = await mkdtemp(join(folder, "profile-"));
     const profile = { ...nodeProfileEnvironment(), variables: { HALONIC_HOME: home } };
     const io = captureIo(acme);
@@ -125,6 +128,34 @@ verifies("cli.run-connector-warning", () => {
     const at = io.stderr.indexOf(warning[0] ?? "");
     expect(io.stderr.slice(at, at + 3)).toEqual(warning);
     expect(io.stderr.filter((line) => line === warning[0])).toHaveLength(1);
+  });
+
+  it("says the connector's program stopped right after it started, with tools review's fix", {
+    timeout: heavyTestTimeout,
+  }, async () => {
+    await writerWithProgram("node", [
+      "-e",
+      "console.error('cannot open the database'); process.exit(3)",
+    ]);
+    const home = await mkdtemp(join(folder, "profile-"));
+    const profile = { ...nodeProfileEnvironment(), variables: { HALONIC_HOME: home } };
+    const io = captureIo(acme);
+
+    const code = await runCli(
+      ["run", "support-reply", "--input", "examples/refund-question.json"],
+      io,
+      [runCommandWith(testRunSetup(folder, profile))],
+    );
+
+    expect(code).toBe(exitCode.ok);
+    const warning = [
+      "! handbook didn't start, so its tools are off in this run.",
+      "  The program node stopped right after it started.",
+      "  To see why, run the command and args from library/connectors/handbook.connector.yaml yourself.",
+    ];
+    const at = io.stderr.indexOf(warning[0] ?? "");
+    expect(io.stderr.slice(at, at + 3)).toEqual(warning);
+    expect(io.stderr.join("\n")).not.toContain("cannot open the database");
   });
 
   it("names the connector file without a path for a connector that has no file in the workspace", () => {

@@ -140,7 +140,7 @@ verifies("cli.commands.tools.review", () => {
     const run = await kit.tools(["review"]);
     expect(run.code).toBe(exitCode.usage);
     expect(run.stderr[0]).toBe("✕ halonic tools review needs a connector's id.");
-    expect(run.stderr.join("\n")).toContain("halonic tools review <source>");
+    expect(run.stderr.join("\n")).toContain("halonic tools review <connector>");
   });
 
   it("runs the fix line that `approve` prints for a changed tool, and it shows the tools", async () => {

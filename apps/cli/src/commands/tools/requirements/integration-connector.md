@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-14784 (found while testing HAL-3103)
 
-When `halonic tools review <source>` or `halonic tools approve <source>` names an integration's connector, the command shall start nothing, say that its tools need no approval because they come from the integration's permission sheet, show no report link and exit 0. With `--json` it shall give `needsNoApproval: "integration"` with `ok: true`, not an error.
+When `halonic tools review <connector>` or `halonic tools approve <connector>` names an integration's connector, the command shall start nothing, say that its tools need no approval because they come from the integration's permission sheet, show no report link and exit 0. With `--json` it shall give `needsNoApproval: "integration"` with `ok: true`, not an error.
 
 ## Examples
 

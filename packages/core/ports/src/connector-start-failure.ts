@@ -1,15 +1,16 @@
 /**
  * Why a connector couldn't start, when it's one the engine can name
  * (requirement `ports.connector-start-failure`): its program isn't on this
- * computer, a secret it needs isn't set, the plugin it comes from isn't
- * trusted yet or changed since the person trusted it, its sandbox didn't
- * work when it started, or the sandbox a plugin's backend runs in isn't
- * ready here. `program` and `secret` are names as the connector's file
- * writes them, never a secret's value; `plugin` is the plugin's id, and
+ * computer or stopped by itself right after it started, a secret it needs
+ * isn't set, the plugin it comes from isn't trusted yet or changed since the
+ * person trusted it, its sandbox didn't work when it started, or the sandbox
+ * a plugin's backend runs in isn't ready here. `program` and `secret` are
+ * names as the connector's file writes them, never a secret's value;
+ * `plugin` is the plugin's id, and
  * `pluginName` its name as a person sees it.
  */
 export type ConnectorStartFailure =
-  | { readonly reason: "program-missing"; readonly program: string }
+  | { readonly reason: "program-missing" | "program-stopped"; readonly program: string }
   | { readonly reason: "secret-not-set"; readonly secret: string }
   | { readonly reason: "plugin-not-trusted" | "plugin-changed"; readonly plugin: string }
   | { readonly reason: "plugin-stopped"; readonly pluginName: string }
@@ -24,6 +25,8 @@ const maxCauseDepth = 8;
  * errors, here or in the `cause` of the error it threw:
  *
  * - an `Error` named `ProgramNotFoundError` with the program's name in
+ *   `program` (as `@halonicjs/adapter-mcp` throws it);
+ * - an `Error` named `ProgramStoppedAtStartError` with the program's name in
  *   `program` (as `@halonicjs/adapter-mcp` throws it);
  * - an `Error` named `SecretNotSetError` with the secret's name in `secretName`
  *   (as `@halonicjs/adapter-mcp` throws it);
@@ -67,6 +70,9 @@ function knownFailureOf(error: Error): ConnectorStartFailure | undefined {
   };
   if (error.name === "ProgramNotFoundError" && isName(program)) {
     return { reason: "program-missing", program };
+  }
+  if (error.name === "ProgramStoppedAtStartError" && isName(program)) {
+    return { reason: "program-stopped", program };
   }
   if (error.name === "SecretNotSetError" && isName(secretName)) {
     return { reason: "secret-not-set", secret: secretName };

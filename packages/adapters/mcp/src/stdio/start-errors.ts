@@ -45,9 +45,12 @@ export class SecretNotSetError extends Error {
  * an {@link McpStoppedError}, so a caller that only asks "did it stop?"
  * still can. `program` is the name as the connector's file wrote it, so a
  * caller can say which program stopped without passing on any other text,
- * such as the program's own output.
+ * such as the program's own output. Its `name` is its own, so a reader that
+ * needs no adapter can tell it by name and field (`connectorStartFailureOf`
+ * of `@halonicjs/ports`).
  */
 export class ProgramStoppedAtStartError extends McpStoppedError {
+  override readonly name = "ProgramStoppedAtStartError";
   /** The program as the connector's `command` names it, such as `notes-mcp`. */
   readonly program: string;
 

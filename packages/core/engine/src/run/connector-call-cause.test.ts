@@ -136,6 +136,20 @@ verifies("engine.tool-result-cause", () => {
       });
     });
 
+    it("names the program that stopped right after it started", async () => {
+      const open = async () => {
+        throw startError("ProgramStoppedAtStartError", { program: "sh", code: "unavailable" });
+      };
+
+      const result = await makeRunConnectorCall(open, {}, sendingOn, sendMail, reviewedTools);
+
+      expect(result.cause).toStrictEqual({
+        code: "connector-not-started",
+        why: "program-stopped",
+        name: "sh",
+      });
+    });
+
     it("names the secret that isn't set, and nothing of the error's message", async () => {
       const mail = mailConnector();
       mail.listTools = async () => {

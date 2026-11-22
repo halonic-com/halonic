@@ -25,8 +25,8 @@ optional and come with a requirement.
   never counts towards a budget (requirement `bridge-failed`).
 - Connectors: `connector.listing-failed` records a connector the agent lists
   that couldn't list its tools when a model turn started, with a
-  `connector-not-started` cause (`program-missing` or `secret-not-set` and
-  the name, else `other`), never the error's text (requirement
+  `connector-not-started` cause (`program-missing`, `program-stopped`,
+  `secret-not-set` or a plugin reason and the name, else `other`), never the error's text (requirement
   `connector-listing-failed`). `connector.part-off` records one part of a
   connector, such as a plugin's local tool, that offers no tools in a run
   while the others do, with a reason code, never the error's text

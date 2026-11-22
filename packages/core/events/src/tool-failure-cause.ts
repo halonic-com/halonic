@@ -16,6 +16,7 @@ const notMadeReasons: readonly unknown[] = [
 
 const startReasons: readonly unknown[] = [
   "program-missing",
+  "program-stopped",
   "secret-not-set",
   "plugin-not-trusted",
   "plugin-changed",

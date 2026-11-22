@@ -170,7 +170,9 @@ verifies("mcp.stdio-restart", () => {
     it("reports itself stopped after 3 restarts, with its last error output cleaned", async () => {
       const { client, starter, folders } = setUp(crashesAtStart);
       for (let start = 0; start < 4; start += 1) {
-        await expect(client.listTools()).rejects.toMatchObject({ name: "McpError" });
+        await expect(client.listTools()).rejects.toMatchObject({
+          name: "ProgramStoppedAtStartError",
+        });
       }
       const error = await client.listTools().catch((caught) => caught);
       expect(error).toBeInstanceOf(ConnectorStoppedError);

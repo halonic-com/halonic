@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { ProgramStoppedAtStartError } from "@halonicjs/adapter-mcp";
 import { MemorySecrets, MemoryTokenStore } from "@halonicjs/adapter-memory";
 import type {
   ConnectorClient,
@@ -10,7 +11,7 @@ import type {
   SandboxFence,
   SandboxSession,
 } from "@halonicjs/ports";
-import { contractGrant, FakeSandboxSession } from "@halonicjs/testing-contracts";
+import { contractGrant, type FakeProgram, FakeSandboxSession } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { contractProgram } from "./fake-mcp-program.spec.ts";
@@ -67,11 +68,11 @@ verifies("connector-stdio-sandbox.workspace-connector-start", () => {
     await rm(workspace, { recursive: true, force: true });
   });
 
-  function setUp(config: ConnectorConfig) {
+  function setUp(config: ConnectorConfig, program: FakeProgram = contractProgram(reached)) {
     const stdio = config.transport as StdioConfig;
     const sandbox = new FakeSandboxSession({
       profile: localToolLaunch(stdio, workspaceConnectorPlace(stdio, setting), null, {}).profile,
-      program: contractProgram(reached),
+      program,
     });
     const factory = new SandboxStdioConnectorFactory({
       clientInfo: { name: "halonic", version: "0.1.0" },
@@ -106,6 +107,19 @@ verifies("connector-stdio-sandbox.workspace-connector-start", () => {
     const client = factory.create(config, context);
     await client.listTools();
     expect(sandbox.started[0]?.cwd).toBe(join(workspace, "tools"));
+    await client.close();
+  });
+
+  it("names the program that stopped right after it started, never what it wrote", async () => {
+    const { factory, context } = setUp(mailConfig(), async ({ writeError }) => {
+      writeError("cannot open the database\n");
+      return 3;
+    });
+    const client = factory.create(mailConfig(), context);
+    const refused = await client.listTools().catch((error: unknown) => error);
+    expect(refused).toBeInstanceOf(ProgramStoppedAtStartError);
+    expect(refused).toMatchObject({ name: "ProgramStoppedAtStartError", program: "node" });
+    expect((refused as Error).message).not.toContain("database");
     await client.close();
   });
 

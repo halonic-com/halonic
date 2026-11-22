@@ -3,14 +3,14 @@ exit 2
 stdout:
 stderr:
   \e[31m✕\e[39m --fingerprint goes with one tool, not with --all.
-    Approve them one at a time: halonic tools approve <source> <tool> --fingerprint <fingerprint>
+    Approve them one at a time: halonic tools approve <connector> <tool> --fingerprint <fingerprint>
 
 ## NO_COLOR: halonic tools approve notes-mcp --all --fingerprint htl1:0
 exit 2
 stdout:
 stderr:
   ✕ --fingerprint goes with one tool, not with --all.
-    Approve them one at a time: halonic tools approve <source> <tool> --fingerprint <fingerprint>
+    Approve them one at a time: halonic tools approve <connector> <tool> --fingerprint <fingerprint>
 
 ## --json: halonic tools approve notes-mcp --all --fingerprint htl1:0
 exit 2
@@ -21,7 +21,7 @@ stdout:
     "error": {
       "kind": "usage",
       "message": "--fingerprint goes with one tool, not with --all.",
-      "fix": "Approve them one at a time: halonic tools approve <source> <tool> --fingerprint <fingerprint>"
+      "fix": "Approve them one at a time: halonic tools approve <connector> <tool> --fingerprint <fingerprint>"
     }
   }
 stderr:

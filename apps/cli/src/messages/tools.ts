@@ -48,7 +48,7 @@ export const toolsMessages = defineMessages("tools", {
   /** HAL-3004: `--fingerprint` with `--all`. */
   fingerprintWithAll: () => phrase`--fingerprint goes with one tool, not with --all.`,
   oneAtATime: () =>
-    phrase`Approve them one at a time: halonic tools approve <source> <tool> --fingerprint <fingerprint>`,
+    phrase`Approve them one at a time: halonic tools approve <connector> <tool> --fingerprint <fingerprint>`,
 
   // `review`: the title, the top line, the refused tools and the questions.
   title: (source: string) => phrase`Review the tools from ${source}`,

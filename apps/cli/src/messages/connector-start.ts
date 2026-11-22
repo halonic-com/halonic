@@ -21,9 +21,10 @@ export type ShownPart =
  * fix (decided on HAL-13829). `halonic run` warns with `notStarted` (or
  * `notListed` when it can't say why, with `notListedFix`, or
  * `integrationNotListedFix` for an integration's connector), then
- * `programMissing`, `secretMissing`, `pluginNotTrusted`, `pluginChanged` or
- * `pluginStopped` and their fix, and goes on: the run had none of the
- * connector's tools.
+ * `programMissing`, `programStopped`, `secretMissing`, `pluginNotTrusted`,
+ * `pluginChanged` or `pluginStopped` and their fix, and goes on: the run had
+ * none of the connector's tools. `programStopped`'s fix is `tools review`'s
+ * own, `cantListProgramStoppedFix` (HAL-15606).
  * Its line 1 already says the connector didn't start, so its cause line
  * doesn't say it again. The plugin lines use `plugin list`'s words for the
  * plugin's state, and their fix is `pluginMessages`' (HAL-14974).
@@ -35,6 +36,9 @@ export const connectorStartMessages = defineMessages("connectorStart", {
     file === undefined
       ? phrase`Install ${program}, or change the command in the ${connector} connector file.`
       : phrase`Install ${program}, or change the command in ${file}.`,
+  /** HAL-15606: `cantListProgramStopped`'s cause, without its "Couldn't list the tools", which `notStarted` says. */
+  programStopped: (program: string) =>
+    phrase`The program ${program} stopped right after it started.`,
   secretMissing: (secret: string) => phrase`The secret ${secret} isn't set on this computer.`,
   /** `plugin` is the plugin's id; its fix is `pluginMessages.startNotTrustedFix`. */
   pluginNotTrusted: (plugin: string) => phrase`The plugin ${plugin} isn't trusted yet.`,

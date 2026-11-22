@@ -21,7 +21,7 @@ export function toolsCommandWith(machine: () => ToolsMachine): CliCommand {
     subcommands: [
       {
         name: "review",
-        usage: "<source> [--dir <folder>]",
+        usage: "<connector> [--dir <folder>]",
         takesArguments: true,
         summary: toolsMessages.reviewSummary(),
         action: listAction,
@@ -30,7 +30,8 @@ export function toolsCommandWith(machine: () => ToolsMachine): CliCommand {
       },
       {
         name: "approve",
-        usage: "<source> <tool>... [--fingerprint <fingerprint>] | <source> --all [--dir <folder>]",
+        usage:
+          "<connector> <tool>... [--fingerprint <fingerprint>] | <connector> --all [--dir <folder>]",
         takesArguments: true,
         summary: toolsMessages.approveSummary(),
         action: listAction,
@@ -43,7 +44,7 @@ export function toolsCommandWith(machine: () => ToolsMachine): CliCommand {
       },
       {
         name: "revoke",
-        usage: "<source> <tool>... [--dir <folder>]",
+        usage: "<connector> <tool>... [--dir <folder>]",
         takesArguments: true,
         summary: toolsMessages.revokeSummary(),
         action: revokeAction,
