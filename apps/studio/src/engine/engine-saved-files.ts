@@ -1,15 +1,16 @@
 // What an open engine reads of the workspace (`studio.engine-service`, HAL-16324): the files as
-// they were saved when a start, an answer, a cancel or a routine's start last asked, not as they
+// they were saved when a start, an answer or a routine's start last asked, not as they
 // were when the engine opened. Definitions, models, chat turns, the budget and the trust checks
 // read that copy. Local only is built into the engine's executor and harness host, so a save that
 // turns it on or off needs a new engine, as `halonic routines watch` does (HAL-6084): the copy is
 // kept as it was, and the service opens a new engine or refuses.
 
 import type { TauriRunStore } from "@halonicjs/adapter-fs-tauri";
+import type { LocalExecutor } from "@halonicjs/engine";
 import { KindedError } from "@halonicjs/std";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 
-/** The workspace an open engine reads, as saved at its latest start, answer or cancel. */
+/** The workspace an open engine reads, as saved at its latest start or answer. */
 export class SavedWorkspace {
   #current: LoadedWorkspace;
   /** Whether the engine was built local only; it stays so while the engine is open. */
@@ -47,13 +48,27 @@ function isLocalOnly(workspace: LoadedWorkspace): boolean {
  *
  * @throws KindedError `unavailable`, so the page offers to try again, when a run is going
  */
-export async function refuseWhileRunsGo(runs: TauriRunStore, name: string): Promise<void> {
-  if (!(await hasRunGoing(runs))) return;
+export async function refuseWhileRunsGo(
+  executor: LocalExecutor,
+  runs: TauriRunStore,
+  name: string,
+): Promise<void> {
+  if (!(await hasRunGoing(executor, runs))) return;
   throw localOnlyChangedRefusal(name, "Try again once the run that's going ends.");
 }
 
-/** Whether a run is going in the engine, not waiting for a person or a timer. */
-export async function hasRunGoing(runs: TauriRunStore): Promise<boolean> {
+/**
+ * Whether a run is going in the engine, not waiting for a person or a timer. First the executor
+ * ends the runs a previous engine lost, which its store still lists as running until then.
+ *
+ * @param executor the engine's executor; none before the engine is built, when no run goes in it
+ */
+export async function hasRunGoing(
+  executor: LocalExecutor | undefined,
+  runs: TauriRunStore,
+): Promise<boolean> {
+  if (executor === undefined) return false;
+  await executor.endLostRuns();
   const going = await runs.list({ status: ["running"] });
   return going.length > 0;
 }

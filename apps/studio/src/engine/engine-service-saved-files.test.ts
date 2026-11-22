@@ -178,6 +178,44 @@ verifies("studio.engine-service", () => {
       await service.close();
     });
 
+    it("cancels a going run after Local only was turned on, on the same engine", async () => {
+      const shell = fakeShell();
+      const files = acmeWithTwoProviders();
+      const service = serviceOn(shell, files, {
+        http: hungServer,
+        ids: countingIds(),
+        setTimer: pageTimers,
+      });
+      const going = await service.startRun(reply, {});
+      await vi.advanceTimersByTimeAsync(0);
+
+      await files.write("workspace.yaml", "id: acme\nname: Acme\nprivacy:\n  localOnly: true\n");
+
+      expect(await service.cancel(going.id)).toMatchObject({
+        status: "failed",
+        reason: "cancelled",
+      });
+      expect(lockCalls(shell)).toEqual(["engine_lock_hold"]);
+      await service.close();
+    });
+
+    it("doesn't count a run an earlier engine left going as going", async () => {
+      const shell = fakeShell();
+      const files = acmeWithTwoProviders();
+      const options = { http: hungServer, ids: countingIds(), setTimer: pageTimers };
+      const earlier = serviceOn(shell, files, options);
+      await earlier.startRun(reply, {});
+      await vi.advanceTimersByTimeAsync(0);
+      await earlier.close();
+      const service = serviceOn(shell, files, options);
+      await service.open();
+
+      await files.write("workspace.yaml", "id: acme\nname: Acme\nprivacy:\n  localOnly: true\n");
+
+      await expect(service.startRun(reply, {})).resolves.toMatchObject({ id: expect.any(String) });
+      await service.close();
+    });
+
     it("refuses a routine's start once Local only is turned on, then opens a new engine", async () => {
       vi.useRealTimers();
       const files = acmeFiles({}, { [routinePath]: hourly });

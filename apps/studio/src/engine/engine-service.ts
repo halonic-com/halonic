@@ -49,25 +49,20 @@ import {
 import type { RunSummary } from "@halonicjs/events";
 import type { SendOptions } from "@halonicjs/ports";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
-import {
-  filesOf,
-  type LoadedWorkspace,
-  loadWorkspace,
-  runDefinitionsOf,
-} from "@halonicjs/workspace";
+import { filesOf, loadWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
 import { openEngineHarnessHost } from "./engine-harness-host.ts";
-import { type EngineLockHold, holdEngineLock } from "./engine-lock.ts";
+import { holdEngineLock } from "./engine-lock.ts";
 import { answerRefusalOf, refuseConnectorApprove } from "./engine-refusals.ts";
+import {
+  type EngineOpener,
+  type OpenEngine,
+  openOnSavedFiles,
+  takeForRoutine,
+} from "./engine-reopen.ts";
 import { savedFiles, startRoutineOn } from "./engine-routine-start.ts";
 import { pageRoutines, routineSkipsOf, SkipListeners } from "./engine-routines.ts";
 import { engineRunsOptions, openRunsOf } from "./engine-runs-options.ts";
-import {
-  hasRunGoing,
-  localOnlyChangedRefusal,
-  refuseWhileRunsGo,
-  routineLocalOnlyStep,
-  SavedWorkspace,
-} from "./engine-saved-files.ts";
+import { SavedWorkspace } from "./engine-saved-files.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
 import {
   closeAndEndStoppedRuns,
@@ -101,18 +96,6 @@ export const engineServiceKey: ServiceKey<EngineService> =
 
 export type { EngineServiceOptions, StudioRunConnectors } from "./engine-service-options.ts";
 
-/** An open engine and the workspace it was built on. */
-interface OpenEngine {
-  readonly engine: AssembledEngine;
-  /** The workspace as it was when the engine opened; its id names the routines' records. */
-  readonly workspace: LoadedWorkspace;
-  /** The workspace as saved at the latest start, which the engine's runs read. */
-  readonly saved: SavedWorkspace;
-  readonly lock: EngineLockHold;
-  /** The runs the engine keeps, read before an answer is sent. */
-  readonly runs: TauriRunStore;
-}
-
 /** The engine of one workspace in the page, opened on first use. */
 export class EngineService {
   readonly #options: EngineServiceOptions;
@@ -126,9 +109,19 @@ export class EngineService {
   readonly #skips = new SkipListeners();
   /** Calls `listener` each time a routine's tick adds to its skip records; returns the way to stop. */
   readonly onRoutineSkips = (listener: () => void) => this.#skips.subscribe(listener);
+  /** How a start, an answer and a routine's start take the saved files (`engine-reopen.ts`). */
+  readonly #opener: EngineOpener;
 
   constructor(options: EngineServiceOptions) {
     this.#options = options;
+    this.#opener = {
+      current: () => this.#opening,
+      open: () => this.#open(),
+      close: () => this.close(),
+      load: () => loadWorkspace(options.definitions),
+      name: options.name,
+      reportError: options.reportError,
+    };
     this.#stopHearingTrust = options.onTrustChange?.(() => {
       this.#closeIfUntrusted().catch((error: unknown) => options.reportError(error));
     });
@@ -165,31 +158,10 @@ export class EngineService {
    */
   openForStart(): Promise<AssembledEngine> {
     return this.#untrustedWhenFolderClosed(async () => {
-      const { engine, saved } = await this.#onSavedFiles();
+      const { engine, saved } = await openOnSavedFiles(this.#opener);
       await refuseUntrusted(this.#options.mayStart, saved.latest());
       return engine;
     });
-  }
-
-  /**
-   * The open engine ({@link EngineService.open}) on the files as saved now, which its runs read
-   * from here on. A save that turned local only on or off closes it and opens a new one.
-   *
-   * @throws KindedError `unavailable` when local only changed while a run is going, which closing
-   *   would stop, or what {@link EngineService.open} throws
-   */
-  async #onSavedFiles(): Promise<OpenEngine> {
-    const opening = this.#open();
-    const open = await opening;
-    if (open.saved.take(await loadWorkspace(this.#options.definitions))) return open;
-    await refuseWhileRunsGo(open.runs, this.#options.name);
-    return this.#reopen(opening);
-  }
-
-  /** Closes the engine `opening` opened, unless another call did already, and opens a new one. */
-  async #reopen(opening: Promise<OpenEngine>): Promise<OpenEngine> {
-    if (this.#opening === opening) await this.close();
-    return this.#open();
   }
 
   /**
@@ -298,27 +270,31 @@ export class EngineService {
   }
 
   /**
-   * Cancels a run, as the run page's **Cancel run** asks: opens the engine with the checks of an
-   * answer ({@link EngineService.send}), then ends the run and the child runs it waits on as
-   * cancelled. The run's record stays.
+   * Cancels a run, as the run page's **Cancel run** asks: opens the engine with the trust check of
+   * an answer ({@link EngineService.send}), then ends the run and the child runs it waits on as
+   * cancelled. The run's record stays. A cancel starts nothing, so it takes no saved files and goes
+   * on the open engine as it is, even after a save turned local only on or off.
    * @returns the run as it ended
    * @throws what {@link EngineService.send} throws before it sends, or the executor's refusal of a
    *   run it doesn't know
    */
   async cancel(runId: string): Promise<RunSummary> {
     return this.#untrustedWhenFolderClosed(async () => {
-      const { engine } = await this.#forAnswer();
+      const { engine } = await this.#forAnswer(() => this.#open());
       return engine.executor.cancel(runId);
     });
   }
 
-  /** The open engine, for an answer: as for a start, with the lock's `conflict` as `unavailable`. */
-  async #forAnswer(): Promise<OpenEngine> {
-    const open = await this.#onSavedFiles().catch((error: unknown) => {
+  /**
+   * The engine `open` gives, for an answer: with the checks of a start, and the lock's `conflict`
+   * as `unavailable`.
+   */
+  async #forAnswer(open = () => openOnSavedFiles(this.#opener)): Promise<OpenEngine> {
+    const opened = await open().catch((error: unknown) => {
       throw answerRefusalOf(error);
     });
-    await refuseUntrusted(this.#options.mayStart, open.saved.latest());
-    return open;
+    await refuseUntrusted(this.#options.mayStart, opened.saved.latest());
+    return opened;
   }
 
   /**
@@ -405,7 +381,7 @@ export class EngineService {
         await this.check({ hubId, workflowId }).catch((error: unknown) => {
           throw routineRefusalOf(error);
         });
-        await this.#takeForRoutine(saved, runStore);
+        await takeForRoutine(this.#opener, saved, executor, runStore);
         await refuseUntrusted(this.#options.mayStart, latest());
       });
       const fromWorkspace = workspaceExecutorOptions({
@@ -455,25 +431,5 @@ export class EngineService {
       await lock.held.release();
       throw error;
     }
-  }
-
-  /**
-   * Takes the saved files for a routine's start, which goes on the engine without
-   * {@link EngineService.openForStart}. When local only changed, the start is refused, and the
-   * engine opens anew once no run is going: not here, since the scheduler waits for this tick and
-   * closing waits for the scheduler, so afterwards, for the next tick.
-   *
-   * @throws KindedError `unavailable` when local only changed
-   */
-  async #takeForRoutine(saved: SavedWorkspace, runs: TauriRunStore): Promise<void> {
-    if (saved.take(await loadWorkspace(this.#options.definitions))) return;
-    const opening = this.#opening;
-    // With a run going, the next tick asks again.
-    hasRunGoing(runs)
-      .then(async (going) => {
-        if (!going && opening !== undefined) await this.#reopen(opening);
-      })
-      .catch(this.#options.reportError);
-    throw localOnlyChangedRefusal(this.#options.name, routineLocalOnlyStep);
   }
 }
