@@ -14,6 +14,7 @@ import { loadWorkspace } from "@halonicjs/workspace";
 import { describe, expect, it } from "vitest";
 import { pageRoutines } from "./engine-routines.ts";
 import { acmeFiles, fakeShell, serviceOn } from "./engine-service.testing.ts";
+import { routineWatchStep } from "./page-refusal.ts";
 
 const hourly = [
   "id: hourly",
@@ -197,19 +198,38 @@ verifies("studio.engine-routines", () => {
     time.wakeAt("2026-11-20T11:00:30.000Z");
     await waitUntil("the refusal", () => errors.length > 0);
 
-    expect(errors[0]).toMatchObject({ kind: "unavailable" });
+    expect(errors[0]).toMatchObject({ kind: "unavailable", fix: routineWatchStep });
     expect(await routineRuns(service)).toEqual([]);
-    // The Runs view reads it back as a refused start, with the refusal's sentence.
+    // The Runs view reads it back as a refused start, with the refusal's sentence and the step
+    // that keeps the routine on time, and the open page hears of it though no run started.
     expect(await service.routineSkips("support/hourly")).toMatchObject([
       {
         reason: "start-refused",
         sentence: (errors[0] as Error).message,
+        fix: routineWatchStep,
         from: "2026-11-20T11:00:00.000Z",
         count: 1,
       },
     ]);
-    // The open page hears of it, though no run started.
     await waitUntil("the page is told", () => told === 1);
+    await service.close();
+  });
+
+  it("keeps the Harness page step of an agent in a harness program", async () => {
+    const time = fakeTime("2026-11-20T10:00:30.000Z");
+    const { service, errors } = serviceWith(hourly, time, {
+      agents: { writer: "harness: claude-code\n" },
+    });
+    await service.open();
+    await waitUntil("the scheduler's wake-up", time.armed);
+
+    time.wakeAt("2026-11-20T11:00:30.000Z");
+    await waitUntil("the refusal", () => errors.length > 0);
+
+    expect(errors[0]).toMatchObject({
+      kind: "unavailable",
+      fix: "Set writer to Halonic on its Harness page to run it now.",
+    });
     await service.close();
   });
 

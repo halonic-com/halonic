@@ -45,6 +45,7 @@ import {
   mailboxesOf,
   nameKey,
   type PlacedFile,
+  refusedOf,
   routineFiles,
   routineGone,
   routineKeyOf,
@@ -190,8 +191,9 @@ export class WorkspaceRoutines implements RoutinesHost {
       this.#listedVersionsAt(),
     ]);
     const now = this.#parts.now();
+    const refused = await refusedOf(workspace, runs, this.#parts.skips);
     const listings = await Promise.all(
-      routineFiles(workspace).map(async (file): Promise<RoutineListing> => {
+      routineFiles(workspace).map(async (file, index): Promise<RoutineListing> => {
         const own = runsOf(runs, routineKeyOf(file));
         const routine = runningOf(file, await versionsAt(file.path));
         const target = targetOfFile(file.value.run, file.hub);
@@ -209,6 +211,7 @@ export class WorkspaceRoutines implements RoutinesHost {
           needsSignIn: false,
           needsYou: own.filter((run) => run.status === "waiting").length,
           pausedUntilTrusted: !trusted,
+          ...refused[index],
         };
       }),
     );

@@ -5,7 +5,7 @@ import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { RoutineRun, RoutineRuns, RoutinesHost, RoutineView } from "../api.ts";
+import type { RoutineRun, RoutineRuns, RoutineSkip, RoutinesHost, RoutineView } from "../api.ts";
 import { RoutineScreen } from "../page/routine-page.tsx";
 import { buttonNamed, memoryHost, show, unmount } from "../test-support.tsx";
 import { RunsView } from "./runs-view.tsx";
@@ -206,6 +206,34 @@ verifies("routines.runs.view", () => {
     const row = sectionOf(page, "Earlier")?.querySelector("li");
     expect(row?.textContent).toContain(longName);
     expect(row?.classList.contains("wrap-anywhere")).toBe(true);
+  });
+
+  it("shows a start refused while the view is open, with its next step, once the host says so", async () => {
+    vi.setSystemTime(new Date(2026, 10, 21, 19, 42));
+    const at = new Date(2026, 10, 21, 19, 41).toISOString();
+    const sentence = 'Writer uses the connector "notes", which Studio can\'t start yet.';
+    const fix = "To keep it starting on time, run this in a terminal: halonic routines watch";
+    let skips: RoutineSkip[] = [];
+    const { host, change } = memoryHost([], []);
+    const page = await openRuns({
+      ...hostWith(async () => ({ runs: [], skips })),
+      // A new read each time, as the app's host gives, so the view reads its runs again.
+      read: async () => ({ ...daily }),
+      subscribe: host.subscribe,
+    } as RoutinesHost);
+    expect(page.textContent).toContain("No runs yet");
+
+    skips = [{ reason: "start-refused", sentence, fix, from: at, to: at, count: 1 }];
+    await act(async () => change([]));
+
+    const row = sectionOf(page, "Earlier")?.querySelector("li");
+    expect(row?.querySelector("[aria-hidden=true]")?.textContent).toBe(
+      `19:41 Sat: couldn't start. ${sentence} ${fix}.`,
+    );
+    expect(row?.querySelector(".sr-only")?.textContent).toBe(
+      `Couldn't start at 19:41 Sat. ${sentence} ${fix}.`,
+    );
+    expect(page.textContent).not.toContain("No runs yet");
   });
 
   it("says a range of skipped times within one day with the day once", async () => {

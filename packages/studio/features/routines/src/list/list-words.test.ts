@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextWhen } from "./list-words.ts";
+import { nextWhen, refusedWhen } from "./list-words.ts";
 
 // Wednesday 18 November 2026, 10:00 local time.
 const now = new Date(2026, 10, 18, 10, 0);
@@ -19,5 +19,14 @@ describe("nextWhen", () => {
   it("gives the date from a week on, and the year when it is another year's", () => {
     expect(nextWhen(at(10, 27, 9, 0), now)).toBe("next Fri 27 Nov 09:00");
     expect(nextWhen(at(0, 4, 9, 0, 2027), now)).toBe("next Mon 4 Jan 2027 09:00");
+  });
+});
+
+describe("refusedWhen", () => {
+  it("says the refused time today, yesterday, this week and then with its date", () => {
+    expect(refusedWhen(at(10, 18, 9, 41), now)).toBe("couldn't start at 09:41");
+    expect(refusedWhen(at(10, 17, 19, 41), now)).toBe("couldn't start yesterday 19:41");
+    expect(refusedWhen(at(10, 14, 7, 30), now)).toBe("couldn't start Sat 07:30");
+    expect(refusedWhen(at(10, 6, 7, 30), now)).toBe("couldn't start Fri 6 Nov 07:30");
   });
 });
