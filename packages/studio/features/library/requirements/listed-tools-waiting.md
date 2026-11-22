@@ -10,7 +10,7 @@ The Library feature shall show, on a connector's page, how many of its listed to
 
 - Given a connector with two tools waiting,
   when its page opens,
-  then it says "2 tools are waiting for your approval" and offers **Review tools**.
+  then it says "2 tools are off until you review them" and offers **Review tools**.
 - Given that line,
   when the person asks for **Review tools**,
   then the review of that connector's tools opens.

@@ -330,7 +330,7 @@ describe("the review dialog", () => {
 
     it("says nothing is waiting, with the Approved group and no buttons", async () => {
       const { container } = await open(snapshot([], ["send"]));
-      expect(container.textContent).toContain("Nothing is waiting for your approval.");
+      expect(container.textContent).toContain("Nothing to review.");
       expect(container.textContent).toContain("Approved (1)");
       expect(container.querySelector("footer")).toBeNull();
     });

@@ -213,7 +213,7 @@ describe("a connector's secrets on its page", () => {
       expect(entry(root).placeholder).toBe("Type a new value to replace it");
 
       await press(root, "Try again");
-      expect(root.textContent).toContain("1 tool is waiting for your approval");
+      expect(root.textContent).toContain("1 tool is off until you review it");
       expect(everythingShown(root)).not.toContain(typedValue);
     });
 
@@ -457,7 +457,7 @@ describe("a connector's secrets keep focus and wait for the keychain", () => {
       listing.answer(snapshot());
       await settled();
       expect(document.activeElement?.tagName).toBe("P");
-      expect(document.activeElement?.textContent).toBe("1 tool is waiting for your approval");
+      expect(document.activeElement?.textContent).toBe("1 tool is off until you review it");
     });
 
     it("focuses the new failure line when Try again fails again", async () => {

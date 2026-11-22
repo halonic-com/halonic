@@ -91,7 +91,7 @@ verifies("cli.commands.tools.review", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(stdout).toEqual([
-      "✓ Nothing from notes-mcp is waiting for your approval. 1 tool is on.",
+      "✓ Nothing from notes-mcp to review. 1 tool is on.",
     ]);
   });
 

@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-11681; microcopy 11.4 (`library.connectors.tools-line`); Liam's review of #3329 (HAL-11625)
 
-The Library feature shall show, on the page of a connector whose file says every tool asks first, one plain sentence under its name: "Agents get the tools you approve from the ones the server lists. A person approves each call to every tool." Under that sentence it shall offer a quiet link, "Change which tools agents get in the file.", that opens the connector's file in a tab. While the app is a phone, it shall show the sentence but not the link, because a phone has no tabs to open the file in. A connector whose file says it asks first for changes only (Gmail and Google Drive) shall show its own sentence and no link. A connector whose file says nothing about asking first shall show neither.
+The Library feature shall show, on the page of a connector whose file says every tool asks first, one plain sentence under its name: "Agents can use a listed tool once you turn it on in Review tools. Every tool asks you before each use." Under that sentence it shall offer a quiet link, "Change which tools agents get in the file.", that opens the connector's file in a tab. While the app is a phone, it shall show the sentence but not the link, because a phone has no tabs to open the file in. A connector whose file says it asks first for changes only (Gmail and Google Drive) shall show its own sentence and no link. A connector whose file says nothing about asking first shall show neither.
 
 ## Examples
 

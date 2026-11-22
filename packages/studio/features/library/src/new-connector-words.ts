@@ -45,7 +45,7 @@ export const connectorPageWords = {
 
 /** The connector page's Tools row for a connector whose file says every tool asks first (microcopy 11.4). */
 export const connectorToolsWords = {
-  line: "Agents get the tools you approve from the ones the server lists. A person approves each call to every tool.",
+  line: "Agents can use a listed tool once you turn it on in Review tools. Every tool asks you before each use.",
   changeInFile: "Change which tools agents get in the file.",
 } as const;
 
