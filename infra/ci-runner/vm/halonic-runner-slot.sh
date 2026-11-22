@@ -38,9 +38,9 @@ TRUSTED=/cache/trusted; TRUSTED_PROJ=300; TRUSTED_QUOTA=20g
 [ -f "$KEY" ] && [ ! -L "$KEY" ] || fail "$KEY missing or not a file"
 [ "$(stat -c '%u %a' "$KEY")" = "0 400" ] || fail "$KEY must be owned by root with mode 0400"
 case "$SLOT" in
-  large-*) LABEL=halonic-ci-large; CPUS=6;  MEM=10g; MEM_START=10g; QUOTA=20g; TMPFS=1g ;;
+  large-*) LABEL=halonic-ci-large; CPUS=6;  MEM=16g; MEM_START=6g; QUOTA=20g; TMPFS=1g ;;
   small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=3g;  MEM_START=2g; QUOTA=6g;  TMPFS=512m ;;
-  fast-[1-3]) LABEL=halonic-ci-fast; CPUS=6; MEM=10g; MEM_START=10g; QUOTA=20g; TMPFS=1g ;;
+  fast-[1-3]) LABEL=halonic-ci-fast; CPUS=6; MEM=16g; MEM_START=6g; QUOTA=20g; TMPFS=1g ;;
   *) echo "unknown slot $SLOT" >&2; exit 2 ;;
 esac
 N=${SLOT##*-}
@@ -48,11 +48,16 @@ case "$SLOT" in large-*) PROJ=$((100+N));; small-*) PROJ=$((200+N));; fast-*) PR
 # Each slot gets its own CPUs, so a job sees only those (nproc, Node's availableParallelism).
 # With --cpus alone it saw all of the VM's, and test runners started a worker per CPU and ran
 # out of memory. vCPUs 2k and 2k+1 are SMT siblings, so 6 in a row are 3 whole cores.
-# On the 80-vCPU VM, the eleven large slots take 0-65 and the three small slots share 66-71, each
-# capped at 2 CPUs (--cpus). 72-79 stay free for the VM itself (Docker, systemd, the status feed).
+# On the 112-vCPU VM (since 22 Nov 2026, 16 cores moved from Paperclip), the eleven large slots take
+# 0-65, the three small slots share 66-71, each capped at 2 CPUs (--cpus), large-15..19 take 72-101,
+# and 102-111 stay free for the VM itself (Docker, systemd, the status feed).
 # A fast slot takes the CPUs of a large slot from the top (fast-1 those of large-11, fast-2 of
 # large-10, fast-3 of large-9), so run either one, never both (checked at the top).
 case "$SLOT" in
+  large-12) CPUSET="3-8" ;;
+  large-13) CPUSET="27-32" ;;
+  large-14) CPUSET="51-56" ;;
+  large-1[5-9]) CPUSET="$(( 72+(N-15)*6 ))-$(( 77+(N-15)*6 ))" ;;
   large-*) CPUSET="$(( (N-1)*6 ))-$(( N*6-1 ))" ;;
   small-*) CPUSET="66-71" ;;
   fast-*)  CPUSET="$(( (11-N)*6 ))-$(( (12-N)*6-1 ))" ;;
@@ -133,7 +138,11 @@ fi
 # answers pull request queries only, so its jobs can't hold the merge queue's gate (HAL-15972).
 SANDBOX=(); GATE_DIR=/run/halonic-ci-gate
 if [ "$LABEL" = halonic-ci-fast ]; then
-  SANDBOX=(--runtime=runsc --network="$FAST_NET"); GATE_DIR=/run/halonic-ci-gate-fast
+  # Docker's embedded DNS (127.0.0.11, which a user-defined network writes into resolv.conf) is
+  # unreachable from gVisor's network stack, so a fast container gets a resolv.conf of its own naming
+  # the two resolvers the VM's firewall already allows.
+  printf 'nameserver 1.1.1.1\nnameserver 1.0.0.1\n' > "$RUN/resolv.conf"; chown "$RUID:$RUID" "$RUN/resolv.conf"; chmod 0444 "$RUN/resolv.conf"
+  SANDBOX=(--runtime=runsc --network="$FAST_NET" -v "$RUN/resolv.conf:/etc/resolv.conf:ro"); GATE_DIR=/run/halonic-ci-gate-fast
 fi
 # The shared caches get one project quota too (set once: new files inherit the project).
 (
@@ -168,23 +177,23 @@ docker run --rm --name "hci-$SLOT" --hostname "$NAME" --init \
   "$IMAGE" &
 DPID=$!
 
-# Sample the container every 3 s for the status feed: busy (a job's Runner.Worker is running),
+# Sample the container every 2 s for the status feed: busy (a job's Runner.Worker is running),
 # peak memory and CPU time from its cgroup. The only thing it changes is the job's memory limit (below).
 JOB_START=0; PEAK=0; CPU_US=0; EV=""; REF=""; SHA=""
 # memory.peak also counts file cache, which the kernel drops under pressure. ANON_PEAK is the highest
 # sampled anon + shmem (process memory plus the /tmp tmpfs): what the job can't give back, so the
-# number that decides how small a slot may be. Sampled every 3 s, so short spikes can be missed.
+# number that decides how small a slot may be. Sampled every 2 s, so short spikes can be missed.
 ANON_PEAK=0
 # Dynamic memory (22 Nov 2026): a job starts at MEM_START and gets STEP more whenever its anon + shmem
 # comes within HEAD of the limit, up to MEM, as long as the VM keeps RESERVE free. memory.high sits
 # 512 MB under the limit, so the kernel reclaims cache and slows the job before the hard limit kills
-# it, which gives this 3-second loop time to grow it. Every slot at MEM still fits the VM, so growth
+# it, which gives this 2-second loop time to grow it. Every slot at MEM still fits the VM, so growth
 # can't overcommit it; the reserve check matters once the VM is made smaller than that.
 # Large slots start at MEM again (HAL-15994): a job that starts hundreds of processes at once
 # (changeset version's git calls) outgrew a 3-second step and was killed at 6 GB. Eleven large
 # slots at 10 GB and three small at 3 GB are 119 GB of the VM's 126; only small slots still grow.
 LIMIT_B=$(numfmt --from=iec "${MEM_START^^}"); MAX_B=$(numfmt --from=iec "${MEM^^}")
-STEP_B=2147483648; HEAD_B=1610612736; RESERVE_B=4294967296; GROWS=0; HIGH_SET=""
+STEP_B=4294967296; HEAD_B=2147483648; RESERVE_B=4294967296; GROWS=0; HIGH_SET=""
 write_state() {
   local now; now=$(date +%s)
   jq -nc --arg slot "$SLOT" --arg runner "$NAME" --arg label "$LABEL" --argjson up "$STARTED" \
@@ -236,7 +245,7 @@ while kill -0 "$DPID" 2>/dev/null; do
     fi
   fi
   write_state
-  sleep 3
+  sleep 2
 done
 RC=0; wait "$DPID" || RC=$?
 echo "slot $SLOT: container exited with $RC"

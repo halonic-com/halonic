@@ -170,8 +170,13 @@ test("fast pool: fast slots run under gVisor, on their own network, with their o
   const slot = read("vm/halonic-runner-slot.sh");
   assert.ok(
     slot.includes(
-      'SANDBOX=(--runtime=runsc --network="$FAST_NET"); GATE_DIR=/run/halonic-ci-gate-fast',
+      'SANDBOX=(--runtime=runsc --network="$FAST_NET" -v "$RUN/resolv.conf:/etc/resolv.conf:ro"); GATE_DIR=/run/halonic-ci-gate-fast',
     ),
+  );
+  // gVisor can't reach Docker's embedded DNS (127.0.0.11), so the container gets the two
+  // resolvers the VM's firewall allows, and nothing else.
+  assert.ok(
+    slot.includes(`printf 'nameserver 1.1.1.1\\nnameserver 1.0.0.1\\n' > "$RUN/resolv.conf"`),
   );
   assert.ok(slot.includes('--security-opt no-new-privileges "${SANDBOX[@]}" \\'));
   assert.ok(
