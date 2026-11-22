@@ -31,14 +31,14 @@ import { useAnnounceDockedRun } from "../start/run-announcement.ts";
 import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
 import { blockingFileOf, openFileAtLine, useFilesWithErrors } from "./blocking-file.ts";
-import { StepEditDock, stepCardDocks } from "./docked-step-card.tsx";
+import { StepEditDock } from "./docked-step-card.tsx";
 import { FlowView } from "./flow-view.tsx";
 import { insteadOfPage } from "./gone-state.tsx";
 import { GuideSlot } from "./guide-card.tsx";
-import { firstTestsPick, firstView, panelClass, stepNamesOf } from "./page-view.ts";
+import { firstTestsPick, firstView, hasDockedCard, panelClass, stepNamesOf } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
 import { ProgramStepsLine } from "./program-steps-line.tsx";
-import { type DockOpener, dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
+import { type DockOpener, RunDock, useDock, useShownRun } from "./run-dock.tsx";
 import { unavailableFor, useRunGate } from "./run-gate.ts";
 import {
   missingAliasOf,
@@ -477,12 +477,4 @@ export function WorkflowScreen({
       </div>
     </div>
   );
-}
-
-/** Whether a card is docked at the right: the start form or a run's, or a picked step's own. */
-function hasDockedCard(
-  run: Parameters<typeof dockHasCard>[0],
-  step: Parameters<typeof stepCardDocks>[0],
-): boolean {
-  return dockHasCard(run) || stepCardDocks(step);
 }
