@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { RunSummary } from "@halonicjs/events";
 import { PresentationProvider } from "@halonicjs/studio-kit";
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { EngineNotAnswering, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -207,18 +207,33 @@ verifies("first-run.bar", () => {
     expect(bar.querySelector("button")?.getAttribute("aria-busy")).not.toBe("true");
   });
 
-  it("says when the run couldn't be cancelled, and keeps Cancel run", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const firstRun = firstRunOf(on("run"));
-    const start = new FirstRunStart(firstRun, { startRun: vi.fn(), cancelRun: vi.fn() });
-    vi.spyOn(start, "cancel").mockRejectedValue(new Error("There's no run."));
-    const bar = renderBar(firstRun, "desktop", start);
-    await act(async () => bar.querySelector("button")?.click());
-    expect(bar.querySelector("[role=alert]")?.textContent).toBe(
-      "Couldn't cancel the run. Try again.",
-    );
-    expect(bar.querySelector("button")?.textContent).toBe("Cancel run");
-  });
+  it.each([
+    [
+      "the engine can't be reached",
+      new EngineNotAnswering(),
+      "Couldn't cancel the run: the engine isn't answering. It may still be starting.",
+    ],
+    [
+      "anything else",
+      new Error("There's no run."),
+      "Couldn't cancel the run: Halonic ran into a problem it can't explain yet.",
+    ],
+  ])(
+    "says why the run couldn't be cancelled when %s, and keeps Cancel run",
+    async (_, error, line) => {
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+      const firstRun = firstRunOf(on("run"));
+      const start = new FirstRunStart(firstRun, { startRun: vi.fn(), cancelRun: vi.fn() });
+      vi.spyOn(start, "cancel").mockRejectedValue(error);
+      const bar = renderBar(firstRun, "desktop", start);
+      await act(async () => bar.querySelector("button")?.click());
+      expect(bar.querySelector("[role=alert]")?.textContent).toBe(line);
+      expect([...bar.querySelectorAll("button")].map((button) => button.textContent)).toEqual([
+        "Cancel run",
+      ]);
+      expect(logged).toHaveBeenCalledWith("Cancel run", error);
+    },
+  );
 
   it("draws nothing outside the first run: another folder, off, or after the win", () => {
     expect(renderBar(firstRunOf(undefined, false)).childElementCount).toBe(0);

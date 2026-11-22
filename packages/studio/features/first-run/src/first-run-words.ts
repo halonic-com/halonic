@@ -17,7 +17,11 @@ export const barWords = {
   skip: "Skip, I'll explore",
   /** The way out while the run is going (3.4). */
   cancel: "Cancel run",
-  cancelFailed: "Couldn't cancel the run. Try again.",
+  /**
+   * What "Couldn't …" names when the engine didn't cancel: "Couldn't cancel the run: *reason*."
+   * (C671-45). No "Try again": the button beside it is **Cancel run**.
+   */
+  cancelFailed: "cancel the run",
   /** Said after **Cancel run**, where the button was, so the change isn't silent (C672 #3). */
   cancelled: "Run cancelled.",
 } as const;

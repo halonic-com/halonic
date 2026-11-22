@@ -1,5 +1,5 @@
 import { Button, CloseIcon, TickIcon, usePresentation } from "@halonicjs/studio-kit";
-import { pageHeading, type StripProps } from "@halonicjs/studio-shell";
+import { failureLine, pageHeading, type StripProps } from "@halonicjs/studio-shell";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { FirstRunService } from "../api.ts";
 import { type FirstRun, SUPPORT_HUB, SUPPORT_WORKFLOW } from "../first-run.ts";
@@ -68,8 +68,8 @@ export function FirstRunBar({ context }: StripProps) {
 /**
  * **Cancel run** (first-run-flow 3.4, `first-run.run`): ends the run as cancelled and goes back to
  * Support reply's page, where the guide card reads **Run again**, and the bar says "Run
- * cancelled." in its place. Busy until the engine answers; when it can't cancel, the bar says so
- * and the button stays.
+ * cancelled." in its place. Busy until the engine answers; when it can't cancel, the bar says
+ * why and the button stays.
  */
 function CancelRun({
   start,
@@ -78,28 +78,29 @@ function CancelRun({
   readonly start: FirstRunStart;
   readonly onCancelled: () => void;
 }) {
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string>();
   const [busy, setBusy] = useState(false);
   const cancel = async () => {
-    setFailed(false);
+    setFailed(undefined);
     setBusy(true);
     try {
       await start.cancel();
       onCancelled();
     } catch (error) {
       console.error("Cancel run", error);
-      setFailed(true);
+      // The bar has room for one way out, so no Copy details: the error stays in the log (C671-45).
+      setFailed(failureLine(barWords.cancelFailed, error));
     } finally {
       setBusy(false);
     }
   };
   return (
     <div className="ms-auto flex shrink-0 items-center gap-3">
-      {failed ? (
+      {failed === undefined ? null : (
         <p role="alert" className="text-danger">
-          {barWords.cancelFailed}
+          {failed}
         </p>
-      ) : null}
+      )}
       <Button variant="ghost" size="sm" busy={busy} onClick={cancel}>
         {barWords.cancel}
       </Button>
