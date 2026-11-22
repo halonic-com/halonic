@@ -95,7 +95,7 @@ verifies("workflows.configuration.problem-lines", () => {
       "Has no agent, so every run fails here. Pick one on its card, or make it a wait step.",
       "Has no way out. Add an arrow from it on its card, or make it an end step.",
       "Can't be reached: no arrow leads to it.",
-      "Gives a person no answers to pick, such as approve. Add them in the workflow's file.",
+      "Offers a person only Done, no answers such as approve. Add them in the workflow's file.",
     ]);
   });
 
@@ -114,10 +114,10 @@ verifies("workflows.configuration.problem-lines", () => {
     expect(row?.stepId).toBe("review");
   });
 
-  it("says answers for a wait step's missing events on its card and its row alike", () => {
+  it("says a wait step without events offers only Done, on its card and its row alike (C676 27)", () => {
     const missing = problem("wait-without-events", "warning", "wait-1");
-    expect(cardSummary([missing])).toBe("△ Has no answers to pick");
-    expect(problemRows([missing])[0]?.text).toContain("no answers to pick");
+    expect(cardSummary([missing])).toBe("△ Only Done to pick");
+    expect(problemRows([missing])[0]?.text).toContain("only Done");
   });
 
   it("gives a wait step's signal a short card line and a row without the step's id (C622 #3)", () => {
