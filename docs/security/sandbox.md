@@ -151,8 +151,19 @@ because neither can reach srt's Windows account. It also doesn't while srt
 still lists its sandbox account, for example after the installer has set the
 sandbox up again, or when Halonic can't read srt's status.
 
-The step that works whatever you chose is the one the uninstaller's last page
-gives: install Halonic again with "Set up the agent sandbox" on, then uninstall
+The words after a removal follow those two cases. "Its access to your project
+folders ends the next time you start Halonic without administrator rights"
+(`keptAccess: until_next_start`, srt's sandbox account is gone) is true when you
+start Halonic on Windows itself, as you, as above; Studio's agents in WSL and a
+command line inside WSL don't end it. "It may still have access to some of your
+project folders" (`manual`, srt still lists its sandbox account, or its status
+can't be read) means the next start won't end it.
+
+For `manual`, the CLI says to run `halonic sandbox remove` again from a
+terminal that isn't running as administrator. That works only in a terminal on
+Windows itself, not inside WSL, and not for a removal you can't run again
+because Halonic is already gone. The step that works whatever you chose is the
+one the uninstaller's last page gives: install Halonic again with "Set up the agent sandbox" on, then uninstall
 it normally, not as administrator. A normal uninstall runs without
 administrator rights, so its removal takes the access back. To keep using
 Halonic, install it again afterwards.
