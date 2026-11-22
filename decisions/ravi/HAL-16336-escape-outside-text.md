@@ -2,6 +2,7 @@
 
 - Approval: HAL-16336 (Liam, CTO), the task asks for this change; Liam approves this note in review on HAL-16336
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yL+65TrITgVcNqWMS9k3ICdNPuWyIyrkrbKnI9Tc/rHNya61TG+skuOD6w0ckDlKvFA8SbGa+bAwf93Poa5yAQ==
 
 ## What changes
 
