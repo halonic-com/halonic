@@ -104,7 +104,7 @@ verifies("cli.commands.routines.list", () => {
     );
   });
 
-  it("says which file trust refuses and why, without halonic trust, which would refuse too", async () => {
+  it("says which file trust refuses and why, and to trust the workspace once it is fixed", async () => {
     await writeFiles(acmeRuns.acme, {
       ...realModel,
       [routinePath]: morning(),
@@ -115,7 +115,7 @@ verifies("cli.commands.routines.list", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual([
-      "! Acme's routines don't start: library/connectors/web.connector.yaml can't be trusted, because the URL has user info. Fix the address in that file, then try again.",
+      "! Acme's routines don't start: library/connectors/web.connector.yaml can't be trusted, because the URL has user info. Fix the address in that file, then trust the workspace with halonic trust.",
       "Morning check   Daily at 08:00   ! Paused until trusted   Never ran",
       hint,
     ]);

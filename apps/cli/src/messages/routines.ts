@@ -119,11 +119,13 @@ export const routinesMessages = defineMessages("routines", {
   /**
    * The same, when a file names something trust can't cover, such as a URL
    * with user info: `halonic trust` would refuse too, so the line says which
-   * file and why, in `trust`'s words, and how to fix it instead. The address
-   * is never shown, as it may hold a password.
+   * file and why, in `trust`'s words, and how to fix it. Fixing the file
+   * doesn't trust the workspace, so it ends with `halonic trust` rather than
+   * `trust`'s "then try again", which here would only list again (C676). The
+   * address is never shown, as it may hold a password.
    */
-  refusedPaused: (workspace: string, refused: readonly RefusedFile[]) =>
-    phrase`${markPart("needsYou")} ${workspace}'s routines don't start: ${trustMessages.refused(refused).phrase} ${trustMessages.refusedFix().phrase}`,
+  refusedPaused: (workspace: string, refused: readonly RefusedFile[], dir?: string) =>
+    phrase`${markPart("needsYou")} ${workspace}'s routines don't start: ${trustMessages.refused(refused).phrase} Fix the address in that file, then trust the workspace with ${suggestedCommand("trust", dir)}.`,
   /**
    * The line under the list for a routine that starts an agent on its own,
    * which Halonic can't run yet (HAL-15607): why, and the fix in the file's

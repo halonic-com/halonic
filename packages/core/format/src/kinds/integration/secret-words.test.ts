@@ -29,7 +29,7 @@ verifies("format.integration-secret-without-as", () => {
         path: ["secrets", "notes-key"],
         keys: ["hosts"],
         line: 9,
-        message: `Secret "notes-key" has hosts but no as, so it reads as a sign-in's client secret, which has only purpose. ${addAs}`,
+        message: `Secret "notes-key" has "hosts" but no "as", so Halonic reads it as a sign-in's client secret, which takes only "purpose". ${addAs}`,
       }),
     ]);
   });
@@ -45,7 +45,7 @@ verifies("format.integration-secret-without-as", () => {
         keys: ["hosts", "header", "prefix"],
         line: 8,
         message: expect.stringContaining(
-          'Secret "notes-key" has hosts, header and prefix but no as',
+          'Secret "notes-key" has "hosts", "header" and "prefix" but no "as"',
         ),
       }),
     ]);
@@ -56,7 +56,7 @@ verifies("format.integration-secret-without-as", () => {
       (problem) => problem.message,
     );
     expect(messages).toEqual([
-      expect.stringContaining('Secret "notes-key" has field but no as'),
+      expect.stringContaining('Secret "notes-key" has "field" but no "as"'),
       `There's no field "colour" in "secrets.notes-key".`,
     ]);
   });

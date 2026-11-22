@@ -149,12 +149,12 @@ function isPaused(routine: ListedRoutine, row: RowOptions): boolean {
 
 /**
  * The line above the list for a workspace that isn't trusted: a file trust
- * can't cover, with why and no `halonic trust`, which would refuse too;
- * changed since; or not trusted yet.
+ * can't cover, with why and the fix before `halonic trust`; changed since;
+ * or not trusted yet.
  */
 function pausedLineOf(trust: WorkspaceTrustAnswer, workspace: string, dir?: string): Phrase {
   if (trust.state === "refused") {
-    return routinesMessages.refusedPaused(workspace, trust.refused).phrase;
+    return routinesMessages.refusedPaused(workspace, trust.refused, dir).phrase;
   }
   const message =
     trust.state === "changed" ? routinesMessages.changedPaused : routinesMessages.notTrustedPaused;

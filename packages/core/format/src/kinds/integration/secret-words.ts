@@ -18,7 +18,7 @@ const placementKeys = ["hosts", "header", "field", "prefix"];
  * @example
  * // secrets: { notes-key: { purpose: Notes API key, hosts: [api.example.com] } }
  * wordSecretIssues(issues, data).map((issue) => issue.message);
- * // ['Secret "notes-key" has hosts but no as, … Add as: bearer, …']
+ * // ['Secret "notes-key" has "hosts" but no "as", … Add as: bearer, …']
  */
 export function wordSecretIssues(issues: readonly Issue[], data: unknown): Issue[] {
   const worded = new Set<string>();
@@ -66,10 +66,11 @@ function entryOf(data: unknown, name: string): Readonly<Record<string, unknown>>
 
 /** What to do about a secret with placement fields and no `as`. */
 function addAsMessage(name: string, found: readonly string[]): string {
+  const quoted = found.map((key) => `"${key}"`);
   const fields =
-    found.length > 1 ? `${found.slice(0, -1).join(", ")} and ${found.at(-1)}` : found.join("");
+    quoted.length > 1 ? `${quoted.slice(0, -1).join(", ")} and ${quoted.at(-1)}` : quoted.join("");
   return (
-    `Secret "${name}" has ${fields} but no as, so it reads as a sign-in's client secret, which has only purpose. ` +
+    `Secret "${name}" has ${fields} but no "as", so Halonic reads it as a sign-in's client secret, which takes only "purpose". ` +
     "Add as: bearer, as: header (with header) or as: form (with field) to say how the kit sends it."
   );
 }
