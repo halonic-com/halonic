@@ -2,7 +2,6 @@
 
 - Approval: Tomas decides the words as the team on HAL-15915 (https://paperclip.halonic.com/HAL/issues/HAL-15915), from flow check C651 (#4) on HAL-15910, and Sofia's words check C650 (row 6) on HAL-15922 (https://paperclip.halonic.com/HAL/issues/HAL-15922) (HAL-2282 rule: a small wording on an approved screen, adding to the words HAL-15809 approved).
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wyjgHHgObJCOzXHCV4CYrRyVlN9phv/ppKAf+lVghYoq0xhWW08+6a+FLwVCM6TnHEyjoj/VtpECcp7lSt6tDA==
 
 ## What changes
 
