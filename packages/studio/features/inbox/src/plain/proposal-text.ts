@@ -4,6 +4,7 @@
 
 import { shortRunId } from "@halonicjs/app";
 import { markHiddenName } from "@halonicjs/std";
+import type { ProposalFailure } from "../proposal-decisions.ts";
 import type { ProposalEnding, ProposalFile, ProposalItem } from "../proposal-items.ts";
 import { clockTime, endedAgo } from "./waiting-time.ts";
 
@@ -102,11 +103,35 @@ export function decisionFailedLine(verb: "accept" | "reject", all: boolean): str
   return `Couldn't ${verb} ${all ? "these changes" : "this change"}.`;
 }
 
-/** In place of the buttons once the proposal's texts are gone (Q11), before **Remove**. */
-export const goneLine = "This proposal can't be opened any more.";
+/**
+ * In place of the buttons once the run's changes are gone (Q11, C681 31), before
+ * {@link removeLabel}. The CLI says the same sentence.
+ */
+export function goneLine(runId: string): string {
+  return `Run ${shortRunId(runId)}'s changes were deleted outside Halonic, so they can't be shown or accepted.`;
+}
 
-/** A **Remove** that didn't go through, before the reason and **Try again**. */
-export const removeFailedLine = "Couldn't remove this proposal.";
+/** The button that takes a run whose changes are gone out of Needs you; nothing on disk changes. */
+export const removeLabel = "Remove from Inbox";
+
+/** The toast once it is removed: "Removed run 01JD8Q from the Inbox". */
+export function removedToast(runId: string): string {
+  return `Removed run ${shortRunId(runId)} from the Inbox`;
+}
+
+/**
+ * A **Remove from Inbox** that didn't go through (C681 32), by why, never by the host's own text:
+ * "Couldn't remove this: the engine isn't answering. It may still be starting."
+ */
+export function removeFailedLine(failure: ProposalFailure, runId: string): string {
+  return `Couldn't remove this: ${removeFailureReasons[failure](shortRunId(runId))}`;
+}
+
+const removeFailureReasons: Readonly<Record<ProposalFailure, (run: string) => string>> = {
+  "changes-back": (run) => `run ${run}'s changes are there again. Review them instead.`,
+  "not-answering": () => "the engine isn't answering. It may still be starting.",
+  unexplained: () => "Halonic ran into a problem it can't explain yet.",
+};
 
 /** The toast after an Accept or a Reject (Q7): "Accepted 3 changes from run 01JD8Q". */
 export function decidedToast(verb: "Accepted" | "Rejected", count: number, runId: string): string {
