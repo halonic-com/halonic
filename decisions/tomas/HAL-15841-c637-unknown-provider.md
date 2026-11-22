@@ -2,11 +2,12 @@
 
 - Approval: the task HAL-15841 asks for this change, from words check C637 (HAL-15824). The team decides it under the HAL-2282 rule, since it rewords a message that is already there. Liam signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:En+e9eWYkAimMFu0xsdR24Vmv0w1ORpffr3XLFNdw8LBK00kGTtiCcLuTGZUwjFhO4MT9o1brXwg/ZsoSoLTDg==
 
 ## What changes
 
 - `workspace.references`: an alias in `models.yaml` on a provider no file names now gets `The model alias smart names the provider cloud, which the workspace doesn't have. Add providers/cloud.yaml, or point the model alias smart at a provider the workspace has.` instead of `Alias smart uses unknown provider cloud. Add providers/cloud.yaml, or point the alias smart at a provider the workspace has.`. With a near provider it is `The model alias careful names the provider mok, which the workspace doesn't have. Did you mean mock?`. The code stays `unknown-provider`.
-- The same check for an alias in a `hub.yaml` gets the same message, from the same function, instead of `Alias "careful" uses unknown provider "mok": Did you mean mock?` and `Alias "smart" uses unknown provider "anthropic": add providers/anthropic.yaml, or use a provider the workspace has`. The requirement says so, and its examples quote the new words.
+- An alias in a `hub.yaml` already shares that message's function since HAL-15830 (#4910), so it gets the same new words. The requirement's examples quote them.
 - `packages/testing/parity/allowed-differences.json`: the entry `unknown-provider-says-the-fix` gets the new message and a line in its why (`signed-off` by Liam in review). The recorded fixtures are the old loader's output and stay as they are.
 
 ## Why
