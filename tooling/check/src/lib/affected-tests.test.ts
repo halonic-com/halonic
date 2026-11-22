@@ -6,6 +6,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import {
   docsReaders,
+  noPackageTestPaths,
   selectedFolders,
   selectTests,
   testSelection,
@@ -99,6 +100,28 @@ verifies("check.affected-tests", () => {
         kind: "all",
         reason: "infra/turbo-cache/src/worker.ts is outside every package, so any test may read it",
       });
+    });
+
+    test("selects no package for the CI server's files, whose test ci.yml runs itself", () => {
+      expect(
+        testSelection(["infra/ci-runner/vm/entry.sh", "infra/ci-runner/hook.test.mjs"], packages),
+      ).toEqual({ kind: "some", packages: [] });
+      expect(
+        testSelection(["infra/ci-runner/vm/entry.sh", "packages/core/format/src/a.ts"], packages),
+      ).toEqual({ kind: "some", packages: ["@halonicjs/format"] });
+      expect(testSelection(["infra/ci-runner-old/x.sh"], packages).kind).toBe("all");
+    });
+
+    test("no package's tests read the paths in noPackageTestPaths", () => {
+      const root = findRepoRoot();
+      const readers = listRepoFiles(root)
+        .filter((file) => isTestFile(file) && !file.startsWith("infra/"))
+        .filter((file) => file !== "tooling/check/src/lib/affected-tests.test.ts")
+        .filter((file) => {
+          const text = readFileSync(join(root, file), "utf8");
+          return noPackageTestPaths.some((path) => text.includes(path.replace(/\/$/, "")));
+        });
+      expect(readers).toEqual([]);
     });
 
     test("selects every package when no changed file was found", () => {
