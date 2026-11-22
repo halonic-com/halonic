@@ -32,6 +32,11 @@ export interface ModelTest {
   readonly at: Date;
 }
 
+/** The last test of the provider named `provider`, when it had one this session. */
+export function lastTestOf(tests: readonly ModelTest[], provider: string): ModelTest | undefined {
+  return tests.filter((test) => test.provider === provider).at(-1);
+}
+
 /** A cloud provider the workspace's aliases use, and whether its key is stored here. */
 export interface ModelKey {
   /** The provider's name as a person reads it, such as "Anthropic". */

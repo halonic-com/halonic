@@ -17,7 +17,7 @@ const statusMarks = { ok: "pass", warning: "warning", failed: "problem" } as con
  * The mark of a line (requirement `check-computer.report`). One cause counts once: a line that
  * failed because of a line above it (Last run's `causeShownOn`, Default model's Models cause) is
  * info, so the crosses always match the heading's count (4.2). An unfinished Google setup is
- * progress, never a fault, and the plain-Windows sandbox, which doesn't exist there, is never red.
+ * progress, never a fault.
  *
  * @example
  * checkMark({ check: "last-run", status: "failed", causeShownOn: "models", … }); // "info"
@@ -35,9 +35,6 @@ export function checkMark(fact: CheckFact): CheckMark {
       return fact.cause === "default-model.local-only" ? "problem" : "info";
     case "last-run":
       return fact.causeShownOn === undefined ? "problem" : "info";
-    case "sandbox":
-      if (fact.status === "failed" && fact.reason === "windows") return "info";
-      return statusMarks[fact.status];
     case "google":
     case "not-checked":
       return "info";

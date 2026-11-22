@@ -1,5 +1,5 @@
 import type { ModelProblem, ProviderReport, TestOutcome } from "@halonicjs/app";
-import type { ModelKey, ModelsFact, ModelTest } from "../check-facts.ts";
+import { lastTestOf, type ModelKey, type ModelsFact, type ModelTest } from "../check-facts.ts";
 import { addressInReport, providerInReport, timeInReport } from "./report-names.ts";
 
 /** What a failed test found, as the report says it after the provider's name. */
@@ -27,11 +27,6 @@ function testFix(outcome: TestOutcome, provider: string): string | undefined {
   }
 }
 
-/** The last test of the provider named `name`, if it had one. */
-function lastTest(tests: readonly ModelTest[], name: string): ModelTest | undefined {
-  return tests.filter((test) => test.provider === name).at(-1);
-}
-
 /** "last test answered, 10:42" for a server, "last test accepted, 10:42" for a key. */
 function passedTest(test: ModelTest, local: boolean): string {
   return `last test ${local ? "answered" : "accepted"}, ${timeInReport(test.at)}`;
@@ -43,7 +38,7 @@ function readyRows(ready: ProviderReport, tests: readonly ModelTest[]): string[]
   if (!("answering" in ready)) return [`${name}: key set`];
   const count = ready.models.length;
   const first = `${name} answering at ${addressInReport(ready.address)} · ${count} model${count === 1 ? "" : "s"} loaded`;
-  const test = lastTest(tests, ready.name);
+  const test = lastTestOf(tests, ready.name);
   if (test === undefined) return [`${first} · not tested yet`];
   if (test.outcome === "ok") return [`${first} · ${passedTest(test, true)}`];
   return [`${first} · ${failedTests[test.outcome]}, ${timeInReport(test.at)}`];
@@ -68,7 +63,7 @@ function keyRows(key: ModelKey, tests: readonly ModelTest[]): string[] {
   const name = providerInReport(key.provider);
   if (key.keyStored === "unreadable") return [`${name}: key can't be read`];
   if (!key.keyStored) return [`${name}: no key`, "Fix: add its key on the Models page."];
-  const test = lastTest(tests, key.provider);
+  const test = lastTestOf(tests, key.provider);
   if (test === undefined) return [`${name}: key set · not tested yet`];
   if (test.outcome === "ok") return [`${name}: key set · ${passedTest(test, false)}`];
   const fix = testFix(test.outcome, name);

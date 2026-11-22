@@ -157,7 +157,7 @@ verifies("check-computer.report", () => {
     ]);
   });
 
-  it("refuses a cloud default under Local only as the one problem, and a timed-out check warns", () => {
+  it("refuses a cloud default under Local only, names the sandbox by its reason code, and a timed-out check warns", () => {
     const report = checkReport(
       [
         {
@@ -167,17 +167,17 @@ verifies("check-computer.report", () => {
           cause: "default-model.local-only",
         },
         { check: "sandbox", status: "warning", timedOut: true },
-        { check: "sandbox", status: "failed", reason: "windows", missing: [] },
+        { check: "sandbox", status: "failed", reason: "bubblewrap-missing", missing: [] },
       ],
       header,
     );
 
     expect(report.split("\n").slice(3)).toEqual([
-      "1 problem · 1 warning",
+      "2 problems · 1 warning",
       "",
       "✕ Default model   points at Anthropic · Local only refuses it",
       "! Sandbox         didn't answer in 5 seconds",
-      "– Sandbox         can't start · windows",
+      "✕ Sandbox         can't start · bubblewrap-missing",
     ]);
   });
 });
