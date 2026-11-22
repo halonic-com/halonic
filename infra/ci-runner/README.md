@@ -38,8 +38,11 @@ server by the board supervisor after it merges; the server doesn't pull from the
      gate for `main`'s merge queue, finds the entry whose pull request is `<n>` and whose head
      commit is the group's commit, and refuses the job if that entry or any entry ahead of it
      (their code is in the group's commit too) is cross-repository or has a head repository
-     owned outside `halonic-com`. A gate or API failure, GraphQL errors, no queue, an entry not
-     found or more than 100 entries is a refusal;
+     owned outside `halonic-com`. A gate that doesn't answer or answers an error (its GitHub
+     call failed or timed out) is asked again after 5 s and 10 s, with each failed try and its
+     reason in the job's log; after the third, the job is refused. This holds for the fast
+     pool's pull request query too. An answer is never retried: GraphQL errors, no queue, an
+     entry not found or more than 100 entries is a refusal at once;
    - the event must be in `ALLOWED_EVENTS` (`"push"` now; `merge_group` only after T1; the fast
      pool's is `"pull_request"`);
    - `set -euo pipefail`: a missing `jq`, event file or pool file is a refusal.
@@ -96,16 +99,22 @@ for it to exit and cleans up. systemd starts the next cycle.
 
 | Slot | Label | CPUs | Pinned to vCPUs | Memory (= swap): start → most | Work dir |
 | --- | --- | --- | --- | --- | --- |
-| `large-1` … `large-11` | `halonic-ci-large` | 6 | 0-5, 6-11, … 60-65 (`(N-1)*6`–`N*6-1`) | 4 GB → 10 GB | 20 GB |
+| `large-1` … `large-11` | `halonic-ci-large` | 6 | 0-5, 6-11, … 60-65 (`(N-1)*6`–`N*6-1`) | 10 GB (fixed) | 20 GB |
 | `small-1` … `small-3` | `halonic-ci-small` | 2 each | 66-71 (shared) | 2 GB → 3 GB | 6 GB |
-| `fast-1` … `fast-3` | `halonic-ci-fast` | 6 | those of `large-11`, `large-10`, `large-9` | 4 GB → 10 GB | 20 GB |
+| `fast-1` … `fast-3` | `halonic-ci-fast` | 6 | those of `large-11`, `large-10`, `large-9` | 10 GB (fixed) | 20 GB |
 
 The VM has 80 vCPUs (40 cores) and 128 GB. Each slot is pinned to its own vCPUs
 (`--cpuset-cpus`), so a job sees only those (`nproc`, Node's `availableParallelism`) and test
 runners don't start a worker for each of the VM's 80. The eleven large slots take vCPUs 0-65, the
 three small slots share 66-71 (capped at 2 CPUs each), and vCPUs 72-79 are left for the VM itself.
 
-**Memory grows as a job needs it** (since 22 Nov 2026). A container starts at its start size
+**Large and fast slots get their 10 GB from the start** (HAL-15994). With a 4 GB start, jobs that start
+hundreds of processes at once (`changeset version`) outgrew the 3-second step and were killed at
+6 GB, and the kernel's reclaim at `memory.high` pushed the VM's load past 200. A fast slot takes
+a large slot's place, so it doesn't change the total. Eleven large slots at 10 GB plus three small at 3 GB are 119 GB of the VM's 126 GB usable; don't enable more large
+slots without taking memory from somewhere else.
+
+**Small slots' memory grows as a job needs it** (since 22 Nov 2026). A container starts at its start size
 (`MEM_START`). Every 3 s the slot script reads the job's anon + shmem (process memory plus the
 `/tmp` tmpfs; file cache doesn't count, the kernel drops it under pressure). When that comes within
 1.5 GB of the limit, the script raises the limit and swap by 2 GB with `docker update`, up to the

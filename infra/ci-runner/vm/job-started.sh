@@ -12,6 +12,7 @@ CONF=/etc/halonic-ci/pool.conf
 EVENT_FILE=/home/runner/actions-runner/_work/_temp/_github_workflow/event.json  # leak-guard: allow absolute-path written by the runner inside the image
 GATE=/run/halonic-ci-gate/gate.sock  # the VM's queue gate (C7), mounted read-only; it holds the token, we never see it
 MOUNTS=/proc/self/mountinfo
+GATE_TRIES=3; GATE_WAIT=5  # a gate that fails is asked again after 5 s, then 10 s (HAL-15994)
 
 command -v jq >/dev/null 2>&1 || deny "jq missing in image"
 [ -r "$CONF" ] || deny "pool config missing"
@@ -40,7 +41,23 @@ case "$ALLOWED_EVENTS" in *" $kind "*) ;; *) deny "event $kind is off on this po
 WF="${GITHUB_WORKFLOW_REF:-}"
 # The VM's gate answers one of two fixed queries: main's merge queue, or one pull request.
 gate_ready() { command -v curl >/dev/null 2>&1 || deny "curl missing in image"; [ -S "$GATE" ] || deny "queue gate not available"; }
-gate() { curl -fsS --max-time 15 --max-filesize 1048576 --unix-socket "$GATE" "http://halonic-ci-gate/$1"; }
+# The gate answers 502 when its GitHub call failed or timed out, which happens under load
+# (HAL-15994), so only a failed call is asked again, with each try logged. An answer the gate gave
+# is never retried: its verdict (a fork in the group, a pull request not in the queue) stands at
+# once. On failure, gate prints the last try's reason for the refusal.
+gate() {
+  local try res code why=""
+  for try in $(seq "$GATE_TRIES"); do
+    res=$(curl -sS --max-time 15 --max-filesize 1048576 --unix-socket "$GATE" \
+      -w '\n%{http_code}' "http://halonic-ci-gate/$1" 2>&1) && code=${res##*$'\n'} || code=000
+    if [ "$code" = 200 ]; then printf '%s\n' "${res%$'\n'*}"; return 0; fi
+    if [ "$code" = 000 ]; then why="no answer: $(head -c 200 <<<"$res" | tr -d '\r\n' || true)"
+    else why="HTTP $code: $(jq -r '.error // empty' 2>/dev/null <<<"${res%$'\n'*}" | head -c 200 || true)"; fi
+    echo "halonic-ci: queue gate try $try of $GATE_TRIES failed ($why)" >&2
+    if [ "$try" -lt "$GATE_TRIES" ]; then sleep $((GATE_WAIT * try)); fi
+  done
+  printf '%s' "$why"; return 1
+}
 # A shared cache mounted here must be read-only or an overlay (the fast slot's per-job upper layer
 # over the read-only shared folder), never the shared folder itself (C2/C8). Under gVisor, which
 # fast slots run in, every mount shows as its file proxy's ("9p"); there the slot script checks the
@@ -65,7 +82,7 @@ case "$kind" in
     done
     # The event is what GitHub sent when the run started; the gate says what's true now.
     gate_ready
-    answer=$(gate "pr/$pr") || deny "queue gate did not answer"
+    answer=$(gate "pr/$pr") || deny "queue gate did not answer after $GATE_TRIES tries (last: $answer)"
     verdict=$(jq -r --argjson pr "$pr" --arg sha "$head_sha" '
       if (.errors // []) != [] then "GitHub API errors"
       else .data.repository.pullRequest as $p
@@ -90,7 +107,7 @@ case "$kind" in
     # C7: the group's commit holds the code of its own pull request and of every entry ahead of
     # it, so each of those must come from a halonic-com/halonic branch, not a fork.
     gate_ready
-    queue=$(gate queue) || deny "queue gate did not answer"
+    queue=$(gate queue) || deny "queue gate did not answer after $GATE_TRIES tries (last: $queue)"
     verdict=$(jq -r --argjson pr "$pr" --arg sha "$head_sha" '
       if (.errors // []) != [] then "GitHub API errors"
       elif .data.repository.mergeQueue == null then "no merge queue for main"

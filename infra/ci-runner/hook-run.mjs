@@ -28,6 +28,7 @@ export const EVENT_LINE =
   "EVENT_FILE=/home/runner/actions-runner/_work/_temp/_github_workflow/event.json"; // leak-guard: allow absolute-path the hook's event path inside the image
 export const GATE_LINE = "GATE=/run/halonic-ci-gate/gate.sock";
 export const MOUNTS_LINE = "MOUNTS=/proc/self/mountinfo";
+export const WAIT_LINE = "GATE_TRIES=3; GATE_WAIT=5";
 export const shipped = read("vm/job-started.sh");
 const gateSock = join(dir, "gate.sock");
 const gateAnswer = join(dir, "gate-answer.json");
@@ -40,7 +41,8 @@ const hookWith = (name, sock) => {
       .replace(CONF_LINE, `CONF=${conf}`)
       .replace(EVENT_LINE, `EVENT_FILE=${eventFile}`)
       .replace(GATE_LINE, `GATE=${sock}`)
-      .replace(MOUNTS_LINE, `MOUNTS=${mountsFile}`),
+      .replace(MOUNTS_LINE, `MOUNTS=${mountsFile}`)
+      .replace(WAIT_LINE, "GATE_TRIES=3; GATE_WAIT=0"),
   );
   return file;
 };
@@ -48,16 +50,19 @@ const hook = hookWith("job-started.sh", gateSock);
 export const hookNoGate = hookWith("job-started-no-gate.sh", join(dir, "absent.sock"));
 
 // A stand-in for the VM's queue gate, in its own process because spawnSync blocks this one. It
-// answers every request with the status and body in gate-answer.json at that moment, and logs
-// each request's path to gate-asked.log.
+// answers with the status and body in gate-answer.json at that moment (a list of answers is given
+// one per request, the last one again for any after that), and logs each request's path to
+// gate-asked.log.
 const gate = spawn(
   process.execPath,
   [
     "-e",
     `const fs = require("node:fs");
      require("node:http").createServer((req, res) => {
+       const n = fs.readFileSync(process.argv[3], "utf8").split("\\n").filter(Boolean).length;
        fs.appendFileSync(process.argv[3], req.url + "\\n");
-       const { status, body } = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+       const answers = [].concat(JSON.parse(fs.readFileSync(process.argv[2], "utf8")));
+       const { status, body } = answers[Math.min(n, answers.length - 1)];
        res.writeHead(status, { "Content-Type": "application/json" });
        res.end(body);
      }).listen(process.argv[1], () => console.log("ready"));`,
@@ -149,8 +154,8 @@ export const queue = (...entries) =>
 export const QUEUE_OK = queue(own(5), own(7, SHA), [9, "d".repeat(40), "someone", true]);
 
 // Runs the hook. `event` is written to the fixed event path unless it's null; `env`
-// overrides the variables the runner sets; `gate` is the queue gate's answer; `mountinfo` is
-// the job's mount table. The result's `asked` lists the paths the hook asked the gate for.
+// overrides the variables the runner sets; `gate` is the queue gate's answer, or a list of them;
+// `mountinfo` is the job's mount table. The result's `asked` lists the paths the hook asked the gate for.
 export const run = ({
   pool = POOL_PUSH,
   poolMode = 0o444,

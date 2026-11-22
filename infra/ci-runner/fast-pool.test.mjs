@@ -121,7 +121,13 @@ test("fast pool: fails closed when the gate is down or GitHub's API fails", () =
     run({ pool: POOL_FAST, event: events.fastPr, env: PR_ENV, script: hookNoGate }),
     /queue gate not available/,
   );
-  refused(fast({ gate: { status: 502, body: "" } }), /queue gate did not answer/);
+  refused(fast({ gate: { status: 502, body: "" } }), /queue gate did not answer after 3 tries/);
+  // A failed call is asked again (HAL-15994); the answer then decides, a fork still refused.
+  const fail = { status: 502, body: '{"error":"GitHub API call failed"}' };
+  const retried = fast({ gate: [fail, { status: 200, body: livePr() }] });
+  assert.equal(retried.ok, true, retried.out);
+  assert.deepEqual(retried.asked, ["/pr/42", "/pr/42"]);
+  refused(fast({ gate: [fail, { status: 200, body: livePr(FORK) }] }), /outside halonic-com/);
   const errors = JSON.stringify({ errors: [{ message: "rate limited" }] });
   refused(fast({ gate: { status: 200, body: errors } }), /GitHub API errors/);
   const none = JSON.stringify({ data: { repository: { pullRequest: null } } });

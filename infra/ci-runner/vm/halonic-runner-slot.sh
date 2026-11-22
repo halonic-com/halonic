@@ -38,9 +38,9 @@ TRUSTED=/cache/trusted; TRUSTED_PROJ=300; TRUSTED_QUOTA=20g
 [ -f "$KEY" ] && [ ! -L "$KEY" ] || fail "$KEY missing or not a file"
 [ "$(stat -c '%u %a' "$KEY")" = "0 400" ] || fail "$KEY must be owned by root with mode 0400"
 case "$SLOT" in
-  large-*) LABEL=halonic-ci-large; CPUS=6;  MEM=10g; MEM_START=4g; QUOTA=20g; TMPFS=1g ;;
+  large-*) LABEL=halonic-ci-large; CPUS=6;  MEM=10g; MEM_START=10g; QUOTA=20g; TMPFS=1g ;;
   small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=3g;  MEM_START=2g; QUOTA=6g;  TMPFS=512m ;;
-  fast-[1-3]) LABEL=halonic-ci-fast; CPUS=6; MEM=10g; MEM_START=4g; QUOTA=20g; TMPFS=1g ;;
+  fast-[1-3]) LABEL=halonic-ci-fast; CPUS=6; MEM=10g; MEM_START=10g; QUOTA=20g; TMPFS=1g ;;
   *) echo "unknown slot $SLOT" >&2; exit 2 ;;
 esac
 N=${SLOT##*-}
@@ -180,6 +180,9 @@ ANON_PEAK=0
 # 512 MB under the limit, so the kernel reclaims cache and slows the job before the hard limit kills
 # it, which gives this 3-second loop time to grow it. Every slot at MEM still fits the VM, so growth
 # can't overcommit it; the reserve check matters once the VM is made smaller than that.
+# Large slots start at MEM again (HAL-15994): a job that starts hundreds of processes at once
+# (changeset version's git calls) outgrew a 3-second step and was killed at 6 GB. Eleven large
+# slots at 10 GB and three small at 3 GB are 119 GB of the VM's 126; only small slots still grow.
 LIMIT_B=$(numfmt --from=iec "${MEM_START^^}"); MAX_B=$(numfmt --from=iec "${MEM^^}")
 STEP_B=2147483648; HEAD_B=1610612736; RESERVE_B=4294967296; GROWS=0; HIGH_SET=""
 write_state() {
