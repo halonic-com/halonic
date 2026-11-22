@@ -2,10 +2,10 @@
 // `run` and `runs send`: the child a failed run's step failed with
 // (HAL-15555), and the child a waiting run waits on (HAL-15951).
 
+import { providerAddress } from "@halonicjs/adapter-doctor-node";
 import type { RunDetail, RunHistory } from "@halonicjs/app";
 import { workspaceModelsOf } from "@halonicjs/app/run-failure";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
-import { providerAddress } from "../../doctor-workspace.ts";
 import { runViewDefinitions } from "../../run-view.ts";
 import { workflowTitle } from "./listed-run.ts";
 import type { ChildEndings, FailedChildEnding, WaitingChildEnding } from "./show-ending.ts";
