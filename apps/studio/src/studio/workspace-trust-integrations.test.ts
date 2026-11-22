@@ -88,7 +88,7 @@ verifies("studio.workspace-trust-integrations", () => {
     expect(section?.open).toBe(true);
     // The summary doesn't say it will run what Runs says doesn't start.
     expect(review?.summary).toEqual(["Will list 2 addresses."]);
-    expect(row?.lines[1]).toEqual(["Runs", integrationRunsOff]);
+    expect(row?.lines[1]).toEqual(["Runs", integrationRunsOff, "attention"]);
     expect(row?.lines[2]?.[1]).toMatch(/container/);
     expect(row?.lines[3]?.[0]).toBe("");
     // Nothing to confirm: no checkbox, so Trust doesn't wait on one.
@@ -99,7 +99,7 @@ verifies("studio.workspace-trust-integrations", () => {
     const { row } = reviewOf({ state: "not-fenced", reason: "windows" });
 
     expect(row?.lines.slice(1, 4)).toEqual([
-      ["Runs", integrationRunsOff],
+      ["Runs", integrationRunsOff, "attention"],
       ["", "On Windows, integration code can't run in the sandbox in this version of Halonic."],
       ["", "Use Halonic inside WSL 2 on this computer."],
     ]);
@@ -235,5 +235,18 @@ verifies("studio.workspace-trust-integrations", () => {
     view.checkRuns();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(runsOf(view)).toBeUndefined();
+  });
+});
+
+verifies("studio.workspace-trust-integrations-amber", () => {
+  it("puts Runs in the attention tone when it doesn't start, and only Runs", () => {
+    const { row } = reviewOf({ state: "not-fenced", reason: "container" });
+
+    expect(row?.lines.filter((line) => line[2] === "attention")).toEqual([
+      ["Runs", integrationRunsOff, "attention"],
+    ]);
+    expect(reviewOf({ state: "fenced" }).row?.lines.some((line) => line[2] !== undefined)).toBe(
+      false,
+    );
   });
 });

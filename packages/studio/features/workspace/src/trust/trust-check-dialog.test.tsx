@@ -110,3 +110,63 @@ verifies("workspace.trust-check-lines", () => {
     expect(shown(`Gets secrets: ${secretName}`)).toBeDefined();
   });
 });
+
+verifies("workspace.trust-check-unlabelled-lines", () => {
+  const integrations: TrustReview = {
+    ...review,
+    sections: [
+      {
+        heading: "Integrations (1)",
+        open: true,
+        rows: [
+          {
+            id: "home-station",
+            detail: "",
+            lines: [
+              ["Runs", "Doesn't start on this computer.", "attention"],
+              ["", "The reason."],
+              ["Reaches", "a.example"],
+              ["", "b.example"],
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  function open() {
+    act(() =>
+      root.render(
+        <TrustCheckDialog
+          review={integrations}
+          shown={integrations.fingerprint}
+          busy={false}
+          error={undefined}
+          onNotNow={() => {}}
+          onTrust={() => {}}
+          returnFocus={() => null}
+        />,
+      ),
+    );
+  }
+
+  it("a line without a label has no colon, and its value sits in the value column", () => {
+    open();
+
+    expect(shown("Reaches: a.example")).toBeDefined();
+    const second = shown("b.example");
+    expect(second?.textContent).not.toMatch(/:/u);
+    // jsdom has no layout: the value column is the grid's second column, as the first value's.
+    expect(second?.classList.contains("col-start-2")).toBe(true);
+    expect(shown("a.example")?.classList.contains("col-start-2")).toBe(true);
+  });
+
+  it("shows a line in the attention tone in amber, and only that line", () => {
+    open();
+
+    expect(shown("Doesn't start on this computer.")?.classList.contains("text-attention")).toBe(
+      true,
+    );
+    expect(shown("The reason.")?.classList.contains("text-attention")).toBe(false);
+  });
+});
