@@ -2,6 +2,7 @@
 
 - Approval: HAL-15752 (flow check C626 #1 on HAL-15750; wording on an approved screen, decided by the team under HAL-2282); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7qPuQTS8o4cGsr62E4TORo/AcMEJFRi2QBqVI7uyPzRV23/EENwp6/HZ0C4UfsGbcHUj8hEoPFJEo0eezdI/CQ==
 - Task: HAL-15752
 
 ## What changes
