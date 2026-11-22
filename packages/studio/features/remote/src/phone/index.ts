@@ -61,6 +61,13 @@ export {
   type TunnelPairingStart,
 } from "./phone-tunnel.ts";
 export {
+  type ProblemAction,
+  ProblemScreen,
+  type ProblemScreenOf,
+  type ProblemWords,
+  problemWords,
+} from "./problem-screen.tsx";
+export {
   type PhoneRemote,
   RECONNECT_TO_ANSWER,
   type RemoteApproval,

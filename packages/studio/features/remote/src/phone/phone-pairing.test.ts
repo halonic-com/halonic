@@ -26,23 +26,22 @@ verifies("remote.phone-pairing-problems", () => {
       screen: "ended",
       noAllow: false,
     });
-    expect(problemScreen({ kind: "handshake-failed" }, onWifi)).toEqual({
-      screen: "ended",
-      noAllow: false,
-    });
     expect(problemScreen({ kind: "timeout" }, onWifi)).toEqual({
       screen: "ended",
       noAllow: true,
     });
   });
 
-  it("says Too many tries for the computer's rate limit, on both routes (G25)", () => {
-    expect(problemScreen({ kind: "rate-limited" }, scanned)).toEqual({ screen: "rateLimited" });
+  it("gives too many tries, a failed handshake and an unreadable answer their own screens", () => {
     expect(problemScreen({ kind: "rate-limited" }, onWifi)).toEqual({ screen: "rateLimited" });
+    expect(problemScreen({ kind: "handshake-failed" }, scanned)).toEqual({
+      screen: "cantConfirm",
+    });
+    expect(problemScreen({ kind: "unreadable" }, scanned)).toEqual({ screen: "unreadable" });
   });
 
-  it("says Can't confirm when another computer answers a scanned code (G26)", () => {
-    expect(problemScreen({ kind: "handshake-failed" }, scanned)).toEqual({ screen: "cantConfirm" });
+  it("shows the generic screen, not a sentence for the person, for a start the page got wrong", () => {
+    expect(problemScreen({ kind: "bad-start" }, onWifi)).toEqual({ screen: "generic" });
   });
 
   it("tells a code used first apart from Don't allow", () => {
@@ -50,18 +49,29 @@ verifies("remote.phone-pairing-problems", () => {
     expect(problemScreen({ kind: "refused" }, scanned)).toEqual({ screen: "refused" });
   });
 
-  it("says Can't reach for a silent computer or an offline phone, never Don't allow", () => {
+  it("says Can't reach for a silent computer, never Don't allow", () => {
     expect(problemScreen({ kind: "cant-reach", reason: "timeout" }, onWifi)).toEqual({
       screen: "unreachable",
       wifi: true,
-    });
-    expect(problemScreen({ kind: "cant-reach", reason: "network-down" }, scanned)).toEqual({
-      screen: "unreachable",
-      wifi: false,
+      phoneOffline: false,
     });
     expect(problemScreen({ kind: "cant-reach", reason: "refused" }, pairedBefore)).toEqual({
       screen: "unreachable",
       wifi: false,
+      phoneOffline: false,
+    });
+  });
+
+  it("makes the check about the phone when its own network is down", () => {
+    expect(problemScreen({ kind: "cant-reach", reason: "network-down" }, scanned)).toEqual({
+      screen: "unreachable",
+      wifi: false,
+      phoneOffline: true,
+    });
+    expect(problemScreen({ kind: "cant-reach", reason: "network-down" }, onWifi)).toEqual({
+      screen: "unreachable",
+      wifi: true,
+      phoneOffline: true,
     });
   });
 });

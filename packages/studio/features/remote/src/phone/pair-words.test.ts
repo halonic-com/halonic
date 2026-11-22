@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import { MAKE_NEW_CODE } from "../pairing/pairing-words.ts";
 import { pairWords } from "./pair-words.ts";
 
 const laptop = "Tim's laptop";
@@ -18,6 +19,11 @@ verifies("remote.phone-pairing-problems", () => {
     expect(pairWords.rateLimited.title(laptop)).toBe("Too many tries on Tim's laptop");
     expect(pairWords.cantConfirm.title(laptop)).toBe("Can't confirm it's Tim's laptop");
     expect(pairWords.cantConfirm.body(laptop)).toContain("same network as Tim's laptop");
+  });
+
+  it("sends the person to the button the computer's ended code shows, by its name (C618)", () => {
+    expect(pairWords.ended.body).toContain(`choose **${MAKE_NEW_CODE}**`);
+    expect(pairWords.ended.bodyNoAllow(laptop)).toContain(`choose **${MAKE_NEW_CODE}**`);
   });
 
   it("names the computer on Check the code and Paired", () => {

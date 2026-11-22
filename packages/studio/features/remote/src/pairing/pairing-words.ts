@@ -94,9 +94,10 @@ export const NOT_ALLOWED_TITLE = "Pairing was not allowed";
 export const NOT_ALLOWED_LINE =
   "You pressed Don't allow, so nothing was shared. If your phone showed no code, someone else may have scanned it: they were not let in. Here is a new code.";
 
+/** Not "Too many …": the phone's "Too many tries" means wait a minute and keep the code (C618). */
 export const TOO_MANY_TRIES: EndedWords = {
-  title: "Too many wrong tries",
-  line: "The code was typed wrong 5 times, so it no longer works. Nothing was shared. Make a new code, then try again.",
+  title: "The code was typed wrong 5 times",
+  line: "A code stops working after 5 wrong tries. Nothing was shared. Make a new code, then try again.",
   action: MAKE_NEW_CODE,
 };
 export const BUSY: EndedWords = {
