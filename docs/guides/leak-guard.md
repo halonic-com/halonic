@@ -41,9 +41,9 @@ that holds a term as `[withheld]`.
 - **Also in CI**, a separate `Secret scan (gitleaks)` job scans the commits of
   every pull request, merge queue run and push to `main` with gitleaks, a
   second opinion on secrets only. It also fails `ci-ok`. It uses gitleaks'
-  default rules from `.github/actions/gitleaks/gitleaks.toml` and no ignore
-  list, so a `.gitleaks.toml` or `.gitleaksignore` in a pull request changes
-  nothing.
+  default rules from `.github/actions/gitleaks/gitleaks.toml`, no ignore
+  list and no inline `gitleaks:allow` comments, so a `.gitleaks.toml`,
+  `.gitleaksignore` or `gitleaks:allow` in a pull request changes nothing.
 
 `pnpm install` installs the hooks. It points git's `core.hooksPath` at
 `tooling/check/hooks`, for this clone only. There is no hook framework.

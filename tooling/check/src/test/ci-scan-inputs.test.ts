@@ -11,7 +11,19 @@ describe("the gitleaks action", () => {
 
   test("reads its rules and ignore list from its own folder, never from the scanned checkout", () => {
     expect(action).toContain('-v "$GITHUB_ACTION_PATH:/action:ro"');
-    expect(action).toContain("--config /action/gitleaks.toml --gitleaks-ignore-path /action)");
+    expect(action).toContain(
+      "--config /action/gitleaks.toml --gitleaks-ignore-path /action --ignore-gitleaks-allow)",
+    );
+  });
+
+  test("removes the checkout's own ignore list before the scan, since gitleaks reads it anyway", () => {
+    const remove = action.indexOf('rm -f "$GITHUB_WORKSPACE/.gitleaksignore"');
+    expect(remove).toBeGreaterThan(-1);
+    expect(remove).toBeLessThan(action.indexOf("docker run"));
+  });
+
+  test("ignores inline gitleaks:allow comments in the lockfile scan too", () => {
+    expect(action).toMatch(/stdin [^\n]*--ignore-gitleaks-allow/);
   });
 
   test("uses gitleaks' default rules, with no allow list of its own", () => {

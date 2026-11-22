@@ -8,8 +8,12 @@
 
 - **Secret scan (gitleaks).** The action passes `--config` and `--gitleaks-ignore-path` from its
   own folder, mounted read-only into the container. `gitleaks.toml` there extends gitleaks'
-  default rules and adds nothing, and the folder holds no `.gitleaksignore`, so a
-  `.gitleaks.toml` or `.gitleaksignore` in the scanned checkout is not read.
+  default rules and adds nothing, and the folder holds no `.gitleaksignore`. gitleaks
+  also reads a `.gitleaksignore` at the top of the scanned folder whatever that flag says,
+  so the action deletes it from the checkout before the scan (the scan is the job's last
+  step). Both scans pass `--ignore-gitleaks-allow`, so inline `gitleaks:allow` comments
+  excuse nothing. A `.gitleaks.toml`, `.gitleaksignore` or `gitleaks:allow` in a pull
+  request changes nothing.
 - **Android screen capture.** Without a run ID, the newest `android-debug-apk` is taken only from a
   run whose head repository is this repository, as well as on the branch `main`.
 - **Turbo cache Worker.** A GitHub OIDC token buys a write or queue token only when its
