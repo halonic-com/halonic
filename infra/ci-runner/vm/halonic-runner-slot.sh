@@ -40,7 +40,7 @@ TRUSTED=/cache/trusted; TRUSTED_PROJ=300; TRUSTED_QUOTA=20g
 case "$SLOT" in
   large-*) LABEL=halonic-ci-large; CPUS=6;  MEM=16g; MEM_START=6g; QUOTA=20g; TMPFS=1g ;;
   small-*) LABEL=halonic-ci-small; CPUS=2;  MEM=3g;  MEM_START=2g; QUOTA=6g;  TMPFS=512m ;;
-  fast-[1-3]) LABEL=halonic-ci-fast; CPUS=6; MEM=16g; MEM_START=6g; QUOTA=20g; TMPFS=1g ;;
+  fast-[1-9]|fast-10) LABEL=halonic-ci-fast; CPUS=6; MEM=16g; MEM_START=6g; QUOTA=20g; TMPFS=1g ;;
   *) echo "unknown slot $SLOT" >&2; exit 2 ;;
 esac
 N=${SLOT##*-}
@@ -51,8 +51,11 @@ case "$SLOT" in large-*) PROJ=$((100+N));; small-*) PROJ=$((200+N));; fast-*) PR
 # On the 112-vCPU VM (since 22 Nov 2026, 16 cores moved from Paperclip), the eleven large slots take
 # 0-65, the three small slots share 66-71, each capped at 2 CPUs (--cpus), large-15..19 take 72-101,
 # and 102-111 stay free for the VM itself (Docker, systemd, the status feed).
-# A fast slot takes the CPUs of a large slot from the top (fast-1 those of large-11, fast-2 of
-# large-10, fast-3 of large-9), so run either one, never both (checked at the top).
+# fast-1..3 take the CPUs of a large slot from the top (fast-1 those of large-11, fast-2 of
+# large-10, fast-3 of large-9), so run either one, never both (checked at the top). fast-4..8 share
+# the CPUs of large-15..19, and fast-9 (15-20) and fast-10 (39-44) straddle two large slots each, as
+# large-12..14 do: on purpose, since fast slots sit idle between pull requests; when both are busy,
+# both run slower.
 case "$SLOT" in
   large-12) CPUSET="3-8" ;;
   large-13) CPUSET="27-32" ;;
@@ -60,6 +63,9 @@ case "$SLOT" in
   large-1[5-9]) CPUSET="$(( 72+(N-15)*6 ))-$(( 77+(N-15)*6 ))" ;;
   large-*) CPUSET="$(( (N-1)*6 ))-$(( N*6-1 ))" ;;
   small-*) CPUSET="66-71" ;;
+  fast-[4-8]) CPUSET="$(( 72+(N-4)*6 ))-$(( 77+(N-4)*6 ))" ;;
+  fast-9)  CPUSET="15-20" ;;
+  fast-10) CPUSET="39-44" ;;
   fast-*)  CPUSET="$(( (11-N)*6 ))-$(( (12-N)*6-1 ))" ;;
 esac
 # Fast slots take pull requests (HAL-15972), so they get their own pool config, and the other
@@ -234,6 +240,11 @@ while kill -0 "$DPID" 2>/dev/null; do
       fi
     fi
     procs=$(for p in $(cat "$cg/cgroup.procs" 2>/dev/null); do cat "/proc/$p/comm" 2>/dev/null; done || true)
+    # Under gVisor the VM sees only the sandbox's own processes (gvisor_sentry, exe), so a fast
+    # slot asks inside the container, as the runner user, until its job has started.
+    if [ "$JOB_START" = 0 ] && [ "$LABEL" = halonic-ci-fast ]; then
+      procs=$(timeout 5 docker exec "hci-$SLOT" timeout 3 sh -c 'cat /proc/[0-9]*/comm' 2>/dev/null || true)
+    fi
     if [ "$JOB_START" = 0 ] && [[ "$procs" == *Runner.Worker* ]]; then
       JOB_START=$(date +%s)
     fi

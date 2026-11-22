@@ -199,7 +199,7 @@ test("a job container starts at MEM_START and grows only up to MEM, with swap ke
   // UTC with this, and #4976 cut the biggest job (Fast gates) to under 1 GB. A fixed 10 GB start on
   // 19 large slots would allow 190 GB on a 128 GB VM with no free-memory check below 10 GB.
   assert.match(slot, /^ {2}large-\*\).* MEM=16g; MEM_START=6g; /m);
-  assert.match(slot, /^ {2}fast-\[1-3\]\).* MEM=16g; MEM_START=6g; /m);
+  assert.match(slot, /^ {2}fast-\[1-9\]\|fast-10\).* MEM=16g; MEM_START=6g; /m);
   assert.match(slot, /^ {2}small-\*\).* MEM=3g; {2}MEM_START=2g; /m);
   assert.ok(slot.includes('--memory "$MEM_START" --memory-swap "$MEM_START"'));
   assert.doesNotMatch(slot, /--memory "\$MEM" /);
