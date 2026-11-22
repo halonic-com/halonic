@@ -215,8 +215,8 @@ test("fast pool: fast slots run under gVisor, on their own network, with their o
   );
   const socket = read("vm/halonic-ci-gate-fast.socket");
   assert.match(socket, /^ListenStream=\/run\/halonic-ci-gate-fast\/gate\.sock$/m);
-  assert.match(socket, /^MaxConnections=4$/m);
-  assert.match(socket, /^PollLimitBurst=10$/m);
+  assert.match(socket, /^MaxConnections=10$/m);
+  assert.match(socket, /^PollLimitBurst=30$/m);
   const unit = read("vm/halonic-ci-gate-fast@.service");
   assert.match(unit, /^ExecStart=\/usr\/local\/sbin\/halonic-ci-gate\.sh --pr-only$/m);
   // The same sandboxing as the merge queue's gate, apart from the description and the mode.
