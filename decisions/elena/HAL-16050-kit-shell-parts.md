@@ -2,6 +2,7 @@
 
 - Approval: Noah, the kit's owner, asked for `size?: "sm" | "lg"` on `LetterTile` in his answer on HAL-16050 (the 48px product tile drawn in the S2 look, HAL-13209); Julian signs this note in his review of halonic#5016
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:moVlurHzZxRs+sXsaMrdvTfkSlWimaMFCdmxGOt0aF93e25ZGK+WA0euftoew+GyOdOTeI0J14tjkupjZiEBDg==
 - Task: HAL-16050
 
 ## What changes
