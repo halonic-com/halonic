@@ -3,6 +3,7 @@
 - Task: HAL-15584
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15584 (a team decision with no board card, HAL-2282 rule: wording on the approved New agents run setting and sandbox-not-ready banner, from Iris's flow check C596 on HAL-15568, item 1, using Sofia's line from HAL-13232)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KNhfKh+RAi2j89C1666JNB2t81itV/czOV82QM/h4d22zsFIEmlfJMZWPue7lh6kn7v+bK1LwObtu6ZvXYl8Bw==
 
 ## What changes
 
