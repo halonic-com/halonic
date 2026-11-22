@@ -145,7 +145,7 @@ export function provideFolderServices(
   services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
   services.provide(
     ProviderCheckService,
-    new WorkspaceProviderCheck(new ShellHttpClient(ipc), () => trust.isTrusted()),
+    new WorkspaceProviderCheck(new ShellHttpClient(ipc), trust),
   );
   const transport = tauriAgentHostTransport(window);
   provideWorkspaceRuns(services, { ipc, files, window, remoteEngine, transport, trust }, location);

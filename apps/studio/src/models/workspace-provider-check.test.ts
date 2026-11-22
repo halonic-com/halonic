@@ -14,8 +14,13 @@ function client(answer: () => Promise<Response>) {
   };
 }
 
-const trusted = () => true;
-const notTrusted = () => false;
+/** The workspace's trust, which never changes in these tests. */
+function trustOf(isTrusted: boolean) {
+  return { isTrusted: () => isTrusted, subscribe: () => () => {} };
+}
+
+const trusted = trustOf(true);
+const notTrusted = trustOf(false);
 
 verifies("models.providers.check", () => {
   it("names the address of a provider's base URL or its type's usual one", () => {
@@ -73,5 +78,49 @@ verifies("models.providers.check", () => {
       "http://127.0.0.2:8080/v1/models",
       "http://[::1]:8080/v1/models",
     ]);
+  });
+
+  it("says Check waits for trust only for an address off this computer, until the workspace is trusted", () => {
+    const on = (baseUrl: string) => ({ type: "openai-compatible", baseUrl });
+    const waiting = new WorkspaceProviderCheck(
+      client(async () => new Response("")),
+      notTrusted,
+    );
+    const open = new WorkspaceProviderCheck(
+      client(async () => new Response("")),
+      trusted,
+    );
+
+    expect(waiting.waitsForTrust(on("http://192.168.1.20:11434/v1"))).toBe(true);
+    expect(waiting.waitsForTrust(on("http://localhost:11434/v1"))).toBe(false);
+    expect(waiting.waitsForTrust({ type: "openai-compatible" })).toBe(false);
+    expect(open.waitsForTrust(on("http://192.168.1.20:11434/v1"))).toBe(false);
+  });
+
+  it("tells the page when the workspace's trust changes", () => {
+    const listeners: (() => void)[] = [];
+    let isTrusted = false;
+    const check = new WorkspaceProviderCheck(
+      client(async () => new Response("")),
+      {
+        isTrusted: () => isTrusted,
+        subscribe: (listener) => {
+          listeners.push(listener);
+          return () => {};
+        },
+      },
+    );
+    let changes = 0;
+    check.subscribe(() => {
+      changes += 1;
+    });
+
+    isTrusted = true;
+    for (const listener of listeners) listener();
+
+    expect(changes).toBe(1);
+    expect(
+      check.addressOf({ type: "openai-compatible", baseUrl: "http://192.168.1.20:11434/v1" }),
+    ).toBe("192.168.1.20:11434");
   });
 });

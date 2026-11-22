@@ -16,6 +16,8 @@ import type {
   UnfencedYesAsk,
 } from "./workspace-trust-control.ts";
 
+const NOT_NOW = "Not now";
+
 /** The props of {@link TrustCheckDialog}. */
 export interface TrustCheckDialogProps {
   readonly review: TrustReview;
@@ -32,6 +34,12 @@ export interface TrustCheckDialogProps {
    * unticks the box, also when the status read again names the same reason (C665-54).
    */
   readonly yesNotSaved?: number | undefined;
+  /**
+   * Counts the times **Trust** saved nothing because the workspace changed under the open check:
+   * from the first one on, the notice that it changed stays, and each one moves focus to
+   * **Not now**, so a double press can't trust the new check unread (C711).
+   */
+  readonly changedRefused?: number | undefined;
 }
 
 /**
@@ -89,6 +97,7 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
   const yesId = useId();
   const refusedId = useId();
   const needsConfirm = review.unpinned.length > 0;
+  const changed = useChangedNotice(review, props.shown, props.changedRefused ?? 0);
   let unavailable: { readonly reason: string } | undefined;
   if (review.refused !== undefined) {
     unavailable = { reason: refusedId };
@@ -102,7 +111,7 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
       title={markedText(review.title)}
       size="md"
       closeButton={false}
-      cancelLabel="Not now"
+      cancelLabel={NOT_NOW}
       confirm={{
         label: "Trust",
         busyLabel: "Trusting…",
@@ -118,15 +127,15 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
       {/* A folder's path, a program's name or a secret's name can be one long run with nowhere to
           break. It breaks anywhere instead, so a phone-narrow window never scrolls the dialog
           sideways (WCAG 1.4.10, HAL-13186). Words that fit don't change. */}
-      <div className="flex flex-col gap-4 wrap-anywhere">
+      <div ref={changed.body} className="flex flex-col gap-4 wrap-anywhere">
         <p className="m-0 text-small text-fg-muted">
           <Marked text={review.source} />
         </p>
-        {review.fingerprint === props.shown ? null : (
+        {changed.say ? (
           <Callout tone="info">
             This workspace changed while you were reviewing it. Check the new version.
           </Callout>
-        )}
+        ) : null}
         {review.unreadable === undefined ? null : (
           <Callout tone="warning">{review.unreadable}</Callout>
         )}
@@ -173,6 +182,29 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
       </div>
     </Dialog>
   );
+}
+
+/**
+ * Whether to say the workspace changed under the open check: while the check shown isn't the one
+ * opened, and from the first **Trust** refused for it on, which also moves focus to **Not now**
+ * each time (C711). `body` goes on the dialog's body, to find **Not now** from.
+ */
+function useChangedNotice(review: TrustReview, shown: string, refused: number) {
+  const body = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (refused === 0) return;
+    notNowOf(body.current)?.focus();
+  }, [refused]);
+  return { body, say: review.fingerprint !== shown || refused > 0 };
+}
+
+/**
+ * The dialog's **Not now**. The kit's Dialog focuses it only when it opens, so it's found by its
+ * label among the footer's buttons, which on a phone come in another order.
+ */
+function notNowOf(body: HTMLElement | null): HTMLButtonElement | undefined {
+  const buttons = body?.closest("dialog")?.querySelectorAll<HTMLButtonElement>("footer button");
+  return [...(buttons ?? [])].find((button) => button.textContent === NOT_NOW);
 }
 
 /**

@@ -199,6 +199,32 @@ verifies("models.providers.check", () => {
     expect(noAddress.textContent).toBe("");
   });
 
+  it("says Check waits for trust until the workspace is trusted, then shows Check without reopening", async () => {
+    let trusted = false;
+    const listeners = new Set<() => void>();
+    const check = {
+      ...checkAnswering(true),
+      addressOf: () => (trusted ? "192.168.1.20:11434" : undefined),
+      waitsForTrust: () => !trusted,
+      subscribe: (onChange: () => void) => {
+        listeners.add(onChange);
+        return () => listeners.delete(onChange);
+      },
+    };
+    const lan = { ...ollama, type: "openai-compatible", options: {} };
+    const view = await show(check, lan);
+
+    expect(view.textContent).toBe("You can check this address once you trust this workspace.");
+    expect(view.querySelector("p")?.className).toContain("text-fg-muted");
+    expect(view.querySelector("button")).toBeNull();
+
+    trusted = true;
+    act(() => {
+      for (const listener of listeners) listener();
+    });
+    expect(button(view).textContent).toMatch(/^Check(?! again)/);
+  });
+
   it("on a phone shows a full-width button and the result as a chip with its line, no dot", async () => {
     const view = await show(checkAnswering(true, false), ollama, true);
     expect(button(view).className).toContain("w-full");

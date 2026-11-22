@@ -1,164 +1,24 @@
 // @vitest-environment jsdom
 
-import { createToastStore } from "@halonicjs/studio-kit";
-import { createShell, StudioWorkspace } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import {
-  type MountedWorkspaceWindow,
-  mountWorkspaceWindow,
-} from "../switcher/mount-workspace-window.tsx";
-import { RecentWorkspaces } from "../switcher/recent-workspaces.ts";
-import { WorkspaceSwitcher } from "../switcher/workspace-switcher.ts";
-import { TrustAsks } from "./trust-asks.ts";
-import type {
-  TrustGrantResult,
-  TrustReview,
-  WorkspaceTrustControl,
-} from "./workspace-trust-control.ts";
+  badge,
+  button,
+  control,
+  dialog,
+  review,
+  setPhoneWindow,
+  setUpTrustBadgeWindow,
+  show,
+  tearDownTrustBadgeWindow,
+  windowElement,
+} from "./trust-badge.test-helper.tsx";
+import type { WorkspaceTrustControl } from "./workspace-trust-control.ts";
 
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-
-let element: HTMLElement;
-let mounted: MountedWorkspaceWindow | undefined;
-let restoreMedia: () => void = () => {};
-/** Whether the window is as narrow as a phone, where the status bar doesn't show. */
-let phoneWindow = false;
-
-beforeEach(() => {
-  const original = window.matchMedia;
-  window.matchMedia = (query) =>
-    ({
-      media: query,
-      matches: phoneWindow,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-    }) as unknown as MediaQueryList;
-  restoreMedia = () => {
-    window.matchMedia = original;
-  };
-  Element.prototype.scrollIntoView ??= () => {};
-  // jsdom has no <dialog> methods.
-  HTMLDialogElement.prototype.showModal ??= function showModal(this: HTMLDialogElement) {
-    this.setAttribute("open", "");
-  };
-  HTMLDialogElement.prototype.close ??= function close(this: HTMLDialogElement) {
-    this.removeAttribute("open");
-  };
-  element = document.createElement("div");
-  document.body.append(element);
-});
-
-afterEach(() => {
-  act(() => mounted?.unmount());
-  mounted = undefined;
-  element.remove();
-  restoreMedia();
-  phoneWindow = false;
-});
-
-const review: TrustReview = {
-  title: "Trust Acme?",
-  source: "Acme · /work/acme",
-  changed: false,
-  summary: ["Will start 1 program."],
-  sections: [
-    {
-      heading: "Programs (1)",
-      open: true,
-      rows: [{ id: "files", detail: "npx -y files", lines: [], warning: undefined }],
-    },
-  ],
-  fingerprint: "hfp1:abc",
-  unpinned: [],
-  footnote: "Programs you trust run with your access.",
-};
-
-/** A trust control that answers as the test says and records what was granted. */
-function control(initial: TrustReview | undefined, grant?: () => Promise<TrustGrantResult>) {
-  let current = initial;
-  const listeners = new Set<() => void>();
-  const granted: string[] = [];
-  const value: WorkspaceTrustControl = {
-    asks: new TrustAsks(),
-    get badge() {
-      return current === undefined ? "none" : "not-trusted";
-    },
-    status: current === undefined ? "trusted" : "not-trusted",
-    trustedAt: undefined,
-    failure: undefined,
-    retry: async () => {},
-    review: () => current,
-    remove: async () => ({ ok: true }),
-    grant: async (fingerprint) => {
-      granted.push(fingerprint);
-      return grant === undefined ? { ok: true } : grant();
-    },
-    subscribe: (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-  };
-  return {
-    value,
-    granted,
-    set(next: TrustReview | undefined) {
-      current = next;
-      for (const listener of listeners) listener();
-    },
-  };
-}
-
-async function show(trust: WorkspaceTrustControl) {
-  const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
-  const switcher = new WorkspaceSwitcher({
-    pickFolder: async () => undefined,
-    openFolder: async () => ({
-      name: "Acme",
-      workspace: new StudioWorkspace({
-        toasts: createToastStore(),
-        services: {
-          provide: () => {},
-          get: () => {
-            throw new Error("none");
-          },
-          has: () => false,
-        },
-        name: "Acme",
-      }),
-      trust,
-      dispose: async () => {},
-    }),
-    recent: new RecentWorkspaces({ getItem: () => null, setItem: () => {} }),
-    toasts: shell.toasts,
-  });
-  act(() => {
-    mounted = mountWorkspaceWindow(element, {
-      shell,
-      switcher,
-      platform: "windows",
-      language: "en",
-    });
-  });
-  await act(() => switcher.openLocation("/work/acme"));
-  return shell;
-}
-
-function badge(): HTMLButtonElement | null {
-  return element.querySelector<HTMLButtonElement>('button[aria-label="Not trusted yet. Review"]');
-}
-
-function dialog(): HTMLDialogElement | null {
-  return document.querySelector("dialog[open]");
-}
-
-function button(label: string): HTMLButtonElement | undefined {
-  return [...document.querySelectorAll("dialog button")].find(
-    (candidate): candidate is HTMLButtonElement =>
-      candidate.textContent?.trim().startsWith(label) === true,
-  );
-}
+beforeEach(setUpTrustBadgeWindow);
+afterEach(tearDownTrustBadgeWindow);
 
 verifies("workspace.trust-badge", () => {
   it("shows nothing before the first check or once the workspace is trusted", async () => {
@@ -221,11 +81,11 @@ verifies("workspace.trust-badge", () => {
   it("words a workspace that changed after it was trusted as Changed, with Review changes", async () => {
     const base = control(review).value;
     await show({ ...base, badge: "changed", status: "changed" });
-    const changed = element.querySelector<HTMLButtonElement>(
+    const changed = windowElement().querySelector<HTMLButtonElement>(
       'button[aria-label="Changed since you trusted it. Review changes"]',
     );
     expect(changed).not.toBeNull();
-    expect(element.textContent).not.toContain("Not trusted yet");
+    expect(windowElement().textContent).not.toContain("Not trusted yet");
   });
 
   it("shows a failed check with its reason and runs it again from Try again", async () => {
@@ -240,7 +100,7 @@ verifies("workspace.trust-badge", () => {
         retried += 1;
       },
     });
-    const failed = element.querySelector<HTMLButtonElement>(
+    const failed = windowElement().querySelector<HTMLButtonElement>(
       "button[aria-label^=\"Couldn't load workspace settings · the folder isn't there any more\"]",
     );
     expect(failed).not.toBeNull();
@@ -290,60 +150,6 @@ verifies("workspace.trust-badge", () => {
     await act(async () => button("Trust")?.click());
 
     expect(dialog()?.textContent).toContain("the URL has user info");
-    expect(trust.granted).toEqual([]);
-  });
-
-  it("shows the new check, and says so, when the workspace changes under an open dialog", async () => {
-    const trust = control(review);
-    await show(trust.value);
-    act(() => badge()?.click());
-
-    act(() =>
-      trust.set({ ...review, fingerprint: "hfp1:def", summary: ["Will start 2 programs."] }),
-    );
-
-    expect(dialog()?.textContent).toContain(
-      "This workspace changed while you were reviewing it. Check the new version.",
-    );
-    expect(dialog()?.textContent).toContain("Will start 2 programs.");
-  });
-
-  it("saves nothing for a check that changed after it was shown, and saves the new one next", async () => {
-    const trust = control(review);
-    await show(trust.value);
-    act(() => badge()?.click());
-    act(() =>
-      trust.set({ ...review, fingerprint: "hfp1:def", summary: ["Will start 2 programs."] }),
-    );
-
-    await act(async () => button("Trust")?.click());
-    // The dialog's alert slot fills a frame later.
-    await act(async () => {
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-    });
-
-    expect(trust.granted).toEqual([]);
-    expect(dialog()?.textContent).toContain(
-      "Couldn't save trust: this workspace changed. Nothing was started.",
-    );
-    expect(dialog()?.textContent).not.toContain("This workspace changed while you were reviewing");
-    await act(async () => button("Trust")?.click());
-    expect(trust.granted).toEqual(["hfp1:def"]);
-  });
-
-  it("clears the confirmation when the check changes under an open dialog", async () => {
-    const unpinned = { ...review, unpinned: ["files"] };
-    const trust = control(unpinned);
-    await show(trust.value);
-    act(() => badge()?.click());
-    const tick = () => document.querySelector<HTMLInputElement>('dialog input[type="checkbox"]');
-    act(() => tick()?.click());
-    expect(tick()?.checked).toBe(true);
-
-    act(() => trust.set({ ...unpinned, fingerprint: "hfp1:def" }));
-
-    expect(tick()?.checked).toBe(false);
-    await act(async () => button("Trust")?.click());
     expect(trust.granted).toEqual([]);
   });
 
@@ -411,7 +217,7 @@ verifies("workspace.trust-asked", () => {
   });
 
   it("opens the check in a phone-narrow window", async () => {
-    phoneWindow = true;
+    setPhoneWindow();
     const trust = control(review);
     await show(trust.value);
 
@@ -435,7 +241,7 @@ verifies("workspace.trust-asked", () => {
     });
 
     expect(badge()).toBeNull();
-    expect(document.activeElement).toBe(element.querySelector("main h1"));
+    expect(document.activeElement).toBe(windowElement().querySelector("main h1"));
     Reflect.deleteProperty(HTMLElement.prototype, "showPopover");
     Reflect.deleteProperty(HTMLElement.prototype, "hidePopover");
   });
