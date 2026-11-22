@@ -3,6 +3,7 @@
 - Task: HAL-15786 (flow check C630 #2, HAL-15782)
 - Approval: team wording (HAL-2282), building on R16's approved Take back; Elena decided the words with Sofia on HAL-15786; Liam signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:AASbWCpCxXFrfSz8SXuty0ZkCMXxvW5skPmPG/YXEoS+168DGWBxDVOUOQxi+3jSGlwCS65b4HiRsfZe1yCyAg==
 
 ## What changes
 
