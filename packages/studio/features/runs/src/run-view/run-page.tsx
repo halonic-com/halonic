@@ -18,6 +18,7 @@ import { Details, type DetailsProps, DetailsRow } from "./details.tsx";
 import { detailRows } from "./details-model.ts";
 import { EveryStep, useRunLog } from "./every-step.tsx";
 import { entryIdOfStep, everyStep, type StepEntry } from "./every-step-model.ts";
+import { useFailedChild } from "./failed-child.ts";
 import { useHasVersions } from "./has-versions.ts";
 import { openModelsOf } from "./open-models.ts";
 import { openPluginOf } from "./open-plugin.ts";
@@ -189,6 +190,7 @@ export function RunView({
   const logRead = useRunLog(list.source, runId, run?.summary.lastSeq ?? 0, state);
   const gone = useRunGone(list, runId, state.loaded && run === undefined);
   const log = logRead.events;
+  const failedChild = useFailedChild(list, run, log, state, now);
   const [openEntry, setOpenEntry] = useOpenEntry(runId, step, asked, log, run?.summary);
   useRedrawWhenSlow(log, run?.summary.status === "running", now);
   useEffect(() => list.noteOpened(runId), [list, runId]);
@@ -229,6 +231,7 @@ export function RunView({
           runAgainInBanner={bannerOffersRunAgain(run, context, log, entries, {
             asksTrust: true,
             phone,
+            failedChild,
             reviewInInbox,
             openRun,
           })}
@@ -248,6 +251,7 @@ export function RunView({
             openBudget={openBudget}
             phone={phone}
             onSeeStep={setOpenEntry}
+            failedChild={failedChild}
           />
           <DamagedLogBanner line={logRead.damagedLine} />
           <div
