@@ -85,10 +85,8 @@ export async function listRoutines(
     };
   }
   const dir = givenDir(input, workspace);
-  const trust = await workspaceTrustState(
-    workspace,
-    setup.trust(),
-    await savedVersionOf(workspace, loaded),
+  const trust = await workspaceTrustState(workspace, setup.trust(), () =>
+    savedVersionOf(workspace, loaded),
   );
   const row: RowOptions = { withHub: spansHubs(routines), paused: !startsHere(trust.state) };
   const blocked = await webhookRoutinesThatWontStart(loaded, context.secrets);
