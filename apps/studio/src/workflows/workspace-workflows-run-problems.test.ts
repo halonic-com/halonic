@@ -70,7 +70,7 @@ verifies("studio.workspace-workflows", () => {
       expect(Object.values(errors).every((count) => count > 0)).toBe(true);
     });
 
-    it("stops a workflow while one it calls has an error, and gives it on Configuration", async () => {
+    it("stops a workflow while one it calls has an error, and gives it on Configuration with its file", async () => {
       const { host } = acme({
         "hubs/acme/workflows/triage.workflow.yaml": `version: 2\n${workflowFile("triage", "    agent: sorter\n")}`,
       });
@@ -78,9 +78,13 @@ verifies("studio.workspace-workflows", () => {
       const settings = await host.configuration({ hubId: "acme", id: "reply" });
 
       expect(await errorsById(host)).toMatchObject({ reply: 1, "weekly-report": 0 });
-      // The called workflow's step isn't one of reply's.
+      // The called workflow's step isn't one of reply's; its file is what the band names (HAL-15343).
       expect(settings.problems).toEqual([
-        expect.objectContaining({ severity: "error", stepId: undefined }),
+        expect.objectContaining({
+          severity: "error",
+          stepId: undefined,
+          file: "hubs/acme/workflows/triage.workflow.yaml",
+        }),
       ]);
     });
 

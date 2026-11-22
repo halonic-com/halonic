@@ -12,9 +12,9 @@ type Agent = LoadedFileOf<"agent">;
 
 /**
  * The problems of one workflow as its page shows them (`studio.workflow-problem-agent`): its own
- * file's, with the step each is about, and the errors of the agents its steps name, with the agent
- * and, for the agent's own model alias the workspace doesn't have, that alias (UX check S7,
- * HAL-12412).
+ * file's, with the step each is about, and the errors elsewhere that stop its run, with the file
+ * they are in (HAL-15343) and, for an agent its steps name, the agent and, for the agent's own model
+ * alias the workspace doesn't have, that alias (UX check S7, HAL-12412).
  */
 export function workflowProblemsOf(
   workspace: LoadedWorkspace,
@@ -30,6 +30,7 @@ export function workflowProblemsOf(
       // A called workflow's file has steps too, but they aren't this workflow's.
       stepId:
         issue.file === file.path && issue.path[0] === "states" ? String(issue.path[1]) : undefined,
+      ...(issue.file !== "" && issue.file !== file.path && { file: issue.file }),
       ...(agent && agentFacts(agent, issue)),
     };
   });

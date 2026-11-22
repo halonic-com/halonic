@@ -160,6 +160,16 @@ export const pageWords = {
     },
     openAgent: (agent: string) => `Open ${agent}`,
     /**
+     * The problems band's line for another file whose errors stop the workflow (C544-3,
+     * HAL-15343, decided by the team): "*Writer* has 1 problem that stops it.", named as the
+     * shared list of files with errors names it, with **Open writer.agent.yaml**.
+     */
+    blockingFile: (file: string, errors: number) =>
+      errors === 1
+        ? `${file} has 1 problem that stops it.`
+        : `${file} has ${errors} problems that stop it.`,
+    openFile: (fileName: string) => `Open ${fileName}`,
+    /**
      * The first line of the band for a run the files say Studio can't start (C471-1). The reason
      * starts with an agent's name, so it keeps its capital (E5).
      */

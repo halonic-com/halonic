@@ -2,6 +2,7 @@
 // the command that starts the workflow in a terminal (rule N5, HAL-12363; C471-1 and HAL-14739).
 
 import { Callout, CommandBox, inlineLinkClasses } from "@halonicjs/studio-kit";
+import type { FileWithErrors } from "@halonicjs/studio-shell";
 import { type ReactNode, useId } from "react";
 import type {
   StartRefusal,
@@ -66,23 +67,31 @@ export function missingAliasOf(problems: readonly WorkflowProblem[]): MissingAli
  * they stop every way to run it, a terminal's too: "*Support reply* can't run: it has 2 problems."
  * then, as the start card says it, "Fix them before it can run." (C544-3), with **Open Problems**.
  * When one of them is an agent's missing model alias, the next line names the agent and the alias,
- * with **Open *Writer*** (UX check S7, HAL-12412). Only the first line describes **Run**. Nothing
- * while it has none.
+ * with **Open *Writer*** (UX check S7, HAL-12412). When one is in another file, a line names that
+ * file, "*Writer* has 1 problem that stops it.", with **Open writer.agent.yaml**, which opens the
+ * file at its first error (C544-3, HAL-15343). Only the first line describes **Run**. Nothing while
+ * it has none.
  */
 export function ProblemsBand({
   name,
   problems: { id, errors },
   missingAlias,
+  blockingFile,
   onOpen,
   openAgent,
+  openFileAt,
 }: {
   readonly name: string;
   readonly problems: { readonly id: string; readonly errors: number };
   readonly missingAlias?: MissingAlias | undefined;
+  /** Another file with errors that stop the workflow, from the shared list (`blockingFileOf`). */
+  readonly blockingFile?: FileWithErrors | undefined;
   /** Shows Configuration's Problems, with the focus on Problems in its page list. */
   readonly onOpen: () => void;
   /** Opens the agent's page; without it the line names the agent with no link. */
   readonly openAgent?: ((agentId: string) => void) | undefined;
+  /** Opens a file at a line (1-based); without it the line names the file with no link. */
+  readonly openFileAt?: ((path: string, line: number) => void) | undefined;
 }) {
   if (errors === 0) return null;
   return (
@@ -95,12 +104,46 @@ export function ProblemsBand({
       {missingAlias === undefined ? null : (
         <MissingAliasLine missingAlias={missingAlias} openAgent={openAgent} />
       )}
+      {blockingFile === undefined ? null : (
+        <BlockingFileLine file={blockingFile} openFileAt={openFileAt} />
+      )}
     </CantRunBand>
   );
 }
 
-/** **Open *Writer*** ends the sentence on a desktop and sits on its own line on a phone. */
-const openAgentLine = "phone:block";
+/** **Open *Writer*** and **Open *file*** end the sentence on a desktop and sit on their own line on a phone. */
+const openLinkLine = "phone:block";
+
+/** "*Writer* has 1 problem that stops it." · **Open writer.agent.yaml**, at its first error. */
+function BlockingFileLine({
+  file,
+  openFileAt,
+}: {
+  readonly file: FileWithErrors;
+  readonly openFileAt: ((path: string, line: number) => void) | undefined;
+}) {
+  const words = pageWords.cantRun;
+  const fileName = file.path.slice(file.path.lastIndexOf("/") + 1);
+  return (
+    <span className="block" data-testid="blocking-file">
+      {words.blockingFile(file.name, file.errors)}
+      {openFileAt === undefined ? null : (
+        <>
+          {" "}
+          <span className={openLinkLine}>
+            <button
+              type="button"
+              className={inlineLinkClasses}
+              onClick={() => openFileAt(file.path, file.firstError.line)}
+            >
+              {words.openFile(fileName)}
+            </button>
+          </span>
+        </>
+      )}
+    </span>
+  );
+}
 
 /** "*Writer* uses the model alias `smrt`, which this workspace doesn't have. …" · **Open *Writer***. */
 function MissingAliasLine({
@@ -121,7 +164,7 @@ function MissingAliasLine({
           {" "}
           {/* On a phone the link is 48 px tall, which would push its line down inside the
               sentence, so it gets a line of its own there (C564 B). */}
-          <span className={openAgentLine}>
+          <span className={openLinkLine}>
             <button type="button" className={inlineLinkClasses} onClick={() => openAgent(agent.id)}>
               {words.openAgent(agent.name)}
             </button>
