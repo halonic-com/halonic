@@ -25,6 +25,29 @@ export function isCloudPath(file: string): boolean {
   return cloudPathPatterns.some((pattern) => pattern.test(file));
 }
 
+/**
+ * The cloud paths whose pull requests still run the live suites before
+ * review (HAL-15970): the provider adapters and targets the suites exercise,
+ * the suites themselves, the deploy command and the live workflow with the
+ * code that runs it. A failure there is likely, and in the merge queue it
+ * would rebuild every group behind it. The shared paths (`packages/host`,
+ * `core/ports`, the target contracts) run them in the merge queue only.
+ */
+export const pullRequestLivePatterns: readonly RegExp[] = [
+  /^packages\/adapters\/cloudflare-[^/]+\//,
+  /^packages\/adapters\/store-s3\//,
+  /^packages\/targets\//,
+  /^packages\/testing\/cloudflare-live\//,
+  /^apps\/cli\/src\/commands\/deploy\//,
+  /^\.github\/workflows\/live-cloud\.yml$/,
+  /^tooling\/check\/src\/(cli|lib)\/(cloud-affected|cloud-paths|live-sweep|live-resources|live-probe)\.ts$/,
+];
+
+/** True when a pull request that changes this file runs the live suites before review. */
+export function isPullRequestLivePath(file: string): boolean {
+  return pullRequestLivePatterns.some((pattern) => pattern.test(file));
+}
+
 /** The changed files that are cloud paths, sorted. */
 export function cloudAffectedFiles(changed: readonly string[]): string[] {
   return changed.filter(isCloudPath).sort();

@@ -1,8 +1,10 @@
 # Re-runs CI's "Live cloud suites passed" job on a pull request (HAL-14858).
-# On a ready pull request that changes a cloud path, that job fails at once
-# until live-cloud.yml's `live-cloud` job passed on the pull request's head,
-# so `ci-ok` is red and the queue session doesn't queue it. It doesn't wait on
-# a runner: runners are shared with the merge queue (HAL-12419).
+# On a ready pull request that changes what the live suites exercise directly
+# (cloud-affected's `on-pull-request`; other cloud changes run them only in
+# the merge queue, HAL-15970), that job fails at once until live-cloud.yml's
+# `live-cloud` job passed on the pull request's head, so `ci-ok` is red and
+# the queue session doesn't queue it. It doesn't wait on a runner: runners
+# are shared with the merge queue (HAL-12419).
 #
 # A run can only be re-run once it has ended, so this re-runs the job, and
 # with it `ci-ok`, when the second of the two ends: the live suites passing
