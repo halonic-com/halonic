@@ -117,10 +117,15 @@ verifies("cli.listed-tool-approval", () => {
       report("mail", [...waiting, { source: "mail", name: "send" }]);
 
       expect(lines).toHaveLength(2);
-      expect(plainText(lines[0] as Phrase)).toMatch(/^! The tools lookup of mail wait/);
-      expect(plainText(lines[0] as Phrase)).toContain("halonic tools review mail");
-      expect(plainText(lines[0] as Phrase)).toContain("lookup");
-      expect(plainText(lines[1] as Phrase)).toContain("lookup, send");
+      expect(plainText(lines[0] as Phrase)).toBe(
+        "! The tool lookup of mail is off until you review it. To review it, run halonic tools review mail",
+      );
+      // One name reads in the singular, never "The tools lookup … wait".
+      expect(plainText(lines[0] as Phrase)).not.toContain("The tools");
+      expect(plainText(lines[0] as Phrase)).not.toContain("them");
+      expect(plainText(lines[1] as Phrase)).toBe(
+        "! The tools lookup, send of mail are off until you review them. To review them, run halonic tools review mail",
+      );
     });
   });
 });

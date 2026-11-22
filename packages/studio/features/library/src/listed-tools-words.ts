@@ -91,6 +91,11 @@ export const listedToolsWords = {
     count === 1
       ? "1 tool is off until you review it"
       : `${count} tools are off until you review them`,
+  /**
+   * The line on the connector's page when no tool waits and some are on, above **Review tools**,
+   * which opens the review to remove an approval. The words end the CLI's review the same way.
+   */
+  toolsOn: (count: number) => (count === 1 ? "1 tool is on." : `${count} tools are on.`),
   /** The line on the connector's page when the review can't open its rows: **Review tools** or **Try again** follows it. */
   waitingNotice: {
     listingRefused: "Couldn't use this server's tool list, so none of its listed tools are on.",

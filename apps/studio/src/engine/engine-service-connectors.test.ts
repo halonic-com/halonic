@@ -211,6 +211,19 @@ verifies("studio.engine-service", () => {
       await service.close();
     });
 
+    it("say once that the tools that wait are off until reviewed, one or several", () => {
+      const lines: string[] = [];
+      const report = libraryWaitingReporter((line) => lines.push(line));
+      const lookup = { source: "mail", name: "lookup" };
+      report("mail", [lookup]);
+      report("mail", [lookup]);
+      report("mail", [lookup, { source: "mail", name: "send" }]);
+      expect(lines).toEqual([
+        'The tool lookup of the connector "mail" is off until you review it. To review it, open the connector in the Library.',
+        'The tools lookup, send of the connector "mail" are off until you review them. To review them, open the connector in the Library.',
+      ]);
+    });
+
     it("put a tool that waits on the Library's refusals list", async () => {
       const definitions = writerWithMail();
       const refusals = new RefusalsFeed();

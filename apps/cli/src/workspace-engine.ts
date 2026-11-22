@@ -355,7 +355,7 @@ function computerRunConnectors(
 }
 
 /**
- * The engine's `reportWaiting`: a warning naming the command that approves
+ * The engine's `reportWaiting`: a warning naming the command that reviews
  * the tools a turn left out, shown with or without `--debug`. A run asks
  * about them at every step, so each warning is written once for each
  * connector and set of tools.
@@ -363,7 +363,7 @@ function computerRunConnectors(
  * @example
  * const reportWaiting = waitingReporter((line) => context.warn(line));
  * reportWaiting("notes", [{ source: "notes", name: "lookup" }]);
- * // ! The tools lookup of notes wait for your approval and stay off. To approve them, run halonic tools review notes
+ * // ! The tool lookup of notes is off until you review it. To review it, run halonic tools review notes
  */
 export function waitingReporter(
   warn: (line: Phrase) => void,
@@ -376,7 +376,7 @@ export function waitingReporter(
     told.add(key);
     const line = runMessages.toolsWaiting(
       printable(connector),
-      names,
+      waiting.map((tool) => tool.name),
       `halonic tools review ${printable(connector)}`,
     );
     warn(phrase`${markPart("needsYou")} ${line.phrase}`);

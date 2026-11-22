@@ -109,17 +109,17 @@ verifies("library.status-section", () => {
       const { host } = fakeHost({ connectors: [notes], refusals: [refusal(1)], waiting });
       const { root } = await openSection(host);
       const headings = [...root.querySelectorAll("h2")].map((heading) => heading.textContent);
-      expect(headings).toEqual(["Recent refusals", "Waiting for approval"]);
+      expect(headings).toEqual(["Recent refusals", "Off until you review them"]);
       const group = root.querySelectorAll("ul")[1];
       expect([...(group?.querySelectorAll("li") ?? [])].map((item) => item.textContent)).toEqual([
-        '"lookup" stays off until you approve it.',
-        '"<b>send</b>" stays off until you approve it.',
+        '"lookup" stays off until you review it.',
+        '"<b>send</b>" stays off until you review it.',
       ]);
       expect(group?.querySelector("b")).toBeNull();
 
       const none = fakeHost({ connectors: [notes], refusals: [refusal(1)] });
       const quiet = await openSection(none.host);
-      expect(quiet.root.textContent).not.toContain("Waiting for approval");
+      expect(quiet.root.textContent).not.toContain("Off until you review them");
     });
 
     it("shows the time of each refusal", async () => {

@@ -4,9 +4,9 @@ import { clockTime } from "@halonicjs/studio-feature-inbox/api";
 export const statusWords = {
   refusalsHeading: "Recent refusals",
   /** Under "Recent refusals": the listed tools that wait for a person's approval. */
-  waitingHeading: "Waiting for approval",
+  waitingHeading: "Off until you review them",
   /** One tool of the group; the name was cut and escaped by the engine. The connector is the page's title, so it isn't named. */
-  waitingLine: (name: string) => `"${name}" stays off until you approve it.`,
+  waitingLine: (name: string) => `"${name}" stays off until you review it.`,
   /** The feed lives in memory and starts at launch, so the line says "since Halonic started". */
   nothingRefused: "Nothing refused since Halonic started.",
   /** Under a full list, so the user can tell the list stops there. */
