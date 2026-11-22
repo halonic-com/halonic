@@ -3,6 +3,7 @@
 - Task: HAL-15864
 - Approval: HAL-15864; Liam reviews this pull request and signs this note as the CTO (a team decision under HAL-2282: flow check C642 #3 on HAL-15857 asks for the way back that #4855 gave a cancelled child, with no new words)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:566SjNZXnQdB97f4dcl1YCb/gonfMg9JA/XVKAnPbIQ940ZTaIgvWHSzveKrX4HLBYEiTK/7gwhHQu/Lf8DRCw==
 
 ## What changes
 
