@@ -109,6 +109,16 @@ function secretsFileCommand(file: string): string {
 }
 
 /**
+ * `halonic models allow-address` for a key and an origin, to paste into a terminal. A key's name
+ * needs no quotes (`secretKey`'s rule); an origin is quoted, POSIX style, unless it is only
+ * letters, digits and `.:/_-`, so an IPv6 host's brackets aren't read as a pattern.
+ */
+function allowAddressCommand(key: string, origin: string): string {
+  const word = /^[\w./:-]+$/u.test(origin) ? origin : `'${origin.replaceAll("'", "'\\''")}'`;
+  return `halonic models allow-address ${key} ${word}`;
+}
+
+/**
  * The failed banners by cause (microcopy 22 F6, F7, F8, F10, F15, F20, F21). The reason the engine
  * gives never shows: it goes into Copy details, which the banner doesn't have yet.
  */
@@ -208,7 +218,8 @@ export const failureWords = {
   unknownModelAliasFix: "Add it in Models, or set a model on the agent.",
   /**
    * `models.key-origin-not-allowed` (HAL-15523): the CLI's first line (`cli.run-failure`), then the
-   * fix in Studio, where a key's addresses are on the Models page rather than a command.
+   * fix by the list that refused (HAL-15762): the keychain's is on the Models page, the profile's
+   * secrets file's only takes the command, and a cause that doesn't say names both.
    */
   keyOriginNotAllowed: (
     workflow: string,
@@ -220,6 +231,12 @@ export const failureWords = {
     `${workflow} failed in the step ${step}: provider ${provider} can't send key "${key}" to ${origin}. That address isn't allowed for this key.`,
   keyOriginNotAllowedFix: (key: string, origin: string) =>
     `To allow it, add ${origin} to the addresses of key "${key}" in Models, then run again. Only allow an address you recognise.`,
+  keyOriginNotAllowedCommandFix: (key: string, origin: string, phone: boolean) =>
+    `To allow it, run ${allowAddressCommand(key, origin)} ${phone ? "on your computer" : "in a terminal"}, then run again. Only allow an address you recognise.`,
+  keyOriginNotAllowedEitherFix: (key: string, origin: string, phone: boolean) =>
+    `To allow it, ${phone ? "on your computer " : ""}add ${origin} to the addresses of key "${key}" in Models, or run ${allowAddressCommand(key, origin)}${phone ? "" : " in a terminal"} if the key is in the profile's secrets file, then run again. Only allow an address you recognise.`,
+  /** The command Copy command copies for a key's address (HAL-15762). */
+  allowAddressCommand,
   copyCommand: "Copy command",
   openModels: "Open Models",
   modelOutOfMemory: (provider: string, model: string) =>

@@ -153,27 +153,85 @@ verifies("runs.run-view.failure-banners", () => {
     });
 
     describe("a key whose addresses leave out its provider's (HAL-15523)", () => {
-      const refused = setupFailure("models.key-origin-not-allowed", {
-        provider: "gateway",
-        key: "gw-key",
-        origin: "https://gw.example.com",
-      });
+      const refusedBy = (store?: string) =>
+        setupFailure("models.key-origin-not-allowed", {
+          provider: "gateway",
+          key: "gw-key",
+          origin: "https://gw.example.com",
+          ...(store === undefined ? {} : { store }),
+        });
+      const cause =
+        "Support reply failed in the step Draft: provider gateway can't send key \"gw-key\" to https://gw.example.com. That address isn't allowed for this key.";
+      const command = "halonic models allow-address gw-key https://gw.example.com";
+      const noRunAgain = (banner: ReturnType<typeof causeBanner>) =>
+        banner?.kind === "callout" && banner.noRunAgain;
 
-      it("names the key and the address, as the CLI does, with Open Models in place of Run again", () => {
-        const banner = causeBanner(refused, undefined, context, false);
+      it("names the key and the address, as the CLI does, with Open Models in place of Run again for the keychain's list", () => {
+        const banner = causeBanner(refusedBy("keychain"), undefined, context, false);
         expect(lines(banner)).toEqual([
-          "Support reply failed in the step Draft: provider gateway can't send key \"gw-key\" to https://gw.example.com. That address isn't allowed for this key.",
+          cause,
           'To allow it, add https://gw.example.com to the addresses of key "gw-key" in Models, then run again. Only allow an address you recognise.',
         ]);
         expect(fixes(banner)).toEqual([{ kind: "open-models" }]);
-        expect(banner?.kind === "callout" && banner.noRunAgain).toBe(true);
+        expect(noRunAgain(banner)).toBe(true);
       });
 
-      it("says to fix it in Models on the computer on a phone, with no button", () => {
-        const banner = causeBanner(refused, undefined, context, true);
+      it("says to fix the keychain's list in Models on the computer on a phone, with no button", () => {
+        const banner = causeBanner(refusedBy("keychain"), undefined, context, true);
         expect(lines(banner)?.at(-1)).toBe("Fix this on your computer: Models");
         expect(fixes(banner)).toBeUndefined();
-        expect(banner?.kind === "callout" && banner.noRunAgain).toBe(true);
+        expect(noRunAgain(banner)).toBe(true);
+      });
+
+      // Models edits only the keychain's lists, so it can't change the profile's (HAL-15762).
+      it("gives the command with Copy command, not Models, for the profile's secrets file's list", () => {
+        const banner = causeBanner(refusedBy("secrets-file"), undefined, context, false);
+        expect(lines(banner)).toEqual([
+          cause,
+          `To allow it, run ${command} in a terminal, then run again. Only allow an address you recognise.`,
+        ]);
+        expect(fixes(banner)).toEqual([{ kind: "copy-command", command }]);
+        expect(noRunAgain(banner)).toBe(true);
+      });
+
+      it("says to run the command on the computer on a phone, with no button", () => {
+        const banner = causeBanner(refusedBy("secrets-file"), undefined, context, true);
+        expect(lines(banner)).toEqual([
+          cause,
+          `To allow it, run ${command} on your computer, then run again. Only allow an address you recognise.`,
+        ]);
+        expect(fixes(banner)).toBeUndefined();
+        expect(noRunAgain(banner)).toBe(true);
+      });
+
+      it("names both fixes when the cause doesn't say which list refused", () => {
+        const banner = causeBanner(refusedBy(), undefined, context, false);
+        expect(lines(banner)).toEqual([
+          cause,
+          `To allow it, add https://gw.example.com to the addresses of key "gw-key" in Models, or run ${command} in a terminal if the key is in the profile's secrets file, then run again. Only allow an address you recognise.`,
+        ]);
+        expect(fixes(banner)).toEqual([{ kind: "open-models" }, { kind: "copy-command", command }]);
+        expect(noRunAgain(banner)).toBe(true);
+        const phone = causeBanner(refusedBy("a-store-nobody-knows"), undefined, context, true);
+        expect(lines(phone)?.at(-1)).toBe(
+          `To allow it, on your computer add https://gw.example.com to the addresses of key "gw-key" in Models, or run ${command} if the key is in the profile's secrets file, then run again. Only allow an address you recognise.`,
+        );
+        expect(fixes(phone)).toBeUndefined();
+      });
+
+      it("quotes an address the shell would read as a pattern", () => {
+        const run = setupFailure("models.key-origin-not-allowed", {
+          provider: "gateway",
+          key: "gw-key",
+          origin: "http://[::1]:8080",
+          store: "secrets-file",
+        });
+        expect(fixes(causeBanner(run, undefined, context, false))).toEqual([
+          {
+            kind: "copy-command",
+            command: "halonic models allow-address gw-key 'http://[::1]:8080'",
+          },
+        ]);
       });
     });
 

@@ -34,6 +34,24 @@ verifies("app.run-failure", () => {
         key: "gw-key",
         address: origin,
       });
+      // The list that refused, when the cause names one Halonic knows (HAL-15762).
+      expect(
+        facts("models.key-origin-not-allowed", {
+          provider,
+          key: "gw-key",
+          origin,
+          store: "secrets-file",
+        }),
+      ).toEqual({
+        reason: "key-address-not-allowed",
+        provider,
+        key: "gw-key",
+        address: origin,
+        store: "secrets-file",
+      });
+      expect(
+        facts("models.key-origin-not-allowed", { provider, key: "gw-key", origin, store: "vault" }),
+      ).toEqual({ reason: "key-address-not-allowed", provider, key: "gw-key", address: origin });
       expect(facts("models.untrusted-provider-address", { provider, origin })).toEqual({
         reason: "key-address-not-trusted",
         provider,

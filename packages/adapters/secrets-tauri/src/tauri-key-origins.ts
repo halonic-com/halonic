@@ -16,6 +16,8 @@ import { callShell } from "./shell-call.ts";
  * missing or refuses is a {@link KeychainError}.
  */
 export class TauriKeyOrigins implements KeyOrigins {
+  /** The keychain's lists, which Studio's Models edits. */
+  readonly store = "keychain";
   readonly #shell: TauriShell;
 
   /** @param shell - the shell's IPC, usually `window.__TAURI_INTERNALS__` */

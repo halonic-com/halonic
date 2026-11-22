@@ -293,7 +293,13 @@ export async function requireKeyMayGo(
       "key-origin-not-allowed",
       modelTexts.originNotAllowed(destination.provider, file.secret, destination.origin),
       modelTexts.originNotAllowedFix(file.secret, destination.origin),
-      { provider: destination.provider, key: file.secret, origin: destination.origin },
+      {
+        provider: destination.provider,
+        key: file.secret,
+        origin: destination.origin,
+        // Which list refused, so a host names the fix that changes it (HAL-15762).
+        ...(context.keyOrigins.store === undefined ? {} : { store: context.keyOrigins.store }),
+      },
     );
   }
 }
