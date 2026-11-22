@@ -27,7 +27,8 @@ export function withoutProblems(
 
 /**
  * Leaves out the routines whose files have errors, on every tick, and
- * prints "✕ Friday digest can't start · halonic validate" the first time
+ * prints "✕ Friday digest can't start until its file is fixed · halonic
+ * validate" the first time
  * each one is left out. A routine whose file is fixed starts again from
  * that tick on, and gets its line again if it breaks again.
  */

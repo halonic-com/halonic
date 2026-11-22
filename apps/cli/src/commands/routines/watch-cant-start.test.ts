@@ -103,7 +103,7 @@ verifies("cli.commands.routines.watch", () => {
     const { io, signals, watching } = startWatch(time);
     await waitUntil("the first watch lines", () => io.stdout.length === 2, slowWatch);
     expect(io.stdout).toEqual([
-      "✕ Friday digest can't start · halonic validate",
+      "✕ Friday digest can't start until its file is fixed · halonic validate",
       "Watching 1 routine in Acme. Stop with Ctrl C.",
     ]);
 

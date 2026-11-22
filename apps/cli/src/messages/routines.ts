@@ -114,11 +114,13 @@ export const routinesMessages = defineMessages("routines", {
     phrase`Watching ${counted(onAClock, "routine", "routines")} in ${workspace}. Stop with Ctrl C.`,
   /**
    * A line of `watch` for a routine whose file has errors, in the list's
-   * words: the watch leaves it out and starts the others (HAL-15372).
-   * "✕ Friday digest can't start · halonic validate". `dir` is the user's own `--dir`.
+   * words: the watch leaves it out, runs the others on time (HAL-15372) and
+   * starts it again by itself once its file is fixed (C609).
+   * "✕ Friday digest can't start until its file is fixed · halonic validate".
+   * `dir` is the user's own `--dir`.
    */
   routineCantStart: (name: string, dir?: string) =>
-    phrase`${markPart("failed")} ${name} can't start ${markPart("separator")} ${suggestedCommand("validate", dir)}`,
+    phrase`${markPart("failed")} ${name} can't start until its file is fixed ${markPart("separator")} ${suggestedCommand("validate", dir)}`,
   /**
    * The line under {@link watching} for each webhook routine that is on: the
    * watch never starts it, `halonic serve` does (HAL-14299).
