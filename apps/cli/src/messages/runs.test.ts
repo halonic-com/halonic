@@ -60,6 +60,23 @@ describe("runs's sentences", () => {
     ]);
   });
 
+  it("says a child run was cancelled because the run that started it ended, and where to see that run (HAL-15555)", () => {
+    const cancelled = (at: CancelledAt) =>
+      words(runsMessages.showCancelledWithParent("Support reply", at));
+    expect([
+      cancelled({ kind: "in-step", step: "Classify" }),
+      cancelled({ kind: "before-step", step: "Classify" }),
+      cancelled({ kind: "before-start" }),
+    ]).toEqual([
+      "Support reply was cancelled because the run that started it ended. Nothing after the step Classify ran.",
+      "Support reply was cancelled because the run that started it ended. The step Classify didn't start.",
+      "Support reply was cancelled because the run that started it ended.",
+    ]);
+    expect(words(runsMessages.showParentRun("4f2a1b", "./acme"))).toBe(
+      "See the run that started it: halonic runs show --dir ./acme 4f2a1b",
+    );
+  });
+
   it("has runs show's help line and its action", () => {
     expect(words(runsMessages.showSummary())).toBe("Show what one run did");
     expect(words(runsMessages.showAction("01jd8q"))).toBe("show run 01jd8q");
