@@ -39,7 +39,7 @@ verifies("agent-host-client.plugins", () => {
         status: 403,
         kind: "plugin_stopped",
         message:
-          "Halonic stopped this plugin: its sandbox didn't hold, so it didn't run. Try again to check the sandbox again.",
+          "Halonic stopped this plugin: the sandbox didn't work when it started, so none of it ran.",
       });
     });
 

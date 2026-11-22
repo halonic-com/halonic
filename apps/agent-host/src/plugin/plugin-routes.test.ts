@@ -72,7 +72,7 @@ verifies("agent-host.plugin-routes", () => {
         error: {
           kind: "plugin_stopped",
           message:
-            "Halonic stopped this plugin: its sandbox didn't hold, so it didn't run. The next call tries the sandbox again.",
+            "Halonic stopped this plugin: the sandbox didn't work when it started, so none of it ran. The next call tries the sandbox again.",
         },
       });
     });

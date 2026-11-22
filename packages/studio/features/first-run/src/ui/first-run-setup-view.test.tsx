@@ -173,7 +173,7 @@ verifies("first-run.setup-item", () => {
     expect(toasts.list()).toMatchObject([
       {
         tone: "info",
-        title: "First run dismissed",
+        title: "First run dismissed.",
         text: "To bring it back, pick Help › First run › Show the guide.",
       },
     ]);
