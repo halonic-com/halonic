@@ -78,6 +78,7 @@ Who we defend against:
 | A malicious or careless **workspace** (cloned, shared, a dependency) | define connectors, routines, workflows and prompts; ask for programs to run |
 | **Untrusted content** that reaches a model: mail, documents, web pages, tool results, tool listings | steer the model's output and so its tool calls |
 | A **server you connect to** (MCP server, integration backend) | write the names and descriptions of its tools; return anything |
+| A **plugin** you add, often written by someone else | ship a backend, programs and text Studio draws; change its files after you trust it |
 | A **harness program** (Claude Code, Codex) steered by that content, or a careless command it runs | run any command in its sandbox, as you, and try to reach out of it |
 | A **malicious web page** you visit | make your browser send requests to `localhost` and your network |
 | **Anyone on the internet**, once something listens publicly | send any request, at any rate |
@@ -100,6 +101,7 @@ them.
 | B6 | client to `serve` | HTTP from browsers, phones, scanners | [5](#5-serve-b6) |
 | B7 | owner to cloud deployment | deploy credentials, workspace files, runtime data | [6](#6-cloud-deployments-b7) |
 | B8 | agent sandbox to host | model calls, tool calls, approvals, blocked access | [4.6](#46-agents-in-a-sandbox-b8), [4.7](#47-sandbox-backends-on-windows-b8) |
+| B9 | plugin to Halonic | a plugin's files, its backend's calls, its local tools' programs, the text Studio draws | [4.8](#48-plugins-b9) |
 
 ## 4. Threats per boundary
 
@@ -939,6 +941,44 @@ session has no deny on its git hooks until HAL-11305 closes it.
   `windows-2025` runner, WSL can't set up mirrored networking and falls back to
   none (`0x803b0015`).
 
+### 4.8 Plugins (B9)
+
+A plugin is a folder someone else often wrote, which you add to your profile.
+Its backend runs in the integration worker, its local tools in a sandbox
+session, and Studio draws its `ui` as text. [Plugins and security](plugins.md)
+explains the fences; these are the threats, part by part. The attack tests
+named here run in CI on every pull request, and those under a `fence` folder in
+a real sandbox. Plugin secrets and sign-ins are in
+[4.4](#44-secrets-tokens-and-outbound-calls-b4) and [4.6](#46-agents-in-a-sandbox-b8).
+
+| Threat | Mitigation | Mark |
+| --- | --- | --- |
+| A plugin's files change after you trusted it: a file edited, added, hidden, renamed, moved or swapped | The fingerprint covers the manifest and every file, by path and SHA-256, so any change turns the plugin off until you trust it again. A link or special file anywhere refuses the whole folder | **On `main`** (`app.plugin-trust`, `contracts.trust-fingerprint`; `packages/core/app/src/plugin-trust-attacks.test.ts`) |
+| A workspace or another program trusts or adds a plugin for you, or adding one writes outside the plugins folder | Adding a plugin copies it into the profile's plugins folder only; the trust record lives in the profile, which a workspace can't write. The CLI's installer refuses unsafe names, links, `.git`, and a plugins or staging folder that is a link | CLI **On `main`** (`app.plugin-add`, `fs-node.plugin-folder`, `fs-node.plugin-folder-plain`); Studio's installer, which follows no link either, **On `main`** (`apps/studio`; `studio.src-tauri.plugin-folder-place`, still a draft) |
+| A plugin changes between the trust check and a start | A backend's every start, also after an idle stop, reads the folder and checks trust again; a local tool's every session does too, and runs from a copy of the files it just checked | **On `main`** (`app.plugin-backend`, `app.trusted-runner-start`, `app.plugin-local-tools`, `connector-stdio-sandbox.local-tool-plugin-copy`; `apps/cli/src/plugin-local-tool-attacks.test.ts`, `apps/agent-host/src/plugin/host-plugin-local-tool-attacks.test.ts`, `apps/cli/fence/plugin-local-tool-attacks.fence.test.ts`) |
+| A backend reaches past the kit: an undeclared host, Node's modules, another plugin's secret | The backend runs in the worker, never in Halonic's process; the kit is its only way out (see 4.4). Its secrets are only its own `plugin__<id>__…` names, and only tools the manifest declares are offered | **On `main`** (`integration-runner.plugin-backend`, `integration-kit.plugin-secrets`, `integration-kit.declared-hosts-only`; `packages/adapters/integration-runner/fence/runner-attacks.test.ts`, `packages/adapters/integration-runner/src/halonic/kit-attacks.test.ts`) |
+| Plugin code runs without the sandbox | Every start goes through `RunnerStartGate`. A failed sandbox check means `stopped`, never a fallback. The yes to run without the sandbox isn't offered: its store holds nothing | **On `main`** (`app.runner-start-gate`, `app.no-unfenced-run-consent`) |
+| Once that yes is offered, taking it back in one app leaves code running in another | Each process reads the saved yes again every second while it has runs without the sandbox and stops them when it's gone or was given again; Take back waits for starts in progress, and a stop that never returns doesn't end the checks | **On `main`** (`app.unfenced-runs`, `app.runner-start-gate`; `packages/core/app/src/unfenced-run-attacks.test.ts`); no host offers the yes yet |
+| A local tool reads your credentials, Halonic's data, its own plugin folder or another plugin, or changes its copy | Halonic builds the place: new working and temporary folders, a read-only copy of the checked files, denied paths for credential folders, Halonic's data and the plugins, and a refusal of a copy that overlaps any of them, compared with links resolved | **On `main`** (`connector-stdio-sandbox.plugin-local-tool-place`, `connector-stdio-sandbox.plugin-local-tool-denied-paths`, `harness-kit.home-denied-paths`, `system-node.path-overlap`; `packages/adapters/connector-stdio-sandbox/fence/plugin-local-tool-place-attacks.test.ts`) |
+| A local tool reaches a host its manifest doesn't declare | The network is the bridge and the declared hosts only | **On `main`** (`connector-stdio-sandbox.plugin-local-tool-place`; the two fence tests above) |
+| A plugin's setting or secret replaces `HOME`, `PATH` or a temporary folder | The manifest check refuses a local tool `env` that sets them, and Halonic's own variables are set last, so they win in any letter case | **On `main`** (`format.plugin-checks`, `connector-stdio-sandbox.local-tool-profile`; `apps/cli/src/plugin-local-tool-attacks.test.ts`) |
+| A local tool runs where its fence isn't proven | Local tools run only fenced: a session whose proof isn't `fenced` starts nothing and the call fails with the reason | **On `main`** (`app.plugin-local-tools`, `cli.plugin-local-tools`, `agent-host.plugin-local-tools`) |
+| Plugin text becomes markup or script in Studio | Studio draws plugin text as text or through its own small Markdown reader. A source guard keeps HTML sinks, `window.open` and page changes out of the plugins feature, and links on `ExternalLink` only | **On `main`** (`plugins.plugin-text`; `packages/studio/features/plugins/src/no-raw-markup.test.ts`, `labels.never-html.test.tsx`, `ui/plugin-result.never-html.test.tsx`) |
+| A plugin link opens something other than a web page | `ExternalLink` allows only `http` and `https`, by the rule the Markdown reader shares | **On `main`** (`kit.external-link-web-only`) |
+| A plugin's name imitates another's with control characters or text-direction marks | The manifest check refuses them in names, labels, titles and descriptions, and Studio isolates each such text | **On `main`** (`format.plugin-file`, `plugins.plugin-text`) |
+| A plugin's command or card calls a tool that changes or sends something | A `ui` that calls a `write` or `send` tool is refused | **On `main`** (`format.plugin-ui-read-tools`) |
+
+**Known limit.** On Linux, a credential folder you create while a local tool's
+session runs stays readable to that session until it ends (at most 10
+minutes), because the sandbox there can only hide a folder that is already
+there. The next session hides it (`harness-kit.home-denied-paths`).
+
+**Known limit.** The fingerprint covers file contents, not file modes, empty
+folders or a second name for a file (a hard link). A backend that loads a file
+in the middle of a call reads it then; the next call or start sees a change.
+[Plugins and security](plugins.md#what-this-does-not-protect-against) lists
+these with the rest of what trust doesn't cover.
+
 ## 5. `serve` (B6)
 
 `halonic serve` is built (phase 4, plan HAL-9) and run from source. This
@@ -1046,6 +1086,9 @@ cloud provider is trusted. An export folder is plain personal data on your disk.
   [4.6](#46-agents-in-a-sandbox-b8) in the same pull request. A new sandbox
   adapter (a VM, Halonic Cloud) or a new system it supports gets its own entry
   under "Linux, macOS and Windows" before it is called supported.
+- A pull request that changes how plugins are trusted, added or run checks
+  [4.8](#48-plugins-b9) and [Plugins and security](plugins.md) in the same
+  pull request.
 - A new deployment shape adds a section here before it is called supported.
 - Write only what ships, as in [writing docs](../guides/writing-docs.md). Say
   **Planned** for the rest.
