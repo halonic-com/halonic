@@ -23,3 +23,10 @@ When the `seats.forecast` job forecasts the seats, the seats forecast shall walk
 - Given an agent whose model has no fit,
   when its seat is forecast,
   then it adds no points and is listed as uncalibrated.
+
+## Limits of the input data
+
+Both are small next to the forecast's 10-minute steps, so neither the forecast nor its accuracy scores correct for them.
+
+- **Moves show up late.** A move to another seat is seen only at the next 10-minute `seats.history` run, so tokens used between the real move and that run count on the old seat.
+- **Very late cost rows are missed.** Each `seats.history` run sums the last hour of cost rows again, so a cost row written more than an hour after its time is never counted.

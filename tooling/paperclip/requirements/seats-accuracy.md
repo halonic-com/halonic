@@ -26,10 +26,3 @@ When the `seats.accuracy` job runs for a whole UTC day, the seats forecast shall
 - Given the run for 21 November, a stored bad day on 20 November, a good forecast at 23:00 on the 21st and a forecast off by 50 points at 01:00 on the 22nd,
   when the nightly run scores it,
   then only the 23:00 forecast is scored and the 5-hour window is not degraded.
-
-## Limits of the input data
-
-Both are small next to the forecast's 10-minute steps, so the scores don't correct for them.
-
-- **Moves show up late.** A move to another seat is seen only at the next 10-minute `seats.history` run, so tokens used between the real move and that run count on the old seat.
-- **Very late cost rows are missed.** Each `seats.history` run sums the last hour of cost rows again, so a cost row written more than an hour after its time is never counted.
