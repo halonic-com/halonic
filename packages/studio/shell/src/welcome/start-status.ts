@@ -40,10 +40,19 @@ export interface StartReport {
   readonly seconds: number;
 }
 
-/** One answer of the window's lite check (`lite_check`): an id and a fact, never a path. */
+/**
+ * One answer of the window's lite check (`lite_check`): an id and a fact, never a path, except the
+ * sentence of a relative `HALONIC_HOME`, which names the person's own setting (HAL-15963).
+ */
 export type LiteCheckResult =
   | { readonly id: "app_files"; readonly fact: "present" | "missing" }
   | { readonly id: "profile_writable"; readonly fact: "writable" | "not_writable" | "no_profile" }
+  | {
+      readonly id: "profile_writable";
+      readonly fact: "halonic_home_relative";
+      /** The CLI's sentence and fix, with the value: for the screen, never the report. */
+      readonly message: string;
+    }
   | {
       readonly id: "disk_space";
       readonly fact: "enough" | "low" | "unknown";

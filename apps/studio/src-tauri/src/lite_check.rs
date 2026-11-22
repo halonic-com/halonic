@@ -7,14 +7,18 @@
 //! - `app_files`: Halonic's files are next to the app: the agent host, and
 //!   on Windows the sandbox programs the installer puts beside it.
 //! - `profile_writable`: a probe file can be made and removed in the
-//!   profile folder the CLI uses.
+//!   profile folder the CLI uses. A relative `HALONIC_HOME` is its own
+//!   fact, `halonic_home_relative`, with the CLI's sentence and fix
+//!   (HAL-15963).
 //! - `disk_space`: the free space on the profile's drive, low below 1 GiB,
 //!   as `halonic doctor` counts it.
 //! - Windows only, `wsl_distro` and `wsl_runtime`: Halonic's WSL distro is
 //!   installed, and a runtime is installed in it.
 //!
 //! Each result is an id and a fact from a fixed list, with the free bytes
-//! for `disk_space`. None holds a path, a name or an error message.
+//! for `disk_space`. None holds a path, a name or an error message, except
+//! `halonic_home_relative`'s sentence: it names the person's own setting,
+//! for the screen only, and the page leaves it out of the copied report.
 
 use std::fs::OpenOptions;
 use std::io::{self, Write};
@@ -26,7 +30,7 @@ use halonic_resource_probe::free_disk_bytes;
 use serde::Serialize;
 use tauri::{AppHandle, Runtime};
 
-use crate::profile::cli_profile;
+use crate::profile::{ProfileProblem, cli_profile};
 
 /// Below this much free space, `disk_space` is `low`: 1 GiB, as the status
 /// bar and `halonic doctor` count it.
@@ -60,6 +64,9 @@ pub enum Fact {
     NotWritable,
     /// The profile folder can't be found, so it couldn't be checked.
     NoProfile,
+    /// `HALONIC_HOME` isn't a full path, so there is no profile folder to
+    /// check: a setting the person changes.
+    HalonicHomeRelative,
     /// At least 1 GiB is free.
     Enough,
     /// Less than 1 GiB is free.
@@ -76,7 +83,7 @@ pub enum Fact {
 }
 
 /// One result: what was checked and what was found.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CheckResult {
     id: CheckId,
@@ -84,6 +91,9 @@ pub struct CheckResult {
     /// The free space in bytes, for `disk_space` when it could be read.
     #[serde(skip_serializing_if = "Option::is_none")]
     free_bytes: Option<u64>,
+    /// The CLI's sentence and fix, for `halonic_home_relative` only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    message: Option<String>,
 }
 
 impl CheckResult {
@@ -92,6 +102,7 @@ impl CheckResult {
             id,
             fact,
             free_bytes: None,
+            message: None,
         }
     }
 }
@@ -100,18 +111,25 @@ impl CheckResult {
 /// Never fails: a check that can't answer says `unknown`.
 #[tauri::command]
 pub async fn lite_check<R: Runtime>(app: AppHandle<R>) -> Vec<CheckResult> {
-    let profile = cli_profile(&app)
-        .ok()
-        .map(|profile| PathBuf::from(profile.root));
-    tauri::async_runtime::spawn_blocking(move || run_checks(profile.as_deref()))
+    let (profile, setting) = match cli_profile(&app) {
+        Ok(profile) => (Some(PathBuf::from(profile.root)), None),
+        Err(problem) => (None, setting_sentence(&problem)),
+    };
+    tauri::async_runtime::spawn_blocking(move || run_checks(profile.as_deref(), setting.as_deref()))
         .await
         .unwrap_or_default()
 }
 
-fn run_checks(profile: Option<&Path>) -> Vec<CheckResult> {
+/// The sentence and fix of a profile setting the person changes, a
+/// relative `HALONIC_HOME`; any other reason stays out of the answer.
+fn setting_sentence(problem: &ProfileProblem) -> Option<String> {
+    (problem.kind() == "profile_setting").then(|| problem.to_string())
+}
+
+fn run_checks(profile: Option<&Path>, setting: Option<&str>) -> Vec<CheckResult> {
     let mut results = vec![
         app_files(std::env::current_exe().ok().as_deref()),
-        profile_writable(profile),
+        profile_writable(profile, setting),
         disk_space(profile.map(free_disk_bytes)),
     ];
     results.extend(platform_checks());
@@ -169,14 +187,21 @@ fn is_file_with_content(path: &Path) -> bool {
 }
 
 /// Makes the profile folder when it isn't there yet, as the first start
-/// would, then makes a probe file in it and removes it.
-fn profile_writable(profile: Option<&Path>) -> CheckResult {
-    let fact = match profile {
-        None => Fact::NoProfile,
-        Some(folder) => match write_probe(folder) {
+/// would, then makes a probe file in it and removes it. Without a folder,
+/// `setting` is the sentence of a relative `HALONIC_HOME`, if that is why.
+fn profile_writable(profile: Option<&Path>, setting: Option<&str>) -> CheckResult {
+    let fact = match (profile, setting) {
+        (Some(folder), _) => match write_probe(folder) {
             Ok(()) => Fact::Writable,
             Err(_) => Fact::NotWritable,
         },
+        (None, Some(sentence)) => {
+            return CheckResult {
+                message: Some(sentence.to_owned()),
+                ..CheckResult::new(CheckId::ProfileWritable, Fact::HalonicHomeRelative)
+            };
+        }
+        (None, None) => Fact::NoProfile,
     };
     CheckResult::new(CheckId::ProfileWritable, fact)
 }
@@ -203,13 +228,15 @@ fn write_probe(folder: &Path) -> io::Result<()> {
 fn disk_space(free: Option<io::Result<u64>>) -> CheckResult {
     match free {
         Some(Ok(bytes)) => CheckResult {
-            id: CheckId::DiskSpace,
-            fact: if bytes < LOW_DISK_BYTES {
-                Fact::Low
-            } else {
-                Fact::Enough
-            },
             free_bytes: Some(bytes),
+            ..CheckResult::new(
+                CheckId::DiskSpace,
+                if bytes < LOW_DISK_BYTES {
+                    Fact::Low
+                } else {
+                    Fact::Enough
+                },
+            )
         },
         Some(Err(_)) | None => CheckResult::new(CheckId::DiskSpace, Fact::Unknown),
     }

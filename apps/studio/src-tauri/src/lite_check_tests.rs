@@ -7,11 +7,14 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use halonic_agent_host::EXECUTABLE_NAME;
+use halonic_profile::ProfileError;
 use serde_json::{Value, json};
 
 use super::{
-    CheckId, CheckResult, Fact, LOW_DISK_BYTES, app_files, disk_space, profile_writable, run_checks,
+    CheckId, CheckResult, Fact, LOW_DISK_BYTES, app_files, disk_space, profile_writable,
+    run_checks, setting_sentence,
 };
+use crate::profile::ProfileProblem;
 
 static NEXT_FOLDER: AtomicU32 = AtomicU32::new(0);
 
@@ -63,7 +66,7 @@ fn lite_check_finds_the_app_files_beside_the_app() {
 #[test]
 fn lite_check_writes_and_removes_a_probe_in_the_profile() {
     let folder = fresh_folder("profile");
-    let checked = profile_writable(Some(&folder));
+    let checked = profile_writable(Some(&folder), None);
     assert_eq!(checked.id, CheckId::ProfileWritable);
     assert_eq!(checked.fact, Fact::Writable);
     let left = fs::read_dir(&folder).expect("read the folder").count();
@@ -72,7 +75,7 @@ fn lite_check_writes_and_removes_a_probe_in_the_profile() {
     // A profile that isn't there yet is made, as the first start would.
     let new_profile = folder.join("new").join("profile");
     assert_eq!(
-        fact_of(profile_writable(Some(&new_profile))),
+        fact_of(profile_writable(Some(&new_profile), None)),
         Fact::Writable
     );
     let _ = fs::remove_dir_all(&folder);
@@ -85,10 +88,10 @@ fn lite_check_says_a_profile_that_takes_no_file_is_not_writable() {
     let in_the_way = folder.join("profile");
     fs::write(&in_the_way, b"not a folder").expect("write the file");
     assert_eq!(
-        fact_of(profile_writable(Some(&in_the_way))),
+        fact_of(profile_writable(Some(&in_the_way), None)),
         Fact::NotWritable
     );
-    assert_eq!(fact_of(profile_writable(None)), Fact::NoProfile);
+    assert_eq!(fact_of(profile_writable(None, None)), Fact::NoProfile);
     let _ = fs::remove_dir_all(&folder);
 }
 
@@ -108,7 +111,7 @@ fn lite_check_says_the_disk_is_low_below_1_gib() {
 #[test]
 fn lite_check_answers_ids_and_facts_with_no_path() {
     let profile = fresh_folder("answer");
-    let answer = serde_json::to_value(run_checks(Some(&profile))).expect("serializes");
+    let answer = serde_json::to_value(run_checks(Some(&profile), None)).expect("serializes");
     let Value::Array(results) = &answer else {
         panic!("a list: {answer}");
     };
@@ -142,4 +145,39 @@ fn lite_check_answers_ids_and_facts_with_no_path() {
     assert!(!text.contains(folder_name), "{text}");
     assert!(!text.contains(&host_file_name()), "{text}");
     let _ = fs::remove_dir_all(&profile);
+}
+
+#[test]
+fn lite_check_names_a_relative_halonic_home_with_the_clis_sentence() {
+    let relative = ProfileProblem::from(ProfileError::HalonicHomeNotAbsolute {
+        value: "~/.halonic".to_owned(),
+        fix: "Use $HOME instead.".to_owned(),
+    });
+    let sentence = setting_sentence(&relative).expect("a profile setting");
+    assert!(
+        sentence.starts_with("HALONIC_HOME must be a full path"),
+        "{sentence}"
+    );
+
+    let answer = serde_json::to_value(run_checks(None, Some(&sentence))).expect("serializes");
+    assert_eq!(answer[1]["id"], "profile_writable");
+    assert_eq!(answer[1]["fact"], "halonic_home_relative");
+    assert_eq!(answer[1]["message"], sentence.as_str());
+    // The sentence is the only message, and only on that line.
+    assert_eq!(answer[2]["fact"], "unknown");
+    assert!(answer[0].get("message").is_none(), "{answer}");
+}
+
+#[test]
+fn lite_check_keeps_any_other_profile_problem_out_of_the_answer() {
+    let home = ProfileProblem::from(ProfileError::HomeNotAbsolute {
+        value: "home".to_owned(),
+    });
+    assert_eq!(setting_sentence(&home), None);
+    let unreadable = ProfileProblem::from("HALONIC_HOME isn't valid Unicode".to_owned());
+    assert_eq!(setting_sentence(&unreadable), None);
+
+    let checked = profile_writable(None, None);
+    assert_eq!(checked.fact, Fact::NoProfile);
+    assert_eq!(checked.message, None);
 }
