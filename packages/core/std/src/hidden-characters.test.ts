@@ -1,6 +1,11 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { escapeHidden, isHiddenCharacter, markHiddenName } from "./hidden-characters.ts";
+import {
+  escapeHidden,
+  isHiddenCharacter,
+  markHiddenName,
+  segmentHidden,
+} from "./hidden-characters.ts";
 
 verifies("std.hidden-characters", () => {
   it("finds direction overrides, zero-width and control characters", () => {
@@ -41,5 +46,21 @@ verifies("std.hidden-characters", () => {
     expect(markHiddenName("create_note")).toBe("create_note");
     expect(markHiddenName("one\r\ntwo")).toBe("one\ntwo");
     expect(markHiddenName("one\rtwo")).toBe("one⟦U+000D⟧two");
+  });
+
+  it("splits a text into text and markers", () => {
+    expect(segmentHidden(`Refund${String.fromCodePoint(0x202e)}for Sam`)).toEqual([
+      { kind: "text", text: "Refund" },
+      { kind: "marker", code: "U+202E" },
+      { kind: "text", text: "for Sam" },
+    ]);
+    expect(segmentHidden("\u200b")).toEqual([{ kind: "marker", code: "U+200B" }]);
+    expect(segmentHidden("")).toEqual([]);
+  });
+
+  it("marks tab, newline and each half of a Windows line end when asked to", () => {
+    expect(markHiddenName("a\tb\nc", { markWhitespace: true })).toBe("a⟦U+0009⟧b⟦U+000A⟧c");
+    expect(markHiddenName("one\r\ntwo", { markWhitespace: true })).toBe("one⟦U+000D⟧⟦U+000A⟧two");
+    expect(markHiddenName("a\tb\nc")).toBe("a\tb\nc");
   });
 });
