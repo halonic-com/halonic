@@ -1,0 +1,145 @@
+// @vitest-environment jsdom
+import type { RunEvent, RunSummary } from "@halonicjs/events";
+import type { WaitItem } from "@halonicjs/studio-feature-inbox/api";
+import type { RunsList } from "@halonicjs/studio-feature-runs/api";
+import { verifies } from "@halonicjs/testing-spec";
+import { act, type ReactNode } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, expect, it, vi } from "vitest";
+import { YouDidItView } from "./you-did-it-view.tsx";
+
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+const mounted: { root: Root; container: HTMLElement }[] = [];
+
+afterEach(() => {
+  for (const { root, container } of mounted.splice(0)) {
+    act(() => root.unmount());
+    container.remove();
+  }
+});
+
+async function render(element: ReactNode): Promise<HTMLElement> {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mounted.push({ root, container });
+  await act(async () => root.render(element));
+  return container;
+}
+
+const item = { kind: "wait", runId: "run_1", title: "Approve this reply?" } as WaitItem;
+
+function finished(overrides: Partial<RunSummary> = {}): RunSummary {
+  return {
+    id: "run_1",
+    status: "completed",
+    startedAt: "2026-11-21T09:01:00.000Z",
+    endedAt: "2026-11-21T09:01:14.000Z",
+    statesVisited: ["sort", "write", "review"],
+    cost: 0,
+    unpricedCalls: 0,
+    ...overrides,
+  } as RunSummary;
+}
+
+/** The runs list in memory, its one run's model calls going to `provider`. */
+function runsWith(provider: string, summary?: RunSummary) {
+  const listeners = new Set<() => void>();
+  let state = {
+    runs: summary === undefined ? [] : [{ summary }],
+    loaded: true,
+    error: undefined,
+    workflows: undefined,
+  } as RunsList["state"];
+  const log = [
+    { type: "llm.request", provider } as unknown as RunEvent,
+    { type: "run.completed" } as unknown as RunEvent,
+  ];
+  const runs = {
+    get state() {
+      return state;
+    },
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    source: {
+      log: async () => log,
+      providerKind: (id: string) => (id === "anthropic" ? "cloud" : "local"),
+      isTestModel: (id: string) => id === "mock",
+      currency: () => "EUR",
+    } as unknown as RunsList["source"],
+    show(next: RunSummary) {
+      state = { ...state, runs: [{ summary: next } as RunsList["state"]["runs"][number]] };
+      for (const listener of [...listeners]) listener();
+    },
+  };
+  return runs;
+}
+
+const text = (root: HTMLElement) => root.textContent ?? "";
+const button = (root: HTMLElement, name: string) =>
+  [...root.querySelectorAll("button")].find((each) => each.textContent === name);
+
+verifies("first-run.you-did-it", () => {
+  it("takes focus on its title and shows the run's numbers on a model on this computer", async () => {
+    const root = await render(
+      <YouDidItView item={item} runs={runsWith("ollama", finished())} close={() => {}} />,
+    );
+    expect(document.activeElement?.textContent).toContain("Your first run is done.");
+    expect(text(root)).toContain(
+      "3 steps · 14 s · no cost, ran on this computer · logged with your yes",
+    );
+    expect(text(root)).toContain(
+      "Later: connect Gmail or Google Drive. About 15 minutes, once. It's in Settings when you want it.",
+    );
+  });
+
+  it("waits for the runs list to have the run finished before it shows numbers", async () => {
+    const runs = runsWith("ollama", finished({ status: "waiting", endedAt: null }));
+    const root = await render(<YouDidItView item={item} runs={runs} close={() => {}} />);
+    expect(text(root)).toContain("Reading the run…");
+    expect(text(root)).not.toContain("steps");
+    await act(async () => runs.show(finished()));
+    expect(text(root)).toContain("3 steps · 14 s");
+  });
+
+  it("on Sample answers drops the cost part, says so, and offers Pick a model first", async () => {
+    const openItem = vi.fn();
+    const root = await render(
+      <YouDidItView
+        item={item}
+        runs={runsWith("mock", finished())}
+        close={() => {}}
+        openItem={openItem}
+      />,
+    );
+    expect(text(root)).toContain("3 steps · 14 s · logged with your yes");
+    expect(text(root)).toContain("Sample answers. Add a key or a local model to use a real model.");
+    expect(button(root, "Run it again with your own message")).toBeUndefined();
+    button(root, "Pick a model")?.click();
+    expect(openItem).toHaveBeenCalledWith({ kind: "model-alias", hub: "local", id: "default" });
+  });
+
+  it("with a key shows the run's cost, and its next steps open Support reply", async () => {
+    const openItem = vi.fn();
+    const close = vi.fn();
+    const root = await render(
+      <YouDidItView
+        item={item}
+        runs={runsWith("anthropic", finished({ cost: 0.02 }))}
+        close={close}
+        openItem={openItem}
+      />,
+    );
+    expect(text(root)).toContain("3 steps · 14 s · estimated cost €0.02 · logged with your yes");
+    expect(button(root, "Pick a model")).toBeUndefined();
+    button(root, "Run it again with your own message")?.click();
+    button(root, "Change what the agents do")?.click();
+    const supportReply = { kind: "workflow", hub: "support", id: "support-reply" };
+    expect(openItem.mock.calls).toEqual([[supportReply], [supportReply]]);
+    button(root, "Close")?.click();
+    expect(close).toHaveBeenCalledOnce();
+  });
+});

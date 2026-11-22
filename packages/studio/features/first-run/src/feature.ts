@@ -20,11 +20,13 @@ import { firstRunHelpItems } from "./first-run-help.ts";
 import { firstRunSetupSource } from "./first-run-setup.ts";
 import { FirstRunStart, FirstRunStartService } from "./first-run-start.ts";
 import { helpWords } from "./first-run-words.ts";
+import { youDidItSource, youDidItView } from "./you-did-it.ts";
 
 /**
  * The First Run feature (`first-run.state`): the first run's state on this device, the first-run
  * bar under the top bar (`first-run.bar`) and the guide card on Support reply's page
- * (`first-run.guide-card`), from **Open demo** until the first win, the Inbox's setup item
+ * (`first-run.guide-card`), from **Open demo** until the first win, "You did it" in the Inbox
+ * after it (`first-run.you-did-it`), the Inbox's setup item
  * of a paused first run (`first-run.setup-item`), **Help › First run** (`first-run.help`), and
  * Home's Get set up in a workspace that isn't the sample (`first-run.own-card`).
  */
@@ -54,7 +56,9 @@ export const firstRunFeature = defineFeature({
         services.get(FirstRunDeviceService),
         () => new Date(),
       );
-      services.find(InboxService)?.addSetupSource(firstRunSetupSource(firstRun));
+      const inbox = services.find(InboxService);
+      inbox?.addSetupSource(firstRunSetupSource(firstRun));
+      inbox?.addAnsweredView(youDidItSource(firstRun, youDidItView(services.get(RunsListService))));
       return firstRun;
     });
     studio.services.provide(

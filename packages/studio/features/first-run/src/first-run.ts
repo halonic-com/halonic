@@ -62,6 +62,8 @@ export class FirstRun {
   #before: string | undefined;
   /** The run going when the runs last changed, so a new one tells even when the steps stay. */
   #lastRunningId: string | undefined;
+  /** The run that was the first win here, for "You did it" once the state is `done`. */
+  #wonRunId: string | undefined;
 
   constructor(
     runs: FirstRunRuns,
@@ -134,6 +136,19 @@ export class FirstRun {
     const run = this.#newestRun();
     if (run?.id === this.#before) return undefined;
     return run?.status === "running" ? run.id : undefined;
+  }
+
+  /**
+   * Whether `runId` is the first run's run in the open folder: the newest run of Support reply
+   * since it began, while it is on, or the run that was its first win. "You did it" claims only
+   * that run's Approve, which can come back before or after the runs list moves the steps.
+   */
+  isFirstRun(runId: string): boolean {
+    if (this.isOnHere) return this.#newestRun()?.id === runId;
+    const state = this.#state;
+    return (
+      state.kind === "done" && state.folder === this.#device.folder && this.#wonRunId === runId
+    );
   }
 
   /** Opens the Pick a model screen, from **Run your first workflow** or **Pick another model**. */
@@ -299,6 +314,7 @@ export class FirstRun {
     const stillNewest = this.#newestRun();
     if (stillNewest?.id !== newest.id || stillNewest.status !== newest.status) return;
     if (this.#picking) return;
+    if (event.kind === "first-win") this.#wonRunId = newest.id;
     this.send(event);
   }
 

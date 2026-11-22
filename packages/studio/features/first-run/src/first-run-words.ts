@@ -87,3 +87,28 @@ export const helpWords = {
   startOverAbout:
     "Copies Acme to a new folder and begins again at the first step. Your old copy stays where it is.",
 } as const;
+
+/**
+ * "You did it" after the first run's Approve (first-run-flow 3.5), word for word. The facts line
+ * reads "3 steps · 14 s · no cost, ran on this computer · logged with your yes".
+ */
+export const youDidItWords = {
+  title: "Your first run is done.",
+  steps: (count: number) => (count === 1 ? "1 step" : `${count} steps`),
+  /** The cost part on a model on this computer. */
+  localCost: "no cost, ran on this computer",
+  logged: "logged with your yes",
+  /** In place of the cost part on Sample answers, as its own line. */
+  sample: "Sample answers. Add a key or a local model to use a real model.",
+  /** Read while the run's numbers are read. */
+  loading: "Reading the run…",
+  next: "What next?",
+  /** First on Sample answers, in place of Run it again: scripted answers can't answer a new message. */
+  pickModel: "Pick a model",
+  runAgain: "Run it again with your own message",
+  change: "Change what the agents do",
+  changeHint: "(open a file, or ask the chat)",
+  google:
+    "Later: connect Gmail or Google Drive. About 15 minutes, once. It's in Settings when you want it.",
+  close: "Close",
+} as const;

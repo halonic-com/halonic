@@ -282,6 +282,7 @@ export function costParts(summary: RunSummary, currency: string): string[] {
   return summary.unpricedCalls > 0 ? [costWords.withoutPrice(summary.unpricedCalls)] : [];
 }
 
+/** How long the run took, start to end (or to its last change while it goes on), such as "14 s". */
 export function took(summary: RunSummary): string {
   const ended = summary.endedAt ?? summary.updatedAt;
   return tookWords(Date.parse(ended) - Date.parse(summary.startedAt));
