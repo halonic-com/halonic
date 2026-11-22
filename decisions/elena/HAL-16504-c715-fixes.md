@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16504 (fix decided on the flow check C715, HAL-16498, finding 1)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5Rin8pDHxGyVHvbQZtf6om6AuHT2lqG46OVmRbeKoIVF7XMonEmVF2uS93jiflS/Wsdsf8xH1+zm9ETJdUMeCQ==
 
 Get updates refuses to start when the shared copy changed a file Halonic leaves to git, such as
 `.env.example`, and its toast says to run `git pull --no-rebase` in a terminal (HAL-16448).
