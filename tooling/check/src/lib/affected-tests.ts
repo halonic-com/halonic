@@ -48,12 +48,18 @@ const noTestPattern =
 
 /**
  * Folders outside every package that no package's tests read, though they
- * aren't docs. `infra/ci-runner/` holds the CI server's scripts; its own
- * test runs in ci.yml's "Infra tests" step, not in a package (HAL-15286).
- * Every other folder under `infra/` still tests everything. A folder ends
- * in `/`.
+ * aren't docs. `infra/ci-runner/` holds the CI server's scripts, and
+ * `infra/spend-guard/` and `infra/turbo-cache/` hold Cloudflare workers;
+ * their own tests run in ci.yml's "Infra tests" step, not in a package
+ * (HAL-15286, HAL-15658). `infra/wsl-image/` still tests everything,
+ * because the sandbox and agent host packages use its scripts. A folder
+ * ends in `/`.
  */
-export const noPackageTestPaths: readonly string[] = ["infra/ci-runner/"];
+export const noPackageTestPaths: readonly string[] = [
+  "infra/ci-runner/",
+  "infra/spend-guard/",
+  "infra/turbo-cache/",
+];
 
 /**
  * Docs a package's tests read, by path, with the packages whose tests read
