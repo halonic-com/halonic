@@ -40,9 +40,9 @@ for (const scheme of schemes) {
   test(`the step waits for the answer, ${scheme}`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
     await page.goto("/allow-address.html?dialog=none");
-    // The step list and the step's card both say it.
+    // The step list shows the line; another copy of it in the page is hidden.
     const waiting = page.locator("#shot").getByText("Waiting for your answer", { exact: true });
-    await expect(waiting.first()).toBeVisible();
+    await expect(waiting.filter({ visible: true }).first()).toBeVisible();
     await page.locator("#shot").screenshot({
       path: `test-results/screenshots/allow-address-waiting-${scheme}.png`,
     });

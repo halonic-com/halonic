@@ -4,6 +4,7 @@ import {
   loadAllowAddressDialog,
 } from "@halonicjs/studio-feature-models/api";
 import { RunsList, type RunsSource, RunView } from "@halonicjs/studio-feature-runs/api";
+import { PHONE_MAX_WIDTH, PresentationProvider } from "@halonicjs/studio-kit";
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -12,7 +13,7 @@ import { createRoot } from "react-dom/client";
  * run whose model call would send the key "gateway-key" to an address that isn't on the key's
  * list, so its step shows "Waiting for your answer", and the Models feature's dialog asks it.
  * Nothing answers: the person hasn't decided yet. `?dialog=none` leaves the dialog out, for the
- * step on its own.
+ * step on its own. Under 600 px it's the phone presentation, as in the app, so the buttons stack.
  */
 
 const start = new Date(2026, 10, 22, 9, 30, 0);
@@ -102,6 +103,7 @@ const source: RunsSource = {
 const AllowAddressDialog = lazy(async () => ({
   default: (await loadAllowAddressDialog()).AllowAddressDialog,
 }));
+const phone = matchMedia(`(width < ${PHONE_MAX_WIDTH}px)`).matches;
 const withDialog = new URLSearchParams(location.search).get("dialog") !== "none";
 
 const root = document.getElementById("root");
@@ -110,22 +112,24 @@ if (root === null) {
 }
 createRoot(root).render(
   <StrictMode>
-    <div id="shot" className="w-full max-w-[1100px] bg-surface text-fg">
-      <RunView
-        list={new RunsList(source)}
-        runId={runId}
-        reviewInInbox={() => undefined}
-        now={() => new Date(start.getTime() + 20_000)}
-      />
-    </div>
-    {withDialog && (
-      <Suspense fallback={null}>
-        <AllowAddressDialog
-          shown={{ id: 1, question, position: 1, count: 1, saving: false, saveFailed: false }}
-          onAllow={() => undefined}
-          onRefuse={() => undefined}
+    <PresentationProvider presentation={phone ? "phone" : "desktop"}>
+      <div id="shot" className="w-full max-w-[1100px] bg-surface text-fg">
+        <RunView
+          list={new RunsList(source)}
+          runId={runId}
+          reviewInInbox={() => undefined}
+          now={() => new Date(start.getTime() + 20_000)}
         />
-      </Suspense>
-    )}
+      </div>
+      {withDialog && (
+        <Suspense fallback={null}>
+          <AllowAddressDialog
+            shown={{ id: 1, question, position: 1, count: 1, saving: false, saveFailed: false }}
+            onAllow={() => undefined}
+            onRefuse={() => undefined}
+          />
+        </Suspense>
+      )}
+    </PresentationProvider>
   </StrictMode>,
 );
