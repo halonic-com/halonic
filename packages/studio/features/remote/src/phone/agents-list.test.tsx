@@ -83,7 +83,9 @@ verifies("remote.phone-agents", () => {
     expect(rows[1]?.querySelector(".sr-only")?.textContent).toBe(
       "Sorter, Send 4 replies, as of 14:02, Needs you",
     );
-    expect(screen.textContent).toContain("Reconnect to answer.");
+    expect(screen.textContent).toContain("You can answer once your phone reconnects.");
+    // An agent that ended keeps its end time alone: no second time beside it (C672).
+    expect(rows[2]?.querySelector(".sr-only")?.textContent).toBe("Writer, Finished 13:40, Done");
     expect(agentRowLine(stale, remoteSession(), undefined, now)).toBe("as of 14:02");
     expect(agentRowLine({ ...stale, asOf: undefined }, reporter, undefined, now)).toBe(
       "Writing the weekly report",
@@ -95,7 +97,7 @@ verifies("remote.phone-agents", () => {
     const approve = button("Approve");
     expect(approve?.getAttribute("aria-disabled")).toBe("true");
     const reason = document.getElementById(approve?.getAttribute("aria-describedby") ?? "");
-    expect(reason?.textContent).toBe("Reconnect to answer.");
+    expect(reason?.textContent).toBe("You can answer once your phone reconnects.");
     act(() => approve?.click());
     expect(onAnswer).not.toHaveBeenCalled();
   });

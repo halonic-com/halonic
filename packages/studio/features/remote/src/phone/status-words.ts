@@ -16,7 +16,8 @@ export const sheetWords = {
   openTailscale: "Open Tailscale",
   openSettings: "Open settings",
   unreachable: {
-    title: "Your computer isn't answering",
+    /** The banner's and the header's words too: one name for this state (C672). */
+    title: (computer: string) => `${computer} isn't answering`,
     phone: (computer: string) =>
       `It is online, but ${computer} doesn't answer, so it can't show new work or take your answers.`,
     check: (computer: string) =>
@@ -47,7 +48,7 @@ export const sheetWords = {
       `Looking for ${computer}. Trying again in ${seconds}.`,
     bodyTrying: (computer: string) => `Looking for ${computer}. Trying now…`,
     stale: (asOf: string) =>
-      `Last update ${asOf}. What you see may be out of date until it reconnects.`,
+      `What you see is as of ${asOf} and may be out of date until it reconnects.`,
     tryNow: "Try now",
   },
   connected: {
@@ -65,14 +66,15 @@ export const sheetWords = {
  */
 export const staleWords = {
   title: {
-    unreachable: (computer: string) => `${computer} isn't answering`,
+    unreachable: sheetWords.unreachable.title,
     phoneOffline: () => "Your phone is offline",
     tailscaleOff: () => "Tailscale is off on this phone",
     nearbyOff: () => "Nearby devices isn't allowed for Halonic",
   },
   /** Without a last update the first sentence is left out (decided by the team). */
   keepRunning: "If your computer is on, your agents there keep running.",
-  lastUpdate: (asOf: string) => `Last update ${asOf}.`,
+  /** The rows' and the sheet's "as of" form, so a stale time reads one way everywhere (C672). */
+  asOf: (asOf: string) => `What you see is as of ${asOf}.`,
   details: "Details",
   /** The Details button's name: "Details" alone doesn't say of what. */
   detailsName: "Connection details",

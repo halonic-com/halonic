@@ -4,7 +4,9 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { render, unmountAll } from "../test-support/render.tsx";
+import { phoneStatusLabel } from "./phone-status.ts";
 import { StatusSheet, type StatusSheetOf, type StatusSheetProps } from "./status-sheet.tsx";
+import { staleWords } from "./status-words.ts";
 
 beforeEach(() => {
   HTMLDialogElement.prototype.showModal ??= function showModal(this: HTMLDialogElement) {
@@ -56,7 +58,12 @@ function show(sheet: StatusSheetOf, more: Partial<StatusSheetProps> = {}) {
 verifies("remote.phone-status-sheet", () => {
   it("shows the two halves when the computer doesn't answer, and Try again connects", () => {
     const { dialog, button, cards, actions } = show({ kind: "unreachable", route: "tailscale" });
-    expect(dialog.querySelector("h2")?.textContent).toBe("Your computer isn't answering");
+    expect(dialog.querySelector("h2")?.textContent).toBe("Tim's laptop isn't answering");
+    // The header label and the banner name the state with the same words (C672).
+    expect(phoneStatusLabel("unreachable", "Tim's laptop").text).toBe(
+      "Tim's laptop isn't answering",
+    );
+    expect(staleWords.title.unreachable("Tim's laptop")).toBe("Tim's laptop isn't answering");
     expect(cards).toEqual([
       {
         name: "Your phone",
@@ -123,7 +130,7 @@ verifies("remote.phone-status-sheet", () => {
       "Looking for Tim's laptop. Trying again in 8 seconds.",
     );
     expect(soon.dialog.textContent).toContain(
-      "Last update 14:02. What you see may be out of date until it reconnects.",
+      "What you see is as of 14:02 and may be out of date until it reconnects.",
     );
     // Try now has no ↻, as drawn.
     expect(soon.button("Try now").querySelector("svg")).toBeNull();

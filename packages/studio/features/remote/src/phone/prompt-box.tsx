@@ -12,7 +12,7 @@ export interface PromptTarget {
 
 /**
  * The prompt box docked under the agents (`s-m3`). While the view is stale it is off, with
- * "Reconnect to send a prompt." in it, whether or not an agent is in view. While the view is live
+ * "You can send a prompt once your phone reconnects." in it, whether or not an agent is in view. While the view is live
  * it shows only for the agent in view (the Agents list alone, `s-m2`, has none), and sends a
  * prompt that isn't blank and fits the protocol's 10,000 characters, once. The text stays after
  * anything but a prompt the host took, and the line under the box says why. Key it by the agent,

@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-12248 (tunnel design on HAL-12206, decisions 4 and 16; strings table on HAL-12233, "Status label in the header", "Announcements", G19 and G20)
+- Source: HAL-12248 (tunnel design on HAL-12206, decisions 4 and 16; strings table on HAL-12233, "Status label in the header", "Announcements", G19 and G20; flow check C672 on HAL-16097)
 
-The phone's header label shall show one of six states in words: "Connected · {computer}" (green dot), "Reconnecting…" (amber dot), "Can't reach your computer" and "Your phone is offline" (amber), "Removed from your computer" and "Can't confirm your computer" (red). Its screen-reader name shall be the state, then "Details". When the state changes, the phone shall say the new state once, politely, with the label's words, except that: the first state says nothing; Reconnecting after Connected is said only once it has lasted 2 seconds; while the label shows Can't reach or offline, a reconnect try shall not turn it back to Reconnecting and says nothing; and getting back to Connected is said ("Connected to {computer}") only if the trouble state before it was said.
+The phone's header label shall show one of six states in words: "Connected · {computer}" (green dot), "Reconnecting…" (amber dot), "{computer} isn't answering" and "Your phone is offline" (amber), "Removed from your computer" and "Can't confirm your computer" (red). Its screen-reader name shall be the state, then "Details". When the state changes, the phone shall say the new state once, politely, with the label's words, except that: the first state says nothing; Reconnecting after Connected is said only once it has lasted 2 seconds; while the label shows {computer} isn't answering or Your phone is offline, a reconnect try shall not turn it back to Reconnecting and says nothing; and getting back to Connected is said ("Connected to {computer}") only if the trouble state before it was said.
 
 ## Examples
 
@@ -17,9 +17,9 @@ The phone's header label shall show one of six states in words: "Connected · {c
 - Given the phone is connected,
   when it has been reconnecting for 2 seconds,
   then it says "Reconnecting" once; and when it connects again, it says "Connected to Tim's laptop".
-- Given the label shows "Can't reach your computer",
+- Given the label shows "Tim's laptop isn't answering",
   when the phone tries again in the background,
-  then the label stays "Can't reach your computer" and nothing is said.
+  then the label stays "Tim's laptop isn't answering" and nothing is said.
 - Given the phone is connected,
   when the computer says this phone is no longer paired,
   then it says "Removed from your computer" at once.

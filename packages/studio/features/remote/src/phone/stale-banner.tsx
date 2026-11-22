@@ -6,7 +6,7 @@ import { staleWords } from "./status-words.ts";
 /**
  * Why the phone can't reach its computer, as the banner says it. `tailscaleOff` (G17) and
  * `nearbyOff` (G24) are the phone's own causes; the header still says "Your phone is offline" and
- * "Can't reach your computer" for them.
+ * "{computer} isn't answering" for them.
  */
 export type StaleBannerOf = keyof typeof staleWords.title;
 
@@ -28,7 +28,7 @@ export interface StaleBannerProps {
 
 /**
  * The banner over the agents while the phone can't reach its computer (`s-m3`, `s-m8`): what is
- * wrong, when the last update came, and that the agents keep running on the computer. It's plain
+ * wrong, what time the agents shown are as of, and that the agents keep running on the computer. It's plain
  * page content, not a live region: the header's live region has already said the state.
  */
 export function StaleBanner(props: StaleBannerProps) {
@@ -37,7 +37,7 @@ export function StaleBanner(props: StaleBannerProps) {
   const body =
     asOf === undefined
       ? staleWords.keepRunning
-      : `${staleWords.lastUpdate(asOfText(asOf, now))} ${staleWords.keepRunning}`;
+      : `${staleWords.asOf(asOfText(asOf, now))} ${staleWords.keepRunning}`;
   return (
     <section
       aria-labelledby={titleId}

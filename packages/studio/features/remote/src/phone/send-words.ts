@@ -14,7 +14,7 @@ export const promptWords = {
   placeholder: (agent: string) => `Message ${agent}…`,
   send: "Send",
   /** In the box, and the reason Send is off, while the view is stale (`phone.stale.promptReason`). */
-  staleReason: "Reconnect to send a prompt.",
+  staleReason: "You can send a prompt once your phone reconnects.",
   /** `gatewayMaxPromptLength`, written out; `send-words.test.ts` keeps the two in step. */
   tooLong: "A prompt can be at most 10,000 characters.",
   /** Said politely once the host took it; the box empties. */
@@ -52,7 +52,7 @@ function answerLine(outcome: Exclude<RemoteSendOutcome, { kind: "done" }>): stri
 
 function promptLine(outcome: Exclude<RemoteSendOutcome, { kind: "done" }>): string {
   if (outcome.kind === "cut-off") {
-    return "The connection dropped before your computer confirmed this prompt, so it may not have arrived. Check the agent before you send it again.";
+    return "The connection dropped before your computer confirmed this prompt. Once your phone reconnects, you'll see in the agent's messages whether it arrived. Send it again only if it didn't.";
   }
   if (outcome.kind === "refused") {
     return "Your computer didn't accept this prompt. Send it from your computer instead.";
