@@ -143,9 +143,9 @@ export function stepProblemRows(
   );
 }
 
-/** What a step's card shows of its problems (flow-workflows 4.4). */
-export interface CardProblems {
-  /** An error rings the card in danger; warnings alone, in attention. */
+/** What a step's card, or an arrow's label plate, shows of its problems (flow-workflows 4.4). */
+export interface ProblemMark {
+  /** An error colours the mark in danger; warnings alone, in attention. */
   readonly severity: WorkflowProblem["severity"];
   /** The glyph before the line: ✕ when any is an error, else △. */
   readonly glyph: string;
@@ -166,17 +166,44 @@ export function cardProblems(
   problems: readonly WorkflowProblem[],
   stepId: string,
   nameOf: StepNames = byId,
-): CardProblems | undefined {
-  const own = errorsFirst(
+): ProblemMark | undefined {
+  return markOf(
     problems.filter((problem) => problem.stepId === stepId && !arrowChecks.has(problem.code)),
+    nameOf,
   );
-  const [first] = own;
+}
+
+/**
+ * What the label plate of the step's arrow at `arrowIndex` (among the step's arrows, in the file's
+ * order) shows of the workflow's problems: those about that arrow. `undefined` when it has none.
+ */
+export function arrowProblems(
+  problems: readonly WorkflowProblem[],
+  stepId: string,
+  arrowIndex: number,
+  nameOf: StepNames = byId,
+): ProblemMark | undefined {
+  return markOf(
+    problems.filter(
+      (problem) =>
+        problem.stepId === stepId &&
+        problem.arrowIndex === arrowIndex &&
+        arrowChecks.has(problem.code),
+    ),
+    nameOf,
+  );
+}
+
+/** The mark of these problems, in the colour of the worst; `undefined` when there are none. */
+function markOf(problems: readonly WorkflowProblem[], nameOf: StepNames): ProblemMark | undefined {
+  const sorted = errorsFirst(problems);
+  const [first] = sorted;
   if (first === undefined) return undefined;
   return {
     severity: first.severity,
     glyph: problemGlyph[first.severity],
     line: problemLine(first),
-    detail: own.map((problem) => namedMessage(problem, nameOf)).join("\n"),
+    detail: sorted.map((problem) => namedMessage(problem, nameOf)).join("\n"),
   };
 }
 
