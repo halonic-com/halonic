@@ -97,8 +97,9 @@ verifies("cli.doctor-plugins", () => {
 
     expect(code).toBe(exitCode.failed);
     expect(check(lines, "Plugins")).toEqual([
-      "✕ Plugins     orders uses the plugin acme-order, which isn't added.",
+      "✕ Plugins     orders uses the plugin acme-order, which isn't added, so orders has no tools yet.",
       "              Did you mean acme-orders?",
+      "              Fix: change the plugin id in orders.connector.yaml to acme-orders, or add acme-order with halonic plugin add <folder or git address>, then run halonic doctor again.",
     ]);
     // After Workspace (and its Secrets and Models lines), before Sandbox.
     expect(lines.findIndex((line) => line.includes("Plugins"))).toBeLessThan(
@@ -113,7 +114,7 @@ verifies("cli.doctor-plugins", () => {
     const { lines } = await doctor(machine([]));
 
     expect(check(lines, "Plugins")).toEqual([
-      "✕ Plugins     orders uses the plugin acme-orders, which isn't added.",
+      "✕ Plugins     orders uses the plugin acme-orders, which isn't added, so orders has no tools yet.",
       "              Fix: add it with halonic plugin add <folder or git address>, then run halonic doctor again.",
     ]);
   });
@@ -133,7 +134,8 @@ verifies("cli.doctor-plugins", () => {
       "! Plugins     acme-orders is off: not trusted yet · halonic trust --plugin acme-orders",
     ]);
     expect(check(broken.lines, "Plugins")).toEqual([
-      "! Plugins     acme-orders can't be read or checked, so it's off. See halonic plugin list.",
+      "! Plugins     acme-orders can't be read or checked, so it's off.",
+      "              Fix: remove it with halonic plugin remove acme-orders, then add a version that works.",
     ]);
   });
 

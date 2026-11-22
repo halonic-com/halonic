@@ -95,7 +95,7 @@ verifies("cli.commands.tools.plugin-connector", () => {
 
     kit.notes().addPlugin("files", "broken");
     expect((await kit.tools(["review", "notes-mcp"])).stderr).toEqual([
-      "! files can't be read or checked, so it's off. See halonic plugin list.",
+      "! files can't be read or checked, so it's off. Remove it with halonic plugin remove files, then add a version that works.",
     ]);
   });
 });
