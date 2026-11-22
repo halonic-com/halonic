@@ -32,12 +32,18 @@ export interface AgentRow {
   readonly urlKey: string;
 }
 
+/**
+ * What a write did: `closed` when the task was no longer open by the time the
+ * watcher got to it (its author closed it during the pass), so nothing needed doing.
+ */
+export type WriteOutcome = "written" | "closed";
+
 /** The watcher's view of Paperclip. */
 export interface Paperclip {
   openTasks(): Promise<TaskRow[]>;
   comments(taskId: string): Promise<CommentRow[]>;
   agents(): Promise<AgentRow[]>;
   /** Comments and wakes the task's assignee. `key` makes a repeated wake-up a no-op. */
-  wake(taskId: string, body: string, key: string): Promise<void>;
-  markDone(taskId: string, body: string): Promise<void>;
+  wake(taskId: string, body: string, key: string): Promise<WriteOutcome>;
+  markDone(taskId: string, body: string): Promise<WriteOutcome>;
 }

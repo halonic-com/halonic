@@ -28,11 +28,19 @@ export type HostWrite =
   | { readonly kind: "update"; readonly issueId: string; readonly patch: unknown }
   | { readonly kind: "wake"; readonly issueId: string; readonly options: unknown };
 
-/** A plugin host with issues, comments and agents in memory, recording every write. */
-export function fakeHost(issues: FakeIssue[], comments: Record<string, FakeComment[]> = {}) {
+/**
+ * A plugin host with issues, comments and agents in memory, recording every
+ * write. With `wakeRefusal`, every wake-up is refused with that message.
+ */
+export function fakeHost(
+  issues: FakeIssue[],
+  comments: Record<string, FakeComment[]> = {},
+  wakeRefusal?: string,
+) {
   const writes: HostWrite[] = [];
   const fake = {
     issues: {
+      get: async (issueId: string) => issues.find((issue) => issue.id === issueId) ?? null,
       list: async (input: { status: string; limit: number; offset: number }) =>
         issues
           .filter((issue) => issue.status === input.status)
@@ -54,6 +62,9 @@ export function fakeHost(issues: FakeIssue[], comments: Record<string, FakeComme
         return {};
       },
       requestWakeup: async (issueId: string, _companyId: string, options: unknown) => {
+        if (wakeRefusal !== undefined) {
+          throw new Error(wakeRefusal);
+        }
         writes.push({ kind: "wake", issueId, options });
         return {};
       },

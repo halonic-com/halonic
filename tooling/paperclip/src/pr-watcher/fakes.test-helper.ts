@@ -50,8 +50,16 @@ export function agentComment(authorAgentId: string, createdAt: string, body: str
   return { authorAgentId, authorUserId: null, createdAt, body };
 }
 
-/** A Paperclip with tasks in memory; comments, wake-ups and status changes land in its lists. */
-export function fakePaperclip(tasks: FakeTask[], comments: Record<string, CommentRow[]> = {}) {
+/**
+ * A Paperclip with tasks in memory; comments, wake-ups and status changes land
+ * in its lists. Tasks in `closedMeanwhile` are listed as open but closed by the
+ * time the watcher writes, as when their author closes them during a pass.
+ */
+export function fakePaperclip(
+  tasks: FakeTask[],
+  comments: Record<string, CommentRow[]> = {},
+  closedMeanwhile: ReadonlySet<string> = new Set(),
+) {
   const done: string[] = [];
   const wakes: { taskId: string; key: string }[] = [];
   const append = (taskId: string, body: string) => {
@@ -69,12 +77,20 @@ export function fakePaperclip(tasks: FakeTask[], comments: Record<string, Commen
     comments: async (taskId) => [...(comments[taskId] ?? [])].reverse(),
     agents: async () => Object.entries(agents).map(([urlKey, id]) => ({ urlKey, id })),
     wake: async (taskId, body, key) => {
+      if (closedMeanwhile.has(taskId)) {
+        return "closed";
+      }
       append(taskId, body);
       wakes.push({ taskId, key });
+      return "written";
     },
     markDone: async (taskId, body) => {
+      if (closedMeanwhile.has(taskId)) {
+        return "closed";
+      }
       done.push(taskId);
       append(taskId, body);
+      return "written";
     },
   };
   const discover = async (): Promise<FoundPulls> =>

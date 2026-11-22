@@ -101,6 +101,25 @@ verifies("paperclip.pr-watcher-wake", () => {
     expect(paperclip.comments["task-4614"]).toHaveLength(1);
   });
 
+  test("leaves a task its author closed during the pass alone, without failing", async () => {
+    // HAL-16139, 22 Nov: the author marked it done between the watcher's list and its wake-up.
+    const github = fakeGitHub(recording("red-and-conflicting"), recording("merged-green"));
+    const paperclip = fakePaperclip(
+      [task(4614, agents.mateo), task(4485, agents.priya)],
+      {},
+      new Set(["task-4614", "task-4485"]),
+    );
+    const { summary, lines } = run(github, paperclip);
+    expect(await summary).toEqual({ checked: 2, done: 0, woken: 0, failed: [] });
+    expect(lines.filter((line) => line.endsWith("closed during this pass, so left alone"))).toEqual(
+      [
+        "HAL-4614: closed during this pass, so left alone",
+        "HAL-4485: closed during this pass, so left alone",
+      ],
+    );
+    expect(paperclip.comments).toEqual({});
+  });
+
   test("wakes the author for a tagged finding newer than their last comment", async () => {
     const author = agentComment(agents.priya, "2026-11-21T20:50:00Z", "Pushed.");
     const paperclip = fakePaperclip([task(4588, agents.priya)], { "task-4588": [author] });
