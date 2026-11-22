@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-16016 asks for this change, from Liam's review of #4971 (HAL-15947). The team decides under the HAL-2282 rule: the words are the ones the same command already uses without a terminal, and Liam signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:AVEccC+4b71+ebKVFXUKa0i6lfSVJSu80UkcLFGRdCQV0nibwJMB0K90DsHFh4tKtJTpEI6HbBthNmN/ls1WDg==
 
 ## What changes
 
