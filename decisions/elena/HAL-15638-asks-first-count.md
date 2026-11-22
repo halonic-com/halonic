@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15645 (wording decided by Sofia with Elena, team wording under HAL-2282; flow check C605 #7 on HAL-15638)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QPQcNmsYb58sAW5GlR4dKg3WQVnlQwkrSkXtrQwsiXp6Z7p6+DHcwbImrxsYjd8BYJRaJY8m2LGuMFOnpU7LCA==
 
 "Approve" meant two things: letting agents use a listed tool, and a person
 approving one call during a run. Letting agents use a listed tool is now
