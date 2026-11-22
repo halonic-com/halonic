@@ -10,6 +10,7 @@ import type {
   HarnessTask,
   SandboxSession,
 } from "@halonicjs/ports";
+import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
 import { BridgeTable } from "../bridge/bridge-routes.ts";
 import { SessionTable } from "../sandbox/session-table.ts";
@@ -117,6 +118,7 @@ afterEach(async () => {
   await server?.close();
   server = undefined;
   runs.length = 0;
+  startedTasks.length = 0;
 });
 
 /** Starts the routes with one open session and one open bridge, and returns their ids. */
@@ -168,8 +170,9 @@ async function startRun(
   url: string,
   ids: { session: string; bridge: string },
   signal?: AbortSignal,
+  runTask: HarnessTask = task,
 ) {
-  const body = { harness: "fake", task, ...ids };
+  const body = { harness: "fake", task: runTask, ...ids };
   const lines = readLines(await request(url, "/v1/harnesses/runs/start", body, signal));
   const first = (await lines.next()).value;
   return { id: first?.run ?? "", run: runs.at(-1) as FakeRun, lines };
@@ -309,5 +312,22 @@ describe("harness routes", () => {
       ...ids,
     });
     expect(answer.status).toBe(503);
+  });
+});
+
+verifies("agent-host.harness-task-asks", () => {
+  it("passes asks: in-sandbox on to the harness with the task", async () => {
+    const { url, ...ids } = await started();
+    await startRun(url, ids, undefined, { ...task, asks: "in-sandbox" });
+    expect(startedTasks).toEqual([{ ...task, asks: "in-sandbox" }]);
+  });
+
+  it("refuses any other asks, and starts no run", async () => {
+    const { url, ...ids } = await started();
+    for (const asks of ["always", "never", true]) {
+      const body = { harness: "fake", task: { ...task, asks }, ...ids };
+      expect((await request(url, "/v1/harnesses/runs/start", body)).status).toBe(400);
+    }
+    expect(startedTasks).toEqual([]);
   });
 });

@@ -227,6 +227,15 @@ async function programModelOf(
 }
 
 /**
+ * What the task says about asking (requirement `engine.harness-task-asks`):
+ * `in-sandbox` only when the agent's file says so, read from the file the
+ * run started with, so nothing a run is given can turn the asking off.
+ */
+function asksOf(agent: Agent): Pick<HarnessTask, "asks"> {
+  return agent.asks === "in-sandbox" ? { asks: "in-sandbox" } : {};
+}
+
+/**
  * Opens the call's bridge and sandbox, runs the harness in them, and closes
  * everything again, as {@link runHarnessCall} says.
  *
@@ -285,6 +294,7 @@ async function runInBridge(
         prompt: effect.prompt,
         ...(instructions === null ? {} : { instructionsFolder: instructions.folder }),
         ...model,
+        ...asksOf(call.agent),
       };
       await started.stepLimits.startClock(started.limits);
       // From here the clock stops however the step ends, even when the harness fails to start.
