@@ -61,7 +61,7 @@ import {
   targetsOf,
   targetWithPrompt,
 } from "./routine-reads.ts";
-import { nextRunOf, nextTimesOf, triggerProblems } from "./routine-times.ts";
+import { nextRunOf, nextTimesOf } from "./routine-times.ts";
 import { runNowFailureOf } from "./run-now-failure.ts";
 
 /** What {@link WorkspaceRoutines} needs of the workspace's files, runs, clock and engine. */
@@ -242,7 +242,7 @@ export class WorkspaceRoutines implements RoutinesHost {
       file: file.path,
       ...livenessOf(workspace, file, versions),
       // The row's errors, so the page says why it can't start as the row does (HAL-15300).
-      problems: [...errorsOf(workspace, file), ...triggerProblems(file, this.#parts)],
+      problems: errorsOf(workspace, file),
       inputMissing: workspace.issues.some(
         (issue) => issue.file === file.path && issue.code === "missing-routine-input",
       ),
