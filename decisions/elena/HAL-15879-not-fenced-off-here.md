@@ -3,6 +3,7 @@
 - Task: HAL-15879, from flow check C642 #5 on HAL-15857
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15879 (a fix that makes approved run output say what `plugin list` already says, with its approved lines, so a team decision under the HAL-2282 rule; Liam's code review signs this note)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yQdC3e6sxPAgNZnupk5WYfl8X2tm6mFHGphLDBcsACbx1CJTZ9qLuzfrudAAeMUHvi7JWb4u/MOQxNvTWotzDg==
 
 ## What changes
 
