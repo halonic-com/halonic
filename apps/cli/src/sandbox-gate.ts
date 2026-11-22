@@ -5,6 +5,9 @@
 // instead; any other such agent needs the sandbox, and when the sandbox
 // can't start, nothing starts, nothing is written to the run log, and the
 // command ends with exit 9. There is no flag that skips this (Julian, HAL-1673).
+// An agent whose file changed since that choice needs the sandbox too: it
+// gets a ! line that says where to confirm again, and a refusal says why it
+// needed the sandbox, without offering the way out (HAL-15640, HAL-12597).
 
 import { startsAProgram, workflowAgentsOf } from "@halonicjs/adapter-workspace-models";
 import type { PlacementReader, RunDetail } from "@halonicjs/app";
@@ -39,11 +42,26 @@ export interface SandboxGateMachine {
 
 /** An agent set to "On this computer": `halonic run` prints one ! line for it before the run. */
 export interface UnsandboxedAgent {
+  readonly kind: "this-computer";
   /** The agent's name, such as "Writer". */
   readonly name: string;
   /** When the person chose, as ISO text. */
   readonly chosenAt: string;
 }
+
+/**
+ * An agent set to "On this computer" for an earlier version of its file: it
+ * runs in the sandbox until the person confirms again in Studio, and
+ * `halonic run` says so in one ! line (HAL-15640).
+ */
+export interface OnHoldAgent {
+  readonly kind: "on-hold";
+  /** The agent's name, such as "Writer". */
+  readonly name: string;
+}
+
+/** An agent whose place `halonic run` names in a ! line before the run. */
+export type PlacedAgent = UnsandboxedAgent | OnHoldAgent;
 
 /**
  * A run refused because the sandbox can't start on this computer: line 1
@@ -60,20 +78,25 @@ export class SandboxRefusedError extends KindedError {
   readonly #ending: Message;
   readonly #missing: readonly string[];
   readonly #wslDistro: string | undefined;
+  readonly #hints: readonly Message[];
 
+  /**
+   * @param hints - the sentences after the fix on line 2, in order: why each
+   *   agent on hold needed the sandbox, then a command's other way out
+   */
   constructor(
     code: string,
     ending: Message,
     missing: readonly string[],
     wslDistro?: string,
-    hint?: Message,
+    hints: readonly Message[] = [],
   ) {
     const fix = plainText(sandboxMessages.refusedFix(code, { distro: wslDistro, missing }).phrase);
     super(
       "unavailable",
       `${plainText(sandboxMessages.cantStart().phrase)} ${plainText(ending.phrase)}`,
       {
-        fix: hint === undefined ? fix : `${fix} ${plainText(hint.phrase)}`,
+        fix: [fix, ...hints.map((hint) => plainText(hint.phrase))].join(" "),
         ...(missing.length === 0 ? {} : { cause: new Error(missing.join(" ")) }),
       },
     );
@@ -82,6 +105,7 @@ export class SandboxRefusedError extends KindedError {
     this.#ending = ending;
     this.#missing = missing;
     this.#wslDistro = wslDistro;
+    this.#hints = hints;
   }
 
   /**
@@ -89,7 +113,10 @@ export class SandboxRefusedError extends KindedError {
    * has another way out, such as `run`'s `--harness halonic` (HAL-12597).
    */
   withHint(hint: Message): SandboxRefusedError {
-    return new SandboxRefusedError(this.code, this.#ending, this.#missing, this.#wslDistro, hint);
+    return new SandboxRefusedError(this.code, this.#ending, this.#missing, this.#wslDistro, [
+      ...this.#hints,
+      hint,
+    ]);
   }
 }
 
@@ -142,16 +169,18 @@ export function programAgentsOf(
  *
  * @param ending - what line 1 ends with: `runMessages.nothingRan()` for `run`,
  *   `sandboxMessages.nothingSent()` for `runs send`
- * @returns the agents set to "On this computer", for their ! lines
- * @throws SandboxRefusedError when an agent needs the sandbox and it can't start here (exit 9)
+ * @returns the agents set to "On this computer", or on hold since their
+ *   file changed, for their ! lines
+ * @throws SandboxRefusedError when an agent needs the sandbox and it can't
+ *   start here (exit 9); line 2 says which agents on hold needed it
  */
 export async function checkRunSandbox(
   workspace: LoadedWorkspace,
   run: SandboxGateRun,
   machine: SandboxGateMachine,
   ending: Message = runMessages.nothingRan(),
-): Promise<UnsandboxedAgent[]> {
-  const unsandboxed: UnsandboxedAgent[] = [];
+): Promise<PlacedAgent[]> {
+  const placed: PlacedAgent[] = [];
   let needsSandbox = false;
   for (const agent of programAgentsOf(workspace, run)) {
     const answer = await machine.placement.where({
@@ -161,19 +190,23 @@ export async function checkRunSandbox(
       file: await machine.readFile(agent.path),
     });
     if (answer.runsOn === "this-computer") {
-      unsandboxed.push({ name: agent.value.name, chosenAt: answer.chosenAt });
+      placed.push({ kind: "this-computer", name: agent.value.name, chosenAt: answer.chosenAt });
     } else {
       needsSandbox = true;
+      if (answer.reason === "file-changed")
+        placed.push({ kind: "on-hold", name: agent.value.name });
     }
   }
   if (needsSandbox) {
     const check = await machine.sandbox.check();
     if (!check.ok) {
       const code = machine.windowsNodeInWsl === true ? windowsNodeInWsl : check.reason;
-      throw new SandboxRefusedError(code, ending, check.missing, machine.wslDistro);
+      const onHold = placed.filter((agent) => agent.kind === "on-hold");
+      const hints = onHold.map((agent) => runMessages.onHoldNeedsSandbox(agent.name));
+      throw new SandboxRefusedError(code, ending, check.missing, machine.wslDistro, hints);
     }
   }
-  return unsandboxed;
+  return placed;
 }
 
 /**
@@ -184,7 +217,13 @@ export function unsandboxedLine(agent: UnsandboxedAgent): Message {
   return runMessages.onThisComputer(agent.name, dayInWords(localDay(new Date(agent.chosenAt))));
 }
 
-/** "! Writer runs on this computer without the sandbox, as chosen on 9 Nov.": the line before the run starts. */
-export function unsandboxedWarning(agent: UnsandboxedAgent): Phrase {
-  return phrase`${markPart("needsYou")} ${unsandboxedLine(agent).phrase}`;
+/**
+ * The agent's line before the run starts: "! Writer runs on this computer
+ * without the sandbox, as chosen on 9 Nov.", or, on hold, "! Writer's file
+ * changed since you chose On this computer, so it runs in the sandbox until
+ * you confirm again in Studio › Writer › Harness › Where it runs."
+ */
+export function placedWarning(agent: PlacedAgent): Phrase {
+  const line = agent.kind === "on-hold" ? runMessages.onHold(agent.name) : unsandboxedLine(agent);
+  return phrase`${markPart("needsYou")} ${line.phrase}`;
 }

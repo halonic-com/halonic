@@ -158,7 +158,10 @@ and per computer. It lives in your profile folder, never in the workspace, so it
 doesn't carry to another computer. It is bound to the exact bytes of the agent's
 file: once the file changes, even only its whitespace, the choice is on hold and
 the agent runs in the sandbox again until you confirm again (**Review and
-confirm** on the Harness page).
+confirm** on the Harness page). While it's on hold, `halonic run` and
+`halonic serve` print a `!` line for it before its run that says so and where
+to confirm again. When the sandbox can't start, the refusal says the agent
+needed it because its file changed, and doesn't offer the choice as a way out.
 
 What starts such an agent:
 

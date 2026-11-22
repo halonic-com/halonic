@@ -112,11 +112,15 @@ verifies("agents.configuration.where-it-runs", () => {
       expect(calloutSaying(page, words.onHold("Writer"))?.className).toContain("bg-attention-soft");
       expect(radioNamed(page, words.onThisComputer)?.checked).toBe(true);
       expect((await host.placement(ref))?.runsOn).toBe("on-hold");
+      // HAL-15640: On this computer says it's on hold, in place of where Studio can't start it.
+      expect(page.textContent).toContain(words.onHoldNote);
+      expect(page.textContent).not.toContain(words.studioCantStart);
 
       await press(buttonNamed(page, words.reviewAndConfirm));
       expect(warning()?.textContent).toContain(words.warningTitle("Writer"));
       await press(buttonNamed(document.body, words.confirm));
       expect(page.textContent).not.toContain(words.onHold("Writer"));
+      expect(page.textContent).not.toContain(words.onHoldNote);
       expect((await host.placement(ref))?.runsOn).toBe("this-computer");
     });
 
