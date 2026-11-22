@@ -61,6 +61,7 @@ export type PairingView =
       readonly step: "phoneProblem";
       readonly problem: PhoneKeyProblem;
       readonly route: "qr" | "typed";
+      readonly computerName: string;
     };
 
 /** How long "This isn't a Halonic pairing code." stays after the last such read (G7). */
@@ -231,7 +232,7 @@ export class PhonePairingFlow {
     };
     const phoneProblem = (problem: PhoneKeyProblem) => {
       this.pairing = undefined;
-      this.next({ step: "phoneProblem", problem, route: start.route });
+      this.next({ step: "phoneProblem", problem, route: start.route, computerName: name });
     };
     const unreachable = { kind: "cant-reach", reason: "unreachable" } as const;
     const step = await this.tunnel.startPairing(start).catch(() => unreachable);

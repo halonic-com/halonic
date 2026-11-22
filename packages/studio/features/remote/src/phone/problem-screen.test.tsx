@@ -5,7 +5,13 @@ import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { render, unmountAll } from "../test-support/render.tsx";
 import type { PairingFrom } from "./phone-pairing.ts";
-import { ProblemScreen, type ProblemScreenOf, problemWords } from "./problem-screen.tsx";
+import {
+  PhoneProblemScreen,
+  ProblemScreen,
+  type ProblemScreenOf,
+  phoneProblemWords,
+  problemWords,
+} from "./problem-screen.tsx";
 
 afterEach(unmountAll);
 
@@ -116,5 +122,58 @@ verifies("remote.phone-pairing-problems", () => {
     const { screen } = show({ screen: "used" });
     expect(screen.querySelector("strong")?.textContent).toBe("Don't allow");
     expect(screen.textContent).not.toContain("**");
+  });
+});
+
+verifies("remote.phone-pairing-problems", () => {
+  it("asks for Nearby devices, by Android's question or its settings", () => {
+    const ask = phoneProblemWords({ kind: "no-local-network", askAgain: true }, laptop);
+    const settings = phoneProblemWords({ kind: "no-local-network", askAgain: false }, laptop);
+    expect(ask).toMatchObject({
+      title: "Nearby devices isn't allowed for Halonic",
+      lines: [
+        "To find Tim's laptop on this Wi-Fi, choose Allow when Android asks about Nearby devices.",
+      ],
+      action: "tryAgain",
+      actionLabel: "Try again",
+      cancel: true,
+    });
+    expect(settings).toMatchObject({
+      lines: [
+        "To find Tim's laptop on this Wi-Fi, allow Nearby devices for Halonic in Android settings.",
+      ],
+      action: "openSettings",
+      actionLabel: "Open settings",
+    });
+  });
+
+  it("offers Pair again for a key the phone can't read", () => {
+    expect(phoneProblemWords({ kind: "key-unreadable" }, laptop)).toMatchObject({
+      title: "Can't open the key for Tim's laptop",
+      action: "again",
+      actionLabel: "Pair again",
+    });
+  });
+
+  it("names no computer when the phone's key storage doesn't work, and Cancel goes back", () => {
+    const onAction = vi.fn();
+    const onCancel = vi.fn();
+    const screen = render(
+      <PhoneProblemScreen
+        problem={{ kind: "keys-unavailable" }}
+        computer={laptop}
+        onAction={onAction}
+        onCancel={onCancel}
+      />,
+    );
+    expect(screen.querySelector("h2")?.textContent).toBe("This phone's key storage isn't working");
+    expect(document.activeElement).toBe(screen.querySelector("h2"));
+    expect(screen.textContent).not.toContain(laptop);
+    const buttons = [...screen.querySelectorAll("button")];
+    expect(buttons.map((button) => button.textContent)).toEqual(["Try again", "Cancel"]);
+    act(() => buttons[0]?.click());
+    act(() => buttons[1]?.click());
+    expect(onAction).toHaveBeenCalledWith("tryAgain");
+    expect(onCancel).toHaveBeenCalledOnce();
   });
 });

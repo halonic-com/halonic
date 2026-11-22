@@ -3,15 +3,17 @@ import { useEffect, useRef } from "react";
 import { MarkedText } from "./marked-text.tsx";
 import { pairWords } from "./pair-words.ts";
 import type { PairingFrom, PairingProblemScreen } from "./phone-pairing.ts";
+import type { PhoneKeyProblem } from "./phone-tunnel.ts";
 
 /** The problem screens drawn on their own; `typedWrong` is the typed route's screen with its error. */
 export type ProblemScreenOf = Exclude<PairingProblemScreen, { screen: "typedWrong" }>;
 
 /**
  * What a problem screen's main button does: `again` starts over on the route the pairing came from
- * (Scan again, Type a code again), for a code that is spent; `tryAgain` sends the same code again.
+ * (Scan again, Type a code again), for a code that is spent; `tryAgain` sends the same code again;
+ * `openSettings` opens Android's settings for Halonic.
  */
-export type ProblemAction = "again" | "tryAgain";
+export type ProblemAction = "again" | "tryAgain" | "openSettings";
 
 /** A problem screen's words and buttons. */
 export interface ProblemWords {
@@ -91,6 +93,50 @@ export function problemWords(
 }
 
 /**
+ * The words of the phone's own problem while pairing (microcopy 28), drawn like `p-m8` with Cancel
+ * under the main button. Pairing again replaces an unreadable key, so Forget this computer stays
+ * on the screens that know which listed computer it is.
+ */
+export function phoneProblemWords(problem: PhoneKeyProblem, computer: string): ProblemWords {
+  const words = pairWords.phoneKeys;
+  const tryAgain = pairWords.unreachable.tryAgain;
+  switch (problem.kind) {
+    case "no-local-network":
+      return problem.askAgain
+        ? {
+            title: words.nearbyOff.title,
+            lines: [words.nearbyOff.bodyAsk(computer)],
+            action: "tryAgain",
+            actionLabel: tryAgain,
+            cancel: true,
+          }
+        : {
+            title: words.nearbyOff.title,
+            lines: [words.nearbyOff.bodySettings(computer)],
+            action: "openSettings",
+            actionLabel: pairWords.camera.openSettings,
+            cancel: true,
+          };
+    case "key-unreadable":
+      return {
+        title: words.keyUnreadable.title(computer),
+        lines: [words.keyUnreadable.body],
+        action: "again",
+        actionLabel: words.keyUnreadable.pairAgain,
+        cancel: true,
+      };
+    case "keys-unavailable":
+      return {
+        title: words.keysUnavailable.title,
+        lines: [words.keysUnavailable.body],
+        action: "tryAgain",
+        actionLabel: tryAgain,
+        cancel: true,
+      };
+  }
+}
+
+/**
  * A pairing problem screen, under the page's "Pair with a computer" header: the amber tile, the
  * title, its line and the way on. The title takes focus when the screen shows, so TalkBack reads
  * it (strings table, Other announcements); no live region is needed.
@@ -109,7 +155,45 @@ export function ProblemScreen({
   readonly onAction: (action: ProblemAction) => void;
   readonly onCancel: () => void;
 }) {
-  const words = problemWords(problem, computer, from);
+  return (
+    <ProblemLayout
+      words={problemWords(problem, computer, from)}
+      onAction={onAction}
+      onCancel={onCancel}
+    />
+  );
+}
+
+/** The phone's own problem while pairing (microcopy 28), drawn as {@link ProblemScreen}. */
+export function PhoneProblemScreen({
+  problem,
+  computer,
+  onAction,
+  onCancel,
+}: {
+  readonly problem: PhoneKeyProblem;
+  readonly computer: string;
+  readonly onAction: (action: ProblemAction) => void;
+  readonly onCancel: () => void;
+}) {
+  return (
+    <ProblemLayout
+      words={phoneProblemWords(problem, computer)}
+      onAction={onAction}
+      onCancel={onCancel}
+    />
+  );
+}
+
+function ProblemLayout({
+  words,
+  onAction,
+  onCancel,
+}: {
+  readonly words: ProblemWords;
+  readonly onAction: (action: ProblemAction) => void;
+  readonly onCancel: () => void;
+}) {
   const heading = useRef<HTMLHeadingElement>(null);
   // A new problem is a new screen, so its title is read again.
   useEffect(() => heading.current?.focus(), [words.title]);

@@ -277,6 +277,7 @@ verifies("remote.phone-pairing-problems", () => {
       step: "phoneProblem",
       problem: { kind: "no-local-network", askAgain: false },
       route: "typed",
+      computerName: "Tim's laptop",
     });
   });
 
@@ -294,6 +295,7 @@ verifies("remote.phone-pairing-problems", () => {
       step: "phoneProblem",
       problem: { kind: "keys-unavailable" },
       route: "qr",
+      computerName: "Tim's laptop",
     });
   });
 });
