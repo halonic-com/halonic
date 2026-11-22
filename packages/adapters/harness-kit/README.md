@@ -26,6 +26,13 @@ way, so the program never stalls on a full pipe, and the last line says why
 a run failed. A read error is the caller's to handle, for instance
 `outputTail(process.stderr, 4_096).catch(() => "")`.
 
+`exitWithin(process, name)` waits up to `exitGraceMs` (10 seconds) for a
+program to exit once its output has ended or its input was closed; one still
+running is killed and the wait fails with an error that names it.
+`stopUnlessExited(process)` waits the same way but gives `"stopped"` after
+the kill instead of failing, for a harness that already has the program's
+result and keeps it.
+
 ## The event filter
 
 `HarnessEventFilter` removes the run's bridge token from every string in an

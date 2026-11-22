@@ -76,6 +76,11 @@ an error result ends the run with an error. Line types it doesn't know are
 skipped, so a newer Claude Code can add some, and a line that isn't JSON ends
 the run with an error that never quotes it.
 
+After the result the harness ends Claude Code's input and waits up to 10
+seconds for it to exit. One that doesn't is stopped, with everything it
+started; the result stands, and a `harness.stopped` event comes right before
+the final `agent.finished` (`harness-kit.exit-within`).
+
 ## Example
 
 ```ts

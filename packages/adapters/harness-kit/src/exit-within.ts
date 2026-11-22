@@ -9,19 +9,20 @@ export const exitGraceMs = 10_000;
 
 /**
  * The program's exit, waiting at most `graceMs` for it (failure-path rule 1:
- * every wait ends). A program still running by then is killed, and the wait
- * fails with a plain error that names it.
+ * every wait ends). A program still running by then is killed, with
+ * everything it started, and the wait gives `"stopped"` instead of failing,
+ * for a harness that already has the program's result and keeps it
+ * (HAL-15968).
  *
- * @param name - the program as people know it, such as "Claude Code"
- * @throws Error when the program hadn't exited after `graceMs`; it has been killed by then
+ * @throws Error when killing the program fails: it may still be running
  * @example
- * const exit = await exitWithin(process, "Codex");
+ * const exit = await stopUnlessExited(process);
+ * if (exit === "stopped") yield stoppedEvent;
  */
-export async function exitWithin(
+export async function stopUnlessExited(
   process: SandboxProcess,
-  name: string,
   graceMs = exitGraceMs,
-): Promise<SandboxExit> {
+): Promise<SandboxExit | "stopped"> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timedOut = new Promise<"timed-out">((resolve) => {
     timer = setTimeout(() => resolve("timed-out"), graceMs);
@@ -33,5 +34,26 @@ export async function exitWithin(
     clearTimeout(timer);
   }
   await process.kill();
+  return "stopped";
+}
+
+/**
+ * The program's exit, waiting at most `graceMs` for it, as
+ * {@link stopUnlessExited} does, for a harness that has no result yet: a
+ * program still running by then is killed, and the wait fails with a plain
+ * error that names it.
+ *
+ * @param name - the program as people know it, such as "Claude Code"
+ * @throws Error when the program hadn't exited after `graceMs`; it has been killed by then
+ * @example
+ * const exit = await exitWithin(process, "Codex");
+ */
+export async function exitWithin(
+  process: SandboxProcess,
+  name: string,
+  graceMs = exitGraceMs,
+): Promise<SandboxExit> {
+  const exit = await stopUnlessExited(process, graceMs);
+  if (exit !== "stopped") return exit;
   throw new Error(`${name} didn't exit within ${graceMs / 1000} seconds, so Halonic stopped it.`);
 }

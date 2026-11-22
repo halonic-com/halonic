@@ -3,6 +3,7 @@ import type { BridgeFailedEvent, HarnessAllowedEvent } from "./bridge-events.ts"
 import type { ConnectorListingFailedEvent } from "./connector-listing-failed.ts";
 import type { ConnectorPartOffEvent } from "./connector-part-off.ts";
 import type { ConnectorStartedEvent } from "./connector-started.ts";
+import type { HarnessStoppedEvent } from "./harness-stopped.ts";
 import type { KeyOriginAnsweredEvent } from "./key-origin-answered.ts";
 import type { KeyOriginAskedEvent } from "./key-origin-asked.ts";
 import type {
@@ -234,6 +235,7 @@ export type RunEventBody =
       files: { path: string; sha256: string }[];
       sha256: string;
     }
+  | HarnessStoppedEvent
   /**
    * A step's sandbox opened (requirement `events.sandbox-opened`). `sandbox`
    * is a display copy of its profile, never its environment variables.

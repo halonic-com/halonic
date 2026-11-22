@@ -55,6 +55,8 @@ verifies("events.run-log-contract", () => {
       | "harness.started"
       // Added after the reference by events.harness-instructions (HAL-3106).
       | "harness.instructions"
+      // Added after the reference by events.harness-stopped (HAL-15968).
+      | "harness.stopped"
       // Added after the reference by events.sandbox-opened (HAL-1707).
       | "sandbox.opened"
       // Added after the reference by events.sandbox-off (HAL-1707).

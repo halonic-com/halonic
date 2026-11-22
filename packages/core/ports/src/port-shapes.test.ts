@@ -396,6 +396,7 @@ verifies("ports.harness-run-events", () => {
       | "knowledge.searched"
       | "tool.called"
       | "tool.result"
+      | "harness.stopped"
       | "approval.requested"
       | "agent.finished"
     >();
