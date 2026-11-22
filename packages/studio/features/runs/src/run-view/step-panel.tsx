@@ -8,6 +8,7 @@ import { ConnectorNotStartedLine, FailedCallLine } from "./failed-call-line.tsx"
 import { noConnectionProven, stepSandboxes } from "./sandbox-model.ts";
 import { SandboxOffPanel, SandboxPanel, sayText } from "./sandbox-panel.tsx";
 import { stepBlockedSites, stepChildRuns, stepEvents } from "./step-events-model.ts";
+import { stepHarnessStopped } from "./step-harness-stopped.ts";
 
 /** Props for {@link StepPanel}. */
 export interface StepPanelProps {
@@ -33,7 +34,9 @@ export interface StepPanelProps {
  * runs it started, "Started Verify → Run 7k2m9p" with the link, then its model
  * calls with their model and tokens, then its tool calls, each with its
  * arguments folded and, under one that failed, a quiet "✕ Didn't work"
- * line, and last what its sandbox could do (sandbox-screens 1.3).
+ * line, then a quiet line for each harness program Halonic stopped after
+ * it gave its result (HAL-15988), and last what its sandbox could do
+ * (sandbox-screens 1.3).
  * Opening it moves focus to its title, and closing it moves focus back to
  * the entry (kit `SidePanel`).
  *
@@ -59,6 +62,7 @@ export function StepPanel({
   const blocked = useMemo(() => stepBlockedSites(log, entry.id), [log, entry.id]);
   const sandboxes = useMemo(() => stepSandboxes(log, entry.id), [log, entry.id]);
   const proven = useMemo(() => noConnectionProven(log, entry.id), [log, entry.id]);
+  const harnessStopped = useMemo(() => stepHarnessStopped(log, entry.id), [log, entry.id]);
   const children = stepChildRuns(log, entry.id, workflowName);
   const place = phone ? "phone" : "desktop";
   const frame = useRef<HTMLDivElement>(null);
@@ -169,6 +173,11 @@ export function StepPanel({
             </ul>
           </section>
         )}
+        {harnessStopped.map((stopped) => (
+          <p key={stopped.id} className="pt-4 text-body text-fg-muted">
+            {stopped.text}
+          </p>
+        ))}
         {sandboxes.map((sandbox, index) => (
           <div key={index} className="pt-4">
             <SandboxItem sandbox={sandbox} live={live} place={place} />
