@@ -90,7 +90,7 @@ verifies("fs-tauri.instruction-trust-commands", () => {
       expect(error).toBe("Command instruction_trust_list not found");
     });
 
-    it("rejects as unavailable, without the shell's text, when the page has no capability", async () => {
+    it("rejects as internal, without the shell's text, when the page has no capability", async () => {
       const shell = new FakeInstructionTrustShell({ granted: false });
       const store = new TauriInstructionTrustStore(shell);
       for (const call of [
@@ -99,9 +99,50 @@ verifies("fs-tauri.instruction-trust-commands", () => {
         () => store.remove(coder),
       ]) {
         const error = await rejection(call());
-        expect(errorKindOf(error)).toBe("unavailable");
+        expect(errorKindOf(error)).toBe("internal");
         expect(String((error as Error).message)).not.toContain("ACL");
       }
+    });
+
+    it("says an io refusal in Halonic's words, with the shell's message only in the details", async () => {
+      const message = "Permission denied (os error 13)";
+      const store = new TauriInstructionTrustStore({
+        invoke: async () => Promise.reject({ kind: "io", message }),
+      });
+      for (const call of [
+        () => store.save(instructionTrustRecord(coder.location, coder.agent)),
+        () => store.remove(coder),
+      ]) {
+        const error = await rejection(call());
+        expect(errorKindOf(error)).toBe("unavailable");
+        expect(error).toMatchObject({
+          message: "Halonic can't write to its data folder.",
+          details: message,
+        });
+      }
+      expect(await rejection(store.get(coder))).toMatchObject({
+        message: "Halonic can't read its data folder.",
+        details: message,
+      });
+    });
+
+    it("keeps the text of a call the shell didn't answer only in the details", async () => {
+      const store = new TauriInstructionTrustStore(
+        new FakeInstructionTrustShell({ granted: false }),
+      );
+      const error = await rejection(store.remove(coder));
+      expect(error).toMatchObject({ message: "Halonic ran into a problem it can't explain yet." });
+      expect((error as { details: string }).details).toMatch(
+        /^The desktop shell gave no answer to the instruction trust call\.\n.*ACL/su,
+      );
+      const broken = new TauriInstructionTrustStore({
+        invoke: async () => Promise.reject(new TypeError("bad call")),
+      });
+      expect(await rejection(broken.get(coder))).toMatchObject({
+        message: "Halonic ran into a problem it can't explain yet.",
+        details:
+          "The desktop shell gave no answer to the instruction trust call.\nTypeError: bad call",
+      });
     });
   });
 });
