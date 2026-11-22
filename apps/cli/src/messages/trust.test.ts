@@ -104,7 +104,8 @@ describe("trust's sentences", () => {
       "Halonic couldn't read its list of trusted workspaces, so it's asking again.",
     );
     expect(words(trustMessages.trustedOn("3 Nov"))).toBe("trusted on 3 Nov");
-    expect(words(trustMessages.noneTrusted())).toBe("No trusted workspaces yet.");
+    expect(words(trustMessages.noneTrusted())).toBe("No trusted workspaces or plugins yet.");
+    expect(words(trustMessages.listedPlugin("Weather"))).toBe("Weather (plugin)");
     expect(words(trustMessages.removed("Acme"))).toBe(
       "Removed trust for Acme. Its programs and real models won't start until you review it again.",
     );

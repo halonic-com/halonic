@@ -158,10 +158,16 @@ verifies("cli.commands.trust.review-and-trust", () => {
     const removed = captureIo(folder());
     const code = await runCli(["trust", "--dir", "acme", "--remove"], removed, commands());
 
-    expect(empty.stdout).toEqual(["No trusted workspaces yet."]);
+    expect(empty.stdout).toEqual(["No trusted workspaces or plugins yet."]);
     expect(list.stdout).toEqual([`Acme   .${sep}acme   trusted on 3 Nov`]);
     expect(JSON.parse(json.stdout.join("\n")).workspaces).toEqual([
-      { name: "Acme", folder: `.${sep}acme`, fingerprint, trustedAt: "2026-11-03T12:00:00.000Z" },
+      {
+        kind: "workspace",
+        name: "Acme",
+        folder: `.${sep}acme`,
+        fingerprint,
+        trustedAt: "2026-11-03T12:00:00.000Z",
+      },
     ]);
     expect(code).toBe(exitCode.ok);
     expect(removed.stdout).toEqual([

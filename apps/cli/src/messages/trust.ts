@@ -60,8 +60,9 @@ export const trustMessages = defineMessages("trust", {
   action: (name?: string) => phrase`trust ${name ?? "this folder"}`,
 
   /** The options in `halonic trust --help` (team, HAL-188 4c). */
-  listOption: () => phrase`List the workspaces trusted on this computer.`,
-  removeOption: () => phrase`Remove the trust, so the workspace's programs don't start.`,
+  listOption: () => phrase`List the workspaces and plugins trusted on this computer.`,
+  removeOption: () =>
+    phrase`Remove the trust, so the workspace's or plugin's programs don't start.`,
   yesOption: () => phrase`Trust without asking. Needs --fingerprint.`,
   fingerprintOption: () => phrase`The fingerprint from the check you reviewed.`,
 
@@ -234,7 +235,9 @@ export const trustMessages = defineMessages("trust", {
 
   /** `--list`: "trusted on 3 Nov", after the name and the folder. */
   trustedOn: (date: string) => phrase`trusted on ${date}`,
-  noneTrusted: () => phrase`No trusted workspaces yet.`,
+  noneTrusted: () => phrase`No trusted workspaces or plugins yet.`,
+  /** `--list`: a plugin's name, so it isn't taken for a workspace (team, HAL-15398). */
+  listedPlugin: (name: string) => phrase`${name} (plugin)`,
   /** `--remove`. */
   removed: (name: string) =>
     phrase`Removed trust for ${name}. Its programs and real models won't start until you review it again.`,
