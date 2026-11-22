@@ -39,9 +39,11 @@ export interface HarnessRouteDeps {
  *   `{ type: "finished" }` or `{ type: "failed", message }`. When Studio goes
  *   away, the run is cancelled. A bridge serves runs in one session only: it
  *   answers 409 `bridge_in_use` for a bridge a run started in another session.
- *   In a session without the sandbox, it answers 403 `environment_not_host`
- *   unless the host opened the session for an agent on this computer and its
- *   environment is exactly the host's (`agent-host.unfenced-start`).
+ *   In a session without the sandbox, it answers 403 `task_not_host` for a
+ *   task naming another agent or instructions folder than the host opened the
+ *   session with, and 403 `environment_not_host` unless the host opened the
+ *   session for an agent on this computer and its environment is exactly the
+ *   host's (`agent-host.unfenced-start`).
  * - `POST /v1/harnesses/runs/send` with `{ run, input }` passes a person's answer;
  * - `POST /v1/harnesses/runs/cancel` with `{ run }` stops the run.
  *
@@ -170,8 +172,8 @@ interface ReadyStart {
 }
 
 /**
- * Finds the run's harness, session and bridge, checks a session without the
- * sandbox's environment, and binds the bridge to the session; or answers why
+ * Finds the run's harness, session and bridge, checks a run in a session
+ * without the sandbox against what the host opened it with, and binds the bridge to the session; or answers why
  * the run can't start and gives `undefined`.
  */
 function readyToStart(
@@ -194,7 +196,7 @@ function readyToStart(
     bridge: hostedBridgeOf(open),
   });
   if (refusal !== undefined) {
-    sendError(response, 403, "environment_not_host", refusal);
+    sendError(response, 403, refusal.code, refusal.message);
     return undefined;
   }
   // The host's own session, so the bridge's approvals read the fence it really has.

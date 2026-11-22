@@ -11,7 +11,15 @@ import { SessionTable } from "../sandbox/session-table.ts";
 import { UnfencedSessions } from "./unfenced-sessions.ts";
 
 const bridge = { url: "http://127.0.0.1:4100", token: "run-token-test-value" };
-const task = { model: "claude-sonnet-5-5", modelForEveryCall: true } as HarnessTask;
+/** The instructions folder the host made and built the session's profile with. */
+const hostInstructions = "/data/harness-tmp/instructions-1";
+const task = {
+  hubId: "acme",
+  agentId: "coder",
+  instructionsFolder: hostInstructions,
+  model: "claude-sonnet-5-5",
+  modelForEveryCall: true,
+} as HarnessTask;
 
 /** The profile the host built for the session. */
 const built: SandboxProfile = {
@@ -63,9 +71,18 @@ async function opened(
   const unfenced = new UnfencedSessions(sessions);
   const session = sessionWith(env, fence);
   const sessionId = (await sessions.add(session)) ?? "";
-  if (vetted) unfenced.add(sessionId, built);
-  const refusal = () => unfenced.startRefusal({ sessionId, session, harness, task, bridge });
-  return { sessions, sessionId, refusal };
+  if (vetted) {
+    unfenced.add(sessionId, {
+      profile: built,
+      hubId: "acme",
+      agentId: "coder",
+      instructionsFolder: hostInstructions,
+    });
+  }
+  const refuse = (startTask: HarnessTask) =>
+    unfenced.startRefusal({ sessionId, session, harness, task: startTask, bridge });
+  const refusal = (changed: Partial<HarnessTask> = {}) => refuse({ ...task, ...changed });
+  return { sessions, sessionId, refusal, refuse };
 }
 
 verifies("agent-host.unfenced-start", () => {
@@ -80,7 +97,10 @@ verifies("agent-host.unfenced-start", () => {
         ...hostEnvironment,
         NODE_OPTIONS: "--require /srv/acme/x.js",
       });
-      expect(refusal()).toMatch(/isn't the one the agent host gives/);
+      expect(refusal()).toEqual({
+        code: "environment_not_host",
+        message: expect.stringMatching(/isn't the one the agent host gives/),
+      });
     });
 
     it("refuses a host variable the page changed or left out, such as PATH", async () => {
@@ -101,7 +121,9 @@ verifies("agent-host.unfenced-start", () => {
     });
 
     it("refuses a session without a fence the gate didn't open, and leaves a fenced one to its fence", async () => {
-      expect((await opened(hostEnvironment, false)).refusal()).toMatch(/didn't open this session/);
+      expect((await opened(hostEnvironment, false)).refusal()?.message).toMatch(
+        /didn't open this session/,
+      );
       const fenced = await opened({ ANYTHING: "1" }, false, { state: "fenced" });
       expect(fenced.refusal()).toBeUndefined();
     });
@@ -109,7 +131,24 @@ verifies("agent-host.unfenced-start", () => {
     it("forgets the session's profile once it closes", async () => {
       const { sessions, sessionId, refusal } = await opened(hostEnvironment);
       await sessions.close(sessionId);
-      expect(refusal()).toMatch(/didn't open this session/);
+      expect(refusal()?.message).toMatch(/didn't open this session/);
+    });
+
+    it("refuses an instructions folder the host didn't build the session with, such as a plugin with hooks", async () => {
+      const { refusal, refuse } = await opened(hostEnvironment);
+      // A folder holding `hooks/hooks.json` would become Claude Code's `--plugin-dir`.
+      expect(refusal({ instructionsFolder: "/work/acme/downloads/plugin" })).toEqual({
+        code: "task_not_host",
+        message: expect.stringMatching(/instructions folder isn't the one/),
+      });
+      const { instructionsFolder: _folder, ...withoutFolder } = task;
+      expect(refuse(withoutFolder)).toBeUndefined();
+    });
+
+    it("refuses a task naming another agent than the one the gate let out", async () => {
+      const { refusal } = await opened(hostEnvironment);
+      expect(refusal({ agentId: "writer" })?.code).toBe("task_not_host");
+      expect(refusal({ hubId: "other" })?.code).toBe("task_not_host");
     });
   });
 });
