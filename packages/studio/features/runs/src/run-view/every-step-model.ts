@@ -8,6 +8,7 @@ import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { RunWorkflow } from "../api.ts";
 import { everyStepWords, stepName } from "../run-words.ts";
 import { clockTime, dueWords, tookWords } from "../time-words.ts";
+import { keyOriginWait, waitsForKeyOriginAnswer } from "./key-origin-wait.ts";
 import { slowStepLine } from "./slow-step.ts";
 import { eventsBySteps } from "./step-events-model.ts";
 import { type StepGroup, stepGroups } from "./step-groups.ts";
@@ -58,15 +59,15 @@ export function everyStep(
   // Only the step the run is in can wait, and it says what for once it has been quiet for 2 s.
   const slow =
     summary.status === "running" ? slowStepLine(events, now, phone, providerName) : undefined;
+  // A question to the person is a wait for them at once, not after 2 quiet seconds.
+  const asking = summary.status === "running" && waitsForKeyOriginAnswer(events);
   return steps.map((step, index) => {
     const name = stepName(step.stateId, workflow?.stepDescription(step.stateId));
     const time = clockTime(new Date(step.startedAt));
-    const ended = howItWent(step, summary, now);
+    const current = step.end.kind === "running" && index === steps.length - 1;
+    const ended = asking && current ? keyOriginWait : howItWent(step, summary, now);
     const { mark, state } = ended;
-    const line =
-      slow !== undefined && step.end.kind === "running" && index === steps.length - 1
-        ? slow
-        : ended.line;
+    const line = slow !== undefined && current && !asking ? slow : ended.line;
     const id = `step-${index}`;
     const over = step.end.kind !== "running" && !step.end.kind.startsWith("waiting");
     return {

@@ -16,6 +16,22 @@ export type SandboxBlock =
 export type LoggedSandboxBlock = SandboxBlock | { kind: "others" };
 
 /**
+ * A step's sandbox refused an access (requirement `events.sandbox-blocked`).
+ * `count` is the running total of refused accesses to this target (or to
+ * `others`) in the step so far: the engine logs a target's first block at
+ * once and the total at the end of the step. A later event replaces an
+ * earlier count, it doesn't add to it: events with 1 and then 7 for one
+ * target mean 7 refused accesses.
+ */
+export interface SandboxBlockedEvent {
+  type: "sandbox.blocked";
+  state: string;
+  agent: string;
+  block: LoggedSandboxBlock;
+  count: number;
+}
+
+/**
  * The most distinct targets one step's run log names in `sandbox.blocked`
  * events. Blocks of further targets are counted in one `others` event, so a
  * program that tries many files can't flood the log.
