@@ -14,6 +14,7 @@ import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { closeAfterStop, stoppedCloseLimitMs } from "./close-after-stop.ts";
 import type { CommandContext } from "./command.ts";
+import { openConnectionSettings } from "./connection-settings-host.ts";
 import {
   cliConnectorFactories,
   connectorSessionLimitMs,
@@ -338,6 +339,7 @@ function computerRunConnectors(
   return {
     trust,
     sheetHostsOf: (folder) => computerSheetHosts(folder, folder, environment),
+    sending: openConnectionSettings({ profile: environment }),
     // Workspace programs start in a sandbox session where the sandbox works (D45).
     factories: cliConnectorFactories(
       nodeProgramStarter,
