@@ -117,16 +117,16 @@ verifies("app.sandbox-start-words", () => {
     expect(words.cantRunPhoneFix).toBe(onThePhone);
   });
 
-  it("says to choose Check again for runtime-missing, then to reinstall Halonic Studio", () => {
+  it("says to choose Check again for runtime-missing, then to reinstall the Halonic desktop app", () => {
     const words = sandboxStartWords("runtime-missing");
     expect(words.calloutFix).toBe(
-      "Choose Check again, and Halonic finishes the setup as the sandbox starts. If it still doesn't finish, reinstall Halonic Studio.",
+      "Choose Check again, and Halonic finishes the setup as the sandbox starts. If it still doesn't finish, reinstall the Halonic desktop app.",
     );
     expect(words.cantRunFix).toBe(
-      "Choose Check again, and Halonic finishes setting up its own Linux system for the sandbox. If that setup still doesn't finish, reinstall Halonic Studio.",
+      "Choose Check again, and Halonic finishes setting up its own Linux system for the sandbox. If that setup still doesn't finish, reinstall the Halonic desktop app.",
     );
     expect(words.settingsFix).toBe(
-      "Choose Check again, and Halonic finishes the setup. If it still doesn't finish, reinstall Halonic Studio.",
+      "Choose Check again, and Halonic finishes the setup. If it still doesn't finish, reinstall the Halonic desktop app.",
     );
     expect(words.fix).not.toContain("WSL 2");
     // No screen that shows it has a Try again button (C701-2).
@@ -135,10 +135,10 @@ verifies("app.sandbox-start-words", () => {
     }
   });
 
-  it("tells a phone to open Halonic Studio for runtime-missing, whose Check again there can't finish it", () => {
+  it("tells a phone to open the Halonic desktop app for runtime-missing, whose Check again there can't finish it", () => {
     const words = sandboxStartWords("runtime-missing");
     const onThePhone =
-      "On the computer Halonic runs on: open Halonic Studio, and it finishes the setup. If it still doesn't finish, reinstall Halonic Studio.";
+      "On the computer Halonic runs on: open the Halonic desktop app, and it finishes the setup. If it still doesn't finish, reinstall the Halonic desktop app.";
     expect(words.phoneFix).toBe(onThePhone);
     expect(words.cantRunPhoneFix).toBe(onThePhone);
   });
