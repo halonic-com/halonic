@@ -192,6 +192,56 @@ verifies("cli.run-live", () => {
   });
 });
 
+verifies("cli.run-live-failed-call", () => {
+  it("prints the line under a step whose tool call failed with the step, as the result does", () => {
+    const run = withFailedCallIn("read", approved);
+    const context = recordedContext();
+    follow(liveLines(context, facts()).onEvent, run.events);
+    const result = runResult(run, { ...facts(), dir: undefined });
+    const lines = printed(context.seen);
+    expect(lines.slice(2, 5)).toEqual([
+      "✓ Read the email        Writer · smart     1 s",
+      "  Didn't work: the tool search_pages broke off without an answer, so it may or may not have done its work.",
+      "✓ Classify it           Sorter · default   1 s",
+    ]);
+    expect(lines).toEqual(result.lines.slice(0, lines.length).map(plainText));
+  });
+});
+
+/**
+ * `run` with a call to search_pages that broke off without an answer, right
+ * after the agent of `state` started; the later events move up two.
+ */
+function withFailedCallIn(state: string, run: RunDetail): RunDetail {
+  const index = run.events.findIndex(
+    (event) => event.type === "agent.started" && event.state === state,
+  );
+  const started = run.events[index];
+  if (started === undefined) throw new Error(`The run never reached ${state}.`);
+  const at = { runId: started.runId, at: started.at };
+  const call: RunEvent[] = [
+    {
+      ...at,
+      seq: started.seq + 1,
+      type: "tool.called",
+      agent: "writer",
+      tool: "search_pages",
+      args: {},
+    },
+    {
+      ...at,
+      seq: started.seq + 2,
+      type: "tool.result",
+      agent: "writer",
+      tool: "search_pages",
+      result: "Error: socket hang up",
+      outcome: "unknown",
+    },
+  ];
+  const later = run.events.slice(index + 1).map((event) => ({ ...event, seq: event.seq + 2 }));
+  return { ...run, events: [...run.events.slice(0, index + 1), ...call, ...later] };
+}
+
 /** The waiting run's log up to the agent of `state` starting. */
 function untilAgentOf(state: string): RunEvent[] {
   const index = waiting.events.findIndex(
