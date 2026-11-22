@@ -16,7 +16,14 @@ export {
   useRunModelPath,
   useSampleRuns,
 } from "./list/run-model-path.ts";
-export { type RunChip, type RunRow, runRow, startedBy } from "./list/run-row.ts";
+export {
+  costParts,
+  type RunChip,
+  type RunRow,
+  runRow,
+  startedBy,
+  took,
+} from "./list/run-row.ts";
 export type { WorkflowRef } from "./list/runs-filter.ts";
 export {
   type ApiOff,

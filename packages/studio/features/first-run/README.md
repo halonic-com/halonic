@@ -24,6 +24,10 @@ tells the first run, which then starts there.
 A paused first run has a setup item in the Inbox (`first-run.setup-item`): "Finish your first run" at its step,
 with **Continue**, which takes it up again and opens Support reply, and **Dismiss**, whose toast says Help brings the guide back.
 
+When the first run's Approve finishes its run, "You did it" takes the wait card's place in the Inbox
+(`first-run.you-did-it`, through `Inbox.addAnsweredView`): the run's real steps, time and cost, worded by its
+model path from the Runs feature's `runModelPath`, two next steps, the quiet Google line and **Close**.
+
 **Help › First run** (`first-run.help`) shows only in the demo. **Show the guide again** takes a paused or
 dismissed first run up again at its step, and **Start over** turns the first run off and asks the app for a
 fresh copy of the demo through the device's `startOver`. The copy starts the first run when it opens.
