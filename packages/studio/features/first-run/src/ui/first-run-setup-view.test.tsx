@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { SetupItem } from "@halonicjs/studio-feature-inbox/api";
+import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import type { ItemRef } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ReactNode } from "react";
@@ -141,14 +142,24 @@ verifies("first-run.setup-item", () => {
     expect(opened).toEqual([{ kind: "workflow", hub: "support", id: "support-reply" }]);
   });
 
-  it("closes the item and leaves the first run for good on Dismiss", () => {
+  it("closes the item on Dismiss and says Help brings the guide back", () => {
     const firstRun = firstRunOf(paused);
     const close = vi.fn();
+    const toasts = createToastStore();
     const root = render(
-      <FirstRunSetupView item={item} answering close={close} firstRun={firstRun} />,
+      <ToastStoreProvider store={toasts}>
+        <FirstRunSetupView item={item} answering close={close} firstRun={firstRun} />
+      </ToastStoreProvider>,
     );
     act(() => button(root, "Dismiss").click());
     expect(close).toHaveBeenCalledOnce();
     expect(firstRun.state).toEqual({ ...paused, kind: "dismissed" });
+    expect(toasts.list()).toMatchObject([
+      {
+        tone: "info",
+        title: "First run dismissed",
+        text: "To bring it back, pick Help › First run › Show the guide.",
+      },
+    ]);
   });
 });

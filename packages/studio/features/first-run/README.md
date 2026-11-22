@@ -16,7 +16,7 @@ explore**. It also gives Support reply's page the guide card through the Workflo
 `SampleWorkspaceService` and a place for the state with `FirstRunDeviceService`.
 
 A paused first run has a setup item in the Inbox (`first-run.setup-item`): "Finish your first run" at its step,
-with **Continue**, which takes it up again and opens Support reply, and **Dismiss**.
+with **Continue**, which takes it up again and opens Support reply, and **Dismiss**, whose toast says Help brings the guide back.
 
 **Help › First run** (`first-run.help`) shows only in the demo. **Show the guide** takes a paused or dismissed
 first run up again at its step, and **Start over** turns the first run off and asks the app for a fresh copy of
