@@ -46,11 +46,12 @@ export interface AgentMapProps {
   readonly closeStack: CloseStack;
 }
 
+// On a phone every card and add button is a 48 px target (HAL-485 11.6, Noah's N8).
 const cardClasses =
-  "flex w-full flex-col items-start gap-0.5 rounded-md border border-border bg-surface-raised px-3 py-2 text-start text-small text-fg";
+  "flex w-full flex-col items-start gap-0.5 rounded-md border border-border bg-surface-raised px-3 py-2 text-start text-small text-fg phone:min-h-touch phone:px-2";
 const pressableClasses = `${cardClasses} hover:bg-surface-subtle focus-ring`;
 const addClasses =
-  "w-full rounded-md border border-dashed border-border-strong px-3 py-2 text-start text-small text-fg-muted hover:bg-surface-subtle focus-ring";
+  "w-full rounded-md border border-dashed border-border-strong px-3 py-2 text-start text-small text-fg-muted hover:bg-surface-subtle focus-ring phone:min-h-touch phone:px-2";
 
 /**
  * The agent map (`agents.map.layout-by-side`, flow-agents 6): the agent in the centre with its
@@ -214,7 +215,10 @@ function mapSides(props: AgentMapProps): Record<MapSide, SideContent> {
   };
 }
 
-/** The agent itself: its avatar and name, which open nothing, and its agent steps, each a card. */
+/**
+ * The agent itself: its avatar and name, which open nothing, and its agent steps, each a card. On a
+ * phone the steps are 48 px rows across the card, with a line between them (HAL-485 11.6).
+ */
 function CentreCard({
   settings,
   openAgentStep,
@@ -223,7 +227,7 @@ function CentreCard({
   return (
     <div
       data-map-centre=""
-      className="col-start-2 row-start-1 flex flex-col gap-2 rounded-lg border border-border-strong bg-surface-raised p-4"
+      className="col-start-2 row-start-1 flex flex-col gap-2 rounded-lg border border-border-strong bg-surface-raised p-4 phone:p-2"
     >
       <p className="flex items-center gap-2 text-body-strong text-fg">
         <LetterTile name={settings.name} />
@@ -235,12 +239,12 @@ function CentreCard({
           <p id={stepsId} className="text-caption text-fg-muted">
             {words.agentSteps}
           </p>
-          <ul className="flex flex-col gap-1">
+          <ul className="flex flex-col gap-1 phone:gap-0 phone:divide-y phone:divide-border">
             {settings.agentSteps.map((step) => (
               <li key={step.id}>
                 <button
                   type="button"
-                  className="text-small text-fg underline-offset-2 hover:underline focus-ring"
+                  className="text-small text-fg underline-offset-2 hover:underline focus-ring phone:flex phone:min-h-touch phone:w-full phone:items-center phone:font-medium phone:text-accent-text"
                   onClick={() => openAgentStep(step)}
                 >
                   {step.id} ›

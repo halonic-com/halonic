@@ -195,3 +195,41 @@ verifies("agents.map.stacked", () => {
     expect(mapOf(page)?.hasAttribute("data-map-stacked")).toBe(true);
   });
 });
+
+verifies("agents.map.phone-columns", () => {
+  it("lays the map out in three narrow columns on a 360 px phone, at its natural size and with its lines", async () => {
+    sizes.panel = { width: 360, height: 700 };
+    const page = await openMap("phone");
+    const map = mapOf(page);
+    expect(map?.hasAttribute("data-map-stacked")).toBe(false);
+    expect(map?.className).toContain("w-[22.5rem]");
+    expect(map?.firstElementChild?.nextElementSibling?.className).toContain(
+      "grid-cols-[minmax(5.75rem,6.25rem)_6.75rem_minmax(5.75rem,6.25rem)]",
+    );
+    expect(map?.style.transform).toContain("scale(1)");
+    expect(page.querySelectorAll("[data-map-lines] path")).toHaveLength(5);
+  });
+
+  it("makes every card, add button and agent step a 48 px target on a phone", async () => {
+    sizes.panel = { width: 360, height: 700 };
+    const page = await openMap("phone");
+    for (const name of ["Agent Writer", "+ Add subagent", "classify ›"]) {
+      expect(buttonNamed(page, name)?.className).toContain("phone:min-h-touch");
+    }
+  });
+
+  it("stacks the map on a phone narrower than 22.5 rem: under 360 px, or at larger text", async () => {
+    sizes.panel = { width: 352, height: 700 };
+    const narrow = await openMap("phone");
+    expect(mapOf(narrow)?.hasAttribute("data-map-stacked")).toBe(true);
+    unmount();
+    sizes.panel = { width: 360, height: 700 };
+    document.documentElement.style.fontSize = "18px";
+    try {
+      const larger = await openMap("phone");
+      expect(mapOf(larger)?.hasAttribute("data-map-stacked")).toBe(true);
+    } finally {
+      document.documentElement.style.fontSize = "";
+    }
+  });
+});

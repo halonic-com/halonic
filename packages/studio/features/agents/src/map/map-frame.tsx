@@ -23,10 +23,22 @@ import {
 const MAP_WIDTH = "w-[56rem]";
 
 /**
+ * The map's width on a phone, where it lays out for the width instead (HAL-485 11.6): three columns
+ * of 92 to 100 px cards round a 108 px centre card, 360 px in all at 16-pixel text.
+ */
+const PHONE_MAP_WIDTH = "w-[22.5rem]";
+
+/**
  * Narrower than this many rem, the fitted map's words get too small to read, so its sides stack
  * (C525-5). In rem, so larger text stacks it sooner.
  */
 export const STACK_BELOW_REM = 36;
+
+/**
+ * On a phone, narrower than this many rem the side cards can't be 92 px wide, so the map stacks
+ * (component specs 15.8): a screen under 360 px, or larger text on one that wide.
+ */
+export const PHONE_STACK_BELOW_REM = 22.5;
 
 /** Whether the map is stacked, for a side to lay out its cards; `false` outside a map. */
 export const MapStacked = createContext(false);
@@ -42,8 +54,8 @@ type Fit =
 /**
  * The agent map's frame (`agents.map.lines-and-fit`): it fits the map to the panel when it opens
  * and again {@link FIT_DELAY_MS} after the panel or the map stops changing size, centred, never
- * larger than its natural size and with no zoom buttons; on a phone it never shrinks it, and the
- * panel scrolls. In the gaps it draws the straight lines
+ * larger than its natural size and with no zoom buttons. On a phone it never shrinks it: there the
+ * map is three narrow columns 22.5 rem wide, with 48 px targets (`agents.map.phone-columns`). In the gaps it draws the straight lines
  * from each side's cards to the centre card, each ending in a ring-and-dot port; the lines below
  * turn in the free space between the first row and what it can use (C560 a). The lines are a
  * picture only, hidden from screen readers and the pointer, so the cards and the add buttons stay
@@ -52,7 +64,7 @@ type Fit =
  * inside an element with `data-map-side`, `data-map-card`. A summary card's drawer sits over the
  * panel, outside the fit, so its words keep their size; a press on the empty canvas closes it.
  *
- * In a panel narrower than {@link STACK_BELOW_REM}, the map isn't fitted: its cells go one under
+ * In a panel narrower than {@link STACK_BELOW_REM} ({@link PHONE_STACK_BELOW_REM} on a phone), the map isn't fitted: its cells go one under
  * the other in their reading order, left, centre, below, right, at full size and without lines.
  */
 export function MapFrame({
@@ -72,13 +84,15 @@ export function MapFrame({
   const map = useRef<HTMLElement>(null);
   const [fit, setFit] = useState<Fit>();
   const [lines, setLines] = useState<readonly MapLine[]>([]);
-  const floor = usePresentation() === "phone" ? PHONE_MIN_FIT_SCALE : MIN_FIT_SCALE;
+  const phone = usePresentation() === "phone";
+  const floor = phone ? PHONE_MIN_FIT_SCALE : MIN_FIT_SCALE;
+  const narrowest = phone ? PHONE_STACK_BELOW_REM : STACK_BELOW_REM;
 
   const fitNow = useCallback(() => {
     const room = panel.current;
     const content = map.current;
     if (room === null || content === null) return;
-    if (tooNarrow(room.clientWidth)) {
+    if (tooNarrow(room.clientWidth, narrowest)) {
       setFit({ stacked: true });
       return;
     }
@@ -95,7 +109,7 @@ export function MapFrame({
       left: Math.max(0, (room.clientWidth - width * scale) / 2),
       top: Math.max(0, (room.clientHeight - height * scale) / 2),
     });
-  }, [floor]);
+  }, [floor, narrowest]);
 
   const stacked = fit?.stacked === true;
   // Fit before the first paint, so the map never shows at the wrong size; again on a change between
@@ -149,7 +163,11 @@ export function MapFrame({
           ref={map}
           aria-label={label}
           data-map-stacked={stacked ? "" : undefined}
-          className={stacked ? "w-full" : `absolute top-0 left-0 ${MAP_WIDTH} origin-top-left`}
+          className={
+            stacked
+              ? "w-full"
+              : `absolute top-0 left-0 ${phone ? PHONE_MAP_WIDTH : MAP_WIDTH} origin-top-left`
+          }
           style={
             fit?.stacked === false
               ? { transform: `translate(${fit.left}px, ${fit.top}px) scale(${fit.scale})` }
@@ -159,7 +177,7 @@ export function MapFrame({
           {!stacked && <MapLines lines={lines} />}
           {/* Lines need room between the sides, so the gaps are wider than a page's. Stacked, a flex
               column ignores the cells' grid places, so they follow the DOM's order. */}
-          <div className={stacked ? stackedClasses : gridClasses}>
+          <div className={gridOf(stacked, phone)}>
             <MapStacked value={stacked}>{children}</MapStacked>
           </div>
         </section>
@@ -170,12 +188,24 @@ export function MapFrame({
 }
 
 const gridClasses = "grid grid-cols-[1fr_minmax(12rem,auto)_1fr] items-start gap-x-16 gap-y-10 p-6";
+/** 94 px side columns at 360 px, with 16 px for each line to cross between them and the centre. */
+const phoneGridClasses =
+  "grid grid-cols-[minmax(5.75rem,6.25rem)_6.75rem_minmax(5.75rem,6.25rem)] justify-center items-start gap-x-4 gap-y-6 p-4";
 const stackedClasses = "flex flex-col gap-6 p-4";
 
-/** Whether a panel this many pixels wide is too narrow for the map; not while it isn't measured. */
-function tooNarrow(width: number): boolean {
-  const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-  return width > 0 && width < STACK_BELOW_REM * rem;
+/** The classes of the map's cells' container in each layout. */
+function gridOf(stacked: boolean, phone: boolean): string {
+  if (stacked) return stackedClasses;
+  return phone ? phoneGridClasses : gridClasses;
+}
+
+/**
+ * Whether a panel this many pixels wide is narrower than `rem` rem, too narrow for the map; not
+ * while it isn't measured.
+ */
+function tooNarrow(width: number, rem: number): boolean {
+  const remPixels = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  return width > 0 && width < rem * remPixels;
 }
 
 /**
