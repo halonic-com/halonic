@@ -20,17 +20,18 @@ const config = {
   ],
 };
 
-function setup() {
+function setup(settings: Record<string, unknown> = config) {
   const events: StoredSeatEvent[] = [];
   const settingsRead: string[] = [];
   const deps: SeatsRouteDeps = {
     readSettings: async (companyId) => {
       settingsRead.push(companyId);
-      return readSeatsSettings(config);
+      return readSeatsSettings(settings);
     },
     store: {
       recordEvent: async (event) => void events.push(event),
       recordReading: async () => undefined,
+      manualResets: async () => events.filter((event) => event.kind === "manual-reset"),
       removeOld: async () => undefined,
     },
     now: () => new Date("2026-11-22T11:00:00.000Z"),
@@ -124,5 +125,34 @@ verifies("paperclip.seats-routes", () => {
     );
     expect(response.status).toBe(404);
     expect(events).toEqual([]);
+  });
+});
+
+verifies("paperclip.seats-check-job", () => {
+  const sharedGroup = {
+    seats: [
+      ...config.seats,
+      { id: "seat-c", role: "pool", configDir: "/srv/seats/seat-c", resetGroup: "g1" },
+      { id: "seat-d", role: "pool", configDir: "/srv/seats/seat-d", resetGroup: "g2" },
+    ],
+  };
+  const reset = (seatId: string) => request("seats.manual-reset", board, { seatId });
+
+  test("refuses a second manual reset in one reset group, and stores nothing", async () => {
+    const { deps, events } = setup(sharedGroup);
+    expect((await handleSeatsRequest(reset("seat-a"), deps)).status).toBe(201);
+    const second = await handleSeatsRequest(reset("seat-c"), deps);
+    expect(second.status).toBe(409);
+    expect(JSON.stringify(second.body)).toContain("seat-a");
+    expect(events.map((event) => event.seatId)).toEqual(["seat-a"]);
+  });
+
+  test("lets another reset group, and a seat without a group, record their own", async () => {
+    const { deps, events } = setup(sharedGroup);
+    for (const seatId of ["seat-a", "seat-d", "seat-b"]) {
+      expect((await handleSeatsRequest(reset(seatId), deps)).status).toBe(201);
+    }
+    expect((await handleSeatsRequest(reset("seat-b"), deps)).status).toBe(409);
+    expect(events.map((event) => event.seatId)).toEqual(["seat-a", "seat-d", "seat-b"]);
   });
 });

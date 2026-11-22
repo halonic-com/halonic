@@ -49,6 +49,7 @@ verifies("paperclip.seats-history", () => {
     const { db } = recordingDb([
       {
         agent_id: "agent-1",
+        name: "Agent One",
         config_dir: null,
         connection_id: "conn-a",
         model: null,
@@ -67,6 +68,7 @@ verifies("paperclip.seats-history", () => {
     expect(await tables.agentsNow("acme")).toEqual([
       {
         agentId: "agent-1",
+        name: "Agent One",
         configDir: undefined,
         connectionId: "conn-a",
         model: "",

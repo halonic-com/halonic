@@ -39,6 +39,7 @@ function readerReading(read: string[]) {
   const store: SeatsStore = {
     recordEvent: async () => undefined,
     recordReading: async () => undefined,
+    manualResets: async () => [],
     removeOld: async () => undefined,
   };
   let now = new Date("2026-11-22T10:00:00.000Z");

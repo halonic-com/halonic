@@ -1,6 +1,7 @@
 import { definePlugin, type PluginContext, runWorker } from "@paperclipai/plugin-sdk";
 import { runCommand } from "../read/command.ts";
 import { readSeat } from "../read/read-seat.ts";
+import { runSeatsCheck } from "./check-job.ts";
 import { runSeatsHistory } from "./history-job.ts";
 import { databaseHistoryStore } from "./history-store.ts";
 import { databaseTables } from "./paperclip-tables.ts";
@@ -10,7 +11,7 @@ import { registerSeatUsageTool } from "./seat-usage-tool.ts";
 import { SeatsReader } from "./seats-reader.ts";
 import { readSeatsSettings } from "./settings.ts";
 import { databaseStore } from "./store.ts";
-import { databaseStoredReadings } from "./stored-readings.ts";
+import { databaseRecentReadings, databaseStoredReadings } from "./stored-readings.ts";
 
 // The SDK hands route calls no context, so the worker keeps the one `setup` got.
 let context: { readonly ctx: PluginContext; readonly reader: SeatsReader } | undefined;
@@ -34,8 +35,8 @@ export function commandEnv(env: NodeJS.ProcessEnv): Record<string, string> {
  * The `seats` plugin's worker. The host starts it as `worker.js` in the
  * folder `pnpm run build:seats-plugin` writes (`dist/seats/`), after it has
  * run the plugin's migrations. It runs `seats.read` every minute,
- * `seats.history` every 10 minutes, and answers the board-only route calls
- * and the `seat_usage` tool.
+ * `seats.history` and `seats.check` every 10 minutes, and answers the
+ * board-only route calls and the `seat_usage` tool.
  */
 export const plugin = definePlugin({
   async setup(ctx) {
@@ -55,6 +56,14 @@ export const plugin = definePlugin({
       await runSeatsHistory(ctx, {
         tables: databaseTables(ctx.db),
         store: databaseHistoryStore(ctx.db),
+        now,
+      });
+    });
+    ctx.jobs.register("seats.check", async () => {
+      await runSeatsCheck(ctx, {
+        tables: databaseTables(ctx.db),
+        readings: databaseRecentReadings(ctx.db),
+        store,
         now,
       });
     });

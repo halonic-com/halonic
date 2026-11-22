@@ -1,4 +1,5 @@
 import type { PluginApiRequestInput, PluginApiResponse } from "@paperclipai/plugin-sdk";
+import type { SeatEvent } from "../records.ts";
 import type { SeatReadStatus } from "./seats-reader.ts";
 import { publicSeat, type SeatSetting, type SeatsSettings } from "./settings.ts";
 import type { SeatsStore } from "./store.ts";
@@ -60,6 +61,13 @@ async function recordManualReset(
   if (seat === undefined) {
     return refuse(404, "No seat with that id in the plugin's settings.");
   }
+  const used = await usedManualReset(seat, settings, deps.store);
+  if (used !== undefined) {
+    return refuse(
+      409,
+      `A manual reset is already recorded for ${used.seatId} at ${used.at}, and seats in one reset group share one manual reset.`,
+    );
+  }
   const event = {
     seatId: seat.id,
     kind: "manual-reset",
@@ -68,6 +76,22 @@ async function recordManualReset(
   } as const;
   await deps.store.recordEvent({ ...event, boardUserId });
   return { status: 201, body: { event } };
+}
+
+/**
+ * The manual reset already recorded for the seat's reset group, if any. A
+ * seat without a group counts as a group of its own.
+ */
+async function usedManualReset(
+  seat: SeatSetting,
+  settings: SeatsSettings,
+  store: SeatsStore,
+): Promise<SeatEvent | undefined> {
+  const groupOf = (candidate: SeatSetting) => candidate.resetGroup ?? `seat:${candidate.id}`;
+  const sameGroup = new Set(
+    settings.seats.filter((other) => groupOf(other) === groupOf(seat)).map((other) => other.id),
+  );
+  return (await store.manualResets()).find((event) => sameGroup.has(event.seatId));
 }
 
 function refuse(status: number, message: string): PluginApiResponse {

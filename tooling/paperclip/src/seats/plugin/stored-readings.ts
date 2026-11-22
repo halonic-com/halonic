@@ -16,6 +16,12 @@ export interface StoredReadings {
   latest(): Promise<StoredSeatReadings[]>;
 }
 
+/** Reads what `seats.read` stored over a stretch of time, for `seats.check`. */
+export interface RecentReadings {
+  /** Every seat's readings taken at or after `since`, failed ones included. */
+  since(since: string): Promise<SeatReading[]>;
+}
+
 const readErrors: readonly ReadError[] = ["timeout", "rate-limited", "signed-out", "unreadable"];
 
 /** The plugin's own `reading` table; Paperclip gives the plugin that schema only. */
@@ -31,6 +37,19 @@ export function databaseStoredReadings(db: PluginDatabaseClient): StoredReadings
         const latest = storedReading(row);
         return { seatId: latest.seatId, latest, lastGood: good.get(latest.seatId) };
       });
+    },
+  };
+}
+
+/** The plugin's own `reading` table, over a stretch of time. */
+export function databaseRecentReadings(db: PluginDatabaseClient): RecentReadings {
+  return {
+    async since(since) {
+      const rows = await db.query<Record<string, unknown>>(
+        `SELECT seat_id, at, error, session_used_percent, session_resets_at, week_used_percent, week_resets_at, week_by_model FROM ${db.namespace}.reading WHERE at >= $1 ORDER BY seat_id, at`,
+        [since],
+      );
+      return rows.map(storedReading);
     },
   };
 }
