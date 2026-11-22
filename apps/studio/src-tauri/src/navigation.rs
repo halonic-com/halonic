@@ -8,7 +8,7 @@
 use std::sync::Mutex;
 
 use halonic_connect::{
-    Address, Destination, NavigationTarget, navigation_destination, page_may_stay,
+    Address, Destination, NavigationTarget, is_app_page, navigation_destination, page_may_stay,
 };
 use tauri::plugin::{Builder, TauriPlugin};
 use tauri::{AppHandle, Manager, Runtime, Url, Webview};
@@ -52,26 +52,7 @@ impl ConfirmedAddress {
 /// The guard, as a small plugin so it sees every webview's navigations.
 pub fn guard<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("navigation-guard")
-        .on_navigation(|webview, url| {
-            let confirmed = webview.state::<ConfirmedAddress>().get();
-            match navigation_destination(&target(url), confirmed.as_ref()) {
-                Destination::Stay => true,
-                Destination::BackToConnect => {
-                    // The desktop has no connect screen: the Studio is
-                    // already showing, and loading it again would drop
-                    // what the user hasn't saved. The link only cancels.
-                    if cfg!(target_os = "android") {
-                        back_to_connect(webview);
-                    }
-                    false
-                }
-                Destination::Browser => {
-                    open_in_browser(webview.app_handle(), url);
-                    false
-                }
-                Destination::Nowhere => false,
-            }
-        })
+        .on_navigation(on_navigation)
         .on_page_load(|webview, payload| {
             // A page the guard was never asked about, such as a form sent
             // with POST on Android. It can't be sent again to the browser,
@@ -84,7 +65,39 @@ pub fn guard<R: Runtime>() -> TauriPlugin<R> {
         .build()
 }
 
-fn target(url: &Url) -> NavigationTarget<'_> {
+/// Decides one navigation: true lets it load in the window.
+pub(crate) fn on_navigation<R: Runtime>(webview: &Webview<R>, url: &Url) -> bool {
+    let confirmed = webview.state::<ConfirmedAddress>().get();
+    let going_to = target(url);
+    match navigation_destination(&going_to, confirmed.as_ref()) {
+        Destination::Stay => {
+            // Leaving the app's own page for the served Studio: the phone
+            // tunnel's events stop here, before that page loads (H1 on
+            // HAL-15181).
+            if !is_app_page(&going_to) {
+                crate::phone_tunnel_events::end_page_watch(webview.app_handle(), webview.label());
+            }
+            true
+        }
+        Destination::BackToConnect => {
+            // The desktop has no connect screen: the Studio is already
+            // showing, and loading it again would drop what the user hasn't
+            // saved. The link only cancels.
+            if cfg!(target_os = "android") {
+                back_to_connect(webview);
+            }
+            false
+        }
+        Destination::Browser => {
+            open_in_browser(webview.app_handle(), url);
+            false
+        }
+        Destination::Nowhere => false,
+    }
+}
+
+/// The parts of `url` the navigation checks read.
+pub(crate) fn target(url: &Url) -> NavigationTarget<'_> {
     NavigationTarget {
         scheme: url.scheme(),
         host: url.host_str(),

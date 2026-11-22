@@ -25,7 +25,8 @@
 //! backup (capabilities/desktop-sandbox-backup.json) and, on Windows,
 //! `sandbox_elevate` (capabilities/desktop-sandbox-elevate.json), and on Android the
 //! pairing scanner's `pair_scan` and `pair_scan_cancel`
-//! (capabilities/phone-pair-scan.json); the Studio it then opens is
+//! (capabilities/phone-pair-scan.json) and the phone tunnel's `phone_*`
+//! commands with `phone_tunnel_watch` (capabilities/phone-tunnel.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
 //! everything but the confirmed address out of the window.
 
@@ -58,6 +59,8 @@ mod navigation;
 mod owner_check;
 mod page_streams;
 mod pair_scan;
+mod phone_tunnel;
+mod phone_tunnel_events;
 mod plugin_folder;
 mod plugin_folder_place;
 mod plugin_folder_remove;
@@ -118,7 +121,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(sandbox_backup::BackupState::default())
         .manage(files::FileState::default())
         .manage(plugin_source::PluginSources::default())
-        .manage(plugin_git::PluginGitExports::default());
+        .manage(plugin_git::PluginGitExports::default())
+        .manage(phone_tunnel_events::TunnelWatchers::default());
     #[cfg(windows)]
     let builder = builder.manage(sandbox_elevate::ElevateState::default());
     #[cfg(desktop)]
@@ -144,6 +148,9 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     // grants its commands, so no page can call it or pick its words.
     #[cfg(target_os = "android")]
     let builder = builder.plugin(owner_check::plugin());
+    // The phone tunnel, over the key store above, so registered after it.
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(phone_tunnel::plugin());
     builder
         // The navigation guard hands outside links to the browser with the
         // opener. Its click script stays off. That script would run in
@@ -174,6 +181,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                 http_fetch::end_page_calls(webview.app_handle(), webview.label());
                 files::end_page_watches(webview.app_handle(), webview.label());
                 pair_scan::end_page_scan(webview.app_handle());
+                phone_tunnel::end_page(webview.app_handle(), webview.label());
                 #[cfg(desktop)]
                 updates::end_page_watches(webview.app_handle(), webview.label());
             }
@@ -189,6 +197,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                 http_fetch::end_page_calls(window.app_handle(), window.label());
                 files::end_page_watches(window.app_handle(), window.label());
                 pair_scan::end_page_scan(window.app_handle());
+                phone_tunnel::end_page(window.app_handle(), window.label());
                 #[cfg(desktop)]
                 updates::end_page_watches(window.app_handle(), window.label());
             }
@@ -279,6 +288,14 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             lite_check::lite_check,
             pair_scan::pair_scan,
             pair_scan::pair_scan_cancel,
+            phone_tunnel::phone_pair_start,
+            phone_tunnel::phone_pair_wait,
+            phone_tunnel::phone_pair_cancel,
+            phone_tunnel::phone_computers,
+            phone_tunnel::phone_forget,
+            phone_tunnel::phone_connect,
+            phone_tunnel::phone_disconnect,
+            phone_tunnel::phone_tunnel_watch,
             #[cfg(desktop)]
             updates::update_status,
             #[cfg(desktop)]

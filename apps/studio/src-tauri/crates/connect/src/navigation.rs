@@ -101,7 +101,7 @@ pub fn page_may_stay(target: &NavigationTarget, confirmed: Option<&Address>) -> 
 /// this origin, so only that page stays: no other bundled page, and no query,
 /// because neither page reads one. The connect page reads the fragment, which
 /// may be empty, `change-address` or `page-not-shown`; the Studio reads none.
-fn is_app_page(target: &NavigationTarget) -> bool {
+pub fn is_app_page(target: &NavigationTarget) -> bool {
     let own_origin = if cfg!(any(windows, target_os = "android")) {
         target.scheme == "http" && target.host == Some("tauri.localhost") && target.port == Some(80)
     } else {
