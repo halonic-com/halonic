@@ -1,6 +1,6 @@
 import { RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { sampleWorkspaceOf } from "./sample-workspace.ts";
 
 /** A page storage that keeps text, and fails to write when `full` is set. */
@@ -96,5 +96,34 @@ verifies("first-run.own-card", () => {
     expect(() =>
       sampleWorkspaceOf("/docs/acme", recent, storage(true)).recordOwnCard("finished"),
     ).not.toThrow();
+  });
+});
+
+verifies("first-run.one-state", () => {
+  it("tells the first run once when Recent starts remembering the open folder as the demo", () => {
+    const pages = storage();
+    const recent = new RecentWorkspaces(pages);
+    recent.remember({ location: "/docs/Acme sample", name: "Acme" });
+    const marked = vi.fn();
+    sampleWorkspaceOf("/docs/Acme sample", recent, pages).onMarkedSample?.(marked);
+
+    recent.remember({ location: "/docs/Acme notes", name: "Notes" });
+    expect(marked).not.toHaveBeenCalled();
+    recent.markSample("/docs/Acme sample");
+    recent.remember({ location: "/docs/Acme sample", name: "Acme" });
+    expect(marked).toHaveBeenCalledOnce();
+  });
+
+  it("stops telling once the first run stops watching", () => {
+    const pages = storage();
+    const recent = new RecentWorkspaces(pages);
+    recent.remember({ location: "/docs/Acme sample", name: "Acme" });
+    const marked = vi.fn();
+    const stop = sampleWorkspaceOf("/docs/Acme sample", recent, pages).onMarkedSample?.(marked);
+
+    stop?.();
+    recent.markSample("/docs/Acme sample");
+
+    expect(marked).not.toHaveBeenCalled();
   });
 });

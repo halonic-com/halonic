@@ -24,9 +24,10 @@ export type FirstRunRuns = Pick<RunsList, "state" | "subscribe"> & {
  * The first run as the open folder sees it (`first-run.state`). It keeps the device's one state,
  * saved through the app after every change, and moves its steps by the runs of Support reply
  * in the folder the first run is in: started, waiting for you, failed, ended without a win, and
- * the first win, a run that finished after **Approve**. Whether the folder is the demo is known
- * only once the window has marked it, after it opened, so the window calls {@link notice} when
- * it shows.
+ * the first win, a run that finished after **Approve**. Other open folders share that state, so
+ * it reads it again before every change, whenever the window shows the folder and when another
+ * window saved it (`first-run.one-state`). Whether the folder is the demo is known only once the window has
+ * marked it, after it opened, so the window calls {@link notice} when it shows.
  *
  * @example
  * const firstRun = new FirstRun(runsList, sample, device, () => new Date());
@@ -40,14 +41,18 @@ export class FirstRun {
   readonly #now: () => Date;
   readonly #listeners = new Set<() => void>();
   readonly #stopWatching: () => void;
+  readonly #stopWatchingSample: () => void;
+  readonly #stopWatchingDevice: () => void;
   /** The finished runs whose log was read, and whether it held an Approve. */
   readonly #answers = new Map<string, Promise<boolean>>();
   #state: FirstRunState;
+  /** The text the device held when this folder last read or saved it. */
+  #seen: string | undefined;
   #disposed = false;
 
   constructor(
     runs: FirstRunRuns,
-    sample: Pick<SampleWorkspace, "isSample">,
+    sample: Pick<SampleWorkspace, "isSample" | "onMarkedSample">,
     device: FirstRunDevice,
     now: () => Date,
   ) {
@@ -55,8 +60,14 @@ export class FirstRun {
     this.#sample = sample;
     this.#device = device;
     this.#now = now;
-    this.#state = parseFirstRun(device.read());
+    this.#seen = device.read();
+    this.#state = parseFirstRun(this.#seen);
     this.#stopWatching = runs.subscribe(() => void this.#follow());
+    // Open demo on a folder that is open already marks it without opening it again.
+    this.#stopWatchingSample = sample.onMarkedSample?.(() => this.notice()) ?? (() => {});
+    // Only reads: starting the first run here on another window's change would race Start over's
+    // new copy, which turns it off there and then starts it in the copy.
+    this.#stopWatchingDevice = device.onChanged?.(() => this.#refresh()) ?? (() => {});
     void this.#follow();
   }
 
@@ -75,8 +86,13 @@ export class FirstRun {
     return this.#state.kind === "on" && this.#state.folder === this.#device.folder;
   }
 
-  /** Starts the first run when the open folder is the demo and it never started on this device. */
+  /**
+   * The window shows the folder: reads the device's state again, for what another open folder
+   * changed, and starts the first run when the folder is the demo and it never started here.
+   */
   notice(): void {
+    if (this.#disposed) return;
+    this.#refresh();
     if (this.#state.kind === "off" && this.#sample.isSample()) {
       this.send({
         kind: "demo-opened",
@@ -119,17 +135,24 @@ export class FirstRun {
     this.#device.startOver(() => this.send({ kind: "reset" }));
   }
 
-  /** Applies `event`, then saves and tells the listeners if the state changed. */
+  /**
+   * Applies `event` to the state the device holds now, then saves and tells the listeners if the
+   * state changed. An event about the first run's folder changes nothing once it is elsewhere.
+   */
   send(event: FirstRunEvent): void {
     if (this.#disposed) return;
-    const next = nextFirstRun(this.#state, event);
+    const reloaded = this.#reload();
+    const next = this.#isAbout(event) ? nextFirstRun(this.#state, event) : this.#state;
     const text = serializeFirstRun(next);
-    if (text === serializeFirstRun(this.#state)) return;
+    if (text === serializeFirstRun(this.#state)) {
+      if (reloaded) this.#changed();
+      return;
+    }
     this.#state = next;
     this.#device.write(text);
-    for (const listener of [...this.#listeners]) listener();
-    // Back on (Continue, Start over): the runs may have moved on while it was paused.
-    if (next.kind === "on") void this.#follow();
+    // A save that failed leaves the old text, which then isn't another folder's change.
+    this.#seen = this.#device.read();
+    this.#changed();
   }
 
   /** Calls `listener` after every change of {@link state}. Returns a function that stops the calls. */
@@ -142,11 +165,51 @@ export class FirstRun {
   dispose(): void {
     this.#disposed = true;
     this.#stopWatching();
+    this.#stopWatchingSample();
+    this.#stopWatchingDevice();
     this.#listeners.clear();
+  }
+
+  /** Takes what another folder saved, if anything, and tells the listeners. */
+  #refresh(): void {
+    if (this.#disposed) return;
+    if (this.#reload()) this.#changed();
+  }
+
+  /** Takes the device's state when another folder saved one since; tells whether it did. */
+  #reload(): boolean {
+    const text = this.#device.read();
+    if (text === this.#seen) return false;
+    this.#seen = text;
+    const saved = parseFirstRun(text);
+    if (serializeFirstRun(saved) === serializeFirstRun(this.#state)) return false;
+    this.#state = saved;
+    return true;
+  }
+
+  /** Whether `event` may change the state: one about the first run's folder only from there. */
+  #isAbout(event: FirstRunEvent): boolean {
+    if (event.kind === "demo-opened" || event.kind === "guide-reopened" || event.kind === "reset") {
+      return true;
+    }
+    return this.#state.kind !== "off" && this.#state.folder === this.#device.folder;
+  }
+
+  /** Tells the listeners the state changed, and follows the runs again when it is on. */
+  #changed(): void {
+    this.#tell();
+    // Back on (Continue, Start over, another folder): the runs may have moved on meanwhile.
+    if (this.#state.kind === "on") void this.#follow();
+  }
+
+  #tell(): void {
+    for (const listener of [...this.#listeners]) listener();
   }
 
   /** Moves the steps by the newest run of Support reply since the first run began here. */
   async #follow(): Promise<void> {
+    // Only tells: this is following the runs already.
+    if (this.#reload()) this.#tell();
     const newest = this.#newestRun();
     if (newest === undefined) return;
     let event: FirstRunEvent;
