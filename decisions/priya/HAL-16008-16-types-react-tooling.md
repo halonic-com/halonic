@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-16008 (Liam's OK on the 6a review of #5251)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nhgu/9YfthtYFTXEpvrtJaQeIr6aLmHytXAk36QRuQzvsQHe/pdhzFMuYGPbjb/H0/da/T7fR0ymZyZH4sjnBA==
 - Task: HAL-16008
 
 ## What changes
