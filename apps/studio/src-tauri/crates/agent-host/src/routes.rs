@@ -193,6 +193,10 @@ const ROUTES: &[(&str, Route)] = &[
         route(Method::Post, "/v1/proposals/remove", Answer::Json),
     ),
     (
+        "POST /v1/proposals/done",
+        route(Method::Post, "/v1/proposals/done", Answer::Json),
+    ),
+    (
         "POST /v1/placements/get",
         route(Method::Post, "/v1/placements/get", Answer::Json),
     ),

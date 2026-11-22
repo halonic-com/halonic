@@ -1,8 +1,7 @@
-import type { ProposedRecord } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
 import type { RunExecutor } from "@halonicjs/ports";
-import { KindedError } from "@halonicjs/std";
 import type { PlaceSignal, ViewRef } from "@halonicjs/studio-shell";
+import { AnswerTimedOut, withTimeout } from "./answer-timeout.ts";
 import type { InboxAnsweredView } from "./answered-view.ts";
 import {
   type AfterAnswer,
@@ -22,7 +21,12 @@ import {
 } from "./inbox-items.ts";
 import { ShownRuns } from "./needs-you-news.ts";
 import type { InboxNotices } from "./notices/inbox-notices.ts";
-import { type ProposalItem, proposalItems } from "./proposal-items.ts";
+import {
+  doneItems,
+  type ProposalItem,
+  proposalItemsOf,
+  type RunProposalEntry,
+} from "./proposal-items.ts";
 import type { InboxSetupSource, SetupEntry, SetupFocus } from "./setup-source.ts";
 
 /**
@@ -51,22 +55,14 @@ export interface InboxRuns {
    * when a proposal is made or decided.
    */
   proposals?(): Promise<readonly RunProposalEntry[]>;
+  /**
+   * The proposals settled in the last 30 days, each with its run's record, for the Done heading
+   * (HAL-11945 Q10). Without it Done stays empty.
+   */
+  doneProposals?(): Promise<readonly RunProposalEntry[]>;
   /** An item's name as its file says; `undefined` when it can't be read, and the Inbox shows the id. */
   itemName?(itemId: string): string | undefined;
 }
-
-/** A run's proposal and its run, as {@link InboxRuns.proposals} gives them. */
-export interface RunProposalEntry {
-  readonly record: ProposedRecord;
-  /** The run's record; `undefined` when it can't be read. */
-  readonly run: RunSummary | undefined;
-}
-
-/**
- * How long an answer may take before the Inbox gives up on it, so a hanging engine ends in an
- * error on the card and not in a spinner that never stops.
- */
-export const answerTimeoutMs = 30_000;
 
 /** What the Inbox holds now. */
 export interface InboxState {
@@ -75,6 +71,8 @@ export interface InboxState {
    * first. The last list that loaded, or none before the first.
    */
   readonly items: readonly InboxItem[];
+  /** The proposals settled in the last 30 days, the one settled last first: the Done heading's. */
+  readonly done: readonly ProposalItem[];
   /** Whether a list has loaded once, so "nothing waiting" can be told from "not loaded yet". */
   readonly loaded: boolean;
   /**
@@ -105,7 +103,7 @@ export class Inbox {
   extraNotices: InboxNotices | undefined;
   /** The runs other pages show and announce, so the Inbox's "Waiting for you" leaves them out. */
   readonly shownRuns = new ShownRuns();
-  #state: InboxState = { items: [], loaded: false, error: undefined };
+  #state: InboxState = { items: [], done: [], loaded: false, error: undefined };
   readonly #runs: InboxRuns;
   readonly #listeners = new Set<() => void>();
   readonly #stopWatching: () => void;
@@ -116,6 +114,8 @@ export class Inbox {
   readonly #answeredViews = new Set<InboxAnsweredView>();
   /** The proposals from the last load that succeeded, kept while it fails. */
   #proposalItems: readonly ProposalItem[] = [];
+  /** The done proposals from the last load that succeeded, kept while it fails. */
+  #doneItems: readonly ProposalItem[] = [];
   /**
    * The items you have answered, by key and waiting time; they stay out until a load no longer
    * lists them. The time tells a step the run came back to from the one you answered.
@@ -204,8 +204,12 @@ export class Inbox {
     if (this.#disposed) return;
     const load = ++this.#loads;
     const sources = [...this.#setupSources.keys()];
-    const [[runs, proposals], lists] = await Promise.all([
-      Promise.allSettled([this.#runs.waiting(), this.#runs.proposals?.() ?? []] as const),
+    const [[runs, proposals, done], lists] = await Promise.all([
+      Promise.allSettled([
+        this.#runs.waiting(),
+        this.#runs.proposals?.() ?? [],
+        this.#runs.doneProposals?.() ?? [],
+      ] as const),
       Promise.allSettled(sources.map((source) => source.list())),
     ]);
     if (load !== this.#loads || this.#disposed) return;
@@ -224,18 +228,14 @@ export class Inbox {
       error ??= list?.reason;
       return this.#setupItems.get(source) ?? [];
     });
+    const nameOfItem = (id: string) => this.#runs.itemName?.(id) ?? id;
     if (proposals.status === "fulfilled") {
-      const runOf = new Map(
-        proposals.value.map((entry) => [entry.record.proposal.runId, entry.run]),
-      );
-      this.#proposalItems = proposalItems(
-        proposals.value.map((entry) => entry.record),
-        (runId) => runOf.get(runId),
-        (id) => this.#runs.itemName?.(id) ?? id,
-      );
+      this.#proposalItems = proposalItemsOf(proposals.value, nameOfItem);
     } else {
       error ??= proposals.reason;
     }
+    if (done.status === "fulfilled") this.#doneItems = doneItems(done.value, nameOfItem);
+    else error ??= done.reason;
     const items = inboxItems(runs.value, (id) => this.#runs.agentName?.(id) ?? id);
     const listed = new Set(items.map(answerId));
     for (const id of this.#answered) if (!listed.has(id)) this.#answered.delete(id);
@@ -245,6 +245,7 @@ export class Inbox {
         items.filter((item) => !this.#answered.has(answerId(item))),
         this.#proposalItems,
       ),
+      done: this.#doneItems,
       loaded: true,
       error,
     });
@@ -425,22 +426,4 @@ function setupItem(provider: string, entry: SetupEntry): SetupItem {
     needsSecret: entry.needsSecret === true,
     ...(entry.fixed === true ? { fixed: true } : {}),
   };
-}
-
-/** The answer didn't come back in time; the card shows it as a failed answer, with **Try again**. */
-class AnswerTimedOut extends KindedError {
-  constructor() {
-    super(
-      "unavailable",
-      "The engine didn't answer in time. Your answer may not have been recorded.",
-    );
-  }
-}
-
-function withTimeout<T>(work: Promise<T>): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const late = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new AnswerTimedOut()), answerTimeoutMs);
-  });
-  return Promise.race([work, late]).finally(() => clearTimeout(timer));
 }

@@ -31,6 +31,7 @@ import type { InboxRequests } from "../request/inbox-requests.ts";
 import type { SetupFocus } from "../setup-source.ts";
 import { ApprovalCard } from "./approval-card.tsx";
 import type { NextItem } from "./card-parts.tsx";
+import { DoneProposalCard, DoneSection } from "./done-proposals.tsx";
 import { ListHeader, listPaneClass, nextItem } from "./inbox-page-parts.tsx";
 import { countDetail, inboxRow, lateCount } from "./inbox-row.tsx";
 import { failureReason, isSignedOut, loadFailed, StaleLine } from "./load-lines.tsx";
@@ -152,7 +153,8 @@ export interface InboxViewProps {
  * With no card open, the right pane is the request form when the workspace has a workflow with a
  * `start:` block (`InboxRequests`), and **New request** in the header brings it back.
  *
- * Notices (`InboxNotices`) follow Needs you as flat rows with **Open run** and **×**.
+ * Notices (`InboxNotices`) follow Needs you as flat rows with **Open run** and **×**, then the
+ * collapsed **Done** heading of settled run proposals (HAL-11945 Q10).
  *
  * Not here yet: the notices' new dot and the narrow layout (HAL-1305).
  */
@@ -257,14 +259,17 @@ export function InboxView({
           )}
           {state.loaded && !failedFirst && proposals === undefined ? <ProposalsElsewhere /> : null}
           {failedFirst ? null : (
-            <NoticesSection
-              source={notices}
-              openRun={openRun}
-              openBudget={openBudget}
-              onEmptied={() => needsYouHeading.current?.focus()}
-              announce={announce}
-              words={words}
-            />
+            <>
+              <NoticesSection
+                source={notices}
+                openRun={openRun}
+                openBudget={openBudget}
+                onEmptied={() => needsYouHeading.current?.focus()}
+                announce={announce}
+                words={words}
+              />
+              <DoneSection done={state.done} current={open?.key} onOpen={openItem} />
+            </>
           )}
         </div>
       </div>
@@ -400,6 +405,9 @@ function OpenCard({
         announce={announce}
       />
     );
+  }
+  if (item.kind === "proposal" && item.settledAt !== undefined) {
+    return <DoneProposalCard item={item} now={now()} facts={facts} onOpenRun={openThisRun} />;
   }
   if (item.kind === "proposal") {
     return (

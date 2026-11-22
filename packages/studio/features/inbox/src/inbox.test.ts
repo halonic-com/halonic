@@ -3,9 +3,10 @@ import type { SendOptions } from "@halonicjs/ports";
 import { createShell, type ServiceKey, type ServiceTarget } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
+import { answerTimeoutMs } from "./answer-timeout.ts";
 import { InboxRunsService, InboxService } from "./api.ts";
 import { inboxFeature } from "./feature.ts";
-import { answerTimeoutMs, Inbox, type InboxRuns } from "./inbox.ts";
+import { Inbox, type InboxRuns } from "./inbox.ts";
 import { isRunItem } from "./inbox-items.ts";
 import { pendingApproval, waitingRun } from "./test-runs.test-helper.ts";
 
@@ -63,7 +64,7 @@ verifies("inbox.live", () => {
     const inbox = new Inbox(runs);
     const listener = vi.fn();
     inbox.subscribe(listener);
-    expect(inbox.state).toEqual({ items: [], loaded: false, error: undefined });
+    expect(inbox.state).toEqual({ items: [], done: [], loaded: false, error: undefined });
 
     await settled();
     expect(inbox.state.loaded).toBe(true);

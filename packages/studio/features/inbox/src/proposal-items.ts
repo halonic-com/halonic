@@ -1,7 +1,7 @@
 // Run proposals in Needs you (flow-inbox 2.2, HAL-10916): a run that changed
 // workspace files proposes them, and the Inbox lists one item per run until
 // nothing is left to decide. The rules are HAL-1305's of 11 Nov and rows Q1,
-// Q2 and Q8 of HAL-11945.
+// Q2 and Q8 of HAL-11945. Once settled, a proposal goes under the Done heading (Q10).
 
 import { isProposalFinished, type ProposedRecord } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
@@ -39,6 +39,46 @@ export interface ProposalItem {
   readonly ending: ProposalEnding | null;
   /** ISO time the run ended: from its record, else when the proposal was made. Newest first. */
   readonly since: string;
+  /** ISO time it was settled, for an item under the Done heading (Q10); absent while it is open. */
+  readonly settledAt?: string;
+}
+
+/** A run's proposal and its run, as the Inbox's runs give them. */
+export interface RunProposalEntry {
+  readonly record: ProposedRecord;
+  /** The run's record; `undefined` when it can't be read. */
+  readonly run: RunSummary | undefined;
+}
+
+/** {@link proposalItems} of entries that come with their runs. */
+export function proposalItemsOf(
+  entries: readonly RunProposalEntry[],
+  nameOfItem: (itemId: string) => string,
+): ProposalItem[] {
+  const runOf = new Map(entries.map((entry) => [entry.record.proposal.runId, entry.run]));
+  return proposalItems(
+    entries.map((entry) => entry.record),
+    (runId) => runOf.get(runId),
+    nameOfItem,
+  );
+}
+
+/**
+ * The settled proposals of these entries, for the Done heading (Q10), the one settled last first.
+ * Each keeps what was decided on its files; its key is `done:<runId>`, so it never shares one with
+ * the item it was in Needs you.
+ */
+export function doneItems(
+  entries: readonly RunProposalEntry[],
+  nameOfItem: (itemId: string) => string,
+): ProposalItem[] {
+  return entries
+    .flatMap(({ record, run }) => {
+      if (record.settled === undefined) return [];
+      const item = proposalItem(record, run, nameOfItem);
+      return [{ ...item, key: `done:${item.runId}`, settledAt: record.settled.at }];
+    })
+    .sort(lastSettledFirst);
 }
 
 /**
@@ -98,6 +138,12 @@ function endingOf(run: RunSummary): ProposalEnding | null {
   if (run.status === "completed") return "finished";
   if (run.status !== "failed") return null;
   return run.reason === "cancelled" || run.reason === "budget" ? "stopped" : "failed";
+}
+
+function lastSettledFirst(a: ProposalItem, b: ProposalItem): number {
+  const [first, second] = [a.settledAt ?? "", b.settledAt ?? ""];
+  if (first !== second) return first < second ? 1 : -1;
+  return newestFirst(a, b);
 }
 
 function newestFirst(a: ProposalItem, b: ProposalItem): number {

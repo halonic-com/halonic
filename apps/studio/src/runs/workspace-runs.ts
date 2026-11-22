@@ -38,6 +38,7 @@ import {
   loadWorkspace,
   providerIsLocal,
 } from "@halonicjs/workspace";
+import { withRunRecords } from "./proposal-entries.ts";
 import { providerHost } from "./provider-host.ts";
 
 /** How often the runs are read again to see whether one changed: every 10 s (states K5). */
@@ -93,6 +94,8 @@ export interface WorkspaceRunsOptions {
    * {@link WorkspaceRuns.proposals} lists none.
    */
   readonly proposals?: () => Promise<readonly ProposedRecord[]>;
+  /** The proposals settled in the last 30 days, as the agent host lists them; left out, none. */
+  readonly doneProposals?: () => Promise<readonly ProposedRecord[]>;
 }
 
 /** What the workspace's files say about its runs. */
@@ -256,16 +259,14 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     return this.#options.waiting?.() ?? this.#options.runs.list({ status: ["waiting"] });
   }
 
-  /**
-   * The open run proposals, each with its run's record (`studio.workspace-run-proposals`). The
-   * runs are read only when there is a proposal; a run whose log is gone gives `undefined`.
-   */
+  /** The open run proposals, each with its run's record (`studio.workspace-run-proposals`). */
   async proposals(): Promise<readonly RunProposalEntry[]> {
-    const records = (await this.#options.proposals?.()) ?? [];
-    if (records.length === 0) return [];
-    await this.#readFacts();
-    const runs = new Map((await this.#options.runs.list()).map((run) => [run.id, run]));
-    return records.map((record) => ({ record, run: runs.get(record.proposal.runId) }));
+    return withRunRecords((await this.#options.proposals?.()) ?? [], () => this.list());
+  }
+
+  /** The proposals settled in the last 30 days, each with its run's record (`studio.workspace-done-proposals`). */
+  async doneProposals(): Promise<readonly RunProposalEntry[]> {
+    return withRunRecords((await this.#options.doneProposals?.()) ?? [], () => this.list());
   }
 
   subscribe(listener: () => void): () => void {
