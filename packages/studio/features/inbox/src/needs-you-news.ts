@@ -1,7 +1,7 @@
 import { announceQuietMs, type ItemRef, type ShownPage } from "@halonicjs/studio-shell";
 import type { Inbox } from "./inbox.ts";
 import { needsYouNews, waits } from "./inbox-count.ts";
-import type { InboxItem } from "./inbox-items.ts";
+import { type InboxItem, isRunItem } from "./inbox-items.ts";
 
 /**
  * The runs a page other than the Inbox shows and announces itself when they wait for you, such as
@@ -92,6 +92,7 @@ function waitingKeys(items: readonly InboxItem[]): ReadonlySet<string> {
   return new Set(items.filter(waits).map((item) => item.key));
 }
 
+// A page says when a run waits; a proposal's run has ended, so no page has said it.
 function saidOn(shownRuns: ShownRuns, item: InboxItem, page: ShownPage): boolean {
-  return item.kind !== "setup" && shownRuns.saidOn(item.runId, page);
+  return isRunItem(item) && shownRuns.saidOn(item.runId, page);
 }
