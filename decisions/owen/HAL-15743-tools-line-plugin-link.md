@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this note in his review of this pull request on HAL-15743 (a team decision with no board card, HAL-2282 rule: the same detail of the run page's step panel as HAL-15453, which Liam asked to extend to this line)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TIcEpnzBTpHvToyZkA7Plm3ij3StULKJrLDEzbc20WhFFPtjZGdDQeaT3mWps9mDPZBQG5wNoWQqlr958i0RCw==
 
 ## What changes
 
