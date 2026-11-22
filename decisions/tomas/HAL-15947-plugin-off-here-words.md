@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-15947 asks for this change, from flow check C656 #3 and #6 (HAL-15937). The team decides under the HAL-2282 rule: the words are the ones `plugin list` and `run` already use for the same facts, and Liam signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Ze6RhOS+1HoLxzlEJQbYP2aM1aj7i518H5/4yCH2pUdYDBCZ9PDsXeFarkawo+0jm2YkmNl41mCT+m7uhVPCAg==
 
 ## What changes
 
