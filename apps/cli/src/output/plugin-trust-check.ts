@@ -23,6 +23,7 @@ import {
   signInTrustLine,
 } from "@halonicjs/app";
 import { withHomeAsTilde } from "@halonicjs/profile";
+import { columnGap } from "../messages/columns.ts";
 import type { Message } from "../messages/define.ts";
 import { markPart, type Phrase, phrase, plainText } from "../messages/phrase.ts";
 import { pluginMessages } from "../messages/plugin.ts";
@@ -49,6 +50,8 @@ const riskGroups: readonly { readonly risk: string; readonly heading: () => Mess
  *   says what holds either way
  * @param copiedFrom - where `plugin add` copied it from (`PluginService.install`);
  *   without it, no "Copied from" line
+ * @param turnsOn - whether a yes turns it on; `false` while its backend would be
+ *   off on this computer, so the first line asks only "Trust Weather?"
  *
  * @example
  * pluginTrustCheckLines(entry.content, entry.location);
@@ -60,9 +63,10 @@ export function pluginTrustCheckLines(
   folder: string,
   programsRun?: ProgramsRun,
   copiedFrom?: PluginInstall["source"],
+  turnsOn = true,
 ): Phrase[] {
   return [
-    pluginMessages.trustQuestion(printable(content.plugin.name)).phrase,
+    pluginMessages.trustQuestion(printable(content.plugin.name), turnsOn).phrase,
     ...pluginTrustSections(content).flatMap((name) => sectionLines(content, name, programsRun)),
     ...locationLines(content, folder, copiedFrom),
     phrase``,
@@ -170,13 +174,23 @@ function shownFolder(folder: string): string {
  * tool the plugin says reads as changing things until the connector file's `read` list names it.
  */
 function toolRows(content: PluginTrustContent): Phrase[] {
-  const groups = riskGroups.flatMap(({ risk, heading }) => {
-    const names = content.tools
-      .filter((tool) => tool.risk === risk)
-      .map((tool) => phrase`${printable(tool.name)}`);
-    return names.map((name, index) => row(index === 0 ? plainHeading(heading()) : "", name));
-  });
-  return [phrase`${rowIndent}${pluginMessages.toolsIntro().phrase}`, ...groups];
+  const groups = riskGroups
+    .map(({ risk, heading }) => ({
+      heading: plainHeading(heading()),
+      names: content.tools.filter((tool) => tool.risk === risk).map((tool) => tool.name),
+    }))
+    .filter((group) => group.names.length > 0);
+  // "Changes things" is wider than a row's first column, so the tools line up past the
+  // widest heading shown, not each one past its own (C626 #1).
+  const firstColumn = underRow.length - rowIndent.length;
+  const width = Math.max(firstColumn, ...groups.map((group) => group.heading.length + columnGap));
+  const rows = groups.flatMap((group) =>
+    group.names.map(
+      (name, index) =>
+        phrase`${rowIndent}${(index === 0 ? group.heading : "").padEnd(width)}${printable(name)}`,
+    ),
+  );
+  return [phrase`${rowIndent}${pluginMessages.toolsIntro().phrase}`, ...rows];
 }
 
 /** Each program with what starts it, then where it runs, as Studio labels it under an open program. */

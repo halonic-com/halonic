@@ -50,7 +50,9 @@ is the reference.
 6. Add it to your own profile: `halonic plugin add ./my-plugin`. It asks
    "Trust *name* and turn it on?". Answer yes to turn it on. No, or no
    terminal, leaves it added but off; a script passes
-   `--yes --fingerprint <fingerprint>` (see Trust below).
+   `--yes --fingerprint <fingerprint>` (see Trust below). When its backend
+   can't run in the sandbox on this computer, it asks only "Trust *name*?"
+   and says first that trusting it won't turn it on, and why.
 7. Give an agent its tools: add the plugin's connector to a workspace. A
    workspace names the plugin; it can't trust it. Write a connector file,
    such as `library/connectors/my-plugin.connector.yaml`, that names the

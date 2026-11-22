@@ -73,8 +73,13 @@ export const pluginMessages = defineMessages("plugin", {
    * that the folder held and the copy left out (HAL-13713), with a !.
    */
   leftOut: (paths: string) => phrase`Not copied, because they're private: ${paths}`,
-  /** The check's first line, and the question at its end, framed with [y/N] by the question line. */
-  trustQuestion: (name: string) => phrase`Trust ${name} and turn it on?`,
+  /**
+   * The check's first line, and the question at its end, framed with [y/N] by the question line.
+   * While its backend would be off on this computer, a yes doesn't turn it on, so the question
+   * doesn't promise it (C626 #1, HAL-15752).
+   */
+  trustQuestion: (name: string, turnsOn = true) =>
+    turnsOn ? phrase`Trust ${name} and turn it on?` : phrase`Trust ${name}?`,
   toolsHeading: () => phrase`Tools for agents`,
   reads: () => phrase`Reads`,
   changesThings: () => phrase`Changes things`,
