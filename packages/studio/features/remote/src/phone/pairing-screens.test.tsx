@@ -151,6 +151,13 @@ verifies("remote.phone-pairing", () => {
     expect(camera).toEqual([true]);
   });
 
+  it("draws the X in the camera's white, since a ghost button's own colour vanishes on it", async () => {
+    const { screen } = setUp();
+    await press(screen, "Scan code");
+    const x = button(screen, "Close scanner")?.querySelector("svg");
+    expect(x?.parentElement?.className).toContain("text-qr-light");
+  });
+
   it("offers settings and the typed route without the camera, and only typing without a scanner", async () => {
     const { scanner, screen, onOpenSettings } = setUp();
     await press(screen, "Scan code");
