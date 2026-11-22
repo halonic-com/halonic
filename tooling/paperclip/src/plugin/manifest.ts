@@ -165,6 +165,13 @@ export const manifest: PaperclipPluginManifestV1 = {
       },
     },
     {
+      name: "board_waiting",
+      displayName: "Waiting on the board",
+      description:
+        "Open tasks blocked with the board as owner or in review with a pending board card, ranked by how many tasks each holds up (directly and through the chain), longest waiting first on a tie, as of the board check's last hourly pass. Identifiers, holders, counts and times only, no titles.",
+      parametersSchema: { type: "object", properties: {} },
+    },
+    {
       name: "failed_runs",
       displayName: "Failed runs",
       description:

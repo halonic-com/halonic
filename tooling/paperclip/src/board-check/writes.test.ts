@@ -53,8 +53,9 @@ const asksDocument: BoardWrite = { kind: "document", key: "board-asks", body: "#
 verifies("paperclip.board-check-writes", () => {
   test("sends a comment, a named document and a wake-up through the three allowed calls", async () => {
     const { api, gate, sent } = setUp();
-    const outcome = await commitWrites(api, gate, [comment, asksDocument, wake("task-7")]);
-    expect(outcome).toEqual({ written: 3, logged: 0, refused: undefined });
+    const plan = [comment, asksDocument, wake("task-7")];
+    const outcome = await commitWrites(api, gate, plan);
+    expect(outcome).toEqual({ written: 3, logged: 0, sent: new Set(plan), refused: undefined });
     expect(sent).toEqual([
       {
         call: "createComment",
@@ -128,8 +129,9 @@ verifies("paperclip.board-check-writes", () => {
 
   test("with the switch off, only logs each write by kind, target and size", async () => {
     const { api, gate, sent, logs } = setUp([false]);
-    const outcome = await commitWrites(api, gate, [comment, asksDocument, wake("task-7")]);
-    expect(outcome).toEqual({ written: 0, logged: 3, refused: undefined });
+    const plan = [comment, asksDocument, wake("task-7")];
+    const outcome = await commitWrites(api, gate, plan);
+    expect(outcome).toEqual({ written: 0, logged: 3, sent: new Set(), refused: undefined });
     expect(sent).toEqual([]);
     expect(logs).toEqual([
       "Board check: would comment on task task-checker (16 characters) (writes off).",
@@ -140,8 +142,14 @@ verifies("paperclip.board-check-writes", () => {
 
   test("reads the switch before each write, so turning it off stops the next write", async () => {
     const { api, gate, sent } = setUp([true, false]);
-    const outcome = await commitWrites(api, gate, [comment, asksDocument, wake("task-7")]);
-    expect(outcome).toEqual({ written: 1, logged: 2, refused: undefined });
+    const plan = [comment, asksDocument, wake("task-7")];
+    const outcome = await commitWrites(api, gate, plan);
+    expect(outcome).toEqual({
+      written: 1,
+      logged: 2,
+      sent: new Set([comment]),
+      refused: undefined,
+    });
     expect(sent.map((write) => write.call)).toEqual(["createComment"]);
   });
 });

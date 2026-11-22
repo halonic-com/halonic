@@ -7,7 +7,14 @@ export interface FakeTask {
   readonly identifier: string;
   readonly status: string;
   readonly assigneeAgentId: string | null;
+  readonly assigneeUserId?: string | null;
   readonly updatedAt: Date;
+  readonly blockedTransitionAt?: Date | null;
+  readonly reviewAttention?: { paths: { kind: string; since: string | null }[] };
+  /** The ids of the tasks this one blocks, as Paperclip's blocker links say. */
+  readonly blocks?: readonly string[];
+  /** Pending board cards, for a task listed without review attention. */
+  readonly pendingCards?: number;
 }
 
 /** A comment as the fake host stores it. */
@@ -73,6 +80,23 @@ function fakeIssues(
         .filter((task) => task.status === input.status)
         .slice(input.offset, input.offset + input.limit),
     get: async (id: string) => options.tasks.find((task) => task.id === id) ?? null,
+    listInteractions: async (id: string) =>
+      Array.from(
+        { length: options.tasks.find((task) => task.id === id)?.pendingCards ?? 0 },
+        () => ({ status: "pending" }),
+      ),
+    relations: only(
+      {
+        get: async (id: string) => ({
+          blockedBy: [],
+          blocks: (options.tasks.find((task) => task.id === id)?.blocks ?? []).flatMap((blocked) =>
+            options.tasks.filter((task) => task.id === blocked),
+          ),
+        }),
+      },
+      "issues.relations",
+      ["get"],
+    ),
     listComments: async (id: string) => {
       if (options.commentsError !== undefined) {
         throw options.commentsError;
@@ -107,6 +131,8 @@ export function fakeBoardContext(options: {
       "list",
       "get",
       "listComments",
+      "listInteractions",
+      "relations",
       "createComment",
       "requestWakeup",
       "documents",

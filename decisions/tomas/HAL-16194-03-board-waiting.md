@@ -1,0 +1,30 @@
+# Decision: the board check may read blocker links, and two tests say so
+
+- Approval: Liam reviews the board check's waiting-on-the-board part and signs this note as the CTO
+- Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:EdOlKSfQyi9WTD4KHuYhDBiS3NSwKVQwwVB3GdGe7UK45m/le6RL1+9lzqQV3/9s1UrrYsRqSdY/qOmWhQT7AQ==
+
+Part (b) of the board check (phase 1b, HAL-16194) ranks the tasks waiting
+on the board by what they hold up, so it reads Paperclip's blocker links
+(`issues.relations.get`, the `issue.relations.read` permission Liam reviewed
+on #5127) and, for a task in review listed without review attention, its
+pending cards (`issues.listInteractions`).
+
+- The guard test "never touches a call outside its allowlist" checked that
+  the board check can't reach `issues.relations` at all. It now checks that
+  each relation write (`setBlockedBy`, `addBlockers`, `removeBlockers`)
+  throws, and adds that `createInteraction` and `respondInteraction` throw.
+  The fake context offers `relations.get` alone, so a write is still caught
+  the moment the code reaches for it.
+- The `paperclip.pr-tools` test compares the whole list of declared tools;
+  it now lists `board_waiting` too. Nothing else it checks changes.
+- The write gate's tests (`paperclip.board-check-writes`) now also expect
+  the set of writes that actually went out, which the gate reports so a
+  part remembers only what was sent (Liam's review of #5224). Each
+  assertion stays; the expected outcome gains that one field.
+
+## Covers
+
+- tooling/paperclip/src/board-check/writes.test.ts
+- tooling/paperclip/src/plugin/board-check.test.ts
+- tooling/paperclip/src/plugin/tools.test.ts

@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-tools`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-waiting`, `paperclip.board-tools`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`
 
 ## PR watcher
 
@@ -150,8 +150,9 @@ token as the watcher, and give up after 25 s.
 
 The Board Checker's checks as the `board-check` job, without a model
 (phase 1b, HAL-16194; the Board Checker addendum on HAL-15997). It spots
-board asks and keeps failed runs; the tasks waiting on the board, team
-load, approvals and merge speed follow.
+board asks, keeps failed runs and lists the tasks waiting on the board;
+team load, approvals and merge speed follow. Each job pass lists the open
+tasks once and every part reads that one listing.
 
 **Board asks.** An agent's comment from the last 12 minutes that matches
 the Board Checker's pattern (`sv.cjs`: "for the board", "board's yes",
@@ -164,7 +165,20 @@ open tasks active in the last 12 minutes, since events can be lost or come
 twice. New asks update the `board-asks` document on the Board Checker's
 task (task, comment id, author, time, link; never the comment's text) and
 wake the Board Checker once per batch. Asks are remembered by comment id
-for 7 days in plugin state, so a repeated event wakes nobody.
+for 7 days in plugin state, so a repeated event wakes nobody. Asks found
+while writes are off are remembered too: turning writes on doesn't replay
+them, it only wakes the Board Checker for asks from then on.
+
+**Waiting on the board (part b).** On the first pass of each hour it lists
+every open task blocked with a board user as assignee or unblock owner, or
+in review with a board user as assignee or a pending board card. Each is
+ranked by the open tasks it holds up, directly and through the chain of
+blocker links (at most 300 link reads a pass; past that a count reads
+"4+"), longest waiting first on a tie. The list names identifiers, holders,
+counts and times, never titles, and updates the `board-waiting` document
+only when it would read differently from the last one actually sent. Unlike
+asks, it catches up: the first hour after the board turns writes on writes
+the current list.
 
 **Failed runs (part a).** Each `agent.run.failed` event is kept for 48
 hours as ids, a time and a cause code: `no_identity`, `spend_limit`,
@@ -178,9 +192,10 @@ pass. New spend-limit failures get one line on the Seat Supervisor's task
 
 **Tools.** `board_asks(since?)` lists the asks since an ISO time (24 hours
 by default) with their links and whether the board or the Board Checker has
-commented on the task since. `failed_runs(since?)` gives each agent's
-failed runs with tasks and cause codes, and since when it counts. Neither
-carries comment or error text, and neither costs a GitHub request.
+commented on the task since. `board_waiting()` gives the last hourly list
+and its time. `failed_runs(since?)` gives each agent's
+failed runs with tasks and cause codes, and since when it counts. None
+carries comment or error text, and none costs a GitHub request.
 
 **What it may write** (Liam's conditions, HAL-16192). Every write goes
 through `src/board-check/writes.ts`, which only knows three calls:

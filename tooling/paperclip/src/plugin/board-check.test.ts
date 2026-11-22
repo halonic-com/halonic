@@ -197,7 +197,17 @@ verifies("paperclip.board-check-writes", () => {
     // The guard itself: each of these throws the moment the board check would reach for it.
     const reach = ctx as unknown as Record<string, Record<string, unknown>>;
     expect(() => reach["issues"]?.["update"]).toThrow("touched issues.update");
-    expect(() => reach["issues"]?.["relations"]).toThrow("touched issues.relations");
+    // Part (b) reads blocker links, so `relations` offers `get` alone; every relation write throws.
+    const relations = reach["issues"]?.["relations"] as Record<string, unknown>;
+    for (const write of ["setBlockedBy", "addBlockers", "removeBlockers"]) {
+      expect(() => relations[write]).toThrow(`touched issues.relations.${write}`);
+    }
+    expect(() => reach["issues"]?.["createInteraction"]).toThrow(
+      "touched issues.createInteraction",
+    );
+    expect(() => reach["issues"]?.["respondInteraction"]).toThrow(
+      "touched issues.respondInteraction",
+    );
     expect(() => reach["issues"]?.["create"]).toThrow("touched issues.create");
     expect(() => reach["approvals"]).toThrow("touched ctx.approvals");
     expect(() => reach["agents"]?.["pause"]).toThrow("touched agents.pause");
