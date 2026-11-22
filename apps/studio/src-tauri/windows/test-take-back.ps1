@@ -70,6 +70,13 @@ function Invoke-AsUser([string]$script) {
   return "$printed".Trim()
 }
 
+# Whether the folder's access list has an entry for the SID. icacls shows an
+# account's name while it exists, so the list is read as SIDs instead.
+function Test-FolderHasSid([string]$folder, [string]$sid) {
+  $rules = (Get-Acl $folder).GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])
+  return [bool]($rules | Where-Object { $_.IdentityReference.Value -eq $sid })
+}
+
 # srt's status for the user, as srt-win in the user's install reports it.
 function Get-UserStatus {
   return (Invoke-AsUser "& '$srtWin' user status") | ConvertFrom-Json
@@ -101,7 +108,7 @@ New-Item -ItemType Directory -Force '$keptFolder' | Out-Null
 exit `$LASTEXITCODE
 "@ | Out-Null
   if ((Get-UserStatus).persistent_grants.state -eq 'none') { throw 'srt keeps no grant for the user after acl grant --persistent' }
-  if (-not ((& icacls.exe $keptFolder) -match [regex]::Escape($sid))) { throw "The kept folder has no entry for $sid" }
+  if (-not (Test-FolderHasSid $keptFolder $sid)) { throw "The kept folder has no entry for $sid" }
 
   # 2. A removal with administrator rights: the user's grant stays, the account goes.
   $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dir 'sandbox-remove.ps1') -HostExe $hostExe -ProfileFolder $profileFolder
@@ -120,7 +127,7 @@ exit `$LASTEXITCODE
   if ($after.persistent_grants.state -ne 'none') {
     throw "The reinstall left srt's grants for $userName`: $($after.persistent_grants | ConvertTo-Json -Compress)"
   }
-  if ((& icacls.exe $keptFolder) -match [regex]::Escape($sid)) { throw "The kept folder still has an entry for $sid" }
+  if (Test-FolderHasSid $keptFolder $sid) { throw "The kept folder still has an entry for $sid" }
   Write-Output 'take-back: a reinstall as a standard user took back what the removal as administrator kept'
 } finally {
   Get-Process Halonic, halonic-agent-host -ErrorAction SilentlyContinue | Stop-Process -Force
