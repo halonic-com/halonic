@@ -492,6 +492,7 @@ export type {
 } from "./trust-record.ts";
 export {
   type TrustCheck,
+  type TrustCheckOptions,
   TrustService,
   type TrustShrink,
   type TrustSubject,
