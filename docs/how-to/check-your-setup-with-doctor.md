@@ -143,6 +143,29 @@ plugin's or connector's secret. Save it in Studio too. One exception: when
 Studio calls a model on this computer that needs a key, for example for the
 Library, it reads that key the way the command line does.
 
+### Plugins
+
+Not in 0.1.0: on `main` only.
+
+**Checks:** each plugin that a connector an agent lists under `connectors`
+names, against the plugins added on this computer, in the same states
+`halonic tools review` gives. Plugins are added per computer, in your profile,
+so this line can differ from one computer to the next. A connector no agent
+uses isn't checked, and the plugins are read only when an agent uses a
+plugin's connector. Shown inside a workspace, after Secrets and before
+Sandbox, only when there's something to report.
+
+| You see | Means | Fix |
+| --- | --- | --- |
+| ✕ "which isn't added" | A connector names a plugin that isn't added on this computer, such as `✕ Plugins     orders uses the plugin acme-order, which isn't added.` No run here gets that connector's tools. When an added plugin's id is close, the line under it asks `Did you mean acme-orders?`. `doctor` exits 1. | Fix the plugin id in the connector's file, or add the plugin with `halonic plugin add <folder or git address>`. Then run `doctor` again. |
+| ! "is off" | The plugin is added but not trusted yet, or changed since you trusted it, such as `! Plugins     acme-orders is off: changed since you trusted it · halonic trust --plugin acme-orders`. Runs go on without its tools. | Run the command at the end of the line. |
+| ! "can't be read or checked" | Halonic couldn't read the plugin's folder, or the plugins folder itself. The plugin stays off. The other lines still show. | Run `halonic plugin list`: it says what's wrong. |
+
+With `--json`, the check is `plugins`, with `problems`: one for each connector
+whose plugin isn't added, and one for each plugin that is off or can't be read,
+such as
+`{"check": "plugins", "status": "failed", "problems": [{"problem": "not-added", "connector": "orders", "plugin": "acme-order", "near": "acme-orders"}]}`.
+
 ### Sandbox
 
 **Checks:** whether the sandbox that agents run in can start on this computer.
