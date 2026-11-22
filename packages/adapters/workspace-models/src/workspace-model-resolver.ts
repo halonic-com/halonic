@@ -245,6 +245,7 @@ export async function requireMayCall(file: ProviderFile, context: KeyCheckContex
       "untrusted-workspace",
       modelTexts.untrustedWorkspace(file.id),
       modelTexts.untrustedWorkspaceFix(file.id),
+      { provider: file.id },
     );
   }
 }
@@ -280,6 +281,7 @@ export async function requireKeyMayGo(
       "untrusted-provider-address",
       modelTexts.untrustedAddress(destination.provider, destination.origin),
       modelTexts.untrustedAddressFix(destination.provider),
+      { provider: destination.provider, origin: destination.origin },
     );
   }
   if (file.secret === undefined) {

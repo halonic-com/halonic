@@ -13,13 +13,12 @@ export {
 export {
   type BusyRetries,
   isModelAlias,
-  isSetupCause,
   type RunFailure,
   runFailureOf,
-  setupFailureOf,
 } from "./run-failure-facts.ts";
 export {
   type ProxyFailure,
   type ProxyProblem,
   proxyFailureOf,
 } from "./run-failure-proxy.ts";
+export { isSetupCause, setupFailureOf } from "./run-failure-setup.ts";

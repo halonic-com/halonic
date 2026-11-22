@@ -2,9 +2,9 @@ import { secretVariableName } from "@halonicjs/adapter-env-secrets";
 import { providerTypes } from "@halonicjs/adapter-workspace-models";
 import { type MoneyAmountOptions, moneyAmount } from "@halonicjs/app";
 import { type BusyRetries, isModelAlias, type RunFailure } from "@halonicjs/app/run-failure";
-import type { ModelSkipReason } from "@halonicjs/events";
 import { shellWord } from "../output/shell-word.ts";
 import { counted, listInWords, timesInWords } from "./counts.ts";
+import { dayAndMonth } from "./dates.ts";
 import { defineMessages, type Message } from "./define.ts";
 import { errorMessages, issuesLink } from "./general.ts";
 import { harnessNames } from "./harness-names.ts";
@@ -146,6 +146,22 @@ const lineOne = {
   // Worded like `validate`'s no-done-transition, which catches most of these first (HAL-14313).
   "no-transition": (run, failure) => failedIn(run, noTransitionReason(failure)),
   "task-without-agent": (run) => failedIn(run, phrase`the step names no agent.`),
+  // The model check's own sentences, so the run says what a model test says (HAL-15333).
+  "key-address-not-allowed": (run, failure) =>
+    failedIn(
+      run,
+      phrase`provider "${failure.provider}" can't send key "${failure.key}" to ${failure.address}. That address isn't allowed for this key.`,
+    ),
+  "key-address-not-trusted": (run, failure) =>
+    failedIn(
+      run,
+      phrase`provider ${failure.provider} would send its key to ${failure.address}, and this workspace isn't trusted on this computer. Nothing was sent.`,
+    ),
+  "workspace-not-trusted": (run, failure) =>
+    failedIn(
+      run,
+      phrase`provider ${failure.provider} calls a real model, and this workspace isn't trusted on this computer, so nothing was sent.`,
+    ),
   "model-no-tools": (run, failure) =>
     failedIn(
       run,
@@ -309,6 +325,13 @@ const lineTwo = {
   },
   // The same fix as `validate`'s task-without-agent (HAL-14313).
   "task-without-agent": () => phrase`Give it an agent (agent: <id>), or make it a wait step.`,
+  // The key's list is in the profile, not the workspace, so the command takes no --dir.
+  "key-address-not-allowed": (_run, failure) =>
+    phrase`Only allow an address you recognise. To allow it, run halonic models allow-address "${failure.key}" ${shellWord(failure.address)}, then run again.`,
+  "key-address-not-trusted": (run, failure) =>
+    phrase`Check providers/${failure.provider}.yaml, then trust the workspace with ${suggestedCommand("trust", run.dir)}, or point it at the type's own address.`,
+  "workspace-not-trusted": (run, failure) =>
+    phrase`Check the workspace, then trust it with ${suggestedCommand("trust", run.dir)}, or set type: mock in providers/${failure.provider}.yaml to use the test model.`,
   // "In models.yaml" first, so it can't read as where the tools are.
   "model-no-tools": (_run, failure) =>
     phrase`In models.yaml, point the model alias ${failure.alias} at a model that can use tools.`,
@@ -445,50 +468,7 @@ function minutesInWords(ms: number): string {
   return counted(Math.round(ms / 60_000), "minute", "minutes");
 }
 
-/** An ISO date as the lines write it, such as "1 Dec". */
-function dayAndMonth(isoDate: string): string {
-  return new Date(isoDate).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  });
-}
-
 /** `provider-busy`, `model-timeout` and `tool-timeout`: nothing the user set caused it. */
 function tryLater(): Phrase {
   return phrase`Run it again in a few minutes.`;
 }
-
-/**
- * What `--debug` prints under a failed run's lines, from its run log
- * (HAL-6613, decided with Sofia): the engine's own error, the provider's
- * own text, and the model calls of the step it failed in. These are for an
- * engineer, so they quote the log as it is.
- */
-export const runFailedDebugMessages = defineMessages("runFailedDebug", {
-  /** The `error` of `run.failed`. */
-  engineSaid: (text: string) => phrase`The engine said: ${text}`,
-  /** The `providerText` of `run.failed` or `llm.fallback`, with its HTTP status when it has one. */
-  providerSaid: (text: string, status?: number) =>
-    status === undefined
-      ? phrase`The provider said: ${text}`
-      : phrase`The provider said (HTTP ${String(status)}): ${text}`,
-  /** Above the model calls, one per line under it. */
-  modelCalls: () => phrase`Model calls in this step:`,
-  noModelCalls: () => phrase`No model calls in this step.`,
-  /** An `llm.request`, with how many times in a row the same call was made. */
-  called: (agent: string, model: string, provider: string, times: number) =>
-    times === 1
-      ? phrase`${agent} called ${model} at ${provider}`
-      : phrase`${agent} called ${model} at ${provider} ${timesInWords(times)}`,
-  /** An `llm.fallback`. */
-  movedOn: (agent: string, from: string, to: string, error: string) =>
-    phrase`${agent} moved from ${from} to ${to}: ${error}`,
-  /** An `llm.skipped`, with the alias tried next when there was one. */
-  skipped: (agent: string, alias: string, reason: ModelSkipReason, next?: string) => {
-    const why = reason === "no-key" ? "its key isn't set" : "the workspace is local only";
-    return next === undefined
-      ? phrase`${agent} skipped ${alias}: ${why}`
-      : phrase`${agent} skipped ${alias}: ${why}, then tried ${next}`;
-  },
-});

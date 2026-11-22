@@ -172,7 +172,7 @@ verifies("cli.workspace-provider-key-trust", () => {
       await expect(resolve(call)).rejects.toMatchObject({
         code: "key-origin-not-allowed",
         message: `Provider "main" can't send key "${keyName}" to https://api.openai.com. That address isn't allowed for this key. Only allow an address you recognise.`,
-        fix: `To allow it, open Models in Halonic Studio, or run: halonic models allow-address "${keyName}" https://api.openai.com`,
+        fix: `To allow it, run: halonic models allow-address "${keyName}" https://api.openai.com`,
       });
     });
 
@@ -224,7 +224,7 @@ verifies("cli.workspace-provider-key-trust", () => {
 
       const plain = await resolveFor("https://other.example.com/v1");
       expect(plain.fix).toBe(
-        `To allow it, open Models in Halonic Studio, or run: halonic models allow-address "${keyName}" https://other.example.com`,
+        `To allow it, run: halonic models allow-address "${keyName}" https://other.example.com`,
       );
       const bracketed = await resolveFor("https://[2001:db8::1]:8443/v1");
       expect(bracketed.fix).toContain(`"${keyName}" "https://[2001:db8::1]:8443"`);

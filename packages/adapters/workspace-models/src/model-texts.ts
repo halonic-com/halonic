@@ -44,9 +44,13 @@ export const modelTexts = {
    */
   originNotAllowed: (provider: string, keyName: string, origin: string): ModelText =>
     `Provider "${provider}" can't send key "${keyName}" to ${origin}. That address isn't allowed for this key. Only allow an address you recognise.`,
-  /** The fix, with the command to paste: the key name is quoted, and the address is quoted when a shell would read it. */
+  /**
+   * The fix, with the command to paste: the key name is quoted, and the address is quoted when a
+   * shell would read it. It doesn't send a person to Studio, which keeps its keys in the
+   * keychain, not in the CLI's profile (HAL-15333).
+   */
   originNotAllowedFix: (keyName: string, origin: string): ModelText =>
-    `To allow it, open Models in Halonic Studio, or run: halonic models allow-address "${keyName}" ${shellWord(origin)}`,
+    `To allow it, run: halonic models allow-address "${keyName}" ${shellWord(origin)}`,
   unknownAlias: (alias: string, hubId: string): ModelText =>
     `hub ${hubId} has no model alias ${alias}.`,
   unknownAliasFix: (): ModelText => "Add the alias to models.yaml, or pick one it has.",

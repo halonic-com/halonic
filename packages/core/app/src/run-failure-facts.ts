@@ -8,8 +8,10 @@ import type { RunFailureCause } from "@halonicjs/events";
 import { assertNever } from "@halonicjs/std";
 import type { FailedModel, FailedStart, RunFailedFacts } from "./failed-model.ts";
 import { budgetStopOf, nextMonthStart } from "./run-failure-budget.ts";
-import { type ConfigFailure, configFailureOf } from "./run-failure-config.ts";
+import type { ConfigFailure } from "./run-failure-config.ts";
+import type { KeyAddressFailure } from "./run-failure-key-address.ts";
 import { type ProxyFailure, proxyFailureOf } from "./run-failure-proxy.ts";
+import { setupFailureOf } from "./run-failure-setup.ts";
 import { type StartFailure, startFailureOf } from "./run-failure-start.ts";
 
 /** What both key failures name: the provider, the secret that holds its key, and the model or alias that uses it. */
@@ -155,6 +157,7 @@ export type RunFailure =
       readonly hub: string;
     }
   | ConfigFailure
+  | KeyAddressFailure
   | StartFailure
   | {
       readonly reason: "secrets-file-readable";
@@ -380,44 +383,6 @@ function timeoutFailure(failed: RunFailedFacts, model: FailedModel | undefined):
 }
 
 /**
- * The failure an `error` names by its cause's code, when it has facts of
- * its own. These are the setup of the workspace or of this computer, not a
- * bug: a provider file whose type Halonic can't call (HAL-12342), a model
- * alias the hub doesn't have, such as `default` in a workspace made with
- * plain `halonic init` (HAL-12377), a secrets file other users can read
- * (HAL-12569), a provider a model names that the workspace doesn't have, and
- * a workflow step the run can't go on from: for-each items that aren't a
- * list, an event with no transition, a task with no agent (HAL-14301). A
- * cause without the names its facts need is `error`. Studio reads its run
- * summary's cause with it, so both word the same facts (HAL-14324).
- *
- * @returns `undefined` for a cause that isn't one of these, or misses a name
- */
-export function setupFailureOf(cause: RunFailureCause | undefined): RunFailure | undefined {
-  const { code, detail = {} } = cause ?? {};
-  switch (code) {
-    case "models.unknown-provider-type": {
-      const { provider, type } = detail;
-      return provider === undefined || type === undefined
-        ? undefined
-        : { reason: "unknown-provider-type", provider, type };
-    }
-    case "models.unknown-model-alias": {
-      const { alias, hub } = detail;
-      return alias === undefined || hub === undefined
-        ? undefined
-        : { reason: "unknown-model-alias", alias, hub };
-    }
-    case "secrets.file-readable": {
-      const { file } = detail;
-      return file === undefined ? undefined : { reason: "secrets-file-readable", file };
-    }
-    default:
-      return configFailureOf(code, detail);
-  }
-}
-
-/**
  * `turn-limit` from an `error` whose cause is the engine's
  * `engine.turn-limit` (HAL-15331): the agent, its limit and its file, which
  * is always `<agent>.agent.yaml`. Not setup: the run went wrong, so it keeps
@@ -451,17 +416,6 @@ function knownCauseFailureOf(failed: RunFailedFacts): RunFailure | undefined {
   return code !== undefined && knownCauseCodes.has(code)
     ? { ...generalFailure(failed), causeKnown: true }
     : undefined;
-}
-
-/**
- * Whether a failed run's cause is one of the setup problems with facts of
- * its own, so a client can treat the run by the cause's own kind, the kind
- * `--json` shows in the run's `cause`, rather than as a broken run
- * (HAL-12377): `not_found` for a missing model alias, `denied` for a secrets
- * file other users can read (HAL-12569).
- */
-export function isSetupCause(cause: RunFailureCause | undefined): cause is RunFailureCause {
-  return setupFailureOf(cause) !== undefined;
 }
 
 /** The engine's own message, which is safe to show, for a failure without facts of its own. */

@@ -136,8 +136,8 @@ where the rule above lets it go, so a listed address that isn't the type's own
 still needs a trusted workspace. A provider file can pick the key by name but
 can't pair it with another address. Any origin off the list, an address that
 can't be read included, refuses the call with the error
-`key-origin-not-allowed`, which names the provider and the origin, never the key
-or the path. Origins match as a whole (scheme, host and port), never by prefix.
+`key-origin-not-allowed`, which names the provider, the key's name and the
+origin, never the key's value or the path. Origins match as a whole (scheme, host and port), never by prefix.
 
 A key saved before lists existed has none, and keeps the rule above.
 

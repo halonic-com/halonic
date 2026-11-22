@@ -32,3 +32,12 @@ export function dayInWords(date: CalendarDay): string {
 export function localDay(moment: Date): CalendarDay {
   return { day: moment.getDate(), month: moment.getMonth() + 1 };
 }
+
+/** An ISO date as a run's failure lines write it, such as "1 Dec". */
+export function dayAndMonth(isoDate: string): string {
+  return new Date(isoDate).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  });
+}
