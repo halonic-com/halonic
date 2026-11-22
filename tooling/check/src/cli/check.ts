@@ -7,6 +7,7 @@ import {
   renderRequirementReport,
   requirementReportFile,
 } from "../lib/requirement-report.ts";
+import { branchPoint } from "../lib/size-base.ts";
 import { buildTraceModel } from "../lib/trace-model.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
 import { rules, rulesAfterTests, selectRules } from "../rules/all.ts";
@@ -26,6 +27,9 @@ import { dcoRange } from "../rules/dco.ts";
  * packages in those folders, for a run that tested only them. With --report it also writes each package's requirement report to
  * test-results/requirements.md. The personal-terms guard has its own
  * command, `pnpm check:leaks`, because CI runs it with a secret.
+ * Outside CI, a file your branch grows is compared with where the branch
+ * left `origin/main` for the file-size headroom, as CI does for a pull
+ * request (`SIZE_BASE`). Untracked files count only once you `git add` them.
  */
 function parseArguments(
   argv: readonly string[],
@@ -65,6 +69,7 @@ function main(argv: readonly string[]): number {
     return 2;
   }
   const toRun = selectRules(selected);
+  compareSizesWithMain(toRun);
   const started = performance.now();
   let context: CheckContext;
   try {
@@ -100,6 +105,27 @@ function main(argv: readonly string[]): number {
     `check: ${errors} error(s), ${warnings} warning(s) in ${context.packages.length} packages and ${context.files.length} files (${seconds}s).`,
   );
   return errors === 0 ? 0 : 1;
+}
+
+/**
+ * Outside CI, sets `SIZE_BASE` to where the branch left `origin/main`, so a
+ * local run fails a file your branch grows into the headroom, as the pull
+ * request's CI will.
+ */
+function compareSizesWithMain(toRun: readonly string[]): void {
+  if (
+    !toRun.includes("file-size") ||
+    process.env["CI"] === "true" ||
+    process.env["SIZE_BASE"] !== undefined
+  ) {
+    return;
+  }
+  const base = branchPoint(process.cwd());
+  if (base === undefined) {
+    console.log("file-size: no origin/main here, so the headroom of grown files isn't checked.");
+    return;
+  }
+  process.env["SIZE_BASE"] = base;
 }
 
 function writeRequirementReports(context: CheckContext): void {
