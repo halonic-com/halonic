@@ -6,6 +6,7 @@ import {
   useModalPolite,
   WarningIcon,
 } from "@halonicjs/studio-kit";
+import { printable } from "@halonicjs/words";
 import { useEffect, useId, useRef, useState } from "react";
 import type {
   TrustLine,
@@ -98,7 +99,7 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
   }
   return (
     <Dialog
-      title={review.title}
+      title={printable(review.title)}
       size="md"
       closeButton={false}
       cancelLabel="Not now"
@@ -118,7 +119,7 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
           break. It breaks anywhere instead, so a phone-narrow window never scrolls the dialog
           sideways (WCAG 1.4.10, HAL-13186). Words that fit don't change. */}
       <div className="flex flex-col gap-4 wrap-anywhere">
-        <p className="m-0 text-small text-fg-muted">{review.source}</p>
+        <p className="m-0 text-small text-fg-muted">{printable(review.source)}</p>
         {review.fingerprint === props.shown ? null : (
           <Callout tone="info">
             This workspace changed while you were reviewing it. Check the new version.
@@ -129,12 +130,12 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
         )}
         {review.refused === undefined ? null : (
           <Callout tone="danger">
-            <span id={refusedId}>{review.refused}</span>
+            <span id={refusedId}>{printable(review.refused)}</span>
           </Callout>
         )}
         {review.summary.map((sentence) => (
           <p key={sentence} className="m-0">
-            {sentence}
+            {printable(sentence)}
           </p>
         ))}
         {review.sections.map((section) => (
@@ -227,10 +228,10 @@ function TrustRow({ row }: { readonly row: TrustRowView }) {
         {row.tag === undefined ? null : (
           <span className="text-caption text-fg-muted">{row.tag}</span>
         )}
-        <code>{row.id}</code>
+        <code>{printable(row.id)}</code>
         {/* An empty detail would keep its gap and push the flag 16 px from the name (C667). */}
         {row.detail === "" ? null : (
-          <span className="break-all font-mono text-small">{row.detail}</span>
+          <span className="break-all font-mono text-small">{printable(row.detail)}</span>
         )}
         {row.flag === undefined ? null : (
           // The dot, then the amber words starting with the triangle, as R12's Runs line does.
@@ -240,13 +241,13 @@ function TrustRow({ row }: { readonly row: TrustRowView }) {
             <span className="@max-[24rem]:hidden">{"· "}</span>
             <span className="inline-flex items-baseline gap-1 text-attention">
               <Triangle />
-              <span>{row.flag}</span>
+              <span>{printable(row.flag)}</span>
             </span>
           </span>
         )}
       </p>
       {row.warning === undefined ? null : (
-        <p className="m-0 text-small text-attention">{row.warning}</p>
+        <p className="m-0 text-small text-attention">{printable(row.warning)}</p>
       )}
       {row.lines.length === 0 ? null : (
         // Label and value columns: a line without a label continues the one above, its value
@@ -267,17 +268,17 @@ function TrustLineView({ line }: { readonly line: TrustLine }) {
     <p className="col-span-2 m-0 grid grid-cols-subgrid text-small">
       {label === "" ? null : (
         <>
-          <span className="text-fg-muted">{label}:</span>{" "}
+          <span className="text-fg-muted">{printable(label)}:</span>{" "}
         </>
       )}
       {tone === "warning" ? (
         <span className="col-start-2 inline-flex gap-1 text-attention">
           <Triangle />
-          <span>{value}</span>
+          <span>{printable(value)}</span>
         </span>
       ) : (
         <span className={tone === "attention" ? "col-start-2 text-attention" : "col-start-2"}>
-          {value}
+          {printable(value)}
         </span>
       )}
     </p>

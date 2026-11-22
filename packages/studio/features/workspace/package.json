@@ -16,6 +16,7 @@
     "@halonicjs/app": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",
+    "@halonicjs/words": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
