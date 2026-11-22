@@ -3,6 +3,7 @@
 - Task: HAL-16383
 - Approval: Liam signs this note on HAL-16383; the docs follow the code and no behaviour changes (follow-up from HAL-16344)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8c6Utd87T8r9fVqdckpEIuqCk/8J/gw6B0GBcerJqt5d2XXs9Jdzv8SdjCCRuwkfRxQmFep9ejGKYxOXDOVAAA==
 
 ## What changes
 
