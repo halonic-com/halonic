@@ -217,10 +217,20 @@ export const BUSY_TAKE_BACK = "Taking back…";
 export const TAKE_BACK_HINT =
   "Taking it back stops plugins and integrations that run without the sandbox. Halonic asks again the next time one starts.";
 export const TAKEN_BACK_TITLE = "Taken back.";
+/** Keeps the hint's "asks again" once the hint is gone with the button: it says where (C587, HAL-15527). */
 export const TAKEN_BACK_TEXT =
-  "Plugins and integrations won't start without the sandbox until you allow it again.";
+  "Plugins and integrations won't start without the sandbox until you allow it again. Halonic asks again the next time one starts.";
+/** The host's `take_back_incomplete`: the yes is gone, but some runners didn't stop (HAL-15527). */
+export const TAKEN_BACK_PARTLY_TITLE = "Taken back, but some plugins and integrations didn't stop.";
 /** A Take back the host refused; the toast's text is the shell's reason for the error (C553, HAL-15227). */
 export const TAKE_BACK_FAILED_TITLE = "Couldn't take it back";
+/** The agent host's refusals of a Take back, in plain words; any other kind gets the shell's reason (C587, HAL-15527). */
+export const TAKE_BACK_HOST_REASONS: Readonly<Record<string, string>> = {
+  take_back_failed: "Halonic couldn't remove the saved yes.",
+  io: "Halonic couldn't write to your profile folder.",
+};
+/** After a refused Take back, only when the status read again still shows the yes (C587, HAL-15527). */
+export const YES_STILL_SAVED = "The yes is still saved.";
 /** The host couldn't say whether a yes is saved: claims no yes, offers Try again (C553, HAL-15227). */
 export const UNFENCED_NOT_READ =
   "Couldn't check whether plugins and integrations may run without the sandbox.";

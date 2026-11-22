@@ -55,6 +55,11 @@ async function show(
   return { view, toasts, announce };
 }
 
+/** A refusal as the agent host client throws it: `AgentHostError`'s kind and message. */
+function hostError(kind: string, message: string): Error {
+  return Object.assign(new Error(message), { kind });
+}
+
 function takeBackButton(view: HTMLElement): HTMLButtonElement | undefined {
   return [...view.querySelectorAll("button")].find((button) =>
     button.textContent?.includes("Take back"),
@@ -162,7 +167,7 @@ verifies("settings.unfenced-yes-take-back", () => {
     expect(shown).toHaveBeenCalledWith({
       tone: "success",
       title: "Taken back.",
-      text: "Plugins and integrations won't start without the sandbox until you allow it again.",
+      text: "Plugins and integrations won't start without the sandbox until you allow it again. Halonic asks again the next time one starts.",
     });
     expect(takeBackButton(view)).toBeUndefined();
     expect(document.activeElement?.textContent).toBe("Plugins and integrations");
@@ -183,7 +188,7 @@ verifies("settings.unfenced-yes-take-back", () => {
     expect(takeBackButton(view)).toBeDefined();
   });
 
-  it("keeps the yes and says why when the host can't take it back", async () => {
+  it("keeps the yes and says why, and that it's still saved, when the host can't take it back", async () => {
     const fake = fakeHost(allowed);
     const { view, toasts } = await show(fake.host, "phone");
     const shown = vi.spyOn(toasts, "show");
@@ -196,14 +201,14 @@ verifies("settings.unfenced-yes-take-back", () => {
     expect(shown).toHaveBeenCalledWith({
       tone: "danger",
       title: "Couldn't take it back",
-      text: "The agent host didn't answer.",
+      text: "The agent host didn't answer. The yes is still saved.",
       action: { label: "Try again", onClick: expect.any(Function) },
     });
     expect(takeBackButton(view)?.getAttribute("aria-busy")).not.toBe("true");
     expect(view.textContent).toContain("Allowed without the sandbox");
 
     // Try again on the toast asks the host once more.
-    shown.mock.calls[0]?.[0].action?.onClick();
+    await act(async () => shown.mock.calls[0]?.[0].action?.onClick());
     expect(fake.host.takeBack).toHaveBeenCalledTimes(2);
   });
 
@@ -232,7 +237,9 @@ verifies("settings.unfenced-yes-take-back", () => {
     await fake.endTakeBack(new Error("EPIPE: broken pipe, write"));
 
     expect(shown).toHaveBeenCalledWith(
-      expect.objectContaining({ text: "Halonic ran into a problem it can't explain yet." }),
+      expect.objectContaining({
+        text: "Halonic ran into a problem it can't explain yet. The yes is still saved.",
+      }),
     );
   });
 
@@ -248,7 +255,7 @@ verifies("settings.unfenced-yes-take-back", () => {
     await fake.endTakeBack();
 
     const said =
-      "Taken back. Plugins and integrations won't start without the sandbox until you allow it again.";
+      "Taken back. Plugins and integrations won't start without the sandbox until you allow it again. Halonic asks again the next time one starts.";
     expect(shown).not.toHaveBeenCalled();
     expect(announce).toHaveBeenCalledWith(said);
     expect(view.querySelector("h4")?.nextElementSibling?.textContent).toBe(said);
@@ -267,7 +274,7 @@ verifies("settings.unfenced-yes-take-back", () => {
       Object.assign(new Error("The agent host didn't answer."), { kind: "unavailable" }),
     );
 
-    const said = "Couldn't take it back: The agent host didn't answer.";
+    const said = "Couldn't take it back: The agent host didn't answer. The yes is still saved.";
     expect(shown).not.toHaveBeenCalled();
     expect(announce).toHaveBeenCalledWith(said);
     const refused = takeBackButton(view)?.nextElementSibling;
@@ -279,6 +286,61 @@ verifies("settings.unfenced-yes-take-back", () => {
     // A second try clears the old reason while the host works.
     await click(takeBackButton(view) as HTMLButtonElement);
     expect(view.textContent).not.toContain(said);
+  });
+
+  it("says the host's kind in plain words when it gives one, in the dialog", async () => {
+    const kinds = [
+      ["take_back_failed", "Halonic couldn't remove the saved yes."],
+      ["io", "Halonic couldn't write to your profile folder."],
+    ] as const;
+    for (const [kind, words] of kinds) {
+      const fake = fakeHost(allowed);
+      const { view, announce } = await show(fake.host);
+
+      await click(takeBackButton(view) as HTMLButtonElement);
+      // The host's own message never shows: only the kind's words.
+      await fake.endTakeBack(hostError(kind, "the profile folder couldn't be written"));
+
+      const said = `Couldn't take it back: ${words} The yes is still saved.`;
+      expect(announce).toHaveBeenCalledWith(said);
+      expect(takeBackButton(view)?.nextElementSibling?.textContent).toBe(said);
+      unmountAll();
+    }
+  });
+
+  it("says the yes is gone but some didn't stop when the host answers take_back_incomplete", async () => {
+    const fake = fakeHost(allowed);
+    const { view, toasts } = await show(fake.host, "phone");
+    const shown = vi.spyOn(toasts, "show");
+
+    await click(takeBackButton(view) as HTMLButtonElement);
+    fake.setStatus({ run: "needs-yes", reason: "windows" });
+    await fake.endTakeBack(hostError("take_back_incomplete", "Some plugins didn't stop."));
+
+    expect(shown).toHaveBeenCalledWith({
+      tone: "warning",
+      title: "Taken back, but some plugins and integrations didn't stop.",
+      text: "Plugins and integrations won't start without the sandbox until you allow it again. Halonic asks again the next time one starts.",
+    });
+    expect(view.textContent).not.toContain("Allowed without the sandbox");
+    expect(document.activeElement?.textContent).toBe("Plugins and integrations");
+  });
+
+  it("doesn't claim the yes is still saved when the status read again shows none", async () => {
+    const fake = fakeHost(allowed);
+    const { view, announce } = await show(fake.host);
+
+    await click(takeBackButton(view) as HTMLButtonElement);
+    fake.setStatus({ run: "needs-yes", reason: "windows" });
+    await fake.endTakeBack(hostError("take_back_failed", "The yes couldn't be taken back."));
+
+    const said = "Couldn't take it back: Halonic couldn't remove the saved yes.";
+    expect(announce).toHaveBeenCalledWith(said);
+    // With no Take back left to put it under, the line reads under the heading.
+    const line = view.querySelector("h4")?.nextElementSibling;
+    expect(line?.textContent).toBe(said);
+    expect(line?.className).toContain("text-danger");
+    expect(document.activeElement?.textContent).toBe("Plugins and integrations");
   });
 });
 

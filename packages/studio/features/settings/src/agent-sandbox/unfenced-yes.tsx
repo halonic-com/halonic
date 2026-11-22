@@ -40,7 +40,23 @@ export interface UnfencedYesBlockProps {
 }
 
 /** What **Take back** last said in place, in the Settings dialog. */
-type TakeBackResult = { readonly tone: "success" | "danger"; readonly line: string };
+type TakeBackResult = { readonly tone: Tone; readonly line: string };
+type Tone = "success" | "warning" | "danger";
+
+/** A host refusal's `kind` (the agent host client's `AgentHostError`), if it has one. */
+function hostKindOf(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null || !("kind" in error)) return undefined;
+  return typeof error.kind === "string" ? error.kind : undefined;
+}
+
+/** Why the host refused a Take back: its kind in plain words where there are some, else the shell's reason. */
+function takeBackReasonOf(error: unknown): string {
+  const kind = hostKindOf(error);
+  if (kind !== undefined && Object.hasOwn(text.TAKE_BACK_HOST_REASONS, kind)) {
+    return text.TAKE_BACK_HOST_REASONS[kind] ?? errorReasonFor(error);
+  }
+  return errorReasonFor(error);
+}
 
 /** The host's word on the yes, as the block shows it. */
 function yesStateOf(status: Awaited<ReturnType<UnfencedYesHost["status"]>>, now: Date): YesState {
@@ -50,11 +66,14 @@ function yesStateOf(status: Awaited<ReturnType<UnfencedYesHost["status"]>>, now:
   return { state: "allowed", reason: status.reason, day: allowedDay(status.allowedAt, now) };
 }
 
-/** Reads the host's yes when the block shows, and again on `read`; a late answer is dropped. */
+/**
+ * Reads the host's yes when the block shows, and again on `read`, which answers what it read; a
+ * late answer is dropped.
+ */
 function useUnfencedYes(host: UnfencedYesHost) {
   const [yes, setYes] = useState<YesState>({ state: "unknown" });
   const reads = useRef(0);
-  const read = useCallback(async () => {
+  const read = useCallback(async (): Promise<YesState> => {
     reads.current += 1;
     const current = reads.current;
     const next = await host.status().then(
@@ -63,6 +82,7 @@ function useUnfencedYes(host: UnfencedYesHost) {
       (): YesState => ({ state: "unread" }),
     );
     if (reads.current === current) setYes(next);
+    return next;
   }, [host]);
   useEffect(() => {
     void read();
@@ -99,7 +119,7 @@ export function UnfencedYesBlock({
   const say = (
     title: string,
     line: string,
-    tone: "success" | "danger",
+    tone: Tone,
     action?: { readonly label: string; readonly onClick: () => void },
   ) => {
     const said = title.endsWith(".") ? `${title} ${line}` : `${title}: ${line}`;
@@ -126,27 +146,44 @@ export function UnfencedYesBlock({
         // The button is gone with the yes; the block's name keeps the focus in the section.
         heading.current?.focus();
       },
-      (error: unknown) => {
-        say(text.TAKE_BACK_FAILED_TITLE, errorReasonFor(error), "danger", {
+      async (error: unknown) => {
+        if (hostKindOf(error) === "take_back_incomplete") {
+          // The yes is gone even though some runners didn't stop: say both, and show it gone.
+          say(text.TAKEN_BACK_PARTLY_TITLE, text.TAKEN_BACK_TEXT, "warning");
+          await read();
+          inFlight.current = false;
+          setTakingBack(false);
+          heading.current?.focus();
+          return;
+        }
+        // Read again before saying the yes is still saved: a refusal alone doesn't prove it.
+        const after = await read();
+        const reason = takeBackReasonOf(error);
+        const line = after.state === "allowed" ? `${reason} ${text.YES_STILL_SAVED}` : reason;
+        say(text.TAKE_BACK_FAILED_TITLE, line, "danger", {
           label: text.TRY_AGAIN,
           onClick: takeBack,
         });
         inFlight.current = false;
         setTakingBack(false);
+        // With the yes gone, so is **Take back**: keep the focus in the section, not the body.
+        if (after.state !== "allowed") heading.current?.focus();
       },
     );
   };
 
   if (yes.state === "unknown" || yes.state === "fenced") return null;
   const Heading = `h${sectionHeadingLevel(surface)}` as const;
+  // A refusal reads under **Take back** while the yes still shows; anything else under the heading.
+  const refusedInPlace = result?.tone === "danger" && yes.state === "allowed";
   return (
     <div className="flex max-w-120 flex-col gap-2">
       {/* No outline-none: the base heading ring marks the focus, high contrast included. */}
       <Heading ref={heading} tabIndex={-1} className="text-body font-medium">
         {text.UNFENCED_TITLE}
       </Heading>
-      {result?.tone === "success" ? (
-        <p className="text-small text-fg-muted">{result.line}</p>
+      {result !== undefined && !refusedInPlace ? (
+        <p className={`text-small ${toneClass[result.tone]}`}>{result.line}</p>
       ) : null}
       {yes.state === "unread" ? (
         <NotReadRow onTryAgain={() => void read()} />
@@ -161,13 +198,20 @@ export function UnfencedYesBlock({
           reason={yes.reason}
           day={yes.day}
           busy={takingBack}
-          refused={result?.tone === "danger" ? result.line : undefined}
+          refused={refusedInPlace ? result?.line : undefined}
           onTakeBack={takeBack}
         />
       ) : null}
     </div>
   );
 }
+
+/** The colour of the line **Take back** leaves under the heading. */
+const toneClass = {
+  success: "text-fg-muted",
+  warning: "text-warning",
+  danger: "text-danger",
+} as const;
 
 /** The status the host couldn't give: says so and offers **Try again**, never a yes or a no. */
 function NotReadRow(props: { readonly onTryAgain: () => void }) {
