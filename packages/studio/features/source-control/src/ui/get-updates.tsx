@@ -1,4 +1,4 @@
-import { Button, useToastStore } from "@halonicjs/studio-kit";
+import { Button, useOpenExternal, useToastStore } from "@halonicjs/studio-kit";
 import { useId } from "react";
 import type { ChangesList } from "../changes-list.ts";
 import { mergeWords, updatesWords } from "../changes-words.ts";
@@ -8,7 +8,8 @@ import { mergeWords, updatesWords } from "../changes-words.ts";
  * workspace has none the shared copy lacks. The result is a toast; a failure's has Try again.
  * When both sides have new versions the choices open instead, so "both-moved" only comes back
  * when one side moved during the get, and trying again can help (HAL-12642). A refusal only git
- * can clear (a file Halonic leaves to git) has no Try again: it would be refused the same way.
+ * can clear (a file Halonic leaves to git) has no Try again, which would be refused the same way,
+ * but Show how, which opens the how-to and leaves the toast standing.
  */
 export function GetUpdates({
   list,
@@ -19,6 +20,7 @@ export function GetUpdates({
   readonly phone?: boolean;
 }) {
   const toasts = useToastStore();
+  const openExternal = useOpenExternal();
   const reasonId = useId();
   const getUpdates = async (): Promise<void> => {
     const outcome = await list.getUpdates();
@@ -34,9 +36,14 @@ export function GetUpdates({
         tone: "danger",
         title: updatesWords.failed,
         text: `${reason} ${updatesWords.nothingChanged}`,
-        ...(outcome.kind === "refused"
-          ? {}
-          : { action: { label: updatesWords.tryAgain, onClick: () => void getUpdates() } }),
+        action:
+          outcome.kind === "refused"
+            ? {
+                label: updatesWords.showHow,
+                onClick: () => void openExternal(updatesWords.leftToGitHowTo),
+                keepOpen: true,
+              }
+            : { label: updatesWords.tryAgain, onClick: () => void getUpdates() },
       });
     }
   };

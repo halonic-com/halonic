@@ -271,6 +271,11 @@ export const updatesWords = {
   bothMoved:
     "The shared copy or this workspace got a new version while Halonic was getting updates.",
   tryAgain: "Try again",
+  /** The refusal over a file Halonic leaves to git: opens the how-to, step by step (C715 finding 1). */
+  showHow: "Show how",
+  /** The how-to, until docs.halonic.dev has it. */
+  leftToGitHowTo:
+    "https://github.com/halonic-com/halonic/blob/main/docs/how-to/get-updates-for-files-halonic-leaves-to-git.md",
   alreadyWorking: "Halonic is already getting updates.",
 };
 
