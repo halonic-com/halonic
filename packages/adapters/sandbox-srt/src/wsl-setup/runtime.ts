@@ -31,6 +31,13 @@ export interface WslRuntimeFailure {
   detail: string;
 }
 
+/**
+ * The lowest image version (`infra/wsl-image/image-version`) this Studio
+ * works with (HAL-15161). Raise it only with a way to bring older distros up:
+ * an older image is only reported, as the residual `image-outdated`.
+ */
+export const WSL_IMAGE_MIN = 1;
+
 /** The updater's exit codes the step tells apart (see `infra/wsl-image/README.md`). */
 const EXIT_WRONG_USE = 2;
 const EXIT_BUSY = 3;
@@ -51,6 +58,28 @@ export function currentRuntime(output: string): string | null {
   if (typeof parsed !== "object" || parsed === null || !("current" in parsed)) return null;
   const { current } = parsed;
   return typeof current === "string" && current !== "" ? current : null;
+}
+
+/**
+ * The `image` version in `halonic-runtime status`'s output. `0` when there is
+ * none: an image from before HAL-15161, or output that isn't the updater's JSON.
+ */
+export function imageVersion(output: string): number {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(output.trim());
+  } catch {
+    return 0;
+  }
+  if (typeof parsed !== "object" || parsed === null || !("image" in parsed)) return 0;
+  const { image } = parsed;
+  return typeof image === "string" && /^[0-9]{1,9}$/.test(image) ? Number(image) : 0;
+}
+
+/** The distro's image version, `0` when `status` doesn't say. */
+export async function installedImage(host: WslHost, distro: string): Promise<number> {
+  const status = await host.runInDistro(distro, [RUNTIME_UPDATER, "status"]);
+  return status.code === 0 ? imageVersion(status.output) : 0;
 }
 
 async function installedVersion(host: WslHost, distro: string): Promise<string | null> {

@@ -15,9 +15,10 @@
 #   import-unmount <name>       unmounts the import mount import-<32 hex digits> and removes it
 #   cleanup-import-mounts       unmounts and removes the import mounts a crash left
 #                               under /mnt/halonic (HAL-5402); no arguments, no input
-#   status                      prints {"current":...,"previous":...,"securityUpdated":...}
+#   status                      prints {"current":...,"previous":...,"securityUpdated":...,"image":...}
 #                               (when security updates last ran, UTC; empty if never,
-#                               or when not run as root)
+#                               or when not run as root; the image's version, empty
+#                               when the image records none)
 #
 # It runs as root, so it never runs or sources a file the halonic user can write
 # (security review W2): it is root-owned, reads nothing from /home, and every
@@ -44,6 +45,7 @@ state=/var/lib/halonic
 imports=/mnt/halonic
 updater=/usr/local/sbin/halonic-runtime
 image_updater=/usr/local/sbin/.halonic-runtime.image
+image_file=/usr/share/doc/halonic-image/IMAGE
 
 fail() { echo "halonic-runtime: $2" >&2; exit "$1"; }
 
@@ -413,9 +415,17 @@ do_cleanup_import_mounts() {
   [ "$stuck" -eq 0 ] || exit 7
 }
 
+# The image's own version (HAL-15161), a whole number customize.sh writes.
+# Empty when the image is older than the file or it holds anything else.
+image_version() {
+  local version=""
+  [ -f "$image_file" ] && read -r version < "$image_file" || true
+  [[ "$version" =~ ^[0-9]{1,9}$ ]] && echo "$version" || true
+}
+
 do_status() {
-  printf '{"current":"%s","previous":"%s","securityUpdated":"%s"}\n' \
-    "$(target current)" "$(target previous)" "$(security_updated)"
+  printf '{"current":"%s","previous":"%s","securityUpdated":"%s","image":"%s"}\n' \
+    "$(target current)" "$(target previous)" "$(security_updated)" "$(image_version)"
 }
 
 command="${1:-}"

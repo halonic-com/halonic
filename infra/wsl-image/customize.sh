@@ -15,6 +15,10 @@ install -o root -g root -m 0755 "$here/files/halonic-runtime" "$root/usr/local/s
 install -d -m 0755 "$root/usr/share/doc/halonic-image"
 install -m 0644 "$here/files/NOTICE" "$root/usr/share/doc/halonic-image/NOTICE"
 printf "suite=%s\nsnapshot=%s\n" "$suite" "$snap" > "$root/usr/share/doc/halonic-image/SNAPSHOT.txt"
+# The image's version (HAL-15161): `halonic-runtime status` reports it.
+image="$(cat "$here/image-version")"
+case "$image" in ''|*[!0-9]*) echo "customize: image-version isn't a whole number" >&2; exit 1 ;; esac
+printf "%s\n" "$image" > "$root/usr/share/doc/halonic-image/IMAGE"
 chroot "$root" dpkg-query -W -f="\${Package}\t\${Version}\t\${Source}\n" \
   > "$root/usr/share/doc/halonic-image/packages.txt"
 # A normal user, no password, no sudo: the updater uses wsl.exe -u root.

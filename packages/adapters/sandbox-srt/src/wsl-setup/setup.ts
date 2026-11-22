@@ -12,7 +12,13 @@ import {
   type WslProblem,
 } from "./detect.ts";
 import type { WslHost } from "./host.ts";
-import { ensureWslRuntime, type WslRuntime, type WslRuntimeFailure } from "./runtime.ts";
+import {
+  ensureWslRuntime,
+  installedImage,
+  WSL_IMAGE_MIN,
+  type WslRuntime,
+  type WslRuntimeFailure,
+} from "./runtime.ts";
 import { HALONIC_DISTRO, type WslSetupState, type WslSetupStore } from "./state.ts";
 
 /**
@@ -22,8 +28,9 @@ import { HALONIC_DISTRO, type WslSetupState, type WslSetupStore } from "./state.
  *
  * - `default-distro`: `halonic` is the distro `wsl` starts when none is named.
  * - `docker-desktop-visible`: Docker Desktop's socket or `/mnt/wsl/docker-desktop*` shows up in the distro.
+ * - `image-outdated` (HAL-15161): the distro's image is older than {@link WslSetupOptions.minImage}. The setup never re-imports on its own, as that would delete what is kept in the distro.
  */
-export type WslResidual = "default-distro" | "docker-desktop-visible";
+export type WslResidual = "default-distro" | "docker-desktop-visible" | "image-outdated";
 
 /**
  * Why a step failed, apart from the reasons the port names.
@@ -76,6 +83,8 @@ export interface WslSetupOptions {
   distro?: string;
   /** The lowest kernel version the check accepts; defaults to {@link WSL_KERNEL_FLOOR}. */
   kernelFloor?: string;
+  /** The lowest image version that isn't reported as `image-outdated`; defaults to {@link WSL_IMAGE_MIN}. */
+  minImage?: number;
 }
 
 /**
@@ -315,6 +324,9 @@ export class WslSetup {
     const residuals: WslResidual[] = [];
     if (registered?.isDefault === true) residuals.push("default-distro");
     if (await this.#dockerDesktopVisible()) residuals.push("docker-desktop-visible");
+    // Read after the install: the runtime's updater reports the image's version.
+    const image = await installedImage(this.#host, this.#distro);
+    if (image < (this.#options.minImage ?? WSL_IMAGE_MIN)) residuals.push("image-outdated");
     await this.#host.clearRunOnce();
     await this.#store.save({ ...state, step: "done" });
     return { result: { outcome: "done", residuals } as const };
