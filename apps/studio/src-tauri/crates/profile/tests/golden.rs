@@ -102,7 +102,8 @@ fn trust_folder_names_why_an_environment_is_refused() {
     assert_eq!(
         chosen.to_string(),
         "HALONIC_HOME must be a full path, not \"profile\". \
-         Set HALONIC_HOME to a full path, such as $HOME/.halonic."
+         Set HALONIC_HOME to a full path, such as $HOME/.halonic. \
+         Then quit Halonic and open it again."
     );
 }
 
@@ -121,7 +122,8 @@ fn a_relative_halonic_home_gets_the_clis_fix() {
         profile_folder(&environment).unwrap_err().to_string(),
         "HALONIC_HOME must be a full path, not \"~/.halonic\". \
          Inside quotes the shell doesn't turn ~ into your home folder. \
-         Use $HOME instead: HALONIC_HOME=\"$HOME/.halonic\"."
+         Use $HOME instead: HALONIC_HOME=\"$HOME/.halonic\". \
+         Then quit Halonic and open it again."
     );
 
     // Joined, so the leak guard doesn't take it for a real local path.
@@ -132,7 +134,8 @@ fn a_relative_halonic_home_gets_the_clis_fix() {
         profile_folder(&environment).unwrap_err().to_string(),
         format!(
             "HALONIC_HOME must be a full path, not \"~/.halonic\". \
-             Set HALONIC_HOME to a full path, such as {home}\\.halonic."
+             Set HALONIC_HOME to a full path, such as {home}\\.halonic. \
+             Then quit Halonic and open it again."
         )
     );
 }
