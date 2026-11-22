@@ -139,12 +139,38 @@ verifies("runs.run-view.failure-banners", () => {
       expect(fixes(banner)).toEqual([{ kind: "see-step" }]);
     });
 
+    describe("a key whose addresses leave out its provider's (HAL-15523)", () => {
+      const refused = setupFailure("models.key-origin-not-allowed", {
+        provider: "gateway",
+        key: "gw-key",
+        origin: "https://gw.example.com",
+      });
+
+      it("names the key and the address, as the CLI does, with Open Models in place of Run again", () => {
+        const banner = causeBanner(refused, undefined, context, false);
+        expect(lines(banner)).toEqual([
+          "Support reply failed in the step Draft: provider gateway can't send key \"gw-key\" to https://gw.example.com. That address isn't allowed for this key.",
+          'To allow it, add https://gw.example.com to the addresses of key "gw-key" in Models, then run again. Only allow an address you recognise.',
+        ]);
+        expect(fixes(banner)).toEqual([{ kind: "open-models" }]);
+        expect(banner?.kind === "callout" && banner.noRunAgain).toBe(true);
+      });
+
+      it("says to fix it in Models on the computer on a phone, with no button", () => {
+        const banner = causeBanner(refused, undefined, context, true);
+        expect(lines(banner)?.at(-1)).toBe("Fix this on your computer: Models");
+        expect(fixes(banner)).toBeUndefined();
+        expect(banner?.kind === "callout" && banner.noRunAgain).toBe(true);
+      });
+    });
+
     it("keeps the general banner for a cause nobody knows, or one without its names", () => {
       for (const run of [
         setupFailure("workflow.something-new", { step: "draft" }),
         setupFailure("models.unknown-model-alias", { alias: "smart" }),
         setupFailure("models.no-provider", { alias: "smart" }),
         setupFailure("workflow.items-not-a-list", { items: "{{input.topics}}" }),
+        setupFailure("models.key-origin-not-allowed", { provider: "gateway", key: "gw-key" }),
       ]) {
         expect(causeBanner(run, [], context, false)).toBeUndefined();
         const general = runBanner({ summary: run }, context);
