@@ -38,7 +38,12 @@ interface TickRefs {
   readonly greenSince: BaseGreenSince;
 }
 
-const emptyMemory: Memory = { reported: new Set<string>(), seenUntil: undefined, held: false };
+const emptyMemory: Memory = {
+  reported: new Set<string>(),
+  seenUntil: undefined,
+  held: false,
+  lastCommentAt: undefined,
+};
 
 const markerPattern = /<!-- pr-watcher: (.+?) -->/g;
 
@@ -60,6 +65,15 @@ export function isSelf(comment: CommentRow): boolean {
     comment.authorAgentId === null &&
     comment.authorUserId === null &&
     comment.body.startsWith("PR watcher:")
+  );
+}
+
+/** When the newest of these comments was written. */
+function newestAt(comments: readonly CommentRow[]): string | undefined {
+  return comments.reduce<string | undefined>(
+    (newest, comment) =>
+      newest === undefined || comment.createdAt > newest ? comment.createdAt : newest,
+    undefined,
   );
 }
 
@@ -86,13 +100,20 @@ export function readMemory(comments: readonly CommentRow[], ownerId: string): Me
         newest === undefined || comment.createdAt > newest.createdAt ? comment : newest,
       undefined,
     );
-  return { reported, seenUntil, held: holdPattern.test(authorLast?.body ?? "") };
+  return {
+    reported,
+    seenUntil,
+    held: holdPattern.test(authorLast?.body ?? ""),
+    lastCommentAt: newestAt(comments.filter((comment) => !isSelf(comment))),
+  };
 }
 
 const reasonText: Record<Reason["kind"], (head: string) => string> = {
   "ci-red": (head) => `\`ci-ok\` failed on its head \`${head}\`.`,
   conflict: () => "it conflicts with its base branch and isn't in the merge queue.",
   review: (head) => `there's a new review comment on its head \`${head}\`.`,
+  merged: () =>
+    "it merged and `ci-ok` is green, but the task has comments since. Mark it done if nothing else is left.",
 };
 
 /** The comment that wakes the author: one line per new state, each with its marker. */

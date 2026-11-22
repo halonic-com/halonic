@@ -17,6 +17,8 @@ export interface PullFacts {
   readonly head: string;
   /** Open only: `ci-ok` on the head commit. */
   readonly ciOkOnHead: CheckState;
+  /** Open only: it is a draft, so a conflict is the author's work in progress. */
+  readonly draft: boolean;
   /** Open only: GitHub says it can't merge into its base. */
   readonly conflicting: boolean;
   /** Open only, read only when conflicting: it sits in the merge queue. */
@@ -25,6 +27,8 @@ export interface PullFacts {
   readonly latestReview: { readonly id: string; readonly at: string } | undefined;
   /** Merged only: `ci-ok` passed on the merge commit, or a later base-branch commit is green. */
   readonly landed: boolean;
+  /** Merged only: when it merged. */
+  readonly mergedAt: string | undefined;
 }
 
 /** The task, as far as the watcher cares. */
@@ -41,7 +45,7 @@ export interface WatchedTask {
 /** One state the author should hear about. `key` says when it is the same state again. */
 export interface Reason {
   readonly pull: PullFacts;
-  readonly kind: "ci-red" | "conflict" | "review";
+  readonly kind: "ci-red" | "conflict" | "review" | "merged";
   readonly key: string;
 }
 
@@ -52,6 +56,8 @@ export interface Memory {
   readonly seenUntil: string | undefined;
   /** The author's newest comment on the task says more pull requests are coming. */
   readonly held: boolean;
+  /** The newest comment on the task by anyone but the watcher. */
+  readonly lastCommentAt: string | undefined;
 }
 
 /** The outcome for one task. */
@@ -89,7 +95,7 @@ export function candidates(pulls: readonly PullFacts[]): Reason[] {
     if (pull.ciOkOnHead === "failure") {
       found.push({ pull, kind: "ci-red", key: `${at} ci-red` });
     }
-    if (pull.conflicting && !pull.inQueue) {
+    if (pull.conflicting && !pull.inQueue && !pull.draft) {
       found.push({ pull, kind: "conflict", key: `${at} conflict` });
     }
     if (pull.latestReview !== undefined) {
@@ -133,10 +139,37 @@ export function closedOutcome(pulls: readonly PullFacts[]): Decision | undefined
 }
 
 /**
+ * A task whose pull requests all landed but which got a comment after the
+ * last one merged: someone may have added work that isn't a pull request (a
+ * deploy, a check, a follow-up in the same task), so the author decides,
+ * woken once for the newest merge.
+ */
+function commentedSinceMerge(pulls: readonly PullFacts[], memory: Memory): Reason | undefined {
+  const newest = pulls
+    .filter((pull) => pull.mergedAt !== undefined)
+    .reduce<PullFacts | undefined>(
+      (last, pull) => (last === undefined || `${pull.mergedAt}` > `${last.mergedAt}` ? pull : last),
+      undefined,
+    );
+  if (newest?.mergedAt === undefined || memory.lastCommentAt === undefined) {
+    return undefined;
+  }
+  if (!(Date.parse(memory.lastCommentAt) > Date.parse(newest.mergedAt))) {
+    return undefined;
+  }
+  return {
+    pull: newest,
+    kind: "merged",
+    key: `${newest.repo}#${newest.number} ${short(newest.head)} merged`,
+  };
+}
+
+/**
  * The decision for one task. `ownerId` is the agent every one of its pull
  * requests' branches names; when anyone else holds the task (its reviewer),
  * or the branches name different agents, the watcher does nothing. Done
- * also waits for its child tasks and for the author's hold line.
+ * also waits for its child tasks and for the author's hold line, and a
+ * comment after the last merge turns it into one wake for the author.
  */
 export function decide(
   task: WatchedTask,
@@ -156,6 +189,15 @@ export function decide(
   }
   if (closed?.kind === "done" && task.openChildren) {
     return { kind: "skip", why: "it has a child task that isn't done" };
+  }
+  if (closed?.kind === "done") {
+    const reason = commentedSinceMerge(closed.pulls, memory);
+    if (reason === undefined) {
+      return closed;
+    }
+    return memory.reported.has(reason.key)
+      ? { kind: "skip", why: "it got comments after its merge; its author decides" }
+      : { kind: "wake", reasons: [reason] };
   }
   if (closed !== undefined) {
     return closed;

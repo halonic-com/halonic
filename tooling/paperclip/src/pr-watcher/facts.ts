@@ -7,6 +7,7 @@ interface Pull {
   readonly merged_at: string | null;
   readonly merge_commit_sha: string | null;
   readonly mergeable: boolean | null;
+  readonly draft?: boolean;
   readonly head: { readonly sha: string; readonly ref: string };
   readonly base: { readonly ref: string };
 }
@@ -60,10 +61,12 @@ export async function pullFacts(
     branch: pull.head.ref,
     head: pull.head.sha,
     ciOkOnHead: "missing",
+    draft: pull.draft === true,
     conflicting: false,
     inQueue: false,
     latestReview: undefined,
     landed: false,
+    mergedAt: undefined,
   } as const;
   if (pull.merged_at !== null) {
     const mergeCommit = pull.merge_commit_sha ?? "";
@@ -71,7 +74,7 @@ export async function pullFacts(
       mergeCommit !== "" &&
       ((await ciOk(get, ref.repo, mergeCommit)) === "success" ||
         (await greenSince(ref.repo, pull.base.ref, mergeCommit)));
-    return { ...common, state: "merged", landed };
+    return { ...common, state: "merged", landed, mergedAt: pull.merged_at };
   }
   if (pull.state === "closed") {
     return { ...common, state: "closed" };
