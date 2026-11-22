@@ -6,33 +6,20 @@ import { afterEach, expect, it, vi } from "vitest";
 import { filesFeature } from "../feature.ts";
 import { fileItem } from "../file-item.ts";
 import type { CompareChoice, FileCompare, FilesHost, OutsideChange } from "../files-host.ts";
+import { forgetOpenedEditors, openedEditors as opened } from "../test-support/code-editor.ts";
 import { kinded } from "../test-support/kinded.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { FileView } from "./file-view.tsx";
 
-// Every editor the tab opened, with the text it started from.
-const opened: { text: string; onChange: ((text: string) => void) | undefined }[] = [];
-const focused = vi.fn();
+/** How often the opened editors were told to take focus, all together. */
+const focusCount = () => opened.reduce((count, editor) => count + editor.focused, 0);
 
-vi.mock("@halonicjs/studio-code-editor", () => ({
-  languageFor: () => "yaml",
-  openCodeEditor: async (options: { text: string; onChange?: (text: string) => void }) => {
-    opened.push({ text: options.text, onChange: options.onChange });
-    return {
-      text: () => options.text,
-      load: () => {},
-      focus: focused,
-      setProblems: () => {},
-      goTo: () => {},
-      destroy: () => {},
-    };
-  },
-}));
+// The real editor is tested in its own package; here a stand-in records every editor the tab opened.
+vi.mock("@halonicjs/studio-code-editor", () => import("../test-support/code-editor.ts"));
 
 afterEach(() => {
   unmountAll();
-  opened.length = 0;
-  focused.mockClear();
+  forgetOpenedEditors();
 });
 
 function fixture(change: OutsideChange | undefined, compare: Partial<FileCompare> = {}) {
@@ -121,7 +108,7 @@ verifies("files.ui.outside-strip", () => {
     await flush();
     await press(page, "Keep mine");
     expect(settle).toHaveBeenCalledWith("a.agent.yaml", "keep-mine");
-    expect(focused).toHaveBeenCalledTimes(1);
+    expect(focusCount()).toBe(1);
     expect(page.textContent).toContain("Keeping yours");
   });
 
@@ -131,7 +118,7 @@ verifies("files.ui.outside-strip", () => {
     await press(page, "Keep mine");
     expect(page.textContent).toContain("Keeping yours");
     await act(async () => {
-      opened.at(-1)?.onChange?.("typed after");
+      opened.at(-1)?.options.onChange?.("typed after");
     });
     expect(page.textContent).not.toContain("Keeping yours");
   });
@@ -144,7 +131,7 @@ verifies("files.ui.outside-strip", () => {
       "Compare a.agent.yaml",
     );
     await press(page, "Cancel");
-    expect(focused).toHaveBeenCalledTimes(1);
+    expect(focusCount()).toBe(1);
   });
 
   it("shows both texts in Compare, and Combine both only when they can be combined", async () => {
@@ -172,17 +159,17 @@ verifies("files.ui.outside-strip", () => {
     expect(settle).toHaveBeenCalledWith("a.agent.yaml", "use-other");
     expect(page.querySelector("[role=status]")).toBeNull();
     expect(button(page, "Keep mine")).toBeUndefined();
-    expect(opened.at(-1)?.text).toBe("chosen");
+    expect(opened.at(-1)?.options.text).toBe("chosen");
     expect(page.textContent).toContain("Using the other one");
   });
 
   it("reopens the editor with what was typed when Compare is cancelled", async () => {
     const { page } = fixture("changed");
     await flush();
-    opened[0]?.onChange?.("typed in this tab");
+    opened[0]?.options.onChange?.("typed in this tab");
     await press(page, "Compare");
     await press(page, "Cancel");
-    expect(opened.at(-1)?.text).toBe("typed in this tab");
+    expect(opened.at(-1)?.options.text).toBe("typed in this tab");
   });
 
   it("sends a second click on a choice no further while the first is saving", async () => {

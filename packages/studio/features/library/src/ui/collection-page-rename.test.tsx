@@ -2,9 +2,16 @@
 import { settlePendingSaves } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanUp, opened, sourceOf, swim } from "../test-support/collection-page.tsx";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  cleanUp,
+  fakeBrowserParts,
+  opened,
+  sourceOf,
+  swim,
+} from "../test-support/collection-page.tsx";
 
+beforeEach(fakeBrowserParts);
 afterEach(cleanUp);
 
 async function keepName(root: HTMLElement, text: string) {

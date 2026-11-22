@@ -13,18 +13,27 @@ import { CollectionPage } from "../ui/collection-page.tsx";
 import { fakeModal, restoreModal } from "./modal.ts";
 import { render, unmountAll } from "./render.tsx";
 
-// jsdom has no `popover`; the row menu only needs its open and close to exist.
-Object.assign(HTMLElement.prototype, {
-  showPopover: () => {},
-  hidePopover: () => {},
-  togglePopover: () => false,
-});
-fakeModal();
-/** What each test file runs after every test. */
+const popoverMethods = ["showPopover", "hidePopover", "togglePopover"] as const;
+
+/**
+ * What each test file runs before every test: the browser parts jsdom lacks. jsdom has no
+ * `popover`, and the row menu only needs its open and close to exist. Test files share this
+ * module in a worker (`isolate: false`, HAL-15904), so this runs per test, not once on import.
+ */
+export function fakeBrowserParts(): void {
+  Object.assign(HTMLElement.prototype, {
+    showPopover: () => {},
+    hidePopover: () => {},
+    togglePopover: () => false,
+  });
+  fakeModal();
+}
+
+/** What each test file runs after every test: takes away what it rendered and faked. */
 export function cleanUp(): void {
   unmountAll();
   restoreModal();
-  fakeModal();
+  for (const name of popoverMethods) Reflect.deleteProperty(HTMLElement.prototype, name);
 }
 
 export const nobody: ItemUsage = { agents: [], hubs: [], routines: [], collections: [] };

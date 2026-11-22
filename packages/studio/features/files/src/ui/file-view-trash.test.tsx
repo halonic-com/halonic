@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import type { CodeEditorOptions } from "@halonicjs/studio-code-editor";
 import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -8,36 +7,19 @@ import { filesFeature } from "../feature.ts";
 import { fileItem } from "../file-item.ts";
 import type { FilesHost } from "../files-host.ts";
 import { removeFile } from "../remove-file.ts";
+import { forgetOpenedEditors, openedEditors as opened } from "../test-support/code-editor.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { clearTrashed, markTrashed } from "../trash.ts";
 import { FileView } from "./file-view.tsx";
 
-const opened: { options: CodeEditorOptions; destroyed: boolean }[] = [];
-
 // The real editor is tested in its own package; here a stand-in records how it was opened.
-vi.mock("@halonicjs/studio-code-editor", () => ({
-  languageFor: () => "markdown",
-  openCodeEditor: async (options: CodeEditorOptions) => {
-    const entry = { options, destroyed: false };
-    opened.push(entry);
-    return {
-      text: () => options.text,
-      load: () => {},
-      focus: () => {},
-      setProblems: () => {},
-      goTo: () => {},
-      destroy: () => {
-        entry.destroyed = true;
-      },
-    };
-  },
-}));
+vi.mock("@halonicjs/studio-code-editor", () => import("../test-support/code-editor.ts"));
 
 const announced: string[] = [];
 
 afterEach(() => {
   unmountAll();
-  opened.length = 0;
+  forgetOpenedEditors();
   announced.length = 0;
   clearTrashed("notes/a.md");
 });

@@ -6,30 +6,16 @@ import { afterEach, expect, it, vi } from "vitest";
 import { filesFeature } from "../feature.ts";
 import { fileItem } from "../file-item.ts";
 import type { FilesHost } from "../files-host.ts";
+import { forgetOpenedEditors, openedEditors } from "../test-support/code-editor.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { FileView } from "./file-view.tsx";
 
-let opened = 0;
-
 // The real editor is tested in its own package; here a stand-in counts how often one opens.
-vi.mock("@halonicjs/studio-code-editor", () => ({
-  languageFor: () => "yaml",
-  openCodeEditor: async () => {
-    opened++;
-    return {
-      text: () => "",
-      load: () => {},
-      focus: () => {},
-      setProblems: () => {},
-      goTo: () => {},
-      destroy: () => {},
-    };
-  },
-}));
+vi.mock("@halonicjs/studio-code-editor", () => import("../test-support/code-editor.ts"));
 
 afterEach(() => {
   unmountAll();
-  opened = 0;
+  forgetOpenedEditors();
   vi.useRealTimers();
 });
 
@@ -84,7 +70,7 @@ verifies("files.ui.unreadable-strip", () => {
     await settle();
 
     expect(page.textContent).toContain("a.agent.yaml can't be read: line 1 isn't valid YAML.");
-    expect(opened).toBe(1);
+    expect(openedEditors).toHaveLength(1);
   });
 
   it("shows no strip when the file reads", async () => {

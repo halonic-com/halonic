@@ -22,6 +22,16 @@ export function clearTrashed(path: string): void {
   if (trashed.delete(path)) changed();
 }
 
+/**
+ * Forgets every trash entry. Tests call it after each test: test files share this module in a
+ * worker (`isolate: false`, HAL-15904), so one test's delete would otherwise show in the next.
+ */
+export function forgetAllTrashed(): void {
+  if (trashed.size === 0) return;
+  trashed.clear();
+  changed();
+}
+
 /** The trash entry of a file deleted in this window, if it is still in the trash. */
 export function trashedFile(path: string): Trashed | undefined {
   return trashed.get(path);

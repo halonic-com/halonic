@@ -7,13 +7,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CollectionHostService } from "../collection-host.ts";
 import { libraryFeature } from "../feature.ts";
 import { type LibraryItemsHost, LibraryItemsHostService } from "../library-items-host.ts";
-import { cleanUp, settled, setup, sourceOf, swim } from "../test-support/collection-page.tsx";
+import {
+  cleanUp,
+  fakeBrowserParts,
+  settled,
+  setup,
+  sourceOf,
+  swim,
+} from "../test-support/collection-page.tsx";
 import { installFakePopover } from "../test-support/popover.ts";
 import { render } from "../test-support/render.tsx";
 import { CollectionPage } from "./collection-page.tsx";
 
 let restorePopover: () => void;
 let topBar: HTMLElement;
+beforeEach(fakeBrowserParts);
 beforeEach(() => {
   restorePopover = installFakePopover();
   topBar = document.createElement("div");

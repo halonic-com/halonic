@@ -9,9 +9,13 @@ import { kinded } from "../test-support/kinded.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { contextHost, contextOf, listing, rowNamed, settled } from "../test-support/sidebar.ts";
+import { forgetAllTrashed } from "../trash.ts";
 import { FilesSidebarView } from "./files-sidebar-view.tsx";
 
-afterEach(unmountAll);
+afterEach(() => {
+  unmountAll();
+  forgetAllTrashed();
+});
 
 async function show(host: FilesHost): Promise<HTMLElement> {
   const page = render(<FilesSidebarView context={contextOf(host)} />);

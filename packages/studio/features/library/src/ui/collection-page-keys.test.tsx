@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   amountEdit,
   cell,
   cleanUp,
+  fakeBrowserParts,
   fields,
   opened,
   pressButton,
@@ -15,6 +16,7 @@ import {
   trip,
 } from "../test-support/collection-page.tsx";
 
+beforeEach(fakeBrowserParts);
 afterEach(cleanUp);
 
 /** Presses a key on an element, with the given modifiers, and lets the page settle. */

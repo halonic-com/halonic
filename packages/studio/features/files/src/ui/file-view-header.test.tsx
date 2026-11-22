@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import type { CodeEditorOptions } from "@halonicjs/studio-code-editor";
 import {
   ClipboardProvider,
   createToastStore,
@@ -14,23 +13,15 @@ import { filesFeature } from "../feature.ts";
 import { fileItem } from "../file-item.ts";
 import type { FilesHost } from "../files-host.ts";
 import { takeRenameAsked } from "../rename-request.ts";
+import { forgetOpenedEditors } from "../test-support/code-editor.ts";
 import { installFakePopover } from "../test-support/popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { contextHost } from "../test-support/sidebar.ts";
+import { forgetAllTrashed } from "../trash.ts";
 import { FileView } from "./file-view.tsx";
 
 // The real editor is tested in its own package; here a stand-in lets the tab draw.
-vi.mock("@halonicjs/studio-code-editor", () => ({
-  languageFor: () => "yaml",
-  openCodeEditor: async (options: CodeEditorOptions) => ({
-    text: () => options.text,
-    load: () => {},
-    focus: () => {},
-    setProblems: () => {},
-    goTo: () => {},
-    destroy: () => {},
-  }),
-}));
+vi.mock("@halonicjs/studio-code-editor", () => import("../test-support/code-editor.ts"));
 
 let restorePopover: () => void;
 beforeEach(() => {
@@ -40,6 +31,8 @@ afterEach(() => {
   unmountAll();
   restorePopover();
   takeRenameAsked();
+  forgetOpenedEditors();
+  forgetAllTrashed();
 });
 
 async function showFile(path: string, host: FilesHost = contextHost()) {

@@ -14,6 +14,7 @@ import { askRename } from "../rename-request.ts";
 import { installFakePopover } from "../test-support/popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { contextHost, contextOf, rowNamed, settled } from "../test-support/sidebar.ts";
+import { forgetAllTrashed } from "../trash.ts";
 import { FilesSidebarView } from "./files-sidebar-view.tsx";
 
 let restorePopover: () => void;
@@ -23,6 +24,7 @@ beforeEach(() => {
 afterEach(() => {
   unmountAll();
   restorePopover();
+  forgetAllTrashed();
 });
 
 async function show(host: FilesHost = contextHost()) {
