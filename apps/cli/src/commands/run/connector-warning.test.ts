@@ -182,7 +182,7 @@ verifies("cli.run-connector-warning", () => {
     const warn = connectorWarnings(
       { warn: (line) => lines.push(plainText(line)) },
       undefined,
-      () => undefined,
+      noFiles,
     );
 
     warn(listingFailed(4, { why: "plugin-stopped", name: "Weather" }));
