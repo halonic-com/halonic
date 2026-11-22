@@ -91,10 +91,10 @@ export const REMOVE_TOOK_TOO_LONG = `The sandbox wasn't removed within ${SETUP_L
 export const REMOVED = "Sandbox removed.";
 /** A removal with administrator rights that kept some access until the next start, as the CLI says it (HAL-15761). */
 export const REMOVED_KEPT_ACCESS =
-  "Its access to your project folders ends the next time you start Halonic.";
+  "Its access to your project folders ends the next time you start Halonic without administrator rights.";
 /** The same, when the next start doesn't end it: only a removal without administrator rights does (HAL-15836). */
 export const REMOVED_KEPT_ACCESS_MANUAL =
-  "It may still have access to some of your project folders. To end that, restart Halonic normally, not as administrator, then set up the sandbox again and remove it.";
+  "It may still have access to some of your project folders. To end that, quit Halonic and open it again normally, not as administrator. Then set up the sandbox again and remove it.";
 export const removedLine = (keptAccess?: KeptAccess) => {
   if (keptAccess === undefined) return REMOVED;
   return `${REMOVED} ${keptAccess === "manual" ? REMOVED_KEPT_ACCESS_MANUAL : REMOVED_KEPT_ACCESS}`;
