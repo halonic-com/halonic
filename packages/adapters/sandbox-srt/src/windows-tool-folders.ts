@@ -42,7 +42,9 @@ async function exists(path: string): Promise<boolean> {
  * under one of the names, even a file, is denied as it is; making a folder
  * over it would fail and the session wouldn't open. Root files (`.npmrc`,
  * `.mcp.json`) get nothing from here: srt makes each one empty when the
- * session opens and denies it, as it does on Linux.
+ * session opens and denies it, as it does on Linux, and `RootFilePlaceholders`
+ * removes those that are still empty when the last session on the folder
+ * closes (HAL-11554).
  */
 export async function prepareToolFolders(workingFolder: string): Promise<string[]> {
   for (const folder of toolFoldersToCreate) {

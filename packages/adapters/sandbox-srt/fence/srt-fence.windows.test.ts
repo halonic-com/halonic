@@ -6,6 +6,7 @@ import type { SandboxProfile, SandboxSession } from "@halonicjs/ports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { srtNetworkVariables } from "../src/srt-runner.ts";
 import { SrtSandbox } from "../src/srt-sandbox.ts";
+import { rootDenyFiles } from "../src/windows-root-files.ts";
 
 /**
  * The fence on a real Windows machine, through `SandboxSession` (HAL-4347):
@@ -190,6 +191,21 @@ console.log(JSON.stringify(result));
     return JSON.parse(out.split(/\r?\n/).pop() ?? "");
   }
 
+  /** Which of `names` are in `folder`, looked at from the host. */
+  async function present(folder: string, names: readonly string[]): Promise<string[]> {
+    const found: string[] = [];
+    for (const name of names) {
+      if (
+        await stat(join(folder, name)).then(
+          () => true,
+          () => false,
+        )
+      )
+        found.push(name);
+    }
+    return found;
+  }
+
   function sizes(left: Record<string, { size: number }>): Record<string, number> {
     return Object.fromEntries(Object.entries(left).map(([label, file]) => [label, file.size]));
   }
@@ -203,21 +219,25 @@ console.log(JSON.stringify(result));
     expect(sizesAtOpen).toEqual({ ".npmrc": 0, ".mcp.json": 0, ".pre-commit-config.yaml": 0 });
   });
 
-  it("leaves the empty root files in the working folder after the session closes (HAL-11246)", async () => {
+  it("removes the empty root files it made when the session closes (HAL-11554)", async () => {
     const closing = join(base, "closing");
     await mkdir(closing, { recursive: true });
     const closed = await sandbox.open({ ...profile(), workingFolder: closing });
+    const madeAtOpen = await present(closing, rootDenyFiles);
+    expect(madeAtOpen).toEqual(
+      expect.arrayContaining([".npmrc", ".mcp.json", ".pre-commit-config.yaml"]),
+    );
     await closed.close();
-    const left: Record<string, boolean> = {};
-    for (const file of [".npmrc", ".mcp.json", ".pre-commit-config.yaml"]) {
-      left[file] = await stat(join(closing, file)).then(
-        () => true,
-        () => false,
-      );
-    }
-    // Records what srt does today (threat model 4.6). If srt starts removing them, this fails
-    // and the docs change with it.
-    expect(left).toEqual({ ".npmrc": true, ".mcp.json": true, ".pre-commit-config.yaml": true });
+    expect(await present(closing, rootDenyFiles)).toEqual([]);
+  });
+
+  it("keeps a root file that was there before the session opened (HAL-11554)", async () => {
+    const kept = join(base, "kept");
+    await mkdir(kept, { recursive: true });
+    await writeFile(join(kept, ".npmrc"), "");
+    const closed = await sandbox.open({ ...profile(), workingFolder: kept });
+    await closed.close();
+    expect(await present(kept, [".npmrc", ".mcp.json"])).toEqual([".npmrc"]);
   });
 
   for (const how of ["writing", "moving"] as const) {
