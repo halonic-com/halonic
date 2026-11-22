@@ -127,7 +127,17 @@ function takeChildNews(context: StateContext<"foreach">, input: ChildInput): Sta
   const where = `item ${item} of for-each state "${context.stateId}"`;
   if (input.status === "waiting") {
     const error = `Workflow "${workflow}" in ${where} waits for ${input.events.join(", ")}; an item's child run must finish without waiting.`;
-    return { events: [], effects: cancelItemChildren(context), outcome: { type: "fail", error } };
+    // The workflow files' own mistake, which `validate` refuses first (HAL-15555), so a host can say so.
+    const cause = {
+      kind: "invalid_input",
+      code: "workflow.item-run-waits",
+      detail: { workflow, item: String(item) },
+    } as const;
+    return {
+      events: [],
+      effects: cancelItemChildren(context),
+      outcome: { type: "fail", error, cause },
+    };
   }
   const base = {
     type: "workflow.finished" as const,

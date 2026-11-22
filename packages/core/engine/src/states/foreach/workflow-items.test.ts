@@ -223,3 +223,18 @@ verifies("engine.foreach-workflow-items", () => {
     });
   });
 });
+
+verifies("engine.foreach-item-waits-cause", () => {
+  it("names the item's workflow and item in the cause when its run waits", () => {
+    const waiting = told("r-acme.2.0", { status: "waiting", events: ["approve", "reject"] });
+    const { log } = play(greetWorkflow(), [start, waiting], undefined, workflows);
+    expect(log.at(-1)).toMatchObject({
+      type: "run.failed",
+      cause: {
+        kind: "invalid_input",
+        code: "workflow.item-run-waits",
+        detail: { workflow: "reply", item: "0" },
+      },
+    });
+  });
+});

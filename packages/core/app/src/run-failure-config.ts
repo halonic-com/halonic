@@ -30,7 +30,14 @@ export type ConfigFailure =
       /** Whether the step has transitions for the event, but the `when` of each didn't pass. */
       readonly guarded: boolean;
     }
-  | { readonly reason: "task-without-agent" };
+  | { readonly reason: "task-without-agent" }
+  | {
+      readonly reason: "item-run-waits";
+      /** The workflow the for-each step runs for each item, such as "review-one". */
+      readonly workflow: string;
+      /** The item whose run waited, 0-based. */
+      readonly item: number;
+    };
 
 /**
  * The config failure a cause names by its code, or `undefined` for a code
@@ -77,6 +84,13 @@ function workflowFailureOf(
     }
     case "workflow.task-without-agent":
       return { reason: "task-without-agent" };
+    case "workflow.item-run-waits": {
+      const { workflow } = detail;
+      const item = Number(detail["item"]);
+      return workflow === undefined || !Number.isInteger(item) || item < 0
+        ? undefined
+        : { reason: "item-run-waits", workflow, item };
+    }
     default:
       return undefined;
   }
