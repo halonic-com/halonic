@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16106 (C671 row 45, a team decision on an approved screen, HAL-2282); Julian signs it, as Liam wrote the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:QhzR80tqUPak8a6eKFeBBloOX3YkXKFoKNFsfEFRmDKXJvr0dU7NrX1qhI+pxJhC7tDys85FcG8UcWEOLh2OAg==
 
 `first-run.run` quoted the bar's line when the engine can't cancel the first run as "Couldn't
 cancel the run. Try again." It now says why, with Studio's shared reasons: "Couldn't cancel the
