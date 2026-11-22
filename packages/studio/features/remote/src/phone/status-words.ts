@@ -20,6 +20,9 @@ export const sheetWords = {
       `It is online, but ${computer} doesn't answer, so it can't show new work or take your answers.`,
     check: (computer: string) =>
       `Check that ${computer} is on and awake, Halonic is open, and Tailscale is on there.`,
+    /** For a computer reached through this Wi-Fi: the pairing screen's words (`bodyWifi`, G13). */
+    checkWifi: (computer: string) =>
+      `Check that ${computer} is on and awake, Halonic is open, and both are on the same Wi-Fi.`,
   },
   phoneOffline: {
     title: "Your phone is offline",

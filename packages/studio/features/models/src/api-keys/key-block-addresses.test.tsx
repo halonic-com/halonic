@@ -246,7 +246,7 @@ verifies("models.api-keys.not-bound-yet", () => {
     const { sent, lists } = await keysAndShow(["anthropic"], "https://api.anthropic.com");
     const view = element as HTMLElement;
     expect(view.textContent).toContain("Not bound yet");
-    expect(view.textContent).toContain("saved before Halonic recorded addresses");
+    expect(view.textContent).toContain("This key has no address yet.");
     expect([...view.querySelectorAll("button")].map((button) => button.textContent)).not.toContain(
       "Not bound yet",
     );
@@ -257,7 +257,7 @@ verifies("models.api-keys.not-bound-yet", () => {
     expect(chip?.closest('[data-fill="muted"]')).not.toBeNull();
     // The notice is small, like the field's other lines.
     const notice = [...view.querySelectorAll("p")].find((line) =>
-      line.textContent?.includes("saved before Halonic recorded addresses"),
+      line.textContent?.includes("This key has no address yet."),
     );
     expect(notice?.className).toContain("text-small");
 

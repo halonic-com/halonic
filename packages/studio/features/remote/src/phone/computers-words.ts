@@ -19,7 +19,7 @@ export const computersWords = {
     cantConfirm: "Can't confirm",
     forget: "Forget",
   } satisfies Record<PhoneState | "forget", string>,
-  note: "Forget only removes a computer from this phone. To cut this phone off for good, revoke it in Halonic on the computer.",
+  note: "Forget only removes a computer from this phone. To cut this phone off for good, use Revoke in Settings › Remote on the computer.",
   pair: "Pair with a computer",
   forget: {
     title: (computer: string) => `Forget ${computer}?`,

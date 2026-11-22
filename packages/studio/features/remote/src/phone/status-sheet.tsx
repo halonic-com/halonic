@@ -12,7 +12,9 @@ export type StatusSheetOf =
   | { readonly kind: "connected"; readonly route: keyof typeof sheetRouteWords }
   /** `nextTryAt` from the tunnel's status; none, or one that has passed, is a try under way (G14). */
   | { readonly kind: "reconnecting"; readonly nextTryAt?: Date | undefined }
-  | { readonly kind: "unreachable" | "phoneOffline" | "tailscaleOff" | "nearbyOff" };
+  /** `route` picks the check line: Tailscale on there, or both on the same Wi-Fi (C660). */
+  | { readonly kind: "unreachable"; readonly route: keyof typeof sheetRouteWords }
+  | { readonly kind: "phoneOffline" | "tailscaleOff" | "nearbyOff" };
 
 type TroubleKind = "unreachable" | "phoneOffline" | "tailscaleOff" | "nearbyOff";
 
@@ -120,7 +122,18 @@ function sheetBody(props: StatusSheetProps, asOfWords: string | undefined) {
         </>
       );
     default:
-      return <TroubleBody {...props} kind={sheet.kind} asOfWords={asOfWords} />;
+      return (
+        <TroubleBody
+          {...props}
+          kind={sheet.kind}
+          check={
+            sheet.kind === "unreachable" && sheet.route === "wifi"
+              ? sheetWords.unreachable.checkWifi
+              : trouble[sheet.kind].words.check
+          }
+          asOfWords={asOfWords}
+        />
+      );
   }
 }
 
@@ -151,10 +164,14 @@ function ConnectedBody({
 }
 
 function TroubleBody(
-  props: StatusSheetProps & { readonly kind: TroubleKind; readonly asOfWords: string | undefined },
+  props: StatusSheetProps & {
+    readonly kind: TroubleKind;
+    readonly check: string | ((computer: string) => string);
+    readonly asOfWords: string | undefined;
+  },
 ) {
   const { words, button, primary } = trouble[props.kind];
-  const { agents, asOfWords, computer } = props;
+  const { agents, asOfWords, check, computer } = props;
   const onClick = {
     tryAgain: props.onTryAgain,
     openTailscale: props.onOpenTailscale,
@@ -176,9 +193,7 @@ function TroubleBody(
           <p className="text-body text-fg">{agentsAsOfText(agents.running, agents.waiting)}</p>
         </section>
       )}
-      <p className={small}>
-        {typeof words.check === "string" ? words.check : words.check(computer)}
-      </p>
+      <p className={small}>{typeof check === "string" ? check : check(computer)}</p>
       <Button variant={primary ? "primary" : "secondary"} size="touch" block onClick={onClick}>
         {sheetWords[button]}
       </Button>
