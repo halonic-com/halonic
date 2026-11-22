@@ -200,6 +200,16 @@ trusted it. Its shell's older "Trust this folder?" question, asked before it
 opens a folder you didn't pick yourself, names only the folder: don't read that
 question as a review of what the workspace can start.
 
+Where integration code can't run in the sandbox on this computer, Studio's
+check says so in the integration's **Runs** line, in amber, with the reason and
+its fix, and asks for one more yes: to run plugins and integrations without
+the sandbox. **Trust** saves that yes first, then trust
+(`studio.workspace-trust-integrations`). The yes isn't part of trust or of the
+fingerprint. It's one for the whole computer, the same one a plugin's trust
+check gives, and **Take back** in Studio's Settings removes it.
+`halonic trust` never asks for it, and the `halonic` command never gives it;
+see [the sandbox](sandbox.md#no-sandbox-no-run).
+
 ## What trust does not protect against
 
 - **It isn't a sandbox.** After you trust a workspace, its programs run with
