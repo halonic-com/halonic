@@ -91,12 +91,14 @@ type PageId = BuiltPageId | `section:${string}`;
  * Where Configuration opens, for the agent map's add buttons: on a page, one of its own or a
  * section's by its id. For Subagents, `adding` opens its Add subagent dialog; elsewhere `focus`
  * moves the focus the button had to the page: Tools to its first heading once the lists are read,
- * a section's page to its tab, since the section has no heading of its own.
+ * a section's page to its tab, since the section has no heading of its own. A section's page
+ * passes `step` to its section, such as `SECTION_ADD_STEP` for **Add trigger**'s Prompt.
  */
 export interface ConfigurationStart {
   readonly page: PageId;
   readonly adding?: boolean | undefined;
   readonly focus?: boolean | undefined;
+  readonly step?: string | undefined;
 }
 
 /** The pages that are built, in the order of flow-agents 5.1. */
@@ -128,12 +130,16 @@ function shownPage(pages: readonly Tab<PageId>[], picked: PageId): PageId {
 function SectionPage({
   page,
   Sections,
+  step,
 }: {
   readonly page: PageId;
   readonly Sections: ComponentType<SectionsProps> | undefined;
+  /** The step the section's page was opened for, if any. */
+  readonly step: string | undefined;
 }) {
   if (Sections === undefined || !page.startsWith("section:")) return null;
-  return <Sections only={page.slice("section:".length)} />;
+  const only = page.slice("section:".length);
+  return step === undefined ? <Sections only={only} /> : <Sections only={only} step={step} />;
 }
 
 /**
@@ -177,6 +183,9 @@ export function Configuration({
   }, [page]);
   // The add button's page takes the focus once; picking another page drops the request.
   const [focusPage, setFocusPage] = useState(start.focus === true);
+  // The step the add button asked its section for, such as Add trigger's Prompt: picking a page by
+  // hand drops it, so coming back to the section shows it as it is.
+  const [sectionStep, setSectionStep] = useState(start.step);
   // The picker takes the focus once for each request, so a later click on Model doesn't move it.
   const [focusModel, setFocusModel] = useState(false);
   const modelShown = useEffectEvent(() => onModelShown?.());
@@ -198,6 +207,7 @@ export function Configuration({
     setPage(id);
     setFocusInstructions(false);
     setFocusPage(false);
+    setSectionStep(undefined);
   };
   if (load.kind === "failed") {
     return (
@@ -277,7 +287,7 @@ export function Configuration({
             {page === "agentSteps" && (
               <AgentStepsPage host={host} settings={load.value} openAgentStep={openAgentStep} />
             )}
-            <SectionPage page={page} Sections={Sections} />
+            <SectionPage page={page} Sections={Sections} step={sectionStep} />
           </div>
         ) : (
           <div role="status" className="flex flex-col gap-4">

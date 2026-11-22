@@ -16,6 +16,7 @@ import {
   type ItemPageSectionListing,
   type ItemViewProps,
   type SaveState,
+  SECTION_ADD_STEP,
   type SectionsProps,
   StackedCards,
 } from "@halonicjs/studio-shell";
@@ -384,7 +385,8 @@ export function AgentScreen({
 
 /**
  * What the agent map's add buttons do: each opens Configuration on its page, Add subagent with its
- * dialog open. Add trigger is there only once a feature adds the Triggers section.
+ * dialog open. Add trigger is there only once a feature adds the Triggers section, and asks that
+ * section to start adding, as its own Add trigger would, so the Prompt shows at once.
  */
 function mapAdds(
   sections: readonly ItemPageSectionListing[] | undefined,
@@ -396,7 +398,12 @@ function mapAdds(
   return {
     addTrigger:
       triggers &&
-      (() => showView("configuration", { page: `section:${triggers.id}`, focus: true })),
+      (() =>
+        showView("configuration", {
+          page: `section:${triggers.id}`,
+          focus: true,
+          step: SECTION_ADD_STEP,
+        })),
     addTool: () => showView("configuration", { page: "tools", focus: true }),
     addSubagent: () => showView("configuration", { page: "subagents", adding: true }),
   };
