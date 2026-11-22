@@ -35,7 +35,7 @@ function chipIn(page: HTMLElement) {
   );
 }
 
-/** What a screen reader hears of the chip: exact, so the on-hold line can't pass for the other. */
+/** What a screen reader hears of the chip. */
 function spokenOf(chip: Element | undefined) {
   return chip?.querySelector(".sr-only")?.textContent;
 }
@@ -83,6 +83,8 @@ verifies("agents.page.full-access-chip", () => {
     await act(async () => host.update(ref, { instructions: "Reply to everyone." }));
     expect((await host.placement(ref))?.runsOn).toBe("on-hold");
     expect(chipIn(page)).toBeUndefined();
+    // The agent runs in its sandbox now, so the header doesn't say otherwise anywhere.
+    expect(page.querySelector("header")?.textContent).not.toContain(words.fullAccessSpoken);
   });
 
   it("follows a choice made in Where it runs at once, though no file changed", async () => {
