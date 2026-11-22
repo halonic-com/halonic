@@ -24,6 +24,7 @@ mod export_check;
 mod export_command;
 mod find_git;
 mod git_folder_links;
+mod hardening;
 mod limited_run;
 mod opened_folders;
 mod repo_config;

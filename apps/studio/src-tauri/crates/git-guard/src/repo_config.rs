@@ -146,9 +146,15 @@ pub(crate) fn check_refused_keys(entries: &[ConfigEntry]) -> Result<(), GitError
 ///   the repository's config and runs the programs they name. Every filter
 ///   is blanked, so git-lfs doesn't run from the runner; refusing them as
 ///   well keeps that from resting on one guard.
+/// - `extensions.partialClone` and `remote.<name>.promisor`: with them git
+///   fetches a missing object from that remote while it only reads, before
+///   anyone chose to reach it. git before 2.44 ignores `GIT_NO_LAZY_FETCH`.
 fn is_refused_key(key: &str) -> bool {
     let lower = key.to_ascii_lowercase();
-    if lower.starts_with("hook.") || weakens_certificate_check(&lower) || names_lfs_program(&lower)
+    if lower.starts_with("hook.")
+        || lower == "extensions.partialclone"
+        || weakens_certificate_check(&lower)
+        || names_lfs_program(&lower)
     {
         return true;
     }
@@ -157,7 +163,9 @@ fn is_refused_key(key: &str) -> bool {
     {
         return true;
     }
-    if subsection_key(key, "remote").is_some_and(|(_, name)| name.eq_ignore_ascii_case("pushurl")) {
+    if subsection_key(key, "remote").is_some_and(|(_, name)| {
+        name.eq_ignore_ascii_case("pushurl") || name.eq_ignore_ascii_case("promisor")
+    }) {
         return true;
     }
     subsection_key(key, "url").is_some_and(|(_, name)| {

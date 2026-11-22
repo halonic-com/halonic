@@ -282,6 +282,40 @@ fn repo_config_refuses_lfs_keys_that_name_a_program_from_the_repository_only() {
 }
 
 #[test]
+fn no_lazy_fetch_refuses_the_partial_clone_keys_from_the_repository_only() {
+    for key in [
+        "extensions.partialclone",
+        "extensions.partialClone",
+        "remote.origin.promisor",
+        "remote.acme.example.Promisor",
+    ] {
+        for scope in ["local", "worktree"] {
+            assert_eq!(
+                check_refused_keys(&[entry(scope, key, "origin")]),
+                Err(GitError::ConfigNotAllowed {
+                    key: key.to_owned(),
+                }),
+                "{scope} {key}"
+            );
+        }
+    }
+    assert_eq!(
+        check_refused_keys(&[
+            entry("global", "extensions.partialclone", "origin"),
+            entry("global", "remote.origin.promisor", "true"),
+            entry(
+                "local",
+                "remote.origin.url",
+                "https://git.acme.example/a.git"
+            ),
+            entry("local", "remote.origin.partialclonefilter", "blob:none"),
+            entry("local", "extensions.worktreeconfig", "true"),
+        ]),
+        Ok(())
+    );
+}
+
+#[test]
 fn repo_leaks_refuses_every_config_hook_from_the_repository() {
     for key in ["hook.acme.command", "hook.acme.event", "Hook.a.b.enabled"] {
         assert!(
