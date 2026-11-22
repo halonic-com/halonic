@@ -306,6 +306,27 @@ verifies("workspace.trust-badge", () => {
       "This workspace changed while you were reviewing it. Check the new version.",
     );
     expect(dialog()?.textContent).toContain("Will start 2 programs.");
+  });
+
+  it("saves nothing for a check that changed after it was shown, and saves the new one next", async () => {
+    const trust = control(review);
+    await show(trust.value);
+    act(() => badge()?.click());
+    act(() =>
+      trust.set({ ...review, fingerprint: "hfp1:def", summary: ["Will start 2 programs."] }),
+    );
+
+    await act(async () => button("Trust")?.click());
+    // The dialog's alert slot fills a frame later.
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+
+    expect(trust.granted).toEqual([]);
+    expect(dialog()?.textContent).toContain(
+      "Couldn't save trust: this workspace changed. Nothing was started.",
+    );
+    expect(dialog()?.textContent).not.toContain("This workspace changed while you were reviewing");
     await act(async () => button("Trust")?.click());
     expect(trust.granted).toEqual(["hfp1:def"]);
   });

@@ -143,7 +143,10 @@ export function provideFolderServices(
   );
   provideModelChoice(services, { ipc, trust, keys, settle });
   services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
-  services.provide(ProviderCheckService, new WorkspaceProviderCheck(new ShellHttpClient(ipc)));
+  services.provide(
+    ProviderCheckService,
+    new WorkspaceProviderCheck(new ShellHttpClient(ipc), () => trust.isTrusted()),
+  );
   const transport = tauriAgentHostTransport(window);
   provideWorkspaceRuns(services, { ipc, files, window, remoteEngine, transport, trust }, location);
   // One service for both ends: the run page saves a person's trust, and the engine checks it.
