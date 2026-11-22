@@ -8,7 +8,8 @@ import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
  *
  * The host implements it over `SandboxChoiceService` and the saved sandbox setting. No method
  * throws for a backend that can't run: that is a state in the choice, not an error. Asking the
- * person to confirm `"none"` is the window's job, before it calls {@link SandboxChoiceHost.save}.
+ * person to confirm `"none"` is the window's job, before it calls {@link SandboxChoiceHost.save}; the
+ * desktop shell asks again in its own dialog, and answers the choice unchanged when the person cancels.
  */
 export interface SandboxChoiceHost {
   /** The latest choice. The first ask runs the trust check. */

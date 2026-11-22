@@ -1,6 +1,7 @@
 //! The shell's native dialogs: the folder picker, the save dialog for the
-//! sandbox backup (HAL-10974) and the two trust
-//! questions, about a folder (HAL-2612) and about an agent's instructions.
+//! sandbox backup (HAL-10974), the two trust
+//! questions, about a folder (HAL-2612) and about an agent's instructions,
+//! and the question before Studio runs agents without a sandbox (HAL-16342).
 //! They are shown with `rfd`, the library `tauri-plugin-dialog` uses, called
 //! from Rust only: registering the plugin would put its script in every
 //! page, the served Studio too, replacing `alert` and `confirm`.
@@ -23,6 +24,22 @@ use tauri::{Manager, WebviewWindow};
 use halonic_trust_grant::{
     CANCEL_BUTTON, INSTRUCTIONS_QUESTION_TITLE, QUESTION_TITLE, TRUST_BUTTON,
 };
+
+/// The title of the question before the choice `none` is saved; the page's
+/// own question has the same title.
+#[cfg(desktop)]
+const NO_SANDBOX_TITLE: &str = "Continue without a sandbox?";
+
+/// The question's text. It says the shell asks again on purpose, so a
+/// person who didn't just choose this in Studio sees it isn't theirs.
+#[cfg(desktop)]
+const NO_SANDBOX_QUESTION: &str = "Halonic is about to run agents without a sandbox. \
+Agents then run commands as you, and could look at things outside your project, such as your SSH keys.\n\n\
+Continue only if you just chose this in Halonic.";
+
+/// The button that saves the choice `none`, as the page's own button says.
+#[cfg(desktop)]
+const NO_SANDBOX_BUTTON: &str = "Continue without sandbox";
 
 /// The label of the shell's only window. tauri.conf.json gives the window
 /// no label, so Tauri names it `main`, as the capabilities do.
@@ -65,18 +82,37 @@ pub fn pick_backup_file<R: Runtime>(app: &AppHandle<R>, suggested: &str) -> Opti
 /// presses Trust. Closing the dialog or pressing Escape answers Cancel.
 #[cfg(desktop)]
 pub fn ask_to_trust<R: Runtime>(app: &AppHandle<R>, question: &str) -> bool {
-    ask_with_title(app, QUESTION_TITLE, question)
+    ask(app, QUESTION_TITLE, question, TRUST_BUTTON)
 }
 
 /// Shows the trust question about an agent's instructions, answered as
 /// [`ask_to_trust`] answers.
 #[cfg(desktop)]
 pub fn ask_to_trust_instructions<R: Runtime>(app: &AppHandle<R>, question: &str) -> bool {
-    ask_with_title(app, INSTRUCTIONS_QUESTION_TITLE, question)
+    ask(app, INSTRUCTIONS_QUESTION_TITLE, question, TRUST_BUTTON)
 }
 
+/// Shows the question before the choice `none` is saved; `true` only when
+/// the person presses Continue without sandbox, answered as [`ask_to_trust`]
+/// answers.
 #[cfg(desktop)]
-fn ask_with_title<R: Runtime>(app: &AppHandle<R>, title: &'static str, question: &str) -> bool {
+pub fn ask_to_continue_without_sandbox<R: Runtime>(app: &AppHandle<R>) -> bool {
+    ask(
+        app,
+        NO_SANDBOX_TITLE,
+        NO_SANDBOX_QUESTION,
+        NO_SANDBOX_BUTTON,
+    )
+}
+
+/// Shows a warning with `yes` and Cancel; `true` only for `yes`.
+#[cfg(desktop)]
+fn ask<R: Runtime>(
+    app: &AppHandle<R>,
+    title: &'static str,
+    question: &str,
+    yes: &'static str,
+) -> bool {
     use rfd::{AsyncMessageDialog, MessageButtons, MessageDialogResult, MessageLevel};
 
     let question = question.to_owned();
@@ -86,7 +122,7 @@ fn ask_with_title<R: Runtime>(app: &AppHandle<R>, title: &'static str, question:
             .set_title(title)
             .set_description(question)
             .set_buttons(MessageButtons::OkCancelCustom(
-                TRUST_BUTTON.to_owned(),
+                yes.to_owned(),
                 CANCEL_BUTTON.to_owned(),
             ));
         match parent {
@@ -97,7 +133,7 @@ fn ask_with_title<R: Runtime>(app: &AppHandle<R>, title: &'static str, question:
     });
     // On Linux, rfd answers a custom first button as `Ok`, not by its label.
     match answer {
-        Some(MessageDialogResult::Custom(label)) => label == TRUST_BUTTON,
+        Some(MessageDialogResult::Custom(label)) => label == yes,
         Some(MessageDialogResult::Ok) => true,
         _ => false,
     }
@@ -155,6 +191,11 @@ pub fn ask_to_trust<R: Runtime>(_app: &AppHandle<R>, _question: &str) -> bool {
 
 #[cfg(mobile)]
 pub fn ask_to_trust_instructions<R: Runtime>(_app: &AppHandle<R>, _question: &str) -> bool {
+    false
+}
+
+#[cfg(mobile)]
+pub fn ask_to_continue_without_sandbox<R: Runtime>(_app: &AppHandle<R>) -> bool {
     false
 }
 
