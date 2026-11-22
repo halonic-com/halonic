@@ -188,6 +188,7 @@ export { ForwardIcon } from "./icons/forward-icon.tsx";
 export { HandIcon } from "./icons/hand-icon.tsx";
 export { HelpIcon } from "./icons/help-icon.tsx";
 export { InfoIcon } from "./icons/info-icon.tsx";
+export { LaptopIcon } from "./icons/laptop-icon.tsx";
 export { LockIcon } from "./icons/lock-icon.tsx";
 export { MaximiseIcon } from "./icons/maximise-icon.tsx";
 export { MenuIcon } from "./icons/menu-icon.tsx";

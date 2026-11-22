@@ -81,8 +81,8 @@ export function ForgetDialog({
       onConfirm={() => void confirm()}
       onCancel={onCancel}
     >
-      <p>{asking.body}</p>
-      <p className="text-fg-muted">{asking.stillPaired}</p>
+      <p className="text-fg">{asking.body}</p>
+      <p className="mt-2 text-fg-muted">{asking.stillPaired}</p>
     </Dialog>
   );
 }

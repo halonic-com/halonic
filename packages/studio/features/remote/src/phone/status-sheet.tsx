@@ -1,4 +1,4 @@
-import { Button, ChevronRightIcon, Dialog } from "@halonicjs/studio-kit";
+import { Button, ChevronRightIcon, Dialog, RefreshIcon } from "@halonicjs/studio-kit";
 import { agentsAsOfText, asOfText, secondsText } from "./phone-forms.ts";
 import { sheetRouteWords, sheetWords } from "./status-words.ts";
 
@@ -194,7 +194,14 @@ function TroubleBody(
         </section>
       )}
       <p className={small}>{typeof check === "string" ? check : check(computer)}</p>
-      <Button variant={primary ? "primary" : "secondary"} size="touch" block onClick={onClick}>
+      <Button
+        variant={primary ? "primary" : "secondary"}
+        size="touch"
+        block
+        // Only Try again gets the ↻; Try now on Reconnecting has none, as drawn.
+        icon={button === "tryAgain" ? <RefreshIcon /> : undefined}
+        onClick={onClick}
+      >
         {sheetWords[button]}
       </Button>
     </>

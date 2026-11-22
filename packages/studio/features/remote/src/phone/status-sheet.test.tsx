@@ -70,6 +70,8 @@ verifies("remote.phone-status-sheet", () => {
     expect(dialog.textContent).toContain(
       "Check that Tim's laptop is on and awake, Halonic is open, and Tailscale is on there.",
     );
+    // Try again carries the ↻ (C662 #4, HAL-16002).
+    expect(button("Try again").querySelector("svg")).not.toBeNull();
     act(() => button("Try again").click());
     expect(actions.onTryAgain).toHaveBeenCalledOnce();
     unmountAll();
@@ -83,7 +85,7 @@ verifies("remote.phone-status-sheet", () => {
   });
 
   it("asks about the phone, never the computer, when the phone is offline", () => {
-    const { dialog, cards } = show({ kind: "phoneOffline" });
+    const { dialog, button, cards } = show({ kind: "phoneOffline" });
     expect(dialog.querySelector("h2")?.textContent).toBe("Your phone is offline");
     expect(cards[0]?.text).toBe(
       "It has no internet, so it can't reach Tim's laptop, show new work or take your answers.",
@@ -92,6 +94,7 @@ verifies("remote.phone-status-sheet", () => {
       "Turn on Wi-Fi or mobile data. It reconnects by itself when it is back online.",
     );
     expect(dialog.textContent).not.toContain("Check that");
+    expect(button("Try again").querySelector("svg")).not.toBeNull();
   });
 
   it("offers Open Tailscale and Open settings for the phone's own causes", () => {
@@ -109,6 +112,7 @@ verifies("remote.phone-status-sheet", () => {
     );
     act(() => nearby.button("Open settings").click());
     expect(nearby.actions.onOpenSettings).toHaveBeenCalledOnce();
+    expect(nearby.button("Open settings").querySelector("svg")).toBeNull();
     expect(() => nearby.button("Try again")).toThrow();
   });
 
@@ -121,6 +125,8 @@ verifies("remote.phone-status-sheet", () => {
     expect(soon.dialog.textContent).toContain(
       "Last update 14:02. What you see may be out of date until it reconnects.",
     );
+    // Try now has no ↻, as drawn.
+    expect(soon.button("Try now").querySelector("svg")).toBeNull();
     act(() => soon.button("Try now").click());
     expect(soon.actions.onTryAgain).toHaveBeenCalledOnce();
     unmountAll();
