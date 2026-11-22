@@ -17,6 +17,7 @@ The UX checklist on HAL-11873 ("Prompt open") wants the run to show "Waiting for
 
 ## Covers
 
+- cli.key-origin-ask
 - packages/adapters/workspace-models/src/key-origin-ask.test.ts
 - packages/core/events/src/key-origin-asked.test.ts
 - packages/core/events/src/run-event.test.ts
