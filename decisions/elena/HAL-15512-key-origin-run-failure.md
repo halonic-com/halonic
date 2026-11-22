@@ -3,6 +3,7 @@
 - Approval: HAL-15512 (Paperclip task), from Nina's C585 check (B2, HAL-15496); wording decided by the team under HAL-2282; Liam signs this note with the pull request
 - Kind: user-visible
 - Task: HAL-15523 (C587 on HAL-15498) for Studio's banner; the CLI side of HAL-15512 landed with HAL-15333 (#4604)
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lW9aQA7kJ5DAvY+zU4IY9StlES9fzA5yVaZk7JMdUOrDf4ysPUIXPrW/Hk4g4RqDpAH1qv2wlaRbdjIaEFCwDA==
 
 ## What changes
 
