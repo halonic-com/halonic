@@ -78,3 +78,4 @@ export {
   type RemoteSession,
   type RemoteView,
 } from "./remote-view.ts";
+export { ANSWER_RISKY_ON_COMPUTER } from "./view-of.ts";
