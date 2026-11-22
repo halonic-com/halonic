@@ -85,3 +85,13 @@ export function GuideScreen({ screen, announce, fallback, ...props }: GuideScree
   const { View } = loaded;
   return <View {...props} />;
 }
+
+/** The workflow's page, or the guide's screen in its place while the guide has one. */
+export function pageOrGuideScreen(
+  page: ReactNode,
+  screen: WorkflowGuideScreen | undefined,
+  props: Omit<GuideScreenProps, "screen" | "fallback">,
+): ReactNode {
+  if (screen === undefined) return page;
+  return <GuideScreen screen={screen} fallback={page} {...props} />;
+}

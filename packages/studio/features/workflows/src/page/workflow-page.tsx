@@ -27,7 +27,7 @@ import { StepEditDock } from "./docked-step-card.tsx";
 import { FlowView } from "./flow-view.tsx";
 import { insteadOfPage } from "./gone-state.tsx";
 import { GuideSlot } from "./guide-card.tsx";
-import { GuideScreen, useGuideScreen } from "./guide-screen.tsx";
+import { pageOrGuideScreen, useGuideScreen } from "./guide-screen.tsx";
 import { firstTestsPick, firstView, hasDockedCard, panelClass, stepNamesOf } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
 import { ProgramStepsLine } from "./program-steps-line.tsx";
@@ -428,15 +428,10 @@ export function WorkflowScreen({
       </div>
     </div>
   );
-  if (guideScreen === undefined) return page;
-  return (
-    <GuideScreen
-      screen={guideScreen}
-      workflow={{ hubId, id }}
-      phone={phone}
-      showRun={showRun}
-      announce={announce}
-      fallback={page}
-    />
-  );
+  return pageOrGuideScreen(page, guideScreen, {
+    workflow: { hubId, id },
+    phone,
+    showRun,
+    announce,
+  });
 }
