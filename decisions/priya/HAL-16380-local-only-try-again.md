@@ -3,6 +3,7 @@
 - Task: HAL-16380 (design check C701 rows 4 and 5, HAL-16371), which takes in HAL-16373 (flow check C700 finding 6)
 - Approval: HAL-16380; Liam reviews this pull request and signs this note as the CTO
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hrbLIgSnNJSdmNvsvN36ws8GIjapTguq8dJRdwmSWgbPMDpxjdazINDKxKsP8M7vTbBOXE2hsd0aDI6j6yo3Dw==
 
 ## What changes
 
