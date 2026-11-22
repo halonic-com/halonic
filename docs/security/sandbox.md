@@ -168,6 +168,15 @@ it normally, not as administrator. A normal uninstall runs without
 administrator rights, so its removal takes the access back. To keep using
 Halonic, install it again afterwards.
 
+Settings and `halonic sandbox remove` give a shorter step, because they say
+this only where it works: Halonic running on Windows itself, with the Windows
+sandbox chosen. In Settings, quit Halonic and open it again normally, not as
+administrator; when it says the sandbox may still have access, then also set
+the sandbox up again and remove it. In a terminal, run `halonic sandbox remove`
+again from a terminal that isn't running as administrator. All three steps do
+the same thing: a start or a removal without administrator rights takes the
+access back.
+
 ## "This computer" has none of it
 
 You can choose to run an agent on this computer, without the sandbox. You make

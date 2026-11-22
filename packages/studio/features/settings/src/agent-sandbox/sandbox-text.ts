@@ -89,9 +89,9 @@ export const removeFailed = (reason: string) => `The sandbox wasn't removed: ${r
 export const REMOVE_TOOK_TOO_LONG = `The sandbox wasn't removed within ${SETUP_LIMIT_MINUTES} minutes. Wait a minute, then try again.`;
 /** A removal that worked, in the WSL removal's words; the state's line says what follows (C575). */
 export const REMOVED = "Sandbox removed.";
-/** A removal with administrator rights that kept some access until the next start, as the CLI says it (HAL-15761). */
+/** A removal with administrator rights that kept some access until the next start, in the words of the manual case's first step (HAL-15761, HAL-16156). */
 export const REMOVED_KEPT_ACCESS =
-  "Its access to your project folders ends the next time you start Halonic without administrator rights.";
+  "It still has access to your project folders until you quit Halonic and open it again normally, not as administrator.";
 /** The same, when the next start doesn't end it: only a removal without administrator rights does (HAL-15836). */
 export const REMOVED_KEPT_ACCESS_MANUAL =
   "It may still have access to some of your project folders. To end that, quit Halonic and open it again normally, not as administrator. Then set up the sandbox again and remove it.";
