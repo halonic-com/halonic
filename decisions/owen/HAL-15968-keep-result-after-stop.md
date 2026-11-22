@@ -2,6 +2,7 @@
 
 - Approval: HAL-15968, Owen's plan (option A) approved with changes by Liam
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Vp+X8/D9k1I10rpvtyM0CzibU5T7Vdc2FsU8uSxAhd8TRNNd3U4lO/kKBxmIyJwPnhF6bBjayCO2hDd+5t3+Cw==
 
 Today a Claude Code step whose program prints its result and then doesn't exit
 fails the whole run: after 10 seconds Halonic kills it and the run ends with
