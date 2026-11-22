@@ -36,3 +36,4 @@ checked `distro-missing`'s repair sentence.
 ## Covers
 
 - studio.agent-sandbox-host
+- apps/studio/src/studio/agent-sandbox-host.test.ts
