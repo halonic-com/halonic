@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-15138 (C544 finding 9 in Iris's flow check HAL-15101, the follow-up of HAL-15120; it extends a behaviour the team already chose for workflows and agents in #4493)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:StZY9jO4mOHdrMjOcFZ/ipIgun+SidCgK9DtQ18Hya2X62lMXuiBfZkKiuGYA9L6uS/CXhUXoW0NnWlJwQ6LCw==
 
 Delete's Undo in Files, the Library and Routines worked only while the delete was the newest change: after any other edit it refused, and the deleted item could only come back by undoing that edit first. #4493 gave workflows and agents `deleteWithUndo` (`studio.undoable-delete`), which writes the files back as a change of its own after later edits and refuses only when a new file has taken their place. The files host, the Library and routines now use it too.
 
