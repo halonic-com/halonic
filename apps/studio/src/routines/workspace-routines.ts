@@ -260,7 +260,6 @@ export class WorkspaceRoutines implements RoutinesHost {
     return deleteWithUndo(files, {
       paths: [routinePath(ref)],
       what: `routine ${value.name}`,
-      name: value.name,
     });
   }
 

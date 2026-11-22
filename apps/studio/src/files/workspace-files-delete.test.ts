@@ -65,8 +65,7 @@ verifies("studio.workspace-files-delete", () => {
 
     await expect(removed.undo()).rejects.toMatchObject({
       kind: "conflict",
-      message:
-        "notes.md can't be put back, because there is a new notes.md. Rename or move it, then undo again.",
+      message: "There's a new notes.md in its place. Rename or move the new one, then undo again.",
     });
     expect(undone).toEqual([]);
     expect(changes).toHaveLength(2);

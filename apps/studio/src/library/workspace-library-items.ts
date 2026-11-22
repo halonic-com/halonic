@@ -150,7 +150,7 @@ export class WorkspaceLibraryItems implements LibraryItemsHost {
     const paths = await itemPaths(files, kind, place);
     if (paths.length === 0)
       throw new KindedError("not_found", `${name} isn't in this workspace any more.`);
-    return deleteWithUndo(files, { paths, what: `${kind} ${place.id}`, name });
+    return deleteWithUndo(files, { paths, what: `${kind} ${place.id}` });
   }
 
   /** The item's file as the workspace holds it now, unsaved changes included. */

@@ -67,5 +67,5 @@ export async function trashAgentFile(
   path: string,
   name: string,
 ): Promise<TrashedAgent> {
-  return deleteWithUndo(files, { paths: [path], what: `agent ${name}`, name });
+  return deleteWithUndo(files, { paths: [path], what: `agent ${name}` });
 }

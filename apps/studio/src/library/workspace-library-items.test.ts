@@ -167,7 +167,7 @@ verifies("library.library-delete", () => {
     await expect(removed.undo()).rejects.toMatchObject({
       kind: "conflict",
       message:
-        "The skill tone can't be put back, because there is a new library/skills/tone/SKILL.md. Rename or move it, then undo again.",
+        "There's a new library/skills/tone/SKILL.md in its place. Rename or move the new one, then undo again.",
     });
     expect(store["library/skills/tone/SKILL.md"]).toBe("New.");
   });
