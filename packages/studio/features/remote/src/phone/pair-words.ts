@@ -73,8 +73,8 @@ export const pairWords = {
     title: "This code was already used",
     body: (computer: string) =>
       `Another phone used it first. If ${computer} asks you to allow a phone now, press **Don't allow**: it isn't yours.`,
-    next: "Then choose New code on the computer and scan again.",
-    nextTyped: "Then choose New code on the computer and type it in.",
+    next: "Then scan the new code your computer shows.",
+    nextTyped: "Then type in the new code your computer shows.",
   },
   refused: {
     title: (computer: string) => `${computer} didn't allow this phone`,
