@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16568 (words check C723 on HAL-16564, of #5272, #5293 and #5291; small wording on approved screens, decided by the team, Sofia, HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6eTgSqW4oSD4AYJtMskm+VCBVoWKvS+iiAM0+keLY0TjDDoTTBAxVteydT34XUJrsQXKyfwEUziSlzmgySTtDg==
 
 **The installer's finish page after a setup with administrator rights.** "✓ The agent sandbox is
 set up." didn't say that this setup ran no check, or where to check it. It now reads "✓ The agent
