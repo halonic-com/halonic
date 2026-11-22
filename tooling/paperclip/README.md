@@ -166,8 +166,8 @@ turned dry run off.
 `src/seats/` is the `seats` plugin (HAL-16008): it reads each AI seat's
 usage limits, keeps the history the seat forecast needs and proposes moves.
 It is its own plugin, `halonic.seats`, so the board installs, stops and
-trusts it apart from Agent tools. So far it has its settings and its
-tables; the board-only routes, reading the seats and the page come next.
+trusts it apart from Agent tools. So far it has its settings, its tables and
+two board-only routes; reading the seats and the page come next.
 
 - **Settings** (board-only, empty by default): the seats in reading order,
   each with an id, a role (`pool`, `reserve` or `paid-api`), its Claude
@@ -180,6 +180,10 @@ tables; the board-only routes, reading the seats and the page come next.
   `agent_usage` and `agent_activity`, as `src/seats/records.ts` describes
   them. Paperclip runs `src/seats/plugin/migrations/` before the worker
   starts and refuses `DROP` and `DELETE` there, so a change adds a file.
+- **Routes**, board users only (the worker checks again), under
+  `/api/plugins/<plugin id>/api/`: `GET /seats` lists the seats with their
+  id, role and reset group only, and `POST /seats/:seatId/manual-reset`
+  records a manual reset by the board user.
 
 Build it with `pnpm --filter @halonicjs/tooling-paperclip run
 build:seats-plugin`. That writes `dist/seats/`: the bundles, the migrations
