@@ -48,7 +48,7 @@ verifies("studio.trust-review-asks", () => {
         lines: [
           [
             "Without asking",
-            "will edit and run commands in its working folder, inside the sandbox; this version of Halonic still asks first",
+            "will edit and run commands in its working folder, inside the sandbox",
           ],
         ],
       },
@@ -68,7 +68,7 @@ verifies("studio.trust-review-asks", () => {
     expect(agentRows(asksChange(coder, inSandbox))?.[0]?.lines).toEqual([
       [
         "Without asking",
-        "will edit and run commands in its working folder, inside the sandbox; this version of Halonic still asks first",
+        "will edit and run commands in its working folder, inside the sandbox",
       ],
     ]);
     expect(agentRows(asksChange(inSandbox, coder))?.[0]?.lines).toEqual([

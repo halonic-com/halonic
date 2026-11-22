@@ -41,11 +41,12 @@ lists, in this order (requirement `cli.trust-check`):
   sites and its working folder when it isn't the default. A Claude Code agent
   whose file sets `asks: in-sandbox` gets one more line, "Without asking": it
   will edit and run commands in its working folder, inside the sandbox, without
-  a person's OK (requirement `cli.trust-check-asks`). A fenced CLI run answers
+  a person's OK (requirement `cli.trust-check-asks`, and in Studio
+  `studio.trust-review-asks`). A fenced run, in the CLI or in Studio, answers
   those calls and logs each one as `harness.allowed`
-  (`harness-host.sandboxed-asks`); Studio still asks first until its agent
-  host answers them too (HAL-15287). The setting is part of the fingerprint
-  (`workspace.trust-agent-asks`), so changing it asks for trust again, and the
+  (`harness-host.sandboxed-asks`, `agent-host.sandboxed-asks`). The setting
+  is part of the fingerprint (`workspace.trust-agent-asks`), so changing it
+  asks for trust again, and the
   agent's Changed row says it will do so without asking, or asks again.
   Agents in Halonic's own harness aren't listed.
 - **Addresses:** HTTP connectors, connectors to a plugin, local integrations

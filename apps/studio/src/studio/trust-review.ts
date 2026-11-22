@@ -340,12 +340,11 @@ function agentRow(agent: AgentTrustContent): TrustRowView {
 const withoutAsking = "Without asking";
 
 /**
- * What it does (team wording, HAL-14992), said as what will happen: nothing
- * answers its calls in this version yet, and the review never states
- * behaviour that doesn't exist (HAL-15117).
+ * What it does (team wording, HAL-14992). Studio's agent host answers those
+ * calls in a fenced run (HAL-15287), so the row no longer says this version
+ * still asks first (HAL-15704).
  */
-const inSandboxCalls =
-  "will edit and run commands in its working folder, inside the sandbox; this version of Halonic still asks first";
+const inSandboxCalls = "will edit and run commands in its working folder, inside the sandbox";
 
 /** One Changed row per agent, saying what is different. */
 function agentChangeRows(agent: ChangedAgent): TrustRowView[] {
