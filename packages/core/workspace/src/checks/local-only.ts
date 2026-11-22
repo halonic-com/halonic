@@ -110,7 +110,7 @@ function connectorMessage(connector: Connector, context: CheckContext): string {
   }
   const { sheetHosts } = context;
   if (sheetHosts === undefined) {
-    return `Connector "${connector.id}" isn't local, and the workspace is local only: ${keepOff}`;
+    return unreadSheetsMessage(connector);
   }
   const hosts = sheetHostsOf(connector, sheetHosts);
   if (hosts === undefined) {
@@ -144,6 +144,19 @@ function unknownHostsMessage({ transport }: Connector): string {
       ? `The sheet of the integration in integrations/${transport.integration.folder} can't be read`
       : "Its code has no sheet";
   return `${noSheet}, ${unknown}, and it isn't local: ${keepOff}`;
+}
+
+/**
+ * A runner connector checked without any sheets, as Studio and `doctor` load
+ * a workspace. A plugin gets `halonic validate`, which reads the added
+ * plugins' sheets, never the `privacy.localOnly: false` way out, for the same
+ * reason as a plugin that isn't added (HAL-15890).
+ */
+function unreadSheetsMessage(connector: Connector): string {
+  if ("plugin" in connector.transport) {
+    return `The sheet of the plugin ${connector.transport.plugin.id} isn't read here, so nothing says which hosts it reaches: check the workspace with halonic validate, which reads it`;
+  }
+  return `Connector "${connector.id}" isn't local, and the workspace is local only: ${keepOff}`;
 }
 
 /** Whose code a runner connector runs: "The plugin acme-orders" or "The integration in integrations/notes". */

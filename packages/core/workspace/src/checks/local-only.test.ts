@@ -144,12 +144,12 @@ verifies("workspace.local-only-sheet-hosts", () => {
     ]);
   });
 
-  it("offers no local: true for a plugin's connector", async () => {
+  it("offers a plugin's connector checked without sheets halonic validate, not turning off local-only", async () => {
     const orders = "name: Orders\ntransport:\n  plugin: { id: acme-orders }\n";
     expect(
       await issuesIn(true, { ...local, "library/connectors/orders.connector.yaml": orders }),
     ).toEqual([
-      `error library/connectors/orders.connector.yaml transport: Connector "orders" isn't local, and the workspace is local only: set privacy.localOnly: false in workspace.yaml to use it`,
+      `error library/connectors/orders.connector.yaml transport: The sheet of the plugin acme-orders isn't read here, so nothing says which hosts it reaches: check the workspace with halonic validate, which reads it`,
     ]);
   });
 });
