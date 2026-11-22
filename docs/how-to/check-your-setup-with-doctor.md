@@ -210,9 +210,9 @@ Common reasons and their fixes:
 | WSL isn't installed (Windows) | Run `wsl --install --no-distribution` in a terminal run as administrator, then restart Windows. |
 | Windows needs to restart to finish setting up WSL | Restart Windows. |
 | The distro runs on WSL 1 | Switch it to WSL 2. The fix line gives the PowerShell command with your distro's name. |
-| WSL works, but Halonic's own Linux system for the sandbox isn't installed (Windows) | Use Halonic inside WSL 2. |
+| WSL works, but Halonic's own Linux system for the sandbox isn't installed (Windows, `distro-missing`) | Use Halonic inside WSL 2 on this computer. |
 | Another program set up the sandbox on this computer, in a way Halonic can't use (Windows) | Remove the other program's sandbox setup, then run `halonic sandbox setup`. |
-| Halonic's own Linux system for the sandbox is installed, but its setup didn't finish (Windows) | Use Halonic inside WSL 2. |
+| Halonic's own Linux system for the sandbox is installed, but its setup didn't finish (Windows, `runtime-missing`) | Use Halonic inside WSL 2 on this computer. Studio says Check again for this one; the command doesn't, on purpose, because it can't run the sandbox's setup from a Windows terminal. |
 | Windows, outside WSL | Use Halonic inside WSL 2. |
 | The sandbox's one-time setup isn't done (Windows) | Run `halonic sandbox setup`. Windows asks for administrator rights once. |
 
