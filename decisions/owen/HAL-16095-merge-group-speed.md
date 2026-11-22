@@ -3,6 +3,7 @@
 - Task: HAL-16095
 - Approval: the board asked for faster merge groups (Timothy, 22 Nov, HAL-16095); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Rht0mlwuSj8cRTfuLExIvkLZj4vH12NSwomPdwqPWNeICFdmXE06oM9Jm7PZflqdX3W2kO+v5JwGcAiLPYbVBw==
 
 ## What changes
 
