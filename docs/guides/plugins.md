@@ -101,6 +101,7 @@ is the reference.
 | a local tool "needs the desktop app" | no sandbox on Android or in the browser | use the desktop app, the CLI or `serve` |
 | a tool refused | the server offers a tool the manifest doesn't declare | declare it, or remove it from the server |
 | "<connector> didn't start, so its tools are off in this run.", with "The sandbox didn't work when the plugin <name> started, so none of it ran." and "Halonic tries <name> in the sandbox again the next time a run uses it." under it | the computer passed the sandbox check, but the sandbox didn't work when the plugin started, so Halonic stopped it | nothing to do; the next run that uses it tries the sandbox again |
+| "! The backend of the plugin <name> didn't start, so its tools are off in this run.", with "The sandbox its plugin runs in can't start on this computer." and "See why with halonic doctor." under it | the sandbox can't start on this computer, for example in a container, so the plugin's backend can't run | run `halonic doctor`, fix what it names, then run again; the rest of the plugin keeps working |
 
 The backend in the sample is plain JavaScript with no imports and no build
 step. If you write TypeScript, build it to one JavaScript file first and point
