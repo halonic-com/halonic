@@ -4,6 +4,7 @@
 - Task: HAL-15431, from Priya's words check C576 (HAL-15424, rows 16 and 17), for PR #4521 (HAL-15140)
 - Approval: Liam's review of this pull request on HAL-15431. A team decision on wording with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JDSfcJ/cx1I9CcQnfgFpQiy5qsqFqGXGwMTMHfrWjIvrp9jUXyY6O7izSQf4TF9PoG2W3bpM/MvSqRjMqPTzDw==
 
 ## What changes
 
