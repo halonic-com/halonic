@@ -16,4 +16,4 @@ While the phone can't answer because it isn't connected, its prompt box shall be
   then the computer gets that prompt once, and the box empties and says "Prompt sent.".
 - Given the connection dropped after an answer was sent and before the computer confirmed it,
   when the answer's outcome arrives,
-  then the line under the buttons says the connection dropped and that the approval will show whether the answer arrived.
+  then the line under the buttons says the connection dropped before the computer confirmed the answer, and that once the phone reconnects the person will see whether it arrived.

@@ -106,13 +106,13 @@ verifies("remote.phone-prompt-box", () => {
     expect(sendOutcomeLine("answer", { kind: "done" })).toBeUndefined();
     expect(sendOutcomeLine("prompt", { kind: "not-sent", reason: "off" })).toBeUndefined();
     expect(sendOutcomeLine("answer", { kind: "refused", code: "unknown-approval" })).toBe(
-      "This was already answered, or it isn't asked any more.",
+      "This was already answered, or the agent stopped asking.",
     );
     expect(sendOutcomeLine("answer", { kind: "refused", code: "not-allowed-remotely" })).toBe(
       "Answer this on your computer.",
     );
     expect(sendOutcomeLine("prompt", { kind: "refused", code: "not-allowed-remotely" })).toBe(
-      "Your computer didn't take this prompt. Send it from your computer.",
+      "Your computer didn't accept this prompt. Send it from your computer instead.",
     );
     expect(sendOutcomeLine("prompt", { kind: "not-sent", reason: "not-open" })).toBe(
       "Not sent. Try again once your phone reconnects.",
@@ -126,8 +126,8 @@ verifies("remote.phone-prompt-box", () => {
     expect(sendOutcomeLine("answer", { kind: "not-sent", reason: "not-allowed" })).toBe(
       "Answer this on your computer.",
     );
-    expect(sendOutcomeLine("answer", { kind: "cut-off" })).toContain(
-      "this shows whether your answer arrived",
+    expect(sendOutcomeLine("answer", { kind: "cut-off" })).toBe(
+      "The connection dropped before your computer confirmed your answer. Once your phone reconnects, you'll see whether it arrived.",
     );
     expect(sendOutcomeLine("prompt", { kind: "cut-off" })).toContain("Check the agent");
   });

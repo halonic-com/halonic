@@ -1,8 +1,8 @@
 /**
  * The words for the phone's prompt box and for what became of an answer or a prompt (`s-m3` on
  * HAL-12206, decision 6; D7 design on HAL-15159, section 2). The stale reason is the strings
- * table's `phone.stale.promptReason`; the outcome lines are the team's (HAL-12248), for Sofia to
- * confirm. Nothing is ever sent twice, so no line offers to send it again by itself.
+ * table's `phone.stale.promptReason`; the outcome lines are Sofia's (HAL-16054; strings table
+ * gap G29, microcopy 28). Nothing is ever sent twice, so no line offers to send it again by itself.
  */
 
 import type { RemoteSendOutcome } from "./remote-view.ts";
@@ -42,20 +42,20 @@ export function sendOutcomeLine(
 
 function answerLine(outcome: Exclude<RemoteSendOutcome, { kind: "done" }>): string {
   if (outcome.kind === "cut-off") {
-    return "The connection dropped before your computer confirmed it. Once it reconnects, this shows whether your answer arrived.";
+    return "The connection dropped before your computer confirmed your answer. Once your phone reconnects, you'll see whether it arrived.";
   }
   if (outcome.kind === "refused" && outcome.code === "unknown-approval") {
-    return "This was already answered, or it isn't asked any more.";
+    return "This was already answered, or the agent stopped asking.";
   }
   return ANSWER_RISKY_ON_COMPUTER;
 }
 
 function promptLine(outcome: Exclude<RemoteSendOutcome, { kind: "done" }>): string {
   if (outcome.kind === "cut-off") {
-    return "The connection dropped before your computer confirmed it, so it may not have arrived. Check the agent before you send it again.";
+    return "The connection dropped before your computer confirmed this prompt, so it may not have arrived. Check the agent before you send it again.";
   }
   if (outcome.kind === "refused") {
-    return "Your computer didn't take this prompt. Send it from your computer.";
+    return "Your computer didn't accept this prompt. Send it from your computer instead.";
   }
   if (outcome.reason === "not-allowed") {
     return "Your phone can't send this. Send it from your computer.";
