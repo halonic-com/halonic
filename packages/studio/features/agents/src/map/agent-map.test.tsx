@@ -272,12 +272,14 @@ verifies("agents.map.clicks", () => {
 
 verifies("agents.map.workflow-card-steps", () => {
   /** Mail triage's map, run by Support reply in the given steps. */
-  const runIn = (stepIds: readonly string[]) =>
+  const runIn = (stepIds: readonly string[], stepNames?: readonly string[]) =>
     memoryAgentsHost({
       hubs: [{ id: "acme", name: "Acme Mail" }],
       agents: [mailTriage],
       users: {
-        "acme/triage": [{ hubId: "acme", id: "support-reply", name: "Support reply", stepIds }],
+        "acme/triage": [
+          { hubId: "acme", id: "support-reply", name: "Support reply", stepIds, stepNames },
+        ],
       },
     });
 
@@ -298,6 +300,21 @@ verifies("agents.map.workflow-card-steps", () => {
     expect(
       page.querySelector(
         "[aria-label='Workflow Support reply, uses Mail triage in sort, check and reply']",
+      ),
+    ).not.toBeNull();
+  });
+
+  it("names the steps as their cards do: the title, else the id", async () => {
+    const page = await openFlow({
+      agents: runIn(["sort", "reply"], ["Sort the mail", "reply"]),
+      openWorkflow: () => undefined,
+    });
+    expect(side(page, "What brings it work")).toEqual([
+      "Workflow Support replySort the mail, reply",
+    ]);
+    expect(
+      page.querySelector(
+        "[aria-label='Workflow Support reply, uses Mail triage in Sort the mail and reply']",
       ),
     ).not.toBeNull();
   });

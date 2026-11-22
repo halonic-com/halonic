@@ -59,7 +59,7 @@ verifies("studio.workspace-agents", () => {
     it("names the workflows that run an agent, and rejects an agent that isn't there", async () => {
       const { host } = setup();
       expect(await host.referencesTo({ hubId: "acme", id: "writer" })).toEqual([
-        { hubId: "acme", id: "reply", name: "Reply", stepIds: ["first"] },
+        { hubId: "acme", id: "reply", name: "Reply", stepIds: ["first"], stepNames: ["first"] },
       ]);
       await expect(host.referencesTo({ hubId: "acme", id: "gone" })).rejects.toMatchObject({
         kind: "not_found",
@@ -72,9 +72,16 @@ verifies("studio.workspace-agents", () => {
     it("names each step of a workflow that runs the agent, in the file's order", async () => {
       const { host, store } = setup();
       store["hubs/acme/workflows/reply.workflow.yaml"] =
-        "id: reply\nname: Reply\ninitial: triage\nstates:\n  triage:\n    agent: writer\n    on:\n      - to: draft\n  draft:\n    agent: writer\n    on:\n      - to: done\n  done:\n    type: final\n";
+        "id: reply\nname: Reply\ninitial: triage\nstates:\n  triage:\n    agent: writer\n    description: Read the email\n    on:\n      - to: draft\n  draft:\n    agent: writer\n    on:\n      - to: done\n  done:\n    type: final\n";
       expect(await host.referencesTo({ hubId: "acme", id: "writer" })).toEqual([
-        { hubId: "acme", id: "reply", name: "Reply", stepIds: ["triage", "draft"] },
+        {
+          hubId: "acme",
+          id: "reply",
+          name: "Reply",
+          stepIds: ["triage", "draft"],
+          // As the canvas's cards name them: the title, else the id (C618).
+          stepNames: ["Read the email", "draft"],
+        },
       ]);
     });
 

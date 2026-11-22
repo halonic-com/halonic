@@ -14,11 +14,11 @@ export const mapWords = {
   routine: "Routine",
   agent: "Agent",
   kinds: { skills: "Skill", knowledge: "Knowledge", connectors: "Connector" },
-  /** A workflow card's detail line: the steps that call the agent, "triage, draft". */
-  steps: (stepIds: readonly string[]) => stepIds.join(", "),
-  /** A workflow card's name: "Workflow Support reply, uses Sorter in triage and draft" (mc 19.7). */
-  workflowCard: (workflow: string, agent: string, stepIds: readonly string[]) =>
-    `Workflow ${workflow}, uses ${agent} in ${stepList.format(stepIds)}`,
+  /** A workflow card's detail line: the steps that call the agent, "Read the email, draft" (C618). */
+  steps: (stepNames: readonly string[]) => stepNames.join(", "),
+  /** A workflow card's name: "Workflow Support reply, uses Sorter in Read the email and draft" (mc 19.7). */
+  workflowCard: (workflow: string, agent: string, stepNames: readonly string[]) =>
+    `Workflow ${workflow}, uses ${agent} in ${stepList.format(stepNames)}`,
   /**
    * A connector card's words by its hand, from how many of its tools can run without asking:
    * "Every tool asks first", "Asks first, except 1 read-only tool" (mc 19.7, HAL-15628).

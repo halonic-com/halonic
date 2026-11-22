@@ -23,9 +23,14 @@ export const pageWords = {
   startChip: "Start",
   /** The tooltip on a step's output port (flow-workflows 4.3). */
   connectHint: "Drag to another step to connect",
-  /** Read once when the page opens with an agent's steps outlined: "2 steps use Sorter: triage, draft" (flow-workflows 9). */
-  outlined: (stepIds: readonly string[], agent: string) =>
-    `${stepIds.length} ${stepIds.length === 1 ? "step uses" : "steps use"} ${agent}: ${stepIds.join(", ")}`,
+  /**
+   * Shown over the canvas, and read once, while an agent's steps are outlined, the steps named as
+   * their cards name them: "2 steps use Sorter: Read the email, draft" (flow-workflows 9, C618).
+   */
+  outlined: (stepNames: readonly string[], agent: string) =>
+    `${stepNames.length} ${stepNames.length === 1 ? "step uses" : "steps use"} ${agent}: ${stepNames.join(", ")}`,
+  /** Beside that line: what drops the outline (C618). */
+  outlineClears: "Pick a step or an empty spot to clear.",
   /** The canvas's toolbar (flow-workflows 3.2, UX checklist 10.4). */
   toolbar: {
     label: "Flow tools",
