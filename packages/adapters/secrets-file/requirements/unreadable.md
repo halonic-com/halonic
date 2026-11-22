@@ -8,7 +8,7 @@ When the person running Halonic may not read the secrets file (the file system r
 
 ## Examples
 
-- Given a secrets file with mode `000` that the person owns, then `get`, `names`, `set` and `remove` each refuse with `The secrets file <file> can't be read by you.` and the fix `Run chmod 600 <file>, then run again.`, and `set` doesn't change the file.
+- Given a secrets file with mode `000` that the person owns, then `get`, `names`, `set` and `remove` each refuse with `The secrets file <file> can't be read by your user account.` and the fix `Run chmod 600 <file>, then run again.`, and `set` doesn't change the file.
 - Given a secrets file owned by another user, then the fix is `It belongs to another user: run sudo chown "$(id -un)" <file>, then chmod 600 <file>, then run again.`
 - Given a secrets file in `/srv/acme/Application Support/secrets/`, then the fix writes the file in double quotes.
 - Given Windows, then the fix says to give the account access in the file's Properties, under Security.

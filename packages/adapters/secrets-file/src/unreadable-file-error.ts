@@ -36,10 +36,14 @@ export function isPermissionDenied(error: unknown): boolean {
  * @param cause - the file system's error, kept for `--debug`
  */
 export function unreadableSecretsFileError(found: UnreadableFile, cause: unknown): KindedError {
-  return new KindedError("denied", `The secrets file ${found.file} can't be read by you.`, {
-    fix: fixFor(found),
-    cause,
-  });
+  return new KindedError(
+    "denied",
+    `The secrets file ${found.file} can't be read by your user account.`,
+    {
+      fix: fixFor(found),
+      cause,
+    },
+  );
 }
 
 function fixFor({ file, ownerId, userId }: UnreadableFile): string {
