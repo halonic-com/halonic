@@ -239,6 +239,7 @@ workflows, for example) belong to the workspace loader.
 | `no-done-transition` | error | a step that ends with `done` only has transitions on other events |
 | `final-has-transitions` | warning | a final state has transitions, which never fire |
 | `wait-without-events` | warning | a wait state only listens to `done` |
+| `wait-arrow-without-event` | warning | a wait state has named events and also a transition without `event` or timer, which only an answer `done` takes (one warning per such transition) |
 | `not-a-choice` | warning | a condition compares a choice agent's answer with a text that isn't one of its options |
 | `unguarded-shadow` | warning | a transition comes after an unguarded one on the same event, so never fires |
 | `ignored-key` | warning | a state sets a key its type doesn't use (one warning per key), `with` has no `method`, or `continueOnError` has `join: any` |

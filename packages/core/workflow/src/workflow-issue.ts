@@ -21,6 +21,7 @@ export type WorkflowIssueCode =
   | "foreach-without-work"
   | "task-without-agent"
   | "wait-without-events"
+  | "wait-arrow-without-event"
   | "wait-with-signal"
   | "no-final"
   | "unguarded-shadow"
