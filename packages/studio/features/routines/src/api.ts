@@ -390,6 +390,22 @@ export class EngineNotAnswering extends KindedError {
   }
 }
 
+/**
+ * What {@link RoutinesHost.runNow} rejects with when the engine refuses the routine's input because
+ * it lacks a field the workflow's first step reads. The message is the engine's own sentence; the
+ * next step points to the Starts card, which marks the field, so the toast offers no **Try again**,
+ * which would fail the same way (C613 row 23, HAL-15680).
+ */
+export class RoutineInputRefused extends KindedError {
+  /** @param message - the engine's sentence, such as "The input has no field mail, which the step Read the email reads." */
+  constructor(message: string, options: { readonly cause?: unknown } = {}) {
+    super("invalid_input", message, {
+      ...options,
+      fix: "Fill it in under Starts on the routine's page.",
+    });
+  }
+}
+
 const agentCantRunWhy = "Halonic can't run an agent on its own yet, only as a step in a workflow.";
 const agentCantRunInstead = "Make a workflow, then pick it under Starts";
 

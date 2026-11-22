@@ -4,7 +4,7 @@ import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import type { RoutinesHost } from "../api.ts";
+import { RoutineInputRefused, type RoutinesHost } from "../api.ts";
 import { unmount } from "../test-support.tsx";
 import { daily, hostReading, runNowButton, showWithToasts } from "./page.test-helper.tsx";
 
@@ -22,9 +22,8 @@ function hostFailing(error: Error) {
 // What a start that failed says, apart from routine-page.test.tsx so neither file passes the
 // 500-line limit (RT3 and RT4 of HAL-15304).
 verifies("routines.page.run-now-failed", () => {
-  it("gives the engine's refusal in its own words", async () => {
-    const refusal = new KindedError(
-      "invalid_input",
+  it("gives the engine's refusal of the input in its own words, then where to fill it in", async () => {
+    const refusal = new RoutineInputRefused(
       "The input has no field mail, which the step Read the email reads.",
     );
     const { page, toasts } = await showWithToasts(hostFailing(refusal).host);
@@ -34,9 +33,11 @@ verifies("routines.page.run-now-failed", () => {
     expect(toasts.list()[0]).toMatchObject({
       tone: "danger",
       title: "Couldn't start Daily.",
-      text: "The input has no field mail, which the step Read the email reads.",
+      text: "The input has no field mail, which the step Read the email reads. Fill it in under Starts on the routine's page.",
       sticky: true,
     });
+    // Starting again fails the same way until the field is filled in (HAL-15680).
+    expect(toasts.list()[0]?.action).toBeUndefined();
   });
 
   it("keeps an unavailable refusal's sentence and its next step, not 'isn't answering'", async () => {

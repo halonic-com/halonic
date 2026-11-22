@@ -1,6 +1,6 @@
 import { InputRefused } from "@halonicjs/engine";
 import { KindedError } from "@halonicjs/std";
-import { EngineNotAnswering } from "@halonicjs/studio-feature-routines/api";
+import { EngineNotAnswering, RoutineInputRefused } from "@halonicjs/studio-feature-routines/api";
 import { EngineNotAnswering as ShellEngineNotAnswering } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -76,8 +76,22 @@ verifies("studio.workspace-routines-start-input", () => {
       const { host } = refusing(new InputRefused("engine.input-missing-field", sentence));
 
       const failure = await host.runNow?.(weekly).catch((error: unknown) => error);
+      expect(failure).toBeInstanceOf(RoutineInputRefused);
+      expect(failure).toMatchObject({
+        kind: "invalid_input",
+        message: sentence,
+        fix: "Fill it in under Starts on the routine's page.",
+      });
+    });
+
+    it("keeps any other refusal of the input without a next step", async () => {
+      const sentence = 'Run "r1" has already started.';
+      const { host } = refusing(new InputRefused("engine.run-exists", sentence));
+
+      const failure = await host.runNow?.(weekly).catch((error: unknown) => error);
       expect(failure).toBeInstanceOf(KindedError);
-      expect(failure).toMatchObject({ kind: "invalid_input", message: sentence });
+      expect(failure).not.toBeInstanceOf(RoutineInputRefused);
+      expect(failure).toMatchObject({ kind: "invalid_input", message: sentence, fix: undefined });
     });
 
     it("keeps an unavailable refusal's sentence", async () => {
