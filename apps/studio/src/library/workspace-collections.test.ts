@@ -17,10 +17,10 @@ seed:
   - { id: trip, what: trip, amount: 20 }
 `;
 
-function setup() {
+function setup(at = "2026-11-16T10:00:00Z", collection = claims) {
   const store: Record<string, string> = {
     "workspace.yaml": "id: acme\nname: Acme\n",
-    "library/collections/claims.collection.yaml": claims,
+    "library/collections/claims.collection.yaml": collection,
     "agents/helper.agent.yaml": "id: helper\nname: Helper\ncollections: [claims]\nmodel: test\n",
   };
   const records = new MemoryRecordStore();
@@ -40,7 +40,7 @@ function setup() {
       return () => listeners.delete(listener);
     },
     records,
-    clock: new ManualClock("2026-11-16T10:00:00Z"),
+    clock: new ManualClock(at),
   });
   return { host, records, listeners, changes };
 }
@@ -144,5 +144,29 @@ verifies("library.collection-page", () => {
     expect(listeners.size).toBe(1);
     stop();
     expect(listeners.size).toBe(0);
+  });
+
+  it("filters a view on today by this computer's calendar, not by UTC", async () => {
+    const due = `id: claims
+name: Claims
+fields:
+  what: { type: text, required: true }
+  due: { type: date }
+views:
+  today: { where: { due: today } }
+seed:
+  - { id: late, what: late, due: 2026-11-16 }
+  - { id: next, what: next, due: 2026-11-17 }
+`;
+    const zone = process.env["TZ"];
+    process.env["TZ"] = "Europe/Madrid";
+    try {
+      // 23:30 UTC on the 16th is 00:30 on the 17th in Madrid.
+      const source = await setup("2026-11-16T23:30:00Z", due).host.read(ref);
+      expect(source?.grid("today").rows.map((row) => row.id)).toEqual(["next"]);
+    } finally {
+      if (zone === undefined) delete process.env["TZ"];
+      else process.env["TZ"] = zone;
+    }
   });
 });
