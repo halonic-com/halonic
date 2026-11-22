@@ -148,8 +148,8 @@ export function UnfencedYesBlock({
       },
       async (error: unknown) => {
         if (hostKindOf(error) === "take_back_incomplete") {
-          // The yes is gone even though some runners didn't stop: say both, and show it gone.
-          say(text.TAKEN_BACK_PARTLY_TITLE, text.TAKEN_BACK_TEXT, "warning");
+          // The yes is gone even though some runners didn't stop: say what still runs, and show it gone.
+          say(text.TAKEN_BACK_PARTLY_TITLE, text.TAKEN_BACK_PARTLY_TEXT, "warning");
           await read();
           inFlight.current = false;
           setTakingBack(false);
