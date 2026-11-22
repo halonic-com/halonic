@@ -23,6 +23,10 @@
 `cli.commands.routines.watch` (unreleased) prints "✓ Friday digest can start now" on the tick after
 a routine that couldn't start has its file fixed.
 
+`app.routine-list-live-schedule` (unreleased), the core routine list under both, counts a routine's
+errors from its live version, counts its saved file's errors apart, gives a never-live routine no
+next run, and says whether each routine is live, not live yet or never live.
+
 ## Why
 
 In C610 the list showed "Next 02:00" for a routine never committed, which the watch left out, and
@@ -47,3 +51,8 @@ fail without the fix.
 ## Covers
 
 - cli.commands.routines.list
+- cli.commands.routines.list-live-version
+- cli.commands.routines.watch
+- app.routine-list-live-schedule
+- apps/cli/src/commands/routines/golden/acme-routines.txt
+- apps/cli/src/commands/routines/golden/acme-routines-two-hubs.txt
