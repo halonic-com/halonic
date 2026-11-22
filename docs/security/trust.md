@@ -70,9 +70,11 @@ lists, in this order (requirement `cli.trust-check`):
   gives the `halonic models allow-address` command that allows it.
 - **Fingerprint:** the full fingerprint, never shortened.
 
-Like the CLI, Studio's trust check shows hidden characters, such as control
-and text-direction characters, as their codes, so the text reads in the order
-it runs (`workspace.trust-check-escaped`).
+Studio's trust check marks hidden characters, such as control, zero-width and
+text-direction characters, tabs and newlines, with an amber marker such as
+`⟦U+202E⟧`, so nothing in the text stays hidden and it shows in the order it is
+written. `halonic trust` writes them as codes such as `\u202e`
+(`workspace.trust-check-escaped`).
 
 When the workspace changed since you trusted it, the check shows only what is
 new or changed. When it is unchanged, you get one line with the date.

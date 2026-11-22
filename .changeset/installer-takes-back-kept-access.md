@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-On Windows, installing Halonic again takes back the access the agent sandbox kept on your folders after it was removed with administrator rights, whether or not you set the sandbox up again.
+On Windows, removing the agent sandbox with administrator rights could leave it with access to your folders. Installing Halonic again now takes that access back, whether or not you set the sandbox up again.
