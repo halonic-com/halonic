@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-`halonic validate` links an example provider file when it says to add one, and a hub's model alias on an unknown provider gets the same message as one in models.yaml.
+When `halonic validate` asks you to add a provider file, it shows a link to an example provider file under the problems, and a model alias in a `hub.yaml` that names a provider you don't have gets the same message as one in `models.yaml`.
