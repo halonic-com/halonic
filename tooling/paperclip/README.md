@@ -283,7 +283,9 @@ last 6 hours with the figures it last reported and comments on the Board
 Checker's task only when one moved clearly: merges per hour by at least 1
 and by half, the drop rate by 20 points over at least 3 exits, or the
 median time in queue by 15 minutes and by half. The first figures are only
-kept, and a snapshot older than 30 minutes is skipped.
+kept, and a snapshot older than 30 minutes is skipped. A comment only
+logged while writes are off doesn't count as reported, so the first hour
+after writes are turned on catches up.
 
 **Failed runs (part a).** Each `agent.run.failed` event is kept for 48
 hours as ids, a time and a cause code: `no_identity`, `spend_limit`,

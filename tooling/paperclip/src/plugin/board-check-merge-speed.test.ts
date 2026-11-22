@@ -64,6 +64,21 @@ verifies("paperclip.board-check-merge-speed", () => {
     expect(String(comments[0]?.args[1])).toMatch(/Board check \(plugin\)$/);
   });
 
+  test("comments the trend on the first hour after the board turns writes on, with the same figures", async () => {
+    let config: Record<string, unknown> = { boardCheckerTask: checkerTask.id };
+    const fake = fakeBoardContext({ tasks: [checkerTask], comments: {}, config: () => config });
+    const board = boardCheck(fake.ctx);
+    fake.state.set("snapshot", snapshot(at("14:55"), [], []));
+    fake.state.set("merge-speed", slowedDown);
+    await board.run(clock("15:05"));
+    config = settings;
+    fake.state.set("snapshot", snapshot(at("16:00"), [], []));
+    await board.run(clock("16:05"));
+    const comments = fake.sent.filter((write) => write.call === "createComment");
+    expect(comments).toHaveLength(1);
+    expect(String(comments[0]?.args[1])).toContain("Merge speed changed (time in queue)");
+  });
+
   test("skips the part when there is no snapshot yet", async () => {
     const fake = setUp();
     await boardCheck(fake.ctx).run(clock("15:00"));

@@ -1,4 +1,5 @@
 import { planTrend, readMergeSpeedRecord, trackQueue } from "../board-check/merge-speed.ts";
+import type { BoardWrite } from "../board-check/writes.ts";
 import { loadSnapshot } from "../snapshot/store.ts";
 import { type BoardCheckApi, errorCode, type PartPlan, stateKey } from "./board-check-api.ts";
 
@@ -32,11 +33,20 @@ export async function planMergeSpeed(
   const key = stateKey(companyId, "merge-speed");
   const tracked = trackQueue(readMergeSpeedRecord(await ctx.state.get(key)), snapshot);
   const plan = hourly ? planTrend(tracked, snapshot, now) : { comment: undefined, record: tracked };
+  const comment: BoardWrite | undefined =
+    plan.comment === undefined
+      ? undefined
+      : { kind: "comment", taskId: checkerTaskId, body: plan.comment };
   return {
-    writes:
-      plan.comment === undefined
-        ? []
-        : [{ kind: "comment", taskId: checkerTaskId, body: plan.comment }],
-    save: () => ctx.state.set(key, plan.record),
+    writes: comment === undefined ? [] : [comment],
+    // A trend comment only logged while writes are off doesn't count as
+    // reported: the next hour compares with the figures that last went out.
+    save: (sent) =>
+      ctx.state.set(
+        key,
+        comment === undefined || sent.has(comment)
+          ? plan.record
+          : { ...plan.record, reported: tracked.reported },
+      ),
   };
 }
