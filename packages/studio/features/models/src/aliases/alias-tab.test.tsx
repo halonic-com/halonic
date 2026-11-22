@@ -13,12 +13,14 @@ import { AliasTab } from "./alias-tab.tsx";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-let root: Root | undefined;
-let element: HTMLElement | undefined;
+// Every tab a test showed: a test may show more than one, and none may outlive it.
+const mounted: { root: Root; element: HTMLElement }[] = [];
 
 afterEach(() => {
-  act(() => root?.unmount());
-  element?.remove();
+  for (const { root, element } of mounted.splice(0)) {
+    act(() => root.unmount());
+    element.remove();
+  }
 });
 
 const smart: ItemRef = { kind: "model-alias", hub: "local", id: "smart" };
@@ -59,14 +61,15 @@ function memoryFiles(initial: string, providers: ProviderFile[] = []) {
 }
 
 async function showTab(files: ModelsFiles, item: ItemRef = smart): Promise<HTMLElement> {
-  element = document.createElement("div");
+  const element = document.createElement("div");
   document.body.append(element);
   const context = {
     services: limitedLookup(modelsFeature, { get: () => files }),
   } as unknown as WorkspaceContext;
-  root = createRoot(element);
+  const root = createRoot(element);
+  mounted.push({ root, element });
   await act(async () =>
-    root?.render(<AliasTab item={item} context={context} Sections={() => null} />),
+    root.render(<AliasTab item={item} context={context} Sections={() => null} />),
   );
   return element;
 }
