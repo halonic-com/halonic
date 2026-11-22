@@ -236,6 +236,14 @@ verifies("runs.run-view.sandbox-panel", () => {
     expect(container.textContent).toContain("You chose to run Coder on this computer");
   });
 
+  it("shows the Full access chip as the agent page does: amber, with the shield", () => {
+    const container = render(<SandboxOffPanel agent="Coder" place="desktop" />);
+    const chip = [...container.querySelectorAll("span")].find(
+      (span) => span.textContent === "Full access" && span.querySelector("svg") !== null,
+    );
+    expect(chip?.className).toContain("bg-attention-soft");
+  });
+
   it("says your computer on a phone", () => {
     const container = render(<SandboxOffPanel agent="Coder" place="phone" />);
     expect(container.textContent).toContain("You chose to run Coder on your computer");

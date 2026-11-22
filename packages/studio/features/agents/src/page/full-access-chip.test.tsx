@@ -66,6 +66,8 @@ verifies("agents.page.full-access-chip", () => {
     await chooseThisComputer(host);
     const chip = chipIn(await open(host));
     expect(chip?.textContent).toContain(words.fullAccessSpoken);
+    // Running without the sandbox is "have a look" (amber), not "Needs you" (violet).
+    expect(chip?.className).toContain("bg-attention-soft");
   });
 
   it("keeps the chip while the choice is on hold after the file changed", async () => {
