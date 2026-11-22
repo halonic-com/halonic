@@ -120,19 +120,16 @@ verifies("cli.commands.schema.replace-links", () => {
       writeFileSync(join(folder, "notes.txt"), "keep\n");
     });
 
-    it.skipIf(process.platform === "win32")(
-      "replaces a symbolic link and leaves the file it led to as it was",
-      async () => {
-        const path = join(folder, "schemas", schemaFileName("agent"));
-        symlinkSync(join(folder, "notes.txt"), path);
+    it("replaces a symbolic link and leaves the file it led to as it was", async () => {
+      const path = join(folder, "schemas", schemaFileName("agent"));
+      symlinkSync(join(folder, "notes.txt"), path);
 
-        expect(await runCli(["schema"], captureIo(folder), [schemaCommand])).toBe(exitCode.ok);
+      expect(await runCli(["schema"], captureIo(folder), [schemaCommand])).toBe(exitCode.ok);
 
-        expect(lstatSync(path).isSymbolicLink()).toBe(false);
-        expect(readFileSync(path, "utf8")).toBe(schemaText("agent"));
-        expect(readFileSync(join(folder, "notes.txt"), "utf8")).toBe("keep\n");
-      },
-    );
+      expect(lstatSync(path).isSymbolicLink()).toBe(false);
+      expect(readFileSync(path, "utf8")).toBe(schemaText("agent"));
+      expect(readFileSync(join(folder, "notes.txt"), "utf8")).toBe("keep\n");
+    });
 
     it("replaces a hard link and leaves the file it shared as it was", async () => {
       const path = join(folder, "schemas", schemaFileName("workflow"));
