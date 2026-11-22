@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-13180 (PR 7); HAL-485 11.6 (`agents.phone.map-fits-width`); component specs 15.8; UX checklist 9.13
 
-On the phone presentation, in a panel at least 22.5 rem wide, the agents feature shall lay the agent map out for the panel's width instead of shrinking it: three columns 22.5 rem wide in all, side cards 5.75 to 6.25 rem wide round a centre card 6.75 rem wide, with the same sides, lines and Tab order as on the desktop, every card and add button at least 48 pixels high, and the centre card's agent steps as rows at least 48 pixels high with a line between them; in a narrower panel, where the side cards can't be 92 pixels wide, it shall show the map stacked (`agents.map.stacked`).
+While the Studio uses its phone presentation and the agent map's panel is at least 22.5 rem wide, the agents feature shall lay the agent map out for the panel's width instead of shrinking it: three columns 22.5 rem wide in all, side cards 5.75 to 6.25 rem wide round a centre card 6.75 rem wide, with the same sides, lines and Tab order as on the desktop, every card and add button at least 48 pixels high, and the centre card's agent steps as rows at least 48 pixels high with a line between them; in a narrower panel, where the side cards can't be 92 pixels wide, it shall show the map stacked (`agents.map.stacked`).
 
 ## Examples
 
