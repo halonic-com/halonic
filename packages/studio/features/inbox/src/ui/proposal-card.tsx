@@ -225,7 +225,7 @@ function AllButtons({ state }: { readonly state: ProposalDecisionState }) {
   );
 }
 
-/** Where the window can't decide: the line and the command that accepts the proposal in a terminal. */
+/** Where the window can't decide: the line and the command that shows the proposal on your computer. */
 function DecideElsewhere({ runId }: { readonly runId: string }) {
   return (
     <div className="flex flex-col gap-2 text-body text-fg-muted">

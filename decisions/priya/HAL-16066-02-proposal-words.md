@@ -3,6 +3,7 @@
 - Task: HAL-16066
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16066 (a team decision with no board card, HAL-2282 rule: wording on the approved Inbox and proposal page; row 26 of the designer's words check C665 on HAL-16044, and row 22 of C671 on HAL-16090, task HAL-16104)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JTDl8rKSaWzpIVe3OPuCejH8+ExXesmJy4B0Q8dikn7b3pVKbbfa2J+LkqdRfaSokzysAYduzihPcxXAXEQuDw==
 
 ## What changes
 
