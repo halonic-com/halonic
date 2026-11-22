@@ -3,6 +3,7 @@
 - Task: HAL-15738, HAL-15867
 - Approval: Sofia's words check C621, rows 4, 34 to 36, 53, 54, 55 and 57 (https://paperclip.halonic.com/HAL/issues/HAL-15726#document-c621), assigned on HAL-15738, and Sofia's words check C641, rows 5 to 7, 13, 28, 29 and 33 (https://paperclip.halonic.com/HAL/issues/HAL-15856#document-c641), assigned on HAL-15867. A team decision on command output and an approved Studio toast, with no board card (HAL-2282 rule). Liam approves it in the review of this pull request.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:tYwVvZNDKgZDJ1YhFrb2Vcs3Y4ptwkt9Ifex/GcXRkA/XZ/1Qmp6S9iL8Epa42otoPZjKwxdpz+Z3Qt0Wj2QDw==
 
 ## What changes
 
