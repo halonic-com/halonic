@@ -28,26 +28,30 @@ verifies("studio.workspace-agents-map", () => {
     });
   });
 
-  it("counts a connector's tools that ask first, among those agents can see", async () => {
+  it("counts a connector's tools that run without asking, by the engine's rule", async () => {
     const { host, store } = setup();
     const connector = (id: string, tools: string) =>
       `version: 1\nid: ${id}\nname: ${id}\ntransport: { http: { url: https://${id}.example/mcp } }\ntools: ${tools}\n`;
-    store["hubs/acme/library/connectors/one.connector.yaml"] = connector(
-      "one",
-      "{ approve: [send_mail] }",
-    );
+    store["hubs/acme/library/connectors/plain.connector.yaml"] = connector("plain", "{}");
     store["hubs/acme/library/connectors/every.connector.yaml"] = connector(
       "every",
-      "{ approve: all }",
+      "{ approve: all, read: [read_mail] }",
     );
-    store["hubs/acme/library/connectors/calm.connector.yaml"] = connector("calm", "{}");
+    store["hubs/acme/library/connectors/some.connector.yaml"] = connector(
+      "some",
+      "{ approve: [read_mail], read: [search_mail, read_mail] }",
+    );
     store["hubs/acme/library/connectors/hidden.connector.yaml"] = connector(
       "hidden",
-      "{ approve: [send_mail, drop_mail], allow: [send_mail, read_mail] }",
+      "{ read: [search_mail, read_mail], allow: [send_mail, search_mail] }",
     );
     const { connectors } = await host.toolOptions(writer);
-    const byId = Object.fromEntries(connectors.map((each) => [each.id, each.asksFirst]));
-    expect(byId).toEqual({ one: 1, every: "all", calm: undefined, hidden: 1 });
-    expect(connectors.find((each) => each.id === "calm")).toEqual({ id: "calm", name: "calm" });
+    const byId = Object.fromEntries(connectors.map((each) => [each.id, each.toolsWithoutAsking]));
+    expect(byId).toEqual({ plain: 0, every: 0, some: 1, hidden: 1 });
+    expect(connectors.find((each) => each.id === "plain")).toEqual({
+      id: "plain",
+      name: "plain",
+      toolsWithoutAsking: 0,
+    });
   });
 });

@@ -196,10 +196,11 @@ export interface AgentToolOption {
   readonly id: string;
   readonly name: string;
   /**
-   * For a connector: how many of its tools wait for a person's approval before they run, or `all`
-   * when its file says every one does (`tools.approve`). Absent or 0 when none does.
+   * For a connector: how many of its tools can run without a person's approval, by the engine's
+   * rule (the ones `tools.read` marks as only reading); every other tool asks first, so 0 means
+   * every tool does. Absent for a skill or knowledge.
    */
-  readonly asksFirst?: number | "all" | undefined;
+  readonly toolsWithoutAsking?: number | undefined;
 }
 
 /** A change to an agent's settings; a field left out stays as it is. */

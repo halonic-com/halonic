@@ -1,3 +1,4 @@
+import { asksBeforeEachUse, type Connector } from "@halonicjs/format";
 import type {
   AgentRef,
   AgentRoutine,
@@ -55,23 +56,25 @@ export function agentRoutinesOf(
 }
 
 /**
- * How many of a connector's tools ask a person first: `all` when its `tools.approve` says so, else
- * the ones it names that agents can see (`tools.allow`, when it has one); `undefined` for none.
+ * How many of a connector's tools can run without asking a person first, by the engine's rule
+ * ({@link asksBeforeEachUse}, HAL-12545): the ones its `tools.read` names that `tools.approve`
+ * doesn't, among those agents can see (`tools.allow`, when it has one). Every other tool asks first.
+ * It's at most that many: the map has no listing, and a tool whose listing says `send` asks first
+ * anyway, so the card stays on the safe side.
  */
-export function asksFirstOf(tools: {
-  readonly approve: readonly string[] | "all";
-  readonly allow?: readonly string[] | undefined;
-}): number | "all" | undefined {
-  if (tools.approve === "all") return "all";
+export function toolsWithoutAskingOf(
+  tools: Pick<Connector["tools"], "approve" | "read" | "allow">,
+): number {
   const { allow } = tools;
-  const count = tools.approve.filter((tool) => allow === undefined || allow.includes(tool)).length;
-  return count === 0 ? undefined : count;
+  return [...new Set(tools.read)].filter(
+    (tool) => (allow === undefined || allow.includes(tool)) && !asksBeforeEachUse(tools, tool),
+  ).length;
 }
 
 /**
  * The skills, knowledge and connectors the hub can use: its own, then the shared ones, only those
- * its `uses` lists when it has one (as the workspace check allows); connectors say which of their
- * tools ask first.
+ * its `uses` lists when it has one (as the workspace check allows); connectors say how many of
+ * their tools can run without asking first.
  */
 export function toolOptionsOf(
   workspace: LoadedWorkspace,
@@ -96,9 +99,9 @@ export function toolOptionsOf(
   return {
     skills: optionsOf("skills", "skill").map(named),
     knowledge: optionsOf("knowledge", "knowledge").map(named),
-    connectors: optionsOf("connectors", "connector").map((connector) => {
-      const asksFirst = asksFirstOf(connector.tools);
-      return { ...named(connector), ...(asksFirst !== undefined && { asksFirst }) };
-    }),
+    connectors: optionsOf("connectors", "connector").map((connector) => ({
+      ...named(connector),
+      toolsWithoutAsking: toolsWithoutAskingOf(connector.tools),
+    })),
   };
 }

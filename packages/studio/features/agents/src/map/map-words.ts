@@ -19,11 +19,14 @@ export const mapWords = {
   /** A workflow card's name: "Workflow Support reply, uses Sorter in triage and draft" (mc 19.7). */
   workflowCard: (workflow: string, agent: string, stepIds: readonly string[]) =>
     `Workflow ${workflow}, uses ${agent} in ${stepList.format(stepIds)}`,
-  /** A connector card's words by its hand: "1 tool asks first", "every tool asks first" (mc 19.7). */
-  asksFirst: (tools: number | "all") =>
-    tools === "all"
-      ? "every tool asks first"
-      : `${tools} ${tools === 1 ? "tool asks" : "tools ask"} first`,
+  /**
+   * A connector card's words by its hand, from how many of its tools can run without asking:
+   * "Every tool asks first", "Asks first, except 1 read-only tool" (mc 19.7, HAL-15628).
+   */
+  asksFirst: (withoutAsking: number) =>
+    withoutAsking === 0
+      ? "Every tool asks first"
+      : `Asks first, except ${withoutAsking} read-only ${withoutAsking === 1 ? "tool" : "tools"}`,
   /** A summary card's counts, the kinds with none left out: "2 workflows · 1 agent". */
   summary: {
     in: (routines: number, workflows: number, agents: number) =>
