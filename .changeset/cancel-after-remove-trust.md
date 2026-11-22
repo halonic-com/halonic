@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-Cancel run after Remove trust closed the folder now says the workspace isn't trusted and offers Review, instead of a failure Halonic couldn't explain.
+In the first run, Cancel run after you remove the workspace's trust now says the workspace isn't trusted yet and offers Review, instead of a problem Halonic can't explain.

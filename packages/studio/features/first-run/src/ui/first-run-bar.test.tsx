@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 import type { RunSummary } from "@halonicjs/events";
 import { PresentationProvider } from "@halonicjs/studio-kit";
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import {
+  EngineNotAnswering,
+  type WorkspaceContext,
+  WorkspaceUntrusted,
+} from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -207,17 +211,96 @@ verifies("first-run.bar", () => {
     expect(bar.querySelector("button")?.getAttribute("aria-busy")).not.toBe("true");
   });
 
-  it("says when the run couldn't be cancelled, and keeps Cancel run", async () => {
+  it.each([
+    [
+      "the engine can't be reached",
+      new EngineNotAnswering(),
+      "Couldn't cancel the run: the engine isn't answering. It may still be starting.",
+    ],
+    [
+      "anything else",
+      new Error("There's no run."),
+      "Couldn't cancel the run: Halonic ran into a problem it can't explain yet.",
+    ],
+  ])(
+    "says why the run couldn't be cancelled when %s, and keeps Cancel run",
+    async (_, error, line) => {
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+      const firstRun = firstRunOf(on("run"));
+      const start = new FirstRunStart(firstRun, { startRun: vi.fn(), cancelRun: vi.fn() });
+      vi.spyOn(start, "cancel").mockRejectedValue(error);
+      const bar = renderBar(firstRun, "desktop", start);
+      await act(async () => bar.querySelector("button")?.click());
+      expect(bar.querySelector("[role=alert]")?.textContent).toBe(line);
+      expect([...bar.querySelectorAll("button")].map((button) => button.textContent)).toEqual([
+        "Cancel run",
+      ]);
+      expect(logged).toHaveBeenCalledWith("Cancel run", error);
+    },
+  );
+
+  /** The bar at Run with a cancel the engine refuses because the workspace isn't trusted. */
+  function untrustedBar(answer: "trusted" | "declined") {
     vi.spyOn(console, "error").mockImplementation(() => {});
+    const askTrust = vi.fn(async () => answer);
+    let trustedElsewhere = () => {};
+    const onTrusted = (listener: () => void) => {
+      trustedElsewhere = listener;
+      return () => {};
+    };
     const firstRun = firstRunOf(on("run"));
-    const start = new FirstRunStart(firstRun, { startRun: vi.fn(), cancelRun: vi.fn() });
-    vi.spyOn(start, "cancel").mockRejectedValue(new Error("There's no run."));
-    const bar = renderBar(firstRun, "desktop", start);
-    await act(async () => bar.querySelector("button")?.click());
-    expect(bar.querySelector("[role=alert]")?.textContent).toBe(
-      "Couldn't cancel the run. Try again.",
+    const start = new FirstRunStart(firstRun, {
+      startRun: vi.fn(),
+      cancelRun: vi.fn(),
+      askTrust,
+      onTrusted,
+    });
+    vi.spyOn(start, "cancel").mockRejectedValue(
+      new WorkspaceUntrusted("This workspace isn't trusted yet."),
     );
-    expect(bar.querySelector("button")?.textContent).toBe("Cancel run");
+    const bar = renderBar(firstRun, "desktop", start);
+    return { bar, askTrust, trustedElsewhere: () => act(() => trustedElsewhere()) };
+  }
+
+  const buttonsOf = (bar: HTMLElement) =>
+    [...bar.querySelectorAll("button")].map((button) => button.textContent);
+  const press = (bar: HTMLElement, label: string) =>
+    act(async () =>
+      [...bar.querySelectorAll("button")].find((button) => button.textContent === label)?.click(),
+    );
+
+  it("says the workspace isn't trusted yet when the engine refused the cancel, with Review", async () => {
+    const { bar } = untrustedBar("declined");
+    await press(bar, "Cancel run");
+    expect(bar.querySelector("[role=alert]")?.textContent).toBe(
+      "Couldn't cancel the run: this workspace isn't trusted yet.",
+    );
+    expect(buttonsOf(bar)).toEqual(["Review", "Cancel run"]);
+  });
+
+  it("opens the trust check from Review; a yes takes the line off and focuses Cancel run", async () => {
+    const { bar, askTrust } = untrustedBar("trusted");
+    await press(bar, "Cancel run");
+    await press(bar, "Review");
+    expect(askTrust).toHaveBeenCalledOnce();
+    expect(bar.querySelector("[role=alert]")).toBeNull();
+    expect(buttonsOf(bar)).toEqual(["Cancel run"]);
+    expect(document.activeElement?.textContent).toBe("Cancel run");
+  });
+
+  it("keeps the line and Review when the trust check is declined", async () => {
+    const { bar } = untrustedBar("declined");
+    await press(bar, "Cancel run");
+    await press(bar, "Review");
+    expect(buttonsOf(bar)).toEqual(["Review", "Cancel run"]);
+  });
+
+  it("takes the line off when the workspace is trusted from elsewhere", async () => {
+    const { bar, trustedElsewhere } = untrustedBar("declined");
+    await press(bar, "Cancel run");
+    trustedElsewhere();
+    expect(bar.querySelector("[role=alert]")).toBeNull();
+    expect(buttonsOf(bar)).toEqual(["Cancel run"]);
   });
 
   it("draws nothing outside the first run: another folder, off, or after the win", () => {
