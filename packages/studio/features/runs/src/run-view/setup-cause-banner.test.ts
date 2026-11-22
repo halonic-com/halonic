@@ -77,7 +77,7 @@ verifies("runs.run-view.failure-banners", () => {
       const banner = causeBanner(run, undefined, context, true);
       expect(lines(banner)).toEqual([
         "Support reply failed in the step Draft: the model mok/echo names the provider mok, which the workspace doesn't have.",
-        "Add the provider mok in Models, or change mok/echo to a provider the workspace has.",
+        "Add the provider mok in Models, or give the agent a model from a provider the workspace has.",
         "Fix this on your computer: Models",
       ]);
       expect(fixes(banner)).toBeUndefined();
@@ -105,7 +105,7 @@ verifies("runs.run-view.failure-banners", () => {
       ]);
     });
 
-    it("says an event no transition takes, and the transition to add", () => {
+    it("says an event no arrow is on, and the arrow to add", () => {
       const only = setupFailure("workflow.no-transition", {
         event: "done",
         takes: "approve,reject",
@@ -113,8 +113,8 @@ verifies("runs.run-view.failure-banners", () => {
       });
       const banner = causeBanner(only, undefined, context, false);
       expect(lines(banner)).toEqual([
-        "Support reply failed in the step Draft: it ended with the event done, but its transitions only take approve or reject.",
-        "Remove their event, or add a transition without event.",
+        "Support reply failed in the step Draft: it ended with the event done, but its arrows are only on approve or reject.",
+        "Change one arrow's On event to done, or add an arrow on done.",
       ]);
       expect(fixes(banner)).toEqual([{ kind: "see-step" }]);
 
@@ -124,17 +124,30 @@ verifies("runs.run-view.failure-banners", () => {
         guarded: "true",
       });
       expect(lines(causeBanner(guarded, undefined, context, false))).toEqual([
-        "Support reply failed in the step Draft: its transitions for done all have a when that didn't pass.",
-        "Add a transition for done without when, as the last one, so the run always has somewhere to go.",
+        "Support reply failed in the step Draft: its arrows on done all have a condition that didn't match.",
+        "Add an arrow on done with no condition, as the last one, so the run always has somewhere to go.",
       ]);
     });
 
-    it("says a task step that names no agent", () => {
+    it("names the arrow card's On event in the fix for one arrow, none, or another event", () => {
+      const fix = (detail: Record<string, string>) =>
+        lines(
+          causeBanner(setupFailure("workflow.no-transition", detail), undefined, context, false),
+        )?.at(-1);
+      expect(fix({ event: "done", takes: "approve" })).toBe(
+        "Change the On event of the arrow on approve to done, or add an arrow on done.",
+      );
+      // The engine leaves `takes` out when the step has no arrows at all.
+      expect(fix({ event: "done" })).toBe("Add an arrow from it on its card.");
+      expect(fix({ event: "reject", takes: "approve" })).toBe("Add an arrow on reject.");
+    });
+
+    it("says an agent step with no agent", () => {
       const run = setupFailure("workflow.task-without-agent", {});
       const banner = causeBanner(run, undefined, context, false);
       expect(lines(banner)).toEqual([
-        "Support reply failed in the step Draft: the step names no agent.",
-        "Give it an agent (agent: <id>), or make it a wait step.",
+        "Support reply failed in the step Draft: it's an agent step with no agent.",
+        "Pick an agent on its card, or make it a wait step.",
       ]);
       expect(fixes(banner)).toEqual([{ kind: "see-step" }]);
     });
