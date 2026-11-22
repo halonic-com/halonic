@@ -171,7 +171,7 @@ test("each job container is capped and unprivileged (C5)", () => {
   for (const flag of [
     "--cap-drop ALL",
     "--security-opt no-new-privileges",
-    '--memory-swap "$MEM"',
+    '--memory-swap "$MEM_START"',
     "--pids-limit 8192",
     "--rm",
   ]) {
@@ -185,6 +185,21 @@ test("each job container is capped and unprivileged (C5)", () => {
   assert.ok(slot.includes("-v /etc/halonic-ci/pool:/etc/halonic-ci:ro"));
   assert.match(slot, /^JOB_WORK=\/home\/runner\/actions-runner\/_work /m);
   assert.ok(slot.includes('-v "$WORK:$JOB_WORK"'));
+});
+
+test("a job container starts at MEM_START and grows only up to MEM, with swap kept equal", () => {
+  const slot = read("vm/halonic-runner-slot.sh");
+  assert.match(slot, /^ {2}large-\*\).* MEM=10g; MEM_START=4g; /m);
+  assert.match(slot, /^ {2}small-\*\).* MEM=3g; {2}MEM_START=2g; /m);
+  assert.ok(slot.includes('--memory "$MEM_START" --memory-swap "$MEM_START"'));
+  assert.doesNotMatch(slot, /--memory "\$MEM" /);
+  // Growth: never past MEM, swap raised with the limit, and only while the VM keeps its reserve.
+  assert.ok(slot.includes('[ "$new" -gt "$MAX_B" ] && new=$MAX_B'));
+  assert.ok(slot.includes('docker update --memory "$new" --memory-swap "$new" "hci-$SLOT"'));
+  assert.ok(slot.includes('if [ "${avail:-0}" -gt $((STEP_B + RESERVE_B)) ]; then'));
+  for (const field of ["mem_anon_peak:$anon", "mem_start:$memstart", "mem_grows:$grows"]) {
+    assert.ok(slot.includes(field), `jobs.jsonl lacks ${field}`);
+  }
 });
 
 test("the slot script fails closed on the App key and userns-remap, and caps the shared caches", () => {
