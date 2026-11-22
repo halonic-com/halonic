@@ -77,15 +77,15 @@ async function press(button: HTMLButtonElement | undefined) {
 
 verifies("inbox.proposal-page", () => {
   describe("in a window that can't decide", () => {
-    it("has no Accept or Reject, and ends with the command that accepts the proposal", () => {
+    it("has no Accept or Reject, and ends with the command that shows the proposal", () => {
       const { root } = open(undefined);
       expect(buttons(root, "Accept all")).toEqual([]);
       expect(buttons(root, "Accept")).toEqual([]);
       expect(buttons(root, "Reject")).toEqual([]);
       expect(root.textContent).toContain(
-        "These changes can't be accepted here yet. To accept them, run this in a terminal:",
+        "Studio can't accept or reject these changes here. To see them and decide, use the desktop app, or run this on your computer:",
       );
-      expect(root.querySelector("code")?.textContent).toBe("halonic proposals accept 01JD8Q");
+      expect(root.querySelector("code")?.textContent).toBe("halonic proposals show 01JD8Q");
       expect(root.querySelector('button[aria-label="Copy command"]')).not.toBeNull();
     });
 

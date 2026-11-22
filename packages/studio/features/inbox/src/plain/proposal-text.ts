@@ -144,17 +144,18 @@ export function undoLeftAloneLine(verb: "accepted" | "rejected", paths: readonly
 
 /**
  * On a proposal the window can't decide (no Accept or Reject here), the line before the command
- * that accepts it in a terminal, {@link decideCommand} (microcopy 1.5, C665 37).
+ * that shows it, {@link decideCommand}. Only a served Studio or a phone gets it, so it says where
+ * to go, "on your computer", not "in a terminal" on the device in hand (C671 22).
  */
 export const decideElsewhereLine =
-  "These changes can't be accepted here yet. To accept them, run this in a terminal:";
+  "Studio can't accept or reject these changes here. To see them and decide, use the desktop app, or run this on your computer:";
 
 /**
- * The command that accepts a run's proposal: "halonic proposals accept 01JD8Q". The CLI takes the
- * short id in either case.
+ * The command that shows a run's proposal with its diffs, and ends with how to accept or discard
+ * it: "halonic proposals show 01JD8Q". The CLI takes the short id in either case.
  */
 export function decideCommand(runId: string): string {
-  return `halonic proposals accept ${shortRunId(runId)}`;
+  return `halonic proposals show ${shortRunId(runId)}`;
 }
 
 /**

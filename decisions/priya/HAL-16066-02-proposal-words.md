@@ -1,7 +1,7 @@
-# Decision: a run proposal's file changed since the run keeps Reject, and the command accepts
+# Decision: a run proposal's file changed since the run keeps Reject; a window that can't decide points to your computer
 
 - Task: HAL-16066
-- Approval: https://paperclip.halonic.com/HAL/issues/HAL-16066 (a team decision with no board card, HAL-2282 rule: wording on the approved Inbox and proposal page; rows 26 and 37 of the designer's words check C665 on HAL-16044)
+- Approval: https://paperclip.halonic.com/HAL/issues/HAL-16066 (a team decision with no board card, HAL-2282 rule: wording on the approved Inbox and proposal page; row 26 of the designer's words check C665 on HAL-16044, and row 22 of C671 on HAL-16090, task HAL-16104)
 - Kind: user-visible
 
 ## What changes
@@ -15,11 +15,13 @@
   **Reject**, which takes focus in place of its **Accept**. Once every undecided file changed,
   **Accept all** doesn't show, since it could decide none of them. The agent host's Reject
   doesn't check the disk, so it settles such a file.
-- **Where the window can't decide (C665 37, microcopy 1.5).** The line becomes "These changes can't
-  be accepted here yet. To accept them, run this in a terminal:" with
-  `halonic proposals accept 01JD8Q` to copy, in place of `halonic proposals show`. It names only
-  the verb the page and the CLI share (C672 #5, HAL-16100): the CLI calls a reject `discard`, and
-  the line sends the reader to the CLI.
+- **Where the window can't decide (C671 22, replacing C665 37).** Only a served Studio and the
+  phone get this line, so "in a terminal" pointed at the device in the person's hand. It becomes
+  "Studio can't accept or reject these changes here. To see them and decide, use the desktop app,
+  or run this on your computer:", still with `halonic proposals show 01JD8Q` to copy. C665 37's
+  "yet" and `halonic proposals accept` are dropped, and so is C672 #5's "These changes can't be
+  accepted here yet." (HAL-16100): the words check C671 keeps "here" and `show`, and "accept or
+  reject" matches the CLI once `halonic proposals reject` replaces `discard` (HAL-16071).
 
 ## Covers
 
