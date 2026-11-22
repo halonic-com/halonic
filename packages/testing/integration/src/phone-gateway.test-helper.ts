@@ -8,7 +8,7 @@ import type {
   ComputerTunnelEvent,
   ComputerTunnelSendResult,
   RemoteView,
-} from "@halonicjs/studio-feature-remote/phone";
+} from "@halonicjs/studio-feature-remote/phone-client";
 
 /** The one session this tunnel ever opens. */
 const generation = 1;

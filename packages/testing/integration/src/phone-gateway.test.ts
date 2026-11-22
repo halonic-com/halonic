@@ -1,5 +1,5 @@
 import { openListener } from "@halonicjs/adapter-remote-gateway/testing";
-import { GatewayClient, RECONNECT_TO_ANSWER } from "@halonicjs/studio-feature-remote/phone";
+import { GatewayClient, RECONNECT_TO_ANSWER } from "@halonicjs/studio-feature-remote/phone-client";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
 import { TestPhoneTunnel, until } from "./phone-gateway.test-helper.ts";

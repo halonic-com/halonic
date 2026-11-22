@@ -79,7 +79,8 @@
       "./error-kind"
     ],
     "@halonicjs/studio-feature-remote": [
-      "./phone"
+      "./phone",
+      "./phone-client"
     ],
     "@halonicjs/testing-contracts": [
       "./node"
