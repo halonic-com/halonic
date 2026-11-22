@@ -50,3 +50,4 @@ an optional port, an engine host could serve the route without that check; a req
 - packages/host/server/src/engine-server.test.ts
 - apps/studio/src-tauri/src/engine_routes_tests.rs
 - apps/cli/src/commands/serve/serve-model-settings.test.ts
+- apps/cli/src/commands/serve/model-settings-gate.test.ts
