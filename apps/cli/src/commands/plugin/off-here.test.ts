@@ -6,8 +6,9 @@ import type { RunnerFence } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
+import type { QuestionTerminal } from "../../output/question.ts";
 import type { PluginSetup } from "../../plugin-host.ts";
-import { runCli } from "../../run-cli.ts";
+import { runCli, type Terminal } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
 import { removeTestFolder } from "../../test/remove-folder.ts";
 import { createTrustCommand } from "../trust/command.ts";
@@ -80,8 +81,14 @@ async function source(id: string, backend: boolean): Promise<string> {
 }
 
 async function plugin(...args: string[]) {
+  return await pluginIn(undefined, ...args);
+}
+
+async function pluginIn(terminal: Terminal | undefined, ...args: string[]) {
   const io = captureIo(folder);
-  const code = await runCli(["plugin", ...args], io, [pluginCommandWith(setup())]);
+  const code = await runCli(["plugin", ...args], io, [pluginCommandWith(setup())], {
+    ...(terminal === undefined ? {} : { terminal }),
+  });
   return { code, io };
 }
 
@@ -104,8 +111,25 @@ async function addOff(): Promise<string> {
 
 const reasonLines = [
   "  Halonic is running inside a container, and the sandbox can't start there. Run Halonic on the computer itself, not in a container.",
-  "  Or allow this in the Halonic desktop app. The halonic command runs plugin code only in the sandbox.",
+  "  Or allow this in the Halonic desktop app: Settings › Plugins › Weather › Review. The halonic command runs plugin code only in the sandbox.",
 ];
+
+/** A terminal on stdin where the user types `answers`, keeping what was written to stderr. */
+function terminalTyping(...answers: string[]) {
+  const written: string[] = [];
+  const questions: QuestionTerminal = {
+    write: (text) => written.push(text),
+    readLine: async () => answers.shift(),
+  };
+  const terminal: Terminal = {
+    env: { LANG: "en_US.UTF-8", NO_COLOR: "1" },
+    platform: "linux",
+    stdoutIsTerminal: true,
+    stderrIsTerminal: true,
+    questions,
+  };
+  return { terminal, written: () => written.join("") };
+}
 
 verifies("cli.commands.plugin.off-here", () => {
   it("says a plugin trusted with trust --plugin is off here, why, and where to allow it", async () => {
@@ -160,7 +184,7 @@ verifies("cli.commands.plugin.off-here", () => {
     });
   });
 
-  it("gives the CLI's own fix for a sandbox that isn't set up, never Studio's Settings", async () => {
+  it("gives the CLI's own fix for a sandbox that isn't set up, not Studio's Settings", async () => {
     fence = { state: "not-fenced", reason: "setup-needed" };
     await trust("--plugin", "weather", "--yes", "--fingerprint", await addOff());
 
@@ -170,7 +194,32 @@ verifies("cli.commands.plugin.off-here", () => {
       "  The sandbox's one-time setup isn't done for this version of Halonic. Use Halonic inside WSL 2 on this computer.",
       reasonLines[1],
     ]);
-    expect(listed.io.stdout.join("\n")).not.toContain("Settings");
+    // Only the place line names the desktop app's Settings; the fix doesn't.
+    expect(listed.io.stdout[1]).not.toContain("Settings");
+  });
+
+  it("says it stays off here, why and where to allow it before asking to trust it", async () => {
+    const { terminal, written } = terminalTyping("y");
+
+    const added = await pluginIn(terminal, "add", await source("weather", true));
+
+    expect(added.code).toBe(exitCode.ok);
+    const warning =
+      "! Trusting Weather won't turn it on: it stays off on this computer until you allow plugins and integrations to run without the sandbox.";
+    // Right above the question, after the check and its fingerprint.
+    expect(written()).toContain(
+      [warning, ...reasonLines, "", "Trust Weather and turn it on? [y/N] "].join("\n"),
+    );
+  });
+
+  it("asks without the warning in the sandbox", async () => {
+    fence = { state: "fenced" };
+    const { terminal, written } = terminalTyping("n");
+
+    await pluginIn(terminal, "add", await source("weather", true));
+
+    expect(written()).toContain("Trust Weather and turn it on?");
+    expect(written()).not.toContain("won't turn it on");
   });
 
   it("says on as before in the sandbox, and doesn't ask for a plugin without a backend", async () => {

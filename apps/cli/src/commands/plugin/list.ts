@@ -114,7 +114,7 @@ async function pluginRow(
       off === undefined ? stateCell(state, entry.folder) : offHereCell(),
     ],
     under: [
-      ...(off === undefined ? [] : offHereReasonLines(off)),
+      ...(off === undefined ? [] : offHereReasonLines(off, printable(entry.plugin.name))),
       ...(runs === undefined ? [] : [programsRunLine(runs)]),
     ],
     json: {

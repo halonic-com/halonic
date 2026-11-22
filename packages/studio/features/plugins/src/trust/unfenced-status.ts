@@ -33,6 +33,25 @@ export interface PluginUnfencedRuns {
   readonly allow: (
     reason: RunnerUnfencedReason,
   ) => Promise<{ readonly reason: string; readonly allowedAt: string } | null>;
+  /**
+   * Calls `listener` after the yes changed in this window: a Take back in Settings or a yes saved
+   * in a trust check, so an open plugin page and the Plugins list read the status again (C565
+   * row 3). Returns the way to stop. Without it, they read it only when they open.
+   */
+  readonly subscribe?: (listener: () => void) => () => void;
+}
+
+/**
+ * Calls `read` each time the window's yes changes, while the view that reads it is shown.
+ *
+ * @example
+ * useYesChanges(unfencedRuns, status.read);
+ */
+export function useYesChanges(
+  unfencedRuns: PluginUnfencedRuns | undefined,
+  read: () => void,
+): void {
+  useEffect(() => unfencedRuns?.subscribe?.(read), [unfencedRuns, read]);
 }
 
 /** The trust check's fence and saved yes, from the host's answer. */

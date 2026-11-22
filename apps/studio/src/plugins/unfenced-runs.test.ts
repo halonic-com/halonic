@@ -75,6 +75,49 @@ verifies("studio.desktop-unfenced-runs", () => {
       expect(calls).toEqual(["take back", "status"]);
     });
 
+    it("tells its subscribers when a Take back ends, even a refused one, and when a yes is saved", async () => {
+      const { routes, takeBack, allow } = acmeRoutes();
+      const unfenced = desktopUnfencedRuns(routes);
+      const told: string[] = [];
+      const stop = unfenced.subscribe?.(() => told.push("changed"));
+
+      const taking = unfenced.takeBack();
+      await settle();
+      expect(told).toEqual([]);
+      takeBack.fail(new Error("take_back_incomplete"));
+      await expect(taking).rejects.toThrow("take_back_incomplete");
+      expect(told).toEqual(["changed"]);
+
+      const saving = unfenced.allow("windows");
+      allow.settle({ reason: "windows", allowedAt: "2026-11-21T10:00:00Z" });
+      await saving;
+      expect(told).toEqual(["changed", "changed"]);
+
+      stop?.();
+      await unfenced.takeBack().catch(() => {});
+      expect(told).toEqual(["changed", "changed"]);
+    });
+
+    it("tells no one when nothing was saved, and keeps telling the others when one throws", async () => {
+      const { routes, allow, takeBack } = acmeRoutes();
+      const unfenced = desktopUnfencedRuns(routes);
+      const told: string[] = [];
+      unfenced.subscribe?.(() => {
+        throw new Error("a view that's gone");
+      });
+      unfenced.subscribe?.(() => told.push("changed"));
+
+      const saving = unfenced.allow("windows");
+      allow.settle(null);
+      await saving;
+      expect(told).toEqual([]);
+
+      const taking = unfenced.takeBack();
+      takeBack.settle();
+      await taking;
+      expect(told).toEqual(["changed"]);
+    });
+
     it("lets a Take back wait for a yes already sent, so it removes that one too", async () => {
       const { routes, calls, takeBack, allow } = acmeRoutes();
       const unfenced = desktopUnfencedRuns(routes);

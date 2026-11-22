@@ -206,3 +206,13 @@ describe("plugin's sentences", () => {
     );
   });
 });
+
+verifies("cli.commands.plugin.off-here", () => {
+  it("names the desktop app's place with › marks, and > where the stream isn't UTF-8", () => {
+    const allow = pluginMessages.offHereAllow("Weather").phrase;
+    const place = "Settings › Plugins › Weather › Review";
+    expect(plainText(allow)).toContain(place);
+    const oldConsole = paintFor({ colour: false, live: false, unicode: false });
+    expect(renderPhrase(allow, oldConsole)).toContain("Settings > Plugins > Weather > Review");
+  });
+});

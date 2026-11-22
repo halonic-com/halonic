@@ -247,7 +247,7 @@ async function trustAdded(
     if (answer.offHere !== undefined) {
       return {
         exitCode: exitCode.ok,
-        lines: offHereLines(offHere, answer.offHere),
+        lines: offHereLines(offHere, answer.offHere, name),
         json: {
           ...json,
           fingerprint: entry.fingerprint,
