@@ -228,7 +228,7 @@ verifies("cli.commands.sandbox.remove", () => {
     expect(next.code).toBe(exitCode.ok);
     expect(next.io.stdout).toEqual([
       "✓ Removed the agent sandbox",
-      "  Its access to your project folders ends the next time you start Halonic without administrator rights.",
+      "  It still has access to your project folders. To end that, run halonic sandbox remove again from a terminal that isn't running as administrator.",
     ]);
     const json = await sandboxCli(untilStart, ["remove", "--yes", "--json"]);
     expect(JSON.parse(json.io.stdout.join("\n"))).toMatchObject({

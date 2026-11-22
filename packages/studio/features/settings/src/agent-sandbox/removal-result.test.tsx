@@ -100,7 +100,7 @@ verifies("settings.agent-sandbox-removal-result", () => {
 
   it("says a removal that kept some access until Halonic next starts, on screen and out loud", async () => {
     const kept =
-      "Sandbox removed. Its access to your project folders ends the next time you start Halonic without administrator rights.";
+      "Sandbox removed. It still has access to your project folders until you quit Halonic and open it again normally, not as administrator.";
     const { view, announce, end } = await readyHost();
     await removeFrom(view);
     await end(
@@ -143,7 +143,7 @@ verifies("settings.agent-sandbox-removal-result", () => {
     await act(async () => {});
     expect(announce).toHaveBeenCalledWith(
       expect.stringMatching(
-        /^Sandbox removed\. Its access to your project folders ends the next time you start Halonic without administrator rights\. The sandbox needs/,
+        /^Sandbox removed\. It still has access to your project folders until you quit Halonic and open it again normally, not as administrator\. The sandbox needs/,
       ),
     );
   });
