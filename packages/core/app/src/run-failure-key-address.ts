@@ -4,6 +4,8 @@
 // names each in its cause (`models.<code>`); these read the facts from the
 // cause's detail. The key is named, never its value.
 
+import type { KeyOrigins } from "@halonicjs/ports";
+
 /** A refused key or provider, by the reason its lines name, with the facts they need. */
 export type KeyAddressFailure =
   | {
@@ -15,6 +17,11 @@ export type KeyAddressFailure =
       readonly key: string;
       /** The address the key would have gone to, as scheme, host and port, such as `https://other.example.com`. */
       readonly address: string;
+      /**
+       * The list that refused, when the cause says (HAL-15762): the keychain's, which Studio's
+       * Models edits, or the profile's secrets file's, which `halonic models allow-address` edits.
+       */
+      readonly store?: NonNullable<KeyOrigins["store"]>;
     }
   | {
       /** The key would go to an address other than its type's own, and the workspace isn't trusted here. */
@@ -36,13 +43,19 @@ export function keyAddressFailureOf(
   code: string | undefined,
   detail: Readonly<Record<string, string>>,
 ): KeyAddressFailure | undefined {
-  const { provider, key, origin } = detail;
+  const { provider, key, origin, store } = detail;
   if (provider === undefined) return undefined;
   switch (code) {
     case "models.key-origin-not-allowed":
       return key === undefined || origin === undefined
         ? undefined
-        : { reason: "key-address-not-allowed", provider, key, address: origin };
+        : {
+            reason: "key-address-not-allowed",
+            provider,
+            key,
+            address: origin,
+            ...(store === "keychain" || store === "secrets-file" ? { store } : {}),
+          };
     case "models.untrusted-provider-address":
       return origin === undefined
         ? undefined

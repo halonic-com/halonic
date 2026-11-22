@@ -102,7 +102,7 @@ export function profileKeyOrigins(
   profile: () => ProfileEnvironment = nodeProfileEnvironment,
 ): KeyOrigins {
   const file = lazily(() => openSecretStore(profile()));
-  return { allowedOrigins: (name) => file().allowedOrigins(name) };
+  return { allowedOrigins: (name) => file().allowedOrigins(name), store: "secrets-file" };
 }
 
 function lazily<T>(make: () => T): () => T {
