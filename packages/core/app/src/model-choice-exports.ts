@@ -31,3 +31,13 @@ export {
   testOutcome,
   testReplyOptions,
 } from "./model-choice-reply.ts";
+export type {
+  ChoiceKey,
+  ModelChoiceFileReads,
+  ModelChoiceKeySave,
+  ModelChoiceLine,
+  ModelChoicePreview,
+  ModelChoiceSaved,
+  ModelChoiceService,
+  ModelChoiceTest,
+} from "./model-choice-service.ts";
