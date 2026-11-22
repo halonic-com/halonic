@@ -2,6 +2,7 @@
 
 - Approval: the board approved the supervision plugins plan on HAL-15997 (22 Nov), change 5: one GraphQL snapshot per pass instead of REST reads; the work is HAL-16003, and Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:INY14DF6gjtUb6Orgkl0C52SxgtjNioIyGHbWpeKODh5HRvc4ntcv3CYisCKv8aIesCSP5frDeHI+KkNLbL4Dw==
 
 The PR watcher now reads GitHub once per pass, through the GraphQL snapshot
 (`src/snapshot/`), instead of 4 REST requests per pull request. GraphQL
