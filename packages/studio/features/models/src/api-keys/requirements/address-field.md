@@ -23,6 +23,9 @@ Where the Studio keeps a key's addresses, when the user saves a key on a provide
 - Given a new key whose address the key store doesn't keep,
   when the user saves it,
   then the new key is removed again and the save fails.
+- Given a new key whose address can't be written for a reason the key store doesn't answer with, and which can't be removed again,
+  when the user saves it,
+  then the page says "Couldn't save the address. The key is still stored, with no address yet." and shows "Not bound yet" (C665-23, HAL-16065).
 - Given a key with the addresses `https://api.example.com` and `https://gateway.example.com`,
   when the user opens its page,
   then it shows `https://api.example.com` and "+1 more", which opens the other address.

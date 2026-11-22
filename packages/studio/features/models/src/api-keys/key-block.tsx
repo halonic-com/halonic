@@ -5,6 +5,7 @@ import type { KeyEntry, ModelKeys } from "../api.ts";
 import { type Stored, useAddressStep } from "./address-step.tsx";
 import { KeyLeftWithoutAddress, saveKey } from "./key-save.ts";
 import {
+  addressFailedLine,
   addressSavedLine,
   CHANGE_KEY,
   changeQuestion,
@@ -236,8 +237,10 @@ function KeyField({
         }
       },
       (reason) => {
-        const line = refused ?? saveFailedLine(reason, stored === "set");
-        return leftStored ? `${line} ${KEY_LEFT_WITHOUT_ADDRESS}` : line;
+        if (refused !== undefined) {
+          return leftStored ? `${refused} ${KEY_LEFT_WITHOUT_ADDRESS}` : refused;
+        }
+        return leftStored ? addressFailedLine(reason) : saveFailedLine(reason, stored === "set");
       },
       () => (kept === undefined ? savedLine(providerName) : addressSavedLine(kept, value !== "")),
       value,

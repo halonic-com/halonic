@@ -298,6 +298,7 @@ verifies("studio.workspace-trust-integrations", () => {
     expect(review?.unfencedYes).toEqual({
       reason: "container",
       checkbox: "I understand plugins and integrations run without the sandbox on this computer",
+      reasonLine: "Halonic is running inside a container, and the sandbox can't start there.",
     });
 
     const result = await view.grant(review?.fingerprint ?? "", true);
@@ -349,6 +350,9 @@ verifies("studio.workspace-trust-integrations", () => {
     expect(view.status).toBe("not-trusted");
     // The check shows the reason that holds now, with the box to tick again.
     expect(view.review()?.unfencedYes?.reason).toBe("windows");
+    expect(view.review()?.unfencedYes?.reasonLine).toBe(
+      "On Windows, integration code can't run in the sandbox in this version of Halonic.",
+    );
   });
 
   it("trusts nothing when the host couldn't save the yes", async () => {
@@ -361,7 +365,24 @@ verifies("studio.workspace-trust-integrations", () => {
 
     expect(result).toMatchObject({
       ok: false,
-      reason: "Halonic couldn't save your yes to run plugins without the sandbox",
+      reason: "Halonic couldn't save your yes to run plugins and integrations without the sandbox",
+    });
+    expect(view.status).toBe("not-trusted");
+  });
+
+  it("words another failure to save the yes as the shell does, not the host's raw answer", async () => {
+    const raw = "agent host: POST /v1/unfenced/allow answered 500";
+    const host = hostWith(Object.assign(new Error(raw), { kind: "internal" }));
+    const view = await viewWithRuns(host.runs);
+    view.checkRuns();
+    await settled();
+
+    const result = await view.grant(view.review()?.fingerprint ?? "", true);
+
+    // C665-53: the reason after "Couldn't save trust:" never names the host, a route or a code.
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "Halonic ran into a problem it can't explain yet.",
     });
     expect(view.status).toBe("not-trusted");
   });

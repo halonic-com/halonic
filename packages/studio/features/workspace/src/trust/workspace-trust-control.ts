@@ -47,6 +47,8 @@ export interface UnfencedYesAsk {
   readonly reason: string;
   /** "I understand plugins and integrations run without the sandbox on this computer". */
   readonly checkbox: string;
+  /** The reason in words, read once when it changes under a ticked box (R3's reason). */
+  readonly reasonLine: string;
 }
 
 /**

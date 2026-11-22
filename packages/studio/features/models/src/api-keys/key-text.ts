@@ -25,6 +25,14 @@ export function saveFailedLine(reason: string, keyStored: boolean): string {
   );
 }
 
+/**
+ * The key saved but its address didn't, for a reason other than a refusal: the form's Not bound
+ * yet gives the next step, so there's no "Try again." (C665-23).
+ */
+export function addressFailedLine(reason: string): string {
+  return failedLine("save the address", reason, KEY_LEFT_WITHOUT_ADDRESS);
+}
+
 export function removeFailedLine(reason: string): string {
   return failedLine("remove the key", reason);
 }

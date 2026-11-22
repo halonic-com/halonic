@@ -1,7 +1,12 @@
 import type { ChatAnswerEnd } from "@halonicjs/app";
 import { errorKindOf } from "@halonicjs/std";
 import { useToastStore } from "@halonicjs/studio-kit";
-import { isFolderNotOpen, isUntrustedRefusal, unexplainedReason } from "@halonicjs/studio-shell";
+import {
+  detailsOf,
+  isFolderNotOpen,
+  isUntrustedRefusal,
+  unexplainedReason,
+} from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentRef, AgentsHost } from "../api.ts";
 import {
@@ -135,7 +140,7 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
             return;
           }
           if (errorKindOf(error) === "unavailable") engineLost();
-          finish(failureOf(error, toolsRanInLastTurn(current.current)));
+          finish(failureOf(error, toolsRanInLastTurn(current.current), said.current.name));
         });
     },
     [host, agent, update, engineLost],
@@ -245,10 +250,13 @@ function replyEndOf(end: ChatAnswerEnd): ReplyEnd {
  * a folder that isn't open a failure Halonic can't explain (its words hold a path, UX check S4),
  * anything else a failure with its own words.
  */
-function failureOf(error: unknown, toolsRan: boolean): ReplyEnd {
+function failureOf(error: unknown, toolsRan: boolean, name: string): ReplyEnd {
   const kind = (error as { kind?: unknown } | null)?.kind;
   if (kind === "unavailable") return { kind: "engine-stopped", toolsRan };
-  if (isFolderNotOpen(error)) return { kind: "failed", reason: unexplainedReason, toolsRan };
+  if (isFolderNotOpen(error)) {
+    const details = detailsOf(tryItWords.replyFailed(name, unexplainedReason), error);
+    return { kind: "failed", reason: unexplainedReason, toolsRan, details };
+  }
   const reason = error instanceof Error ? error.message : String(error);
   return { kind: "failed", reason, toolsRan };
 }

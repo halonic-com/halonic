@@ -1,10 +1,18 @@
-import { Callout, Checkbox, Dialog, Disclosure, WarningIcon } from "@halonicjs/studio-kit";
-import { useId, useState } from "react";
+import {
+  Callout,
+  Checkbox,
+  Dialog,
+  Disclosure,
+  useModalPolite,
+  WarningIcon,
+} from "@halonicjs/studio-kit";
+import { useEffect, useId, useRef, useState } from "react";
 import type {
   TrustLine,
   TrustReview,
   TrustRowView,
   TrustSectionView,
+  UnfencedYesAsk,
 } from "./workspace-trust-control.ts";
 
 /** The props of {@link TrustCheckDialog}. */
@@ -18,6 +26,46 @@ export interface TrustCheckDialogProps {
   /** `allowUnfenced` is whether the person ticked the box for the review's `unfencedYes`. */
   readonly onTrust: (allowUnfenced: boolean) => void;
   readonly returnFocus: () => HTMLElement | null;
+  /**
+   * Counts the times the host saved no yes because the sandbox status changed under it: each one
+   * unticks the box, also when the status read again names the same reason (C665-54).
+   */
+  readonly yesNotSaved?: number | undefined;
+}
+
+/** The yes's tick: the check and reason it was given for, and whether the host took it back. */
+interface YesTick {
+  readonly key: string;
+  readonly notSaved: boolean;
+}
+
+/**
+ * The yes's tick, which belongs to its check and reason: a new reason clears it, and so does the
+ * host saving no yes (`notSavedCount` grows), even when the status read again names the same
+ * reason. `reasonChanged` is set while the box was ticked for another reason of this same check.
+ */
+function useYesTick(review: TrustReview, notSavedCount: number) {
+  const key =
+    review.unfencedYes === undefined
+      ? undefined
+      : `${review.fingerprint}:${review.unfencedYes.reason}`;
+  const [tick, setTick] = useState<YesTick | undefined>();
+  const [notSavedSeen, setNotSavedSeen] = useState(notSavedCount);
+  if (notSavedSeen !== notSavedCount) {
+    setNotSavedSeen(notSavedCount);
+    setTick((was) => (was === undefined ? undefined : { ...was, notSaved: true }));
+  }
+  return {
+    ticked: key !== undefined && tick?.key === key && !tick.notSaved,
+    reasonChanged:
+      key !== undefined &&
+      tick !== undefined &&
+      tick.key !== key &&
+      tick.key.startsWith(`${review.fingerprint}:`),
+    tick: (checked: boolean) =>
+      setTick(checked && key !== undefined ? { key, notSaved: false } : undefined),
+    said: () => setTick(undefined),
+  };
 }
 
 /**
@@ -30,13 +78,8 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
   // The tick belongs to the check it was given for: a new fingerprint clears it.
   const [understoodFor, setUnderstoodFor] = useState<string | undefined>();
   const understood = understoodFor === review.fingerprint;
-  // The yes's tick belongs to its reason too: a new one clears it.
-  const yesKey =
-    review.unfencedYes === undefined
-      ? undefined
-      : `${review.fingerprint}:${review.unfencedYes.reason}`;
-  const [yesFor, setYesFor] = useState<string | undefined>();
-  const yesTicked = yesKey !== undefined && yesFor === yesKey;
+  const yes = useYesTick(review, props.yesNotSaved ?? 0);
+  const yesTicked = yes.ticked;
   const understoodId = useId();
   const yesId = useId();
   const refusedId = useId();
@@ -46,7 +89,7 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
     unavailable = { reason: refusedId };
   } else if (needsConfirm && !understood) {
     unavailable = { reason: understoodId };
-  } else if (yesKey !== undefined && !yesTicked) {
+  } else if (review.unfencedYes !== undefined && !yesTicked) {
     unavailable = { reason: yesId };
   }
   return (
@@ -109,15 +152,46 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
           </Checkbox>
         ) : null}
         {review.unfencedYes === undefined ? null : (
-          <Checkbox
-            checked={yesTicked}
-            onChange={(checked) => setYesFor(checked ? yesKey : undefined)}
-          >
-            <span id={yesId}>{review.unfencedYes.checkbox}</span>
-          </Checkbox>
+          <UnfencedYesBox
+            ask={review.unfencedYes}
+            id={yesId}
+            ticked={yesTicked}
+            onTick={yes.tick}
+            reasonChanged={yes.reasonChanged}
+            onSaid={yes.said}
+          />
         )}
       </div>
     </Dialog>
+  );
+}
+
+/**
+ * The yes's checkbox, inside the dialog so it reaches the dialog's polite region. When the reason
+ * changed under a ticked box, focus goes to the unticked box and the region reads the new reason
+ * once, since **Trust** can't be pressed now (as the plugin check does, C665-54).
+ */
+function UnfencedYesBox(props: {
+  readonly ask: UnfencedYesAsk;
+  readonly id: string;
+  readonly ticked: boolean;
+  readonly onTick: (checked: boolean) => void;
+  readonly reasonChanged: boolean;
+  readonly onSaid: () => void;
+}) {
+  const box = useRef<HTMLInputElement>(null);
+  const polite = useModalPolite();
+  const { reasonChanged, onSaid, ask } = props;
+  useEffect(() => {
+    if (!reasonChanged) return;
+    box.current?.focus();
+    polite?.say(ask.reasonLine);
+    onSaid();
+  }, [reasonChanged, onSaid, ask.reasonLine, polite]);
+  return (
+    <Checkbox ref={box} checked={props.ticked} onChange={props.onTick}>
+      <span id={props.id}>{ask.checkbox}</span>
+    </Checkbox>
   );
 }
 

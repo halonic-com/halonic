@@ -26,6 +26,11 @@ export type ReplyEnd =
       readonly toolsRan: boolean;
       /** The model's provider has no key, or turned the key away: Models is where that's fixed. */
       readonly needsKey?: true;
+      /**
+       * A failure Halonic can't explain: the text **Copy details** puts on the clipboard, in place
+       * of **Try again** (microcopy 22 F13, C665-104).
+       */
+      readonly details?: string;
     }
   | { readonly kind: "engine-stopped"; readonly toolsRan: boolean };
 

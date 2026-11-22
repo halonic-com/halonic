@@ -145,7 +145,8 @@ export function useTrustStatus(unfencedRuns: PluginUnfencedRuns | undefined): Tr
  * Why trust wasn't saved when the host couldn't save the yes (its `allow_failed`), after
  * "Couldn't save trust:" (UY2, HAL-14003).
  */
-export const YES_NOT_SAVED = "Halonic couldn't save your yes to run plugins without the sandbox";
+export const YES_NOT_SAVED =
+  "Halonic couldn't save your yes to run plugins and integrations without the sandbox";
 
 /** The host answered that it couldn't save the yes: nothing was trusted. */
 export class YesNotSaved extends Error {

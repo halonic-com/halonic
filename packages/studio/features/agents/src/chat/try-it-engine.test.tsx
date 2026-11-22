@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { KindedError } from "@halonicjs/std";
-import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
+import { ClipboardProvider, createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -85,15 +85,22 @@ verifies("agents.chat.not-trusted", () => {
       workspaceName: () => "Acme",
     });
     const toasts = createToastStore();
+    const copied: string[] = [];
+    const writeClipboard = async (text: string) => {
+      copied.push(text);
+      return true;
+    };
     const page = await show(
-      <ToastStoreProvider store={toasts}>
-        <Chat host={withGate} announce={vi.fn()} />
-      </ToastStoreProvider>,
+      <ClipboardProvider writeClipboard={writeClipboard}>
+        <ToastStoreProvider store={toasts}>
+          <Chat host={withGate} announce={vi.fn()} />
+        </ToastStoreProvider>
+      </ClipboardProvider>,
     );
     await sendMessage(page, "Sort this mail");
     await finish(refusal);
     const box = () => (page.querySelector("textarea") as HTMLTextAreaElement).value;
-    return { page, requests, toasts, box };
+    return { page, requests, toasts, box, copied };
   }
 
   it("puts the message back and says why when the engine refuses it, with no failure line", async () => {
@@ -137,7 +144,7 @@ verifies("agents.chat.not-trusted", () => {
 
   it("shows a folder that isn't open as a failure it can't explain, with no path (C613 row 33)", async () => {
     const ask = vi.fn(async () => "trusted" as const);
-    const { page, toasts } = await refusedByEngine(
+    const { page, toasts, copied } = await refusedByEngine(
       ask,
       new KindedError(
         "denied",
@@ -151,6 +158,13 @@ verifies("agents.chat.not-trusted", () => {
     );
     expect(page.textContent).not.toContain("/workspaces/acme");
     expect(toasts.list()).toHaveLength(0);
+    // Trying again won't explain it: Copy details gives the shell's text instead (C665-104).
+    expect(buttonNamed(page, "Try again")).toBeUndefined();
+    await act(async () => buttonNamed(page, "Copy details")?.click());
+    expect(toasts.list()[0]?.title).toBe("Copied. Paste it into a bug report.");
+    expect(copied[0]).toMatch(
+      /^Sorter's reply failed: Halonic ran into a problem it can't explain yet\.\n.*not an opened folder/,
+    );
   });
 
   it("keeps the message and shows the toast after Not now, with Review to open the gate again", async () => {
