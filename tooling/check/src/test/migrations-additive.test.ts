@@ -1,6 +1,7 @@
+import { readFileSync } from "node:fs";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
-import { findDestructiveStatements } from "../rules/migrations-additive.ts";
+import { findDestructiveStatements } from "../lib/destructive-statements.ts";
 import { runChecks } from "./fixture-repo.ts";
 
 const dir = "packages/adapters/cloudflare-storage/src/migrations";
@@ -80,5 +81,15 @@ verifies("check.migrations-additive", () => {
         [`${dir}/0004-add.test.ts`]: '"DROP TABLE t"\n',
       }),
     ).toEqual([]);
+  });
+
+  test("exports the statement finder through a subpath that imports nothing", () => {
+    const packageJson = JSON.parse(
+      readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+    );
+    const target = packageJson.exports["./migrations-additive"];
+    expect(target).toBe("./src/lib/destructive-statements.ts");
+    const source = readFileSync(new URL(`../../${target}`, import.meta.url), "utf8");
+    expect(source).not.toMatch(/^\s*(import|export\s.*\sfrom)\s/m);
   });
 });
