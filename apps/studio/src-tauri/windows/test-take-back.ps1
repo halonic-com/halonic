@@ -70,11 +70,11 @@ function Invoke-AsUser([string]$script) {
   return "$printed".Trim()
 }
 
-# Whether the folder's access list has an entry for the SID. icacls shows an
-# account's name while it exists, so the list is read as SIDs instead.
-function Test-FolderHasSid([string]$folder, [string]$sid) {
-  $rules = (Get-Acl $folder).GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])
-  return [bool]($rules | Where-Object { $_.IdentityReference.Value -eq $sid })
+# The SIDs of the folder's explicit access entries. icacls shows an account's
+# name while it exists, so the list is read as SIDs instead.
+function Get-FolderSids([string]$folder) {
+  $rules = (Get-Acl $folder).GetAccessRules($true, $false, [Security.Principal.SecurityIdentifier])
+  return @($rules | ForEach-Object { $_.IdentityReference.Value } | Sort-Object -Unique)
 }
 
 # srt's status for the user, as srt-win in the user's install reports it.
@@ -101,14 +101,18 @@ try {
   $sid = (Get-UserStatus).user.sid
   if (-not $sid) { throw 'srt-win user status names no sandbox account' }
   $keptFolder = Join-Path $local 'take-back-kept'
+  Invoke-AsUser "New-Item -ItemType Directory -Force '$keptFolder' | Out-Null" | Out-Null
+  $baseline = Get-FolderSids $keptFolder
   Invoke-AsUser @"
-New-Item -ItemType Directory -Force '$keptFolder' | Out-Null
 @{ read = @(); write = @('$keptFolder'); denyRead = @(); denyWrite = @() } | ConvertTo-Json -Compress |
   & '$srtWin' acl grant --holder-pid `$PID --sandbox-user-sid '$sid' --persistent
 exit `$LASTEXITCODE
 "@ | Out-Null
   if ((Get-UserStatus).persistent_grants.state -eq 'none') { throw 'srt keeps no grant for the user after acl grant --persistent' }
-  if (-not (Test-FolderHasSid $keptFolder $sid)) { throw "The kept folder has no entry for $sid" }
+  # The entries the grant added, whichever SID srt grants to.
+  $added = @(Get-FolderSids $keptFolder | Where-Object { $_ -notin $baseline })
+  Write-Output "the kept grant added entries for: $($added -join ', ') (sandbox account $sid)"
+  if ($added.Count -eq 0) { throw "The kept grant added no entry to the folder: $((Get-Acl $keptFolder).Sddl)" }
 
   # 2. A removal with administrator rights: the user's grant stays, the account goes.
   $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dir 'sandbox-remove.ps1') -HostExe $hostExe -ProfileFolder $profileFolder
@@ -127,7 +131,8 @@ exit `$LASTEXITCODE
   if ($after.persistent_grants.state -ne 'none') {
     throw "The reinstall left srt's grants for $userName`: $($after.persistent_grants | ConvertTo-Json -Compress)"
   }
-  if (Test-FolderHasSid $keptFolder $sid) { throw "The kept folder still has an entry for $sid" }
+  $left = @(Get-FolderSids $keptFolder | Where-Object { $_ -in $added })
+  if ($left.Count -gt 0) { throw "The kept folder still has entries for $($left -join ', '): $((Get-Acl $keptFolder).Sddl)" }
   Write-Output 'take-back: a reinstall as a standard user took back what the removal as administrator kept'
 } finally {
   Get-Process Halonic, halonic-agent-host -ErrorAction SilentlyContinue | Stop-Process -Force
