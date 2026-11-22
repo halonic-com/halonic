@@ -41,9 +41,11 @@ function runsOnByJob(text: string): Map<string, string> {
 }
 
 const large = ["build", "e2e", "scaffold", "fast"];
-const small = ["changes", "trace", "policy-base", "docs"];
+const small = ["trace", "policy-base", "docs"];
 // Docker (gitleaks), a Python venv (zizmor) and a secret (leaks) aren't on the server.
+// `changes` gates the end-to-end job and starts sooner on GitHub's runners (HAL-16095).
 const kept = [
+  "changes",
   "leaks",
   "gitleaks",
   "zizmor",

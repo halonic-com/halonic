@@ -11,9 +11,12 @@ Where a job in `.github/workflows/ci.yml` can run on our own CI server, its `run
 - Given the `build` job,
   when its `runs-on` is read,
   then it is the expression for `CI_RUNNER_LARGE`, character for character.
-- Given the `changes` job,
+- Given the `trace` job,
   when its `runs-on` is read,
   then it is the expression for `CI_RUNNER_SMALL`.
+- Given the `changes` job, which the end-to-end job waits for,
+  when its `runs-on` is read,
+  then it is `ubuntu-24.04`.
 - Given the `leaks` job, which holds the leak guard's secret,
   when its `runs-on` is read,
   then it is `ubuntu-24.04`.
