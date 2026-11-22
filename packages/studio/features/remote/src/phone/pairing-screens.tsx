@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useSyncExternalStore } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import type { PairingView, PhonePairingFlow } from "./pairing-flow.ts";
 import {
   CheckStep,
@@ -44,13 +44,25 @@ export function PairingScreens({
     else flow.again();
   };
   // A route change or Android back unmounts this screen: the camera never stays on behind it.
-  useEffect(() => () => flow.closeScanner(), [flow]);
+  // Only while scanning, so StrictMode's extra unmount right after mount calls nothing.
+  useEffect(
+    () => () => {
+      if (flow.view.step === "scanning") flow.closeScanner();
+    },
+    [flow],
+  );
   const scanning = view.step === "scanning";
+  // The newest callback, so a page that passes an inline function doesn't flip its background
+  // off and on again at every render while scanning.
+  const cameraCallback = useRef(onCamera);
+  useLayoutEffect(() => {
+    cameraCallback.current = onCamera;
+  });
   useEffect(() => {
     if (!scanning) return;
-    onCamera(true);
-    return () => onCamera(false);
-  }, [scanning, onCamera]);
+    cameraCallback.current(true);
+    return () => cameraCallback.current(false);
+  }, [scanning]);
   switch (view.step) {
     case "start":
       return (
