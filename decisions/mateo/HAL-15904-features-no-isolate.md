@@ -3,6 +3,7 @@
 - Task: HAL-15904
 - Approval: the board approved the switch on HAL-15904 (22 Nov); Liam approves this note in review on HAL-15904
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:r0Q9shGrqJgznmYqS7x5yUropvbBp7tAVogE8UxsypuEYomoFZYFdqmC7HtDv/VjFYcj5ZxKJCYFTXKn6dapAQ==
 
 ## What changes
 
