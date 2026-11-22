@@ -3,7 +3,7 @@
 - Task: HAL-16424, from the words check C704 rows 3, 5, 26 and 27 on HAL-16417 (#5168, #5211)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16424 (a wording fix in command output and a refusal, so a team decision under the HAL-2282 rule; the reviewer's code review signs this note)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:obiopty4AJ8Ceqc8MJTST6/BMvED8M9waKhxkfwqFQ+tfjCxVPDBX8PcbZ5FDQvUnvJ2bmoBAK/9dWqve/VbCA==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0FAqaeNVtnxCohwaMTMcRRRsfdmowojvTVnf9/f/sFOprIwhLLMRsDy6s6v9hF6VtaXfgiHUiTAXE2epoGnlDg==
 
 ## What changes
 
