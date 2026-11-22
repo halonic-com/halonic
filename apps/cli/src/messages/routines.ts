@@ -122,6 +122,15 @@ export const routinesMessages = defineMessages("routines", {
   routineCantStart: (name: string, dir?: string) =>
     phrase`${markPart("failed")} ${name} can't start until its file is fixed ${markPart("separator")} ${suggestedCommand("validate", dir)}`,
   /**
+   * The line of `watch` on the tick that finds a {@link routineCantStart}
+   * routine's file fixed, so the user sees the watch picked up the fix (C630):
+   * "✓ Friday digest is fixed and starts on time again."
+   */
+  routineFixedStartsOnTime: (name: string) =>
+    phrase`${markPart("done")} ${name} is fixed and starts on time again.`,
+  /** {@link routineFixedStartsOnTime} for a fixed routine that is off, or that a web request starts. */
+  routineFixed: (name: string) => phrase`${markPart("done")} ${name} is fixed.`,
+  /**
    * The line under {@link watching} for each webhook routine that is on: the
    * watch never starts it, `halonic serve` does (HAL-14299).
    */

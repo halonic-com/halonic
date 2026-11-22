@@ -25,18 +25,24 @@ export function withoutProblems(
   return routines.filter((each) => !keys.has(routineKey(each)));
 }
 
+/** Whether a schedule or an interval starts the routine, rather than a web request. */
+export function isOnAClock(routine: PlacedRoutine["routine"]): boolean {
+  return "schedule" in routine.trigger || "every" in routine.trigger;
+}
+
 /**
  * Leaves out the routines whose files have errors, on every tick, and
  * prints "✕ Friday digest can't start until its file is fixed · halonic
  * validate" the first time
  * each one is left out. A routine whose file is fixed starts again from
- * that tick on, and gets its line again if it breaks again.
+ * that tick on, with "✓ Friday digest is fixed and starts on time again."
+ * (C630), and gets its ✕ line again if it breaks again.
  */
 export class RoutinesThatCantStart {
   readonly #context: CommandContext;
   readonly #typedDir: string | undefined;
-  /** The keys of the routines whose line is printed, until their files are fixed. */
-  readonly #said = new Set<string>();
+  /** The routines whose ✕ line is printed, until their files are fixed: their names by key. */
+  readonly #said = new Map<string, string>();
 
   /** @param typedDir - the user's own `--dir`, for the suggested `halonic validate` */
   constructor(context: CommandContext, typedDir: string | undefined) {
@@ -46,23 +52,43 @@ export class RoutinesThatCantStart {
 
   /**
    * `routines` without those whose files have errors in `workspace`, the
-   * version they were read from, after printing the line of each one not
-   * said yet.
+   * version they were read from, after printing the ✓ line of each one
+   * fixed since the last tick and the ✕ line of each one not said yet.
    */
   leaveOut(workspace: LoadedWorkspace, routines: readonly PlacedRoutine[]): PlacedRoutine[] {
     const cantStart = routinesWithProblemsOf(workspace);
     const keys = new Set(cantStart.map((each) => each.key));
-    for (const key of this.#said) {
-      if (!keys.has(key)) this.#said.delete(key);
+    for (const key of [...this.#said.keys()]) {
+      if (keys.has(key)) continue;
+      this.#said.delete(key);
+      // A routine whose file was removed rather than fixed is gone, and gets no line.
+      const fixed = routines.find((each) => routineKey(each) === key);
+      if (fixed !== undefined) this.#sayFixed(fixed.routine);
     }
     for (const { key, name } of cantStart) {
       if (this.#said.has(key)) continue;
-      this.#said.add(key);
+      this.#said.set(key, name);
       // The name comes from the routine's file, so it is made printable (cli-output section 5).
       this.#context.printAhead(
         routinesMessages.routineCantStart(printable(name), this.#typedDir).phrase,
       );
     }
     return routines.filter((each) => !keys.has(routineKey(each)));
+  }
+
+  /**
+   * "✓ Friday digest is fixed and starts on time again." for a routine
+   * that is on and on a clock; a routine that is off or that a web request
+   * starts isn't started by the watch, so its line only says it is fixed.
+   */
+  #sayFixed(routine: PlacedRoutine["routine"]): void {
+    const name = printable(routine.name);
+    const startsOnTime = routine.enabled && isOnAClock(routine);
+    this.#context.printAhead(
+      (startsOnTime
+        ? routinesMessages.routineFixedStartsOnTime(name)
+        : routinesMessages.routineFixed(name)
+      ).phrase,
+    );
   }
 }

@@ -118,7 +118,8 @@ verifies("cli.commands.routines.watch", () => {
     expect(await watching).toBe(130);
   });
 
-  it("starts a routine from the tick after its file is fixed", {
+  // C630: the watch says it picked up the fix, before the routine's first run.
+  it("says a routine is fixed and starts it from the tick after its file is fixed", {
     timeout: watchTestTimeout,
   }, async () => {
     const time = fakeTime(engineStart);
@@ -129,9 +130,31 @@ verifies("cli.commands.routines.watch", () => {
       [digestPath]: brokenDigest.replace("workflow: gone", "workflow: follow-up"),
     });
     time.set("2026-11-10T15:00:10.000Z");
-    await waitUntil("both started lines", () => wokenUp(time) && io.stdout.length > 3, slowWatch);
-    expect(io.stdout.slice(2).sort()).toEqual([
+    await waitUntil("both started lines", () => wokenUp(time) && io.stdout.length > 4, slowWatch);
+    expect(io.stdout[2]).toBe("✓ Friday digest is fixed and starts on time again.");
+    expect(io.stdout.slice(3).sort()).toEqual([
       expect.stringMatching(/^✓ Started Friday digest · run \w{6} · due 15:00$/u),
+      expect.stringMatching(/^✓ Started Hourly follow-up · run \w{6} · due 15:00$/u),
+    ]);
+
+    signals.send("SIGINT");
+    expect(await watching).toBe(130);
+  });
+
+  it("only says a routine is fixed when its fixed file turns it off", {
+    timeout: watchTestTimeout,
+  }, async () => {
+    const time = fakeTime(engineStart);
+    const { io, signals, watching } = startWatch(time);
+    await waitUntil("the first watch lines", () => io.stdout.length === 2, slowWatch);
+
+    await writeFiles(acmeRuns.acme, {
+      [digestPath]: `${brokenDigest.replace("workflow: gone", "workflow: follow-up")}enabled: false\n`,
+    });
+    time.set("2026-11-10T15:00:10.000Z");
+    await waitUntil("the started line", () => wokenUp(time) && io.stdout.length > 3, slowWatch);
+    expect(io.stdout.slice(2)).toEqual([
+      "✓ Friday digest is fixed.",
       expect.stringMatching(/^✓ Started Hourly follow-up · run \w{6} · due 15:00$/u),
     ]);
 

@@ -45,7 +45,7 @@ import { workspaceNameOf } from "../../workspace-trust.ts";
 import type { RunSetup } from "../run/run.ts";
 import { checkRoutinesTrust } from "../run/trust.ts";
 import { computerTimeZone } from "./list.ts";
-import { RoutinesThatCantStart, withoutProblems } from "./watch-cant-start.ts";
+import { isOnAClock, RoutinesThatCantStart, withoutProblems } from "./watch-cant-start.ts";
 import { watchReport } from "./watch-report.ts";
 import { reportGaveUp, reportStuck } from "./watch-stuck.ts";
 import { type VersionChecks, WatchedVersions } from "./watch-versions.ts";
@@ -319,10 +319,6 @@ function refuseHarnessAgent(agent: LoadedFileOf<"agent"> | undefined): void {
   throw new KindedError("unavailable", plainText(reason.phrase), {
     fix: plainText(routinesMessages.harnessNotAvailableFix().phrase),
   });
-}
-
-function isOnAClock(routine: PlacedRoutine["routine"]): boolean {
-  return "schedule" in routine.trigger || "every" in routine.trigger;
 }
 
 /** Whether the routine is on and a web request starts it, which only `halonic serve` receives. */
