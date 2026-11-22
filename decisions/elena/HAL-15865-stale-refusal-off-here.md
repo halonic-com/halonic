@@ -3,6 +3,7 @@
 - Task: HAL-15865, from flow check C642 #1 to #4 on HAL-15857
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-15865 (fixes that make approved command output say what the approved question and `plugin list` already say, so a team decision under the HAL-2282 rule; Liam's code review signs this note)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:e/jTQL/ms6+GOkrASC+oH8jJdCC7c5vU6mQpzeL30AARDTO0LUL+B05AWtK8crmWnqqG2Ichs+uWzWTT4kp6Bw==
 
 ## What changes
 
