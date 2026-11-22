@@ -31,9 +31,12 @@ Shared settings every package extends.
   in its `package.json`. See [checks.md](../../docs/guides/checks.md#coverage-floors).
   A package with `"runtime": "workers"` also gets what workerd counted
   (`src/workerd-coverage-provider.ts`, see `@halonicjs/target-cloudflare-testing`).
+  `.tsx` and `.jsx` sources count too: `src/same-offset-jsx.ts` turns them into
+  JavaScript with every character in place, as Vitest does for a `.ts` file.
   **Check it on every Vitest upgrade:** it builds on Vitest's V8 provider through
   a private path (`@vitest/coverage-v8/dist/provider.js`) and private members
-  (`options`, `ctx`, `convertCoverage`). A rename fails its own test loudly.
+  (`options`, `ctx`, `convertCoverage`, and `transformFile`'s fallback for a
+  source Vite didn't transform). A rename fails its own test loudly.
 
   Test hygiene, proven by `src/test-hygiene.test.ts`:
   - A test that never calls `expect()` fails, and a package can't turn
