@@ -30,6 +30,16 @@ function pluginNotTrusted(plugin: string): Error {
   return new Error(`Connector "${plugin}" didn't start: ${refusal.message}`, { cause: refusal });
 }
 
+/** An error as a plugin's backend throws one when its sandbox didn't work when it started: wrapped, the name on its cause. */
+function pluginStopped(plugin: string, pluginName: string): Error {
+  const stop = Object.assign(new Error(`Halonic stopped the plugin ${pluginName}.`), {
+    name: "PluginBackendStoppedError",
+    plugin,
+    pluginName,
+  });
+  return new Error(`Connector "${plugin}" didn't start: ${stop.message}`, { cause: stop });
+}
+
 /** A run of the reply workflow whose writer lists `handbook-files`, whose listing throws `error`. */
 async function runWithBrokenListing(error: Error) {
   const handbook = new ScriptedConnector("handbook-files", error);
@@ -74,6 +84,17 @@ verifies("engine.connector-listing-failed", () => {
       {
         connector: "handbook-files",
         cause: { code: "connector-not-started", why: "plugin-not-trusted", name: "files" },
+      },
+    ]);
+  });
+
+  it("logs a connector from a plugin whose sandbox didn't work when it started, by the plugin's name", async () => {
+    const { log } = await runWithBrokenListing(pluginStopped("weather", "Weather"));
+
+    expect(listingFailures(log)).toMatchObject([
+      {
+        connector: "handbook-files",
+        cause: { code: "connector-not-started", why: "plugin-stopped", name: "Weather" },
       },
     ]);
   });

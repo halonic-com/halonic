@@ -2,14 +2,16 @@
  * Why a connector couldn't start, when it's one the engine can name
  * (requirement `ports.connector-start-failure`): its program isn't on this
  * computer, a secret it needs isn't set, or the plugin it comes from isn't
- * trusted yet or changed since the person trusted it. `program` and
- * `secret` are names as the connector's file writes them, never a secret's
- * value; `plugin` is the plugin's id.
+ * trusted yet or changed since the person trusted it, or its sandbox didn't
+ * work when it started. `program` and `secret` are names as the connector's
+ * file writes them, never a secret's value; `plugin` is the plugin's id, and
+ * `pluginName` its name as a person sees it.
  */
 export type ConnectorStartFailure =
   | { readonly reason: "program-missing"; readonly program: string }
   | { readonly reason: "secret-not-set"; readonly secret: string }
-  | { readonly reason: "plugin-not-trusted" | "plugin-changed"; readonly plugin: string };
+  | { readonly reason: "plugin-not-trusted" | "plugin-changed"; readonly plugin: string }
+  | { readonly reason: "plugin-stopped"; readonly pluginName: string };
 
 /** How many errors deep, through `cause`, the reader looks for one it knows. */
 const maxCauseDepth = 8;
@@ -25,7 +27,10 @@ const maxCauseDepth = 8;
  *   (as `@halonicjs/adapter-mcp` throws it);
  * - an `Error` named `PluginConnectorNotTrustedError` with the plugin's id in
  *   `plugin` and `not-trusted` or `changed` in `reason` (as a plugin's
- *   connector in `@halonicjs/app` throws it).
+ *   connector in `@halonicjs/app` throws it);
+ * - an `Error` named `PluginBackendStoppedError` with the plugin's name in
+ *   `pluginName` (as `@halonicjs/adapter-integration-runner` throws it when
+ *   the sandbox didn't work when the plugin's backend started).
  *
  * It reads them by name and field, not `instanceof`, so the engine needs no
  * adapter, and an adapter with its own copy of this package works too. It
@@ -48,10 +53,11 @@ export function connectorStartFailureOf(value: unknown): ConnectorStartFailure |
 
 /** The failure `error` itself says, without looking at its `cause`. */
 function knownFailureOf(error: Error): ConnectorStartFailure | undefined {
-  const { program, secretName, plugin, reason } = error as {
+  const { program, secretName, plugin, pluginName, reason } = error as {
     program?: unknown;
     secretName?: unknown;
     plugin?: unknown;
+    pluginName?: unknown;
     reason?: unknown;
   };
   if (error.name === "ProgramNotFoundError" && isName(program)) {
@@ -63,6 +69,9 @@ function knownFailureOf(error: Error): ConnectorStartFailure | undefined {
   if (error.name === "PluginConnectorNotTrustedError" && isName(plugin)) {
     if (reason === "not-trusted") return { reason: "plugin-not-trusted", plugin };
     if (reason === "changed") return { reason: "plugin-changed", plugin };
+  }
+  if (error.name === "PluginBackendStoppedError" && isName(pluginName)) {
+    return { reason: "plugin-stopped", pluginName };
   }
   return undefined;
 }

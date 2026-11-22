@@ -120,6 +120,11 @@ function causeLines(
       ];
     case "plugin-changed":
       return [connectorStartMessages.pluginChanged(name), pluginMessages.startChangedFix(name)];
+    case "plugin-stopped":
+      return [
+        connectorStartMessages.pluginStopped(name),
+        connectorStartMessages.pluginStoppedNext(name),
+      ];
     case "other":
       return undefined;
   }

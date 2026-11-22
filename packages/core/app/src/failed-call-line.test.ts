@@ -80,6 +80,25 @@ verifies("app.failed-call-line", () => {
       expect(
         shown("t", started({ code: "connector-not-started", why: "plugin-changed", name: "acme" })),
       ).toContain("its plugin *acme* changed since you trusted it.");
+      expect(
+        shown(
+          "t",
+          started({ code: "connector-not-started", why: "plugin-stopped", name: "Weather" }),
+        ),
+      ).toContain(". The sandbox didn't work when its plugin *Weather* started.");
+    });
+
+    it("doesn't mark a stopped plugin as a plugin, since its cause holds its name and not its id", () => {
+      const cause = {
+        code: "connector-not-started",
+        why: "plugin-stopped",
+        name: "Weather",
+      } as const;
+      const names = failedCallParts(failedCallLine("t", started(cause))).filter(
+        (part) => typeof part !== "string",
+      );
+      expect(names).toContainEqual({ name: "Weather", look: "name" });
+      expect(names.some((part) => part.plugin === true)).toBe(false);
     });
 
     it("says only that a connector didn't start when the cause names nothing", () => {
