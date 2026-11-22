@@ -236,7 +236,7 @@ export function Welcome({
 
   return (
     <div className="flex h-full justify-center overflow-auto p-6 pt-[18vh]">
-      <div className="flex h-fit w-full min-w-0 max-w-dialog-sm flex-col items-center gap-4 text-center">
+      <div className="@container flex h-fit w-full min-w-0 max-w-dialog-sm flex-col items-center gap-4 text-center">
         <div className="flex flex-col gap-2">
           <h1 className="text-title">Halonic Studio</h1>
           <p className="text-body text-fg-muted">
@@ -255,6 +255,12 @@ export function Welcome({
           onNewWorkspace={onNewWorkspace}
           opening={opening !== undefined}
           offId={startState.offId}
+          alert={
+            <p id={alertId} role="alert" className="text-body text-danger break-words empty:hidden">
+              {problem === undefined ? null : cantOpenSentence(problem)}
+              {sampleProblem === undefined ? null : cantCreateSampleLine(sampleProblem)}
+            </p>
+          }
           start={
             <WelcomeStartArea
               start={start}
@@ -265,10 +271,6 @@ export function Welcome({
             />
           }
         />
-        <p id={alertId} role="alert" className="text-body text-danger break-words empty:hidden">
-          {problem === undefined ? null : cantOpenSentence(problem)}
-          {sampleProblem === undefined ? null : cantCreateSampleLine(sampleProblem)}
-        </p>
         {offersRemove ? (
           <button
             type="button"
@@ -330,12 +332,14 @@ interface WelcomeActionsProps {
   readonly offId: string | undefined;
   /** Halonic's start, right under the buttons it turns off (`shell.welcome-start`). */
   readonly start: ReactNode;
+  /** The live error line, shown after the time line so it never reads as **New workspace…**'s. */
+  readonly alert: ReactNode;
 }
 
 /**
  * Welcome's buttons: **Open demo** and **Open folder** side by side when the demo leads, else
  * **Open folder** alone as the primary button; then Halonic's start while it shows; then the time
- * line while the demo leads, and last the **New workspace…** link (`shell.welcome-sample`).
+ * line while the demo leads, then the error line, and last the **New workspace…** link (`shell.welcome-sample`).
  */
 function WelcomeActions({
   demo,
@@ -346,12 +350,13 @@ function WelcomeActions({
   opening,
   offId,
   start,
+  alert,
 }: WelcomeActionsProps) {
   const timeId = useId();
   const demoLeads = demo !== undefined;
   return (
     <>
-      <div className="flex flex-wrap justify-center gap-3">
+      <div className="flex flex-wrap justify-center gap-3 @max-xs:flex-col @max-xs:self-stretch">
         {demo === undefined ? null : (
           <TrySample
             quiet={false}
@@ -379,6 +384,7 @@ function WelcomeActions({
           {trySampleWords.time}
         </p>
       ) : null}
+      {alert}
       {onNewWorkspace === undefined ? null : (
         <Button variant="ghost" onClick={() => opening || onNewWorkspace()}>
           New workspace…
