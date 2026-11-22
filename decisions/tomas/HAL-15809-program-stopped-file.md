@@ -2,6 +2,7 @@
 
 - Approval: Tomas decides the words as the team on HAL-15809 (https://paperclip.halonic.com/HAL/issues/HAL-15809), from flow check C634 (#5) on HAL-15803 (HAL-2282 rule: a small wording on an approved screen, built on the CLI's approved words and the page's existing CommandBox).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4UTLvPuHiJdzMF5Uzsoa8OfSGbAn/4zF5TldiN+VV1HGB5UGweZoeWpo1ucHGOk8BiNYWfZ0Mz06l7JBZtqiDg==
 
 ## What changes
 
