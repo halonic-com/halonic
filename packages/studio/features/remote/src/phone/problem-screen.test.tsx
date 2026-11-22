@@ -42,7 +42,7 @@ verifies("remote.phone-pairing-problems", () => {
     const used = problemWords({ screen: "used" }, laptop, typedOnWifi);
     expect(used.lines).toEqual([
       "Another phone used it first. If Tim's laptop asks you to allow a phone now, press **Don't allow**: it isn't yours.",
-      "Then choose New code on the computer and type it in.",
+      "Then type in the new code your computer shows.",
     ]);
   });
 
