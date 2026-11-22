@@ -7,13 +7,20 @@
 import { classifyAddress, parseIpAddress } from "@halonicjs/adapter-http-kit";
 import type { LoadedModel, LoadedModelSource } from "@halonicjs/app";
 import type { HttpClient } from "@halonicjs/ports";
-import { isPlainObject } from "@halonicjs/std";
+import { decodeUtf8, isPlainObject } from "@halonicjs/std";
 
 /**
  * How long a server may take to answer. `doctor` asks every server at once,
  * so this is also about the longest a server that hangs keeps it waiting.
  */
 export const answerTimeoutMs = 3_000;
+
+/**
+ * The most bytes doctor reads of an answer. A list of loaded models is a few
+ * KiB; a bigger answer isn't the list, so it is refused unread, before trust
+ * as after it (HAL-16336).
+ */
+export const answerMaxBytes = 1024 * 1024;
 
 /** A model server on this computer, as its provider file describes it. */
 export interface LocalModelServer {
@@ -49,11 +56,12 @@ export function isOnThisComputer(baseUrl: string): boolean {
  *   The `:latest` tag is dropped, as people type the name without it.
  * - **LM Studio** (`GET /api/v0/models`): each model whose state is `loaded`,
  *   without a size, because LM Studio doesn't say it.
- * - **Any other server** (`GET {baseUrl}/models`): none, but it must answer.
+ * - **Any other server** (`GET {baseUrl}/models`, without the query or
+ *   fragment `baseUrl` may carry): none, but it must answer.
  *
  * @throws from `loadedModels` when the server doesn't answer within
- *   {@link answerTimeoutMs}, answers with an error status, or sends what
- *   isn't the list it should
+ *   {@link answerTimeoutMs}, answers with an error status or with more than
+ *   {@link answerMaxBytes}, or sends what isn't the list it should
  *
  * @example
  * const source = localLoadedModels({ id: "ollama", type: "ollama", baseUrl: "http://localhost:11434/v1" }, { fetch });
@@ -69,7 +77,7 @@ export function localLoadedModels(server: LocalModelServer, http: HttpClient): L
         case "lmstudio":
           return lmStudioModels(await answer(http, new URL("/api/v0/models", server.baseUrl)));
         default:
-          await answer(http, new URL(`${server.baseUrl.replace(/\/+$/, "")}/models`));
+          await answer(http, modelListUrl(server.baseUrl));
           return [];
       }
     },
@@ -87,7 +95,57 @@ async function answer(http: HttpClient, url: URL): Promise<unknown> {
     await response.body?.cancel();
     throw new Error(`${url.host} answered ${url.pathname} with HTTP ${response.status}.`);
   }
-  return response.json();
+  const text = await textWithin(response, answerMaxBytes);
+  if (text === undefined) {
+    throw new Error(`${url.host} answered ${url.pathname} with more than 1 MiB.`);
+  }
+  return JSON.parse(text);
+}
+
+/**
+ * Where an OpenAI-compatible server lists its models: `{baseUrl}/models`. A
+ * query or fragment in `baseUrl` is left out, since the list takes none.
+ *
+ * @example
+ * modelListUrl("http://localhost:8000/v1/?x=1").href; // "http://localhost:8000/v1/models"
+ */
+function modelListUrl(baseUrl: string): URL {
+  const url = new URL(baseUrl);
+  url.search = "";
+  url.hash = "";
+  url.pathname = `${url.pathname.replace(/\/+$/, "")}/models`;
+  return url;
+}
+
+/**
+ * The body as text, or `undefined` when it holds more than `maxBytes`. It
+ * reads piece by piece and cancels the rest at the first piece past the
+ * limit, so a huge answer is never held whole.
+ */
+async function textWithin(response: Response, maxBytes: number): Promise<string | undefined> {
+  if (Number(response.headers.get("content-length")) > maxBytes) {
+    await response.body?.cancel();
+    return undefined;
+  }
+  if (response.body === null) return "";
+  const reader = response.body.getReader();
+  const pieces: Uint8Array[] = [];
+  let total = 0;
+  for (let piece = await reader.read(); !piece.done; piece = await reader.read()) {
+    total += piece.value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      return undefined;
+    }
+    pieces.push(piece.value);
+  }
+  const whole = new Uint8Array(total);
+  let offset = 0;
+  for (const piece of pieces) {
+    whole.set(piece, offset);
+    offset += piece.byteLength;
+  }
+  return decodeUtf8(whole);
 }
 
 /** `{ models: [{ name: "llama3.2:latest", size: 2147483648 }] }`. */

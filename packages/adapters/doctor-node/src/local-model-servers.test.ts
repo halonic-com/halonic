@@ -1,6 +1,8 @@
 import type { HttpClient } from "@halonicjs/ports";
+import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
+  answerMaxBytes,
   isOnThisComputer,
   type LocalModelServer,
   localLoadedModels,
@@ -99,6 +101,59 @@ describe("localLoadedModels", () => {
     };
 
     await expect(localLoadedModels(ollama, http).loadedModels()).rejects.toThrow("fetch failed");
+  });
+});
+
+verifies("doctor-node.model-server-answer", () => {
+  it("asks an OpenAI-compatible server for its list without the address's query or fragment", async () => {
+    const { http, asked } = answering(200, { data: [] });
+    const server = {
+      id: "vllm",
+      type: "openai-compatible",
+      baseUrl: "http://localhost:8000/v1/?drop=all#top",
+    };
+
+    await localLoadedModels(server, http).loadedModels();
+
+    expect(asked[0]?.url).toBe("http://localhost:8000/v1/models");
+  });
+
+  it("refuses an answer of more than 1 MiB, and stops reading it", async () => {
+    let cancelled = false;
+    const piece = new Uint8Array(64 * 1024).fill(0x20);
+    let sent = 0;
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        sent += piece.byteLength;
+        controller.enqueue(piece);
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const http: HttpClient = { fetch: async () => new Response(endless) };
+
+    await expect(localLoadedModels(ollama, http).loadedModels()).rejects.toThrow(
+      "localhost:11434 answered /api/ps with more than 1 MiB.",
+    );
+    expect(cancelled).toBe(true);
+    expect(sent).toBeLessThanOrEqual(answerMaxBytes + 2 * piece.byteLength);
+  });
+
+  it("refuses an answer that says it is longer than 1 MiB, without reading it", async () => {
+    let cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const headers = { "content-length": String(2 * answerMaxBytes) };
+    const http: HttpClient = { fetch: async () => new Response(body, { headers }) };
+
+    await expect(localLoadedModels(ollama, http).loadedModels()).rejects.toThrow(
+      "localhost:11434 answered /api/ps with more than 1 MiB.",
+    );
+    expect(cancelled).toBe(true);
   });
 });
 
