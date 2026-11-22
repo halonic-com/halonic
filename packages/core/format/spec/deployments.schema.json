@@ -157,6 +157,149 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "organisations": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^org_[A-Za-z0-9]{16,40}$"
+                        },
+                        "limits": {
+                          "default": [],
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "runs",
+                                  "steps",
+                                  "tokens",
+                                  "cost",
+                                  "harnessMinutes"
+                                ]
+                              },
+                              "amount": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                              },
+                              "period": {
+                                "type": "string",
+                                "enum": [
+                                  "day",
+                                  "month",
+                                  "run",
+                                  "step"
+                                ]
+                              },
+                              "action": {
+                                "default": "stop",
+                                "type": "string",
+                                "enum": [
+                                  "stop",
+                                  "notify"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "unit",
+                              "amount",
+                              "period"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "concurrency": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "members": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "actor": {
+                                "type": "string",
+                                "pattern": "^eu_[A-Za-z0-9]{16,40}$"
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "owner",
+                                  "admin",
+                                  "member"
+                                ]
+                              },
+                              "limits": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "unit": {
+                                      "type": "string",
+                                      "enum": [
+                                        "runs",
+                                        "steps",
+                                        "tokens",
+                                        "cost",
+                                        "harnessMinutes"
+                                      ]
+                                    },
+                                    "amount": {
+                                      "type": "number",
+                                      "exclusiveMinimum": 0
+                                    },
+                                    "period": {
+                                      "type": "string",
+                                      "enum": [
+                                        "day",
+                                        "month",
+                                        "run",
+                                        "step"
+                                      ]
+                                    },
+                                    "action": {
+                                      "default": "stop",
+                                      "type": "string",
+                                      "enum": [
+                                        "stop",
+                                        "notify"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "unit",
+                                    "amount",
+                                    "period"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "concurrency": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "actor",
+                              "role"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "members"
+                      ],
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "additionalProperties": false

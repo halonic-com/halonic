@@ -1,10 +1,12 @@
 import type { KindCheckProblem } from "../../kind.ts";
+import { checkOrganisations } from "./organisations-check.ts";
 import type { Deployments } from "./schema.ts";
 import type { DeploymentUsers } from "./users.ts";
 
 /**
  * Checks each deployment's `users` block beyond its schema: `meter: cloud`
- * names its product, no limit is given twice, and settings for another meter
+ * names its product, no limit is given twice, organisations fit together,
+ * and settings for another meter or a config meter with nothing to count
  * only warn, like Cloudflare settings on another host.
  */
 export function checkUsers(file: Deployments): KindCheckProblem[] {
@@ -14,9 +16,41 @@ export function checkUsers(file: Deployments): KindCheckProblem[] {
       : [
           ...checkCloudProduct(id, deployment.users),
           ...checkRepeatedLimits(id, deployment.users),
+          ...checkOrganisations(id, deployment.users),
+          ...checkConfigCountsNothing(id, deployment.users),
           ...checkUnusedMeterSettings(id, deployment.users),
         ],
   );
+}
+
+/**
+ * `meter: config` without a limit or an organisation's concurrency holds
+ * nobody to anything, so it acts like `meter: none`; a warning says so.
+ */
+function checkConfigCountsNothing(id: string, users: DeploymentUsers): KindCheckProblem[] {
+  if (users.meter !== "config") {
+    return [];
+  }
+  const organisations = users.config?.organisations ?? [];
+  const holdsSomething =
+    (users.config?.limits ?? []).length > 0 ||
+    organisations.some(
+      (organisation) => organisation.limits.length > 0 || organisation.concurrency !== undefined,
+    );
+  if (holdsSomething) {
+    return [];
+  }
+  return [
+    {
+      severity: "warning",
+      code: "users-config-limits-missing",
+      path:
+        users.config === undefined
+          ? ["deployments", id, "users", "meter"]
+          : ["deployments", id, "users", "config", "limits"],
+      message: `Deployment "${id}" uses meter "config" but has no limits, so it counts nothing, like meter "none"`,
+    },
+  ];
 }
 
 /** `meter: cloud` can't report usage without the product it reports to. */
