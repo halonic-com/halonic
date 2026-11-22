@@ -13,6 +13,7 @@ export {
   type SnapshotWriteBucket,
   writeDefinitionSnapshot,
 } from "./definition-snapshot-writer.ts";
+export { migrations } from "./migrations/index.ts";
 export { type BlobBucket, R2BlobStore } from "./r2-blob-store.ts";
 export {
   R2DefinitionSource,
