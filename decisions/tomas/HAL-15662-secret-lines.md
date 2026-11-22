@@ -2,6 +2,7 @@
 
 - Approval: Liam chose this on HAL-15662 (https://paperclip.halonic.com/HAL/issues/HAL-15662), comment 844db480, as a second PR after #5128. It uses the existing `[secret removed]` words, so no new words from Sofia.
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:HIPNb8nR7h7A9pBAnklAmTvd4TaqEpSZ37lKeo3B+KZgo5sT1TokqIjJrNj07n6zD4EAELJfNb8+lapYEQenAQ==
 
 ## What changes
 
