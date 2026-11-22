@@ -27,7 +27,7 @@ import {
   type StoppedResult,
   UsageError,
 } from "../../command.ts";
-import { connectorFileOf, isIntegrationConnector } from "../../connector-file.ts";
+import type { AddedPlugins } from "../../connector-plugin.ts";
 import { followUntilStopped } from "../../follow-run.ts";
 import { type HarnessProgram, nodeHarnessPrograms } from "../../harness-programs.ts";
 import type { LocalEngine } from "../../local-engine-host.ts";
@@ -67,6 +67,7 @@ import { liveLines } from "./live-lines.ts";
 import { runResult } from "./result.ts";
 import { type RunPlace, sendEvent } from "./send-event.ts";
 import { checkRunTrust, type RunTrustMachine } from "./trust.ts";
+import { profilePlugins, warnedConnectorsOf } from "./warned-connectors.ts";
 
 /** What `run` uses on this computer, so tests can fix the clock, the ids and the profile. */
 export interface RunSetup extends WorkspaceEngineSetup {
@@ -81,6 +82,8 @@ export interface RunSetup extends WorkspaceEngineSetup {
    * loop; this computer's, found on the `PATH`, by default.
    */
   harnesses?(): readonly HarnessProgram[];
+  /** The plugins added in `profile`, for a plugin connector's warning; the profile's own by default. */
+  readonly plugins?: AddedPlugins;
 }
 
 /**
@@ -174,10 +177,9 @@ export async function followWorkflow(
   const streaming = input.options["follow"] === true;
   let followed: FollowedRun | StoppedResult;
   const printEvent = streaming ? eventLines(context) : live.onEvent;
-  const warnConnectors = connectorWarnings(context, typedDir, {
-    fileOf: (id) => connectorFileOf(workspace, id),
-    isIntegration: (id) => isIntegrationConnector(workspace, id),
-  });
+  const plugins = setup.plugins ?? profilePlugins(setup.profile);
+  const warned = await warnedConnectorsOf(workspace, plugins);
+  const warnConnectors = connectorWarnings(context, typedDir, warned);
   try {
     const events = eventsOf(input);
     const place = { workspace, name: workspaceName, dir: typedDir };

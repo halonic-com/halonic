@@ -9,9 +9,10 @@ export type ConnectorNotStartedCause = Extract<ToolFailureCause, { code: "connec
  * (requirements `engine.tool-result-cause` and
  * `engine.connector-listing-failed`): the program's or the secret's name, the
  * plugin's id, or for a stopped plugin its name, when the error is one
- * `connectorStartFailureOf` reads, cut to `maxCauseNameLength`, else `other`
- * with no name. Never any part of the error's message, which can hold paths
- * or a program's output.
+ * `connectorStartFailureOf` reads, cut to `maxCauseNameLength`;
+ * `sandbox-not-ready`, with no name, for a plugin's backend with no sandbox
+ * to run in; else `other` with no name. Never any part of the error's
+ * message, which can hold paths or a program's output.
  *
  * @example
  * connectorStartCause(new ProgramNotFoundError("npx")); // { code: "connector-not-started", why: "program-missing", name: "npx" }
@@ -20,6 +21,9 @@ export type ConnectorNotStartedCause = Extract<ToolFailureCause, { code: "connec
 export function connectorStartCause(error: unknown): ConnectorNotStartedCause {
   const failure = connectorStartFailureOf(error);
   if (failure === undefined) return { code: "connector-not-started", why: "other" };
+  if (failure.reason === "sandbox-not-ready") {
+    return { code: "connector-not-started", why: failure.reason };
+  }
   return {
     code: "connector-not-started",
     why: failure.reason,
@@ -28,7 +32,7 @@ export function connectorStartCause(error: unknown): ConnectorNotStartedCause {
 }
 
 /** The name a failure gives: the program's, the secret's, the plugin's id or its name. */
-function nameOf(failure: ConnectorStartFailure): string {
+function nameOf(failure: Exclude<ConnectorStartFailure, { reason: "sandbox-not-ready" }>): string {
   switch (failure.reason) {
     case "program-missing":
       return failure.program;

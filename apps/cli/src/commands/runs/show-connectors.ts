@@ -34,6 +34,8 @@ export function connectorNotStartedLines(
   connectors: WarnedConnectors,
 ): Phrase[] {
   const lines: Phrase[] = [];
+  // No `pluginOf`: where a plugin stands on this computer now isn't in the
+  // log, so a plugin connector with no cause in the log keeps the plain line.
   const warnListing = connectorWarnings({ warn: (line) => lines.push(line) }, dir, connectors);
   const told = new Set<string>();
   for (const event of events) {
