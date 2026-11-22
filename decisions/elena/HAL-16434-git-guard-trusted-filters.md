@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-16363 (Liam's decision: for a trusted folder, let the user's own filters run again, keeping the refusal of the repository's git-lfs program keys; repository-defined filters stay blanked either way)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qCyGQxrDTOh0VLLRjjDJ6Ttm7tzM+W9pL8mvEgFDCcXdUskrxEAvTIZUcB7snNJbdHUnkNXUr3ptG/DszFP4BA==
 
 Since HAL-16325 the git guard blanks every filter driver, the user's own included, and since HAL-16363 a call that would store or write files without one is refused. So in a repository that uses git-lfs, the Studio could read history and changes but not stage, commit or check out. The new requirement `trusted-filters` lets the filters that only the user's own config defines run where every folder of the repository, and of every repository nested in it, is inside a folder with a trust record. Filters a repository's own config defines stay blanked, also when they redefine one of the user's, and the repository's git-lfs program keys stay refused.
 
