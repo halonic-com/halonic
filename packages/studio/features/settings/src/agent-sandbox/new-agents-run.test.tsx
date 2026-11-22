@@ -89,6 +89,11 @@ verifies("settings.new-agents-run", () => {
     await change(cant.select, "this-computer");
     expect(dialogText()).toContain("New agents will have your access to files and the network");
     expect(dialogText()).toContain(studioCantStart);
+    // Spaced from the first paragraph, as the app's other two-paragraph dialogs are (C657 on HAL-15938).
+    const second = [...document.querySelectorAll("dialog[open] p")].find(
+      (each) => each.textContent === studioCantStart,
+    );
+    expect(second?.className).toContain("mt-2");
     await click(button("Cancel") as HTMLElement);
     unmountAll();
     const can = await show("app", undefined, readyHost(true));
