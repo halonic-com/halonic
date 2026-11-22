@@ -130,7 +130,7 @@ verifies("remote.phone-status-sheet", () => {
       "Looking for Tim's laptop. Trying again in 8 seconds.",
     );
     expect(soon.dialog.textContent).toContain(
-      "What you see is as of 14:02 and may be out of date until it reconnects.",
+      "What you see is as of 14:02 and may be out of date until your phone reconnects.",
     );
     // Try now has no ↻, as drawn.
     expect(soon.button("Try now").querySelector("svg")).toBeNull();
