@@ -53,6 +53,7 @@ export function StartsCard({ host, routine, openTarget }: StartsCardProps) {
   }, [picked, waiting]);
   const current = targets.find((choice) => sameTarget(choice, target));
   const name = current?.name ?? target.id;
+  const inputMissing = waiting === undefined ? routine.inputMissing : undefined;
 
   const save = async (next: RoutineTarget) => {
     setFailure(undefined);
@@ -100,7 +101,13 @@ export function StartsCard({ host, routine, openTarget }: StartsCardProps) {
         )}
         {waiting === undefined && (
           <>
-            <TargetState routine={routine} name={name} />
+            <TargetState
+              routine={routine}
+              name={name}
+              shownByField={
+                startFieldShowsMissing(target, current?.start) ? inputMissing : undefined
+              }
+            />
             {routine.live !== undefined && routine.live.targetName !== routine.targetName && (
               <p className="text-small text-fg-muted">
                 {words.newTargetNotLive(routine.live.targetName)}
@@ -113,7 +120,7 @@ export function StartsCard({ host, routine, openTarget }: StartsCardProps) {
             name={name}
             start={current?.start}
             input={target.input}
-            inputMissing={waiting === undefined && routine.inputMissing === true}
+            inputMissing={inputMissing !== undefined}
             onChange={(input) => void save({ ...target, input })}
           />
         ) : (
@@ -153,11 +160,24 @@ function OpenTargetRow({ name, onOpen }: { readonly name: string; readonly onOpe
 /**
  * The one line about a routine that can't start or a target that can't be started; nothing for one
  * that can. Why it can't start is the sentence its list row gives: a workflow or agent that isn't
- * in the workspace, or the first error in its file (HAL-15082, HAL-15300).
+ * in the workspace, or the first error in its file (HAL-15082, HAL-15300). When that error is the
+ * missing input the start field already shows as its own error, the field keeps it, next to where
+ * it is fixed, and this line leaves it out so it shows once (HAL-15721).
  */
-function TargetState({ routine, name }: { readonly routine: RoutineView; readonly name: string }) {
+function TargetState({
+  routine,
+  name,
+  shownByField,
+}: {
+  readonly routine: RoutineView;
+  readonly name: string;
+  /** The error the start field shows itself, if any. */
+  readonly shownByField: string | undefined;
+}) {
   const cantStart = cantStartReason(pageStartFacts(routine));
-  if (cantStart !== undefined) return <p className="text-small text-danger">{cantStart}</p>;
+  if (cantStart !== undefined && cantStart !== shownByField) {
+    return <p className="text-small text-danger">{cantStart}</p>;
+  }
   switch (routine.targetState) {
     case "never-live":
       return <p className="text-small text-fg-muted">{words.neverLive(name)}</p>;
@@ -340,6 +360,17 @@ function startValue(input: string, field: string): string | undefined {
   const object = jsonObject(input) ?? {};
   const value = Object.hasOwn(object, field) ? object[field] : "";
   return typeof value === "string" ? value : undefined;
+}
+
+/**
+ * Whether the workflow's start field shows the missing-input error while the engine refuses the
+ * start: it does whenever the workflow has a `start:` block and the input lacks that field.
+ */
+function startFieldShowsMissing(
+  target: RoutineTarget,
+  start: RoutineStartField | undefined,
+): boolean {
+  return target.kind === "workflow" && start !== undefined && !hasField(target.input, start.field);
 }
 
 /** Whether the input holds the field at all, even as empty text. */

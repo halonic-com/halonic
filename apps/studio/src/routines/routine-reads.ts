@@ -208,12 +208,27 @@ export function targetFound(workspace: LoadedWorkspace, target: RoutineTarget): 
  * end is what a narrow window cuts off.
  */
 export function errorsOf(workspace: LoadedWorkspace, file: PlacedFile): readonly string[] {
-  const prefix = `Routine "${idOf(file)}": `;
   return workspace.issues
     .filter((issue) => issue.file === file.path && issue.severity === "error")
-    .map((issue) =>
-      issue.message.startsWith(prefix) ? issue.message.slice(prefix.length) : issue.message,
-    );
+    .map((issue) => problemSentence(issue, file));
+}
+
+/**
+ * The error that its input lacks a field its workflow's first step reads (`missing-routine-input`),
+ * worded as {@link errorsOf} words it, so the Starts card can tell it apart from the others
+ * (HAL-15721); `undefined` while the input has every such field.
+ */
+export function inputMissingOf(workspace: LoadedWorkspace, file: PlacedFile): string | undefined {
+  const issue = workspace.issues.find(
+    (one) => one.file === file.path && one.code === "missing-routine-input",
+  );
+  return issue === undefined ? undefined : problemSentence(issue, file);
+}
+
+/** A check's message without its `Routine "<id>": ` prefix (see {@link errorsOf}). */
+function problemSentence(issue: LoadedWorkspace["issues"][number], file: PlacedFile): string {
+  const prefix = `Routine "${idOf(file)}": `;
+  return issue.message.startsWith(prefix) ? issue.message.slice(prefix.length) : issue.message;
 }
 
 /**
