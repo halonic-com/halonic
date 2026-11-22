@@ -1,20 +1,22 @@
 //! The repositories nested in the one a call runs in: their folders are
 //! checked against the opened folders, and the filters a gitlinked one
-//! defines are blanked too (requirement `repo-config`).
+//! defines are blanked too (requirements `repo-config`, `trusted-filters`).
 
-use std::path::PathBuf;
 use std::time::Instant;
 
 use crate::check_args::CheckedCall;
 use crate::error::GitError;
 use crate::opened_folders::OpenedFolders;
-use crate::repo_config::{add_filters, check_listing};
+use crate::repo_config::check_listing;
 use crate::repository::{LOCATE_ARGS, Repository, check_located, gitlinks, untracked_repositories};
 use crate::runner::GitRunner;
+use crate::trusted_filters::Filters;
 
 impl GitRunner {
     /// Checks every repository nested in `repository` as a gitlink, such as
-    /// a submodule, and adds the filters its config defines.
+    /// a submodule, and adds the filters its config defines. Each one
+    /// checked goes into `visited`, so the caller can ask whether all of
+    /// them are in trusted folders.
     ///
     /// git looks into them on its own: `add`, `status` and `diff` run
     /// `git status` inside each, which reads that repository's config. The
@@ -24,8 +26,8 @@ impl GitRunner {
         &self,
         folders: &OpenedFolders,
         repository: &Repository,
-        visited: &mut Vec<PathBuf>,
-        filters: &mut Vec<String>,
+        visited: &mut Vec<Repository>,
+        filters: &mut Filters,
         deadline: Instant,
     ) -> Result<(), GitError> {
         let index = self.run_internal(
@@ -47,12 +49,12 @@ impl GitRunner {
             let located = self.run_internal(&folder, None, LOCATE_ARGS, deadline)?;
             check_listing(located.code)?;
             let nested = check_located(folders, &located.stdout, deadline)?;
-            if visited.contains(&nested.top) {
+            if visited.iter().any(|known| known.top == nested.top) {
                 continue;
             }
-            visited.push(nested.top.clone());
+            visited.push(nested.clone());
             let entries = self.read_config(&nested.top, Some(&nested), deadline)?;
-            add_filters(&entries, filters);
+            filters.add(&entries);
             self.add_nested_filters(folders, &nested, visited, filters, deadline)?;
         }
         Ok(())

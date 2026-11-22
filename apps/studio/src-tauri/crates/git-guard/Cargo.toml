@@ -10,5 +10,9 @@ publish.workspace = true
 [lints]
 workspace = true
 
-# No dependencies: everything here is the standard library and the git
-# program itself.
+# Everything here is the standard library and the git program itself, but
+# for `libc`, only for `O_NONBLOCK`, which the standard library doesn't name:
+# no `unsafe` code. Pinned as in `host-settings` and `trust-store`, so it adds
+# no new code to the build.
+[target.'cfg(unix)'.dependencies]
+libc = { version = "=0.2.191", default-features = false }

@@ -27,7 +27,7 @@ use crate::profile::cli_profile;
 use crate::profile_place::folder_place;
 
 /// The trust records in the profile the CLI uses.
-fn trust_store<R: Runtime>(app: &AppHandle<R>) -> Result<FileTrustStore, TrustRefusal> {
+pub(crate) fn trust_store<R: Runtime>(app: &AppHandle<R>) -> Result<FileTrustStore, TrustRefusal> {
     let profile = cli_profile(app).map_err(TrustRefusal::from)?;
     Ok(FileTrustStore::new(PathBuf::from(profile.trust_folder())))
 }

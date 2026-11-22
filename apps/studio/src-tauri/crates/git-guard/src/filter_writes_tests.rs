@@ -1,4 +1,6 @@
-use super::{named_filter, passes_content, read_attribute_file, target_revisions};
+use super::{
+    named_filter, open_without_waiting, passes_content, read_attribute_file, target_revisions,
+};
 use crate::check_args::{CheckedCall, check_args};
 use crate::error::GitError;
 
@@ -126,4 +128,34 @@ fn filter_writes_reads_only_a_regular_attribute_file_within_the_limit() {
     assert_eq!(results[1], Err(GitError::RepositoryUnreadable));
     assert_eq!(results[2], Err(GitError::RepositoryUnreadable));
     assert_eq!(results[3], Ok(String::new()));
+}
+
+/// A FIFO swapped in after the look must not hold the open up: the open
+/// doesn't wait for a writer, and the opened file is then refused.
+#[cfg(unix)]
+#[test]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+fn filter_writes_opens_an_attribute_file_without_waiting_for_a_fifo() {
+    let root = std::env::temp_dir().join(format!("git-guard-fifo-open-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("the folder is created");
+    let fifo = root.join("attributes");
+    let made = std::process::Command::new("mkfifo")
+        .arg(&fifo)
+        .status()
+        .expect("mkfifo runs");
+    assert!(made.success());
+    let (sender, receiver) = std::sync::mpsc::channel();
+    let opening = fifo.clone();
+    std::thread::spawn(move || {
+        let opened = open_without_waiting(&opening)
+            .map(|file| file.metadata().is_ok_and(|metadata| metadata.is_file()));
+        let _ = sender.send(opened.ok());
+    });
+    let opened = receiver.recv_timeout(std::time::Duration::from_secs(30));
+    std::fs::remove_dir_all(&root).expect("the folder is removed");
+    assert_eq!(opened, Ok(Some(false)), "the open waited, or failed");
 }
